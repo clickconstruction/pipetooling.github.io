@@ -7,12 +7,8 @@ const SRC = resolve(__dirname, '../..')
 // Built from pieces so the copper sweep, which rewrites the literal wherever it finds it, leaves this test be.
 const OLD_COPPER = new RegExp(['#', 'b0662f'].join('') + '|\\b176, 102, 47\\b', 'i')
 
-/**
- * The files under src/ that may still carry the old copper: the pinned signing email and the two
- * tests that read the email builders in supabase/functions/_shared/, which move with the builders
- * in the emails PR (punch list #199). Empty once they have.
- */
-const UNTIL_THE_EMAILS_MOVE = ['lib/contractSigningEmail.test.ts', 'lib/contractSigningSend.pin.json', 'lib/jobsDocuments/gcStatementEmailParity.test.ts']
+/** No file under src/ may carry the old copper: the pinned signing email and the two tests that read the email builders moved with them (punch list #199, the emails PR). */
+const UNTIL_THE_EMAILS_MOVE: string[] = []
 
 function filesWithOldCopper(dir: string, out: string[] = []): string[] {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
@@ -24,7 +20,7 @@ function filesWithOldCopper(dir: string, out: string[] = []): string[] {
 }
 
 describe('the copper (v2.6067)', () => {
-  it('is one value: no file under src/ copies the old copper, apart from what moves with the email builders', () => {
+  it('is one value: no file under src/ copies the old copper', () => {
     expect(filesWithOldCopper(SRC).sort()).toEqual(UNTIL_THE_EMAILS_MOVE)
   })
 

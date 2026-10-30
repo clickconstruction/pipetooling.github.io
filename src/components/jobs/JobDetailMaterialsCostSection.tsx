@@ -14,6 +14,9 @@ import { cardCostLinesSubtitle } from '../../lib/jobs/jobCardCostLines'
 import type { JobTeamLaborRowModel } from '../../lib/jobs/jobTeamLaborRow'
 import { roundHoursLabel } from '../../lib/jobs/jobTeamLaborRow'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
+import { splitEstimateDescription } from '../../lib/jobs/otherChargeRowDisplay'
+import { EstimateChip } from './OtherChargeInputs'
+import { MoneyWithSmallCents } from './MoneySmallCents'
 
 type MaterialsAccordionKey = 'team' | 'supply' | 'mercury' | 'tally' | 'billed'
 
@@ -314,8 +317,16 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                     fontSize: '0.875rem',
                   }}
                 >
-                  <span style={{ fontWeight: 500 }}>{m.description || '—'}</span>
-                  <span style={{ color: 'var(--text-muted)', marginLeft: 8 }}>{formatCurrency(Number(m.amount ?? 0))}</span>
+                  {(() => {
+                    const est = splitEstimateDescription(m.description ?? '')
+                    return (
+                      <>
+                        {est.estimate ? <EstimateChip /> : null}
+                        <span style={{ fontWeight: 500, marginLeft: est.estimate ? 6 : 0 }}>{est.rest || (est.estimate ? '' : '—')}</span>
+                      </>
+                    )
+                  })()}
+                  <MoneyWithSmallCents value={Number(m.amount ?? 0)} style={{ color: 'var(--text-muted)', marginLeft: 8 }} />
                 </li>
               ))}
             </ul>

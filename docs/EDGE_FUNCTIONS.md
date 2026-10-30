@@ -241,6 +241,7 @@ when_to_read:
    - [quo-config](#quo-config)
    - [model-config](#model-config)
    - [report-draft](#report-draft)
+   - [bill-read](#bill-read)
    - [messages-nudge-dispatch](#messages-nudge-dispatch)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
@@ -1136,12 +1137,13 @@ The function reads and writes with the service role, so every bid-scoped verb en
 - The row keeps `drive_file_id`, written only where no save got there first, so a photo is copied once. A failed copy is tried again next run, and a line tied to its job later is caught then.
 
 - **A second source, the box photos (Materials on site, punch list #209, v2.6045)**: after the Messages pass, up to twenty `job_box_photos` rows with a `storage_path`, no `filed_at` and no `fail_why`, oldest first. Each is copied from the `box-photos` bucket into the job's photo folder (`photoFolderFor`, the same place as above) under the row's own `file_name`, with *(2)* when the folder holds the name; the row keeps `drive_file_id`, `filed_at` and `status = filed`, and the bucket copy is deleted. Every reason a shot cannot be filed is written on the row (`fail_why`: no Drive folder on the job, v2.6049; Drive not set up, a copy that did not read, a Drive refusal, v2.6050) for the office to read, and the row is tried again every run; a job with no folder, or one the account cannot write in, gets its folders from [job-drive-folders](#job-drive-folders) (v2.6054). The cron calls while any box photo waits (`20261029020000_photo_save_cron_box_photos.sql`, then `20261029160000_photo_save_cron_any_waiting.sql`).
+- **A third source, the report photos (Phone first, punch list #189 PR 5b, v2.6083)**: after the boxes, up to twenty `report_photos` rows with a `storage_path`, a `report_id` (a saved report; a form closed without saving discards its rows) and no `filed_at`, oldest first, tried again every run whatever the reason on the row. Each is copied from the `report-photos` bucket into the job's photo folder (`photoFolderFor`, as above) named by day, sender and caption as a text's photo is (`photoDriveName`: *2026-10-29 Luis Ortega · Rough In.jpg*, the caption the stage the photo shows, else the report's words), with *(2)* when the folder holds the name; the row keeps `drive_file_id` and `filed_at`, `fail_why` is cleared, and the bucket copy is deleted. A shot it cannot file gets the reason on its row (`fail_why`), which the report card reads as *not in Drive yet*. The cron also calls while a saved report's photo waits (`20261029220000_report_photos.sql`).
 
-**Endpoint**: `POST /functions/v1/photo-save` · **Auth**: `X-Cron-Secret`; `verify_jwt = false` in `config.toml`, since the cron sends no JWT. Answers `{ ticks, saved, failed: [{ id, why }], boxes: { saved, failed } }`.
+**Endpoint**: `POST /functions/v1/photo-save` · **Auth**: `X-Cron-Secret`; `verify_jwt = false` in `config.toml`, since the cron sends no JWT. Answers `{ ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed } }`.
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)).
 
-**Status**: v2.5458, deployed 2026-10-13; the box source v2.6045 (deploy after `20261029010000_materials_on_site.sql` is applied). Its cron, every 5 minutes while some job's tick is on or a box photo waits, is `20261014090000_photo_save_cron.sql` (v2.5464) re-scheduled by `20261029020000_photo_save_cron_box_photos.sql`.
+**Status**: v2.5458, deployed 2026-10-13; the box source v2.6045 (deploy after `20261029010000_materials_on_site.sql` is applied); the report source v2.6083 (deploy after `20261029220000_report_photos.sql` is applied). Its cron, every 5 minutes while some job's tick is on, a box photo waits or a saved report's photo waits, is `20261014090000_photo_save_cron.sql` (v2.5464) re-scheduled by `20261029020000_photo_save_cron_box_photos.sql`, `20261029160000_photo_save_cron_any_waiting.sql` and `20261029220000_report_photos.sql`.
 
 ### gc-plan-question-email
 
@@ -1193,7 +1195,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Sample**: the sample token (`sample`, as on every outside page) answers `{ today, slice, schedules, scheduleWork, scheduleTodos, flow, sample: true }` from `_shared/gcTradePortalSample.ts`: made-up rows run through the same slice builder, the sample job's chart with made-up neighbours (`gcTradePortalSampleSchedules`, v2.5200), and the same rows run through the flow's builder (`gcTradePortalSampleFlow`, v2.5315), dated from today, and no visit is counted.
 
-**The copy of the kernels** (v2.5200): `_shared/gcKernels/` is generated from `src` by `scripts/edge-kernels.mjs` (`npm run gen:edge-kernels`), because an edge function cannot import `src/lib` as it stands: the files the value imports of `portalSchedule`, `gcProjectFromRows`, `boardStateFromRows`, `withDraws` and `withScheduleRows` reach, and since P5d-ii-1 (v2.5206) those of `datesNotices`, `lateDoor`, `lateTarget`, `lateWaiting`, `portalLateNotice`, `portalCrewAsks`, `portalLookAhead` and `portalTodos`, since the Board's B2b-vi-b (v2.5208) `boardRows.ts`'s `setTouches.ts` and `lineReach.ts`, and since the schedule's PR 15b (v2.5211) those of `customerSchedulePicture`, `customerBarWords`, `lateFinish` and `withOfficeChangeOrders` for the customer's picture (202 files and 42009 lines on 2026-10-28, the generator's 201 plus its index; since v2.6029 a person's push hours, `messages/pushHours.ts` with the Office hours card's words `messages/officeHoursCard.ts`, which `messages-notify` reads for the hold; since v2.5883 the weekly send's `bridge/weeklySend.ts`, which `bridge-weekly-sheet` imports; since v2.6007 the review ask's rule `ratings/ratingAsk.ts`, which `_shared/ratingMint.ts` reads for `messages-nudge-dispatch`; since v2.5881 the Bridge's Monday sheet — `bridge/sheetReads.ts`, `sheetBuild.ts`, `mondaySheet.ts`, `mercuryCash.ts` and `jobs/zzTestJobReads.ts` with every loader and kernel under them, the overhead scan, the Dashboard's financials and the collect kernels among them — with two rules of that version: a kernel that already lives in `_shared/` (`billTruth.ts`, `billToParty.ts`, `mercuryRawDebitCard.ts`, `cardChargeAllocationFilter.ts`, `peopleLaborJobItemLineCost.ts`, which `src` re-exports) is pointed at where it is, never copied, and a type-only import of `@supabase/supabase-js` is written as `npm:@supabase/supabase-js@2` (`PACKAGE_TYPES`; `tsconfig.json`'s `paths` maps it for `tsc`, since two `_shared` portal files reach the copy from `src`), so `deno check` resolves the client's type and the edge erases it; since v2.5820 the Email station's counter's `emailIn/countedBoxes.ts` and `emailIn/labelSweep.ts`, which `gmail-count` imports; since v2.5812 the candidate's flow and a sub's coming-on lane, `flows/candidateLoad.ts` and `subOnboardingLoad.ts`, which `flows/load.ts` and `person.ts` import, with the trade scale they read, `hiring/tradeScale.ts`; since v2.5726–v2.5731 the walk kit's `walk/kit.ts`, `messages/ownChannels.ts`, `walk/kitDoor.ts` and `walk/walkFunction.ts`; since v2.5653 `appSettingsKeys.ts`, the `app_settings` keys with their parsers, which the morning run's `flows/nudgeRunInputs.ts` imports; since v2.5638 `quickReplies/shortcut.ts`, a line's `/` word, which `quickReplies/kernel.ts` imports; since v2.5281 the Quo kernels `quo/webhook.ts`, `events.ts`, `send.ts` and `rows.ts`, since v2.5458 also the photo kernels `photoDriveName`, `photosToSave` and `photoRows.ts`'s reads, since v2.5468 `quo/mediaKeep.ts`, since v2.5479 `messages/notifyPlan.ts`, the reply push's rule, since v2.5469 `messages/boxes.ts`, the two boxes, since v2.5494 `emailIn/readerBoxes.ts`, the boxes the reader reads, since v2.5440 `quo/textsSwitch.ts`, the texts switch, since v2.5499 quo-send's tech path, `quo/techSend.ts` with `jobModeText.ts`, `messages/customerLang.ts` and `quickReplies/language.ts`, since v2.5442 the morning run's `nudgeRunReads`, `planNudgeRun`, `runSummary` and `runHourNow`, since v2.5590 `bio/bio.ts`, the tech's bio, and since v2.5606 `prospects/textingRule.ts`, the prospect's texting rule), in `src`'s layout with `.ts` on each relative import. A type-only import of a file outside the copy goes one of three ways since v2.5283 (before it the copy pointed back at `src` with no `.ts`, which Deno erases at run time but `deno check` cannot resolve, so every type through it read as `any` and both importers' checks failed, 504 errors in `gc-trade-portal`'s): a file that imports nothing (the database's types, the schedule's) is pointed at in `src` with its `.ts`; a file of types whose own imports are types alone is copied, so its imports resolve inside the copy (`gc/types.ts`, where `PayAppParties` and `ScopeBookProject` now live, the old files re-exporting them); a file that runs code of its own is refused with a word to move the types to a types file. The generator reports the files it holds for their types alone (`typeFiles`), and `edgeKernels.test.ts` plants all three cases. `deno check` passes for both importers since v2.5283. `src/lib/gc/edgeKernels.test.ts` fails when the copy differs from a regenerate, or its importers' list (`IMPORTERS`, today `bridge-weekly-sheet` (since v2.5883, the sheet's five entries and `bridge/weeklySend.ts`), `customer-portal`, `drive-link`, `gc-trade-portal`, `gmail-count` (since v2.5820), `gmail-sync`, `messages-email` (since v2.5496), `messages-notify` (since v2.5479), `messages-nudge-dispatch` (since v2.5442), `photo-save`, `quo-send`, `quo-webhook`, `send-estimate-to-customer` (since v2.5729) and `walk` (since v2.5731)) from the functions whose bundles reach it, a string-literal `import()` included. So a change to any of the 120 files regenerates in its own PR and redeploys every importer, and `check:edge-drift` names each importer to redeploy. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
+**The copy of the kernels** (v2.5200): `_shared/gcKernels/` is generated from `src` by `scripts/edge-kernels.mjs` (`npm run gen:edge-kernels`), because an edge function cannot import `src/lib` as it stands: the files the value imports of `portalSchedule`, `gcProjectFromRows`, `boardStateFromRows`, `withDraws` and `withScheduleRows` reach, and since P5d-ii-1 (v2.5206) those of `datesNotices`, `lateDoor`, `lateTarget`, `lateWaiting`, `portalLateNotice`, `portalCrewAsks`, `portalLookAhead` and `portalTodos`, since the Board's B2b-vi-b (v2.5208) `boardRows.ts`'s `setTouches.ts` and `lineReach.ts`, and since the schedule's PR 15b (v2.5211) those of `customerSchedulePicture`, `customerBarWords`, `lateFinish` and `withOfficeChangeOrders` for the customer's picture (206 files and 42,624 lines on 2026-10-29, the generator's 205 plus its index; since v2.6029 a person's push hours, `messages/pushHours.ts` with the Office hours card's words `messages/officeHoursCard.ts`, which `messages-notify` reads for the hold; since v2.5883 the weekly send's `bridge/weeklySend.ts`, which `bridge-weekly-sheet` imports; since v2.6007 the review ask's rule `ratings/ratingAsk.ts`, which `_shared/ratingMint.ts` reads for `messages-nudge-dispatch`; since v2.5881 the Bridge's Monday sheet — `bridge/sheetReads.ts`, `sheetBuild.ts`, `mondaySheet.ts`, `mercuryCash.ts` and `jobs/zzTestJobReads.ts` with every loader and kernel under them, the overhead scan, the Dashboard's financials and the collect kernels among them — with two rules of that version: a kernel that already lives in `_shared/` (`billTruth.ts`, `billToParty.ts`, `mercuryRawDebitCard.ts`, `cardChargeAllocationFilter.ts`, `peopleLaborJobItemLineCost.ts`, which `src` re-exports) is pointed at where it is, never copied, and a type-only import of `@supabase/supabase-js` is written as `npm:@supabase/supabase-js@2` (`PACKAGE_TYPES`; `tsconfig.json`'s `paths` maps it for `tsc`, since two `_shared` portal files reach the copy from `src`), so `deno check` resolves the client's type and the edge erases it; since v2.5820 the Email station's counter's `emailIn/countedBoxes.ts` and `emailIn/labelSweep.ts`, which `gmail-count` imports; since v2.5812 the candidate's flow and a sub's coming-on lane, `flows/candidateLoad.ts` and `subOnboardingLoad.ts`, which `flows/load.ts` and `person.ts` import, with the trade scale they read, `hiring/tradeScale.ts`; since v2.5726–v2.5731 the walk kit's `walk/kit.ts`, `messages/ownChannels.ts`, `walk/kitDoor.ts` and `walk/walkFunction.ts`; since v2.5653 `appSettingsKeys.ts`, the `app_settings` keys with their parsers, which the morning run's `flows/nudgeRunInputs.ts` imports; since v2.5638 `quickReplies/shortcut.ts`, a line's `/` word, which `quickReplies/kernel.ts` imports; since v2.5281 the Quo kernels `quo/webhook.ts`, `events.ts`, `send.ts` and `rows.ts`, since v2.5458 also the photo kernels `photoDriveName`, `photosToSave` and `photoRows.ts`'s reads, since v2.5468 `quo/mediaKeep.ts`, since v2.5479 `messages/notifyPlan.ts`, the reply push's rule, since v2.5469 `messages/boxes.ts`, the two boxes, since v2.5494 `emailIn/readerBoxes.ts`, the boxes the reader reads, since v2.5440 `quo/textsSwitch.ts`, the texts switch, since v2.5499 quo-send's tech path, `quo/techSend.ts` with `jobModeText.ts`, `messages/customerLang.ts` and `quickReplies/language.ts`, since v2.5442 the morning run's `nudgeRunReads`, `planNudgeRun`, `runSummary` and `runHourNow`, since v2.5590 `bio/bio.ts`, the tech's bio, and since v2.5606 `prospects/textingRule.ts`, the prospect's texting rule), in `src`'s layout with `.ts` on each relative import. A type-only import of a file outside the copy goes one of three ways since v2.5283 (before it the copy pointed back at `src` with no `.ts`, which Deno erases at run time but `deno check` cannot resolve, so every type through it read as `any` and both importers' checks failed, 504 errors in `gc-trade-portal`'s): a file that imports nothing (the database's types, the schedule's) is pointed at in `src` with its `.ts`; a file of types whose own imports are types alone is copied, so its imports resolve inside the copy (`gc/types.ts`, where `PayAppParties` and `ScopeBookProject` now live, the old files re-exporting them); a file that runs code of its own is refused with a word to move the types to a types file. The generator reports the files it holds for their types alone (`typeFiles`), and `edgeKernels.test.ts` plants all three cases. `deno check` passes for both importers since v2.5283. `src/lib/gc/edgeKernels.test.ts` fails when the copy differs from a regenerate, or its importers' list (`IMPORTERS`, today `bridge-weekly-sheet` (since v2.5883, the sheet's five entries and `bridge/weeklySend.ts`), `customer-portal`, `drive-link`, `gc-trade-portal`, `gmail-count` (since v2.5820), `gmail-sync`, `messages-email` (since v2.5496), `messages-notify` (since v2.5479), `messages-nudge-dispatch` (since v2.5442), `photo-save`, `quo-send`, `quo-webhook`, `send-estimate-to-customer` (since v2.5729) and `walk` (since v2.5731)) from the functions whose bundles reach it, a string-literal `import()` included. So a change to any of the copy's files regenerates in its own PR and redeploys every importer, and `check:edge-drift` names each importer to redeploy. Its ids are fixed uuids (`SAMPLE_TRADE_IDS`, v2.4935), so a press on the sample passes `submit-gc-trade-portal`'s shape check and answers ok.
 
 **Views**: each validated load writes `public_page_views` with surface `gc_trade_portal` and `entity_id` = the company, stamped outside, staff or preview by `_shared/publicViewCounting.ts`. Only outside loads count. The function's one write beyond that row (v2.5315): an outside load fills the company's live links' empty `first_opened_at`, the fact `portal_opened`, before the flow reads it. A staff look, a preview or the sample never stamps it, and until cut 4's column is on prod the stamp changes nothing.
 
@@ -1444,7 +1446,7 @@ The email (`_shared/gcMoneyMondayEmail.ts`, which What the team sees renders on 
 
 ### bridge-sheet-email
 
-**Purpose**: Mails the Bridge's Monday sheet (v2.5224) to the dev who pressed **Email me this sheet** on `/bridge?view=monday`, and to nobody else. The page builds the sheet from its own kernels (`src/lib/bridge/mondaySheet.ts`: `mondaySheetSubject`, `mondaySheetHtml`, `mondaySheetText`) and posts the finished parts; the function only checks the caller and sends.
+**Purpose**: Mails the Bridge's Monday sheet (v2.5224) to the dev who pressed **Email me this sheet** on `/bridge?view=monday`, and to nobody else. The page builds the sheet from its own kernels (`src/lib/bridge/mondaySheet.ts`: `mondaySheetSubject`, `mondaySheetHtml`, `mondaySheetText`; since v2.6011 the HTML is the fluid hybrid layout that stacks on a phone, with Outlook's table cells behind `[if mso]`) and posts the finished parts; the function only checks the caller and sends.
 
 **Endpoint**: `POST /functions/v1/bridge-sheet-email` · **Auth**: `verify_jwt = false`; the caller's JWT is read in-body (`auth.getUser`), then the `users` row must be `role = 'dev'`, not archived, not a sample and not a digital twin, with an email address (the auth email as the fallback).
 
@@ -2306,6 +2308,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **Behavior**: The row must be an `office` `reply` whose `metadata.answers_message_id` names the ask; the ask's person gets one letterhead email (`_shared/submittalReplyEmail.ts`: the subject names the bid and the tags, the body is the reply with the question quoted, the button is the person's **personal** room link — minted here if they never had one; never a staff name; reply-to is the sender's address). Writes a `reply` event with the Resend id. The client calls it from `src/lib/submittals/replyToRoom.ts` after inserting the reply; a failed email leaves the reply on the thread and says so.
 
+> **v2.6080 — redeploy only**: bundles [`_shared/submittalReplyEmail.ts`](../supabase/functions/_shared/submittalReplyEmail.ts), whose *Open the review* button takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### send-submittal-room-link
 
@@ -2323,6 +2326,7 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/submittalRoomLinkEmail.ts`](../supabase/functions/_shared/submittalRoomLinkEmail.ts), whose *Open the review* button takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### file-submittal-package
 
@@ -2443,6 +2447,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **v2.3521:** the confirm email links to `${APP_ORIGIN}/legal/confirm?t=<raw>` (the app page), not the function.
 
+> **v2.6080 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose footers write their small print in `#5e6d7c` (was `#8a97a6`, 2.98:1 on white) and whose rules and *Open the portal* button take the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### legal-notify-dispatch
 
 > **v2.4750 — the address with the firm's name**: `portalLink` writes the firm's own link through `legalPortalAddress` — `my.clickplumbing.com/<key>` for a slug key, the direct `/legal?t=` form for one made before. `legal_portal_link_token(firm_id)` now returns the firm's own link (`purpose = 'firm'`), never a person's. **Redeploy required.**
@@ -2475,6 +2481,8 @@ _v2.3351:_ an event is heard by whoever is subscribed when it happens and never 
 
 **v2.3521:** the confirm / unsubscribe pages moved to the app (`/legal/confirm?t=…`, `&stop=1`) because the platform relays this function's HTML as text/plain. `GET ?confirm=<t>&json=1` / `?unsubscribe=<t>&json=1` do the work and answer JSON for that page; the bare link shape 302-redirects there. `unsubscribeLink` builds the app URL.
 
+> **v2.6080 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose footers write their small print in `#5e6d7c` (was `#8a97a6`, 2.98:1 on white) and whose rules and *Open the portal* button take the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### legal-send-firm-link
 
 > **v2.4750 — one link of several**: the body takes `linkId`, one of the firm's live links (the window's *Send…* on a person's row); without it the firm's own link (`purpose = 'firm'`) goes. The key is read by `legal_portal_link_token_by_id(p_link_id)` (service role, Vault); a `token` the card sends must equal it. A person's link greets the person by the row's `label`. The address is `legalPortalAddress(APP_ORIGIN, key)`: the short form for a slug key. 409 *That link is no longer live* for a dead `linkId`. **Redeploy required.**
@@ -2488,6 +2496,8 @@ _v2.3351:_ an event is heard by whoever is subscribed when it happens and never 
 **Sent copies**: filed with `file: { kind: 'legal_firm_link', source: { table: 'legal_portal_links', id }, recipientName: firm, sentBy }` ([`SENT_COPIES.md`](./SENT_COPIES.md)). The card reads its line *Sent to … on … by …* from those rows for the active link (`legalFirmLinkSentLine`), so a Rotate starts it over. Catalog id `legal_firm_link` (`emailType`).
 
 **Auth**: `verify_jwt = false` in `config.toml`; the caller's JWT is checked in the handler (`auth.getUser`), then `legal_office_can_read()` through the caller's own client (dev, master, assistant, controller — the roles that mint the link). The send-bid-room-link pattern. **Deploy**: `supabase functions deploy legal-send-firm-link` (new). Secrets: `RESEND_API_KEY`, `APP_ORIGIN` (fallback when the card sends no origin).
+
+> **v2.6080 — redeploy only**: bundles [`_shared/legalEmails.ts`](../supabase/functions/_shared/legalEmails.ts), whose footers write their small print in `#5e6d7c` (was `#8a97a6`, 2.98:1 on white) and whose rules and *Open the portal* button take the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### get-estimate-public-terms
 
@@ -2617,6 +2627,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### accept-contract
 
 > **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
@@ -2645,6 +2657,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### send-contract-for-signature
 
 > **v2.5041 — a trade partner company's paper (GC mode, the Board's B6-b-i)**: a body with `trade_email: { companyId, key, lang, subject, lines, actionLabel }` takes the company branch, gc-trade-email's steps in order. A dev only (`officeOnly`; a training account or a twin `readOnly`), Spanish held (`spanishHeld`), the company's own sendable paper (`notFound` when the paper is not that company's), the `key` sent once and checked before any token is minted (`already: true`, nothing sent), the company's `contracts` people with the rest cc'd (`noEmail`), the token as for a person, then `buildGcTradeEmail` with the signing link as its action and the company's portal under it when it has a link (read, never minted). It writes a `gc_trade_messages` row (`msa`, or `paper` for a W-9, group `contracts`) and the sent copy (`gc_trade_email`, its `?t=` kept as `…`). Errors are gc-trade-email's keys. The person path is unchanged: its request checks, sendability and sent copy moved word for word to `_shared/contractSigningSend.ts` and are pinned against main with its email by `src/lib/contractSigningSend.pin.test.ts`. **Redeploy required.**
@@ -2671,6 +2685,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Optional**: `ESTIMATE_PUBLIC_ORIGIN` if link base should not come from the client.
 
 ---
+
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### open-contract-form-pdf
 
@@ -2705,6 +2721,7 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font (unused here in practice since no signature is drawn).
 
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### complete-contract-form-office
 
@@ -2723,6 +2740,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font.
 
 ---
+
+> **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### get-contract-signing-link-for-self
 
@@ -3377,7 +3396,7 @@ Both send nothing, and answer `{ "success": true, "off": true, … }`, while the
 - **Whose lines**: a customer's, a lead's or a sub's (`PUSH_KINDS`), on a text, an email, a portal write, a voicemail or a missed call. An answered call does not push.
 - **Who has it**: after a legal line that still stands (`standingLegalLine` over the Lien desk's sends on the customer's Pipeline jobs, the owner's copies), the office alone (`routeReply`); else the teammate who took it or was handed it (`contacts.has_how`); else the rule (`whoHasReply`): the tech who last texted them while their hold stands, else the office's pick (`whoGetsIt` over `messages_assign_rule_v1`; a lead's and a sub's go to the Customers seat since v2.5501, which asks for a redeploy), else nobody while the office is closed (`messages_office_hours_v1`, set on Settings → Phone and texts → **Office hours** since v2.5709).
 - **Who hears, and when** (`pushesFor`): whoever has it at once; the office after `messages_office_wait_minutes` (15) unless someone answered first (`answeredBefore`); the holder once more at `BREACH_MINUTES` (50, ten before the strip's hour) when still nobody has answered — the whole office when nobody is named, never after hours and never under a legal line (v2.5875); the office at once after hours, the push saying the line waits for the morning (no after-hours answer goes until `quo-send` sends one); and since v2.6029 the office at once when whoever has it is off at the line's time (`message_reply_off`, *Dana wrote to Luis, who is off until 6 AM.* then her words, `holderOffWords`), the holder still having the conversation on Messages. The office is the Customers seat when one is picked, else the five office roles (`_shared/messagesTeams.ts`, held to `GC_OFFICE_TEAM` by `access.test.ts`); a push to the seat alone while the seat is off widens to the office roles who are on at the push's time (v2.6029). The tech's push carries no link until Job Mode's thread has one; the office's opens the thread at the line.
-- **A person's hours** (v2.6029, punch list #141): every row of `user_push_hours` is read once per run (the service role, fail-soft), and the planner splits each due push at `now` (`pushDecision`, `messages/pushHours.ts`): the people on get it, the people off get a `notification_history` row with `channel = 'held'` and no push, each the row the push would have written. A held row counts as sent for its line and template, so no catch-up push ever goes (the card's decision 5); the Dashboard's line of what waited (PR 4) reads these rows.
+- **A person's hours** (v2.6029, punch list #141): every row of `user_push_hours` is read once per run (the service role, fail-soft), and the planner splits each due push at `now` (`pushDecision`, `messages/pushHours.ts`): the people on get it, the people off get a `notification_history` row with `channel = 'held'` and no push, each the row the push would have written. A held row counts as sent for its line and template, so no catch-up push ever goes (the card's decision 5); the Dashboard's **While you were off** line (v2.6060, `messages/whatWaited.ts` over `whatWaitedIo.ts`) reads these rows back to the person.
 - **Never twice, never late**: a push already in `notification_history.message_id` for that line is not sent again, and one more than thirty minutes past its time is never sent (`PUSH_LATE_MAX_MINUTES`). Each person reached gets one `notification_history` row, `template_type` `message_reply`, `message_reply_wait`, `message_reply_breach` (v2.5875) or `message_reply_off` (v2.6029), with the line in `message_id`. Nothing is written to `contacts`.
 
 ```json
@@ -4291,6 +4310,8 @@ Body: `{ release_id, job_id, customer_email, subject?, email_text?, email_html?,
 
 **v2.4304 — the account card**: when the recipient has a portal, the email ends with the bill emails' **Your account, any time** card — the QR code (inline `cid:portal-qr` attachment) beside the short address, *Every lien waiver and bill for your jobs, with no login.* — and the text body gains the address. The recipient's customer row is the GC when `customer_email` is the GC's billing email, else the job's customer (`waiverEmailRecipientCustomerId` in [`_shared/lienWaiverEmailCard.ts`](../supabase/functions/_shared/lienWaiverEmailCard.ts)); the address is read with the service role (`ensurePortalShortAddress` + `loadPortalReturnUrl`, as `send-stripe-invoice`), never from the body. Any failure sends the waiver without the card. New secret read: `SUPABASE_SERVICE_ROLE_KEY` (`APP_ORIGIN` optional).
 
+> **v2.6080 — redeploy only**: bundles [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose statement card's link takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### send-lien-filing-email
 
 > **v2.5092 — a reply reaches the office**: every email goes with `reply_to: LIEN_FILING_REPLY_TO` (`office@clickplumbing.com`, [`_shared/lienFilingEmail.ts`](../supabase/functions/_shared/lienFilingEmail.ts)): the notice of claim, the run's courtesy copy and the demand letter. The sender has no mailbox, so a reply reached no one before. The run's courtesy preview names the same address. **Redeploy required.**
@@ -4422,6 +4443,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose statement card's link takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### gc-statement-email-dispatch
 
 > **v2.5022 — a GC's scheduled statement waits for the check**: after the nothing-outstanding skip, a single GC's statement runs the same gate as `send-gc-statement-email` over the group just built (Collections rows left out). Held, the request is stamped `error = 'refused: Check the bills first — a statement never goes out unchecked (not checked this week | changed since it was checked)'` with `sent_at`, counted in the response's new `refused`, and a weekly chain still advances — never sent, never skipped without a word. The whole report by GC (no entity id) reads every section's checks at once (`readGcStatementHolds`), leaves a held GC's section out of the email, the grand total and the audit row, and names it under the date (*Held, not checked this week: …*, `gcBulkHeldLines`, the same line as the client's Share all); the checked sections still go, and a development report is not held. A gate that cannot read throws to the attempt's retry. Run against its own `index.ts` in `src/lib/jobs/gcStatementDispatch.run.test.ts`. **Redeploy after merge.**
@@ -4462,6 +4485,8 @@ interface SendPhysicalInvoiceEmailBody {
 
 ---
 
+> **v2.6080 — redeploy only**: bundles [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose statement card's link takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
 ### weekly-movement-email-dispatch
 
 > **v2.4172 — the renderer is a kernel**: `render.ts` re-exports [`_shared/weeklyMovementEmail.ts`](../supabase/functions/_shared/weeklyMovementEmail.ts) (moved verbatim), so Settings → What the team sees renders the report on sample data (punch list #60, lift 6 of 14). Redeploy after merge.
@@ -4495,6 +4520,8 @@ interface SendPhysicalInvoiceEmailBody {
 ---
 
 ### payment-forecast-email-dispatch
+
+> **v2.6034 — the email keeps own → company**: the app's `billedExpectedPayModel` reads the Collect desk's pace order since this version (`src/lib/jobs/payPace.ts`: the payer's own median, the GC pace here for a GC, the segment's, the company's); `_shared/paymentForecastCore.ts` is a hand-written port whose payload carries no GC facts, so the digest still reads own → company and can expect a first-job GC's pay application a few weeks earlier than the app does. Nothing to redeploy for it.
 
 > **v2.4460 — a bill's day reads in the company zone**: `billedReferenceYmd` in [`_shared/paymentForecastCore.ts`](../supabase/functions/_shared/paymentForecastCore.ts) reads `billed_at` (an instant) as its day in `APP_CALENDAR_TZ` (`todayYmdInAppTz(new Date(iso))`), not its UTC date, as the app's `billedExpectedPay.ts` now does. A bill marked billed after 7 pm Central lands in the right week. Redeploy after merge.
 
@@ -4697,6 +4724,8 @@ If the DB persist fails, the function returns **502** with the outcome fields an
 **Gateway JWT**: Deploy with **`supabase functions deploy send-stripe-invoice --no-verify-jwt`** when the hosted gateway still enforces JWT.
 
 ---
+
+> **v2.6080 — redeploy only**: bundles [`_shared/stripeBillEmail.ts`](../supabase/functions/_shared/stripeBillEmail.ts) and [`_shared/portalAccountCard.ts`](../supabase/functions/_shared/portalAccountCard.ts), whose *Pay now* and statement card take the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### update-collect-payment-stripe-customer-email
 
@@ -5490,7 +5519,37 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ---
 
+### bill-read
+
+**Purpose** (punch list #179 PR 2, v2.6088): a supply-house bill's PDF, or a picture of the counter ticket, read into the fields of the Add invoice window for a person to check and save. The machine fills, a person presses: the function writes no invoice. The Add invoice window stays the one way a bill is recorded (Taunya, 2026-10-29: augment the manual entry, never replace it); PR 3 puts *The bill* on the form and the two doors (the thread's *Record this bill*, the house's *N bills to record*). The function fetches the file from the private `message-attachments` bucket (a file on the house's thread, or a file dropped on the form, which it puts in the bucket under `bills/<house>/<uuid>/<name>` first), sends the PDF as a document block or the picture as an image block to Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort `medium`) for one JSON object held to `BILL_SCHEMA` through structured output (`output_config.format`, `type: json_schema`; every amount a string of the digits as printed, so the schema needs no nullable number), with Anthropic's default fallback on a refusal (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`; Haiku has none, so the trial model goes without), reads the answer into cents and a kind (`readBillAnswer` in `_shared/billRead.ts`), writes one row to `supply_bill_reads` and answers the read with where the file is and what the call cost. The matching, the checks and the words are the app's kernels in `src/lib/materials/bills/` over this answer.
+
+**Endpoint**: `POST /functions/v1/bill-read`
+
+**Required Role**: the office (dev, master_technician, assistant, controller), a real account, not `read_only`, since a fill costs money. Anyone else gets 403. The switch `app_settings.bill_read_on_v1` must read `'true'` (409 `off` otherwise), except for a dev, who may try the function while it is off. The function stops at `BILL_READ_DAILY_CAP` (150) fills in a rolling day (429 `capped`). A dev may name `model: 'claude-haiku-5-5'` for the trial on the made-up set; everyone else fills with Sonnet whatever they send.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; the model key from Vault (`model_secret_get('anthropic')`, the Model keys card) else `ANTHROPIC_API_KEY`, as `report-draft` reads it.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+`{ attachment_id, supply_house_id? }`: a file on the house's thread (`message_attachments.id`, with our copy in the bucket; a link or a file left in Gmail is 404 `notHere`); the house when the caller knows it, else read from the line's contact. Or `{ supply_house_id, file: { name, mime, base64 } }`: a file dropped on the form, a PDF or a JPEG, PNG, GIF or WebP (a HEIC or a Word file is 400), at most 10 MB.
+
+#### Response
+
+200 `{ ok: true, read: BillRead, file: { path, name, mime, attachmentId, supplyHouseId }, model, cents, readId }`. `read` is the paper as read: `houseName`, `kind` (`invoice` · `credit` · `statement` · `other`), `number`, `dateYmd`, `poText`, `accountRef`, `shipTo`, `jobText`, `terms`, `referencesNumber`, `lines[]` (`description`, `quantity`, `unitPriceCents`, `extendedCents`), `subtotalCents`, `taxCents`, `totalCents`, `pageCount`, `statementNumbers[]`, `notes`. 409 `{ error: "noKey" | "off", words }`; 429 `capped`; 400 `badRequest` with the reason; 401 `signIn`; 403 `notAllowed`; 404 `notHere`; 405 not a POST; 503 the function's own secrets missing; 502 `refused` (the model would not read it) or `failed` (the answer was not the shape, or the call threw, that one with `why`: Anthropic's own type and message through `modelRefusalWhy`, never the key). Every answer but 401, 403, 405 and 503 carries `words` the form can show, from `BILL_READ_WORDS`.
+
+**The ledger**: every fill, whole or not, is one `supply_bill_reads` row (who, when, the file, the house, the model, the tokens and cents, `ok`, the answer, the reason), which the cap counts and the office reads (`read_rows` on the dev MCP).
+
+**Cost**: a one-page bill is about 2,000 tokens in and 400 out, under a cent at Sonnet 5.5's $2 and $10 a million tokens; `cents` in the answer is the call's own figure (`billCostCents`).
+
+**The made-up set**: `src/test/fixtures/bills/` (five PDFs drawn by `scripts/bills-fixtures.mjs`, each beside the answer the model should give). `node scripts/bill-read-compare.mjs --jwt <access token> --house <a ZZ test house's id> [--model claude-haiku-5-5]` sends them to the deployed function and scores the answers.
+
+**Deploy**: `bash scripts/deploy-functions.sh bill-read` after migration `20261030010000_supply_bill_read.sql` is pushed. The dev-mcp catalog names it, so redeploy `dev-mcp` with it.
+
 ### messages-nudge-dispatch
+
+> **v2.6079 — a reminder with a blank the run cannot fill waits** (punch list #124): the kernel copy's `planNudgeRun` fills `{first}`, `{job}` and now `{link}` (the person's portal link), and reads what is left. On *Sends* a text whose line still holds another blank (`{amount}`, `{bill}`, `{window}`, …) is kept back as `blanks left`, its words naming them, after the person's own reasons; on *Offers* the prepared row is held on Today's sends with why and its door (*Send it from the customer’s thread, where the box fills it, or change the step’s line.*), so nothing with braces goes from the Dashboard either. `{rate}` is not a blank left: this function still mints it as the text goes. `runSummary` counts the new reason. Nothing of the function's own changed; redeploy for the kernel copies (`nudgeDispatch.ts`, `nudgeRunLog.ts`).
 
 > **v2.6016 — a residential job's step notes read on the job**: the run selects `jobs_ledger_id` from the step notes it reads (`messages` with a `step_key`, beside `nudge_holds` and `nudge_sent` since v2.6007), and the kernel copy's `person.ts` keys a note by `jobOfMark`, so a note the office writes on a Pipeline job's step reaches `PersonFlow.notes` on that job. **Redeploy required.**
 

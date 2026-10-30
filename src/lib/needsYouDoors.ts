@@ -59,6 +59,8 @@ export type NeedsYouDoorData = {
   customerWaitingInboxHref?: string | null
   /** The review ask (v2.5946): the first low answer's contact, whose thread the line opens. */
   lowRatingContactId?: string | null
+  /** While you were off (v2.6060, punch list #141 PR 4): the first customer's line still waiting, whose thread the line opens. */
+  whileOffFirst?: { contactId: string; messageId: string } | null
 }
 
 const STAGES = '/jobs?tab=stages'
@@ -75,6 +77,9 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return { kind: 'window', window: 'tally-team' }
     case 'todays-sends':
       return { kind: 'window', window: 'todays-sends' }
+    case 'while-off':
+      // While you were off (v2.6060): the first line still waiting, at the line; Messages when none was read.
+      return href(d.whileOffFirst ? messagesThreadHref(d.whileOffFirst.contactId, d.whileOffFirst.messageId) : '/messages')
     case 'rating-low':
       // The review ask (v2.5946): the first low answer's thread, where the app's line and the call land.
       return href(d.lowRatingContactId ? messagesThreadHref(d.lowRatingContactId) : '/messages')

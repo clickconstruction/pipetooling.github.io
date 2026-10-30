@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, type CSSProperties } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, type ChangeEvent, type CSSProperties, type ReactNode } from 'react'
 import { Folder, Images } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
@@ -19,7 +19,7 @@ import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
-import { withSupabaseRetry } from '../utils/errorHandling'
+import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportLinesProgressField } from './ReportLinesProgressField'
 import { ReportVoiceNote } from './reports/ReportVoiceNote'
@@ -27,6 +27,25 @@ import { DraftedMark, HeardFold } from './reports/VoiceDraftBits'
 import { useReportVoiceDraft } from '../hooks/useReportVoiceDraft'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
 import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
+import { fieldPctStartValue } from '../lib/jobs/fieldPctUpdate'
+import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { ReportPhotoTiles, StageRowPhotos, type ReportPhotoStage } from './reports/ReportPhotoTiles'
+import {
+  REPORT_PHOTO_WORDS,
+  newPhotoId,
+  newPhotoLine,
+  photosInFlight,
+  photosSentence,
+  reportPhotoCaption,
+  reportSaveWords,
+  sentTiles,
+  tilesOnStage,
+  type ReportPhotoTile,
+} from '../lib/photos/reportPhotos'
+import { attachReportPhotos, discardReportPhotos, loadReportPhotoSize, sendReportPhoto } from '../lib/photos/reportPhotosIo'
+import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
+import { STAGE_PCT_WORDS } from '../lib/reports/stagePct'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
@@ -93,6 +112,23 @@ export default function AdditionalReportModal({
   const [jobLinksLoading, setJobLinksLoading] = useState(false)
   const [customerFilesUrl, setCustomerFilesUrl] = useState('')
   const [customerPicturesUrl, setCustomerPicturesUrl] = useState('')
+  /** The job's number on record, as the card shows it (punch list #189, PR 5a): the percent opens on it, not on 0. */
+  const [jobPctSeed, setJobPctSeed] = useState<number | null>(null)
+  // The camera-first report (punch list #189, PR 5b): on a phone, for the roles that file from the field, the press
+  // opens the camera and the shots are tiles over the form; the office's size, and the stage the next shot lands on.
+  const phone = useNarrowViewport640()
+  const cameraFirst = phone && canLeaveJobFieldReport(userRole)
+  const [tiles, setTiles] = useState<ReportPhotoTile[]>([])
+  const [photoSize, setPhotoSize] = useState<ReportPhotoSize>('medium')
+  const [lastShrink, setLastShrink] = useState<string | null>(null)
+  const [showOtherTypes, setShowOtherTypes] = useState(false)
+  const [showWhatIsNext, setShowWhatIsNext] = useState(false)
+  const cameraInputRef = useRef<HTMLInputElement>(null)
+  const cameraStageRef = useRef<ReportPhotoStage | null>(null)
+  const cameraOpenedRef = useRef(false)
+  const originalsRef = useRef<Map<string, File>>(new Map())
+  const urlsRef = useRef<string[]>([])
+  const attachedRef = useRef(false)
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   // Report by line (punch list #130, v2.5663): the job's priced lines, two or more; null = the plain slider.
   const lineProgress = useJobLineProgress(jobId, open)
@@ -107,6 +143,13 @@ export default function AdditionalReportModal({
     const next = String(lineDerivedPct)
     setFieldValues((prev) => (prev[percentFieldLabel] === next ? prev : { ...prev, [percentFieldLabel]: next }))
   }, [lineDerivedPct, percentFieldLabel])
+  // The whole-job percent opens on the job's number (the card's follow-up: an untouched Save on a one-line job wrote 0).
+  // Only an untouched field is seeded, so a tech's pick is never overwritten by a late read.
+  useEffect(() => {
+    if (!open || jobPctSeed == null || !percentFieldLabel || linesActive) return
+    const seed = String(jobPctSeed)
+    setFieldValues((prev) => (prev[percentFieldLabel] === undefined ? { ...prev, [percentFieldLabel]: seed } : prev))
+  }, [open, jobPctSeed, percentFieldLabel, linesActive])
 
   // Escape closes the form as its Close does (v2.5691). The job window underneath ignores Escape while the form is
   // up (`detailEscBlocked`), so the key answered nothing here; a layer above the form that handles Escape itself
@@ -129,6 +172,7 @@ export default function AdditionalReportModal({
       setJobLinksLoading(false)
       setCustomerFilesUrl('')
       setCustomerPicturesUrl('')
+      setJobPctSeed(null)
       return
     }
     let cancelled = false
@@ -139,7 +183,7 @@ export default function AdditionalReportModal({
           async () =>
             await supabase
               .from('jobs_ledger')
-              .select('google_drive_link, job_pictures_link')
+              .select('google_drive_link, job_pictures_link, pct_complete, status')
               .eq('id', jobId)
               .maybeSingle(),
           'AdditionalReportModal job customer links',
@@ -147,10 +191,11 @@ export default function AdditionalReportModal({
         if (cancelled) return
         const row =
           data && typeof data === 'object' && data !== null
-            ? (data as { google_drive_link?: string | null; job_pictures_link?: string | null })
+            ? (data as { google_drive_link?: string | null; job_pictures_link?: string | null; pct_complete?: number | null; status?: string | null })
             : null
         setCustomerFilesUrl((row?.google_drive_link ?? '').trim())
         setCustomerPicturesUrl((row?.job_pictures_link ?? '').trim())
+        setJobPctSeed(row ? fieldPctStartValue(row.pct_complete ?? null, row.status ?? null) : null)
       } catch {
         if (!cancelled) {
           setCustomerFilesUrl('')
@@ -198,10 +243,132 @@ export default function AdditionalReportModal({
       })
   }, [selectedTemplateId])
 
+  useEffect(() => {
+    if (!open) return
+    let live = true
+    void loadReportPhotoSize().then((size) => {
+      if (live) setPhotoSize(size)
+    })
+    return () => {
+      live = false
+    }
+  }, [open])
+
+  // The press opens the camera (the mock-up's section 6, frame 1): once per open, in the same task as the press that
+  // opened the form, so a phone takes it as the tech's own tap. Cancel on the camera leaves the form with Take a photo.
+  useLayoutEffect(() => {
+    if (!open) {
+      cameraOpenedRef.current = false
+      return
+    }
+    if (cameraFirst && !cameraOpenedRef.current) {
+      cameraOpenedRef.current = true
+      cameraInputRef.current?.click()
+    }
+  }, [open, cameraFirst])
+
+  function keepUrl(url: string): string {
+    urlsRef.current.push(url)
+    return url
+  }
+
+  /** The shots of a form that was not saved leave the bucket and the table; every object URL is let go. */
+  function dropTiles() {
+    const unsaved = attachedRef.current ? [] : tiles.filter((t) => t.status === 'sent').map((t) => ({ id: t.id, storagePath: t.storagePath }))
+    if (unsaved.length) void discardReportPhotos(unsaved)
+    for (const u of urlsRef.current) URL.revokeObjectURL(u)
+    urlsRef.current = []
+    originalsRef.current.clear()
+    attachedRef.current = false
+    setTiles([])
+    setLastShrink(null)
+    setShowOtherTypes(false)
+    setShowWhatIsNext(false)
+  }
+
+  function openCamera(stage: ReportPhotoStage | null) {
+    cameraStageRef.current = stage
+    cameraInputRef.current?.click()
+  }
+
+  /** Shrink on the phone, then send: the tile reads each step, and a failure keeps the tile with Retry. */
+  async function shrinkAndSend(id: string, file: File, takenAt: string) {
+    try {
+      const shot = await shrinkReportPhoto(file, photoSize)
+      if (!withinCap(shot.blob.size)) throw new Error('The photo is over 2 MB even after the shrink.')
+      const preview = shot.shrunk ? keepUrl(URL.createObjectURL(shot.blob)) : null
+      setTiles((prev) =>
+        prev.map((t) => (t.id === id ? { ...t, status: 'sending', bytes: shot.blob.size, width: shot.width, height: shot.height, shrunk: shot.shrunk, ...(preview ? { previewUrl: preview } : null) } : t)),
+      )
+      setLastShrink(shrinkWords({ before: file.size, after: shot.blob.size, longEdge: edgeFor(photoSize), shrunk: shot.shrunk }))
+      if (!authUserId) throw new Error('Sign in again to send a photo.')
+      const sent = await sendReportPhoto({ id, jobId, blob: shot.blob, byUserId: authUserId, byName: profileName?.trim() || '', takenAt, originalBytes: file.size, width: shot.width, height: shot.height })
+      setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'sent', storagePath: sent.storagePath, failWhy: null } : t)))
+    } catch (err) {
+      setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'failed', failWhy: formatErrorMessage(err, 'The photo did not send.') } : t)))
+    }
+  }
+
+  function onCameraFile(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    const stage = cameraStageRef.current
+    cameraStageRef.current = null
+    const id = newPhotoId()
+    const takenAt = new Date().toISOString()
+    originalsRef.current.set(id, file)
+    setTiles((prev) => [
+      ...prev,
+      {
+        id,
+        status: 'shrinking',
+        previewUrl: keepUrl(URL.createObjectURL(file)),
+        originalBytes: file.size,
+        bytes: 0,
+        width: 0,
+        height: 0,
+        longEdge: edgeFor(photoSize),
+        shrunk: false,
+        fixtureId: stage?.fixtureId ?? null,
+        stageName: stage?.name ?? null,
+        storagePath: null,
+        takenAt,
+        failWhy: null,
+      },
+    ])
+    void shrinkAndSend(id, file, takenAt)
+  }
+
+  function retryTile(id: string) {
+    const file = originalsRef.current.get(id)
+    const tile = tiles.find((t) => t.id === id)
+    if (!file || !tile) return
+    setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'shrinking', failWhy: null } : t)))
+    void shrinkAndSend(id, file, tile.takenAt)
+  }
+
+  function removeTile(id: string) {
+    const tile = tiles.find((t) => t.id === id)
+    if (!tile) return
+    if (tile.status === 'sent') void discardReportPhotos([{ id: tile.id, storagePath: tile.storagePath }])
+    originalsRef.current.delete(id)
+    setTiles((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  function putTileOnStage(tileId: string, stage: ReportPhotoStage) {
+    setTiles((prev) => prev.map((t) => (t.id === tileId ? { ...t, fixtureId: stage.fixtureId, stageName: stage.name } : t)))
+  }
+
+  /** The stages a photo can sit on: the job's priced lines, a paid one never (its number is locked). */
+  const photoStages: ReportPhotoStage[] = (lineProgress.lines ?? []).filter((r) => !r.drawPaid).map((r) => ({ fixtureId: r.fixtureId, name: r.name }))
+  const jobHasFolder = jobLinksLoading ? null : Boolean(customerFilesUrl || customerPicturesUrl)
+
   function reset() {
     setFieldValues({})
     voiceDraft.reset()
     setError(null)
+    dropTiles()
   }
 
   function handleClose() {
@@ -241,6 +408,10 @@ export default function AdditionalReportModal({
       const moves = lineProgressFieldValue(lineProgress.lines, lineProgress.picks, lineProgress.recordedPct)
       if (moves) fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = moves
     }
+    // The photos' clause beside the moves (punch list #189, PR 5b): the office reads the Stage progress line and knows.
+    const riding = sentTiles(tiles)
+    const photoWords = photosSentence(riding)
+    if (photoWords) fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = [fv[REPORT_FIELD_LABEL_STAGE_PROGRESS], photoWords].filter(Boolean).join(' · ')
 
     let reportedAtLat: number | null = null
     let reportedAtLng: number | null = null
@@ -296,6 +467,20 @@ export default function AdditionalReportModal({
       setSubmitFailure(recoveryFailureFromError(err, 'Could not save the report'))
       return
     }
+    // The photos ride with the report (punch list #189, PR 5b): each sent shot takes the report's id, its stage and
+    // the words it is named by. A shot that did not attach says so; the report itself is saved either way.
+    if (inserted?.id && riding.length > 0) {
+      const firstLong = fields.find((f) => (f.input_type ?? 'long_text') === 'long_text')?.label ?? null
+      const whatGotDone = firstLong ? (fv[firstLong] ?? '') : ''
+      const attached = await attachReportPhotos(
+        inserted.id,
+        riding.map((t) => ({ id: t.id, fixtureId: t.fixtureId, stageName: t.stageName, caption: reportPhotoCaption({ stageName: t.stageName, whatGotDone }) })),
+      )
+      attachedRef.current = true
+      if (attached.failed.length) {
+        showToast(`Report saved, but ${attached.failed.length === 1 ? 'a photo' : `${attached.failed.length} photos`} did not attach: ${attached.failed[0]}`, 'warning')
+      }
+    }
     // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
     if (inserted?.id) {
       void supabase.functions
@@ -341,7 +526,9 @@ export default function AdditionalReportModal({
   }
 
   const fields = templateFields[selectedTemplateId] ?? []
-  const canSubmit = selectedTemplateId && authUserId
+  // Save waits for a shot still on its way (the queue of #163 takes this over in PR 7).
+  const canSubmit = Boolean(selectedTemplateId && authUserId) && !photosInFlight(tiles)
+  const jobPctForSave = linesActive ? (lineDerivedPct ?? 0) : Number.parseInt(fieldValues[percentFieldLabel ?? ''] ?? String(jobPctSeed ?? 0), 10) || 0
 
   function reportTypeChipStyles(templateId: string, templateName: string): CSSProperties {
     const selected = selectedTemplateId === templateId
@@ -553,96 +740,163 @@ export default function AdditionalReportModal({
         </div>
 
         <form onSubmit={handleSubmit}>
-          {/* Talk it through (punch list #186, item 1, v2.5912): the phone's own speech into Notes, read before Save report. */}
-          <ReportVoiceNote fields={fields} draft={voiceDraft.host} onHeard={(label, merge) => setFieldValues((prev) => ({ ...prev, [label]: merge(prev[label] ?? '') }))} />
-          <div style={{ marginBottom: '1rem' }}>
-            <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Report type:</label>
-            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-              {templates.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  onClick={() => setSelectedTemplateId(t.id)}
-                  style={reportTypeChipStyles(t.id, t.name)}
-                >
-                  {additionalReportModalTemplateChipLabel(t.name, userRole)}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {fields.length > 0 && (
-            <div style={{ marginBottom: '1rem' }}>
-              {fields.map((f) => {
-                const t = f.input_type ?? 'long_text'
-                if (t === 'percent_0_100') {
-                  if (linesActive && lineProgress.lines) {
-                    return (
-                      <ReportLinesProgressField
-                        key={f.id}
-                        rows={lineProgress.lines}
-                        picks={lineProgress.picks}
-                        openId={lineProgress.openId}
-                        onOpen={lineProgress.setOpenId}
-                        onPct={lineProgress.setPick}
-                        recordedPct={lineProgress.recordedPct}
-                        onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
-                      />
-                    )
-                  }
+          {/* The camera (punch list #189, PR 5b): the back camera on a phone, the file picker at a desk. One shot a press. */}
+          <input ref={cameraInputRef} type="file" accept="image/*" capture={cameraFirst ? 'environment' : undefined} onChange={onCameraFile} tabIndex={-1} aria-hidden style={{ display: 'none' }} data-testid="report-camera-input" />
+          {(() => {
+            const photosBlock = (
+              <div style={{ marginBottom: '1rem' }} data-testid="report-photos-block">
+                {lastShrink ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>{newPhotoLine({ shrinkWords: lastShrink, jobHasFolder })}</div> : null}
+                <ReportPhotoTiles
+                  tiles={tiles}
+                  stages={photoStages}
+                  onTake={() => openCamera(null)}
+                  onStage={putTileOnStage}
+                  onRemove={removeTile}
+                  onRetry={retryTile}
+                  captureWords={cameraFirst ? (tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.take) : REPORT_PHOTO_WORDS.add}
+                />
+              </div>
+            )
+            const reportTypeBlock = (
+              <div style={{ marginBottom: '1rem' }}>
+                <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Report type:</label>
+                <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                  {templates.map((t) => (
+                    <button
+                      key={t.id}
+                      type="button"
+                      onClick={() => setSelectedTemplateId(t.id)}
+                      style={reportTypeChipStyles(t.id, t.name)}
+                    >
+                      {additionalReportModalTemplateChipLabel(t.name, userRole)}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )
+            const voiceBlock = (
+              /* Talk it through (punch list #186, item 1, v2.5912): the phone's own speech into Notes, read before Save report. */
+              <ReportVoiceNote fields={fields} draft={voiceDraft.host} onHeard={(label, merge) => setFieldValues((prev) => ({ ...prev, [label]: merge(prev[label] ?? '') }))} />
+            )
+            const renderField = (f: ReportTemplateField, phoneMain = false): ReactNode => {
+              const t = f.input_type ?? 'long_text'
+              if (t === 'percent_0_100') {
+                if (linesActive && lineProgress.lines) {
                   return (
-                    <div key={f.id}>
-                      <ReportTemplatePercentField
-                        id={`additional-report-pct-${f.id}`}
-                        label={f.label}
-                        value={fieldValues[f.label] ?? '0'}
-                        onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
-                      />
-                      {lineProgress.hasLines && !lineProgress.linesMode ? (
-                        <button
-                          type="button"
-                          onClick={() => lineProgress.setLinesMode(true)}
-                          style={{ marginTop: -4, marginBottom: '0.75rem', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem' }}
-                        >
-                          {MARK_EACH_LINE_LINK}
-                        </button>
-                      ) : null}
-                    </div>
-                  )
-                }
-                if (t === 'signature_png') {
-                  return (
-                    <ReportTemplateSignatureField
+                    <ReportLinesProgressField
                       key={f.id}
-                      reactKeyPrefix={`add-${selectedTemplateId}-${f.id}`}
-                      id={`additional-report-sig-${f.id}`}
-                      label={f.label}
-                      value={fieldValues[f.label] ?? ''}
-                      onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
-                      captionBelowCanvas={profileName?.trim() ? profileName : null}
+                      rows={lineProgress.lines}
+                      picks={lineProgress.picks}
+                      openId={lineProgress.openId}
+                      onOpen={lineProgress.setOpenId}
+                      onPct={lineProgress.setPick}
+                      recordedPct={lineProgress.recordedPct}
+                      onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
+                      rowFoot={(r) => (r.drawPaid ? null : <StageRowPhotos tiles={tilesOnStage(tiles, r.fixtureId)} stageName={r.name} onCamera={() => openCamera({ fixtureId: r.fixtureId, name: r.name })} />)}
                     />
                   )
                 }
                 return (
-                  <div key={f.id} style={{ marginBottom: '0.75rem' }}>
-                    <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>{f.label}</label>
-                    <AutoGrowTextarea
-                      value={fieldValues[f.label] ?? ''}
-                      onChange={(e) => {
-                        setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))
-                        voiceDraft.dropDraftMark(f.label)
-                      }}
-                      rows={3}
-                      placeholder={REPORT_FIELD_PLACEHOLDERS[f.label]}
-                      style={{ width: '100%', padding: '0.5rem', border: `1px solid ${voiceDraft.draftMarks.has(f.label) ? 'var(--border-blue)' : 'var(--border-strong)'}`, borderRadius: 4 }}
+                  <div key={f.id}>
+                    <ReportTemplatePercentField
+                      id={`additional-report-pct-${f.id}`}
+                      label={f.label}
+                      value={fieldValues[f.label] ?? (jobPctSeed != null ? String(jobPctSeed) : '0')}
+                      onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                      hint={
+                        jobPctSeed == null
+                          ? null
+                          : (fieldValues[f.label] ?? String(jobPctSeed)) === String(jobPctSeed)
+                            ? `Opens on the job's ${jobPctSeed}%. Leave it, and the report files ${jobPctSeed}%.`
+                            : `Was ${jobPctSeed}%.`
+                      }
                     />
-                    {voiceDraft.draftMarks.has(f.label) ? <DraftedMark /> : null}
+                    {lineProgress.hasLines && !lineProgress.linesMode ? (
+                      <button
+                        type="button"
+                        onClick={() => lineProgress.setLinesMode(true)}
+                        style={{ marginTop: -4, marginBottom: '0.75rem', padding: 0, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.78rem' }}
+                      >
+                        {MARK_EACH_LINE_LINK}
+                      </button>
+                    ) : null}
                   </div>
                 )
-              })}
-              {voiceDraft.heard ? <HeardFold heard={voiceDraft.heard.text} language={voiceDraft.heard.language} lines={voiceDraft.heard.lines} /> : null}
-            </div>
-          )}
+              }
+              if (t === 'signature_png') {
+                return (
+                  <ReportTemplateSignatureField
+                    key={f.id}
+                    reactKeyPrefix={`add-${selectedTemplateId}-${f.id}`}
+                    id={`additional-report-sig-${f.id}`}
+                    label={f.label}
+                    value={fieldValues[f.label] ?? ''}
+                    onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                    captionBelowCanvas={profileName?.trim() ? profileName : null}
+                  />
+                )
+              }
+              return (
+                <div key={f.id} style={{ marginBottom: '0.75rem' }}>
+                  <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>
+                    {phoneMain ? REPORT_PHOTO_WORDS.whatGotDone : f.label}
+                    {phoneMain ? <span style={{ marginLeft: 6, fontWeight: 400, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{REPORT_PHOTO_WORDS.optional}</span> : null}
+                  </label>
+                  <AutoGrowTextarea
+                    value={fieldValues[f.label] ?? ''}
+                    onChange={(e) => {
+                      setFieldValues((prev) => ({ ...prev, [f.label]: e.target.value }))
+                      voiceDraft.dropDraftMark(f.label)
+                    }}
+                    rows={3}
+                    placeholder={REPORT_FIELD_PLACEHOLDERS[f.label]}
+                    aria-label={f.label}
+                    style={{ width: '100%', padding: '0.5rem', fontSize: phoneMain ? '1rem' : undefined, border: `1px solid ${voiceDraft.draftMarks.has(f.label) ? 'var(--border-blue)' : 'var(--border-strong)'}`, borderRadius: 4 }}
+                  />
+                  {voiceDraft.draftMarks.has(f.label) ? <DraftedMark /> : null}
+                </div>
+              )
+            }
+            const foldLink = (words: string, open: boolean, toggle: () => void, testId: string): ReactNode => (
+              <button type="button" onClick={toggle} aria-expanded={open} data-testid={testId} style={{ display: 'block', margin: '0 0 0.75rem', padding: '0.4rem 0', minHeight: 44, border: 'none', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.875rem', fontWeight: 600 }}>
+                {words} {open ? '▴' : '▾'}
+              </button>
+            )
+            if (!cameraFirst) {
+              // A desk, or an office role on a phone: the form as it was, with the photos under the report type.
+              return (
+                <>
+                  {voiceBlock}
+                  {reportTypeBlock}
+                  {photosBlock}
+                  {fields.length > 0 ? (
+                    <div style={{ marginBottom: '1rem' }}>
+                      {fields.map((f) => renderField(f))}
+                      {voiceDraft.heard ? <HeardFold heard={voiceDraft.heard.text} language={voiceDraft.heard.language} lines={voiceDraft.heard.lines} /> : null}
+                    </div>
+                  ) : null}
+                </>
+              )
+            }
+            // The camera-first form (the mock-up's section 3): the photos, the stages, one optional box, the rest under a link.
+            const percentFields = fields.filter((f) => (f.input_type ?? 'long_text') === 'percent_0_100')
+            const longFields = fields.filter((f) => (f.input_type ?? 'long_text') === 'long_text')
+            const mainLong = longFields[0] ?? null
+            const restFields = fields.filter((f) => f !== mainLong && (f.input_type ?? 'long_text') !== 'percent_0_100')
+            return (
+              <>
+                {photosBlock}
+                {percentFields.map((f) => renderField(f))}
+                {voiceBlock}
+                {mainLong ? renderField(mainLong, true) : null}
+                {voiceDraft.heard ? <HeardFold heard={voiceDraft.heard.text} language={voiceDraft.heard.language} lines={voiceDraft.heard.lines} /> : null}
+                {restFields.length > 0 ? foldLink(REPORT_PHOTO_WORDS.whatIsNext, showWhatIsNext, () => setShowWhatIsNext((v) => !v), 'report-fold-next') : null}
+                {showWhatIsNext ? restFields.map((f) => renderField(f)) : null}
+                {templates.length > 1 ? foldLink(REPORT_PHOTO_WORDS.otherTypes, showOtherTypes, () => setShowOtherTypes((v) => !v), 'report-fold-types') : null}
+                {showOtherTypes ? reportTypeBlock : null}
+              </>
+            )
+          })()}
 
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
           <OfflineRetryPanel
@@ -653,10 +907,24 @@ export default function AdditionalReportModal({
             style={{ marginBottom: '1rem' }}
           />
 
-          {/* v2.1554: Cancel demoted to quiet text on the left; Save alone on the right. */}
-          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', borderTop: '1px solid var(--border)', paddingTop: '0.75rem' }}>
-            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 0.75rem', border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '0.875rem' }}>Cancel</button>
-            <button type="submit" disabled={!canSubmit || saving} style={{ marginLeft: 'auto', padding: '0.5rem 1.25rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 6, fontWeight: 600, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
+          {/* v2.1554: Cancel demoted to quiet text on the left; Save alone on the right. On the camera-first form the foot sticks to the
+              bottom of the scroll, Not now beside a Save that names what it writes (punch list #189, PR 5b). */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: '0.5rem',
+              borderTop: '1px solid var(--border)',
+              paddingTop: '0.75rem',
+              ...(cameraFirst ? { position: 'sticky', bottom: 0, background: 'var(--surface)', paddingBottom: '0.5rem' } : null),
+            }}
+          >
+            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 0.75rem', minHeight: cameraFirst ? 48 : undefined, border: cameraFirst ? '1px solid var(--border-strong)' : 'none', borderRadius: cameraFirst ? 10 : undefined, background: cameraFirst ? 'var(--surface)' : 'none', color: cameraFirst ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer', fontSize: cameraFirst ? '0.9375rem' : '0.875rem', fontWeight: cameraFirst ? 600 : undefined }}>
+              {cameraFirst ? STAGE_PCT_WORDS.notNow : 'Cancel'}
+            </button>
+            <button type="submit" disabled={!canSubmit || saving} style={{ marginLeft: 'auto', flex: cameraFirst ? 1 : undefined, minHeight: cameraFirst ? 48 : undefined, padding: '0.5rem 1.25rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: cameraFirst ? 10 : 6, fontWeight: 600, fontSize: cameraFirst ? '0.9375rem' : undefined, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>
+              {cameraFirst ? reportSaveWords({ jobPct: jobPctForSave, tiles, saving }) : saving ? 'Saving…' : photosInFlight(tiles) ? reportSaveWords({ jobPct: jobPctForSave, tiles, saving }) : 'Save report'}
+            </button>
           </div>
         </form>
       </div>

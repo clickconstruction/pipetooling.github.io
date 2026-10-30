@@ -37,7 +37,7 @@ function badgeStyle(tone: BidsLensBadgeTone, active: boolean): CSSProperties {
     fontWeight: 700,
     padding: '0.06rem 0.35rem',
     borderRadius: 999,
-    background: active ? 'rgba(255,255,255,0.25)' : tone === 'new' ? 'var(--bg-emerald-tint)' : 'var(--bg-amber-tint)',
+    background: active ? 'rgba(0,0,0,0.25)' : tone === 'new' ? 'var(--bg-emerald-tint)' : 'var(--bg-amber-tint)',
     color: active ? 'white' : tone === 'new' ? 'var(--text-emerald-800)' : 'var(--text-amber-800)',
     verticalAlign: '1px',
   }

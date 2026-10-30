@@ -520,3 +520,37 @@ describe('JobWindowDocumentsTab', () => {
     expect(screen.getByTestId('lien-window-stub').textContent).toContain('lien window on demand')
   })
 })
+
+// Hours statements (punch list #212, PR 2): the section's reads, and the viewer's pay access.
+let hoursStatements: Array<Record<string, unknown>> = []
+vi.mock('../../lib/people/hoursStatementsIo', () => ({
+  listHoursStatementsForJob: () => Promise.resolve(hoursStatements),
+  listHoursStatementsForUser: () => Promise.resolve([]),
+  saveHoursStatement: () => Promise.reject(new Error('not here')),
+}))
+vi.mock('../../lib/people/hoursStatementRead', () => ({
+  listHoursStatementPeople: () => Promise.resolve([{ userId: 'u-marcus', name: 'Marcus Reyes', role: 'helpers', firstDay: '2026-06-01', lastDay: '2026-06-02', sessions: 1 }]),
+  listHoursStatementJobs: () => Promise.resolve([]),
+  loadHoursStatementInputs: () => Promise.reject(new Error('not here')),
+  hoursStatementJobNumber: (j: { id: string; hcp_number: string | null; click_number: string | null }) => (j.hcp_number ?? '').trim() || (j.click_number ?? '').trim() || j.id.slice(0, 8),
+}))
+vi.mock('../../hooks/usePeopleAccess', () => ({ usePeopleAccess: () => ({ canAccessPay: true, accessResolved: true }) }))
+
+describe('Hours statements on the Documents tab (punch list #212, PR 2)', () => {
+  it('lists the job’s statements with their state and offers the press with its count', async () => {
+    hoursStatements = [
+      {
+        id: 'hs-1', record_id: 'HS-1042-0001', job_ledger_id: 'job-1', person_id: null, user_id: 'u-marcus', labor_company: null, period_start: '2026-06-01', period_end: '2026-06-13', with_pay: true, kind: 'clock', stated_days: [], gap_from: null, gap_to: null,
+        snapshot: null, prepared_by: 'u1', prepared_at: '2026-10-29T20:00:00Z', contract_document_id: null, matter_document_id: null, state: 'draft', created_at: '2026-10-29T20:00:00Z', updated_at: '2026-10-29T20:00:00Z',
+        worker: { name: 'Marcus Reyes' }, prepared_by_user: { name: 'Dana Office' }, job: { hcp_number: '1042', click_number: null, job_name: 'Ridgeway Lofts' },
+      },
+    ]
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', hcp_number: '1042' })} />)
+    const row = await screen.findByTestId('hours-statement-row')
+    expect(row.textContent).toContain('HS-1042-0001')
+    expect(row.textContent).toContain('Draft')
+    expect(row.textContent).toContain('Marcus Reyes')
+    expect(screen.getByRole('button', { name: 'Hours statement… · 1 person clocked here' })).toBeTruthy()
+    expect(screen.queryByText(/dev only, PR 1/)).toBeNull()
+  })
+})

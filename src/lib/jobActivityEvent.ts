@@ -87,14 +87,16 @@ export type EventRenderMeta = {
   bucket: JobActivityBucket
 }
 
-const BILLING_BLUE = { tagColor: '#1d4ed8', borderColor: '#93c5fd' } as const
-const MONEY_GREEN = { tagColor: '#047857', borderColor: '#6ee7b7' } as const
-const DANGER_RED = { tagColor: '#b91c1c', borderColor: 'var(--border-red)' } as const
-const STATUS_AMBER = { tagColor: '#b45309', borderColor: 'var(--border-amber)' } as const
-const CREW_INDIGO = { tagColor: '#4f46e5', borderColor: 'var(--border-indigo)' } as const
-const WORK_TEAL = { tagColor: '#0f766e', borderColor: '#5eead4' } as const
-const EDIT_GRAY = { tagColor: '#6b7280', borderColor: 'var(--border-strong)' } as const
-const COMBINE_PURPLE = { tagColor: '#7c3aed', borderColor: 'var(--border-violet)' } as const
+// Each tag's words take the text token of its hue (punch list #194, v2.6078): as light-mode literals they
+// read 2.2:1 to 3.0:1 on the dark surface. The light values are the same as before, or the nearest token's.
+const BILLING_BLUE = { tagColor: 'var(--text-blue-700)', borderColor: '#93c5fd' } as const
+const MONEY_GREEN = { tagColor: 'var(--text-emerald-800)', borderColor: '#6ee7b7' } as const
+const DANGER_RED = { tagColor: 'var(--text-red-700)', borderColor: 'var(--border-red)' } as const
+const STATUS_AMBER = { tagColor: 'var(--text-amber-700)', borderColor: 'var(--border-amber)' } as const
+const CREW_INDIGO = { tagColor: 'var(--text-indigo-800)', borderColor: 'var(--border-indigo)' } as const
+const WORK_TEAL = { tagColor: 'var(--text-teal-700)', borderColor: '#5eead4' } as const
+const EDIT_GRAY = { tagColor: 'var(--text-muted)', borderColor: 'var(--border-strong)' } as const
+const COMBINE_PURPLE = { tagColor: 'var(--bid-mark)', borderColor: 'var(--border-violet)' } as const
 
 export const JOB_ACTIVITY_EVENT_RENDER: Record<JobActivityEventType, EventRenderMeta> = {
   status_change: { tag: 'Status', ...STATUS_AMBER, bucket: 'status' },

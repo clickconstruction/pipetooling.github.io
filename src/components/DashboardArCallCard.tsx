@@ -239,7 +239,7 @@ export default function DashboardArCallCard({
                 title="Who at the customer named the date — rides the promise as 'by Dana by phone' (optional)"
                 style={{ padding: '0.25rem 0.4rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8rem', width: 130 }}
               />
-              <button type="button" disabled={saving || coverJobIds.length === 0} onClick={() => void savePromise()} style={{ ...ACTION_BTN, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: '#fff' }}>
+              <button type="button" disabled={saving || coverJobIds.length === 0} onClick={() => void savePromise()} style={{ ...ACTION_BTN, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'var(--surface)' }}>
                 {saving ? 'Saving…' : `Save promise (${coverJobIds.length} job${coverJobIds.length === 1 ? '' : 's'})`}
               </button>
               <button

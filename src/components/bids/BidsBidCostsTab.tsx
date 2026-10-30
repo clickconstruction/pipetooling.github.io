@@ -24,6 +24,7 @@ import {
   type PursuitRow,
   type PursuitWindow,
 } from '../../lib/bids/bidPursuit'
+import { PURSUIT_OUTCOME_CHIP_COLORS } from '../../lib/bids/pursuitOutcomeColors'
 import { COST_TO_WIN_GROUP_LABELS, costToWinRows, costToWinTotal, costToWinWords, type CostToWinGroup, type CostToWinRow } from '../../lib/bids/bidCostToWin'
 import { Link } from 'react-router-dom'
 import { BID_VS_ACTUAL_READ_LABELS, bidVsActualTiles, budgetRowLikeOf, buildBidVsActualRows, type BidVsActualBidInput, type BidVsActualRead, type BidVsActualRow } from '../../lib/bids/bidVsActual'
@@ -74,12 +75,7 @@ type BidsBidCostsTabProps = {
   showDollars: boolean
 }
 
-const OUTCOME_COLORS: Record<PursuitOutcome, { fg: string; bg: string }> = {
-  open: { fg: '#b8801f', bg: 'rgba(184, 128, 31, 0.14)' },
-  won: { fg: '#1e8a57', bg: 'rgba(30, 138, 87, 0.14)' },
-  lost: { fg: '#c64b3a', bg: 'rgba(198, 75, 58, 0.14)' },
-  unsent: { fg: 'var(--text-muted)', bg: 'var(--bg-subtle)' },
-}
+const OUTCOME_COLORS = PURSUIT_OUTCOME_CHIP_COLORS
 
 const usd = (n: number): string => `$${formatCurrency(n)}`
 const pct = (r: number | null): string => (r == null ? '—' : `${Math.round(r * 100)}%`)

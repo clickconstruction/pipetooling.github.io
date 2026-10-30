@@ -1,0 +1,26 @@
+{
+  "house_name": "Ridgeway Supply",
+  "document_kind": "credit_memo",
+  "number": "CM-20991",
+  "date": "2026-10-23",
+  "po_text": "",
+  "account_ref": "CLICK PLUMBING",
+  "ship_to": "418 Cedar Bend Dr, Oakmont Dental",
+  "job_text": "Oakmont Dental",
+  "terms": "",
+  "references_number": "S1183420",
+  "lines": [
+    {
+      "description": "3/4\" ball valve FIP returned",
+      "quantity": "4",
+      "unit_price": "32.10",
+      "extended": "128.40"
+    }
+  ],
+  "subtotal": "128.40",
+  "tax": "10.59",
+  "total": "138.99",
+  "page_count": 1,
+  "statement_numbers": [],
+  "notes": "Returned by Todd."
+}

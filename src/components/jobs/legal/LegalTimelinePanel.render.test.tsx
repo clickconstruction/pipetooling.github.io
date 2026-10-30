@@ -37,7 +37,8 @@ describe('LegalTimelinePanel (v2.5800)', () => {
     expect(item('entry:p-next').textContent).toContain('Planned. In 4 days.')
     expect(item('entry:p-next').textContent).toContain('Certified mail and email.')
     expect(item('entry:fee').textContent).toContain('$450.00')
-    expect(screen.getByText('6 planned · 1 overdue · 1 done'.replace('6', '3'))).toBeTruthy()
+    // v2.6107: the counts read as chips with numbers.
+    expect([...document.querySelectorAll('[data-legal-timeline-count]')].map((e) => e.textContent)).toEqual(['planned 3', 'overdue 1', 'done 1'])
     // The order: earlier items, today, ahead.
     const keys = [...document.querySelectorAll('[data-legal-timeline-item]')].map((el) => el.getAttribute('data-legal-timeline-item'))
     expect(keys).toEqual(['entry:fee', 'entry:p-done', 'entry:p-late', 'doc:d1', 'entry:p-next', 'entry:p-held'])
@@ -209,7 +210,7 @@ describe('LegalTimelinePanel · the lien clock’s deadlines (punch list #170, v
     const step = document.querySelector('[data-legal-timeline-item="entry:p-serves"]')!
     expect(step.querySelector('[data-legal-timeline-serves]')!.getAttribute('data-legal-timeline-serves')).toBe('late')
     expect(step.textContent).toContain('Serves § 53.056 notice for August · job 891 · Mon, Nov 16 · after the deadline')
-    expect(screen.getByText(/1 deadline from the lien clock/)).toBeTruthy()
+    expect(document.querySelector('[data-legal-timeline-count="deadlines"]')?.textContent).toBe('◆ deadlines 1')
   })
 
   it('offers the deadline the day lands before, warns when the day falls after it, and saves the key (v2.5892)', async () => {
@@ -317,5 +318,45 @@ describe('LegalTimelinePanel · the empty line (punch list #184, sweep C)', () =
     fireEvent.click(within(words()).getByRole('button', { name: 'All ›' }))
     expect(document.querySelector('[data-legal-timeline-empty]')).toBeNull()
     expect(document.querySelectorAll('[data-legal-timeline-item]').length).toBeGreaterThan(2)
+  })
+})
+
+describe('LegalTimelinePanel · the strip of days, the hot overdue row and the document chip (punch list #214, v2.6107)', () => {
+  it('draws one column a day with today marked and the overdue step as a red ring, and a press on a day unfolds the past and scrolls to it', () => {
+    const scroll = vi.fn()
+    Element.prototype.scrollIntoView = scroll
+    vi.useFakeTimers()
+    // Two past rows shown: Oct 21's overdue step and the Oct 22 document; the Oct 1 fee and the Oct 18 done step fold behind Show earlier.
+    render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="office" acts={null} pastShown={2} />)
+    const strip = document.querySelector('[data-legal-timeline-strip]')!
+    expect(strip).toBeTruthy()
+    expect(strip.querySelector('[data-legal-timeline-strip-day][data-today="yes"]')?.getAttribute('data-legal-timeline-strip-day')).toBe(TODAY)
+    // Oct 21's planned step is overdue: a red ring on its day; Oct 18's done step a filled dot.
+    expect([...strip.querySelectorAll('[data-legal-timeline-strip-day="2026-10-21"] [data-legal-timeline-strip-dot]')].map((d) => d.getAttribute('data-legal-timeline-strip-dot'))).toEqual(['late'])
+    expect([...strip.querySelectorAll('[data-legal-timeline-strip-day="2026-10-18"] [data-legal-timeline-strip-dot]')].map((d) => d.getAttribute('data-legal-timeline-strip-dot'))).toEqual(['done'])
+    // The overdue row wears the red rule down its left edge.
+    expect(document.querySelector('[data-legal-timeline-item="entry:p-late"] [data-legal-timeline-hot="yes"]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-timeline-item="entry:p-done"] [data-legal-timeline-hot="yes"]')).toBeNull()
+    // The fee of Oct 1 is folded; pressing its day unfolds the past and scrolls to it.
+    expect(document.querySelector('[data-legal-timeline-item="entry:fee"]')).toBeNull()
+    fireEvent.click(strip.querySelector('[data-legal-timeline-strip-day="2026-10-01"]')!)
+    vi.runAllTimers()
+    expect(document.querySelector('[data-legal-timeline-item="entry:fee"]')).toBeTruthy()
+    expect(scroll).toHaveBeenCalled()
+    vi.useRealTimers()
+  })
+
+  it('an overdue step offers Mark done first; a sent paper wears its chip and keeps the sentence on the hover', () => {
+    const sent = timelineDocumentsFromRows([{ id: 'd2', title: 'Response letter', shows: 'The answer.', added_at: '2026-10-22T18:00:00Z', added_by: 'u1', held_reason: '', dated_on: '2026-10-20', state: 'sent', sent_on: '2026-10-20', sent_how: 'certified_mail', sent_to: 'the GC' }], (iso) => iso.slice(0, 10), () => 'Grace')
+    const t = buildLegalTimeline({ entries, documents: sent, todayYmd: TODAY, holds: {}, holdReasons: {}, userNameOf: () => 'Grace', reader: 'office' })
+    render(<LegalTimelinePanel timeline={t} todayYmd={TODAY} reader="office" acts={acts()} />)
+    const late = document.querySelector('[data-legal-timeline-item="entry:p-late"]')!
+    const buttons = [...late.querySelectorAll('button')].map((b) => b.textContent)
+    expect(buttons[0]).toBe('Mark done')
+    expect(late.querySelector('[data-legal-timeline-done-first]')).toBeTruthy()
+    const doc = document.querySelector('[data-legal-timeline-item="doc:d2"]')!
+    expect(doc.textContent).toContain('document · sent · certified mail')
+    expect(doc.querySelector('[data-legal-timeline-state-words]')).toBeNull()
+    expect(doc.querySelector('[title^="Sent Oct 20 by certified mail to the GC"]')).toBeTruthy()
   })
 })
