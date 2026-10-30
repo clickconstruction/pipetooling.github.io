@@ -22,7 +22,9 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
-import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { openLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { supabase } from '../../../lib/supabase'
+import { EVIDENCE_LANDING_GONE_WORDS } from '../../../lib/legal/evidenceLanding'
 
 import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
 import LegalTimelinePanel, { type TimelinePlanActs } from './LegalTimelinePanel'
@@ -67,7 +69,7 @@ export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatter
 /** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
 export type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
-export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null }) {
+export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
@@ -90,7 +92,13 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
     // v2.5842 (punch list #170): the lien clock's deadlines from the Paper tab's own timelines, read only, with Record it… to the job's Lien window.
     const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines), said: packet.theirWord.timeline, did: packet.feesAndSteps.steps })
     // v2.5851: the one line — what was said (the Record of contact) and what we did (the packet's steps) fold in as lanes.
-    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" lanes acts={planActs?.acts ?? null} onOpenEvidence={onTab ? () => onTab('evidence') : undefined} onOpenLienWindow={(jobId) => { const job = jobOf(jobId); if (job) props.onOpenLienInstruments(job) }}
+    // v2.6166: a document line's two doors — the paper itself, the way the Evidence row opens it; and the Evidence tab landed on its row.
+    const openDocument = documents ? async (id: string) => {
+      const row = documents.list.find((d) => d.id === id)
+      if (!row) throw new Error(EVIDENCE_LANDING_GONE_WORDS)
+      await openLegalMatterDocument(supabase, row)
+    } : undefined
+    return <LegalTimelinePanel timeline={timeline} todayYmd={packet.todayYmd} reader="office" lanes acts={planActs?.acts ?? null} onOpenEvidence={onTab ? (docId) => { if (docId && onShowOnEvidence) onShowOnEvidence(docId); else onTab('evidence') } : undefined} onOpenDocument={openDocument} onOpenLienWindow={(jobId) => { const job = jobOf(jobId); if (job) props.onOpenLienInstruments(job) }}
       doors={<>{customerDoor('Customer notes')}{first ? <Door label="They said…" onClick={() => props.onOpenPromisedPay({ jobId: first.id, jobLabel: first.hcp_number || first.click_number || '', initialYmd: null })} /> : null}<Door label="Call mode" onClick={props.onOpenCallMode} /></>} />
   }
   if (tab === 'account') {
@@ -218,7 +226,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
   if (tab === 'evidence') {
     return (
       <div>
-        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} payerName={selected.name} /> : null}
+        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} payerName={selected.name} landOn={evidenceDoc} onLandingDone={onEvidenceLanded} /> : null}
         <SectionTitle doors={first ? <><Door label="Reports" onClick={() => props.onOpenReports(first)} /><Door label="Sessions" onClick={() => props.onOpenSessionNotes(first)} /><Door label="Job thread" onClick={() => props.onOpenJobThread(first.id)} /></> : null}>Proof the work happened</SectionTitle>
         <Table head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes', 'Links']} numCols={[3]}
           rows={packet.evidence.map((e) => [

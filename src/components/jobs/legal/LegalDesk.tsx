@@ -107,6 +107,8 @@ export type LegalDeskProps = {
   initialPayerKey?: LegalPayerKey | null
   /** `&tab=` — which tab to open on (the office's Needs You card lands on the firm's acts). A tab gone from the address is the default tab. */
   initialTab?: Tab | 'their_word' | null
+  /** `&doc=` (v2.6166) — the Evidence row to land on, lit, with `tab=evidence`; null when the address names none. */
+  initialDoc?: string | null
   /** The page's door back, drawn before the title. */
   backDoor?: ReactNode
   /** The view the address asks for (`?view=map`). */
@@ -125,7 +127,7 @@ export type LegalDeskProps = {
    * The page hears the account, the tab and the view, once the account is resolved, and writes the address. With no
    * account open (a phone's list) a press on Accounts or Map tells it too, the account `null`.
    */
-  onAddressChange?: (address: { account: LegalPayerKey | null; tab: Tab; view: DeskView }) => void
+  onAddressChange?: (address: { account: LegalPayerKey | null; tab: Tab; view: DeskView; /** v2.6166: the Evidence row landed on; null off that tab. */ doc: string | null }) => void
   /** The stored side (PR 2): matters, the firm, entries. Absent in tests / before the migration. */
   legal?: LegalMattersData | null
   /** Only a dev marks attorney-ready and pulls back. */
@@ -150,7 +152,7 @@ export type LegalDeskProps = {
 }
 
 export default function LegalDesk(props: LegalDeskProps) {
-  const { collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, backDoor = null, initialView = null, onAddressChange, layout = 'columns', onOpenAccount, onShowList } = props
+  const { collectionsJobs, uncollectibleJobs = [], jobsLoading = false, contractCoverage, users, companyName, initialPayerKey = null, initialTab = null, initialDoc = null, legal = null, canMarkReady = false, canEditReview = false, canEditFirm = canMarkReady, backDoor = null, initialView = null, onAddressChange, layout = 'columns', onOpenAccount, onShowList } = props
   const stacked = layout === 'stacked'
   const { showToast } = useToastContext()
   const editCustomer = useEditCustomerModal()
@@ -182,6 +184,8 @@ export default function LegalDesk(props: LegalDeskProps) {
   const givenUpAccounts = useMemo(() => sortAccountsByNet(rawGivenUp, (a) => quickNet(a.balance, feeModelOf(firmOf(firmFor(a))))), [rawGivenUp, firmFor])
   const [selectedKey, setSelectedKey] = useState<LegalPayerKey | null>(null)
   const [tab, setTab] = useState<Tab>('account')
+  /** v2.6166: the Evidence row the tab lands on, lit — Show on Evidence from the Timeline, or `&doc=` in the address. */
+  const [evidenceDoc, setEvidenceDoc] = useState<string | null>(initialDoc)
   /** Accounts or Map (v2.5784). */
   const [view, setView] = useState<DeskView>('accounts')
   const [gapsOpen, setGapsOpen] = useState(true)
@@ -226,6 +230,10 @@ export default function LegalDesk(props: LegalDeskProps) {
   useEffect(() => {
     setTab(initialTab ? (initialTab === 'their_word' ? 'timeline' : initialTab) : LEGAL_DESK_DEFAULT_TAB)
   }, [initialTab])
+  // The row the address names rides with its tab (v2.6166): a link with `&doc=` lands on it, and an address without it lets go.
+  useEffect(() => {
+    setEvidenceDoc(initialDoc)
+  }, [initialDoc])
   useEffect(() => {
     if (!initialView) return
     setView(initialView)
@@ -250,12 +258,12 @@ export default function LegalDesk(props: LegalDeskProps) {
   onAddressChangeRef.current = onAddressChange
   useEffect(() => {
     if (!selectedKeyResolved) return
-    onAddressChangeRef.current?.({ account: selectedKeyResolved, tab, view })
-  }, [selectedKeyResolved, tab, view])
+    onAddressChangeRef.current?.({ account: selectedKeyResolved, tab, view, doc: tab === 'evidence' ? evidenceDoc : null })
+  }, [selectedKeyResolved, tab, view, evidenceDoc])
   /** Accounts or Map. With an account open the effect above writes the address; on a phone's list, with none, the press does (v2.5984). */
   const pressView = (next: DeskView) => {
     setView(next)
-    if (!selectedKeyResolved) onAddressChangeRef.current?.({ account: null, tab, view: next })
+    if (!selectedKeyResolved) onAddressChangeRef.current?.({ account: null, tab, view: next, doc: null })
   }
   const selectedGivenUp = selected != null && givenUpAccounts.some((a) => a.key === selected.key)
   const matter: LegalMatterRow | null = selected ? (legal?.byPayerKey.get(selected.key) ?? null) : null
@@ -715,8 +723,21 @@ export default function LegalDesk(props: LegalDeskProps) {
   // -12 px, the pane's top padding, so nothing shows above them), the
   // row scrolls sideways, and a press brings that tab's content up under them, as the mock-up's phone frame drew; on a
   // computer they sit under the fix list as before, the row able to scroll when a narrow window cannot hold all six.
-  const pressTab = (t: Tab) => {
+  /** A tab shown by a press (v2.6166): leaving Evidence lets the landed row go, so the address drops `&doc=`. */
+  const showTab = (t: Tab) => {
     setTab(t)
+    if (t !== 'evidence') setEvidenceDoc(null)
+  }
+  /**
+   * Show on Evidence (v2.6166): the Evidence tab opened on one document's row, which scrolls into view and lights. No tab-press
+   * scroll on a phone here — the row's own scroll is the one that matters, and the tab's would run after it and win.
+   */
+  const showOnEvidence = (documentId: string) => {
+    setEvidenceDoc(documentId)
+    setTab('evidence')
+  }
+  const pressTab = (t: Tab) => {
+    showTab(t)
     if (stacked) setTabPresses((n) => n + 1)
   }
   const tabStrip = (
@@ -836,7 +857,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             onOpenCase={(key) => {
               setView('accounts')
               if (stacked && onOpenAccount) onOpenAccount(key)
-              else { setSelectedKey(key); setTab('account') }
+              else { setSelectedKey(key); showTab('account') }
             }}
           />
         ) : (
@@ -860,7 +881,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     const m = legal?.byPayerKey.get(a.key)
                     const net = quickNet(a.balance, fee)
                     return (
-                      <button key={a.key} type="button" onClick={() => { if (stacked && onOpenAccount) onOpenAccount(a.key); else { setSelectedKey(a.key); setTab('account') } }} aria-pressed={on}
+                      <button key={a.key} type="button" onClick={() => { if (stacked && onOpenAccount) onOpenAccount(a.key); else { setSelectedKey(a.key); showTab('account') } }} aria-pressed={on}
                         style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '2px 10px', width: '100%', textAlign: 'left', padding: '8px 10px', marginBottom: 6, border: `1px solid ${on ? 'var(--border-strong)' : 'var(--border)'}`, borderRadius: 6, background: on ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', cursor: 'pointer' }}>
                         <span style={{ fontWeight: 600, fontSize: '0.86rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{a.name}</span>
                         <span style={{ ...NUM, fontSize: '0.86rem', fontWeight: 600 }}>{formatLegalMoney(a.balance)}</span>
@@ -962,7 +983,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                           const answerLine = g.answer ? (
                             <div data-legal-gap-answer-line={g.key} style={{ margin: '4px 0 0', padding: '4px 9px', borderLeft: '3px solid #1f7a3a', background: 'var(--bg-muted)', borderRadius: '0 6px 6px 0' }}>
                               The office: {g.answer.text}
-                              {g.answer.documentId ? <> · <button type="button" onClick={() => setTab('evidence')} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', color: 'var(--text-link)' }} title="The document is under Evidence">📄 {g.answer.documentTitle || 'document'}</button></> : null}
+                              {g.answer.documentId ? <> · <button type="button" onClick={() => showOnEvidence(g.answer!.documentId!)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', color: 'var(--text-link)' }} title="The document is under Evidence; a press lands on its row">📄 {g.answer.documentTitle || 'document'}</button></> : null}
                               <div style={{ ...MUTED, fontSize: '0.76rem', marginTop: 2 }}>
                                 {gapAnswerByline(g.answer)}
                                 {!g.answer.auto ? <> · <button type="button" data-legal-gap-answer-edit={g.key} onClick={() => void openGapAnswer(g)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', fontSize: '0.76rem' }}>Edit</button> · <button type="button" data-legal-gap-answer-clear={g.key} onClick={() => void clearGapAnswer(g)} style={{ ...btn, borderStyle: 'none', background: 'none', padding: 0, height: 'auto', fontSize: '0.76rem' }}>Clear</button></> : null}
@@ -1020,7 +1041,7 @@ export default function LegalDesk(props: LegalDeskProps) {
 
                 <div ref={tabContentRef} style={{ scrollMarginTop: TAB_STRIP_PHONE_HEIGHT }}>
                 {packet ? (
-                  <PacketTab tab={tab} onTab={setTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer}
+                  <PacketTab tab={tab} onTab={showTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} onShowOnEvidence={showOnEvidence} evidenceDoc={evidenceDoc} onEvidenceLanded={() => setEvidenceDoc(null)}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
@@ -1159,7 +1180,7 @@ export default function LegalDesk(props: LegalDeskProps) {
       ) : null}
 
       {firmOpen && stored ? (
-        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={firmRecipients} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); setTab('account') }} zIndex={DESK_LAYER_Z + 14} />
+        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={firmRecipients} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); showTab('account') }} zIndex={DESK_LAYER_Z + 14} />
       ) : null}
       {firmsOpen && stored ? <LegalFirmsWindow onClose={() => setFirmsOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={DESK_LAYER_Z + 14} /> : null}
       {emailsOpen && firm ? (

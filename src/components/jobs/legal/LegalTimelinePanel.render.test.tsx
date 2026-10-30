@@ -42,8 +42,9 @@ describe('LegalTimelinePanel (v2.5800)', () => {
     // The order: earlier items, today, ahead.
     const keys = [...document.querySelectorAll('[data-legal-timeline-item]')].map((el) => el.getAttribute('data-legal-timeline-item'))
     expect(keys).toEqual(['entry:fee', 'entry:p-done', 'entry:p-late', 'doc:d1', 'entry:p-next', 'entry:p-held'])
-    fireEvent.click(screen.getByRole('button', { name: 'Open Evidence ↗' }))
-    expect(open).toHaveBeenCalled()
+    // v2.6166: the document line's Evidence door names the row it lands on.
+    fireEvent.click(screen.getByRole('button', { name: 'Show on Evidence ↗' }))
+    expect(open).toHaveBeenCalledWith('d1')
     // Read only: no composer door, no form, no acts.
     expect(document.querySelector('[data-legal-composer-door]')).toBeNull()
     expect(document.querySelector('[data-legal-plan-form]')).toBeNull()
@@ -167,9 +168,10 @@ describe('LegalTimelinePanel · record what happened (punch list #167, v2.5836)'
     expect(item.querySelector('[data-legal-timeline-document="d1"]')!.textContent).toContain('Final invoice 891')
     // No Edit and no Mark done on an event; Hold and Undo, yes.
     const buttons = [...item.querySelectorAll('button')].map((b) => b.textContent)
-    expect(buttons).toEqual(['Open Evidence ↗', 'Hold from counsel…', 'Undo…'])
+    expect(buttons).toEqual(['Show on Evidence ↗', 'Hold from counsel…', 'Undo…'])
+    // v2.6166: the event's door lands on its first proving document.
     fireEvent.click(item.querySelector('button:nth-of-type(1)')!)
-    expect(open).toHaveBeenCalled()
+    expect(open).toHaveBeenCalledWith('d1')
     fireEvent.click([...item.querySelectorAll('button')].find((b) => b.textContent === 'Hold from counsel…')!)
     fireEvent.change(screen.getByLabelText('Why counsel should not see it'), { target: { value: 'Counsel first' } })
     fireEvent.click(screen.getByRole('button', { name: 'Hold back' }))
@@ -358,5 +360,39 @@ describe('LegalTimelinePanel · the strip of days, the hot overdue row and the d
     expect(doc.textContent).toContain('document · sent · certified mail')
     expect(doc.querySelector('[data-legal-timeline-state-words]')).toBeNull()
     expect(doc.querySelector('[title^="Sent Oct 20 by certified mail to the GC"]')).toBeTruthy()
+  })
+})
+
+describe('LegalTimelinePanel · a document line’s two doors (v2.6166)', () => {
+  const docLine = () => document.querySelector('[data-legal-timeline-item="doc:d1"]') as HTMLElement
+
+  it('Open the paper opens the file in place and Show on Evidence lands on the row; the words name the act', async () => {
+    const openDocument = vi.fn(async () => {})
+    const showOnEvidence = vi.fn()
+    render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="office" acts={null} onOpenEvidence={showOnEvidence} onOpenDocument={openDocument} />)
+    expect([...docLine().querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Open the paper', 'Show on Evidence ↗'])
+    fireEvent.click(docLine().querySelector('[data-legal-timeline-open-paper]')!)
+    await waitFor(() => expect(openDocument).toHaveBeenCalledWith('d1'))
+    expect(docLine().querySelector('[data-legal-timeline-open-error]')).toBeNull()
+    fireEvent.click(docLine().querySelector('[data-legal-timeline-show-evidence]')!)
+    expect(showOnEvidence).toHaveBeenCalledWith('d1')
+    // A planned step has neither door.
+    expect(document.querySelector('[data-legal-timeline-item="entry:p-next"] [data-legal-timeline-open-paper]')).toBeNull()
+  })
+
+  it('a paper the session may not read, or one gone from the bucket, says why under the line', async () => {
+    const openDocument = vi.fn(async () => { throw new Error('Object not found') })
+    render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="office" acts={null} onOpenEvidence={vi.fn()} onOpenDocument={openDocument} />)
+    fireEvent.click(docLine().querySelector('[data-legal-timeline-open-paper]')!)
+    await waitFor(() => expect(docLine().querySelector('[data-legal-timeline-open-error]')!.textContent).toBe('Object not found'))
+    expect(screen.getByRole('alert').textContent).toBe('Object not found')
+  })
+
+  it('without an opener (the firm’s portal) the line draws no Open the paper; without an Evidence door, none at all', () => {
+    const { unmount } = render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="office" acts={null} onOpenEvidence={vi.fn()} />)
+    expect([...docLine().querySelectorAll('button')].map((b) => b.textContent)).toEqual(['Show on Evidence ↗'])
+    unmount()
+    render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
+    expect(docLine().querySelectorAll('button').length).toBe(0)
   })
 })

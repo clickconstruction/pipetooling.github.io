@@ -1,15 +1,18 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import { act, cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
+import { EVIDENCE_LANDING_LIT_MS } from '../../../lib/legal/evidenceLanding'
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 
-const io = vi.hoisted(() => ({ add: vi.fn(), update: vi.fn(), retire: vi.fn(), link: vi.fn() }))
+const io = vi.hoisted(() => ({ add: vi.fn(), update: vi.fn(), retire: vi.fn(), link: vi.fn(), open: vi.fn() }))
 vi.mock('../../../lib/legal/legalMatterDocumentsIo', () => ({
   addLegalMatterDocument: (...a: unknown[]) => io.add(...a),
   updateLegalMatterDocument: (...a: unknown[]) => io.update(...a),
   retireLegalMatterDocument: (...a: unknown[]) => io.retire(...a),
   legalMatterDocumentLink: (...a: unknown[]) => io.link(...a),
+  // v2.6166: the row's own open, shared with the Timeline's Open the paper.
+  openLegalMatterDocument: (...a: unknown[]) => io.open(...a),
   // v2.5846: the send and receipt records go through the same spy as a change.
   markLegalMatterDocumentSent: (...a: unknown[]) => io.update(...a),
   markLegalMatterDocumentReceived: (...a: unknown[]) => io.update(...a),
@@ -212,5 +215,52 @@ describe('LegalMatterDocumentsPanel · by whose paper it is (punch list #214, v2
     fireEvent.click(within(document.querySelector('[data-legal-document-pending]') as HTMLElement).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(io.add).toHaveBeenCalledTimes(1))
     expect(io.add.mock.calls[0]![2]).toEqual(expect.objectContaining({ title: 'Northline backcharge letter', whose: 'supplier' }))
+  })
+})
+
+describe('LegalMatterDocumentsPanel · Show on Evidence lands here (v2.6166)', () => {
+  const dated = (id: string, title: string, over: Partial<LegalMatterDocumentRow> = {}): LegalMatterDocumentRow => ({ ...row(id, title), added_at: '2026-10-24T15:00:00Z', ...over })
+  const docs = () => [dated('d-sent', 'Demand letter', { state: 'sent', sent_on: '2026-09-02', sent_how: 'email', sent_to: 'Burd & Assoc.' }), dated('d-final', 'Final invoice 891')]
+  const landed = () => document.querySelector('[data-legal-document-landed="yes"]') as HTMLElement | null
+
+  it('the named row scrolls into view and wears the tint, which goes after a few seconds; a press on it lets the address go', () => {
+    vi.useFakeTimers()
+    const scrolled = vi.fn()
+    Element.prototype.scrollIntoView = scrolled
+    const onLandingDone = vi.fn()
+    try {
+      render(<LegalMatterDocumentsPanel matterId="m-1" documents={docs()} canEdit onChanged={() => {}} landOn="d-final" onLandingDone={onLandingDone} />)
+      expect(landed()!.getAttribute('data-legal-document')).toBe('d-final')
+      expect(landed()!.className).toBe('legalDocLanded')
+      expect(scrolled).toHaveBeenCalledWith({ block: 'center', behavior: 'smooth' })
+      expect(document.querySelector('[data-legal-document-landing-note]')).toBeNull()
+      fireEvent.click(screen.getByRole('button', { name: 'Actions for Final invoice 891' }))
+      expect(onLandingDone).toHaveBeenCalledTimes(1)
+      act(() => { vi.advanceTimersByTime(EVIDENCE_LANDING_LIT_MS + 10) })
+      expect(landed()).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('a row the open filter hides clears the filter, lands, and says so in one line', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    const { rerender } = render(<LegalMatterDocumentsPanel matterId="m-1" documents={docs()} canEdit onChanged={() => {}} />)
+    fireEvent.click(document.querySelector('[data-legal-document-filter="sent"]')!)
+    expect(document.querySelector('[data-legal-document="d-final"]')).toBeNull()
+    rerender(<LegalMatterDocumentsPanel matterId="m-1" documents={docs()} canEdit onChanged={() => {}} landOn="d-final" />)
+    expect(document.querySelector('[data-legal-document-filter="all"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(landed()!.getAttribute('data-legal-document')).toBe('d-final')
+    expect(screen.getByRole('status').textContent).toBe('The Sent filter hid this paper, so every paper shows now.')
+    // The address let go: the line goes with it.
+    rerender(<LegalMatterDocumentsPanel matterId="m-1" documents={docs()} canEdit onChanged={() => {}} landOn={null} />)
+    expect(document.querySelector('[data-legal-document-landing-note]')).toBeNull()
+  })
+
+  it('a paper no longer on the matter says so, with nothing lit', () => {
+    Element.prototype.scrollIntoView = vi.fn()
+    render(<LegalMatterDocumentsPanel matterId="m-1" documents={docs()} canEdit onChanged={() => {}} landOn="d-removed" />)
+    expect(screen.getByRole('status').textContent).toBe('That paper is no longer on the matter.')
+    expect(landed()).toBeNull()
   })
 })
