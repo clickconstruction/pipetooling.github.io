@@ -9,4 +9,4 @@ Still `SECURITY INVOKER`, `search_path = public`; the grants are unchanged (`aut
 
 ## Order
 
-After PR 2's `20261029230000_field_presses.sql`. From the main checkout after the merge: `supabase db push`, then the types chore. Client first is fine: until the push a queued note or report is refused by the old function with *That kind of press cannot be sent from the queue yet* on the bar, and nothing is lost until the person drops it.
+After PR 2's `20261029230000_field_presses.sql`. Push right after the merge, before the Pages deploy finishes (about ten minutes): the client sends every note and report to the two new kinds, online or queued, so until the push the old function refuses them with *That kind of press cannot be sent from the queue yet*. From the main checkout after the merge: `bash scripts/db-push.sh`, then the types chore.

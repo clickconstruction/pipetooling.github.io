@@ -93,6 +93,8 @@ import { jobNumberLabel, streetOf } from '../../lib/jobs/jobContractCovers'
 import { contractRowChipForJob } from '../../lib/jobs/contractRowChip'
 import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
+import { useStageChecklistStates } from '../../hooks/useStageChecklistStates'
+import { stageChecklistMarks, type MarkFixture } from '../../lib/jobs/stageChecklistMarks'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import JobsContractSweepModal from './JobsContractSweepModal'
 import {
@@ -866,6 +868,12 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const crewJobIds = useMemo(() => jobs.map((j) => j.id), [jobs])
   // Held until the list has loaded (v2.3569): the ids grow as scopes merge, and each growth re-ran the RPC.
   const { crewByJobId } = useJobCrewPositions(crewJobIds, active && !!authUser?.id && !jobsListLoading)
+  // A checklist per stage (punch list #164, PR 4): the questions and the board's answers, for the not-ready mark under a row's stages.
+  const checklistStates = useStageChecklistStates(crewJobIds, active && !!authUser?.id && !jobsListLoading)
+  const checklistMarksFor = useCallback(
+    (job: { fixtures?: ReadonlyArray<MarkFixture> | null }) => stageChecklistMarks(job.fixtures ?? [], checklistStates.questions, checklistStates.answersByFixture),
+    [checklistStates.questions, checklistStates.answersByFixture],
+  )
   const pipelineContractCoverage = useMemo(
     () =>
       contractNudge
@@ -2501,6 +2509,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     stagesManHoursByJobId,
     stagesManHoursLoading,
     crewByJobId,
+    checklistMarksFor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded: (id: string) => setExpandedJobThreadId((prev) => (prev === id ? null : id)),

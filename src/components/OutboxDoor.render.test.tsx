@@ -49,6 +49,7 @@ describe('OutboxDoor render smoke', () => {
   it('says nothing waits when the queue is empty', async () => {
     const box = createOutboxState(quietIo)
     renderWithProviders(<OutboxDoor store={box} onClose={() => {}} onSendNow={() => {}} />)
-    expect((await screen.findByText(/Nothing waiting on the phone/)).textContent).toContain('Every press has reached the office.')
+    // EmptyState's sentence is two units since v2.6113: read the whole empty state, not the span the text sits in.
+    expect((await screen.findByText(/Nothing waiting on the phone/)).closest('[data-empty-state]')?.textContent).toContain('Every press has reached the office.')
   })
 })

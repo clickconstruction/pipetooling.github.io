@@ -76,6 +76,10 @@ describe('LegalDesk', () => {
     expect(document.querySelector('[data-legal-gap-answer-sheet]')).toBeNull()
     expect(screen.getByText('Can we sue?')).toBeTruthy()
     expect(screen.getByText("What's left for us?")).toBeTruthy()
+    // v2.6105 (punch list #214, PR 2): the money as bars under the questions — one segment per open bill (two jobs, a bill each), the keep · firm · filing bar, no claim bar while nothing is offered or added.
+    expect(document.querySelectorAll('[data-legal-money-bar="bills"] [data-legal-money-segment="bill"]').length).toBe(2)
+    expect(document.querySelector('[data-legal-money-bar="left_claim"] [data-legal-money-segment="keep"]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-money-bar="claim"]')).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'Timeline' }))
     expect(screen.getByText(/theft of service/)).toBeTruthy()
     expect(document.querySelector('[data-legal-timeline-lane="said"]')).toBeTruthy()
@@ -84,6 +88,8 @@ describe('LegalDesk', () => {
     fireEvent.click(screen.getByRole('button', { name: /^All · / }))
     fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
     expect(screen.getByText('Where each job stands')).toBeTruthy()
+    // v2.6104 (punch list #214): the desk's strip opens on the Windows calendar, under its own remembered scope.
+    expect(document.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('windows')
     // Punch list #175 (v2.5835): the Paper tab reads the supplier books; the stub holds no allocations, so the section says so.
     expect(screen.getByText('Supply houses')).toBeTruthy()
     await waitFor(() => expect(document.querySelector('[data-legal-suppliers="none"]')?.textContent).toMatch(/No supply house sold materials/))
@@ -98,6 +104,8 @@ describe('LegalDesk', () => {
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} />)
     await settle()
     fireEvent.click(screen.getByRole('tab', { name: 'Paper' }))
+    // v2.6104: the desk opens on the calendar; the stops' doors are the Steps view's, so switch first.
+    fireEvent.click(screen.getByRole('button', { name: 'Steps' }))
     await waitFor(() => expect(document.querySelector('[data-legal-job-timeline] [data-lien-timeline-stop-door]')).toBeTruthy())
     const doors = [...document.querySelectorAll('[data-legal-job-timeline] [data-lien-timeline-stop-door]')] as HTMLButtonElement[]
     const suit = doors.find((d) => d.dataset.lienTimelineStopDoor === 'suit')!
@@ -119,7 +127,7 @@ describe('LegalDesk', () => {
     renderWithProviders(<LegalDesk collectionsJobs={[]} {...baseProps} />)
     await settle()
     // The good state, in the one empty shape (punch list #184, sweep C).
-    expect(screen.getByText('Nothing is in Collections.').hasAttribute('data-empty-state')).toBe(true)
+    expect(screen.getByText('Nothing is in Collections.').closest('[data-empty-state]')?.textContent).toBe('Nothing is in Collections.')
   })
 })
 

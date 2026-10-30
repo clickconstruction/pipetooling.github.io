@@ -43,6 +43,9 @@ import { PurchaseFields } from './PurchaseFields'
 import { EMPTY_MOVE_WINDOW_DECISION, moveWindowDecisionReady, moveWindowTrailWords, moveWindowWrites, type MoveWindowDecision } from '../../lib/needsYou/fillInMoveWindow'
 import { moveWindowFillInIo } from '../../lib/needsYou/fillInMoveWindowIo'
 import { MoveWindowFields } from './MoveWindowFields'
+import { EMPTY_WORK_ORDER_DECISION, workOrderDecisionReady, workOrderTrailWords, workOrderWrites, type WorkOrderDecision } from '../../lib/needsYou/fillInWorkOrders'
+import { workOrderFillInIo } from '../../lib/needsYou/fillInWorkOrdersIo'
+import { WorkOrderFields } from './WorkOrderFields'
 import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { FillInIo, FillInRow } from '../../hooks/useFillInRows'
@@ -74,7 +77,7 @@ export type NeedsYouFillInDeckProps = {
   io?: FillInIo
 }
 
-const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo, purchases: purchaseFillInIo, moveWindow: moveWindowFillInIo }
+const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo, purchases: purchaseFillInIo, moveWindow: moveWindowFillInIo, workOrders: workOrderFillInIo }
 
 type Handled = FillInHandled<FillInRow> & { undo: (() => Promise<void>) | null }
 
@@ -175,6 +178,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
   const [contractMissing, setContractMissing] = useState<ContractMissingDecision>(() => emptyContractMissingDecision({ customerName: null }, todayYmdInAppTz()))
   const [purchase, setPurchase] = useState<PurchaseDecision>(EMPTY_PURCHASE_DECISION)
   const [moveWindow, setMoveWindow] = useState<MoveWindowDecision>(EMPTY_MOVE_WINDOW_DECISION)
+  const [workOrder, setWorkOrder] = useState<WorkOrderDecision>(EMPTY_WORK_ORDER_DECISION)
   const openedOn = useRef<FillInKind | null>(startKind)
 
   const order = useMemo(() => fillInOrder(rows, skippedKeys), [rows, skippedKeys])
@@ -199,6 +203,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     setContractMissing(emptyContractMissingDecision(current?.kind === 'contract-missing' ? current : { customerName: null }, todayYmdInAppTz()))
     setPurchase(EMPTY_PURCHASE_DECISION)
     setMoveWindow(EMPTY_MOVE_WINDOW_DECISION)
+    setWorkOrder(EMPTY_WORK_ORDER_DECISION)
     // eslint-disable-next-line react-hooks/exhaustive-deps -- a fresh draft per row, keyed on the row
   }, [current?.key])
 
@@ -217,7 +222,9 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
                 ? purchaseDecisionReady(purchase, current.amount)
                 : current?.kind === 'move-window'
                   ? moveWindowDecisionReady(current, moveWindow)
-                  : false
+                  : current?.kind === 'work-order'
+                    ? workOrderDecisionReady(workOrder)
+                    : false
 
   const skip = (row: FillInRow) => {
     recordNavClick(userId, role, 'needs-you', '#fill-skip')
@@ -320,6 +327,29 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, 'Could not put the purchase on a job'), 'error')
+        } finally {
+          setBusy(false)
+        }
+      })()
+    } else if (row.kind === 'work-order') {
+      const writes = workOrderWrites(row, workOrder)
+      if (!writes) return
+      setBusy(true)
+      void (async () => {
+        try {
+          const ordersIo = io.workOrders ?? workOrderFillInIo
+          const saved = await ordersIo.save(writes)
+          recordNavClick(userId, role, 'needs-you', '#fill-save-work-order')
+          const undo = async () => {
+            await ordersIo.undo(saved)
+          }
+          setHandled((t) => pushHandled(t, { row, how: 'saved', words: workOrderTrailWords(writes), undo }))
+          setSavedKeys((k) => [...k, row.key])
+          setRevisitKey(null)
+          openedOn.current = null
+          onRowSaved(row)
+        } catch (e) {
+          showToast(formatErrorMessage(e, 'Could not price the work order'), 'error')
         } finally {
           setBusy(false)
         }
@@ -446,7 +476,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     body = <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem 0' }}>Reading the rows…</div>
   } else if (!current) {
     const savedOf = (kind: FillInKind) => handled.filter((h) => h.how === 'saved' && h.row.kind === kind).length
-    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window') }, skipped)
+    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window'), 'work-order': savedOf('work-order') }, skipped)
     body = (
       <div data-fill-in-done style={{ ...NEEDS_YOU_WALK_TINT.blue, borderRadius: 10, padding: '1.1rem 1.2rem', marginBottom: '0.75rem' }}>
         <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Fill them in</div>
@@ -495,6 +525,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           {current.kind === 'contract-missing' ? <ContractMissingFields decision={contractMissing} onChange={setContractMissing} disabled={busy} hasEmail={current.customerEmail != null} /> : null}
           {current.kind === 'purchase' ? <PurchaseFields row={current} userId={userId} decision={purchase} onChange={setPurchase} disabled={busy} io={io.purchases ?? purchaseFillInIo} /> : null}
           {current.kind === 'move-window' ? <MoveWindowFields row={current} decision={moveWindow} onChange={setMoveWindow} disabled={busy} /> : null}
+          {current.kind === 'work-order' ? <WorkOrderFields row={current} decision={workOrder} onChange={setWorkOrder} disabled={busy} /> : null}
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.9rem' }}>
             <button
               type="button"

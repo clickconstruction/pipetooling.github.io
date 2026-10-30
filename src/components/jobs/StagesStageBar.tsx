@@ -2,6 +2,8 @@ import type { CSSProperties, ReactNode } from 'react'
 import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
 import { buildJobMoneyBar, MONEY_BAR_TONE, MONEY_BAR_TRACK, stageNameLabel, type MoneyBarBillMark } from '../../lib/jobs/jobMoneyBar'
 import { useMeasuredWidth } from '../../hooks/useMeasuredWidth'
+import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
+import { NOT_READY_GLYPH, checklistMarkWords, stageNotReady } from '../../lib/jobs/stageChecklistMarks'
 
 /**
  * The Pipeline row's bar (v2.4351, progress bar pass 4). Each block is a line item or a
@@ -56,13 +58,15 @@ function tickStyle(leftPct: number, hollow: boolean): CSSProperties {
   }
 }
 
-export function StagesStageBar({ view, pctComplete, compact = false, onStageClick, billMark = null }: {
+export function StagesStageBar({ view, pctComplete, compact = false, onStageClick, billMark = null, checklist = null }: {
   view: ProgressPaymentView
   pctComplete: number | null
   compact?: boolean
   onStageClick?: () => void
   /** v2.4353: on a bill row of a job with two or more bills, which part of the bar is this row's bill (`billMarkFor`). */
   billMark?: MoneyBarBillMark | null
+  /** A checklist per stage (punch list #164, PR 4): each stage's standing by fixture id; a stage left reads *not ready* under the bar. */
+  checklist?: ReadonlyMap<string, StageChecklistState> | null
 }) {
   const [barRef, barWidth] = useMeasuredWidth<HTMLDivElement>()
   const bar = buildJobMoneyBar(view, { pctComplete })
@@ -112,11 +116,16 @@ export function StagesStageBar({ view, pctComplete, compact = false, onStageClic
           {bar.names.map((n) => {
             // On a bill row the stage its bill names is the bold one (v2.4353); else the crew's stage.
             const bold = billMark?.kind === 'stage' ? n.key === billMark.key : n.bold
+            // The checklist's standing (punch list #164): a stage with a question left reads not ready, in amber.
+            const state = checklist?.get(n.key)
+            const notReady = stageNotReady(state)
+            const markWords = checklistMarkWords(state)
             return (
             <span
               key={n.key}
               role="listitem"
-              title={`Stage ${n.number} · ${n.name}${billMark?.kind === 'stage' && bold ? ` · ${billMark.title}` : n.done ? ' · done' : n.bold ? ' · the crew is on it' : ''}`}
+              data-stage-checklist={state ? state.standing : undefined}
+              title={`Stage ${n.number} · ${n.name}${billMark?.kind === 'stage' && bold ? ` · ${billMark.title}` : n.done ? ' · done' : n.bold ? ' · the crew is on it' : ''}${markWords ? ` · ${markWords}` : ''}`}
               style={{
                 flex: `${n.widthPct} 1 0px`,
                 minWidth: 0,
@@ -124,9 +133,10 @@ export function StagesStageBar({ view, pctComplete, compact = false, onStageClic
                 textOverflow: 'ellipsis',
                 whiteSpace: 'nowrap',
                 fontWeight: bold ? 700 : 400,
-                color: bold ? 'var(--text-strong)' : 'var(--text-muted)',
+                color: notReady ? 'var(--text-amber-700)' : bold ? 'var(--text-strong)' : 'var(--text-muted)',
               }}
             >
+              {notReady ? <span aria-label="checklist not ready">{NOT_READY_GLYPH} </span> : null}
               {stageNameLabel(n, blockPx(n.widthPct))}
             </span>
             )

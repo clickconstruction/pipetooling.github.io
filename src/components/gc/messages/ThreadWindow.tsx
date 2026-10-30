@@ -506,6 +506,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                         under={slots.underLine?.(r.message, contact)}
                         smallPrint={smallPrint.get(r.message.id)}
                         userNames={view?.userNames ?? {}}
+                        contact={contact ?? null}
                         onOpen={() => setOpenMessageId(r.message.id)}
                         onTie={() => {
                           if (tying) void tie(r.message.id, tying)

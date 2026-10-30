@@ -8,6 +8,7 @@ import {
   dispatchInboxNextLine,
   emailNextLine,
   fieldPhotosNextLine,
+  jobFollowupsIdleNextLine,
   jobFollowupsNextLine,
   jobsCleanupNextLine,
   missingJobInfoNextLine,
@@ -150,6 +151,10 @@ describe('nextLine · the first row and its verb (punch list #176, change 2)', (
     expect(boxesNextLine(items, () => false)).toBeNull()
     expect(jobFollowupsNextLine({ hcpNumber: '651', jobName: 'Dudley Mason', quietDays: 160 })).toBe('Call about 651 Dudley Mason · quiet 160 days')
     expect(jobFollowupsNextLine(null)).toBeNull()
+    // The Idle lane (v2.6093): what the job needs leads, then the field-day gap.
+    expect(jobFollowupsIdleNextLine({ hcpNumber: '983', jobName: 'Water Heater removal', idleDays: 46, need: 'Schedule the next visit or close it' })).toBe('Schedule the next visit or close it · 983 Water Heater removal · no field work in 46 days')
+    expect(jobFollowupsIdleNextLine({ hcpNumber: null, jobName: null, idleDays: 1, need: null })).toBe('Follow up on · the job · no field work in 1 day')
+    expect(jobFollowupsIdleNextLine(null)).toBeNull()
   })
 
   it('Today’s lines names the first of the viewer’s own lines in the card’s words, and nothing when there are none (v2.5868)', () => {

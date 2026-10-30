@@ -21,13 +21,14 @@ import { phoneFlow } from '../../lib/materials/flowRow'
 import { actIsFresh } from '../../lib/materials/photo'
 import { BoxPhotos, PhotoPress } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
+import { TallyChooseJobSheet } from './TallyChooseJobSheet'
 import { containerLines, containerWords, countIsDue, groupByPlace, lastCountWords, lastCountedAt, leftWords, linesOf, nextLabel, placeName, pressLabel, searchContainers, searchLines, type Container, type ContainerLine, type MovementReason, type Place } from '../../lib/materials/onSite'
 import { addContainer, addMovement, addPlace, listContainers, listMovements, listPhotos, listPlaces, moveContainer, pinContainer, retireContainer, setOnSiteErrorHandler } from '../../lib/materials/onSiteStore'
 
 /** Leaflet and its CSS load only when a map opens, so the tally stays light. */
 const OnSiteMapLazy = lazy(() => import('../materials/OnSiteMap'))
 
-export type OnSiteJob = { id: string; hcp_number: string; job_name: string; job_address: string }
+export type OnSiteJob = { id: string; hcp_number: string; job_name: string; job_address: string; click_number?: string | null; customer_name?: string | null; service_type_id?: string | null }
 export type OnSitePart = { id: string; name: string; manufacturer: string | null }
 
 type Props = {
@@ -151,16 +152,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
     </button>
   )
   const jobSheet = sheet?.kind === 'pick-job' ? (
-    <Sheet title="Choose job" onClose={() => setSheet(null)}>
-      <div style={{ display: 'grid', gap: '0.5rem' }}>
-        {jobs.map((j) => (
-          <button key={j.id} type="button" onClick={() => { onPickJob(j.id); setSheet(null) }} style={{ ...btn, justifyContent: 'flex-start', textAlign: 'left', display: 'grid', padding: '0.6rem 0.9rem', background: j.id === jobId ? 'var(--bg-blue-tint)' : 'var(--surface)' }}>
-            <span>{j.hcp_number || '—'} · {j.job_name || '—'}</span>
-            {j.job_address ? <span style={{ ...muted, fontWeight: 400 }}>{j.job_address}</span> : null}
-          </button>
-        ))}
-      </div>
-    </Sheet>
+    <TallyChooseJobSheet jobs={jobs} selectedJobId={jobId} viewerUserId={byUserId} onPick={(id) => { onPickJob(id); setSheet(null) }} onClose={() => setSheet(null)} />
   ) : null
   if (!jobId || !job) return <div style={{ display: 'grid', gap: '0.75rem' }}>{jobButton}{jobSheet}</div>
 

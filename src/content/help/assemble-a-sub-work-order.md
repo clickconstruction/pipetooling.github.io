@@ -30,7 +30,7 @@ Taking a job in and the leader already knows who's doing it? Open the job's **Ed
 
 ## The leader's queue
 
-Unpriced drafts show on the dashboard's **Needs You** card. The line reads *"2 sub work orders are waiting for a price"*. {{button:blue|Price them}} opens **Jobs → Subs → Work** on the Drafts filter. Open each draft. Type the price. Click {{button:blue|Send for signature}}.
+Unpriced drafts show on the dashboard's **Needs You** card. The line reads *"2 sub work orders are waiting for a price"*. {{button:blue|Price them}} opens **Jobs → Subs → Work** on the Drafts filter. Open each draft. Type the price. Click {{button:blue|Send for signature}}. On Quickfill the Fill them in rows price each draft in place. The send still happens on the board.
 
 ## Sign to accept work
 

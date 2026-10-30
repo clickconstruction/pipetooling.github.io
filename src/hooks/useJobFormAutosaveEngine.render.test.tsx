@@ -33,7 +33,7 @@ vi.mock('../lib/supabase', () => {
       const filters: unknown[] = []
       const b: Record<string, unknown> = {}
       let reads = op
-      for (const m of ['eq', 'in']) {
+      for (const m of ['eq', 'in', 'not']) {
         b[m] = (...a: unknown[]) => {
           filters.push(m, ...a)
           return b
@@ -372,11 +372,11 @@ describe('useJobFormAutosaveEngine — the identity slice', () => {
 })
 
 describe('useJobFormAutosaveEngine — materials, team, and all four together', () => {
-  it('materials: delete, then re-insert, after 1.2 s', async () => {
+  it('materials: upsert by id, then delete the dropped rows, after 1.2 s (v2.6111)', async () => {
     const { rerender, args } = mount()
     rerender({ ...args, materials: [{ id: 'm1', description: 'Copper', amount: 150 }] })
     await tick(1_200)
-    expect(seq()).toEqual(['delete:jobs_ledger_materials', 'insert:jobs_ledger_materials'])
+    expect(seq()).toEqual(['upsert:jobs_ledger_materials', 'delete:jobs_ledger_materials'])
   })
 
   it('team: saves after 0.4 s — read, add, remove', async () => {
@@ -429,8 +429,8 @@ describe('useJobFormAutosaveEngine — materials, team, and all four together', 
       'delete:jobs_ledger_fixtures',
       'insert:jobs_ledger_fixtures',
       'update:jobs_ledger',
+      'upsert:jobs_ledger_materials',
       'delete:jobs_ledger_materials',
-      'insert:jobs_ledger_materials',
       'select:jobs_ledger_team_members',
       'insert:jobs_ledger_team_members',
     ])

@@ -33,6 +33,13 @@ describe('buildLienTimelineFromWindow (v2.3781)', () => {
     expect(filed.steps.find((s) => s.kind === 'suit')?.date).toBe('2027-07-15')
     expect(filed.next.kind).toBe('suit')
   })
+  it('a direct job’s sessions still fold into months, and the path names no § 53.056 notice on them (v2.6102, punch list #213)', () => {
+    const wm: JobWorkMonths = { jobId: 'j1', role: 'direct', propertyKind: 'non_residential', months: [month('2026-07', '2026-10-15', 22), month('2026-08', '2026-11-16', 54)], totalHours: 40, sessionCount: 6, pendingSessions: 0, lastMonthKey: '2026-08', affidavitDue: '2026-12-15' }
+    const t = buildLienTimelineFromWindow({ workMonths: wm, filings: [], job: { id: 'j1', created_at: '2026-05-02T00:00:00Z', last_work_date: '2026-08-20' }, isSub: false, propertyKind: 'non_residential', openBalance: 5_000, todayYmd: TODAY })
+    expect(t.steps.filter((s) => s.kind === 'notice').map((s) => s.words)).toEqual(['not required · contracted with the owner'])
+    expect(t.next.kind).toBe('affidavit')
+    expect(t.waitingOn?.words).toBe('the affidavit to be filed')
+  })
 })
 
 describe('the demand letter through the window adapter (v2.3877)', () => {

@@ -385,7 +385,9 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
       }
     : null
   const statedRows = (input.statedDays ?? []).filter((s) => parts(s.day)).slice().sort((a, b) => (a.day < b.day ? -1 : 1))
-  const wantStated = input.addStatedBlock === true || statedRows.length > 0
+  // A gap always draws the block (the span the company's records do not show, with blank rows); inside the recorded
+  // span the block comes with the switch, or with days already stated.
+  const wantStated = gap != null || input.addStatedBlock === true || statedRows.length > 0
   const stated = wantStated
     ? gap
       ? { rows: statedRows, heading: gap.heading, words: gap.words }

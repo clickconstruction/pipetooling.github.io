@@ -53,6 +53,23 @@ describe('buildLegalJobTimelines', () => {
     expect(t.timeline.next.date).toBe('2026-11-16')
     expect(t.retainageWords).toBe('')
   })
+  it('on a job with no GC the § 53.056 row reads not required and Next on the path names the affidavit, never a notice (v2.6102, punch list #213)', () => {
+    const t = buildLegalJobTimelines({
+      jobs: [{ id: 'job-273', created_at: '2026-03-01T00:00:00Z', last_work_date: '2026-08-27', lien_contract_ended_on: null, lien_retainage_held: null, lien_payment_bond: 'unknown' }],
+      labelOf,
+      openBalanceOf: () => 17585,
+      lastWorkOf: () => '2026-08-27',
+      sessions: [session('job-273', '2026-07-14'), session('job-273', '2026-08-27')],
+      filings: [],
+      propertyKind: 'non_residential',
+      isSub: false,
+      todayYmd: TODAY,
+    })[0]!
+    expect(t.timeline.steps.filter((s) => s.kind === 'notice').map((s) => s.words)).toEqual(['not required · contracted with the owner'])
+    expect(t.timeline.next.kind).toBe('affidavit')
+    expect(t.timeline.next.words).not.toContain('notice')
+    expect(t.timeline.waitingOn?.words).toBe('the affidavit to be filed')
+  })
   it('a job with no sessions is dated from its creation month, and the retainage facts read as words', () => {
     const t = buildLegalJobTimelines({
       jobs: [{ id: 'job-864', created_at: '2026-08-05T00:00:00Z', last_work_date: null, lien_contract_ended_on: '2026-11-30', lien_retainage_held: 2400, lien_payment_bond: 'no' }],

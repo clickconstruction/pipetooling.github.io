@@ -18,9 +18,10 @@ import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
  * are shared too — `useNeedsYouInputs` reads every source `needsYouSourceGates`
  * allows this host, and `useNeedsYouPress` takes each line where the Dashboard
  * takes it — so the station cannot fall behind the card again. What differs is
- * named in `needsYouSources.ts`: the four stations on this page that carry a
- * line (Job follow-ups, GC weekly review, People Hours, the Dispatch inbox since
- * v2.5841) and the three sources held back.
+ * named in `needsYouSources.ts`: the stations on this page that carry a line
+ * (Job follow-ups for the quiet jobs and, since v2.6093, the idle ones; GC weekly
+ * review; People Hours and the Dispatch inbox since v2.5841) and the three
+ * sources held back.
  * Since v2.5774 the station has a third view, **Fill them in**: the deck over
  * the rows behind the lines an assistant clears with a few fields
  * (`NeedsYouFillInDeck`, `useFillInRows`). Since v2.5907 (punch list #178, D's
@@ -76,7 +77,7 @@ export function QuickfillNeedsYouSection({
         // Not needed is the job-account sheet's row, which the job-accounts line reads too.
         reloadJobAccountGaps()
       }
-      // A contract's io dispatches `job-contract-changed`, which the line's hook already listens for.
+      // A contract's io dispatches `job-contract-changed` and a work order's `work-order-changed`, which the lines' hooks already listen for.
     },
     [reloadLostBids, reloadVehicleRecords, reloadJobAccountGaps, refetchTallyUnlinkedCounts, reloadSupplyMoveWindow],
   )

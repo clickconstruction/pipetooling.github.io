@@ -252,6 +252,7 @@ export function StagesUnifiedInvoiceRow({ row, t }: { row: StagesUnifiedInvoiceR
           <StagesProgressPaymentCell
             model={progress.model}
             view={progress.view}
+            checklist={stagesRowSharedCtx.checklistMarksFor?.(job) ?? null}
             billMark={billMark}
             pctComplete={job.pct_complete ?? null}
             billSentAlert={stagesBillSentPctAlert(job)}

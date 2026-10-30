@@ -9,7 +9,7 @@ const packet = (over: { theory?: Partial<Theory>; jobs?: LegalPacket['account'][
   ({
     theory: { key: 'sworn', label: 'Sworn account', basis: '', ...over.theory },
     account: { jobs: over.jobs ?? [job('707'), job('717', ['a signed agreement']), job('718')], totals: { billed: 0, paid: 0, writtenDown: 0, balance: 15781.82, oldestDays: over.oldestDays === undefined ? 192 : over.oldestDays } },
-    worth: { balance: 15781.82, retainageHeld: 0, retainageOnBills: 0, retainageAdded: 0, claim: 15781.82, contingencyPct: 0.33, fee: 5208, filingCost: 350, net: 10223.82, flags: [], verdict: 'worth it', ...over.worth },
+    worth: { balance: 15781.82, retainageHeld: 0, retainageOnBills: 0, retainageAdded: 0, claim: 15781.82, contingencyPct: 0.33, fee: 5208, filingCost: 350, net: 10223.82, flags: [], verdict: 'worth it', openBills: [], retainageOnBillsByJob: {}, ...over.worth },
   }) as unknown as Pick<LegalPacket, 'theory' | 'account' | 'worth'>
 
 describe('Can we sue?', () => {

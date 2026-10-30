@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 
 import { LIEN_KIND_UNKNOWN_WORDS, keepDatesWhole, lienDateWords, lienFirmNext, lienFirmWaitingOn, lienMoveWords, lienWindowSpan, type LienTimeline, type LienTimelineMove, type LienTimelineStep, type LienTimelineStepKind } from '../../lib/jobs/lienTimeline'
 import { daysBetweenYmd } from '../../lib/jobs/billedExpectedPay'
 import { windowsAxis } from '../../lib/jobs/lienWindowsAxis'
-import { setLienTimelineView, useLienTimelineView, type LienTimelineView } from '../../hooks/useLienTimelineView'
+import { setLienTimelineView, useLienTimelineView, type LienTimelineView, type LienTimelineViewScope } from '../../hooks/useLienTimelineView'
 
 /**
  * The lien timeline drawn (v2.3761): the job's Chapter 53 steps on one rail,
@@ -232,6 +232,8 @@ export type LienTimelineStripProps = {
   withNext?: boolean
   /** Force a view instead of the remembered one (tests, print); the switch hides when set. */
   view?: LienTimelineView
+  /** Where the remembered view lives (v2.6104): the Lien window's choice, or the Legal desk's, which opens on Windows. */
+  viewScope?: LienTimelineViewScope
   /** The one door to the next step (v2.4693): the Lien window's button, drawn at the verdict band's right so the step is said once. */
   nextDoor?: ReactNode
   /** The last day of work's door (v2.4735): *change ›* under the LAST WORK stop; the Lien window opens its last-day line. */
@@ -245,11 +247,11 @@ export type LienTimelineStripProps = {
   style?: CSSProperties
 }
 
-export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, nextDoor, onChangeLastWork, onOpenStep, lit = null, blocked = null, style }: LienTimelineStripProps) {
+export default function LienTimelineStrip({ timeline, voice = 'office', layout: layoutProp = 'auto', onDoor, withNext = true, view: viewProp, viewScope = 'window', nextDoor, onChangeLastWork, onOpenStep, lit = null, blocked = null, style }: LienTimelineStripProps) {
   const { steps, todayIndex, kindUnknown } = timeline
   const next = voice === 'firm' ? { ...timeline.next, ...lienFirmNext(timeline.next) } : timeline.next
   const waiting = voice === 'firm' ? lienFirmWaitingOn(timeline) : timeline.waitingOn ? { who: lienMoveWords(timeline.waitingOn.who), words: timeline.waitingOn.words } : null
-  const rememberedView = useLienTimelineView()
+  const rememberedView = useLienTimelineView(viewScope)
   const n = Math.max(1, steps.length)
   const hostRef = useRef<HTMLDivElement | null>(null)
   const [narrow, setNarrow] = useState(false)
@@ -305,7 +307,7 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
   }, [layoutProp])
   const layout: Exclude<LienTimelineLayout, 'auto'> = layoutProp === 'auto' ? (narrow ? 'list' : 'row') : layoutProp
   const view: LienTimelineView = layout === 'mini' ? 'steps' : viewProp ?? rememberedView
-  const switchRow = layout === 'mini' || viewProp ? null : <ViewSwitch view={view} />
+  const switchRow = layout === 'mini' || viewProp ? null : <ViewSwitch view={view} scope={viewScope} />
   // The verdict band (v2.4652): Next on the path, its aside and Waiting on, ABOVE the drawing on the
   // row, the list and the calendar. The mini row keeps the one quiet line under its rail.
   const mini = layout === 'mini'
@@ -442,13 +444,13 @@ export default function LienTimelineStrip({ timeline, voice = 'office', layout: 
 }
 
 /** The corner switch (v2.3815): Steps is today's strip, Windows the calendar of first and last days. */
-function ViewSwitch({ view }: { view: LienTimelineView }) {
+function ViewSwitch({ view, scope }: { view: LienTimelineView; scope: LienTimelineViewScope }) {
   const btn = (v: LienTimelineView, label: string, title: string) => (
     <button
       type="button"
       aria-pressed={view === v}
       data-lien-timeline-view={v}
-      onClick={() => setLienTimelineView(v)}
+      onClick={() => setLienTimelineView(v, scope)}
       title={title}
       style={{ padding: '1px 9px', border: 'none', background: view === v ? 'var(--text-link)' : 'var(--surface)', color: view === v ? '#fff' : 'var(--text-700)', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', lineHeight: '18px' }}
     >

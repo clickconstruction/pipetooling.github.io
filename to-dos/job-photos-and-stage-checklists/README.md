@@ -2,7 +2,7 @@
 name: "A job's Drive photos in the app, and a checklist per stage"
 number: 164
 group: ready
-status: building 2026-10-29 on claude/164-stage-checklists-cbedd2 (one branch per PR) · proposed 2026-10-24 from the trade ERP comparison (gap 4 of 9) · the owner decided the same day that photos always live in Google Drive · mock-up drawn 2026-10-26 · Taunya approved the picks on the review canvas of 2026-10-29 · PR 1 the kernel built as v2.6072 · PR 2 the tables and the editor as v2.6077, the migration waiting for the push
+status: building 2026-10-29 on claude/164-stage-checklists-cbedd2 (one branch per PR) · proposed 2026-10-24 from the trade ERP comparison (gap 4 of 9) · the owner decided the same day that photos always live in Google Drive · mock-up drawn 2026-10-26 · Taunya approved the picks on the review canvas of 2026-10-29 · PR 1 the kernel built as v2.6072 · PR 2 the tables and the editor as v2.6077, the migration waiting for the push · PR 3 the sheet on the phone as v2.6084, photo-save waiting for its deploy · PR 4 the Pipeline's mark as v2.6087
 summary: >
   Every one of the fifteen trade apps compared keeps job photos in the app and offers checklists a
   crew fills on site. Ours send photos to Google Drive by design and have no checklist on a job. The
@@ -10,10 +10,10 @@ summary: >
   checklist per stage (Rough In, Top Out, Trim Set) that the crew fills on the phone, with the
   stage reading not ready until it is filled, and shows the job's photos as a gallery in the app,
   read from the customer's Drive folder and never copied out of it.
-next: The push of 20261029210000_stage_checklists.sql; PR 3 the sheet on the phone, then the Pipeline's mark and the Drive gallery. The owner types the questions for each stage on Settings → Jobs & billing → Stage checklists once the migration is pushed.
-size: M to L as a train of five (S · S · M · S · M); one migration (the checklists)
+next: The push of 20261029210000_stage_checklists.sql and 20261030070000_photo_save_cron_all_sources.sql (both on main), then the deploy of photo-save; PR 5 the Drive gallery. The owner types the questions for each stage on Settings → Jobs & billing → Stage checklists once the first migration is pushed.
+size: M to L as a train of five (S · S · M · S · M); two migrations (the checklists, and the photo-save cron's checklist clause again)
 blocker: None for the build. The questions for each stage are the owner's to type in the editor.
-ver: v2.6072 · 6077
+ver: v2.6072 · 6077 · 6084 · 6087
 opinion: build the stage checklists first, then the Drive gallery
 ---
 
@@ -104,8 +104,8 @@ placeholders until the owner writes the real ones.
 | The stages | `jobs_ledger_fixtures`, `list_job_stage_progress` | — |
 | The questions and answers | `stage_checklist_templates`, `stage_checklist_answers`, the bucket `stage-checklist-photos` (v2.6077, migration `20261029210000`) | — |
 | The rules | `lib/jobs/stageChecklist.ts` (v2.6072): the kind from the stage's name, the template for a kind, the picks, the answered rule, the stage's standing, the words, the photo's Drive name | — |
-| Filling it | Job Mode, the job window; the office's editor on Settings → Jobs & billing (v2.6077) | the sheet on a stage |
-| The not-ready mark | the Pipeline's stage cell | one more state |
+| Filling it | the strip on Job Mode's details and under the job window's address, and the sheet it opens (v2.6084); the office's editor on Settings → Jobs & billing (v2.6077) | — |
+| The not-ready mark | the stage's name under the Pipeline's bar, amber with ☐ and the count in its title (v2.6087) | — |
 | Photos | `photo-save`, `lib/photos/`, the Drive delegation, the customer's folder link | the gallery over the folder, and a checklist photo saved there |
 
 ## The plan
@@ -124,8 +124,10 @@ placeholders until the owner writes the real ones.
 3. **The checklist on the phone**: a strip of the job's stages on Job Mode's details and under the job
    window's address, each opening one sheet with Yes, No or Not here per question, a note, and a photo
    where asked, shrunk on the phone, put in a bucket and filed in the customer's Drive folder by the
-   `photo-save` sweep as a box photo is.
-4. **The Pipeline's not-ready mark**: one more state on the stage's name under the bar.
+   `photo-save` sweep as a box photo is. **Built as v2.6084**, with `20261030070000_photo_save_cron_all_sources.sql`:
+   #189's `20261029220000_report_photos.sql` re-scheduled the cron an hour after PR 2's migration and without its
+   checklist clause, so this one writes all four clauses again.
+4. **The Pipeline's not-ready mark**: one more state on the stage's name under the bar. **Built as v2.6087.**
 5. **The Drive gallery** on the job window, read from the customer's folder and never copied out, with
    the checklist's photo among them.
 
@@ -135,8 +137,8 @@ placeholders until the owner writes the real ones.
 |---|---|---|
 | 1 | The kernel, and the look at a report's photos | v2.6072 |
 | 2 | The tables, the migration and the office's editor | v2.6077 |
-| 3 | The sheet on the phone, the photo to Drive | — |
-| 4 | The Pipeline's not-ready mark | — |
+| 3 | The sheet on the phone, the photo to Drive | v2.6084 |
+| 4 | The Pipeline's not-ready mark | v2.6087 |
 | 5 | The Drive gallery on the job window | — |
 
 ## How to verify

@@ -30,6 +30,7 @@ const ctxWith = (over: Partial<StagesRowRenderContext> = {}) =>
     stagesLaborBreakdownByJobId: new Map(),
     openJobCalendar: vi.fn(),
     crewByJobId: new Map(),
+    checklistMarksFor: () => null,
     stagesUpcomingByJobId: {},
     stagesWorkedByJobId: {},
     canOpenJobScheduleModal: true,

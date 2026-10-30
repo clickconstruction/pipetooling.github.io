@@ -202,6 +202,13 @@ export function jobFollowupsNextLine(entry: { hcpNumber: string | null; jobName:
   return `Call about ${job} · quiet ${days(entry.quietDays)}`
 }
 
+/** Job follow-ups' Idle lane (v2.6093, punch list #178): the job longest without a crew, led by what it needs. */
+export function jobFollowupsIdleNextLine(entry: { hcpNumber: string | null; jobName: string | null; idleDays: number; need: string | null } | null | undefined): string | null {
+  if (!entry) return null
+  const job = [entry.hcpNumber, entry.jobName].filter((s) => (s ?? '').trim()).join(' ') || 'the job'
+  return `${entry.need?.trim() || 'Follow up on'} · ${job} · no field work in ${days(entry.idleDays)}`
+}
+
 /**
  * Today's lines (v2.5868): the first of the viewer's own lines, worst first, in the card's own words. Since v2.5907
  * (punch list #178) the deck is the station's body on Quickfill, so when it opens on a row the line is that row's

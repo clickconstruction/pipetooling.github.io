@@ -687,6 +687,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     stagesManHoursByJobId: props.stagesManHoursByJobId,
     stagesManHoursLoading: props.stagesManHoursLoading,
     crewByJobId: props.crewByJobId,
+    checklistMarksFor: props.checklistMarksFor,
     stagesLaborBreakdownByJobId: props.stagesLaborBreakdownByJobId,
     expandedJobThreadId: props.expandedJobThreadId,
     toggleStagesJobThreadExpanded: props.toggleStagesJobThreadExpanded,
@@ -921,6 +922,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
                 compact
                 model={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).model}
                     view={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).view}
+                    checklist={ctx.checklistMarksFor?.(j) ?? null}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
@@ -1002,6 +1004,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     stagesManHoursByJobId: props.stagesManHoursByJobId,
     stagesManHoursLoading: props.stagesManHoursLoading,
     crewByJobId: props.crewByJobId,
+    checklistMarksFor: props.checklistMarksFor,
     stagesLaborBreakdownByJobId: props.stagesLaborBreakdownByJobId,
     expandedJobThreadId: props.expandedJobThreadId,
     toggleStagesJobThreadExpanded: props.toggleStagesJobThreadExpanded,
@@ -1283,6 +1286,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 compact
                 model={cardProgress.model}
                 view={cardProgress.view}
+                checklist={ctx.checklistMarksFor?.(j) ?? null}
                 billMark={inv && inv.status === 'billed' ? billMarkFor(cardProgress.view, { billId: inv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [], payments: j.payments ?? [] }) : null}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
