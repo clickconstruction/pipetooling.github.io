@@ -1,0 +1,797 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Robot fixtures: the robot pulls the fixtures, the estimator picks</title>
+<style>
+  /* Every bid, name, tag and count here is made up: b641 Brushy Creek Animal Hospital under Ridgeway Builders, an
+     Issued set of 31 sheets dated Oct 2, 2026, 9 of them plumbing; Taunya is the estimator. The shapes are real: the
+     Counts tab's head, the Robot status sheet, the import review's buckets, the From pill and tile, the Takeoff
+     sheet, the Robot Board row. Today is Fri, Oct 30, 2026. Tokens are src/index.css's (light values and the
+     [data-theme="dark"] block); the robot's blue, amber and green stay literal, as RobotGlyph.tsx keeps them. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --text-blue-700: #1d4ed8; --text-blue-800: #1e40af; --bg-blue-tint: #eff6ff; --bg-blue-200: #dbeafe; --border-blue: #bfdbfe; --text-green-700: #15803d; --text-green-800: #166534; --bg-green-100: #dcfce7; --bg-green-tint: #f0fdf4; --border-green: #bbf7d0; --text-amber-700: #b45309; --text-amber-800: #92400e; --bg-amber-tint: #fffbeb; --bg-amber-100: #fef3c7; --border-amber: #fcd34d; --text-red-700: #b91c1c; --bg-red-100: #fee2e2; --border-red: #fca5a5; --text-violet-800: #5b21b6; --bg-violet-100: #ede9fe; --border-violet: #c4b5fd; --shadow: 0 1px 2px rgba(17,24,39,.06), 0 4px 14px rgba(17,24,39,.06); --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; --robot: #2563eb; --robot-need: #d97706; --robot-scored: #16a34a; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --text-blue-700: #93c5fd; --text-blue-800: #93c5fd; --bg-blue-tint: #1e3358; --bg-blue-200: #24407a; --border-blue: #1e40af; --text-green-700: #4ade80; --text-green-800: #86efac; --bg-green-100: #14532d; --bg-green-tint: #12301f; --border-green: #166534; --text-amber-700: #fbbf24; --text-amber-800: #fcd34d; --bg-amber-tint: #3a2f11; --bg-amber-100: #45390f; --border-amber: #92400e; --text-red-700: #f87171; --bg-red-100: #4c1d1d; --border-red: #991b1b; --text-violet-800: #c4b5fd; --bg-violet-100: #332457; --border-violet: #5b21b6; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35); --robot: #60a5fa; }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 40ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  b { color: var(--text-strong); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button, nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; text-decoration: none; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  h2 .num.pick { background: var(--text-green-700); }
+  h3 { font-size: 15px; margin: 22px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .pass2 { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--text-blue-700); background: var(--bg-blue-tint); border-radius: 10px; max-width: 104ch; }
+  .pass2 .cap { color: var(--text-blue-700); margin-bottom: 4px; }
+  .pass2 p { margin: 4px 0; color: var(--text-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 460px; max-width: 100%; }
+  .col.full { flex-basis: 100%; }
+  .col.narrow { flex: 0 1 400px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap.opt { color: var(--text-green-700); }
+  .cap.alt { color: var(--text-amber-800); }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 14px 16px; overflow-x: auto; font-size: 13.5px; min-width: 0; }
+  .frame.now { border-style: dashed; background: var(--bg-subtle); }
+  .frame.pick { border-color: var(--text-green-700); }
+  .frame.tight { padding: 10px 12px; }
+  .k { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin: 10px 0 4px; }
+  .k:first-child { margin-top: 0; }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; vertical-align: middle; }
+  .chip.ok { color: var(--text-green-700); border-color: var(--border-green); background: var(--bg-green-100); }
+  .chip.warn { color: var(--text-amber-800); border-color: var(--border-amber); background: var(--bg-amber-100); }
+  .chip.robot { color: var(--text-blue-800); border-color: var(--border-blue); background: var(--bg-blue-tint); }
+  .chip.assist { color: var(--text-violet-800); border-color: var(--border-violet); background: var(--bg-violet-100); }
+  .chip.door { cursor: pointer; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg-subtle); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 11px; white-space: nowrap; }
+  .btn.primary { background: #3b82f6; color: #fff; border-color: #3b82f6; }
+  .btn.green { background: #16a34a; color: #fff; border-color: #16a34a; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--text-link); }
+  .btn.dead { opacity: .5; }
+  .btn.robot { border-color: var(--border-blue); background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  .btn .n { font-variant-numeric: tabular-nums; }
+  .glyph { display: inline-block; width: 1em; height: 1em; vertical-align: -0.12em; fill: currentColor; }
+  /* the ring, as RobotRing.tsx draws it: seven segments, two conic gradients */
+  .ring { position: relative; width: 26px; height: 26px; border-radius: 50%; display: inline-grid; place-items: center; flex: none; background: conic-gradient(var(--robot) 0 var(--fill, 0%), var(--border) var(--fill, 0%) 100%); vertical-align: middle; }
+  .ring.green { background: conic-gradient(var(--robot-scored) 0 100%, var(--border) 100% 100%); }
+  .ring.amber { background: conic-gradient(var(--robot-need) 0 var(--fill, 0%), var(--border-amber) var(--fill, 0%) 100%); }
+  .ring::before { content: ""; position: absolute; inset: 0; border-radius: 50%; background: repeating-conic-gradient(from -1.25deg, var(--surface) 0 2.5deg, transparent 2.5deg 51.43deg); }
+  .ring .in { position: relative; width: 20px; height: 20px; border-radius: 50%; background: var(--surface); display: grid; place-items: center; color: var(--robot); font-size: 11px; }
+  .ring.green .in { color: var(--robot-scored); }
+  .ring.amber .in { color: var(--robot-need); }
+  .ring.lg { width: 34px; height: 34px; } .ring.lg .in { width: 26px; height: 26px; font-size: 14px; }
+  .ring.sm { width: 20px; height: 20px; } .ring.sm .in { width: 15px; height: 15px; font-size: 9px; }
+  .badge { position: absolute; right: -4px; bottom: -4px; width: 13px; height: 13px; border-radius: 50%; background: var(--robot); color: #fff; font-size: 8px; display: grid; place-items: center; border: 1px solid var(--surface); }
+  .badge.green { background: var(--robot-scored); }
+  /* the Counts tab head */
+  .tabhead { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+  .tabhead .title { font-weight: 700; font-size: 15px; color: var(--text-strong); }
+  .tabhead .pill { font-size: 11.5px; color: var(--text-muted); border: 1px dashed var(--border-strong); border-radius: 999px; padding: 1px 8px; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 8px; }
+  /* the inline stage strip */
+  .inl { display: inline-flex; align-items: center; gap: 8px; border: 1px solid var(--border); border-radius: 999px; padding: 3px 10px 3px 4px; background: var(--bg-subtle); font-size: 12px; }
+  .inl b { color: var(--text-strong); }
+  .inl .chev { color: var(--text-muted); }
+  .strip { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 6px; margin-top: 8px; }
+  .stop { text-align: center; font-size: 11px; line-height: 1.25; color: var(--text-muted); min-width: 0; }
+  .stop .bar { height: 6px; border-radius: 3px; background: var(--border); margin-bottom: 5px; }
+  .stop.done { color: var(--text-700); } .stop.done .bar { background: var(--robot-scored); }
+  .stop.now { color: var(--text-blue-700); font-weight: 700; } .stop.now .bar { background: var(--robot); box-shadow: 0 0 0 2px rgba(37,99,235,.22); }
+  .stop.now.amber { color: var(--text-amber-700); } .stop.now.amber .bar { background: var(--robot-need); box-shadow: 0 0 0 2px rgba(217,119,6,.22); }
+  .stop .d { display: block; font-weight: 400; font-size: 10.5px; color: var(--text-muted); }
+  .stop.now .d { color: var(--text-blue-700); }
+  .lit { margin: 6px 0 0; font-size: 12.5px; color: var(--text-700); }
+  /* the sheet */
+  table.sheet { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.sheet th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-strong); padding: 4px 8px; white-space: nowrap; }
+  table.sheet td { padding: 5px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.sheet td.n, table.sheet th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.sheet td .u { font-size: 10.5px; color: var(--text-faint); margin-left: 3px; }
+  table.sheet tr.robot td { background: var(--bg-blue-tint); }
+  table.sheet tr.robot td:first-child { border-left: 3px solid var(--robot); }
+  table.sheet tr.mine td:first-child { border-left: 3px solid transparent; }
+  table.sheet .from { font-size: 10.5px; font-weight: 600; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-subtle); color: var(--text-700); white-space: nowrap; display: inline-flex; gap: 4px; align-items: center; }
+  table.sheet .from.robot { border-color: var(--border-blue); background: var(--surface); color: var(--text-blue-800); }
+  table.sheet .from.none { color: var(--text-muted); }
+  table.sheet .alt { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; padding: 0 4px; border-radius: 3px; border: 1px solid var(--text-amber-700); color: var(--text-amber-700); margin-left: 5px; vertical-align: 1px; }
+  table.sheet .rob { font-size: 9.5px; font-weight: 700; letter-spacing: .06em; padding: 0 4px; border-radius: 3px; border: 1px solid var(--border-blue); color: var(--text-blue-800); background: var(--bg-blue-tint); margin-left: 5px; vertical-align: 1px; display: inline-flex; gap: 3px; align-items: center; }
+  table.sheet .cell { border: 1px solid transparent; border-radius: 4px; padding: 1px 4px; }
+  table.sheet .cell.ed { border-color: var(--border-strong); background: var(--surface); }
+  .tiles { display: flex; gap: 0; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; margin: 8px 0; flex-wrap: wrap; }
+  .tile { padding: 6px 12px; border-right: 1px solid var(--border); min-width: 0; }
+  .tile:last-child { border-right: 0; }
+  .tile .v { font-weight: 700; color: var(--text-strong); font-size: 14px; display: block; }
+  .tile .l { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); }
+  .tile .pills { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 3px; }
+  .tile .pills span { font-size: 10.5px; padding: 0 7px; border-radius: 999px; border: 1px solid var(--border); background: var(--bg-subtle); }
+  .tile .pills span.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .tile .pills span.robot { border-color: var(--border-blue); color: var(--text-blue-800); }
+  .views { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-size: 11.5px; }
+  .views span { padding: 2px 10px; color: var(--text-700); }
+  .views span.on { background: var(--text-strong); color: var(--bg-page); font-weight: 600; }
+  .toast { display: inline-flex; gap: 12px; align-items: center; background: var(--text-strong); color: var(--bg-page); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; margin-top: 10px; }
+  .toast u { cursor: pointer; font-weight: 700; }
+  /* the window */
+  .win { border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 40px rgba(0,0,0,.15); overflow: hidden; }
+  .win .head { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .win .head h4 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .win .head .set { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+  .win .x { margin-left: auto; color: var(--text-muted); font-size: 18px; line-height: 1; }
+  .win .head > div { flex: 1 1 180px; min-width: 0; }
+  .bucket { display: flex; align-items: center; gap: 10px; padding: 7px 16px; background: var(--bg-muted); border-top: 1px solid var(--border); font-size: 13px; flex-wrap: wrap; }
+  .bucket b { color: var(--text-strong); }
+  .bucket .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 999px; overflow: hidden; font-size: 11.5px; }
+  .bucket .seg span { padding: 1px 9px; color: var(--text-700); }
+  .bucket .seg span.on { background: #2563eb; color: #fff; font-weight: 600; }
+  .bucket .seg span.on.gray { background: var(--text-muted); }
+  .bucket .fold { margin-left: auto; color: var(--text-muted); font-size: 12px; }
+  table.fx { border-collapse: collapse; width: 100%; font-size: 13px; }
+  table.fx th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 4px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.fx td { padding: 6px 8px; border-top: 1px solid var(--border); vertical-align: top; }
+  table.fx td.n, table.fx th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.fx td.tk { width: 34px; padding-left: 16px; }
+  table.fx .tag { font-family: var(--mono); font-size: 12px; font-weight: 700; color: var(--text-strong); white-space: nowrap; }
+  table.fx .nm { color: var(--text-base); }
+  table.fx .mm { display: block; font-size: 11.5px; color: var(--text-muted); }
+  table.fx .sh { font-family: var(--mono); font-size: 11.5px; color: var(--text-700); white-space: nowrap; }
+  table.fx tr.open td { background: var(--bg-subtle); }
+  table.fx tr.open td.tk { border-left: 3px solid var(--robot); }
+  table.fx tr.sub td { background: var(--bg-subtle); border-top: 0; padding-top: 0; }
+  table.fx tr.hers td { color: var(--text-700); }
+  .tick { display: inline-block; width: 15px; height: 15px; border-radius: 3px; border: 1.5px solid var(--border-strong); vertical-align: middle; position: relative; background: var(--surface); }
+  .tick.on { background: #2563eb; border-color: #2563eb; }
+  .tick.on::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .back { display: grid; gap: 6px; padding: 2px 0 8px; }
+  .back .ln { display: grid; grid-template-columns: 5.2rem minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 12.5px; }
+  .back .ln .w { font-size: 10.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); padding-top: 2px; }
+  .back .ln .w i { display: block; font-style: normal; font-family: var(--mono); font-size: 11px; color: var(--text-700); text-transform: none; letter-spacing: 0; font-weight: 600; }
+  .back .ln .t { color: var(--text-700); }
+  .back .ln .t q { quotes: "“" "”"; }
+  .back .ln .f { font-size: 9.5px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; border-radius: 4px; padding: 1px 5px; background: var(--bg-amber-tint); color: var(--text-amber-800); margin-left: 6px; vertical-align: 1px; }
+  .back .ln .o { font: 600 11px var(--font); border: 1px solid var(--border-strong); border-radius: 4px; padding: 2px 7px; background: var(--surface); white-space: nowrap; }
+  .back .chk { font-size: 12.5px; color: var(--text-700); display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  .back .chk b { color: var(--text-strong); }
+  .viewer { border: 1px solid var(--border); border-radius: 8px; background: var(--bg-muted); padding: 6px; margin-top: 4px; }
+  .viewer .vh { display: flex; gap: 8px; align-items: center; font-size: 12px; margin-bottom: 4px; }
+  .viewer .vh .mono { font-family: var(--mono); font-weight: 700; }
+  .viewer .pg { background: #fff; color: #222; height: 150px; border: 1px solid #ccc; position: relative; overflow: hidden; font: 9px/1.1 var(--mono); padding: 8px; }
+  .viewer .pg .pin { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: rgba(37,99,235,.18); border: 2px solid #2563eb; }
+  .viewer .pg .tb { position: absolute; right: 8px; bottom: 6px; border: 1px solid #999; padding: 2px 6px; font-size: 8px; background: #fafafa; color: #333; }
+  .viewer .pg .hl { position: absolute; left: 60px; top: 28px; width: 190px; height: 11px; background: rgba(250,204,21,.45); }
+  .foot { display: flex; gap: 12px; align-items: center; padding: 10px 16px; border-top: 1px solid var(--border); flex-wrap: wrap; background: var(--surface); }
+  .foot .say { margin: 0; font-size: 12.5px; color: var(--text-700); display: block; }
+  /* the status sheet */
+  .sheetdlg { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 14px 16px; box-shadow: 0 10px 40px rgba(0,0,0,.15); max-width: 560px; }
+  .sheetdlg .hd { display: flex; gap: 10px; align-items: center; margin-bottom: 10px; }
+  .sheetdlg .hd h4 { margin: 0; font-size: 15px; color: var(--text-strong); }
+  .sheetdlg .hd .sub { font-size: 12px; color: var(--text-muted); }
+  .tl { list-style: none; margin: 10px 0 12px; padding: 0 0 0 10px; border-left: 2px solid var(--border); display: grid; gap: 9px; }
+  .tl li { position: relative; padding-left: 14px; font-size: 13px; color: var(--text-base); }
+  .tl li.todo { color: var(--text-muted); }
+  .tl li::before { content: ""; position: absolute; left: -10px; top: .5em; width: 8px; height: 8px; border-radius: 50%; background: var(--border-strong); transform: translateX(-50%); }
+  .tl li.done::before { background: var(--robot-scored); }
+  .tl li.now::before { background: var(--robot); box-shadow: 0 0 0 3px rgba(37,99,235,.2); }
+  .tl li.now { font-weight: 600; }
+  .tl li .d { display: block; font-size: 11.5px; color: var(--text-muted); font-weight: 400; }
+  .touch { border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; background: var(--bg-subtle); font-size: 12.5px; color: var(--text-700); margin: 0 0 12px; }
+  .touch b { display: block; color: var(--text-strong); font-size: 12.5px; margin-bottom: 3px; }
+  .sheetdlg .acts { border-top: 1px solid var(--border); padding-top: 10px; margin-top: 0; }
+  /* the plans panel */
+  .panel { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 12px 14px; max-width: 440px; }
+  .panel input { width: 100%; font: inherit; font-size: 13px; padding: 6px 10px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--bg-subtle); color: var(--text-base); margin-top: 6px; }
+  .pf { display: flex; gap: 6px; align-items: baseline; border-top: 1px solid var(--border); padding: 7px 0 2px; margin-top: 6px; font-weight: 700; font-size: 12.5px; color: var(--text-strong); }
+  .pf .muted { font-weight: 400; font-size: 11.5px; }
+  .pf .chev { margin-left: auto; color: var(--text-muted); font-weight: 400; }
+  /* the robot board row and the bid board row */
+  .brow { display: grid; grid-template-columns: 40px 1fr auto; gap: 10px; align-items: center; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); }
+  .brow .nm { font-weight: 600; color: var(--text-strong); }
+  .brow .subl { font-size: 11.5px; color: var(--text-muted); }
+  .brow .right { text-align: right; font-size: 12.5px; }
+  .hair { display: flex; gap: 2px; height: 3px; margin-top: 5px; border-radius: 2px; overflow: hidden; }
+  .hair span { flex: 1; background: var(--border); }
+  .hair span.done { background: var(--robot-scored); } .hair span.now { background: var(--robot); }
+  .hair.flow span.done { background: var(--text-green-700); } .hair.flow span.now { background: var(--text-strong); }
+  /* the phone */
+  .phones { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .phone { width: 375px; max-width: 100%; border: 10px solid var(--text-strong); border-radius: 36px; background: var(--surface); overflow: hidden; flex: none; }
+  .phone .bar { height: 26px; display: flex; justify-content: space-between; align-items: center; padding: 0 18px; font-size: 11px; font-weight: 700; color: var(--text-strong); }
+  .phone .body { padding: 8px 12px 14px; font-size: 13px; }
+  .phone .win { border: 0; box-shadow: none; border-radius: 0; }
+  .phone .win .head { flex-wrap: nowrap; }
+  .phone .win .head > div { flex: 1 1 0; }
+  .phone .win .head, .phone .bucket, .phone .foot { padding-left: 2px; padding-right: 2px; }
+  .phone table.fx td.tk { padding-left: 2px; }
+  .phone .back .ln { grid-template-columns: 1fr; gap: 2px; }
+  .phone .back .ln .o { justify-self: start; }
+  .phone .sheetdlg { border: 0; box-shadow: none; padding: 0; }
+  .phone .strip { gap: 3px; } .phone .stop { font-size: 9px; } .phone .stop .d { font-size: 9px; }
+  /* the critique table */
+  table.t { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  table.t th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-strong); padding: 4px 6px; }
+  table.t td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.crit td:first-child { font-weight: 700; color: var(--text-strong); white-space: nowrap; }
+  table.crit tr.pick td { background: var(--bg-green-100); }
+  .prose { color: var(--text-700); max-width: 104ch; }
+  @media (max-width: 640px) {
+    h1 { font-size: 22px; }
+    .frame { padding: 10px 10px; }
+    .strip { grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 3px; }
+    .stop { font-size: 9px; } .stop .d { display: none; }
+    .back .ln { grid-template-columns: 1fr; gap: 2px; }
+    .back .ln .o { justify-self: start; }
+    table.fx th.hide, table.fx td.hide, table.sheet th.hide, table.sheet td.hide { display: none; }
+    table.fx th:last-child, table.fx td:last-child { display: none; }
+    table.fx th { white-space: normal; }
+    table.fx .chip { font-size: 10px; padding: 0 5px; }
+    table.fx td.tk { padding-left: 8px; }
+    .brow { grid-template-columns: 34px 1fr; } .brow .right { grid-column: 1 / -1; text-align: left; }
+    .tiles .tile { flex: 1 1 45%; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Bids · the robots · a mock-up, not the app · 2026-10-30 · punch list #221</p>
+  <h1>Robot fixtures: the robot pulls the fixtures off the plans, the estimator picks which to add to her count</h1>
+  <p>The owner: <i>the robots' ability to mark up a set of plans and find the costs of parts has been reasonable and accurate enough that we are considering offering to our estimators the ability to load in a set of plans and have the robots pull out and bid only the fixtures to help speed up their bidding… an augment to our current flow that is not invasive… make it easy for the estimator to review all of the text in the plans related to those fixtures… these items would need to look different such as a lightly shaded row so while the estimator is bidding she knows that they were added from the robots and not her.</i></p>
+  <p>Every name, tag and count is invented. One bid runs through every frame: <b>b641 · Brushy Creek Animal Hospital</b> under Ridgeway Builders, an <b>Issued set</b> of 31 sheets dated Oct 2, 9 of them plumbing. The robot took the bid Thursday at 1:52 PM, read the set, counted, found <b>23 fixtures</b> (21 sure, 2 it wants a look at), checked them against the schedule and the riser, and sealed its number at 2:41 PM. Taunya opens the bid Friday morning with 6 rows already on her count.</p>
+  <div class="controls">
+    <span class="lbl">Theme</span>
+    <button type="button" aria-pressed="true" data-theme-pick="light">Light</button>
+    <button type="button" aria-pressed="false" data-theme-pick="dark">Dark</button>
+  </div>
+  <nav class="jump"><a href="#today">0 · Today</a><a href="#door">1 · The door</a><a href="#window">2 · The window</a><a href="#counts">3 · Counts after</a><a href="#takeoff">4 · Takeoff</a><a href="#stage">5 · The stage</a><a href="#assisted">6 · Assisted</a><a href="#phone">7 · On a phone</a><a href="#pick">The pick</a></nav>
+</header>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="robot" viewBox="0 0 640 512"><path d="M320 64c13 0 24 11 24 24v40h120c40 0 72 32 72 72v192c0 40-32 72-72 72H176c-40 0-72-32-72-72V200c0-40 32-72 72-72h120V88c0-13 11-24 24-24zM48 296c0-18 14-32 32-32v160c-18 0-32-14-32-32v-96zm544-32c18 0 32 14 32 32v96c0 18-14 32-32 32V264zM224 232a40 40 0 100 80 40 40 0 000-80zm192 0a40 40 0 100 80 40 40 0 000-80zM232 400h176c13 0 24 11 24 24s-11 24-24 24H232c-13 0-24-11-24-24s11-24 24-24z"/></symbol></svg>
+
+<!-- ============================================================ 0 -->
+<h2 id="today"><span class="num">0</span> Today: the robot's count is sealed away, and the Counts tab never hears of it</h2>
+<p class="lede">A round reads the set, counts in CountTooling, pastes its counts on its own ZZ shell and seals a number. The Bid Board's icon says how far it is. The estimator counts from scratch on the Counts tab, by hand or by pasting her own CountTooling copy, and sees the robot's work only in the envelope at send.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">Bids → Counts · the selected bid's head, as it is</div>
+    <div class="frame now">
+      <div class="tabhead"><span class="title">b641 · Brushy Creek Animal Hospital</span><span class="pill">Ridgeway Builders · due Nov 12</span><span class="inl"><span class="ring sm" style="--fill:40%"><span class="in">●</span></span> 4 of 10 done · next: Takeoffs <span class="chev">▸</span></span><span class="btn" style="margin-left:auto">Plans</span><span class="btn">Edit bid</span></div>
+      <div class="acts"><span class="btn">Import from /Tooling</span><span class="btn">Import</span><span class="btn">+ Quick add</span><span class="views"><span class="on">List</span><span>By plan page</span><span>By group</span></span></div>
+      <div class="tiles"><div class="tile"><span class="v">6</span><span class="l">items</span></div><div class="tile"><span class="v">19 ea</span><span class="l">counts · 6 items</span></div><div class="tile"><span class="v">0 ft</span><span class="l">line feet</span></div><div class="tile"><span class="v">2 <span style="color:var(--text-red-700)">(1 no page)</span></span><span class="l">plan pages cited</span></div></div>
+      <p class="small muted" style="margin:0">Nothing on this tab says a robot read the set, counted it and sealed a number an hour after the plans landed.</p>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">The Robot status sheet · the icon's tap, as it is (v2.5732)</div>
+    <div class="frame now">
+      <div class="sheetdlg" style="box-shadow:none;border:0;padding:0">
+        <div class="hd"><span class="ring lg green"><span class="in"><svg class="glyph"><use href="#robot"/></svg><span class="badge">🔒</span></span></span><div><h4>Robot on b641 · Brushy Creek Animal Hospital</h4><div class="sub">Sealed Thu 10/29, 2:41 PM — its number shows when you send</div></div><span class="x">×</span></div>
+        <ol class="tl">
+          <li class="done">Picked it up<span class="d">Thu 10/29, 1:52 PM · robot bid b652</span></li>
+          <li class="done">Reads the plans, counts, and prices on its own book</li>
+          <li class="done">Seals its number<span class="d">Thu 10/29, 2:41 PM · Locked. Nobody sees the number until you send — not even the office.</span></li>
+          <li class="now">You send the bid<span class="d">Mark sent on the Cover Letter or Edit Bid; the score lands the moment a bid value is on record.</span></li>
+          <li class="todo">Scored</li>
+        </ol>
+        <div class="acts"><span class="btn">Read the run</span><span class="btn">Open robot bid b652</span><span class="btn">Leave this one to me</span><span class="btn" style="margin-left:auto">Close</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="rule">What stays in every frame below: the robot never edits her bid, never sends anything, and its number stays sealed until she sends. What changes: the fixtures it found become something she can take, row by row, and the bid then says so.</p>
+</div>
+
+<!-- ============================================================ 1 -->
+<h2 id="door"><span class="num">1</span> The door: where an estimator finds it, and what an estimator who ignores it sees</h2>
+<p class="lede">Four places were weighed. Two are drawn as the pick: one button on the Counts tab, drawn only when fixtures are ready, and the same window one tap from the Bid Board's icon. Nothing is added for a bid with no robot read.</p>
+<div class="row">
+  <div class="col full">
+    <div class="cap opt">A · Recommended · Bids → Counts · the head, with fixtures ready on this bid</div>
+    <div class="frame pick">
+      <div class="tabhead"><span class="title">b641 · Brushy Creek Animal Hospital</span><span class="pill">Ridgeway Builders · due Nov 12</span><span class="inl"><span class="ring sm" style="--fill:40%"><span class="in">●</span></span> 4 of 10 done · next: Takeoffs <span class="chev">▸</span></span><span class="inl" style="border-color:var(--border-blue);background:var(--bg-blue-tint)"><span class="ring sm green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span> <b>Robot · fixtures ready · 23</b> <span class="chev">▸</span></span><span class="btn" style="margin-left:auto">Plans</span><span class="btn">Edit bid</span></div>
+      <div class="acts"><span class="btn robot"><svg class="glyph"><use href="#robot"/></svg> Robot fixtures · <span class="n">23</span></span><span class="btn">Import from /Tooling</span><span class="btn">Import</span><span class="btn">+ Quick add</span><span class="views"><span class="on">List</span><span>By plan page</span><span>By group</span></span></div>
+      <p class="small muted" style="margin:4px 0 0">The button opens the window in section 2. The blue pill is the stage strip folded to one line, section 5. On a bid with no robot read, neither is drawn and the head is today's.</p>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">B · Recommended as the second door · the Robot status sheet, the same window from the Bid Board</div>
+    <div class="frame pick">
+      <div class="sheetdlg" style="box-shadow:none;border:0;padding:0">
+        <div class="hd"><span class="ring lg green"><span class="in"><svg class="glyph"><use href="#robot"/></svg><span class="badge">🔒</span></span></span><div><h4>Robot on b641 · Brushy Creek Animal Hospital</h4><div class="sub">Sealed. Its fixtures are ready for you. Its number shows when you send.</div></div><span class="x">×</span></div>
+        <div class="strip">
+          <div class="stop done"><div class="bar"></div>Plans filed<span class="d">Thu 1:52 PM</span></div>
+          <div class="stop done"><div class="bar"></div>Robot read the set<span class="d">31 sheets</span></div>
+          <div class="stop now"><div class="bar"></div>Fixtures ready<span class="d">23 found</span></div>
+          <div class="stop done"><div class="bar"></div>Checked<span class="d">21 agree</span></div>
+          <div class="stop done"><div class="bar"></div>Sealed<span class="d">Thu 2:41 PM</span></div>
+          <div class="stop"><div class="bar"></div>Sent</div>
+          <div class="stop"><div class="bar"></div>Scored</div>
+        </div>
+        <p class="lit">The robot found 23 fixtures on the Issued set, 21 of them sure. You can add the ones you want to your count.</p>
+        <div class="acts" style="margin-top:10px"><span class="btn primary"><svg class="glyph"><use href="#robot"/></svg> Fixtures ready · 23 · Review them</span><span class="btn">Read the run</span><span class="btn">Open robot bid b652</span><span class="btn" style="margin-left:auto">Close</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col narrow">
+    <div class="cap alt">C · The owner's alternative · a Fixtures lens under 🤖 Robots</div>
+    <div class="frame tight">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;font-size:12px"><span class="chip">Robot Board</span><span class="chip">Audits</span><span class="chip">Scoreboard</span><span class="chip robot">Fixtures · 3</span></div>
+      <div style="margin-top:8px;display:grid;gap:6px">
+        <div class="brow"><span class="ring green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span><div><div class="nm">b641 · Brushy Creek Animal Hospital</div><div class="subl">23 fixtures ready · sealed Thu 2:41 PM · due Nov 12</div></div><div class="right"><span class="btn">Review</span></div></div>
+        <div class="brow"><span class="ring green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span><div><div class="nm">b638 · Lakeline Taco Shop</div><div class="subl">11 fixtures ready · 9 taken by Taunya Wed</div></div><div class="right"><span class="btn">Review</span></div></div>
+      </div>
+      <p class="small muted" style="margin:6px 0 0">A desk for the program, far from the bid. Kept as an option; not needed for the ask.</p>
+    </div>
+    <div class="cap alt" style="margin-top:12px">D · Rejected · a fold in the Plans panel</div>
+    <div class="frame tight">
+      <div class="panel" style="border:0;padding:0;max-width:none">
+        <div style="display:flex;gap:6px;align-items:baseline"><b style="font-size:13.5px">Plans · b641</b><span class="muted small">31 sheets, 9 plumbing. Text from the round Thu 2:08 PM.</span></div>
+        <input type="text" value="" placeholder="Type a word or a question" readonly>
+        <div class="pf">Sheet index <span class="muted">31 sheets</span><span class="chev">▸</span></div>
+        <div class="pf">Schedules <span class="muted">3, from the robot's read</span><span class="chev">▸</span></div>
+        <div class="pf">Notes with flags <span class="muted">4 of 11</span><span class="chev">▸</span></div>
+        <div class="pf" style="color:var(--text-blue-800)">Fixtures the robot found <span class="muted">23</span><span class="chev">▸</span></div>
+        <p class="small muted" style="margin:8px 0 0;border-top:1px solid var(--border);padding-top:6px">The panel says what the plans say and where. <s>Counts come after you send.</s></p>
+      </div>
+      <p class="small muted" style="margin:6px 0 0">The panel's one promise is that it only reads. A fold that writes rows breaks it for every reader.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">A is where she counts, and the shaded rows land on the sheet under the button. B is the phone's door: the icon she already taps on the Bid Board.</p>
+  <p class="rule">One window, two doors. An estimator who never presses either bids as she does today, and a bid with no robot read draws neither.</p>
+</div>
+
+<!-- ============================================================ 2 -->
+<h2 id="window"><span class="num">2</span> The window: the fixtures the robot found, with the text on the plans that backs each one</h2>
+<p class="lede">The import review's shape, pointed at the robot: its rows against her sheet in buckets, a tick per row, every row opening into its evidence, and one button that names its count. The robot never removes a row of hers, so there is no Missing bucket.</p>
+<div class="row">
+  <div class="col full">
+    <div class="cap opt">Fixtures the robot found · a wide window at a desk, full screen on a phone</div>
+    <div class="win">
+      <div class="head">
+        <span class="ring lg green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span>
+        <div>
+          <h4>Fixtures the robot found on b641</h4>
+          <div class="set">From the set the robot read: <b>Issued set</b> · Oct 2 · 31 sheets, 9 plumbing · read Thu 2:08 PM. 23 fixtures, 21 sure. Your count has 6 rows.</div>
+        </div>
+        <span class="x">×</span>
+      </div>
+
+      <div class="bucket"><b>New · 17</b><span class="muted small">not on your count</span><span class="seg"><span class="on">Add</span><span>Leave</span></span><span class="small muted">15 sure start ticked. 2 the robot wants a look at start unticked.</span></div>
+      <table class="fx">
+        <thead><tr><th class="tk"></th><th>Tag</th><th>Fixture</th><th class="n">Count</th><th class="hide">Sheets</th><th>Robot</th><th></th></tr></thead>
+        <tbody>
+          <tr class="open">
+            <td class="tk"><span class="tick on"></span></td>
+            <td><span class="tag">WC-1</span></td>
+            <td><span class="nm">Water closet, floor mount, flush valve</span><span class="mm">Kohler Highline K-96057 · 1.28 gpf · waste 4" · vent 2" · CW 1"</span></td>
+            <td class="n">5<span class="u">ea</span></td>
+            <td class="hide"><span class="sh">P-201 · 3<br>P-202 · 2</span></td>
+            <td><span class="chip ok">sure</span></td>
+            <td class="n"><span class="btn ghost">▾ close</span></td>
+          </tr>
+          <tr class="sub"><td class="tk"></td><td colspan="6">
+            <div class="back">
+              <div class="chk"><b>The robot's check:</b> schedule lists WC-1 with no count · drawn 5 · riser 5 <span class="chip ok">agree</span> <span class="muted">“Five on the two plan sheets, three in the public restrooms on P-201 and two in the treatment wing on P-202. The riser shows five.”</span></div>
+              <div class="ln"><span class="w">schedule<i>P-601</i></span><span class="t"><q>WC-1 · WATER CLOSET, FLOOR MOUNTED, ELONGATED, 1.28 GPF, FLUSH VALVE · KOHLER K-96057 HIGHLINE · 4" W · 2" V · 1" CW · SEAT: OPEN FRONT, NO COVER</q></span><span class="o">Open sheet</span></div>
+              <div class="ln"><span class="w">note<i>P-001 · 7</i></span><span class="t"><q>ALL WATER CLOSETS IN PUBLIC RESTROOMS SHALL BE ADA COMPLIANT. PROVIDE FLOOR MOUNTED CARRIERS WHERE WALL HUNG.</q><span class="f">scope</span></span><span class="o">Open sheet</span></div>
+              <div class="ln"><span class="w">note<i>P-001 · 12</i></span><span class="t"><q>FLUSH VALVES SHALL BE FURNISHED BY PLUMBING CONTRACTOR. SENSOR OPERATION BY OTHERS.</q><span class="f">exclusion</span></span><span class="o">Open sheet</span></div>
+              <div class="ln"><span class="w">callout<i>P-201</i></span><span class="t"><q>WC-1 (TYP OF 3) · SEE P-601 · 4" FLOOR DRAIN ADJ.</q></span><span class="o">Open sheet</span></div>
+              <div class="ln"><span class="w">callout<i>P-202</i></span><span class="t"><q>WC-1 · ROOM 214 TREATMENT · WC-1 · ROOM 216</q></span><span class="o">Open sheet</span></div>
+              <div class="viewer">
+                <div class="vh"><span class="mono">P-201</span><span class="muted">First floor plumbing plan · page 14 of 31</span><span style="margin-left:auto">‹ › − +</span><span class="muted">CountTooling ↗</span><span>×</span></div>
+                <div class="pg">FIRST FLOOR PLUMBING PLAN · SCALE 1/8" = 1'-0"<div class="hl"></div><div class="pin" style="left:62px;top:52px"></div><div class="pin" style="left:118px;top:61px"></div><div class="pin" style="left:174px;top:48px"></div><div style="position:absolute;left:84px;top:50px;font-size:8px;color:#1d4ed8">WC-1 (TYP OF 3)</div><div class="tb">P-201</div></div>
+                <p class="small muted" style="margin:4px 0 0">The Plans panel's viewer, the same PdfPageCanvas. The robot's three pins for WC-1 are drawn where it counted them. Pins are the later PR; the sheet and the highlighted callout are PR 3.</p>
+              </div>
+            </div>
+          </td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">SK-1</span></td><td><span class="nm">Sink, single compartment, counter mount</span><span class="mm">Elkay LRAD2219 · waste 2" · CW ½" · HW ½"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">MS-1</span></td><td><span class="nm">Mop sink, floor</span><span class="mm">Fiat MSB-2424 · waste 3" · CW ¾" · HW ¾"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 1</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">HB-1</span></td><td><span class="nm">Hose bibb, wall, freezeless</span><span class="mm">Woodford 67 · CW ¾"</span></td><td class="n">3<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 2<br>P-202 · 1</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">EWC-1</span></td><td><span class="nm">Electric water cooler, bi-level, bottle filler</span><span class="mm">Elkay LZSTL8WSLK · waste 1½" · CW ½"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 1</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">FS-1</span></td><td><span class="nm">Floor sink, 12 x 12, half grate</span><span class="mm">Zurn Z1900 · waste 3"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">TD-1</span></td><td><span class="nm">Trench drain, 6 ft, kennel</span><span class="mm">Zurn Z886 · waste 4"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 1</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick"></span></td><td><span class="tag">DW-1</span></td><td><span class="nm">Dog wash tub, elevated</span><span class="mm">Forever Stainless 48" · waste 2" · CW ½" · HW ½"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td><span class="chip warn">want a look</span><span class="mm">schedule 1 · drawn 2</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick"></span></td><td><span class="tag">HB-2</span></td><td><span class="nm">Hose bibb, recessed box</span><span class="mm">Woodford B67 · CW ¾"</span></td><td class="n">0<span class="u">ea</span></td><td class="hide"><span class="sh">—</span></td><td><span class="chip warn">want a look</span><span class="mm">on the schedule, none drawn</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"></td><td colspan="6" class="muted small">8 more sure rows: LAV-2, UR-1, SH-1, WH-1, ET-1, GI-1, CO-1, BFP-1 · <span style="color:var(--text-link)">show them</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="bucket"><b>On your count · 2</b><span class="muted small">same name, a different count</span><span class="seg"><span>Update</span><span class="on gray">Keep mine</span></span><span class="small muted">Update keeps your parts and prices on the row. Starts on Keep mine.</span></div>
+      <table class="fx">
+        <tbody>
+          <tr class="hers"><td class="tk"><span class="tick"></span></td><td><span class="tag">FD-1</span></td><td><span class="nm">Floor drain</span><span class="mm">your row <b>Floor drain · 6</b> · robot 8 · 2 parts attached, stays</span></td><td class="n">6 → 8<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 5<br>P-202 · 3</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr class="hers"><td class="tk"><span class="tick"></span></td><td><span class="tag">LAV-1</span></td><td><span class="nm">Lavatory, wall hung</span><span class="mm">your row <b>Lav · 5</b> · robot 6 · nothing attached</span></td><td class="n">5 → 6<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 4<br>P-202 · 2</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+        </tbody>
+      </table>
+
+      <div class="bucket"><b>Same · 4</b><span class="muted small">on your count with the same number</span><span class="fold">show ▸</span></div>
+
+      <div class="foot">
+        <span class="btn primary">Add <span class="n">15</span> fixtures</span>
+        <span class="say">15 rows land on your count, shaded. Your 6 rows stay as they are. You can undo it from the toast.</span>
+        <span class="btn" style="margin-left:auto">Cancel</span>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col narrow">
+    <div class="cap">The same window before the robot has sealed · what the button opens too soon</div>
+    <div class="frame">
+      <div class="win" style="box-shadow:none">
+        <div class="head"><span class="ring lg" style="--fill:52%"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span><div><h4>Fixtures the robot found on b641</h4><div class="set">The robot is counting the Issued set. Step 4 of 7. Last word 2 minutes ago.</div></div><span class="x">×</span></div>
+        <div style="padding:14px 16px;font-size:13px;color:var(--text-700)">Its fixtures open when it seals its number, usually within the hour. The Plans panel answers questions about the set now.</div>
+        <div class="foot"><span class="btn">Open the Plans panel</span><span class="btn" style="margin-left:auto">Close</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">The words on the button, by what is ticked · batchWords</div>
+    <div class="frame">
+      <div style="display:grid;gap:8px">
+        <div><span class="btn primary">Add <span class="n">15</span> fixtures</span> <span class="small muted">15 New rows ticked, nothing in On your count.</span></div>
+        <div><span class="btn primary">Add <span class="n">15</span> · update <span class="n">1</span></span> <span class="small muted">FD-1 flipped to Update: her row becomes 8, the robot's share rides on it, her two parts stay.</span></div>
+        <div><span class="btn primary">Add <span class="n">1</span> fixture</span> <span class="small muted">One row, so one word.</span></div>
+        <div><span class="btn primary dead">Add fixtures</span> <span class="small muted">Nothing ticked: the button is dead and names the act, never OK.</span></div>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">After the press the toast reads <i>15 fixtures added from the robot.</i> with <b>Undo</b>. A row that fails to land is named with its reason and the rest land, the house rule for a batch.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">Every row carries its evidence: the schedule row as printed, the notes that name it with their flags, the callouts on each plan sheet, and the robot's own check of the three voices. <i>All of the text in the plans related to those fixtures</i>, one row at a time, with the sheet one press away.</p>
+  <p class="rule">The robot's fixture rows land on the human bid through a new verb, <code>put_fixtures</code>, called once in the round after it counts. A bid the robot read before the verb existed gets a pull derived from the substrate and the page text, and the set line says so.</p>
+</div>
+
+<!-- ============================================================ 3 -->
+<h2 id="counts"><span class="num">3</span> The Counts sheet after: her rows plain, the robot's shaded, for the life of the bid</h2>
+<p class="lede">The shade is the share. A row whose source is the robot draws on the blue tint with a rule at its left, in List, By plan page and By group, and its From pill reads Robot. The From tile gains a Robot entry that filters. A shaded row she edits stays shaded and says both numbers.</p>
+<div class="row">
+  <div class="col full">
+    <div class="cap opt">Bids → Counts · List, after Add 15 fixtures</div>
+    <div class="frame pick">
+      <div class="tabhead"><span class="title">b641 · Brushy Creek Animal Hospital</span><span class="pill">Ridgeway Builders · due Nov 12</span><span class="inl" style="border-color:var(--border-blue);background:var(--bg-blue-tint)"><span class="ring sm green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span> <b>Robot · 15 of 23 fixtures on your count</b> <span class="chip assist" style="font-size:10px">assisted</span> <span class="chev">▸</span></span><span class="btn" style="margin-left:auto">Plans</span><span class="btn">Edit bid</span></div>
+      <div class="acts"><span class="btn robot"><svg class="glyph"><use href="#robot"/></svg> Robot fixtures · <span class="n">8</span> left</span><span class="btn">Import from /Tooling</span><span class="btn">Import</span><span class="btn">+ Quick add</span><span class="views"><span class="on">List</span><span>By plan page</span><span>By group</span></span></div>
+      <div class="tiles"><div class="tile"><span class="v">21</span><span class="l">items</span></div><div class="tile"><span class="v">39 ea</span><span class="l">counts · 21 items</span></div><div class="tile"><span class="v">0 ft</span><span class="l">line feet</span></div><div class="tile"><span class="v">3 <span style="color:var(--text-red-700)">(1 no page)</span></span><span class="l">plan pages cited</span></div><div class="tile"><span class="l">from</span><div class="pills"><span class="on">all 21</span><span class="robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · 15</span><span>typed here · 6</span></div></div></div>
+      <table class="sheet">
+        <thead><tr><th class="n">Count</th><th>Fixture or tie-in</th><th class="hide">Group</th><th>Plan page</th><th>From</th><th></th></tr></thead>
+        <tbody>
+          <tr class="mine"><td class="n">6<span class="u">ea</span></td><td>Floor drain</td><td class="hide"></td><td>14, 15</td><td><span class="from none">typed here</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n">5<span class="u">ea</span></td><td>Water closet, floor mount, flush valve <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> WC-1</span></td><td class="hide"></td><td>14, 15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr class="mine"><td class="n">5<span class="u">ea</span></td><td>Lav</td><td class="hide"></td><td>14, 15</td><td><span class="from none">typed here</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n"><span class="cell ed">3</span><span class="u">ea</span></td><td>Sink, single compartment, counter mount <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> SK-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot" title="The robot counted 2 on P-202. You made it 3 on Fri 9:14 AM."><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot 2 → yours 3</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n">1<span class="u">ea</span></td><td>Mop sink, floor <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> MS-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n">3<span class="u">ea</span></td><td>Hose bibb, wall, freezeless <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> HB-1</span></td><td class="hide"></td><td>14, 15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr class="mine"><td class="n">1<span class="u">ea</span></td><td>Water heater</td><td class="hide"></td><td>15</td><td><span class="from none">typed here</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n">1<span class="u">ea</span></td><td>Electric water cooler, bi-level, bottle filler <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> EWC-1</span></td><td class="hide"></td><td>14</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr class="mine"><td class="n">2<span class="u">ea</span></td><td>Grease interceptor <span class="alt">ALT</span></td><td class="hide">Kitchen alt</td><td><span style="color:var(--text-red-700)">no page</span></td><td><span class="from none">typed here</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n">2<span class="u">ea</span></td><td>Floor sink, 12 x 12, half grate <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> FS-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr><td colspan="6" class="muted small">10 more rows · 9 from the robot, 1 typed here</td></tr>
+        </tbody>
+      </table>
+      <div class="toast">15 fixtures added from the robot. <u>Undo</u></div>
+      <p class="small muted" style="margin:8px 0 0">The robot is one more count source on the bid, like a CountTooling project. So the From pill, the From tile and its filter, the share arithmetic, a copied version and the import's recopy rules all work as they do today. The tag beside the name is the robot's tag from the schedule, kept on the row so the Takeoff and the Submittals tab can find it.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="rule">A shaded row she edits stays shaded: the share keeps the robot's number, her edit changes the count, and the pill reads <i>Robot 2 → yours 3</i>. The row is robot, then hers, which is exactly what she asked to be able to see. A row she deletes is gone as any row is.</p>
+  <p class="rule">Undo on the toast removes the rows she has not touched, puts an updated row back, and drops the robot source when no row carries it. The run's <i>assisted</i> stamp stays, since she saw the fixtures.</p>
+</div>
+
+<!-- ============================================================ 4 -->
+<h2 id="takeoff"><span class="num">4</span> The Takeoff: the same shade, her books pricing the robot's fixtures</h2>
+<p class="lede">The robot's cost does not ride along. The moment a robot fixture is a count row, Fill from book expands her assemblies onto it and the Workbench prices it from her book. The shade and a Robot chip beside the fixture name say where the row came from, the way the ALT mark says a row is in an alternate.</p>
+<div class="row">
+  <div class="col full">
+    <div class="cap opt">Bids → Takeoffs · Sheet view, after Fill from book · 14 matches</div>
+    <div class="frame pick">
+      <div class="acts" style="margin-top:0"><span class="btn green">Fill from book · 14 matches</span><span class="chip">Book: Default</span><span class="views" style="margin-left:auto"><span>One at a time</span><span class="on">Sheet</span></span><span class="btn">Print</span></div>
+      <table class="sheet" style="margin-top:8px">
+        <thead><tr><th class="n">Count</th><th>Fixture or tie-in</th><th class="hide">Stage</th><th>Lines</th><th class="n">Material</th><th></th></tr></thead>
+        <tbody>
+          <tr class="mine"><td class="n">6</td><td>Floor drain</td><td class="hide"><span class="chip" style="font-size:10px">1 · Rough In</span></td><td class="small">FLOOR DRAIN ROUGH IN · 4 parts</td><td class="n">$1,284.00</td><td class="n small muted">yours</td></tr>
+          <tr class="robot"><td class="n">5</td><td>Water closet, floor mount, flush valve <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · WC-1</span></td><td class="hide"><span class="chip" style="font-size:10px">½ · ½</span></td><td class="small">TOILET ROUGH IN · TOILET TRIM · 11 parts · from your book</td><td class="n">$3,910.00</td><td class="n small muted">your book's price</td></tr>
+          <tr class="mine"><td class="n">5</td><td>Lav</td><td class="hide"><span class="chip" style="font-size:10px">½ · ½</span></td><td class="small">LAV ROUGH IN · LAV TRIM · 9 parts</td><td class="n">$2,145.00</td><td class="n small muted">yours</td></tr>
+          <tr class="robot"><td class="n">3</td><td>Sink, single compartment, counter mount <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot 2 → yours 3</span></td><td class="hide"><span class="chip" style="font-size:10px">½ · ½</span></td><td class="small">SINK ROUGH IN · SINK TRIM · 8 parts · from your book</td><td class="n">$1,431.00</td><td class="n small muted">your book's price</td></tr>
+          <tr class="robot"><td class="n">1</td><td>Mop sink, floor <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · MS-1</span></td><td class="hide"><span class="chip" style="font-size:10px">3 · Trim Set</span></td><td class="small"><span style="color:var(--text-amber-700)">Needs a price</span> · no book entry for mop sink · <span style="color:var(--text-link)">Use the last bid's lines</span></td><td class="n">—</td><td class="n small muted"></td></tr>
+          <tr class="robot"><td class="n">1</td><td>Trench drain, 6 ft, kennel <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · TD-1</span></td><td class="hide"><span class="chip" style="font-size:10px">1 · Rough In</span></td><td class="small">TRENCH DRAIN ROUGH IN · 5 parts · from your book</td><td class="n">$2,260.00</td><td class="n small muted">your book's price</td></tr>
+          <tr><td colspan="6" class="muted small">15 more rows</td></tr>
+        </tbody>
+      </table>
+      <p class="small muted" style="margin:8px 0 0">The rail's coverage strip counts the robot's rows with hers. The robot's own cost per fixture stays where it is today: in the comparison after she sends.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The robot finds the fixtures; her books cost them. Nothing anchors her price before send, and no map from the robot's book to hers is needed.</p>
+  <p class="lose">The owner said <i>bid only the fixtures</i>. A shaded takeoff line with the robot's cost beside her book's is the later PR, for the owner to call once the counts have run a month.</p>
+</div>
+
+<!-- ============================================================ 5 -->
+<h2 id="stage"><span class="num">5</span> The stage: where the bid stands with the robots, in seven stops</h2>
+<p class="lede">The ring's seven segments are the robot's run and stay as they are. This strip is coarser and includes her steps, so a glance says what is done, what is waiting on her, and what comes after. One kernel feeds every place it is drawn, from the facts the rounds already stamp plus the pull.</p>
+<div class="row">
+  <div class="col full">
+    <div class="cap opt">1 · Recommended · the strip, folded to one line on the Counts head and unfolded under it · four moments of one bid</div>
+    <div class="frame pick">
+      <div class="k">Thursday 2:10 PM · the robot is counting</div>
+      <div class="inl"><span class="ring sm" style="--fill:52%"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span> <b>Robot · counting · 12 of 31 sheets</b> <span class="chev">▾</span></div>
+      <div class="strip">
+        <div class="stop done"><div class="bar"></div>Plans filed<span class="d">Thu 1:52 PM</span></div>
+        <div class="stop done"><div class="bar"></div>Robot read the set<span class="d">31 sheets</span></div>
+        <div class="stop now"><div class="bar"></div>Fixtures ready<span class="d">counting</span></div>
+        <div class="stop"><div class="bar"></div>Checked</div>
+        <div class="stop"><div class="bar"></div>Sealed</div>
+        <div class="stop"><div class="bar"></div>Sent</div>
+        <div class="stop"><div class="bar"></div>Scored</div>
+      </div>
+      <p class="lit">The robot is counting the Issued set. Its fixtures open when it seals its number, usually within the hour.</p>
+
+      <div class="k" style="margin-top:16px">Friday 9:00 AM · fixtures ready, nothing taken yet</div>
+      <div class="inl" style="border-color:var(--border-blue);background:var(--bg-blue-tint)"><span class="ring sm green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span> <b>Robot · fixtures ready · 23</b> <span class="chev">▾</span></div>
+      <div class="strip">
+        <div class="stop done"><div class="bar"></div>Plans filed<span class="d">Thu 1:52 PM</span></div>
+        <div class="stop done"><div class="bar"></div>Robot read the set<span class="d">31 sheets</span></div>
+        <div class="stop now"><div class="bar"></div>Fixtures ready<span class="d">23 found</span></div>
+        <div class="stop done"><div class="bar"></div>Checked<span class="d">21 agree · 2 to look at</span></div>
+        <div class="stop done"><div class="bar"></div>Sealed<span class="d">Thu 2:41 PM</span></div>
+        <div class="stop"><div class="bar"></div>Sent</div>
+        <div class="stop"><div class="bar"></div>Scored</div>
+      </div>
+      <p class="lit">The robot found 23 fixtures, 21 of them sure. Press Robot fixtures to add the ones you want to your count.</p>
+
+      <div class="k" style="margin-top:16px">Friday 9:20 AM · 15 taken · waiting on her send</div>
+      <div class="inl" style="border-color:var(--border-blue);background:var(--bg-blue-tint)"><span class="ring sm green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span> <b>Robot · 15 of 23 fixtures on your count</b> <span class="chip assist" style="font-size:10px">assisted</span> <span class="chev">▾</span></div>
+      <div class="strip">
+        <div class="stop done"><div class="bar"></div>Plans filed<span class="d">Thu 1:52 PM</span></div>
+        <div class="stop done"><div class="bar"></div>Robot read the set<span class="d">31 sheets</span></div>
+        <div class="stop done"><div class="bar"></div>Fixtures ready<span class="d">15 of 23 taken</span></div>
+        <div class="stop done"><div class="bar"></div>Checked<span class="d">21 agree</span></div>
+        <div class="stop done"><div class="bar"></div>Sealed<span class="d">Thu 2:41 PM</span></div>
+        <div class="stop now"><div class="bar"></div>Sent<span class="d">yours to do</span></div>
+        <div class="stop"><div class="bar"></div>Scored</div>
+      </div>
+      <p class="lit">You took 15 of the robot's 23 fixtures. The bid reads assisted. The robot's number shows when you send.</p>
+
+      <div class="k" style="margin-top:16px">Nov 10 · sent and scored</div>
+      <div class="inl" style="border-color:var(--border-violet);background:var(--bg-violet-100)"><span class="ring sm green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span> <b>Robot · scored · fixtures 19 of 23</b> <span class="chip assist" style="font-size:10px">assisted</span> <span class="chev">▾</span></div>
+      <div class="strip">
+        <div class="stop done"><div class="bar"></div>Plans filed</div>
+        <div class="stop done"><div class="bar"></div>Robot read the set</div>
+        <div class="stop done"><div class="bar"></div>Fixtures ready<span class="d">19 of 23 taken</span></div>
+        <div class="stop done"><div class="bar"></div>Checked</div>
+        <div class="stop done"><div class="bar"></div>Sealed</div>
+        <div class="stop done"><div class="bar"></div>Sent<span class="d">Nov 10</span></div>
+        <div class="stop done"><div class="bar"></div>Scored<span class="d">assisted · +3.1%</span></div>
+      </div>
+      <p class="lit">Fixtures: 19 of 23 taken, 2 changed, 2 left, 3 the robot missed. The dollar score is assisted and stays out of the gate.</p>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">2 · Recommended too · the Robot status sheet, the strip at the top (drawn in full in section 1 B)</div>
+    <div class="frame pick">
+      <div class="sheetdlg" style="box-shadow:none;border:0;padding:0">
+        <div class="hd"><span class="ring lg" style="--fill:52%"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span><div><h4>Robot on b641 · Brushy Creek Animal Hospital</h4><div class="sub">Step 4 of 7. Counting, 12 of 31 sheets. Last word 2 minutes ago.</div></div><span class="x">×</span></div>
+        <div class="strip">
+          <div class="stop done"><div class="bar"></div>Plans filed</div>
+          <div class="stop done"><div class="bar"></div>Robot read the set</div>
+          <div class="stop now"><div class="bar"></div>Fixtures ready<span class="d">counting</span></div>
+          <div class="stop"><div class="bar"></div>Checked</div>
+          <div class="stop"><div class="bar"></div>Sealed</div>
+          <div class="stop"><div class="bar"></div>Sent</div>
+          <div class="stop"><div class="bar"></div>Scored</div>
+        </div>
+        <p class="lit">The robot is counting the Issued set. Its fixtures open when it seals its number, usually within the hour.</p>
+        <ol class="tl" style="margin-top:10px">
+          <li class="done">Picked it up<span class="d">Thu 10/29, 1:52 PM · robot bid b652</span></li>
+          <li class="now">Reads the plans, counts, and prices on its own book
+            <div class="strip" style="margin-top:6px">
+              <div class="stop done"><div class="bar"></div>Picked it up</div><div class="stop done"><div class="bar"></div>Plans filed</div><div class="stop done"><div class="bar"></div>Reading the sheets</div><div class="stop now"><div class="bar"></div>Counting<span class="d">12 of 31 sheets</span></div><div class="stop"><div class="bar"></div>Pricing</div><div class="stop"><div class="bar"></div>Sealed</div><div class="stop"><div class="bar"></div>Questions for you</div>
+            </div>
+            <span class="d">Last word Thu 2:10 PM, from Robert's Mac Mini. Most bids take about an hour.</span></li>
+          <li class="todo">Seals its number</li>
+          <li class="todo">You send the bid</li>
+          <li class="todo">Scored</li>
+        </ol>
+        <div class="touch"><b>What the robot touches</b>The robot reads the plans and works on its own copy of the bid. It never edits your bid. It never sends anything to anyone. Its number stays sealed until you send yours. Its fixtures are yours to take or leave.</div>
+        <div class="acts"><span class="btn">Read the run</span><span class="btn">Leave this one to me</span><span class="btn" style="margin-left:auto">Close</span></div>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">Two bars read oddly together while the robot works, so the seven-step bar folds under <i>Reading the sheets</i> and opens on a tap. Once sealed, the strip alone stands at the top, as section 1 B draws it.</p>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap alt">3 · The owner's alternative · a hairline under the Bid Board row, beside the bid flow's</div>
+    <div class="frame">
+      <div class="brow">
+        <span class="ring green"><span class="in"><svg class="glyph"><use href="#robot"/></svg><span class="badge">🔒</span></span></span>
+        <div>
+          <div class="nm">b641 · Brushy Creek Animal Hospital <span class="small muted">· Ridgeway Builders</span></div>
+          <div class="subl">due Nov 12 · Taunya · 4 of 10 done · next: Takeoffs</div>
+          <div class="hair flow"><span class="done"></span><span class="done"></span><span class="done"></span><span class="done"></span><span class="now"></span><span></span><span></span><span></span><span></span><span></span></div>
+          <div class="hair"><span class="done"></span><span class="done"></span><span class="now"></span><span class="done"></span><span class="done"></span><span></span><span></span></div>
+        </div>
+        <div class="right"><span class="chip">unsent</span></div>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">Two hairlines on one row read as one. The ring's key would gain a sentence. Not recommended; drawn so the owner can see why.</p>
+    </div>
+    <div class="cap" style="margin-top:12px">What feeds each stop</div>
+    <div class="frame tight">
+      <table class="t">
+        <tr><th>Stop</th><th>The fact</th></tr>
+        <tr><td>Plans filed</td><td><code>plans_filed</code>, and the probe read them</td></tr>
+        <tr><td>Robot read the set</td><td><code>read_at</code>: the substrate and the page text landed</td></tr>
+        <tr><td>Fixtures ready</td><td>the pull landed and the run is sealed, so the list will not change under her</td></tr>
+        <tr><td>Checked</td><td>the pull's check summary: how many of the three voices agree</td></tr>
+        <tr><td>Sealed</td><td><code>locked_at</code></td></tr>
+        <tr><td>Sent</td><td><code>bid_date_sent</code>, the one sent rule</td></tr>
+        <tr><td>Scored</td><td><code>scored_at</code>, with the delta, or the fixtures score when assisted</td></tr>
+      </table>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="rule">Fixtures open once the robot seals, the same gate the Plans panel's <i>Ask the robot to look</i> uses, so the two robot doors on a bid open at the same moment and the list never changes under her. The owner's alternative is to open them the moment the robot finishes counting.</p>
+</div>
+
+<!-- ============================================================ 6 -->
+<h2 id="assisted"><span class="num">6</span> Assisted: what the envelope does on a bid she took fixtures on</h2>
+<p class="lede">The run keeps its sealed total and still scores at send, so the envelope still opens. It wears an assisted chip, the Scoreboard counts it beside the practice runs and never in a job type's N of 5 in a row, and the fixtures themselves are scored against her final list, which is the honest measure of the augment.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">Bids → 🤖 Robots → Robot Board · the row after send</div>
+    <div class="frame">
+      <div class="brow">
+        <span class="ring green"><span class="in"><svg class="glyph"><use href="#robot"/></svg><span class="badge green">✓</span></span></span>
+        <div>
+          <div class="nm">b641 · Brushy Creek Animal Hospital <span class="chip assist">assisted · fixtures</span></div>
+          <div class="subl">robot $148,900 · ours $144,400 · <b style="color:var(--text-green-700)">+3.1%</b> · scored Nov 10 · out of the gate</div>
+          <div class="subl">Fixtures: 19 of 23 taken, 2 changed, 2 left, 3 the robot missed. <span style="color:var(--text-link)">where the delta lives ▸</span></div>
+        </div>
+        <div class="right"><span class="btn">Review now</span><br><span class="small muted">audit waiting</span></div>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">The left rows (DW-1, HB-2) and the missed rows (her grease interceptor, two cleanouts) seed the audit's questions, so the robot learns fixture reading from exactly the rows it got wrong.</p>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">Bids → 🤖 Robots → Scoreboard · a job type's card</div>
+    <div class="frame">
+      <div style="display:flex;gap:10px;align-items:baseline;flex-wrap:wrap"><b style="font-size:14px">Vet clinics</b><span class="chip warn">2 of 5 in a row</span><span class="small muted">within 8%</span></div>
+      <table class="t" style="margin-top:8px">
+        <tr><th>Bid</th><th class="n">Robot vs ours</th><th>Counts</th></tr>
+        <tr><td>b590 · Oak Hill Animal Clinic</td><td class="n" style="text-align:right">−2.4%</td><td><span class="chip ok" style="font-size:10px">gate</span></td></tr>
+        <tr><td>b612 · Pflugerville Pet Hospital</td><td class="n" style="text-align:right">+5.9%</td><td><span class="chip ok" style="font-size:10px">gate</span></td></tr>
+        <tr><td>b641 · Brushy Creek Animal Hospital</td><td class="n" style="text-align:right">+3.1%</td><td><span class="chip assist" style="font-size:10px">assisted</span> <span class="small muted">fixtures 19 of 23</span></td></tr>
+        <tr><td>b577 · Round Rock Vet · vs Grace</td><td class="n" style="text-align:right">+9.8%</td><td><span class="chip" style="font-size:10px">practice teacher</span></td></tr>
+      </table>
+      <p class="small muted" style="margin:8px 0 0">An assisted run sits where a practice-teacher run sits: shown, never counted toward the streak. A job type's streak reads only the pure shadows.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The pure shadow stays for every bid she does not touch the tool on. Nothing in its run, score, gate or envelope changes.</p>
+  <p class="lose">The owner's alternative: drop the dollar score on an assisted bid and show the fixtures score alone. Not recommended, since the envelope at send is the part the owner said they like, and an assisted delta still says something about footage, travel and price.</p>
+</div>
+
+<!-- ============================================================ 7 -->
+<h2 id="phone"><span class="num">7</span> On a phone: estimators bid on laptops and check on phones</h2>
+<p class="lede">The window is full screen with each row's sheets folded under its name and the backing text one column. The status sheet reads the strip first.</p>
+<div class="phones">
+  <div class="phone">
+    <div class="bar"><span>9:41</span><span>●●● ▲ ▮</span></div>
+    <div class="body">
+      <div class="win">
+        <div class="head"><span class="ring green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span><div><h4 style="font-size:14px">Fixtures the robot found on b641</h4><div class="set">Issued set · Oct 2 · 31 sheets · read Thu 2:08 PM. 23 fixtures, 21 sure.</div></div><span class="x">×</span></div>
+        <div class="bucket"><b>New · 17</b><span class="seg"><span class="on">Add</span><span>Leave</span></span></div>
+        <table class="fx">
+          <tbody>
+            <tr class="open"><td class="tk"><span class="tick on"></span></td><td><span class="tag">WC-1</span> <span class="chip ok" style="font-size:10px">sure</span><br><span class="nm">Water closet, floor mount, flush valve</span><span class="mm">Kohler K-96057 · 5 ea · P-201 3, P-202 2</span></td><td class="n"><span class="btn ghost">▾</span></td></tr>
+            <tr class="sub"><td class="tk"></td><td colspan="2">
+              <div class="back">
+                <div class="chk"><b>Check:</b> schedule no count · drawn 5 · riser 5 <span class="chip ok" style="font-size:10px">agree</span></div>
+                <div class="ln"><span class="w">schedule <i>P-601</i></span><span class="t"><q>WC-1 · WATER CLOSET, FLOOR MOUNTED, ELONGATED, 1.28 GPF, FLUSH VALVE · KOHLER K-96057</q></span><span class="o">Open sheet</span></div>
+                <div class="ln"><span class="w">note <i>P-001 · 12</i></span><span class="t"><q>FLUSH VALVES SHALL BE FURNISHED BY PLUMBING CONTRACTOR. SENSOR OPERATION BY OTHERS.</q><span class="f">exclusion</span></span><span class="o">Open sheet</span></div>
+                <div class="ln"><span class="w">callout <i>P-201</i></span><span class="t"><q>WC-1 (TYP OF 3) · SEE P-601</q></span><span class="o">Open sheet</span></div>
+              </div>
+            </td></tr>
+            <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">SK-1</span> <span class="chip ok" style="font-size:10px">sure</span><br><span class="nm">Sink, single compartment, counter mount</span><span class="mm">Elkay LRAD2219 · 2 ea · P-202</span></td><td class="n"><span class="btn ghost">▸</span></td></tr>
+            <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">MS-1</span> <span class="chip ok" style="font-size:10px">sure</span><br><span class="nm">Mop sink, floor</span><span class="mm">Fiat MSB-2424 · 1 ea · P-202</span></td><td class="n"><span class="btn ghost">▸</span></td></tr>
+            <tr><td class="tk"><span class="tick"></span></td><td><span class="tag">DW-1</span> <span class="chip warn" style="font-size:10px">want a look</span><br><span class="nm">Dog wash tub, elevated</span><span class="mm">2 ea · schedule 1 · drawn 2</span></td><td class="n"><span class="btn ghost">▸</span></td></tr>
+            <tr><td class="tk"></td><td colspan="2" class="muted small">13 more rows · <span style="color:var(--text-link)">show them</span></td></tr>
+          </tbody>
+        </table>
+        <div class="bucket"><b>On your count · 2</b><span class="fold">show ▸</span></div>
+        <div class="bucket"><b>Same · 4</b><span class="fold">show ▸</span></div>
+        <div class="foot"><span class="btn primary">Add <span class="n">15</span> fixtures</span><span class="btn" style="margin-left:auto">Cancel</span><span class="say">15 rows land on your count, shaded. Your 6 rows stay as they are.</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="phone">
+    <div class="bar"><span>9:41</span><span>●●● ▲ ▮</span></div>
+    <div class="body">
+      <div class="sheetdlg">
+        <div class="hd"><span class="ring lg green"><span class="in"><svg class="glyph"><use href="#robot"/></svg><span class="badge">🔒</span></span></span><div><h4 style="font-size:14px">Robot on b641</h4><div class="sub">Sealed. Its fixtures are ready for you.</div></div><span class="x">×</span></div>
+        <div class="strip">
+          <div class="stop done"><div class="bar"></div>Plans filed</div>
+          <div class="stop done"><div class="bar"></div>Read</div>
+          <div class="stop now"><div class="bar"></div>Fixtures<span class="d">23</span></div>
+          <div class="stop done"><div class="bar"></div>Checked</div>
+          <div class="stop done"><div class="bar"></div>Sealed</div>
+          <div class="stop"><div class="bar"></div>Sent</div>
+          <div class="stop"><div class="bar"></div>Scored</div>
+        </div>
+        <p class="lit">The robot found 23 fixtures on the Issued set, 21 of them sure. You can add the ones you want to your count.</p>
+        <div class="acts" style="margin-top:10px"><span class="btn primary"><svg class="glyph"><use href="#robot"/></svg> Fixtures ready · 23 · Review them</span></div>
+        <div class="acts" style="border-top:0;padding-top:0"><span class="btn">Read the run</span><span class="btn">Open robot bid b652</span><span class="btn">Leave this one to me</span></div>
+        <ol class="tl" style="margin-top:12px">
+          <li class="done">Picked it up<span class="d">Thu 1:52 PM · robot bid b652</span></li>
+          <li class="done">Reads the plans, counts, and prices on its own book</li>
+          <li class="done">Seals its number<span class="d">Thu 2:41 PM</span></li>
+          <li class="now">You send the bid</li>
+          <li class="todo">Scored</li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="rule">Under 640 px the window's Sheets column folds into the name line, the backing text runs in one column, and the strip's stops lose their small print. Nothing a phone cannot press.</p>
+</div>
+
+<!-- ============================================================ pick -->
+<h2 id="pick"><span class="num pick">✓</span> Is this the best we can do? The pick</h2>
+<div class="row"><div class="col full"><div class="frame">
+<table class="t crit">
+  <tr><th></th><th>Recommended</th><th>The owner's alternative</th><th>Why</th></tr>
+  <tr class="pick"><td>1 · The envelope</td><td>the run reads assisted and leaves the gate; the dollar score still opens at send; the fixtures are scored against her list</td><td>drop the dollar score on an assisted bid, fixtures score alone</td><td>the envelope at send is the part the owner likes; an assisted delta still teaches footage, travel and price; the fixtures score is what the augment is for</td></tr>
+  <tr class="pick"><td>2 · The door</td><td>a button on the Counts tab beside Import from /Tooling, and the same window from the Robot status sheet</td><td>a Fixtures lens under 🤖 Robots as well</td><td>it is where she counts and the rows land under it; the icon is the phone's door; a lens is far from the bid</td></tr>
+  <tr class="pick"><td>3 · What the robot hands over</td><td>a new verb, put_fixtures, one call after it counts, with the substrate as the fallback read</td><td>a read over the substrate and the page text alone</td><td>the substrate has totals and not per-sheet counts, and schedules often carry no quantity at all; the robot has every piece in hand at STG-3</td></tr>
+  <tr class="pick"><td>4 · Choosing and adding</td><td>the import review's buckets, a tick per row, Add N fixtures, the robot as a count source so the shade is the share, Undo on the toast</td><td>—</td><td>every surface that reads shares works unchanged; an edited row stays robot, then hers</td></tr>
+  <tr class="pick"><td>5 · When fixtures open</td><td>once the robot seals, usually within the hour</td><td>the moment it finishes counting</td><td>one gate with Ask the robot to look; the list never changes under her</td></tr>
+  <tr class="pick"><td>6 · Costs</td><td>counts alone; her books price the robot's fixtures</td><td>the robot's cost riding along as a shaded takeoff line</td><td>nothing anchors her price before send; the robot's cost already shows in the comparison after send</td></tr>
+  <tr class="pick"><td>7 · Which plans</td><td>the pull names the set it read; a changed robot set says so, with Read the new set as a later PR</td><td>—</td><td>a sealed run cannot be re-claimed, so a re-read is its own light job in the round</td></tr>
+</table>
+<p class="prose" style="margin-top:12px"><b>The recommendation:</b> build it as a train of five small PRs in the README's order, the ground and the verb first so the rounds start handing fixtures over while the window is built. Three picks for the owner before PR 1: the envelope rule, when fixtures open, and counts alone or costs too.</p>
+</div></div></div>
+
+<div class="pass2"><div class="cap">Second pass · what the first render showed</div>
+<p>Checked in the Claude app's browser pane at 1400 px and at 375 px, in light and in dark. Three things changed. The window's table ran 435 px wide inside a 343 px window at phone width, so under 640 px the Sheets column and the open-or-close column hide, the sheets move into the name line, and the row itself is the tap. The phone frame's header stacked the ring, the title and the × on three lines, so the title now takes the room and the × stays on the first line. The Counts and Takeoff sheets scroll sideways at phone width inside their frames, as the app's own sheets do, and the pick table at the end does the same. Still open: whether the tag chip beside a shaded row's name is noise on a narrow sheet, to be read on a real count.</p>
+</div>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var picks = document.querySelectorAll('[data-theme-pick]');
+    picks.forEach(function (b) {
+      b.addEventListener('click', function () {
+        root.setAttribute('data-theme', b.getAttribute('data-theme-pick'));
+        picks.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      });
+    });
+  })();
+</script>
+</body>
+</html>
