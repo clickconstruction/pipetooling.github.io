@@ -102,6 +102,12 @@ export interface JobNotePayload {
   body: string
 }
 
+/** A line moved on a report by line (v2.5663): the fixture and the percent it moved to, stamped on the job once the report lands. */
+export interface MovedLineStamp {
+  fixtureId: string
+  to: number
+}
+
 export interface FieldReportPayload {
   templateId: string
   fieldValues: unknown
@@ -110,6 +116,8 @@ export interface FieldReportPayload {
   bidId: string | null
   lat: number | null
   lng: number | null
+  /** PR 3: the moved lines to stamp on the job after the report lands; none when the report has no lines. */
+  movedLines?: MovedLineStamp[]
 }
 
 export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'

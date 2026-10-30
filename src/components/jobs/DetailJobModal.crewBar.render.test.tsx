@@ -12,34 +12,43 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react'
 import DetailJobModal from './DetailJobModal'
 import { UpdateFocusOpenerBridgeProvider } from '../../contexts/UpdateFocusOpenerBridgeContext'
 import { JOB_WINDOW_BAR_MIN_HEIGHT } from '../../lib/jobs/jobWindowBar'
-import { renderWithProviders, settle, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
+import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
-/** What the window wrote to the job's thread. */
+/** What the window wrote to the job's thread: the press the outbox sent (punch list #163 PR 3), as the RPC read it. */
 const notesInserted = vi.hoisted(() => [] as Array<Record<string, unknown>>)
+/** The row the RPC made, which the thread's table answers when the hook reads it back by id. */
+const noteWritten = vi.hoisted(() => ({ current: null as Record<string, unknown> | null }))
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   const stub = makeSupabaseStub()
-  // The thread's table answers an insert with the row it wrote, as the live table does, so a saved
-  // note lands in the activity list; its reads come back empty like every other table's.
+  // A note goes through the outbox to land_field_press (punch list #163 PR 3), which answers the id of the
+  // row it wrote; the hook then reads that row back, so the thread's table answers the select by id with
+  // the row, as the live table does, and a saved note lands in the activity list; every other read of the
+  // table comes back empty like every other table's.
   const notesTable = () => {
-    let written: Record<string, unknown> | null = null
     const builder: Record<string, unknown> = {}
     for (const m of ['select', 'eq', 'order']) builder[m] = () => builder
-    builder.insert = (row: Record<string, unknown>) => {
-      written = row
-      notesInserted.push(row)
-      return builder
-    }
     builder.single = () =>
       Promise.resolve({
-        data: written ? { id: `note-${notesInserted.length}`, body: written.body, created_at: new Date().toISOString(), author: { name: 'Luis Ortega' } } : null,
+        data: noteWritten.current
+          ? { id: `note-${notesInserted.length}`, body: noteWritten.current.body, created_at: new Date().toISOString(), author: { name: 'Luis Ortega' } }
+          : null,
         error: null,
       })
     builder.then = (onFulfilled?: (v: unknown) => unknown, onRejected?: (e: unknown) => unknown) => Promise.resolve({ data: [], error: null }).then(onFulfilled, onRejected)
     return builder
   }
-  return { supabase: { ...stub, from: (table: string) => (table === 'jobs_ledger_thread_notes' ? notesTable() : stub.from()) } }
+  const rpc = (name: string, args: Record<string, unknown>) => {
+    if (name === 'land_field_press' && args.p_kind === 'job_note') {
+      const payload = args.p_payload as Record<string, unknown>
+      noteWritten.current = { job_id: payload.job_id, body: payload.body }
+      notesInserted.push({ kind: args.p_kind, job_id: payload.job_id, body: payload.body })
+      return Promise.resolve({ data: { note_id: `note-${notesInserted.length}`, late: false }, error: null, status: 200 })
+    }
+    return (stub.rpc as (n: string, a: Record<string, unknown>) => unknown)(name, args)
+  }
+  return { supabase: { ...stub, rpc, from: (table: string) => (table === 'jobs_ledger_thread_notes' ? notesTable() : stub.from()) } }
 })
 
 // A helper: the plain window, through the limited read (the stub's ledger row is null, so the assigned row carries the job).
@@ -153,8 +162,8 @@ describe('DetailJobModal · the crew bar on a phone', () => {
     fireEvent.change(within(sheet).getByRole('textbox', { name: 'Add a note' }), { target: { value: 'Dana wants the old heater hauled off.' } })
     fireEvent.click(within(sheet).getByRole('button', { name: 'Save' }))
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Note' })).toBeNull())
-    // One row on this job's thread, by this person, with the words as typed: the composer's own insert.
-    expect(notesInserted).toEqual([{ job_id: 'job-1', author_user_id: SMOKE_AUTH_USER_ID, body: 'Dana wants the old heater hauled off.' }])
+    // One press on this job's thread, with the words as typed, sent through the outbox's RPC (the server sets the author).
+    expect(notesInserted).toEqual([{ kind: 'job_note', job_id: 'job-1', body: 'Dana wants the old heater hauled off.' }])
     const posted = await screen.findByText('Dana wants the old heater hauled off.')
     expect(posted.closest('li')).not.toBeNull()
     // The draft the composer and the sheet share is empty again.

@@ -1,5 +1,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
+import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
+import { KEPT_ON_PHONE_WORDS } from '../lib/offline/pendingSession'
+import { OUTBOX_LANDED_EVENT, type OutboxLandedDetail } from './useOutboxReplay'
 import type { JobThreadActivityItem, JobThreadNoteRow } from '../components/JobThreadNotesPanel'
 import { appendToastRefreshHint, formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
 import { buildJobThreadStampBody, type JobThreadStampKind } from '../lib/jobThreadNoteStampBody'
@@ -94,9 +97,9 @@ async function queryNotesForJob(jobId: string): Promise<JobThreadNoteRow[]> {
 export function useJobThreadNotesForModal(
   jobId: string | null,
   open: boolean,
-  opts: { authUserId: string | undefined; showToast: ToastFn; authorDisplayName?: string | null },
+  opts: { authUserId: string | undefined; showToast: ToastFn; authorDisplayName?: string | null; /** What a queued note is about, for the outbox's list (punch list #163 PR 3): the job's label. */ about?: string },
 ) {
-  const { authUserId, showToast, authorDisplayName } = opts
+  const { authUserId, showToast, authorDisplayName, about } = opts
   const realtimeChannelId = useId()
   const [activity, setActivity] = useState<JobThreadActivityItem[]>([])
   /** Who is assigned to the job's schedule blocks (punch list #30, PR 2b: the crew gate on Arrived / Leaving). */
@@ -242,20 +245,34 @@ export function useJobThreadNotesForModal(
       }
       setSubmitting(true)
       try {
+        // Through the outbox (punch list #163 PR 3): sent at once when it can be, kept on the phone when it cannot.
+        const outcome = await pressThroughOutbox({
+          kind: 'job-note',
+          userId: authUserId,
+          pressedAt: Date.now(),
+          payload: { jobId: id, body: trimmed },
+          about: about ?? '',
+          door: '/dashboard',
+        })
+        if (outcome.kind === 'refused') throw new Error(outcome.message)
+        if (outcome.kind === 'failed') throw outcome.error
+        if (outcome.kind === 'queued') {
+          // The optimistic row stays as the note on the thread until the press lands and the thread is read again.
+          inFlightThreadNoteRef.current = null
+          showToast(KEPT_ON_PHONE_WORDS, 'success')
+          return true
+        }
+        const noteId = (outcome.result as { note_id?: string } | null)?.note_id
+        if (!noteId) {
+          // Landed, but the answer named no row: the thread reads again and the optimistic row gives way.
+          inFlightThreadNoteRef.current = null
+          void reloadActivityQuiet(id)
+          return true
+        }
         const inserted = await withSupabaseRetry(
-          async () =>
-            await supabase
-              .from('jobs_ledger_thread_notes')
-              .insert({
-                job_id: id,
-                author_user_id: authUserId,
-                body: trimmed,
-              })
-              .select(SELECT)
-              .single(),
-          'insert jobs_ledger_thread_note modal',
+          async () => await supabase.from('jobs_ledger_thread_notes').select(SELECT).eq('id', noteId).single(),
+          'read jobs_ledger_thread_note modal',
         )
-        if (inserted == null) throw new Error('No note row returned')
         const row = inserted as unknown as JobThreadNoteRow
         setActivity((prev) => {
           const idx = prev.findIndex((i) => i.kind === 'note' && i.note.id === optimistic.id)
@@ -278,8 +295,19 @@ export function useJobThreadNotesForModal(
         setSubmitting(false)
       }
     },
-    [authUserId, authorDisplayName, showToast],
+    [authUserId, authorDisplayName, showToast, about, reloadActivityQuiet],
   )
+
+  // A note that waited on the phone landed (punch list #163 PR 3): the thread reads again, and the optimistic row gives way.
+  useEffect(() => {
+    if (!open || !jobId || typeof window === 'undefined') return
+    const onLanded = (e: Event) => {
+      const detail = (e as CustomEvent<OutboxLandedDetail>).detail
+      if (detail?.kind === 'job-note' && openJobIdRef.current === jobId) void reloadActivityQuiet(jobId)
+    }
+    window.addEventListener(OUTBOX_LANDED_EVENT, onLanded)
+    return () => window.removeEventListener(OUTBOX_LANDED_EVENT, onLanded)
+  }, [open, jobId, reloadActivityQuiet])
 
   /** Post the draft; true once the note is on the thread (the Note sheet closes on it, punch list #189 PR 4). */
   const submitNote = useCallback(async (): Promise<boolean> => {

@@ -1546,7 +1546,7 @@ export default function JobFormModal({
     hydratedPaymentIdsRef.current = (job.payments ?? []).map((p) => p.id)
     setMaterials(
       job.materials.length > 0
-        ? job.materials.map((m) => ({ id: m.id, description: m.description, amount: Number(m.amount) }))
+        ? job.materials.map((m) => ({ id: m.id, description: m.description, amount: Number(m.amount), charged_on: m.charged_on ?? null, memo: m.memo ?? null }))
         : [{ id: crypto.randomUUID(), description: '', amount: 0 }],
     )
     const hydratedFixtures =
@@ -2004,7 +2004,7 @@ export default function JobFormModal({
     [gcCustomerId, customers, editing?.gcCustomer?.name],
   )
   function addMaterialRow() {
-    setMaterials((prev) => [...prev, { id: crypto.randomUUID(), description: '', amount: 0 }])
+    setMaterials((prev) => [...prev, { id: crypto.randomUUID(), description: '', amount: 0, charged_on: todayYmdInAppTz() }])
   }
 
   function addPaymentRow() {
@@ -2030,7 +2030,7 @@ export default function JobFormModal({
       }
       if (prev.length === 1 && prev[0]?.id === id) {
         const r = prev[0]
-        return [{ ...r, description: '', amount: 0 }]
+        return [{ ...r, description: '', amount: 0, charged_on: null, memo: null }]
       }
       return prev
     })

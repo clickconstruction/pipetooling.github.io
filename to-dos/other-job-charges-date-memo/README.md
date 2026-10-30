@@ -2,7 +2,7 @@
 name: "Other job charges: a date, a memo, and amounts that read as money"
 number: 215
 group: ready
-status: building · PR 1 (the formatting, #6489) and PR 3 (the save keeps a row's id) cut 2026-10-29; PR 2 (the columns) to follow
+status: built 2026-10-29 · PR 1 (#6489), PR 3 and PR 2 (the columns; its migration is pushed before it merges) are up · left: the owner's look at the live row, then delete the folder
 summary: >
   An Other job charge on the Costs tab is a description box, a number box and a trash can. The
   number shows as typed (39796.7), and there is nowhere to say when the charge applies or where
@@ -10,7 +10,7 @@ summary: >
   thousands commas and smaller cents, a date on the left of the row, a memo line under the
   description that appears when summoned, and an ESTIMATE prefix shown as a chip. Three PRs:
   the formatting (no schema), then the two columns, then the save that keeps a row's id.
-next: PR 1 and PR 3 merge; then PR 2 (the two columns, the two-line row), whose migration is pushed before it merges.
+next: the three PRs merge in order (1, 3, 2), PR 2 after `supabase db push` of its migration; the owner looks at a job's Other job charges; then this folder goes.
 size: M
 blocker: none — the owner picked B on 2026-10-29.
 opinion: build B; ship the formatting first because it needs no schema change

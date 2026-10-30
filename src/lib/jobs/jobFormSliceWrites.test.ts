@@ -222,8 +222,8 @@ describe('writeMaterialsSlice', () => {
     expect(seq(steps)).toEqual(['upsert:jobs_ledger_materials', 'delete:jobs_ledger_materials'])
     expect(steps[0]?.payload).toEqual({
       rows: [
-        { id: 'm1', job_id: 'job-1', description: 'Copper', amount: 120, sequence_order: 0 },
-        { id: 'm2', job_id: 'job-1', description: 'Fittings', amount: 40, sequence_order: 1 },
+        { id: 'm1', job_id: 'job-1', description: 'Copper', amount: 120, sequence_order: 0, charged_on: null, memo: null },
+        { id: 'm2', job_id: 'job-1', description: 'Fittings', amount: 40, sequence_order: 1, charged_on: null, memo: null },
       ],
       options: { onConflict: 'id' },
     })

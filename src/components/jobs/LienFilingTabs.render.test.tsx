@@ -201,3 +201,26 @@ describe('LienFilingTabs · record steps', () => {
     })
   })
 })
+
+describe('LienFilingTabs · the kind of work is the trade (v2.6118)', () => {
+  // A job named for its customer, on an electrical job: the papers name the trade, never the name.
+  const electrical = makeJob({ id: 'job-838', hcp_number: '838', job_name: 'Bruce Hall', job_address: '100 Main St, Schertz, TX 78154', status: 'billed', revenue: 15722.49, payments_made: 0, serviceType: { name: 'Electrical' } })
+  const paper = () => document.body.textContent ?? ''
+
+  it('the affidavit’s ¶4 swears the trade’s labor and materials, not the job’s name', () => {
+    renderWithProviders(<LienFilingTabs {...props({ job: electrical, activeTab: 'affidavit', isSub: false })} />)
+    expect(paper()).toContain('The kind of work and/or materials furnished by Claimant was: Electrical labor and materials.')
+    expect(paper()).not.toContain('was: Bruce Hall')
+  })
+
+  it('the § 53.056 notice’s type of labor reads the same trade', () => {
+    renderWithProviders(<LienFilingTabs {...props({ job: electrical, activeTab: 'notice', isSub: true })} />)
+    expect(document.querySelector('[data-field="laborMaterialsType"]')?.textContent).toBe('Electrical labor and materials')
+  })
+
+  it('a job with no trade on its row reads plumbing, as before', () => {
+    renderWithProviders(<LienFilingTabs {...props({ activeTab: 'affidavit', isSub: false })} />)
+    expect(paper()).toContain('was: Plumbing labor and materials.')
+    expect(paper()).not.toContain('was: ATI Schertz')
+  })
+})

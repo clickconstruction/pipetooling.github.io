@@ -667,7 +667,13 @@ export default function LienInstrumentsModal({
   // The months carry notice dates by the kind, so they wait for the job's own link too.
   const forecastJobs = useMemo(() => (job && property ? [{ id: job.id, gc_customer_id: job.gc_customer_id ?? null, customer_address_id: property.link }] : null), [job, property])
   // The filing tabs get the job with its own link as well: the notice by hand finds the jobs at the same property by it.
-  const linkedJob = useMemo(() => (job && property ? { ...job, customer_address_id: property.link } : job), [job, property])
+  // The tab's job row: the board's row with the property link, and the trade from the full job read (v2.6118) — a board row carries no
+  // `serviceType`, and the tab's papers name the trade as the kind of work.
+  const linkedJob = useMemo(() => {
+    if (!job) return job
+    const serviceType = job.serviceType ?? effJob?.serviceType ?? null
+    return { ...job, serviceType, ...(property ? { customer_address_id: property.link } : {}) }
+  }, [job, property, effJob])
   const { byJob: windowWorkMonths } = useForecastWorkMonths(open ? forecastJobs : null, todayYmdLocal())
   // On a phone (v2.4398) the steps fold to one strip and the papers are one bar; the bar says when a paper is past its right edge.
   const isMobile = useIsMobile()
