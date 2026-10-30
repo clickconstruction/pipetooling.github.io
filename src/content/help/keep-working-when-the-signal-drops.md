@@ -2,7 +2,7 @@
 title: keep working when the signal drops
 category: Field Work
 roles: all
-keywords: offline, no signal, airplane mode, basement, waiting to send, kept on the phone, clock in, clock out, note, field report, got it, try now, fix, could not be sent, sent, queue, the bar at the top, late, typed hours
+keywords: offline, no signal, airplane mode, basement, waiting to send, kept on the phone, clock in, clock out, note, field report, photos, retry, got it, try now, fix, could not be sent, sent, queue, the bar at the top, late, typed hours
 where: /dashboard
 order: 12
 ---
@@ -25,6 +25,7 @@ Some presses never wait on the phone. They fail as they do today, and you press 
 - A payment, a bill or a card split.
 - A text or an email to a customer.
 - A signature.
+- A field report with photos. The report stays open with its photos. Press {{button:outline|Retry}} when the signal is back.
 - A Turnaway report, because it also raises a dispatch alert.
 
 ## The line at the top
