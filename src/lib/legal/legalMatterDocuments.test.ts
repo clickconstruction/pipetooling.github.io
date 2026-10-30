@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { LEGAL_DOCUMENT_MAX_BYTES, legalDocumentDayWords, legalDocumentKindWords, legalDocumentMime, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateOf, legalDocumentStateWords, legalDocumentStoragePath, legalDocumentTimelineDay, legalDocumentTitleFromName, legalPortalDocumentFromRow, parseLegalPortalDocuments } from './legalMatterDocuments'
+import { LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_GROUP_ORDER, LEGAL_DOCUMENT_MAX_BYTES, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentGroupWords, legalDocumentPassesFilter, legalDocumentPayerPossessive, legalDocumentStateChipWords, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalDocumentKindWords, legalDocumentMime, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateOf, legalDocumentStateWords, legalDocumentStoragePath, legalDocumentTimelineDay, legalDocumentTitleFromName, legalPortalDocumentFromRow, parseLegalPortalDocuments } from './legalMatterDocuments'
 
 describe('legalMatterDocuments (v2.4810)', () => {
   it('a document needs a title, one line on what it shows, and a kind the portal takes under 10 MB', () => {
@@ -75,5 +75,99 @@ describe('the paper’s own day, and draft · final · sent · received (punch l
     expect(d).toEqual(expect.objectContaining({ datedOn: '2026-05-12', state: 'draft' }))
     const [o] = parseLegalPortalDocuments([{ id: 'o', title: 'T' }])
     expect(o).toEqual(expect.objectContaining({ datedOn: '', state: 'final', sentOn: '', receivedOn: '' }))
+  })
+})
+
+describe('whose paper it is (punch list #214, v2.6108)', () => {
+  const payer = 'Northline Builders LLC'
+  const guess = (title: string, over: { shows?: string; state?: string } = {}) => legalDocumentWhoseGuess({ title, ...over }, payer, 'Click Plumbing and Electrical')
+
+  it('reads the column, words the groups and the payer as a possessive', () => {
+    expect(legalDocumentWhoseOf('theirs')).toBe('theirs')
+    expect(legalDocumentWhoseOf('record')).toBeNull()
+    expect(legalDocumentWhoseOf(null)).toBeNull()
+    expect(legalDocumentPayerPossessive('Northline Builders')).toBe('Northline Builders’')
+    expect(legalDocumentPayerPossessive('Northline')).toBe('Northline’s')
+    expect(legalDocumentPayerPossessive('Burd & Assoc.')).toBe('Burd & Assoc.’s')
+    expect(legalDocumentPayerPossessive('')).toBe('The payer’s')
+    expect(LEGAL_DOCUMENT_GROUP_ORDER.map((k) => legalDocumentGroupWords(k, 'Northline'))).toEqual(['Northline’s', 'Ours', 'Public record', 'The supplier’s', 'Our record'])
+    expect(legalDocumentWhoseChoices('Northline').map((c) => c.value)).toEqual(['theirs', 'ours', 'public', 'supplier', ''])
+  })
+
+  it('guesses the payer’s paper from their name first, as a possessive, or opening the shows line, and from a received state', () => {
+    expect(guess('Northline Notice of Termination, Oct 21, 2026')).toBe('theirs')
+    expect(guess('Northline’s reply to the Oct 27 letter, J. Dalton')).toBe('theirs')
+    expect(guess("Northline's JobTread page for the job, as read Oct 27")).toBeNull()
+    expect(guess('Unconditional waiver on progress payment, Sept 10', { shows: 'Northline’s form for the $15,750 rough-in payment.' })).toBe('theirs')
+    expect(guess('Letter about the schedule', { state: 'received' })).toBe('theirs')
+  })
+
+  it('guesses ours from *to <payer>*, a sent state, our own name or a letter’s opening word', () => {
+    expect(guess('Email to Northline: the response letter and the final invoice (sent Oct 27)')).toBe('ours')
+    expect(guess('Final invoice to Northline, for October 27, 2026')).toBe('ours')
+    expect(guess('Settlement offer to Northline, Rule 408')).toBe('ours')
+    expect(guess('Final Invoice No. 742-2611261112 with the warranty letter', { state: 'sent' })).toBe('ours')
+    expect(guess('Click proposal, May 8, 2026')).toBe('ours')
+    expect(guess('Response to Notice of Termination and materials demand')).toBe('ours')
+  })
+
+  it('guesses the public record, the supplier’s, and our own record from captures, reports and transcripts', () => {
+    expect(guess('City inspection report, Plumbing Top-Out passed Sept 17')).toBe('public')
+    expect(guess('City permit 2025-196, current version')).toBe('public')
+    expect(guess('Licensing law behind the Board complaint')).toBe('public')
+    expect(guess('Pecan Supply invoice 52417, July 10, 2026')).toBe('supplier')
+    expect(guess('Pecan Supply payment receipt, October 22, 2026')).toBe('supplier')
+    expect(guess('USPS certified mail receipt, Oct 27, 2026')).toBeNull()
+    expect(guess('Rough-in job cost report')).toBeNull()
+    expect(guess('Affidavit of D. Alvarez, signed and notarized Oct 22')).toBeNull()
+    expect(guess('Texts with the superintendent, Aug 10 and Aug 27')).toBeNull()
+    expect(guess('Northline’s JobTread schedule, captured Oct 27')).toBeNull()
+    expect(guess('Subcontract agreement, PandaDoc copy, May 28')).toBeNull()
+    expect(guess('Case summary for counsel, revised October 23')).toBeNull()
+  })
+
+  it('skips *The* and *LLC* when it reads the payer’s name, and guesses nothing with no name', () => {
+    expect(legalDocumentWhoseGuess({ title: 'The Quarry notice of backcharge' }, 'The Quarry at Oak Hill LLC')).toBe('theirs')
+    expect(legalDocumentWhoseGuess({ title: 'The schedule as we read it' }, 'The Quarry at Oak Hill LLC')).toBeNull()
+    expect(legalDocumentWhoseGuess({ title: 'Reply to our letter' }, '')).toBeNull()
+    expect(legalDocumentWhoseGuess({ title: 'Letter about the schedule' }, '')).toBe('ours')
+  })
+
+  it('a row’s own whose wins over the guess; the groups read in order, newest paper first, an empty group left out', () => {
+    expect(legalDocumentGroupOf({ whose: 'supplier', title: 'Northline Notice of Termination' }, payer)).toEqual({ key: 'supplier', guessed: false })
+    expect(legalDocumentGroupOf({ whose: null, title: 'Northline Notice of Termination' }, payer)).toEqual({ key: 'theirs', guessed: true })
+    expect(legalDocumentGroupOf({ whose: null, title: 'Rough-in job cost report' }, payer)).toEqual({ key: 'record', guessed: false })
+    const rows = [
+      { id: 'a', whose: null, title: 'Rough-in job cost report', day: '2026-10-21' },
+      { id: 'b', whose: null, title: 'Northline Notice of Termination', day: '2026-10-21' },
+      { id: 'c', whose: null, title: 'Northline’s reply', day: '2026-10-28' },
+      { id: 'd', whose: 'ours', title: 'Settlement offer to Northline', day: '2026-10-27' },
+      { id: 'e', whose: null, title: 'Pecan Supply invoice 52417', day: '2026-07-10' },
+    ]
+    const groups = groupLegalDocumentsByWhose(rows, payer, (r) => r.day)
+    expect(groups.map((g) => [g.key, g.words, g.rows.map((r) => r.id)])).toEqual([
+      ['theirs', 'Northline Builders LLC’s', ['c', 'b']],
+      ['ours', 'Ours', ['d']],
+      ['supplier', 'The supplier’s', ['e']],
+      ['record', 'Our record', ['a']],
+    ])
+  })
+
+  it('words the state as a chip, and the filters count and pass the rows', () => {
+    expect(legalDocumentStateChipWords({ state: 'sent', sentHow: 'certified_mail' })).toBe('sent · certified mail')
+    expect(legalDocumentStateChipWords({ state: 'sent', sentHow: 'other' })).toBe('sent')
+    expect(legalDocumentStateChipWords({ state: 'received', sentHow: '' })).toBe('received')
+    expect(legalDocumentStateChipWords({ state: 'final', sentHow: '' })).toBe('final')
+    const rows = [
+      { state: 'sent', held: false, addedOn: '2026-10-27' },
+      { state: 'received', held: false, addedOn: '2026-10-29' },
+      { state: 'final', held: true, addedOn: '2026-10-22' },
+      { state: 'draft', held: false, addedOn: '2026-10-22' },
+    ]
+    expect(legalDocumentFilterCounts(rows, '2026-10-25')).toEqual({ all: 4, sent: 1, received: 1, draft: 1, held: 1, week: 2 })
+    expect(legalDocumentPassesFilter(rows[2]!, 'held', '2026-10-25')).toBe(true)
+    expect(legalDocumentPassesFilter(rows[2]!, 'week', '')).toBe(false)
+    expect(LEGAL_DOCUMENT_FILTERS.map(legalDocumentFilterWords)).toEqual(['All', 'Sent', 'Received', 'Drafts', 'Held', 'Added this week'])
+    expect(legalDocumentFilterEmptyWords('week')).toBe('Nothing added this week.')
   })
 })
