@@ -22,6 +22,10 @@ jobs:
     runs-on: ubuntu-latest
     # Normally 15 to 25 minutes (2026-10-27, the tests 14 of them); a stalled check fails instead of hanging the queue.
     timeout-minutes: 30
+    # pull-requests: write lets check:calls-ahead label a PR whose client calls ahead of its migration.
+    permissions:
+      contents: read
+      pull-requests: write
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -106,6 +110,14 @@ jobs:
 
       - name: An error names its reason (fails on added lines only)
         run: npm run check:error-words
+
+      # The client deploys on the merge; its migration waits for a hand db push. A client that calls what only its
+      # migration creates is refused on prod from the deploy until the push (v2.6099, 2026-10-30: every clock press,
+      # 4:57 AM until the push). This warns on the line, labels the PR, and deploy.yml holds the deploy until the push.
+      - name: A call ahead of its migration says push right after the merge (warns and labels, never fails)
+        run: npm run check:calls-ahead
+        env:
+          GH_TOKEN: ${{ github.token }}
 
       - name: Test
         run: npm test

@@ -1,4 +1,5 @@
 import type { JobScheduleBlockRow } from './jobScheduleBlocks'
+import { effectiveJobLedgerNumber } from './ledgerDisplayPrefixes'
 
 /**
  * Pure kernels for the Dashboard My Schedule section / `useDashboardSubSchedule`
@@ -21,12 +22,17 @@ export function dedupeSubScheduleBlocks(blocks: JobScheduleBlockRow[]): JobSched
   return out
 }
 
-/** "HCP · name" schedule-row label with the My Schedule fallbacks ('—' / 'Job'). */
+/**
+ * "Number · name" schedule-row label with the My Schedule fallbacks ('—' / 'Job'). The number is
+ * the job's HCP number, or its Click number when it has none (`effectiveJobLedgerNumber`), so a
+ * Click-only job reads the same on My Schedule and My day as in the add-a-job window.
+ */
 export function subScheduleJobLabel(
   hcpNumber: string | null | undefined,
+  clickNumber: string | null | undefined,
   jobName: string | null | undefined,
 ): string {
-  return `${(hcpNumber ?? '').trim() || '—'} · ${(jobName ?? '').trim() || 'Job'}`
+  return `${effectiveJobLedgerNumber(hcpNumber, clickNumber) || '—'} · ${(jobName ?? '').trim() || 'Job'}`
 }
 
 /** Today/tomorrow buckets for the My Schedule day groups (ymd keys from `jobScheduleChicago`). */

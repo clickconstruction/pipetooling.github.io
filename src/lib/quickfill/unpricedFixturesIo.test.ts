@@ -38,7 +38,7 @@ describe('loadUnpricedFixtureRows', () => {
     expect(rows).toHaveLength(1001)
     expect(calls.slice(0, 8)).toEqual([
       ['rpc', ['list_tally_parts_with_po']],
-      ['select', ['job_id, part_id, fixture_cost, created_at']],
+      ['select', ['id, job_id, part_id, fixture_cost, created_at']],
       ['is', ['part_id', null]],
       ['or', ['fixture_cost.is.null,fixture_cost.eq.0']],
       ['order', ['created_at', { ascending: true }]],
@@ -50,5 +50,15 @@ describe('loadUnpricedFixtureRows', () => {
       [0, 999],
       [1000, 1999],
     ])
+  })
+
+  it('selects every column it orders on, since PostgREST orders an RPC read only on what its select returns', async () => {
+    // Ordering on `id` without selecting it answered 400 "column record.id does not exist" on every load (v2.5964 to v2.6125).
+    calls.length = 0
+    await loadUnpricedFixtureRows()
+    const selected = String(calls.find(([m]) => m === 'select')?.[1][0]).split(',').map((c) => c.trim())
+    const ordered = calls.filter(([m]) => m === 'order').map(([, a]) => String(a[0]))
+    expect(ordered).toContain('id')
+    expect(ordered.filter((c) => !selected.includes(c))).toEqual([])
   })
 })

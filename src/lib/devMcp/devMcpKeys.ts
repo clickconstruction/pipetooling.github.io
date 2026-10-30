@@ -39,13 +39,30 @@ export function devMcpShellLine(key: string): string {
   return `export ${DEV_MCP_ENV_VAR}='${key}'`
 }
 
+/** Claude Code's own settings file, read by every session it starts, in the app or in a terminal. */
+export const DEV_MCP_CLAUDE_SETTINGS_PATH = '$HOME/.claude/settings.json'
+
+/**
+ * The part of the setup command that puts the key into Claude Code's settings (v2.6123): an `env` entry merged into
+ * `~/.claude/settings.json`, every other setting kept. Node first (Claude Code runs on it), python3 when node is not on
+ * the path. The key is an argument, never inside the script, so there is nothing to escape; a settings file that is not
+ * JSON fails both, and the command then prints no Saved.
+ */
+export function devMcpSettingsWrite(key: string): string {
+  const node = `node -e 'const fs=require("fs"),p=process.argv[1],k=process.argv[2];let j={};if(fs.existsSync(p))j=JSON.parse(fs.readFileSync(p,"utf8"));j.env=Object.assign({},j.env||{},{${DEV_MCP_ENV_VAR}:k});fs.writeFileSync(p,JSON.stringify(j,null,2)+"\\n")' "${DEV_MCP_CLAUDE_SETTINGS_PATH}" '${key}'`
+  const python = `python3 -c 'import json,sys,os;p,k=sys.argv[1:3];j=json.load(open(p)) if os.path.exists(p) else {};j["env"]=dict(j.get("env") or {},**{"${DEV_MCP_ENV_VAR}":k});open(p,"w").write(json.dumps(j,indent=2)+"\\n")' "${DEV_MCP_CLAUDE_SETTINGS_PATH}" '${key}'`
+  return `mkdir -p "$HOME/.claude" && (${node} 2>/dev/null || ${python})`
+}
+
 /**
  * The one command a person pastes into Terminal (v2.3686): drops any old line, appends the
- * shell line to ~/.zshrc, and says so. The key rides inside it — the same exposure as
- * "Copy shell line" — but the person never has to open a file or know what a profile is.
+ * shell line to ~/.zshrc, writes the key into Claude Code's settings (v2.6123: the desktop app
+ * never reads ~/.zshrc, so a session it starts had no key and the server answered "unknown or
+ * revoked"), and says so. The key rides inside it — the same exposure as "Copy shell line" —
+ * but the person never has to open a file or know what a profile is.
  */
 export function devMcpSetupCommand(key: string): string {
-  return `sed -i '' '/^export ${DEV_MCP_ENV_VAR}=/d' ~/.zshrc; ${devMcpShellLine(key)} && echo "${devMcpShellLine(key)}" >> ~/.zshrc && echo "Saved. Now quit Claude Code and open it again."`
+  return `sed -i '' '/^export ${DEV_MCP_ENV_VAR}=/d' ~/.zshrc; ${devMcpShellLine(key)} && echo "${devMcpShellLine(key)}" >> ~/.zshrc && ${devMcpSettingsWrite(key)} && echo "Saved. Now quit Claude Code and open it again."`
 }
 
 /** The claude.ai connector's `authorization` header value — the one rule for both audiences lives in `mcpKeyPrefixes.ts`. */

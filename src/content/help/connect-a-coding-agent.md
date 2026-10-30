@@ -23,10 +23,10 @@ You do not need to know what a terminal is. There are three steps, and the card 
 3. Quit Claude Code with ⌘ Q and open it again in the PipeTooling folder. In a new chat type *call whoami on dev-mcp*. It answers with your name. Done.
 
 :::example What the setup command did
-It wrote one line into a settings file on your Mac that Claude Code reads when it starts, and nothing else. The key never goes in the repo or in a chat. If it says *command not found* or nothing at all, you are not in Terminal — close the window and try step 2 again.
+It wrote your key into two files on your Mac and nothing else. One is your shell profile, which Terminal reads. The other is Claude Code's own settings file, which every Claude Code session reads when it starts, in the app or in a terminal. The key never goes in the repo or in a chat. If it says *command not found* or nothing at all, you are not in Terminal — close the window and try step 2 again.
 :::
 
-Already know your way around a shell? {{button:gray|Copy shell line}} gives you the bare `export` line for `~/.zshrc` instead.
+Already know your way around a shell? {{button:gray|Copy shell line}} gives you the bare `export` line for `~/.zshrc` instead. The desktop app does not read that file, so a session it starts has no key. Use the setup command for the app.
 
 ## From claude.ai, Claude Desktop or your phone
 

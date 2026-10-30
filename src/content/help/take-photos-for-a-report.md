@@ -32,7 +32,7 @@ Every stage row has a camera press. Tap it to take a photo of that stage. The ph
 
 ## Save
 
-Save sits at the bottom and names what it writes. It reads {{button:blue|Save · job 36% · 2 photos}}. While a photo is still on its way, the button reads *Sending 1 photo…* and waits. Press Save once. The report and its photos go together.
+Save sits at the bottom and names what it writes. It reads {{button:blue|Save · job 36% · 2 photos}}. A Note or a Walk files no percent, so its button reads {{button:blue|Save report · 1 photo}}. While a photo is still on its way, the button reads *Sending 1 photo…* and waits. Press Save once. The report and its photos go together.
 
 ## Where the photos go
 
