@@ -37362,6 +37362,16 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_set_counsel_read: {
+        Args: {
+          p_cost_to_try?: number
+          p_matter_id: string
+          p_months?: number
+          p_tries: string
+          p_why?: string
+        }
+        Returns: Json
+      }
       legal_set_in_house: {
         Args: {
           p_customer_id: string
