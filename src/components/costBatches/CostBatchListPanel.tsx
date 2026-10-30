@@ -1,8 +1,9 @@
 /**
- * Banking → Cost batches: the batches that touched a job and the newest batches company-wide
- * (`cost_batches`, with the touching read over `cost_batch_ops`), each with its label, reason,
- * plan, when, by whom, how many ops, the summary by job, its ops on demand, and **Revert** behind a
- * typed confirmation — the "Not yet built" item of `docs/COST_BATCHES.md`. Devs only by RLS.
+ * The cost batch list: the batches that touched a job (the job window's Costs tab) and the newest
+ * batches company-wide (Banking → Cost batches) — `cost_batches`, with the touching read over
+ * `cost_batch_ops` — each with its label, reason, plan, when, by whom, how many ops, the summary by
+ * job, its ops on demand, and **Revert** behind a typed confirmation — the "Not yet built" item of
+ * `docs/COST_BATCHES.md`. Devs only by RLS.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -36,15 +37,17 @@ function whenWords(iso: string): string {
 }
 
 export type CostBatchListPanelProps = {
-  /** The job the Move cost screen is on; null lists only the company-wide batches. */
+  /** The job whose batches are listed first; null lists only the company-wide batches. */
   jobId: string | null
+  /** Also the newest batches company-wide (Banking); the job window lists the job's alone. */
+  showEveryBatch: boolean
   /** Bump to reload after an apply or a revert elsewhere on the screen. */
   refreshKey: number
   /** The batch just applied: drawn with a ring so the dev finds it. */
   highlightBatchId: string | null
 }
 
-export function CostBatchListPanel({ jobId, refreshKey, highlightBatchId }: CostBatchListPanelProps) {
+export function CostBatchListPanel({ jobId, showEveryBatch, refreshKey, highlightBatchId }: CostBatchListPanelProps) {
   const { showToast } = useToastContext()
   const { prefixMap } = useLedgerDisplayPrefixes()
   const [lists, setLists] = useState<{ onJob: CostBatchRow[]; all: CostBatchRow[] } | null>(null)
@@ -104,17 +107,19 @@ export function CostBatchListPanel({ jobId, refreshKey, highlightBatchId }: Cost
           {lists?.onJob.map((b) => <BatchCard key={b.id} batch={b} jobLabel={jobLabel} highlighted={b.id === highlightBatchId} onChanged={reload} onToast={showToast} />)}
         </section>
       ) : null}
-      <section aria-labelledby="cost-batches-all" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-        <h3 id="cost-batches-all" style={heading}>
-          Every batch{lists ? ` (newest ${Math.min(lists.all.length, COST_BATCH_LIST_LIMIT)})` : ''}
-        </h3>
-        {loading && !lists ? <p style={quiet}>Loading…</p> : null}
-        {lists && lists.all.length === 0 ? <p style={quiet}>There are no cost batches yet.</p> : null}
-        {lists?.all
-          .filter((b) => !onJobIds.has(b.id))
-          .map((b) => <BatchCard key={b.id} batch={b} jobLabel={jobLabel} highlighted={b.id === highlightBatchId} onChanged={reload} onToast={showToast} />)}
-        {lists && jobId && lists.all.some((b) => onJobIds.has(b.id)) ? <p style={quiet}>The batches above that touched this job are listed once, in the first section.</p> : null}
-      </section>
+      {showEveryBatch ? (
+        <section aria-labelledby="cost-batches-all" style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+          <h3 id="cost-batches-all" style={heading}>
+            Every batch{lists ? ` (newest ${Math.min(lists.all.length, COST_BATCH_LIST_LIMIT)})` : ''}
+          </h3>
+          {loading && !lists ? <p style={quiet}>Loading…</p> : null}
+          {lists && lists.all.length === 0 ? <p style={quiet}>There are no cost batches yet.</p> : null}
+          {lists?.all
+            .filter((b) => !onJobIds.has(b.id))
+            .map((b) => <BatchCard key={b.id} batch={b} jobLabel={jobLabel} highlighted={b.id === highlightBatchId} onChanged={reload} onToast={showToast} />)}
+          {lists && jobId && lists.all.some((b) => onJobIds.has(b.id)) ? <p style={quiet}>The batches above that touched this job are listed once, in the first section.</p> : null}
+        </section>
+      ) : null}
     </div>
   )
 }

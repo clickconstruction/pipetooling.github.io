@@ -1,8 +1,10 @@
 /**
- * Banking → Cost batches: a job's cost rows by source, each with its checkbox — bank allocations,
- * supply-house invoice allocations, clock sessions grouped by person, Other job charges (listed,
- * never movable: the batch RPC has no op for them). Totals per source in each heading. The rules
- * (which rows a batch can move, the keys, the totals) live in `lib/costBatches/costMoveRows.ts`.
+ * A job's cost rows by stream, each with its checkbox — bank allocations, supply-house invoice
+ * allocations, clock sessions grouped by person, Other job charges (listed, never movable: the
+ * batch RPC has no op for them) — on the job window's Costs tab (`JobWindowCostMovePanel`). Totals
+ * per stream in each heading, a press that ticks a whole stream or a person's sessions, and a click
+ * anywhere on a movable row ticks it (the owner's "click on something"). The rules (which rows a
+ * batch can move, the keys, the totals) live in `lib/costBatches/costMoveRows.ts`.
  */
 import { Fragment, type CSSProperties } from 'react'
 import {
@@ -82,7 +84,13 @@ function SourceHeading({ source, rows, dollars, minutes, children }: { source: C
 function Check({ row, selected, onToggle, label }: { row: CostMoveRow; selected: ReadonlySet<string>; onToggle: (key: string) => void; label: string }) {
   const key = costMoveRowKey(row)
   const hold = costMoveHold(row)
-  return <input type="checkbox" aria-label={label} checked={selected.has(key)} disabled={!hold.movable} title={hold.movable ? undefined : hold.why} onChange={() => onToggle(key)} />
+  return <input type="checkbox" aria-label={label} checked={selected.has(key)} disabled={!hold.movable} title={hold.movable ? undefined : hold.why} onChange={() => onToggle(key)} onClick={(e) => e.stopPropagation()} />
+}
+
+/** A click anywhere on a movable row ticks it; a held row (a rejected session) does nothing. */
+function rowPress(row: CostMoveRow, onToggle: (key: string) => void): { onClick?: () => void; style?: CSSProperties } {
+  if (!costMoveHold(row).movable) return {}
+  return { onClick: () => onToggle(costMoveRowKey(row)), style: { cursor: 'pointer' } }
 }
 
 export function CostMoveRowsTables({ rows, selected, onToggle, onSetMany }: CostMoveRowsTablesProps) {
@@ -118,7 +126,7 @@ export function CostMoveRowsTables({ rows, selected, onToggle, onSetMany }: Cost
               </thead>
               <tbody>
                 {bank.map((r) => (
-                  <tr key={r.allocationId}>
+                  <tr key={r.allocationId} {...rowPress(r, onToggle)}>
                     <td style={td}>
                       <Check row={r} selected={selected} onToggle={onToggle} label={`Tick ${r.counterparty ?? 'bank charge'} ${ymdWords(r.postedYmd)} ${usd(r.allocationAmount)}`} />
                     </td>
@@ -161,7 +169,7 @@ export function CostMoveRowsTables({ rows, selected, onToggle, onSetMany }: Cost
               </thead>
               <tbody>
                 {supply.map((r) => (
-                  <tr key={r.invoiceId}>
+                  <tr key={r.invoiceId} {...rowPress(r, onToggle)}>
                     <td style={td}>
                       <Check row={r} selected={selected} onToggle={onToggle} label={`Tick invoice ${r.invoiceNumber} ${r.supplyHouse ?? ''}`} />
                     </td>
@@ -213,7 +221,7 @@ export function CostMoveRowsTables({ rows, selected, onToggle, onSetMany }: Cost
                       </td>
                     </tr>
                     {g.rows.map((r) => (
-                      <tr key={r.sessionId}>
+                      <tr key={r.sessionId} {...rowPress(r, onToggle)}>
                         <td style={td}>
                           <Check row={r} selected={selected} onToggle={onToggle} label={`Tick ${g.personName} ${ymdWords(r.workYmd)}`} />
                         </td>
