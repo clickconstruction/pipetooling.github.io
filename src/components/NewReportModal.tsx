@@ -19,6 +19,8 @@ import { useReportVoiceDraft } from '../hooks/useReportVoiceDraft'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
 import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
+import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
+import { KEPT_ON_PHONE_WORDS } from '../lib/offline/pendingSession'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import ResponsiveModalShell from './ResponsiveModalShell'
@@ -390,47 +392,43 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
       }
     }
 
-    let inserted: { id: string } | null = null
-    let err: { message: string } | null = null
-
-    if (userRole === 'estimator') {
-      // Use RPC - SECURITY DEFINER bypasses RLS (fixes estimator insert policy issues)
-      // RPC accepts null for two of job_ledger_id / project_id / bid_id; generated types are stricter
-      const { data: reportId, error: rpcErr } = await supabase.rpc('insert_report', {
-        p_template_id: selectedTemplateId,
-        p_field_values: fv,
-        p_job_ledger_id: jobLedgerId,
-        p_project_id: projectId,
-        p_bid_id: bidId,
-        p_reported_at_lat: reportedAtLat ?? undefined,
-        p_reported_at_lng: reportedAtLng ?? undefined,
-      } as never)
-      err = rpcErr
-      if (reportId && typeof reportId === 'string') inserted = { id: reportId }
-    } else {
-      const { data: sessionUser } = await supabase.auth.getUser()
-      const createdByUserId = sessionUser?.user?.id ?? authUserId
-      const { data: row, error: insertErr } = await supabase.from('reports').insert({
-        template_id: selectedTemplateId,
-        created_by_user_id: createdByUserId,
-        field_values: fv,
-        ...(bidId
-          ? { job_ledger_id: null, project_id: null, bid_id: bidId }
-          : jobLedgerId
-            ? { job_ledger_id: jobLedgerId, project_id: null, bid_id: null }
-            : { job_ledger_id: null, project_id: projectId!, bid_id: null }),
-        ...(reportedAtLat != null &&
-          reportedAtLng != null && { reported_at_lat: reportedAtLat, reported_at_lng: reportedAtLng }),
-      }).select('id').single()
-      err = insertErr
-      inserted = row ?? null
-    }
+    // Through the outbox (punch list #163 PR 3): sent at once when it can be, kept on the phone when it cannot.
+    // The server lands it for an estimator through insert_report and for everyone else under their own policy.
+    const movedLines = jobLedgerId && linesActive && lineProgress.moved.length > 0 ? lineProgress.moved.map((m) => ({ fixtureId: m.fixtureId, to: m.to })) : undefined
+    const outcome = await pressThroughOutbox({
+      kind: 'field-report',
+      userId: authUserId,
+      pressedAt: Date.now(),
+      payload: {
+        templateId: selectedTemplateId,
+        fieldValues: fv,
+        jobLedgerId: bidId ? null : jobLedgerId,
+        projectId: bidId || jobLedgerId ? null : projectId,
+        bidId,
+        lat: reportedAtLat != null && reportedAtLng != null ? reportedAtLat : null,
+        lng: reportedAtLat != null && reportedAtLng != null ? reportedAtLng : null,
+        movedLines,
+      },
+      about: [selectedJob.hcp_number, selectedJob.display_name].filter((x) => x && x !== '—').join(' · '),
+      door: '/dashboard',
+    })
     setSaving(false)
-    if (err) {
+    if (outcome.kind === 'refused' || outcome.kind === 'failed') {
       // Class-decided (v2.2843): a fetch-layer failure gets Retry; a refused insert says why.
-      setSubmitFailure(recoveryFailureFromError(err, 'Could not save the report'))
+      setSubmitFailure(outcome.kind === 'refused' ? { kind: 'server', message: outcome.message } : recoveryFailureFromError(outcome.error, 'Could not save the report'))
       return
     }
+    if (outcome.kind === 'queued') {
+      // The notifications, the moved lines and the job's percent follow when it lands (`afterLanding`).
+      showToast(KEPT_ON_PHONE_WORDS, 'success')
+      onSaved()
+      handleClose()
+      return
+    }
+    const inserted: { id: string } | null = (() => {
+      const id = (outcome.result as { report_id?: string } | null)?.report_id
+      return id ? { id } : null
+    })()
     // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
     if (inserted?.id) {
       void supabase.functions

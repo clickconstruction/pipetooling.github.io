@@ -47,6 +47,9 @@ import { attachReportPhotos, discardReportPhotos, loadReportPhotoSize, sendRepor
 import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
 import { STAGE_PCT_WORDS } from '../lib/reports/stagePct'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
+import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
+import { KEPT_ON_PHONE_WORDS } from '../lib/offline/pendingSession'
+import { reportIdOf } from '../lib/offline/afterLanding'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
 import JobReportsModal from './JobReportsModal'
@@ -402,6 +405,11 @@ export default function AdditionalReportModal({
     for (const f of fields) {
       fv[f.label] = fieldValueForSubmit(f, fieldValues)
     }
+    // An untouched percent files the job's number, as the field and Save already say, even when Save is pressed in
+    // the moment before the seed effect has put it in `fieldValues` (that moment filed 0).
+    if (percentFieldLabel && !linesActive && fieldValues[percentFieldLabel] === undefined && jobPctSeed != null) {
+      fv[percentFieldLabel] = String(jobPctSeed)
+    }
     // Report by line (v2.5663): the number the lines add up to is the percent field, the moved lines in words beside it.
     if (linesActive && lineProgress.lines && percentFieldLabel && lineDerivedPct != null) {
       fv[percentFieldLabel] = String(lineDerivedPct)
@@ -431,42 +439,47 @@ export default function AdditionalReportModal({
       }
     }
 
-    let inserted: { id: string } | null = null
-    let err: { message: string } | null = null
-
-    if (userRole === 'estimator') {
-      // RPC accepts null for p_project_id when p_job_ledger_id is set; generated types are stricter
-      const { data: reportId, error: rpcErr } = await supabase.rpc('insert_report', {
-        p_template_id: selectedTemplateId,
-        p_field_values: fv,
-        p_job_ledger_id: jobId,
-        p_project_id: null as unknown as string,
-        p_reported_at_lat: reportedAtLat ?? undefined,
-        p_reported_at_lng: reportedAtLng ?? undefined,
-      })
-      err = rpcErr
-      if (reportId && typeof reportId === 'string') inserted = { id: reportId }
-    } else {
-      const { data: sessionUser } = await supabase.auth.getUser()
-      const createdByUserId = sessionUser?.user?.id ?? authUserId
-      const { data: row, error: insertErr } = await supabase.from('reports').insert({
-        template_id: selectedTemplateId,
-        created_by_user_id: createdByUserId,
-        field_values: fv,
-        job_ledger_id: jobId,
-        project_id: null,
-        ...(reportedAtLat != null &&
-          reportedAtLng != null && { reported_at_lat: reportedAtLat, reported_at_lng: reportedAtLng }),
-      }).select('id').single()
-      err = insertErr
-      inserted = row ?? null
-    }
+    // Through the outbox (punch list #163 PR 3): sent at once when it can be, kept on the phone when it cannot.
+    // The server lands it for an estimator through insert_report and for everyone else under their own policy.
+    // A report with photos is never kept: its shots live on this form, so it stays open with Retry until the
+    // signal is back (the photos' own queue is #189's PR 7).
+    const hasPhotos = tiles.length > 0
+    const movedLines = linesActive && lineProgress.moved.length > 0 ? lineProgress.moved.map((m) => ({ fixtureId: m.fixtureId, to: m.to })) : undefined
+    const outcome = await pressThroughOutbox(
+      {
+        kind: 'field-report',
+        userId: authUserId,
+        pressedAt: Date.now(),
+        payload: {
+          templateId: selectedTemplateId,
+          fieldValues: fv,
+          jobLedgerId: jobId,
+          projectId: null,
+          bidId: null,
+          lat: reportedAtLat != null && reportedAtLng != null ? reportedAtLat : null,
+          lng: reportedAtLat != null && reportedAtLng != null ? reportedAtLng : null,
+          movedLines,
+        },
+        about: [hcpNumber, jobName].filter((x) => x && x !== '—').join(' · '),
+        door: '/dashboard',
+      },
+      hasPhotos ? { allowed: false } : undefined,
+    )
     setSaving(false)
-    if (err) {
+    if (outcome.kind === 'refused' || outcome.kind === 'failed') {
       // Class-decided (v2.2843): a fetch-layer failure gets Retry; a refused insert says why.
-      setSubmitFailure(recoveryFailureFromError(err, 'Could not save the report'))
+      setSubmitFailure(outcome.kind === 'refused' ? { kind: 'server', message: outcome.message } : recoveryFailureFromError(outcome.error, 'Could not save the report'))
       return
     }
+    if (outcome.kind === 'queued') {
+      // The notifications, the moved lines and the job's percent follow when it lands (`afterLanding`).
+      showToast(KEPT_ON_PHONE_WORDS, 'success')
+      onSaved()
+      handleClose()
+      return
+    }
+    const landedId = reportIdOf(outcome.result)
+    const inserted: { id: string } | null = landedId ? { id: landedId } : null
     // The photos ride with the report (punch list #189, PR 5b): each sent shot takes the report's id, its stage and
     // the words it is named by. A shot that did not attach says so; the report itself is saved either way.
     if (inserted?.id && riding.length > 0) {

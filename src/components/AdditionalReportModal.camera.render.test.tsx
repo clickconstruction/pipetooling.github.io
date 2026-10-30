@@ -3,7 +3,9 @@
  * The camera-first report (punch list #189, PR 5b) on a phone, for a helper: the press opens the camera through the
  * file input, a shot comes back as a tile that shrinks and sends, the chip under it puts it on its stage, the stage
  * row shows it, Save names the job's number and the photo and waits while a shot is on its way, and the save ties
- * the photo to the report with the stage and writes the photos' clause on Stage progress.
+ * the photo to the report with the stage and writes the photos' clause on Stage progress. The save goes through the
+ * outbox's RPC (punch list #163 PR 3), and a report with photos is never kept on the phone: with no signal the form
+ * stays open with its shots and Retry.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -14,6 +16,8 @@ const sent: Array<Record<string, unknown>> = []
 const discarded: unknown[] = []
 /** Resolves the send on demand, so the test can read Save while a shot is on its way. */
 let releaseSend: (() => void) | null = null
+/** When set, the report's send fails at the fetch layer, as it does with no signal. */
+const signal = { lost: false }
 
 function table(rows: () => unknown[]) {
   const make = (single: boolean): Record<string, unknown> => {
@@ -61,6 +65,13 @@ vi.mock('../lib/supabase', async () => {
       })
     if (fn === 'record_stage_progress') return Promise.resolve({ data: null, error: null })
     if (fn === 'set_job_pct_from_field') return Promise.resolve({ data: { ok: true }, error: null })
+    if (fn === 'land_field_press') {
+      if (signal.lost) return Promise.reject(new TypeError('Failed to fetch'))
+      // The report lands through the outbox's RPC; its payload carries the row's columns.
+      const a = args as { p_kind: string; p_payload: Record<string, unknown> }
+      inserted.push({ kind: a.p_kind, ...a.p_payload })
+      return Promise.resolve({ data: { report_id: 'r1', late: false }, error: null, status: 200 })
+    }
     return originalRpc(fn, args)
   }
   ;(stub.auth as Record<string, unknown>).getUser = () => Promise.resolve({ data: { user: { id: 'u1' } }, error: null })
@@ -105,6 +116,7 @@ vi.mock('../lib/photos/reportPhotosIo', () => ({
 
 import AdditionalReportModal from './AdditionalReportModal'
 import { renderWithProviders } from '../test/renderSmokeMocks'
+import { outbox } from '../lib/offline/outboxState'
 
 window.scrollTo = () => {}
 // jsdom has no object URLs; the thumbnail only needs a string.
@@ -189,5 +201,43 @@ describe('AdditionalReportModal, camera first on a phone', () => {
     expect(onClose).toHaveBeenCalled()
     expect(discarded).toHaveLength(1)
     expect((discarded[0] as Array<{ id: string; storagePath: string | null }>)[0]!.storagePath).toMatch(/^job-1\//)
+  })
+
+  it('a report with photos is never kept on the phone: with no signal the form stays open with its shot and Retry', async () => {
+    inserted.length = 0
+    attached.length = 0
+    discarded.length = 0
+    const onSaved = vi.fn()
+    const onClose = vi.fn()
+    renderWithProviders(<AdditionalReportModal {...props} onSaved={onSaved} onClose={onClose} />)
+    const input = (await screen.findByTestId('report-camera-input')) as HTMLInputElement
+    await waitFor(() => expect(screen.getByText('How far along is each stage?')).toBeTruthy())
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File([new Uint8Array(1000)], 'IMG_0003.jpg', { type: 'image/jpeg' })] } })
+    })
+    await waitFor(() => expect(screen.getByTestId('report-photo-tile').getAttribute('data-status')).toBe('sending'))
+    await act(async () => {
+      releaseSend?.()
+    })
+    await waitFor(() => expect(screen.getByTestId('report-photo-tile').getAttribute('data-status')).toBe('sent'))
+    // The signal drops after the shot went: the report's send is tried, never kept.
+    signal.lost = true
+    Object.defineProperty(window.navigator, 'onLine', { configurable: true, get: () => false })
+    try {
+      fireEvent.click(screen.getByRole('button', { name: 'Save · job 32% · 1 photo' }))
+      const panel = await screen.findByRole('alert')
+      expect(within(panel).getByRole('button', { name: 'Retry' })).toBeTruthy()
+      expect(outbox.presses()).toHaveLength(0)
+      expect(onSaved).not.toHaveBeenCalled()
+      expect(onClose).not.toHaveBeenCalled()
+      // The shot stays on the form, neither attached nor thrown away.
+      expect(screen.getByTestId('report-photo-tile').getAttribute('data-status')).toBe('sent')
+      expect(attached).toHaveLength(0)
+      expect(discarded).toHaveLength(0)
+    } finally {
+      signal.lost = false
+      delete (window.navigator as { onLine?: boolean }).onLine
+      for (const p of outbox.presses()) outbox.remove(p.id)
+    }
   })
 })
