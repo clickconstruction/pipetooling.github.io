@@ -51,7 +51,7 @@ import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { inHouseWords, isOfferEntry, offerAmountOf, offerMetaOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 import { counselReadMetaFromDraft, currentCounselRead, type CounselReadDraft } from '../../../lib/legal/counselRead'
-import { legalSuitFiled, settlementPaths } from '../../../lib/legal/settlementPaths'
+import { settlementPathsOfMatter } from '../../../lib/legal/settlementPaths'
 import LegalSettlementPaths from './LegalSettlementPaths'
 import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
 import { moneyBars } from '../../../lib/legal/moneyBars'
@@ -328,7 +328,8 @@ export default function LegalDesk(props: LegalDeskProps) {
   const closed = matterIsClosed(matter)
   const awaitsClose = matterAwaitsClose(matter)
   // Punch list #218 PR 2: the attorney's read of how the case tries — the latest read entry, the firm's or ours.
-  const counselRead = currentCounselRead(matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], (id) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null))
+  const userNameOf = (id: string | null | undefined) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
+  const counselRead = currentCounselRead(matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], userNameOf)
   // v2.6105: the Offers log as the bars read it; v2.6176 (punch list #218 PR 3): the paths read the same offers.
   const standingOffers = (matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []).filter((e) => isOfferEntry(e) && !isVoidedEntry(e)).map((e) => {
     const meta = offerMetaOf(e.meta)
@@ -447,7 +448,7 @@ export default function LegalDesk(props: LegalDeskProps) {
     if (!packet) return
     // A print counts as a send (docs/SENT_COPIES.md): the packet for counsel is filed on its jobs and its payer.
     const filing = { kind: 'legal_packet', title: `Legal packet for ${packet.account.payer.name}`, recipientName: 'Counsel', jobIds: packet.account.jobs.map((j) => j.jobId), customerId: packet.account.payer.customerId }
-    if (!printAndFile(buildLegalPacketPrintHtml(packet, { preparedOn: todayYmd, companyName }), filing)) showToast('Your browser blocked the print window. Allow pop-ups for this site and try again.', 'error')
+    if (!printAndFile(buildLegalPacketPrintHtml(packet, { preparedOn: todayYmd, companyName, paths: settlementPathsOfMatter(packet.worth, stage, matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], userNameOf) }), filing)) showToast('Your browser blocked the print window. Allow pop-ups for this site and try again.', 'error')
   }
 
   // --- the stored acts (PR 2) ------------------------------------------------
@@ -1028,7 +1029,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                 {packet && w && w.balance > 0.004 ? (() => {
                   // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer marked, what is left after the firm's cut.
                   // v2.6176 (punch list #218, PR 3): what each path nets, with the walk-away line derived from the cost to continue and marked on the claim bar.
-                  const paths = settlementPaths({ claim: w.claim, contingencyPct: w.contingencyPct, filingCost: w.filingCost, filed: legalSuitFiled(stage), offers: standingOffers, read: counselRead })
+                  const paths = settlementPathsOfMatter(w, stage, matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], userNameOf)
                   return (
                     <>
                       <LegalMoneyBars
@@ -1197,7 +1198,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             <FirmMatterView
               packet={packet}
               companyName={companyName}
-              matter={{ payerName: selected.name, noteToFirm: sheet.note, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null }}
+              matter={{ payerName: selected.name, noteToFirm: sheet.note, stage: matter?.stage ?? null, contracts: [], entries: matter ? (legal?.entriesByMatter.get(matter.id) ?? []).filter((e) => e.kind !== 'plan' || holdOverrides[planHoldKey(e.id)] !== true) : [], ...previewDocuments(matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : [], props.users), narrative: narrativeDesk.markdown.trim() ? { markdown: narrativeDesk.markdown, updatedOn: narrativeDesk.updatedOn, updatedByName: narrativeDesk.updatedByName } : null }}
               tab={previewTab}
               onTab={setPreviewTab}
               onPrint={printPacket}

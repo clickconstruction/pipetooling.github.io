@@ -12,6 +12,7 @@ import { envelopeAnswersWords, envelopeKindWords, envelopeMonthsWords, envelopeS
 import { legalRunningLedger } from './legalMoney'
 import { ownerMailingAddressCell } from './legalProperty'
 import { gapAnswerByline } from './legalGapAnswers'
+import type { SettlementPaths } from './settlementPaths'
 
 function esc(s: string | null | undefined): string {
   return String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;')
@@ -24,7 +25,7 @@ function table(head: string[], rows: string[], empty: string): string {
   return `<table><thead><tr>${head.map((h) => `<th>${esc(h)}</th>`).join('')}</tr></thead><tbody>${rows.join('')}</tbody></table>`
 }
 
-export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedOn: string; companyName: string }): string {
+export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedOn: string; companyName: string; /** v2.6177 (punch list #218 PR 4): what each path nets, on the cover sheet. */ paths?: SettlementPaths }): string {
   const a = packet.account
   const shared = packet.theirWord.timeline.filter((e) => e.shared)
   const jobsRows = a.jobs.map((j) => row([esc(j.label), esc(j.name), esc(j.address), j.agingDays == null ? '—' : `${j.agingDays}d`, j.contract.kind === 'signed' ? 'signed' : j.swornMissing.length === 0 ? 'sworn account holds' : `needs ${esc(j.swornMissing.join(', '))}`, formatLegalMoney(j.balance)], [false, false, false, true, false, true]))
@@ -91,7 +92,8 @@ export function buildLegalPacketPrintHtml(packet: LegalPacket, opts: { preparedO
   <div><span class="muted">Can we sue?</span><b style="font-size:13px">${esc(sue.answer)}</b><span class="muted">${esc(sue.why)}</span></div>
   <div><span class="muted">What's left for us?</span><b>${formatLegalMoney(w.net)}</b><span class="muted">${esc(w.verdict)} · ${esc(left.why)}</span></div>
   <div><span class="muted">What could go wrong?</span><b style="font-size:13px">${esc(wrong.answer)}</b><span class="muted">${esc(wrong.why)}</span></div>
-  <div><span class="muted">Oldest</span><b>${a.totals.oldestDays == null ? '—' : `${a.totals.oldestDays}d`}</b></div>
+${opts.paths && opts.paths.paths.length ? `  <div><span class="muted">What each path nets</span><b style="font-size:12px">${opts.paths.line ? `above ${formatLegalMoney(opts.paths.line.amount)}, settling beats a full win` : esc(opts.paths.paths.map((p) => `${p.title}: ${formatLegalMoney(p.keep)}`).join(' · '))}</b><span class="muted">${esc(opts.paths.words)}</span></div>
+` : ''}  <div><span class="muted">Oldest</span><b>${a.totals.oldestDays == null ? '—' : `${a.totals.oldestDays}d`}</b></div>
   <div><span class="muted">Terms</span><b style="font-size:12px">${esc(a.paymentTerms)}</b></div>
 </div>
 <h2>Before release · ${esc(packet.readiness.label)}</h2>

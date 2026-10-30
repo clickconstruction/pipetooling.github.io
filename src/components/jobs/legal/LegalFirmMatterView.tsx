@@ -11,6 +11,8 @@ import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, 
 import { legalNarrativeBandWords } from '../../../lib/legal/legalNarrative'
 import { counselReadFacts, counselReadLine, counselTriesWords, currentCounselRead } from '../../../lib/legal/counselRead'
 import { moneyBarDayWords } from '../../../lib/legal/moneyBars'
+import { settlementPathsOfMatter } from '../../../lib/legal/settlementPaths'
+import LegalSettlementPaths from './LegalSettlementPaths'
 import { legalNarrativeHtml } from '../../../lib/legal/legalNarrativeHtml'
 import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
 import LienTimelineStrip from '../LienTimelineStrip'
@@ -320,6 +322,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
   const shownTab = firmTabShown(tab, matter)
   // The county and owner line reads the first job's own property (#85 item 6), never the payer's first address.
   const firstProperty = packet.account.jobs[0]?.property ?? null
+  // v2.6177 (punch list #218 PR 4): what each path nets, the same cards the office reads, from the matter's own entries.
+  const paths = settlementPathsOfMatter(packet.worth, matter.stage, matter.entries)
   return (
     <div>
       <div style={portalCard}>
@@ -333,7 +337,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
               {firstProperty?.owner ? ` · owner of record: ${firstProperty.owner}${packet.account.jobs.length > 1 ? ` (job ${packet.account.jobs[0]?.label})` : ''}` : ''}
             </div>
             {/* v2.6170 (punch list #218): the firm settles for what can be had; the office's floor is retired. */}
-            <div data-legal-settling style={{ fontSize: 12.5, marginTop: 6, padding: '5px 9px', background: NOTE_BAND, borderRadius: 4, color: INK }}><b>Settling:</b> Settle as you can. Record the settlement with its amount.</div>
+            <div data-legal-settling style={{ fontSize: 12.5, marginTop: 6, padding: '5px 9px', background: NOTE_BAND, borderRadius: 4, color: INK }}><b>Settling:</b> Settle as you can. Record the settlement with its amount.{paths.line ? ` Above ${formatLegalMoney(paths.line.amount)} a settlement nets the office more than a full win at trial.` : ''}</div>
             {(() => {
               // Punch list #218 PR 2: the current read of how the case tries — yours or the office's — under the settling line.
               const read = currentCounselRead(matter.entries)
@@ -349,6 +353,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
             </button>
           </div>
         </div>
+        <LegalSettlementPaths paths={paths} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, margin: '14px 0 12px', fontSize: 13 }}>
           {firmTabsFor(matter).map((t) => (
             <button key={t} type="button" onClick={() => onTab(t)} style={{ background: 'none', border: 'none', padding: '6px 12px', color: shownTab === t ? INK : MUTED, borderBottom: shownTab === t ? `2px solid ${COPPER}` : '2px solid transparent', fontWeight: shownTab === t ? 700 : 500, cursor: 'pointer', font: 'inherit', fontSize: 13 }}>
