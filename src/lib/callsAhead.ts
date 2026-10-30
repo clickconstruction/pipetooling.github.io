@@ -13,8 +13,10 @@
  *    `storage.from('bucket')` and a constructor's `Array.from(…)` are not reads of a table.
  *  - `namesCreatedIn` reads the functions, tables and views a migration's SQL creates, with its
  *    comments stripped first.
- *  - `callsAhead` pairs them: a call whose name is created only by the given pending migrations
- *    (none of the applied ones creates it, so prod does not have it) is ahead of its migration.
+ *  - `callsAhead` pairs them: a call whose name a pending migration creates is ahead of its
+ *    migration — `missing` when no applied migration creates it (prod answers a 404), `replaced`
+ *    when one does (prod's old body answers, and refuses what only the new body takes: #6474's
+ *    `land_field_press` with the kinds `job_note` and `field_report`).
  *
  * The TypeScript compiler is loaded through `createRequire`, as `emptyStateCheck.ts` does: its
  * CommonJS bundle has no named ESM exports, so a static import gives an empty namespace under Node.
@@ -40,11 +42,17 @@ export type CreatedName = {
   name: string
 }
 
-/** A call and the pending migrations that create what it calls. */
+/** A call and the pending migrations that create or replace what it calls. */
 export type CallAhead = {
   file: string
   call: SchemaCall
   migrations: string[]
+  /**
+   * `missing`: no applied migration creates the name, so prod answers a 404 until the push.
+   * `replaced`: prod has the name and a pending migration replaces it, so the old body answers
+   * until the push — a refusal when the client sends what only the new body takes (#6474).
+   */
+  why: 'missing' | 'replaced'
 }
 
 /** The one sentence the check prints on a finding: what to do, in the order it must happen. */
@@ -127,9 +135,10 @@ export function callKey(c: SchemaCall): string {
 
 /**
  * The calls that are ahead of their migration. `pending` maps a migration file to what it creates;
- * `applied` is everything the migrations prod already has create. A call is ahead when a pending
- * migration creates its name and no applied one does: a `CREATE OR REPLACE` of a function prod
- * already has answers with the old body, never a 404, so it is not listed here.
+ * `applied` is everything the migrations prod already has create. A call is `missing` when a
+ * pending migration creates its name and no applied one does (prod answers a 404 until the push),
+ * and `replaced` when an applied one does too (a `CREATE OR REPLACE` of a function prod already
+ * has: the old body answers until the push, and refuses what only the new body takes).
  */
 export function callsAhead(
   calls: ReadonlyArray<{ file: string; calls: ReadonlyArray<SchemaCall> }>,
@@ -141,7 +150,6 @@ export function callsAhead(
   for (const [file, names] of pending) {
     for (const n of names) {
       const key = createdKey(n)
-      if (before.has(key)) continue
       const list = createdBy.get(key) ?? []
       list.push(file)
       createdBy.set(key, list)
@@ -150,14 +158,10 @@ export function callsAhead(
   const out: CallAhead[] = []
   for (const { file, calls: found } of calls) {
     for (const call of found) {
-      const migrations = createdBy.get(callKey(call))
-      if (migrations) out.push({ file, call, migrations: [...migrations].sort() })
+      const key = callKey(call)
+      const migrations = createdBy.get(key)
+      if (migrations) out.push({ file, call, migrations: [...migrations].sort(), why: before.has(key) ? 'replaced' : 'missing' })
     }
   }
   return out
-}
-
-/** The findings on the lines a change wrote. */
-export function callsOnChangedLines(found: ReadonlyArray<SchemaCall>, changed: ReadonlySet<number>): SchemaCall[] {
-  return found.filter((f) => changed.has(f.line))
 }

@@ -10,9 +10,11 @@
  * Two modes:
  *
  *  - On a pull request (CI's checks job, no flag): the `.rpc('name')` / `.from('name')` calls on the
- *    lines this change wrote whose name a migration this change ADDS creates, and no older migration
- *    does. Each is a `::warning` on its line, the step summary says what to do, and the pull request
- *    gets the label *push right after the merge* when the token may label it. Never a failure: the
+ *    lines this change wrote whose name a migration this change ADDS creates and no older migration
+ *    does, and every call to a function such a migration REPLACES (prod's old body answers until the
+ *    push and refuses what only the new body takes: #6474). Each is a `::warning` on its line, the
+ *    step summary says what to do, and the pull request gets the label *push right after the merge*
+ *    when the token may label it. Never a failure: the
  *    migration cannot be pushed before it is on main, so the PR is right to carry both; the deploy
  *    is what holds. In CI, HEAD is the merge of the change into its base, so the base is HEAD's
  *    first parent; locally, the merge base with origin/main. `--base <ref> --head <ref>` compare
@@ -20,8 +22,9 @@
  *
  *  - `--prod` (deploy.yml's build, before the build): every call in src against the migrations the
  *    prod ledger has not applied, read through the Management API with SUPABASE_ACCESS_TOKEN as
- *    `check-migration-drift.mjs` does. A call ahead of its migration FAILS the build, so the client
- *    that would 404 never reaches the site; `bash scripts/db-push.sh` pushes the migration and
+ *    `check-migration-drift.mjs` does. A call to a name only a pending migration creates FAILS the
+ *    build, so the client that would 404 never reaches the site (a replaced function is a warning
+ *    only: most migrations replace one); `bash scripts/db-push.sh` pushes the migration and
  *    re-runs the deploy. With no token, or the API down, it warns and passes: a blip at Supabase
  *    must not hold every deploy.
  */
@@ -29,7 +32,7 @@ import { execFileSync } from 'node:child_process'
 import { appendFileSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { CALLS_AHEAD_ADVICE, CALLS_AHEAD_LABEL, callsAhead, callsOnChangedLines, namesCreatedIn, schemaCallsIn, type CallAhead, type CreatedName, type SchemaCall } from '../src/lib/callsAhead'
+import { CALLS_AHEAD_ADVICE, CALLS_AHEAD_LABEL, callsAhead, namesCreatedIn, schemaCallsIn, type CallAhead, type CreatedName, type SchemaCall } from '../src/lib/callsAhead'
 import { changedLinesFromDiff } from '../src/lib/pronounOpeners'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -82,8 +85,12 @@ function baseRef(): { ref: string; how: string } | null {
 
 function describe(a: CallAhead): string {
   const what = a.call.kind === 'rpc' ? 'the function' : 'the table or view'
-  return `${a.file}:${a.call.line} calls ${what} ${a.call.name}, which only ${a.migrations.join(' and ')} creates`
+  return a.why === 'missing'
+    ? `${a.file}:${a.call.line} calls ${what} ${a.call.name}, which only ${a.migrations.join(' and ')} creates`
+    : `${a.file}:${a.call.line} calls ${what} ${a.call.name}, which ${a.migrations.join(' and ')} replaces: prod's old body answers until the push (a refusal when the client now sends what only the new body takes)`
 }
+
+const TITLES: Record<CallAhead['why'], string> = { missing: 'Push right after the merge', replaced: 'The old body answers until the push' }
 
 function summary(lines: string[]): void {
   const path = process.env.GITHUB_STEP_SUMMARY
@@ -133,13 +140,13 @@ function createdIn(files: string[], ref: string | null): Map<string, CreatedName
   return out
 }
 
-function report(ahead: CallAhead[], level: 'warning' | 'error', title: string): void {
+function report(ahead: CallAhead[], level: (a: CallAhead) => 'warning' | 'error'): void {
   let annotated = 0
   for (const a of ahead) {
     console.log(`  ${describe(a)}`)
     if (inActions && annotated < ANNOTATIONS_SHOWN) {
       annotated++
-      console.log(`::${level} file=${escapeProperty(a.file)},line=${a.call.line},title=${escapeProperty(title)}::${escapeData(`${describe(a)}. ${CALLS_AHEAD_ADVICE}`)}`)
+      console.log(`::${level(a)} file=${escapeProperty(a.file)},line=${a.call.line},title=${escapeProperty(TITLES[a.why])}::${escapeData(`${describe(a)}. ${CALLS_AHEAD_ADVICE}`)}`)
     }
   }
 }
@@ -164,20 +171,23 @@ function checkChange(): number {
   const older = all.filter((f) => !added.includes(f))
   const pending = createdIn(added, readRef)
   const applied = [...createdIn(older, readRef).values()].flat()
+  // A missing name counts on the lines this change wrote; a replaced function counts wherever the
+  // client calls it, since the call site is usually older than the change that teaches it new input.
   const changed = (tryGit(['diff', '--name-only', '--diff-filter=AMR', base.ref, head, '--', 'src']) ?? '').split('\n').map((l) => l.trim()).filter(isClientSource)
-  const calls = callsIn(changed, readRef, (file, found) => callsOnChangedLines(found, changedLinesFromDiff(tryGit(['diff', '-U0', base.ref, head, '--', file]) ?? '')))
-  const ahead = callsAhead(calls, pending, applied)
+  const written = new Map(changed.map((file) => [file, changedLinesFromDiff(tryGit(['diff', '-U0', base.ref, head, '--', file]) ?? '')]))
+  const sources = (tryGit(['ls-tree', '-r', '--name-only', head, '--', 'src']) ?? '').split('\n').map((l) => l.trim()).filter(isClientSource)
+  const ahead = callsAhead(callsIn(sources, readRef), pending, applied).filter((a) => a.why === 'replaced' || written.get(a.file)?.has(a.call.line))
   if (ahead.length === 0) {
-    console.log(`check-calls-ahead: ${added.length} migration(s) added, ${changed.length} client file(s) changed against ${base.how}: no call on the lines this change wrote is ahead of a migration it adds.`)
+    console.log(`check-calls-ahead: ${added.length} migration(s) added, ${changed.length} client file(s) changed against ${base.how}: no call on the lines this change wrote is ahead of a migration it adds, and none it adds replaces a function the client calls.`)
     return 0
   }
-  console.log(`\ncheck-calls-ahead: ${ahead.length} call(s) on the lines this change wrote are ahead of a migration it adds (against ${base.how}):`)
-  report(ahead, 'warning', 'Push right after the merge')
+  console.log(`\ncheck-calls-ahead: ${ahead.length} call(s) are ahead of a migration this change adds (against ${base.how}):`)
+  report(ahead, () => 'warning')
   console.log(`\n${CALLS_AHEAD_ADVICE}`)
   summary([
     `## Push right after the merge`,
     ``,
-    `This change's client calls what only its migration creates. ${CALLS_AHEAD_ADVICE}`,
+    `This change's client calls what its migration creates or replaces. ${CALLS_AHEAD_ADVICE}`,
     ``,
     ...ahead.map((a) => `- ${describe(a)}`),
   ])
@@ -237,13 +247,21 @@ async function checkProd(): Promise<number> {
   const pending = createdIn(pendingFiles, null)
   const before = [...createdIn(files.filter((f) => applied.has(version(f))), null).values()].flat()
   const sources = (tryGit(['ls-files', 'src']) ?? '').split('\n').map((l) => l.trim()).filter(isClientSource)
-  const ahead = callsAhead(callsIn(sources, null), pending, before)
+  const all = callsAhead(callsIn(sources, null), pending, before)
+  // A replaced function is a warning, never a hold: most migrations replace a function the client
+  // calls, and the old body usually still answers; the PR's label and its migration doc carry it.
+  const replaced = all.filter((a) => a.why === 'replaced')
+  if (replaced.length > 0) {
+    console.log(`\ncheck-calls-ahead: ${replaced.length} call(s) in src reach a function a pending migration replaces; prod's old body answers until the push:`)
+    report(replaced, () => 'warning')
+  }
+  const ahead = all.filter((a) => a.why === 'missing')
   if (ahead.length === 0) {
     console.log(`check-calls-ahead: ${pendingFiles.length} migration(s) pending on prod (${pendingFiles.map((f) => f.slice(MIGRATIONS_DIR.length + 1)).join(', ')}); no call in src is ahead of them.`)
     return 0
   }
   console.log(`\ncheck-calls-ahead: ${ahead.length} call(s) in src are ahead of a migration prod has not applied. This client would be refused on prod, so the deploy holds:`)
-  report(ahead, 'error', 'The deploy holds until the push')
+  report(ahead, () => 'error')
   const migrations = [...new Set(ahead.flatMap((a) => a.migrations))].sort()
   console.log(`\nPush ${migrations.join(' and ')} with \`bash scripts/db-push.sh\` from the main checkout; it re-runs this deploy once the push lands (or: gh workflow run deploy.yml --ref main).`)
   summary([

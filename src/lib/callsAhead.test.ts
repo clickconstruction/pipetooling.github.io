@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { callsAhead, callsOnChangedLines, namesCreatedIn, schemaCallsIn } from './callsAhead'
+import { callsAhead, namesCreatedIn, schemaCallsIn } from './callsAhead'
 
 describe('schemaCallsIn', () => {
   it('reads a literal rpc name, through an `as never` cast or a template literal, with its line', () => {
@@ -94,7 +94,7 @@ describe('callsAhead', () => {
   ])
   const applied = namesCreatedIn('CREATE FUNCTION public.insert_report() RETURNS void AS $$ BEGIN END $$ LANGUAGE plpgsql;\nCREATE TABLE public.clock_sessions (id uuid);')
 
-  it('lists the call whose name only a pending migration creates, with every such migration, and not one prod already has', () => {
+  it('lists a call as missing when only pending migrations create its name, as replaced when prod has it too, and not at all when nothing pending touches it', () => {
     const calls = [
       {
         file: 'src/lib/offline/landFieldPress.ts',
@@ -111,13 +111,28 @@ describe('callsAhead', () => {
         file: 'src/lib/offline/landFieldPress.ts',
         call: { kind: 'rpc', name: 'land_field_press', line: 109 },
         migrations: ['supabase/migrations/20261029230000_field_presses.sql', 'supabase/migrations/20261030040000_field_presses_notes_reports.sql'],
+        why: 'missing',
       },
       {
         file: 'src/lib/offline/landFieldPress.ts',
         call: { kind: 'from', name: 'field_presses', line: 120 },
         migrations: ['supabase/migrations/20261029230000_field_presses.sql'],
+        why: 'missing',
+      },
+      {
+        file: 'src/lib/offline/landFieldPress.ts',
+        call: { kind: 'rpc', name: 'insert_report', line: 130 },
+        migrations: ['supabase/migrations/20261030040000_field_presses_notes_reports.sql'],
+        why: 'replaced',
       },
     ])
+  })
+
+  it('reads #6474: the one pending migration replaces a function the applied one created', () => {
+    const only = new Map([['supabase/migrations/20261030040000_field_presses_notes_reports.sql', pending.get('supabase/migrations/20261030040000_field_presses_notes_reports.sql')!]])
+    const prodHas = [...applied, ...pending.get('supabase/migrations/20261029230000_field_presses.sql')!]
+    const calls = [{ file: 'src/lib/offline/landFieldPress.ts', calls: [{ kind: 'rpc' as const, name: 'land_field_press', line: 67 }] }]
+    expect(callsAhead(calls, only, prodHas).map((a) => a.why)).toEqual(['replaced'])
   })
 
   it('reads a from() against a pending view, and an rpc against a pending table as nothing', () => {
@@ -128,15 +143,5 @@ describe('callsAhead', () => {
 
   it('is empty with nothing pending', () => {
     expect(callsAhead([{ file: 'a.ts', calls: [{ kind: 'rpc', name: 'land_field_press', line: 1 }] }], new Map(), applied)).toEqual([])
-  })
-})
-
-describe('callsOnChangedLines', () => {
-  it('keeps the calls on the lines a change wrote', () => {
-    const found = [
-      { kind: 'rpc' as const, name: 'a', line: 3 },
-      { kind: 'rpc' as const, name: 'b', line: 9 },
-    ]
-    expect(callsOnChangedLines(found, new Set([1, 2, 3]))).toEqual([found[0]])
   })
 })
