@@ -9,6 +9,7 @@ import { describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import LienInstrumentsModal from './LienInstrumentsModal'
+import { fetchJobWithDetailsById } from '../../lib/fetchJobWithDetailsById'
 // The § Rules window is a lazy chunk that carries every help guide (v2.4695). Its first import takes about a
 // second alone and outlasts a case's 5 s under a loaded full run (the flake on 2026-10-08), so the file loads it
 // here, outside every case's clock; the door's React.lazy then resolves from the module cache (v2.4955).
@@ -22,7 +23,7 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
-vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: async () => null }))
+vi.mock('../../lib/fetchJobWithDetailsById', () => ({ fetchJobWithDetailsById: vi.fn(async () => null) }))
 // The pay codes (v2.4849) are drawn by a canvas the test runner has not got; the rows stand without them.
 vi.mock('../../lib/jobs/lienNoticePayPageAssets', () => ({ buildPayPageAssets: async () => ({}) }))
 vi.mock('../../lib/supabaseAccessTokenForEdge', () => ({ getAccessTokenForEdgeFunctions: async () => null }))
@@ -414,5 +415,13 @@ describe('LienInstrumentsModal · demand letter reads the bill', () => {
     fireEvent.keyDown(window, { key: 'Escape' })
     expect(screen.queryByTestId('lien-stop-paper')).toBeNull()
     expect(document.querySelector('[data-lien-window-timeline]')).toBeTruthy()
+  })
+})
+
+describe('LienInstrumentsModal · the papers name the trade (v2.6118)', () => {
+  it('the notice’s type of labor reads the trade from the full job read on open, since the board’s row carries none', async () => {
+    vi.mocked(fetchJobWithDetailsById).mockResolvedValueOnce(job({ serviceType: { name: 'Electrical' } }) as never)
+    renderWithProviders(<LienInstrumentsModal {...baseProps} job={job()} initialTab="notice" />)
+    await waitFor(() => expect(document.querySelector('[data-field="laborMaterialsType"]')?.textContent).toBe('Electrical labor and materials'))
   })
 })
