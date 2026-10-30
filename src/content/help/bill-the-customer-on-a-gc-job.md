@@ -94,6 +94,18 @@ Once a dollar or more of interest has built up, the window shows what is not bil
 
 The interest bill goes on the billing job with the customer's other bills. The window lists each interest bill with its day, its amount and whether it is paid. The email asks them to reply with the day they will pay.
 
+The email shows the sum as its rows. Each late bill is one row. The row names the bill and the day it fell due. Then the day they paid it or *open*, the days late and what was open. The last cell shows the arithmetic, like *$675 × 32⁄30.4 = $710*. A month counts as 30.4 days. The total sits under a rule.
+
+:::example The rows on an interest bill
+| Bill | Due | Paid | Days late | Open | Interest |
+| --- | --- | --- | --- | --- | --- |
+| Pay application 2 | Sep 1 | Oct 3 | 32 | $45,000 | $675 × 32⁄30.4 = $710 |
+| Pay application 3 | Oct 2 | open | 28 | $39,400 | $591 × 28⁄30.4 = $544 |
+| Interest to today | | | | | $1,254 |
+:::
+
+A bill paid in parts shows its figure alone. A line under the table says its interest ran on what stayed open each day.
+
 ## The late fee
 
 Some contracts charge us a fee for each day we finish past substantial completion. Type that fee here.

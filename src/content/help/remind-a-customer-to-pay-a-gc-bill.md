@@ -24,6 +24,8 @@ Before a bill is due, the app can tell the customer by itself. See [the reminder
 
 The email comes from Click Construction. It greets their contact by first name. With no contact on their record, it starts with *Hello,*. The email says what is still open and the day to pay by. The email asks them to reply with the day they will pay. A customer with a portal link gets the link too. The project manager gets their replies.
 
+On a job that charges interest, the email shows the bill's interest as one row. The row names the day it fell due, the days late, what is open and the arithmetic. The interest bill prints the same row. See [the rows on an interest bill](/help/bill-the-customer-on-a-gc-job#bill-the-interest).
+
 ## After it goes
 
 The bill says when you reminded them and the pay-by day. A note goes on the customer in the Payment Chase queue too.
