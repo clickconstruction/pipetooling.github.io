@@ -134,6 +134,7 @@ bar turn red with that one's reason while the rest go green.
 - **PR 3 built** (v2.6100): a job note from Job Mode and a field report from Leave Report through the
   queue, landed at the moment they were pressed; a report's notifications, moved lines and percent
   follow from the replay. Migration `20261030040000_field_presses_notes_reports.sql` replaces the
-  RPC with the two kinds. Turnaway and the office's Additional report stay live.
+  RPC with the two kinds. Leave Report and New report both go through it; a report with photos and
+  Turnaway stay live.
 - **Step 4 of the plan**, today's schedule from the last read, shipped as #183's PR 3 (v2.6059,
   `useKeptRead` keyed by the day for My Schedule and Job Mode). Nothing left to build here.
