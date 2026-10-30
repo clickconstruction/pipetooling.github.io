@@ -1,0 +1,388 @@
+<!doctype html>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Choose job: recent and search</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+  /* Layout: the brief, then each draft as one or more phone frames of the Choose job sheet, the second pass, the questions. */
+  :root {
+    --bg: #F4F5F3; --surface: #FFFFFF; --subtle: #EEF0EC; --ink: #171A17; --muted: #5F665F; --line: #D9DDD6; --line-strong: #B8BFB5;
+    --accent: #1F5F8B; --accent-bg: #E3EEF6; --good: #1E6B3A; --good-bg: #DDEFE3; --warn: #8A5A0C; --warn-bg: #F7EBD0; --bad: #9B2C2C; --bad-bg: #F6DEDE;
+    --display: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif; --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+    /* The phone frames keep the app's dark look, the one on the owner's screenshot, whatever the page's theme. */
+    --p-bg: #0B1220; --p-surface: #1A2332; --p-surface2: #111A2A; --p-line: #334155; --p-ink: #F1F5F9; --p-muted: #94A3B8; --p-blue: #60A5FA; --p-blue-tint: #1E3A5F; --p-blue-700: #93C5FD;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141714; --surface: #1C201C; --subtle: #242924; --ink: #ECEFEA; --muted: #9AA39A; --line: #303630; --line-strong: #46504A; --accent: #7FB3D9; --accent-bg: #1D3140; --good: #7FD09A; --good-bg: #1B3325; --warn: #E2B76A; --warn-bg: #3A2E14; --bad: #E88E8E; --bad-bg: #3D1F1F; color-scheme: dark; } }
+  :root[data-theme="dark"] { --bg: #141714; --surface: #1C201C; --subtle: #242924; --ink: #ECEFEA; --muted: #9AA39A; --line: #303630; --line-strong: #46504A; --accent: #7FB3D9; --accent-bg: #1D3140; --good: #7FD09A; --good-bg: #1B3325; --warn: #E2B76A; --warn-bg: #3A2E14; --bad: #E88E8E; --bad-bg: #3D1F1F; color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink); font: 15px/1.5 var(--body); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-family: var(--mono); font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-family: var(--display); font-size: 26px; line-height: 1.15; text-wrap: balance; max-width: 34ch; }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--muted); text-align: right; line-height: 1.6; }
+  h2 { font-family: var(--display); font-size: 20px; margin: 44px 0 6px; display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; text-wrap: balance; }
+  h2 .rank { font-family: var(--mono); font-size: 12px; color: var(--muted); font-weight: 500; }
+  h3.frameTitle { font-size: 13px; font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 8px; font-weight: 500; }
+  .lede { margin: 0 0 14px; color: var(--muted); max-width: 84ch; }
+  .lede b { color: var(--ink); font-weight: 600; }
+  .tag { font-family: var(--mono); font-size: 11px; letter-spacing: .04em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; white-space: nowrap; }
+  .tag.draft { background: var(--bad-bg); color: var(--bad); } .tag.revised { background: var(--good-bg); color: var(--good); } .tag.ask { background: var(--warn-bg); color: var(--warn); } .tag.pick { background: var(--accent-bg); color: var(--accent); }
+  .note { background: var(--surface); border: 1px solid var(--line-strong); border-left: 4px solid var(--warn); border-radius: 8px; padding: 10px 14px; margin: 14px 0; max-width: 84ch; }
+  .note b { display: block; }
+  code { font-family: var(--mono); font-size: 12.5px; background: var(--subtle); padding: 1px 4px; border-radius: 3px; }
+  ol.asks, ul.pts { max-width: 84ch; padding-left: 20px; margin: 10px 0 0; }
+  ol.asks li, ul.pts li { margin-bottom: 8px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 20px; align-items: start; margin-top: 10px; }
+  .cmp { background: var(--surface); border: 1px solid var(--line-strong); border-radius: 10px; padding: 12px 14px; }
+  .cmp h4 { margin: 0 0 6px; font-size: 14px; }
+  .cmp ul { margin: 0; padding-left: 18px; }
+  .cmp li { margin: 4px 0; }
+  table.plug { border-collapse: collapse; width: 100%; max-width: 84ch; font-size: 13.5px; margin-top: 8px; }
+  table.plug th, table.plug td { text-align: left; padding: 6px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.plug th { font-family: var(--mono); font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); font-weight: 500; }
+
+  /* ── the phone frame: 375 wide, the sheet open over the tally ── */
+  .phone { width: 375px; max-width: 100%; height: 720px; background: var(--p-bg); color: var(--p-ink); border-radius: 28px; border: 6px solid #2a2f3a; overflow: hidden; position: relative; font: 15px/1.35 -apple-system, "SF Pro Text", "IBM Plex Sans", system-ui, sans-serif; box-shadow: 0 10px 30px rgba(0,0,0,.25); }
+  .phone .status { height: 34px; display: flex; align-items: center; justify-content: space-between; padding: 0 20px; font-size: 13px; font-weight: 600; color: var(--p-ink); }
+  .phone .behind { padding: 10px 16px; color: var(--p-muted); font-size: 13px; opacity: .5; }
+  .phone .behind b { color: var(--p-ink); font-size: 18px; display: block; }
+  .phone .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.4); }
+  .sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 96px; background: var(--p-surface); border-radius: 16px 16px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+  .sheet .head { flex: none; padding: 8px 16px 10px; display: grid; gap: 8px; border-bottom: 1px solid var(--p-line); }
+  .sheet .handle { width: 40px; height: 4px; border-radius: 2px; background: var(--p-line); margin: 0 auto; }
+  .sheet .title { display: flex; align-items: baseline; }
+  .sheet .title h4 { margin: 0; font-size: 18px; font-weight: 700; color: var(--p-ink); }
+  .sheet .title .x { margin-left: auto; color: var(--p-muted); font-size: 22px; line-height: 1; width: 36px; text-align: right; }
+  .sheet .body { flex: 1 1 auto; overflow: hidden; padding: 10px 16px 16px; display: grid; gap: 8px; align-content: start; }
+  .sheet .body.scrolled { position: relative; }
+  .sheet .body.scrolled::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 56px; background: linear-gradient(180deg, transparent, var(--p-surface)); pointer-events: none; }
+  .search { position: relative; }
+  .search .box { min-height: 48px; border: 1px solid var(--p-line); border-radius: 999px; background: var(--p-surface2); color: var(--p-muted); padding: 0 14px 0 40px; display: flex; align-items: center; font-size: 15px; }
+  .search .box.typed { color: var(--p-ink); }
+  .search .box.typed i { font-style: normal; border-right: 2px solid var(--p-ink); margin-left: 1px; animation: blink 1s steps(1) infinite; }
+  @keyframes blink { 50% { border-color: transparent; } }
+  .search .glass { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--p-muted); font-size: 18px; line-height: 1; }
+  .search .clear { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; color: var(--p-muted); font-size: 18px; }
+  .sec { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 -2px; font-size: 12px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--p-muted); }
+  .sec span { font-weight: 500; letter-spacing: 0; text-transform: none; font-size: 12.5px; }
+  .job { min-height: 56px; border: 1px solid var(--p-line); border-radius: 8px; background: var(--p-surface); padding: 10px 12px; display: grid; gap: 2px; color: var(--p-ink); }
+  .job.sel { background: var(--p-blue-tint); border-color: #2b4a75; }
+  .job b { font-weight: 600; font-size: 15px; }
+  .job small { color: var(--p-muted); font-size: 13px; }
+  .job .when { color: var(--p-blue-700); font-size: 12.5px; font-weight: 500; }
+  .job .cust { color: var(--p-muted); font-size: 13px; }
+  .hit { background: #3a2f11; color: #fcd34d; border-radius: 2px; padding: 0 1px; font-weight: 700; }
+  .quote { border-left: 4px solid var(--accent); padding: 8px 14px; margin: 14px 0; background: var(--surface); border-radius: 0 8px 8px 0; max-width: 84ch; font-size: 15px; }
+  .quote small { display: block; color: var(--muted); font-family: var(--mono); font-size: 11px; margin-top: 4px; }
+  .job.row2 { grid-template-columns: 1fr auto; align-items: center; }
+  .job.row2 .when { grid-column: 2; grid-row: 1 / span 2; text-align: right; align-self: center; white-space: nowrap; }
+  .more { min-height: 44px; border: 1px dashed var(--p-line); border-radius: 8px; background: transparent; color: var(--p-blue-700); font-weight: 600; display: flex; align-items: center; justify-content: center; font-size: 14px; }
+  .chips { display: flex; gap: 6px; overflow: hidden; }
+  .chip { flex: none; height: 36px; border: 1px solid var(--p-line); border-radius: 999px; padding: 0 12px; display: flex; align-items: center; font-size: 13px; font-weight: 600; color: var(--p-ink); background: var(--p-surface2); max-width: 150px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; display: block; line-height: 34px; }
+  .chip.more { border-style: dashed; color: var(--p-blue-700); }
+  .empty { padding: 18px 4px; color: var(--p-ink); font-size: 15px; line-height: 1.5; }
+  .empty a { color: var(--p-blue-700); font-weight: 600; text-decoration: none; }
+  .kbd { position: absolute; left: 0; right: 0; bottom: 0; height: 180px; background: #2b3240; display: grid; grid-template-rows: repeat(4, 1fr); gap: 6px; padding: 10px 6px; }
+  .kbd div { display: grid; grid-auto-flow: column; gap: 5px; }
+  .kbd div span { background: #4b5366; border-radius: 5px; }
+  .frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 375px)); gap: 28px 24px; justify-content: start; margin-top: 10px; }
+  .cap { font-size: 13px; color: var(--muted); margin: 8px 0 0; max-width: 375px; }
+  .cap b { color: var(--ink); }
+</style>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list · draft for #216 · Job Parts Tally, the Choose job sheet</p>
+    <h1>Choose job: the jobs you were on, and a way to search</h1>
+  </div>
+  <div class="stamp">2026-10-29 · revised the same evening<br>two sheets today (Materials estimate · On site)<br>every job, newest number first, no search</div>
+</header>
+
+<p class="lede" style="margin-top:14px">The <b>Choose job</b> sheet on the tally lists every job the viewer can see, number · name with the address under it, newest number first, four hundred rows deep. The owner's ask from his phone: <b>a way to search</b>, and <b>the jobs you were on recently</b>, at least the last three, with a way to see more. This page draws the sheet three ways, picks one, takes a second pass at it, and asks three questions.</p>
+
+<div class="note"><b>Where "the jobs you were on" come from</b>
+Your own clock-ins (<code>clock_sessions</code>, yours, not rejected or revoked), newest first, each job once. A viewer with no clock-ins, the office sorting from a desk, gets the jobs their card's purchases were last sorted to (the Transactions tab's own rows), and each row says so: <i>Purchase sorted Oct 24</i> instead of <i>Clocked in</i>. A viewer with neither sees no Recent section at all, and the sheet reads as today plus the search. Search matches the way the app's job search does: the number with or without its letter (<code>972</code>, <code>J972</code>), the name, the address, the customer.</div>
+
+<h2><span class="rank">Draft A</span> Search on top · Recent · All jobs <span class="tag draft">first pass</span></h2>
+<p class="lede">The search field is the first thing on the sheet and stays put while the lists scroll. Under it, <b>Recent</b>: the last three jobs you were on, newest first, each saying <b>when</b>, so the section explains itself without a sentence. <b>Show 7 more</b> unfolds to the last ten. Then <b>All jobs</b>, the list as today, under its own heading with its count. Typing narrows every section at once.</p>
+<div class="frames">
+  <div>
+    <h3 class="frameTitle">A1 · opened, nothing typed</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box">Number, name, address or customer</div></div>
+        </div>
+        <div class="body scrolled">
+          <div class="sec">Recent <span>· jobs you were on</span></div>
+          <div class="job row2 sel"><b>968 · PRV replacement</b><small>210 Cliffside Dr, Shavano Park</small><span class="when">Clocked in today</span></div>
+          <div class="job row2"><b>972 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small><span class="when">Yesterday</span></div>
+          <div class="job row2"><b>925 · Tunnel repair</b><small>250 Pincea Pl, San Marcos</small><span class="when">Mon Oct 27</span></div>
+          <div class="more">Show 7 more</div>
+          <div class="sec">All jobs <span>· 412</span></div>
+          <div class="job"><b>972 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small></div>
+          <div class="job"><b>971 · Water heater swap</b><small>408 Pecan Hollow, Kyle</small></div>
+          <div class="job"><b>968 · PRV replacement</b><small>210 Cliffside Dr, Shavano Park</small></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>The picked job</b> (968, the one the tally is on) is tinted wherever it appears, as today. The search is not focused on open, so the keyboard does not cover the list; a tap on it raises the keyboard and the sheet sits on top of it.</p>
+  </div>
+  <div>
+    <h3 class="frameTitle">A2 · Show 7 more pressed</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box">Number, name, address or customer</div></div>
+        </div>
+        <div class="body scrolled">
+          <div class="sec">Recent <span>· jobs you were on</span></div>
+          <div class="job row2 sel"><b>968 · PRV replacement</b><small>210 Cliffside Dr, Shavano Park</small><span class="when">Clocked in today</span></div>
+          <div class="job row2"><b>972 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small><span class="when">Yesterday</span></div>
+          <div class="job row2"><b>925 · Tunnel repair</b><small>250 Pincea Pl, San Marcos</small><span class="when">Mon Oct 27</span></div>
+          <div class="job row2"><b>924 · Slab leak</b><small>215 Jetlyn Dr, San Antonio</small><span class="when">Fri Oct 24</span></div>
+          <div class="job row2"><b>967 · Well pump</b><small>530 S Ranch Rd, Blanco</small><span class="when">Thu Oct 23</span></div>
+          <div class="job row2"><b>921 · Repipe</b><small>260 Cross River St, New Braunfels</small><span class="when">Wed Oct 22</span></div>
+          <div class="job row2"><b>920 · Trim set</b><small>630 Oak Country, Helotes</small><span class="when">Wed Oct 22</span></div>
+          <div class="job row2"><b>97 · Diagnostic visit</b><small>6320 Aster Run, New Braunfels</small><span class="when">Mon Oct 20</span></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>Ten at most.</b> The press names its count and goes away once pressed; the sheet forgets the unfold when it closes. The list scrolls on to All jobs under it.</p>
+  </div>
+  <div>
+    <h3 class="frameTitle">A3 · typing "san mar"</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box typed">san mar<i></i></div><span class="clear">⊗</span></div>
+        </div>
+        <div class="body">
+          <div class="sec">Recent <span>· 2 match</span></div>
+          <div class="job row2"><b>972 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small><span class="when">Yesterday</span></div>
+          <div class="job row2"><b>925 · Tunnel repair</b><small>250 Pincea Pl, San Marcos</small><span class="when">Mon Oct 27</span></div>
+          <div class="sec">All jobs <span>· 9 match</span></div>
+          <div class="job"><b>972 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small></div>
+          <div class="job"><b>925 · Tunnel repair</b><small>250 Pincea Pl, San Marcos</small></div>
+          <div class="job"><b>903 · Gas line to the range</b><small>700 Wonder World Dr, San Marcos</small></div>
+        </div>
+        <div class="kbd"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span style="grid-column: span 4"></span><span></span></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>Every section narrows</b> on the same words. The heading counts say how many match in each. Recent keeps its "when" line. A section with no match folds away; when nothing matches anywhere the sheet says so (A4).</p>
+  </div>
+  <div>
+    <h3 class="frameTitle">A4 · nothing matches</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box typed">lago vista 99<i></i></div><span class="clear">⊗</span></div>
+        </div>
+        <div class="body">
+          <div class="empty">No jobs match ‘lago vista 99’. <a>Clear the search</a></div>
+        </div>
+        <div class="kbd"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span style="grid-column: span 4"></span><span></span></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>The empty state names the press</b> (the app's filter kind: <code>No jobs match ‘…’. Clear the search</code>). Nothing else draws, so the eye lands on it.</p>
+  </div>
+</div>
+
+<h2><span class="rank">Draft B</span> Recent as a chip rail, one list under it <span class="tag draft">drawn, not picked</span></h2>
+<p class="lede">The compact version: the three recent jobs as chips under the search, a <b>More ▾</b> chip at the end, then the one list. Saves two rows of height.</p>
+<div class="frames">
+  <div>
+    <h3 class="frameTitle">B1 · opened</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box">Number, name, address or customer</div></div>
+          <div class="chips"><span class="chip">968 · PRV replacem…</span><span class="chip">972 · Pinpoint &amp; g…</span><span class="chip">925 · Tunn…</span><span class="chip more">More ▾</span></div>
+        </div>
+        <div class="body scrolled">
+          <div class="job"><b>972 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small></div>
+          <div class="job"><b>971 · Water heater swap</b><small>408 Pecan Hollow, Kyle</small></div>
+          <div class="job sel"><b>968 · PRV replacement</b><small>210 Cliffside Dr, Shavano Park</small></div>
+          <div class="job"><b>967 · Well pump</b><small>530 S Ranch Rd, Blanco</small></div>
+          <div class="job"><b>925 · Tunnel repair</b><small>250 Pincea Pl, San Marcos</small></div>
+          <div class="job"><b>924 · Slab leak</b><small>215 Jetlyn Dr, San Antonio</small></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>Why not:</b> a chip cuts the name at twelve letters and drops the address, the third chip is unreadable at 375 px, a 36 px chip is under thumb height, and nothing says when you were on each. It is the office's shape, not a tech's.</p>
+  </div>
+</div>
+
+<h2><span class="rank">Draft C</span> One list, the recent jobs rise to the top <span class="tag draft">drawn, not picked</span></h2>
+<p class="lede">No headings: the recent jobs lead the one list with a small "when" tag, and the rest follows in number order. The least to build.</p>
+<div class="frames">
+  <div>
+    <h3 class="frameTitle">C1 · opened</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box">Number, name, address or customer</div></div>
+        </div>
+        <div class="body scrolled">
+          <div class="job row2 sel"><b>968 · PRV replacement</b><small>210 Cliffside Dr, Shavano Park</small><span class="when">today</span></div>
+          <div class="job row2"><b>972 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small><span class="when">yesterday</span></div>
+          <div class="job row2"><b>925 · Tunnel repair</b><small>250 Pincea Pl, San Marcos</small><span class="when">Oct 27</span></div>
+          <div class="job"><b>972 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small></div>
+          <div class="job"><b>971 · Water heater swap</b><small>408 Pecan Hollow, Kyle</small></div>
+          <div class="job"><b>968 · PRV replacement</b><small>210 Cliffside Dr, Shavano Park</small></div>
+          <div class="job"><b>967 · Well pump</b><small>530 S Ranch Rd, Blanco</small></div>
+        </div>
+      </div>
+    </div>
+    <p class="cap"><b>Why not:</b> the boundary between "yours" and "everything" is three small tags, and 972 appears twice in four rows with no line between them. There is no place for "show more", so it is three or ten with no way to ask.</p>
+  </div>
+</div>
+
+<div class="quote">Is that the best you can do? I would like to be able to see what I am searching for highlighted.<small>owner, 2026-10-29, on the first pass</small></div>
+
+<h2><span class="rank">Draft A, revised</span> What you type lights up where it landed <span class="tag pick">the pick</span></h2>
+<p class="lede">Same sheet as Draft A: search on top, Recent with when, Show 7 more, All jobs. The search now <b>shows its work</b>. The run you typed is lit in amber on every row it landed on, the way the Jobs page lights its search; a hit on the number sorts first; a hit on the customer shows the customer line. The opened sheet (A1), Show 7 more (A2) and nothing matches (A4) stand as drawn.</p>
+<div class="frames">
+  <div>
+    <h3 class="frameTitle">R1 · typing a number, "97"</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box typed">97<i></i></div><span class="clear">⊗</span></div>
+        </div>
+        <div class="body">
+          <div class="sec">Recent <span>· 1 match</span></div>
+          <div class="job row2"><b><span class="hit">97</span>2 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small><span class="when">Yesterday</span></div>
+          <div class="sec">All jobs <span>· 14 match</span></div>
+          <div class="job"><b><span class="hit">97</span> · Diagnostic visit</b><small>6320 Aster Run, New Braunfels</small></div>
+          <div class="job"><b><span class="hit">97</span>2 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small></div>
+          <div class="job"><b><span class="hit">97</span>1 · Water heater swap</b><small>408 Pecan Hollow, Kyle</small></div>
+          <div class="job"><b><span class="hit">97</span>0 · Sewer camera</b><small>1500 Hunter Rd, San Marcos</small></div>
+        </div>
+        <div class="kbd"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span style="grid-column: span 4"></span><span></span></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>The number lights up</b> where the digits landed, and <b>number hits come first</b>: the exact number, then the ones that start with it, then jobs where 97 is in the address or the name, in today's order. Typing J97 lights the same 97.</p>
+  </div>
+  <div>
+    <h3 class="frameTitle">R2 · two words, "tunnel marcos"</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box typed">tunnel marcos<i></i></div><span class="clear">⊗</span></div>
+        </div>
+        <div class="body">
+          <div class="sec">Recent <span>· 1 match</span></div>
+          <div class="job row2"><b>925 · <span class="hit">Tunnel</span> repair</b><small>250 Pincea Pl, San <span class="hit">Marcos</span></small><span class="when">Mon Oct 27</span></div>
+          <div class="sec">All jobs <span>· 2 match</span></div>
+          <div class="job"><b>925 · <span class="hit">Tunnel</span> repair</b><small>250 Pincea Pl, San <span class="hit">Marcos</span></small></div>
+          <div class="job"><b>611 · <span class="hit">Tunnel</span> under the slab</b><small>90 Hopkins St, San <span class="hit">Marcos</span></small></div>
+        </div>
+        <div class="kbd"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span style="grid-column: span 4"></span><span></span></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>Each word you type lands somewhere on the job</b> and is lit where it landed, so you see why a row is here. The order of the words does not matter. Recent searches your last ten, not only the three on show.</p>
+  </div>
+  <div>
+    <h3 class="frameTitle">R3 · a customer, "alvarez"</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box typed">alvarez<i></i></div><span class="clear">⊗</span></div>
+        </div>
+        <div class="body">
+          <div class="sec">All jobs <span>· 2 match</span></div>
+          <div class="job"><b>971 · Water heater swap</b><small>408 Pecan Hollow, Kyle</small><span class="cust"><span class="hit">Alvarez</span> Homes</span></div>
+          <div class="job"><b>814 · Tankless install</b><small>12 Hays Loop, Buda</small><span class="cust"><span class="hit">Alvarez</span> Homes</span></div>
+        </div>
+        <div class="kbd"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span style="grid-column: span 4"></span><span></span></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>A hit on the customer shows the customer</b>, a third line the row does not carry otherwise, with the hit lit. Recent had no match, so its heading folded away rather than sit there empty.</p>
+  </div>
+</div>
+
+<h2>The second pass <span class="tag revised">what the question changed</span></h2>
+<div class="grid">
+  <div class="cmp"><h4>Changed by the owner's question</h4><ul>
+    <li><b>The run you typed is lit</b> wherever it landed: number, name, address, customer. Amber, the Jobs page's own mark (<code>StagesSearchMark</code>), not the schedule picker's blue: this sheet's picked row is already blue, and a blue run on a blue row would vanish.</li>
+    <li><b>Each word lands somewhere.</b> <i>tunnel marcos</i> finds a tunnel repair in San Marcos whichever way round you type it, and each word is lit where it landed. The Clock sessions search already matches this way; the lit runs are what make it legible.</li>
+    <li><b>A hit on the number sorts first</b>: the exact number, then numbers that start with it, then the rest in today's order. Typing <i>97</i> puts 97 on top, not 1970's address.</li>
+    <li><b>A hit on the customer shows the customer line.</b> The row shows why it is here; a row with no hit there stays two lines.</li>
+    <li><b>Recent searches your last ten</b>, not only the three on show, so a job from last week is one word away.</li>
+    <li><b>⊗ clears the search</b> in one 40 px press and the full sheet comes back.</li>
+  </ul></div>
+  <div class="cmp"><h4>Standing from the first pass</h4><ul>
+    <li><b>Search first, not focused.</b> 48 px, the pill the On site tab's own search wears. A tap raises the keyboard and the sheet stays above it (<code>PhoneSheet</code>; the build moves both pickers onto it).</li>
+    <li><b>The head stays put.</b> Handle, title and search are a fixed head; only the lists scroll.</li>
+    <li><b>Every recent row says when</b>, and names its source: <i>Clocked in today</i>, or <i>Purchase sorted Oct 24</i> for a viewer with no clock-ins.</li>
+    <li><b>Show 7 more</b> carries its count; ten is the ceiling. <b>Headings count what matches.</b> <b>No Recent section</b> when the viewer has none; a section with no match folds away.</li>
+    <li><b>All jobs keeps every job</b> in today's order with its count; a recent job appears under both headings.</li>
+    <li><b>Drafts B and C stay out.</b> B's third chip rendered as one digit at 375 px; C mixed 972 twice in four rows with nothing between.</li>
+    <li><b>One sheet for both tabs</b>; <b>Show my jobs only</b> stays where it is and narrows All jobs as today.</li>
+  </ul></div>
+</div>
+
+<h2>Three questions for the owner <span class="tag ask">his yes before building</span></h2>
+<ol class="asks">
+  <li><b>Where Recent comes from.</b> Your clock-ins first; with none, the jobs your card's purchases were last sorted to; with neither, no section. Should the jobs <i>scheduled</i> to you this week count too, or only where you actually were?</li>
+  <li><b>The "when" line</b> on each recent row (Clocked in today · Yesterday · Mon Oct 27, or Purchase sorted Oct 24). Keep it, or just the three rows under the Recent heading?</li>
+  <li><b>All jobs keeps every job</b>, so a recent one shows twice (once under Recent, once in its place). Fine, or take the recent ones out of All jobs?</li>
+</ol>
+
+<h2>Where it plugs in</h2>
+<table class="plug">
+  <tr><th>Piece</th><th>Exists</th><th>New</th></tr>
+  <tr><td>The sheet</td><td><code>JobTally.tsx</code> Materials estimate picker · <code>TallyOnSiteTab.tsx</code> <code>Sheet</code> picker</td><td><code>TallyChooseJobSheet</code>, one component, both callers</td></tr>
+  <tr><td>Search</td><td>the fields <code>forecastJobMatchesSearch</code> reads (number with or without its letter, name, address) over the ledger prefix map; the Clock sessions search's every-word rule; the Jobs page's amber mark (<code>StagesSearchMark</code>, <code>splitTextByMatch</code>)</td><td><code>lib/tally/chooseJobSearch.ts</code>: the same fields, every word lands, the runs reported per field so the rows light them, number hits first; the tally's job rows gain <code>customer_name</code> and <code>service_type_id</code></td></tr>
+  <tr><td>Recent</td><td><code>clock_sessions</code> read the way <code>fetchSortModeDayJobs</code> reads it; the viewer's sorted purchases from <code>fetchTallyLinkedMercuryRows</code></td><td><code>lib/tally/recentJobs.ts</code>: the pure order (each job once, newest first, ten at most) and the when-words; a small reader</td></tr>
+  <tr><td>Empty</td><td><code>EmptyState</code> + <code>emptyWords({ kind: 'filter' })</code></td><td>—</td></tr>
+  <tr><td>Guide</td><td><i>sort my card purchases to jobs</i> names the sort screen; nothing names this sheet</td><td>a short section on the tally guide: find the job, your recent jobs</td></tr>
+</table>
+</div>

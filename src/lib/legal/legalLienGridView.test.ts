@@ -53,8 +53,8 @@ function input(): LienTimelineBookInput {
       // j702: every window closed.
       month('j702', '2026-05', '2026-08-15'),
       month('j702', '2026-06', '2026-09-15'),
-      // j1101: no GC — contracted with the owner.
-      month('j1101', '2026-08', '2026-10-15', { gc_customer_id: null, property_kind: 'residential' }),
+      // j1101: no GC — contracted with the owner; last work in July, so its residential affidavit is due Oct 15.
+      month('j1101', '2026-07', '2026-09-15', { gc_customer_id: null, property_kind: 'residential' }),
     ],
     affidavitRows: [],
     items: [],
@@ -63,7 +63,7 @@ function input(): LienTimelineBookInput {
       j878: job('j878', { openBalance: 38_625 }),
       j843: job('j843', { gcId: 'gc2', gcName: 'Michael Palmer', propertyKind: 'residential', homestead: true, openBalance: 7_152, ownerName: 'LAGAN JOEL C & SHANNON' }),
       j702: job('j702', { openBalance: 9_221, propertyKind: '' }),
-      j1101: job('j1101', { gcId: null, gcName: '', isSub: false, propertyKind: 'residential', openBalance: 1_795, ownerName: 'Sam Whitfield' }),
+      j1101: job('j1101', { gcId: null, gcName: '', isSub: false, lastWorkDate: '2026-07-20', propertyKind: 'residential', openBalance: 1_795, ownerName: 'Sam Whitfield' }),
     },
     policyByCustomer: {},
   }
@@ -142,9 +142,11 @@ describe('the rail', () => {
   it('follows the view, leaves an empty entry off, and filters the grid the same way', () => {
     const due = legalLienGridGcs(book, 'due')
     expect(due[0]!.count).toBe(book.counts.due)
-    // The homeowner's month is due Oct 15, inside the lead: No GC stays. Push it out and the entry is left off (v2.4751).
+    // The homeowner owes no month's notice (v2.6102); the job's affidavit is due Oct 15, inside the lead, so No GC stays.
+    // Push the last work day out and the entry is left off (v2.4751).
     expect(due.some((e) => e.id === LEGAL_LIEN_NO_GC)).toBe(true)
-    const later = buildLienTimelineBook({ ...input(), rows: input().rows.map((r) => (r.job_id === 'j1101' ? { ...r, deadline: '2027-01-15' } : r)) })
+    const src = input()
+    const later = buildLienTimelineBook({ ...src, jobs: { ...src.jobs, j1101: { ...src.jobs['j1101']!, lastWorkDate: '2026-09-20' } } })
     expect(legalLienGridGcs(later, 'due').some((e) => e.id === LEGAL_LIEN_NO_GC)).toBe(false)
     expect(legalLienGridGcs(later, 'all').some((e) => e.id === LEGAL_LIEN_NO_GC)).toBe(true)
     expect(filterLegalLienGrid(book, { gcId: 'gc1', show: 'all' }).map((r) => r.jobId).sort()).toEqual(['j702', 'j878'])

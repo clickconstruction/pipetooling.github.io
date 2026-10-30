@@ -8,6 +8,8 @@ import { buildMoneyRows, type MoneyRow } from '../../lib/jobs/jobMoneyTable'
 import type { MaterialRow } from '../../lib/jobs/jobFormTypes'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { materialRowHasUserContent } from '../../lib/jobs/jobFormRows'
+import { splitEstimateDescription } from '../../lib/jobs/otherChargeRowDisplay'
+import { EstimateChip, OtherChargeAmountInput } from './OtherChargeInputs'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import {
@@ -122,6 +124,10 @@ export function JobFormPartsCostSection({
   // one — the accordion opens to just the button when nothing is entered yet.
   // (The shell's materials state always keeps >=1 row; this is presentation.)
   const [emptyChargeRowsVisible, setEmptyChargeRowsVisible] = useState(false)
+  // #215: an ESTIMATE description wears a chip and shows the text after the
+  // prefix — except while its box has focus, when the whole description is
+  // editable, prefix included.
+  const [focusedDescriptionId, setFocusedDescriptionId] = useState<string | null>(null)
 
   return (
     <>
@@ -315,43 +321,42 @@ export function JobFormPartsCostSection({
                           borderBottom: idx < visibleRows.length - 1 ? '1px solid var(--border)' : 'none',
                         }}
                       >
-                        <input
-                          type="text"
-                          value={row.description}
-                          onChange={(e) => updateMaterialRow(row.id, { description: e.target.value })}
-                          placeholder="Other charge…"
-                          aria-label="Other charge description"
-                          autoFocus={row.id === firstEmptyId}
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: '0.25rem 0.1rem',
-                            border: 'none',
-                            borderBottom: '1px solid var(--border-strong)',
-                            borderRadius: 0,
-                            fontSize: '0.875rem',
-                            background: 'transparent',
-                          }}
-                        />
-                        <input
-                          type="number"
-                          min={0}
-                          step={0.01}
-                          value={row.amount || ''}
-                          onChange={(e) => updateMaterialRow(row.id, { amount: parseFloat(e.target.value) || 0 })}
-                          placeholder="0"
+                        {(() => {
+                          const est = splitEstimateDescription(row.description)
+                          const chip = est.estimate && focusedDescriptionId !== row.id
+                          return (
+                            <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                              {chip ? <EstimateChip /> : null}
+                              <input
+                                type="text"
+                                value={chip ? est.rest : row.description}
+                                onChange={(e) =>
+                                  updateMaterialRow(row.id, { description: chip ? est.prefix + e.target.value : e.target.value })
+                                }
+                                onFocus={() => setFocusedDescriptionId(row.id)}
+                                onBlur={() => setFocusedDescriptionId((cur) => (cur === row.id ? null : cur))}
+                                placeholder="Other charge…"
+                                aria-label="Other charge description"
+                                title={chip ? row.description : undefined}
+                                autoFocus={row.id === firstEmptyId}
+                                style={{
+                                  flex: 1,
+                                  minWidth: 0,
+                                  padding: '0.25rem 0.1rem',
+                                  border: 'none',
+                                  borderBottom: '1px solid var(--border-strong)',
+                                  borderRadius: 0,
+                                  fontSize: '0.875rem',
+                                  background: 'transparent',
+                                }}
+                              />
+                            </span>
+                          )
+                        })()}
+                        <OtherChargeAmountInput
+                          value={Number(row.amount) || 0}
+                          onChange={(n) => updateMaterialRow(row.id, { amount: n })}
                           aria-label="Other charge amount"
-                          style={{
-                            width: '6rem',
-                            padding: '0.25rem 0.1rem',
-                            border: 'none',
-                            borderBottom: '1px solid var(--border-strong)',
-                            borderRadius: 0,
-                            fontSize: '0.875rem',
-                            textAlign: 'right',
-                            background: 'transparent',
-                            fontVariantNumeric: 'tabular-nums',
-                          }}
                         />
                         {canRemove ? (
                           <button

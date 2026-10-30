@@ -52,7 +52,7 @@ import {
 } from '../lib/quickfill/closeWeekChip'
 import DashboardTallyStaleStaffBanner from '../components/DashboardTallyStaleStaffBanner'
 import { DashboardStaleTallyStaffFollowUpModal } from '../components/DashboardStaleTallyStaffFollowUpModal'
-import DashboardJobFollowupsBanner from '../components/DashboardJobFollowupsBanner'
+import { QuickfillJobFollowupsSection } from '../components/quickfill/QuickfillJobFollowupsSection'
 import DashboardGcReviewWeeklyBanner from '../components/DashboardGcReviewWeeklyBanner'
 import { QuickfillNeedsYouSection } from '../components/quickfill/QuickfillNeedsYouSection'
 import { BilledAwaitingPaymentSection } from '../components/quickfill/BilledAwaitingPaymentSection'
@@ -1436,7 +1436,7 @@ function QuickfillPage() {
               loading={jobFollowupsCount === null}
               nextLine={jobFollowupsNextLine}
             />
-            <DashboardJobFollowupsBanner onCount={setJobFollowupsCount} onNextLine={setJobFollowupsNextLine} />
+            <QuickfillJobFollowupsSection onCount={setJobFollowupsCount} onNextLine={setJobFollowupsNextLine} />
           </QuickfillSectionWrapper>
         )
       case 'needs-you':

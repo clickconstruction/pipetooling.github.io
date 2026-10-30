@@ -11,6 +11,16 @@ On a big job the material lives in stencilled cages and boxes left on the site. 
 
 Open **Tally** and tap **On site**. Pick the job at the top. On your Dashboard, the Job Mode card has **Materials on site**. Tap it and the tab opens on the job you are clocked into.
 
+## Find the job
+
+Tap the job at the top and the **Choose job** sheet opens. The search box sits on top. It is not focused, so the keyboard stays down until you tap it.
+
+Type a number, a name, an address or a customer. Every section narrows as you type. What you typed lights up on each row where it landed. A number you type puts that job first. Tap the ⊗ in the box to start over.
+
+Under the search, **Recent** lists the last three jobs you clocked in on, newest first. Each row says when, like *Clocked in today*. The press under them says how many more there are, up to ten. Tap it to see them all. With no clock-ins, the jobs your card purchases were sorted to stand in. Those rows say *Purchase sorted* and the day.
+
+**All jobs** follows under its own heading with its count. The same sheet opens from the Materials Estimate tab.
+
 The row under the job reads your day left to right: {{chip:blue|Unsorted 2}} → {{chip:gray|Used 6}} → {{chip:green|Count 25}}. A dot marks the one that needs you now.
 
 ## Put away a delivery

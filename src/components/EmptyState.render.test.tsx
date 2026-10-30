@@ -4,7 +4,7 @@
  * compact padding for a list inside a window.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { renderWithProviders as render } from '../test/renderSmokeMocks'
 import { EmptyState } from './EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
@@ -18,6 +18,7 @@ describe('EmptyState', () => {
     expect(p.tagName).toBe('P')
     expect(p.textContent).toBe('Nothing waiting on dispatch.')
     expect(p.querySelector('button, a')).toBeNull()
+    expect(Array.from(p.children).map((u) => (u as HTMLElement).dataset.emptyUnit)).toEqual(['main'])
     expect(p.style.textAlign).toBe('center')
     expect(p.style.padding).toBe('2rem')
   })
@@ -60,5 +61,26 @@ describe('EmptyState', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Show every bid' }))
     expect(widen).toHaveBeenCalledTimes(1)
     expect(clear).not.toHaveBeenCalled()
+  })
+
+  it('draws main as one unit and the press with its tail as a second, so the second drops whole to the next line (v2.6113)', () => {
+    render(<EmptyState compact main="Nothing scheduled today." next={{ label: '+ Add job', onPress: vi.fn() }} tail="puts a job on your day." />)
+    const p = document.querySelector('[data-empty-state]') as HTMLElement
+    const units = Array.from(p.children) as HTMLElement[]
+    expect(units.map((u) => u.dataset.emptyUnit)).toEqual(['main', 'next'])
+    expect(units.map((u) => u.textContent)).toEqual(['Nothing scheduled today.', '+ Add job puts a job on your day.'])
+    expect(units.map((u) => u.style.display)).toEqual(['inline-block', 'inline-block'])
+    expect(within(units[1] as HTMLElement).getByRole('button', { name: '+ Add job' })).toBeTruthy()
+    expect(p.textContent).toBe('Nothing scheduled today. + Add job puts a job on your day.')
+  })
+
+  it('the second unit holds the or press too, and a tail with no press is a unit of its own', () => {
+    render(<EmptyState main="No bids match ‘Ridgway’." next={{ label: 'Clear the search', onPress: vi.fn() }} orNext={{ label: 'Show every bid', onPress: vi.fn() }} />)
+    let units = Array.from((document.querySelector('[data-empty-state]') as HTMLElement).children) as HTMLElement[]
+    expect(units.map((u) => u.textContent)).toEqual(['No bids match ‘Ridgway’.', 'Clear the search or Show every bid'])
+    cleanup()
+    render(<EmptyState main="No reports yet." tail="Create one above." />)
+    units = Array.from((document.querySelector('[data-empty-state]') as HTMLElement).children) as HTMLElement[]
+    expect(units.map((u) => u.textContent)).toEqual(['No reports yet.', 'Create one above.'])
   })
 })
