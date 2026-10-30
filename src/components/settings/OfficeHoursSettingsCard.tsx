@@ -14,11 +14,18 @@
  * member's Push me hours leave a stretch with nobody pushed, *Nobody hears a reply from 11 PM to 6 AM. Rosa, Evan and
  * Taunya are all off then.* (`messages/whoIsOff.ts` over `pushCoverageIo.ts`). The company's switch says the office is
  * open; the people's hours say whether anyone is; the line is where the two meet, and it is the owner's to act on.
+ *
+ * Punch list #217, office-11 (v2.6154): the hours the line is read from, drawn above it (`CoverageGrid.tsx` over
+ * `messages/coverageGrid.ts`): one row per office person with their Push me hours as a bar, the stretch nobody covers a
+ * red column through every row, the weekend as a chip; a press on a row opens that person's hours by what the app
+ * allows. The line stays as the grid's caption.
  */
 import { useEffect, useState, type CSSProperties } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { useToastContext } from '../../contexts/ToastContext'
-import type { UserRole } from '../../hooks/useAuth'
+import { useOptionalAuth, type UserRole } from '../../hooks/useAuth'
 import { isOwnerOrDev } from '../../lib/gc/access'
+import { coverageGrid } from '../../lib/messages/coverageGrid'
 import { parseOfficeHours, type OfficeHours } from '../../lib/messages/hasRule'
 import {
   DAY_LONG,
@@ -37,6 +44,7 @@ import { supabaseOfficeHoursIo, type OfficeHoursIo } from '../../lib/messages/of
 import { supabasePushCoverageIo, type PushCoverageIo } from '../../lib/messages/pushCoverageIo'
 import { coverageGaps, coverageLine, type CoverageMember } from '../../lib/messages/whoIsOff'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { CoverageGrid } from './CoverageGrid'
 
 const DEFAULT_IO = supabaseOfficeHoursIo()
 const DEFAULT_COVERAGE = supabasePushCoverageIo()
@@ -89,6 +97,8 @@ export function OfficeHoursSettingsCard({
   now?: () => string
 }) {
   const { showToast } = useToastContext()
+  const navigate = useNavigate()
+  const meId = useOptionalAuth()?.user?.id ?? null
   const canSet = isOwnerOrDev(role)
   const [hours, setHours] = useState<OfficeHours | null>(null)
   const [draft, setDraft] = useState<OfficeHoursDraft | null>(null)
@@ -132,6 +142,8 @@ export function OfficeHoursSettingsCard({
   const bad = draft ? draftProblem(draft) : null
   // Where the switch and the people's hours meet (v2.6060): drawn only while the switch is on and a gap exists.
   const coverageWords = draft?.always ? coverageLine(coverageGaps(members), members.map((m) => m.name)) : null
+  // The hours the line is read from (v2.6154), drawn above it while it draws.
+  const grid = coverageWords ? coverageGrid(members, meId) : null
 
   const save = async () => {
     if (!hours || !draft || bad || !changed) return
@@ -239,6 +251,7 @@ export function OfficeHoursSettingsCard({
           <p data-office-hours-line style={bad ? { ...muted, color: 'var(--text-red-700)' } : muted}>
             {bad ?? hoursLine(draft)}
           </p>
+          {grid && <CoverageGrid grid={grid} onOpen={(to) => navigate(to)} />}
           {coverageWords && (
             <p data-office-hours-coverage style={{ ...muted, color: 'var(--text-amber-700)' }}>
               {coverageWords}

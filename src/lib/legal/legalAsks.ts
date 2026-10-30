@@ -27,7 +27,7 @@ import { recordedByOf } from '../../../supabase/functions/_shared/legalPortalAct
  * these.
  */
 
-/** `settlement` (#85 item 20) is the firm's: a settled step under the office's floor, which the office signs off. */
+/** `settlement` (#85 item 20) is the firm's: a settled step under the office's floor, which the office signs off; none new since v2.6170 retired the floor. */
 export type LegalAskFlavor = 'question' | 'signoff' | 'settlement'
 
 export type LegalAskMeta = { flavor: LegalAskFlavor; jobId: string | null; jobLabel: string; askedBy: string }

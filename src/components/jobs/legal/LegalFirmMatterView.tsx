@@ -16,7 +16,6 @@ import { CardCell } from './LegalCardCell'
 import { LEGAL_CARD_VARS, portalSmall } from '../../../lib/legal/legalPortalCards'
 import LienStopPaperWindow from '../LienStopPaperWindow'
 import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
-import { settlementFloorWords } from '../../../../supabase/functions/_shared/legalSettlement'
 import LegalTimelinePanel, { PORTAL_LOOK } from './LegalTimelinePanel'
 import { buildLegalTimeline, timelineDeadlinesFromPaper, timelineDocumentsFromPortal } from '../../../lib/legal/legalTimeline'
 import { firmVoidProblem, isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
@@ -357,7 +356,8 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
             <div style={portalCap}>Matter</div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>{matter.payerName}</div>
             <div style={{ fontSize: 12.5, color: MUTED }} data-legal-account-line>{strip.addressLine || packet.account.customerAddress}</div>
-            {matter.settlementFloor !== undefined ? <div data-legal-settlement-floor style={{ fontSize: 12.5, marginTop: 6, padding: '5px 9px', background: NOTE_BAND, borderRadius: 4, color: INK }}><b>Settlement authority:</b> {settlementFloorWords(matter.settlementFloor, packet.account.totals.balance)}</div> : null}
+            {/* v2.6170 (punch list #218): the firm settles for what can be had; the office's floor is retired. */}
+            <div data-legal-settling style={{ fontSize: 12.5, marginTop: 6, padding: '5px 9px', background: NOTE_BAND, borderRadius: 4, color: INK }}><b>Settling:</b> Settle as you can. Record the settlement with its amount.</div>
             {matter.noteToFirm ? <div style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>From the office:</b> {matter.noteToFirm}</div> : null}
           </div>
           <div className="legalMatterHeadSums" style={{ textAlign: 'right' }}>

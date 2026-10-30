@@ -41,6 +41,7 @@ import { buildPlainMessagesEmail } from '../../supabase/functions/_shared/messag
 import { emailDraft } from './messages/compose'
 import { certifiedMail, certifyAskMail, changeOrderMail, contractMail, interestBillMail, payAppMail, type PayAppMailFacts } from './gc/customerEmail'
 import { payReminderMail } from './gc/ownerBillingRemind'
+import { straightInterestRow } from './gc/ownerBillingInterest'
 import { weeklyReportText, type WeeklyReport } from './gc/buildingWeekly'
 import { mondayOf } from './gc/schedule/schedule'
 import type { GcProject } from './gc/types'
@@ -545,15 +546,18 @@ export function buildSampleGcCustomerEmail(id: 'gc-pay-app' | 'gc-certify-ask' |
  * (`payReminderMail`) on a made-up late bill, with the portal line, as when the customer has a link.
  */
 export function buildSampleGcReminderEmail(ctx: SampleEmailContext): BuiltEmail {
+  // The bill fell due four days ago by the contract; its interest row (v2.6158) is the one the interest bill would print.
+  const dueOn = ymdPlusDays(ctx.todayYmd, -4)
+  const row = straightInterestRow({ number: 3, dueOn, paidOn: null, open: 43740, pctPerMonth: 1.5, today: ctx.todayYmd })
   const mail = payReminderMail({
     greeting: 'Elena',
     job: 'Sample Retail Shell',
     bill: 'pay application 3',
     open: 43740,
-    dueOn: ymdPlusDays(ctx.todayYmd, -4),
+    dueOn,
     promised: false,
     lastPaid: null,
-    interest: null,
+    interest: { pctPerMonth: 1.5, from: dueOn, amount: row.amount, row },
     by: ymdPlusDays(ctx.todayYmd, 5),
     note: '',
   })
@@ -614,9 +618,21 @@ export function buildSampleGcDueSoonEmail(ctx: SampleEmailContext): BuiltEmail {
   )
 }
 
-/** GC mode (O6b-2): our bill for the interest on late bills, as `gc-customer-email` sends it, with the portal line. */
+/** The sample's two late bills (v2.6158, punch list #217 outside-5): one paid 32 days late, one still open 28 days on. */
+export function sampleInterestRows(todayYmd: string) {
+  return [
+    straightInterestRow({ number: 2, dueOn: ymdPlusDays(todayYmd, -60), paidOn: ymdPlusDays(todayYmd, -28), open: 45_000, pctPerMonth: 1.5, today: todayYmd }),
+    straightInterestRow({ number: 3, dueOn: ymdPlusDays(todayYmd, -28), paidOn: null, open: 39_400, pctPerMonth: 1.5, today: todayYmd }),
+  ]
+}
+
+/**
+ * GC mode (O6b-2): our bill for the interest on late bills, as `gc-customer-email` sends it, with the portal line: since
+ * v2.6158 the two late bills as rows, the sum under a rule.
+ */
 export function buildSampleGcInterestBillEmail(ctx: SampleEmailContext): BuiltEmail {
-  const mail = interestBillMail({ job: 'Sample Retail Shell', greeting: 'Elena', amount: 284.92, pctPerMonth: 1.5 })
+  const rows = sampleInterestRows(ctx.todayYmd)
+  const mail = interestBillMail({ job: 'Sample Retail Shell', greeting: 'Elena', amount: rows.reduce((t, r) => t + r.amount, 0), pctPerMonth: 1.5, rows })
   return buildGcCustomerEmail({
     subject: mail.subject,
     lines: mail.lines,

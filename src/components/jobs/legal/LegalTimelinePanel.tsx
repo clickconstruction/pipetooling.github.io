@@ -4,6 +4,7 @@ import { timelineCountChips, timelineStrip } from '../../../lib/legal/timelineSt
 import LegalTimelineStrip from './LegalTimelineStrip'
 import { LEGAL_TIMELINE_LANES, composerDeadlineSuggestion, composerKind, eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineEmptyWords, timelineHoldKey, timelineInLane, timelineLaneCounts, type LegalComposerKind, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineDeadline, type LegalTimelineItem, type LegalTimelineLane } from '../../../lib/legal/legalTimeline'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
+import { formatErrorMessage } from '../../../utils/errorHandling'
 import { EmptyState } from '../../EmptyState'
 
 /**
@@ -19,7 +20,10 @@ import { EmptyState } from '../../EmptyState'
  *   - the desk's preview and a read-only firm: nothing.
  *
  * Marking done keeps the step on the line, moved to the day it was done, reading *Done Oct 18. Planned for
- * Oct 20.* A document appears as a read-only *added* item with a door to the Evidence tab. Since v2.5842
+ * Oct 20.* A document appears as a read-only *added* item with two doors (v2.6166): **Open the paper**, the file
+ * itself in a new browser tab without leaving the line (the Evidence row's own open, `onOpenDocument`, a refusal
+ * or a lost file worded under the line), and **Show on Evidence ↗**, which lands the Evidence tab on that row
+ * (`onOpenEvidence` with the id). Since v2.5842
  * (punch list #170) the lien clock's deadlines sit on the line too, read only, each a diamond on its statutory
  * day with *Record it…* to the job's Lien window on the desk; a planned step may name the deadline it serves,
  * and reads *after the deadline* in red when it falls past it.
@@ -65,7 +69,10 @@ export type LegalTimelinePanelProps = {
   /** Null: read only. */
   acts?: TimelinePlanActs | null
   /** A document item's door. */
-  onOpenEvidence?: () => void
+  /** Show on Evidence (v2.6166): the Evidence tab opened on a document's row, lit; null lands on the tab alone. */
+  onOpenEvidence?: (documentId: string | null) => void
+  /** Open the paper (v2.6166): the file itself, the way the Evidence row opens it; rejects with the reason. Absent, the door is not drawn. */
+  onOpenDocument?: (documentId: string) => Promise<void>
   /** Drawn under the line: the portal's own plan form. */
   footer?: ReactNode
   /** How many past items show before the fold. */
@@ -116,7 +123,7 @@ function stateColor(item: LegalTimelineItem, look: TimelineLook): string {
   }
 }
 
-export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, look = DESK_LOOK, acts = null, onOpenEvidence, footer, pastShown = EARLIER_SHOWN, onOpenLienWindow, doors, lanes = false }: LegalTimelinePanelProps) {
+export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, look = DESK_LOOK, acts = null, onOpenEvidence, onOpenDocument, footer, pastShown = EARLIER_SHOWN, onOpenLienWindow, doors, lanes = false }: LegalTimelinePanelProps) {
   const [allPast, setAllPast] = useState(false)
   const [lane, setLane] = useState<LegalTimelineLane | null>(null)
   // v2.5892: the composer sleeps behind one door so the line reads first.
@@ -130,7 +137,7 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
   const counts = timelineCountsWords(timeline.counts)
   const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, height: 26, padding: '0 0.55rem', border: `1px solid ${look.hair}`, borderRadius: 4, background: look.surface, color: look.text, font: 'inherit', fontSize: '0.74rem', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }
   const cap: CSSProperties = { margin: '14px 0 6px', fontSize: '0.74rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: look.muted, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }
-  const rowProps = { look, todayYmd, reader, acts, onOpenEvidence, onOpenLienWindow, btn, deadlines: timeline.deadlines }
+  const rowProps = { look, todayYmd, reader, acts, onOpenEvidence, onOpenDocument, onOpenLienWindow, btn, deadlines: timeline.deadlines }
   const [openBursts, setOpenBursts] = useState<Record<string, boolean>>({})
   // v2.6107 (punch list #214, PR 4): the line as a strip of days; a press on a day unfolds the past and scrolls to it.
   const strip = timelineStrip(timeline, todayYmd)
@@ -154,7 +161,7 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
           <span style={{ fontSize: '0.88rem', fontWeight: 600 }}>{b.items.length} documents added to Evidence</span>
           <span style={{ fontSize: '0.78rem', color: look.muted, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', maxWidth: 520 }}>{b.items.map((it) => it.what).join(' · ')}</span>
           <button type="button" onClick={() => setOpenBursts((o) => ({ ...o, [key]: true }))} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Show each</button>
-          {onOpenEvidence ? <button type="button" onClick={onOpenEvidence} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Open Evidence ↗</button> : null}
+          {onOpenEvidence ? <button type="button" onClick={() => onOpenEvidence(b.items[0]?.documentId ?? null)} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Show on Evidence ↗</button> : null}
         </div>
       </div>
     )
@@ -365,11 +372,27 @@ function PlanForm({ look, todayYmd, busy, onSave, btn, initial, onCancel, saveLa
 
 type Mode = null | 'edit' | 'done' | 'hold' | 'undo'
 
-function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpenLienWindow, btn, deadlines }: { item: LegalTimelineItem; look: TimelineLook; todayYmd: string; reader: 'office' | 'firm'; acts: TimelinePlanActs | null; onOpenEvidence?: () => void; onOpenLienWindow?: (jobId: string) => void; btn: CSSProperties; deadlines: ReadonlyArray<LegalTimelineDeadline> }) {
+function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpenDocument, onOpenLienWindow, btn, deadlines }: { item: LegalTimelineItem; look: TimelineLook; todayYmd: string; reader: 'office' | 'firm'; acts: TimelinePlanActs | null; onOpenEvidence?: (documentId: string | null) => void; onOpenDocument?: (documentId: string) => Promise<void>; onOpenLienWindow?: (jobId: string) => void; btn: CSSProperties; deadlines: ReadonlyArray<LegalTimelineDeadline> }) {
   const [mode, setMode] = useState<Mode>(null)
   const [doneOn, setDoneOn] = useState(todayYmd)
   const [doneNote, setDoneNote] = useState('')
   const [reason, setReason] = useState('')
+  // v2.6166: Open the paper, in place; a refusal or a lost file reads its reason under the line.
+  const [opening, setOpening] = useState(false)
+  const [openError, setOpenError] = useState<string | null>(null)
+  const canOpenPaper = item.kind === 'document' && Boolean(item.documentId) && Boolean(onOpenDocument)
+  const openPaper = async () => {
+    if (!onOpenDocument || !item.documentId) return
+    setOpening(true)
+    setOpenError(null)
+    try {
+      await onOpenDocument(item.documentId)
+    } catch (e) {
+      setOpenError(formatErrorMessage(e, 'Could not open the paper.'))
+    } finally {
+      setOpening(false)
+    }
+  }
   const color = stateColor(item, look)
   const struck = item.voided || item.held
   const input = inputStyle(look)
@@ -404,7 +427,7 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
             {item.documents.length ? (
               <div data-legal-timeline-documents style={{ display: 'flex', gap: 6, flexWrap: 'wrap', margin: '4px 0 0', alignItems: 'center' }}>
                 {item.documents.map((d) => <span key={d.id} data-legal-timeline-document={d.id} style={{ fontSize: '0.74rem', padding: '1px 7px', borderRadius: 4, border: `1px solid ${look.hair}`, color: d.held && reader === 'office' ? look.warn : look.muted }}>📄 {d.title}{d.held && reader === 'office' ? ' · held' : ''}</span>)}
-                {onOpenEvidence ? <button type="button" onClick={onOpenEvidence} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Open Evidence ↗</button> : null}
+                {onOpenEvidence ? <button type="button" onClick={() => onOpenEvidence(item.documents[0]?.id ?? null)} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Show on Evidence ↗</button> : null}
               </div>
             ) : null}
             {item.stateWords && !(item.kind === 'document' && item.documentChip) ? <div data-legal-timeline-state-words style={{ fontSize: '0.76rem', color, margin: '3px 0 0', fontWeight: item.state === 'overdue' || item.state === 'due_today' ? 600 : 500 }}>{item.stateWords}</div> : null}
@@ -435,7 +458,7 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
           </form>
         ) : null}
         {mode === null ? (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: canEdit || canDone || canHold || canUndo || canRecord || (item.kind === 'document' && onOpenEvidence) || (item.held && acts?.hold) ? 6 : 0 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: canEdit || canDone || canHold || canUndo || canRecord || canOpenPaper || (item.kind === 'document' && onOpenEvidence) || (item.held && acts?.hold) ? 6 : 0 }}>
             {item.state === 'overdue' && canDone ? <button type="button" data-legal-timeline-done-first onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={{ ...btn, background: look.text, color: look.surface, borderColor: look.text }}>Mark done</button> : null}
             {canRecord ? <button type="button" data-legal-timeline-record onClick={() => onOpenLienWindow!(item.deadlineJobId!)} style={btn} title="Opens the job’s Lien window, where the paper is recorded">Record it…</button> : null}
             {canEdit ? <button type="button" onClick={() => setMode('edit')} style={btn}>Edit</button> : null}
@@ -443,9 +466,11 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
             {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title={item.kind === 'event' ? 'Keep this event from the firm, with a reason only the office reads' : 'Keep this planned step from the firm, with a reason only the office reads'}>Hold from counsel…</button> : null}
             {item.held && acts?.hold && holdKey ? <button type="button" onClick={() => void acts.hold!.shareAgain(holdKey)} disabled={acts.busy} style={btn}>Share with counsel</button> : null}
             {canUndo ? <button type="button" onClick={() => setMode('undo')} style={btn}>Undo…</button> : null}
-            {item.kind === 'document' && onOpenEvidence ? <button type="button" onClick={onOpenEvidence} style={{ ...btn, height: 24, fontSize: '0.72rem' }}>Open Evidence ↗</button> : null}
+            {canOpenPaper ? <button type="button" data-legal-timeline-open-paper aria-busy={opening || undefined} onClick={() => void openPaper()} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the file itself in a new browser tab; the Timeline stays">Open the paper</button> : null}
+            {item.kind === 'document' && onOpenEvidence ? <button type="button" data-legal-timeline-show-evidence onClick={() => onOpenEvidence(item.documentId)} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the Evidence tab on this paper’s row, lit">Show on Evidence ↗</button> : null}
           </div>
         ) : null}
+        {openError ? <div role="alert" data-legal-timeline-open-error style={{ fontSize: '0.76rem', color: look.stop, marginTop: 4 }}>{openError}</div> : null}
       </div>
     </div>
   )
