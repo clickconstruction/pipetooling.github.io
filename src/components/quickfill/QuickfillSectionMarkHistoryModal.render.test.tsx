@@ -32,6 +32,8 @@ vi.mock('../../lib/supabase', () => {
     const b: Record<string, unknown> = {}
     b.select = () => b
     b.eq = (col: string, val: unknown) => (filters.push(on(col, (v) => v === String(val))), b)
+    // The history reads a station's own id and any retired into it (v2.6098).
+    b.in = (col: string, vals: unknown[]) => (filters.push(on(col, (v) => vals.map(String).includes(String(v)))), b)
     b.gte = (col: string, val: string) => (filters.push(on(col, (v) => v >= val)), b)
     b.lte = (col: string, val: string) => (filters.push(on(col, (v) => v <= val)), b)
     b.lt = (col: string, val: string) => (filters.push(on(col, (v) => v < val)), b)

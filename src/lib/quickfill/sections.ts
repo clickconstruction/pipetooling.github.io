@@ -9,6 +9,9 @@ export const QUICKFILL_SECTIONS: { id: string; sectionId: string; label: string 
   // Today's lines opens the round since v2.5843 (punch list #176, change 3): the Needs you station, holding the
   // viewer's own lines first and the owner's folded, was the 28th of 28 and marked once in five workdays.
   { id: 'quickfill-needs-you', sectionId: 'needs-you', label: "Today's lines" },
+  // Messages second since v2.6098 (punch list #178, D's PR 7): everyone waiting on us, the one count still outside the
+  // round until then, with the Texts ledger folded in (the `texts` station retired into it, below).
+  { id: 'quickfill-messages', sectionId: 'messages', label: 'Messages' },
   { id: 'quickfill-warnings', sectionId: 'warnings', label: 'Warnings' },
   { id: 'quickfill-office-arriving', sectionId: 'office-arriving', label: 'Office Arriving' },
   { id: 'quickfill-assistant-dailys', sectionId: 'assistant-dailys', label: 'Assistant Dailys' },
@@ -45,11 +48,31 @@ export const QUICKFILL_SECTIONS: { id: string; sectionId: string; label: string 
     label: "Tomorrow's Schedule",
   },
   { id: 'quickfill-email-inbox', sectionId: 'email-inbox', label: 'Email' },
-  { id: 'quickfill-texts', sectionId: 'texts', label: 'Texts' },
   { id: 'quickfill-physical-inbox', sectionId: 'physical-inbox', label: 'Physical inbox' },
   { id: 'quickfill-office-leaving', sectionId: 'office-leaving', label: 'Office Leaving' },
 ]
 
 export type QuickfillSectionMeta = (typeof QUICKFILL_SECTIONS)[number]
 
-export const QUICKFILL_SECTION_LABEL_BY_ID: ReadonlyMap<string, string> = new Map(QUICKFILL_SECTIONS.map((s) => [s.sectionId, s.label]))
+/**
+ * Stations folded into another (v2.6098, punch list #178): the old id's marks and history read under the new one, a
+ * deep link to the old id lands on the new one, and the old label still names the events the old station left.
+ */
+export const QUICKFILL_RETIRED_SECTIONS: Readonly<Record<string, { label: string; into: string }>> = {
+  texts: { label: 'Texts', into: 'messages' },
+}
+
+/** The station an event or a link means today: a retired id reads as the station it folded into. */
+export function foldRetiredSectionId(sectionId: string): string {
+  return QUICKFILL_RETIRED_SECTIONS[sectionId]?.into ?? sectionId
+}
+
+/** The ids whose marks a station's history reads: its own, and every id retired into it. */
+export function markHistorySectionIds(sectionId: string): string[] {
+  return [sectionId, ...Object.entries(QUICKFILL_RETIRED_SECTIONS).filter(([, r]) => r.into === sectionId).map(([old]) => old)]
+}
+
+export const QUICKFILL_SECTION_LABEL_BY_ID: ReadonlyMap<string, string> = new Map([
+  ...QUICKFILL_SECTIONS.map((s): [string, string] => [s.sectionId, s.label]),
+  ...Object.entries(QUICKFILL_RETIRED_SECTIONS).map(([id, r]): [string, string] => [id, r.label]),
+])

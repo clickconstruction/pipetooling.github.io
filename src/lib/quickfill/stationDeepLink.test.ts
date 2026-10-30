@@ -23,6 +23,14 @@ describe('parseQuickfillStationRequest', () => {
     expect(parseQuickfillStationRequest('dispatch-inbox', '')).toBe('dispatch-inbox')
   })
 
+  it('a link to a station folded into another lands on the one that carries it (v2.6098: texts → messages)', () => {
+    const stations = [...STATIONS, { id: 'quickfill-messages', sectionId: 'messages' }]
+    const r = resolveQuickfillStation({ hash: '#texts', search: '' }, stations, () => true)
+    expect(r.sectionId).toBe('messages')
+    expect(r.domId).toBe('quickfill-messages')
+    expect(r.found).toBe(true)
+  })
+
   it('falls back to ?station= when the hash is empty', () => {
     expect(parseQuickfillStationRequest('', '?station=prospects')).toBe('prospects')
     expect(parseQuickfillStationRequest('', 'station=quickfill-prospects&x=1')).toBe('prospects')

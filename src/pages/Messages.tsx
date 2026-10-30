@@ -164,6 +164,30 @@ export default function Messages() {
     // The queues may have been folded: let them draw before the scroll.
     requestAnimationFrame(() => scrollTo(JUMP_LANE_ANCHOR[lane]))
   }
+  // Quickfill's Messages station (v2.6098, punch list #178): a lane's door is `/messages#<lane>`, landed on once the
+  // queue has drawn, the way the jump strip lands.
+  const landedOnLane = useRef(false)
+  useEffect(() => {
+    if (landedOnLane.current || !heard) return
+    const id = typeof window !== 'undefined' ? window.location.hash.replace(/^#/, '') : ''
+    const lane = (Object.keys(JUMP_LANE_ANCHOR) as JumpLane[]).find((l) => JUMP_LANE_ANCHOR[l] === id)
+    if (!lane) return
+    landedOnLane.current = true
+    if (QUEUE_LANES.has(lane)) setQueuesOpen(true)
+    // The lane's section draws a moment after the queue lands; look for it for up to two seconds, then scroll. A timer,
+    // not an animation frame: a tab drawn in the background gets no frames until it is shown.
+    let tries = 0
+    const tick = () => {
+      const el = document.getElementById(JUMP_LANE_ANCHOR[lane])
+      if (el) {
+        // An instant jump on landing, as a page opens on its hash; the strip's own presses glide.
+        el.scrollIntoView?.({ block: 'start' })
+        return
+      }
+      if (++tries < 40) window.setTimeout(tick, 50)
+    }
+    window.setTimeout(tick, 50)
+  }, [heard])
   const listView = useMemo(() => (host.view ? { ...host.view, contacts: peopleForPill(host.view.contacts, pill) } : null), [host.view, pill])
   const found = useMemo(() => (searching && host.view ? searchLines(host.view.messages, host.view.contacts, q, pill, host.nowIso) : null), [searching, host.view, host.nowIso, q, pill])
 

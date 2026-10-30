@@ -9,7 +9,6 @@ import { JOB_FOLLOWUP_IDLE_DAYS } from '../lib/jobs/jobFollowupQueue'
 import { useTeamReviewsDue } from './useTeamReviewsDue'
 import { useRoadmapNeedsNameNudges } from './useRoadmapNeedsNameNudges'
 import { buildNeedsYouItems, CUSTOMER_MESSAGES_LINE_ON, type NeedsYouInputs, type NeedsYouItem } from '../lib/dashboardNeedsYou'
-import { QUICKFILL_CUSTOMER_TEXTS_HOST } from '../lib/needsYouSources'
 import { useCustomerWaitingOptional } from '../contexts/CustomerWaitingContext'
 import { summarizeCustomerWaiting } from '../lib/customerWaiting'
 import { useGcReviewWeekNudge } from './useGcReviewWeekNudge'
@@ -180,10 +179,11 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { late: priceRequestsLate } = usePriceRequestsLateNudge(priceMatrixEnabled)
   const gcFollowUpEnabled = on('gcFollowUp')
   const gcFollowUp = useGcFollowUpNeeds(gcFollowUpEnabled)
-  const customerMessagesEnabled = CUSTOMER_MESSAGES_LINE_ON && gcFollowUpEnabled
+  // Since v2.6098 (punch list #178) the two lines are sources of their own, carried by Quickfill's Messages station.
+  const customerMessagesEnabled = CUSTOMER_MESSAGES_LINE_ON && on('customerMessages')
   // On Quickfill the Texts station holds the texts (v2.5823), so the Customers line there leaves them out.
-  const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled, host === QUICKFILL_CUSTOMER_TEXTS_HOST)
-  const todaysSendsEnabled = gcFollowUpEnabled
+  const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled, false)
+  const todaysSendsEnabled = on('todaysSends')
   const todaysSends = useTodaysSends(todaysSendsEnabled)
   // While you were off (v2.6060, punch list #141 PR 4): the pushes the viewer's own hours held, whoever they are.
   const whileOffEnabled = on('whileOff')

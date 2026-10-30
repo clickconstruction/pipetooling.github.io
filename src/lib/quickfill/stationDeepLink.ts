@@ -17,6 +17,8 @@
  * Pure: the page owns the DOM, the toast, and the telemetry write.
  */
 
+import { foldRetiredSectionId } from './sections'
+
 export type QuickfillStationMeta = { readonly id: string; readonly sectionId: string }
 
 export type QuickfillStationResolution = {
@@ -59,7 +61,9 @@ export function resolveQuickfillStation(
 ): QuickfillStationResolution {
   const raw = parseQuickfillStationRequest(location.hash, location.search)
   if (!raw) return { raw, sectionId: null, domId: null, found: false, hidden: false }
-  const meta = stations.find((s) => s.sectionId === raw)
+  // A link to a station folded into another (v2.6098: `texts` → `messages`) lands on the one that carries it now.
+  const wanted = foldRetiredSectionId(raw)
+  const meta = stations.find((s) => s.sectionId === wanted)
   if (!meta) return { raw, sectionId: null, domId: null, found: false, hidden: false }
   const onPage = rendersForThisUser(meta.sectionId)
   return {
