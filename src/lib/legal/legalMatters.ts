@@ -10,6 +10,7 @@ import { LEGAL_DEFAULT_FEE, type LegalFeeModel } from './legalPacket'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { describeAge, LEGAL_FIRM_ENTRY_AGE, type AgeDescription } from '../ageState'
 import { LEGAL_ACTIVE_STAGES, LEGAL_END_STAGES, LEGAL_STAGE_LIST, legalMatterOnPortal } from '../../../supabase/functions/_shared/legalStages'
+import { isCounselReadEntry } from './counselRead'
 
 /** One list with the functions (#85 item 16): `supabase/functions/_shared/legalStages.ts`. */
 export const LEGAL_STAGES = LEGAL_STAGE_LIST
@@ -357,6 +358,8 @@ export type LegalFirmActivity = {
   questions: number
   /** The firm's settlement asks from before v2.6170 retired the floor, waiting on a sign-off (#85 item 20) — counted apart from questions. */
   settlements: number
+  /** The firm's reads of how the case tries (punch list #218 PR 2), waiting to be acknowledged. */
+  reads: number
   /** The firm's answers to the office's asks (#41 PR 3), and how many of them are sign-offs granted. */
   answers: number
   signoffs: number
@@ -383,6 +386,7 @@ export function buildFirmActivity(entries: ReadonlyArray<LegalEntryRow>, matters
     steps: open.filter((e) => e.kind === 'step').length,
     questions: open.filter((e) => e.kind === 'question' && !isSettlement(e)).length,
     settlements: open.filter(isSettlement).length,
+    reads: open.filter(isCounselReadEntry).length,
     answers: open.filter((e) => e.kind === 'answer').length,
     signoffs: open.filter((e) => e.kind === 'answer' && e.meta != null && typeof e.meta === 'object' && (e.meta as { signedOff?: unknown }).signedOff === true).length,
     payments: open.filter((e) => e.kind === 'payment_received').length,

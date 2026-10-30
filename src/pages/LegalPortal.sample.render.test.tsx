@@ -61,6 +61,9 @@ describe('LegalPortal — the sample matter', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Record of contact' }))
     expect(document.body.textContent).toMatch(/Acme Mechanical's contact record with this customer/)
     fireEvent.click(screen.getByRole('button', { name: 'Fees & steps' }))
+    // Punch list #218 PR 2: the firm's read of how the case tries is the fifth form.
+    expect(screen.getByRole('button', { name: 'Save the read' })).toBeTruthy()
+    expect(screen.getByLabelText('How this case tries')).toBeTruthy()
     expect(document.body.textContent).toMatch(/Account history, oldest first/)
     expect(document.body.textContent).toMatch(/Attorney fee/)
     expect(document.body.textContent).not.toMatch(/Needs You|Their word|From Click|Click’s|What Click did|chose to share/)
@@ -227,7 +230,7 @@ describe('LegalPortal — the sample matter', () => {
     expect([...split.children].map((c) => c.className)).toEqual(['legalPortalMain', 'legalPortalList', 'legalPortalAside'])
     fireEvent.click(screen.getByRole('button', { name: 'Fees & steps' }))
     const forms = [...document.querySelectorAll('form.legalPortalForm')] as HTMLElement[]
-    expect(forms).toHaveLength(4)
+    expect(forms).toHaveLength(5) // five since punch list #218 PR 2: the firm’s read
     for (const f of forms) expect(f.style.gridTemplateColumns).toBe('')
   })
 
