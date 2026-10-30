@@ -62,7 +62,9 @@ export function WhoIsThisWindow({
     }
   }, [words, searchRecords, box])
 
-  const isCompanyRow = picked?.record.table === 'customers' || picked?.record.table === 'gc_companies'
+  const isCompanyRow = picked?.record.table === 'customers' || picked?.record.table === 'gc_companies' || picked?.record.table === 'supply_houses'
+  // A supply house's record makes them a supply house (punch list #179, v2.6136), as the roster makes a sub or a teammate.
+  const isSupplyHouseRow = picked?.record.table === 'supply_houses' || picked?.record.table === 'supply_house_contacts'
   const save = async () => {
     if (!picked) return
     setBusy(true)
@@ -90,7 +92,7 @@ export function WhoIsThisWindow({
           <span>Their name or their company</span>
           <input value={words} onChange={(e) => setWords(e.target.value)} placeholder="Three letters or more" style={input} autoFocus />
         </label>
-        {hits && hits.length === 0 && <div style={{ color: 'var(--text-muted)' }}>Nobody we have goes by that. Add them to the customer or the trade partner first.</div>}
+        {hits && hits.length === 0 && <div style={{ color: 'var(--text-muted)' }}>Nobody we have goes by that. Add them to the customer, the trade partner or the supply house first.</div>}
         {hits && hits.length > 0 && (
           <div role="listbox" aria-label="The people we have" style={{ display: 'grid', gap: '0.25rem' }}>
             {hits.map((h) => {
@@ -116,18 +118,23 @@ export function WhoIsThisWindow({
         {picked && picked.record.table === 'people' && (
           <div style={{ color: 'var(--text-muted)' }}>On the roster, so {kind === 'sub' ? 'a sub' : 'one of our own team'}. The kind follows the roster.</div>
         )}
+        {picked && isSupplyHouseRow && (
+          <div style={{ color: 'var(--text-muted)' }}>On Supply houses, so a supply house. Their PDFs and pictures can be recorded as bills.</div>
+        )}
         {picked && picked.record.table !== 'people' && (
           <>
-            <label style={{ display: 'grid', gap: '0.25rem' }}>
-              <span>What they are to us</span>
-              <select value={kind} onChange={(e) => setKind(e.target.value as Exclude<ContactKind, 'unknown'>)} style={{ ...input, maxWidth: '100%', minWidth: 0 }}>
-                {KINDS.map((k) => (
-                  <option key={k.kind} value={k.kind}>
-                    {k.label}
-                  </option>
-                ))}
-              </select>
-            </label>
+            {!isSupplyHouseRow && (
+              <label style={{ display: 'grid', gap: '0.25rem' }}>
+                <span>What they are to us</span>
+                <select value={kind} onChange={(e) => setKind(e.target.value as Exclude<ContactKind, 'unknown'>)} style={{ ...input, maxWidth: '100%', minWidth: 0 }}>
+                  {KINDS.map((k) => (
+                    <option key={k.kind} value={k.kind}>
+                      {k.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            )}
             {isCompanyRow && (
               <label style={{ display: 'grid', gap: '0.25rem' }}>
                 <span>Their own name, when they are someone else at {picked.label}</span>

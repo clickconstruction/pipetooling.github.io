@@ -521,17 +521,27 @@ export interface RecordHit {
   kind: Exclude<ContactKind, 'unknown'>
 }
 
-/** The records whose name holds the words, a few of each kind, for *Who is this?*. Three letters at least. */
+/** The records whose name holds the words (a supply house's rep by their address too), a few of each kind, for *Who is this?*. Three letters at least. */
 export async function searchContactRecords(words: string): Promise<RecordHit[]> {
   const q = words.trim()
   if (q.length < 3) return []
   const like = `%${q.replace(/[%_,()]/g, ' ')}%`
-  const [customers, persons, companies, gcPeople, people] = await Promise.all([
+  const [customers, persons, companies, gcPeople, people, houses, reps] = await Promise.all([
     supabase.from('customers').select('id, name').ilike('name', like).is('archived_at', null).limit(8),
     supabase.from('customer_contact_persons').select('id, name, customer_id, customers(name)').ilike('name', like).limit(8),
     supabase.from('gc_companies').select('id, name, contact_name').or(`name.ilike.${like},contact_name.ilike.${like}`).limit(8),
     supabase.from('gc_company_people').select('id, name, gc_companies(name)').ilike('name', like).is('removed_at', null).limit(8),
     supabase.from('people').select('id, name, kind').ilike('name', like).is('archived_at', null).limit(8),
+    // A supply house and its reps (punch list #179, v2.6136): an address that sends the house's bills is named here, so
+    // its PDFs are offered as bills. The counters only, as the contacts were made (an insurer or a rental yard is not one).
+    supabase.from('supply_houses').select('id, name').ilike('name', like).eq('vendor_kind', 'supply_house').limit(8),
+    supabase
+      .from('supply_house_contacts')
+      .select('id, name, supply_houses!inner(name, vendor_kind)')
+      .or(`name.ilike.${like},email.ilike.${like}`)
+      .is('archived_at', null)
+      .eq('supply_houses.vendor_kind', 'supply_house')
+      .limit(8),
   ])
   const embedded = (v: unknown) => (Array.isArray(v) ? (v[0] as { name?: string } | undefined)?.name : (v as { name?: string } | null)?.name) ?? ''
   return [
@@ -540,6 +550,12 @@ export async function searchContactRecords(words: string): Promise<RecordHit[]> 
     ),
     ...taken(gcPeople as Result<{ id: string; name: string; gc_companies: unknown }[]>, 'find the people the trade partners named').map(
       (p): RecordHit => ({ record: { table: 'gc_company_people', id: p.id }, label: p.name, sub: `At ${embedded(p.gc_companies) || 'a trade partner'}`, kind: 'trade' }),
+    ),
+    ...taken(houses as Result<{ id: string; name: string }[]>, 'find the supply houses').map(
+      (h): RecordHit => ({ record: { table: 'supply_houses', id: h.id }, label: h.name, sub: 'Supply house', kind: 'supply_house' }),
+    ),
+    ...taken(reps as Result<{ id: string; name: string; supply_houses: unknown }[]>, 'find the reps at the supply houses').map(
+      (r): RecordHit => ({ record: { table: 'supply_house_contacts', id: r.id }, label: r.name, sub: `At ${embedded(r.supply_houses) || 'a supply house'}`, kind: 'supply_house' }),
     ),
     ...taken(persons as Result<{ id: string; name: string; customers: unknown }[]>, 'find the people at the customers').map(
       (p): RecordHit => ({ record: { table: 'customer_contact_persons', id: p.id }, label: p.name, sub: `At ${embedded(p.customers) || 'a customer'}`, kind: 'customer' }),
