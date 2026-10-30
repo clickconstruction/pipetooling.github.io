@@ -16,7 +16,10 @@ vi.mock('../../hooks/useMercuryLedgerNicknames', () => ({
   useMercuryLedgerNicknames: () => ({ nicknameByDebitCard: {} }),
 }))
 
-function renderSection(materials: MaterialRow[], handlers: Partial<{ add: () => void; remove: (id: string) => void }> = {}) {
+function renderSection(
+  materials: MaterialRow[],
+  handlers: Partial<{ add: () => void; remove: (id: string) => void; update: (id: string, updates: Partial<MaterialRow>) => void }> = {},
+) {
   return renderWithProviders(
     <JobFormPartsCostSection
       editing={null}
@@ -35,7 +38,7 @@ function renderSection(materials: MaterialRow[], handlers: Partial<{ add: () => 
       billedMaterialsTotalDisplay="0.00"
       materials={materials}
       addMaterialRow={handlers.add ?? (() => {})}
-      updateMaterialRow={() => {}}
+      updateMaterialRow={handlers.update ?? (() => {})}
       removeMaterialRow={handlers.remove ?? (() => {})}
     />,
   )
@@ -112,5 +115,56 @@ describe('Where the money went — fuel as its own row (punch list #52)', () => 
     expect(rows.find((t) => t.startsWith('⛽ Fuel & gas'))).toContain('60.00')
     expect(rows.find((t) => t.startsWith('Other card charges'))).toContain('100.00')
     expect(rows[rows.length - 1]).toContain('160.00')
+  })
+})
+
+describe('Other job charges read as money (punch list #215)', () => {
+  const centsIn = (el: HTMLElement) => el.parentElement?.querySelector('[data-testid="money-cents"]')?.textContent ?? null
+
+  it('blurred, the amount has commas and the cents drawn smaller; focused, it is the plain digits', () => {
+    renderSection([filledRow('a', 'Permit fee', 39796.7)])
+    const box = screen.getByLabelText('Other charge amount') as HTMLInputElement
+    expect(box.value).toBe('39,796.70')
+    expect(centsIn(box)).toBe('.70')
+    fireEvent.focus(box)
+    expect(box.value).toBe('39796.70')
+    expect(centsIn(box)).toBeNull()
+    fireEvent.blur(box)
+    expect(box.value).toBe('39,796.70')
+    expect(centsIn(box)).toBe('.70')
+  })
+
+  it('commits the typed amount as a number on each keystroke, commas allowed', () => {
+    const update = vi.fn()
+    renderSection([filledRow('a', 'Permit fee', 0)], { update })
+    const box = screen.getByLabelText('Other charge amount')
+    fireEvent.focus(box)
+    fireEvent.change(box, { target: { value: '1,250.5' } })
+    expect(update).toHaveBeenLastCalledWith('a', { amount: 1250.5 })
+    fireEvent.change(box, { target: { value: '' } })
+    expect(update).toHaveBeenLastCalledWith('a', { amount: 0 })
+  })
+
+  it('an ESTIMATE description wears the chip and shows the words after it, until its box has focus', () => {
+    const update = vi.fn()
+    renderSection([filledRow('a', 'ESTIMATE — Office overhead Q3 share', 12480.75)], { update })
+    expect(screen.getByTestId('estimate-chip')).toBeTruthy()
+    const desc = screen.getByLabelText('Other charge description') as HTMLInputElement
+    expect(desc.value).toBe('Office overhead Q3 share')
+    fireEvent.focus(desc)
+    expect(desc.value).toBe('ESTIMATE — Office overhead Q3 share')
+    expect(screen.queryByTestId('estimate-chip')).toBeNull()
+    fireEvent.change(desc, { target: { value: 'ESTIMATE — Office overhead Q3 share, revised' } })
+    expect(update).toHaveBeenLastCalledWith('a', { description: 'ESTIMATE — Office overhead Q3 share, revised' })
+    fireEvent.blur(desc)
+    expect(screen.getByTestId('estimate-chip')).toBeTruthy()
+  })
+
+  it('a plain description wears no chip, and the accordion total draws its cents smaller too', () => {
+    renderSection([filledRow('a', 'Dump fee', 85)])
+    expect(screen.queryByTestId('estimate-chip')).toBeNull()
+    const cents = screen.getAllByTestId('money-cents').map((el) => el.textContent)
+    expect(cents).toContain('.00')
+    expect(cents).toContain('.00')
   })
 })

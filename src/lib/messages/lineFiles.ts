@@ -6,6 +6,7 @@
  */
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { PAPER_GUESS_WORDS, type PaperGuess } from '../emailIn/paperGuess'
+import { billOfferWords, notABillWords } from '../materials/bills/billWords'
 import { fileHref } from '../files/fileRoute'
 import type { FileIcon, FileKept, LineFile } from './lineFileTypes'
 
@@ -177,4 +178,36 @@ export function filedWords(file: LineFile, userNames: Readonly<Record<string, st
   const by = (file.paperAnsweredBy && userNames[file.paperAnsweredBy]) || ''
   const tail = [by, day].filter(Boolean).join(', ')
   return tail ? `Filed as ${paper} · ${tail}` : `Filed as ${paper}`
+}
+
+// ---------------------------------------------------------------------------
+// A supply house's bill (punch list #179 PR 3, v2.6095): the same shape as the paper offer, for a PDF or a picture on
+// a house's line. The app offers, a person answers (Record this bill opens the Add invoice window on the file; Not a
+// bill takes the offer away), and the app writes on the answer. The switch and the role are the component's to check.
+// ---------------------------------------------------------------------------
+
+export type BillOffer = ReturnType<typeof billOfferWords>
+
+/** A PDF or a picture with our copy, unanswered, on a supply house's line. Null for anything else. */
+export function billOffer(file: LineFile, contact: { kind: string; company: string; name: string }): BillOffer | null {
+  if (contact.kind !== 'supply_house' || file.kept !== 'copy' || file.paperAnswer || (file.icon !== 'pdf' && file.icon !== 'image')) return null
+  return billOfferWords(contact.company || contact.name)
+}
+
+export function hasBillOffer(files: readonly LineFile[] | undefined, contact: { kind: string; company: string; name: string }): boolean {
+  return (files ?? []).some((f) => billOffer(f, contact) !== null)
+}
+
+/**
+ * The line an answered bill leaves under the file: "Recorded as a bill · Marisol, Oct 29", or "Not a bill · Marisol,
+ * Oct 29". Null for a paper (the W-9's own words), an unanswered file, or another kind of contact.
+ */
+export function billAnswerWords(file: LineFile, contact: { kind: string }, userNames: Readonly<Record<string, string>>): string | null {
+  if (contact.kind !== 'supply_house' || file.paper || !file.paperAnswer) return null
+  const by = (file.paperAnsweredBy && userNames[file.paperAnsweredBy]) || ''
+  const ymd = file.paperAnsweredAt ? calendarYmdInAppTzFromIso(file.paperAnsweredAt) : ''
+  if (file.paperAnswer === 'not_it') return notABillWords(by, ymd)
+  const day = ymd ? `${MONTHS[Number(ymd.slice(5, 7)) - 1] ?? ''} ${Number(ymd.slice(8, 10))}` : ''
+  const tail = [by, day].filter(Boolean).join(', ')
+  return tail ? `Recorded as a bill · ${tail}` : 'Recorded as a bill'
 }

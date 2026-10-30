@@ -26,7 +26,8 @@ import {
  * again on the next run. Only a photo that came in after the tick went on is copied (`photosToSave`); a line tied to its
  * job later is caught then. The design is quo-messages-mockup.html drafts 8 and 9 on branch spike/gc-mode.
  *
- *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed } }
+ *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed },
+ *     checklists: { saved, failed } }
  *
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
@@ -35,12 +36,21 @@ import {
  * Drive not set up, a copy that did not read, a Drive refusal), for the office and the dev to read, and is tried again every
  * run until it files; a filed row clears it.
  *
- * Phone first (punch list #189, PR 5b, v2.6077): a third source after the boxes. A photo a tech takes for a field
+ * Phone first (punch list #189, PR 5b, v2.6083): a third source after the boxes. A photo a tech takes for a field
  * report waits in the report-photos bucket with a row in report_photos; once the report is saved (report_id set) the
  * sweep files it in the same photo folder, named by day, sender and caption as a text's photo is (`photoDriveName`:
  * *2026-10-29 Luis Ortega · Rough In.jpg*), keeps drive_file_id and filed_at on the row, and deletes the bucket copy.
  * A shot it cannot file gets the reason on its row as fail_why (no Drive folder on the job, Drive not set up, a copy
  * that did not read, a Drive refusal), which the report card reads as *not in Drive yet*, and is tried again every run.
+ *
+ * A checklist per stage (punch list #164, PR 3, v2.6084): a fourth source after the report photos. The photo a
+ * checklist question asks for waits in the stage-checklist-photos bucket with its name on its stage_checklist_answers
+ * row (photo_file_name, photo_storage_path); the sweep files it in the same photo folder, keeps photo_drive_file_id and
+ * photo_filed_at on the row, clears photo_fail_why, and deletes the bucket copy, the box photo's rules to the letter
+ * (`sweepWaiting`).
+ *
+ * The cron calls only while one of these waits: each source is a clause of its WHERE, so a migration that adds a
+ * source re-schedules it with every clause (20261030070000_photo_save_cron_all_sources.sql holds all four).
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON. config.toml keeps
  * verify_jwt = false: the cron sends no JWT, and the secret is the door.
@@ -148,13 +158,61 @@ async function sweep(admin: SupabaseClient): Promise<Response> {
 }
 
 // ---------------------------------------------------------------------------
-// Materials on site (#209): the box photos. Twenty a run, oldest first; a failure is written on the row and tried again next run.
+// Materials on site (#209): the box photos, and (#164) the checklist photos. Twenty a run each, oldest first; a failure
+// is written on the row and tried again next run.
 // ---------------------------------------------------------------------------
 
 const BOX_PHOTO_BATCH = 20
 const BOX_PHOTOS_BUCKET = 'box-photos'
 
 type BoxPhotoRow = { id: string; job_id: string; file_name: string; storage_path: string }
+
+type WaitingRead = { data: unknown; error: { message: string } | null }
+
+/** A table whose rows hold a photo waiting in a bucket for the sweep: the read, how its columns are named, and what a filed row keeps. */
+interface WaitingSource {
+  kind: 'boxes' | 'checklist'
+  table: string
+  bucket: string
+  /** The waiting rows under `BoxPhotoRow`'s names: the path set, nothing filed, oldest first, a batch at most. */
+  waiting: (admin: SupabaseClient) => PromiseLike<WaitingRead>
+  failWhyColumn: string
+  filedAtColumn: string
+  driveIdColumn: string
+  /** What a filed row keeps beside the Drive id, the filed time and the cleared reason. */
+  filedExtra: Record<string, unknown>
+}
+
+const BOX_SOURCE: WaitingSource = {
+  kind: 'boxes',
+  table: 'job_box_photos',
+  bucket: BOX_PHOTOS_BUCKET,
+  waiting: (admin) =>
+    admin.from('job_box_photos').select('id, job_id, file_name, storage_path').is('filed_at', null).not('storage_path', 'is', null).order('taken_at', { ascending: true }).limit(BOX_PHOTO_BATCH),
+  failWhyColumn: 'fail_why',
+  filedAtColumn: 'filed_at',
+  driveIdColumn: 'drive_file_id',
+  filedExtra: { status: 'filed' },
+}
+
+/** The checklist photos (#164): the row's photo columns read under the box row's names, so one sweep serves both. */
+const CHECKLIST_SOURCE: WaitingSource = {
+  kind: 'checklist',
+  table: 'stage_checklist_answers',
+  bucket: 'stage-checklist-photos',
+  waiting: (admin) =>
+    admin
+      .from('stage_checklist_answers')
+      .select('id, job_id, file_name:photo_file_name, storage_path:photo_storage_path')
+      .is('photo_filed_at', null)
+      .not('photo_storage_path', 'is', null)
+      .order('photo_taken_at', { ascending: true })
+      .limit(BOX_PHOTO_BATCH),
+  failWhyColumn: 'photo_fail_why',
+  filedAtColumn: 'photo_filed_at',
+  driveIdColumn: 'photo_drive_file_id',
+  filedExtra: {},
+}
 
 /** The row's own name, or the next free "(2)", "(3)" when the folder already holds it (any case). */
 function nextFreeName(name: string, taken: ReadonlySet<string>): string {
@@ -169,15 +227,9 @@ function nextFreeName(name: string, taken: ReadonlySet<string>): string {
   }
 }
 
-async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
-  const { data, error } = await admin
-    .from('job_box_photos')
-    .select('id, job_id, file_name, storage_path')
-    .is('filed_at', null)
-    .not('storage_path', 'is', null)
-    .order('taken_at', { ascending: true })
-    .limit(BOX_PHOTO_BATCH)
-  if (error) return { saved: 0, failed: [{ id: '', why: `the box photos did not read: ${error.message}` }] }
+async function sweepWaiting(admin: SupabaseClient, source: WaitingSource): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await source.waiting(admin)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the ${source.kind === 'boxes' ? 'box' : 'checklist'} photos did not read: ${error.message}` }] }
   const rows = (data ?? []) as BoxPhotoRow[]
   if (rows.length === 0) return { saved: 0, failed: [] }
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
@@ -186,7 +238,7 @@ async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; faile
   // Every reason lands on the row, so a photo that waits says why without anyone reading this function's log.
   const fail = async (r: BoxPhotoRow, why: string) => {
     failed.push({ id: r.id, why })
-    await admin.from('job_box_photos').update({ fail_why: why.slice(0, 300) }).eq('id', r.id).is('filed_at', null)
+    await admin.from(source.table).update({ [source.failWhyColumn]: why.slice(0, 300) }).eq('id', r.id).is(source.filedAtColumn, null)
   }
   if (!saJson) {
     for (const r of rows) await fail(r, 'Drive is not set up here yet.')
@@ -209,31 +261,32 @@ async function sweepBoxes(admin: SupabaseClient): Promise<{ saved: number; faile
         await fail(r, 'That job has no Drive folder yet.')
         continue
       }
-      const { data: blob, error: dl } = await admin.storage.from(BOX_PHOTOS_BUCKET).download(r.storage_path)
+      const { data: blob, error: dl } = await admin.storage.from(source.bucket).download(r.storage_path)
       if (dl || !blob) {
         await fail(r, 'Our copy of that photo did not read.')
         continue
       }
       const name = await freeName(google, into, (taken) => nextFreeName(r.file_name, taken))
       const put = await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, blob.type || 'image/jpeg')
-      // Kept only where no save got there first, so the row names the one copy.
+      // Kept only where no save got there first, and only while the row still names this copy (a checklist photo taken
+      // again mid-run names a new path), so the row names the one copy.
       const { error: kept } = await admin
-        .from('job_box_photos')
-        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), status: 'filed', fail_why: null })
+        .from(source.table)
+        .update({ [source.driveIdColumn]: put.id, [source.filedAtColumn]: new Date().toISOString(), [source.failWhyColumn]: null, ...source.filedExtra })
         .eq('id', r.id)
-        .is('drive_file_id', null)
+        .is(source.driveIdColumn, null)
       if (kept) {
         await fail(r, 'Saved to Drive, but the row did not keep it.')
         continue
       }
       // No lasting copy in the app: the bucket's is gone once Drive has the file.
-      await admin.storage.from(BOX_PHOTOS_BUCKET).remove([r.storage_path])
+      await admin.storage.from(source.bucket).remove([r.storage_path])
       saved += 1
     } catch (e) {
       await fail(r, e instanceof Error ? e.message : String(e))
     }
   }
-  if (failed.length) console.warn('photo-save: some box photos were not filed', failed)
+  if (failed.length) console.warn(`photo-save: some ${source.kind === 'boxes' ? 'box' : 'checklist'} photos were not filed`, failed)
   return { saved, failed }
 }
 
@@ -325,10 +378,11 @@ serve(async (req) => {
   try {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     const messages = await sweep(admin)
-    const boxes = await sweepBoxes(admin)
+    const boxes = await sweepWaiting(admin, BOX_SOURCE)
     const reports = await sweepReportPhotos(admin)
+    const checklists = await sweepWaiting(admin, CHECKLIST_SOURCE)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports }, messages.status)
+    return json({ ...body, boxes, reports, checklists }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

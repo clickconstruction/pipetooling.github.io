@@ -255,6 +255,24 @@ describe('buildLienTimeline — an original contractor and a held notice', () =>
     expect(t.next.words).toBe('Held — the Jul + Aug notice re-asks Oct 12; mail by Oct 15.')
     expect(t.steps.find((s) => s.key === 'notice:2026-07')?.words).toBe('22 days · held · re-asks Oct 12')
   })
+  it('with open work months on the job, the path still skips the notice: the affidavit, or the retainage notice when the contract-end day is set (v2.6102, punch list #213)', () => {
+    // base() carries two open months (Jul and Aug) the window adapter folds from a direct job's approved sessions.
+    const t = buildLienTimeline(base({ isSub: false, noticeState: '' }))
+    expect(kinds(t)).toEqual(['last_work=done', 'notice=done', 'retainage=undated', 'affidavit=due', 'serve=later', 'suit=later'])
+    expect(t.steps.find((s) => s.kind === 'notice')?.words).toBe('not required · contracted with the owner')
+    expect(t.next).toMatchObject({ kind: 'affidavit', words: 'File the affidavit — 83 days.' })
+    expect(t.waitingOn).toEqual({ who: 'ours', words: 'the affidavit to be filed' })
+    expect(t.windowsAside).toBe('')
+    expect(lienTimelineFoldSummary(t).closed).toBe('')
+    const dated = buildLienTimeline(base({ isSub: false, noticeState: '', retainage: { contractEndedOn: '2026-09-10', deadline: '2026-10-12', noticed: false } }))
+    expect(dated.next).toMatchObject({ kind: 'retainage', words: 'Send the § 53.057 retainage notice — 19 days.' })
+    expect(dated.waitingOn?.words).toBe('the § 53.057 retainage notice to be sent')
+    // A closed month on a direct job is no lien gone and no closed window: the notice was never required.
+    const closed = buildLienTimeline(base({ isSub: false, noticeState: '', months: [{ key: '2026-05', deadline: '2026-08-17', fromCreation: false, outcome: 'missed', at: '' }] }))
+    expect(closed.lienGone).toBe(false)
+    expect(closed.next.kind).toBe('affidavit')
+    expect(lienTimelineFoldSummary(closed).closed).toBe('')
+  })
 })
 
 describe('first days — Steps · Windows (v2.3815, punch list #42)', () => {

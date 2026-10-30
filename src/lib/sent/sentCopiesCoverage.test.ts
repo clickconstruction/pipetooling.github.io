@@ -45,7 +45,7 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'components/jobs/JobsWeeklyMoneyModal.tsx': 'our own money report',
   'components/jobs/JobsWeeklyMovementModal.tsx': 'our own movement report',
   'components/jobs/JobCostsTabCharts.tsx': 'our own cost report, the Costs tab on paper: it holds wages and margin',
-  'components/jobs/HoursStatementDevPress.tsx': 'a draft of the signed hours statement a developer prints to prove the kernel (punch list #212, PR 1): it holds wages, and the paper that goes to the worker is filed where it is sent for signature, from PR 3',
+  'lib/people/hoursStatementPrint.ts': 'the signed hours statement printed to be signed with a pen (punch list #212, PR 2): it holds wages, and the copy that goes to the worker is filed where it is sent for signature, from PR 3',
   'components/pay/PayStubViewModal.tsx': 'a pay stub: pay stays with payroll, never in a list the whole office reads',
   'lib/peopleDocuments/buildPayStubHtml.ts': 'a pay stub: pay stays with payroll, never in a list the whole office reads',
   'components/people/teamSummary/TeamSummaryDrilldownModal.tsx': 'our own team report',

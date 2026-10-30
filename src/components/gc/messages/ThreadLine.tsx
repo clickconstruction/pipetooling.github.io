@@ -9,6 +9,7 @@ import type { JobTile } from '../../../lib/messages/jobTiles'
 import { isSentLine } from '../../../lib/messages/sentLines'
 import { callLength, channelWord, clockTime, deliveryMark, isLong, type ThreadMessage } from '../../../lib/messages/thread'
 import { FiledLines, LineFileChips } from './LineFiles'
+import type { Contact } from '../../../lib/contacts/kernel'
 
 /**
  * Messages, cut 1's screens: one line of a thread (the prototype's `.msg`, v1.178). Its meta (the channel and a call's
@@ -30,12 +31,15 @@ export function ThreadLine({
   under,
   smallPrint,
   userNames = {},
+  contact = null,
   onOpen,
   onTie,
   onJob,
   onHold,
 }: {
   message: ThreadMessage
+  /** The thread's person, for the line an answered supply-house bill leaves under its file (punch list #179). */
+  contact?: Pick<Contact, 'kind'> | null
   tile: JobTile | undefined
   /** How its job reads: the badge and the name, the badge alone, or none. */
   job: 'full' | 'number' | 'none'
@@ -228,7 +232,7 @@ export function ThreadLine({
                 else onOpen()
               }}
             />
-            <FiledLines files={files} userNames={userNames} />
+            <FiledLines files={files} userNames={userNames} contact={contact} />
           </>
         )}
         {smallPrint && smallPrint.length > 0 && (
