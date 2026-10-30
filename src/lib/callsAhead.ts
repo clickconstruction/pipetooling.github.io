@@ -81,10 +81,10 @@ export function schemaCallsIn(source: string, fileName: string): SchemaCall[] {
   const sf = ts.createSourceFile(fileName, source, ts.ScriptTarget.Latest, true, kind)
   const out: SchemaCall[] = []
   const visit = (node: Node): void => {
-    if (ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) && node.arguments.length > 0) {
+    const first = ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression) ? node.arguments[0] : undefined
+    if (first && ts.isCallExpression(node) && ts.isPropertyAccessExpression(node.expression)) {
       const method = node.expression.name.text
       if (method === 'rpc' || (method === 'from' && !readsNoTable(node.expression.expression))) {
-        const first = node.arguments[0]
         const name = literalText(first)
         if (name !== null) out.push({ kind: method, name, line: sf.getLineAndCharacterOfPosition(first.getStart(sf)).line + 1 })
       }
@@ -111,7 +111,8 @@ export function namesCreatedIn(sql: string): CreatedName[] {
   const seen = new Set<string>()
   const add = (kind: CreatedName['kind'], re: RegExp): void => {
     for (const m of text.matchAll(re)) {
-      const name = m[1].toLowerCase()
+      const name = (m[1] ?? '').toLowerCase()
+      if (!name) continue
       const key = `${kind}:${name}`
       if (seen.has(key)) continue
       seen.add(key)
