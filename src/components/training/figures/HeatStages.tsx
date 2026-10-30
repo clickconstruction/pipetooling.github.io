@@ -19,7 +19,7 @@ export function HeatStages({ titleId }: FigureProps) {
             <text x={x + 35} y={top + 16} fontSize="9.5" fontWeight="600" fill="currentColor" textAnchor="middle">
               {name}
             </text>
-            <text x={x + 35} y={top + 29} fontSize="7.5" fill="var(--text-muted)" textAnchor="middle">
+            <text x={x + 35} y={top + 29} fontSize="7.5" fill="var(--text-600)" textAnchor="middle">
               {sign}
             </text>
           </g>

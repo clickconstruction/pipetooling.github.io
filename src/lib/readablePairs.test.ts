@@ -124,7 +124,7 @@ describe("the training figures' words on the grounds they are drawn on, in both 
     { label: "never water and the swing radius's blind spots on their red wash", fg: 'var(--text-red-800)', bg: 'var(--bg-red-100)' },
     { label: "the cave-in signs inside the trench's grey", fg: 'var(--text-red-800)', bg: 'var(--bg-subtle)' },
     { label: "the swing radius's red rope marks it on the surface", fg: 'var(--text-red-600)', bg: 'var(--surface)' },
-    { label: 'the warnings in amber on the surface: limited approach, 19.5%, protect', fg: 'var(--text-amber-700)', bg: 'var(--surface)' },
+    { label: "the warnings in amber on the surface: limited approach, 19.5%, protect, the gauge's weak", fg: 'var(--text-amber-700)', bg: 'var(--surface)' },
     { label: "two systems' out: gravity on its grey", fg: 'var(--text-amber-700)', bg: 'var(--bg-subtle)' },
     { label: 'the cold labels in blue on the surface: cold in, cold', fg: 'var(--text-link)', bg: 'var(--surface)' },
     { label: "two systems' in: pressure on its grey", fg: 'var(--text-link)', bg: 'var(--bg-subtle)' },
@@ -138,14 +138,14 @@ describe("the training figures' words on the grounds they are drawn on, in both 
     }
   }
 
-  it('the six literal inks stay only where a figure draws a real object: the copper print, the flags, the signs, the GHS border, the STOP paddle, the rope and the numbered badges', () => {
+  it('the eight literal inks stay only where a figure draws a real object: the copper print, the flags, the signs, the GHS border, the STOP paddle, the rope, the numbered badges and the purple primer', () => {
     const dir = 'src/components/training/figures'
     const counts: Record<string, number> = {}
     for (const name of readdirSync(dir)) {
-      const n = (readFileSync(`${dir}/${name}`, 'utf8').match(/#(15803d|b91c1c|991b1b|dc2626|b45309|2563eb)\b/gi) ?? []).length
+      const n = (readFileSync(`${dir}/${name}`, 'utf8').match(/#(15803d|b91c1c|991b1b|dc2626|b45309|2563eb|7c3aed|d97706)\b/gi) ?? []).length
       if (n) counts[name] = n
     }
-    expect(counts).toEqual({ 'CopperTypes.tsx': 3, 'DigFlags.tsx': 2, 'ExcavatorSiteMap.tsx': 2, 'HandSignals.tsx': 1, 'HazcomPictograms.tsx': 1, 'SignColours.tsx': 2, 'SwingRadius.tsx': 1 })
+    expect(counts).toEqual({ 'CopperTypes.tsx': 3, 'DigFlags.tsx': 2, 'DwvMaterials.tsx': 1, 'ExcavatorSiteMap.tsx': 2, 'HandSignals.tsx': 1, 'HazcomPictograms.tsx': 1, 'SignColours.tsx': 2, 'SolventJoint.tsx': 2, 'SwingRadius.tsx': 1 })
   })
 })
 
@@ -156,6 +156,30 @@ describe("the Sales desk bar's dollars on their fills, in both themes (v2.6133)"
         expect(ratio(words, fill, theme)).toBeGreaterThanOrEqual(4.5)
       })
     }
+  }
+})
+
+describe("the training figures' words inside a tint, the primer's purple and the sludge's word, in both themes (v2.6135)", () => {
+  const pairs: { label: string; fg: string; bg: string }[] = [
+    { label: 'the purple primer and its cement in violet-700 on the surface', fg: 'var(--text-violet-700)', bg: 'var(--surface)' },
+    { label: 'a grey word inside an amber tint: the heat stages, the septic tank, the dirty bucket', fg: 'var(--text-600)', bg: 'var(--bg-amber-100)' },
+    { label: "a grey word inside a red tint: heat stroke, the stack's taper, the dip tube", fg: 'var(--text-600)', bg: 'var(--bg-red-100)' },
+    { label: "a grey word inside a blue tint: the water heater's no neutral, the pressure tank", fg: 'var(--text-600)', bg: 'var(--bg-blue-200)' },
+    { label: "a breaker's amps on its surface halo, where it crosses the subpanel's ground bar", fg: 'var(--text-muted)', bg: 'var(--surface)' },
+  ]
+  for (const p of pairs) {
+    for (const theme of THEMES) {
+      it(`${p.label}, ${theme}: 4.5:1 or better`, () => {
+        expect(ratio(p.fg, p.bg, theme)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
+
+  for (const theme of THEMES) {
+    it(`the septic tank's solids settle in --text-strong on the sludge, --text-muted at 55% over the amber, ${theme}: 4.5:1 or better`, () => {
+      const sludge = over({ ...hexToRgba(drawn('var(--text-muted)', theme)), a: 0.55 }, hexToRgba(drawn('var(--bg-amber-100)', theme)))
+      expect(contrastRatio(hexToRgba(drawn('var(--text-strong)', theme)), sludge)).toBeGreaterThanOrEqual(4.5)
+    })
   }
 })
 
