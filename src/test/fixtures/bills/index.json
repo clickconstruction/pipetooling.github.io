@@ -1,0 +1,32 @@
+[
+  {
+    "slug": "ridgeway-S1183420",
+    "pdf": "ridgeway-S1183420.pdf",
+    "answer": "ridgeway-S1183420.answer.json",
+    "note": "The card’s bill: five lines that add to the total with the tax, PO 41207 on the ledger, the ship-to names the job."
+  },
+  {
+    "slug": "ridgeway-CM-20991",
+    "pdf": "ridgeway-CM-20991.pdf",
+    "answer": "ridgeway-CM-20991.answer.json",
+    "note": "A credit memo for four ball valves returned, naming the invoice it credits on its RE: line."
+  },
+  {
+    "slug": "ridgeway-S1183455-wrong-total",
+    "pdf": "ridgeway-S1183455-wrong-total.pdf",
+    "answer": "ridgeway-S1183455-wrong-total.answer.json",
+    "note": "Seven lines that add to $1,248.10 with the tax under a printed total of $1,284.10: the sum check fails. The PO field prints the job name, not a code."
+  },
+  {
+    "slug": "cedar-bend-CB-77102",
+    "pdf": "cedar-bend-CB-77102.pdf",
+    "answer": "cedar-bend-CB-77102.answer.json",
+    "note": "A bill from another house, Cedar Bend Pipe & Supply, so the letterhead check fires when the form is open on Ridgeway Supply."
+  },
+  {
+    "slug": "ridgeway-statement-oct-2026",
+    "pdf": "ridgeway-statement-oct-2026.pdf",
+    "answer": "ridgeway-statement-oct-2026.answer.json",
+    "note": "A monthly statement listing four papers with a balance forward: a statement, not a bill, one bill at a time."
+  }
+]

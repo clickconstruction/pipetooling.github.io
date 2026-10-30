@@ -23,6 +23,8 @@ type BedRow = {
   jobs: number
   open_ask: boolean
   confirmed_ask: boolean
+  /** The job's account at the house is on record as not needed (20261029220000): never counted. */
+  account_not_needed: boolean
   why: string
 }
 type BedExpect = { count: number; dollars: number; asked: number; soonest_in_days: number }
@@ -48,7 +50,7 @@ describe('the move window: the kernel over the SQL bed’s rows', () => {
 
   it('the bed’s rows cover every edge the predicate has', () => {
     const whys = rows.map((r) => r.why).join(' | ')
-    for (const edge of ['due today', 'due yesterday', 'already on the job account', 'a credit', 'no due date', 'two jobs', 'no job', 'paid', 'confirmed']) {
+    for (const edge of ['due today', 'due yesterday', 'already on the job account', 'a credit', 'no due date', 'two jobs', 'no job', 'paid', 'confirmed', 'marked not needed']) {
       expect(whys).toContain(edge)
     }
   })
@@ -59,7 +61,9 @@ describe('the move window: the kernel over the SQL bed’s rows', () => {
       .filter((r) => !r.is_paid)
       .map((r) => ({ id: r.id, amount: r.amount, due_date: r.due_in_days == null ? null : ymdPlus(r.due_in_days), on_job_account: r.on_job_account }))
     const allocationCount = new Map(rows.map((r) => [r.id, r.jobs]))
-    const movable = movableCandidates(unpaid, TODAY).filter((r) => allocationCount.get(r.id) === 1)
+    // The pair's account status, as the tab reads it for the single-job pairs (v2.6086).
+    const accountStatus = new Map(rows.map((r) => [r.id, r.account_not_needed ? 'not_needed' : null]))
+    const movable = movableCandidates(unpaid, TODAY).filter((r) => allocationCount.get(r.id) === 1 && accountStatus.get(r.id) !== 'not_needed')
     const asked = new Set(rows.filter((r) => r.open_ask).map((r) => r.id))
     const s = moveStripSummary(movable, asked)
     expect(s.count).toBe(expected.count)
@@ -67,7 +71,7 @@ describe('the move window: the kernel over the SQL bed’s rows', () => {
     expect(s.askedCount).toBe(expected.asked)
     expect(s.soonestDueYmd).toBe(ymdPlus(expected.soonest_in_days))
     // The per-row test the modal's rows use agrees with the set the strip summed.
-    const byRow = unpaid.filter((r) => isMovableAgingInvoice(r, allocationCount.get(r.id) ?? null, TODAY)).map((r) => r.id)
+    const byRow = unpaid.filter((r) => isMovableAgingInvoice(r, allocationCount.get(r.id) ?? null, TODAY, accountStatus.get(r.id))).map((r) => r.id)
     expect(byRow).toEqual(movable.map((r) => r.id))
   })
 })

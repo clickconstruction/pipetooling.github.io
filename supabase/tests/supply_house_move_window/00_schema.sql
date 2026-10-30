@@ -62,6 +62,16 @@ CREATE UNIQUE INDEX supply_house_invoice_move_requests_open_uniq
   ON public.supply_house_invoice_move_requests (invoice_id)
   WHERE confirmed_at IS NULL;
 
+-- The job's account at a house, as 20250101000000's job_supply_house_accounts holds it; the
+-- 20261029233000 predicate reads status alone.
+CREATE TABLE public.job_supply_house_accounts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  job_id uuid NOT NULL REFERENCES public.jobs_ledger(id),
+  supply_house_id uuid NOT NULL REFERENCES public.supply_houses(id),
+  status text NOT NULL CHECK (status IN ('requested', 'open', 'not_needed')),
+  UNIQUE (job_id, supply_house_id)
+);
+
 CREATE OR REPLACE FUNCTION public.t_assert(p_ok boolean, p_msg text) RETURNS void LANGUAGE plpgsql AS $$
 BEGIN
   IF p_ok IS NOT TRUE THEN RAISE EXCEPTION 'FAILED: %', p_msg; END IF;

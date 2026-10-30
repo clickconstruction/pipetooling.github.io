@@ -45,6 +45,12 @@ type UpdateFocusOpenerBridgeContextValue = {
   registerOnMyWayOpener: (opener: (() => boolean) | null) => void
   /** Returns false when no card is mounted (another page) or the day has no next job. */
   requestOnMyWay: () => boolean
+  /**
+   * Job Mode's card listens (punch list #189, PR 8): the open session changed under ClockInOutButton — a clock-in, a
+   * job change, a clock-out — so the card reloads at once instead of waiting for a live update. Returns the unsubscribe.
+   */
+  subscribeSessionChanges: (listener: () => void) => () => void
+  notifySessionChanged: () => void
 }
 
 const UpdateFocusOpenerBridgeContext =
@@ -55,6 +61,7 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
   const applyDirectRef = useRef<UpdateFocusApplyDirectFn | null>(null)
   const clockOutOpenerRef = useRef<(() => void) | null>(null)
   const onMyWayOpenerRef = useRef<(() => boolean) | null>(null)
+  const sessionListenersRef = useRef(new Set<() => void>())
 
   const registerUpdateFocusOpener = useCallback((opener: (() => void) | null) => {
     openerRef.current = opener
@@ -100,6 +107,17 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
     return fn()
   }, [])
 
+  const subscribeSessionChanges = useCallback((listener: () => void) => {
+    sessionListenersRef.current.add(listener)
+    return () => {
+      sessionListenersRef.current.delete(listener)
+    }
+  }, [])
+
+  const notifySessionChanged = useCallback(() => {
+    for (const fn of [...sessionListenersRef.current]) fn()
+  }, [])
+
   const value = useMemo(
     (): UpdateFocusOpenerBridgeContextValue => ({
       registerUpdateFocusOpener,
@@ -110,6 +128,8 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
       requestClockOut,
       registerOnMyWayOpener,
       requestOnMyWay,
+      subscribeSessionChanges,
+      notifySessionChanged,
     }),
     [
       registerUpdateFocusOpener,
@@ -120,6 +140,8 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
       requestClockOut,
       registerOnMyWayOpener,
       requestOnMyWay,
+      subscribeSessionChanges,
+      notifySessionChanged,
     ],
   )
 

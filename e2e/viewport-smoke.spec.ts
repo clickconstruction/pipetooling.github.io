@@ -126,6 +126,22 @@ for (const { path, marker, within, settle } of PAGES) {
   })
 }
 
+/**
+ * The narrowest phone (v2.6109). The Bid Board's tools row (search · development filter · four
+ * presses) fits on one line from 366 px up and wraps under that; at 375 the wrap never runs, so only
+ * this width measures it. The 320 column is 288 px, where the no-shrink press group alone is 180.
+ */
+const NARROW_PHONE = { width: 320, height: 740 }
+
+test('no sideways overflow at 320px: /bids?tab=bid-board', async ({ page }) => {
+  await page.setViewportSize(NARROW_PHONE)
+  const networkQuiet = watchNetworkQuiet(page)
+  await page.goto('/bids?tab=bid-board')
+  await expect(page.locator('main')).toContainText(/Bid Board/, { timeout: 20000 })
+  await networkQuiet()
+  await expectNoSidewaysOverflow(page, '/bids?tab=bid-board @ 320px')
+})
+
 // The header is global, so two pages are enough to pin it; both already have
 // cold-load coverage above, which keeps the marker waits honest.
 const TABLET_PAGES: SmokePage[] = [

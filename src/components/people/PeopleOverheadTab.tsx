@@ -51,6 +51,7 @@ import { OverheadPoolTrendCard } from './OverheadPoolTrendCard'
 import { OverheadPoolDayModal, type OverheadPoolDayModalCategory } from './OverheadPoolDayModal'
 import { buildOverheadPoolDayIndex, type OverheadPoolPartsLine } from '../../lib/overheadPoolDayLines'
 import { type OverheadLensKey } from '../../lib/overheadLensSeries'
+import { OVERHEAD_METHOD_INKS } from '../../lib/overheadMethodInks'
 import { OverheadLensModal, type OverheadLensDetail } from './OverheadLensModal'
 import { OverheadPeopleTable } from './OverheadPeopleTable'
 import { ManHoursCard } from './ManHoursCard'
@@ -1145,7 +1146,7 @@ export default function PeopleOverheadTab({
   const overheadLensCards = [
     {
       key: 'A',
-      color: 'var(--text-blue-500)',
+      color: OVERHEAD_METHOD_INKS.A,
       label: 'A · per field hour',
       value: fmtLens(overheadRateLenses.methodA, (n) => `$${n.toFixed(2)}/hr`),
       formula: 'pool ÷ billable field hours',
@@ -1155,7 +1156,7 @@ export default function PeopleOverheadTab({
     },
     {
       key: 'B',
-      color: '#22c55e',
+      color: OVERHEAD_METHOD_INKS.B,
       label: 'B · per revenue $',
       value: fmtLens(overheadRateLenses.methodB, (n) => `${(n * 100).toFixed(1)}% of revenue`),
       formula: 'pool ÷ invoices sent',
@@ -1165,7 +1166,7 @@ export default function PeopleOverheadTab({
     },
     {
       key: 'C',
-      color: '#f59e0b',
+      color: OVERHEAD_METHOD_INKS.C,
       label: 'C · per labor $',
       value: fmtLens(overheadRateLenses.methodC, (n) => `$${n.toFixed(2)} / $1 labor`),
       formula: 'pool ÷ direct field labor $',

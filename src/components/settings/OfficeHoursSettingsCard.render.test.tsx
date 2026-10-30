@@ -10,6 +10,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OFFICE_HOURS, type OfficeHours } from '../../lib/messages/hasRule'
 import { OFFICE_HOURS_WORDS as W } from '../../lib/messages/officeHoursCard'
 import type { OfficeHoursIo } from '../../lib/messages/officeHoursCardIo'
+import type { PushCoverageIo } from '../../lib/messages/pushCoverageIo'
+import type { CoverageMember } from '../../lib/messages/whoIsOff'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { OfficeHoursSettingsCard } from './OfficeHoursSettingsCard'
 
@@ -181,5 +183,55 @@ describe('OfficeHoursSettingsCard', () => {
     renderWithProviders(<OfficeHoursSettingsCard role="master_technician" io={fakeIo(KEPT, { load: vi.fn(async () => Promise.reject(new Error('Could not read the office hours.'))) })} />)
     expect((await screen.findByRole('alert')).textContent).toContain('Could not read the office hours.')
     expect(screen.queryByRole('button', { name: 'Monday' })).toBeNull()
+  })
+})
+
+/** Every day, 6 AM to 8 PM: the Push me default, as three office members kept it. */
+const EVERY_DAY: OfficeHours = { ...OFFICE_HOURS, days: [0, 1, 2, 3, 4, 5, 6], opens: '06:00', closes: '20:00', always: false }
+const OFFICE: CoverageMember[] = [
+  { name: 'Rosa Delgado', hours: EVERY_DAY },
+  { name: 'Evan Hart', hours: EVERY_DAY },
+  { name: 'Taunya Reed', hours: EVERY_DAY },
+]
+const fakeCoverage = (members: CoverageMember[] = OFFICE): PushCoverageIo => ({ load: vi.fn(async () => members) })
+const coverageLine = () => document.querySelector<HTMLElement>('[data-office-hours-coverage]')
+
+describe('OfficeHoursSettingsCard: the coverage line (v2.6060, punch list #141 PR 4)', () => {
+  it('while the switch is on, says the hours nobody in the office is pushed, and who is off then', async () => {
+    const coverage = fakeCoverage()
+    renderWithProviders(<OfficeHoursSettingsCard role="master_technician" io={fakeIo({ ...KEPT, always: true })} coverage={coverage} now={() => NOW} />)
+    await screen.findByRole('switch', { name: W.always })
+    await waitFor(() => expect(coverageLine()).not.toBeNull())
+    expect(coverageLine()!.textContent).toBe('Nobody hears a reply from 8 PM to 6 AM. Rosa, Evan and Taunya are all off then.')
+    expect(coverage.load).toHaveBeenCalledTimes(1)
+  })
+
+  it('appears as the switch is pressed on, before the save, and goes as it is pressed off', async () => {
+    renderWithProviders(<OfficeHoursSettingsCard role="master_technician" io={fakeIo()} coverage={fakeCoverage()} now={() => NOW} />)
+    await screen.findByRole('switch', { name: W.always })
+    await waitFor(() => expect(coverageLine()).toBeNull())
+    fireEvent.click(alwaysSwitch())
+    await waitFor(() => expect(coverageLine()).not.toBeNull())
+    fireEvent.click(alwaysSwitch())
+    expect(coverageLine()).toBeNull()
+  })
+
+  it('draws no line when someone in the office is pushed any time, or when the read brought nobody', async () => {
+    renderWithProviders(<OfficeHoursSettingsCard role="master_technician" io={fakeIo({ ...KEPT, always: true })} coverage={fakeCoverage([...OFFICE, { name: 'Marcus Lee', hours: null }])} now={() => NOW} />)
+    await screen.findByRole('switch', { name: W.always })
+    await waitFor(() => expect(card().getByText(W.alwaysWhoever)).toBeTruthy())
+    expect(coverageLine()).toBeNull()
+    cleanup()
+    renderWithProviders(<OfficeHoursSettingsCard role="master_technician" io={fakeIo({ ...KEPT, always: true })} coverage={fakeCoverage([])} now={() => NOW} />)
+    await screen.findByRole('switch', { name: W.always })
+    expect(coverageLine()).toBeNull()
+  })
+
+  it('a reader never reads the team: the line is the owner’s to act on', async () => {
+    const coverage = fakeCoverage()
+    renderWithProviders(<OfficeHoursSettingsCard role="assistant" io={fakeIo({ ...KEPT, always: true })} coverage={coverage} now={() => NOW} />)
+    await screen.findByText(W.notAllowed)
+    expect(coverage.load).not.toHaveBeenCalled()
+    expect(coverageLine()).toBeNull()
   })
 })

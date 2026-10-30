@@ -203,6 +203,10 @@ describe('the newest morning run', () => {
       'A dry run. Last morning run today at 9:00 AM: 2 texts would go, 7 kept back. 1 is snoozed, 1 sent STOP, 2 already have a text this morning and 3 wait on Send texts. 1 text did not go.',
     )
     expect(lastRunLine(lastRunFrom({ at, sent: 1 }), '2026-10-13T16:30:00.000Z')).toBe('Last morning run today at 9:00 AM: 1 text went, none kept back.')
+    // Punch list #124 (v2.6079): a line with a blank the run cannot fill, after the person's reasons.
+    expect(lastRunLine(lastRunFrom({ at, kept: { 'no number': 1, 'blanks left': 2 } }), '2026-10-13T16:30:00.000Z')).toBe(
+      'Last morning run today at 9:00 AM: no text went, 3 kept back. 1 has no number and 2 have a blank the run cannot fill.',
+    )
     // Offers (v2.5595): the texts prepared for Today's sends, and a step whose text already waited.
     expect(lastRunLine(lastRunFrom({ at, sent: 1, prepared: 2, kept: { offered: 1 } }), '2026-10-13T16:30:00.000Z')).toBe(
       'Last morning run today at 9:00 AM: 1 text went, 1 kept back. 1 already waits on Today’s sends. 2 texts prepared for Today’s sends.',
