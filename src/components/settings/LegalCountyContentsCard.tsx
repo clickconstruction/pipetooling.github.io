@@ -1,6 +1,7 @@
 import { Link } from 'react-router-dom'
 import type { CountyAssignments } from '../../lib/legal/firmCounties'
 import { countyCardFacts, type LegalMapCase } from '../../lib/legal/firmMap'
+import type { VenueBlock } from '../../lib/legal/legalParties'
 
 /**
  * The contents card under the firm cards (punch list #144, PR 1b): what is in the county
@@ -9,7 +10,7 @@ import { countyCardFacts, type LegalMapCase } from '../../lib/legal/firmMap'
  * its county until another dot is clicked. Nothing here colors a county. On the Legal desk's
  * Map (v2.5784, `onOpen`) the door is a press that opens the desk on the case, not a link away.
  */
-export default function LegalCountyContentsCard({ county, cases, assignments, firmNames, heldId, onHold, onOpen, lens = false }: {
+export default function LegalCountyContentsCard({ county, cases, assignments, firmNames, heldId, onHold, onOpen, lens = false, venue = null }: {
   county: string | null
   cases: ReadonlyArray<LegalMapCase>
   assignments: CountyAssignments
@@ -21,6 +22,8 @@ export default function LegalCountyContentsCard({ county, cases, assignments, fi
   onOpen?: (c: LegalMapCase) => void
   /** The desk's Map: the empty card says tap, not color. */
   lens?: boolean
+  /** The held case's venue (punch list #219, v2.6174): the places a suit can be filed and the rule lines, under the rows. */
+  venue?: VenueBlock | null
 }) {
   const frame = { border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', background: 'var(--surface)', fontSize: '0.8rem' } as const
   const muted = { color: 'var(--text-muted)', fontSize: '0.74rem' } as const
@@ -86,6 +89,23 @@ export default function LegalCountyContentsCard({ county, cases, assignments, fi
           </div>
         )
       })}
+      {venue ? (
+        <div data-legal-venue-block style={{ borderTop: '1px solid var(--border)', margin: '6px -12px 0', padding: '8px 12px 0' }}>
+          <div style={{ fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: 6 }}>{venue.title}</div>
+          {venue.places.map((p) => (
+            <div key={p.basis} data-legal-venue-place={p.basis} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '6px 9px', marginBottom: 6, borderLeft: p.basis === 'work' ? '3px solid var(--text-blue-700)' : undefined }}>
+              <div style={{ fontSize: '0.64rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>{p.label}</div>
+              <div style={{ fontWeight: 600, fontSize: '0.8rem' }}>{p.main}</div>
+              <div style={muted}>{p.quiet}</div>
+            </div>
+          ))}
+          {venue.rules.map((r) => <div key={r} style={{ ...muted, marginTop: 4 }}>{r}</div>)}
+          <div style={{ ...muted, marginTop: 4 }}>{venue.source}</div>
+          <div style={{ marginTop: 8 }}>
+            <Link to="/map" data-legal-venue-court-areas style={{ fontSize: '0.74rem', color: 'var(--text-link)' }}>Court areas on the Map page ↗</Link>
+          </div>
+        </div>
+      ) : null}
     </div>
   )
 }

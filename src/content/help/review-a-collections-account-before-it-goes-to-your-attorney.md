@@ -23,7 +23,7 @@ An **account is the payer**. The payer is the GC, the general contractor, when o
 
 Under the account's name you read the job numbers and the building's address. Under that sit three cells. **Contract with** names the payer. The line under the name says what they are, who signed the agreement, and their city. **Owns the building** names the owner of record, spelled the way the property record spells it. The line under the name says where the owner mails and what kind of property it is. **Venue** names the county where the work was done and the justice precinct when the record has one. The line under it says where the payer is and whether the balance is within the justice court limit. A justice court is the small claims court, and its limit is $20,000.
 
-Press {{button:outline|Contract with}} to open Edit customer. Press {{button:outline|Owns the building}} to open the same window on the property record. Press {{button:outline|Venue}} to bring up the Map. An amber cell is a gap. It says what is missing in one line. Press it to open the record that fills it. A homeowner who owns the building is one cell, not two.
+Press {{button:outline|Contract with}} to open Edit customer. Press {{button:outline|Owns the building}} to open the same window on the property record. Press {{button:outline|Venue}} to bring up the Map on that county. The county card then lists the account and the places a suit can be filed. An amber cell is a gap. It says what is missing in one line. Press it to open the record that fills it. A homeowner who owns the building is one cell, not two.
 
 ## Read the top first
 
