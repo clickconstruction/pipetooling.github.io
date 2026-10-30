@@ -1,27 +1,26 @@
 ---
-name: "Supply-house bill capture: a bill drafted from the forwarded PDF, approved by a person"
+name: "Supply-house bill capture: the PDF fills in today's form, and a person saves it"
 number: 179
-group: gated
-status: proposed 2026-10-26 · the mock-up is drawn · waiting on the owner's pick and five calls
+group: ready
+status: approved 2026-10-29 as the second redraw · building on claude/179-bill-capture-* · PR 1 the card and its mock-up
 summary: >
   Every supply-house bill is typed today. The office finds the PDF in the mail, saves it to Drive,
   opens Materials → Supply houses, expands the house and types nine fields the paper already
-  prints, then pairs the credit by hand. Jobber, Buildertrend, ServiceTitan and BuildOps read the
-  PDF and draft the bill for a person to approve. Three ways to do that here, drawn with made-up
-  paper: A a Bills inbox on Materials fed by the box the app already reads, one card per PDF with
-  every drafted field marked read or guessed and one Approve that writes the invoice as the form
-  would, the ones the reader could not settle held with a reason and a door; B no inbox, an Add
-  from a PDF press on today's form that fills the fields for the person to check and save; C is A
-  with purchase-order matching, the differences line by line and the PO closed on approval. The
-  pick is A, built with B as its first PR.
-next: The owner picks A, B or C and answers the five calls under Decisions, then PR 2 (the reader and the drafts table).
-size: L as a train of four PRs (S · M · M · S); C adds an M later
-blocker: The owner's pick. A model key as a function secret, the first in any edge function.
+  prints, then pairs the credit by hand. The first draft proposed a Bills inbox with its own
+  Approve. Taunya's word on 2026-10-29: augment the manual entry, never replace it. So the Add
+  invoice window stays the one way a bill is recorded, and what is new is where it starts: the
+  bill's PDF, picked from the house's thread or dropped in, fills the fields the way a browser
+  fills an address, and the form points at the two or three it had to guess. Nothing is written
+  until Save invoice, as today. Two doors open the form from where the PDF already sits: the
+  house's thread in Messages, and the house's row on the Supply houses tab.
+next: PR 2, the fill behind a switch (bill-read, the kernels, the read kept on the invoice row), then PR 3, the form and the two doors.
+size: M as a train of three PRs (S · M · S)
+blocker: After PR 2, the migration's push and bill-read's deploy, and the model key on Settings → Phone and texts → Model keys if the owner has not added one.
 ver: proposed
-opinion: build A — the PDF is already in our bucket and the write is the form's own, so the only new thing is the reading, and every field says where it came from before anyone presses Approve
+opinion: build — the form keeps its one write path and looks like itself, the fill is a model call behind a switch that ships off, and every guess asks for a look in a sentence before Save
 ---
 
-# Supply-house bill capture: a bill drafted from the forwarded PDF, approved by a person (#179)
+# Supply-house bill capture: the PDF fills in today's form, and a person saves it (#179)
 
 ## The ask
 
@@ -36,9 +35,47 @@ and BuildOps scans a vendor PDF into a PO. The owner, the same day:
 > person approves could look like if we built it before and after? I can't imagine it at this
 > moment so you would need to show me.
 
-So this is screens, not prose: [`mockup.html`](./mockup.html) draws today's form beside three
-afters, at desktop and phone width, with every drafted field saying where it came from. The
-owner needs to see the trust model, not just the screen.
+The first draft of this card (2026-10-26) drew three shapes and picked A, a Bills inbox on
+Materials with one Approve per card. The decision below is what came of showing it.
+
+## The decision
+
+Taunya reviewed the five big cards on the canvas of 2026-10-29. On this one:
+
+> 179 should not replace the manual entry, it should only augment it. Show me a revised mockup
+> before we move forward.
+
+The first redraw kept the form and put a *Read the paper* strip on it with every field badged
+read, guessed or typed. She read it as not intuitive: *what does read mean*. The second redraw
+took the machine's words off the screen, and she approved it (*Approve the revision*). It is
+what this card now describes and what [`mockup.html`](./mockup.html) draws:
+
+- **The Add invoice window stays the one way a bill is recorded**, with the same sections in the
+  same order and **Save invoice** the only write. A person can still type the whole bill with no
+  PDF at all.
+- **The bill is the form's first question.** A new first section, *The bill*, asks *Start from:*
+  the PDFs on this house's thread that are not yet on an invoice row, *Another file…*, or *No PDF,
+  I will type it*. Picking one fills the form.
+- **The fields fill like an autofill.** A field from the paper is tinted green with a green left
+  border and carries no label. A guess is amber with one sentence saying why and a **Yes** and
+  **Pick another** beside it. A field the paper cannot answer stays plain and reads *yours to set*.
+  One line under the picker counts what is left. A small legend names the three looks.
+- **The fill never writes over a field the person typed**, and nothing is written until Save.
+  The words *read*, *guessed* and *typed* live in the database only, on the row, so a wrong guess
+  can be found later; they never show on the screen.
+- **The checks are sentences under the field**, like the PO hint today, and Save still works.
+- **Two doors into that form, where the PDF already sits:** *Record this bill* and *Not a bill*
+  on the house's thread, the same shape as the thread's *File this as their certificate*; and
+  *N bills to record* with *Record them* on the house's row.
+- **Not built, by her word:** the Bills inbox deck, its Approve, *Approve the N ready* and the
+  held cards; the *Read the paper* strip and its badges. Option C's PO match stays a later idea
+  on the same form, a sentence under the PO field at most.
+
+The four calls the canvas put beside the drawing were taken as recommended: the team box the app
+already reads feeds the thread (no bills box); our copy becomes the row's link with *Use a Drive
+link instead* for anyone who wants the AP folder's copy; `claude-sonnet-5-5` does the fill with
+`claude-haiku-5-5` tried on the same made-up test set; the key is the one the Model keys card
+already holds, and the function caps the fills a day.
 
 ## Today
 
@@ -110,309 +147,177 @@ Held for suppliers tab and the aging heat map read what was typed, never what th
   the kernels in [`src/lib/emailIn/`](../../src/lib/emailIn/)). Every file up to 25 MB on a mail it
   takes is copied into the private `message-attachments` bucket and gets a `message_attachments`
   row with its name, mime, size and bucket path (`emailLine.ts`, v2.5354). A supply house is a
-  contact kind (`supply_house`, `contacts/names.ts`), so a house's mail lands on the house's thread,
-  and a bill the assistant forwards lands on the house too, with her note as a team note
-  (`forwarded.ts`). So a bill emailed or forwarded to a box the app reads is already a PDF in our
-  bucket on the house's thread. Nothing reads it.
+  contact kind (`supply_house`, `contacts/names.ts`; `contacts.supply_house_id` names the house),
+  so a house's mail lands on the house's thread, and a bill the assistant forwards lands on the
+  house too, with her note as a team note (`forwarded.ts`). So a bill emailed or forwarded to a
+  box the app reads is already a PDF in our bucket on the house's thread. Nothing reads it.
 - **The guess-and-answer pattern.** `message_attachments.paper` is the reader's guess that a
   trade partner's file is a W-9 or a certificate, read from the file's name alone
-  (`paperGuess.ts`); `paper_answer` is the office's *filed* or *not it*, stamped by a trigger. The
-  thread offers *File this as their certificate* and the app never files a paper by itself.
-  That is the trust model this proposal extends: a guess is marked, a person answers, the app
-  writes on the answer.
+  (`paperGuess.ts`); `paper_answer` is the office's *filed* or *not it*, stamped by a trigger.
+  The thread offers *File this as their certificate* under the line (`PaperOffers.tsx`,
+  `paperOffer` in `lineFiles.ts`, `answerPaper` in `messagesIo.ts`), and the app never files a
+  paper by itself. That is the trust model this card extends: the app offers, a person answers,
+  and the app writes on the answer.
+- **The app's lasting link to a kept file.** `/files/messages/<attachment id>`
+  (`fileRoute.ts`, `FileOpen.tsx`) opens our copy for someone signed in who may read it, through
+  a link signed for a minute, so a record can hold the app's own address and the file is never
+  public. The W-9 door files that address on the paper.
+- **The model key, already in the app.** `report-draft` (v2.5916, the field report drafted from
+  what a tech said) calls Claude through `_shared/modelKey.ts`: Vault first, filled from
+  Settings → Phone and texts → **Model keys** through `model-config`, then the function's own
+  `ANTHROPIC_API_KEY`. So `bill-read` is not the first model call in an edge function, and the
+  owner adds the key on that card, not in a terminal, if it is not there already.
 - **How a PDF names its job.** The PO Generator mints a five-digit counter code per job and tech
   (`material_po_generator_entries`, [`GLOSSARY.md`](../../docs/GLOSSARY.md) → PO Generator ledger).
   A job account at a house carries the house's own reference for the job
   (`job_supply_house_accounts.account_ref`, v2.3423). The form already parses a code out of
   whatever the house printed (`parsePoGeneratorCodeFromPurchaseOrderName`) and reads it against the
   ledger, and lists a job's codes near the date when the house printed the job name instead.
-- **Purchase orders to match against.** `purchase_orders` with `purchase_order_items`
-  (`supply_house_id`, `price_at_time`, `price_confirmed_at`, status draft or finalized), the
-  line-item lane from PO Builder, Takeoffs by stage and the Parts Tally. Most counter buys carry
-  a PO Generator code and no line-item PO.
-- **Plan, then apply.** The dev MCP's cost batches are a dry run first, a `plan_hash` over the
-  payload and the before-image, then an apply that re-runs the dry run and writes only when the
-  world still answers the same ([`devMcpWrites.ts`](../../supabase/functions/_shared/devMcpWrites.ts),
-  [`docs/COST_BATCHES.md`](../../docs/COST_BATCHES.md)). The house pattern for a draft a person
-  approves.
-- **One card, one press.** The Needs you Fill them in deck (v2.5774, `NeedsYouFillInDeck.tsx`
-  over `lib/needsYou/fillIn.ts`) and the Physical inbox deck (v2.5818) are the shape: one row at
-  a time, what the app knows in short sentences, the fields, **Save and next**, **Skip**, a trail
-  with **Undo**, an end card with the counts.
-- **Do what is ready, never all or nothing.** A batch acts on what is clean, lists what it held
-  with the reason and its door, and its button says exactly what it will do (v2.5533, `CLAUDE.md`).
+- **The PDF on the screen.** The pdf.js assets the build already copies (`dist/pdfjs/`,
+  `pdfjsAssets.ts`) and the Form Studio's `PdfPageCanvas` draw a page of a PDF from its bytes.
+- **The form's switches.** An `app_settings` row read by every signed-in user and written by the
+  owner or a dev through a key-scoped policy (`messages_texts_on_v1`, migration
+  `20261014160000`) is how a surface ships off and is turned on after its live test.
 
 ## The mock-up
 
-[`mockup.html`](./mockup.html), served at `/to-dos/supply-bill-capture/mockup.html`. Section 0 is
-the form as it is today at desktop and phone width with each typed field marked. A, B and C each
-draw a desktop frame and a phone frame. A's presses work: Approve writes the card off the deck
-and the bar counts, a held card's door makes it ready, **Approve the 4 ready** takes the clean ones
-and lists the held. B's **Read it** fills the form with the marks. C's lines show the differences.
-Every house, job, person, number and amount is made up: Ridgeway Supply, Cedar Bend Pipe &
-Supply, Hill Country Pipe & Supply, jobs J1031, J1042 and J1057, Marisol the assistant, Todd and
-Marcus the techs.
+[`mockup.html`](./mockup.html), served at `/to-dos/supply-bill-capture/mockup.html`, redrawn
+2026-10-29 to the approved second redraw. Section 0 is the form as it is today, which stays.
+Section 1 is the same form started from the PDF, at desktop width with the paper beside the
+fields and at phone width with the picker first and the paper as a strip above the fields. Its
+presses work: picking a bill fills the form, **Yes, J1042** settles the guess and the count line
+follows, **No PDF, I will type it** empties the fields, a field you type into keeps what you
+typed when you pick again, and **Save invoice** says where the row went. Section 2 draws the
+five checks as the sentences they are. Section 3 draws the two doors; **Not a bill** takes a bill
+off the house's count. Section 4 lists what was dropped. Every house, job, person, number and
+amount is made up: Ridgeway Supply, Cedar Bend Pipe & Supply, job J1042 Oakmont Dental
+build-out, Marisol the assistant, Todd the tech, invoice S1183420 and credit memo CM-20991.
 
-**The marks**, the same on every option: **● read** in green, the value is on the paper and the
-reader is quoting it; **◐ guessed** in amber, with what it was guessed from, the app worked it
-out and a person should look; **○ typed** in blue, a person changed it. A guess is never written
-silently. Approve writes what is on the card, whatever the marks, and the row keeps which fields
-were read, guessed and typed, so a wrong guess can be found later.
+**The three looks**, on every field: green with a green left border, *from the paper*, the value
+is printed and the fill is quoting it; amber with a sentence and a **Yes**, *a guess, check it*,
+the app worked it out and says from what; plain, *yours to set*, the paper cannot answer it.
+Nothing on the screen says read, guessed or typed. The row keeps those words.
 
-## Options
+## What is kept, and what was dropped
 
-### A · A Bills inbox on Materials (the pick)
+**Kept from the first draft:** the reading as a model call with a fixed answer shape, so the
+function never parses prose; the matching, the checks and the words as pure kernels with tests;
+the write lifted out of the form so there is one money path; the lines kept on the row; the
+guess-and-answer trust model; the team box as the feed. All of option B's shape, with the words
+a first-timer reads.
 
-**The first screen.** A **Bills in · 4 ready · 2 held** line at the top of the Supply houses tab,
-and a Bills inbox section under it, one card per PDF the reader has drafted, newest first. Each
-card is the PDF on the left, its first page drawn, and the drafted fields on the right: the house,
-Invoice # or Credit #, the date, the total with the lines under it, the PO text, the job, the due
-date, the job-account tick, and the file. Every field carries its mark and, on hover or a press,
-the why: *● read from the PDF · "INVOICE S1183420"*, *◐ guessed · the sender ar@ridgeway.example
-is Ridgeway Supply's email on file*, *● read · PO 41207 is on the ledger for J1042 · Todd · Oct 21*.
-One **Approve** per card. The bar's **Approve the 4 ready** takes every card that is ready and lists
-the two held with their reason.
+**Dropped, by Taunya's word:** option A's Bills inbox deck on Materials, its one Approve per
+card, the bar's *Approve the N ready* and the end card, the held cards with their reasons and
+doors, Undo after Approve, the `supply_bill_drafts` table and the hook in `gmail-sync` that fed
+it, and the first redraw's *Read the paper* strip with its read · guessed · typed badges. They
+replaced the manual entry, or read as the machine's words on a form that should look like the
+form. Decision 3 of the first draft, the batch press, no longer applies: one bill at a time,
+through the form.
 
-**Where the bills come from.** The box the app reads: a house that emails its invoices lands them
-on its own thread, and the assistant forwards the rest from her mailbox with one press. `gmail-sync`
-copies the file today; the new part is a hook after the copy. A PDF or a picture on a line whose
-contact is a supply house, or on the bills box if the owner wants one, is sent to the reader. The
-assistant's note on a forwarded bill, *this is J1057's*, is kept on the card.
-
-**What the person still types.** Nothing on a clean card. A job on a card that names none. A
-second job and the split, which the paper never says. A house the app does not know, once. The
-due date when the paper's terms beat the house's payment day.
-
-**What is read and what is guessed.** Read: the kind, the number, the date, the lines, the tax,
-the total, the PO text, the ship-to, the job-account reference the house printed, a credit's
-*RE: invoice* line. Guessed: the house from the sender's address against `supply_houses.email`
-and the reps' emails, or from the letterhead when the sender is one of us forwarding; the job
-from the PO code against the ledger (read, when the code is on the ledger and its job is one),
-else from the account reference against `job_supply_house_accounts`, else from the ship-to
-address and job name against the jobs ledger (guessed); the due date from the house's payment
-day as the form does today; the job-account tick from the open account row as the form does
-today; a credit's pair from the invoice number it references, else the same job within sixty
-days. The reader never guesses a total: the lines must add to it, with the tax, to the cent.
-
-**A bill the reader gets wrong.** Four checks hold a card before anyone sees Approve lit:
-*No job named* with a job search on the card and the codes minted for the tech that week as
-picks; *The lines add to $1,248.10 and the total reads $1,284.10* with both figures as presses;
-*A house we do not know: Hill Country Pipe & Supply* with **Add the house** and **It is one of
-ours ▾**; *Looks like one we have: S1183420 · Oct 3 · $1,284.10* with **Open it** and **Not the
-same**. A statement, several invoices in one PDF, is held as *a statement, not a bill* with the
-invoices it lists, each a press to draft on its own. A wrong guess that passed the checks is the
-person's to catch on the card, which is why a guessed field is amber and says its source. After
-Approve, **Undo** on the trail deletes the row the way the form's Delete does, and the card comes
-back. A card nobody wants is **Not a bill**, which marks the attachment and keeps the thread.
-
-**How a credit is paired.** A CREDIT MEMO reads as a credit; its *RE:* or *original invoice*
-line names the invoice, matched against this house's rows, and the card shows the pair and the
-form's own sentence: *Takes $888.10 off what we owe Ridgeway Supply, and $888.10 off J1042's parts
-cost.* A credit that names no invoice is guessed by job and date, or stays *Not paired yet* with
-the pick on the card. Approve writes `credits_invoice_id` as the form does, and the pair guard
-holds it to the same house.
-
-**Do what is ready.** The bar says *4 ready · 2 held*. **Approve the 4 ready** writes the four and
-lists the two held with their reason and door. The button is dead only when nothing is ready. A
-hold on one bill never stops the rest.
-
-**What it costs to build.** M to L, four PRs. A migration for `supply_bill_drafts` (one row per
-attachment: the read JSON, each field's value and source, the matches, the checks, the state
-ready · held · approved · not_a_bill, the invoice it became) with RLS for the office roles and
-the three block calls. A new edge function `bill-read`: it fetches the file from the bucket, sends
-it to the model and stores the draft. **The reading itself is a model call**: Claude through the
-Messages API, the PDF as a document block or a photo as an image block, the answer forced into a
-fixed shape with a tool schema (house name, number, date, kind, lines, tax, total, PO text,
-ship-to, account reference, referenced invoice), so the function never parses prose. It needs an
-`ANTHROPIC_API_KEY` as a Supabase secret, the first model key in any edge function (the robots are
-Claude sessions that call twin-mcp, the other direction), and about a cent a page on
-`claude-haiku-5-5`, a few cents on `claude-sonnet-5-5`; the read is one call per PDF, run once. The
-matching, the checks and the draft's words are pure kernels with tests, no model: `billRead.ts`
-(the answer to a draft), `billMatch.ts` (the house, the job, the pair), `billChecks.ts` (the sum,
-the duplicate, the statement). The write is the form's own, lifted into `supplyInvoiceWrite.ts`
-so the form and the inbox share one money path, which the Materials map already lists as the
-untested one. The hook in `gmail-sync` is a dozen lines after the copy. The inbox is one component
-in the Fill them in deck's shape. Docs, a guide, a release note per PR.
-
-Is this the best we can do? Every field says where it came from, a guess is never written
-silently, Approve is a person's press, and the write is the form's own, so Job Summary, Held for
-suppliers, the aging heat map and the Lien desk read an approved draft exactly as a typed
-invoice. The PDF is already in our bucket under a scope Google already granted, so no new
-permission. The lines are kept, which today's form throws away, so a later PR can show what a
-job's parts cost at a house and when a price moved. The risks are named: a misread digit is caught
-by the sum check, a re-forwarded bill by the duplicate check, and a wrong job is the one that can
-pass, which is why the job is amber unless a code or an account reference read exact. Left out on
-purpose: approving a card with no person (a later owner call, once the drafts show how often the
-reader is right), reading paper from the tray (a **Scan** press on the Physical inbox deck is a
-small later PR that feeds the same function), paying the bill, and matching the bank charge
-(`mercury_transaction_supply_house_invoice_links` already links a card charge to an invoice).
-
-### B · Add from a PDF on today's form
-
-**The first screen.** Today's **Add invoice** window with one new press at the top: **Add from a
-PDF**. Drop the file, pick it, or paste the Drive link and press **Read it**. The reader fills the
-fields in place, each with its mark, the PDF opens beside the form, and the person checks and
-presses **Save invoice** as today. The file is kept in our bucket and becomes the row's link, so
-the Drive step ends.
-
-**What the person still types.** The house, since the form opens from the house. The job when
-the paper names none. The split. Anything the person disagrees with, by typing over it, which
-turns the mark blue.
-
-**What is read and what is guessed.** The same reader, the same marks. The house is not guessed:
-the form knows it. A paper whose letterhead is not this house gets a red line, *This reads as a
-bill from Cedar Bend Pipe & Supply, not Ridgeway Supply*.
-
-**A bill the reader gets wrong.** Nothing is written until Save. The person sees the field beside
-the paper and retypes it. The sum check and the duplicate check show as the form's existing hint
-lines, in red, and Save still works, as it does today for a code not on the ledger.
-
-**How a credit is paired.** The kind switches to Credit when the paper reads CREDIT MEMO and the
-**Credits invoice…** pick is guessed from the referenced number, marked guessed.
-
-**Do what is ready.** One paper at a time. The form is the bar.
-
-**What it costs to build.** S to M, two PRs. The same `bill-read` function and the same model key
-and kernels, a storage upload from the form, the fill with marks, no new table (the read is kept
-on the row as a jsonb of sources, or not at all). It is A's PR 2 and PR 3 with no inbox.
-
-Is this the best we can do? No. It reads the paper, but the person still carries it: finds the
-mail, saves the file, opens the house, presses the button, one bill at a time. The box the app
-already reads stays unread. It changes nothing until someone acts, which is its virtue, and it is
-the right first PR of A, because every read is checked by a person on a familiar screen before an
-inbox collects anything.
-
-### C · A, plus purchase-order matching
-
-**The first screen.** A's inbox. A card whose house has a finalized purchase order open within
-thirty days, with no invoice on it yet, shows **Matches PO 2026-0412 · 3 of 5 lines agree** and,
-unfolded, the lines side by side: the PO's part, quantity and `price_at_time` against the bill's,
-a difference in amber (qty 12 for 10, $48.10 for $46.90), a bill line not on the PO in red, a PO
-line not on the bill in grey. **Approve** writes the invoice as in A and also closes the PO: a
-`received_at`, the invoice's id, and the agreeing lines' `price_confirmed_at` stamped, so the Parts
-Book's price confirmation (`materialPOUtils.ts`) reads the bill as the confirmation.
-
-**What the person still types.** As A. On a match, nothing more; the differences are read, and
-a person decides whether a price that moved updates the Parts Book, a second press, never
-automatic.
-
-**What is read and what is guessed.** As A. The match itself is guessed from the house, the
-date and the PO text, and marked so, with the PO's lines as the evidence.
-
-**A bill the reader gets wrong.** As A. A match to the wrong PO is **Not this PO ▾** on the card,
-which lists the house's other open POs or *no PO*, and Approve then writes the invoice alone.
-
-**How a credit is paired.** As A. A credit never closes a PO.
-
-**Do what is ready.** As A. A card with a match that has differences is still ready: the
-differences are facts, not holds. Only the four checks hold.
-
-**What it costs to build.** A plus M: three columns on `purchase_orders`, a `billPoMatch.ts`
-kernel and tests, the lines screen, and a decision on what *open* means for a PO, which today
-has no received or closed state.
-
-Is this the best we can do? It is ServiceTitan's shape and the one with the most value per bill
-when a line-item PO exists, because it is the only place a price moving is seen on the day. But
-most counter buys carry a PO Generator code and no line-item PO, so C's match fires on a minority
-of cards and the rest are A. Build A, keep the lines on the draft, and add the match when the
-drafts show how many cards have a PO to match. Nothing is re-read.
-
-### Side by side
-
-| | Today | A · Bills inbox | B · Add from a PDF | C · A with PO matching |
-|---|---|---|---|---|
-| The first screen | the house, then **Add Invoice** | the inbox: one card per PDF | today's form with **Add from a PDF** | A's inbox with the PO's lines on a matched card |
-| What is typed on a clean bill | seven fields, a search, a link | nothing | the house is the form's; the rest checked | nothing |
-| Where the PDF comes from | Drive, by hand | the box the app reads, or a forward | a drop, a pick or a link | as A |
-| Where the scan link goes | a Drive URL typed under Paperwork | our bucket, the row's link | our bucket, the row's link | as A |
-| A wrong read | a wrong row, found later | held with a reason and a door, or amber on the card; Undo after | retyped before Save | as A, plus **Not this PO** |
-| A credit | the same form, the pair picked by hand | drafted as a credit, the pair read from *RE:* | the kind switches, the pair guessed | as A |
-| Do what is ready | one at a time | **Approve the N ready**, the held listed | one at a time | as A |
-| The lines | never recorded | kept on the draft | kept on the row | compared to the PO |
-| Cost | — | M to L, four PRs | S to M, two PRs | A plus M |
-
-## Decisions for the owner
-
-1. **Which option:** A, B or C. The recommendation is A, built with B as its first visible PR.
-2. **Which box.** The team box the app reads today, so a house's bills land on its own thread
-   and the assistant forwards the rest; or a bills box of its own that houses are told to email
-   directly, which keeps bills off the Messages page. A third box is one `readerBoxes.ts` row and
-   a dev-typed setting today, since no Settings card holds the addresses yet. The recommendation
-   is the team box first, and a bills box when the owner has told a house to use it.
-3. **The batch press.** Whether **Approve the N ready** exists at all, or every card is approved
-   one at a time. The recommendation is the batch press, with *ready* meaning every field read or
-   guessed with the four checks clean, which is *do what is ready* as the rule reads.
-4. **Where the PDF lives after approval.** Our bucket, served to the office team as the thread
-   serves it, so the Drive upload ends; or copied to the Drive AP folder as well. The
-   recommendation is the bucket, with the Drive copy as a later toggle if the office misses it.
-5. **The model and the key.** `claude-sonnet-5-5` for the read, with `claude-haiku-5-5` tried on
-   the same test set, the key as a Supabase secret, and a cap of so many reads a day in the
-   function. The cost is cents a bill. The owner adds the key; nothing in the repo holds it.
+**Dropped as a later idea:** option C's purchase-order match. Most counter buys carry a PO
+Generator code and no line-item PO, so the match would fire on a minority of bills. If the owner
+ever wants it, it is one sentence under the PO field on this same form, read from the lines the
+row now keeps. Nothing is re-read.
 
 ## Where it plugs in
 
-- **The table (new):** `supply_bill_drafts`: id, `attachment_id` → `message_attachments`,
-  `supply_house_id` (nullable until known), `read` jsonb (the model's answer as given, never
-  edited), `fields` jsonb (each field's value, source `read` · `guessed` · `typed`, and the why),
-  `job_matches` jsonb, `checks` jsonb (sum, duplicate, statement, house), `state` (`ready` ·
-  `held` · `approved` · `not_a_bill`), `held_reason`, `invoice_id` → `supply_house_invoices`,
-  `approved_by`, `approved_at`, `model`, `read_at`. One additive migration with `lock_timeout`,
-  RLS for the roles that see the Supply houses tab, the three block calls at the end,
-  `docs/migrations/<version>_supply_bill_drafts.md`.
-- **The function (new):** `supabase/functions/bill-read/`: `POST { attachment_id }` from
-  `gmail-sync`'s hook or a dev; reads the file from `message-attachments`, calls the model with
-  the fixed tool schema, runs the kernels, writes the draft. Secrets: `SUPABASE_URL`,
-  `SUPABASE_SERVICE_ROLE_KEY`, `ANTHROPIC_API_KEY`, `CRON_SECRET`. Its `docs/EDGE_FUNCTIONS.md`
-  section and TOC line; the dev-mcp catalog regenerated so `check_edge_boot` probes it.
-- **The hook:** in `gmail-sync` after `email_write_line`, for a file whose mime is a PDF or a
-  picture on a line whose contact kind is `supply_house`, or on the bills box: one call to
-  `bill-read`, best effort, never stopping the run.
-- **The kernels (new, `src/lib/materials/bills/`):** `billRead.ts` (the schema and the draft's
-  fields with sources), `billMatch.ts` (the house from the sender or the letterhead, the job
-  from the code, the account reference, the ship-to; the credit's pair), `billChecks.ts` (the sum
-  to the cent, the duplicate by house and number, a statement, an unknown house), `billWords.ts`
-  (the card's lines, the held reasons, the bar's words), each with tests. Mirrored into
-  `_shared/gcKernels/` by `scripts/edge-kernels.mjs` for the function.
-- **The write:** `saveInvoice` in `SupplyHousesTab.tsx` lifted into
+- **The columns (new, one additive migration with `lock_timeout`, PR 2):**
+  `supply_house_invoices.bill_read jsonb`, the read as the row keeps it: the file (our bucket
+  path, its name and mime, the attachment it was when it came off the thread), the model and
+  when, each field's value with its source *read* · *guessed* · *typed* and the why, the lines
+  as the paper printed them, and the checks as they stood at Save;
+  `supply_house_invoices.bill_attachment_id uuid` → `message_attachments`, so the house's count
+  and the picker know a thread file is on a row; the switch `app_settings.bill_read_on_v1`,
+  `'false'` as it ships, with the master-or-dev UPDATE policy the other switches have; and
+  `supply_bill_reads`, one row per fill (who, when, the file, the house, the model, the tokens
+  and cents, the answer), written by the service role and read by the office roles, because the
+  cap of so many fills a day needs a count that outlives the form, and because it is where a
+  later look at how often the reader is right will read. RLS and the three block calls for the
+  new table; `docs/migrations/<version>_supply_bill_read.md`.
+- **The function (new, PR 2):** `supabase/functions/bill-read/`, called by the signed-in office
+  user (`verify_jwt = false`; the function checks the bearer, the role, a real account that is
+  not read-only, the switch and the day's cap). `POST { attachment_id }` for a file on the
+  house's thread, or `POST { file: { name, mime, base64 } }` for *Another file…*, which the
+  function puts in the bucket under `bills/<house>/<uuid>/<name>` as the service role. It fetches
+  the bytes, sends the PDF as a document block or the picture as an image block to
+  `claude-sonnet-5-5` with a fixed JSON schema (house name, document kind, number, date, lines
+  with their extended prices, tax, total, PO text, ship-to, account reference, the invoice a
+  credit references, terms, the page count and whether the paper lists several invoices), writes
+  the ledger row and answers the read with the file's place and what it cost. A dev may pass
+  `model: 'claude-haiku-5-5'` for the comparison on the made-up set. It never writes an invoice.
+  Secrets: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; the key through
+  `loadModelKey`. Its `docs/EDGE_FUNCTIONS.md` section and TOC line; the dev-mcp catalog
+  regenerated so `check_edge_boot` probes it.
+- **The kernels (new, `src/lib/materials/bills/`, PR 2):** `billRead.ts`, the schema the function
+  asks with and the answer read into fields with their sources (the shared part lives in
+  `_shared/billRead.ts`, which the src file re-exports, the way `folderName.ts` re-exports
+  `whereFilesGo.ts`); `billMatch.ts`, the house from the letterhead against the house the form
+  is open on, the job from the PO code against the ledger (a code whose ledger row names one job
+  reads exact), else the account reference against `job_supply_house_accounts`, else the ship-to
+  address and job name against the jobs the form can search (a guess), the job-account tick from
+  the open account row as the form does today, the credit's pair from the *RE:* number against
+  this house's rows; `billChecks.ts`, the lines to the total with the tax to the cent, the
+  duplicate by house and number, a statement with several invoices, a letterhead that is not this
+  house; `billWords.ts`, every sentence the form shows, from the count line to the legend;
+  `billFill.ts`, the fill into the form's state that never writes over a field the person typed.
+  Tests over the made-up set in `src/test/fixtures/bills/`: each fixture a PDF drawn with
+  `pdf-lib` from made-up data and the answer the model should give for it, so the kernels are
+  tested on the answers and the two models are compared on the PDFs once the key is in.
+- **The write (PR 2):** `saveInvoice` in `SupplyHousesTab.tsx` lifted into
   `src/lib/materials/supplyInvoiceWrite.ts` (the row, the signed amount, the allocations, the
-  pair patch, the paid payload) and tested; the form and the inbox call it.
-- **The screens:** `BillsInbox.tsx` under `src/components/materials/` in the Fill them in deck's
-  shape (the bar, the cards, Approve, Undo, the held doors, the end card); the Supply houses
-  tab mounts it over Accounts payable for the office roles. Under B, `Add from a PDF` on the form
-  and a `BillPdfPane`. Under C, `BillPoMatch.tsx` and three columns on `purchase_orders`.
-- **The PDF:** drawn from the bucket with the pdf.js assets the build already copies
-  (`dist/pdfjs/`), first page on the card, the whole file on a press.
-- **Words and docs:** a guide *approve a supply-house bill from the inbox* (plain words); the
-  two guides above amended; `GLOSSARY.md` → Materials System (a Bills inbox entry, the marks),
-  `MATERIALS_TABS_ARCHITECTURE.md` (the tab's new region), `PROJECT_DOCUMENTATION.md` §11,
-  `ACCESS_CONTROL.md` (who approves), `docs/twins/APP_DIRECTORY.md` if the inbox gets a path of
-  its own.
+  pair patch, the paid payload, now the read and the attachment) and tested, so the form keeps one
+  money path whether the bill was typed or filled.
+- **The screens (PR 3):** *The bill* as the form's first section in `SupplyHousesTab.tsx`, the
+  picker reading this house's thread files through `billsToRecordIo.ts` (the PDFs and pictures on
+  `message_attachments` whose message's contact is this house, not answered *not it*, not on an
+  invoice row); the fill and the tints; the PDF pane beside the fields on `PdfPageCanvas`, a strip
+  above them on a phone; *Use a Drive link instead* under Paperwork. The thread's `PaperOffers`
+  gains the bill's offer for a `supply_house` contact: *Record this bill* goes to
+  `/materials?tab=supply-houses&house=<id>&bill=<attachment id>`, which `Materials.tsx` hands the
+  tab as `autoOpenHouseId` and a new `openBill`, and *Not a bill* writes `paper_answer = 'not_it'`
+  through `answerPaper` as the W-9's *It is not* does. The house's row on the Supply houses tab
+  gets *N bills to record* with *Record them*. The switch gates the picker and the doors; off, the
+  form is exactly today's.
+- **Roles:** the roles that see the Supply houses tab and its Add Invoice, the office (dev,
+  master_technician, assistant, controller). The function refuses every other role and a
+  read-only account.
+- **Words and docs (PR 3):** a new guide *record a supply-house bill from its PDF* in plain
+  words; the two guides above amended; `GLOSSARY.md` → Materials System (the bill's three looks,
+  bills to record), `MATERIALS_TABS_ARCHITECTURE.md` (the form's new section and the tab's new
+  data), `PROJECT_DOCUMENTATION.md` §11, `ACCESS_CONTROL.md` (who records a bill).
 
 ## The plan
 
-1. **PR 1, this folder** (docs only).
-2. **PR 2, the reader** (one version): the migration, `bill-read` with the tool schema, the four
-   kernels and their tests over a set of made-up PDFs in `src/test/fixtures/bills/`, the hook in
-   `gmail-sync` behind a switch `bill_read_on_v1` that ships off, the function deployed, the key
-   added by the owner. Nothing on a screen yet; `read_rows` on the drafts table shows the reads.
-3. **PR 3, Add from a PDF** (one version, B): the form's press, the upload, the fill with marks,
-   the lifted write. The first screen a person sees, one bill at a time, every field checked.
-4. **PR 4, the inbox** (one version, A): the bar, the cards, Approve, Undo, the held reasons and
-   doors, Not a bill, the guide, the switch turned on for the office.
-5. **PR 5, the batch** (one version): **Approve the N ready**, the end card, the daily cap's words.
-6. **Later, C:** the PO match, once the drafts say how many cards have a PO.
+1. **PR 1, this folder** (docs only): the card rewritten to the approved shape and
+   [`mockup.html`](./mockup.html) redrawn to it, at desktop and phone width, on the card's
+   made-up data.
+2. **PR 2, the fill behind a switch** (one version): the migration, `bill-read` with the fixed
+   schema and the daily cap, the kernels and their tests over the made-up PDFs, the write lifted
+   into `supplyInvoiceWrite.ts`, the switch `bill_read_on_v1` shipping off, the function's docs
+   section and the catalog regenerated. Nothing on a screen yet. The push, the deploy and the
+   key are the user's steps.
+3. **PR 3, the form and the two doors** (one version): *The bill* section with the picker, the
+   fill, the tints, the guesses' sentences, the count line, the PDF pane and the Drive-link
+   alternative; *Record this bill* and *Not a bill* on the thread; *N bills to record* on the
+   house's row; the switch turned on for the office roles; the guides and the docs; this folder
+   deleted.
 
 ## How to verify
 
 PR 2: `bill-read` on a made-up PDF from the fixtures as the dev, then `read_rows` on
-`supply_bill_drafts`: every field's source is `read` or `guessed`, the sum check passes, and a
-PDF with a wrong total is held with the reason. PR 3: on a ZZ test house, press **Add from a
-PDF** with the fixture, read the marks beside the paper, change one field and see it turn blue,
-Save, and find the row on the house's list with **View** opening our copy. PR 4: forward the
-fixture to the team box from the owner's phone with a note, wait a minute, open Materials →
-Supply houses and read the card with the note on it; Approve it on the ZZ house; open Job
-Summary's Parts Cost for the ZZ job and find the line; press Undo and find it gone. PR 5: two
-clean cards and one held, press **Approve the 2 ready**, read the held one listed with its
-reason. On the phone preset one card is one screen, the PDF a strip at the top, Approve at the
-bottom, no sideways scroll. Nothing approved on prod from a real house's bill until the owner
-has looked.
+`supply_bill_reads`: the answer carries every field with its source *read*, the lines add to the
+total, and a fixture with a wrong total comes back with the sum check failing in the kernel's
+test. PR 3: on a ZZ test house, open **Add Invoice**, pick a fixture PDF under *Start from*, read
+the green fields and the two amber guesses beside the paper, change one field and see it keep what
+you typed, press **Save invoice**, and find the row on the house's list with **View** opening our
+copy and the lines kept on the row. Forward a fixture to the team box from the owner's phone,
+wait a minute, and find *Record this bill* on the house's thread and *1 bill to record* on the
+house's row; mark one *Not a bill* and see the count fall. On the phone preset the picker is
+first, the PDF a strip above the fields, no sideways scroll. Nothing saved on prod from a real
+house's bill until the owner has looked.
+
+## Where it stands
+
+- 2026-10-26: the first draft, three options and the pick of A, drawn and proposed.
+- 2026-10-29: Taunya's word, augment and never replace; the first redraw read as not intuitive;
+  the second redraw approved. PR 1, this card and its mock-up redrawn, opened the same day.

@@ -1907,7 +1907,9 @@ export default function ClockInOutButton({
           role="dialog"
           aria-modal="true"
           aria-labelledby="clock-in-modal-title"
-          style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1000 }}
+          // Above the job window (1010) and the crew's plain window (1004): Leaving opens this when the tech is off the clock
+          // (punch list #189, the Leaving PR), and at 1000 it stood unseen behind the window on a phone.
+          style={{ position: 'fixed', padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', inset: 0, background: 'rgba(0,0,0,0.7)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: UPDATE_FOCUS_OVERLAY_Z_INDEX }}
           onClick={() => !actionLoading && setClockInModalOpen(false)}
         >
           <div

@@ -75,3 +75,10 @@ export function phoneRowNote(notes: string | null | undefined): string | null {
   const t = (notes ?? '').trim()
   return t === '' ? null : t
 }
+
+/**
+ * The swipe row's More action, a literal grey like the blue and violet beside it: the muted text
+ * token it used turned `#9ca3af` in dark, 2.54:1 under its white word; this reads 4.83:1 in both
+ * themes (punch list #194, v2.6068).
+ */
+export const MORE_SWIPE_GREY = '#6b7280'
