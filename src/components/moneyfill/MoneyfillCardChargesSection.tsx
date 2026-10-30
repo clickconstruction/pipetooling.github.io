@@ -65,7 +65,7 @@ export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string
           Couldn’t load Mercury transactions for this account — the queue needs Banking access.
         </div>
       ) : rows.length === 0 ? (
-        <div style={{ color: '#15803d', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for this week</div>
+        <div style={{ color: 'var(--text-green-700)', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for this week</div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 520 }}>
