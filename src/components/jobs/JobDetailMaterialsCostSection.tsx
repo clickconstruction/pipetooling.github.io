@@ -16,6 +16,7 @@ import { roundHoursLabel } from '../../lib/jobs/jobTeamLaborRow'
 import { MaterialsCostAccordionRow } from './JobFormMaterialsCostAccordion'
 import { splitEstimateDescription } from '../../lib/jobs/otherChargeRowDisplay'
 import { EstimateChip } from './OtherChargeInputs'
+import { formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { MoneyWithSmallCents } from './MoneySmallCents'
 
 type MaterialsAccordionKey = 'team' | 'supply' | 'mercury' | 'tally' | 'billed'
@@ -35,6 +36,8 @@ export type JobDetailBilledMaterialRow = {
   id: string
   description: string | null
   amount: string | number | null
+  charged_on?: string | null
+  memo?: string | null
 }
 
 type Props = {
@@ -317,6 +320,9 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                     fontSize: '0.875rem',
                   }}
                 >
+                  {m.charged_on ? (
+                    <span style={{ color: 'var(--text-muted)', marginRight: 8, fontSize: '0.8rem' }}>{formatWorkDateYmdFriendly(m.charged_on)}</span>
+                  ) : null}
                   {(() => {
                     const est = splitEstimateDescription(m.description ?? '')
                     return (
@@ -327,6 +333,7 @@ export function JobDetailMaterialsCostSection({ loading, snapshot, canExpand, bi
                     )
                   })()}
                   <MoneyWithSmallCents value={Number(m.amount ?? 0)} style={{ color: 'var(--text-muted)', marginLeft: 8 }} />
+                  {m.memo ? <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: 2 }}>{m.memo}</div> : null}
                 </li>
               ))}
             </ul>

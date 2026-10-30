@@ -97,6 +97,7 @@ when_to_read:
    - [job-drive-folders](#job-drive-folders)
    - [drive-link](#drive-link)
    - [photo-save](#photo-save)
+   - [job-photos](#job-photos)
    - [gc-plan-question-email](#gc-plan-question-email)
    - [gc-architect-email](#gc-architect-email)
    - [gc-trade-portal](#gc-trade-portal)
@@ -1145,6 +1146,23 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)).
 
 **Status**: v2.5458, deployed 2026-10-13; the box source v2.6045 (deploy after `20261029010000_materials_on_site.sql` is applied); the report source v2.6083 (deploy after `20261029220000_report_photos.sql` is applied); the checklist source v2.6084 (deploy after `20261029210000_stage_checklists.sql` and `20261030070000_photo_save_cron_all_sources.sql` are applied). Its cron, every 5 minutes while some job's tick is on, a box photo waits, a saved report's photo waits or a checklist photo waits, is `20261014090000_photo_save_cron.sql` (v2.5464) re-scheduled by `20261029020000_photo_save_cron_box_photos.sql`, `20261029160000_photo_save_cron_any_waiting.sql`, `20261029210000_stage_checklists.sql`, `20261029220000_report_photos.sql` and `20261030070000_photo_save_cron_all_sources.sql`.
+
+### job-photos
+
+**Purpose**: A job's Drive photos in the app (punch list #164, PR 5, v2.6090; the owner, 2026-10-24: photos always live in Google Drive). The job window's gallery under the address reads the customer's folder through the service account and never copies a photo out of it. The folders are where [photo-save](#photo-save) lands a Pipeline job's photos (`photoLanding`): Customer Pictures when `jobs_ledger.job_pictures_link` is plainly a Drive folder, and Team only › Photos under the job's own folder (`google_drive_link`) when it exists; nothing is made here.
+
+- `{ action: 'list', job_id }` → `{ folder: { kind: 'pictures' | 'photos' | 'none', url }, photos: [{ id, name, mime, bytes, modified, from }], capped, waiting }`: pictures only, newest first, up to 500 across both folders; `waiting` counts the job's checklist (`stage_checklist_answers`) and box (`job_box_photos`) photos still in a bucket on their way to the folder.
+- `{ action: 'thumb', job_id, file_id }` → the file's thumbnail bytes: Drive's `thumbnailLink` at 400 px, fetched with our token since the folder is not public, passed through with an hour's private cache.
+- `{ action: 'full', job_id, file_id }` → the file's bytes, streamed (`driveMedia`), refused past 25 MB with the words to open it in Drive.
+- A thumb or a full read is answered only for a file whose parent is one of the job's two photo folders.
+
+**Endpoint**: `POST /functions/v1/job-photos` · **Auth**: `verify_jwt = false` in `config.toml`; the JWT is checked in-body, then the job's own gate, `can_report_stage_progress(job_id)` (the stage progress gate of v2.3192: the office roles, or a field user on the job's team, clocked in on it, or under the sub rule), run through the caller's client so RLS and the role table decide. A read, so a training account and a twin read too. 401 without a sign-in, 403 on a job the caller cannot see, 404 for a file outside the folders, 503 without the Drive secret.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)). Helpers from `_shared/driveUpload.ts`, `_shared/driveJobFolder.ts` (`childFolder`, `driveGet`, `driveMedia`) and `_shared/driveLink.ts`.
+
+**Doors**: `src/lib/photos/jobPhotosIo.ts` (`listJobPhotos`, `jobPhotoThumb`, `jobPhotoFull`, object URLs the tiles revoke) behind `JobPhotosStrip.tsx` and `JobPhotosViewer.tsx` on the job window; the rules in `src/lib/photos/jobPhotos.ts`; the guide *see a job's photos*.
+
+**Status**: v2.6090, waits for its first deploy from main once it merges.
 
 ### gc-plan-question-email
 

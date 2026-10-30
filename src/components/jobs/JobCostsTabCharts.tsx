@@ -212,7 +212,7 @@ export function JobCostsTabCharts({ job, includeTeamLabor, teamPeople = null, li
       supply: packet.supplyInvoiceLines,
       cards,
       tally: packet.tallyPartLines,
-      other: packet.otherCharges.filter(materialRowHasUserContent).map((m) => ({ description: m.description, amount: Number(m.amount) || 0 })),
+      other: packet.otherCharges.filter(materialRowHasUserContent).map((m) => ({ description: m.description, amount: Number(m.amount) || 0, chargedOn: m.charged_on ?? null, memo: m.memo ?? null })),
       paidToDateUsd: inputs.paymentEvents.reduce((s, p) => s + (Number(p.amount) || 0), 0),
       bidFigure: bidFigureUsd != null ? { usd: bidFigureUsd, label: `${resolved.glyph} bid figure` } : null,
     })

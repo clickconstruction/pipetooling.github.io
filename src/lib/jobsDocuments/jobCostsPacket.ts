@@ -1,4 +1,5 @@
 import type { JobBurnCumulativeRow, JobBurnDay, JobBurnModel } from '../jobs/jobBurn'
+import { formatWorkDateYmdFriendly } from '../../utils/dateUtils'
 import { baselineReadWords, timeLeftWords, type CostsVerdict } from '../jobs/jobCostsVerdict'
 import type { MoneyRow } from '../jobs/jobMoneyTable'
 import type { JobChargeEvent, JobPaymentEvent, JobValueEvent } from '../jobChargesTimeline'
@@ -57,7 +58,7 @@ export type JobCostsPacketInput = {
   supply: ReadonlyArray<{ supplyHouseName: string | null; invoiceNumber: string; invoiceDate: string; allocatedAmount: number }>
   cards: readonly JobCostsPacketCardLine[]
   tally: ReadonlyArray<{ fixtureName: string; partName: string | null; quantity: number; lineTotal: number }>
-  other: ReadonlyArray<{ description: string; amount: number }>
+  other: ReadonlyArray<{ description: string; amount: number; chargedOn?: string | null; memo?: string | null }>
   paidToDateUsd: number
   /** Drawn as a dashed line on the chart when a bid or typed figure stands for the whole job. */
   bidFigure: { usd: number; label: string } | null
@@ -449,7 +450,7 @@ ${pageFoot(2)}
     ? `<table data-testid="packet-tally"><thead><tr><th>Parts from tally</th><th class="num">Qty</th><th class="num">Line total</th></tr></thead><tbody>${input.tally.map((t) => `<tr><td>${esc([t.fixtureName, t.partName].filter(Boolean).join(' · ') || '—')}</td><td class="num">${t.quantity}</td><td class="num">${usd2(t.lineTotal)}</td></tr>`).join('')}<tr class="band strong"><td>${input.tally.length} ${input.tally.length === 1 ? 'part' : 'parts'}</td><td></td><td class="num">${usd2(input.tally.reduce((s, t) => s + t.lineTotal, 0))}</td></tr></tbody></table>`
     : '<p class="muted">Parts from tally: none on this job.</p>'
   const otherTable = input.other.length
-    ? `<table data-testid="packet-other"><thead><tr><th>Other job charges</th><th class="num">Amount</th></tr></thead><tbody>${input.other.map((t) => `<tr><td>${esc(t.description || '—')}</td><td class="num">${usd2(t.amount)}</td></tr>`).join('')}<tr class="band strong"><td>${input.other.length} ${input.other.length === 1 ? 'line' : 'lines'}</td><td class="num">${usd2(input.other.reduce((s, t) => s + t.amount, 0))}</td></tr></tbody></table>`
+    ? `<table data-testid="packet-other"><thead><tr><th>Date</th><th>Other job charges</th><th class="num">Amount</th></tr></thead><tbody>${input.other.map((t) => `<tr><td class="date">${t.chargedOn ? esc(formatWorkDateYmdFriendly(t.chargedOn)) : '—'}</td><td>${esc(t.description || '—')}${t.memo ? `<div class="muted">${esc(t.memo)}</div>` : ''}</td><td class="num">${usd2(t.amount)}</td></tr>`).join('')}<tr class="band strong"><td colspan="2">${input.other.length} ${input.other.length === 1 ? 'line' : 'lines'}</td><td class="num">${usd2(input.other.reduce((s, t) => s + t.amount, 0))}</td></tr></tbody></table>`
     : '<p class="muted">Other job charges: none on this job.</p>'
   const burnRate = m.burnPerFieldDayUsd != null ? `${usd0(m.burnPerFieldDayUsd)} a day` : m.fieldDays === 0 ? 'no field days yet' : 'idle 30+ days'
   const workLeft = daysLeft != null ? (daysLeft === 0 ? 'done' : `≈ ${d1(daysLeft)} working days`) : '—'
@@ -544,6 +545,7 @@ tr { page-break-inside: avoid; }
 th { text-align: left; font-size: 8.5px; letter-spacing: .06em; text-transform: uppercase; color: #6b7280; border-bottom: 1px solid #d1d5db; padding: 3px 6px; font-weight: 700; }
 td { padding: 3px 6px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
 th.num, td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+td.date { white-space: nowrap; }
 tr.band td { background: #f9fafb; }
 tr.strong td { font-weight: 700; }
 tr.good td { background: #dcfce7; }

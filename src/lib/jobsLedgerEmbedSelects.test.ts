@@ -33,7 +33,7 @@ const PAYMENT_COLS = ['amount', 'created_at', 'id', 'invoice_id', 'job_id', 'mer
 /** Deliberately not embedded: who recorded and linked a payment is read by Accounts Receivable's trail RPC (v2.4289), never off a job. */
 const PAYMENT_OMITTED = ['created_by', 'linked_at', 'linked_by'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_payments'>>
 
-const MATERIAL_COLS = ['amount', 'created_at', 'description', 'id', 'job_id', 'sequence_order'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_materials'>>
+const MATERIAL_COLS = ['amount', 'charged_on', 'created_at', 'description', 'id', 'job_id', 'memo', 'sequence_order'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_materials'>>
 /** Deliberately not embedded: the Plug-in Quotes memory writes it and never reads it back off a job. */
 const MATERIAL_OMITTED = ['source_bid_id'] as const satisfies ReadonlyArray<keyof Row<'jobs_ledger_materials'>>
 

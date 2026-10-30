@@ -168,3 +168,43 @@ describe('Other job charges read as money (punch list #215)', () => {
     expect(cents).toContain('.00')
   })
 })
+
+describe('Other job charges carry a date and a memo (punch list #215, PR 2)', () => {
+  it('shows the date box with the row’s date and commits a change or a clear', () => {
+    const update = vi.fn()
+    renderSection([{ id: 'a', description: 'Permit fee', amount: 1250, charged_on: '2026-10-02', memo: null }], { update })
+    const date = screen.getByLabelText('Other charge date') as HTMLInputElement
+    expect(date.value).toBe('2026-10-02')
+    fireEvent.change(date, { target: { value: '2026-10-14' } })
+    expect(update).toHaveBeenLastCalledWith('a', { charged_on: '2026-10-14' })
+    fireEvent.change(date, { target: { value: '' } })
+    expect(update).toHaveBeenLastCalledWith('a', { charged_on: null })
+  })
+
+  it('a memo shows under its row; a row without one offers + memo, which opens the line', () => {
+    const update = vi.fn()
+    renderSection(
+      [
+        { id: 'a', description: 'Permit fee', amount: 1250, charged_on: null, memo: 'Receipt in the job folder.' },
+        { id: 'b', description: 'Dumpster', amount: 384.6 },
+      ],
+      { update },
+    )
+    expect(screen.getByDisplayValue('Receipt in the job folder.')).toBeTruthy()
+    expect(screen.getAllByLabelText('Other charge memo')).toHaveLength(1)
+    fireEvent.click(screen.getByLabelText('Add a memo to this charge'))
+    const memos = screen.getAllByLabelText('Other charge memo')
+    expect(memos).toHaveLength(2)
+    const opened = memos[1]
+    if (!opened) throw new Error('expected the summoned memo box')
+    fireEvent.change(opened, { target: { value: 'Two pulls' } })
+    expect(update).toHaveBeenLastCalledWith('b', { memo: 'Two pulls' })
+  })
+
+  it('summoning a charge row onto an empty row gives it today’s date', () => {
+    const update = vi.fn()
+    renderSection([emptyRow('a')], { update })
+    fireEvent.click(screen.getByText('+ Add other charge'))
+    expect(update).toHaveBeenCalledWith('a', { charged_on: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
+  })
+})

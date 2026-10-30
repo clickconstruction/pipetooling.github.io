@@ -64,7 +64,7 @@ export const JOBS_LEDGER_PAYMENTS_EMBED = [
 ].join(', ')
 
 /** `jobs_ledger_materials` — full row */
-export const JOBS_LEDGER_MATERIALS_EMBED = ['amount', 'created_at', 'description', 'id', 'job_id', 'sequence_order'].join(
+export const JOBS_LEDGER_MATERIALS_EMBED = ['amount', 'charged_on', 'created_at', 'description', 'id', 'job_id', 'memo', 'sequence_order'].join(
   ', ',
 )
 

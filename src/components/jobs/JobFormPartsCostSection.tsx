@@ -10,6 +10,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import { materialRowHasUserContent } from '../../lib/jobs/jobFormRows'
 import { splitEstimateDescription } from '../../lib/jobs/otherChargeRowDisplay'
 import { EstimateChip, OtherChargeAmountInput } from './OtherChargeInputs'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import {
@@ -128,6 +129,8 @@ export function JobFormPartsCostSection({
   // prefix — except while its box has focus, when the whole description is
   // editable, prefix included.
   const [focusedDescriptionId, setFocusedDescriptionId] = useState<string | null>(null)
+  // #215 PR 2: a row's memo line stays hidden until it has text or "+ memo" summons it.
+  const [memoOpenIds, setMemoOpenIds] = useState<ReadonlySet<string>>(() => new Set())
 
   return (
     <>
@@ -315,17 +318,36 @@ export function JobFormPartsCostSection({
                         key={row.id}
                         style={{
                           display: 'flex',
+                          flexWrap: 'wrap',
                           alignItems: 'center',
-                          gap: '0.5rem',
+                          gap: '0.2rem 0.5rem',
                           padding: '0.4rem 0.75rem',
                           borderBottom: idx < visibleRows.length - 1 ? '1px solid var(--border)' : 'none',
                         }}
                       >
+                        <input
+                          type="date"
+                          value={row.charged_on ?? ''}
+                          onChange={(e) => updateMaterialRow(row.id, { charged_on: e.target.value || null })}
+                          aria-label="Other charge date"
+                          title="The date the charge applies to"
+                          style={{
+                            flex: '0 0 auto',
+                            width: '8.4rem',
+                            padding: '0.25rem 0.1rem',
+                            border: 'none',
+                            borderBottom: '1px solid var(--border-strong)',
+                            borderRadius: 0,
+                            fontSize: '0.8rem',
+                            color: row.charged_on ? 'var(--text-700)' : 'var(--text-faint)',
+                            background: 'transparent',
+                          }}
+                        />
                         {(() => {
                           const est = splitEstimateDescription(row.description)
                           const chip = est.estimate && focusedDescriptionId !== row.id
                           return (
-                            <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <span style={{ flex: '1 1 12rem', minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                               {chip ? <EstimateChip /> : null}
                               <input
                                 type="text"
@@ -385,6 +407,45 @@ export function JobFormPartsCostSection({
                         ) : (
                           <span aria-hidden style={{ width: 23, flexShrink: 0 }} />
                         )}
+                        {(row.memo ?? '') !== '' || memoOpenIds.has(row.id) ? (
+                          <input
+                            type="text"
+                            value={row.memo ?? ''}
+                            onChange={(e) => updateMaterialRow(row.id, { memo: e.target.value })}
+                            placeholder="Memo — the basis, the source, what would replace it"
+                            aria-label="Other charge memo"
+                            autoFocus={memoOpenIds.has(row.id) && (row.memo ?? '') === ''}
+                            style={{
+                              flex: '1 1 100%',
+                              minWidth: 0,
+                              padding: '0.1rem 0.1rem',
+                              border: 'none',
+                              borderBottom: '1px dashed var(--border)',
+                              borderRadius: 0,
+                              fontSize: '0.78rem',
+                              color: 'var(--text-700)',
+                              background: 'transparent',
+                            }}
+                          />
+                        ) : materialRowHasUserContent(row) ? (
+                          <button
+                            type="button"
+                            onClick={() => setMemoOpenIds((prev) => new Set(prev).add(row.id))}
+                            aria-label="Add a memo to this charge"
+                            style={{
+                              flex: '1 1 100%',
+                              textAlign: 'left',
+                              padding: '0 0.1rem',
+                              background: 'transparent',
+                              border: 'none',
+                              color: 'var(--text-link)',
+                              fontSize: '0.72rem',
+                              cursor: 'pointer',
+                            }}
+                          >
+                            + memo
+                          </button>
+                        ) : null}
                       </div>
                     )
                     })
@@ -395,7 +456,9 @@ export function JobFormPartsCostSection({
                     <button
                       type="button"
                       onClick={() => {
-                        if (!materials.some((r) => !materialRowHasUserContent(r))) addMaterialRow()
+                        const empty = materials.find((r) => !materialRowHasUserContent(r))
+                        if (!empty) addMaterialRow()
+                        else if (!empty.charged_on) updateMaterialRow(empty.id, { charged_on: todayYmdInAppTz() })
                         setEmptyChargeRowsVisible(true)
                       }}
                       title="Add a charge row"
