@@ -42,7 +42,7 @@ const td = (right = false): React.CSSProperties => ({
   fontVariantNumeric: 'tabular-nums',
 })
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
-const allClear = <div style={{ color: '#15803d', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for this week</div>
+const allClear = <div style={{ color: 'var(--text-green-700)', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for this week</div>
 const loadingLine = <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Loading…</div>
 const outlineBtn: React.CSSProperties = {
   padding: '0.2rem 0.65rem',
@@ -195,7 +195,7 @@ export function MoneyfillDepositsSection({ weekMonday, authUserId }: { weekMonda
                       : '—'}
                   </td>
                   <td style={td()}>{r.counterparty ?? '—'}</td>
-                  <td style={{ ...td(true), fontWeight: 650, color: '#15803d' }}>{money(r.amount)}</td>
+                  <td style={{ ...td(true), fontWeight: 650, color: 'var(--text-green-700)' }}>{money(r.amount)}</td>
                   <td style={td(true)}>
                     <button
                       type="button"

@@ -27,6 +27,7 @@ gc-customer-contacts
 quick-replies
 quick-replies-phone-tech
 quick-replies-shortcut
+quick-replies-starter
 estimate-share-links
 job-people
 bid-money-strip

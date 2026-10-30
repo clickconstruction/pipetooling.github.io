@@ -41,12 +41,17 @@ export async function searchJobsForSelfSchedule(query: string): Promise<SelfSche
   return (data ?? []) as SelfScheduleJobSearchRow[]
 }
 
+/**
+ * Put a job on my own schedule. The block's person always joins the job's crew: the
+ * trigger `ensure_job_team_member_from_schedule_block` adds every block's assignee
+ * whatever the RPC's `p_join_crew` says, so the flag is sent true and the window
+ * tells the person rather than asking (punch list #196).
+ */
 export async function selfScheduleAddBlock(args: {
   jobId: string
   workDate: string
   timeStart: string
   timeEnd: string
-  joinCrew: boolean
 }): Promise<void> {
   await withSupabaseRetry(
     async () =>
@@ -55,7 +60,7 @@ export async function selfScheduleAddBlock(args: {
         p_work_date: args.workDate,
         p_time_start: args.timeStart,
         p_time_end: args.timeEnd,
-        p_join_crew: args.joinCrew,
+        p_join_crew: true,
       }),
     'add job to my schedule',
   )

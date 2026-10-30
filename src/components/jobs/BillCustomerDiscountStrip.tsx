@@ -13,7 +13,9 @@ import {
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /** Discount green stays literal (saturated status color, theme rules). */
-const INK = '#0f7a52'
+/** The discount's ink for words and edges: green-700 (v2.6075); the solid fills keep the literal under white words, 5.35:1. */
+const INK = 'var(--text-green-700)'
+const INK_FILL = '#0f7a52'
 
 export type BillCustomerDiscountStripRow = {
   id: string
@@ -142,7 +144,7 @@ export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disable
               setReason(offer.reason)
               setWholeJob(true)
             }}
-            style={{ padding: '0.2rem 0.7rem', background: INK, color: '#ffffff', border: 'none', borderRadius: 5, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+            style={{ padding: '0.2rem 0.7rem', background: INK_FILL, color: '#ffffff', border: 'none', borderRadius: 5, fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
           >
             Use it
           </button>
@@ -193,7 +195,7 @@ export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disable
               disabled={busy}
               onClick={() => setReason((r) => (r === p ? null : p))}
               aria-pressed={reason === p}
-              style={{ border: `1px solid ${reason === p ? INK : '#a7dcc2'}`, background: reason === p ? INK : 'var(--surface)', color: reason === p ? '#ffffff' : INK, borderRadius: 999, padding: '1px 9px', fontSize: '0.71875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+              style={{ border: `1px solid ${reason === p ? INK : '#a7dcc2'}`, background: reason === p ? INK_FILL : 'var(--surface)', color: reason === p ? '#ffffff' : INK, borderRadius: 999, padding: '1px 9px', fontSize: '0.71875rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
             >
               {p}
             </button>
@@ -230,7 +232,7 @@ export function BillCustomerDiscountStrip({ rows, scopedIds, billAmount, disable
           type="button"
           onClick={() => void apply()}
           disabled={!plan || busy || disabled}
-          style={{ padding: '0.3rem 0.8rem', background: plan && !busy ? INK : 'var(--bg-muted)', color: plan && !busy ? '#ffffff' : 'var(--text-faint)', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: plan && !busy ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
+          style={{ padding: '0.3rem 0.8rem', background: plan && !busy ? INK_FILL : 'var(--bg-muted)', color: plan && !busy ? '#ffffff' : 'var(--text-faint)', border: 'none', borderRadius: 6, fontSize: '0.8125rem', fontWeight: 600, cursor: plan && !busy ? 'pointer' : 'not-allowed', fontFamily: 'inherit' }}
         >
           {busy ? 'Applying…' : 'Apply'}
         </button>

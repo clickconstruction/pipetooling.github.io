@@ -75,8 +75,18 @@ describe('runSummary: what the owner reads first', () => {
     expect(runSummary({ run: run(), sent: 0, refused: [], unread: 0, customersHeld: 0, now: NOW, dry: false })).toMatchObject({ prepared: 0, morningSent: 0 })
   })
 
+  it('names a line’s blank among the reasons, after the person’s own (punch list #124, v2.6079)', () => {
+    const s = runSummary({ run: run([kept('blanks left'), kept('no number', 'bill')]), sent: 0, refused: [], unread: 0, customersHeld: 0, now: NOW, dry: false })
+    expect(s.kept).toEqual({ 'blanks left': 1, 'no number': 1 })
+    expect(s.words).toEqual([
+      'No text went.',
+      '1 reminder was kept back because there is no number on file.',
+      '1 reminder was kept back because the step’s line still has a blank the run cannot fill.',
+    ])
+  })
+
   it('reads in plain words for every reason and every line', () => {
-    const all: NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'prefers email', 'one a morning']
+    const all: NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'prefers email', 'blanks left', 'one a morning', 'answered']
     const words = [
       ...summaryWords({ at: '', dry: true, sent: 1, kept: Object.fromEntries(all.map((w) => [w, 1])), textsOff: 1, refused: [], refusedCount: 1, unread: 1, customersHeld: 1, prepared: 1, morningSent: 1 }),
       ...summaryWords({ at: '', dry: false, sent: 2, kept: Object.fromEntries(all.map((w) => [w, 3])), textsOff: 2, refused: [], refusedCount: 2, unread: 2, customersHeld: 0, prepared: 2, morningSent: 2 }),
