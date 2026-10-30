@@ -8,7 +8,7 @@ import { applyDraftStyle, draftCss, type ThemeDraft } from '../../lib/lens/lensT
 import type { LensDraftMode } from './LensThemeDraft'
 import { formatLensName, LENS_MOODS, type LensMood, type LensTheme } from '../../lib/lens/lensName'
 import { LENS_PEOPLE, LENS_ROLES, type LensRole } from '../../lib/lens/lensPeople'
-import { DEFAULT_KNOBS, LENS_AUDIENCES, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, admittedFrames, askSummary, audienceScreens, lensFrames, lensScreens, sweepWindow, type LensAcross, type LensAudience, type LensFrameSpec, type LensKnobs, type LensWidth } from '../../lib/lens/lensTab'
+import { DEFAULT_KNOBS, LENS_AUDIENCES, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, admittedFrames, askSummary, audienceScreens, lensFrames, lensReadsLessons, lensScreens, sweepWindow, type LensAcross, type LensAudience, type LensFrameSpec, type LensKnobs, type LensSources, type LensWidth } from '../../lib/lens/lensTab'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
@@ -274,8 +274,24 @@ export function SettingsWhatEveryoneSeesTab() {
   const narrow = useIsMobile()
   const [stageRef, stageWidth] = useMeasuredWidth<HTMLDivElement>()
   const [wrapRef, wrapWidth] = useMeasuredWidth<HTMLDivElement>()
-  const screens = useMemo(() => (k.audience ? audienceScreens(k.audience) : lensScreens(k.as)), [k.as, k.audience])
-  const frames = useMemo(() => lensFrames(k), [k])
+  // The training lessons, for the role that reads them: loaded apart, so their words never ride in this chunk.
+  const [sources, setSources] = useState<LensSources>({})
+  const [lessonsError, setLessonsError] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    import('../../lib/training/courseRegistry')
+      .then((m) => {
+        if (alive) setSources({ courses: m.TRAINING_COURSES })
+      })
+      .catch((e: unknown) => {
+        if (alive) setLessonsError(`The lessons did not load: ${formatErrorMessage(e)}`)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+  const screens = useMemo(() => (k.audience ? audienceScreens(k.audience) : lensScreens(k.as, sources)), [k.as, k.audience, sources])
+  const frames = useMemo(() => lensFrames(k, sources), [k, sources])
   const maxLive = narrow ? 1 : MAX_LIVE
   const sheet = k.across === 'sheet'
   const [live, setLive] = useState<readonly string[]>([])
@@ -327,13 +343,13 @@ export function SettingsWhatEveryoneSeesTab() {
       if (next.across !== 'sheet') next.across = 'widths'
       return next
     }
-    if (patch.as && !lensScreens(patch.as).some((s) => s.id === next.where)) next.where = 'page:/dashboard'
+    if (patch.as && !lensScreens(patch.as, sources).some((s) => s.id === next.where)) next.where = 'page:/dashboard'
     return next
   })
   const groups = useMemo(() => {
     const by = new Map<string, typeof screens>()
     for (const s of screens) {
-      const g = s.kind === 'window' ? 'Windows' : s.kind === 'settings' ? 'Settings' : 'Pages'
+      const g = s.kind === 'window' ? 'Windows' : s.kind === 'settings' ? 'Settings' : s.kind === 'lesson' ? 'Lessons' : 'Pages'
       by.set(g, [...(by.get(g) ?? []), s])
     }
     return [...by.entries()]
@@ -375,7 +391,7 @@ export function SettingsWhatEveryoneSeesTab() {
                 </optgroup>
               ))}
             </select>
-            <span style={MUTED}>{k.audience ? `${screens.length} pages the ${LENS_AUDIENCES.find((a) => a.id === k.audience)?.label.toLowerCase()} sees, each on its sample. Their emails, texts and papers are on What customers see.` : `${screens.length} screens ${LENS_PEOPLE[k.as].label.toLowerCase()} can open`}</span>
+            <span style={MUTED}>{k.audience ? `${screens.length} pages the ${LENS_AUDIENCES.find((a) => a.id === k.audience)?.label.toLowerCase()} sees, each on its sample. Their emails, texts and papers are on What customers see.` : `${screens.length} screens ${LENS_PEOPLE[k.as].label.toLowerCase()} can open${lessonsError && lensReadsLessons(k.as) ? `. ${lessonsError}` : ''}`}</span>
           </span>
         </Row>
         <Row label="State">
