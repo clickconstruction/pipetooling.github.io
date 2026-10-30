@@ -14,7 +14,7 @@ import { isTurnawayTemplateName } from '../lib/turnaway'
 import AutoGrowTextarea from './AutoGrowTextarea'
 import OfflineRetryPanel from './OfflineRetryPanel'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
-import { fieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
+import { fieldValueForSubmit, percentFieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
@@ -403,12 +403,9 @@ export default function AdditionalReportModal({
     }
     const fv: Record<string, string> = {}
     for (const f of fields) {
-      fv[f.label] = fieldValueForSubmit(f, fieldValues)
-    }
-    // An untouched percent files the job's number, as the field and Save already say, even when Save is pressed in
-    // the moment before the seed effect has put it in `fieldValues` (that moment filed 0).
-    if (percentFieldLabel && !linesActive && fieldValues[percentFieldLabel] === undefined && jobPctSeed != null) {
-      fv[percentFieldLabel] = String(jobPctSeed)
+      // An untouched percent files the job's number, as the field and Save already say, even when Save is pressed in
+      // the moment before the seed effect has put it in `fieldValues` (that moment filed 0): the kernel's rule.
+      fv[f.label] = fieldValueForSubmit(f, fieldValues, { percentSeed: jobPctSeed, linesActive })
     }
     // Report by line (v2.5663): the number the lines add up to is the percent field, the moved lines in words beside it.
     if (linesActive && lineProgress.lines && percentFieldLabel && lineDerivedPct != null) {
@@ -541,7 +538,8 @@ export default function AdditionalReportModal({
   const fields = templateFields[selectedTemplateId] ?? []
   // Save waits for a shot still on its way (the queue of #163 takes this over in PR 7).
   const canSubmit = Boolean(selectedTemplateId && authUserId) && !photosInFlight(tiles)
-  const jobPctForSave = linesActive ? (lineDerivedPct ?? 0) : Number.parseInt(fieldValues[percentFieldLabel ?? ''] ?? String(jobPctSeed ?? 0), 10) || 0
+  // The Save button's number reads the rule Save files by, so the button never promises what Save will not file.
+  const jobPctForSave = linesActive ? (lineDerivedPct ?? 0) : Number.parseInt(percentFieldValueForSubmit(percentFieldLabel ? fieldValues[percentFieldLabel] : undefined, jobPctSeed), 10) || 0
 
   function reportTypeChipStyles(templateId: string, templateName: string): CSSProperties {
     const selected = selectedTemplateId === templateId

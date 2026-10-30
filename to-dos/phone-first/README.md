@@ -453,7 +453,9 @@ street and number are made up. The desktop is out of scope.
 
 - **The report form's percent.** Done in PR 5a (v2.6076): the percent opens on the job's number
   and `AdditionalReportModal.render.test.tsx` opens a one-line job at 40%, presses Save with
-  nothing touched and reads 40 on the insert.
+  nothing touched and reads 40 on the insert. A Save in the moment before the seed effect ran
+  filed 0 (three CI runs on 2026-10-30); v2.6132 made the rule the kernel's,
+  `percentFieldValueForSubmit`, read by Save and by the Save button's words alike.
 - **A Needs you line for report photos with no folder.** Decision 4 counted on a line that asks
   the office for a folder link; none exists. One line for the office, *N report photos wait for a
   Drive folder on job 972*, opening the job window's Documents tab where **Make the job's Drive
