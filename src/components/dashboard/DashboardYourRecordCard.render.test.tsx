@@ -11,12 +11,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
-import { payWeekContaining } from '../../lib/payWeekAnchor'
 import { shapeViewStorageKey } from '../prototypes/useShapeView'
 import { installDomShims, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 
 const todayYmd = denverCalendarDayKey(Date.now())
-const weekStart = payWeekContaining(todayYmd).start
 
 const rows = vi.hoisted(() => ({
   sessions: [] as Array<Record<string, unknown>>,
