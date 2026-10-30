@@ -69,6 +69,8 @@ export default function Materials() {
   const [supplyHouseToAutoOpen, setSupplyHouseToAutoOpen] = useState<string | null>(null)
   /** The Needs You line's door (v2.5723): `?list=movable` opens the Supply houses tab's worked list — read once, then dropped from the URL. */
   const [supplyHousesListToOpen, setSupplyHousesListToOpen] = useState<'movable' | null>(null)
+  /** The thread's *Record this bill* (punch list #179, v2.6095): `?house=<id>&bill=<attachment id>` opens the house and its Add invoice window on that file — read once, then dropped from the URL. */
+  const [billToOpen, setBillToOpen] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   
@@ -521,6 +523,21 @@ export default function Materials() {
     setSearchParams((p) => {
       const next = new URLSearchParams(p)
       next.delete('list')
+      return next
+    }, { replace: true })
+  }, [searchParams])
+
+  // Supply-house bill capture (punch list #179, v2.6095): the thread's Record this bill and the house's Record them
+  // land on /materials?tab=supply-houses&house=<id>&bill=<attachment id>; the tab opens the house and the form on the file.
+  useEffect(() => {
+    const house = searchParams.get('house')
+    if (!house) return
+    setSupplyHouseToAutoOpen(house)
+    setBillToOpen(searchParams.get('bill'))
+    setSearchParams((p) => {
+      const next = new URLSearchParams(p)
+      next.delete('house')
+      next.delete('bill')
       return next
     }, { replace: true })
   }, [searchParams])
@@ -2025,6 +2042,8 @@ export default function Materials() {
           onNavigateToPO={handleNavigateToPOFromSupplyHouses}
           autoOpenHouseId={supplyHouseToAutoOpen}
           onAutoOpenHouseHandled={() => setSupplyHouseToAutoOpen(null)}
+          openBill={billToOpen}
+          onOpenBillHandled={() => setBillToOpen(null)}
           openList={supplyHousesListToOpen}
           onOpenListHandled={() => setSupplyHousesListToOpen(null)}
         />
