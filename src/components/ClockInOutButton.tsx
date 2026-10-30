@@ -27,7 +27,8 @@ import {
   withOperationTimeout,
   withSupabaseRetry,
 } from '../utils/errorHandling'
-import { denverCalendarDayKey, todayYmdInAppTz } from '../utils/dateUtils'
+import { denverCalendarDayKey, startOfYmdInAppTzMs, todayYmdInAppTz } from '../utils/dateUtils'
+import { CLOCK_OUT_NOTE_FILLED_LINE, CLOCK_OUT_REVIEW_TITLE, clockOutDayReports, clockOutNoteFromReports, type ClockOutReportInput } from '../lib/clock/clockOutNote'
 import {
   fetchDispatchScheduledJobsForAssigneeDay,
   type DispatchScheduledJobForAssign,
@@ -199,7 +200,7 @@ export default function ClockInOutButton({
   const { prefixMap } = useLedgerDisplayPrefixes()
   const { showToast } = useToastContext()
   const { notifyFirstClockInOfDay } = useDailyGoalsGate()
-  const { registerUpdateFocusOpener, registerUpdateFocusApplyDirect, registerClockOutOpener } = useUpdateFocusOpenerBridge()
+  const { registerUpdateFocusOpener, registerUpdateFocusApplyDirect, registerClockOutOpener, notifySessionChanged } = useUpdateFocusOpenerBridge()
   const [openSession, setOpenSession] = useState<OpenSession | null>(null)
   const [todaySessions, setTodaySessions] = useState<TodaySession[]>([])
   const [totalSecondsToday, setTotalSecondsToday] = useState(0)
@@ -222,6 +223,12 @@ export default function ClockInOutButton({
   const updateFocusNotesRef = useRef<HTMLTextAreaElement>(null)
   const [clockOutReviewOpen, setClockOutReviewOpen] = useState(false)
   const [clockOutReviewNotes, setClockOutReviewNotes] = useState('')
+  /** The note the review opened on; the day's reports replace it only while the box still holds it (punch list #189, PR 8). */
+  const clockOutNoteSeedRef = useRef('')
+  /** The box's words as of this render, for the fill to read without an updater (a side effect in an updater runs twice in dev). */
+  const clockOutReviewNotesRef = useRef('')
+  clockOutReviewNotesRef.current = clockOutReviewNotes
+  const [clockOutNoteFilled, setClockOutNoteFilled] = useState(false)
   const [clockOutReviewFailure, setClockOutReviewFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [clockOutSaving, setClockOutSaving] = useState(false)
   const clockOutNotesRef = useRef<HTMLTextAreaElement>(null)
@@ -792,6 +799,67 @@ export default function ClockInOutButton({
     }
   }, [clockOutReviewOpen])
 
+  // Clock out in one press (punch list #189, PR 8): the day's reports write the note. Read once per open; the note
+  // is replaced only while the box still holds what the review opened on, so a tech who started typing is left alone.
+  // A failed read changes nothing: the review asks as it did.
+  useEffect(() => {
+    if (!clockOutReviewOpen || !openSession || !userId) return
+    let cancelled = false
+    const session = openSession
+    void (async () => {
+      try {
+        const since = new Date(startOfYmdInAppTzMs(session.work_date)).toISOString()
+        const rows = await withSupabaseRetry(
+          async () =>
+            supabase
+              .from('reports')
+              .select('id, created_at, field_values, report_templates(name), jobs_ledger(hcp_number, click_number, job_name)')
+              .eq('created_by_user_id', userId)
+              .gte('created_at', since)
+              .order('created_at', { ascending: true }),
+          'clock-out note from the day’s reports',
+        )
+        if (cancelled) return
+        type JobCols = { hcp_number: string | null; click_number: string | null; job_name: string | null }
+        type TemplateCols = { name: string | null }
+        const inputs: ClockOutReportInput[] = ((rows ?? []) as Array<{ created_at: string; field_values: unknown; report_templates: TemplateCols | TemplateCols[] | null; jobs_ledger: JobCols | JobCols[] | null }>).map((r) => {
+          const t = Array.isArray(r.report_templates) ? r.report_templates[0] : r.report_templates
+          const j = Array.isArray(r.jobs_ledger) ? r.jobs_ledger[0] : r.jobs_ledger
+          const number = (j?.hcp_number ?? '').trim() || (j?.click_number ?? '').trim()
+          const name = (j?.job_name ?? '').trim()
+          return {
+            jobLabel: [number, name].filter(Boolean).join(' · ') || null,
+            templateName: t?.name ?? null,
+            fieldValues: r.field_values && typeof r.field_values === 'object' && !Array.isArray(r.field_values) ? (r.field_values as Record<string, unknown>) : null,
+            createdAt: r.created_at,
+          }
+        })
+        const note = clockOutNoteFromReports(clockOutDayReports(inputs, session.work_date))
+        if (!note) return
+        // Only while the box still holds what the review opened on: a tech who started typing is left alone.
+        if (clockOutReviewNotesRef.current !== clockOutNoteSeedRef.current) return
+        clockOutNoteSeedRef.current = note
+        setClockOutReviewNotes(note)
+        setClockOutNoteFilled(true)
+      } catch {
+        // The review asks as it did.
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [clockOutReviewOpen, openSession, userId])
+
+  // The card's own press reloads it (punch list #189, PR 8): say so whenever the open session changes under us.
+  const sessionSignalFirstRef = useRef(true)
+  useEffect(() => {
+    if (sessionSignalFirstRef.current) {
+      sessionSignalFirstRef.current = false
+      return
+    }
+    notifySessionChanged()
+  }, [notifySessionChanged, openSession?.id, openSession?.job_ledger_id, openSession?.bid_id])
+
   useEffect(() => {
     if (!clockOutReviewOpen) return
     function onKeyDown(e: KeyboardEvent) {
@@ -980,6 +1048,8 @@ export default function ClockInOutButton({
     setSelectedAssociation(null)
     setAssociationChipFromSearch(false)
     setClockOutReviewNotes(openSession.notes?.trim() ?? '')
+    clockOutNoteSeedRef.current = openSession.notes?.trim() ?? ''
+    setClockOutNoteFilled(false)
     setClockOutReviewFailure(null)
     setUnifiedSearchText('')
     setUnifiedSearchResults([])
@@ -2259,7 +2329,7 @@ export default function ClockInOutButton({
             onClick={(e) => e.stopPropagation()}
           >
             <style>{`#clock-out-review-modal textarea:focus,#clock-out-review-modal input[type=text]:focus,#clock-out-review-modal input[type=text]:focus-visible{outline:2px solid #dc2626;outline-offset:2px}`}</style>
-            <h3 id="clock-out-review-modal-title" style={{ marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>Review before clock out</h3>
+            <h3 id="clock-out-review-modal-title" style={{ marginTop: 0, marginBottom: '1rem', textAlign: 'center' }}>{CLOCK_OUT_REVIEW_TITLE}</h3>
             <label style={{ display: 'block', marginBottom: '0.5rem' }}>
               <span style={{ display: 'block', marginBottom: '0.25rem', fontWeight: 500 }}>What did you work on?</span>
               <textarea
@@ -2271,6 +2341,7 @@ export default function ClockInOutButton({
                 disabled={clockOutSaving}
                 style={{ width: '100%', padding: '0.5rem', boxSizing: 'border-box', border: '2px solid #64748b', borderRadius: 6, background: 'var(--surface)' }}
               />
+              {clockOutNoteFilled ? <span style={{ display: 'block', marginTop: 4, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{CLOCK_OUT_NOTE_FILLED_LINE}</span> : null}
             </label>
             <div style={{ marginBottom: '0.5rem' }}>
               <div style={{ marginBottom: '0.25rem' }}>

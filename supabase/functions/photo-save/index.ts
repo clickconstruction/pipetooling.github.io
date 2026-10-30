@@ -26,7 +26,8 @@ import {
  * again on the next run. Only a photo that came in after the tick went on is copied (`photosToSave`); a line tied to its
  * job later is caught then. The design is quo-messages-mockup.html drafts 8 and 9 on branch spike/gc-mode.
  *
- *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed } }
+ *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed },
+ *     checklists: { saved, failed } }
  *
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
@@ -35,10 +36,21 @@ import {
  * Drive not set up, a copy that did not read, a Drive refusal), for the office and the dev to read, and is tried again every
  * run until it files; a filed row clears it.
  *
- * A checklist per stage (punch list #164, PR 3): a third source after the boxes. The photo a checklist question asks for
- * waits in the stage-checklist-photos bucket with its name on its stage_checklist_answers row (photo_file_name,
- * photo_storage_path); the sweep files it in the same photo folder, keeps photo_drive_file_id and photo_filed_at on the
- * row, clears photo_fail_why, and deletes the bucket copy, the box photo's rules to the letter (`sweepWaiting`).
+ * Phone first (punch list #189, PR 5b, v2.6083): a third source after the boxes. A photo a tech takes for a field
+ * report waits in the report-photos bucket with a row in report_photos; once the report is saved (report_id set) the
+ * sweep files it in the same photo folder, named by day, sender and caption as a text's photo is (`photoDriveName`:
+ * *2026-10-29 Luis Ortega · Rough In.jpg*), keeps drive_file_id and filed_at on the row, and deletes the bucket copy.
+ * A shot it cannot file gets the reason on its row as fail_why (no Drive folder on the job, Drive not set up, a copy
+ * that did not read, a Drive refusal), which the report card reads as *not in Drive yet*, and is tried again every run.
+ *
+ * A checklist per stage (punch list #164, PR 3, v2.6084): a fourth source after the report photos. The photo a
+ * checklist question asks for waits in the stage-checklist-photos bucket with its name on its stage_checklist_answers
+ * row (photo_file_name, photo_storage_path); the sweep files it in the same photo folder, keeps photo_drive_file_id and
+ * photo_filed_at on the row, clears photo_fail_why, and deletes the bucket copy, the box photo's rules to the letter
+ * (`sweepWaiting`).
+ *
+ * The cron calls only while one of these waits: each source is a clause of its WHERE, so a migration that adds a
+ * source re-schedules it with every clause (20261030070000_photo_save_cron_all_sources.sql holds all four).
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, CRON_SECRET, GOOGLE_SERVICE_ACCOUNT_JSON. config.toml keeps
  * verify_jwt = false: the cron sends no JWT, and the secret is the door.
@@ -278,6 +290,85 @@ async function sweepWaiting(admin: SupabaseClient, source: WaitingSource): Promi
   return { saved, failed }
 }
 
+// ---------------------------------------------------------------------------
+// Phone first (#189): the report photos. Twenty a run, oldest first, saved reports only; a failure is written on the
+// row and tried again next run.
+// ---------------------------------------------------------------------------
+
+const REPORT_PHOTO_BATCH = 20
+const REPORT_PHOTOS_BUCKET = 'report-photos'
+
+type ReportPhotoRow = { id: string; job_id: string; storage_path: string; by_name: string; taken_at: string; caption: string; stage_name: string }
+
+async function sweepReportPhotos(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await admin
+    .from('report_photos')
+    .select('id, job_id, storage_path, by_name, taken_at, caption, stage_name')
+    .is('filed_at', null)
+    .not('storage_path', 'is', null)
+    .not('report_id', 'is', null)
+    .order('taken_at', { ascending: true })
+    .limit(REPORT_PHOTO_BATCH)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the report photos did not read: ${error.message}` }] }
+  const rows = (data ?? []) as ReportPhotoRow[]
+  if (rows.length === 0) return { saved: 0, failed: [] }
+  const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+  let saved = 0
+  const failed: { id: string; why: string }[] = []
+  const fail = async (r: ReportPhotoRow, why: string) => {
+    failed.push({ id: r.id, why })
+    await admin.from('report_photos').update({ fail_why: why.slice(0, 300) }).eq('id', r.id).is('filed_at', null)
+  }
+  if (!saJson) {
+    for (const r of rows) await fail(r, 'Drive is not set up here yet.')
+    return { saved, failed }
+  }
+  let google: string
+  try {
+    google = await googleAccessToken(saJson)
+  } catch (e) {
+    for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
+    return { saved, failed }
+  }
+  const folders = new Map<string, string | null>()
+  for (const r of rows) {
+    try {
+      const job: JobRef = { jobs_ledger_id: r.job_id }
+      if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderFor(admin, google, job))
+      const into = folders.get(r.job_id)
+      if (!into) {
+        await fail(r, 'That job has no Drive folder yet.')
+        continue
+      }
+      const { data: blob, error: dl } = await admin.storage.from(REPORT_PHOTOS_BUCKET).download(r.storage_path)
+      if (dl || !blob) {
+        await fail(r, 'Our copy of that photo did not read.')
+        continue
+      }
+      const mime = blob.type || 'image/jpeg'
+      // Named as a text's photo is: the day, the sender, the caption (the stage it shows, else the report's words).
+      const nameInput = { at: r.taken_at, sender: r.by_name, fileName: 'photo', mime, words: r.caption || r.stage_name || 'Report photo', place: 1 }
+      const name = await freeName(google, into, (taken) => photoDriveName(nameInput, taken))
+      const put = await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, mime)
+      const { error: kept } = await admin
+        .from('report_photos')
+        .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), fail_why: null })
+        .eq('id', r.id)
+        .is('drive_file_id', null)
+      if (kept) {
+        await fail(r, 'Saved to Drive, but the row did not keep it.')
+        continue
+      }
+      await admin.storage.from(REPORT_PHOTOS_BUCKET).remove([r.storage_path])
+      saved += 1
+    } catch (e) {
+      await fail(r, e instanceof Error ? e.message : String(e))
+    }
+  }
+  if (failed.length) console.warn('photo-save: some report photos were not filed', failed)
+  return { saved, failed }
+}
+
 serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders })
   if (req.method !== 'POST') return json({ error: 'POST only.' }, 405)
@@ -288,9 +379,10 @@ serve(async (req) => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     const messages = await sweep(admin)
     const boxes = await sweepWaiting(admin, BOX_SOURCE)
+    const reports = await sweepReportPhotos(admin)
     const checklists = await sweepWaiting(admin, CHECKLIST_SOURCE)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, checklists }, messages.status)
+    return json({ ...body, boxes, reports, checklists }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

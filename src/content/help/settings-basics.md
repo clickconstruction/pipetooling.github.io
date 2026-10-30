@@ -75,6 +75,22 @@ Pushed Mon to Fri, 6:00 AM to 8:00 PM.
 
 Tap **Push me any time** to clear your hours. A push outside your hours waits for you. A customer's reply still goes to the office at once. When a customer writes to you while you are off, the office hears at once and who is off. The reply stays yours on Messages, and the office can take it with Who has it.
 
+### What waited while you were off
+
+When you are back, the Dashboard's **Needs you** card lists what waited.
+
+:::example Needs you
+**While you were off: 3 replies and a work order waited**
+Since 8 PM. Evan answered Dana at 11:50 PM.
+{{button:blue|See them}}
+:::
+
+1. Open the Dashboard.
+2. Read the line. The line counts each customer's message once, however many pushes it would have been.
+3. Tap {{button:blue|See them}} to open the first one still waiting.
+
+A reply a teammate answered while you were off is not counted. The line says who answered. Nothing is pushed when your hours open, so your phone never buzzes nine times at 6 AM.
+
 ## Report notifications
 
 Office roles have **Your dashboard → Report notifications**. There you pick which report types get pushed to you:

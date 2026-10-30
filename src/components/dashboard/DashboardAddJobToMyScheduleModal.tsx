@@ -68,7 +68,6 @@ export function DashboardAddJobToMyScheduleModal({
   const [workDate, setWorkDate] = useState(todayYmd)
   const [timeStart, setTimeStart] = useState('08:00')
   const [timeEnd, setTimeEnd] = useState('12:00')
-  const [joinCrew, setJoinCrew] = useState(true)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   // Request-job form
@@ -155,7 +154,7 @@ export function DashboardAddJobToMyScheduleModal({
     setBusy(true)
     setError(null)
     try {
-      await selfScheduleAddBlock({ jobId: picked.id, workDate, timeStart, timeEnd, joinCrew })
+      await selfScheduleAddBlock({ jobId: picked.id, workDate, timeStart, timeEnd })
       showToast('Added to your schedule.', 'success')
       onSaved()
       onClose()
@@ -325,10 +324,10 @@ export function DashboardAddJobToMyScheduleModal({
               <span style={{ color: 'var(--text-muted)' }}> — {SELF_SCHEDULE_STATUS_LABELS[picked.status] ?? picked.status}</span>
             </div>
             {slotPicker}
-            <label style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
-              <input type="checkbox" checked={joinCrew} onChange={(e) => setJoinCrew(e.target.checked)} />
-              Add me to the job crew (keeps the job visible to you elsewhere)
-            </label>
+            {/* The database adds every scheduled person to the job's crew, so the window says so instead of asking. */}
+            <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-700)' }}>
+              This job joins your crew, so it shows everywhere you look.
+            </p>
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: '0.5rem' }}>
               <button
                 type="button"

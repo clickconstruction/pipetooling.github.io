@@ -1017,6 +1017,10 @@ verify_jwt = false
 [functions.report-draft]
 verify_jwt = false
 
+# Supply-house bill capture (punch list #179, v2.6088): the office's fill from a bill's PDF. Bearer checked in the function.
+[functions.bill-read]
+verify_jwt = false
+
 # Messages, cut 10: the photo-save sweep. The cron (every 5 minutes) sends X-Cron-Secret, no JWT.
 [functions.photo-save]
 verify_jwt = false
