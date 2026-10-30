@@ -1,8 +1,8 @@
 ---
 name: "Legal desk: the settlement floor — what it does today, and five ways to show what could happen instead"
 number: 218
-group: gated
-status: proposed 2026-10-30 · the reading of today's floor written down, five directions drawn and critiqued · waiting on the owner's pick · nothing built
+group: close
+status: the owner picked C 2026-10-30 ("Build C") · the train is open, stacked, each on the one below — PR 1 v2.6170 #6559 the gate retired (→ main, auto-merge) · PR 2 v2.6173 #6565 the attorney's read (migration 20261030090000_legal_counsel_read) · PR 3 v2.6176 #6567 the paths and the walk-away line · PR 4 v2.6177 #6568 the firm's side and both prints · after each lands, the next is rebased onto main and retargeted; after PR 1 deploy submit-legal-portal and legal-portal, after PR 2 db push then deploy submit-legal-portal
 mockup: to-dos/legal-desk-settlement-floor/mockup.html
 summary: >
   The office sets one settlement floor per matter, a dollar amount or a percent of the open balance,
@@ -13,10 +13,10 @@ summary: >
   attorney's read of the case and the two paths drawn side by side with a line derived from the
   cost to continue, show what a refused offer cost, or flip it so the firm records what it expects.
   The recommendation is the third with the first folded in.
-next: The owner's pick of a direction (or a mix) from mockup.html; on a yes, PR 1 of the chosen train.
+next: Land the train in order, push the migration and redeploy the two functions, then the owner's look at the cards on a live account; D's one line per closed matter once a matter has closed behind a refused offer.
 size: A S · B S · C M as a train of four · D S · E S
-blocker: The owner's pick. Nothing else; no other open card touches the floor (#171's step 2 would have set it against the claim, and is superseded by C).
-opinion: build — C with A folded in (the gate goes, the attorney's read and the two paths take its place, the walk-away line is derived), then D's one line per matter once there is history to read
+blocker: None. The queue; #171's step 2 (the floor against the claim) is superseded by C.
+opinion: your call — built as C with A folded in; the look at the cards live is the owner's, and D waits for history
 ---
 
 # Legal desk: the settlement floor (#218)
