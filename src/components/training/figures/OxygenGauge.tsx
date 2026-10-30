@@ -22,9 +22,9 @@ export function OxygenGauge({ titleId }: FigureProps) {
       <g fontSize="10" fill="currentColor">
         <text x="104" y={y(23.5) + 4}>23.5% · the top of the safe band</text>
         <text x="104" y={y(20.9) + 4} fontWeight="600">20.9% · normal air</text>
-        <text x="104" y={y(19.5) + 4} fill="#b45309">19.5% · deadly below this line</text>
+        <text x="104" y={y(19.5) + 4} fill="var(--text-amber-700)">19.5% · deadly below this line</text>
         <text x="104" y={y(19.5) + 16} fill="var(--text-muted)" fontSize="9">a monitor warns, ventilation fixes it</text>
-        <text x="104" y={y(10) + 4} fill="#991b1b">10% · people pass out or die</text>
+        <text x="104" y={y(10) + 4} fill="var(--text-red-800)">10% · people pass out or die</text>
         <text x="104" y={y(10) + 16} fill="var(--text-muted)" fontSize="9">a dust mask does nothing here: supplied air only</text>
         <text x="8" y="120" fill="var(--text-muted)" fontSize="9.5" transform="rotate(-90 8 120)">oxygen in the air</text>
         <text x="60" y="214" fill="var(--text-muted)" fontSize="9">test oxygen first, then flammables, then toxics</text>

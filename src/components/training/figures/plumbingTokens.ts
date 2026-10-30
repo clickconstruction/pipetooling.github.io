@@ -12,9 +12,12 @@ export const TINT: Record<Tint, string> = {
   air: 'var(--surface)',
 }
 
-/** The house red for the arrow that fights the flow, as the lift strip marks the twist. */
-export const WRONG = '#b91c1c'
-export const RIGHT = '#15803d'
+/**
+ * The house red for the arrow that fights the flow, as the lift strip marks the twist, and the green for the right
+ * way. Both are theme tokens whose light values are the old hexes, so a verdict reads in dark mode too.
+ */
+export const WRONG = 'var(--text-red-700)'
+export const RIGHT = 'var(--text-green-700)'
 
 export const SUPPLY = 6
 export const DRAIN = 13

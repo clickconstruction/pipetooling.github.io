@@ -33,10 +33,10 @@ export function HeaterBond({ titleId }: FigureProps) {
       <Label x={150} y={77} anchor="middle" size={7} color="currentColor">
         the metal run
       </Label>
-      <Label x={40} y={44} anchor="middle" size={7} color="#2563eb">
+      <Label x={40} y={44} anchor="middle" size={7} color="var(--text-link)">
         cold in, metal
       </Label>
-      <Label x={262} y={44} anchor="middle" size={7} color="#b91c1c">
+      <Label x={262} y={44} anchor="middle" size={7} color="var(--text-red-700)">
         hot out, metal
       </Label>
       <Label x={150} y={132} anchor="middle" size={6.5}>
