@@ -47,6 +47,7 @@ import { NO_PROPERTY_RECORD_GAP, resolveLegalJobProperties, type LegalJobOwnerRo
 import { SUSPECTED_SUB_JOB_DETAIL, suspectedSubJob, suspectedSubJobLabel } from './suspectedSubJob'
 import { gapAnswerCounts, gapAnswersByKey, type LegalGapAnswer, type LegalGapAnswerLike } from './legalGapAnswers'
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline, type LegalMailPieceLike } from './legalLienPaper'
+import { claimRetainageForAccount, type LegalPayApplicationLike } from './legalClaimRetainage'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -240,6 +241,8 @@ export type LegalPacketInput = {
   lienDeskItems?: ReadonlyArray<LegalDeskItemLike>
   /** The mail pieces behind the filings' sends (the Docsmit train, PR 8): mailed, delivered, who signed, the Certification PDF. */
   mailPieces?: ReadonlyArray<LegalMailPieceLike>
+  /** The jobs' live pay applications (v2.6103, punch list #213): which bill each became and its retainage, so the claim adds only the retainage no sent bill carries. Absent on an older caller: every held dollar is added, as v2.5849 did. */
+  payApplications?: ReadonlyArray<LegalPayApplicationLike>
   /** Promise details (who said it, how) — list_job_payment_promises. */
   promises: ReadonlyArray<PaymentPromise>
   /** Promise outcomes (kept / late / broken / open) — classifyPromises over list_payment_promise_records. */
@@ -476,7 +479,11 @@ export type LegalWorth = {
   filingCost: number
   /** The retainage the GC holds across the account's jobs (v2.5849, punch list #171 step 2), from the job rows; 0 when none. */
   retainageHeld: number
-  /** What the dispute claims (v2.5849): the open bills plus the retainage held. Equal to `balance` when nothing is held. */
+  /** The part of it a sent bill already carries (v2.6103, punch list #213): inside the open bills, never added again. */
+  retainageOnBills: number
+  /** held − on bills: the retainage no sent bill asks for, the part the claim adds. */
+  retainageAdded: number
+  /** What the dispute claims (v2.5849): the open bills plus the retainage no sent bill carries (v2.6103). Equal to `balance` when nothing is added. */
   claim: number
   /** claim − fee − filing cost: what Click keeps if every dollar lands. */
   net: number
@@ -930,12 +937,21 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   if (broken > 0) flags.push(`${broken} broken promise${broken === 1 ? '' : 's'}`)
   if (!account.customerId) flags.push('payer is a name only')
   // v2.5849 (punch list #171 step 2): the claim is the open bills plus the retainage the GC holds; the firm's cut and the net work from the claim.
-  const retainageHeld = jobs.reduce((s, j) => s + (typeof (j as { lien_retainage_held?: number | null }).lien_retainage_held === 'number' ? Math.max(0, (j as { lien_retainage_held?: number | null }).lien_retainage_held ?? 0) : 0), 0)
-  const claim = balance + retainageHeld
+  // v2.6103 (punch list #213): only the retainage no sent bill carries is added — a bill sent for the whole amount and paid short by the retainage already holds it in the balance.
+  const retainage = claimRetainageForAccount(
+    jobs.map((j) => ({
+      id: j.id,
+      lien_retainage_held: (j as { lien_retainage_held?: number | null }).lien_retainage_held ?? null,
+      invoices: (j.invoices ?? []).map((i) => ({ id: i.id, amount: i.amount, status: i.status, retainage_release: (i as { retainage_release?: boolean | null }).retainage_release ?? null, open: moneyByJob.get(j.id)?.openByInvoice.get(i.id) })),
+    })),
+    input.payApplications ?? [],
+  )
+  const retainageHeld = retainage.held
+  const claim = round2(balance + retainage.added)
   const feeAmt = claim * fee.contingencyPct
   const net = claim - feeAmt - fee.filingCost
   const verdict: LegalWorthVerdict = theory.key === 'none' || noMoney || net <= 0 ? 'not worth it' : net < 500 || flags.length > 0 ? 'marginal' : 'worth it'
-  const worth: LegalWorth = { balance, retainageHeld, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict }
+  const worth: LegalWorth = { balance, retainageHeld, retainageOnBills: retainage.onBills, retainageAdded: retainage.added, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict }
 
   // --- Steps (what we did, in order) ---------------------------------------
   const steps: LegalStep[] = []

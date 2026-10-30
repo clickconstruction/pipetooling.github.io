@@ -9,7 +9,7 @@ const packet = (over: { theory?: Partial<Theory>; jobs?: LegalPacket['account'][
   ({
     theory: { key: 'sworn', label: 'Sworn account', basis: '', ...over.theory },
     account: { jobs: over.jobs ?? [job('707'), job('717', ['a signed agreement']), job('718')], totals: { billed: 0, paid: 0, writtenDown: 0, balance: 15781.82, oldestDays: over.oldestDays === undefined ? 192 : over.oldestDays } },
-    worth: { balance: 15781.82, retainageHeld: 0, claim: 15781.82, contingencyPct: 0.33, fee: 5208, filingCost: 350, net: 10223.82, flags: [], verdict: 'worth it', ...over.worth },
+    worth: { balance: 15781.82, retainageHeld: 0, retainageOnBills: 0, retainageAdded: 0, claim: 15781.82, contingencyPct: 0.33, fee: 5208, filingCost: 350, net: 10223.82, flags: [], verdict: 'worth it', ...over.worth },
   }) as unknown as Pick<LegalPacket, 'theory' | 'account' | 'worth'>
 
 describe('Can we sue?', () => {
@@ -34,10 +34,20 @@ describe('How much? and What\'s left for us?', () => {
     expect(howMuch(packet({ jobs: [job('707')], oldestDays: null })).why).toBe('Owed on 1 job.')
   })
   it('leads with the claim when the GC holds retainage, the open bills inside it (v2.5849, punch list #171)', () => {
-    const q = howMuch(packet({ jobs: [job('891')], oldestDays: 108, worth: { balance: 2028.04, retainageHeld: 1678.04, claim: 3706.08 } }))
-    expect(q).toMatchObject({ answer: '$3,706.08', why: 'Open bills $2,028.04 inside it, plus retainage held $1,678.04. The oldest bill is 108 days old.', chip: { text: 'the claim', tone: 'ok' } })
+    const q = howMuch(packet({ jobs: [job('891')], oldestDays: 108, worth: { balance: 2028.04, retainageHeld: 1678.04, retainageAdded: 1678.04, claim: 3706.08 } }))
+    expect(q).toMatchObject({ answer: '$3,706.08', why: 'Open bills $2,028.04 inside it, plus retainage $1,678.04 that no bill asks for yet. The oldest bill is 108 days old.', chip: { text: 'the claim', tone: 'ok' } })
     expect(whatsLeftForUs(packet({ worth: { balance: 2028.04, retainageHeld: 1678.04, claim: 3706.08, fee: 1223.01, net: 2133.07 } })).why).toBe('The firm takes 33%, or $1,223.01 of the claim, and filing costs $350.00.')
     expect(plainWordsFailures(q.why)).toEqual([])
+  })
+  it('adds only the retainage no bill asks for, and says when the rest is already on a bill or all of it is (v2.6103, punch list #213)', () => {
+    const part = howMuch(packet({ jobs: [job('891')], oldestDays: null, worth: { balance: 2028.04, retainageHeld: 1678.04, retainageOnBills: 1000, retainageAdded: 678.04, claim: 2706.08 } }))
+    expect(part).toMatchObject({ answer: '$2,706.08', why: 'Open bills $2,028.04 inside it, plus retainage $678.04 that no bill asks for yet. Another $1,000.00 of the retainage held is already on a bill.', chip: { text: 'the claim', tone: 'ok' } })
+    expect(plainWordsFailures(part.why)).toEqual([])
+    // A bill sent for the whole amount and paid short by the retainage: the balance is the claim, and the sentence says where the retainage sits.
+    const all = howMuch(packet({ jobs: [job('891')], oldestDays: 108, worth: { balance: 1509.8, retainageHeld: 1509.8, retainageOnBills: 1509.8, retainageAdded: 0, claim: 1509.8 } }))
+    expect(all).toMatchObject({ answer: '$1,509.80', why: 'Owed on 1 job. The retainage held $1,509.80 is already inside the open bills. The oldest bill is 108 days old.' })
+    expect(all.chip).toBeUndefined()
+    expect(plainWordsFailures(all.why)).toEqual([])
   })
   it('carries the cut and the verdict as a chip', () => {
     const q = whatsLeftForUs(packet())

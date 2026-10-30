@@ -529,7 +529,7 @@ export function JobThreadNotesPanel({
                             fontSize: '0.65rem',
                             fontWeight: 700,
                             textTransform: 'uppercase',
-                            color: '#4f46e5',
+                            color: 'var(--text-indigo-800)',
                             marginRight: '0.35rem',
                             verticalAlign: 'middle',
                           }}

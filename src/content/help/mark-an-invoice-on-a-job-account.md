@@ -60,7 +60,7 @@ A house moves a charge onto a job account only while the invoice is current. Onc
 
 Tick the box after your call and press {{button:green|Mark it moved ✓}}. Or press {{button:green|Send the request ›}} to email the rep from the app. Replies come to you. The row then reads **asked** with the date. Follow up with a call until the house confirms. An ask with no answer turns amber after 3 days and red after 7.
 
-The Dashboard and Quickfill carry the same count as a Needs You line. It reads **Job accounts** with the dollars and the number of invoices. It turns amber a week before the soonest window closes and red three days before. Press {{button:outline|Work the list}} there to open the same list.
+A job whose account at the house is marked not needed leaves the window. The Dashboard and Quickfill carry the same count as a Needs You line. It reads **Job accounts** with the dollars and the number of invoices. It turns amber a week before the soonest window closes and red three days before. Press {{button:outline|Work the list}} on the Dashboard to open the same list. On Quickfill the charges are rows in the Fill them in deck. Each row takes one of the three answers.
 
 ## The account itself lives on the house
 

@@ -24,6 +24,8 @@ export const NEEDS_YOU_ITEM_ACTOR: Record<NeedsYouItem['key'], NeedsYouActor> = 
   'job-followups': 'assistant',
   'customer-messages': 'anyone',
   'todays-sends': 'anyone',
+  // While you were off (v2.6060, punch list #141 PR 4): the viewer's own held pushes; nobody else's line.
+  'while-off': 'anyone',
   // The review ask (v2.5946): whoever reads it calls; the owner may want the call himself.
   'rating-low': 'anyone',
   'gc-review-weekly': 'assistant',
