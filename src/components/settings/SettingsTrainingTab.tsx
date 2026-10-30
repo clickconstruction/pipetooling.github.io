@@ -162,7 +162,7 @@ export function SettingsTrainingTab() {
         const states = rows.map((r) => dueSplit({ colour: r.colour, daysToDue: r.days_to_due }, p.dueSoonDays))
         const split = dueCounts(states)
         const filter = whoState[p.slug] ?? null
-        const whoRows = seeWho === p.slug ? rows.filter((r, i) => filter == null || states[i] === filter) : []
+        const whoRows = seeWho === p.slug ? rows.filter((_, i) => filter == null || states[i] === filter) : []
         /** Where everyone stands and See who, as the three counts (today) or as four chips that filter and a strip per name. */
         const standsBlock = (withStrip: boolean) => (
           <div data-training-stands={withStrip ? 'strip' : 'words'} style={{ display: 'grid', gap: '0.6rem' }}>
