@@ -366,7 +366,7 @@ describe('LegalDesk · in house (v2.5847)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog', { name: 'Run it in house' })).toBeNull()
   })
-  it('in house: the pill, Back to review, the floor and the offers log on Fees & steps, and Question for counsel…', async () => {
+  it('in house: the pill, Back to review, the offers log on Fees & steps, and Question for counsel…', async () => {
     const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
     await settle()
@@ -374,7 +374,6 @@ describe('LegalDesk · in house (v2.5847)', () => {
     expect(screen.getByRole('button', { name: 'Back to review' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Run it in house…' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
-    expect(document.querySelector('[data-legal-floor-chip]')).toBeTruthy()
     expect(document.querySelector('[data-legal-offers]')).toBeTruthy()
     // No offer yet: the log says so and offers its own door again (punch list #184, sweep C).
     const noOffers = document.querySelector('[data-legal-offers] [data-empty-state]') as HTMLElement

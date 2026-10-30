@@ -7,3 +7,5 @@ Punch list #85, item 20: settlement authority as a threshold (the owner's decisi
 - `legal_answer_settlement(p_entry_id, p_signed_off, p_note)` — office roles. Takes a firm `question` entry with `meta.flavor = 'settlement'` that is still open; writes the office's `answer` (`meta.askId`, `meta.signedOff`; the existing answer trigger emails the firm), acknowledges the ask, and on a sign-off moves the stage to `settled` (only while `closed_at` is null, and without closing it, per item 16) with a step entry carrying the amount.
 
 **Apply order:** additive. Push it right after the PR merges, then deploy `submit-legal-portal` and `legal-portal`. The old client and functions read `legal_matters` with `select('*')` and ignore the columns; the new functions read a missing column as no floor, so either order is safe. `SET lock_timeout = '3s'`; the CHECK is added in a `DO` block that skips when it exists.
+
+**Retired in v2.6170** (punch list #218, 2026-10-30): the columns stay, null and unread; `legal_set_settlement_floor` keeps no caller; `legal_answer_settlement` answers only an ask from before.

@@ -27,8 +27,6 @@ import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocum
 import LegalNarrativeEditor, { type NarrativeDesk } from './LegalNarrativeEditor'
 import LegalTimelinePanel, { type TimelinePlanActs } from './LegalTimelinePanel'
 import { buildLegalTimeline, timelineDeadlinesFromPaper, timelineDocumentsFromRows } from '../../../lib/legal/legalTimeline'
-import { type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
-
 import { isVoidedEntry, officeCanVoid } from '../../../../supabase/functions/_shared/legalPortalActs'
 
 import { exhibitDetails, exhibitsSummaryWords } from '../../../lib/legal/exhibitDetail'
@@ -37,7 +35,7 @@ import { type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legal
 
 import type { LegalDeskProps } from './LegalDesk'
 import { type Tab, TAB_LABELS, MUTED, btn, pill, Door, DeskEnvelopeAnswersBand, SectionTitle, Table, coverageText, type EntryLike } from './legalDeskShared'
-import { SettlementFloorEditor, OffersPanel, SettlementAnswer, DeskVoidableText, DeskUndo } from './LegalDeskFirmPanels'
+import { OffersPanel, SettlementAnswer, DeskVoidableText, DeskUndo } from './LegalDeskFirmPanels'
 import { EmptyState } from '../../EmptyState'
 
 /**
@@ -45,7 +43,7 @@ import { EmptyState } from '../../EmptyState'
  * Paper, Evidence, With the firm, Timeline — and the act types the desk hands it. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182).
  */
 export type Curation = { holdBack: (key: string, reason: string) => Promise<void>; shareAgain: (key: string) => Promise<void>; shareAll: () => Promise<void>; holdFor: { key: string; reason: string } | null; setHoldFor: (v: { key: string; reason: string } | null) => void; reasons: Record<string, string>; busy: boolean } | null
-export type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** v2.5847 (punch list #172): the office runs the case itself. */ inHouse: boolean; offerAdd: (draft: LegalOfferDraft) => Promise<boolean>; offerSetStatus: (entryId: string, status: OfferStatus, note: string) => Promise<boolean>; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; setSettlementFloor: (amount: number | null, pct: number | null) => Promise<void>; floor: LegalSettlementFloor | null; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
+export type OfficeActs = { acknowledge: (entryId: string) => Promise<void>; answerFor: { entryId: string; text: string } | null; setAnswerFor: (v: { entryId: string; text: string } | null) => void; sendAnswer: () => Promise<void>; markApplied: (entry: { id: string; amount: number | null; body: string }) => Promise<void>; busy: boolean; onOpenPipelineRow: () => void; askForm: { flavor: LegalAskFlavor; jobId: string; text: string } | null; setAskForm: (v: { flavor: LegalAskFlavor; jobId: string; text: string } | null) => void; sendAsk: () => Promise<void>; withdrawFirmAsk: (entryId: string) => Promise<void>; /** A matter exists for the account (asks hang on a matter). */ canAsk: boolean; /** v2.5847 (punch list #172): the office runs the case itself. */ inHouse: boolean; offerAdd: (draft: LegalOfferDraft) => Promise<boolean>; offerSetStatus: (entryId: string, status: OfferStatus, note: string) => Promise<boolean>; /** #85 item 20. */ answerSettlement: (entryId: string, signedOff: boolean, note: string) => Promise<void>; /** #85 item 16. */ moveStage: (stage: string, entryId: string) => Promise<void>; /** #85 item 18. */ voidEntry: (entryId: string, reason: string) => Promise<boolean> } | null
 
 /**
  * A firm entry's wait beside its pill or press (punch list #184 sweep B): LEGAL_FIRM_ENTRY_AGE, two days
@@ -263,7 +261,6 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
     )
   return (
     <div>
-      {officeActs && officeActs.canAsk ? <SettlementFloorEditor floor={officeActs.floor} balance={packet.account.totals.balance} busy={officeActs.busy} onSave={officeActs.setSettlementFloor} /> : null}
       {officeActs && officeActs.canAsk ? <OffersPanel entries={entries} todayYmd={packet.todayYmd} busy={officeActs.busy} onAdd={officeActs.offerAdd} onStatus={officeActs.offerSetStatus} onUndo={officeActs.voidEntry} /> : null}
       <SectionTitle>Attorney fees and costs{fees.length ? ` · ${formatLegalMoney(feeTotal)}` : ''}</SectionTitle>
       {fees.length ? (
@@ -382,9 +379,3 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
     </div>
   )
 }
-
-/**
- * Settlement authority (v2.5759): one line with the floor as a chip; a tap opens the panel under it, Save writes and
- * folds it away, Cancel or Escape folds it with nothing written. The slider, the % box and the $ box move together
- * (`settlementFloorControl.ts`); the box typed in last decides what is saved.
- */
