@@ -2,6 +2,9 @@ import type { CSSProperties } from 'react'
 import type { PhysicalInvoiceDocument } from '../../lib/physicalInvoiceDocument'
 import { mergeBillCustomerInvoiceDescriptionIssueChrome } from '../../lib/billCustomerInvoiceDescriptionIssueChrome'
 import { anyLineSegmentsStartWithLowercase } from '../../lib/invoiceLineDescriptionLeadingLowercase'
+import { contractLineWords, SHARE_EXPLAINER, SHARE_SUM_LABEL, shareColumnHeads, shareHeadline, type ProgressBillShare } from '../../lib/physicalInvoiceShare'
+import type { PublicShapeView } from '../../lib/prototypes/publicShapeView'
+import { SideBySide } from '../prototypes/SideBySide'
 
 const metaLabel: CSSProperties = {
   padding: '0.15rem 0.75rem 0.15rem 0',
@@ -158,14 +161,57 @@ function LineItemsTable({
   )
 }
 
+const usd = (n: number) => n.toLocaleString('en-US', { style: 'currency', currency: 'USD' })
+
+/**
+ * Punch list #217, outside-1 (a prototype): the Services table when the bill is a share of the job — the headline once,
+ * then each line with the contract line and its count beside this bill's share, and the two sums under a rule.
+ */
+function ShareLinesTable({ share }: { share: ProgressBillShare }) {
+  const heads = shareColumnHeads(share)
+  const sum: CSSProperties = { ...lineItemNumCell, fontWeight: 700, borderTop: '1px solid var(--border-strong)' }
+  return (
+    <div style={{ marginTop: '0.65rem' }} data-testid="physical-invoice-share">
+      <div style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-strong)' }}>{shareHeadline(share)}</div>
+      <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', marginBottom: 6 }}>{SHARE_EXPLAINER}</div>
+      <table style={{ width: '100%', borderCollapse: 'collapse', border: '1px solid var(--border)' }}>
+        <thead>
+          <tr>
+            <th style={lineItemsSectionTitleTh}>Services</th>
+            <th style={{ ...tableHead, textAlign: 'right', width: '30%' }}>{heads.contract}</th>
+            <th style={{ ...tableHead, textAlign: 'right', width: '22%' }}>{heads.bill}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {share.rows.map((r, i) => (
+            <tr key={i}>
+              <td style={lineItemDescCell}>{r.description}</td>
+              <td style={lineItemNumCell}>{contractLineWords(r)}</td>
+              <td style={lineItemNumCell}>{usd(r.share)}</td>
+            </tr>
+          ))}
+          <tr>
+            <td style={{ ...lineItemDescCell, fontWeight: 700, borderTop: '1px solid var(--border-strong)' }}>{SHARE_SUM_LABEL}</td>
+            <td style={sum}>{usd(share.contract)}</td>
+            <td style={sum}>{usd(share.bill)}</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
 export function PhysicalInvoicePreview({
   document: d,
   hideIssuerContact = false,
   emphasizeLowercaseLeadingDescriptions = false,
   detailedServiceLineDescriptionClick,
   detailedMaterialLineDescriptionClick,
+  shape,
 }: {
   document: PhysicalInvoiceDocument
+  /** Punch list #217, outside-1: `shape` draws the contract line beside each share; `sideBySide` draws today's table over it. Off: as before. */
+  shape?: PublicShapeView | null
   /** Bill Customer Physical detailed layout: click service line description to edit fixture. */
   detailedServiceLineDescriptionClick?: (rowIndex: number) => void
   /** Bill Customer Physical detailed layout: click material line description to edit material. */
@@ -317,13 +363,20 @@ export function PhysicalInvoicePreview({
           </div>
         ) : null}
 
-        <LineItemsTable
-          title="Services"
-          rows={d.serviceLines}
-          mergeTitleIntoHeader
-          emphasizeIssues={emphasize}
-          onRowDescriptionClick={detailedServiceLineDescriptionClick}
-        />
+        {(() => {
+          const today = (
+            <LineItemsTable
+              title="Services"
+              rows={d.serviceLines}
+              mergeTitleIntoHeader
+              emphasizeIssues={emphasize}
+              onRowDescriptionClick={detailedServiceLineDescriptionClick}
+            />
+          )
+          if (!d.share || !shape || (!shape.shape && !shape.sideBySide)) return today
+          const shaped = <ShareLinesTable share={d.share} />
+          return shape.sideBySide ? <SideBySide shapeLabel="With the contract line beside each share" today={today} shape={shaped} /> : shaped
+        })()}
         <LineItemsTable
           title="Materials"
           rows={d.materialLines}

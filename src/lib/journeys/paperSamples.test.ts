@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { PAPER_IDS, SAMPLE_JOB, SAMPLE_OWNER, paperSample, sampleBillDocument, sampleDemandLetterFields, sampleHazmatInputs, sampleLienReleaseInputs, sampleOwnerNoticeInputs } from './paperSamples'
+import { PAPER_IDS, SAMPLE_JOB, SAMPLE_OWNER, paperSample, sampleBillDocument, sampleProgressBillDocument, sampleDemandLetterFields, sampleHazmatInputs, sampleLienReleaseInputs, sampleOwnerNoticeInputs } from './paperSamples'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER } from '../customerSample'
 import { customerJourneys } from '../customerJourneys'
 
@@ -15,7 +15,7 @@ describe('paperSamples — the paper a customer receives, from the sample (v2.35
       expect(typeof p.pdf).toBe('function')
     }
     const paperSteps = customerJourneys().flatMap((j) => j.steps).filter((s) => s.render.kind === 'paper')
-    expect(paperSteps.length).toBe(5)
+    expect(paperSteps.length).toBe(6)
     for (const s of paperSteps) expect(PAPER_IDS).toContain((s.render as { paper: string }).paper)
   })
 
@@ -26,6 +26,21 @@ describe('paperSamples — the paper a customer receives, from the sample (v2.35
     expect(p.subject).toContain(SAMPLE_JOB.number)
     expect(p.html).toContain('1,850')
     expect(p.html).toContain(SAMPLE_HOMEOWNER.name)
+  })
+
+  it('the progress bill (punch list #217, outside-1): scaled lines today, and a side-by-side with the contract line beside each share', () => {
+    const doc = sampleProgressBillDocument(TODAY)
+    expect(doc.breakdownMatches).toBe(false)
+    expect(doc.share?.pct).toBe(32)
+    expect(doc.serviceLines.map((l) => l.qty)).toEqual([1, 1, 1])
+    const p = paperSample('progress-bill', TODAY)
+    expect(p.html).toContain('Water closet, wall-hung')
+    expect(p.html).not.toContain('In the contract')
+    expect(p.sideBySideHtml).toContain('This bill: $20,266, 32% of the $63,332 contract.')
+    expect(p.sideBySideHtml).toContain('24 × $1,180 = $28,320')
+    expect(p.sideBySideHtml).toContain('This bill · 32%')
+    // Two email bodies, each a meta table and a Services table.
+    expect(p.sideBySideHtml?.match(/<table/g)?.length).toBe(4)
   })
 
   it('the hazmat notice names the job and the fee', () => {

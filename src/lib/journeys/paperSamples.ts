@@ -10,16 +10,16 @@
  */
 import { PORTAL_COMPANY } from '../../../supabase/functions/_shared/portalCompany'
 import { SAMPLE_GC, SAMPLE_HOMEOWNER, ymdPlusDays } from '../customerSample'
-import { buildPhysicalInvoiceDocument, buildPhysicalInvoiceEmailBodies, physicalInvoiceEmailSubject, type PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
+import { buildPhysicalInvoiceDocument, buildPhysicalInvoiceEmailBodies, buildPhysicalInvoiceEmailSideBySideHtml, physicalInvoiceEmailSubject, type PhysicalInvoiceDocument } from '../physicalInvoiceDocument'
 import { buildHazmatFeeNoticeHtml, type HazmatNoticeJobInfo } from '../jobsDocuments/hazmatFeeNotice'
 import type { HazmatIncidentDraft } from '../hazmatFee'
 import { buildDemandLetterPrintHtml, type DemandLetterFields } from '../jobsDocuments/demandLetter'
 import { buildLienNoticeBlocks, filingDocPrintHtml, type FilingDocExtras, type LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import { buildLienWaiverFoot, buildLienWaiverParagraphs, lienWaiverFootLines, lienWaiverTitle, type LienWaiverFields, type LienWaiverFormType } from '../jobsDocuments/lienWaiverRelease'
 
-export type PaperId = 'bill-by-email' | 'hazmat-notice' | 'demand-letter' | 'owner-notice' | 'lien-release'
+export type PaperId = 'bill-by-email' | 'progress-bill' | 'hazmat-notice' | 'demand-letter' | 'owner-notice' | 'lien-release'
 
-export const PAPER_IDS: readonly PaperId[] = ['bill-by-email', 'hazmat-notice', 'demand-letter', 'owner-notice', 'lien-release']
+export const PAPER_IDS: readonly PaperId[] = ['bill-by-email', 'progress-bill', 'hazmat-notice', 'demand-letter', 'owner-notice', 'lien-release']
 
 export type PaperSample = {
   /** The document's name, as the office knows it. */
@@ -32,6 +32,8 @@ export type PaperSample = {
   pdf: () => Promise<Blob>
   /** The file name the PDF would carry. */
   filename: string
+  /** Punch list #217: today's paper over a prototype's, one document, when this paper has a prototype; the tab's *Side by side* frames it. */
+  sideBySideHtml?: string
 }
 
 export const SAMPLE_JOB = {
@@ -67,6 +69,65 @@ export function sampleBillDocument(todayYmd: string): PhysicalInvoiceDocument {
   })
   if (!doc) throw new Error('sample bill did not build')
   return doc
+}
+
+/** The sample GC job's priced lines (punch list #217, outside-1): three fixtures, $63,332 in all. */
+export const SAMPLE_PROGRESS_JOB = {
+  number: '1077',
+  name: 'Plumbing rough-in, Sample Retail Shell',
+  address: '1 Sample Rd, Boerne',
+  /** Bill 2 of 3: about a third of the job. */
+  amount: 20_266,
+  fixtures: [
+    { name: 'Water closet, wall-hung', count: 24, line_unit_price: 1180, line_description: null, sequence_order: 0 },
+    { name: 'Lavatory, undermount', count: 18, line_unit_price: 854, line_description: null, sequence_order: 1 },
+    { name: 'Water heater, 100 gal', count: 2, line_unit_price: 9820, line_description: null, sequence_order: 2 },
+  ],
+} as const
+
+/** A progress bill on the sample GC job: the bill's lines are the job's, scaled to this bill's share, as Bill Customer prints them. */
+export function sampleProgressBillDocument(todayYmd: string): PhysicalInvoiceDocument {
+  const doc = buildPhysicalInvoiceDocument({
+    job: {
+      customer_name: SAMPLE_GC.company,
+      customer_email: SAMPLE_GC.email,
+      customer_phone: null,
+      job_name: SAMPLE_PROGRESS_JOB.name,
+      hcp_number: SAMPLE_PROGRESS_JOB.number,
+      job_address: SAMPLE_PROGRESS_JOB.address,
+      last_work_date: ymdPlusDays(todayYmd, -2),
+    },
+    amountDollars: SAMPLE_PROGRESS_JOB.amount,
+    lineDescription: 'Bill 2 of 3 on the plumbing rough-in',
+    physicalLineOnBillRaw: '',
+    memo: 'Sample bill — nothing here exists in the database.',
+    invoiceDateYmd: todayYmd,
+    dueDateYmd: ymdPlusDays(todayYmd, 30),
+    detailFromJob: {
+      fixtures: [...SAMPLE_PROGRESS_JOB.fixtures],
+      materials: [],
+      payments: [],
+      billingKind: 'invoice',
+      invoiceId: 'sample-progress-2',
+      invoiceSequenceOrder: 2,
+    },
+  })
+  if (!doc) throw new Error('sample progress bill did not build')
+  return doc
+}
+
+/** The progress bill by email, with the side-by-side What customers see frames on *Side by side* (punch list #217, outside-1). */
+export function sampleProgressBill(todayYmd: string): PaperSample {
+  const doc = sampleProgressBillDocument(todayYmd)
+  const bodies = buildPhysicalInvoiceEmailBodies(doc)
+  return {
+    title: 'A progress bill, part of the job',
+    subject: physicalInvoiceEmailSubject(doc),
+    html: bodies.html,
+    sideBySideHtml: buildPhysicalInvoiceEmailSideBySideHtml(doc) ?? undefined,
+    filename: `Invoice-${SAMPLE_PROGRESS_JOB.number}-2-sample.pdf`,
+    pdf: async () => (await import('../physicalInvoicePdf')).buildPhysicalInvoicePdfBlob(doc),
+  }
 }
 
 export function sampleBillByEmail(todayYmd: string): PaperSample {
@@ -218,6 +279,8 @@ export function paperSample(id: PaperId, todayYmd: string): PaperSample {
   switch (id) {
     case 'bill-by-email':
       return sampleBillByEmail(todayYmd)
+    case 'progress-bill':
+      return sampleProgressBill(todayYmd)
     case 'hazmat-notice':
       return sampleHazmatNotice(todayYmd)
     case 'demand-letter':
