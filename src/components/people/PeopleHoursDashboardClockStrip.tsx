@@ -32,6 +32,8 @@ import {
   PeopleHoursClockStripMiniCalendar,
 } from './PeopleHoursClockStripMiniCalendar'
 import { shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
+import { earlierPendingCount, pendingHoursByWorkDate } from '../../lib/people/hoursDayStrip'
+import { ShapeSwitch, SideBySide, type ShapeView } from '../prototypes/SideBySide'
 import { clampYmdToFloor } from '../../lib/people/assistantHoursWindow'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 
@@ -60,9 +62,20 @@ type Props = {
   addSessionPeople?: { value: string; label: string }[]
   /** Earliest visible day (assistant hours window, v2.1593). Null/absent = unlimited day navigation. */
   minDateYmd?: string | null
+  /**
+   * The strip shape (punch list #217, people-docs-15): an amber ring on each day with a session
+   * waiting, its hours under it, a stub at the left edge for earlier weeks. The page's one
+   * `useShapeView`, shared with the pending banner so both change on one press; absent, the
+   * mini calendar reads as it does.
+   */
+  pendingStrip?: ShapeView | null
+  /** The all-weeks pending count (`usePendingHoursApprovalsNudge`), for the earlier-weeks stub; null while unknown. */
+  allWeeksPendingCount?: number | null
+  /** Opens the all-weeks approvals queue, the stub's door. */
+  onOpenApprovalsQueue?: () => void
 }
 
-export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPeople, minDateYmd = null }: Props) {
+export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPeople, minDateYmd = null, pendingStrip = null, allWeeksPendingCount = null, onOpenApprovalsQueue }: Props) {
   const { user: authUser, role } = useAuth()
   const narrowViewport640 = useNarrowViewport640()
   const { showToast } = useToastContext()
@@ -137,6 +150,20 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
   }, [orgWideStripEnabled, myTeam.orgWidePendingSessions, myTeam.pendingSessions])
 
   const stripUnapprovedMiniCalendarLoading = myTeam.loadingSessions
+
+  // The strip shape (punch list #217, people-docs-15): the closed pending hours by day, and how many closed
+  // pending sessions the all-weeks count holds beyond these eleven days. The team scope's list is the
+  // team's, so under it the stub counts the org's rest; the all-weeks queue it opens is org-wide either way.
+  const pendingHoursByDay = useMemo(
+    () => pendingHoursByWorkDate(orgWideStripEnabled ? myTeam.orgWidePendingSessions : myTeam.pendingSessions),
+    [orgWideStripEnabled, myTeam.orgWidePendingSessions, myTeam.pendingSessions],
+  )
+  const earlierPending = useMemo(() => {
+    const base = orgWideStripEnabled ? myTeam.orgWidePendingSessions : myTeam.pendingSessions
+    const days = new Set(miniCalendarYmds)
+    const onStrip = base.filter((s) => s.clocked_out_at != null && !s.approved_at && !s.rejected_at && !s.revoked_at && days.has(s.work_date)).length
+    return earlierPendingCount(allWeeksPendingCount, onStrip)
+  }, [orgWideStripEnabled, myTeam.orgWidePendingSessions, myTeam.pendingSessions, miniCalendarYmds, allWeeksPendingCount])
 
   const showLiveCurrentlyIn = selectedYmd === todayDenver
 
@@ -333,17 +360,44 @@ export function PeopleHoursDashboardClockStrip({ onSessionsChanged, addSessionPe
     return null
   }
 
+  const miniCalendarToday = (
+    <PeopleHoursClockStripMiniCalendar
+      miniCalendarYmds={miniCalendarYmds}
+      todayDenver={todayDenver}
+      selectedYmd={selectedYmd}
+      onSelectYmd={selectDayClamped}
+      pendingUnapprovedCountByWorkDate={pendingUnapprovedCountByWorkDate}
+      countsLoading={stripUnapprovedMiniCalendarLoading}
+      narrowViewport640={narrowViewport640}
+    />
+  )
+  const miniCalendarStrip = (
+    <PeopleHoursClockStripMiniCalendar
+      miniCalendarYmds={miniCalendarYmds}
+      todayDenver={todayDenver}
+      selectedYmd={selectedYmd}
+      onSelectYmd={selectDayClamped}
+      pendingUnapprovedCountByWorkDate={pendingUnapprovedCountByWorkDate}
+      countsLoading={stripUnapprovedMiniCalendarLoading}
+      narrowViewport640={narrowViewport640}
+      strip={{ pendingHoursByWorkDate: pendingHoursByDay, earlier: { count: earlierPending, onOpen: onOpenApprovalsQueue } }}
+    />
+  )
+
   return (
     <section style={{ marginBottom: '1rem' }}>
-      <PeopleHoursClockStripMiniCalendar
-        miniCalendarYmds={miniCalendarYmds}
-        todayDenver={todayDenver}
-        selectedYmd={selectedYmd}
-        onSelectYmd={selectDayClamped}
-        pendingUnapprovedCountByWorkDate={pendingUnapprovedCountByWorkDate}
-        countsLoading={stripUnapprovedMiniCalendarLoading}
-        narrowViewport640={narrowViewport640}
-      />
+      {pendingStrip?.sideBySide ? (
+        <SideBySide testId="people-hours-clock-strip-sbs" label="With the strip" today={miniCalendarToday} shape={miniCalendarStrip} />
+      ) : (
+        <>
+          {pendingStrip ? (
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: '0.35rem' }}>
+              <ShapeSwitch view={pendingStrip} words={{ on: "Show today's look", off: 'Show the strip' }} />
+            </div>
+          ) : null}
+          {pendingStrip?.on ? miniCalendarStrip : miniCalendarToday}
+        </>
+      )}
       {narrowViewport640 ? (
         <div style={{ marginBottom: '0.65rem' }}>
           <div

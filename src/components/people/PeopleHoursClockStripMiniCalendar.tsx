@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { APP_CALENDAR_TZ, referenceDateForWorkDateYmd } from '../../utils/dateUtils'
 import { shiftWorkDateYmd } from '../../lib/peopleHoursClockStripSelectedDay'
+import { earlierPendingStubWords, formatStripHours } from '../../lib/people/hoursDayStrip'
 
 export function buildPeopleHoursClockStripMiniCalendarYmds(todayDenverYmd: string): string[] {
   const cols: string[] = []
@@ -100,6 +101,16 @@ function miniDayPickerButtonStyle(isToday: boolean, isSelected: boolean, isWeeke
   }
 }
 
+/**
+ * The strip shape (punch list #217, people-docs-15): an amber ring on each day with a session
+ * waiting and its hours under it instead of the count, and a stub at the left edge, *7 earlier ›*,
+ * for the sessions in weeks the strip does not show.
+ */
+export type MiniCalendarStrip = {
+  pendingHoursByWorkDate: Readonly<Record<string, number>>
+  earlier: { count: number | null; onOpen?: () => void }
+}
+
 type Props = {
   miniCalendarYmds: readonly string[]
   todayDenver: string
@@ -108,6 +119,7 @@ type Props = {
   pendingUnapprovedCountByWorkDate: Readonly<Record<string, number>>
   countsLoading: boolean
   narrowViewport640: boolean
+  strip?: MiniCalendarStrip | null
 }
 
 export function PeopleHoursClockStripMiniCalendar({
@@ -118,9 +130,13 @@ export function PeopleHoursClockStripMiniCalendar({
   pendingUnapprovedCountByWorkDate,
   countsLoading,
   narrowViewport640,
+  strip = null,
 }: Props) {
+  const stubWords = strip ? earlierPendingStubWords(strip.earlier.count) : ''
+  const stubCell: CSSProperties = { flexShrink: 0, minWidth: stubWords ? '4.25rem' : 0, display: 'flex', alignItems: 'center' }
   return (
     <div
+      data-mini-calendar={strip ? 'strip' : 'today'}
       style={{
         marginBottom: '0.65rem',
         overflowX: narrowViewport640 ? 'auto' : 'visible',
@@ -140,6 +156,31 @@ export function PeopleHoursClockStripMiniCalendar({
         role="group"
         aria-label="Jump to day in last 11 days"
       >
+        {stubWords ? (
+          <span style={stubCell}>
+            <button
+              type="button"
+              onClick={strip?.earlier.onOpen}
+              disabled={!strip?.earlier.onOpen}
+              title="Sessions waiting on approval in weeks before these days. Opens the all-weeks approvals queue."
+              data-earlier-stub
+              style={{
+                padding: '0.2rem 0.5rem',
+                borderRadius: 999,
+                border: '1px solid var(--border-amber)',
+                background: 'var(--bg-amber-tint)',
+                color: 'var(--text-amber-800)',
+                font: 'inherit',
+                fontSize: '0.72rem',
+                fontWeight: 700,
+                whiteSpace: 'nowrap',
+                cursor: strip?.earlier.onOpen ? 'pointer' : 'default',
+              }}
+            >
+              {stubWords}
+            </button>
+          </span>
+        ) : null}
         {miniCalendarYmds.map((ymd) => {
           const isToday = ymd === todayDenver
           const isSelected = ymd === selectedYmd
@@ -147,12 +188,22 @@ export function PeopleHoursClockStripMiniCalendar({
           const { mdLine, weekdayLine, ariaFull } = miniCalendarCellLabels(ymd)
           const mutedWeekendWeekday = isWeekend && !isToday && !isSelected
           const n = pendingUnapprovedCountByWorkDate[ymd] ?? 0
-          const countPhrase = n === 1 ? `${n} unapproved session` : `${n} unapproved sessions`
+          const pendingHours = strip ? (strip.pendingHoursByWorkDate[ymd] ?? 0) : 0
+          const ring = strip != null && pendingHours > 0
+          const countPhrase = strip
+            ? ring
+              ? `${formatStripHours(pendingHours)} h waiting on approval`
+              : 'Nothing waiting on approval'
+            : n === 1
+              ? `${n} unapproved session`
+              : `${n} unapproved sessions`
+          const style = miniDayPickerButtonStyle(isToday, isSelected, isWeekend)
           return (
             <button
               key={ymd}
               type="button"
-              style={miniDayPickerButtonStyle(isToday, isSelected, isWeekend)}
+              data-pending-ring={ring ? '1' : undefined}
+              style={ring ? { ...style, boxShadow: [style.boxShadow, '0 0 0 2px var(--text-amber-700)'].filter(Boolean).join(', ') } : style}
               aria-label={
                 countsLoading ? `Select ${ariaFull}. Loading counts.` : `Select ${ariaFull}. ${countPhrase}.`
               }
@@ -177,10 +228,14 @@ export function PeopleHoursClockStripMiniCalendar({
           alignItems: 'center',
           marginTop: '0.28rem',
         }}
-        aria-label="Unapproved session counts per day for strip scope"
+        aria-label={strip ? 'Hours waiting on approval per day for strip scope' : 'Unapproved session counts per day for strip scope'}
       >
+        {stubWords ? <span aria-hidden="true" style={stubCell} /> : null}
         {miniCalendarYmds.map((ymd) => {
           const n = pendingUnapprovedCountByWorkDate[ymd] ?? 0
+          const pendingHours = strip ? (strip.pendingHoursByWorkDate[ymd] ?? 0) : 0
+          const words = strip ? (pendingHours > 0 ? `${formatStripHours(pendingHours)} h` : '') : String(n)
+          const hot = strip ? pendingHours > 0 : n > 0
           return (
             <div
               key={`unapproved-count-${ymd}`}
@@ -189,14 +244,14 @@ export function PeopleHoursClockStripMiniCalendar({
                 minWidth: '3rem',
                 textAlign: 'center',
                 fontSize: '0.72rem',
-                fontWeight: countsLoading ? 500 : n > 0 ? 700 : 600,
-                color: countsLoading ? 'var(--text-muted)' : n > 0 ? 'var(--text-amber-700)' : 'var(--text-700)',
+                fontWeight: countsLoading ? 500 : hot ? 700 : 600,
+                color: countsLoading ? 'var(--text-muted)' : hot ? 'var(--text-amber-700)' : 'var(--text-700)',
                 lineHeight: 1.2,
                 fontFamily: 'inherit',
                 fontVariantNumeric: 'tabular-nums',
               }}
             >
-              {countsLoading ? '…' : String(n)}
+              {countsLoading ? '…' : words}
             </div>
           )
         })}

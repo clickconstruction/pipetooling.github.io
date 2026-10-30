@@ -53,6 +53,9 @@ import { PeopleHoursGridJobHighlight, type HoursGridJobHighlightPick } from '../
 import { PeopleHoursAlignModal } from '../components/people/PeopleHoursAlignModal'
 import { buildAlignHoursQueue } from '../lib/people/alignHoursQueue'
 import { PeopleHoursPendingBanner } from '../components/people/PeopleHoursPendingBanner'
+import { useShapeView } from '../components/prototypes/SideBySide'
+import { PEOPLE_HOURS_PENDING_STRIP_KEY, reviewHoursButtonWords } from '../lib/people/hoursDayStrip'
+import { useHoursReviewedThrough } from '../hooks/useHoursReviewedThrough'
 import {
   getDaysInRange,
   HOURS_TAB_SECTION_ANCHOR_STYLE,
@@ -1671,6 +1674,11 @@ export default function People() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- showPeopleForHours is rebuilt each render; payConfig/archived/roster/order are its inputs
     [activeClockSessions, hoursDays, users, payConfig, archivedRoster, payRoster, hoursDisplayOrder],
   )
+  // Punch list #217, people-docs-15: the pending days as rings on the clock strip, one switch for the strip and the banner.
+  const pendingStripView = useShapeView(PEOPLE_HOURS_PENDING_STRIP_KEY)
+  // Punch list #217, people-docs-6 (a plain fix): the Review Hours press says what is reviewed, and draws its ✓ only then.
+  const reviewedThroughByPerson = useHoursReviewedThrough(showPeopleForMatrix, reviewHoursModalOpen ? 1 : 0)
+  const reviewHoursWords = reviewHoursButtonWords(reviewedThroughByPerson ?? [])
   const peopleHoursPendingSummary = useMemo(
     () => summarizePeopleHoursPendingByCell(peopleHoursPendingByCellMap),
     [peopleHoursPendingByCellMap],
@@ -2248,6 +2256,8 @@ export default function People() {
                   <button
                     type="button"
                     onClick={() => setReviewHoursModalOpen(true)}
+                    title={reviewHoursWords.title}
+                    data-review-hours-checked={reviewHoursWords.checked ? '1' : undefined}
                     style={{
                       padding: '0.35rem 0.75rem',
                       border: '1px solid var(--border-strong)',
@@ -2258,7 +2268,13 @@ export default function People() {
                       fontWeight: 500,
                     }}
                   >
-                    Review Hours <span style={{ color: 'var(--text-green-600)' }}>✓</span>
+                    {reviewHoursWords.label}
+                    {reviewHoursWords.checked ? (
+                      <>
+                        {' '}
+                        <span style={{ color: 'var(--text-green-600)' }}>✓</span>
+                      </>
+                    ) : null}
                   </button>
                 </div>
               </div>
@@ -2393,7 +2409,7 @@ export default function People() {
                 ) : null}
               </button>
             </div>
-            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} addSessionPeople={addSessionPeople} minDateYmd={hoursFloorYmd} /> : null}
+            {hoursTabSectionsOpen.clockStrip ? <PeopleHoursDashboardClockStrip onSessionsChanged={() => loadAllClockSessionsRef.current?.()} addSessionPeople={addSessionPeople} minDateYmd={hoursFloorYmd} pendingStrip={pendingStripView} allWeeksPendingCount={pendingApprovalsAllWeeks?.sessions ?? null} onOpenApprovalsQueue={() => setApprovalsQueueOpen(true)} /> : null}
           </section>
           ) : null}
           <PeopleHoursWeekRange
@@ -2460,6 +2476,7 @@ export default function People() {
                 onReviewApprove={() => setBulkApprovePendingOpen(true)}
                 onOpenQueue={() => setApprovalsQueueOpen(true)}
                 outsideWeekLine={pendingOutsideWeekLine}
+                strip={pendingStripView}
               />
               <PeopleHoursGrid
                 hoursTableScrollRef={hoursTableScrollRef}

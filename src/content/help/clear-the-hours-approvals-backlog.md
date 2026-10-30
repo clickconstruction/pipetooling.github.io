@@ -2,7 +2,7 @@
 title: clear the hours approvals backlog
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: approvals, pending hours, clock sessions, approve all, backlog, all weeks, payroll, needs you, long day, near-zero, no job, reject, edit session
+keywords: approvals, pending hours, clock sessions, approve all, backlog, all weeks, payroll, needs you, long day, near-zero, no job, reject, edit session, clock strip, amber ring, earlier, show the strip, reviewed through
 order: 68
 ---
 Every clock session, one punch in and out, waits for someone to approve it. Until then the hours do not count for payroll, the Hours grid or the Overhead numbers.
@@ -14,6 +14,8 @@ The Hours tab shows one week at a time. When approvals slip for a while, the old
 - The Dashboard's **Needs you** card grows a {{chip:yellow|Time approvals}} item. It appears once the oldest unapproved session is three or more days old. {{button:amber|Open approvals}} lands you in the queue.
 - On **People → Hours**, the header's {{button:outline-amber|Approvals}} button opens it any time. The button shows a count when anything is waiting.
 - The amber *not yet in payroll* banner sits above the Hours grid. It has an {{button:outline-amber|All weeks}} button beside {{button:amber|Review & approve}}. The banner itself only knows about the week on screen. When older weeks are still waiting, it says so at the end: **+16 sessions in earlier weeks**. That text is a link into the queue.
+- The clock strip above the grid has a small press, {{button:outline|Show the strip}}. Press it and each day with a session waiting wears an amber ring. Its hours sit under the day. A stub at the strip's left edge, like {{chip:yellow|7 earlier ›}}, counts the sessions in earlier weeks. Press it to open the queue. The banner then keeps its two presses and drops its sentence. {{button:amber|Review & approve · 12.5 h}} says the hours it covers. The press is remembered for you on this device.
+- The **Review Hours** press at the top of the Hours tab says what is reviewed, like **Reviewed through Oct 18**. Its ✓ shows only when every person shown has a review on record.
 - In both Review & approve and the queue, a row can wear one of two notes. *salary — counts as flat hours* means payroll credits the person's flat day, not the session length. *still clocked in at midnight* means the system closed the session at 11:59 PM. Check the real end time with Edit before approving that one.
 
 ## Reading the queue
