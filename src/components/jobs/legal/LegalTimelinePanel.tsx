@@ -1,5 +1,7 @@
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
+import { timelineCountChips, timelineStrip } from '../../../lib/legal/timelineStrip'
+import LegalTimelineStrip from './LegalTimelineStrip'
 import { LEGAL_TIMELINE_LANES, composerDeadlineSuggestion, composerKind, eventDraftProblem, planDraftProblem, timelineCountsWords, timelineDayWords, timelineEmptyWords, timelineHoldKey, timelineInLane, timelineLaneCounts, type LegalComposerKind, type LegalEventDraft, type LegalPlanDraft, type LegalTimeline, type LegalTimelineDeadline, type LegalTimelineItem, type LegalTimelineLane } from '../../../lib/legal/legalTimeline'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER_GREEN, PAPER_RED } from '../../../lib/portal/portalTheme'
 import { EmptyState } from '../../EmptyState'
@@ -99,8 +101,8 @@ function foldDocumentBursts(items: ReadonlyArray<LegalTimelineItem>): Burst[] {
   return out
 }
 
-function chip(text: string, look: TimelineLook, color?: string): ReactNode {
-  return <span style={{ fontSize: '0.68rem', fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: look.band, color: color ?? look.muted, whiteSpace: 'nowrap' }}>{text}</span>
+function chip(text: string, look: TimelineLook, color?: string, title?: string): ReactNode {
+  return <span title={title} style={{ fontSize: '0.68rem', fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: look.band, color: color ?? look.muted, whiteSpace: 'nowrap' }}>{text}</span>
 }
 
 function stateColor(item: LegalTimelineItem, look: TimelineLook): string {
@@ -130,12 +132,19 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
   const cap: CSSProperties = { margin: '14px 0 6px', fontSize: '0.74rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: look.muted, fontWeight: 700, display: 'flex', alignItems: 'center', gap: 10 }
   const rowProps = { look, todayYmd, reader, acts, onOpenEvidence, onOpenLienWindow, btn, deadlines: timeline.deadlines }
   const [openBursts, setOpenBursts] = useState<Record<string, boolean>>({})
+  // v2.6107 (punch list #214, PR 4): the line as a strip of days; a press on a day unfolds the past and scrolls to it.
+  const strip = timelineStrip(timeline, todayYmd)
+  const rootRef = useRef<HTMLDivElement | null>(null)
+  const jumpToDay = (ymd: string) => {
+    setAllPast(true)
+    window.setTimeout(() => rootRef.current?.querySelector(`[data-legal-timeline-day="${ymd}"]`)?.scrollIntoView({ block: 'center', behavior: 'smooth' }), 0)
+  }
   const rows = (items: ReadonlyArray<LegalTimelineItem>) => foldDocumentBursts(items).map((b) => {
     if (b.kind === 'one') return <TimelineRow key={b.item.key} item={b.item} {...rowProps} />
     const key = `burst:${b.ymd}`
     if (openBursts[key]) return b.items.map((it) => <TimelineRow key={it.key} item={it} {...rowProps} />)
     return (
-      <div key={key} data-legal-timeline-burst={b.ymd} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', gap: 8, alignItems: 'start' }}>
+      <div key={key} data-legal-timeline-burst={b.ymd} data-legal-timeline-day={b.ymd} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', gap: 8, alignItems: 'start' }}>
         <div style={{ fontSize: '0.78rem', color: look.muted, textAlign: 'right', paddingTop: 10, paddingRight: 6, whiteSpace: 'nowrap' }}>{timelineDayWords(b.ymd, todayYmd)}</div>
         <div style={{ display: 'grid', justifyItems: 'center', alignSelf: 'stretch', gridTemplateRows: '14px 1fr' }}>
           <span aria-hidden style={{ marginTop: 11, width: 8, height: 8, borderRadius: 2, background: look.muted, border: `2px solid ${look.muted}`, boxSizing: 'border-box' }} />
@@ -151,10 +160,10 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
     )
   })
   return (
-    <div data-legal-timeline style={{ color: look.text, fontFamily: look.font }}>
+    <div ref={rootRef} data-legal-timeline style={{ color: look.text, fontFamily: look.font }}>
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap', margin: '6px 0 2px' }}>
         <h4 style={{ margin: 0, fontSize: '0.78rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: look.muted }}>What happened, and what is planned next</h4>
-        {counts ? <span data-legal-timeline-counts style={{ fontSize: '0.78rem', color: look.muted }}>{counts}</span> : null}
+        {counts ? <span data-legal-timeline-counts title={counts} style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'center' }}>{timelineCountChips(timeline.counts).map((c) => <span key={c.key} data-legal-timeline-count={c.key} style={{ fontSize: '0.68rem', fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: look.band, color: c.tone === 'stop' ? look.stop : c.tone === 'warn' ? look.warn : c.tone === 'ok' ? look.ok : look.muted, whiteSpace: 'nowrap' }}>{c.text}</span>)}</span> : null}
         {timeline.counts.held && reader === 'office' ? <span style={{ fontSize: '0.78rem', color: look.warn }}>{timeline.counts.held} held from counsel</span> : null}
         {doors ? <span style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>{doors}</span> : null}
       </div>
@@ -173,6 +182,7 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
           ) : null}
         </div>
       ) : null}
+      {total > 0 ? <LegalTimelineStrip strip={strip} look={look} onDay={jumpToDay} /> : null}
       {composerOpen && acts && canAdd ? <ComposerForm look={look} todayYmd={todayYmd} acts={acts} btn={btn} deadlines={timeline.deadlines} onClose={() => setComposerOpen(false)} /> : null}
       {total === 0 ? (
         // Empty words (punch list #184, sweep C): an empty lane offers All, and "Press Add to the timeline" is that press now.
@@ -369,17 +379,17 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
   const holdKey = timelineHoldKey(item)
   const canUndo = Boolean(acts?.undo) && (acts?.canUndo ? acts.canUndo(item) : item.isLivePlan)
   const dayWords = timelineDayWords(item.ymd, todayYmd)
-  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip(item.kindWords === 'draft' ? 'document · draft' : 'document', look, item.kindWords === 'draft' ? look.warn : undefined) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kind === 'deadline' ? chip(item.kindWords || 'deadline', look, color) : item.kind === 'said' || item.kind === 'did' ? chip(item.kindWords, look, item.entryKind === 'note' ? look.stop : item.entryKind === 'promise' ? look.warn : undefined) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
+  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip(item.documentChip ? `document · ${item.documentChip}` : 'document', look, item.documentChip === 'draft' ? look.warn : item.documentChip.startsWith('sent') ? look.ok : item.documentChip === 'received' ? look.accent : undefined, item.documentChip ? item.stateWords : undefined) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kind === 'deadline' ? chip(item.kindWords || 'deadline', look, color) : item.kind === 'said' || item.kind === 'did' ? chip(item.kindWords, look, item.entryKind === 'note' ? look.stop : item.entryKind === 'promise' ? look.warn : undefined) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
   const canRecord = item.kind === 'deadline' && reader === 'office' && Boolean(onOpenLienWindow) && Boolean(item.deadlineJobId) && item.state !== 'done'
   const close = () => { setMode(null); setReason('') }
   return (
-    <div data-legal-timeline-item={item.key} data-legal-timeline-state={item.state} data-legal-timeline-lane={item.lane} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', gap: 8, alignItems: 'start' }}>
+    <div data-legal-timeline-item={item.key} data-legal-timeline-state={item.state} data-legal-timeline-lane={item.lane} data-legal-timeline-day={item.ymd} style={{ display: 'grid', gridTemplateColumns: '118px 18px 1fr', gap: 8, alignItems: 'start' }}>
       <div style={{ fontSize: '0.78rem', color: item.state === 'overdue' || item.state === 'due_today' ? color : look.muted, textAlign: 'right', paddingTop: 10, paddingRight: 6, whiteSpace: 'nowrap', fontVariantNumeric: 'tabular-nums' }}>{dayWords}</div>
       <div style={{ display: 'grid', justifyItems: 'center', alignSelf: 'stretch', gridTemplateRows: '14px 1fr' }}>
         <span aria-hidden style={{ marginTop: 11, width: item.kind === 'document' ? 8 : 10, height: item.kind === 'document' ? 8 : 10, borderRadius: item.kind === 'document' || item.kind === 'deadline' ? 2 : 999, transform: item.kind === 'deadline' ? 'rotate(45deg)' : undefined, background: item.state === 'planned' || item.state === 'undone' ? look.surface : color, border: `2px solid ${color}`, boxSizing: 'border-box' }} />
         <span aria-hidden style={{ width: 2, background: look.hair, height: '100%', minHeight: 14 }} />
       </div>
-      <div style={{ padding: '6px 0 10px', minWidth: 0 }}>
+      <div data-legal-timeline-hot={item.state === 'overdue' ? 'yes' : undefined} style={{ padding: '6px 0 10px', minWidth: 0, ...(item.state === 'overdue' ? { borderLeft: `3px solid ${look.stop}`, paddingLeft: 8 } : {}) }}>
         {mode === 'edit' && acts?.update ? (
           <PlanForm look={look} todayYmd={todayYmd} busy={acts.busy} btn={btn} title="Change this step" saveLabel="Save the step" initial={{ on: item.plannedYmd ?? item.ymd, body: item.what, notes: item.notes, deadlineKey: item.deadlineKey }} onSave={(d) => acts.update!(item.entryId ?? '', d)} onCancel={close} deadlines={deadlines} />
         ) : (
@@ -397,7 +407,7 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
                 {onOpenEvidence ? <button type="button" onClick={onOpenEvidence} style={{ ...btn, height: 22, fontSize: '0.7rem' }}>Open Evidence ↗</button> : null}
               </div>
             ) : null}
-            {item.stateWords ? <div data-legal-timeline-state-words style={{ fontSize: '0.76rem', color, margin: '3px 0 0', fontWeight: item.state === 'overdue' || item.state === 'due_today' ? 600 : 500 }}>{item.stateWords}</div> : null}
+            {item.stateWords && !(item.kind === 'document' && item.documentChip) ? <div data-legal-timeline-state-words style={{ fontSize: '0.76rem', color, margin: '3px 0 0', fontWeight: item.state === 'overdue' || item.state === 'due_today' ? 600 : 500 }}>{item.stateWords}</div> : null}
             {item.serves ? <div data-legal-timeline-serves={item.serves.late ? 'late' : 'in-time'} style={{ fontSize: '0.76rem', color: item.serves.late ? look.stop : look.muted, margin: '3px 0 0', fontWeight: item.serves.late ? 600 : undefined }}>Serves {item.serves.what} · {timelineDayWords(item.serves.ymd, todayYmd)}{item.serves.late ? ' · after the deadline' : ''}</div> : null}
             {item.held && reader === 'office' ? <div data-legal-timeline-held style={{ fontSize: '0.76rem', color: look.warn, margin: '3px 0 0' }}>Held from counsel{item.heldReason ? `: ${item.heldReason}` : '.'}</div> : null}
           </>
@@ -426,9 +436,10 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
         ) : null}
         {mode === null ? (
           <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: canEdit || canDone || canHold || canUndo || canRecord || (item.kind === 'document' && onOpenEvidence) || (item.held && acts?.hold) ? 6 : 0 }}>
+            {item.state === 'overdue' && canDone ? <button type="button" data-legal-timeline-done-first onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={{ ...btn, background: look.text, color: look.surface, borderColor: look.text }}>Mark done</button> : null}
             {canRecord ? <button type="button" data-legal-timeline-record onClick={() => onOpenLienWindow!(item.deadlineJobId!)} style={btn} title="Opens the job’s Lien window, where the paper is recorded">Record it…</button> : null}
             {canEdit ? <button type="button" onClick={() => setMode('edit')} style={btn}>Edit</button> : null}
-            {canDone ? <button type="button" onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={btn}>Mark done</button> : null}
+            {canDone && item.state !== 'overdue' ? <button type="button" onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={btn}>Mark done</button> : null}
             {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title={item.kind === 'event' ? 'Keep this event from the firm, with a reason only the office reads' : 'Keep this planned step from the firm, with a reason only the office reads'}>Hold from counsel…</button> : null}
             {item.held && acts?.hold && holdKey ? <button type="button" onClick={() => void acts.hold!.shareAgain(holdKey)} disabled={acts.busy} style={btn}>Share with counsel</button> : null}
             {canUndo ? <button type="button" onClick={() => setMode('undo')} style={btn}>Undo…</button> : null}

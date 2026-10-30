@@ -104,7 +104,7 @@ describe('GcMoney', () => {
     render(<GcMoney state={real} />)
     expect(screen.getByText(`Nothing paid in or out yet across our ${allJobsMoney(real).jobs.length} jobs.`)).toBeTruthy()
     expect(screen.getByText('Paid in counts once customers pay our bills in the app. Paid out counts once the trades draw in the app.')).toBeTruthy()
-    expect(screen.getByText('Nobody owes us right now.').hasAttribute('data-empty-state')).toBe(true)
+    expect(screen.getByText('Nobody owes us right now.').closest('[data-empty-state]')?.textContent).toBe('Nobody owes us right now.')
     expect(screen.queryByRole('button', { name: 'Bill the customer' })).toBeNull()
   })
 

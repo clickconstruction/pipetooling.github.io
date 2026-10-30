@@ -64,7 +64,7 @@ describe('JOB_ACTIVITY_EVENT_RENDER', () => {
       expect(meta, `missing render meta for ${t}`).toBeTruthy()
       expect(meta.tag.length).toBeGreaterThan(0)
       expect(['status', 'billing', 'crew', 'other']).toContain(meta.bucket)
-      expect(meta.tagColor).toMatch(/^#/)
+      expect(meta.tagColor).toMatch(/^(#|var\()/)
       expect(meta.borderColor).toMatch(/^(#|var\()/)
     }
   })

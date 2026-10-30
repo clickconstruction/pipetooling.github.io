@@ -21,6 +21,7 @@ import { TallyTeamQueue } from '../components/tally/TallyTeamQueue'
 import { mercurySwipeAtIso } from '../lib/mercurySwipeTime'
 import { TallySortPurchaseModal } from '../components/tally/TallySortPurchaseModal'
 import TallyOnSiteTab, { type OnSitePart } from '../components/tally/TallyOnSiteTab'
+import { TallyChooseJobSheet } from '../components/tally/TallyChooseJobSheet'
 import { formatTallyCurrency, formatTallyPostedParts } from '../lib/tally/formatTallyPosted'
 import { APP_SETTINGS_KEY_JOB_TALLY_MIN_POSTED_YMD, normalizeJobTallyMinPostedYmd } from '../lib/appSettingsKeys'
 import { mercuryRowPassesSortingStartDate } from '../lib/bankingSortingConfig'
@@ -51,7 +52,8 @@ import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
 
-type JobForTally = { id: string; hcp_number: string; job_name: string; job_address: string }
+/** The Choose job sheet searches the Click number, the customer and the trade's letter too (punch list #216). */
+type JobForTally = { id: string; hcp_number: string; job_name: string; job_address: string; click_number?: string | null; customer_name?: string | null; service_type_id?: string | null }
 type ServiceType = { id: string; name: string }
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type TallyEntry = {
@@ -682,7 +684,7 @@ export default function JobTally() {
     } else {
       supabase
         .from('jobs_ledger')
-        .select('id, hcp_number, job_name, job_address')
+        .select('id, hcp_number, click_number, job_name, job_address, customer_name, service_type_id')
         .eq('billing_only', false)
         .order('hcp_number', { ascending: false })
         .then(({ data, error: err }) => {
@@ -1945,64 +1947,18 @@ export default function JobTally() {
               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>▼</span>
             </button>
             {jobPickerOpen && (
-              <div
-                style={{
-                  position: 'fixed',
-                  inset: 0,
-                  zIndex: 800,
-                  background: 'rgba(0,0,0,0.4)',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'stretch',
-                  justifyContent: 'flex-end',
-                  paddingTop: 'var(--app-top-chrome, 0px)',
+              <TallyChooseJobSheet
+                jobs={jobs}
+                onlyIds={showMyJobsOnly ? myJobIds : null}
+                onClearOnly={() => setShowMyJobsOnly(false)}
+                selectedJobId={selectedJobId}
+                viewerUserId={authUser?.id ?? null}
+                onPick={(id) => {
+                  setSelectedJobId(id)
+                  setJobPickerOpen(false)
                 }}
-                onClick={() => setJobPickerOpen(false)}
-              >
-                <div role="dialog" aria-modal="true"
-                  style={{
-                    background: 'var(--surface)',
-                    borderTopLeftRadius: 16,
-                    borderTopRightRadius: 16,
-                    maxHeight: 'min(70vh, 100%)',
-                    overflow: 'auto',
-                    padding: '1rem',
-                  }}
-                  onClick={(e) => e.stopPropagation()}
-                >
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
-                    <h2 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Choose job</h2>
-                    <button type="button" onClick={() => setJobPickerOpen(false)} style={{ padding: '0.5rem', background: 'none', border: 'none', fontSize: '1.25rem', cursor: 'pointer', color: 'var(--text-muted)' }}>×</button>
-                  </div>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
-                    {(showMyJobsOnly && myJobIds ? jobs.filter((j) => myJobIds.has(j.id)) : jobs).map((j) => (
-                      <button
-                        key={j.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedJobId(j.id)
-                          setJobPickerOpen(false)
-                        }}
-                        style={{
-                          padding: '1rem',
-                          minHeight: TOUCH_MIN,
-                          fontSize: '1rem',
-                          lineHeight: 1.4,
-                          textAlign: 'left',
-                          border: '1px solid var(--border)',
-                          borderRadius: 8,
-                          background: selectedJobId === j.id ? 'var(--bg-blue-tint)' : 'var(--surface)',
-                          cursor: 'pointer',
-                          color: 'var(--text-strong)',
-                        }}
-                      >
-                        <div style={{ fontWeight: 600, marginBottom: '0.25rem' }}>{j.hcp_number || '—'} · {j.job_name || '—'}</div>
-                        {j.job_address && <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>{j.job_address}</div>}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
+                onClose={() => setJobPickerOpen(false)}
+              />
             )}
             {!isSubcontractorLikeRole(role as UserRole) && (
               <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginTop: '0.5rem', fontWeight: 400, fontSize: '0.875rem', cursor: 'pointer' }}>

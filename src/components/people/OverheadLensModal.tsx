@@ -5,6 +5,7 @@ import {
   type OverheadLensKey,
   type OverheadLensSeries,
 } from '../../lib/overheadLensSeries'
+import { OVERHEAD_METHOD_INKS } from '../../lib/overheadMethodInks'
 
 /**
  * People → Overhead lens modal (v2.2674): the arithmetic behind Method A / B /
@@ -31,11 +32,12 @@ const hours = (v: number): string => `${Math.round(v).toLocaleString('en-US')} h
 
 const LENS: Record<
   OverheadLensKey,
-  { name: string; color: string; denLabel: string; denRule: string; blurb: string }
+  { name: string; /** The chart's colour: the swatch, the bars and the dashed line. */ color: string; /** The words' colour: the heading, the rate and the chart's labels. */ ink: string; denLabel: string; denRule: string; blurb: string }
 > = {
   A: {
     name: 'A · per field hour',
     color: 'var(--text-blue-500)',
+    ink: OVERHEAD_METHOD_INKS.A,
     denLabel: 'billable field hours',
     denRule:
       'Recorded sessions (clocked out, not rejected or revoked — approved or still awaiting approval) on any jobs-ledger job except the office job, in the same 90 days. Hours count even when the person has no wage on file.',
@@ -44,6 +46,7 @@ const LENS: Record<
   B: {
     name: 'B · per revenue $',
     color: '#22c55e',
+    ink: OVERHEAD_METHOD_INKS.B,
     denLabel: 'invoices sent',
     denRule:
       'jobs_ledger_invoices.amount with sent_to_customer_at inside the window, bucketed to Chicago calendar days. Stripe TEST-mode invoices excluded. Sent — not paid.',
@@ -52,6 +55,7 @@ const LENS: Record<
   C: {
     name: 'C · per labor $',
     color: '#f59e0b',
+    ink: OVERHEAD_METHOD_INKS.C,
     denLabel: 'direct field labor $',
     denRule:
       "The same field sessions as Method A × each person's field hourly wage from pay config (dual-rate people: the field rate). No wage on file prices at $0 — hours count in A but vanish here.",
@@ -226,7 +230,7 @@ export function OverheadLensModal({
         }}
       >
         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-          <h2 id="overhead-lens-modal-title" style={{ margin: 0, fontSize: '1.125rem', color: cfg.color }}>
+          <h2 id="overhead-lens-modal-title" style={{ margin: 0, fontSize: '1.125rem', color: cfg.ink }}>
             {cfg.name}
           </h2>
           <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{windowLabel}</span>
@@ -274,7 +278,7 @@ export function OverheadLensModal({
             <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{cfg.denLabel}</span>
           </span>
           <span style={{ color: 'var(--text-muted)', fontSize: '1.1rem' }}>=</span>
-          <strong style={{ fontSize: '1.35rem', color: cfg.color }}>{fmtRate(lens, rate)}</strong>
+          <strong style={{ fontSize: '1.35rem', color: cfg.ink }}>{fmtRate(lens, rate)}</strong>
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(300px, 1fr))', gap: '0.75rem' }}>
@@ -345,7 +349,7 @@ export function OverheadLensModal({
                         <>
                           <rect x={x} y={chart.y(w.rate)} width={bwid} height={Math.max(0.5, H - MB - chart.y(w.rate))} rx={2} fill={cfg.color} opacity={0.5} />
                           {w.rate > chart.cap && (
-                            <text x={x + bwid / 2} y={MT + 8} textAnchor="middle" fill={cfg.color} fontSize={9} fontWeight={700}>
+                            <text x={x + bwid / 2} y={MT + 8} textAnchor="middle" fill={cfg.ink} fontSize={9} fontWeight={700}>
                               ▲
                             </text>
                           )}
@@ -364,7 +368,7 @@ export function OverheadLensModal({
                 {rate != null && (
                   <>
                     <line x1={ML} y1={chart.y(rate)} x2={W - MR} y2={chart.y(rate)} stroke={cfg.color} strokeWidth={1.5} strokeDasharray="5 4" />
-                    <text x={W - MR} y={chart.y(rate) - 4} textAnchor="end" fill={cfg.color} fontSize={10} fontWeight={700}>
+                    <text x={W - MR} y={chart.y(rate) - 4} textAnchor="end" fill={cfg.ink} fontSize={10} fontWeight={700}>
                       90-day {fmtRate(lens, rate)}
                     </text>
                   </>

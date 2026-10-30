@@ -1,0 +1,7 @@
+# 20261030030000_hours_statements.sql (2026-10-29, v2.6097)
+
+Signed hours statement (punch list #212, PR 2): the table `hours_statements` — one row per paper the office makes for one worker on one job for a period, with the record id the paper carries (`HS-<job number>-<n>`, unique), the period, the two switches (`with_pay`, the stated block as `stated_days`), `kind` clock · sheet · schedule, the gap before the app's first recorded day, the window's read as `snapshot` (so the paper prints again as it was), who prepared it and when, the two links PR 3 and PR 4 fill (`contract_document_id` → `person_contract_documents`, `matter_document_id` → `legal_matter_documents`), and `state` draft · printed · sent · signed. Indexed by job and by worker.
+
+The gate `can_touch_hours_statement(p_with_pay)` (SECURITY DEFINER) holds the owner's call 6 of 2026-10-29 on every verb: a dev, the controller or a pay-approved master (`is_dev() OR has_payroll_access()`) for any row; an assistant (`is_assistant()`) only for a row with the pay left off. `esign_consents.record_type` gains `hours_statement` for PR 3's signing (the constraint re-added `NOT VALID` and validated, as the GC portal's migrations did). The three house calls close the file.
+
+Apply from the main checkout after the PR merges (`supabase db push`); the client reads the table by name until `npm run gen-types:linked` ships as its own `chore(types)` PR. The old client has nothing to misread: the section and the window are new.

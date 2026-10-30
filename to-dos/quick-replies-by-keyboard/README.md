@@ -2,7 +2,7 @@
 name: "Quick replies by keyboard, and a starter set for the office"
 number: 126
 group: ready
-status: BUILDING 2026-10-19 — the owner picked A with C; the / list shipped as v2.5637 with the guide's door, and a shortcut per line as v2.5638 (migration 20261019040000); left: the starter lines, on the owner's words · the starter lines approved as written 2026-10-29 on the before-and-after canvas (Click Plumbing as the sign-off, the three step lines seeded with the rest, Spanish left empty)
+status: BUILDING 2026-10-19 — the owner picked A with C; the / list shipped as v2.5637 with the guide's door, and a shortcut per line as v2.5638 (migration 20261019040000); the starter lines approved as written 2026-10-29 on the before-and-after canvas (Click Plumbing as the sign-off, the three step lines seeded with the rest, Spanish left empty) and built the same day as v2.6064 (PR 4, migration 20261029200000_quick_replies_starter, the office's fifteen saved lines read first: none of the eleven repeats one); left: the push, on the owner's go
 summary: >
   The office sends the same few messages to customers every day. The app already holds them as
   quick replies: the strip above every reply box, Find a reply, the editor, and blanks that fill
@@ -10,8 +10,8 @@ summary: >
   hotkeys. No key reaches a line, it ships with only two customer lines, and its guide points at
   GC projects. This to-do draws a / shortcut in the reply box, a one-word shortcut per line, and
   eleven starter lines placed so that no automatic send changes.
-next: PR 4 seeds the eleven lines in one migration after a read of what the office has already saved (a starter line that repeats a saved one is left out, a step that already has a team line keeps it), the push on the owner's go; then delete the folder.
-size: XS (the starter lines) left
+next: the push on the owner's go, `supabase db push` from the main checkout once v2.6064 is on main, then a read of the table for the eleven lines; then delete the folder.
+size: XS (the push) left
 blocker: none
 opinion: build — the eleven lines as written; the Reply book stays the estimators' copy-and-paste book for now
 mockup: to-dos/quick-replies-by-keyboard/mockup.html
@@ -21,7 +21,7 @@ mockup: to-dos/quick-replies-by-keyboard/mockup.html
 
 ## Where it stands
 
-The owner picked **A with C** on 2026-10-19 and asked for the starter lines' words to come separately. Built: the guide's door with the / list (PR 1 and 2 of the plan, v2.5637) and a shortcut per line (PR 3, v2.5638, migration `20261019040000_quick_replies_shortcut.sql`). B was not picked. Left: PR 4, the starter lines, with the owner's words and a shortcut each.
+The owner picked **A with C** on 2026-10-19 and asked for the starter lines' words to come separately. Built: the guide's door with the / list (PR 1 and 2 of the plan, v2.5637) and a shortcut per line (PR 3, v2.5638, migration `20261019040000_quick_replies_shortcut.sql`). B was not picked. PR 4, the starter lines with the owner's words and a shortcut each, is built as v2.6064 (migration `20261029200000_quick_replies_starter.sql`, `docs/migrations/`): the office's fifteen saved lines were read first on 2026-10-29 and none of the eleven repeats one, holds one's shortcut or sits on a step with a team line, so all eleven seed. Left: the push, on the owner's go.
 
 ## The ask, in the owner's words
 
@@ -174,7 +174,9 @@ empty until someone writes them.
   Escape with the list open and see the `/` kept as typed. Nothing sends in any of these.
 - PR 4: the strip on a Ready to Bill job still leads with the app's Done words; a Pipeline move
   to Billed with the step on Asks still offers the app's Billed words; the Paid step's line is
-  `/remind` and the morning summary keeps it back while its blanks are unfilled.
+  `/remind`. Read in the code on 2026-10-29: the morning run fills only `{first}` and `{job}` and
+  has no hold for a blank it cannot fill (Tell the customer has one), so Approved and Paid stay on
+  Offers or off until #124's open piece lands; see `docs/recent-features/v2.6064.md`.
 
 ## The owner's calls
 

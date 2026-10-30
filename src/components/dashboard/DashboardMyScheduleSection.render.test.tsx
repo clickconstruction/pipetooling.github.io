@@ -287,6 +287,7 @@ describe('DashboardMyScheduleSection empty day (punch list #184, sweep C)', () =
     await settle()
     const empty = document.querySelector('[data-empty-state]') as HTMLElement
     expect(empty.textContent).toBe('Nothing scheduled tomorrow. + Add job puts a job on your day.')
+    expect(Array.from(empty.children).map((u) => u.textContent)).toEqual(['Nothing scheduled tomorrow.', '+ Add job puts a job on your day.'])
     fireEvent.click(within(empty).getByRole('button', { name: '+ Add job' }))
     expect(await screen.findByRole('dialog', { name: 'Add a job to my schedule' })).toBeTruthy()
   })

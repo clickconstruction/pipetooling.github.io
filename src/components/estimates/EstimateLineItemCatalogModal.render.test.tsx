@@ -75,7 +75,7 @@ describe('EstimateLineItemCatalogModal', () => {
     cleanup()
 
     renderWithProviders(<EstimateLineItemCatalogModal {...props({ canManage: true, catalogLineItems: [] })} />)
-    const empty = await screen.findByText(/No preset items yet\./)
+    const empty = (await screen.findByText(/No preset items yet\./)).closest('[data-empty-state]') as HTMLElement
     expect(empty.textContent).toBe('No preset items yet. Edit book adds the first.')
     const tabs = screen.getAllByRole('button', { name: 'Edit book' })
     expect(tabs).toHaveLength(2)

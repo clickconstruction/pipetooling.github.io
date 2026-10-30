@@ -13,7 +13,7 @@
  */
 import { todayYmdInAppTz } from '../../utils/dateUtils.ts'
 import { weekdayDate } from '../gc/words.ts'
-import { fillLine } from '../quickReplies/blanks.ts'
+import { blankNames, fillLine } from '../quickReplies/blanks.ts'
 import { stepLine, type QuickReply } from '../quickReplies/kernel.ts'
 import { FLOW_PAPERS, factForPaper, flowContactKind, type FlowKind, type PaperId } from './facts.ts'
 import { daysSince, nudgeRows, type NudgeOptions, type NudgeStep, type PersonFlow } from './nudges.ts'
@@ -114,11 +114,25 @@ export const OFFER_HELD = {
 } as const
 
 /**
+ * The words for a line that still holds a blank the app cannot fill (punch list #124, v2.6079): the run fills `{first}`,
+ * `{job}` and `{link}` itself, and the box fills the rest at a press, so the text waits for a person. Tell the customer
+ * (`stageSends.ts`) says the same words.
+ */
+export function blanksLeftWords(left: readonly string[]): string {
+  return left.length ? `the line still has ${blankNames(left)}` : 'the line still has a blank'
+}
+
+/** Why a prepared text waits on Today's sends when its line still holds a blank the press cannot fill, with its door. */
+export function offerHeldBlanks(left: readonly string[]): string {
+  return `The line still has ${left.length ? blankNames(left) : 'a blank'}. Send it from the customer’s thread, where the box fills it, or change the step’s line.`
+}
+
+/**
  * Why a due reminder of the app's did not go: its step is not switched on, a text for it already waits on Today's
  * sends, its channel is not a text, the person is snoozed on Follow up, one went inside its days, the number sent STOP
- * or there is none, or the person already has a text this morning.
+ * or there is none, the person already has a text this morning, or its line still has a blank the run cannot fill.
  */
-export type NudgeNotSent = 'off' | 'offered' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'prefers email' | 'one a morning' | 'answered'
+export type NudgeNotSent = 'off' | 'offered' | 'not a text' | 'snoozed' | 'sent lately' | 'opted out' | 'no number' | 'prefers email' | 'one a morning' | 'answered' | 'blanks left'
 
 /** A due reminder of the app's the run kept back, with why in words for the run's log. */
 export interface NudgeKept {
@@ -137,7 +151,7 @@ export interface NudgeRun {
 }
 
 /** The run log's words for a reminder kept back. */
-export function notSentWords(why: NudgeNotSent, snoozedUntil: string | null = null): string {
+export function notSentWords(why: NudgeNotSent, snoozedUntil: string | null = null, left: readonly string[] = []): string {
   switch (why) {
     case 'off':
       return 'the app does not send this step yet'
@@ -159,6 +173,8 @@ export function notSentWords(why: NudgeNotSent, snoozedUntil: string | null = nu
       return 'they asked for email'
     case 'one a morning':
       return 'one text a morning'
+    case 'blanks left':
+      return blanksLeftWords(left)
   }
 }
 
@@ -207,7 +223,7 @@ export function nudgeLine(person: { first: string; reading: Pick<PersonFlow['rea
   const paper = def.papers.find((p) => !factForPaper(p)?.ours) ?? null
   const upload = paper && link ? ` You can upload it here: ${link}` : ''
   const team = stepLine(quickReplies, flowContactKind(person.reading.kind), def.id, '')
-  if (team) return upload && link && !team.text.includes(link) ? `${team.text}\n${upload.trim()}` : team.text
+  if (team) return upload && link && !team.text.includes(link) && !team.text.includes('{link}') ? `${team.text}\n${upload.trim()}` : team.text
   const own = NUDGE_LINES[def.id]
   if (own) return `${person.first}, ${own(link)}`
   if (paper) return `${person.first}, checking on ${yours(paper)}.${upload}`
@@ -248,17 +264,21 @@ export function planNudgeRun(input: NudgeRunInput): NudgeRun {
       const n = def?.nudge
       if (!def || !n || !step.due || n.send !== 'app') continue
       const snoozed = stampDay(input.snoozed?.[person.id])
-      const keep = (why: NudgeNotSent) =>
-        notSent.push({ contactId: person.id, stepId: step.stepId, jobId: step.jobId, why, words: notSentWords(why, snoozed) })
+      const keep = (why: NudgeNotSent, left: readonly string[] = []) =>
+        notSent.push({ contactId: person.id, stepId: step.stepId, jobId: step.jobId, why, words: notSentWords(why, snoozed, left) })
       const number = input.numbers[person.id]
       const emailOnly = input.prefers?.[person.id] === 'email'
       const mode = appSendMode(input.appSends, person.reading.kind, step.stepId)
+      const link = input.links?.[person.id] ?? null
+      // The blanks the run can fill itself: their first name and the job's name (v2.5943), and their page's link (v2.6079).
+      // {rate} waits for the edge's mint. Any other blank is the box's to fill at a press, so the text waits (punch list #124).
+      const filled = fillLine(nudgeLine(person, def, input.quickReplies, link), { first: person.first, job: step.jobId ? (person.jobs?.[step.jobId] ?? null) : null, link })
+      const left = filled.left.filter((k) => k !== 'rate')
       const text = (event: string): NudgeText => ({
         contactId: person.id,
         stepId: step.stepId,
         jobId: step.jobId,
-        // The blanks the run can fill itself (v2.5943): their first name and the job's name; {rate} waits for the edge's mint.
-        body: fillLine(nudgeLine(person, def, input.quickReplies, input.links?.[person.id] ?? null), { first: person.first, job: step.jobId ? (person.jobs?.[step.jobId] ?? null) : null }).text,
+        body: filled.text,
         record: { contactId: person.id, stepId: step.stepId, jobId: step.jobId, at: input.now.toISOString(), by: 'app', how: n.how },
         event,
       })
@@ -272,11 +292,12 @@ export function planNudgeRun(input: NudgeRunInput): NudgeRun {
       else if (mode === 'offer')
         offers.push({
           ...text(`The app prepared the ${def.name} reminder for Today’s sends.`),
-          held: !number?.number ? OFFER_HELD['no number'] : number.optedOut ? OFFER_HELD['opted out'] : emailOnly ? OFFER_HELD['prefers email'] : null,
+          held: !number?.number ? OFFER_HELD['no number'] : number.optedOut ? OFFER_HELD['opted out'] : emailOnly ? OFFER_HELD['prefers email'] : left.length ? offerHeldBlanks(left) : null,
         })
       else if (!number?.number) keep('no number')
       else if (number.optedOut) keep('opted out')
       else if (emailOnly) keep('prefers email')
+      else if (left.length) keep('blanks left', left)
       else texts.push(text(`The app sent the ${def.name} reminder by text.`))
     }
   }
