@@ -28,6 +28,7 @@ import { canManageCollections, isStagesOfficeRole } from '../lib/jobs/stagesRole
 import { fetchActiveUsers } from '../lib/people/fetchActiveUsers'
 import { hasInAppHistory } from '../lib/inAppHistory'
 import { LEGAL_DESK_PATH, legalDeskFromSearch, legalDeskHref, PIPELINE_HREF, pipelineJobHref } from '../lib/legal/legalDeskRoute'
+import { lienWindowHref } from '../lib/jobs/stagesDeepLinks'
 import { PORTAL_COMPANY } from '../../supabase/functions/_shared/portalCompany'
 import LegalDesk from '../components/jobs/legal/LegalDesk'
 import JobContractModal from '../components/jobs/JobContractModal'
@@ -182,7 +183,10 @@ export default function LegalDeskPage() {
         onOpenContract={(job) => {
           if (canSeeJobContracts) setContractJob(job)
         }}
-        onOpenLienInstruments={(job) => navigate(`${PIPELINE_HREF}&lienwindow=${encodeURIComponent(job.id)}`)}
+        onOpenLienInstruments={(job, door) =>
+          // v2.6104: the Paper tab's next-step door opens the Lien desk on the job (a notice) or the Lien window on its tab; every other press, the window as before.
+          navigate(door?.to === 'desk' ? `${PIPELINE_HREF}&liendesk=1&liendeskJob=${encodeURIComponent(job.id)}&kind=notice` : door?.to === 'window' ? lienWindowHref(job.id, door.tab) : `${PIPELINE_HREF}&lienwindow=${encodeURIComponent(job.id)}`)
+        }
         onOpenEditJob={openEditJob}
         onOpenCallMode={() => navigate(`${PIPELINE_HREF}&chase=1`)}
         onOpenAccountsReceivable={() => navigate('/accounts-receivable')}

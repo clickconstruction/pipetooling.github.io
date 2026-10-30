@@ -2,7 +2,7 @@
 name: "Needs me: one rail or one order for the office's morning"
 number: 178
 group: gated
-status: proposed 2026-10-26 · three mock-ups drawn, then a live read of the marks the same day · the pick rewritten to D, the doors on Today's lines become work in place · PR 1 built 2026-10-26 as v2.5907, the deck as the station's body · the owner's go 2026-10-29 on the canvas · PR 2 built 2026-10-29 as v2.6071, her own card purchases · PR 3 built 2026-10-29 as v2.6086, the move window, with a not-needed account leaving it · PR 4 built 2026-10-29 as v2.6093, the idle lane on Job follow-ups · next unpriced work orders
+status: proposed 2026-10-26 · three mock-ups drawn, then a live read of the marks the same day · the pick rewritten to D, the doors on Today's lines become work in place · PR 1 built 2026-10-26 as v2.5907, the deck as the station's body · the owner's go 2026-10-29 on the canvas · PR 2 built 2026-10-29 as v2.6071, her own card purchases · PR 3 built 2026-10-29 as v2.6086, the move window, with a not-needed account leaving it · PR 4 built 2026-10-29 as v2.6093, the idle lane on Job follow-ups · PR 5 built 2026-10-29 as v2.6094, the unpriced work orders · next the two windows
 summary: >
   An assistant arriving on a desktop reads three "what needs me" counts that grew one ask at a
   time: the Messages count on the header's word, everyone waiting on us; the Needs you card on
@@ -16,10 +16,10 @@ summary: >
   workday are the ones whose body is the work, and Today's lines, a list of doors, has 7 marks
   in 35 days and none since it moved to first in the round. The pick is D, with the station's
   open count as the measure; B's Messages station follows it.
-next: PR 5, unpriced work orders as a Fill them in kind; then one kind a PR in the drawn order, and after each the station's mark history read for two weeks, the open count falling or not. Read Today's lines' history around 2026-11-09 for PR 1 and around 2026-11-12 for PRs 2 and 3. Push the 20261029233000 migration after PR 3 merges.
+next: PR 6, the statement round and a returned check as windows over the station; then Messages as a station, and after each the station's mark history read for two weeks, the open count falling or not. Read Today's lines' history around 2026-11-09 for PR 1 and around 2026-11-12 for PRs 2 and 3. Push the 20261029233000 migration after PR 3 merges.
 size: D is a train of S PRs, M in all · B is M · A and C are L
 blocker: None. The owner gave the go on 2026-10-29.
-ver: v2.5907 · 6071 · 6086 · 6093
+ver: v2.5907 · 6071 · 6086 · 6093 · 6094
 opinion: build D — the live read says the stations that get done are the ones whose body is the work, and Today's lines, a list of doors to other pages, has 7 marks in 35 days with something open at every one; make its doors fill-outs in place and read the open count, then put Messages in the round
 mockup: to-dos/needs-me-rail/mockup.html
 ---
@@ -476,6 +476,6 @@ A tech's and an estimator's Dashboard and header are unchanged.
 | PR 2 · the purchases kind: the viewer's own card charges over two days old with no job, the Sort screen's day-job chips and search, Save the Sort screen's RPC, Undo clears it; the measure's read around 2026-11-12 | v2.6071 | | built 2026-10-29 |
 | PR 3 · the move-window kind: the still-current charges not on a job account, moved, asked by email or not needed per charge; a job account marked not needed leaves the window (migration `20261029233000`, pushed after the merge); the measure's read around 2026-11-12 | v2.6086 | | built 2026-10-29 |
 | PR 4 · the idle lane on Job follow-ups: the station's two lanes, Quiet and Idle, over one read, each opening the Follow-ups deck in place on its lens; the idle line leaves Today's lines on Quickfill; the measure's read around 2026-11-12 | v2.6093 | | built 2026-10-29 |
-| PR 5 · unpriced work orders | | | not started |
+| PR 5 · unpriced work orders: a price per draft, the assembler's one column with the bid's sub-labor hint, the send left to the board; the measure's read around 2026-11-12 | v2.6094 | | built 2026-10-29 |
 | PR 6 · the statement round and the returned check as windows | | | not started |
 | PR 7 · the Messages station (B's PR 1) | | | not started |

@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Legal desk: show it, don't say it</title>
+<style>
+  /* Every name, job, street, number and dollar here is made up: Northline Builders (the GC), Quick Lube at 2208 Whitestone Blvd,
+     Cedar Park (job 742), owner of record CP Retail Holdings LLC, our RMP D. Alvarez, Pecan Supply the supply house,
+     Hale & Rowe the firm. The shapes are real: a subcontract job terminated for convenience with a pay application
+     90% paid, a trip charge, a materials bill, lost profit claimed, the GC's written counter, and a lien clock with
+     one window closed and three open. Today is Thu, Oct 29, 2026. Tokens are src/index.css's (light values and the
+     [data-theme="dark"] block); the app's saturated colours stay literal. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-muted: #6b7280; --text-faint: #9ca3af; --text-green-700: #15803d; --bg-green-100: #dcfce7; --text-amber-800: #92400e; --bg-amber-100: #fef3c7; --text-red-700: #b91c1c; --bg-red-100: #fee2e2; --text-blue-700: #1d4ed8; --bg-blue-tint: #eff6ff; --text-orange-700: #c2410c; --shadow: 0 1px 2px rgba(17,24,39,.06), 0 4px 14px rgba(17,24,39,.06); --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280; --text-green-700: #86efac; --bg-green-100: #14532d; --text-amber-800: #fcd34d; --bg-amber-100: #4a3005; --text-red-700: #fca5a5; --bg-red-100: #5a1d1d; --text-blue-700: #93c5fd; --bg-blue-tint: #1e2a44; --text-orange-700: #fdba74; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 34ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b { color: var(--text-strong); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button, nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; text-decoration: none; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .pass2 { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--text-blue-700); background: var(--bg-blue-tint); border-radius: 10px; max-width: 104ch; }
+  .pass2 .cap { color: var(--text-blue-700); margin-bottom: 4px; }
+  .pass2 p { margin: 4px 0; color: var(--text-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 560px; max-width: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 14px 16px; overflow-x: auto; font-size: 13.5px; }
+  .frame.now { border-style: dashed; background: var(--bg-subtle); }
+  .k { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin: 10px 0 4px; }
+  .k:first-child { margin-top: 0; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; vertical-align: middle; }
+  .chip.ok { color: var(--text-green-700); background: var(--bg-green-100); border-color: var(--text-green-700); }
+  .chip.warn { color: var(--text-amber-800); background: var(--bg-amber-100); border-color: var(--text-amber-800); }
+  .chip.stop { color: var(--text-red-700); background: var(--bg-red-100); border-color: var(--text-red-700); }
+  .chip.info { color: var(--text-blue-700); background: var(--bg-blue-tint); border-color: var(--text-blue-700); }
+  .chip.dim { color: var(--text-muted); background: var(--bg-muted); border-color: var(--border); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 4px 10px; white-space: nowrap; }
+  .btn.primary { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .muted { color: var(--text-muted); }
+  .note { font-size: 12.5px; color: var(--text-700); }
+  .steps { display: grid; gap: 4px; }
+  .steps .s { display: grid; grid-template-columns: 18px 150px 90px 1fr 60px; gap: 8px; align-items: baseline; padding: 4px 0; border-bottom: 1px solid var(--border); }
+  .steps .s .l { font-weight: 700; font-size: 11.5px; letter-spacing: .04em; text-transform: uppercase; }
+  .steps .s .d { font-weight: 700; color: var(--text-strong); }
+  .steps .s .w { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); text-align: right; }
+  .prose { margin: 8px 0; color: var(--text-base); }
+  .notebox { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 6px 0; display: grid; grid-template-columns: 44px 1fr auto; gap: 10px; align-items: start; background: var(--surface); }
+  .notebox .tag { font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding-top: 3px; }
+  /* the rail */
+  .railwrap { display: grid; grid-template-columns: 112px 1fr; gap: 0 10px; margin: 18px 0 6px; }
+  .railwrap .gut { display: grid; grid-template-rows: 32px 32px 32px 28px; align-items: center; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); text-align: right; }
+  .railwrap .gut span:first-child { color: #2563eb; }
+  .rail { position: relative; margin: 0; height: 124px; }
+  .rail .months { position: absolute; left: 0; right: 0; top: 0; height: 30px; }
+  .rail .months span { position: absolute; top: 8px; font-size: 10.5px; color: var(--text-faint); border-left: 1px solid var(--border); padding-left: 4px; height: 116px; }
+  .rail .axis { position: absolute; left: 0; right: 0; top: 46px; height: 2px; background: var(--border-strong); }
+  .rail .band { position: absolute; top: 38px; height: 18px; border-radius: 4px; }
+  .rail .band .bl.out { left: auto; right: -6px; transform: translateX(100%); }
+  .rail .band.open { background: var(--bg-amber-100); border: 1px solid var(--text-amber-800); }
+  .rail .band.gone { background: repeating-linear-gradient(135deg, var(--bg-200) 0 4px, transparent 4px 8px); border: 1px dashed var(--border-strong); }
+  .rail .band.later { background: transparent; border: 1px dashed var(--border-strong); }
+  .rail .band .bl { position: absolute; left: 6px; top: 0; font-size: 10.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-amber-800); white-space: nowrap; line-height: 16px; }
+  .rail .band.gone .bl, .rail .band.later .bl { color: var(--text-muted); }
+  .rail .tick { position: absolute; top: 40px; width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--text-strong); background: var(--surface); transform: translateX(-50%); }
+  .rail .tick.done { background: var(--text-strong); }
+  .rail .tick.gone { border-color: var(--border-strong); background: var(--bg-200); }
+  .rail .tick.due { border-color: var(--text-amber-800); background: var(--bg-amber-100); }
+  .rail .tick.later { border-style: dashed; border-color: var(--border-strong); }
+  .rail .lab { position: absolute; transform: translateX(-50%); text-align: center; font-size: 11.5px; line-height: 1.25; white-space: nowrap; background: var(--surface); padding: 0 4px; border-radius: 4px; }
+  .rail .lab.up { top: 8px; }
+  .rail .lab.left { transform: translateX(-100%); text-align: right; }
+  .rail .lab.right { transform: none; text-align: left; }
+  .rail .lab.down { top: 100px; }
+  .rail .lab b { display: block; font-size: 12px; }
+  .rail .lab .m { color: var(--text-muted); font-size: 11px; }
+  .rail .lab.due b { color: var(--text-amber-800); }
+  .rail .lab.gone b, .rail .lab.gone .m { color: var(--text-faint); text-decoration: line-through; }
+  .rail .today { position: absolute; top: 30px; bottom: 0; width: 2px; background: #2563eb; transform: translateX(-50%); }
+  .rail .today span { position: absolute; top: -2px; left: 6px; font-size: 10.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #2563eb; white-space: nowrap; }
+  .next { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; padding: 8px 10px; border: 1px solid var(--text-amber-800); background: var(--bg-amber-100); border-radius: 8px; }
+  .next b { color: var(--text-amber-800); }
+  .lane { display: grid; grid-template-columns: 1fr auto; gap: 10px; align-items: center; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .lane:last-child { border-bottom: 0; }
+  /* money bar */
+  .bar { display: flex; height: 34px; border-radius: 6px; overflow: hidden; border: 1px solid var(--border-strong); margin: 6px 0 2px; }
+  .seg { display: flex; align-items: center; justify-content: center; font-size: 11.5px; font-weight: 700; color: var(--text-strong); border-right: 1px solid var(--surface); position: relative; white-space: nowrap; overflow: hidden; }
+  .seg.ret { background: #bfdbfe; }
+  .seg.trip { background: #93c5fd; }
+  .seg.mat { background: #60a5fa; color: #fff; }
+  .seg.lost { background: repeating-linear-gradient(135deg, var(--bg-200) 0 5px, var(--bg-muted) 5px 10px); color: var(--text-700); }
+  .seg.firm { background: repeating-linear-gradient(135deg, #fecaca 0 5px, #fee2e2 5px 10px); color: var(--text-red-700); }
+  .seg.fee { background: #fca5a5; color: var(--text-red-700); }
+  .seg.keep { background: #bbf7d0; color: var(--text-green-700); }
+  .marks { position: relative; height: 66px; margin-top: 2px; }
+  .mark { position: absolute; top: 0; transform: translateX(-50%); font-size: 11px; line-height: 1.2; text-align: center; white-space: nowrap; }
+  .mark.row2 { top: 22px; }
+  .mark.row2::before { height: 32px; margin-top: -22px; }
+  .bar.thin { height: 22px; font-size: 11px; }
+  .bar.thin .seg { font-size: 11px; }
+  .seg.open { background: #3b82f6; color: #fff; }
+  .barcap { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); margin-top: 8px; }
+  .barcap b { color: var(--text-strong); }
+  .mark::before { content: ""; display: block; width: 2px; height: 10px; margin: 0 auto 2px; background: var(--text-strong); }
+  .mark.offer::before { background: #2563eb; }
+  .mark.offer b { color: var(--text-blue-700); }
+  .mark.floor::before { background: var(--text-amber-800); }
+  .mark.floor b { color: var(--text-amber-800); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-700); margin-top: 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--border-strong); }
+  .qcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 10px; }
+  .qcard { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); }
+  .qcard .q { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+  .qcard .a { font-size: 19px; font-weight: 800; color: var(--text-strong); margin: 2px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .qcard .why { font-size: 12.5px; color: var(--text-700); }
+  .qcard.wide { grid-column: 1 / -1; }
+  /* evidence */
+  .filters { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; align-items: center; }
+  .grp { margin-top: 10px; }
+  .grp .gh { display: flex; gap: 8px; align-items: baseline; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); padding: 4px 0; border-bottom: 1px solid var(--border-strong); }
+  .grp .gh .n { color: var(--text-strong); }
+  .doc { display: grid; grid-template-columns: 118px 56px minmax(0, 1fr) 24px; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .doc > * { min-width: 0; }
+  .frame.ev { overflow-x: hidden; }
+  .doc .day { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .doc .t { font-weight: 600; color: var(--text-strong); }
+  .doc .sh { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc .more { color: var(--text-faint); text-align: right; }
+  .flat .fr { padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .flat .fr .t { font-weight: 600; color: var(--text-strong); }
+  .flat .fr .meta { font-size: 11.5px; color: var(--text-muted); }
+  .flat .fr .sent { font-size: 12px; color: var(--text-700); margin-top: 2px; }
+  /* timeline */
+  .counts { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 8px; }
+  .strip { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; align-items: end; height: 54px; margin: 8px 0 2px; }
+  .strip .day { display: grid; gap: 2px; align-content: end; justify-items: center; height: 100%; position: relative; border-radius: 3px; }
+  .strip .day.today { background: var(--bg-blue-tint); outline: 1px solid #2563eb; }
+  .strip .day.weekend { background: var(--bg-subtle); }
+  .strip .dot { width: 7px; height: 7px; border-radius: 50%; }
+  .strip .dot.said { background: #a855f7; }
+  .strip .dot.did { background: #2563eb; }
+  .strip .dot.paper { background: var(--text-muted); }
+  .strip .dot.plan { background: var(--surface); border: 2px solid var(--text-strong); width: 8px; height: 8px; }
+  .strip .dot.late { background: var(--surface); border: 2px solid var(--text-red-700); width: 8px; height: 8px; }
+  .strip .dot.dead { width: 8px; height: 8px; border-radius: 0; transform: rotate(45deg); background: var(--bg-amber-100); border: 1.5px solid var(--text-amber-800); }
+  .strip .dot.done { background: var(--text-strong); }
+  .striplab { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; font-size: 10px; color: var(--text-muted); text-align: center; }
+  .ent { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .ent .d { font-weight: 700; color: var(--text-strong); font-size: 12.5px; }
+  .ent .d small { display: block; font-weight: 500; color: var(--text-muted); }
+  .ent .h { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ent .h .t { font-weight: 600; color: var(--text-strong); }
+  .ent .body { font-size: 12.5px; color: var(--text-700); margin-top: 2px; }
+  .ent .acts { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .ent .acts .btn { font-size: 11.5px; padding: 2px 8px; }
+  .ent.late { border-left: 3px solid var(--text-red-700); padding-left: 8px; margin-left: -11px; }
+  @media (max-width: 640px) { .doc { grid-template-columns: 1fr; gap: 2px; } .doc .more { display: none; } .steps .s { grid-template-columns: 18px 1fr; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Legal desk · a mock-up, not the app · 2026-10-29</p>
+  <h1>Show it, don't say it: four sections of the Legal desk drawn as shapes</h1>
+  <p>The desk's four questions, the account cards and the Timeline's line already <b>show</b>. Four sections still <b>tell</b>: the lien clock's next step and the deadline notes are sentences; the money is a number with a caveat; Evidence is a flat wall of 39 rows; the Timeline repeats each paper's <i>sent to…</i> sentence under its title. Each section below draws today's words beside the proposed shape, then a second-pass box says what the first pass got wrong and what changed.</p>
+  <div class="controls">
+    <span class="lbl">Theme</span>
+    <button type="button" aria-pressed="true" data-theme-pick="light">Light</button>
+    <button type="button" aria-pressed="false" data-theme-pick="dark">Dark</button>
+  </div>
+  <nav class="jump"><a href="#rail">1 · The lien rail</a><a href="#money">2 · The money bar</a><a href="#evidence">3 · Evidence, grouped</a><a href="#timeline">4 · The Timeline strip</a></nav>
+</header>
+
+<!-- ============================================================ 1 -->
+<h2 id="rail"><span class="num">1</span> The lien rail</h2>
+<p class="lede">The Paper tab's <i>Where each job stands</i> and the gap note about the notice say the same thing in three places. One rail says it once: time runs left to right, the windows are bands, the deadlines are ticks, today is a line, and the next press sits under it.</p>
+<div class="row">
+  <div class="col" style="flex-basis:100%">
+    <div class="cap">Today · the Paper tab's step list, the two prose blocks and the gap note, side by side</div>
+    <div class="frame now" style="display:grid;grid-template-columns:1fr 1fr;gap:18px">
+      <div>
+        <div class="k">Where each job stands</div>
+        <div class="note"><b>742</b> · commercial · subcontractor under Northline Builders · last approved clock day 2026-08-11 · <b>$3,120.50 open</b> · contract ended Oct 21 · retainage held $1,750</div>
+        <div class="k">Next on the path</div>
+        <p class="prose">Draft the Aug notice — 18 days.</p>
+        <div class="k">Waiting on</div>
+        <p class="prose">us — the notice to be drafted and mailed</p>
+        <div class="steps">
+          <div class="s"><span>✓</span><span class="l">Last work</span><span class="d">Aug 2026</span><span class="muted">clock hours</span><span class="w"></span></div>
+          <div class="s"><span>✗</span><span class="l">§ 53.056 · Jul</span><span class="d">Oct 15</span><span class="muted">window closed</span><span class="w"></span></div>
+          <div class="s"><span>!</span><span class="l">§ 53.056 · Aug</span><span class="d">Nov 16</span><span class="muted">open since Sep 1 · 18 days</span><span class="w">ours</span></div>
+          <div class="s"><span>!</span><span class="l">§ 53.057 retainage</span><span class="d">Nov 20</span><span class="muted">open since Oct 21 · 22 days · contract ended Oct 21</span><span class="w">ours</span></div>
+          <div class="s"><span></span><span class="l">§ 53.052 affidavit</span><span class="d">Dec 15</span><span class="muted">opens when the notice is mailed · 47 days</span><span class="w">ours</span></div>
+          <div class="s"><span></span><span class="l">§ 53.055 serve</span><span class="d">+5 days</span><span class="muted">after filing</span><span class="w">ours</span></div>
+          <div class="s"><span></span><span class="l">§ 53.158 suit</span><span class="d">Dec 15, 2027</span><span class="muted">or a release when paid</span><span class="w">counsel</span></div>
+        </div>
+      </div>
+      <div>
+        <div class="k">Before this goes to an attorney · 0 to fix · 2 to know about</div>
+        <div class="notebox"><span class="tag">note</span><span><b>Lien window open on 742 — § 53.056 notice due 2026-11-16 (18 days)</b> — File the notice before you refer; a lien outranks a referral and the firm will ask why it lapsed.</span><span class="btn">Liens on the job…</span></div>
+        <div class="notebox"><span class="tag">note</span><span><b>No final demand letter sent</b> — Most firms send their own, but one already on record with a tracking number shortens the first call.</span><span class="btn">Liens on the job…</span></div>
+        <p class="note muted" style="margin-top:14px">The desk's own timeline, from each job's last approved clock day (else its last work date, else its creation month, as each job's line says), its filings and the property kind; the monthly notice applies when a GC pays (Click is the subcontractor), the affidavit to both.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col" style="flex-basis:100%">
+    <div class="cap opt">Mock-up · one rail per job, three lanes, the next press under it</div>
+    <div class="frame">
+      <div class="k" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">742 · Quick Lube, Cedar Park <span class="chip dim">subcontractor under Northline</span> <span class="chip dim">commercial</span> <span class="chip">$3,120.50 open</span> <span class="chip">retainage $1,750 held</span></div>
+      <div class="railwrap">
+        <div class="gut"><span>&nbsp;</span><span>§ 53.056 notices</span><span>§ 53.057 retainage</span><span>§ 53.052 affidavit</span></div>
+        <div class="rail" id="rail1" data-start="2026-08-01" data-end="2026-12-24">
+          <div class="months"><span data-on="2026-08-01">Aug</span><span data-on="2026-09-01">Sep</span><span data-on="2026-10-01">Oct</span><span data-on="2026-11-01">Nov</span><span data-on="2026-12-01">Dec</span></div>
+          <div class="axis"></div>
+          <div class="band gone" data-from="2026-08-16" data-to="2026-10-15"><span class="bl">July's work · closed Oct 15</span></div>
+          <div class="band open" data-from="2026-09-01" data-to="2026-11-16"><span class="bl">August's work · notice window</span></div>
+          <div class="band open" data-from="2026-10-21" data-to="2026-11-20" style="top:72px;height:16px"><span class="bl">30 days from the end</span></div>
+          <div class="band later" data-from="2026-11-16" data-to="2026-12-15" style="top:102px;height:16px"><span class="bl">waits on the notice</span></div>
+          <div class="tick done" data-on="2026-08-11"></div><div class="lab up left" data-on="2026-08-11"><b>Last work · Aug 11</b><span class="m">clock hours</span></div>
+          <div class="tick due" data-on="2026-11-16"></div><div class="lab up due right" data-on="2026-11-16"><b>Aug notice · Nov 16</b><span class="m">18 days · ours</span></div>
+          <div class="tick due" data-on="2026-11-20" style="top:74px;width:12px;height:12px"></div><div class="lab right" data-on="2026-11-20" style="top:68px;margin-left:12px"><b>Nov 20</b><span class="m">22 days</span></div>
+          <div class="tick later" data-on="2026-12-15" style="top:104px;width:12px;height:12px"></div><div class="lab right" data-on="2026-12-15" style="top:98px;margin-left:12px;white-space:normal;width:60px;line-height:1.1"><b>Dec 15</b><span class="m">47 days</span></div>
+          <div class="today" data-on="2026-10-29"><span>Today · Oct 29</span></div>
+        </div>
+      </div>
+      <div class="next"><b>Next, ours:</b> draft and mail the August § 53.056 notice <span class="chip warn">Nov 16 · 18 days</span> <span class="muted">to CP Retail Holdings, the tenant and Northline, certified</span> <span class="btn primary" style="margin-left:auto">Draft the notice…</span> <span class="btn">Record it…</span></div>
+      <div class="lane"><span class="note">Then the retainage notice by <b>Nov 20</b>, the affidavit by <b>Dec 15</b> if unpaid, served within 5 days · ours</span><span class="chip dim">on the rail</span></div>
+      <div class="lane"><span class="note">Suit by <b>Dec 15, 2027</b>, or a release when paid · counsel's</span><span class="chip dim">off the rail</span></div>
+    </div>
+    <div class="cap opt" style="margin-top:10px">And the gap note shrinks to its shape</div>
+    <div class="frame" style="max-width:720px">
+      <div class="k">Before this goes to an attorney · 0 to fix · 2 to know about</div>
+      <div class="lane"><span><span class="chip warn">§ 53.056 notice · Nov 16 · 18 days</span> <span class="note">on 742 · file it before you refer</span></span><span class="btn">Draft the notice…</span></div>
+      <div class="lane"><span><span class="chip dim">no demand letter on record</span> <span class="note">most firms send their own; one with a tracking number shortens the first call</span></span><span class="btn">Liens on the job…</span></div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The rail says in one glance what the list and the two paragraphs say in a hundred words: one window is gone, one closes in 18 days, the retainage window sits inside it, the affidavit waits on the notice.</p>
+  <p class="rule">Nothing is told twice: the deadline leaves the gap list as a sentence and comes back as a chip that opens the same press.</p>
+  <p class="lose">A rail needs width. On a phone it falls back to the step list, which already works there; the rail is a desk shape.</p>
+</div>
+<div class="pass2"><div class="cap">Second pass · what the first render showed</div><p>The first rail was 560 px wide with every label on one line: <i>Jul notice · closed</i> ran under the Last work tick, the retainage and affidavit labels printed on top of each other, and <i>Today</i> sat on the Aug notice label. A rail needs the desk's width and lanes, so pass two gives it the whole row, a gutter that names the three lanes (notices, retainage, affidavit), month rules, and one label per tick placed left or right of it instead of centred. The suit and the serve step come off the rail into two lines under the next press; neither has a decision on it. The gap note is unchanged from pass one.</p></div>
+
+<!-- ============================================================ 2 -->
+<h2 id="money"><span class="num">2</span> The money bar</h2>
+<p class="lede"><i>How much?</i> is a figure with a caveat under it, and on a job where the retainage is the unpaid part of a bill the figure is wrong. A bar cannot double-count: the retainage is drawn inside the bill it sits on, lost profit is the hatched stretch past the open bills, and every offer is a mark on the same scale.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">Today</div>
+    <div class="frame now">
+      <div class="qcards">
+        <div class="qcard"><div class="q">How much?</div><div class="a">$4,870.50 <span class="chip dim">the claim</span></div><div class="why">Open bills $3,120.50 inside it, plus retainage held $1,750.00. The oldest bill is 112 days old.</div></div>
+        <div class="qcard"><div class="q">What's left for us?</div><div class="a">$2,913.24 <span class="chip warn">marginal</span></div><div class="why">The firm takes 33%, or $1,607.26 of the claim, and filing costs $350.00.</div></div>
+      </div>
+      <div class="k" style="margin-top:12px">Invoices and payments</div>
+      <div class="note">Billed $18,870.50 · Paid $15,750.00 · Balance $3,120.50</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap opt">Mock-up · the two money cards become one bar</div>
+    <div class="frame">
+      <div class="qcards">
+        <div class="qcard wide">
+          <div class="q">How much?</div>
+          <div class="a">$3,120.50 open <span class="chip dim">$13,520.50 claimed</span> <span class="chip info">Northline offers the $3,120.50</span></div>
+          <div class="barcap"><span><b>On the bills</b> · three open, oldest 112 days</span><span>$3,120.50</span></div>
+          <div class="bar" id="bar1">
+            <div class="seg ret" style="flex:1750" title="Retainage: the unpaid 10% of Pay Application 1 (Jul 9)">retainage $1,750 <span class="muted" style="font-weight:500;margin-left:4px">· the unpaid part of the Jul 9 bill</span></div>
+            <div class="seg trip" style="flex:350" title="Trip charge, Aug 6">trip $350</div>
+            <div class="seg mat" style="flex:1020.5" title="Materials, Oct 27">materials $1,020.50</div>
+          </div>
+          <div class="barcap" style="margin-top:12px"><span><b>The claim</b> · the bills plus lost profit on the work taken away</span><span>$13,520.50</span></div>
+          <div class="bar thin">
+            <div class="seg open" style="flex:3120.5" title="The open bills">bills $3,120.50</div>
+            <div class="seg lost" style="flex:6100" title="Lost profit, top-out">lost profit · top-out $6,100</div>
+            <div class="seg lost" style="flex:4300" title="Lost profit, trim">trim $4,300</div>
+          </div>
+          <div class="marks" id="marks1" data-total="13520.5">
+            <div class="mark offer" data-at="3120.5"><b>their offer · Oct 28</b><br>$3,120.50, the bills</div>
+            <div class="mark floor row2" data-at="6000"><b>our floor</b><br>$6,000</div>
+            <div class="mark" data-at="7900"><b>our offer · to Nov 12</b><br>$7,900</div>
+          </div>
+          <div class="why">The top bar is what the paper says they owe; the retainage lives there once, inside the bill it sits on. The lower bar is the claim, with every offer on its scale: theirs stops at the bills, ours and our floor sit in the lost profit.</div>
+        </div>
+        <div class="qcard wide">
+          <div class="q">What's left for us?</div>
+          <div class="a">$1,740.73 <span class="chip warn">on the bills alone</span> <span class="chip dim">$8,708.73 if the claim holds</span></div>
+          <div class="bar" style="height:26px">
+            <div class="seg keep" style="flex:1740.73">we keep $1,740.73</div>
+            <div class="seg firm" style="flex:1029.77">firm 33% · $1,029.77</div>
+            <div class="seg fee" style="flex:350">filing $350</div>
+          </div>
+          <div class="why" style="margin-top:6px">Read on the open bills, the firm's cut and the filing cost leave $1,740.73 — less than their Oct 28 offer pays in full. On the whole claim, $8,708.73.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The double count cannot be drawn: the retainage has one place, inside the bill it sits on. The bar's left edge is what a court could award on the bills alone; its full length is the claim.</p>
+  <p class="gain">The offers sit on the scale — theirs at the open-bills edge, our floor and our offer in the hatched part — so the negotiation reads without a sentence.</p>
+  <p class="rule"><i>What's left for us?</i> reads twice, on the bills and on the claim, because the firm's cut on a disputed claim is a different decision from its cut on an undisputed balance.</p>
+</div>
+<div class="pass2"><div class="cap">Second pass · what the first render showed</div><p>One bar on the claim's scale made the three open bills unreadable slivers — $350 was eleven pixels — because lost profit is three-quarters of the length, and the three offer labels printed over each other. Pass two draws two bars on two scales: the bills alone at full width, where every part reads, and the claim as a thinner bar under it with the bills as one solid block; the offers mark the claim bar on two rows. <i>What's left for us?</i> keeps its own keep / firm / filing bar and still reads on the bills and on the claim, because the firm's cut on a disputed claim is a different decision from its cut on an undisputed balance.</p></div>
+
+<!-- ============================================================ 3 -->
+<h2 id="evidence"><span class="num">3</span> Evidence, grouped</h2>
+<p class="lede">Thirty-nine rows in the order they were added, each with a kind, a size, a day and a sentence, is a wall. The firm wants the subcontract, the notice and the reply; the office wants what went out this week. Group the papers by whose they are, put the state in a chip, the paper's day in a column, and the sentence on one line.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">Today</div>
+    <div class="frame now flat">
+      <div class="k">Documents for the firm · 39 shown · the firm reads them under Evidence on its portal</div>
+      <div class="fr"><div class="t">Northline Notice of Termination, Oct 21, 2026</div><div class="meta">PDF · 176 KB · added Oct 21</div><div class="sent">Northline's convenience termination, effective on delivery; its account of the August calls, its permit statement, and its position that we are owed nothing.</div></div>
+      <div class="fr"><div class="t">Our proposal, May 8, 2026</div><div class="meta">PDF · 136 KB · added Oct 21</div><div class="sent">The $42,100 scope in three phases, the exclusions, and the change-order and delay terms Northline accepted.</div></div>
+      <div class="fr"><div class="t">Pecan Supply invoice 52417, July 10, 2026</div><div class="meta">PDF · 39 KB · added Oct 21</div><div class="sent">$540.10. PEX, press fittings, insulation and 2-inch DWV bought for the job; the water-side items are in Exhibit A as left on site.</div></div>
+      <div class="fr"><div class="t">Response to Notice of Termination and Materials Demand, with Exhibit A (sent Oct 27, 2026)</div><div class="meta">PDF · 3.6 MB · added Oct 27</div><div class="sent">The signed ten-page letter as sent: our answer to the Oct 21 notice, the five demands, the preservation notice and Exhibit A, the schedule of our materials at the site, $1,020.50 with tax.<br>Sent Oct 27 by certified mail to Northline's Amarillo office by Certified Mail 9400 1100 0000 2210 4471 09 (est. Oct 31), and J. and M. Dalton by email at 6:05 PM, cc billing@…</div></div>
+      <div class="fr"><div class="t">Northline's reply to the Oct 27 letter, J. Dalton, Oct 28, 2026</div><div class="meta">Text · 3 KB · added Oct 29</div><div class="sent">J. Dalton's account: the Aug 20 and 21 work did not happen, our RMP said he was ill … willing to pay the $3,120.50 but not the lost profit …<br>Received Oct 28.</div></div>
+      <div class="meta" style="padding:8px 0">… 34 more rows, in the order they were added</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap opt">Mock-up · by whose paper it is, state as a chip, day as a column</div>
+    <div class="frame ev">
+      <div class="filters"><span class="chip" style="background:var(--text-strong);color:var(--bg-page);border-color:var(--text-strong)">All · 39</span><span class="chip">Sent · 6</span><span class="chip">Received · 2</span><span class="chip">Drafts · 0</span><span class="chip">Held from counsel · 0</span><span class="chip dim" style="margin-left:auto">Added this week · 17</span></div>
+      <div class="grp"><div class="gh">Northline's <span class="n">3</span></div>
+        <div class="doc"><span class="chip info">received Oct 28</span><span class="day">Oct 28</span><span><div class="t">Reply to the Oct 27 letter, J. Dalton</div><div class="sh">Offers the $3,120.50, refuses the lost profit, asks for the texts behind our account</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip info">received Oct 21</span><span class="day">Oct 21</span><span><div class="t">Notice of Termination</div><div class="sh">Convenience termination, effective on delivery; says we are owed nothing</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">Sep 10</span><span><div class="t">Unconditional waiver on progress payment</div><div class="sh">Their form for the $15,750 rough-in payment; excepts retention and other items furnished</div></span><span class="more">⋯</span></div>
+      </div>
+      <div class="grp"><div class="gh">Ours, sent <span class="n">6</span></div>
+        <div class="doc"><span class="chip ok">sent · certified</span><span class="day">Oct 27</span><span><div class="t">Response to the Notice of Termination, with Exhibit A</div><div class="sh">Signed ten-page letter: five demands, the preservation notice, $1,020.50 of materials at the site</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip ok">sent · email</span><span class="day">Oct 27</span><span><div class="t">Final Invoice No. 742-2611261112, with the warranty letter</div><div class="sh">Pay Application 2, $2,770.50 due Nov 26: the retainage, the materials and tax</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip ok">sent · email</span><span class="day">Oct 27</span><span><div class="t">Settlement offer, Rule 408, with Exhibit 1 unsigned</div><div class="sh">$7,900 to settle every claim, open to Nov 12; the conditional final waiver as Exhibit 1</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip ok">sent · email</span><span class="day">Oct 26</span><span><div class="t">Proof of the supplier payoff</div><div class="sh">The receipt for the job account paid in full, $6,120.40</div></span><span class="more">⋯</span></div>
+      </div>
+      <div class="grp"><div class="gh">The City's <span class="n">5</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">Oct 26</span><span><div class="t">Inspection history for project 2026-0417</div><div class="sh">Every inspection: the rough passed July 14; top-out and wall cover-up requested in the same minute Sept 18</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">Sep 19</span><span><div class="t">Inspection report, Plumbing Top-Out passed</div><div class="sh">Passed under our permit at 10:40 AM; does not say who called it in</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">Jul 14</span><span><div class="t">Inspection report, Plumbing Rough passed</div><div class="sh">The City's date for the rough-in pass, four weeks before the GC's scheduled window</div></span><span class="more">⋯</span></div>
+      </div>
+      <div class="grp"><div class="gh">The supplier's <span class="n">7</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">Oct 21</span><span><div class="t">Payment receipt, job account 22041</div><div class="sh">$6,120.40 paid, covering all seven invoices; the amount the notice demanded</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">Aug 5</span><span><div class="t">Invoice 52488</div><div class="sh">$1,290.75. The top-out PEX and fittings left on site (Exhibit A)</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="day" style="grid-column:1/-1;padding-left:4px">… 5 more invoices</span></div>
+      </div>
+      <div class="grp"><div class="gh">Our record <span class="n">18</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">Oct 27</span><span><div class="t">Northline's JobTread schedule, captured</div><div class="sh">Their own dates: top-out Sept 8–12, trim Sept 15–26 — not due when they replaced us on Aug 26</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">Oct 21</span><span><div class="t">Affidavit of D. Alvarez, signed and notarized</div><div class="sh">Sworn account: declined the out-of-scope utilities only, never said we could not finish</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="chip dim">final</span><span class="day">May 28</span><span><div class="t">Subcontract agreement, PandaDoc copy</div><div class="sh">Signed by us only; the termination clause is silent on payment; notice to proceed required</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="day" style="grid-column:1/-1;padding-left:4px">… 15 more</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The firm's first three asks — the contract, the notice, the reply — are the first three things on the screen, under headings that say whose paper they are.</p>
+  <p class="rule">The state is a chip, the day is a column and the sentence is one line with ⋯ for the rest; the <i>sent to…</i> record opens on ⋯ and is never repeated on the row.</p>
+  <p class="lose">Grouping needs a <i>whose</i> on each document. Today's rows have a title, a <i>shows</i> line and a state; the group comes from a new one-word field (theirs · ours · the City's · the supplier's · the record), picked when the paper is added, guessed from the title for the rows already there.</p>
+</div>
+<div class="pass2"><div class="cap">Second pass · what the first render showed</div><p>The grouping read at once — the reply, the notice and the waiver as the first three rows under <i>Northline's</i> — but every <i>shows</i> line ran off the right edge of the frame and the ⋯ door went with it, because the grid's middle column would not shrink. Pass two lets that column shrink so the line ends in an ellipsis inside the frame and the door stays in view. Grouping by state was tried and dropped in the sketch stage: <i>final</i> is thirty papers from five parties and answers nothing; whose paper it is matches how a lawyer reads a file, and the state still shows as the chip.</p></div>
+
+<!-- ============================================================ 4 -->
+<h2 id="timeline"><span class="num">4</span> The Timeline strip</h2>
+<p class="lede">The Timeline already shows: one line, today in the middle, deadlines as diamonds. Two things still tell. The header counts are a sentence, and each paper's <i>sent to…</i> record is printed in full under its title, so Oct 27 reads the same three sentences on the Evidence tab and again here.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">Today</div>
+    <div class="frame now">
+      <div class="k">What happened, and what is planned next</div>
+      <p class="prose">7 planned · 2 overdue · 10 done · 3 deadlines from the lien clock</p>
+      <div class="ent"><div class="d">Tue, Oct 27</div><div><div class="h"><span class="t">Response to Notice of Termination and Materials Demand, with Exhibit A (sent Oct 27, 2026)</span><span class="chip dim">document</span><span class="muted">R. Douglas</span></div><div class="body">The signed ten-page letter as sent: our answer to the Oct 21 notice, the five demands, the preservation notice and Exhibit A, the schedule of our materials at the site, $1,020.50 with tax, confirmed by the RMP.</div><div class="body">Sent Oct 27 by certified mail to Northline's Amarillo office by Certified Mail 9400 1100 0000 2210 4471 09 (est. Oct 31), and J. and M. Dalton by email at 6:05 PM, cc billing@northlinegc.com. Added to Evidence.</div><div class="acts"><span class="btn">Open Evidence ↗</span></div></div></div>
+      <div class="ent"><div class="d">Tue, Oct 27</div><div><div class="h"><span class="t">Final Invoice No. 742-2611261112 with the warranty letter and supplier list (sent Oct 27, 2026)</span><span class="chip dim">document</span><span class="muted">R. Douglas</span></div><div class="body">Final invoice, Pay Application 2, $2,770.50 due Nov 26, 2026: the $1,750 retainage, the materials and tax; the signed one-year warranty letter; the supplier list.</div><div class="body">Sent Oct 27 by email to J. and M. Dalton with billing@northlinegc.com, in the 6:05 PM email, and in the certified packet to Northline's office. Added to Evidence.</div><div class="acts"><span class="btn">Open Evidence ↗</span></div></div></div>
+      <div class="ent"><div class="d">Wed, Oct 28</div><div><div class="h"><span class="t">Email Northline the three enclosures the Oct 27 email did not carry</span><span class="chip dim">planned step</span><span class="muted">R. Douglas · dev MCP</span></div><div class="body">Reply all in the Oct 27 letter thread, with the note that the first Stripe invoice was voided and #742-2611261112 stands. Pay Application 1 and the Sept 8 payment record come out of the app first. Draft in the case folder.</div><div class="body"><b>Overdue by 1 day. Not marked done.</b></div><div class="acts"><span class="btn">Edit</span><span class="btn">Mark done</span><span class="btn">Hold from counsel…</span><span class="btn">Undo…</span></div></div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap opt">Mock-up · counts as a strip of days; a paper's record as chips</div>
+    <div class="frame">
+      <div class="counts"><span class="chip">planned 7</span><span class="chip stop">overdue 2</span><span class="chip ok">done 10</span><span class="chip warn">◆ deadlines 3</span><span class="muted" style="margin-left:auto;font-size:12px">Oct 20 → Dec 15 · each column a day · press a day to jump</span></div>
+      <div class="strip" id="strip1"></div>
+      <div class="striplab" id="striplab1"></div>
+      <div style="height:8px"></div>
+      <div class="ent"><div class="d">Tue, Oct 27<small>the send</small></div><div><div class="h"><span class="t">Response to the Notice of Termination, with Exhibit A</span><span class="chip ok">sent · certified + email</span><span class="chip dim">paper</span></div><div class="body">Signed ten-page letter: five demands, the preservation notice, $1,020.50 of materials at the site.</div><div class="acts"><span class="btn">Open ↗</span><span class="btn">Who got it ⋯</span></div></div></div>
+      <div class="ent"><div class="d"></div><div><div class="h"><span class="t">Final Invoice No. 742-2611261112, with the warranty letter</span><span class="chip ok">sent · email</span><span class="chip dim">paper</span></div><div class="body">Pay Application 2, $2,770.50 due Nov 26.</div></div></div>
+      <div class="ent"><div class="d"></div><div><div class="h"><span class="t">Settlement offer, Rule 408</span><span class="chip ok">sent · email</span><span class="chip dim">paper</span></div><div class="body">$7,900, open to Nov 12.</div></div></div>
+      <div class="ent"><div class="d">Wed, Oct 28<small>yesterday</small></div><div><div class="h"><span class="t">Northline replied: offers the $3,120.50, refuses the lost profit</span><span class="chip">did</span><span class="chip ok">done</span></div><div class="body">J. Dalton's email of 9:40 AM, six days before the Nov 3 date the letter set. The reply is in Evidence.</div></div></div>
+      <div class="ent late"><div class="d"></div><div><div class="h"><span class="t">Email Northline the three enclosures the Oct 27 email did not carry</span><span class="chip stop">overdue 1 day</span><span class="chip dim">planned</span></div><div class="body">Reply all in the letter thread; Pay Application 1 and the Sept 8 payment record come out of the app first.</div><div class="acts"><span class="btn primary">Mark done</span><span class="btn">Edit</span><span class="btn">⋯</span></div></div></div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The strip is the whole case in a hand's width: the Oct 21 burst, the Oct 27 send, yesterday's reply, two red rings for the overdue steps, three diamonds ahead. The counts stay, as chips with numbers, which is what they are.</p>
+  <p class="rule">A paper on the Timeline is one line and two chips; its <i>sent to…</i> record is a press away, never printed under the title. Papers sent on one day share the day cell.</p>
+  <p class="lose">A strip of days needs a bounded window. Here it is the first entry to the last deadline on the rail; the Dec 2027 suit stays off it, as on the rail.</p>
+</div>
+<div class="pass2"><div class="cap">Second pass · what the first render showed</div><p>The strip read as intended — the Oct 21 burst, the send, yesterday's reply, two red rings, three diamonds — and the day labels at one-a-week are enough. What did not read: an overdue row looked like any other row until the eye reached its chip. Pass two gives an overdue row a red rule down its left edge, the same mark the Pipeline uses for a late bill, so the two overdue steps are the first thing the eye lands on under the strip. The strip's day cells cap at four dots so a busy day stays a column, not a smear.</p></div>
+
+</div>
+<script>
+  document.querySelectorAll('[data-theme-pick]').forEach(b => b.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-theme', b.dataset.themePick);
+    document.querySelectorAll('[data-theme-pick]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+  (function () {
+    const rail = document.getElementById('rail1');
+    const s = Date.parse(rail.dataset.start), e = Date.parse(rail.dataset.end);
+    const pct = iso => ((Date.parse(iso) - s) / (e - s) * 100).toFixed(2) + '%';
+    rail.querySelectorAll('.band').forEach(b => { b.style.left = pct(b.dataset.from); b.style.width = ((Date.parse(b.dataset.to) - Date.parse(b.dataset.from)) / (e - s) * 100).toFixed(2) + '%'; });
+    rail.querySelectorAll('[data-on]').forEach(t => { t.style.left = pct(t.dataset.on); });
+  })();
+  (function () {
+    const m = document.getElementById('marks1'); const total = Number(m.dataset.total);
+    m.querySelectorAll('.mark').forEach(k => { k.style.left = (Number(k.dataset.at) / total * 100).toFixed(2) + '%'; });
+  })();
+  (function () {
+    const strip = document.getElementById('strip1'), lab = document.getElementById('striplab1');
+    const start = new Date(2026, 9, 20), end = new Date(2026, 11, 15), today = new Date(2026, 9, 29);
+    const dots = {
+      '2026-10-21': ['paper','paper','did','done'], '2026-10-22': ['done','paper'], '2026-10-24': ['paper','paper','paper'], '2026-10-26': ['done','paper'],
+      '2026-10-27': ['paper','paper','paper','done'], '2026-10-28': ['done','late','late','paper'], '2026-10-29': ['paper'],
+      '2026-11-12': ['plan'], '2026-11-13': ['plan'], '2026-11-16': ['dead'], '2026-11-20': ['dead','plan'], '2026-11-26': ['plan'], '2026-12-15': ['dead','plan'],
+    };
+    const ymd = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    for (let d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+      const cell = document.createElement('div'); cell.className = 'day' + (ymd(d) === ymd(today) ? ' today' : '') + ([0,6].includes(d.getDay()) ? ' weekend' : '');
+      (dots[ymd(d)] || []).slice(0, 4).forEach(k => { const o = document.createElement('span'); o.className = 'dot ' + k; cell.appendChild(o); });
+      cell.title = d.toDateString(); strip.appendChild(cell);
+      const l = document.createElement('span'); l.textContent = (d.getDate() === 1 || d.getDate() % 7 === 1) ? d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : ''; l.style.visibility = l.textContent ? 'visible' : 'hidden'; lab.appendChild(l);
+    }
+  })();
+</script>
+</body>
+</html>

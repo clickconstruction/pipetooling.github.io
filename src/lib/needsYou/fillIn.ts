@@ -11,7 +11,7 @@ import type { UserRole } from '../../hooks/useAuth'
  * trail of what was saved with Undo, and a done count. One shell, a kernel per kind. This
  * file is the shell's kernel: the kinds, the order, the words. Pure.
  */
-export type FillInKind = 'lost-bid' | 'vehicle' | 'job-account' | 'contract' | 'contract-missing' | 'purchase' | 'move-window'
+export type FillInKind = 'lost-bid' | 'vehicle' | 'job-account' | 'contract' | 'contract-missing' | 'purchase' | 'move-window' | 'work-order'
 
 /** The line each kind's rows sit behind: the deck orders kinds by that line's rank, and the line's button opens the deck on that kind. */
 export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
@@ -24,10 +24,12 @@ export const FILL_IN_KIND_ITEM: Record<FillInKind, NeedsYouItem['key']> = {
   purchase: 'tally-self',
   // The supply-house move window (v2.6086, punch list #178, D's PR 3).
   'move-window': 'job-account-window',
+  // The unpriced sub work orders (v2.6094, punch list #178, D's PR 5).
+  'work-order': 'work-orders-unpriced',
 }
 
 /** The kinds the deck handles today; a kind is added here the PR its fields ship. */
-export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase', 'move-window']
+export const FILL_IN_KINDS_BUILT: readonly FillInKind[] = ['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase', 'move-window', 'work-order']
 
 export function fillInKindOfItem(key: NeedsYouItem['key']): FillInKind | null {
   for (const kind of FILL_IN_KINDS_BUILT) if (FILL_IN_KIND_ITEM[kind] === key) return kind
@@ -42,6 +44,7 @@ export const FILL_IN_KIND_WORDS: Record<FillInKind, { kicker: string; one: strin
   'contract-missing': { kicker: 'Contracts · live job, no contract on file', one: 'job', many: 'jobs', saved: (n) => (n === 1 ? '1 job has its contract answer.' : `${n} jobs have their contract answer.`) },
   purchase: { kicker: 'Your card purchases · no job yet', one: 'purchase', many: 'purchases', saved: (n) => (n === 1 ? '1 purchase is on a job.' : `${n} purchases are on jobs.`) },
   'move-window': { kicker: 'Job accounts · the move window', one: 'charge', many: 'charges', saved: (n) => (n === 1 ? '1 charge is settled in the window.' : `${n} charges are settled in the window.`) },
+  'work-order': { kicker: 'Work orders · drafted, no price yet', one: 'work order', many: 'work orders', saved: (n) => (n === 1 ? '1 work order has its price.' : `${n} work orders have their price.`) },
 }
 
 /** What every row carries, whatever its kind; the kind's own fields ride beside these. */
