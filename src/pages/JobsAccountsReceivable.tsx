@@ -68,7 +68,11 @@ export default function JobsAccountsReceivable() {
   }
 
   return (
-    <div style={{ padding: '1rem', maxWidth: 1200, margin: '0 auto' }}>
+    // v2.6131: a flex item in Layout's column with auto side margins is sized by its content, so the page drew
+    // narrower than the screen when its lines were short and moved as each load landed (v2.6117, Job Parts
+    // Tally). Pin it to its container like `.pageWrap` (v2.1003); border-box is global, so the max width
+    // is already the outer width and stays.
+    <div style={{ padding: '1rem', maxWidth: 1200, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <div
         style={{
           marginBottom: '1rem',
