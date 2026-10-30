@@ -50,7 +50,11 @@ describe('LegalPortal — the sample matter', () => {
     const fetchSpy = await openSample()
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(document.body.textContent).toMatch(/14,400/)
-    expect(document.body.textContent).toMatch(/Hays County · owner of record: Alvarado Holdings LLC/)
+    // v2.6175 (punch list #219): the parties strip under the matter's name — the owner of record and the venue county as cells, the venue cell the door to Who covers what.
+    const parties = document.querySelector('[data-legal-parties]')!
+    expect(parties.querySelector('[data-legal-party="owner"]')!.textContent).toContain('Alvarado Holdings LLC')
+    expect(parties.querySelector('[data-legal-party="venue"]')!.textContent).toContain('Hays County')
+    expect(parties.querySelector('[data-legal-party="contract"]')!.getAttribute('data-legal-party-door')).toBe('none')
     expect(document.body.textContent).not.toMatch(/NaN|undefined/)
   })
 

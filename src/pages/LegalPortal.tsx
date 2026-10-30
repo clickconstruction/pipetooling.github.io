@@ -74,6 +74,8 @@ export default function LegalPortal() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // Narrative first when the office wrote one (v2.4812); the view falls back to Account when it did not.
   const [tab, setTab] = useState<FirmTab>('narrative')
+  /** The matter's Venue cell (punch list #219, v2.6175): Who covers what opened on the county. */
+  const [coverageOpenOn, setCoverageOpenOn] = useState<{ county: string | null; nonce: number } | null>(null)
   // Start here (v2.4820) opens first on a browser's first visit; after that the portal opens on Matters.
   const [panel, setPanel] = useState<'start' | 'matters' | 'grid' | 'coverage' | 'notifications'>(() => (readStartSeen() ? 'matters' : 'start'))
   useEffect(() => {
@@ -353,7 +355,7 @@ export default function LegalPortal() {
         ) : null}
         {payload && panel === 'notifications' ? <div data-legal-tour="notifications"><NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} actFailure={actFailure} /></div> : null}
         {payload && panel === 'grid' && payload.lienBook ? <div data-legal-tour="grid"><LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} initialShow={sample ? 'all' : 'due'} /></div> : null}
-        {payload && panel === 'coverage' && payload.coverage ? <div data-legal-tour="coverage"><LegalPortalCoverage coverage={payload.coverage} firmId={payload.firm.id} /></div> : null}
+        {payload && panel === 'coverage' && payload.coverage ? <div data-legal-tour="coverage"><LegalPortalCoverage coverage={payload.coverage} firmId={payload.firm.id} openOn={coverageOpenOn} /></div> : null}
         {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? (
@@ -393,6 +395,7 @@ export default function LegalPortal() {
                 matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, settlementFloor: selected.settlementFloor, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
                 tab={tab}
                 onTab={setTab}
+                onOpenCoverage={payload.coverage ? (county) => { setCoverageOpenOn({ county, nonce: Date.now() }); setPanel('coverage') } : undefined}
                 onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
                 timelineActs={<FirmPlanForm matter={selected} act={act} busy={busy} />}
                 acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} actFailure={actFailure} todayYmd={payload.preparedOn} /></>}
