@@ -111,8 +111,18 @@ export function memberAddressKeys(members: Members): Set<string> {
 }
 
 /**
+ * A two-letter state after the last comma reads in capitals: *Neeses, Sc* becomes *Neeses, SC*.
+ * The real site's jobs were typed with *Sc* while its bids were normalized to *SC*, and the head
+ * printed whichever spelling had more rows. A trailing zip code may follow the state.
+ */
+export function stateUppercased(spelling: string): string {
+  return spelling.replace(/,(\s*)([A-Za-z]{2})(?=\.?(?:\s+\d{5}(?:-\d{4})?)?\s*$)/, (_m, gap: string, st: string) => `,${gap}${st.toUpperCase()}`)
+}
+
+/**
  * The words the head prints for the shared address: the most common raw spelling among the
- * members of the most common key, so the head reads *Gun Dog Trail, Neeses, SC* and not a key.
+ * members of the most common key, so the head reads *Gun Dog Trail, Neeses, SC* and not a key;
+ * the state in capitals whatever the rows typed (`stateUppercased`).
  */
 export function sharedAddressWords(members: Members): string | null {
   const tally = new Map<string, Map<string, number>>()
@@ -145,7 +155,7 @@ export function sharedAddressWords(members: Members): string | null {
       best = spelled
     }
   }
-  return best || null
+  return best ? stateUppercased(best) : null
 }
 
 /**
