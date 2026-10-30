@@ -9,6 +9,9 @@ import { act, fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../test/renderSmokeMocks'
 import { createAppHealthStore, DEV_RUNBOOK_AFTER_MS, SLOW_AFTER_MS, UNREACHABLE_AFTER_MS } from '../lib/appHealth'
 import { createKeptReadOnScreenStore, formatKeptReadTime } from '../lib/keptRead'
+import { markRefused, markSent, markTryFailed, markSending, newPress } from '../lib/offline/outbox'
+import { createOutboxState } from '../lib/offline/outboxState'
+import { formatDenverTimeOnly } from '../utils/dateUtils'
 import { AppHealthStrip } from './AppHealthStrip'
 
 let mockRole: string | null = 'assistant'
@@ -100,5 +103,91 @@ describe('AppHealthStrip render smoke', () => {
     } finally {
       vi.useRealTimers()
     }
+  })
+})
+
+/** The queue's face on the same strip (punch list #163 PR 2). The words are the kernel's (`src/lib/offline/outbox.test.ts`). */
+describe('AppHealthStrip render smoke · the outbox bar', () => {
+  const quietIo = { readAll: async () => [], write: async () => {}, del: async () => {}, clear: async () => {} }
+  const clockIn = (pressedAt: number) =>
+    newPress({ id: 'p-in', seq: 1, kind: 'clock-in', userId: 'u1', pressedAt, payload: { jobLedgerId: 'j1', bidId: null, notes: '', travel: null }, door: '/dashboard' })
+  const note = (pressedAt: number) => newPress({ id: 'p-note', seq: 2, kind: 'job-note', userId: 'u1', pressedAt, payload: { jobId: 'j1', body: 'x' } })
+
+  it('a press waiting reads amber with its countdown and Try now, and a tap on the words opens the list', async () => {
+    const now = Date.now()
+    const box = createOutboxState(quietIo)
+    box.put(markTryFailed(markSending(clockIn(now - 60_000), now - 1_000), now - 1_000))
+    const tryNow = vi.fn()
+    renderWithProviders(<AppHealthStrip store={createAppHealthStore()} outboxStore={box} onTryNow={tryNow} />)
+    const strip = await screen.findByRole('status')
+    expect(strip.getAttribute('data-tone')).toBe('amber')
+    expect(strip.textContent).toContain(`Clock in from ${formatDenverTimeOnly(now - 60_000)}`)
+    expect(strip.textContent).toContain('waiting to send')
+    expect(strip.textContent).toContain('trying again in')
+    fireEvent.click(screen.getByRole('button', { name: 'Try now' }))
+    expect(tryNow).toHaveBeenCalledTimes(1)
+    fireEvent.click(screen.getByRole('button', { name: 'Open the list of presses waiting to send' }))
+    expect(await screen.findByText('Waiting to send')).toBeTruthy()
+  })
+
+  it('a press that landed reads green until Got it, then the strip is gone', async () => {
+    const now = Date.now()
+    const box = createOutboxState(quietIo)
+    box.put(markSent(clockIn(now - 60_000), { session_id: 's1' }, now))
+    const { container } = renderWithProviders(<AppHealthStrip store={createAppHealthStore()} outboxStore={box} />)
+    const strip = await screen.findByRole('status')
+    expect(strip.getAttribute('data-tone')).toBe('green')
+    expect(strip.textContent).toContain('sent ✓')
+    fireEvent.click(screen.getByRole('button', { name: 'Got it' }))
+    expect(box.presses()[0]?.seen).toBe(true)
+    expect(container.querySelector('[role="status"]')).toBeNull()
+  })
+
+  it('a press the office refused reads red with its reason and Fix, while a landed one counts beside it', async () => {
+    const now = Date.now()
+    const box = createOutboxState(quietIo)
+    box.put(markRefused(clockIn(now - 60_000), { message: 'The office closed that session at 8:05 AM.', code: 'P0001' }))
+    box.put(markSent(note(now - 30_000), {}, now))
+    renderWithProviders(<AppHealthStrip store={createAppHealthStore()} outboxStore={box} />)
+    const strip = await screen.findByRole('status')
+    expect(strip.getAttribute('data-tone')).toBe('red')
+    expect(strip.textContent).toContain('could not be sent.')
+    expect(strip.textContent).toContain('The office closed that session at 8:05 AM.')
+    expect(strip.textContent).toContain('1 sent ✓')
+    expect(screen.getByRole('button', { name: 'Fix' })).toBeTruthy()
+  })
+
+  it('while the app is slow the health words lead, then Nothing you pressed is lost and the count with its door', async () => {
+    const now = Date.now()
+    const store = createAppHealthStore()
+    store.requestStarted(now - SLOW_AFTER_MS - 500)
+    const box = createOutboxState(quietIo)
+    box.put(clockIn(now - 60_000))
+    box.put(note(now - 30_000))
+    renderWithProviders(<AppHealthStrip store={store} outboxStore={box} />)
+    const strip = await screen.findByRole('status')
+    expect(strip.getAttribute('data-tone')).toBe('amber')
+    expect(strip.textContent).toBe('The app is slow right now.Nothing you pressed is lost.2 waiting to send ›')
+  })
+
+  it('with no signal the strip reads No signal and the count, with no countdown and no Nothing lost line', async () => {
+    const now = Date.now()
+    const box = createOutboxState(quietIo)
+    box.put(clockIn(now - 60_000))
+    renderWithProviders(<AppHealthStrip store={createAppHealthStore({ online: false })} outboxStore={box} />)
+    const strip = await screen.findByRole('status')
+    expect(strip.getAttribute('data-tone')).toBe('grey')
+    expect(strip.textContent).toBe('No signal.1 waiting to send ›')
+  })
+
+  it('a press that needs a person is named beside the slow line, in the health tone', async () => {
+    const now = Date.now()
+    const store = createAppHealthStore()
+    store.requestStarted(now - SLOW_AFTER_MS - 500)
+    const box = createOutboxState(quietIo)
+    box.put(markRefused(clockIn(now - 60_000), { message: 'No.', code: null }))
+    renderWithProviders(<AppHealthStrip store={store} outboxStore={box} />)
+    const strip = await screen.findByRole('status')
+    expect(strip.textContent).toBe('The app is slow right now.1 press needs you ›')
   })
 })
