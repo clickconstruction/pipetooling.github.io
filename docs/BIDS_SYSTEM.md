@@ -218,7 +218,7 @@ Central hub for viewing and managing all bids. Provides high-level overview of b
 
 Column order (left to right; leading **expand** chevron opens inline **Notes** — see above):
 1. **Project Folder** - Folder icon linking to drive folder (or dash if none)
-2. **Job Plans** - Document icon linking to plans (or dash if none)
+2. **Job Plans** - Document icon linking to plans (or dash if none); since v2.6169 a bid with two or more plan sets opens the **Plans on b…** picker instead (see [Plan sets on a bid](#plan-sets-on-a-bid-v26168--v26169))
 3. **GC/Builder** - Customer name (clickable for details); under it the development's house line when the bid has one (v2.6019), and the opened row carries a *Development* fact beside GC/Builder
 4. **Bid #** - Auto-generated for new bids; displayed with **trade-specific prefix** + number (e.g. **`BP456`**, **`B456`** when **`service_types.ledger_bid_prefix`** is blank — **v2.432**) on the board and in Clock In search. On the **Bid Board** table, **`BidBoardBidNumberMark`** (**[`Bids.tsx`](../src/pages/Bids.tsx)**) scales the **entire** prefix at **`0.7em`** and the numeric **`bid_number`** at inherited size so multi-letter prefixes (e.g. **BP**) stay uniform (**`RECENT_FEATURES`** **v2.498**). **When set, prefix+`{n}` is clickable on the Bid Board** and opens **Bid preview** (same as the Preview column). Editable only by dev, master, assistant (read-only for estimator, primary)
 5. **Project Name** - Bid identifier
@@ -251,7 +251,7 @@ Column order (left to right; leading **expand** chevron opens inline **Notes** �
   2. **People row**: Estimator | Account Man | Service Type*
   3. **Status & dates** section: Bid Due Date (+due time) | Bid Date Sent (+attestation microcopy) | Last Contact; **Win/Loss segmented control** (Open · Won · Lost · Started/Complete) with Loss reason / Start Date revealing inline, then the **Job** block (v2.2859: Open the job / "J#### opened from this bid") on saved bids
   4. **Location** section: Project Address (full width, map link), Distance to Office with **↻ Auto** fill (v2.1855 — routed Google miles via `driving-distance`, straight-line ≈ estimate fallback, anchored to Settings → Office address; auto-fills on address blur when blank, never overwrites a typed value). *Plan Pages removed in v2.1855 (column + old data kept).*
-  5. **Files & links** section: Project Folder, then Job Plans | CountTooling, then Bid Submission | Design Drawing Plan Date (paste buttons kept)
+  5. **Files & links** section: Project Folder, then Job Plans | CountTooling, then Bid Submission | Design Drawing Plan Date (paste buttons kept); the Plans section above it carries the **Plan sets** list on a saved bid (v2.6169)
   6. **People** section: GC/Builder (customer) with read-only contact chips, Project Contact | Submitted to
   7. **ITB & submission links** section (v2.1851): repeating URL rows for the bid's ITB portal pages (`bids.itb_links` jsonb) — live portal label (PlanHub, BuildingConnected, …), paste, × remove, + Add ITB link
   8. **Money** section (Bid Value | Agreed Value | Maximum Profit), **Notes**, then the **sticky footer** (Delete bid… quiet-left, Archive from board; on the Edit tab the autosave status line + **Open Counts** — no Save button since v2.3130; on New Bid the required hint, **Create and open counts**, **Create bid**)
@@ -1354,6 +1354,16 @@ Every GC packet can have one durable, signable link (`bid_proposal_rooms` · `bi
 - `onFirstLinkSent` fires on the first *app* send only — never on Get the link — so the sent-stamp keeps meaning "the app emailed it". The room chip's "not sent" (`bidRoomState.ts`) means not sent *from the app*.
 - Telemetry: minting a room records `ui_nav_clicks` control `bid_room_published`, target `#sent_by_app:1|0` (`bid_proposal_room_events.event_type` is CHECK-constrained to the five GC-side kinds, so the mint lives in the nav-click ledger).
 - Public side: [`BidRoom.tsx`](../src/pages/BidRoom.tsx) + edge functions `get-bid-proposal-room` / `send-bid-room-link` / `sign-bid-room` (`docs/EDGE_FUNCTIONS.md`). Help: *send a bid for signature*. The room's *Signed by …* line names the alternates the GC took from the signed event's `add_ons_taken`, the key `sign-bid-room` saves, so it reads the same on every reopen as at the signing (v2.5111).
+
+### Plan sets on a bid (v2.6168 · v2.6169)
+
+The owner's 2026-10-30 ask: *multiple sets of plans … all with their own name, memo, date, and link*, and a way to find them from the Bid Board. Until then a bid held one link, `bids.plans_link` — the Drive folder or file the robots read (`plan-fetch`), the Plans panel searches and the board's plans icon opened — so an addendum or a permit set went over the issued set or into the notes.
+
+- **Table `bid_plan_sets`** (migration `20261030200000`, v2.6168): one row per set — `name`, `memo`, `plan_date` (a civil date), `link` (a Drive link, the shape `plans_link` takes), and what the probe last read behind it: `file_name` (one PDF's name or *N PDFs*), `file_size` (bytes in all), `file_count`, `checked_at`, `check_note`. RLS by `can_access_bid_for_pricing`; estimator and up write. `bids.plans_link` is untouched and keeps meaning **the set the robot reads**; a bid whose link is on none of its rows reads as one set, the link on the bid itself (`planSetsForBid` in [`bidPlanSets.ts`](../src/lib/bids/bidPlanSets.ts)), so nothing was backfilled.
+- **`plan-fetch` `probe_url`** answers `size` and `count` beside `name` (deploy with v2.6169), so a set's row carries *3 PDFs · 42 MB*.
+- **Edit Bid → Plans → Plan sets** ([`BidPlanSetsField`](../src/components/bids/BidPlanSetsField.tsx), saved bids only, like the CountTooling projects list): **+ Add a set of plans** (name, date, memo, link with Paste) → **Save the set** inserts the row and probes the link at once; each row shows name · date · memo · the file words, with **Open ↗**, **Check the link** (probe again), **Robot reads this set** (copies the link into the form's Plans link; the matching row wears *Robot reads this*) and **×** → Remove / Keep.
+- **Bid Board**: the plans icon in the Links cluster opens a bid's one set directly (its title names the set) and, with two or more, the **Plans on b482 · project** picker ([`BidPlanSetsModal`](../src/components/bids/BidPlanSetsModal.tsx)): each set's name, date, memo, file name and size, **Open ↗**, and **Edit bid** at the foot; the icon carries the count. The sets arrive with one chunked read per page ([`useBidPlanSetsByBid`](../src/hooks/useBidPlanSetsByBid.ts), as the CountTooling projects do), on the phone cards too.
+- Guide: *keep more than one set of plans on a bid*. GLOSSARY → Plan sets (Bids).
 
 ### Bid basis — marked-up plans from CountTooling (v2.3219)
 

@@ -24,6 +24,8 @@ import { RobotRing } from './RobotRing'
 import { ringProgressFor, type RobotProgress } from '../../lib/bids/robotProgress'
 import { robotLeftToYou } from '../../lib/bids/robotLeftToYou'
 import { RobotIconKeyModal } from './RobotIconKeyModal'
+import { BidPlanSetsModal } from './BidPlanSetsModal'
+import { planSetsForBid, planSetsIconCount, planSetsIconTitle, planSetsPress, type BidPlanSetRow } from '../../lib/bids/bidPlanSets'
 import { fetchBidBoardNotesUnreadCounts } from '../../lib/bidBoardNotesUnreadCounts'
 import { upsertBidNotesReadWatermark } from '../../lib/userBidNotesReadState'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -108,6 +110,8 @@ type BidsBidBoardTabProps = {
   budgetChips?: ReadonlyMap<string, BidBoardBudgetChip>
   /** v2.5520: the CountTooling projects behind each bid, first import first — one chip per link beyond the bid's own. */
   countSourcesByBid?: ReadonlyMap<string, ReadonlyArray<{ id: string; link: string; project_name: string | null }>>
+  /** v2.6169: the plan sets on each bid — the plans icon opens one set directly and offers two or more in a picker; a bid with no row reads as one set, its own plans link. */
+  planSetsByBid?: ReadonlyMap<string, ReadonlyArray<BidPlanSetRow>>
   /** Link a value-matched job to its bid and snapshot the estimate (`snapshot_job_budget_from_bid`); resolves true when it landed. */
   onLinkJobToBid?: (args: { jobId: string; bidId: string; jobLabel: string; bidLabel: string }) => Promise<boolean>
   /** PR 1b: the page's one `list_bid_job_account_strip` read, when the page owns it — the board then skips its own. */
@@ -244,6 +248,7 @@ export function BidsBidBoardTab({
   jobsByBidId,
   budgetChips,
   countSourcesByBid,
+  planSetsByBid,
   onLinkJobToBid,
   jobAccountStrips: pageJobAccountStrips,
   onOpenJobAccountsLens,
@@ -332,6 +337,8 @@ export function BidsBidBoardTab({
   // v2.3200: the robot-icon key — beside the Bid # header on the table, in the pinned
   // pill row on phones (cards have no header row to hang it on).
   const [robotKeyOpen, setRobotKeyOpen] = useState(false)
+  // v2.6169: the bid whose plan sets the picker lists (two or more sets; one opens itself).
+  const [planSetsModalBid, setPlanSetsModalBid] = useState<BidWithBuilder | null>(null)
   const robotKeyButton = (
     <button
       type="button"
@@ -862,9 +869,13 @@ export function BidsBidBoardTab({
 
   /** Only the artifact links that exist, as an icon cluster ('—' when none). */
   function renderBidBoardLinksCluster(bid: BidWithBuilder) {
-    const links: Array<{ href: string; title: string; d: string }> = []
+    const links: Array<{ href: string; title: string; d: string; /** v2.6169: the plans icon with two or more sets opens the picker instead of a link; `count` rides on the icon. */ pick?: () => void; count?: string | null }> = []
     if (bid.drive_link) links.push({ href: bid.drive_link, title: 'Project folder', d: BID_BOARD_ICON_PATHS.folder })
-    if (bid.plans_link) links.push({ href: bid.plans_link, title: 'Job plans', d: BID_BOARD_ICON_PATHS.plans })
+    // v2.6169: the bid's plan sets — one set is the link it always was (its title names the set); two or more open the picker.
+    const planSets = planSetsForBid(planSetsByBid?.get(bid.id) ?? [], bid)
+    const planPress = planSetsPress(planSets)
+    if (planPress === 'open') links.push({ href: planSets[0]!.link, title: planSetsIconTitle(planSets), d: BID_BOARD_ICON_PATHS.plans })
+    else if (planPress === 'pick') links.push({ href: `plans:${bid.id}`, title: planSetsIconTitle(planSets), d: BID_BOARD_ICON_PATHS.plans, pick: () => setPlanSetsModalBid(bid), count: planSetsIconCount(planSets) })
     if (bid.count_tooling_plans_link) links.push({ href: bid.count_tooling_plans_link, title: 'CountTooling plans', d: BID_BOARD_ICON_PATHS.countTool })
     // v2.5520: a second counter's project rides beside the bid's own link, named by its project.
     for (const src of countSourcesByBid?.get(bid.id) ?? []) {
@@ -934,9 +945,23 @@ export function BidsBidBoardTab({
             {bidBoardJobLinkLabel(job.hcpNumber)}
           </Link>
         ) : null}
-        {links.map((l) => (
+        {links.map((l) =>
+          l.pick ? (
+            <button
+              key={`${l.title}:${l.href}`}
+              type="button"
+              title={l.title}
+              aria-label={l.title}
+              data-testid="bid-board-plan-sets-press"
+              onClick={(e) => { e.stopPropagation(); l.pick?.() }}
+              style={{ color: 'var(--text-blue-500)', display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.1rem', background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit' }}
+            >
+              <BidBoardIcon d={l.d} />
+              {l.count ? <span style={{ fontSize: '0.66rem', fontWeight: 700, lineHeight: 1, color: 'var(--text-blue-700)' }}>{l.count}</span> : null}
+            </button>
+          ) : (
           <a
-            key={l.href}
+            key={`${l.title}:${l.href}`}
             href={l.href}
             target="_blank"
             rel="noopener noreferrer"
@@ -947,7 +972,8 @@ export function BidsBidBoardTab({
           >
             <BidBoardIcon d={l.d} />
           </a>
-        ))}
+          ),
+        )}
       </span>
     )
   }
@@ -1561,7 +1587,7 @@ export function BidsBidBoardTab({
     const lcParts = bidBoardLastContactParts(bid.last_contact)
     const estRaw = bid.estimator
     const estNorm = estRaw == null ? null : Array.isArray(estRaw) ? estRaw[0] ?? null : estRaw
-    const hasLinks = Boolean(bid.drive_link || bid.plans_link || bid.count_tooling_plans_link || bid.bid_submission_link)
+    const hasLinks = Boolean(bid.drive_link || bid.plans_link || bid.count_tooling_plans_link || bid.bid_submission_link || (planSetsByBid?.get(bid.id)?.length ?? 0) > 0)
     return (
       <div
         key={bid.id}
@@ -2209,6 +2235,14 @@ export function BidsBidBoardTab({
       {customerReviewOpen ? <BidBoardCustomerReviewModal onClose={() => setCustomerReviewOpen(false)} /> : null}
       {replyBookOpen ? <BidReplyBookModal book={replyBook} onClose={() => setReplyBookOpen(false)} /> : null}
       {robotKeyOpen ? <RobotIconKeyModal onClose={() => setRobotKeyOpen(false)} /> : null}
+      {planSetsModalBid ? (
+        <BidPlanSetsModal
+          bid={planSetsModalBid}
+          items={planSetsForBid(planSetsByBid?.get(planSetsModalBid.id) ?? [], planSetsModalBid)}
+          onClose={() => setPlanSetsModalBid(null)}
+          onEditBid={() => onEditBid(planSetsModalBid)}
+        />
+      ) : null}
       {dueLegendOpen ? (
         <div
           role="dialog"

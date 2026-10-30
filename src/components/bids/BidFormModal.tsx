@@ -22,6 +22,7 @@ import { BidCountSourcesField } from './BidCountSourcesField'
 import { computeBidDistanceToOffice } from '../../lib/bidDistanceToOffice'
 import { RobotReadinessLine } from './RobotReadinessLine'
 import { BidPlansFolderSteps } from './BidPlansFolderSteps'
+import { BidPlanSetsField } from './BidPlanSetsField'
 import { BidPriceRequestsTable } from './BidPriceRequestsTable'
 import { getBidServiceTypeTag } from '../../utils/unifiedJobBidSearch'
 import { BidWonJobActions } from './BidWonJobActions'
@@ -834,6 +835,9 @@ export function BidFormModal(props: BidFormModalProps) {
                     <PasteButton onPaste={setPlansLink} label="Paste a link instead" />
                   </div>
                 </div>
+                {/* v2.6169: every set of plans on the bid, each with its name, date, memo and link; Robot reads this
+                    set copies a set's link into the Plans link above. Saved bids only: a set needs a bid id. */}
+                {editingBid?.id ? <BidPlanSetsField bidId={editingBid.id} plansLink={plansLink} onRobotSetChange={setPlansLink} /> : null}
                 {/* v2.3142: will the robots shadow this bid? Green with the facts, amber
                     with the fix, or neutral when opted out. Same probe the dispatcher uses. */}
                 <RobotReadinessLine
