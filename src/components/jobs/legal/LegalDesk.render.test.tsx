@@ -76,6 +76,10 @@ describe('LegalDesk', () => {
     expect(document.querySelector('[data-legal-gap-answer-sheet]')).toBeNull()
     expect(screen.getByText('Can we sue?')).toBeTruthy()
     expect(screen.getByText("What's left for us?")).toBeTruthy()
+    // v2.6105 (punch list #214, PR 2): the money as bars under the questions — one segment per open bill (two jobs, a bill each), the keep · firm · filing bar, no claim bar while nothing is offered or added.
+    expect(document.querySelectorAll('[data-legal-money-bar="bills"] [data-legal-money-segment="bill"]').length).toBe(2)
+    expect(document.querySelector('[data-legal-money-bar="left_claim"] [data-legal-money-segment="keep"]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-money-bar="claim"]')).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'Timeline' }))
     expect(screen.getByText(/theft of service/)).toBeTruthy()
     expect(document.querySelector('[data-legal-timeline-lane="said"]')).toBeTruthy()

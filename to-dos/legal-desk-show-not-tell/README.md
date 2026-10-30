@@ -2,7 +2,7 @@
 name: "Legal desk: show it, don't say it — the lien calendar, the money bars, Evidence by whose paper, the Timeline strip"
 number: 214
 group: ready
-status: picked 2026-10-29 · the owner asked for all four, in order · PR 1 is claude/214-legal-desk-show (v2.6104)
+status: picked 2026-10-29 · the owner asked for all four, in order · PR 1 claude/214-legal-desk-show (v2.6104, #6483) · PR 2 claude/214-pr2-money-bars (v2.6105), stacked on #6478
 mockup: to-dos/legal-desk-show-not-tell/mockup.html
 summary: >
   The Legal desk's four questions, its account cards and its Timeline line show; four sections still
@@ -93,6 +93,6 @@ notice and the waiver first. For PR 4, the overdue steps as red rings on the str
 
 ## Where it stands
 
-PR 1 is on `claude/214-legal-desk-show` as v2.6104. The mock-up found, while being checked against the app, that the
+PR 1 is #6483 (v2.6104). PR 2 is v2.6105 on `claude/214-pr2-money-bars`, cut on PR 1 with #213's PR 2 (#6478) merged in, since the bars read its per-job retainage split; it lands behind both in the queue. The claim bar draws nothing on an account with no offer logged and no floor, by design: the bills bar already says it all there. The mock-up found, while being checked against the app, that the
 calendar already existed behind the strip's switch; PR 1 reuses it rather than drawing the rail again, and its fragment
 says what the mock-up asked for that it does not do (the lane gutter).
