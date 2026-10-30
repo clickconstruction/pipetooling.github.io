@@ -142,6 +142,38 @@ test('no sideways overflow at 320px: /bids?tab=bid-board', async ({ page }) => {
   await expectNoSidewaysOverflow(page, '/bids?tab=bid-board @ 320px')
 })
 
+/**
+ * Job Parts Tally's three tabs share one row at the page's full width on every tab (v2.6117). The page
+ * sat in Layout's column with auto side margins and no width, so its content sized it: a tab whose widest
+ * line was shorter than the screen drew a narrower page, and the row grew and shrank as each tab loaded.
+ * The row is measured as each tab lands and again once it has settled; at 375 the page's inset is 24 px a side.
+ */
+test('Job Parts Tally: the tab row is as wide on every tab', async ({ page }) => {
+  await page.goto('/tally?tab=transactions')
+  await expect(page.locator('main')).toContainText('Job Parts Tally', { timeout: 20000 })
+  const rowWidth = () =>
+    page
+      .getByRole('button', { name: 'Transactions', exact: true })
+      .evaluate((el) => el.parentElement?.getBoundingClientRect().width ?? 0)
+  const widths: number[] = [await rowWidth()]
+  for (const [name, tab] of [
+    ['Materials Estimate', 'materials'],
+    ['On site', 'on-site'],
+  ] as const) {
+    await page.getByRole('button', { name, exact: true }).click()
+    await expect(page).toHaveURL(new RegExp(`tab=${tab}`))
+    widths.push(await rowWidth())
+    await page.waitForTimeout(1500)
+    widths.push(await rowWidth())
+  }
+  const viewport = await page.evaluate(() => document.documentElement.clientWidth)
+  const seen = widths.map((w) => Math.round(w))
+  for (const w of seen) {
+    expect(w, `tab row ${w}px wide in a ${viewport}px viewport (${seen.join(', ')})`).toBeGreaterThanOrEqual(viewport - 48)
+  }
+  expect(new Set(seen).size, `tab row changed width between tabs: ${seen.join(', ')}`).toBe(1)
+})
+
 // The header is global, so two pages are enough to pin it; both already have
 // cold-load coverage above, which keeps the marker waits honest.
 const TABLET_PAGES: SmokePage[] = [
