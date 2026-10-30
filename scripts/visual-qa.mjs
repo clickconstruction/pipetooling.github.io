@@ -132,8 +132,9 @@ const AUDIT = () => {
   const seen = new Set()
   const els = document.querySelectorAll('body *')
   for (const el of els) {
-    // Only elements that directly own visible text.
-    const own = Array.from(el.childNodes).filter((n) => n.nodeType === 3 && n.textContent.trim().length > 1)
+    // Only elements that directly own visible text: two characters or more, or a lone letter or
+    // digit (a count's 0). A lone mark or symbol (×, ▾, ·) is an icon's glyph (the lens's rule).
+    const own = Array.from(el.childNodes).filter((n) => n.nodeType === 3 && (n.textContent.trim().length > 1 || /^[\p{L}\p{N}]$/u.test(n.textContent.trim())))
     if (own.length === 0) continue
     const text = own.map((n) => n.textContent.trim()).join(' ').slice(0, 60)
     const rect = el.getBoundingClientRect()

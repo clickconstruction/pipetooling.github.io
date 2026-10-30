@@ -40,7 +40,8 @@ export function MessagesBadge({ load = loadFollowUpCount }: { load?: () => Promi
       data-messages-badge
       aria-label={`${count} waiting on us`}
       // The top-right corner of the word, as the Inbox dock and the stage bar wear their counts (v2.5762); the link's
-      // text is wrapped in a relative span for it.
+      // text is wrapped in a relative span for it. The count reads --surface on the red: white in light, the dark
+      // surface on dark mode's light red, where white read 2.77:1 (punch list #194, v2.6130).
       style={{
         position: 'absolute',
         top: '-0.55rem',
@@ -51,7 +52,7 @@ export function MessagesBadge({ load = loadFollowUpCount }: { load?: () => Promi
         borderRadius: 999,
         border: '2px solid var(--surface)',
         background: 'var(--text-red-700)',
-        color: 'white',
+        color: 'var(--surface)',
         fontSize: '0.72rem',
         fontWeight: 700,
         lineHeight: '1.25rem',

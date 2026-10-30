@@ -9,6 +9,10 @@ import { PURSUIT_OUTCOME_CHIP_COLORS } from './bids/pursuitOutcomeColors'
 import { OVERHEAD_METHOD_INKS } from './overheadMethodInks'
 import { GUIDE_CAPTION_INK, GUIDE_DEAD_BUTTON, GUIDE_PANEL_GROUND } from './helpGuideIllustrations'
 import { GOOD_THROUGH_PASSED_CHIP_COLORS } from './estimates/estimateGoodThroughChip'
+import { GRADE_COLORS } from '../components/bids/RobotReferenceGradeModal'
+import { BID_STAGE_MARKER_COLOR } from './map/builderBidMapFocus'
+import { JOBS_MAP_SECTION_COLOR, MAP_PAGE_ESTIMATE_COLOR, MAP_PAGE_UNKNOWN_COLOR } from './map/mapPageSections'
+import { PIN_LABEL_DARK_INK, PIN_LABEL_DARK_INK_DRAWN, pinLabelInk } from './map/pinLabelInk'
 import { contrastRatio, over, parseRgb } from './lens/lensAudit'
 import { hexToRgba, parseThemeTokens, type ThemeName } from './lens/lensTokens'
 import { PORTAL_TRADE_COLORS } from './portal/portalPayload'
@@ -50,7 +54,7 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: 'the open Counts, Pricing or Cover Letter tab, an orange button and the pending count (v2.6063)', fg: TEXT_ON_SAFETY_ORANGE, bg: SAFETY_ORANGE },
     { label: 'a closed Counts, Pricing or Cover Letter tab on the page (v2.6063)', fg: SAFETY_ORANGE_TEXT, bg: 'var(--bg-page)' },
     { label: "a form's orange hint on the surface (v2.6063)", fg: SAFETY_ORANGE_TEXT, bg: 'var(--surface)' },
-    { label: 'a picked chip, a picked weekday, a Save or a blue press filled with --text-link (v2.6068)', fg: 'var(--surface)', bg: 'var(--text-link)' },
+    { label: "a picked chip, a picked weekday, a Save or a blue press filled with --text-link (v2.6068), and the Dashboard's calendar count (v2.6130)", fg: 'var(--surface)', bg: 'var(--text-link)' },
     { label: "People → Users' phone row, swipe to More (v2.6068)", fg: '#ffffff', bg: MORE_SWIPE_GREY },
     { label: "the follow-ups count and a follow-up's job number on amber (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#f59e0b' },
     { label: "the Checklist's ✓ You on green (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#22c55e' },
@@ -65,6 +69,8 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "the overhead lens window's heading, method C (v2.6082)", fg: OVERHEAD_METHOD_INKS.C, bg: 'var(--surface)' },
     { label: "a guide's Example caption on its light panel (v2.6085)", fg: GUIDE_CAPTION_INK, bg: GUIDE_PANEL_GROUND },
     { label: "a guide's grey mock button (v2.6085)", fg: GUIDE_DEAD_BUTTON.ink, bg: GUIDE_DEAD_BUTTON.fill },
+    { label: "a robot's X grade: the Bid Board's badge, the Counts tab's chip, the key and the grade window (v2.6130)", fg: '#ffffff', bg: GRADE_COLORS.X },
+    { label: "the top bar's Messages count on its red (v2.6130)", fg: 'var(--surface)', bg: 'var(--text-red-700)' },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {
@@ -84,6 +90,23 @@ describe("a job's activity tags on the surface, in both themes (v2.6078)", () =>
       })
     }
   }
+})
+
+describe("a map pin's count in the ink its fill takes, in both themes (v2.6130)", () => {
+  it('the dark ink the kernel weighs is --text-on-bright-solid as each theme draws it', () => {
+    for (const theme of THEMES) expect(drawn(PIN_LABEL_DARK_INK, theme).toLowerCase()).toBe(PIN_LABEL_DARK_INK_DRAWN)
+  })
+  const fills: Record<string, string> = { ...JOBS_MAP_SECTION_COLOR, ...BID_STAGE_MARKER_COLOR, noSection: MAP_PAGE_UNKNOWN_COLOR }
+  for (const [section, fill] of Object.entries(fills)) {
+    for (const theme of THEMES) {
+      it(`on ${section}'s ${fill}, ${theme}: 4.5:1 or better`, () => {
+        expect(ratio(pinLabelInk(fill), fill, theme)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
+  it("on the estimates' violet: 3:1 or better (the lens's floor; white reads 4.23:1 and the dark ink 4.19:1, so neither reaches 4.5:1)", () => {
+    for (const theme of THEMES) expect(ratio(pinLabelInk(MAP_PAGE_ESTIMATE_COLOR), MAP_PAGE_ESTIMATE_COLOR, theme)).toBeGreaterThanOrEqual(3)
+  })
 })
 
 describe('words on a wash over a fill', () => {
