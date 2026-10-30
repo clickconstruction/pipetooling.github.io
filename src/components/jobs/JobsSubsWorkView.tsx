@@ -21,7 +21,7 @@ import { calendarRowName } from '../../lib/subs/stageCalendar'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { subLaborAssignPickerRows, subLaborJobNumberForStorage } from '../../lib/jobs/subLaborJobPicker'
 import type { JobWithDetails } from '../../types/jobWithDetails'
-import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
+import { cancelCommitmentPatch, type StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import { parseSubWorkOrderSnapshot, sheetWorkOrderLabel } from '../../lib/subWorkOrders/subWorkOrder'
 import { buildWorkOrderDocument, renderWorkOrderDocumentHtml, WORK_ORDER_ISSUER } from '../../lib/subWorkOrders/workOrderDocument'
 import type { WorkOrderRowLike } from '../../lib/subWorkOrders/workOrderCoverage'
@@ -416,7 +416,7 @@ export function JobsSubsWorkView({ jobs, jobsLoading, authUserId, deepLinkWorkOr
     const ok = await confirm({ title: 'Discard this draft?', message: `The draft for ${r.display_name} is removed. Nothing was sent.`, confirmLabel: 'Discard', danger: true })
     if (!ok) return false
     setBusyId(r.id)
-    const { error: err } = await supabase.from('step_commitments').update({ status: 'cancelled' }).eq('id', r.id)
+    const { error: err } = await supabase.from('step_commitments').update(cancelCommitmentPatch(r.amount)).eq('id', r.id)
     setBusyId(null)
     if (err) {
       showToast(`Could not discard: ${formatErrorMessage(err)}`, 'error')
