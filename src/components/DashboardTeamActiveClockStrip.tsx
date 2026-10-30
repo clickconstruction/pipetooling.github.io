@@ -75,6 +75,7 @@ import { JobsWorkedTodayReportIcon } from './icons/JobsWorkedTodayReportIcon'
 import ReportViewModal, { type ReportForView } from './ReportViewModal'
 import { reportForViewFromJobLedgerRow, type ReportForJobLedgerRow } from '../lib/reportForViewFromJobLedgerRow'
 import { useAuth } from '../hooks/useAuth'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 const EMPTY_JOBS_WORKED_TODAY_REPORT_KEYS: ReadonlySet<string> = new Set<string>()
 const EMPTY_JOBS_WORKED_TODAY_REPORT_ID_BY_KEY: ReadonlyMap<string, string> = new Map<string, string>()
@@ -3036,8 +3037,8 @@ export function DashboardTeamActiveClockStrip({
             onClick={() => void performStripSessionReject()}
             style={{
               padding: '0.5rem 1rem',
-              background: rejectModalBusy ? '#9ca3af' : '#dc2626',
-              color: 'white',
+              background: rejectModalBusy ? DEAD_PRESS_FILL : '#dc2626',
+              color: rejectModalBusy ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 4,
               cursor: rejectModalBusy ? 'not-allowed' : 'pointer',

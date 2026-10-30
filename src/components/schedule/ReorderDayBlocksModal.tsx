@@ -5,6 +5,7 @@ import {
   sortBlocksByDayOrder,
 } from '../../lib/reorderDayScheduleBlocks'
 import { dispatchMinutesToHHmm, formatDispatchQuickTimeLabel } from '../../lib/dispatchAddBlockTime'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type ReorderDayBlocksModalBlock = {
   id: string
@@ -196,8 +197,8 @@ export default function ReorderDayBlocksModal({
             disabled={unchanged || saving}
             style={{
               padding: '0.45rem 0.9rem',
-              background: unchanged || saving ? '#9ca3af' : '#3b82f6',
-              color: 'white',
+              background: unchanged || saving ? DEAD_PRESS_FILL : '#3b82f6',
+              color: unchanged || saving ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 6,
               cursor: unchanged || saving ? 'not-allowed' : 'pointer',

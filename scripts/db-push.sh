@@ -36,3 +36,13 @@ npm run gen-types:linked
 # The dev-mcp catalog is generated from database.ts: a types PR without it fails devMcpCatalog.test.ts.
 node scripts/build-dev-mcp-catalog.mjs
 npm run check:migration-drift
+# A deploy that check:calls-ahead held (the client called what only a pending migration
+# created — deploy.yml, v2.6119) runs again now that the push landed; any other failed
+# deploy of main is re-run the same way, which costs a build and nothing else.
+if command -v gh >/dev/null 2>&1; then
+  last=$(gh run list --workflow deploy.yml --branch main --limit 1 --json conclusion --jq '.[0].conclusion' 2>/dev/null || true)
+  if [ "$last" = "failure" ]; then
+    echo "the last deploy of main failed (held by check:calls-ahead, or another cause): re-running it"
+    gh workflow run deploy.yml --ref main || echo "warning: could not re-run the deploy; run: gh workflow run deploy.yml --ref main" >&2
+  fi
+fi

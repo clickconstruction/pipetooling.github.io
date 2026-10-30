@@ -168,8 +168,10 @@ SELECT mem.refused('a file is our copy or left in Gmail, never neither',
   $q$INSERT INTO public.message_attachments (message_id, kind, name) SELECT id, 'file', 'x' FROM line$q$, 'message_attachments_link_or_file');
 SELECT mem.refused('a link is never a paper',
   $q$INSERT INTO public.message_attachments (message_id, kind, name, url, paper) SELECT id, 'link', 'x', 'https://we.tl/t-x', 'coi' FROM line$q$, 'message_attachments_link_or_file');
-SELECT mem.refused('an answer needs a guess',
-  $q$UPDATE public.message_attachments SET paper_answer = 'filed' WHERE name = 'full-set.zip'$q$, 'message_attachments_answer_to_a_guess');
+-- Since 20261030080000 (punch list #179, v2.6141) an answer stands on a guessed paper or on our copy: a file left in
+-- Gmail, with neither, takes none.
+SELECT mem.refused('an answer needs a guess or our copy',
+  $q$UPDATE public.message_attachments SET paper_answer = 'filed' WHERE name = 'full-set.zip'$q$, 'message_attachments_answer_to_an_offer');
 SELECT mem.refused('a kind we do not have',
   $q$INSERT INTO public.message_attachments (message_id, kind, name, url) SELECT id, 'fax', 'x', 'https://we.tl/t-x' FROM line$q$, 'message_attachments_kind_known');
 SELECT mem.refused('a paper we do not guess',
@@ -211,6 +213,13 @@ UPDATE public.message_attachments SET paper_answer = 'not_it' WHERE paper = 'coi
 SELECT mem.same('the office answers the offer, stamped with who',
   (SELECT concat_ws('|', paper_answer, paper_answered_by::text, (paper_answered_at IS NOT NULL)::text) FROM public.message_attachments WHERE paper = 'coi'),
   'not_it|00000000-0000-0000-0000-0000000007d2|true');
+-- A bill on a supply house's thread carries no guess: its Not a bill, or its 'filed' after Save, stands on our copy
+-- (punch list #179, v2.6141). Taken back after, so the steps below read the file as before.
+UPDATE public.message_attachments SET paper_answer = 'not_it' WHERE name = 'Hillside-Boerne-sitework-rev1.pdf';
+SELECT mem.same('the office answers a kept file with no guess, as a bill, stamped with who',
+  (SELECT concat_ws('|', paper_answer, paper_answered_by::text, (paper_answered_at IS NOT NULL)::text) FROM public.message_attachments WHERE name = 'Hillside-Boerne-sitework-rev1.pdf'),
+  'not_it|00000000-0000-0000-0000-0000000007d2|true');
+UPDATE public.message_attachments SET paper_answer = NULL WHERE name = 'Hillside-Boerne-sitework-rev1.pdf';
 SELECT mem.refused('the office writes no other column', $q$UPDATE public.message_attachments SET name = 'x' WHERE paper = 'coi'$q$, 'permission denied for table message_attachments');
 SELECT mem.refused('the office adds no file', $q$INSERT INTO public.message_attachments (message_id, kind, name, url) SELECT id, 'link', 'x', 'https://we.tl/t-x' FROM line$q$, 'permission denied for table message_attachments');
 SELECT mem.refused('the office takes no file off', $q$DELETE FROM public.message_attachments$q$, 'permission denied for table message_attachments');

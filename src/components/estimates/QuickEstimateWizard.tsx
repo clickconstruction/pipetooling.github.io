@@ -1252,7 +1252,7 @@ export function QuickEstimateWizard({
                       alignItems: 'baseline',
                     }}
                   >
-                    <span style={{ width: 18, flexShrink: 0, color: r.filled ? '#15803d' : 'var(--text-muted)' }}>
+                    <span style={{ width: 18, flexShrink: 0, color: r.filled ? 'var(--text-green-700)' : 'var(--text-muted)' }}>
                       {r.filled ? '✓' : '—'}
                     </span>
                     <span style={{ width: 62, flexShrink: 0, fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-muted)' }}>
@@ -1290,7 +1290,7 @@ export function QuickEstimateWizard({
           {stage === 'done' && (
             <>
               <div style={{ textAlign: 'center', marginTop: '1.5rem' }}>
-                <div style={{ fontSize: '3rem', color: '#15803d' }}>✓</div>
+                <div style={{ fontSize: '3rem', color: 'var(--text-green-700)' }}>✓</div>
                 <h2 style={{ ...qStyle, marginTop: 8 }}>Sent to Dispatch</h2>
                 <p style={{ ...subStyle, maxWidth: 260, margin: '0.5rem auto 0' }}>
                   The office will price {isCO ? 'the change order' : 'the estimate'} and send it to the customer for

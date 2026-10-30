@@ -25,10 +25,10 @@ export function FixtureValves({ titleId }: FigureProps) {
       <Label x={76} y={26} anchor="middle" bold color="currentColor">
         under the sink
       </Label>
-      <Label x={40} y={128} anchor="end" size={8} color="#b91c1c">
+      <Label x={40} y={128} anchor="end" size={8} color="var(--text-red-700)">
         hot
       </Label>
-      <Label x={112} y={128} size={8} color="#2563eb">
+      <Label x={112} y={128} size={8} color="var(--text-link)">
         cold
       </Label>
       <Label x={4} y={104} size={7.5}>

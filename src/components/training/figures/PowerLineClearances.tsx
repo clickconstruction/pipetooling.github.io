@@ -21,7 +21,7 @@ export function PowerLineClearances({ titleId }: FigureProps) {
         <line x1="8" y1="22" x2="40" y2="22" strokeWidth="3" />
         <line x1="8" y1="22" x2="8" y2="30" />
         <line x1="40" y1="22" x2="40" y2="30" />
-        <line x1="50" y1="16" x2="50" y2="206" stroke="#dc2626" strokeDasharray="3 3" strokeWidth="1.5" />
+        <line x1="50" y1="16" x2="50" y2="206" stroke="var(--text-red-600)" strokeDasharray="3 3" strokeWidth="1.5" />
         <line x1="6" y1="206" x2="294" y2="206" strokeWidth="3" />
       </g>
       {rows.map(([ft, n, kv], i) => {
@@ -29,7 +29,7 @@ export function PowerLineClearances({ titleId }: FigureProps) {
         const w = n * 3.8
         return (
           <g key={ft}>
-            <rect x="50" y={y - 8} width={w} height="16" rx="3" fill={i < 2 ? 'var(--bg-amber-100)' : 'var(--bg-red-100)'} stroke={i < 2 ? '#b45309' : '#b91c1c'} strokeWidth="1" />
+            <rect x="50" y={y - 8} width={w} height="16" rx="3" fill={i < 2 ? 'var(--bg-amber-100)' : 'var(--bg-red-100)'} stroke={i < 2 ? 'var(--text-amber-700)' : 'var(--text-red-700)'} strokeWidth="1" />
             <text x="56" y={y + 4} fontSize="10" fill="currentColor" fontWeight="600">
               {ft}
             </text>

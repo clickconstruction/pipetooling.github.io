@@ -4180,7 +4180,7 @@ export default function Prospects() {
             const isTerminal = (k: ListSectionKey) => k === 'converted' || k === 'cant_reach' || k === 'not_a_fit'
             const chipKeys = LIST_SECTION_ORDER.filter((k) => k !== 'cant_reach' && k !== 'not_a_fit')
             const chipColors: Partial<Record<ListSectionKey, { background: string; color: string }>> = {
-              never_called: { background: 'var(--bg-green-100)', color: '#15803d' },
+              never_called: { background: 'var(--bg-green-100)', color: 'var(--text-green-700)' },
               going_cold: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
               converted: { background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)' },
             }

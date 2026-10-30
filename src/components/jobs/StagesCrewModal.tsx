@@ -167,7 +167,7 @@ function CrewRow({ row, maxHours, isMobile, onOpenPerson }: { row: StagesCrewRow
             Archived {formatWorkDateYmdMonthDayShort(calendarYmdInAppTzFromIso(row.archivedAt!))}
           </span>
         ) : row.userId ? (
-          <span style={{ fontSize: '0.72rem', borderRadius: 999, padding: '0 0.5em', border: '1px solid #16a34a', color: '#15803d', whiteSpace: 'nowrap' }}>Active</span>
+          <span style={{ fontSize: '0.72rem', borderRadius: 999, padding: '0 0.5em', border: '1px solid #16a34a', color: 'var(--text-green-700)', whiteSpace: 'nowrap' }}>Active</span>
         ) : (
           <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>not on the team</span>
         )}

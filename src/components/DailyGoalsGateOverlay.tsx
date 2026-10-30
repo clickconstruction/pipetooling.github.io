@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import { useDailyGoalsGate } from '../contexts/DailyGoalsGateContext'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 /**
  * Full-screen modal: must check every goal before continuing to the app.
@@ -108,8 +109,8 @@ export default function DailyGoalsGateOverlay() {
             fontWeight: 600,
             border: 'none',
             borderRadius: 8,
-            background: allChecked && !saving ? '#16a34a' : '#d1d5db',
-            color: 'white',
+            background: allChecked && !saving ? '#16a34a' : DEAD_PRESS_FILL,
+            color: allChecked && !saving ? 'white' : DEAD_PRESS_TEXT,
             cursor: allChecked && !saving ? 'pointer' : 'not-allowed',
           }}
         >

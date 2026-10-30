@@ -151,6 +151,7 @@ import { canOpenPersonDesk } from '../lib/people/personDeskGates'
 import { usePendingHoursApprovalsNudge } from '../hooks/usePendingHoursApprovalsNudge'
 import type { ClockSessionRow } from '../types/clockSessions'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 /** The People page is the one caller that needs the App Activity gate resolved. */
 const PEOPLE_PAGE_ACCESS_OPTIONS = { activityViewer: true }
@@ -2072,8 +2073,8 @@ export default function People() {
                 onClick={() => deletePayStub(payStubDeleteConfirm)}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: deletingPayStubId !== payStubDeleteConfirm.id ? '#dc2626' : '#9ca3af',
-                  color: 'white',
+                  background: deletingPayStubId !== payStubDeleteConfirm.id ? '#dc2626' : DEAD_PRESS_FILL,
+                  color: deletingPayStubId !== payStubDeleteConfirm.id ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: deletingPayStubId !== payStubDeleteConfirm.id ? 'pointer' : 'not-allowed',

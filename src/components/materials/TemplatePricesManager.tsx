@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { Database } from '../../types/database'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialTemplate = Database['public']['Tables']['material_templates']['Row']
@@ -170,7 +171,7 @@ export function TemplatePricesManager({
                   style={{ padding: '0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '8rem' }}
                 />
               </div>
-              <button type="submit" disabled={saving} style={{ padding: '0.45rem 1rem', background: saving ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'wait' : 'pointer' }}>
+              <button type="submit" disabled={saving} style={{ padding: '0.45rem 1rem', background: saving ? DEAD_PRESS_FILL : '#3b82f6', color: saving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: saving ? 'wait' : 'pointer' }}>
                 {saving ? 'Saving…' : editingPrice ? 'Save' : 'Add'}
               </button>
               {editingPrice ? (

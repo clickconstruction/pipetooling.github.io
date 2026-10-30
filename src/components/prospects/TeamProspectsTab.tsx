@@ -42,6 +42,7 @@ import { describeSourceVariants, distinctTeamProspectSources, summarizeTeamProsp
 import { telHrefFor } from '../../lib/phoneContact'
 import { EmptyState } from '../EmptyState'
 import { hiringStageEmptyWords, onboardingItemsEmptyWords, roleColumnEmptyWords, UNSORTED_EMPTY } from '../../lib/people/peopleEmptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type TeamProspect = {
   id: string
@@ -2340,7 +2341,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
                   type="button"
                   disabled={busy || !newItemLabel.trim()}
                   onClick={() => void addOnboardingItem()}
-                  style={{ padding: '0.45rem 0.9rem', background: busy || !newItemLabel.trim() ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: busy || !newItemLabel.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.45rem 0.9rem', background: busy || !newItemLabel.trim() ? DEAD_PRESS_FILL : '#3b82f6', color: busy || !newItemLabel.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: busy || !newItemLabel.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                 >
                   Add item
                 </button>

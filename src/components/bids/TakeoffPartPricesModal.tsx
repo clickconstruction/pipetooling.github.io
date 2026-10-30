@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import type { Database } from '../../types/database'
 import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { DEFAULT_ORDER_INCREMENT_UNIT, ORDER_INCREMENT_UNITS, effectiveOrderIncrement, formatOrderIncrement, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementFields, type OrderIncrementUnitKey } from '../../lib/materials/orderIncrement'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 
@@ -253,7 +254,7 @@ export function TakeoffPartPricesModal({
                                 type="button"
                                 onClick={() => isValid && updatePartPriceInModal(row.price_id, numVal)}
                                 disabled={!isValid || partPricesModalUpdating === row.price_id}
-                                style={{ padding: '0.25rem 0.5rem', background: isValid ? '#059669' : '#d1d5db', color: 'white', border: 'none', borderRadius: 4, cursor: isValid ? 'pointer' : 'not-allowed', fontSize: '0.8125rem' }}
+                                style={{ padding: '0.25rem 0.5rem', background: isValid ? '#059669' : DEAD_PRESS_FILL, color: isValid ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: isValid ? 'pointer' : 'not-allowed', fontSize: '0.8125rem' }}
                               >
                                 {partPricesModalUpdating === row.price_id ? 'Updating…' : 'Update'}
                               </button>
@@ -311,7 +312,7 @@ export function TakeoffPartPricesModal({
                         type="button"
                         onClick={() => canAdd && addPartPriceInModal(partPricesModalAddSupplyHouseId, addPriceNum)}
                         disabled={!canAdd}
-                        style={{ padding: '0.25rem 0.5rem', background: canAdd ? '#3b82f6' : '#d1d5db', color: 'white', border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed', fontSize: '0.8125rem' }}
+                        style={{ padding: '0.25rem 0.5rem', background: canAdd ? '#3b82f6' : DEAD_PRESS_FILL, color: canAdd ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed', fontSize: '0.8125rem' }}
                       >
                         {partPricesModalAdding ? 'Adding…' : 'Add'}
                       </button>

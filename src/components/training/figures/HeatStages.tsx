@@ -15,7 +15,7 @@ export function HeatStages({ titleId }: FigureProps) {
         const top = 120 - i * 28
         return (
           <g key={name}>
-            <rect x={x} y={top} width="70" height={150 - top} fill={fill} stroke={i === 3 ? '#b91c1c' : '#b45309'} strokeWidth="1.5" />
+            <rect x={x} y={top} width="70" height={150 - top} fill={fill} stroke={i === 3 ? 'var(--text-red-700)' : 'var(--text-amber-700)'} strokeWidth="1.5" />
             <text x={x + 35} y={top + 16} fontSize="9.5" fontWeight="600" fill="currentColor" textAnchor="middle">
               {name}
             </text>
@@ -26,8 +26,8 @@ export function HeatStages({ titleId }: FigureProps) {
         )
       })}
       <g fontSize="9.5">
-        <text x="224" y="12" fill="#991b1b" fontWeight="700">call 911</text>
-        <text x="224" y="24" fill="#991b1b" fontSize="9">shade, cool them</text>
+        <text x="224" y="12" fill="var(--text-red-800)" fontWeight="700">call 911</text>
+        <text x="224" y="24" fill="var(--text-red-800)" fontSize="9">shade, cool them</text>
         <text x="8" y="168" fill="var(--text-muted)" fontSize="9">two weeks to acclimatize; water all day; a break at least every 2 hours</text>
       </g>
     </svg>

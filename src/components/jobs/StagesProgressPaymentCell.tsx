@@ -344,7 +344,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
         >
           {[
             legendShows(model.paid) ? (
-              <span key="paid" style={{ color: '#15803d', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+              <span key="paid" style={{ color: 'var(--text-green-700)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
                 {swatch(PAID_COLOR)}Paid {model.paid > 0 ? formatUsdNoCents(model.paid) : '—'}
               </span>
             ) : null,

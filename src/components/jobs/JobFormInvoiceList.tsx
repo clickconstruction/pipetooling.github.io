@@ -43,6 +43,7 @@ import LienReleaseModal from './LienReleaseModal'
 import { billPaidBar, orderMoneyByDate, splitBillsAndPayments, type MercuryDepositFacts, type MoneyByDateItem } from '../../lib/jobs/billsAndPayments'
 import { BillsViewSwitch, type BillsAndPaymentsView } from './JobFormSegmentsBar'
 import { JobFormPaymentLine, type PaymentLineActions } from './JobFormPaymentLine'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type JobFormInvoiceListProps = {
   editing: JobWithDetails
@@ -1150,8 +1151,8 @@ export function JobFormInvoiceList({
                   padding: '0.45rem 0.9rem',
                   fontSize: '0.8125rem',
                   fontWeight: 600,
-                  background: sendingBack || !sendBackAcknowledged ? '#9ca3af' : '#2563eb',
-                  color: '#ffffff',
+                  background: sendingBack || !sendBackAcknowledged ? DEAD_PRESS_FILL : '#2563eb',
+                  color: sendingBack || !sendBackAcknowledged ? DEAD_PRESS_TEXT : '#ffffff',
                   border: 'none',
                   borderRadius: 6,
                   cursor: sendingBack || !sendBackAcknowledged ? 'not-allowed' : 'pointer',

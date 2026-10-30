@@ -3,6 +3,7 @@
  * plus the inline form controls the expanded row draws.
  */
 import type { CSSProperties } from 'react'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 
 export const th: CSSProperties = { padding: '0.45rem 0.7rem', textAlign: 'left', borderBottom: '1px solid var(--border)', fontSize: '0.68rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap', background: 'var(--bg-subtle)' }
 export const td: CSSProperties = { padding: '0.6rem 0.7rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', verticalAlign: 'top' }
@@ -18,7 +19,7 @@ export const red: CSSProperties = { color: 'var(--text-red-700)', fontWeight: 70
 export type BtnTone = 'primary' | 'ghost' | 'warn' | 'ok' | 'danger'
 export function btn(tone: BtnTone = 'ghost', disabled = false, small = true): CSSProperties {
   const base: CSSProperties = { fontSize: small ? '0.72rem' : '0.8125rem', fontWeight: 600, padding: small ? '3px 9px' : '0.45rem 0.9rem', borderRadius: 5, cursor: disabled ? 'not-allowed' : 'pointer', whiteSpace: 'nowrap', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', opacity: disabled ? 0.6 : 1 }
-  if (tone === 'primary') return { ...base, background: disabled ? '#9ca3af' : '#2563eb', border: 'none', color: 'white' }
+  if (tone === 'primary') return { ...base, background: disabled ? DEAD_PRESS_FILL : '#2563eb', border: 'none', color: disabled ? DEAD_PRESS_TEXT : 'white' }
   if (tone === 'warn') return { ...base, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)' }
   if (tone === 'ok') return { ...base, background: 'var(--bg-green-tint)', border: '1px solid var(--border-green)', color: 'var(--text-green-700)' }
   if (tone === 'danger') return { ...base, color: 'var(--text-red-700)' }

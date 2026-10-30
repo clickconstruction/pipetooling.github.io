@@ -10,8 +10,8 @@ import {
   fillInOtherLinesHeading,
   needsYouStationOpening,
   fillInProgressWords,
+  fillInKindFirst,
   fillInRowsOrdered,
-  fillInStartIndex,
   pushFillInHandled,
   type FillInRowBase,
 } from './fillIn'
@@ -49,12 +49,19 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
     expect(out.map((r) => r.key)).toEqual(['purchase:1', 'move-window:1', 'work-order:1', 'contract:1', 'lost-bid:1', 'lost-bid:2', 'vehicle:1'])
   })
 
-  it('a skipped row goes to the back; the deck opens on the first row of the asked kind', () => {
+  it('a skipped row goes to the back; the asked kind walks first until its rows are saved or skipped (v2.6129)', () => {
     const rows = [row('a', 'contract'), row('b', 'lost-bid'), row('c', 'lost-bid')]
-    expect(fillInOrder(rows, ['a']).map((r) => r.key)).toEqual(['b', 'c', 'a'])
-    expect(fillInStartIndex(rows, 'lost-bid')).toBe(1)
-    expect(fillInStartIndex(rows, 'vehicle')).toBe(0)
-    expect(fillInStartIndex(rows, null)).toBe(0)
+    const keys = (rs: FillInRowBase[]) => rs.map((r) => r.key)
+    expect(keys(fillInOrder(rows, ['a']))).toEqual(['b', 'c', 'a'])
+    expect(keys(fillInKindFirst(rows, 'lost-bid', []))).toEqual(['b', 'c', 'a'])
+    // A Skip keeps to the kind: the next lost bid, not the contract on top.
+    expect(keys(fillInKindFirst(fillInOrder(rows, ['b']), 'lost-bid', ['b']))).toEqual(['c', 'a', 'b'])
+    // A saved row has left the list: the next of the kind still leads.
+    expect(keys(fillInKindFirst(fillInOrder([rows[0]!, rows[2]!], []), 'lost-bid', []))).toEqual(['c', 'a'])
+    // Every row of the kind skipped: the deck's own order, the skipped rows at the back.
+    expect(keys(fillInKindFirst(fillInOrder(rows, ['b', 'c']), 'lost-bid', ['b', 'c']))).toEqual(['a', 'b', 'c'])
+    expect(keys(fillInKindFirst(rows, 'vehicle', []))).toEqual(['a', 'b', 'c'])
+    expect(keys(fillInKindFirst(rows, null, []))).toEqual(['a', 'b', 'c'])
   })
 
   it('says where you are and what was saved', () => {

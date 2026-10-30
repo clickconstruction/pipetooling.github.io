@@ -207,4 +207,14 @@ describe('Other job charges carry a date and a memo (punch list #215, PR 2)', ()
     fireEvent.click(screen.getByText('+ Add other charge'))
     expect(update).toHaveBeenCalledWith('a', { charged_on: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) })
   })
+  it('the row is a grid: the trash shares the first line and the memo sits under the description (PR 4)', () => {
+    renderSection([filledRow('a', 'Permit', 25), filledRow('b', 'Dumpster', 384.6)])
+    const trash = screen.getAllByLabelText('Remove')[0]!
+    const row = trash.parentElement!
+    expect(row.style.display).toBe('grid')
+    expect(row.style.gridTemplateAreas).toBe('"date desc amt trash" ". memo memo ."')
+    expect(trash.style.gridArea).toBe('trash')
+    expect(screen.getAllByLabelText('Other charge date')[0]!.style.gridArea).toBe('date')
+    expect(screen.getAllByLabelText('Add a memo to this charge')[0]!.style.gridArea).toBe('memo')
+  })
 })

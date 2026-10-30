@@ -7,6 +7,7 @@ import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { applyPartPriceRowPatch, withTrailingBlankPartPriceRow, type PartPriceRowDraft } from '../lib/partPriceRows'
 import { todayYmdChicago } from '../lib/formatJobDetailModalDateYmd'
 import { DEFAULT_ORDER_INCREMENT_UNIT, ORDER_INCREMENT_UNITS, effectiveOrderIncrement, formatOrderIncrement, parseOrderIncrementUnit, parseTypedOrderIncrement, type OrderIncrementUnitKey } from '../lib/materials/orderIncrement'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
@@ -578,7 +579,7 @@ export function PartFormModal({
                     type="button"
                     onClick={handleConfirmDelete}
                     disabled={deleteConfirmName.trim() !== editingPart.name.trim()}
-                    style={{ padding: '0.5rem 1rem', background: deleteConfirmName.trim() === editingPart.name.trim() ? '#dc2626' : '#d1d5db', color: 'white', border: 'none', borderRadius: 4, cursor: deleteConfirmName.trim() === editingPart.name.trim() ? 'pointer' : 'not-allowed' }}
+                    style={{ padding: '0.5rem 1rem', background: deleteConfirmName.trim() === editingPart.name.trim() ? '#dc2626' : DEAD_PRESS_FILL, color: deleteConfirmName.trim() === editingPart.name.trim() ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: deleteConfirmName.trim() === editingPart.name.trim() ? 'pointer' : 'not-allowed' }}
                   >
                     Confirm Delete
                   </button>

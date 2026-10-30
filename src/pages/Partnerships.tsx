@@ -468,7 +468,11 @@ export default function Partnerships() {
   ) : null
 
   return (
-    <div style={{ maxWidth: 1000, margin: '0 auto', padding: '1rem' }}>
+    // v2.6131: a flex item in Layout's column with auto side margins is sized by its content, so the page drew
+    // narrower than the screen when its lines were short and moved as each load landed (v2.6117, Job Parts
+    // Tally). Pin it to its container like `.pageWrap` (v2.1003); border-box is global, so the max width
+    // is already the outer width and stays.
+    <div style={{ maxWidth: 1000, margin: '0 auto', padding: '1rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <div style={{ marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.75rem', flexWrap: 'wrap' }}>
         <h1 style={{ margin: 0, fontSize: '1.35rem' }}>Partnerships</h1>
         {lensOn && selected ? (

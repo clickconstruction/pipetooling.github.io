@@ -13,6 +13,7 @@ import type { BidCountRow } from '../../types/bids'
 import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '../../lib/bids/bidPricingEngineTypes'
 import { TakeoffCoverageStrip } from './TakeoffCoverageStrip'
 import { EmptyState } from '../EmptyState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * New 2 — "Cost rail" (v2.2781, docs/TAKEOFFS_REFRESH_PLAN.md; mockup C):
@@ -36,8 +37,8 @@ const mini = (primary: boolean, disabled = false): React.CSSProperties => ({
   fontSize: '0.8rem',
   fontWeight: 600,
   border: primary ? '1px solid #2563eb' : '1px solid var(--border)',
-  background: disabled ? '#9ca3af' : primary ? '#2563eb' : 'var(--surface)',
-  color: primary || disabled ? '#fff' : 'var(--text-strong)',
+  background: disabled ? DEAD_PRESS_FILL : primary ? '#2563eb' : 'var(--surface)',
+  color: disabled ? DEAD_PRESS_TEXT : primary ? '#fff' : 'var(--text-strong)',
   cursor: disabled ? 'default' : 'pointer',
   alignSelf: 'flex-start',
 })
@@ -161,7 +162,7 @@ export function TakeoffCostRailView({
   return (
     <div data-testid="takeoff-cost-rail-view">
       <TakeoffCoverageStrip coverage={coverage} onClickUncosted={() => setFilter('uncosted')} onClickZeroPrice={() => setFilter('zero')}>
-        <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? '#9ca3af' : '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+        <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? DEAD_PRESS_FILL : '#3b82f6', color: fillButton.disabled ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
           {fillButton.label}
         </button>
         <button type="button" onClick={onFocusView} style={{ padding: '0.4rem 0.8rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }} title="Walk the fixtures one at a time, with the book and your last bids">

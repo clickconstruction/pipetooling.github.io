@@ -24,13 +24,23 @@ export async function listJobPhotos(jobId: string): Promise<JobPhotosRead> {
   }
 }
 
-/** The bytes of a thumbnail or a full picture as an object URL, or null when the function refuses. */
+/**
+ * The bytes of a thumbnail or a full picture as an object URL, or null when the function refuses. A plain fetch under
+ * the caller's sign-in, not `functions.invoke`: invoke makes a Blob only of an octet-stream or PDF answer and reads
+ * every other type as text, so the function's image/jpeg came back a string and every tile stayed grey (v2.6128).
+ */
 async function photoBytes(jobId: string, fileId: string, action: 'thumb' | 'full'): Promise<string | null> {
-  const r = (await supabase.functions.invoke(FN, { body: { action, job_id: jobId, file_id: fileId } })) as FnResult
-  if (r.error) return null
-  const data = r.data as unknown
-  if (data instanceof Blob) return URL.createObjectURL(data)
-  return null
+  const { data } = await supabase.auth.getSession()
+  const jwt = data.session?.access_token
+  if (!jwt) return null
+  const res = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/${FN}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${jwt}`, apikey: import.meta.env.VITE_SUPABASE_ANON_KEY },
+    body: JSON.stringify({ action, job_id: jobId, file_id: fileId }),
+  })
+  if (!res.ok) return null
+  const bytes = await res.blob()
+  return bytes.size > 0 ? URL.createObjectURL(bytes) : null
 }
 
 export const jobPhotoThumb = (jobId: string, fileId: string) => photoBytes(jobId, fileId, 'thumb')

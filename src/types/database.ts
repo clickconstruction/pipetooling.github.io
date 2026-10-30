@@ -1370,6 +1370,72 @@ export type Database = {
           },
         ]
       }
+      bid_plan_sets: {
+        Row: {
+          bid_id: string
+          check_note: string | null
+          checked_at: string | null
+          created_at: string
+          created_by: string | null
+          file_count: number | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          link: string
+          memo: string
+          name: string
+          plan_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          check_note?: string | null
+          checked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_count?: number | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          link: string
+          memo?: string
+          name: string
+          plan_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          check_note?: string | null
+          checked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_count?: number | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          link?: string
+          memo?: string
+          name?: string
+          plan_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_plan_sets_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_sets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_price_matrix_requests: {
         Row: {
           bid_id: string
@@ -10148,6 +10214,44 @@ export type Database = {
           },
           {
             foreignKeyName: "external_team_sub_managers_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      field_presses: {
+        Row: {
+          id: string
+          kind: string
+          landed_at: string
+          late: boolean
+          pressed_at: string
+          result: Json
+          user_id: string
+        }
+        Insert: {
+          id: string
+          kind: string
+          landed_at?: string
+          late?: boolean
+          pressed_at: string
+          result?: Json
+          user_id: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          landed_at?: string
+          late?: boolean
+          pressed_at?: string
+          result?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_presses_user_id_fkey"
             columns: ["user_id"]
             isOneToOne: false
             referencedRelation: "users"
@@ -37030,6 +37134,15 @@ export type Database = {
         Returns: boolean
       }
       keep_job_baseline_now: { Args: { p_job_id: string }; Returns: boolean }
+      land_field_press: {
+        Args: {
+          p_id: string
+          p_kind: string
+          p_payload: Json
+          p_pressed_at: string
+        }
+        Returns: Json
+      }
       latest_bid_cell_history: {
         Args: { p_bid_id: string }
         Returns: {

@@ -9,6 +9,7 @@
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { UNCOLLECTIBLE_REASON_MIN } from '../../lib/setJobUncollectible'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type StagesUncollectibleConfirmTarget = { job: JobWithDetails; direction: 'mark' | 'unmark' }
 
@@ -82,8 +83,8 @@ export function StagesUncollectibleConfirmModal({
             onClick={() => void onConfirm()}
             style={{
               padding: '0.5rem 1rem',
-              background: disabled ? '#9ca3af' : marking ? '#b91c1c' : '#3b82f6',
-              color: 'white',
+              background: disabled ? DEAD_PRESS_FILL : marking ? '#b91c1c' : '#3b82f6',
+              color: disabled ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 4,
               cursor: disabled ? 'not-allowed' : 'pointer',

@@ -101,8 +101,8 @@ const round2 = (n: number): number => Math.round(n * 100) / 100
 
 /**
  * One job's money under the app's one rule for payments (punch list #85 item 5). The rule lives in
- * `_shared/legalJobMoney.ts` (item 20 review) so `submit-legal-portal`'s settlement floor and every
- * reader here add up the same way; this is the packet's door to it.
+ * `_shared/legalJobMoney.ts` (item 20 review) so the functions and every reader here add up the
+ * same way; this is the packet's door to it.
  */
 export { invoiceWrittenDown, type LegalJobMoney } from './legalJobMoney'
 

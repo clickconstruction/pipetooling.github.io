@@ -1,4 +1,5 @@
 import type { CSSProperties } from 'react'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * The Estimates page's input and button styles, shared by the page and the pieces that have left
@@ -27,8 +28,8 @@ export function estInputBlock(extra?: CSSProperties): CSSProperties {
 export function estPrimaryButton(disabled: boolean): CSSProperties {
   return {
     padding: '0.5rem 1rem',
-    background: disabled ? '#9ca3af' : '#3b82f6',
-    color: 'white',
+    background: disabled ? DEAD_PRESS_FILL : '#3b82f6',
+    color: disabled ? DEAD_PRESS_TEXT : 'white',
     border: 'none',
     borderRadius: 4,
     cursor: disabled ? 'not-allowed' : 'pointer',
@@ -54,7 +55,7 @@ export function estSecondaryButton(disabled?: boolean): CSSProperties {
 export function estSendButton(disabled: boolean): CSSProperties {
   return {
     ...estPrimaryButton(disabled),
-    background: disabled ? '#9ca3af' : '#ea580c',
+    background: disabled ? DEAD_PRESS_FILL : '#ea580c',
   }
 }
 
@@ -92,8 +93,8 @@ export function estSmallPrimaryButton(disabled: boolean): CSSProperties {
     fontWeight: 500,
     border: 'none',
     borderRadius: 4,
-    background: disabled ? '#9ca3af' : '#3b82f6',
-    color: 'white',
+    background: disabled ? DEAD_PRESS_FILL : '#3b82f6',
+    color: disabled ? DEAD_PRESS_TEXT : 'white',
     cursor: disabled ? 'not-allowed' : 'pointer',
   }
 }

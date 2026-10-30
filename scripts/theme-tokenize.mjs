@@ -43,6 +43,8 @@ const TEXT = {
   '#b91c1c': 'var(--text-red-700)',
   '#991b1b': 'var(--text-red-800)',
   '#059669': 'var(--text-green-600)',
+  // green-700 words: the literal stayed dark on the dark surface, 2.93:1; the token reads #4ade80 there.
+  '#15803d': 'var(--text-green-700)',
   '#b45309': 'var(--text-amber-700)',
   '#92400e': 'var(--text-amber-800)',
   '#78350f': 'var(--text-amber-900)',

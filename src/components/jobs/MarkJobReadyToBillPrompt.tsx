@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useToastContext } from '../../contexts/ToastContext'
 import { markJobReadyToBill } from '../../lib/markJobReadyToBill'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type Props = {
   job: { id: string; hcpNumber: string; jobName: string }
@@ -109,8 +110,8 @@ export function MarkJobReadyToBillPrompt({ job, onClose }: Props) {
             disabled={!canConfirm}
             style={{
               padding: '0.5rem 1rem',
-              background: canConfirm ? '#3b82f6' : '#9ca3af',
-              color: 'white',
+              background: canConfirm ? '#3b82f6' : DEAD_PRESS_FILL,
+              color: canConfirm ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
               cursor: canConfirm ? 'pointer' : 'not-allowed',

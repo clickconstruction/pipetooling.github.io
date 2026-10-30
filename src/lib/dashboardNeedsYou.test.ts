@@ -1194,9 +1194,9 @@ describe('legal-firm-activity (Legal portal PR 4)', () => {
     expect(buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: { ...activity, count: 1, questions: 0, answers: 0, signoffs: 0, payments: 0 } })).find((i) => i.key === 'legal-firm-activity')!.severity).toBe('blue')
     expect(buildNeedsYouItems(inputs({ legalFirmActivityEnabled: false, legalFirmActivity: activity })).some((i) => i.key === 'legal-firm-activity')).toBe(false)
   })
-  it('a settlement under the floor leads, amber (#85 item 20)', () => {
+  it('a settlement ask leads, amber (#85 item 20)', () => {
     const it1 = buildNeedsYouItems(inputs({ legalFirmActivityEnabled: true, legalFirmActivity: { ...activity, count: 1, fees: 0, questions: 0, payments: 0, settlements: 1 } })).find((i) => i.key === 'legal-firm-activity')!
-    expect(it1.detail).toMatch(/^1 settlement below your floor to sign off/)
+    expect(it1.detail).toMatch(/^1 settlement to sign off/)
     expect(it1.severity).toBe('amber')
   })
 })

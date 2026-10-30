@@ -3,6 +3,7 @@ import {
   estimateLinkResendBlockMessage,
   type EstimateLinkResendVerdict,
 } from '../../../supabase/functions/_shared/estimateLinkResend'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * "Waiting for customer" block on a sent estimate (v2.2856, J17-F2/N3): says where the
@@ -28,8 +29,8 @@ const buttonStyle = (disabled: boolean): CSSProperties => ({
   fontWeight: 500,
   border: 'none',
   borderRadius: 4,
-  background: disabled ? '#9ca3af' : '#3b82f6',
-  color: 'white',
+  background: disabled ? DEAD_PRESS_FILL : '#3b82f6',
+  color: disabled ? DEAD_PRESS_TEXT : 'white',
   cursor: disabled ? 'not-allowed' : 'pointer',
 })
 

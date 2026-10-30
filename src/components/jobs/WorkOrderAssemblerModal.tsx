@@ -25,6 +25,7 @@ import {
 import { bidScopeLines, bidSubLaborTotals, buildWorkOrderDocument, renderWorkOrderDocumentHtml, WORK_ORDER_ISSUER } from '../../lib/subWorkOrders/workOrderDocument'
 import { emitWorkOrderChanged } from '../../hooks/useJobWorkOrderCoverage'
 import { WorkOrderDocumentView } from './WorkOrderDocumentView'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * The work order assembler (Work Orders tab, PR 2 — v2.2819): pick the job,
@@ -85,8 +86,8 @@ const inputStyle = { width: '100%', padding: '0.45rem 0.55rem', border: '1px sol
 const btn = (kind: 'primary' | 'ghost' | 'green', disabled = false) =>
   ({
     padding: '0.45rem 0.9rem',
-    background: disabled ? '#9ca3af' : kind === 'primary' ? '#2563eb' : kind === 'green' ? '#16a34a' : 'var(--surface)',
-    color: kind === 'ghost' ? 'var(--text-700)' : 'white',
+    background: disabled ? DEAD_PRESS_FILL : kind === 'primary' ? '#2563eb' : kind === 'green' ? '#16a34a' : 'var(--surface)',
+    color: disabled ? DEAD_PRESS_TEXT : kind === 'ghost' ? 'var(--text-700)' : 'white',
     border: kind === 'ghost' ? '1px solid var(--border-strong)' : 'none',
     borderRadius: 6,
     fontSize: '0.8125rem',

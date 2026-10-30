@@ -36,6 +36,7 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import { SheetRail } from './SheetRail'
 import { WorkOrderAssemblerModal, type WorkOrderAssemblerInitial } from './WorkOrderAssemblerModal'
 import { effectiveSubSheetStage, subSheetWorkEndYmd } from '../../lib/subSheetStageDerived'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type SheetStoryModalProps = {
   /** The sheet to tell; null keeps the modal closed. */
@@ -86,8 +87,8 @@ const btn = (primary = false, busy = false) =>
     fontWeight: 600,
     cursor: busy ? 'not-allowed' : 'pointer',
     border: primary ? 'none' : '1px solid var(--border-strong)',
-    background: busy ? '#9ca3af' : primary ? '#2563eb' : 'var(--surface)',
-    color: primary ? 'white' : 'var(--text-700)',
+    background: busy ? DEAD_PRESS_FILL : primary ? '#2563eb' : 'var(--surface)',
+    color: busy ? DEAD_PRESS_TEXT : primary ? 'white' : 'var(--text-700)',
     whiteSpace: 'nowrap',
   }) as const
 const ghost = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--text-blue-700)', fontWeight: 600, fontSize: '0.75rem', whiteSpace: 'nowrap' } as const

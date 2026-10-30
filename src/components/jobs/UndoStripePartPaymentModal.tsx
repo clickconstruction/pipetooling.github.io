@@ -6,6 +6,7 @@ import { stripeModeInvokeBody } from '../../lib/billingStripeModePref'
 import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import type { JobsLedgerInvoiceRow, PaymentRow } from '../../lib/jobs/jobFormTypes'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 function money(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -137,7 +138,7 @@ export default function UndoStripePartPaymentModal({
             type="button"
             onClick={() => void submit()}
             disabled={submitting}
-            style={{ padding: '0.5rem 1rem', background: submitting ? '#9ca3af' : '#b91c1c', color: 'white', border: 'none', borderRadius: 6, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', background: submitting ? DEAD_PRESS_FILL : '#b91c1c', color: submitting ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
           >
             {submitting ? 'Working…' : `Undo $${money(amt)} payment`}
           </button>
