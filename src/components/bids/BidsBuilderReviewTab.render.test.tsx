@@ -92,7 +92,8 @@ describe('BidsBuilderReviewTab — an empty queue names the next press (punch li
   it('no builder with a bid offers the page’s New Bid', async () => {
     const onNewBid = vi.fn()
     renderTab(true, { bids: [], onNewBid })
-    const empty = await screen.findByText(/No builder has a bid yet\./)
+    // The sentence is two units since v2.6113: the text sits in a span, so read the whole empty state.
+    const empty = (await screen.findByText(/No builder has a bid yet\./)).closest('[data-empty-state]') as HTMLElement
     expect(empty.textContent).toBe('No builder has a bid yet. New Bid starts one for a builder.')
     fireEvent.click(screen.getByRole('button', { name: 'New Bid' }))
     expect(onNewBid).toHaveBeenCalledTimes(1)

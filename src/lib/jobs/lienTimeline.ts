@@ -360,8 +360,11 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
     })
   }
 
-  // 2 · one notice per month (sub jobs only)
-  const months = [...input.months].sort((a, b) => a.key.localeCompare(b.key))
+  // 2 · one notice per month (sub jobs only). An original contractor sends none, so its months are no
+  // steps and no next step either (v2.6102, punch list #213): the window adapter folds a direct job's
+  // approved sessions into months all the same, and reading them here put *Draft the <month> notice*
+  // above a § 53.056 row that read *not required*.
+  const months = input.isSub ? [...input.months].sort((a, b) => a.key.localeCompare(b.key)) : []
   const openMonths = months.filter((m) => m.outcome === 'open' && m.deadline >= todayYmd)
   const unnotedMisses = months.filter((m) => m.outcome === 'missed' && !m.at && !m.noteUnknown)
   const anySent = months.some((m) => m.outcome === 'sent')

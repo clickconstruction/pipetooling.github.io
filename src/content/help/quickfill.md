@@ -8,7 +8,7 @@ order: 10
 ---
 Quickfill is the office's daily runway. It is one page of review sections, each with a button that says "I've looked at this."
 
-Working top to bottom keeps the whole operation reviewed on a rhythm. Nobody has to keep a mental checklist. The dashboard's chase-work nudges live here too, as their own stations. They are **GC weekly review** and **Job follow-ups**. GC means the general contractor. Each has its one-tap card and its own mark button. Lost bids with no reason sit on the **Needs you** station, where Fill them in walks them. The dashboard's **Needs you** card opens the round as the first station, **Today's lines**. It holds your lines first. What waits on the owner sits folded under it. The station's count is your lines only. On a clean day the cards hide but the rituals stay stampable.
+Working top to bottom keeps the whole operation reviewed on a rhythm. Nobody has to keep a mental checklist. The dashboard's chase-work nudges live here too, as their own stations. They are **GC weekly review** and **Job follow-ups**. GC means the general contractor. Each has its one-tap card and its own mark button. Job follow-ups has two lanes, Quiet and Idle. Each lane opens the Follow-ups deck right there. Lost bids with no reason sit on the **Needs you** station, where Fill them in walks them. The dashboard's **Needs you** card opens the round as the first station, **Today's lines**. It holds your lines first. What waits on the owner sits folded under it. The station's count is your lines only. On a clean day the cards hide but the rituals stay stampable.
 
 On a desktop it's the heart icon in the header. On a phone, you open the ☰ menu on the left. **Quickfill** is the first entry.
 

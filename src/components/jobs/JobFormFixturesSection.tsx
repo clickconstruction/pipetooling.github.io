@@ -802,7 +802,7 @@ export function JobFormFixturesSection({
                   {standingOffer.dollars > 0 ? (
                     <>
                       {' — '}
-                      <strong style={{ color: '#0f7a52' }}>−${formatCurrency(standingOffer.dollars)}</strong> here
+                      <strong style={{ color: 'var(--text-green-700)' }}>−${formatCurrency(standingOffer.dollars)}</strong> here
                     </>
                   ) : null}
                 </span>
@@ -855,7 +855,7 @@ export function JobFormFixturesSection({
                     background: 'transparent',
                     border: '1px dashed #a7dcc2',
                     borderRadius: 6,
-                    color: '#0f7a52',
+                    color: 'var(--text-green-700)',
                     fontSize: '0.8125rem',
                     fontWeight: 600,
                     cursor: 'pointer',
@@ -968,7 +968,7 @@ export function JobFormFixturesSection({
                   </button>
                 )}
                 {totalHint && (
-                  <span data-testid="job-total-hint" role="status" style={{ fontSize: '0.71875rem', color: '#0f7a52' }}>
+                  <span data-testid="job-total-hint" role="status" style={{ fontSize: '0.71875rem', color: 'var(--text-green-700)' }}>
                     {totalHint}
                   </span>
                 )}
