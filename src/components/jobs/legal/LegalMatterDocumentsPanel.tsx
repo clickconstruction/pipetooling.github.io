@@ -179,9 +179,10 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
                     {d.held_reason ? <span data-legal-document-held-chip title={`Held from the firm: ${d.held_reason}`} style={{ ...chip, color: 'var(--text-amber-700)' }}>held</span> : null}
                   </span>
                   <span data-legal-document-day title={legalDocumentDayWords(doc, shortDay)} style={{ ...MUTED, fontSize: '0.74rem', whiteSpace: 'nowrap' }}>{shortDay(day)}</span>
-                  <span style={{ display: 'flex', gap: 8, alignItems: 'baseline', minWidth: 0 }}>
-                    <button type="button" onClick={() => open(d)} title={`${d.title} · ${legalDocumentKindWords(d.mime)} · ${legalDocumentSizeWords(d.size_bytes)}`} style={{ ...btn, ...oneLine, border: 'none', padding: 0, height: 'auto', fontWeight: 600, color: 'var(--text-link)', flex: '0 1 auto', display: 'inline-block' }}>{d.title}</button>
-                    <span data-legal-document-shows title={d.shows} style={{ ...MUTED, ...oneLine, flex: '1 1 40%' }}>{d.shows}</span>
+                  {/* The title and the line on one row while the line has 14rem; narrower, the line drops under the title, still one line. */}
+                  <span style={{ display: 'flex', gap: '0 8px', alignItems: 'baseline', minWidth: 0, flexWrap: 'wrap' }}>
+                    <button type="button" onClick={() => open(d)} title={`${d.title} · ${legalDocumentKindWords(d.mime)} · ${legalDocumentSizeWords(d.size_bytes)}`} style={{ ...btn, ...oneLine, border: 'none', padding: 0, height: 'auto', fontWeight: 600, color: 'var(--text-link)', flex: '0 1 auto', maxWidth: '100%', display: 'inline-block' }}>{d.title}</button>
+                    <span data-legal-document-shows title={d.shows} style={{ ...MUTED, ...oneLine, flex: '1 1 14rem' }}>{d.shows}</span>
                   </span>
                   {canEdit ? (
                     // v2.5850: one menu per row instead of four buttons; the hold form opens in place, as before.
