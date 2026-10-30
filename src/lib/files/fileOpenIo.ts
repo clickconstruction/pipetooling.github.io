@@ -4,7 +4,8 @@
  * its copy is signed for a minute on the private `message-attachments` bucket, whose SELECT policy lets the office sign
  * it. A link it carried goes to its own address. A file in a job's Drive folder (`drive`, cut 7d) is asked of
  * `drive-link`'s office door (`open`), which checks the reader is on the office team and the file is in that job's
- * folder, and answers Drive's own viewer.
+ * folder, and answers Drive's own viewer. A bill dropped on the Add invoice window (`bills`, punch list #179) is read
+ * from its invoice row under the office's policy on `supply_house_invoices`, and its copy signed the same way.
  */
 import { driveJobOf } from '../documents/jobFilesIo'
 import { supabase } from '../supabase'
@@ -45,6 +46,18 @@ async function driveFileTarget(id: string): Promise<FileTarget> {
   return typeof url === 'string' && url.startsWith('https://') ? { url } : { problem: 'notHere' }
 }
 
+async function billFileTarget(invoiceId: string): Promise<FileTarget> {
+  const { data, error } = await supabase.from('supply_house_invoices' as never).select('bill_read').eq('id', invoiceId).maybeSingle()
+  if (error) return { problem: 'notHere' }
+  const row = data as { bill_read?: { file?: { path?: unknown } } | null } | null
+  // Under the policy, a row the reader may not open reads as no row.
+  if (!row) return { problem: 'notYours' }
+  const path = row.bill_read?.file?.path
+  if (typeof path !== 'string' || !path) return { problem: 'notHere' }
+  const signed = await supabase.storage.from('message-attachments').createSignedUrl(path, FILE_SIGNED_SECONDS)
+  return signed.error || !signed.data?.signedUrl ? { problem: 'notHere' } : { url: signed.data.signedUrl }
+}
+
 /** Where a kept file's lasting link goes for the reader, or why it does not. */
 export async function fileTarget(route: { source: FileSource; id: string }): Promise<FileTarget> {
   switch (route.source) {
@@ -52,6 +65,8 @@ export async function fileTarget(route: { source: FileSource; id: string }): Pro
       return messageFileTarget(route.id)
     case 'drive':
       return driveFileTarget(route.id)
+    case 'bills':
+      return billFileTarget(route.id)
   }
 }
 

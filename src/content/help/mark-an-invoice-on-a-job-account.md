@@ -10,7 +10,7 @@ You still pay the house like normal. But if the bill ever goes unpaid, the house
 
 ## Flag it when you enter the invoice
 
-1. Open **Materials → Supply Houses** and open the house. Press {{button:blue|Add Invoice}}, or the pencil on an existing one.
+1. Open **Materials → Supply Houses** and open the house. Press {{button:blue|Add Invoice}}, or the pencil on an existing one. The form's first section is **The bill**. Pick the bill's PDF there and the fields fill in, green from the paper and amber where the form guessed. The job-account tick is one of the guesses. See [record a supply-house bill from its PDF](?g=record-a-supply-house-bill-from-its-pdf).
 2. The form reads in the order the paper does. **From the invoice** holds Invoice #, Invoice date and Amount across the top. Then comes the Purchase order #, the PO number. A five-digit PO Generator code is checked against the house's ledger as you type. You see {{chip:green|PO 39089 is on the PO Generator ledger}} or {{chip:red|not on the ledger — check the number}}. A hand PO just says so.
 3. **Which job**: type the J#, name or address into the search box and pick the job. It becomes a card with its address. One job is the whole invoice. Add a second job, and each card grows a **%** box that keeps the split at 100.
 4. On the job's card, check **On {house}'s job account**. It reads "*If this goes unpaid the house bills the property owner, not you.*" The card's edge turns teal.

@@ -3,15 +3,17 @@
  * (`src/pages/FileOpen.tsx`) opens the file for someone signed in who may read it, through a link that lasts a minute,
  * so the lasting link is the one the office files on a paper or shares within the team, and the file itself is never
  * public. One router, a source a kind of file: `messages` is a file that came on a line (our copy in the private
- * `message-attachments` bucket, or a link it carried), and `drive` is a file in a job's Drive folder (cut 7d), opened
- * through `drive-link`'s office door, which checks the file is in that job's folder.
+ * `message-attachments` bucket, or a link it carried), `drive` is a file in a job's Drive folder (cut 7d), opened
+ * through `drive-link`'s office door, which checks the file is in that job's folder, and `bills` (punch list #179,
+ * v2.6095) is our copy of a supply-house bill dropped on the Add invoice window, kept in the same bucket under the
+ * house and named by the invoice row it became (`supply_house_invoices.bill_read.file.path`).
  */
 import { appUrl } from '../appOrigin'
 import { jobKey, jobRefOf, type JobRef } from '../messages/load'
 
-export type FileSource = 'messages' | 'drive'
+export type FileSource = 'messages' | 'drive' | 'bills'
 
-const SOURCES: ReadonlySet<string> = new Set<FileSource>(['messages', 'drive'])
+const SOURCES: ReadonlySet<string> = new Set<FileSource>(['messages', 'drive', 'bills'])
 
 /** What the page says in place of a file it cannot open, in the same words for every source. */
 export const FILE_OPEN_WORDS = {
