@@ -1,23 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type CSSProperties } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
-import {
-  FIELD_PCT_STEPS,
-  applyFieldPctStep,
-  fieldPctDeltaLabel,
-  fieldPctStartValue,
-} from '../../lib/jobs/fieldPctUpdate'
+import { fieldPctDeltaLabel, fieldPctStartValue } from '../../lib/jobs/fieldPctUpdate'
 import { propagateReportPctToJob } from '../../lib/propagateReportPctToJob'
 import { submitStatusReportFromStepper } from '../../lib/reports/submitStatusReportFromStepper'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../../lib/reports/stageProgressReport'
-import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../../lib/reports/lineProgressReport'
+import { LINES_QUESTION, MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../../lib/reports/lineProgressReport'
+import { STAGE_PCT_WORDS, STAGE_QUICK_PICK_MIN_HEIGHT, saveWords } from '../../lib/reports/stagePct'
 import { stampMovedLines, useJobLineProgress } from '../../hooks/useJobLineProgress'
 import { ReportLinesProgressField } from '../ReportLinesProgressField'
+import { StagePctControl } from '../reports/StagePctControl'
 import { MarkJobReadyToBillPrompt } from '../jobs/MarkJobReadyToBillPrompt'
+import { PhoneSheet } from '../PhoneSheet'
 import AutosizeTextarea from '../AutosizeTextarea'
 
 const BAR_BASE_COLOR = '#3b82f6'
@@ -48,8 +46,15 @@ const BAR_DROP_COLOR = '#d97706'
  * lines the stepper opens the same list Leave Report shows (`useJobLineProgress`,
  * `ReportLinesProgressField`) — each line its own number, the job's number
  * derived from their shares — and files the same Status Report with the moved
- * lines named under "Stage progress". The ± chips stay for a one-line job, and
- * behind "Set the whole-job % instead".
+ * lines named under "Stage progress".
+ *
+ * Phone first (punch list #189, PR 5a): the window is a sheet from the bottom on a
+ * phone (`PhoneSheet`), opened from the press bar's % done on the clocked-in job
+ * as well as from My Schedule's card, and the ±1/±5/±20 chips are gone: a
+ * one-line job takes the same precise-number control the stage rows take
+ * (`StagePctControl`: quick picks at 48 px, −5 and +5 at 56 px, or a typed
+ * number), and behind "Set the whole-job % instead" so does every job. Not now
+ * and Save stand in the sheet's foot, Save naming what it writes.
  */
 export default function FieldPctUpdateModal({
   job,
@@ -111,20 +116,6 @@ export default function FieldPctUpdateModal({
       cancelled = true
     }
   }, [job.id, reloadKey])
-
-  // Esc closes — but only while this layer is on top (the RTB prompt swaps in
-  // with its own close, one layer at a time).
-  useEffect(() => {
-    if (rtbJob) return
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') {
-        e.stopPropagation()
-        onClose()
-      }
-    }
-    window.addEventListener('keydown', onKey)
-    return () => window.removeEventListener('keydown', onKey)
-  }, [rtbJob, onClose])
 
   /** Legacy bare-% write — the pre-v2.2078 path, kept as the no-template fallback. */
   const saveLegacyPctOnly = async () => {
@@ -214,100 +205,80 @@ export default function FieldPctUpdateModal({
   const canSave = loaded && !saving && (linesActive ? lineProgress.moved.length > 0 || note.trim() !== '' : next !== base || note.trim() !== '')
   const barBase = loaded ? Math.min(base, next) : 0
   const barChange = loaded ? Math.abs(next - base) : 0
+  const footBtn: CSSProperties = {
+    minHeight: STAGE_QUICK_PICK_MIN_HEIGHT,
+    padding: '0.55rem 0.75rem',
+    fontSize: '0.9375rem',
+    fontWeight: 600,
+    borderRadius: 10,
+    cursor: 'pointer',
+    fontFamily: 'inherit',
+  }
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label={`Update % done for ${job.label}`}
-      style={{
-        position: 'fixed',
-        inset: 0,
-        background: 'rgba(0,0,0,0.4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 1100,
-        paddingTop: 'var(--app-top-chrome, 0px)',
-      }}
-      onClick={onClose}
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          background: 'var(--surface)',
-          padding: '1.25rem',
-          borderRadius: 8,
-          width: 'min(420px, calc(100vw - 2rem))',
-          boxSizing: 'border-box',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '0.75rem' }}>
-          <div style={{ minWidth: 0 }}>
-            <h2 style={{ margin: 0, fontSize: '1.05rem' }}>{linesActive ? 'Update % done' : 'How done is this job?'}</h2>
-            <p style={{ margin: '0.2rem 0 0', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{job.label}</p>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            aria-label="Close"
-            style={{ border: 'none', background: 'none', cursor: 'pointer', fontSize: '1.5rem', lineHeight: 1, color: 'var(--text-muted)', minWidth: 44, minHeight: 44, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', margin: '-0.5rem -0.5rem 0 0' }}
-          >
-            ×
-          </button>
-        </div>
-
+    <PhoneSheet label={`Update % done for ${job.label}`} title={linesActive ? LINES_QUESTION : 'How done is this job?'} width={440} zIndex={1100} onClose={onClose}>
+      <div style={{ padding: '0.5rem 1rem 0', fontSize: '0.8125rem', color: 'var(--text-muted)', flex: 'none' }}>{job.label}</div>
+      <div style={{ overflowY: 'auto', minHeight: 0, padding: '0.5rem 1rem 0.75rem' }}>
         {linesActive && lineProgress.lines && loaded ? (
-          <div style={{ marginTop: '1rem' }}>
-            <ReportLinesProgressField
-              rows={lineProgress.lines}
-              picks={lineProgress.picks}
-              openId={lineProgress.openId}
-              onOpen={lineProgress.setOpenId}
-              onPct={lineProgress.setPick}
-              recordedPct={base}
-              onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
-            />
+          <ReportLinesProgressField
+            rows={lineProgress.lines}
+            picks={lineProgress.picks}
+            openId={lineProgress.openId}
+            onOpen={lineProgress.setOpenId}
+            onPct={lineProgress.setPick}
+            recordedPct={base}
+            onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
+          />
+        ) : null}
+
+        {!linesActive ? (
+          <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.6rem', marginTop: '0.25rem' }}>
+            {loaded ? (
+              <>
+                <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{base}%</span>
+                <span aria-hidden style={{ color: 'var(--text-faint)' }}>→</span>
+                <span style={{ fontSize: '2rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{next}%</span>
+                {delta ? (
+                  <span
+                    style={{
+                      fontSize: '0.875rem',
+                      fontWeight: 600,
+                      color:
+                        delta.tone === 'up'
+                          ? 'var(--text-green-600)'
+                          : delta.tone === 'down'
+                            ? 'var(--text-amber-800)'
+                            : 'var(--text-faint)',
+                    }}
+                  >
+                    {delta.label}
+                  </span>
+                ) : null}
+              </>
+            ) : loadFailure ? (
+              // A read is safe to repeat: when the signal returns the job reads again by itself.
+              <OfflineRetryPanel failure={loadFailure} onRetry={() => setReloadKey((n) => n + 1)} surface="field-pct" idempotent />
+            ) : (
+              <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</span>
+            )}
           </div>
         ) : null}
 
-        <div style={{ display: linesActive ? 'none' : 'flex', alignItems: 'baseline', justifyContent: 'center', gap: '0.6rem', marginTop: '1rem' }}>
-          {loaded ? (
-            <>
-              <span style={{ fontSize: '1rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{base}%</span>
-              <span aria-hidden style={{ color: 'var(--text-faint)' }}>→</span>
-              <span style={{ fontSize: '2rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', lineHeight: 1 }}>{next}%</span>
-              {delta ? (
-                <span
-                  style={{
-                    fontSize: '0.875rem',
-                    fontWeight: 600,
-                    color:
-                      delta.tone === 'up'
-                        ? 'var(--text-green-600)'
-                        : delta.tone === 'down'
-                          ? 'var(--text-amber-800)'
-                          : 'var(--text-faint)',
-                  }}
-                >
-                  {delta.label}
-                </span>
-              ) : null}
-            </>
-          ) : loadFailure ? (
-            // A read is safe to repeat: when the signal returns the job reads again by itself.
-            <OfflineRetryPanel failure={loadFailure} onRetry={() => setReloadKey((n) => n + 1)} surface="field-pct" idempotent />
-          ) : (
-            <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>Loading…</span>
-          )}
-        </div>
-
         {/* Same bar idiom as the schedule card (v2.1567): blue = where it was,
             green = the gain being proposed (amber = a downward correction). */}
-        <div style={{ display: linesActive ? 'none' : 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-muted)', marginTop: '0.75rem' }}>
-          <span style={{ width: `${barBase}%`, background: BAR_BASE_COLOR }} />
-          <span style={{ width: `${barChange}%`, background: loaded && next < base ? BAR_DROP_COLOR : BAR_GAIN_COLOR }} />
-        </div>
+        {!linesActive && loaded ? (
+          <div style={{ display: 'flex', height: 8, borderRadius: 4, overflow: 'hidden', background: 'var(--bg-muted)', marginTop: '0.75rem' }}>
+            <span style={{ width: `${barBase}%`, background: BAR_BASE_COLOR }} />
+            <span style={{ width: `${barChange}%`, background: next < base ? BAR_DROP_COLOR : BAR_GAIN_COLOR }} />
+          </div>
+        ) : null}
+
+        {/* A one-stage job: the same control a stage row takes, alone for the job (punch list #189, PR 5a). */}
+        {!linesActive && loaded ? (
+          <div style={{ marginTop: '1rem' }}>
+            <StagePctControl name="Job" value={next} onChange={setNext} disabled={saving} />
+          </div>
+        ) : null}
 
         {lineProgress.hasLines && !lineProgress.linesMode ? (
           <button
@@ -319,30 +290,6 @@ export default function FieldPctUpdateModal({
           </button>
         ) : null}
 
-        <div style={{ display: linesActive ? 'none' : 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.4rem', marginTop: '1rem' }}>
-          {FIELD_PCT_STEPS.map((step) => (
-            <button
-              key={step}
-              type="button"
-              disabled={!loaded || saving}
-              onClick={() => setNext((cur) => (cur == null ? cur : applyFieldPctStep(cur, step)))}
-              style={{
-                padding: '0.6rem 0',
-                fontSize: '1rem',
-                fontWeight: 600,
-                fontVariantNumeric: 'tabular-nums',
-                border: '1px solid var(--border-strong)',
-                borderRadius: 8,
-                background: 'var(--surface)',
-                color: loaded ? 'var(--text-strong)' : 'var(--text-muted)',
-                cursor: loaded && !saving ? 'pointer' : 'default',
-              }}
-            >
-              {step > 0 ? `+${step}` : `−${-step}`}
-            </button>
-          ))}
-        </div>
-
         <label style={{ display: 'block', marginTop: '0.9rem' }}>
           <span style={{ fontSize: '0.8125rem', fontWeight: 600 }}>
             What got done? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>(optional — saving files a report for the office)</span>
@@ -352,42 +299,35 @@ export default function FieldPctUpdateModal({
             onChange={(e) => setNote(e.target.value)}
             minRows={2}
             placeholder="Set fixtures in units 3–5, waiting on parts for 6…"
-            style={{ width: '100%', marginTop: '0.3rem', padding: '0.5rem', fontFamily: 'inherit', fontSize: '0.9375rem', border: '1px solid var(--border-strong)', borderRadius: 6, boxSizing: 'border-box' }}
+            style={{ width: '100%', marginTop: '0.3rem', padding: '0.5rem', fontFamily: 'inherit', fontSize: '1rem', border: '1px solid var(--border-strong)', borderRadius: 6, boxSizing: 'border-box' }}
           />
         </label>
 
         {error && loaded ? (
           <p style={{ margin: '0.6rem 0 0', fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p>
         ) : null}
-
-        <div style={{ display: 'flex', gap: '0.5rem', marginTop: '0.9rem' }}>
-          <button
-            type="button"
-            onClick={onClose}
-            style={{ flex: 1, padding: '0.55rem 0', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', cursor: 'pointer' }}
-          >
-            Cancel
-          </button>
-          <button
-            type="button"
-            onClick={() => void save()}
-            disabled={!canSave}
-            style={{
-              flex: 2,
-              padding: '0.55rem 0',
-              fontSize: '0.875rem',
-              fontWeight: 600,
-              background: canSave ? '#3b82f6' : 'var(--bg-muted)',
-              color: canSave ? '#fff' : 'var(--text-muted)',
-              border: 'none',
-              borderRadius: 6,
-              cursor: canSave ? 'pointer' : 'not-allowed',
-            }}
-          >
-            {saving ? 'Saving…' : !loaded ? 'Save' : linesActive ? `Save · job ${saveValue}%` : `Save ${next}%`}
-          </button>
-        </div>
       </div>
-    </div>
+
+      {/* The foot: Not now beside Save, the one press the thumb reaches last (the mock-up's section 4). */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.7fr', gap: '0.5rem', padding: '0.6rem 1rem 0.75rem', borderTop: '1px solid var(--border)', flex: 'none' }}>
+        <button type="button" onClick={onClose} style={{ ...footBtn, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)' }}>
+          {STAGE_PCT_WORDS.notNow}
+        </button>
+        <button
+          type="button"
+          onClick={() => void save()}
+          disabled={!canSave}
+          style={{
+            ...footBtn,
+            background: canSave ? '#3b82f6' : 'var(--bg-muted)',
+            color: canSave ? '#fff' : 'var(--text-muted)',
+            border: 'none',
+            cursor: canSave ? 'pointer' : 'not-allowed',
+          }}
+        >
+          {saving ? 'Saving…' : !loaded ? 'Save' : linesActive ? saveWords({ jobPct: saveValue ?? 0 }) : `Save ${next}%`}
+        </button>
+      </div>
+    </PhoneSheet>
   )
 }

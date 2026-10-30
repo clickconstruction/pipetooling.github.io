@@ -52,15 +52,15 @@ export const FIRM_EMAIL_MODE_WORDS = { now: 'Each event', digest: 'Weekly digest
 
 /** The frame every firm email sits in: the company line on top, the stop-these link at the foot. */
 export function legalWrapHtml(companyName: string, bodyHtml: string, unsubscribeUrl: string): string {
-  return `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><div style="border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px"><b>${legalEsc(companyName)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>${bodyHtml}<p style="color:#8a97a6;font-size:12px;margin-top:22px">You get this because you are on the firm's email list on ${legalEsc(companyName)}'s legal portal.${unsubscribeUrl ? ` <a href="${unsubscribeUrl}" style="color:#8a97a6">Stop these emails to you</a>.` : ' To stop them, reply to this email.'}</p></div>`
+  return `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><div style="border-bottom:2px solid #9a5b2b;padding-bottom:8px;margin-bottom:14px"><b>${legalEsc(companyName)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>${bodyHtml}<p style="color:#5e6d7c;font-size:12px;margin-top:22px">You get this because you are on the firm's email list on ${legalEsc(companyName)}'s legal portal.${unsubscribeUrl ? ` <a href="${unsubscribeUrl}" style="color:#5e6d7c">Stop these emails to you</a>.` : ' To stop them, reply to this email.'}</p></div>`
 }
 
-const PORTAL_BUTTON = (portalUrl: string) => `<p><a href="${portalUrl}" style="display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none">Open the portal</a></p>`
+const PORTAL_BUTTON = (portalUrl: string) => `<p><a href="${portalUrl}" style="display:inline-block;background:#9a5b2b;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none">Open the portal</a></p>`
 
 /** `submit-legal-portal` → the one email a new recipient must answer before anything else is sent. */
 export function buildLegalConfirmEmail(i: { companyName: string; email: string; confirmUrl: string }): LegalEmail {
   const subject = `Confirm your email for ${i.companyName}'s legal portal`
-  const html = `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><p>Someone at your firm added <b>${legalEsc(i.email)}</b> to hear from ${legalEsc(i.companyName)} about accounts referred to counsel.</p><p><a href="${i.confirmUrl}" style="display:inline-block;background:#b0662f;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none">Yes, email me</a></p><p style="color:#8a97a6;font-size:12px">Nothing else is sent to this address unless you click. If this wasn't you, ignore this email.</p></div>`
+  const html = `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px"><p>Someone at your firm added <b>${legalEsc(i.email)}</b> to hear from ${legalEsc(i.companyName)} about accounts referred to counsel.</p><p><a href="${i.confirmUrl}" style="display:inline-block;background:#9a5b2b;color:#fff;padding:8px 14px;border-radius:5px;text-decoration:none">Yes, email me</a></p><p style="color:#5e6d7c;font-size:12px">Nothing else is sent to this address unless you click. If this wasn't you, ignore this email.</p></div>`
   return { subject, text: `${subject}\n\n${i.confirmUrl}`, html }
 }
 
@@ -246,7 +246,7 @@ export function buildLegalWelcomeEmail(i: {
   const p = (s: string) => `<p style="margin:0 0 12px">${s}</p>`
   const html =
     `<div style="font:15px/1.5 -apple-system,'Segoe UI',Roboto,sans-serif;color:#16283c;max-width:600px">` +
-    `<div style="border-bottom:2px solid #b0662f;padding-bottom:8px;margin-bottom:14px"><b>${legalEsc(i.companyName)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>` +
+    `<div style="border-bottom:2px solid #9a5b2b;padding-bottom:8px;margin-bottom:14px"><b>${legalEsc(i.companyName)}</b><br><span style="color:#5a6b7e;font-size:13px">Collections referred to counsel</span></div>` +
     p(`Hello ${legalEsc(greet)},`) +
     p(`${legalEsc(intro)} ${legalEsc(why)}`) +
     (note ? `<p style="margin:0 0 12px;padding:8px 12px;background:#f1ece2;border-radius:5px">${legalEsc(note).replace(/\n/g, '<br>')}</p>` : '') +
@@ -258,7 +258,7 @@ export function buildLegalWelcomeEmail(i: {
     p(legalEsc(keep)) +
     p(legalEsc(ask)) +
     (sig.length ? `<p style="margin:16px 0 0;color:#5a6b7e">${sig.map(legalEsc).join('<br>')}</p>` : '') +
-    `<p style="color:#8a97a6;font-size:12px;margin-top:22px">${legalEsc(footer)}</p>` +
+    `<p style="color:#5e6d7c;font-size:12px;margin-top:22px">${legalEsc(footer)}</p>` +
     `</div>`
 
   const text = [

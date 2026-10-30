@@ -171,7 +171,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const jobAccountGapsEnabled = on('jobAccountGaps')
   const { gaps: jobAccountGaps, reload: reloadJobAccountGaps } = useJobAccountEvidenceGapsNudge(jobAccountGapsEnabled)
   const supplyMoveWindowEnabled = on('supplyMoveWindow')
-  const { moveWindow: supplyMoveWindow } = useSupplyMoveWindowNudge(supplyMoveWindowEnabled)
+  const { moveWindow: supplyMoveWindow, reload: reloadSupplyMoveWindow } = useSupplyMoveWindowNudge(supplyMoveWindowEnabled)
   const vehicleRecordGapsEnabled = on('vehicleRecordGaps')
   const { gaps: vehicleRecordGaps, reload: reloadVehicleRecords } = useVehicleRecordGapsNudge(vehicleRecordGapsEnabled)
   const priceMatrixEnabled = on('priceMatrix')
@@ -368,6 +368,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
       tallyUnlinkedCount,
       /** The purchases line's re-read after a save on the deck (v2.6071, punch list #178). */
       refetchTallyUnlinkedCounts,
+      /** The move window's re-read after a save on the deck (v2.6086, punch list #178). */
+      reloadSupplyMoveWindow,
       arBankUnallocatedCount: arBank.count,
       refetchArBankUnallocatedCount: arBank.refetch,
       refetchStaleTallyStaffFollowUp: tallyStaff.refetch,

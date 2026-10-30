@@ -27,6 +27,7 @@ import { DraftedMark, HeardFold } from './reports/VoiceDraftBits'
 import { useReportVoiceDraft } from '../hooks/useReportVoiceDraft'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
 import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
+import { fieldPctStartValue } from '../lib/jobs/fieldPctUpdate'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
 import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { MarkJobReadyToBillPrompt } from './jobs/MarkJobReadyToBillPrompt'
@@ -93,6 +94,8 @@ export default function AdditionalReportModal({
   const [jobLinksLoading, setJobLinksLoading] = useState(false)
   const [customerFilesUrl, setCustomerFilesUrl] = useState('')
   const [customerPicturesUrl, setCustomerPicturesUrl] = useState('')
+  /** The job's number on record, as the card shows it (punch list #189, PR 5a): the percent opens on it, not on 0. */
+  const [jobPctSeed, setJobPctSeed] = useState<number | null>(null)
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   // Report by line (punch list #130, v2.5663): the job's priced lines, two or more; null = the plain slider.
   const lineProgress = useJobLineProgress(jobId, open)
@@ -107,6 +110,13 @@ export default function AdditionalReportModal({
     const next = String(lineDerivedPct)
     setFieldValues((prev) => (prev[percentFieldLabel] === next ? prev : { ...prev, [percentFieldLabel]: next }))
   }, [lineDerivedPct, percentFieldLabel])
+  // The whole-job percent opens on the job's number (the card's follow-up: an untouched Save on a one-line job wrote 0).
+  // Only an untouched field is seeded, so a tech's pick is never overwritten by a late read.
+  useEffect(() => {
+    if (!open || jobPctSeed == null || !percentFieldLabel || linesActive) return
+    const seed = String(jobPctSeed)
+    setFieldValues((prev) => (prev[percentFieldLabel] === undefined ? { ...prev, [percentFieldLabel]: seed } : prev))
+  }, [open, jobPctSeed, percentFieldLabel, linesActive])
 
   // Escape closes the form as its Close does (v2.5691). The job window underneath ignores Escape while the form is
   // up (`detailEscBlocked`), so the key answered nothing here; a layer above the form that handles Escape itself
@@ -129,6 +139,7 @@ export default function AdditionalReportModal({
       setJobLinksLoading(false)
       setCustomerFilesUrl('')
       setCustomerPicturesUrl('')
+      setJobPctSeed(null)
       return
     }
     let cancelled = false
@@ -139,7 +150,7 @@ export default function AdditionalReportModal({
           async () =>
             await supabase
               .from('jobs_ledger')
-              .select('google_drive_link, job_pictures_link')
+              .select('google_drive_link, job_pictures_link, pct_complete, status')
               .eq('id', jobId)
               .maybeSingle(),
           'AdditionalReportModal job customer links',
@@ -147,10 +158,11 @@ export default function AdditionalReportModal({
         if (cancelled) return
         const row =
           data && typeof data === 'object' && data !== null
-            ? (data as { google_drive_link?: string | null; job_pictures_link?: string | null })
+            ? (data as { google_drive_link?: string | null; job_pictures_link?: string | null; pct_complete?: number | null; status?: string | null })
             : null
         setCustomerFilesUrl((row?.google_drive_link ?? '').trim())
         setCustomerPicturesUrl((row?.job_pictures_link ?? '').trim())
+        setJobPctSeed(row ? fieldPctStartValue(row.pct_complete ?? null, row.status ?? null) : null)
       } catch {
         if (!cancelled) {
           setCustomerFilesUrl('')
@@ -595,8 +607,15 @@ export default function AdditionalReportModal({
                       <ReportTemplatePercentField
                         id={`additional-report-pct-${f.id}`}
                         label={f.label}
-                        value={fieldValues[f.label] ?? '0'}
+                        value={fieldValues[f.label] ?? (jobPctSeed != null ? String(jobPctSeed) : '0')}
                         onChange={(v) => setFieldValues((prev) => ({ ...prev, [f.label]: v }))}
+                        hint={
+                          jobPctSeed == null
+                            ? null
+                            : (fieldValues[f.label] ?? String(jobPctSeed)) === String(jobPctSeed)
+                              ? `Opens on the job's ${jobPctSeed}%. Leave it, and the report files ${jobPctSeed}%.`
+                              : `Was ${jobPctSeed}%.`
+                        }
                       />
                       {lineProgress.hasLines && !lineProgress.linesMode ? (
                         <button

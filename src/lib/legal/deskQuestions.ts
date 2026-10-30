@@ -40,12 +40,16 @@ export function howMuch(packet: Pick<LegalPacket, 'account' | 'worth'>): DeskQue
   const days = packet.account.totals.oldestDays
   const owed = `Owed on ${n} job${n === 1 ? '' : 's'}.`
   // v2.5849 (punch list #171 step 2): the claim leads when the GC holds retainage; the open bills read inside it.
+  // v2.6103 (punch list #213): only the retainage no sent bill asks for is added, and the sentence says which part that is.
   const w = packet.worth
+  const oldest = days == null ? '' : ` The oldest bill is ${days} days old.`
   if (w.claim > w.balance + 0.005) {
-    const inside = `Open bills ${formatLegalMoney(w.balance)} inside it, plus retainage held ${formatLegalMoney(w.retainageHeld)}.`
-    return { label: 'How much?', answer: formatLegalMoney(w.claim), why: days == null ? inside : `${inside} The oldest bill is ${days} days old.`, chip: { text: 'the claim', tone: 'ok' } }
+    const onBills = w.retainageOnBills > 0.005 ? ` Another ${formatLegalMoney(w.retainageOnBills)} of the retainage held is already on a bill.` : ''
+    const inside = `Open bills ${formatLegalMoney(w.balance)} inside it, plus retainage ${formatLegalMoney(w.retainageAdded)} that no bill asks for yet.${onBills}`
+    return { label: 'How much?', answer: formatLegalMoney(w.claim), why: `${inside}${oldest}`, chip: { text: 'the claim', tone: 'ok' } }
   }
-  return { label: 'How much?', answer: formatLegalMoney(packet.worth.balance), why: days == null ? owed : `${owed} The oldest bill is ${days} days old.` }
+  const carried = w.retainageHeld > 0.005 ? ` The retainage held ${formatLegalMoney(w.retainageHeld)} is already inside the open bills.` : ''
+  return { label: 'How much?', answer: formatLegalMoney(w.balance), why: `${owed}${carried}${oldest}` }
 }
 
 const VERDICT_TONE: Record<LegalWorthVerdict, DeskQuestionTone> = { 'worth it': 'ok', marginal: 'warn', 'not worth it': 'stop' }

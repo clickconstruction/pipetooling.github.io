@@ -1,3 +1,5 @@
+import { PHONE_PRESS_MIN_HEIGHT } from '../lib/phonePress'
+
 type Props = {
   id: string
   label: string
@@ -17,9 +19,9 @@ function clampPercentString(raw: string): string {
 const PERCENT_QUICK_PICKS = [0, 25, 50, 75, 100]
 
 /**
- * 0–100% field: five thumb-size quick-pick chips plus the slider for
- * fine-tuning; value is a string 0..100 in field_values (same as other report
- * fields).
+ * 0–100% field: five thumb-size quick-pick chips (44 px since punch list #189,
+ * PR 3) plus the slider for fine-tuning; value is a string 0..100 in
+ * field_values (same as other report fields).
  */
 export function ReportTemplatePercentField({ id, label, value, onChange, hint }: Props) {
   const n = (() => {
@@ -75,6 +77,8 @@ export function ReportTemplatePercentField({ id, label, value, onChange, hint }:
                 flex: 1,
                 minWidth: 0,
                 padding: '0.45rem 0',
+                // A thumb's press (punch list #189, PR 3): 44 px, from 33.
+                minHeight: PHONE_PRESS_MIN_HEIGHT,
                 fontSize: '0.8125rem',
                 fontWeight: 600,
                 border: active ? '1px solid #2563eb' : '1px solid var(--border-strong)',
