@@ -57,6 +57,8 @@ The switch now reads {{button:green|On}}. The days and times fold away. The line
 
 The app keeps your days and times under the switch. Press the {{button:green|On}} switch and save to use them again.
 
+One more line can appear under the switch, in amber. The line reads like *Nobody hears a reply from 11 PM to 6 AM. Rosa, Evan and Taunya are all off then.* Each person sets their own hours under **Push me** on the Your account tab. The office is open, but nobody in the office is pushed in those hours. A reply then waits on Needs a reply until someone's hours open. Ask someone to widen their hours, or take the replies in the morning. Only the owner or a dev sees the line.
+
 ## Turn it off
 
 Press the {{button:green|On}} switch. The line under it says *Off: nobody is pushed when a customer answers.* Replies still land in Messages as before.

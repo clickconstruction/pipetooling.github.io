@@ -173,3 +173,22 @@ describe('DashboardNeedsYouCard · whose line it is (punch list #176, change 3)'
     expect((document.querySelector('[data-empty-state]') as HTMLElement).textContent).toBe('Nothing waits on you.')
   })
 })
+
+describe('DashboardNeedsYouCard: While you were off (v2.6060, punch list #141 PR 4)', () => {
+  it('draws the line with its count and See them opens it', () => {
+    const waited: NeedsYouItem = {
+      key: 'while-off',
+      severity: 'amber',
+      kicker: 'Push me',
+      title: 'While you were off: 3 replies and a work order waited',
+      detail: 'Since 8 PM. Evan answered Dana at 11:50 PM.',
+      figure: '4',
+      actionLabel: 'See them',
+    }
+    const { onAction } = renderCard([waited], 'assistant')
+    expect(screen.getByText('While you were off: 3 replies and a work order waited')).toBeTruthy()
+    expect(screen.getByText('Since 8 PM. Evan answered Dana at 11:50 PM.')).toBeTruthy()
+    fireEvent.click(screen.getByText('See them'))
+    expect(onAction).toHaveBeenCalledWith(expect.objectContaining({ key: 'while-off' }))
+  })
+})
