@@ -28,7 +28,7 @@ export function FirstTimerMistakes({ titleId }: FigureProps) {
         <Flow x={52} y={78} angle={90} color={WRONG} />
         {x(60, 40)}
         {divider}
-        <Pipe d="M58 112 V170" bore={DRAIN} tint="air" />
+        <Pipe d="M58 112 V162" bore={DRAIN} tint="air" />
         <Trap x={20} y={106} drop={24} r={8} armTo={58} bore={9} id={h} />
         {tick(60, 108)}
         <Label x={36} y={174} anchor="middle" size={6.5} color={RIGHT}>
@@ -74,7 +74,7 @@ export function FirstTimerMistakes({ titleId }: FigureProps) {
         </Label>
         {x(60, 40)}
         {divider}
-        <Pipe d="M50 170 V112" bore={DRAIN} tint="air" />
+        <Pipe d="M50 162 V112" bore={DRAIN} tint="air" />
         <Trap x={10} y={108} drop={16} r={6} armTo={50} bore={7} id={h} />
         <Label x={30} y={138} anchor="middle" size={6.5} color={RIGHT}>
           6 ft
