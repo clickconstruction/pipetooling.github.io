@@ -2,7 +2,7 @@
 name: "Legal desk: the settlement floor — what it does today, and five ways to show what could happen instead"
 number: 218
 group: close
-status: the owner picked C 2026-10-30 ("Build C") · the train is open, stacked, each on the one below — PR 1 v2.6170 #6559 the gate retired (→ main, auto-merge) · PR 2 v2.6173 #6565 the attorney's read (migration 20261030090000_legal_counsel_read) · PR 3 v2.6176 #6567 the paths and the walk-away line · PR 4 v2.6177 #6568 the firm's side and both prints · after each lands, the next is rebased onto main and retargeted; after PR 1 deploy submit-legal-portal and legal-portal, after PR 2 db push then deploy submit-legal-portal
+status: the owner picked C 2026-10-30 ("Build C") · the train of four is open on main with auto-merge, in queue order — PR 1 #6559 the gate retired · PR 2 #6565 the attorney's read (migration 20261030090000_legal_counsel_read) · PR 3 #6567 the paths and the walk-away line · PR 4 #6568 the firm's side and both prints (the versions are the PRs' own fragments, cited once they land) · after PR 1 deploy submit-legal-portal and legal-portal, after PR 2 db push then deploy submit-legal-portal
 mockup: to-dos/legal-desk-settlement-floor/mockup.html
 summary: >
   The office sets one settlement floor per matter, a dollar amount or a percent of the open balance,
