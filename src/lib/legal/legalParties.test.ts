@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobContractCoverage } from '../jobs/jobContractCoverage'
-import { contractStateWords, mailsToWords, partiesStrip, payerRoleWords, precinctWords, type PartiesInput, type PartiesProperty } from './legalParties'
+import { contractStateWords, mailsToWords, partiesStrip, payerRoleWords, precinctWords, venueBlock, type PartiesInput, type PartiesProperty } from './legalParties'
 
 const signed = (names: string[]): JobContractCoverage => ({ kind: 'signed', source: 'contract', signedAt: '2026-05-27', signerName: names.join(' and '), signerNames: names, contractId: 'c1', estimateNumber: null } as JobContractCoverage)
 
@@ -103,6 +103,26 @@ describe('partiesStrip', () => {
     const s = partiesStrip(gcInput({ properties: [property({ precinct: '2' })] }))
     expect(s.cells[2]!.main).toBe('Williamson County · Justice Court, Precinct 2')
     expect(precinctWords({ precinct: '', precinctNote: '2 or 3 — on the line' })).toBe('Justice Court, Precinct 2 or 3 — on the line')
+  })
+})
+
+describe('venueBlock', () => {
+  it('the county card block: the two places, the cap, the foreclosure line and the source', () => {
+    const b = venueBlock(gcInput())
+    expect(b.title).toBe('Venue for job 742')
+    expect(b.places.map((p) => [p.label, p.main, p.quiet])).toEqual([
+      ['Where the work was done', 'Williamson County · justice precinct not yet', '2208 Whitestone Blvd, Cedar Park, TX 78613 · the county from the property record'],
+      ['Where the defendant is', 'Lubbock County · justice precinct not yet', 'Northline Builders, 1900 Mesa Drive, Ste 4, Lubbock, TX 79424 · the county from their own record'],
+    ])
+    expect(b.rules[0]).toMatch(/^\$3,140\.00 is within the justice court limit/)
+    expect(b.rules[1]).toBe('A lien foreclosure goes to district court in Williamson County — a justice court cannot foreclose a lien on land (Gov\'t Code § 27.031(b)).')
+    expect(b.source).toContain('TRCP 502.4')
+  })
+  it('a payer with no county says so, and two jobs name both', () => {
+    const b = venueBlock(gcInput({ customerCounty: '', jobs: [{ label: '742', address: 'a' }, { label: '743', address: 'b' }] }))
+    expect(b.title).toBe('Venue for jobs 742 and 743')
+    expect(b.places[1]!.main).toBe('county not on the record')
+    expect(b.places[1]!.quiet).toContain('no county on their record')
   })
 })
 

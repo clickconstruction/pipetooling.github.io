@@ -10,7 +10,7 @@ import type { JobContractCoverage } from '../jobs/jobContractCoverage'
 import { joinSignerNames } from '../jobs/jobContractSigners'
 import { countyWords } from './firmCounties'
 import { cityOfAddress, type VenueCounty } from './firmForAccount'
-import { justiceCourtCap } from './jpVenue'
+import { courtWords, justiceCourtCap, lienForeclosureLine, venuePlaces, VENUE_SOURCE_LINE, type VenuePlace } from './jpVenue'
 import { formatLegalMoney } from './legalPacket'
 import type { LegalPropertyLine } from './legalProperty'
 
@@ -156,6 +156,52 @@ export function payerShortName(name: string): string {
   const words = name.trim().split(/\s+/).filter(Boolean)
   if (words.length <= 3) return name.trim()
   return words.slice(0, 2).join(' ')
+}
+
+/** One place a suit can be filed, as the county card draws it (PR 2, v2.6174). */
+export type VenuePlaceRow = {
+  basis: VenuePlace['basis']
+  /** `Where the work was done` · `Where the defendant is` */
+  label: string
+  /** `Williamson County · justice precinct not yet` */
+  main: string
+  /** The address, or the payer's name and address; then where the county came from. */
+  quiet: string
+  county: string
+  jobLabels: string[]
+}
+
+export type VenueBlock = {
+  /** `Venue for job 742` · `Venue for jobs 742 and 743` */
+  title: string
+  places: VenuePlaceRow[]
+  /** The justice-court cap and the lien-foreclosure line, as the packet prints them. */
+  rules: string[]
+  source: string
+}
+
+/** The venue block on the Map's county card: the places TRCP 502.4 gives, the two rule lines, the source line. */
+export function venueBlock(input: Pick<PartiesInput, 'payer' | 'customerAddress' | 'customerCounty' | 'customerPrecinct' | 'properties' | 'jobs' | 'balance'>): VenueBlock {
+  const places = venuePlaces({
+    properties: input.properties.filter((p) => p.source !== 'job_address' || p.county.trim()).map((p) => ({ address: p.address, county: p.county, precinct: p.precinct, precinctNote: p.precinctNote, jobLabels: p.jobLabels })),
+    payer: { name: input.payer.name, address: input.customerAddress, county: input.customerCounty, precinct: input.customerPrecinct },
+  })
+  const labels = input.jobs.map((j) => j.label.trim()).filter(Boolean)
+  const title = labels.length === 0 ? 'Venue' : labels.length === 1 ? `Venue for job ${labels[0]}` : `Venue for jobs ${joinSignerNames(labels)}`
+  const rows: VenuePlaceRow[] = places.map((p) => ({
+    basis: p.basis,
+    label: p.basisWords,
+    main: courtWords(p),
+    quiet: join([p.where, p.basis === 'work' ? (p.county ? 'the county from the property record' : '') : (p.county ? 'the county from their own record' : 'no county on their record')]),
+    county: p.county,
+    jobLabels: p.jobLabels,
+  }))
+  return {
+    title,
+    places: rows,
+    rules: [justiceCourtCap(input.balance).words, lienForeclosureLine(places.filter((p) => p.basis === 'work').map((p) => p.county))],
+    source: VENUE_SOURCE_LINE,
+  }
 }
 
 export function partiesStrip(input: PartiesInput): PartiesStrip {

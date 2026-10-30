@@ -61,7 +61,8 @@ import { formatErrorMessage } from '../../../utils/errorHandling'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
 import LegalPartiesStrip from './LegalPartiesStrip'
-import { partiesStrip, type PartyDoor } from '../../../lib/legal/legalParties'
+import { partiesStrip, venueBlock, type PartyDoor, type VenueBlock } from '../../../lib/legal/legalParties'
+import type { LegalMapOpenOn } from './LegalDeskMapView'
 
 import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
@@ -291,6 +292,22 @@ export default function LegalDesk(props: LegalDeskProps) {
       balance: selected.balance,
     })
   }, [packet, selected, selectedFirm])
+  /** The venue press (PR 2, v2.6174): the Map opens on the account's county with its case held, and the county card draws this block. */
+  const [mapOpenOn, setMapOpenOn] = useState<LegalMapOpenOn | null>(null)
+  const selectedVenue = useMemo<VenueBlock | null>(() => {
+    if (!packet || !selected) return null
+    const a = packet.account
+    return venueBlock({
+      payer: { name: a.payer.name, viaGc: a.payer.viaGc, customerId: a.payer.customerId },
+      customerAddress: a.customerAddress,
+      customerCounty: a.customerCounty,
+      customerPrecinct: a.customerPrecinct,
+      properties: a.properties,
+      jobs: a.jobs.map((j) => ({ label: j.label, address: j.address })),
+      balance: selected.balance,
+    })
+  }, [packet, selected])
+  const venueFor = useCallback((c: { key: string }) => (selected && c.key === selected.key ? selectedVenue : null), [selected, selectedVenue])
 
 
   const stage = matter?.stage ?? 'review'
@@ -319,7 +336,14 @@ export default function LegalDesk(props: LegalDeskProps) {
   }
   /** A cell of the parties strip pressed (punch list #219): the customer, the property record (on the customer's profile), or the map. */
   const pressParty = (door: PartyDoor) => {
-    if (door === 'venue') { pressView('map'); return }
+    if (door === 'venue') {
+      // The Map opens on the account's venue county with its case held (PR 2); a county the lens cannot place reads as the empty card.
+      const county = selectedFirm?.counties.find((c) => c.county.trim())?.county ?? null
+      const heldId = selected ? (mapCases.cases.find((c) => c.key === selected.key)?.id ?? null) : null
+      setMapOpenOn({ county, heldId, nonce: Date.now() })
+      pressView('map')
+      return
+    }
     openEditCustomer()
   }
   const fixGap = (g: LegalGap) => {
@@ -869,6 +893,8 @@ export default function LegalDesk(props: LegalDeskProps) {
             firms={legal?.activeFirms ?? []}
             countiesByFirm={legal?.countiesByFirm ?? new Map()}
             stacked={stacked}
+            openOn={mapOpenOn}
+            venueFor={venueFor}
             onOpenCase={(key) => {
               setView('accounts')
               if (stacked && onOpenAccount) onOpenAccount(key)
