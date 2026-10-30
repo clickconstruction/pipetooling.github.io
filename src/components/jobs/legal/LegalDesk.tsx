@@ -803,8 +803,14 @@ export default function LegalDesk(props: LegalDeskProps) {
                 >
                   {firm ? (
                     <>
-                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis' }}>{seg.main}</span>
-                      {seg.tail ? <span data-legal-firm-county style={{ fontWeight: 500, color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{seg.tail}</span> : null}
+                      {/* The name and its quiet county tail are one clipped run (punch list #182, a follow-up): a tight segment
+                          shortens the tail first, since the ellipsis eats from the end, and the name only after it. As two
+                          flex items the nowrap tail kept its whole width while the name shrank to nothing and the tail bled
+                          under Emails, the whole firm gone from a phone's header. */}
+                      <span data-legal-firm-words style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                        {seg.main}
+                        {seg.tail ? <span data-legal-firm-county style={{ fontWeight: 500, color: 'var(--text-muted)', marginLeft: 6 }}>{seg.tail}</span> : null}
+                      </span>
                       {legalIntakeUnseen(firm) ? <span data-legal-firm-intake-new aria-hidden title="The firm sent its answers to Start here" style={{ width: 7, height: 7, borderRadius: 999, background: '#9a5b2b', display: 'inline-block', flex: 'none' }} /> : null}
                       <ChevronRight size={13} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: 'var(--text-muted)' }} />
                     </>

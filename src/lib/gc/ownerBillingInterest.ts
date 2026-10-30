@@ -6,6 +6,7 @@
 import { addDays } from './building'
 import { appCertified, ownerPayAppsSent } from './ownerBilling'
 import type { GcProject, GcState, OwnerPayAppSent } from './types'
+import { money, shortDate } from './words'
 
 /** The rate the office starts from, a month (the owner's call 3: off on a job until it is typed). Ours to change to what the contract says. */
 export const OWNER_INTEREST_DEFAULT_PCT = 1.5
@@ -93,3 +94,92 @@ export function ownerInterest(state: GcState, project: GcProject): OwnerInterest
   const paid = sentBills.filter((b) => b.paidOn !== null).reduce((t, b) => t + b.amount, 0)
   return { pctPerMonth: pct, bills, builtUp, billed, paid, toBill: Math.max(0, builtUp - billed), owed: billed - paid }
 }
+
+/** A month of interest, in days: a twelfth of a year, the rate `ownerInterestOnBill` runs at. The rows say 30.4. */
+export const INTEREST_MONTH_DAYS = 365 / 12
+
+/**
+ * One late bill as the interest bill's rows read it (punch list #217, outside-5): the bill, the day it fell due, the
+ * day it was paid or open, the days late, what was open, a month's interest on that, and the interest it came to.
+ * The arithmetic is the kernel's own, so a customer can redo each row: monthly × days ÷ 30.4.
+ */
+export interface InterestRow {
+  number: number
+  /** "Pay application 2", "The final pay application". */
+  bill: string
+  /** The day it fell due by the contract. Interest ran from the day after. */
+  dueOn: string
+  /** The day they paid it. Null while it is open. */
+  paidOn: string | null
+  /** Days late: to the day it was paid, or to today. */
+  days: number
+  /** What was open when it fell due. */
+  open: number
+  /** A month's interest on that: open × the rate. */
+  monthly: number
+  amount: number
+  /** True when nothing was paid while it ran, so the amount is monthly × days ÷ 30.4 and the row shows that sum. */
+  straight: boolean
+}
+
+function billName(app: { number: number; final?: boolean }): string {
+  return app.final ? 'The final pay application' : `Pay application ${app.number}`
+}
+
+/** The row for one bill's interest, from the kernel's reading of it. */
+export function interestRowOf(bill: OwnerInterestOnBill, pctPerMonth: number): InterestRow {
+  const { app, from } = bill
+  const certified = appCertified(app) ?? 0
+  const end = app.paidOn ?? addDays(from, bill.days)
+  const payments = app.payments ?? (app.paidOn ? [{ on: app.paidOn, amount: app.paidAmount ?? certified }] : [])
+  const open = Math.max(0, certified - payments.filter((p) => p.on <= from).reduce((t, p) => t + p.amount, 0))
+  const straight = !payments.some((p) => p.on > from && p.on <= end && p.on !== app.paidOn)
+  return { number: app.number, bill: billName(app), dueOn: from, paidOn: app.paidOn, days: bill.days, open, monthly: (open * pctPerMonth) / 100, amount: bill.amount, straight }
+}
+
+/** The rows of a job's interest, oldest bill first: every late bill with interest on it. Empty when the job charges none. */
+export function interestRows(state: GcState, project: GcProject): InterestRow[] {
+  const interest = ownerInterest(state, project)
+  return interest.pctPerMonth === null ? [] : interest.bills.map((b) => interestRowOf(b, interest.pctPerMonth as number))
+}
+
+/**
+ * A row with nothing paid while it ran, from its facts alone: `open` from the day after `dueOn` to the day it was paid
+ * or to today, at `pctPerMonth`. The samples write their made-up bills with it, so their rows foot as a real one's.
+ */
+export function straightInterestRow(input: { number: number; final?: boolean; dueOn: string; paidOn: string | null; open: number; pctPerMonth: number; today: string }): InterestRow {
+  const end = input.paidOn ?? input.today
+  const days = Math.max(0, dayNumber(end) - dayNumber(input.dueOn))
+  const monthly = (input.open * input.pctPerMonth) / 100
+  return { number: input.number, bill: billName(input), dueOn: input.dueOn, paidOn: input.paidOn, days, open: input.open, monthly, amount: (monthly * days) / INTEREST_MONTH_DAYS, straight: true }
+}
+
+/** The rows' interest added up. */
+export function interestRowsTotal(rows: readonly InterestRow[]): number {
+  return rows.reduce((t, r) => t + r.amount, 0)
+}
+
+/** The head of the rows' table, on the email and the reminder alike. */
+export const INTEREST_TABLE_HEAD: readonly string[] = ['Bill', 'Due', 'Paid', 'Days late', 'Open', 'Interest']
+
+/**
+ * One row's cells under that head. The interest cell shows the sum a customer can redo (a month's interest × the days
+ * ÷ 30.4) when nothing was paid while it ran, else the figure alone, and `interestRowNotes` says why.
+ */
+export function interestRowCells(row: InterestRow): string[] {
+  const sum = row.straight ? `${money(row.monthly)} × ${row.days}⁄30.4 = ${money(row.amount)}` : money(row.amount)
+  return [row.bill, shortDate(row.dueOn), row.paidOn ? shortDate(row.paidOn) : 'open', String(row.days), money(row.open), sum]
+}
+
+/** The sum row under the rows: the interest to today. */
+export function interestSumCells(rows: readonly InterestRow[]): string[] {
+  return ['Interest to today', '', '', '', '', money(interestRowsTotal(rows))]
+}
+
+/** A line for each bill paid in parts, whose interest ran on what stayed open each day. */
+export function interestRowNotes(rows: readonly InterestRow[]): string[] {
+  return rows.filter((r) => !r.straight).map((r) => `${r.bill} was paid in parts. Its interest ran on what stayed open each day.`)
+}
+
+/** How a month is counted, under the table. */
+export const INTEREST_MONTH_LINE = 'A month counts as 30.4 days, a twelfth of a year.'
