@@ -70,6 +70,9 @@ function effectiveBg(win: Window, el: Element): Rgba | null {
 
 const rgbText = (c: Rgba) => `rgb(${Math.round(c.r)}, ${Math.round(c.g)}, ${Math.round(c.b)})`
 
+/** Text the audit measures: two characters or more, or a lone letter or digit (a count's `0`). A lone mark or symbol (`×`, `▾`, `·`) is an icon's glyph, skipped. */
+const measurable = (text: string) => text.length > 1 || /^[\p{L}\p{N}]$/u.test(text)
+
 export function auditFrame(win: Window, opts: { floor?: number; measure?: boolean } = {}): LensAudit {
   const doc = win.document
   const floor = opts.floor ?? LENS_CONTRAST_FLOOR
@@ -78,7 +81,7 @@ export function auditFrame(win: Window, opts: { floor?: number; measure?: boolea
   const seen = new Set<string>()
   for (const el of Array.from(doc.querySelectorAll('body *'))) {
     if (el.closest('[data-lens-mark]')) continue
-    const own = Array.from(el.childNodes).filter((n) => n.nodeType === 3 && (n.textContent ?? '').trim().length > 1)
+    const own = Array.from(el.childNodes).filter((n) => n.nodeType === 3 && measurable((n.textContent ?? '').trim()))
     if (own.length === 0) continue
     if (measure) {
       const rect = el.getBoundingClientRect()

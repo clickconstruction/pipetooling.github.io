@@ -31,6 +31,28 @@ describe('the lens audit · a frame\'s document', () => {
     expect(a.sideways).toBeNull()
   })
 
+  it('measures a lone digit or letter: a count\'s 0 in green on the dark card is under the floor, and so is a faint initial', () => {
+    document.body.innerHTML = `
+      <div style="background-color: rgb(31, 41, 55)">
+        <span style="color: rgb(21, 128, 61)">0</span>
+        <span style="color: rgb(75, 85, 99)"> T </span>
+        <span style="color: rgb(243, 244, 246)">4</span>
+      </div>`
+    const a = auditFrame(window, { measure: false })
+    expect(a.lowContrast.map((c) => c.text)).toEqual(['0', 'T'])
+    expect(a.lowContrast[0]).toMatchObject({ ratio: 2.93, color: 'rgb(21, 128, 61)', bg: 'rgb(31, 41, 55)' })
+  })
+
+  it('skips a lone mark or symbol, an icon\'s glyph, however faint it reads', () => {
+    document.body.innerHTML = `
+      <div style="background-color: rgb(31, 41, 55)">
+        ${['×', '▾', '·', '✓', '+', '?', '—'].map((g) => `<span style="color: rgb(75, 85, 99)">${g}</span>`).join('')}
+        <span style="color: rgb(75, 85, 99)">× 2</span>
+      </div>`
+    const a = auditFrame(window, { measure: false })
+    expect(a.lowContrast.map((c) => c.text)).toEqual(['× 2'])
+  })
+
   it('reads the errors the seal kept, and turns the audit into badges', () => {
     document.body.innerHTML = '<p style="color: rgb(0, 0, 0)">Fine</p>'
     ;(window as Window & { __lens?: unknown }).__lens = { config: { as: 'estimator', mood: 'error', theme: 'light' }, asks: [], errors: ['Unhandled: Failed to load team labor crew days'] }
