@@ -14,6 +14,7 @@ import {
 } from '../../lib/payStubDeductions'
 import type { UnreportedWeekRow } from '../../lib/unreportedPayrollWeeks'
 import type { DraftPayrollPayStub } from './DraftPayrollModal'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Payroll catch-up (v2.2034): stacked on Draft Payroll, one row per earlier
@@ -205,8 +206,8 @@ export function PayrollCatchUpModal({
                                 style={{
                                   padding: '2px 6px',
                                   fontSize: '0.8125rem',
-                                  background: markingPayStubId === stub.id ? '#9ca3af' : '#059669',
-                                  color: 'white',
+                                  background: markingPayStubId === stub.id ? DEAD_PRESS_FILL : '#059669',
+                                  color: markingPayStubId === stub.id ? DEAD_PRESS_TEXT : 'white',
                                   border: 'none',
                                   borderRadius: 4,
                                   cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer',
@@ -225,8 +226,8 @@ export function PayrollCatchUpModal({
                               style={{
                                 padding: '2px 6px',
                                 fontSize: '0.8125rem',
-                                background: isGenerating || generatingKey != null ? '#9ca3af' : '#3b82f6',
-                                color: 'white',
+                                background: isGenerating || generatingKey != null ? DEAD_PRESS_FILL : '#3b82f6',
+                                color: isGenerating || generatingKey != null ? DEAD_PRESS_TEXT : 'white',
                                 border: 'none',
                                 borderRadius: 4,
                                 cursor: isGenerating || generatingKey != null ? 'not-allowed' : 'pointer',

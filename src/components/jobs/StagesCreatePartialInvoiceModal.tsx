@@ -10,6 +10,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { jobPartialInvoiceRemainingDollars } from '../../lib/jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export function StagesCreatePartialInvoiceModal({
   job,
@@ -55,7 +56,7 @@ export function StagesCreatePartialInvoiceModal({
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={onCancel} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-            <button type="button" disabled={creating || !(parseFloat(amount) > 0)} onClick={() => void onCreate()} style={{ padding: '0.5rem 1rem', background: creating || !(parseFloat(amount) > 0) ? '#9ca3af' : '#16a34a', color: 'white', border: 'none', borderRadius: 4, cursor: creating || !(parseFloat(amount) > 0) ? 'not-allowed' : 'pointer' }}>{creating ? '…' : 'Create invoice'}</button>
+            <button type="button" disabled={creating || !(parseFloat(amount) > 0)} onClick={() => void onCreate()} style={{ padding: '0.5rem 1rem', background: creating || !(parseFloat(amount) > 0) ? DEAD_PRESS_FILL : '#16a34a', color: creating || !(parseFloat(amount) > 0) ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: creating || !(parseFloat(amount) > 0) ? 'not-allowed' : 'pointer' }}>{creating ? '…' : 'Create invoice'}</button>
           </div>
         </div>
       </div>

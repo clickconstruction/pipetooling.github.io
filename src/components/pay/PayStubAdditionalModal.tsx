@@ -20,6 +20,7 @@ import { shortJobOrBidLabelFromEmbeds, type ClockSessionRow } from '../../types/
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type StubPick = {
   id: string
@@ -473,8 +474,8 @@ export function PayStubAdditionalModal({
             style={{
               padding: '0.35rem 0.75rem',
               fontSize: '0.8125rem',
-              background: locked || adding ? '#9ca3af' : '#3b82f6',
-              color: 'white',
+              background: locked || adding ? DEAD_PRESS_FILL : '#3b82f6',
+              color: locked || adding ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 6,
               cursor: locked || adding ? 'not-allowed' : 'pointer',
@@ -542,8 +543,8 @@ export function PayStubAdditionalModal({
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.8125rem',
                 background:
-                  locked || adding || idealRemainderDisplay === null || idealRemainderDisplay <= 0 ? '#9ca3af' : '#7c3aed',
-                color: 'white',
+                  locked || adding || idealRemainderDisplay === null || idealRemainderDisplay <= 0 ? DEAD_PRESS_FILL : '#7c3aed',
+                color: locked || adding || idealRemainderDisplay === null || idealRemainderDisplay <= 0 ? DEAD_PRESS_TEXT : 'white',
                 border: 'none',
                 borderRadius: 6,
                 cursor:
@@ -607,8 +608,8 @@ export function PayStubAdditionalModal({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.8125rem',
-                background: locked || lines.length === 0 ? '#9ca3af' : '#059669',
-                color: 'white',
+                background: locked || lines.length === 0 ? DEAD_PRESS_FILL : '#059669',
+                color: locked || lines.length === 0 ? DEAD_PRESS_TEXT : 'white',
                 border: 'none',
                 borderRadius: 6,
                 cursor: locked || lines.length === 0 ? 'not-allowed' : 'pointer',
@@ -825,8 +826,8 @@ export function PayStubAdditionalModal({
                             style={{
                               padding: '2px 8px',
                               fontSize: '0.7rem',
-                              background: canAdd ? '#d97706' : '#9ca3af',
-                              color: 'white',
+                              background: canAdd ? '#d97706' : DEAD_PRESS_FILL,
+                              color: canAdd ? 'white' : DEAD_PRESS_TEXT,
                               border: 'none',
                               borderRadius: 4,
                               cursor: canAdd ? 'pointer' : 'not-allowed',

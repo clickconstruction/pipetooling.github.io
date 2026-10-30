@@ -41,6 +41,7 @@ import { humanRoleLabel } from '../../lib/roleLabels'
 import { EmptyState } from '../EmptyState'
 import { HIRE_CONTROL, linkAccountEmptyWords, nobodyMatchesWords, nobodyUnderFilterWords, rosterGroupEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** Account on the desk, PR D1: an archived login, listed under Archived beside the roster rows. */
 type ArchivedLogin = { id: string; name: string | null; email: string | null; role: string; archived_at: string }
@@ -1102,7 +1103,7 @@ export function PeopleUsersTab({
                       setLinkTarget(null)
                     }
                   }}
-                  style={{ padding: '0.45rem 0.9rem', background: !linkUserId || linkSaving ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: !linkUserId || linkSaving ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.45rem 0.9rem', background: !linkUserId || linkSaving ? DEAD_PRESS_FILL : '#3b82f6', color: !linkUserId || linkSaving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: !linkUserId || linkSaving ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                 >
                   {linkSaving ? 'Linking…' : 'Link'}
                 </button>

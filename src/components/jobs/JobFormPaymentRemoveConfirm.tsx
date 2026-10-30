@@ -1,4 +1,5 @@
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** What the confirm shows before a payment line leaves the job: the line, the job total, the remainder now and after. */
 export type PaymentRemovePreview = { rowAmt: number; jobTotal: number; currentRem: number; newRem: number }
@@ -116,8 +117,8 @@ export function JobFormPaymentRemoveConfirm({ open, preview, confirmsPersistedRp
               disabled={!preview || busy}
               style={{
                 padding: '0.5rem 1rem',
-                background: !preview || busy ? '#9ca3af' : '#b91c1c',
-                color: 'white',
+                background: !preview || busy ? DEAD_PRESS_FILL : '#b91c1c',
+                color: !preview || busy ? DEAD_PRESS_TEXT : 'white',
                 border: 'none',
                 borderRadius: 6,
                 cursor: !preview || busy ? 'not-allowed' : 'pointer',

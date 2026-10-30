@@ -1,3 +1,4 @@
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 /**
  * "Are you sure?" — the plain send-back confirm for Waiting / Ready to Bill / Billed (Stages
  * tab decomposition PR 5, v2.3535). Moved verbatim out of `JobsStagesTab.tsx`; the tab owns
@@ -41,8 +42,8 @@ export function StagesSendBackSimpleConfirmModal({
             onClick={() => void onConfirm()}
             style={{
               padding: '0.5rem 1rem',
-              background: !busy ? '#3b82f6' : '#9ca3af',
-              color: 'white',
+              background: !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+              color: !busy ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
               cursor: !busy ? 'pointer' : 'not-allowed',

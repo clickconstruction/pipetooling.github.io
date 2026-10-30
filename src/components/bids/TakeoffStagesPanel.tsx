@@ -1,6 +1,7 @@
 import { useEffect, useState, type CSSProperties } from 'react'
 import { formatCurrency } from '../../lib/format'
 import { STAGE_COLORS, STAGE_KEYS, STAGE_LABELS, STAGE_NUMBER, type MaterialsByStageSummary } from '../../lib/bids/materialsByStage'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Materials by stage (v2.3672): the Stages panel in the Takeoffs rail — raw
@@ -21,8 +22,8 @@ const mini = (primary: boolean, disabled = false): CSSProperties => ({
   fontSize: '0.8rem',
   fontWeight: 600,
   border: primary ? '1px solid #2563eb' : '1px solid var(--border)',
-  background: disabled ? '#9ca3af' : primary ? '#2563eb' : 'var(--surface)',
-  color: primary || disabled ? '#fff' : 'var(--text-strong)',
+  background: disabled ? DEAD_PRESS_FILL : primary ? '#2563eb' : 'var(--surface)',
+  color: disabled ? DEAD_PRESS_TEXT : primary ? '#fff' : 'var(--text-strong)',
   cursor: disabled ? 'default' : 'pointer',
 })
 

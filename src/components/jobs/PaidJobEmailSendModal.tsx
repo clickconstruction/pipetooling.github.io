@@ -10,6 +10,7 @@ import {
   sendPaidJobEmailTest,
   sendPaidJobEmailTo,
 } from '../../lib/paidJobEmailClient'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type PickerUser = {
   id: string
@@ -417,7 +418,8 @@ export default function PaidJobEmailSendModal({
                 })
               }
               style={{
-                ...headerBtn(!selected ? '#9ca3af' : '#16a34a'),
+                ...headerBtn(!selected ? DEAD_PRESS_FILL : '#16a34a'),
+                color: !selected ? DEAD_PRESS_TEXT : 'white',
                 width: '100%',
                 marginTop: '0.5rem',
                 padding: '0.55rem',

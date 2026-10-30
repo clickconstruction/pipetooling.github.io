@@ -33,6 +33,7 @@ import type { Database } from '../../types/database'
 import { JobCombineStatusNotice } from './JobCombineStatusNotice'
 import { useJobStatusPctPair } from './useJobStatusPctPair'
 import { EmptyState } from '../EmptyState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 const JOBS_COMBINE_SEPARATE_MODAL_Z_INDEX = 1050
 
@@ -1248,8 +1249,8 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     onClick={() => void runCombineMigrate()}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: !combineCanSubmit ? '#9ca3af' : '#b91c1c',
-                      color: 'white',
+                      background: !combineCanSubmit ? DEAD_PRESS_FILL : '#b91c1c',
+                      color: !combineCanSubmit ? DEAD_PRESS_TEXT : 'white',
                       border: 'none',
                       borderRadius: 6,
                       cursor: !combineCanSubmit ? 'not-allowed' : 'pointer',
@@ -1557,8 +1558,8 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                     onClick={() => void runSeparateSplit()}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: !separateCanSubmit ? '#9ca3af' : '#16a34a',
-                      color: 'white',
+                      background: !separateCanSubmit ? DEAD_PRESS_FILL : '#16a34a',
+                      color: !separateCanSubmit ? DEAD_PRESS_TEXT : 'white',
                       border: 'none',
                       borderRadius: 6,
                       cursor: !separateCanSubmit ? 'not-allowed' : 'pointer',

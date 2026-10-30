@@ -23,6 +23,7 @@ import {
   writeChecklistCostEstimate,
 } from '../../lib/checklistCostStore'
 import { useChecklistCostEstimates } from '../../hooks/useChecklistCostEstimates'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type UserRow = { id: string; name: string | null; email: string | null }
 
@@ -516,8 +517,8 @@ export default function ChecklistCostModal({
                   minHeight: 48,
                   padding: '0 1.25rem',
                   ...(isNarrow ? { flex: 1, maxWidth: 220 } : {}),
-                  background: valid && !saving ? '#f59e0b' : '#9ca3af',
-                  color: valid && !saving ? '#451a03' : 'white',
+                  background: valid && !saving ? '#f59e0b' : DEAD_PRESS_FILL,
+                  color: valid && !saving ? '#451a03' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 10,
                   fontSize: '1rem',

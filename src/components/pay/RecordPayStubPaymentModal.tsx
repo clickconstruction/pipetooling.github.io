@@ -3,6 +3,7 @@ import { PersonOffsetFormModal } from './PersonOffsetFormModal'
 import { formatCurrency } from '../../lib/format'
 import { parsePayStubPaymentAmount, payStubBalance, payStubPaymentExcess } from '../../lib/pay/recordPayStubPayment'
 import type { RecordPayStubPaymentApi } from '../../hooks/useRecordPayStubPayment'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** Above the pay overlays it is opened from (Draft Payroll, Catch-up). */
 const Z_RECORD_PAYMENT = 1200
@@ -115,8 +116,8 @@ export function RecordPayStubPaymentModal({ recordPayment, personNameOptions, on
                     style={{
                       padding: '0.4rem 0.85rem',
                       fontSize: '0.875rem',
-                      background: markingPayStubId === payStubMarkPaidTarget.id ? '#9ca3af' : '#2563eb',
-                      color: 'white',
+                      background: markingPayStubId === payStubMarkPaidTarget.id ? DEAD_PRESS_FILL : '#2563eb',
+                      color: markingPayStubId === payStubMarkPaidTarget.id ? DEAD_PRESS_TEXT : 'white',
                       border: 'none',
                       borderRadius: 6,
                       cursor: markingPayStubId === payStubMarkPaidTarget.id ? 'not-allowed' : 'pointer',
@@ -143,8 +144,8 @@ export function RecordPayStubPaymentModal({ recordPayment, personNameOptions, on
                 onClick={() => void confirmPayStubMarkPaid()}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: markingPayStubId !== payStubMarkPaidTarget.id ? '#059669' : '#9ca3af',
-                  color: 'white',
+                  background: markingPayStubId !== payStubMarkPaidTarget.id ? '#059669' : DEAD_PRESS_FILL,
+                  color: markingPayStubId !== payStubMarkPaidTarget.id ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: markingPayStubId !== payStubMarkPaidTarget.id ? 'pointer' : 'not-allowed',

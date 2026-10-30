@@ -142,6 +142,7 @@ import { fetchPhysicalInvoiceIssuerFromAppSettings } from '../../lib/physicalInv
 import { invoiceDescriptionsNeedLowercaseLeadingHint } from '../../lib/invoiceLineDescriptionLeadingLowercase'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { SendRecordInvoicePayload } from './SendRecordInvoiceModal.types'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type { JobBillingContext }
 export type { SendRecordInvoicePayload }
@@ -2474,7 +2475,7 @@ export default function SendRecordInvoiceModal({
                 type="button"
                 onClick={() => void saveMissingCustomerEmail()}
                 disabled={emailFixSaving || !emailFixDraft.trim()}
-                style={{ padding: '0.4rem 0.9rem', background: emailFixSaving || !emailFixDraft.trim() ? '#9ca3af' : '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: emailFixSaving || !emailFixDraft.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                style={{ padding: '0.4rem 0.9rem', background: emailFixSaving || !emailFixDraft.trim() ? DEAD_PRESS_FILL : '#2563eb', color: emailFixSaving || !emailFixDraft.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: emailFixSaving || !emailFixDraft.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
               >
                 {emailFixSaving ? 'Saving…' : 'Save'}
               </button>
@@ -2732,8 +2733,8 @@ export default function SendRecordInvoiceModal({
                 onClick={() => void confirmOutsideBill()}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: outsideReady && !busy ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
+                  background: outsideReady && !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+                  color: outsideReady && !busy ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',
@@ -3205,8 +3206,8 @@ export default function SendRecordInvoiceModal({
                 onClick={() => void submitPhysicalInvoiceEmail()}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: physicalSendReady && !busy ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
+                  background: physicalSendReady && !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+                  color: physicalSendReady && !busy ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: physicalSendReady && !busy ? 'pointer' : 'not-allowed',
@@ -3852,8 +3853,8 @@ export default function SendRecordInvoiceModal({
                     onClick={() => void submitStripeInvoice()}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: outsideReady && !busy ? '#3b82f6' : '#9ca3af',
-                      color: 'white',
+                      background: outsideReady && !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+                      color: outsideReady && !busy ? 'white' : DEAD_PRESS_TEXT,
                       border: 'none',
                       borderRadius: 4,
                       cursor: outsideReady && !busy ? 'pointer' : 'not-allowed',

@@ -7,6 +7,7 @@
  * (z 770) when opened from its Collections chip (B6 / J4-7).
  */
 import type { JobWithDetails } from '../../types/jobWithDetails'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type StagesCollectionsConfirmTarget = { job: JobWithDetails; direction: 'to' | 'from' }
 
@@ -70,8 +71,8 @@ export function StagesCollectionsConfirmModal({
             onClick={() => void onConfirm()}
             style={{
               padding: '0.5rem 1rem',
-              background: !saving ? '#3b82f6' : '#9ca3af',
-              color: 'white',
+              background: !saving ? '#3b82f6' : DEAD_PRESS_FILL,
+              color: !saving ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
               cursor: !saving ? 'pointer' : 'not-allowed',

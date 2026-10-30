@@ -13,6 +13,7 @@ import { formatCurrency } from '../../lib/jobs/jobFormatting'
 import { SEND_BACK_REWORK_REASON, SEND_BACK_STAGE_BILLED_REASON, type SendBackJobBillingContext } from '../../lib/jobs/jobSendBackContext'
 import { sendBackReasonError } from '../../lib/jobs/jobSendBackNote'
 import SendBackReasonField from './SendBackReasonField'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type StagesSendBackJobTarget = {
   id: string
@@ -154,8 +155,8 @@ export function StagesSendBackJobModal({
               style={{
                 padding: '0.5rem 1rem',
                 background:
-                  (!needsAttestation || checked) && !busy ? '#3b82f6' : '#9ca3af',
-                color: 'white',
+                  (!needsAttestation || checked) && !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+                color: (!needsAttestation || checked) && !busy ? 'white' : DEAD_PRESS_TEXT,
                 border: 'none',
                 borderRadius: 4,
                 cursor:

@@ -13,6 +13,7 @@ import {
   turnawayReasonLabel,
   type TurnawayReason,
 } from '../../lib/turnaway'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type Props = {
   open: boolean
@@ -233,7 +234,7 @@ export default function TurnawayModal({
             <button
               type="submit"
               disabled={!canSubmit}
-              style={{ padding: '0.5rem 1rem', background: canSubmit ? '#d97706' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit ? 'pointer' : 'not-allowed' }}
+              style={{ padding: '0.5rem 1rem', background: canSubmit ? '#d97706' : DEAD_PRESS_FILL, color: canSubmit ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canSubmit ? 'pointer' : 'not-allowed' }}
             >
               {saving ? 'Filing…' : 'File Turnaway'}
             </button>

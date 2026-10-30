@@ -8,6 +8,7 @@ import { buildDuplicateGroups, isExactGroup } from '../lib/materials/duplicatePa
 import { duplicatePartsEmptyWords } from '../lib/materials/duplicatePartsEmptyWords'
 import { EmptyState } from '../components/EmptyState'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type UserRole = 'dev' | 'master_technician' | 'assistant' | 'estimator'
@@ -313,8 +314,8 @@ export default function Duplicates() {
                 disabled={deleteConfirmName.trim() !== deleteConfirmPart.name.trim() || deleting}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: deleteConfirmName.trim() === deleteConfirmPart.name.trim() && !deleting ? '#dc2626' : '#d1d5db',
-                  color: 'white',
+                  background: deleteConfirmName.trim() === deleteConfirmPart.name.trim() && !deleting ? '#dc2626' : DEAD_PRESS_FILL,
+                  color: deleteConfirmName.trim() === deleteConfirmPart.name.trim() && !deleting ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: deleteConfirmName.trim() === deleteConfirmPart.name.trim() && !deleting ? 'pointer' : 'not-allowed',

@@ -2607,8 +2607,8 @@ export default function BankPaymentsModal({
                     padding: '0.45rem 0.9rem',
                     borderRadius: 4,
                     border: 'none',
-                    background: sweepApplying ? '#9ca3af' : '#2563eb',
-                    color: 'white',
+                    background: sweepApplying ? DEAD_PRESS_FILL : '#2563eb',
+                    color: sweepApplying ? DEAD_PRESS_TEXT : 'white',
                     cursor: sweepApplying ? 'not-allowed' : 'pointer',
                     fontWeight: 600,
                   }}
@@ -3652,8 +3652,8 @@ export default function BankPaymentsModal({
                           padding: '0.35rem 0.9rem',
                           borderRadius: 4,
                           border: 'none',
-                          background: stripeCloseRetrying ? '#9ca3af' : '#3b82f6',
-                          color: 'white',
+                          background: stripeCloseRetrying ? DEAD_PRESS_FILL : '#3b82f6',
+                          color: stripeCloseRetrying ? DEAD_PRESS_TEXT : 'white',
                           cursor: stripeCloseRetrying ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',
                         }}

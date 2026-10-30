@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage } from '../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 const FOREVER_DATE = '9999-12-31T23:59:59.999Z'
 
@@ -221,8 +222,8 @@ export default function ChecklistItemMuteModal({
               disabled={saving || loading || selected === null}
               style={{
                 padding: '0.5rem 1rem',
-                background: saving || loading ? '#9ca3af' : '#2563eb',
-                color: 'white',
+                background: saving || loading ? DEAD_PRESS_FILL : '#2563eb',
+                color: saving || loading ? DEAD_PRESS_TEXT : 'white',
                 border: 'none',
                 borderRadius: 4,
                 cursor: saving || loading ? 'not-allowed' : 'pointer',

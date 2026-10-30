@@ -14,6 +14,7 @@ import { splitSignedAmountEqually } from '../../lib/splitSignedAmountEqually'
 import type { Json } from '../../types/database'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
 import { formatBidLedgerShortLine, formatJobLedgerShortLine } from '../../lib/ledgerDisplayPrefixes'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type TallyClockWindowAllocateModalProps = {
   open: boolean
@@ -469,8 +470,8 @@ export function TallyClockWindowAllocateModal({
               fontSize: '0.875rem',
               borderRadius: 6,
               border: 'none',
-              background: saving || !selectedHasJob ? '#9ca3af' : '#059669',
-              color: 'white',
+              background: saving || !selectedHasJob ? DEAD_PRESS_FILL : '#059669',
+              color: saving || !selectedHasJob ? DEAD_PRESS_TEXT : 'white',
               cursor: saving || !selectedHasJob ? 'not-allowed' : 'pointer',
               fontWeight: 600,
             }}

@@ -11,6 +11,7 @@ import type { TakeoffFixtureHistoryLine, TakeoffFixtureHistoryRow } from '../../
 import type { BidCountRow } from '../../types/bids'
 import type { MaterialTemplateWithAssemblyType, TakeoffRoughPartLineRow } from '../../lib/bids/bidPricingEngineTypes'
 import { TakeoffCoverageStrip } from './TakeoffCoverageStrip'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * New 1 — "One fixture at a time" (v2.2778, docs/TAKEOFFS_REFRESH_PLAN.md):
@@ -194,7 +195,7 @@ export function TakeoffFocusView({
           if (next) setFocusId(next)
         }}
       >
-        <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? '#9ca3af' : '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+        <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? DEAD_PRESS_FILL : '#3b82f6', color: fillButton.disabled ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
           {fillButton.label}
         </button>
         <button type="button" onClick={onSheetView} style={{ padding: '0.4rem 0.8rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }} title="See every fixture as a sheet, with the cost rail">
@@ -347,7 +348,7 @@ export function TakeoffFocusView({
                   <button type="button" onClick={() => setFocusId(moveFocus(order, focusId, 1))} style={{ padding: '0.45rem 0.9rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
                     Skip
                   </button>
-                  <button type="button" onClick={() => void done()} disabled={busy != null} style={{ padding: '0.45rem 0.9rem', background: busy ? '#9ca3af' : '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600 }}>
+                  <button type="button" onClick={() => void done()} disabled={busy != null} style={{ padding: '0.45rem 0.9rem', background: busy ? DEAD_PRESS_FILL : '#3b82f6', color: busy ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: busy ? 'wait' : 'pointer', fontWeight: 600 }}>
                     {busy === 'done' ? 'Saving…' : leftCount === 0 ? 'Done' : 'Done · next uncosted'}
                   </button>
                 </div>

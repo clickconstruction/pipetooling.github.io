@@ -31,6 +31,7 @@ import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import TurnawayModal from './jobMode/TurnawayModal'
 import { denverCalendarDayKey } from '../utils/dateUtils'
 import { TURNAWAY_REPORT_OPTION_LABEL, TURNAWAY_REPORT_OPTION_SUB, shouldOfferTurnawayInReportPicker } from '../lib/turnawayReportOption'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -516,7 +517,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         </button>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button type="button" onClick={guardedClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-          <button type="submit" form="new-report-form" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
+          <button type="submit" form="new-report-form" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : DEAD_PRESS_FILL, color: canSubmit && !saving ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
         </div>
       </div>
     </>

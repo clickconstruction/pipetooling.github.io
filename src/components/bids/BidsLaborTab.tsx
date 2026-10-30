@@ -69,6 +69,7 @@ import type {
   LaborBookVersion,
   LaborBookEntryWithFixture,
 } from '../../lib/bids/bidPricingEngineTypes'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type BidsLaborTabProps = {
   /** v2.3216: open a step's door from the strip — Edit window or another tab — and land on its field. The page owns it. */
@@ -989,7 +990,7 @@ export function BidsLaborTab({
                           type="button"
                           onClick={updateBidDistanceFromCostEstimate}
                           disabled={updatingBidDistance}
-                          style={{ padding: '0.25rem 0.5rem', background: updatingBidDistance ? '#d1d5db' : 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: updatingBidDistance ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                          style={{ padding: '0.25rem 0.5rem', background: updatingBidDistance ? DEAD_PRESS_FILL : 'var(--bg-muted)', color: updatingBidDistance ? DEAD_PRESS_TEXT : undefined, border: '1px solid var(--border-strong)', borderRadius: 4, cursor: updatingBidDistance ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
                         >
                           {updatingBidDistance ? 'Updating…' : 'Update bid distance'}
                         </button>
@@ -1139,7 +1140,7 @@ export function BidsLaborTab({
                     type="button"
                     onClick={handleTravelPerDiemLookup}
                     disabled={travelLookupStatus === 'loading'}
-                    style={{ padding: '0.375rem 0.625rem', background: travelLookupStatus === 'loading' ? '#d1d5db' : 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: travelLookupStatus === 'loading' ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                    style={{ padding: '0.375rem 0.625rem', background: travelLookupStatus === 'loading' ? DEAD_PRESS_FILL : 'var(--bg-muted)', color: travelLookupStatus === 'loading' ? DEAD_PRESS_TEXT : undefined, border: '1px solid var(--border-strong)', borderRadius: 4, cursor: travelLookupStatus === 'loading' ? 'wait' : 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
                   >
                     {travelLookupStatus === 'loading' ? 'Looking up…' : 'Look up GSA per diem'}
                   </button>

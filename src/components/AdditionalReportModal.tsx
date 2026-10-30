@@ -53,6 +53,7 @@ import JobReportsModal from './JobReportsModal'
 import { stripAddressZip } from '../lib/dashboardScheduleCardLines'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -922,7 +923,7 @@ export default function AdditionalReportModal({
             <button type="button" onClick={handleClose} style={{ padding: '0.5rem 0.75rem', minHeight: cameraFirst ? 48 : undefined, border: cameraFirst ? '1px solid var(--border-strong)' : 'none', borderRadius: cameraFirst ? 10 : undefined, background: cameraFirst ? 'var(--surface)' : 'none', color: cameraFirst ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer', fontSize: cameraFirst ? '0.9375rem' : '0.875rem', fontWeight: cameraFirst ? 600 : undefined }}>
               {cameraFirst ? STAGE_PCT_WORDS.notNow : 'Cancel'}
             </button>
-            <button type="submit" disabled={!canSubmit || saving} style={{ marginLeft: 'auto', flex: cameraFirst ? 1 : undefined, minHeight: cameraFirst ? 48 : undefined, padding: '0.5rem 1.25rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: cameraFirst ? 10 : 6, fontWeight: 600, fontSize: cameraFirst ? '0.9375rem' : undefined, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>
+            <button type="submit" disabled={!canSubmit || saving} style={{ marginLeft: 'auto', flex: cameraFirst ? 1 : undefined, minHeight: cameraFirst ? 48 : undefined, padding: '0.5rem 1.25rem', background: canSubmit && !saving ? '#2563eb' : DEAD_PRESS_FILL, color: canSubmit && !saving ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: cameraFirst ? 10 : 6, fontWeight: 600, fontSize: cameraFirst ? '0.9375rem' : undefined, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>
               {cameraFirst ? reportSaveWords({ jobPct: jobPctForSave, tiles, saving }) : saving ? 'Saving…' : photosInFlight(tiles) ? reportSaveWords({ jobPct: jobPctForSave, tiles, saving }) : 'Save report'}
             </button>
           </div>

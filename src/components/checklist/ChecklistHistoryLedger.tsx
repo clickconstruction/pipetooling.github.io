@@ -15,6 +15,7 @@ import { doneLateLabel } from '../../lib/checklistDueDates'
 import { ChecklistTitleWithLinks } from '../ChecklistTitleWithLinks'
 import { EmptyState, type EmptyStateWords } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * The phone-first History view (narrow screens): reverse-chronological day
@@ -413,8 +414,8 @@ export function ChecklistHistoryLedger({
                                 padding: '0 1rem',
                                 borderRadius: 10,
                                 border: 'none',
-                                background: posting || reopening || !draft.trim() ? '#9ca3af' : '#2563eb',
-                                color: 'white',
+                                background: posting || reopening || !draft.trim() ? DEAD_PRESS_FILL : '#2563eb',
+                                color: posting || reopening || !draft.trim() ? DEAD_PRESS_TEXT : 'white',
                                 fontSize: '0.9375rem',
                                 fontWeight: 600,
                                 cursor: posting || reopening || !draft.trim() ? 'not-allowed' : 'pointer',
@@ -432,8 +433,8 @@ export function ChecklistHistoryLedger({
                                 padding: '0 1rem',
                                 borderRadius: 10,
                                 border: 'none',
-                                background: posting || reopening || !draft.trim() ? '#9ca3af' : '#d97706',
-                                color: 'white',
+                                background: posting || reopening || !draft.trim() ? DEAD_PRESS_FILL : '#d97706',
+                                color: posting || reopening || !draft.trim() ? DEAD_PRESS_TEXT : 'white',
                                 fontSize: '0.9375rem',
                                 fontWeight: 600,
                                 cursor: posting || reopening || !draft.trim() ? 'not-allowed' : 'pointer',
