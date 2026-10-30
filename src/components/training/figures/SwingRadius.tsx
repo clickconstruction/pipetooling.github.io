@@ -24,12 +24,12 @@ export function SwingRadius({ titleId }: FigureProps) {
         <polyline points="40,192 52,186" />
       </g>
       <g fontSize="10" fill="currentColor">
-        <text x="126" y="214" fill="#991b1b">behind</text>
-        <text x="96" y="78" fill="#991b1b">far side</text>
-        <text x="96" y="90" fill="#991b1b">of the cab</text>
-        <text x="232" y="48" fill="#991b1b">under the</text>
-        <text x="232" y="60" fill="#991b1b">bucket</text>
-        <text x="196" y="222" fill="#dc2626" fontSize="9.5">360° · red rope marks it</text>
+        <text x="126" y="214" fill="var(--text-red-800)">behind</text>
+        <text x="96" y="78" fill="var(--text-red-800)">far side</text>
+        <text x="96" y="90" fill="var(--text-red-800)">of the cab</text>
+        <text x="232" y="48" fill="var(--text-red-800)">under the</text>
+        <text x="232" y="60" fill="var(--text-red-800)">bucket</text>
+        <text x="196" y="222" fill="var(--text-red-600)" fontSize="9.5">360° · red rope marks it</text>
         <text x="4" y="150" fill="var(--text-muted)" fontSize="9.5">outside the rope,</text>
         <text x="4" y="162" fill="var(--text-muted)" fontSize="9.5">eye contact first</text>
       </g>

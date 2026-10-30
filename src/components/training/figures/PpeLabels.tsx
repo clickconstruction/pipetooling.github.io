@@ -7,10 +7,10 @@ export function PpeLabels({ titleId }: FigureProps) {
     <svg viewBox="0 0 300 132" role="img" aria-labelledby={titleId} style={{ display: 'block', width: '100%', height: 'auto', maxWidth: 420, color: 'var(--text-base)' }}>
       <g fontSize="9.5" fill="currentColor">
         <text x="6" y="14" fontWeight="600">a glove's chemical rating</text>
-        <rect x="6" y="22" width="70" height="24" fill="var(--bg-green-100)" stroke="#15803d" strokeWidth="1" />
-        <rect x="76" y="22" width="70" height="24" fill="var(--bg-green-100)" stroke="#15803d" strokeWidth="1" opacity="0.7" />
-        <rect x="146" y="22" width="70" height="24" fill="var(--bg-amber-100)" stroke="#b45309" strokeWidth="1" />
-        <rect x="216" y="22" width="78" height="24" fill="var(--bg-red-100)" stroke="#b91c1c" strokeWidth="1" />
+        <rect x="6" y="22" width="70" height="24" fill="var(--bg-green-100)" stroke="var(--text-green-700)" strokeWidth="1" />
+        <rect x="76" y="22" width="70" height="24" fill="var(--bg-green-100)" stroke="var(--text-green-700)" strokeWidth="1" opacity="0.7" />
+        <rect x="146" y="22" width="70" height="24" fill="var(--bg-amber-100)" stroke="var(--text-amber-700)" strokeWidth="1" />
+        <rect x="216" y="22" width="78" height="24" fill="var(--bg-red-100)" stroke="var(--text-red-700)" strokeWidth="1" />
         <text x="41" y="38" textAnchor="middle" fontWeight="700">VG</text>
         <text x="111" y="38" textAnchor="middle" fontWeight="700">G</text>
         <text x="181" y="38" textAnchor="middle" fontWeight="700">F</text>

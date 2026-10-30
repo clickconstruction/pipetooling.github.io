@@ -11,7 +11,8 @@ import { useEffect, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { EmptyState } from '../EmptyState'
 import { stageUsd } from '../../lib/bridge/stageFlow'
-import { BID_BOARD_PATH, ESTIMATES_PATH, SALES_BLIND_DOOR, SALES_OFF_PILE_DOOR, salesFlipNote, salesSortButtonLabel, salesSubLines, sortSalesRows, type SalesDesk, type SalesDeskRow, type SalesLegendEntry, type SalesRowState, type SalesSortKey } from '../../lib/bridge/sales/salesDesk'
+import { BID_BOARD_PATH, ESTIMATES_PATH, SALES_BLIND_DOOR, SALES_OFF_PILE_DOOR, salesFlipNote, salesSortButtonLabel, salesSubLines, sortSalesRows, type SalesDesk, type SalesDeskRow, type SalesRowState, type SalesSortKey } from '../../lib/bridge/sales/salesDesk'
+import { SALES_BAR_INKS } from '../../lib/bridge/sales/salesBarInks'
 
 const label: CSSProperties = { fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const det: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -19,7 +20,6 @@ const card: CSSProperties = { background: 'var(--bg-subtle)', border: '1px solid
 const door: CSSProperties = { display: 'inline-flex', alignItems: 'center', minHeight: 36, padding: '0 12px', borderRadius: 8, border: '1px solid var(--border)', textDecoration: 'none', color: 'var(--text)', fontWeight: 600, fontSize: '0.82rem', background: 'var(--surface)' }
 
 const TONE_COLOR = { red: 'var(--text-red-600)', amber: 'var(--text-amber-800)', green: 'var(--text-green-700)', plain: 'var(--text)' } as const
-const BAR_COLOR: Record<SalesLegendEntry['key'], string> = { protected: '#15803d', risk: '#d97706', evaporating: '#c0392b', dead: 'var(--border)' }
 const STATE_STYLE: Record<SalesRowState['kind'], CSSProperties> = {
   inside: { background: 'var(--bg-green-tint)', color: 'var(--text-green-700)' },
   past: { background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)' },
@@ -169,7 +169,7 @@ export function BridgeSalesDesk(props: BridgeSalesDeskProps) {
                   if (!(l.usd > 0) || !(barTotal > 0)) return null
                   const share = l.usd / barTotal
                   return (
-                    <div key={l.key} title={l.label} style={{ width: `${share * 98}%`, background: BAR_COLOR[l.key], display: 'flex', alignItems: 'center', paddingLeft: 6, fontSize: '0.72rem', color: 'var(--surface)', fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+                    <div key={l.key} title={l.label} style={{ width: `${share * 98}%`, background: SALES_BAR_INKS[l.key].fill, display: 'flex', alignItems: 'center', paddingLeft: 6, fontSize: '0.72rem', color: SALES_BAR_INKS[l.key].words, fontWeight: 700, whiteSpace: 'nowrap', overflow: 'hidden' }}>
                       {share > 0.12 ? stageUsd(l.usd) : ''}
                     </div>
                   )
@@ -179,7 +179,7 @@ export function BridgeSalesDesk(props: BridgeSalesDeskProps) {
                 {desk.legend.map((l) => (
                   <div key={l.key} style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                      <span style={{ width: 10, height: 10, borderRadius: 2, background: l.key === 'dead' ? 'transparent' : BAR_COLOR[l.key], display: 'inline-block', border: l.key === 'dead' ? '1px dashed var(--text-muted)' : undefined }} />
+                      <span style={{ width: 10, height: 10, borderRadius: 2, background: l.key === 'dead' ? 'transparent' : SALES_BAR_INKS[l.key].fill, display: 'inline-block', border: l.key === 'dead' ? '1px dashed var(--text-muted)' : undefined }} />
                       <b>
                         {l.label} · {l.key === 'dead' ? `${stageUsd(l.usd)} open` : stageUsd(l.usd)}
                       </b>

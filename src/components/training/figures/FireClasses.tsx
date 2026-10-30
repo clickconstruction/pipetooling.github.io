@@ -21,23 +21,23 @@ export function FireClasses({ titleId }: FigureProps) {
       <g fontSize="8" fill="currentColor">
         <text x="7" y="46">wood, paper</text>
         <text x="7" y="57">and trash</text>
-        <text x="7" y="80" fill="#15803d">water or</text>
-        <text x="7" y="91" fill="#15803d">dry chemical</text>
+        <text x="7" y="80" fill="var(--text-green-700)">water or</text>
+        <text x="7" y="91" fill="var(--text-green-700)">dry chemical</text>
         <text x="67" y="46">liquids</text>
         <text x="67" y="57">and gases</text>
-        <text x="67" y="80" fill="#15803d">CO2, foam or</text>
-        <text x="67" y="91" fill="#15803d">dry chemical</text>
+        <text x="67" y="80" fill="var(--text-green-700)">CO2, foam or</text>
+        <text x="67" y="91" fill="var(--text-green-700)">dry chemical</text>
         <text x="127" y="46">live</text>
         <text x="127" y="57">electrical</text>
-        <text x="127" y="80" fill="#15803d">dry chemical</text>
-        <text x="127" y="91" fill="#991b1b" fontWeight="700">never water</text>
+        <text x="127" y="80" fill="var(--text-green-800)">dry chemical</text>
+        <text x="127" y="91" fill="var(--text-red-800)" fontWeight="700">never water</text>
         <text x="187" y="46">metals</text>
-        <text x="187" y="80" fill="#15803d">special</text>
-        <text x="187" y="91" fill="#15803d">powder</text>
+        <text x="187" y="80" fill="var(--text-green-700)">special</text>
+        <text x="187" y="91" fill="var(--text-green-700)">powder</text>
         <text x="247" y="46">cooking</text>
         <text x="247" y="57">oils</text>
-        <text x="247" y="80" fill="#15803d">wet</text>
-        <text x="247" y="91" fill="#15803d">chemical</text>
+        <text x="247" y="80" fill="var(--text-green-700)">wet</text>
+        <text x="247" y="91" fill="var(--text-green-700)">chemical</text>
       </g>
     </svg>
   )
