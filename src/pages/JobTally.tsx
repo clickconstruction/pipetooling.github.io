@@ -919,11 +919,12 @@ export default function JobTally() {
         padding: '1rem',
         // v2.6117: as a flex item in Layout's column with auto side margins, the page was sized by its
         // content, so it (and the tab row with it) grew and shrank with whatever each tab had loaded. Pin
-        // it to its container like `.pageWrap` (v2.1003); the max widths carry the 2rem of padding, border-box.
+        // it to its container like `.pageWrap` (v2.1003). The max widths are outer widths already (index.css
+        // makes every box border-box), so v2.6134 took back the 2rem v2.6117 had added to them.
         width: '100%',
         minWidth: 0,
         boxSizing: 'border-box',
-        maxWidth: showTallyTeam && activeTab === 'transactions' ? 760 + 32 : 480 + 32,
+        maxWidth: showTallyTeam && activeTab === 'transactions' ? 760 : 480,
         margin: '0 auto',
       }}
     >
