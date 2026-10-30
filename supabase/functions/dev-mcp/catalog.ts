@@ -1592,6 +1592,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "audit-finish",
   "auto-send-test-reports",
   "bid-basis-grant",
+  "bill-read",
   "billed-report-email",
   "bridge-sheet-email",
   "bridge-weekly-sheet",

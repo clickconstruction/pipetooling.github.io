@@ -241,6 +241,7 @@ when_to_read:
    - [quo-config](#quo-config)
    - [model-config](#model-config)
    - [report-draft](#report-draft)
+   - [bill-read](#bill-read)
    - [messages-nudge-dispatch](#messages-nudge-dispatch)
    - [get-mercury-account-balances](#get-mercury-account-balances)
    - [mercury-reconcile](#mercury-reconcile)
@@ -5516,6 +5517,34 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 **Deploy**: `bash scripts/deploy-functions.sh report-draft` after migration `20261026220000` is pushed. The dev-mcp catalog names it, so redeploy `dev-mcp` with it.
 
 ---
+
+### bill-read
+
+**Purpose** (punch list #179 PR 2, v2.6088): a supply-house bill's PDF, or a picture of the counter ticket, read into the fields of the Add invoice window for a person to check and save. The machine fills, a person presses: the function writes no invoice. The Add invoice window stays the one way a bill is recorded (Taunya, 2026-10-29: augment the manual entry, never replace it); PR 3 puts *The bill* on the form and the two doors (the thread's *Record this bill*, the house's *N bills to record*). The function fetches the file from the private `message-attachments` bucket (a file on the house's thread, or a file dropped on the form, which it puts in the bucket under `bills/<house>/<uuid>/<name>` first), sends the PDF as a document block or the picture as an image block to Claude Sonnet 5.5 (`claude-sonnet-5-5`, effort `medium`) for one JSON object held to `BILL_SCHEMA` through structured output (`output_config.format`, `type: json_schema`; every amount a string of the digits as printed, so the schema needs no nullable number), with Anthropic's default fallback on a refusal (`fallbacks: "default"`, beta `server-side-fallback-2026-07-01`; Haiku has none, so the trial model goes without), reads the answer into cents and a kind (`readBillAnswer` in `_shared/billRead.ts`), writes one row to `supply_bill_reads` and answers the read with where the file is and what the call cost. The matching, the checks and the words are the app's kernels in `src/lib/materials/bills/` over this answer.
+
+**Endpoint**: `POST /functions/v1/bill-read`
+
+**Required Role**: the office (dev, master_technician, assistant, controller), a real account, not `read_only`, since a fill costs money. Anyone else gets 403. The switch `app_settings.bill_read_on_v1` must read `'true'` (409 `off` otherwise), except for a dev, who may try the function while it is off. The function stops at `BILL_READ_DAILY_CAP` (150) fills in a rolling day (429 `capped`). A dev may name `model: 'claude-haiku-5-5'` for the trial on the made-up set; everyone else fills with Sonnet whatever they send.
+
+**Required Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; the model key from Vault (`model_secret_get('anthropic')`, the Model keys card) else `ANTHROPIC_API_KEY`, as `report-draft` reads it.
+
+**Verify JWT**: `false` at the gateway (`config.toml`); the function checks the bearer itself.
+
+#### Request body
+
+`{ attachment_id, supply_house_id? }`: a file on the house's thread (`message_attachments.id`, with our copy in the bucket; a link or a file left in Gmail is 404 `notHere`); the house when the caller knows it, else read from the line's contact. Or `{ supply_house_id, file: { name, mime, base64 } }`: a file dropped on the form, a PDF or a JPEG, PNG, GIF or WebP (a HEIC or a Word file is 400), at most 10 MB.
+
+#### Response
+
+200 `{ ok: true, read: BillRead, file: { path, name, mime, attachmentId, supplyHouseId }, model, cents, readId }`. `read` is the paper as read: `houseName`, `kind` (`invoice` · `credit` · `statement` · `other`), `number`, `dateYmd`, `poText`, `accountRef`, `shipTo`, `jobText`, `terms`, `referencesNumber`, `lines[]` (`description`, `quantity`, `unitPriceCents`, `extendedCents`), `subtotalCents`, `taxCents`, `totalCents`, `pageCount`, `statementNumbers[]`, `notes`. 409 `{ error: "noKey" | "off", words }`; 429 `capped`; 400 `badRequest` with the reason; 401 `signIn`; 403 `notAllowed`; 404 `notHere`; 405 not a POST; 503 the function's own secrets missing; 502 `refused` (the model would not read it) or `failed` (the answer was not the shape, or the call threw, that one with `why`: Anthropic's own type and message through `modelRefusalWhy`, never the key). Every answer but 401, 403, 405 and 503 carries `words` the form can show, from `BILL_READ_WORDS`.
+
+**The ledger**: every fill, whole or not, is one `supply_bill_reads` row (who, when, the file, the house, the model, the tokens and cents, `ok`, the answer, the reason), which the cap counts and the office reads (`read_rows` on the dev MCP).
+
+**Cost**: a one-page bill is about 2,000 tokens in and 400 out, under a cent at Sonnet 5.5's $2 and $10 a million tokens; `cents` in the answer is the call's own figure (`billCostCents`).
+
+**The made-up set**: `src/test/fixtures/bills/` (five PDFs drawn by `scripts/bills-fixtures.mjs`, each beside the answer the model should give). `node scripts/bill-read-compare.mjs --jwt <access token> --house <a ZZ test house's id> [--model claude-haiku-5-5]` sends them to the deployed function and scores the answers.
+
+**Deploy**: `bash scripts/deploy-functions.sh bill-read` after migration `20261030010000_supply_bill_read.sql` is pushed. The dev-mcp catalog names it, so redeploy `dev-mcp` with it.
 
 ### messages-nudge-dispatch
 
