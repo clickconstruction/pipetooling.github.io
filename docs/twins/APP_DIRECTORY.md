@@ -326,7 +326,7 @@ The door a printed box label's QR opens: `prts.co/b/7D759246` forwards here (v2.
 ### /banking — Banking
 Mercury bank ledger: user/drag sort, accounting labels, card + category review,
 reconciliation; every Approvals card says the day the charge was made (v2.5804), and the Account nicknames window shows each
-Mercury account with Mercury's own name, its numbers and its newest lines (dev, v2.5806, guide `label-bank-transfers`). Roles: dev (full incl. Stripe), master, assistant/controller (staff tabs).
+Mercury account with Mercury's own name, its numbers and its newest lines (dev, v2.5806, guide `label-bank-transfers`). **Cost batches** (`?tab=cost_batches`, dev-only, v2.6115): move one job's cost rows — bank allocations, supply-house invoices, clock sessions — onto other jobs as a dry-run-first, revertible batch, and revert any batch; `&job=<id>` opens it on a job, as **Move cost ▸** on the job window's Costs tab does. Roles: dev (full incl. Stripe and Cost batches), master, assistant/controller (staff tabs).
 
 ### /accounts-receivable — AR
 Outstanding billed jobs by customer; collections flags. The bank deposits modal leads a deposit's pane with a customer's word that they paid when the deposit fits it (**They said they paid**, v2.5650; guide `match-bank-deposits-to-bills`). Roles: dev, master, assistant, controller.

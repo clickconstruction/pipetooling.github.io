@@ -25,6 +25,7 @@ import { useJobLienTimeline } from '../../hooks/useJobLienTimeline'
 import { jobOpenBalance, showJobHistoryLienTimeline } from '../../lib/jobs/jobHistoryLienTimeline'
 import { lienMonthLines } from '../../lib/jobs/lienMonthLines'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
+import { JobWindowMoveCostDoor } from './JobWindowMoveCostDoor'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 /**
@@ -288,6 +289,8 @@ export function JobWindowModal({
               {TAB_LABELS[t]}
             </button>
           ))}
+          {/* Devs: the Costs tab's door to Banking → Cost batches with this job as the source (v2.6115). */}
+          {tab === 'costs' ? <JobWindowMoveCostDoor jobId={jobId} onBeforeNavigate={requestClose} /> : null}
           <LegendButton legend={JOB_WINDOW_LEGEND} open={legendOpen} onToggle={setLegendOpen} style={{ marginLeft: 'auto' }} />
           <span
             className="job-window-esc"
