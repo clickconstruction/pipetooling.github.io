@@ -10,7 +10,7 @@ summary: >
   checklist per stage (Rough In, Top Out, Trim Set) that the crew fills on the phone, with the
   stage reading not ready until it is filled, and shows the job's photos as a gallery in the app,
   read from the customer's Drive folder and never copied out of it.
-next: The push of 20261029210000_stage_checklists.sql and, once PR 3 merges, 20261030070000_photo_save_cron_all_sources.sql, then the deploy of photo-save; PR 5 the Drive gallery. The owner types the questions for each stage on Settings → Jobs & billing → Stage checklists once the first migration is pushed.
+next: The push of 20261029210000_stage_checklists.sql and 20261030070000_photo_save_cron_all_sources.sql (both on main), then the deploy of photo-save; PR 5 the Drive gallery. The owner types the questions for each stage on Settings → Jobs & billing → Stage checklists once the first migration is pushed.
 size: M to L as a train of five (S · S · M · S · M); two migrations (the checklists, and the photo-save cron's checklist clause again)
 blocker: None for the build. The questions for each stage are the owner's to type in the editor.
 ver: v2.6072 · 6077 · 6084 · 6087
