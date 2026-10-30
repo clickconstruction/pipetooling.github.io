@@ -1,4 +1,5 @@
 import { useId } from 'react'
+import { MoneyStringWithSmallCents } from './MoneySmallCents'
 
 export type MaterialsCostAccordionRowProps = {
   title: string
@@ -69,7 +70,7 @@ export function MaterialsCostAccordionRow({
 
   const totalEl = (
     <span style={{ color: 'var(--text-700)', fontVariantNumeric: 'tabular-nums', flexShrink: 0 }}>
-      {busy ? '…' : totalDisplay}
+      {busy ? '…' : <MoneyStringWithSmallCents text={totalDisplay} />}
     </span>
   )
 
