@@ -1,6 +1,6 @@
 import { useRef, useState, type CSSProperties, type PointerEvent as ReactPointerEvent, type ReactNode } from 'react'
 import type { RailRow } from '../../lib/people/deskRailAttention'
-import { SWIPE_ACTION_WIDTH, classifySwipe, isTwinEmail, needsYouCount, personInitial, phoneRowNote, swipeOffset, swipeSettles } from '../../lib/people/usersTabPhone'
+import { MORE_SWIPE_GREY, SWIPE_ACTION_WIDTH, classifySwipe, isTwinEmail, needsYouCount, personInitial, phoneRowNote, swipeOffset, swipeSettles } from '../../lib/people/usersTabPhone'
 import type { UsersTabRowItem, UsersTabRowMenuAction } from './UsersTabRow'
 import { hasSupervisionSwitch } from '../../lib/people/supervision'
 
@@ -42,7 +42,8 @@ export function UsersTabPhoneRow({
   if (openDesk) actions.push({ key: 'desk', label: 'Desk', background: '#3b82f6', onClick: openDesk })
   if (imitate) actions.push({ key: 'imitate', label: imitating ? '…' : 'Imitate', background: '#7c3aed', onClick: imitate, disabled: imitating })
   const [moreOpen, setMoreOpen] = useState(false)
-  if (more.length > 0) actions.push({ key: 'more', label: 'More', background: 'var(--text-muted)', onClick: () => setMoreOpen((v) => !v) })
+  // A literal grey like its neighbours' blue and violet: the muted text token turned `#9ca3af` in dark, 2.54:1 under the white word (v2.6068).
+  if (more.length > 0) actions.push({ key: 'more', label: 'More', background: MORE_SWIPE_GREY, onClick: () => setMoreOpen((v) => !v) })
   const actionsWidth = SWIPE_ACTION_WIDTH * actions.length
 
   const start = useRef<{ x: number; y: number; id: number } | null>(null)

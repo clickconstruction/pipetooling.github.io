@@ -86,7 +86,7 @@ describe('lineProgressReport (punch list #130)', () => {
     expect(lineWords(roughIn, { r: 20 })).toEqual({ text: '35% → 20%', tone: 'down' })
     expect(lineWords(heater, { w: 100 })).toEqual({ text: '— → ✓ Done', tone: 'up' })
     expect(lineWords(roughIn, {})).toEqual({ text: '35%', tone: 'plain' })
-    expect(lineWords(topOut, {})).toEqual({ text: '—', tone: 'none' })
+    expect(lineWords(topOut, {})).toEqual({ text: 'not started', tone: 'none' })
     expect(pctWord(null)).toBe('—')
     expect(pctWord(0)).toBe('0%')
   })
