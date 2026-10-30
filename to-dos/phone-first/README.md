@@ -2,7 +2,7 @@
 name: "Phone first: the five screens a tech touches, with one thumb and a camera"
 number: 189
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · waiting on his look at the revised mock-up, his word on Leaving (decision 6) and on the native shell
+status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · PR 5a built as v2.6076 and PR 5b as v2.6083 the same day, in the queue; PR 3, the Leaving PR and PR 8 being built
 summary: >
   A tech's day on the phone is five screens: the Job Mode card with the day's press, the On my
   way sheet, the field report, My Schedule with its percent stepper, and the job window. Walked
@@ -14,11 +14,11 @@ summary: >
   customer's Drive folder as #164 decided, and clock out in one press. #163's waiting bar sits
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
-next: The owner's look at the revised mock-up, sections 3, 4, 6 and the flows in 8, and his word on Leaving. Then PR 5a, the percent by stage with a precise number, then PR 5b, the camera.
+next: The push of 20261029220000_report_photos.sql and the deploy of photo-save, then the camera's live run on a ZZ test job (the recipe in v2.6083's fragment). PR 3, the Leaving PR and PR 8 follow in this train; PR 6 waits on #164's tables, PR 7 on #163's queue.
 size: L as a train of seven (S · XS · S · M · M · S · S); one migration, the report photos table
-blocker: The owner's look at the revised flows. PR 6 also waits on #164's checklist tables, and PR 7 on #163's queue.
-ver: v2.5905 · 5910
-opinion: PRs 2 and 4 are built on the owner's word; next build PR 5a then 5b, the stage breakdown then the camera; stay a home screen web app until one of the three triggers fires
+blocker: The push and the deploy for PR 5b. PR 6 waits on #164's checklist tables, and PR 7 on #163's queue.
+ver: v2.5905 · 5910 · 6076 · 6083
+opinion: PRs 2, 4, 5a and 5b are built on the owner's word; PR 3, the Leaving PR and PR 8 close the train; PR 6 and PR 7 wait on their siblings; stay a home screen web app until one of the three triggers fires
 mockup: to-dos/phone-first/mockup.html
 ---
 
@@ -345,6 +345,10 @@ On the phone preset as the dev with Job Mode on, and on a real iPhone on a ZZ te
 |---|---|---|
 | 2 · the press bar | v2.5905 | built 2026-10-26, live since the 08:45Z deploy on 2026-10-27 |
 | 4 · the job window's bar | v2.5910 | built 2026-10-26, live since the 03:39Z deploy on 2026-10-27 |
+| 5a · the percent by stage, with a precise number | v2.6076 | built 2026-10-29 on the picks of the review canvas: `lib/reports/stagePct.ts`, `StagePctControl` on every stage row and alone on a one-stage job, the stepper as a sheet from the bottom with Not now and Save · job N%, Leave report's percent opening on the job's number (the follow-up below). No migration. |
+| 5b · the camera-first report | v2.6083 | built 2026-10-29: the camera on Leave report for the field roles on a phone, the tiles, the stage chip and the camera on every stage row, the shrink in a worker at the office's size (Settings → Jobs & billing → Photos, Medium the default), the `report_photos` table and the `report-photos` bucket at 2 MB (`20261029220000_report_photos.sql`, to push), `photo-save`'s third source (to deploy), the photos on the report card, the guide *take photos for a report*. Not run live until the push and the deploy. |
+| 6 · a photo answers a checklist question | — | waits on #164's checklist tables (the sibling build of 2026-10-29) |
+| 7 · the bar and the queue on these screens | — | waits on #163's PR 2, the queue (the sibling build of 2026-10-29) |
 
 Both were checked at 375 px as the dev before merging, nothing pressed that saves. The press bar
 sat right above the tab bar in all six of the card's states. The plain window was opened with a
@@ -356,8 +360,13 @@ Where the build differs from the mock-up:
 - The Tally button stays at the top of Job Mode. The mock-up drops the whole row, and techs use
   Tally.
 - The day's press keeps its words, Clock In and Wrap Up Day.
-- Leaving opens Update Focus, not the On my way sheet. That is decision 6.
+- Leaving opens Update Focus, not the On my way sheet. That is decision 6, answered on 2026-10-29: the sheet when the day has a next job, else Update Focus. Its PR follows 5b.
 - Close stays the last thing in the plain window's scroll.
+- The stage rows stay one open at a time (every row in view with its number, as before); the open row's control is what changed. Every control open at once would push Save off a 375 px screen on a four-stage job.
+- Leave report's whole-job percent on a one-line job keeps its five chips and slider until PR 3 grows them; the stepper's one-stage job takes the new control, as the brief named it.
+- The camera opens on a phone only (≤ 640 px) for the field roles; at a desk the same input is an **Add a photo** tile, so the office never gets a file picker in its face.
+- Save waits while a shot is still on its way, instead of saving without it; the mock-up's *Save never waits* is #163's queue, PR 7.
+- Decision 8's second half found no Needs you line that asks the office for a folder link in the code; the sweep writes *That job has no Drive folder yet.* on the row and the report card reads it. The line itself is a follow-up below.
 
 Not tried on a real iPhone: the keyboard rising under the Note sheet.
 
@@ -391,10 +400,16 @@ street and number are made up. The desktop is out of scope.
 
 ## Follow-ups
 
-- **The report form's percent.** One render test on `AdditionalReportModal`: open Leave Report
-  on a one-line job at 40%, press Save with nothing touched, and read what the save writes. The
-  code says 0. The fix is to seed the job's number as `NewReportModal` does, its own small PR
-  before PR 5.
+- **The report form's percent.** Done in PR 5a (v2.6076): the percent opens on the job's number
+  and `AdditionalReportModal.render.test.tsx` opens a one-line job at 40%, presses Save with
+  nothing touched and reads 40 on the insert.
+- **A Needs you line for report photos with no folder.** Decision 8 counted on a line that asks
+  the office for a folder link; none exists. One line for the office, *N report photos wait for a
+  Drive folder on job 972*, opening the job window's Documents tab where **Make the job's Drive
+  folders** is.
+- **Rows no report holds.** A form closed by the app itself (not by Not now) leaves its
+  `report_photos` rows and bucket objects with no `report_id`; the sweep never files them. A
+  nightly sweep of rows older than a day, or the queue of #163 once the form rides it.
 - **The Job Report button in Job Mode.** PR 2 removed it on a phone. On a tablet or a computer
   in Job Mode it still opens nothing, so remove it there too or mount the window.
 - **The manual Clock In's typed plan.** Decision 5 above.
