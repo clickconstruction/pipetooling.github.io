@@ -219,7 +219,7 @@ export function PipelineContractCoverageCard({
       <button
         type="button"
         onClick={onStartSweep}
-        style={{ padding: '0.35rem 0.8rem', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: 'white', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+        style={{ padding: '0.35rem 0.8rem', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: 'var(--surface)', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
       >
         Start the sweep →
       </button>

@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { LegalPayApplicationLike } from '../../../lib/legal/legalClaimRetainage'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { withSupabaseRetry } from '../../../utils/errorHandling'
@@ -44,6 +45,7 @@ type ClockSessionRow = { job_ledger_id: string | null; work_date: string; clocke
 type ReportRow = { created_at: string; created_by_name: string | null; template_name: string | null; reported_at_lat: number | null }
 type ThreadNoteRow = { job_id: string; body: string; created_at: string; author: { name: string | null } | Array<{ name: string | null }> | null }
 type ContactEntryRow = { id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }
+type PayApplicationRow = { job_id: string; application_number: number | string; retainage_held: number | string | null; current_payment_due: number | string | null; invoice_id: string | null }
 
 // Fourteen typed query builders against the full Database type push `tsc -b` past the CI heap;
 // the packet loader reads through the untyped client and casts each result to the kernel's shapes.
@@ -98,7 +100,7 @@ export function useLegalPacketData(
     setLoading(true)
     void (async () => {
       const todayYmd = todayYmdInAppTz()
-      const [customer, contacts, contactEntries, addresses, contracts, estimates, demandLetters, lienFilings, lienDeskItems, promises, outcomes, touches, reports, sessions, notes] =
+      const [customer, contacts, contactEntries, addresses, contracts, estimates, demandLetters, lienFilings, lienDeskItems, payApplications, promises, outcomes, touches, reports, sessions, notes] =
         await Promise.all([
           src<LegalCustomerLike>('customer record', async () => {
             if (!customerId) return null
@@ -139,6 +141,15 @@ export function useLegalPacketData(
           src<JobLienFilingRow[]>('lien filings', async () => (await withSupabaseRetry<JobLienFilingRow[]>(() => db.from('job_lien_filings').select('*').in('job_id', jobIds), 'load legal packet lien filings')) ?? [], []),
           // The notice desk items (#41 PR 1b): the owner's call, letter two and the GC's okay under each envelope.
           src<LegalDeskItemLike[]>('lien notice items', async () => (await withSupabaseRetry<LegalDeskItemLike[]>(() => db.from('job_lien_desk_items').select('id, job_id, kind, status, sent_at, sent_filing_id, fields, created_at, voided_at').in('job_id', jobIds).eq('kind', 'notice_53_056').is('voided_at', null), 'load legal packet lien notice items')) ?? [], []),
+          // The jobs' live pay applications (v2.6103, punch list #213): which bill each became, so the claim adds only the retainage no sent bill carries.
+          src<LegalPayApplicationLike[]>('pay applications', async () =>
+            ((await withSupabaseRetry<PayApplicationRow[]>(() => db.from('job_pay_applications').select('job_id, application_number, retainage_held, current_payment_due, invoice_id').in('job_id', jobIds).is('deleted_at', null).limit(ROW_CAP), 'load legal packet pay applications')) ?? []).map((r) => ({
+              jobId: r.job_id,
+              applicationNumber: Number(r.application_number) || 0,
+              retainageHeld: Number(r.retainage_held) || 0,
+              currentPaymentDue: Number(r.current_payment_due) || 0,
+              invoiceId: r.invoice_id ?? null,
+            })), []),
           src('payment promises', async () => {
             const { data, error } = await db.rpc('list_job_payment_promises' as never)
             if (error) throw error
@@ -240,6 +251,7 @@ export function useLegalPacketData(
           demandLetters,
           lienFilings,
           lienDeskItems,
+          payApplications,
           promises,
           promiseOutcomes: outcomes,
           chaseTouches: touches,

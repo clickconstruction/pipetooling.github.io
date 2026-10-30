@@ -7,7 +7,9 @@
 -- isMovableAgingInvoice + moveStripSummary) over the same rows, so the function and the kernel
 -- are held to the same four numbers. due_in_days counts from today in the company calendar
 -- (app_today() here, a fixed day there; null = no due date); jobs = allocation rows; open_ask =
--- an unconfirmed ask; confirmed_ask = an ask the house already honored (history, never counted).
+-- an unconfirmed ask; confirmed_ask = an ask the house already honored (history, never counted);
+-- account_not_needed = the job's account at the house is on record as not needed (20261029233000:
+-- never counted), which puts the row on job 3 so the mark touches no other row.
 
 \set dev   '''00000000-0000-4000-8000-000000000001'''
 \set tess  '''00000000-0000-4000-8000-000000000002'''
@@ -22,22 +24,23 @@ INSERT INTO public.supply_houses (id, name) VALUES (:house, 'Bluebonnet Supply')
 
 CREATE OR REPLACE FUNCTION public.t_inv(p text) RETURNS uuid LANGUAGE sql IMMUTABLE AS $$ SELECT md5('inv:' || p)::uuid $$;
 CREATE OR REPLACE FUNCTION public.t_job(p int) RETURNS uuid LANGUAGE sql IMMUTABLE AS $$ SELECT md5('job:' || p)::uuid $$;
-INSERT INTO public.jobs_ledger (id, hcp_number, job_name) SELECT public.t_job(g), 'J' || g, 'Job ' || g FROM generate_series(1, 2) g;
+INSERT INTO public.jobs_ledger (id, hcp_number, job_name) SELECT public.t_job(g), 'J' || g, 'Job ' || g FROM generate_series(1, 3) g;
 
 CREATE TEMP TABLE t_rows AS
 SELECT * FROM jsonb_to_recordset($rows$[
-  {"id": "a", "amount": 2210.00, "due_in_days": 4,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": true,  "confirmed_ask": false, "why": "current, one job, asked: counts, asked"},
-  {"id": "b", "amount": 1742.65, "due_in_days": 0,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": false, "why": "due today is still current: counts, the soonest window"},
-  {"id": "c", "amount": 500.00,  "due_in_days": -1,   "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": true,  "confirmed_ask": false, "why": "due yesterday: window closed, its open ask does not count either"},
-  {"id": "d", "amount": 300.00,  "due_in_days": 10,   "on_job_account": true,  "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": true,  "why": "already on the job account"},
-  {"id": "e", "amount": -40.00,  "due_in_days": 10,   "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": false, "why": "a credit"},
-  {"id": "f", "amount": 100.00,  "due_in_days": null, "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": false, "why": "no due date: never movable"},
-  {"id": "g", "amount": 800.00,  "due_in_days": 2,    "on_job_account": false, "is_paid": false, "jobs": 2, "open_ask": false, "confirmed_ask": false, "why": "split across two jobs"},
-  {"id": "h", "amount": 900.00,  "due_in_days": 2,    "on_job_account": false, "is_paid": false, "jobs": 0, "open_ask": false, "confirmed_ask": false, "why": "no job yet"},
-  {"id": "i", "amount": 1000.00, "due_in_days": 3,    "on_job_account": false, "is_paid": true,  "jobs": 1, "open_ask": false, "confirmed_ask": false, "why": "paid"},
-  {"id": "j", "amount": 3522.06, "due_in_days": 9,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": true,  "why": "current, one job, an ask the house confirmed long ago: counts, not asked"},
-  {"id": "k", "amount": 100.00,  "due_in_days": 1,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": true,  "confirmed_ask": false, "why": "current, one job, asked: counts, asked"}
-]$rows$::jsonb) AS x(id text, amount numeric, due_in_days int, on_job_account boolean, is_paid boolean, jobs int, open_ask boolean, confirmed_ask boolean, why text);
+  {"id": "a", "amount": 2210.00, "due_in_days": 4,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": true,  "confirmed_ask": false, "account_not_needed": false, "why": "current, one job, asked: counts, asked"},
+  {"id": "b", "amount": 1742.65, "due_in_days": 0,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": false, "account_not_needed": false, "why": "due today is still current: counts, the soonest window"},
+  {"id": "c", "amount": 500.00,  "due_in_days": -1,   "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": true,  "confirmed_ask": false, "account_not_needed": false, "why": "due yesterday: window closed, its open ask does not count either"},
+  {"id": "d", "amount": 300.00,  "due_in_days": 10,   "on_job_account": true,  "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": true, "account_not_needed": false,  "why": "already on the job account"},
+  {"id": "e", "amount": -40.00,  "due_in_days": 10,   "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": false, "account_not_needed": false, "why": "a credit"},
+  {"id": "f", "amount": 100.00,  "due_in_days": null, "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": false, "account_not_needed": false, "why": "no due date: never movable"},
+  {"id": "g", "amount": 800.00,  "due_in_days": 2,    "on_job_account": false, "is_paid": false, "jobs": 2, "open_ask": false, "confirmed_ask": false, "account_not_needed": false, "why": "split across two jobs"},
+  {"id": "h", "amount": 900.00,  "due_in_days": 2,    "on_job_account": false, "is_paid": false, "jobs": 0, "open_ask": false, "confirmed_ask": false, "account_not_needed": false, "why": "no job yet"},
+  {"id": "i", "amount": 1000.00, "due_in_days": 3,    "on_job_account": false, "is_paid": true,  "jobs": 1, "open_ask": false, "confirmed_ask": false, "account_not_needed": false, "why": "paid"},
+  {"id": "j", "amount": 3522.06, "due_in_days": 9,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": true, "account_not_needed": false,  "why": "current, one job, an ask the house confirmed long ago: counts, not asked"},
+  {"id": "k", "amount": 100.00,  "due_in_days": 1,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": true,  "confirmed_ask": false, "account_not_needed": false, "why": "current, one job, asked: counts, asked"},
+  {"id": "l", "amount": 450.00,  "due_in_days": 5,    "on_job_account": false, "is_paid": false, "jobs": 1, "open_ask": false, "confirmed_ask": false, "account_not_needed": true,  "why": "current, one job, but the job's account there is marked not needed: never counted"}
+]$rows$::jsonb) AS x(id text, amount numeric, due_in_days int, on_job_account boolean, is_paid boolean, jobs int, open_ask boolean, confirmed_ask boolean, account_not_needed boolean, why text);
 
 CREATE TEMP TABLE t_expect AS
 SELECT * FROM jsonb_to_record($expect${"count": 4, "dollars": 7574.71, "asked": 2, "soonest_in_days": 0}$expect$::jsonb)
@@ -48,7 +51,10 @@ SELECT public.t_inv(r.id), :house, 'INV-' || r.id, public.app_today() - 30, r.am
        CASE WHEN r.due_in_days IS NULL THEN NULL ELSE public.app_today() + r.due_in_days END, r.on_job_account
 FROM t_rows r;
 INSERT INTO public.supply_house_invoice_job_allocations (invoice_id, job_id, pct)
-SELECT public.t_inv(r.id), public.t_job(g), 100.0 / r.jobs FROM t_rows r, generate_series(1, r.jobs) g;
+SELECT public.t_inv(r.id), public.t_job(CASE WHEN r.account_not_needed THEN 3 ELSE g END), 100.0 / r.jobs FROM t_rows r, generate_series(1, r.jobs) g;
+-- Job 3's account at the house is on record as not needed (20261029233000).
+INSERT INTO public.job_supply_house_accounts (job_id, supply_house_id, status)
+SELECT public.t_job(3), :house::uuid, 'not_needed' WHERE EXISTS (SELECT 1 FROM t_rows r WHERE r.account_not_needed);
 INSERT INTO public.supply_house_invoice_move_requests (invoice_id, job_id, supply_house_id, via, confirmed_at)
 SELECT public.t_inv(r.id), public.t_job(1), :house, 'email', NULL FROM t_rows r WHERE r.open_ask;
 INSERT INTO public.supply_house_invoice_move_requests (invoice_id, job_id, supply_house_id, via, confirmed_at)
@@ -104,6 +110,17 @@ UPDATE public.supply_house_invoice_move_requests SET confirmed_at = now() WHERE 
 SELECT public.t_assert(
   (SELECT w.count = 3 AND w.asked = 1 FROM public.count_supply_house_move_window() w),
   'S5 confirming k''s ask: still 3 rows, 1 asked');
+ROLLBACK;
+
+-- ── S7: a job's account marked not needed takes its charges out of the window (20261029233000) ──
+BEGIN;
+SELECT public.t_as(:dev);
+-- Every counted row is on job 1; marking job 1's account there not needed empties the window.
+INSERT INTO public.job_supply_house_accounts (job_id, supply_house_id, status) VALUES (public.t_job(1), :house, 'not_needed');
+SELECT public.t_assert(public.t_is_zero_row(), 'S7 job 1''s account marked not needed: the window is empty');
+-- Opened instead, the charges count again.
+UPDATE public.job_supply_house_accounts SET status = 'open' WHERE job_id = public.t_job(1);
+SELECT public.t_assert(public.t_matches_expect(), 'S7 opened instead: the $expect$ numbers again');
 ROLLBACK;
 
 -- ── S6: the roles of the migration — anon may not call it, authenticated may ─────────────────

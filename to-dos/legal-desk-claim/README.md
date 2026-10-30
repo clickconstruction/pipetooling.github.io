@@ -2,7 +2,7 @@
 name: "Legal desk: the claim, not only the open balance"
 number: 171
 group: gated
-status: proposed 2026-10-24 · rank 6 of 10 from the review of the Burd matter (job 891) · step 2's tile built as v2.5849 (How much? and What's left for us? read the claim as the open bills plus the retainage held, from the job rows) · steps 1 and 3 not built (the claim table, the floor against the claim, the print)
+status: proposed 2026-10-24 · rank 6 of 10 from the review of the Burd matter (job 891) · step 2's tile built as v2.5849 (How much? and What's left for us? read the claim as the open bills plus the retainage held, from the job rows; since v2.6103, #213, only the retainage no sent bill already carries) · steps 1 and 3 not built (the claim table, the floor against the claim, the print)
 summary: >
   The desk sizes a case by its open bills: *How much?* is the balance, and *What's left for us?*
   and the settlement floor work from it. A dispute can claim more than the bills say, such as

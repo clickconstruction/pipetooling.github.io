@@ -99,7 +99,7 @@ const RECEIVED = [{ key: 'ref:4821|2026-08-15', onYmd: '2026-08-15', label: 'Che
 const RECEIVED_SINCE = '2026-08-06'
 const EXTRAS = { propertyIdByJob: PROPERTY_BY_JOB, qrImgSrc: QR, received: RECEIVED, receivedSinceYmd: RECEIVED_SINCE }
 
-const PAY_LINK_HTML = '<a href="https://my.clickplumbing.com/knight?src=gc-statement" style="color: #b0662f; font-weight: 600; text-decoration: none;">my.clickplumbing.com/knight</a>'
+const PAY_LINK_HTML = '<a href="https://my.clickplumbing.com/knight?src=gc-statement" style="color: #9a5b2b; font-weight: 600; text-decoration: none;">my.clickplumbing.com/knight</a>'
 const PAY_LINE_TEXT = 'Pay online any time at https://my.clickplumbing.com/knight?src=gc-statement — this statement stays current there.'
 
 describe('GC statement — the client builders and the dispatcher render the same email', () => {
