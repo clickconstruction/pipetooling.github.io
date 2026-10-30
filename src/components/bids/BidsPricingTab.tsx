@@ -2501,7 +2501,7 @@ export function BidsPricingTab({
                             ? '#ef4444'
                             : rfqChip.tone === 'amber'
                               ? 'var(--text-amber-700)'
-                              : '#15803d',
+                              : 'var(--text-green-700)',
                       border: `1px solid ${rfqChip.kind === 'quotes' || (rfqChip.kind === 'robot' && rfqChip.tone === 'blue') ? '#3b82f6' : rfqChip.tone === 'red' ? '#ef4444' : rfqChip.tone === 'amber' ? '#f59e0b' : '#16a34a'}`,
                       borderRadius: 999,
                       cursor: 'pointer',
@@ -3734,7 +3734,7 @@ export function BidsPricingTab({
                                         type="button"
                                         title={`Materials from ${cc.house_name ?? 'a quote'} (${calendarYmdInAppTzFromIso(cc.applied_at).slice(5, 10)})${cc.lot_group_id ? ' — part of a package; reverting reverts the whole package' : ''} — click to revert to takeoff`}
                                         onClick={() => void revertCustomCost(cc)}
-                                        style={{ display: 'block', marginLeft: 'auto', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, color: '#15803d', background: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                        style={{ display: 'block', marginLeft: 'auto', font: 'inherit', fontSize: '0.62rem', fontWeight: 700, color: 'var(--text-green-700)', background: 'none', border: '1px solid #16a34a', borderRadius: 999, padding: '0 0.4rem', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                       >
                                         {cc.house_name ?? 'quote'} ↩
                                       </button>

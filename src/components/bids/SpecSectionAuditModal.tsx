@@ -398,7 +398,7 @@ export function SpecSectionAuditModal({ open, onClose }: { open: boolean; onClos
                 <div style={{ width: `${audit.coveragePct}%`, height: '100%', background: '#16a34a' }} />
               </div>
               <span style={{ fontSize: '0.8125rem', whiteSpace: 'nowrap', color: 'var(--text-strong)' }}>
-                <span style={{ fontWeight: 700, color: '#15803d' }}>{audit.codedCount} coded</span>
+                <span style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>{audit.codedCount} coded</span>
                 {' · '}
                 <span style={{ fontWeight: 700, color: 'var(--text-amber-700)' }} title="The same count as the Dashboard's Division 22 card — names are folded by case on both sides.">{audit.uncodedCount} uncoded</span>
                 {' · '}

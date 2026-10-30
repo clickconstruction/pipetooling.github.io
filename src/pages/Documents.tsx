@@ -457,7 +457,7 @@ function DocumentsEstimatesLedger({ embedSearch, onClearEmbedSearch }: Documents
                         <>
                           <Link
                             to={`/jobs?edit=${r.job_ledger_id}`}
-                            style={{ fontWeight: 500, color: '#15803d' }}
+                            style={{ fontWeight: 500, color: 'var(--text-green-700)' }}
                           >
                             {(() => {
                               const hcp = ledgerLinkedJobHcp(r)
@@ -1726,7 +1726,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                                 style={{
                                   display: 'block',
                                   fontWeight: 500,
-                                  color: '#15803d',
+                                  color: 'var(--text-green-700)',
                                   textDecoration: 'none',
                                   maxWidth: '14rem',
                                 }}
@@ -1759,7 +1759,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                         <span>
                           <span style={{ fontWeight: 500 }}>{(r.invoice_number ?? '').trim() || '—'}</span>
                           {r.is_paid ? (
-                            <span style={{ marginLeft: '0.35rem', fontSize: '0.75rem', color: '#15803d' }}>(Paid)</span>
+                            <span style={{ marginLeft: '0.35rem', fontSize: '0.75rem', color: 'var(--text-green-700)' }}>(Paid)</span>
                           ) : null}
                         </span>
                       </div>

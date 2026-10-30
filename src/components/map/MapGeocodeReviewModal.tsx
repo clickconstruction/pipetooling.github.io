@@ -321,7 +321,7 @@ export function MapGeocodeReviewModal({
                       <td
                         style={{
                           padding: '0.35rem 0.5rem',
-                          color: st === 'err' ? '#b91c1c' : st === 'ok' ? '#15803d' : 'var(--text-muted)',
+                          color: st === 'err' ? '#b91c1c' : st === 'ok' ? 'var(--text-green-700)' : 'var(--text-muted)',
                         }}
                       >
                         {statusText}
