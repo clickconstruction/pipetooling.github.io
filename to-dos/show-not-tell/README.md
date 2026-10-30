@@ -2,7 +2,7 @@
 name: "Show it, don't say it: seven shapes for the 131 places the app still tells"
 number: 217
 group: gated
-status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 33 before/after pairs and a second pass on each · waiting on the owner's picks
+status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 51 before/after pairs and a second pass on each (shape 1 drawn whole on the owner's ask the same day) · waiting on the owner's picks
 mockup: to-dos/show-not-tell/mockup.html
 summary: >
   Taunya asked for a scan of the whole app for the places it tells instead of shows, so a reader sees
@@ -57,11 +57,12 @@ The 131 collapse into seven shapes, and every shape already lives somewhere in t
 
 ## The mock-up and its second pass
 
-`mockup.html` teaches each shape once: its rule, where it already lives, then the strongest pairs (33 in
-all, covering 37 findings since four ride with a sibling), each the screen's words of today in a dashed
+`mockup.html` teaches each shape once: its rule, where it already lives, then the strongest pairs (51 in
+all, covering 55 findings since four ride with a sibling; shape 1 is drawn whole, all 24 places, on the owner's
+ask of 2026-10-30 after she had picked over its first six), each the screen's words of today in a dashed
 frame beside the shape drawn in a solid one, the lines under them saying what the shape gains and what it
 reuses, and a blue *Second pass* box saying what the first render got wrong and what moved. Under each
-shape a table lists every other place that takes it (94 rows) with today's words, the shape in one line,
+shape a table lists every other place that takes it (76 rows) with today's words, the shape in one line,
 weight and size. Every pair and every row carries **Build · Later · Drop** and a note line; a shape's
 header carries *Build all · Later all · Drop all · Clear*. The claude.ai copy of the page
 (https://claude.ai/artifact/3f74NuNKDsMAtpGcFgCV1v) saves the picks as they are pressed; the repo copy
