@@ -15,7 +15,7 @@
  */
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
-import { legalDocumentStateOf, legalDocumentStateWords, legalPortalDocumentFromRow } from './legalMatterDocuments'
+import { type LegalDocumentState, legalDocumentSentHowWords, legalDocumentStateOf, legalDocumentStateWords, legalPortalDocumentFromRow } from './legalMatterDocuments'
 import { isOfferEntry, offerExpiryOnLine, offerExpiryWhat, offerHoldKey, offerMetaOf } from './legalOffers'
 import { entryRecordedByWords, legalEntryKindWords } from './legalAsks'
 import { firmEntryKindWords } from './legalFirmWords'
@@ -248,6 +248,16 @@ export type LegalTimelineDocument = {
   datedOn: string
   /** *Draft* · *Sent Oct 27 by certified mail to …* · *Received Oct 22* · '' for a final paper. */
   stateWords: string
+  /** The state as a chip (v2.6107): *sent · certified mail* · *sent · email* · *received* · *draft* · '' for a final paper. The sentence stays on the hover. */
+  chip: string
+}
+
+/** The chip a document wears on the line (v2.6107): its state and, for a sent paper, how it went; '' for a final one. */
+export function documentChipWords(d: { state: LegalDocumentState; sentHow: string }): string {
+  if (d.state === 'sent') return d.sentHow ? `sent · ${legalDocumentSentHowWords(d.sentHow).replace(/^by /, '')}` : 'sent'
+  if (d.state === 'received') return 'received'
+  if (d.state === 'draft') return 'draft'
+  return ''
 }
 
 /** The words under a document on the line (v2.5846): its state, then where it sits against the day it was added. */
@@ -266,7 +276,7 @@ export function timelineDocumentsFromRows(
   return rows.map((d) => {
     const addedOn = dayOf(d.added_at)
     const doc = legalPortalDocumentFromRow(d, userNameOf(d.added_by) ?? '', '', dayOf)
-    return { id: d.id, title: d.title, shows: d.shows, addedOn, addedAt: d.added_at, addedByName: doc.addedByName, held: d.held_reason.trim().length > 0, heldReason: d.held_reason.trim(), datedOn: doc.datedOn, stateWords: legalDocumentStateWords(doc, shortDay) }
+    return { id: d.id, title: d.title, shows: d.shows, addedOn, addedAt: d.added_at, addedByName: doc.addedByName, held: d.held_reason.trim().length > 0, heldReason: d.held_reason.trim(), datedOn: doc.datedOn, stateWords: legalDocumentStateWords(doc, shortDay), chip: documentChipWords(doc) }
   })
 }
 
@@ -276,6 +286,7 @@ export function timelineDocumentsFromPortal(docs: ReadonlyArray<{ id: string; ti
     id: d.id, title: d.title, shows: d.shows, addedOn: d.addedOn, addedAt: '', addedByName: d.addedByName, held: false, heldReason: '',
     datedOn: d.datedOn ?? '',
     stateWords: legalDocumentStateWords({ state: legalDocumentStateOf(d.state), sentOn: d.sentOn ?? '', sentHow: d.sentHow ?? '', sentTo: d.sentTo ?? '', receivedOn: d.receivedOn ?? '' }, shortDay),
+    chip: documentChipWords({ state: legalDocumentStateOf(d.state), sentHow: d.sentHow ?? '' }),
   }))
 }
 
@@ -349,6 +360,8 @@ export type LegalTimelineItem = {
   deadlineKey: string | null
   /** A deadline item's job, for the *Record it…* door; null on every other kind. */
   deadlineJobId: string | null
+  /** A document's state as a chip (v2.6107): *sent · certified mail* · *received* · *draft*; '' on a final paper and on every other kind. */
+  documentChip: string
 }
 
 export type LegalTimeline = {
@@ -442,7 +455,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
   const items: Array<LegalTimelineItem & { sortKey: string }> = []
   const docById = new Map(documents.map((d) => [d.id, d] as const))
   const deadlineByKey = new Map(deadlines.map((d) => [d.key, d] as const))
-  const none = { serves: null, deadlineKey: null, deadlineJobId: null }
+  const none = { serves: null, deadlineKey: null, deadlineJobId: null, documentChip: '' }
 
   for (const e of entries) {
     const voided = Boolean(e.voided_at)
@@ -465,7 +478,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
         isLivePlan: !voided && !meta.doneAt,
         documents: [],
         serves, deadlineKey: meta.deadlineKey, deadlineJobId: null,
-        sortKey: `${ymd}|${e.created_at}`,
+        documentChip: '', sortKey: `${ymd}|${e.created_at}`,
       })
       continue
     }
@@ -501,7 +514,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
           byName, source: meta.source, viaPortal: false, state, stateWords: words, plannedYmd: null, doneYmd: null,
           held: offerHeld, heldReason: offerHeld ? (holdReasons[offerHoldKey(e.id)] ?? '') : '', voided: false, voidReason: '', isLivePlan: false, documents: [],
           serves: null, deadlineKey: null, deadlineJobId: null,
-          sortKey: `${expires}|`,
+          documentChip: '', sortKey: `${expires}|`,
         })
       }
     }
@@ -523,7 +536,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       what: d.title, kindWords: d.stateWords === 'Draft' ? 'draft' : '', notes: d.shows, amount: null,
       byName: d.addedByName || 'the office', source: 'office', viaPortal: false,
       state: 'happened', stateWords: documentStateWords(d), plannedYmd: null, doneYmd: null,
-      held: d.held, heldReason: d.heldReason, voided: false, voidReason: '', isLivePlan: false, documents: [], ...none,
+      held: d.held, heldReason: d.heldReason, voided: false, voidReason: '', isLivePlan: false, documents: [], ...none, documentChip: d.chip,
       sortKey: `${ymd}|${d.addedAt}`,
     })
   }
@@ -538,7 +551,7 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
       state, stateWords: words, plannedYmd: null, doneYmd: null,
       held: false, heldReason: '', voided: false, voidReason: '', isLivePlan: false, documents: [],
       serves: null, deadlineKey: null, deadlineJobId: d.jobId,
-      sortKey: `${d.ymd}|`,
+      documentChip: '', sortKey: `${d.ymd}|`,
     })
   }
 

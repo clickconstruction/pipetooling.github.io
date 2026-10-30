@@ -2,7 +2,7 @@
 name: "Quiet hours: a 24/7 switch on Office hours, and each person's own hours for pushes"
 number: 141
 group: ready
-status: the owner's yes 2026-10-21; PR 1 (v2.5721, the 24/7 switch) merged as #5972 the same day, the three functions redeployed; PR 2 (v2.6026, Push me on the Push Notifications card) merged as #6383 on 2026-10-28, its migration still to push; PR 3 (v2.6029, the reply push honours a person's hours) open as #6385 on 2026-10-28, rebased onto main after #6383 merged and armed, its migration to push after the merge and messages-notify to deploy; PRs 4 and 5 not started
+status: the owner's yes 2026-10-21; PR 1 (v2.5721, the 24/7 switch) merged as #5972 the same day, the three functions redeployed; PR 2 (v2.6026, Push me on the Push Notifications card) merged as #6383 and PR 3 (v2.6029, the reply push honours a person's hours) as #6385, both on 2026-10-28, their two migrations pushed and messages-notify deployed the same day (v2.6033 fixed the line's capital); PR 4 (v2.6060, what waited on the Dashboard, the pill's off words, the coverage line) open as #6434 on 2026-10-29, its one migration, the office's read of every row, to push after the merge; PR 5 not started
 summary: >
   Two related asks. One: the Office hours card gets a switch, The office is open around the clock,
   that saves the hours as always open, hides the day and time fields while it is on, and tells
@@ -12,10 +12,10 @@ summary: >
   hours. A push outside a person's hours is held for them, and a customer's reply is handed to
   the office at once, so no customer waits on a sleeping phone. The company's hours gate what
   customers see. A person's hours gate only what reaches that person.
-next: After PR 2 and PR 3 merge, push both migrations (20261028200000, then 20261028210000), deploy messages-notify and regenerate the types, then PR 4, what waited on the Dashboard, the thread's pill and the Office hours card's coverage line. No call is left open; the weekend question became a day toggle.
-size: M as a train of five (S S S S S); one migration, one mirrored kernel, three function redeploys
-blocker: none; PR 2 waits on nothing but a session
-ver: v2.5721 · v2.6026 · v2.6029
+next: After PR 4 merges, push 20261029180000 (no function to deploy, nothing mirrored changed), then PR 5, the other thirteen senders through one shared helper, which deletes this folder. No call is left open; the weekend question became a day toggle.
+size: M as a train of five (S S S S S); three migrations, one mirrored kernel, three function redeploys
+blocker: none; PR 5 waits on nothing but a session
+ver: v2.5721 · v2.6026 · v2.6029 · v2.6060
 opinion: build — the 24/7 switch is an afternoon and fixes a real lie on the card today; the person's hours are the first per-person control over the phone the app has ever had, reuse the office card's kernel whole, and the hand-on rule keeps them from ever costing a customer an answer.
 mockup: to-dos/quiet-hours/mockup.html
 ---
@@ -228,7 +228,7 @@ Three verbs. **Hold**: the push is not sent; a `notification_history` row is wri
 | Texts to customers, the morning run, Today's sends, Needs you, every email stream | **ignore** | not pushes to a person, or read when the app is opened |
 
 **When everyone in the office is off.** A reply's push may find no one on. The row stays on
-Needs a reply as today, the thread's pill reads *Open · the office is off until 6 AM*, and the
+Needs a reply as today, the thread's pill reads *Nobody has it · the office is off until 6 AM*, and the
 Office hours card grows one honest line while 24/7 is on: *Nobody hears a reply from 11 PM to
 6 AM. Rosa, Evan and Taunya are all off then.* The company's switch says the office is open;
 the people's hours say whether anyone is. The line is where the two meet, and it is the owner's
@@ -304,13 +304,19 @@ hand-on words, the widening), `notifyPlan.test.ts` (a holder off, the wait push 
 members who are on, every member off), the `messagesReplyPush` bed. Deploy `messages-notify`.
 Docs: `EDGE_FUNCTIONS.md` messages-notify section, `MESSAGES_ARCHITECTURE.md`'s push paragraph.
 
-**PR 4 · What waited, the pill and the coverage line (S).** `whileOffLine(heldRows)` in
-`pushHours.ts` and the Needs you item (`dashboardNeedsYou.ts`, the person's own `held` rows
-since their last open, each kind a door); the thread's pill and hover when the holder or the
-whole office is off (`hasPill`, `hasHover`); the Office hours card's coverage line
-(`coverageGaps(hours, rows)` in `pushHours.ts`, the rows read as the owner or a dev). Tests on
-the kernels, the card and the Needs you render. Guide: the Push notifications section gains
-*What waited while you were off*.
+**PR 4 · What waited, the pill and the coverage line (S + migration; v2.6060).** `whatWaited.ts`
+(the Needs you item `while-off` in `dashboardNeedsYou.ts`: the person's own `held` rows since
+their hours last closed, one wait per line, a line answered meanwhile left out and named, the
+door to the first still waiting) and `whoIsOff.ts` (the Who has it pill's off words and hover in
+`WhoHasItPill.tsx`, the holder or the whole office; the Office hours card's coverage line,
+`coverageGaps` and `coverageLine`, the rows read as the owner or a dev). Two departures from the
+first plan: the kernels sit beside `pushHours.ts`, not in it, since PR 3 mirrored that file to
+the edge and a change would have cost a `messages-notify` redeploy for words the edge never
+reads; and one migration, `20261029180000`, lets the office team read every row, since the
+pill's audience is the office and the own-row and owner-or-dev reads of PR 2 left it blind to a
+holder's hours. Tests on the kernels, the three surfaces' renders and the Needs you builder.
+Guides: the Push notifications section gains *What waited while you were off*, *Open around the
+clock* reads the coverage line, *Who has it* reads the two off pills.
 
 **PR 5 · The other senders (S each, one PR).** `pushDecision` in each of the thirteen other
 push senders through one shared helper, `_shared/pushHoursSend.ts`, that reads the rows, splits,
