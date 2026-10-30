@@ -2,7 +2,7 @@
 name: "Signed hours statement: a worker's recorded hours on one job, as a paper they sign, for court"
 number: 212
 group: ready
-status: PR 1 built 2026-10-29, v2.6069 with the kernel, the Letter print, the reads and a dev-only press on the job window's Documents tab · PR 2, the window, not started
+status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · PR 3, the signing, not started
 mockup: to-dos/signed-hours-statement/mockup.html
 summary: >
   A paper, made from the clock and the pay reports as they stand, that says what one worker did on one
@@ -12,10 +12,10 @@ summary: >
   ink-signing page the lien waivers use, and the Legal desk's Evidence tab; what is new is one builder,
   one window, one small table, and two verbs on the dev MCP so an agent can read and make one. The hard part is the span before the app: nothing in the app precedes
   2026-03-12, so for 2025 the paper can carry only what the worker states, marked as such.
-next: PR 2, the window on the job's Documents tab and the person's desk with its two switches, the held line and the Hours statements section; counsel is asked what a worker's stated days for 2025 are worth, alongside, before PR 3 ships the signing.
+next: PR 3, the signing: the pdf-lib statement and its form schema, the person_contract_documents row, Send for signature… with the four channels and Hand the phone to <name>, the stated rows as form boxes, File a signed scan…; counsel's word on what a worker's stated days for 2025 are worth comes first.
 size: M as a train of five (S · M · M · S · S)
-blocker: none for PR 1 and PR 2; counsel's word on the stated block's weight before PR 3.
-ver: v2.6069
+blocker: counsel's word on the stated block's weight before PR 3.
+ver: v2.6069 · v2.6097
 opinion: build — the owner took all seven calls as recommended on 2026-10-29; the paper is honest about what the app does not have
 ---
 
@@ -365,6 +365,11 @@ column off the paper, took all seven calls as recommended and asked for the stat
 shipped the same day as v2.6069: the kernel in `supabase/functions/_shared/hoursStatement.ts` (re-exported by
 `src/lib/people/hoursStatement.ts`) with its eleven cases, `buildHoursStatementHtml` beside the pay report's
 builder, the reads in `src/lib/people/hoursStatementRead.ts`, and a dev-only press on the job window's
-Documents tab (`HoursStatementDevPress.tsx`) that prints one from live rows. PR 2 claims its version with
-`npm run claim` and starts from the plan above; counsel's question on the stated block goes out alongside and
-must be answered before PR 3.
+Documents tab that printed one from live rows. PR 2 shipped the same day as v2.6097: the `hours_statements` table
+with its gate (`can_touch_hours_statement`, migration `20261030030000`, pushed from the main checkout after the
+merge), the record id's kernel `hoursStatementRecord.ts` beside the statement's, the window `HoursStatementModal.tsx`
+with its two switches, the span line, the held line and the paper as the preview, **Save a draft** and **Print** (which
+saves, stamps the id and files nothing), **Send for signature…** and **Sign here now** drawn and held, and the
+**Hours statements** section on the job's Documents tab and under the desk's Hours & approvals; the dev press is gone.
+PR 3 claims its version with `npm run claim` and starts from the plan above; counsel's question on the stated block
+must be answered before it ships.

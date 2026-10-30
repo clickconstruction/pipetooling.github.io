@@ -159,6 +159,14 @@ describe('a span with no rows', () => {
     expect(s.gap?.heading).toBe('Days the company’s records do not show (April 1, 2025 – March 11, 2026)')
     expect(s.gap?.words).toBe('The company kept no clock before March 12, 2026. The days below are as the worker states them, not as the company recorded them. Blank rows are left blank.')
   })
+  it('draws the block for a gap even with the switch off, with no rows yet (PR 2)', () => {
+    const off = buildHoursStatement(helperInput({ periodStart: '2025-09-15', periodEnd: '2026-06-13' }))
+    expect(off.gap).toEqual({ from: '2025-09-15', to: '2026-03-11', heading: 'Days the company’s records do not show (September 15, 2025 – March 11, 2026)', words: off.gap?.words })
+    expect(off.stated?.heading).toBe(off.gap?.heading)
+    expect(off.stated?.rows).toEqual([])
+    expect(off.attestation).toContain('that the days marked stated are true to the best of my memory')
+  })
+
   it('carries the stated days in date order under the gap words, and the attestation names them', () => {
     expect(s.stated?.rows.map((r) => r.day)).toEqual(['2025-09-15', '2025-09-16'])
     expect(s.stated?.heading).toBe(s.gap?.heading)
