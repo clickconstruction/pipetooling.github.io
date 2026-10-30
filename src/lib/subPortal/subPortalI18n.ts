@@ -139,6 +139,14 @@ const STRINGS = {
   // v2.2854: the fourth dot — a sheet at Waiting on customer with a payable-after date
   chipQueued: { en: 'Queued for {day}', es: 'En la corrida del {day}' },
   chipQueuedNoDay: { en: 'Payment queued', es: 'Pago en cola' },
+  // Punch list #217 (field-2): the head as its rows under two bands
+  bandNextRun: { en: 'This {day} · {date}', es: 'Este {day} · {date}' },
+  bandNextRunSum: { en: 'in the {day} run', es: 'en la corrida del {day}' },
+  bandNothingInRun: { en: 'nothing in this run yet', es: 'nada en esta corrida todavía' },
+  bandLater: { en: 'Later', es: 'Después' },
+  bandPayableAfter: { en: 'payable after {date}', es: 'pagadero después del {date}' },
+  bandDateToCome: { en: 'date to come', es: 'fecha por definir' },
+  bandUnplaced: { en: 'on no job card', es: 'sin tarjeta de trabajo' },
   stageQueuedLine: {
     en: 'Queued for the pay run — the date is right below.',
     es: 'En cola para la corrida de pago — la fecha está justo abajo.',
