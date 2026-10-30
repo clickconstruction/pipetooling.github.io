@@ -23,12 +23,12 @@ export interface PeopleHoursPendingBannerProps {
 }
 
 /** The banner in one of its two shapes: the sentence with its presses, or the presses alone with the hours on the first. */
-function BannerBody({ summary, onReviewApprove, onOpenQueue, outsideWeekLine, strip }: PeopleHoursPendingBannerProps & { strip: boolean }) {
+function BannerBody({ summary, onReviewApprove, onOpenQueue, outsideWeekLine, stripOn }: Omit<PeopleHoursPendingBannerProps, 'strip' | 'canAccessHours' | 'canAccessPay'> & { stripOn: boolean }) {
   const facts = `${summary.peopleCount} ${summary.peopleCount === 1 ? 'person' : 'people'} · ${summary.totalDiffHours.toFixed(2)} h not yet in payroll${summary.workDates.length > 0 ? ` across ${summary.workDates.length} ${summary.workDates.length === 1 ? 'day' : 'days'}` : ''}`
   return (
     <div
       role="status"
-      data-pending-banner={strip ? 'strip' : 'today'}
+      data-pending-banner={stripOn ? 'strip' : 'today'}
       style={{
         marginBottom: '0.5rem',
         padding: '0.45rem 0.6rem',
@@ -45,7 +45,7 @@ function BannerBody({ summary, onReviewApprove, onOpenQueue, outsideWeekLine, st
       }}
     >
       <span aria-hidden style={{ fontSize: '0.95rem', lineHeight: 1 }}>⚠</span>
-      {strip ? (
+      {stripOn ? (
         <span style={{ flex: '1 1 auto', minWidth: 0 }} />
       ) : (
         <span style={{ flex: '1 1 auto', minWidth: 0 }}>
@@ -92,7 +92,7 @@ function BannerBody({ summary, onReviewApprove, onOpenQueue, outsideWeekLine, st
       <button
         type="button"
         onClick={onReviewApprove}
-        title={strip ? `${facts}. Opens Review & approve for the week shown.` : undefined}
+        title={stripOn ? `${facts}. Opens Review & approve for the week shown.` : undefined}
         style={{
           padding: '0.25rem 0.6rem',
           fontSize: '0.8125rem',
@@ -104,7 +104,7 @@ function BannerBody({ summary, onReviewApprove, onOpenQueue, outsideWeekLine, st
           cursor: 'pointer',
         }}
       >
-        {strip ? reviewApproveLabel(summary.totalDiffHours) : 'Review & approve'}
+        {stripOn ? reviewApproveLabel(summary.totalDiffHours) : 'Review & approve'}
       </button>
       {onOpenQueue ? (
         <button
@@ -131,10 +131,10 @@ function BannerBody({ summary, onReviewApprove, onOpenQueue, outsideWeekLine, st
 
 /** Hours grid warning banner: pending sessions not yet in payroll, with a bulk review/approve CTA. Renders nothing when there is nothing pending. */
 export function PeopleHoursPendingBanner(props: PeopleHoursPendingBannerProps) {
-  const { summary, canAccessHours, canAccessPay, strip } = props
+  const { summary, canAccessHours, canAccessPay, strip, ...rest } = props
   if (!(summary.totalSessions > 0 && (canAccessHours || canAccessPay))) return null
   if (strip?.sideBySide) {
-    return <SideBySide testId="people-hours-pending-banner-sbs" label="With the strip" today={<BannerBody {...props} strip={false} />} shape={<BannerBody {...props} strip />} />
+    return <SideBySide testId="people-hours-pending-banner-sbs" label="With the strip" today={<BannerBody {...rest} summary={summary} stripOn={false} />} shape={<BannerBody {...rest} summary={summary} stripOn />} />
   }
-  return <BannerBody {...props} strip={strip?.on === true} />
+  return <BannerBody {...rest} summary={summary} stripOn={strip?.on === true} />
 }
