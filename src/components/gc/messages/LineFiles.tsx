@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { fileHref, driveFileRouteId } from '../../../lib/files/fileRoute'
-import { driveOf, fileNote, fileOpenHref, filedWords, sizeWords, type FileIcon, type LineFile } from '../../../lib/messages/lineFiles'
+import { billAnswerWords, driveOf, fileNote, fileOpenHref, filedWords, sizeWords, type FileIcon, type LineFile } from '../../../lib/messages/lineFiles'
 import { jobRefOf } from '../../../lib/messages/load'
 import { cutOwnLink, loadOwnLinks, loadPortalOpensSince } from '../../../lib/messages/messagesIo'
 import { canCut, opensList, sentChipWords, sentRowNote, sentWay, type OwnLinkState, type PortalOpens } from '../../../lib/messages/sentLineFiles'
@@ -73,10 +73,11 @@ export function LineFileChips({ files, onOpen }: { files: readonly LineFile[]; o
 }
 
 /** "✓ Filed as their certificate · Rosa, Oct 12", once for each paper the office filed from the line. */
-export function FiledLines({ files, userNames }: { files: readonly LineFile[]; userNames: Readonly<Record<string, string>> }) {
-  // Keyed by the file: two certificates filed from one email by one person on one day read the same.
+export function FiledLines({ files, userNames, contact }: { files: readonly LineFile[]; userNames: Readonly<Record<string, string>>; contact?: Pick<Contact, 'kind'> | null }) {
+  // Keyed by the file: two certificates filed from one email by one person on one day read the same. A supply house's
+  // file says whether it was recorded as a bill or was not one (punch list #179).
   const filed = files.flatMap((f) => {
-    const words = filedWords(f, userNames)
+    const words = filedWords(f, userNames) ?? (contact ? billAnswerWords(f, contact, userNames) : null)
     return words ? [{ id: f.id, words }] : []
   })
   return (

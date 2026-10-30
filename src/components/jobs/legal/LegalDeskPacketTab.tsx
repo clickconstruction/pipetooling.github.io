@@ -209,7 +209,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
   if (tab === 'evidence') {
     return (
       <div>
-        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} /> : null}
+        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} payerName={selected.name} /> : null}
         <SectionTitle doors={first ? <><Door label="Reports" onClick={() => props.onOpenReports(first)} /><Door label="Sessions" onClick={() => props.onOpenSessionNotes(first)} /><Door label="Job thread" onClick={() => props.onOpenJobThread(first.id)} /></> : null}>Proof the work happened</SectionTitle>
         <Table head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes', 'Links']} numCols={[3]}
           rows={packet.evidence.map((e) => [
