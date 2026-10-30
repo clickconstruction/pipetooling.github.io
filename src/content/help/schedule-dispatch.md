@@ -224,7 +224,7 @@ This will also remove their **2 existing schedule blocks** for the day.
 
 ## Who came in late
 
-Someone may clock in more than 15 minutes after their first scheduled block. Then their day cell shows an amber **◔ Late** chip with how late they were, like *◔ Late 2h 15m*. There is nothing to mark and nothing to undo. It is computed from their actual clock-in against the schedule. You hover it for the receipt: scheduled start, actual clock-in, exact minutes. No chip means on time, within the grace window. A person with **no** clock-in at all never shows Late. That is a call-out or no-show question, handled by the red chips above.
+Someone may clock in more than 15 minutes after their first scheduled block. Then their day cell shows an amber **◔ Late** chip with how late they were, like *◔ Late 2h 15m*. There is nothing to mark and nothing to undo. It is computed from their actual clock-in against the schedule. You hover it for the receipt: scheduled start, actual clock-in, exact minutes. No chip means on time, within the grace window. A person with **no** clock-in at all never shows Late. That is a call-out or no-show question, handled by the red chips above. People → Paperwork → Writeups draws one person's lates over ninety days. See [see a person's lates and start a write-up](/help/see-a-persons-lates-and-start-a-write-up).
 
 ## No call, no show
 
