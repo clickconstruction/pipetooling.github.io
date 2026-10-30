@@ -34,11 +34,11 @@ Each item's button drops you exactly where the work happens. What you see depend
 **Money**
 
 - **Allocate N bank deposits**. {{button:blue|Match deposits}} opens the Accounts Receivable deposit matcher right over the card. When you close it, the count refreshes. There is nothing to navigate back from.
-- ***A deposit the bank returned is still counted as paid ($13,680)***. This is a check matched to a job and then bounced. The card names the job, the amount and the bank's reason. {{button:outline|Open J878}} opens the job on ③ Payments received. There the row wears *Returned by the bank*. **Unlink and remove** takes it off the job and marks the deposit returned. See [match bank deposits to the bills they pay](?g=match-bank-deposits-to-bills). The item is amber because the job reads paid everywhere until then.
+- ***A deposit the bank returned is still counted as paid ($13,680)***. This is a check matched to a job and then bounced. The card names the job, the amount and the bank's reason. {{button:outline|Open J878}} opens the job on ③ Payments received. There the row wears *Returned by the bank*. **Unlink and remove** takes it off the job and marks the deposit returned. See [match bank deposits to the bills they pay](?g=match-bank-deposits-to-bills). The item is amber because the job reads paid everywhere until then. A check that came back with a case opens its case right over the card. The case sits on top of To match with its next step. With several, the window opens on the list of them.
 - **N purchases need a job**. {{button:outline|Open tally}} opens **Job Parts Tally**. The card counts purchases more than two days old. The Tally page header shows both numbers. It reads *105 unlinked · 100 over 2 days old — the Dashboard card's count*. So the two never look like a disagreement.
 - **Team purchases waiting to be sorted** opens the sort-for-the-team window. Its *Sorted* list is the way back to a purchase you already sorted. See [sort the team's card purchases from the office](/help/sort-the-teams-card-purchases).
 - **N bank-label suggestions have waited 3+ days for an OK**. {{button:outline|Open approvals}} opens **Banking → Accounting**. There **Approve all** clears the backlog. The item shows only once the oldest suggestion is 3 days old. The office may have switched on *rule matches approve themselves*. Then only the true exceptions come back here.
-- **N GCs are waiting on your statement**. {{button:outline|Start round}} opens GC Review on the week's list. There every GC is grouped by its account man.
+- **N GCs are waiting on your statement**. {{button:outline|Start round}} opens GC Review on the week's list, right over the card. There every GC is grouped by its account man. The office's line reads **N GC statements are ready to send**. {{button:outline|Open the list}} opens the same window. Close it and the line re-reads.
 - **GC review is due today / still due this week**. {{button:outline|Open GC Review}} opens it. Once every GC is certified and sent on Wednesday, the item is replaced by a green *done for the week* note.
 
 **Time and people**
@@ -76,7 +76,7 @@ The office and estimators see this one.
 
 The office and estimators see this one.
 
-- **Customers**. The line counts customers who need a reply, what we owe them and senders to sort. On Quickfill the texts are on the Texts station. The line there counts the emails, the calls and the portal. {{button:outline|Messages}} opens Messages with **Customers** picked. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
+- **Customers**. The line counts customers who need a reply, what we owe them and senders to sort. On Quickfill the Messages station carries this line and Today's sends. The Dashboard's card keeps both. {{button:outline|Messages}} opens Messages with **Customers** picked. See [answer everyone waiting on us from one page](/help/answer-everyone-waiting-on-us-from-one-page).
 
 **Contracts**
 

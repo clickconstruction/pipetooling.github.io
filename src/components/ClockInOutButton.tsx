@@ -24,7 +24,6 @@ import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import {
   OperationTimeoutError,
   formatErrorMessage,
-  withOperationTimeout,
   withSupabaseRetry,
 } from '../utils/errorHandling'
 import { denverCalendarDayKey, startOfYmdInAppTzMs, todayYmdInAppTz } from '../utils/dateUtils'
@@ -63,6 +62,11 @@ import {
 import { fetchTallyLinkedMercuryRows } from '../lib/tally/fetchTallyLinkedMercuryRows'
 import { fetchRecentClockJobPicksForUser, type RecentClockJobPick } from '../lib/fetchRecentClockJobPicksForUser'
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
+import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
+import { outbox } from '../lib/offline/outboxState'
+import { pendingClockIn } from '../hooks/useOutbox'
+import { KEPT_ON_PHONE_WORDS, pendingOpenSession, pressIdOfSession } from '../lib/offline/pendingSession'
+import { ClockPressLine } from './clock/ClockPressLine'
 import {
   CLOCK_IN_NO_PICKS_HEADLINE,
   clockInNoPicksGuidanceParts,
@@ -100,6 +104,13 @@ type TodaySession = {
   bid_id: string | null
 }
 
+/** What a clock press is about, for the outbox's list (punch list #163 PR 2): the job's number and name, or the bid's. */
+function associationWords(a: UnifiedSearchResult): string {
+  if (a.source === 'job') return [a.hcp_number, a.job_name].filter(Boolean).join(' · ')
+  if (a.source === 'bid') return [a.bid_number, a.project_name].filter(Boolean).join(' · ')
+  return ''
+}
+
 function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extract<UnifiedSearchResult, { source: 'job' }> {
   return {
     source: 'job',
@@ -114,13 +125,6 @@ function dispatchScheduledJobToUnified(d: DispatchScheduledJobForAssign): Extrac
 
 /** Matches Complete Clock In button and Clock In modal chrome. */
 
-/**
- * Deadline for the clock in/out round-trips. Retries only fire on failures —
- * a frozen DB never settles the fetch, so without this the punch button
- * sticks on its busy state forever (v2.1063 schedule-save hang class). The
- * request is NOT cancelled, so timeout messages say "may or may not".
- */
-const CLOCK_PUNCH_TIMEOUT_MS = 15000
 
 /** Above DetailJobModal backdrop (1004) when opened from Job Detail after Leaving stamp. */
 const UPDATE_FOCUS_OVERLAY_Z_INDEX = 1020
@@ -424,16 +428,39 @@ export default function ClockInOutButton({
           bid_id: open.bid_id,
         })
       } else {
-        setOpenSession(null)
+        // A clock-in still on the phone (punch list #163 PR 2): the button is clocked in on it until it lands.
+        const pending = pendingClockIn(outbox.presses())
+        setOpenSession(pending ? pendingOpenSession(pending) : null)
       }
     }
 
     if (todayResult.ok) {
-      const sessions = todayResult.sessions
+      const pending = openResult.ok && !openResult.row ? pendingClockIn(outbox.presses()) : null
+      const sessions = pending ? [...todayResult.sessions, pendingOpenSession(pending)] : todayResult.sessions
       setTodaySessions(sessions)
       setTotalSecondsToday(sessions.length > 0 ? computeTotalSecondsToday(sessions) : 0)
     }
   }, [userId])
+
+  // A queued clock press landed, was refused or was dropped (punch list #163 PR 2): read the clock again.
+  // A try that failed changes nothing here, so a lost signal never has the button re-reading every 30 s.
+  const outboxSignatureRef = useRef('')
+  useEffect(() => {
+    if (!userId) return
+    const signature = () =>
+      outbox
+        .presses()
+        .filter((p) => p.kind === 'clock-in' || p.kind === 'clock-out')
+        .map((p) => `${p.id}:${p.state === 'waiting' || p.state === 'sending' ? 'w' : p.state}`)
+        .join('|')
+    outboxSignatureRef.current = signature()
+    return outbox.subscribe(() => {
+      const next = signature()
+      if (next === outboxSignatureRef.current) return
+      outboxSignatureRef.current = next
+      void fetchSessions()
+    })
+  }, [userId, fetchSessions])
 
   useEffect(() => {
     if (!userId) {
@@ -992,34 +1019,38 @@ export default function ClockInOutButton({
     setClockInFailure(null)
     try {
       const now = new Date()
-      const inserted = await withOperationTimeout(
-        withSupabaseRetry(
-          async () =>
-            supabase
-              .from('clock_sessions')
-              .insert({
-                user_id: userId,
-                clocked_in_at: now.toISOString(),
-                work_date: denverCalendarDayKey(now.getTime()),
-                notes: clockInNotes.trim(),
-                job_ledger_id: selectedAssociation?.source === 'job' ? selectedAssociation?.id : null,
-                bid_id: selectedAssociation?.source === 'bid' ? selectedAssociation?.id : null,
-              })
-              .select('id')
-              .single(),
-          'clock in',
-        ),
-        CLOCK_PUNCH_TIMEOUT_MS,
-        'Clock in',
-      )
-      const clockInId = (inserted as { id: string } | null)?.id
-      if (!clockInId) throw new Error('Clock in did not return a session id')
-      scheduleClockInLocationPatch(supabase, clockInId)
+      // Through the outbox (punch list #163 PR 2): sent at once when it can be, kept on the phone when it cannot.
+      const outcome = await pressThroughOutbox({
+        kind: 'clock-in',
+        userId,
+        pressedAt: now.getTime(),
+        payload: {
+          jobLedgerId: selectedAssociation?.source === 'job' ? selectedAssociation.id : null,
+          bidId: selectedAssociation?.source === 'bid' ? selectedAssociation.id : null,
+          notes: clockInNotes.trim(),
+          travel: null,
+        },
+        about: selectedAssociation ? associationWords(selectedAssociation) : '',
+        door: '/dashboard',
+      })
+      if (outcome.kind === 'refused') throw new Error(outcome.message)
+      if (outcome.kind === 'failed') throw outcome.error
       if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
         localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
         setLastSelectedJobBid(selectedAssociation)
       }
       setClockInModalOpen(false)
+      if (outcome.kind === 'queued') {
+        const pending = pendingOpenSession(outcome.press as Parameters<typeof pendingOpenSession>[0])
+        setOpenSession(pending)
+        setTodaySessions((prev) => [...prev, pending])
+        showToast(KEPT_ON_PHONE_WORDS, 'success')
+        onClockInSuccess?.()
+        return
+      }
+      const clockInId = (outcome.result as { session_id?: string } | null)?.session_id
+      if (!clockInId) throw new Error('Clock in did not return a session id')
+      scheduleClockInLocationPatch(supabase, clockInId)
       const workDate = denverCalendarDayKey(now.getTime())
       await Promise.all([fetchSessions(), notifyFirstClockInOfDay(workDate, userId)])
       onClockInSuccess?.()
@@ -1139,30 +1170,35 @@ export default function ClockInOutButton({
       const notesTrim = clockOutReviewNotes.trim()
       const jobId = selectedAssociation?.source === 'job' ? selectedAssociation.id : null
       const bidId = selectedAssociation?.source === 'bid' ? selectedAssociation.id : null
-      await withOperationTimeout(
-        withSupabaseRetry(
-          async () =>
-            supabase
-              .from('clock_sessions')
-              .update({
-                notes: notesTrim,
-                job_ledger_id: jobId,
-                bid_id: bidId,
-                clocked_out_at: new Date().toISOString(),
-              })
-              .eq('id', openSession.id),
-          'clock out',
-        ),
-        CLOCK_PUNCH_TIMEOUT_MS,
-        'Clock out',
+      // Through the outbox (punch list #163 PR 2). A clock-out on a clock-in still on the phone goes after it, never ahead.
+      const pressId = pressIdOfSession(openSession.id)
+      const outcome = await pressThroughOutbox(
+        {
+          kind: 'clock-out',
+          userId: userId ?? '',
+          pressedAt: Date.now(),
+          payload: { sessionId: pressId ? null : openSession.id, sessionPressId: pressId, jobLedgerId: jobId, bidId, notes: notesTrim },
+          about: selectedAssociation ? associationWords(selectedAssociation) : '',
+          door: '/dashboard',
+          dependsOn: pressId,
+        },
+        { forceQueue: pressId != null },
       )
-      scheduleClockOutLocationPatch(supabase, openSession.id)
+      if (outcome.kind === 'refused') throw new Error(outcome.message)
+      if (outcome.kind === 'failed') throw outcome.error
+      if (outcome.kind === 'landed') scheduleClockOutLocationPatch(supabase, openSession.id)
       if (selectedAssociation && userId && typeof localStorage !== 'undefined') {
         localStorage.setItem(`clock_in_last_job_bid_${userId}`, JSON.stringify(selectedAssociation))
         setLastSelectedJobBid(selectedAssociation)
       }
       setClockOutReviewOpen(false)
       setOpenSession(null)
+      if (outcome.kind === 'queued') {
+        const outAt = new Date(outcome.press.pressedAt).toISOString()
+        setTodaySessions((prev) => prev.map((s) => (s.id === openSession.id ? { ...s, clocked_out_at: outAt } : s)))
+        showToast(KEPT_ON_PHONE_WORDS, 'success')
+        return
+      }
       const [, elig, trialRows] = await Promise.all([
         fetchSessions(),
         getTeamFeedbackEligibility(userId),
@@ -1229,7 +1265,7 @@ export default function ClockInOutButton({
   // handleUpdateFocus / handleCompleteClockIn but takes opts directly so the
   // caller doesn't depend on any modal state.
   const applyUpdateFocusDirectImpl = useCallback(
-    async (opts: { jobLedgerId: string | null; bidId: string | null; notes: string; travel?: 'on-the-way' | 'on-site' }) => {
+    async (opts: { jobLedgerId: string | null; bidId: string | null; notes: string; travel?: 'on-the-way' | 'on-site'; about?: string }) => {
       if (!userId || !userName?.trim()) {
         return { ok: false, error: 'Missing user identity' }
       }
@@ -1241,24 +1277,25 @@ export default function ClockInOutButton({
         const travelStamp: Record<string, string> =
           opts.travel === 'on-the-way' ? { travel_started_at: now.toISOString() } : opts.travel === 'on-site' ? { arrived_at: now.toISOString() } : {}
         if (!openSession) {
-          const inserted = await withSupabaseRetry(
-            async () =>
-              supabase
-                .from('clock_sessions')
-                .insert({
-                  user_id: userId,
-                  clocked_in_at: now.toISOString(),
-                  work_date: denverCalendarDayKey(now.getTime()),
-                  notes: trimmedNotes,
-                  job_ledger_id: opts.jobLedgerId,
-                  bid_id: opts.bidId,
-                  ...travelStamp,
-                } as never)
-                .select('id')
-                .single(),
-            'job mode clock in',
-          )
-          const newId = (inserted as { id: string } | null)?.id
+          // Through the outbox (punch list #163 PR 2): the leg's stamp rides on the press.
+          const outcome = await pressThroughOutbox({
+            kind: 'clock-in',
+            userId,
+            pressedAt: now.getTime(),
+            payload: { jobLedgerId: opts.jobLedgerId, bidId: opts.bidId, notes: trimmedNotes, travel: opts.travel ?? null },
+            about: opts.about ?? '',
+            door: '/dashboard',
+          })
+          if (outcome.kind === 'refused') return { ok: false, error: outcome.message }
+          if (outcome.kind === 'failed') throw outcome.error
+          if (outcome.kind === 'queued') {
+            const pending = pendingOpenSession(outcome.press as Parameters<typeof pendingOpenSession>[0])
+            setOpenSession(pending)
+            setTodaySessions((prev) => [...prev, pending])
+            onClockInSuccess?.()
+            return { ok: true, error: null }
+          }
+          const newId = (outcome.result as { session_id?: string } | null)?.session_id
           if (!newId) throw new Error('Clock in did not return a session id')
           scheduleClockInLocationPatch(supabase, newId)
           const workDate = denverCalendarDayKey(now.getTime())
@@ -1282,33 +1319,49 @@ export default function ClockInOutButton({
           return { ok: true, error: null }
         }
 
+        // Two presses through the outbox (punch list #163 PR 2): the clock-out, then the clock-in behind it.
         const closedId = openSession.id
-        await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('clock_sessions')
-              .update({ clocked_out_at: now.toISOString() })
-              .eq('id', closedId),
-          'job mode update focus clock out',
+        const closedPressId = pressIdOfSession(closedId)
+        const out = await pressThroughOutbox(
+          {
+            kind: 'clock-out',
+            userId,
+            pressedAt: now.getTime(),
+            payload: { sessionId: closedPressId ? null : closedId, sessionPressId: closedPressId, jobLedgerId: openSession.job_ledger_id, bidId: openSession.bid_id, notes: openSession.notes },
+            about: '',
+            door: '/dashboard',
+            dependsOn: closedPressId,
+          },
+          { forceQueue: closedPressId != null },
         )
-        const inserted = await withSupabaseRetry(
-          async () =>
-            supabase
-              .from('clock_sessions')
-              .insert({
-                user_id: userId,
-                clocked_in_at: now.toISOString(),
-                work_date: denverCalendarDayKey(now.getTime()),
-                notes: trimmedNotes,
-                job_ledger_id: opts.jobLedgerId,
-                bid_id: opts.bidId,
-                ...travelStamp,
-              } as never)
-              .select('id')
-              .single(),
-          'job mode update focus clock in',
+        if (out.kind === 'refused') return { ok: false, error: out.message }
+        if (out.kind === 'failed') throw out.error
+        const inn = await pressThroughOutbox(
+          {
+            kind: 'clock-in',
+            userId,
+            pressedAt: now.getTime() + 1,
+            payload: { jobLedgerId: opts.jobLedgerId, bidId: opts.bidId, notes: trimmedNotes, travel: opts.travel ?? null },
+            about: opts.about ?? '',
+            door: '/dashboard',
+          },
+          { forceQueue: out.kind === 'queued' },
         )
-        const newSessionId = (inserted as { id: string } | null)?.id
+        if (inn.kind === 'refused') return { ok: false, error: inn.message }
+        if (inn.kind === 'failed') throw inn.error
+        if (out.kind === 'queued' || inn.kind === 'queued') {
+          const outAt = new Date(now.getTime()).toISOString()
+          if (inn.kind === 'queued') {
+            const pending = pendingOpenSession(inn.press as Parameters<typeof pendingOpenSession>[0])
+            setOpenSession(pending)
+            setTodaySessions((prev) => [...prev.map((s) => (s.id === closedId ? { ...s, clocked_out_at: outAt } : s)), pending])
+          } else {
+            await fetchSessions()
+          }
+          onClockInSuccess?.()
+          return { ok: true, error: null }
+        }
+        const newSessionId = (inn.result as { session_id?: string } | null)?.session_id
         if (!newSessionId) throw new Error('Update focus did not return a new session id')
         scheduleUpdateFocusLocationPatches(supabase, closedId, newSessionId)
         const workDate = denverCalendarDayKey(now.getTime())
@@ -1952,6 +2005,8 @@ export default function ClockInOutButton({
       {topRowContent}
     </div>
     ) : null}
+      {/* The line beside the clock flips with the strip (punch list #163 PR 2): waiting, sent, or could not be sent. */}
+      <ClockPressLine style={{ margin: embedded ? '0.25rem 0 0' : '-0.5rem 0 0.75rem' }} />
       {error && (
         <span style={{ color: 'var(--text-red-600)', fontSize: '0.875rem' }} data-testid="clock-load-error">
           {/* The button says it, so the sentence does not. */}
