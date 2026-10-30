@@ -71,6 +71,10 @@
   .job b { font-weight: 600; font-size: 15px; }
   .job small { color: var(--p-muted); font-size: 13px; }
   .job .when { color: var(--p-blue-700); font-size: 12.5px; font-weight: 500; }
+  .job .cust { color: var(--p-muted); font-size: 13px; }
+  .hit { background: #3a2f11; color: #fcd34d; border-radius: 2px; padding: 0 1px; font-weight: 700; }
+  .quote { border-left: 4px solid var(--accent); padding: 8px 14px; margin: 14px 0; background: var(--surface); border-radius: 0 8px 8px 0; max-width: 84ch; font-size: 15px; }
+  .quote small { display: block; color: var(--muted); font-family: var(--mono); font-size: 11px; margin-top: 4px; }
   .job.row2 { grid-template-columns: 1fr auto; align-items: center; }
   .job.row2 .when { grid-column: 2; grid-row: 1 / span 2; text-align: right; align-self: center; white-space: nowrap; }
   .more { min-height: 44px; border: 1px dashed var(--p-line); border-radius: 8px; background: transparent; color: var(--p-blue-700); font-weight: 600; display: flex; align-items: center; justify-content: center; font-size: 14px; }
@@ -92,7 +96,7 @@
     <p class="eyebrow">Punch list · draft for #216 · Job Parts Tally, the Choose job sheet</p>
     <h1>Choose job: the jobs you were on, and a way to search</h1>
   </div>
-  <div class="stamp">2026-10-29<br>two sheets today (Materials estimate · On site)<br>every job, newest number first, no search</div>
+  <div class="stamp">2026-10-29 · revised the same evening<br>two sheets today (Materials estimate · On site)<br>every job, newest number first, no search</div>
 </header>
 
 <p class="lede" style="margin-top:14px">The <b>Choose job</b> sheet on the tally lists every job the viewer can see, number · name with the address under it, newest number first, four hundred rows deep. The owner's ask from his phone: <b>a way to search</b>, and <b>the jobs you were on recently</b>, at least the last three, with a way to see more. This page draws the sheet three ways, picks one, takes a second pass at it, and asks three questions.</p>
@@ -100,7 +104,7 @@
 <div class="note"><b>Where "the jobs you were on" come from</b>
 Your own clock-ins (<code>clock_sessions</code>, yours, not rejected or revoked), newest first, each job once. A viewer with no clock-ins, the office sorting from a desk, gets the jobs their card's purchases were last sorted to (the Transactions tab's own rows), and each row says so: <i>Purchase sorted Oct 24</i> instead of <i>Clocked in</i>. A viewer with neither sees no Recent section at all, and the sheet reads as today plus the search. Search matches the way the app's job search does: the number with or without its letter (<code>972</code>, <code>J972</code>), the name, the address, the customer.</div>
 
-<h2><span class="rank">Draft A</span> Search on top · Recent · All jobs <span class="tag pick">the pick</span></h2>
+<h2><span class="rank">Draft A</span> Search on top · Recent · All jobs <span class="tag draft">first pass</span></h2>
 <p class="lede">The search field is the first thing on the sheet and stays put while the lists scroll. Under it, <b>Recent</b>: the last three jobs you were on, newest first, each saying <b>when</b>, so the section explains itself without a sentence. <b>Show 7 more</b> unfolds to the last ten. Then <b>All jobs</b>, the list as today, under its own heading with its count. Typing narrows every section at once.</p>
 <div class="frames">
   <div>
@@ -265,22 +269,103 @@ Your own clock-ins (<code>clock_sessions</code>, yours, not rejected or revoked)
   </div>
 </div>
 
-<h2>The second pass on Draft A <span class="tag revised">after the first render</span></h2>
+<div class="quote">Is that the best you can do? I would like to be able to see what I am searching for highlighted.<small>owner, 2026-10-29, on the first pass</small></div>
+
+<h2><span class="rank">Draft A, revised</span> What you type lights up where it landed <span class="tag pick">the pick</span></h2>
+<p class="lede">Same sheet as Draft A: search on top, Recent with when, Show 7 more, All jobs. The search now <b>shows its work</b>. The run you typed is lit in amber on every row it landed on, the way the Jobs page lights its search; a hit on the number sorts first; a hit on the customer shows the customer line. The opened sheet (A1), Show 7 more (A2) and nothing matches (A4) stand as drawn.</p>
+<div class="frames">
+  <div>
+    <h3 class="frameTitle">R1 · typing a number, "97"</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box typed">97<i></i></div><span class="clear">⊗</span></div>
+        </div>
+        <div class="body">
+          <div class="sec">Recent <span>· 1 match</span></div>
+          <div class="job row2"><b><span class="hit">97</span>2 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small><span class="when">Yesterday</span></div>
+          <div class="sec">All jobs <span>· 14 match</span></div>
+          <div class="job"><b><span class="hit">97</span> · Diagnostic visit</b><small>6320 Aster Run, New Braunfels</small></div>
+          <div class="job"><b><span class="hit">97</span>2 · Pinpoint &amp; gas test</b><small>1140 Lago Vista Dr, San Marcos</small></div>
+          <div class="job"><b><span class="hit">97</span>1 · Water heater swap</b><small>408 Pecan Hollow, Kyle</small></div>
+          <div class="job"><b><span class="hit">97</span>0 · Sewer camera</b><small>1500 Hunter Rd, San Marcos</small></div>
+        </div>
+        <div class="kbd"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span style="grid-column: span 4"></span><span></span></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>The number lights up</b> where the digits landed, and <b>number hits come first</b>: the exact number, then the ones that start with it, then jobs where 97 is in the address or the name, in today's order. Typing J97 lights the same 97.</p>
+  </div>
+  <div>
+    <h3 class="frameTitle">R2 · two words, "tunnel marcos"</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box typed">tunnel marcos<i></i></div><span class="clear">⊗</span></div>
+        </div>
+        <div class="body">
+          <div class="sec">Recent <span>· 1 match</span></div>
+          <div class="job row2"><b>925 · <span class="hit">Tunnel</span> repair</b><small>250 Pincea Pl, San <span class="hit">Marcos</span></small><span class="when">Mon Oct 27</span></div>
+          <div class="sec">All jobs <span>· 2 match</span></div>
+          <div class="job"><b>925 · <span class="hit">Tunnel</span> repair</b><small>250 Pincea Pl, San <span class="hit">Marcos</span></small></div>
+          <div class="job"><b>611 · <span class="hit">Tunnel</span> under the slab</b><small>90 Hopkins St, San <span class="hit">Marcos</span></small></div>
+        </div>
+        <div class="kbd"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span style="grid-column: span 4"></span><span></span></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>Each word you type lands somewhere on the job</b> and is lit where it landed, so you see why a row is here. The order of the words does not matter. Recent searches your last ten, not only the three on show.</p>
+  </div>
+  <div>
+    <h3 class="frameTitle">R3 · a customer, "alvarez"</h3>
+    <div class="phone">
+      <div class="status"><span>9:27</span><span>▮▮▮ 89</span></div>
+      <div class="behind">← Dashboard <b>Job Parts Tally</b></div>
+      <div class="scrim"></div>
+      <div class="sheet">
+        <div class="head">
+          <div class="handle"></div>
+          <div class="title"><h4>Choose job</h4><span class="x">×</span></div>
+          <div class="search"><span class="glass">⌕</span><div class="box typed">alvarez<i></i></div><span class="clear">⊗</span></div>
+        </div>
+        <div class="body">
+          <div class="sec">All jobs <span>· 2 match</span></div>
+          <div class="job"><b>971 · Water heater swap</b><small>408 Pecan Hollow, Kyle</small><span class="cust"><span class="hit">Alvarez</span> Homes</span></div>
+          <div class="job"><b>814 · Tankless install</b><small>12 Hays Loop, Buda</small><span class="cust"><span class="hit">Alvarez</span> Homes</span></div>
+        </div>
+        <div class="kbd"><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span></span><span></span><span></span><span></span><span></span><span></span></div><div><span></span><span style="grid-column: span 4"></span><span></span></div></div>
+      </div>
+    </div>
+    <p class="cap"><b>A hit on the customer shows the customer</b>, a third line the row does not carry otherwise, with the hit lit. Recent had no match, so its heading folded away rather than sit there empty.</p>
+  </div>
+</div>
+
+<h2>The second pass <span class="tag revised">what the question changed</span></h2>
 <div class="grid">
-  <div class="cmp"><h4>Decided while drawing</h4><ul>
-    <li><b>Search first, not focused.</b> 48 px, the pill the On site tab's own search wears. A tap raises the keyboard and the sheet stays above it (the app's <code>PhoneSheet</code> does that; the build moves both pickers onto it).</li>
-    <li><b>The head stays put.</b> Handle, title and search are a fixed head; only the lists scroll, so the search never scrolls away.</li>
-    <li><b>Every recent row says when</b> (Clocked in today · Yesterday · Mon Oct 27). Show, not tell: nobody needs a sentence explaining the section.</li>
-    <li><b>Show 7 more</b> carries its count, and ten is the ceiling. Past ten is what the search is for.</li>
-    <li><b>Headings count what matches</b> while typing (<i>Recent · 2 match · All jobs · 9 match</i>), so a narrowed sheet never looks like a short list by accident.</li>
-    <li><b>No Recent section at all</b> when the viewer has none. A sentence saying <i>No recent jobs</i> is a bare no-sentence, and empty here is simply "not yet".</li>
+  <div class="cmp"><h4>Changed by the owner's question</h4><ul>
+    <li><b>The run you typed is lit</b> wherever it landed: number, name, address, customer. Amber, the Jobs page's own mark (<code>StagesSearchMark</code>), not the schedule picker's blue: this sheet's picked row is already blue, and a blue run on a blue row would vanish.</li>
+    <li><b>Each word lands somewhere.</b> <i>tunnel marcos</i> finds a tunnel repair in San Marcos whichever way round you type it, and each word is lit where it landed. The Clock sessions search already matches this way; the lit runs are what make it legible.</li>
+    <li><b>A hit on the number sorts first</b>: the exact number, then numbers that start with it, then the rest in today's order. Typing <i>97</i> puts 97 on top, not 1970's address.</li>
+    <li><b>A hit on the customer shows the customer line.</b> The row shows why it is here; a row with no hit there stays two lines.</li>
+    <li><b>Recent searches your last ten</b>, not only the three on show, so a job from last week is one word away.</li>
+    <li><b>⊗ clears the search</b> in one 40 px press and the full sheet comes back.</li>
   </ul></div>
-  <div class="cmp"><h4>Changed on the second look</h4><ul>
-    <li><b>The when-line names its source.</b> For a viewer with no clock-ins the rows come from sorted purchases, and <i>you were on</i> would be a lie for the office. A clock-in row reads <i>Clocked in today</i>; a purchase row reads <i>Purchase sorted Oct 24</i>; the heading drops <i>jobs you were on</i> when the rows are purchases.</li>
-    <li><b>All jobs keeps every job</b>, in today's order, with its count. The render of Draft C showed the cost of mixing: 972 twice in four rows with nothing between them. Under its own heading the repeat reads as what it is.</li>
-    <li><b>Draft B settled itself at 375 px.</b> The third chip rendered as one digit. Chips are out.</li>
-    <li><b>One sheet for both tabs.</b> Reading the code: Materials estimate and On site each draw their own Choose job today. They become one component, so neither falls behind.</li>
-    <li><b>Show my jobs only</b> (the checkbox under the Materials estimate button) stays where it is and narrows All jobs as today; Recent ignores it, since those are your jobs by definition.</li>
+  <div class="cmp"><h4>Standing from the first pass</h4><ul>
+    <li><b>Search first, not focused.</b> 48 px, the pill the On site tab's own search wears. A tap raises the keyboard and the sheet stays above it (<code>PhoneSheet</code>; the build moves both pickers onto it).</li>
+    <li><b>The head stays put.</b> Handle, title and search are a fixed head; only the lists scroll.</li>
+    <li><b>Every recent row says when</b>, and names its source: <i>Clocked in today</i>, or <i>Purchase sorted Oct 24</i> for a viewer with no clock-ins.</li>
+    <li><b>Show 7 more</b> carries its count; ten is the ceiling. <b>Headings count what matches.</b> <b>No Recent section</b> when the viewer has none; a section with no match folds away.</li>
+    <li><b>All jobs keeps every job</b> in today's order with its count; a recent job appears under both headings.</li>
+    <li><b>Drafts B and C stay out.</b> B's third chip rendered as one digit at 375 px; C mixed 972 twice in four rows with nothing between.</li>
+    <li><b>One sheet for both tabs</b>; <b>Show my jobs only</b> stays where it is and narrows All jobs as today.</li>
   </ul></div>
 </div>
 
@@ -295,7 +380,7 @@ Your own clock-ins (<code>clock_sessions</code>, yours, not rejected or revoked)
 <table class="plug">
   <tr><th>Piece</th><th>Exists</th><th>New</th></tr>
   <tr><td>The sheet</td><td><code>JobTally.tsx</code> Materials estimate picker · <code>TallyOnSiteTab.tsx</code> <code>Sheet</code> picker</td><td><code>TallyChooseJobSheet</code>, one component, both callers</td></tr>
-  <tr><td>Search</td><td><code>barMatchesSearch</code> / <code>forecastJobMatchesSearch</code> over the ledger prefix map (number with or without its letter, name, address)</td><td>the tally's job rows gain <code>customer_name</code> and <code>service_type_id</code> so customer matches too</td></tr>
+  <tr><td>Search</td><td>the fields <code>forecastJobMatchesSearch</code> reads (number with or without its letter, name, address) over the ledger prefix map; the Clock sessions search's every-word rule; the Jobs page's amber mark (<code>StagesSearchMark</code>, <code>splitTextByMatch</code>)</td><td><code>lib/tally/chooseJobSearch.ts</code>: the same fields, every word lands, the runs reported per field so the rows light them, number hits first; the tally's job rows gain <code>customer_name</code> and <code>service_type_id</code></td></tr>
   <tr><td>Recent</td><td><code>clock_sessions</code> read the way <code>fetchSortModeDayJobs</code> reads it; the viewer's sorted purchases from <code>fetchTallyLinkedMercuryRows</code></td><td><code>lib/tally/recentJobs.ts</code>: the pure order (each job once, newest first, ten at most) and the when-words; a small reader</td></tr>
   <tr><td>Empty</td><td><code>EmptyState</code> + <code>emptyWords({ kind: 'filter' })</code></td><td>—</td></tr>
   <tr><td>Guide</td><td><i>sort my card purchases to jobs</i> names the sort screen; nothing names this sheet</td><td>a short section on the tally guide: find the job, your recent jobs</td></tr>

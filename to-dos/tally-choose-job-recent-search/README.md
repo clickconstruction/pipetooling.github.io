@@ -2,7 +2,7 @@
 name: "Job Parts Tally: the Choose job sheet finds a job and leads with the jobs you were on"
 number: 216
 group: ready
-status: asked 2026-10-29 from the owner's phone · mocked up 2026-10-29 (three drafts, Draft A picked on the second pass) · awaiting the owner's yes
+status: asked 2026-10-29 from the owner's phone · mocked up 2026-10-29 (three drafts, Draft A picked) · revised the same evening on the owner's "is that the best you can do? I want to see what I am searching for highlighted" (the typed run lit where it landed, number hits first, a customer hit shows the customer line) · awaiting the owner's yes
 summary: >
   The Choose job sheet on the tally lists every job the viewer can see, newest number first,
   four hundred rows deep, with no way to search and nothing of the viewer's own day in it.
@@ -15,7 +15,7 @@ next: the owner's yes on Draft A and his three answers (where Recent comes from,
 size: S
 blocker: None.
 opinion: build Draft A as drawn; the when-line is the one thing that makes the section explain itself
-mockup: mockup.html (Drafts A, B, C; the second pass; the three questions)
+mockup: mockup.html (Drafts A, B, C; the owner's question; Draft A revised with lit matches; the second pass; the three questions)
 ---
 
 # Job Parts Tally: the Choose job sheet finds a job and leads with the jobs you were on
@@ -26,7 +26,7 @@ mockup: mockup.html (Drafts A, B, C; the second pass; the three questions)
 
 ## The decision (pending his yes)
 
-- **Draft A** of `mockup.html`: search on top, not focused on open; **Recent** (three, newest first, each with when); **Show 7 more** to ten; **All jobs** under its own heading with its count; typing narrows every section; nothing matching draws the filter empty state.
+- **Draft A, revised** in `mockup.html`: search on top, not focused on open; **Recent** (three, newest first, each with when); **Show 7 more** to ten; **All jobs** under its own heading with its count; typing narrows every section and **lights the typed run** in amber wherever it landed (the Jobs page's mark); each word you type lands somewhere; a number hit sorts first; a customer hit shows the customer line; nothing matching draws the filter empty state.
 - **Recent** reads the viewer's own clock-ins (`clock_sessions`, not rejected or revoked), each job once, newest first; with none, the jobs the viewer's card purchases were last sorted to, and the row says so; with neither, no section.
 - **One sheet for both tabs** (Materials estimate's picker in `JobTally.tsx`, On site's `Sheet` picker in `TallyOnSiteTab.tsx`).
 
@@ -35,7 +35,7 @@ mockup: mockup.html (Drafts A, B, C; the second pass; the three questions)
 | Piece | Exists | New |
 |---|---|---|
 | The sheet | the two pickers above | `TallyChooseJobSheet`, both callers |
-| Search | `barMatchesSearch` / `forecastJobMatchesSearch` over the ledger prefix map | the tally's job rows carry `customer_name` and `service_type_id` |
+| Search | the fields `forecastJobMatchesSearch` reads over the ledger prefix map; the Clock sessions search's every-word rule; `StagesSearchMark` / `splitTextByMatch` for the mark | `lib/tally/chooseJobSearch.ts`: the runs per field so the rows light them, number hits first; the tally's job rows carry `customer_name` and `service_type_id` |
 | Recent | `clock_sessions` as `fetchSortModeDayJobs` reads it; the viewer's sorted purchases | `lib/tally/recentJobs.ts`: the pure order and the when-words, a small reader |
 | Empty | `EmptyState` + `emptyWords({ kind: 'filter' })` | — |
 | Guide | *sort my card purchases to jobs* | a section on finding the job and your recent jobs |
