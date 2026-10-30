@@ -17,6 +17,7 @@ import {
   gcCustomerEmailPortalOn,
   gcCustomerEmailPortalWords,
   gcCustomerEmailTestSubject,
+  gcEmailTableRow,
   gcWeeklyReportLines,
   GC_CUSTOMER_EMAIL_ADDRESS,
   GC_CUSTOMER_EMAIL_FILED_AS,
@@ -51,6 +52,7 @@ import {
   type PayAppMailFacts,
 } from './customerEmail'
 import { ownerExpectPaidOn } from './ownerBilling'
+import { straightInterestRow } from './ownerBillingInterest'
 import type { ChangeOrder } from './types'
 import { sentKindGroup } from '../sent/sentCopies'
 import { isPayApplicationCopy } from '../aiaPayApplicationHistory'
@@ -198,24 +200,66 @@ describe('the words of a change order to sign', () => {
   })
 })
 
-describe('the words of an interest bill (O6b-2)', () => {
-  it('says the bills went past their day, what the interest comes to at the rate, and asks for their day: no Pay', () => {
-    expect(interestBillMail({ job: facts.job, greeting: 'Elena', amount: 284.92, pctPerMonth: 1.5 })).toEqual({
-      subject: `Interest on late bills for Fair Oaks Shops, Building D, ${money(284.92)}`,
+describe('the words of an interest bill (O6b-2; its rows since v2.6158, punch list #217 outside-5)', () => {
+  const rows = [
+    straightInterestRow({ number: 2, dueOn: '2026-09-01', paidOn: '2026-10-03', open: 45_000, pctPerMonth: 1.5, today: '2026-10-30' }),
+    straightInterestRow({ number: 3, dueOn: '2026-10-02', paidOn: null, open: 39_400, pctPerMonth: 1.5, today: '2026-10-30' }),
+  ]
+  const total = rows[0]!.amount + rows[1]!.amount
+
+  it('carries the sum as its rows: each late bill, due, paid or open, the days late, what was open, the arithmetic, and the total under a rule; no Pay', () => {
+    expect(interestBillMail({ job: facts.job, greeting: 'Elena', amount: total, pctPerMonth: 1.5, rows })).toEqual({
+      subject: `Interest on late bills for Fair Oaks Shops, Building D, ${money(total)}`,
       lines: [
         'Hello Elena,',
-        'Some of your bills on Fair Oaks Shops, Building D went past the day they were due by the contract.',
-        `The interest on them comes to ${money(284.92)}, at 1.5% a month.`,
+        'Two bills on Fair Oaks Shops, Building D went past the day the contract made them due. Interest runs at 1.5% a month from that day.',
+        '| Bill | Due | Paid | Days late | Open | Interest |',
+        '| Pay application 2 | Sep 1 | Oct 3 | 32 | $45,000 | $675 × 32⁄30.4 = $710 |',
+        '| Pay application 3 | Oct 2 | open | 28 | $39,400 | $591 × 28⁄30.4 = $544 |',
+        '|= Interest to today |  |  |  |  | $1,254 |',
+        'A month counts as 30.4 days, a twelfth of a year.',
         'Reply with the day you will pay.',
       ],
     })
-    expect(interestBillMail({ job: 'J', greeting: 'E', amount: 10, pctPerMonth: null }).lines[2]).toBe(`The interest on them comes to ${money(10)}.`)
+    // One bill reads in the singular; an earlier interest bill's share is named when this one asks for less than the total.
+    const one = interestBillMail({ job: 'J', greeting: 'E', amount: 300, pctPerMonth: 1.5, rows: [rows[0]!] })
+    expect(one.lines[1]).toBe('One bill on J went past the day the contract made it due. Interest runs at 1.5% a month from that day.')
+    expect(one.lines.slice(-2)).toEqual([`Our earlier interest bills asked for ${money(rows[0]!.amount - 300)} of it. This bill asks for ${money(300)}.`, 'Reply with the day you will pay.'])
   })
 
-  it('reads the rate off the job', () => {
+  it('with no rows says the sum alone, as before', () => {
+    expect(interestBillMail({ job: facts.job, greeting: 'Elena', amount: 284.92, pctPerMonth: 1.5, rows: [] }).lines).toEqual([
+      'Hello Elena,',
+      'Some of your bills on Fair Oaks Shops, Building D went past the day they were due by the contract.',
+      `The interest on them comes to ${money(284.92)}, at 1.5% a month.`,
+      'Reply with the day you will pay.',
+    ])
+    expect(interestBillMail({ job: 'J', greeting: 'E', amount: 10, pctPerMonth: null, rows: [] }).lines[2]).toBe(`The interest on them comes to ${money(10)}.`)
+  })
+
+  it('reads the rate and the rows off the job', () => {
     const state = initialGcState()
-    const project = { ...state.projects.find((p) => p.id === 'fairoaksd')!, ownerLateInterest: { pctPerMonth: 1.5 } }
-    expect(interestBillMailFacts(state, project, 100)).toMatchObject({ job: project.name, amount: 100, pctPerMonth: 1.5 })
+    const project = { ...state.projects.find((p) => p.id === 'fairoaksd')!, ownerLateInterest: { pctPerMonth: 1.5 }, ownerPayDays: 5 }
+    const f = interestBillMailFacts(state, project, 100)
+    expect(f).toMatchObject({ job: project.name, amount: 100, pctPerMonth: 1.5 })
+    expect(f.rows.map((r) => [r.number, r.dueOn, r.days])).toEqual([[1, '2026-07-30', 33], [2, '2026-08-30', 32], [3, '2026-09-30', 2]])
+  })
+
+  it('the frame draws a run of table lines as one table, figures on the right, the sum row under a rule; text readers get the cells joined by dots', () => {
+    const mail = interestBillMail({ job: 'J', greeting: 'Elena', amount: total, pctPerMonth: 1.5, rows })
+    const email = buildGcCustomerEmail({ subject: mail.subject, lines: mail.lines, signer: 'Robert', gc: GC_CUSTOMER_EMAIL_FROM_NAME })
+    expect(email.html.match(/<table/g)).toHaveLength(1)
+    expect(email.html).toContain('<th style="padding:6px;border-bottom:2px solid #16283c;font-size:12px;color:#5a6b7e;font-weight:600;text-align:right">Days late</th>')
+    expect(email.html).toContain('text-align:left">Pay application 2</td>')
+    expect(email.html).toContain('<td colspan="5" style="padding:9px 6px;border-top:2px solid #16283c;font-size:14px;font-weight:bold;text-align:left">Interest to today</td><td colspan="1"')
+    expect(email.html).not.toContain('| Bill')
+    expect(email.text).toContain('Bill · Due · Paid · Days late · Open · Interest\nPay application 2 · Sep 1 · Oct 3 · 32 · $45,000 · $675 × 32⁄30.4 = $710\n')
+    expect(email.text).toContain('Interest to today · $1,254\n\nA month counts as 30.4 days')
+    // The lines are plain strings the request carries as any other: the interest bill may run to 80 of them.
+    expect([gcCustomerEmailMaxLines('interest_bill'), gcCustomerEmailMaxLines('reminder')]).toEqual([80, 30])
+    expect(gcEmailTableRow('| a | b |')).toEqual({ cells: ['a', 'b'], sum: false })
+    expect(gcEmailTableRow('|= Sum |  | $1 |')).toEqual({ cells: ['Sum', '', '$1'], sum: true })
+    expect(gcEmailTableRow('A line with | a bar in it.')).toBeNull()
   })
 })
 
