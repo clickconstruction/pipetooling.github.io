@@ -3,12 +3,18 @@
  * *Rosa has this* or *Nobody has it · Take it*, its hover saying since when. Pressing it lists the team (*I'll take it*
  * first when it is not yours, each teammate with what they hold open, *Nobody* to put it back); a press takes or hands
  * it on, and the thread records the change (`take_it`, `hand_to`). The words are `followUp/queue.ts`'s.
+ *
+ * Punch list #141 PR 4 (v2.6060): with the team's Push me hours (`pushHours`), the pill says when whoever has it is off,
+ * *Rosa has this · off until 6 AM*, and when nobody has it and every office member is, *the office is off until 6 AM*;
+ * the hover says what that means (`messages/whoIsOff.ts`). Without the hours, or with nobody off, it reads as before.
  */
 import { useEffect, useRef, useState } from 'react'
 import type { FollowUpContact } from '../../lib/followUp/followUpRows'
 import { hasPillWords, hasSinceWords, holdCount, takeItWords, whoPickerHead, type QueueContact } from '../../lib/followUp/queue'
 import { exactStamp } from '../../lib/messages/owed'
 import { whenWords } from '../../lib/messages/thread'
+import type { PushHoursByUser } from '../../lib/messages/pushHours'
+import { offPillTip, offPillWords, threadOff } from '../../lib/messages/whoIsOff'
 import type { Teammate } from '../../lib/followUp/team'
 
 export type { Teammate }
@@ -26,6 +32,8 @@ export interface WhoHasItPillProps {
   busy?: boolean
   /** In the thread's header (v2.5542): the header's control class in place of the border, one 28px height; the tint still says it is yours. */
   bare?: boolean
+  /** The team's Push me hours (v2.6060), for the off words; none reads as nobody off. */
+  pushHours?: PushHoursByUser
 }
 
 const initials = (name: string) =>
@@ -45,7 +53,7 @@ const ROLE_WORDS: Readonly<Record<string, string>> = {
   superintendent: 'superintendent',
 }
 
-export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy, bare }: WhoHasItPillProps) {
+export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy, bare, pushHours }: WhoHasItPillProps) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -59,10 +67,18 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
 
   const mine = contact.hasUserId === me.id
   const since = contact.hasSince ? hasSinceWords(whenWords(contact.hasSince, nowIso), exactStamp(contact.hasSince)) : ''
-  const label = hasPillWords(me.name, contact.has ? (mine ? me.name : contact.has) : null)
+  const holderName = contact.has ? (mine ? me.name : contact.has) : null
+  // Who is off (v2.6060): the holder by their hours, or the whole office when nobody has it. An unread row is any time.
+  const off = pushHours
+    ? threadOff({ holderId: contact.has ? (contact.hasUserId ?? '') : null, holderName, mine, officeIds: [...team.map((t) => t.id), me.id], hours: pushHours, now: nowIso })
+    : null
+  // Nobody has it and the office is off: the off words in place of *Take it*, which the hover keeps.
+  const label = off?.kind === 'office' ? `Nobody has it · ${offPillWords(off)}` : `${hasPillWords(me.name, holderName)}${off ? ` · ${offPillWords(off)}` : ''}`
   const tip = !contact.has
-    ? 'Nobody has it. Whoever answers first takes it. Press to take it or hand it to someone.'
-    : `${mine ? 'You claimed it, so the team leaves it to you.' : `${contact.has} claimed it, so nobody else answers it.`}${since ? ` ${since}` : ''}`
+    ? `${off ? `${offPillTip(off)} ` : 'Nobody has it. Whoever answers first takes it. '}Press to take it or hand it to someone.`
+    : off
+      ? `${offPillTip(off)}${since ? ` ${since}` : ''}`
+      : `${mine ? 'You claimed it, so the team leaves it to you.' : `${contact.has} claimed it, so nobody else answers it.`}${since ? ` ${since}` : ''}`
   const pick = (userId: string | null) => {
     setOpen(false)
     if (userId !== contact.hasUserId) onHand(userId)

@@ -79,7 +79,7 @@ You tap {{button:outline|Job detail}} on the card, or a job on My Schedule. The 
 
 - {{button:green|Arrived}} posts an arrived note on the job's thread. Once you press it or clock in on the job, the button reads {{button:outline-amber|Leaving}} instead.
 - {{button:outline-amber|Leaving}} posts a leaving note. Then the On my way sheet opens for your next job. One press clocks the drive and texts the customer. With no next job on your schedule, Update Focus opens instead, so you can pick any job. The button reads Arrived again for when you come back.
-- {{button:blue|Leave report}} opens the field report form for this job. See [file and review field reports](/help/reports).
+- {{button:blue|Leave report}} opens the phone's camera, then the field report form for this job. Each shot goes with the report into the customer's Drive folder. See [take photos for a report](/help/take-photos-for-a-report) and [file and review field reports](/help/reports).
 - {{button:outline|Note}} opens a note box at the bottom of the screen, with the keyboard under it. You type the note. You press {{button:blue|Save}}. The note lands on the job's thread and the box closes.
 
 Masters and primaries open the tabbed window instead. On a phone the tabbed window's bar carries {{button:green|Arrived}} or {{button:outline-amber|Leaving}} when you are on the job's crew. {{button:outline|Note}} on that bar opens the same note box. See [the bar at the bottom](/help/job-window-tabs#on-a-phone-the-bar-at-the-bottom).
@@ -174,14 +174,14 @@ Three ways, depending on your day:
 All three doors run the same short stack. Most days you see one screen. The others only appear when there is something to catch.
 
 1. **Assign your spending before you clock out** appears only sometimes. You see it when you have card charges from today with no job on them. Pick the job for each. Your recent jobs are offered first. Or **skip** and sort them later in Job Parts Tally. Why now? The charge is easiest to place while you still remember which house you were at.
-2. **Review before clock out** always appears. *What did you work on?* takes a one-line note. The note is required. The job list confirms where the time goes. The job you are clocked into is first with a {{chip:green|You are here}} tag. So the usual answer is just to leave it. Why? The note is what the office reads when they approve your hours.
+2. **Clock out** always appears. *What did you work on?* is filled from the reports you filed today, one line a report. Edit it if you like. With no report today, you type the note. The note is required. The job list confirms where the time goes. The job you are clocked into is first with a {{chip:green|You are here}} tag. So the usual answer is just to leave it. Why? The note is what the office reads when they approve your hours.
 3. ***Missing reports from today (click to make report)*** appears only when a job on today's schedule has no report yet. It shows one red button per job. Tap one to file the report right there. Or finish clocking out and file it later with **Job Report** on your Dashboard. Why? A report filed the same day beats a phone call tomorrow.
 4. **Team feedback** is a short card about how your teammates did. It comes on a cadence the office sets, days or weeks apart, not daily. {{button:blue|Start}} answers it now. {{button:outline|Not now · remind me in N days}} puts it off. Left alone, it closes itself in 30 seconds and comes back when it is due again.
 
 Then {{button:red|Complete clock out}} ends the session. If it fails to reach the server, the same {{button:outline|Retry}} panel as Clock In appears. Nothing is recorded until it succeeds.
 
 :::example A normal Tuesday
-Tap {{button:outline|Clock out}} on the bar → *Review before clock out* → type "trim set, both baths" → the job already shows {{chip:green|You are here}} → {{button:red|Complete clock out}}. One screen, ten seconds.
+Tap {{button:outline|Clock out}} on the bar → *Clock out* → the note already reads your report's words → the job already shows {{chip:green|You are here}} → {{button:red|Complete clock out}}. One screen, five seconds.
 :::
 
 Salaried teammates do not clock out manually. Their hours are handled automatically. So these buttons do not appear.

@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { stagePickerNumber, type StageProgressRow } from '../lib/reports/stageProgressReport'
 import { StagePctControl } from './reports/StagePctControl'
 import {
@@ -55,6 +55,7 @@ export function ReportLinesProgressField({
   onPct,
   recordedPct,
   onSwitchToWholeJob,
+  rowFoot,
 }: {
   rows: StageProgressRow[]
   picks: LinePicks
@@ -65,6 +66,8 @@ export function ReportLinesProgressField({
   recordedPct?: number | null
   /** When given, the link under the job line that brings the whole-job slider back. */
   onSwitchToWholeJob?: () => void
+  /** Drawn at the foot of every row, open or not: the photos on the stage and its camera (punch list #189, PR 5b). */
+  rowFoot?: (row: StageProgressRow) => ReactNode
 }) {
   const [showHow, setShowHow] = useState(false)
   const job = jobLine(rows, picks, recordedPct)
@@ -141,6 +144,7 @@ export function ReportLinesProgressField({
                   <StagePctControl name={r.name} value={pct} onChange={(p) => onPct(r.fixtureId, p)} />
                 </div>
               ) : null}
+              {rowFoot ? rowFoot(r) : null}
             </div>
           )
         })}
