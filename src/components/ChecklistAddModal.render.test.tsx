@@ -253,3 +253,52 @@ describe('ChecklistAddModal job bar (v2.3751)', () => {
     cleanup()
   })
 })
+
+describe('ChecklistAddModal schedule calendar (punch list #217, office-13)', () => {
+  const landing = () => Array.from(document.querySelectorAll<HTMLElement>('[data-schedule-calendar] [data-cal-day][data-lands]')).map((el) => el.dataset.calDay!)
+  const dow = (ymd: string) => new Date(ymd + 'T12:00:00').getDay()
+
+  it('draws the next weeks under the weekday buttons and follows them, with the sentence under it', async () => {
+    await renderOpenModal()
+    expect(document.querySelector('[data-schedule-calendar]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Repeats' }))
+    const calendar = document.querySelector<HTMLElement>('[data-schedule-calendar]')!
+    expect(calendar).not.toBeNull()
+    expect(calendar.querySelectorAll('[data-cal-day]')).toHaveLength(28)
+    expect(calendar.querySelectorAll('[data-today]')).toHaveLength(1)
+    expect(landing()).toEqual([])
+
+    fireEvent.click(screen.getByRole('button', { name: 'Monday' }))
+    const mondays = landing()
+    expect(mondays.length).toBeGreaterThanOrEqual(3)
+    expect(mondays.every((d) => dow(d) === 1)).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Wednesday' }))
+    const both = landing()
+    expect(both.length).toBeGreaterThan(mondays.length)
+    expect(both.every((d) => dow(d) === 1 || dow(d) === 3)).toBe(true)
+
+    fireEvent.click(screen.getByRole('button', { name: 'Monday' }))
+    expect(landing().every((d) => dow(d) === 3)).toBe(true)
+
+    // The sentence stays, as the caption under the calendar.
+    const status = screen.getByRole('status')
+    expect(calendar.compareDocumentPosition(status) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    cleanup()
+  })
+
+  it('a one-off on today draws only once it has a due day', async () => {
+    await renderOpenModal()
+    expect(document.querySelector('[data-schedule-calendar]')).toBeNull()
+    const today = document.querySelector<HTMLInputElement>('input[type="date"]')!.min
+    const due = new Date(today + 'T12:00:00')
+    due.setDate(due.getDate() + 3)
+    const dueYmd = `${due.getFullYear()}-${String(due.getMonth() + 1).padStart(2, '0')}-${String(due.getDate()).padStart(2, '0')}`
+    fireEvent.change(document.querySelector<HTMLInputElement>('input[type="date"]')!, { target: { value: dueYmd } })
+    const calendar = document.querySelector<HTMLElement>('[data-schedule-calendar]')!
+    expect(calendar).not.toBeNull()
+    expect(landing()).toEqual([today])
+    expect(calendar.querySelector(`[data-cal-day="${dueYmd}"]`)!.getAttribute('data-due')).toBe('true')
+    cleanup()
+  })
+})
