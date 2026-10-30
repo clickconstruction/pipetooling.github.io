@@ -45,6 +45,12 @@ describe('DEV_DOORS agrees with the app — a row cannot rot silently', () => {
     const drift = DEV_DOORS.filter((d) => !routes.some((r) => pathMatchesRoute(devDoorPath(d.to), r))).map((d) => `${d.id}: ${d.to}`)
     expect(drift).toEqual([])
   })
+  it('every link into a course names a course the bundle holds', () => {
+    const courseDoors = DEV_DOORS.filter((d) => devDoorPath(d.to).startsWith('/training/'))
+    expect(courseDoors.length).toBeGreaterThan(0)
+    const drift = courseDoors.filter((d) => !existsSync(resolve(root, 'src/content/training', devDoorPath(d.to).slice('/training/'.length), 'course.md'))).map((d) => `${d.id}: ${d.to}`)
+    expect(drift).toEqual([])
+  })
   it('every row names a gate that is still in the code: the file exists and holds the text', () => {
     const drift: string[] = []
     for (const d of DEV_DOORS) {

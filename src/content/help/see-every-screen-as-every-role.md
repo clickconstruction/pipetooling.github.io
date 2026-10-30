@@ -12,7 +12,7 @@ Use it to review the look of the app. Use it before a change to the theme, and a
 ## Pick who, where and the state
 
 - **Who** picks a role. Each role is an invented person, such as Eli for the estimator and Hal for the helper.
-- **Where** lists every screen that role can open. The list comes from the same gates the app uses. A screen the role cannot open is not on its list.
+- **Where** lists every screen that role can open. The list comes from the same gates the app uses. A screen the role cannot open is not on its list. For the dev, the list ends with each training lesson that has a drawing, under **Lessons**. The invented company has no course turned on. Only a dev can read a course that is off.
 - **State** picks what the screen is going through. The states are Full, Empty, Loading, Slow, Failing, Offline and Training mode.
 
 :::example The states, on any screen
