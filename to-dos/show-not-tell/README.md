@@ -2,7 +2,7 @@
 name: "Show it, don't say it: seven shapes for the 131 places the app still tells"
 number: 217
 group: gated
-status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 51 before/after pairs and a second pass on each (shape 1 drawn whole on the owner's ask the same day) · waiting on the owner's picks
+status: scanned and drawn 2026-10-30 · eight read-only scans of main at 9e8f233, 131 findings, drawn as seven shapes with 51 before/after pairs and a second pass on each (shape 1 drawn whole on the owner's ask the same day; Draft Payroll, the Pricing tab and the Project Board drawn on the pages they land on, on her notes) · waiting on the owner's picks
 mockup: to-dos/show-not-tell/mockup.html
 summary: >
   Taunya asked for a scan of the whole app for the places it tells instead of shows, so a reader sees
@@ -110,4 +110,4 @@ After a train lands, the pair's *Today* frame is what the screen no longer draws
 
 ## Where it stands
 
-Scanned, drawn and second-passed 2026-10-30. Waiting on the owner's picks. Nothing built.
+Scanned, drawn and second-passed 2026-10-30. The owner's first notes the same day: shape 1's other eighteen places drawn as pairs; Draft Payroll and the Pricing tab drawn whole with the bars in place; the Project Board's price redrawn so every word fits, then drawn whole. Waiting on the rest of her picks. Nothing built.
