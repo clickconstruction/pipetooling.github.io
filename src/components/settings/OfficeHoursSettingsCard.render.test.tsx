@@ -12,8 +12,19 @@ import { OFFICE_HOURS_WORDS as W } from '../../lib/messages/officeHoursCard'
 import type { OfficeHoursIo } from '../../lib/messages/officeHoursCardIo'
 import type { PushCoverageIo } from '../../lib/messages/pushCoverageIo'
 import type { CoverageMember } from '../../lib/messages/whoIsOff'
-import { renderWithProviders } from '../../test/renderSmokeMocks'
+import { renderWithProviders, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
 import { OfficeHoursSettingsCard } from './OfficeHoursSettingsCard'
+import { useLocation } from 'react-router-dom'
+
+function LocationProbe() {
+  const loc = useLocation()
+  return <div data-testid="location-probe">{loc.pathname + loc.search + loc.hash}</div>
+}
+
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock()
+})
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -233,5 +244,73 @@ describe('OfficeHoursSettingsCard: the coverage line (v2.6060, punch list #141 P
     await screen.findByText(W.notAllowed)
     expect(coverage.load).not.toHaveBeenCalled()
     expect(coverageLine()).toBeNull()
+  })
+})
+
+describe('OfficeHoursSettingsCard: the coverage grid (v2.6154, punch list #217, office-11)', () => {
+  /** Mon to Fri, 6 AM to 8 PM: the weekend off. */
+  const WEEKDAYS: OfficeHours = { ...EVERY_DAY, days: [1, 2, 3, 4, 5] }
+  const TEAM: CoverageMember[] = [
+    { id: 'u-rosa', name: 'Rosa Delgado', hours: WEEKDAYS },
+    { id: SMOKE_AUTH_USER_ID, name: 'Taunya Reed', hours: WEEKDAYS },
+  ]
+  const grid = () => document.querySelector<HTMLElement>('[data-coverage-grid]')
+
+  it('draws the hours the line is read from above it: a row a person, the gaps as columns with their times, the weekend as a chip', async () => {
+    renderWithProviders(<OfficeHoursSettingsCard role="master_technician" io={fakeIo({ ...KEPT, always: true })} coverage={fakeCoverage(TEAM)} now={() => NOW} />)
+    await screen.findByRole('switch', { name: W.always })
+    await waitFor(() => expect(grid()).not.toBeNull())
+    const g = within(grid()!)
+    expect(g.getByText('Who hears a reply')).toBeTruthy()
+    expect(grid()!.querySelectorAll('[data-coverage-panel]')).toHaveLength(1)
+    expect(grid()!.querySelector('[data-coverage-panel]')!.getAttribute('data-coverage-panel')).toBe('Mon to Fri')
+    expect(grid()!.querySelectorAll('[data-coverage-row]')).toHaveLength(2)
+    expect(g.getAllByLabelText('Rosa: 6 AM to 8 PM')).toHaveLength(1)
+    expect(g.getByText('nobody to 6 AM')).toBeTruthy()
+    expect(g.getByText('nobody from 8 PM')).toBeTruthy()
+    expect(grid()!.querySelector('[data-coverage-row]')!.querySelectorAll('[data-coverage-gap]')).toHaveLength(2)
+    expect(g.getByText('Nobody Fri 8 PM to Mon 6 AM')).toBeTruthy()
+    // The line stays under the grid as its caption.
+    expect(coverageLine()!.textContent).toBe('Nobody hears a reply from 8 PM to 6 AM on Mon to Thu. Nobody hears a reply from Fri 8 PM to Mon 6 AM. Rosa and Taunya are both off then.')
+    expect(grid()!.compareDocumentPosition(coverageLine()!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+  })
+
+  it('a press on a row opens that person’s hours: your own on Your account, another’s desk', async () => {
+    renderWithProviders(
+      <>
+        <OfficeHoursSettingsCard role="master_technician" io={fakeIo({ ...KEPT, always: true })} coverage={fakeCoverage(TEAM)} now={() => NOW} />
+        <LocationProbe />
+      </>,
+    )
+    await screen.findByRole('switch', { name: W.always })
+    await waitFor(() => expect(grid()).not.toBeNull())
+    const g = within(grid()!)
+    const mine = g.getByRole('button', { name: 'You: open your Push me hours.' })
+    expect(mine.textContent).toBe('You')
+    fireEvent.click(mine)
+    expect(screen.getByTestId('location-probe').textContent).toBe('/settings?tab=settings-account#settings-push-hours')
+    const rosa = g.getByRole('button', { name: 'Rosa: open their desk. Only Rosa can set their hours.' })
+    expect(rosa.textContent).toBe('Rosa')
+    fireEvent.click(rosa)
+    expect(screen.getByTestId('location-probe').textContent).toBe('/settings?tab=settings-phone-texts&person=u:u-rosa')
+  })
+
+  it('draws no grid while the switch is off, when there is no gap, or for a reader', async () => {
+    renderWithProviders(<OfficeHoursSettingsCard role="master_technician" io={fakeIo()} coverage={fakeCoverage(TEAM)} now={() => NOW} />)
+    await screen.findByRole('switch', { name: W.always })
+    expect(grid()).toBeNull()
+    fireEvent.click(alwaysSwitch())
+    await waitFor(() => expect(grid()).not.toBeNull())
+    fireEvent.click(alwaysSwitch())
+    expect(grid()).toBeNull()
+    cleanup()
+    renderWithProviders(<OfficeHoursSettingsCard role="master_technician" io={fakeIo({ ...KEPT, always: true })} coverage={fakeCoverage([...TEAM, { id: 'u-max', name: 'Max Hart', hours: null }])} now={() => NOW} />)
+    await screen.findByRole('switch', { name: W.always })
+    await waitFor(() => expect(card().getByText(W.alwaysWhoever)).toBeTruthy())
+    expect(grid()).toBeNull()
+    cleanup()
+    renderWithProviders(<OfficeHoursSettingsCard role="assistant" io={fakeIo({ ...KEPT, always: true })} coverage={fakeCoverage(TEAM)} now={() => NOW} />)
+    await screen.findByText(W.notAllowed)
+    expect(grid()).toBeNull()
   })
 })
