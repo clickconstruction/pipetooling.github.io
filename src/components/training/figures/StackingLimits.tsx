@@ -31,8 +31,8 @@ export function StackingLimits({ titleId }: FigureProps) {
         <text x="78" y={y(20) + 4}>20 ft by machine</text>
         <text x="78" y={y(16) + 4}>16 ft by hand</text>
         <text x="102" y={y(7) - 4}>7 ft at most</text>
-        <text x="124" y={y(4) + 16} textAnchor="middle" fontSize="9">taper from</text>
-        <text x="124" y={y(4) + 27} textAnchor="middle" fontSize="9">4 ft up</text>
+        <text x="124" y={y(4) + 16} textAnchor="middle" fontSize="9" fill="var(--text-600)">taper from</text>
+        <text x="124" y={y(4) + 27} textAnchor="middle" fontSize="9" fill="var(--text-600)">4 ft up</text>
         <text x="184" y={y(10) - 4}>taper above 6 ft</text>
         <text x="292" y={y(5) - 15} textAnchor="end">5 ft</text>
         <text x="292" y={y(5) - 4} textAnchor="end">unless racked</text>

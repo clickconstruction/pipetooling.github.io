@@ -12,7 +12,7 @@ export function PressureAndPrv({ titleId }: FigureProps) {
     <svg viewBox="0 0 300 150" role="img" aria-labelledby={titleId} style={SVG_STYLE}>
       <circle cx="70" cy="78" r="48" fill="var(--surface)" stroke="currentColor" strokeWidth="1.5" />
       <g fill="none" strokeWidth="7" strokeLinecap="butt">
-        <path d="M41.7 106.3 A40 40 0 0 1 51.8 42.4" stroke="#d97706" />
+        <path d="M41.7 106.3 A40 40 0 0 1 51.8 42.4" stroke="var(--text-amber-700)" />
         <path d="M51.8 42.4 A40 40 0 0 1 88.2 42.4" stroke="var(--text-green-700)" />
         <path d="M88.2 42.4 A40 40 0 0 1 109.5 71.7" stroke="var(--text-muted)" />
         <path d="M109.5 71.7 A40 40 0 0 1 98.3 106.3" stroke="var(--text-red-700)" />
@@ -31,7 +31,7 @@ export function PressureAndPrv({ titleId }: FigureProps) {
       <Label x={118} y={72} size={8}>
         80
       </Label>
-      <Label x={12} y={116} size={8} color="#d97706">
+      <Label x={12} y={116} size={8} color="var(--text-amber-700)">
         weak
       </Label>
       <Label x={70} y={26} anchor="middle" size={8} color="var(--text-green-700)">

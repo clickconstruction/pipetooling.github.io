@@ -48,7 +48,7 @@ export function WaterHeaterCutaway({ titleId }: FigureProps) {
       <Label x={76} y={49} anchor="middle" size={7.5}>
         tank
       </Label>
-      <Label x={136} y={80} size={8}>
+      <Label x={136} y={80} size={8} color="var(--text-600)">
         dip tube
       </Label>
       <Label x={150} y={72} anchor="middle" bold color="currentColor" size={9}>

@@ -38,13 +38,13 @@ export function SepticTank({ titleId }: FigureProps) {
       <Label x={130} y={34} anchor="middle" size={8} bold color="currentColor">
         septic tank, often 1,000 gal
       </Label>
-      <Label x={130} y={84} anchor="middle" size={7}>
+      <Label x={130} y={84} anchor="middle" size={7} color="var(--text-600)">
         scum floats
       </Label>
-      <Label x={130} y={100} anchor="middle" size={7.5}>
+      <Label x={130} y={100} anchor="middle" size={7.5} color="var(--text-600)">
         liquid
       </Label>
-      <Label x={130} y={124} anchor="middle" size={7} color="var(--surface)">
+      <Label x={130} y={124} anchor="middle" size={7} color="var(--text-strong)">
         solids settle
       </Label>
       <Label x={85} y={142} anchor="middle" size={7}>

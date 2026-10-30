@@ -14,7 +14,7 @@ export function DwvMaterials({ titleId }: FigureProps) {
         {pipe('var(--surface)', 6, 50)}
         <rect x="48" y="56" width="42" height="30" rx="2" fill="var(--surface)" stroke="currentColor" strokeWidth="1.5" />
         <rect x="48" y="58" width="8" height="26" fill="#7c3aed" stroke="none" />
-        <Label x={48} y={108} anchor="middle" size={7.5} color="#7c3aed">
+        <Label x={48} y={108} anchor="middle" size={7.5} color="var(--text-violet-700)">
           purple primer
         </Label>
         <Label x={48} y={118} anchor="middle" size={7.5}>

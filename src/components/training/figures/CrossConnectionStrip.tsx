@@ -25,7 +25,7 @@ export function CrossConnectionStrip({ titleId }: FigureProps) {
       <Panel x={2} y={2} w={96} h={146} title="1 a hose in a bucket" sub="the usual one">
         {scene(false)}
         <Flow x={14} y={60} />
-        <Label x={72} y={128} anchor="middle" size={6.5}>
+        <Label x={72} y={128} anchor="middle" size={6.5} color="var(--text-600)">
           dirty water
         </Label>
         <Label x={48} y={142} anchor="middle" size={7}>
