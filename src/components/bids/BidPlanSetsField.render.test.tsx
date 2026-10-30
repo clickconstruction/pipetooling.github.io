@@ -32,7 +32,7 @@ vi.mock('../../lib/supabase', () => ({
           const saved = { ...row, id: `new-${state.inserted.length + 1}` }
           state.inserted.push(saved)
           state.rows = [...state.rows, { file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null, created_at: '2026-10-30T16:00:00Z', updated_at: '2026-10-30T16:00:00Z', ...saved }]
-          return { select: () => ({ single: () => Promise.resolve({ data: { id: saved.id, link: saved.link }, error: null }) }) }
+          return { select: () => ({ single: () => Promise.resolve({ data: { id: saved.id, link: String(row.link) }, error: null }) }) }
         },
         update: (patch: Row) => ({
           eq: (_col: string, id: string) => {
