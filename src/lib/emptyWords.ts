@@ -9,8 +9,9 @@
  * - waiting: empty is the good state. *Nothing waiting on dispatch.*
  * - data: what fills the list is another page. *No sessions yet. Clock in ▸ starts the first.*
  *
- * `EmptyState` (components/EmptyState.tsx) draws the three parts in order: `main`, the press,
- * then `tail`. The caller passes the plural noun; the words never pluralize. Every sentence
+ * `EmptyState` (components/EmptyState.tsx) draws the three parts in order: `main` as one unit,
+ * then the press and `tail` as a second unit that drops whole to the next line when the two do
+ * not fit together (v2.6113). The caller passes the plural noun; the words never pluralize. Every sentence
  * follows plain words (`plainWords.ts`): under 20 words, no dash, semicolon or parenthesis.
  */
 
