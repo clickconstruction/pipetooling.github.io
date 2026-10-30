@@ -2,7 +2,7 @@
 name: "Offline in the field: the phone keeps the press and sends it later"
 number: 163
 group: ready
-status: building on claude/163-offline-queue-pr2 … pr5 · PR 1 live (v2.6074, the outbox kernel, #6472) · PR 2 built (v2.6099, the store, the bar on the strip, clock in and out through the queue, the `land_field_press` RPC and `field_presses`) · PR 3 built (v2.6100, notes and field reports through the queue, the RPC's two more kinds) · step 4 taken by #183 PR 3 (v2.6059) · the five calls taken on the review canvas of 2026-10-29 (rule B for the clock, one workday's wait, no photos in this train, money and sends never queue, the bar on #183's strip) · proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the bar at the top set the same day · mock-up drawn 2026-10-26 · the bar's green with Got it, its red, and the per-press id decided the same afternoon (#183, part 3)
+status: building on claude/163-offline-queue-pr3 … pr5 · PR 1 live (v2.6074, the outbox kernel, #6472) · PR 2 live (v2.6099, #6473, the store, the bar on the strip, clock in and out through the queue, the `land_field_press` RPC and `field_presses`) · PR 3 built (v2.6100, notes and field reports through the queue, the RPC's two more kinds) · step 4 taken by #183 PR 3 (v2.6059) · the five calls taken on the review canvas of 2026-10-29 (rule B for the clock, one workday's wait, no photos in this train, money and sends never queue, the bar on #183's strip) · proposed 2026-10-24 from the trade ERP comparison (gap 3 of 9) · the bar at the top set the same day · mock-up drawn 2026-10-26 · the bar's green with Got it, its red, and the per-press id decided the same afternoon (#183, part 3)
 summary: >
   With no signal the phone only offers Retry, so the clock, a note and a field report all stop
   until the signal returns. The smallest useful version keeps a short queue on the phone: clock in,
@@ -125,16 +125,18 @@ bar turn red with that one's reason while the rest go green.
 
 - **PR 1 live** (v2.6074, #6472): the kernel [`lib/offline/outbox.ts`](../../src/lib/offline/outbox.ts),
   the rules above as code, every word the bar and the list will read, 42 tests.
-- **PR 2 built** (v2.6099): the IndexedDB store under one in-memory store, the replay hook mounted
+- **PR 2 live** (v2.6099, #6473, merged 2026-10-30): the IndexedDB store under one in-memory store, the replay hook mounted
   in `Layout`, the bar as the strip's second segment with its list, clock in and out through the
   queue on the Dashboard's button and Job Mode, the line beside the clock, and the migration
   `20261029230000_field_presses.sql` (the table and the `land_field_press` RPC; rule B as one row
-  at the pressed time, the typed-hours trigger filing the stretch). **Pushed by hand after the
-  merge**: `supabase db push`, then the types chore.
+  at the pressed time, the typed-hours trigger filing the stretch). **Pushed by hand right after
+  the merge** (`bash scripts/db-push.sh`): the deployed client sends every clock press to the RPC,
+  so until the push the clock is refused on prod, as it was from 4:57 AM on 2026-10-30.
 - **PR 3 built** (v2.6100): a job note from Job Mode and a field report from Leave Report through the
   queue, landed at the moment they were pressed; a report's notifications, moved lines and percent
   follow from the replay. Migration `20261030040000_field_presses_notes_reports.sql` replaces the
-  RPC with the two kinds. Leave Report and New report both go through it; a report with photos and
-  Turnaway stay live.
+  RPC with the two kinds, and is pushed right after the merge for the same reason: PR 2's RPC
+  refuses a note or a report. Leave Report and New report both go through it; a report with
+  photos and Turnaway stay live.
 - **Step 4 of the plan**, today's schedule from the last read, shipped as #183's PR 3 (v2.6059,
   `useKeptRead` keyed by the day for My Schedule and Job Mode). Nothing left to build here.
