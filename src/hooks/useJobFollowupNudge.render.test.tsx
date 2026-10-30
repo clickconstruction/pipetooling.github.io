@@ -65,6 +65,6 @@ describe('useJobFollowupNudge (v2.5512)', () => {
 
   it('off, it reports nothing', async () => {
     const { result } = renderHook(() => useJobFollowupNudge(false))
-    expect(result.current).toEqual({ count: null, stageCounts: null, idle: null, first: null })
+    expect(result.current).toEqual({ count: null, stageCounts: null, idle: null, first: null, idleFirst: null, reload: expect.any(Function) })
   })
 })

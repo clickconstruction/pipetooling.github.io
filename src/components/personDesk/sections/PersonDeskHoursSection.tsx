@@ -12,6 +12,7 @@ import type { ClockSessionRow } from '../../../types/clockSessions'
 import { denverCalendarDayKey, formatDenverTimeOnly } from '../../../utils/dateUtils'
 import { PeopleHoursApprovalsQueueModal } from '../../people/PeopleHoursApprovalsQueueModal'
 import { ClockSessionEditSplitModal } from '../../ClockSessionEditSplitModal'
+import { HoursStatementsSection } from '../../jobs/HoursStatementsSection'
 import { BTN_GREEN, BTN_QUIET, BTN_RED, Chip, DESK_EDITOR_Z, DeskEmpty, DeskRow, DeskSection, deskBtn, fmtDay } from '../personDeskShared'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 
@@ -175,6 +176,8 @@ export function PersonDeskHoursSection({
         {weekHours == null ? <span style={{ color: 'var(--text-muted)' }}>—</span> : <span>{formatHoursShort(weekHours)} closed</span>}
       </DeskRow>
       <DeskRow label="Reviewed through">{reviewedThrough ? fmtDay(reviewedThrough) : <span style={{ color: 'var(--text-muted)' }}>never</span>}</DeskRow>
+      {/* The signed hours statements for the person (punch list #212, PR 2): the list and the window, the job picked instead of the person. */}
+      <HoursStatementsSection scope={{ kind: 'person', userId, name: displayName }} zIndex={DESK_EDITOR_Z} canAccessPay={viewer.canAccessPay} desk />
 
       {queueOpen ? (
         <PeopleHoursApprovalsQueueModal

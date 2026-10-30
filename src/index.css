@@ -4558,7 +4558,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   color: var(--text-muted);
 }
 .stagesWhenLine.isNext b {
-  color: #15803d;
+  color: var(--text-green-700);
 }
 .stagesWhenLine.isEnds b {
   color: var(--text-link);
