@@ -112,9 +112,10 @@ export function tileNeedsStage(tile: ReportPhotoTile, stageCount: number): boole
 
 /**
  * The Save press's words on the phone's form: the job's number and the photos riding with it. A shot still on its
- * way reads *Sending 1 photo…* and the press waits.
+ * way reads *Sending 1 photo…* and the press waits. `jobPct` is null for a report type that files no percent, whose
+ * Save names none (`saveWords`).
  */
-export function reportSaveWords(input: { jobPct: number; tiles: ReadonlyArray<ReportPhotoTile>; saving: boolean }): string {
+export function reportSaveWords(input: { jobPct: number | null; tiles: ReadonlyArray<ReportPhotoTile>; saving: boolean }): string {
   if (input.saving) return 'Saving…'
   const inFlight = input.tiles.filter((t) => t.status === 'shrinking' || t.status === 'sending').length
   if (inFlight > 0) return inFlight === 1 ? 'Sending 1 photo…' : `Sending ${inFlight} photos…`
