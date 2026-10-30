@@ -3221,7 +3221,9 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-notification
 
-**Purpose**: Web-push notification when a report is submitted: loads the report + template + creator, resolves the job display name (`jobs_ledger.job_name` → `projects.name` → bid project/contact name), and pushes "New *{template}* — *{creator}* submitted a *{template}* for *{job}*" to every user who opted in for that template in **`user_report_notification_preferences`** (submitter excluded). Legacy template name "Superintendent Report" is displayed as "Status Report". Deep link `/jobs?tab=reports`; per-recipient sends recorded in `notification_history` (`template_type: report_submitted`, best-effort).
+> **v2.6127 — a report on a ZZ test job reaches no phone**: right after the report is read, its job, project or bid is read by name (`readReportSubject`, [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)), and when the name — or the job's customer's name — starts with ZZ ([`_shared/zzTestJob.ts`](../supabase/functions/_shared/zzTestJob.ts), the one rule the Pipeline hides ZZ jobs by, which `src/lib/jobs/zzTestJobSweep.ts` re-exports) the function answers `{ success: true, message: 'ZZ test job: nothing sent', push_sent: 0, skipped: 'zz_test_job' }` before it reads a preference. A session's walk on a ZZ job (`AGENTS.md` → ZZ test rows need no approval) used to buzz every phone opted in for that kind of report. **Redeploy required.**
+
+**Purpose**: Web-push notification when a report is submitted: loads the report, reads its job, project or bid by name (`jobs_ledger.job_name, customer_name` → `projects.name` → bid project/contact name) and stops on a ZZ test record; otherwise loads the template + creator, takes the job display name from the same read, and pushes "New *{template}* — *{creator}* submitted a *{template}* for *{job}*" to every user who opted in for that template in **`user_report_notification_preferences`** (submitter excluded). Legacy template name "Superintendent Report" is displayed as "Status Report". Deep link `/jobs?tab=reports`; per-recipient sends recorded in `notification_history` (`template_type: report_submitted`, best-effort).
 
 **Endpoint**: `POST /functions/v1/send-report-notification`
 
@@ -3239,14 +3241,17 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ```typescript
 { success: true, message: string, push_sent: number }   // push_sent = successful subscription sends
+{ success: true, message: 'ZZ test job: nothing sent', push_sent: 0, skipped: 'zz_test_job' }   // a ZZ test record (v2.6127)
 // or { error: string } with 400/401/404/500
 ```
 
-**Used by**: report save flows — [`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), and the Job Mode [`TurnawayModal.tsx`](../src/components/jobMode/TurnawayModal.tsx).
+**Used by**: report save flows — [`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`, the Job Mode [`TurnawayModal.tsx`](../src/components/jobMode/TurnawayModal.tsx), and a queued field report when it lands (`src/lib/offline/afterLanding.ts`).
 
 ---
 
 ### send-report-email
+
+> **v2.6127 — a report on a ZZ test job reaches no inbox**: `auto` reads the report's job, project or bid by name first (`readReportSubject`, [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)) and answers `{ ok: true, sent: 0, skipped: 'zz_test_job', message: 'ZZ test job: nothing sent' }` when the name, or the job's customer's name, starts with ZZ ([`_shared/zzTestJob.ts`](../supabase/functions/_shared/zzTestJob.ts)) — before it reads a subscription, so the every-report subscription gets nothing and no dispatch row is written; `manual` leaves such reports out of **Send now** and counts them (`skippedTestJobs`), which the person's editor says. The job display on the email comes from the same read, as before. **Redeploy required.**
 
 > **v2.5359 — `deno check` passes again**: `AdminClient` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `report_email_dispatch_log` insert was refused and the service-role client could not be handed to `resolveReportContent` or `sendReportToSubscription` (5 errors). It is `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
@@ -3256,8 +3261,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 **Purpose**: Emails a report to standing recipients configured in **`report_email_subscriptions`** (Jobs → Reports → **Email reports** → the person's row, or the Dashboard → Recent Reports mail button — one modal since v2.3570, one list by person since v2.3595). Resolves report content (template name, author, job/project/bid display, `field_values` with signature fields rendered as `[signature captured]`), sends via Resend, and records a `report_email_dispatch_log` row so each `(subscription, report)` is emailed at most once across both modes.
 
-- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors` — skipping any already in the dispatch log. (The v2.3480 team-lead scope went with the Team leads list in v2.5088.) The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
-- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors.
+- **`auto`** (`{ report_id }`) — fired fire-and-forget right after a report is created (next to `send-report-notification`). A report on a ZZ test record is answered with `skipped: 'zz_test_job'` and emailed to no one (v2.6127). Emails every enabled subscription with `auto_send = true` whose scope matches — `all_authors`, or the report's `created_by_user_id` is in `report_email_subscription_authors` — skipping any already in the dispatch log. (The v2.3480 team-lead scope went with the Team leads list in v2.5088.) The client mirror of the rule is `subscriptionMatchesReport` in `src/lib/reportEmailSubscriptions.ts`.
+- **`manual`** (`{ mode: 'manual', subscription_id, since_days? }`) — the "Send now" button. Requires the caller to be a manager (dev / master_technician / assistant / controller). Emails in-scope reports from the last `since_days` (default 14, max 50 reports) not yet dispatched to that subscription; the author set is the named authors. A report on a ZZ test record is left out and counted in `skippedTestJobs` (v2.6127).
 
 **Endpoint**: `POST /functions/v1/send-report-email`
 
@@ -3276,11 +3281,12 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ```typescript
 { ok: true, sent: number, matched?: number }                       // auto
-{ ok: true, sent: number, candidates?: number, alreadySent?: number } // manual
+{ ok: true, sent: 0, skipped: 'zz_test_job', message: string }     // auto, a ZZ test record (v2.6127)
+{ ok: true, sent: number, candidates?: number, alreadySent?: number, skippedTestJobs?: number } // manual
 // or { error: string } with 400/401/403/404/500
 ```
 
-**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`) for `auto`; [`EmailReportPersonEditor.tsx`](../src/components/jobs/emailReports/EmailReportPersonEditor.tsx) for `manual` (one person's editor inside [`EmailReportsModal.tsx`](../src/components/jobs/EmailReportsModal.tsx), opened from Jobs → Reports and the Dashboard's Recent Reports card).
+**Used by**: report save flows ([`NewReportModal.tsx`](../src/components/NewReportModal.tsx), [`AdditionalReportModal.tsx`](../src/components/AdditionalReportModal.tsx), `submitStatusReportFromStepper.ts`, and a queued field report when it lands, `src/lib/offline/afterLanding.ts`) for `auto`; [`EmailReportPersonEditor.tsx`](../src/components/jobs/emailReports/EmailReportPersonEditor.tsx) for `manual` (one person's editor inside [`EmailReportsModal.tsx`](../src/components/jobs/EmailReportsModal.tsx), opened from Jobs → Reports and the Dashboard's Recent Reports card).
 
 **Deploy**: `supabase functions deploy send-report-email` (manual, per repo convention).
 
