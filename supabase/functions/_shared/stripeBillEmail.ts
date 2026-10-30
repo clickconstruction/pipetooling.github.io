@@ -13,7 +13,7 @@ import { formatCentsUsd, formatDueDate } from './stripeBillCopyEmail.ts'
 import { portalAccountCardHtml } from './portalAccountCard.ts'
 
 const INK = '#16283c'
-const COPPER = '#b0662f'
+const COPPER = '#9a5b2b'
 const MUTED = '#5b6676'
 const RULE = '#e4dfd3'
 

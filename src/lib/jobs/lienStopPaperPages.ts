@@ -57,6 +57,8 @@ export function affidavitStopPages({ data, jobId, issuer, signerNameFor, todayYm
     paymentsMade: Number(job?.payments_made ?? 0),
     claimAmountOff: correction?.amountOff,
     lastMonth: entry.lastMonth,
+    workDays: job ?? null,
+    todayYmd,
     noticesRecorded: entry.gates.find((g) => g.key === 'notice')?.ok ?? false,
     contactPerson: signerNameFor(job?.master_user_id ?? null),
     issuer,

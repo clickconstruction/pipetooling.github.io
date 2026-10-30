@@ -3,8 +3,8 @@
 #
 #   npm run test:pg:supply-house-move-window
 #
-# The bed is a stand-in schema (00_schema.sql), then the migration as it ships
-# (20261021220000_count_supply_house_move_window.sql), twice because it must re-run cleanly, then
+# The bed is a stand-in schema (00_schema.sql), then the migrations as they ship
+# (20261021220000, then 20261029233000 twice because it must re-run cleanly), then
 # the scenarios (20_scenarios.sql), which raise on the first failed assertion and end with a
 # "… PASSED" notice. The scenario's $rows$ and $expect$ blocks are also read by
 # src/lib/supplyHouseMoveWindow.parity.test.ts, which holds the tab's kernel to the same numbers.
@@ -20,8 +20,9 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55448}"
 NAME="pgtest-supply-house-move-window"
 BED="supabase/tests/supply_house_move_window"
-NEWEST="supabase/migrations/20261021220000_count_supply_house_move_window.sql"
-MIGRATIONS=("$NEWEST" "$NEWEST")
+FIRST="supabase/migrations/20261021220000_count_supply_house_move_window.sql"
+NEWEST="supabase/migrations/20261029233000_count_supply_house_move_window_not_needed.sql"
+MIGRATIONS=("$FIRST" "$NEWEST" "$NEWEST")
 TMP="$(mktemp -d)"
 
 command -v psql >/dev/null || { echo "psql not on PATH"; exit 2; }

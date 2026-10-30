@@ -24,14 +24,15 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
     for (const kind of Object.keys(FILL_IN_KIND_ITEM) as Array<keyof typeof FILL_IN_KIND_ITEM>) {
       expect(NEEDS_YOU_RANK[FILL_IN_KIND_ITEM[kind]]).toBeTypeOf('number')
     }
-    expect(FILL_IN_KINDS_BUILT).toEqual(['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase'])
+    expect(FILL_IN_KINDS_BUILT).toEqual(['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase', 'move-window'])
     expect(fillInKindOfItem('lost-bids')).toBe('lost-bid')
     expect(fillInKindOfItem('vehicle-records-missing')).toBe('vehicle')
     expect(fillInKindOfItem('job-account-missing')).toBe('job-account')
     expect(fillInKindOfItem('contract-stale')).toBe('contract')
     expect(fillInKindOfItem('contract-missing')).toBe('contract-missing')
     expect(fillInKindOfItem('tally-self')).toBe('purchase')
-    expect(fillInKindOfItem('job-account-window')).toBeNull()
+    expect(fillInKindOfItem('job-account-window')).toBe('move-window')
+    expect(fillInKindOfItem('statement-round')).toBeNull()
   })
 
   it('orders kinds by their line’s rank, each kind’s rows as given', () => {
@@ -40,9 +41,10 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
       contract: [row('contract:1', 'contract')],
       vehicle: [row('vehicle:1', 'vehicle')],
       purchase: [row('purchase:1', 'purchase')],
+      'move-window': [row('move-window:1', 'move-window')],
     })
-    // The viewer's own purchases rank 30, contract-stale 50, lost-bids and vehicles 60 (insertion order among equals).
-    expect(out.map((r) => r.key)).toEqual(['purchase:1', 'contract:1', 'lost-bid:1', 'lost-bid:2', 'vehicle:1'])
+    // The viewer's own purchases rank 30, the move window 40, contract-stale 50, lost-bids and vehicles 60 (insertion order among equals).
+    expect(out.map((r) => r.key)).toEqual(['purchase:1', 'move-window:1', 'contract:1', 'lost-bid:1', 'lost-bid:2', 'vehicle:1'])
   })
 
   it('a skipped row goes to the back; the deck opens on the first row of the asked kind', () => {

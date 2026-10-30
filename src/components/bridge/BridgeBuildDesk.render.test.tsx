@@ -89,7 +89,7 @@ describe('BridgeBuildDesk (v2.5929)', () => {
     fireEvent.click(screen.getByTestId('bridge-build-set-pct'))
     expect(screen.getByRole('dialog', { name: 'Update % done for J977 · Springtown' })).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Save 45%')).toBeTruthy())
-    fireEvent.click(screen.getByText('Cancel'))
+    fireEvent.click(screen.getByText('Not now'))
     expect(screen.queryByRole('dialog', { name: 'Update % done for J977 · Springtown' })).toBeNull()
     expect(onSavePct).not.toHaveBeenCalled()
   })

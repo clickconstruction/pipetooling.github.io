@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { SAFETY_ORANGE, SAFETY_ORANGE_TEXT, TEXT_ON_SAFETY_ORANGE } from './bids/bidStyles'
 import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from './clock/clockColors'
+import { MORE_SWIPE_GREY } from './people/usersTabPhone'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from './deadPress'
 import { GOOD_THROUGH_PASSED_CHIP_COLORS } from './estimates/estimateGoodThroughChip'
 import { contrastRatio } from './lens/lensAudit'
@@ -45,6 +46,8 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: 'the open Counts, Pricing or Cover Letter tab, an orange button and the pending count (v2.6063)', fg: TEXT_ON_SAFETY_ORANGE, bg: SAFETY_ORANGE },
     { label: 'a closed Counts, Pricing or Cover Letter tab on the page (v2.6063)', fg: SAFETY_ORANGE_TEXT, bg: 'var(--bg-page)' },
     { label: "a form's orange hint on the surface (v2.6063)", fg: SAFETY_ORANGE_TEXT, bg: 'var(--surface)' },
+    { label: 'a picked chip, a picked weekday, a Save or a blue press filled with --text-link (v2.6068)', fg: 'var(--surface)', bg: 'var(--text-link)' },
+    { label: "People → Users' phone row, swipe to More (v2.6068)", fg: '#ffffff', bg: MORE_SWIPE_GREY },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {
