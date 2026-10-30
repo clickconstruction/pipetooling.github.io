@@ -914,7 +914,19 @@ export default function JobTally() {
   const selectedJob = jobs.find((j) => j.id === selectedJobId)
 
   return (
-    <div style={{ padding: '1rem', maxWidth: showTallyTeam && activeTab === 'transactions' ? 760 : 480, margin: '0 auto' }}>
+    <div
+      style={{
+        padding: '1rem',
+        // v2.6117: as a flex item in Layout's column with auto side margins, the page was sized by its
+        // content, so it (and the tab row with it) grew and shrank with whatever each tab had loaded. Pin
+        // it to its container like `.pageWrap` (v2.1003); the max widths carry the 2rem of padding, border-box.
+        width: '100%',
+        minWidth: 0,
+        boxSizing: 'border-box',
+        maxWidth: showTallyTeam && activeTab === 'transactions' ? 760 + 32 : 480 + 32,
+        margin: '0 auto',
+      }}
+    >
       <div style={{ marginBottom: '1rem', display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: '1rem' }}>
         <Link to="/dashboard" style={{ fontSize: '0.875rem', color: 'var(--text-link)', textDecoration: 'none' }}>
           ← Dashboard
