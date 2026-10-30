@@ -25,6 +25,11 @@ BEGIN;
 -- (the on-my-way bed holds them); the transaction rolls back.
 DELETE FROM public.quick_reply_versions WHERE quick_reply_id IN (SELECT id FROM public.quick_replies WHERE phone_press IS NOT NULL);
 DELETE FROM public.quick_replies WHERE phone_press IS NOT NULL;
+-- v2.6064's migration (20261029200000_quick_replies_starter) seeds the eleven starter lines for customers with their
+-- shortcuts (/bill, /late, …), the app's own. This bed counts cut 3's thirteen, so the eleven are set aside here too
+-- (the quick-replies-starter bed holds them); the transaction rolls back.
+DELETE FROM public.quick_reply_versions WHERE quick_reply_id IN (SELECT id FROM public.quick_replies WHERE added_by IS NULL AND shortcut IS NOT NULL);
+DELETE FROM public.quick_replies WHERE added_by IS NULL AND shortcut IS NOT NULL;
 
 -- Rosa in the office (an assistant), Maria on the money team (the controller, in the office too), a superintendent
 -- outside the office, an assistant in training mode, a digital twin, and a dev who keeps the customer.

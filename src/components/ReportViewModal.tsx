@@ -10,6 +10,7 @@ import { isReportSignatureImageDataUrl } from '../lib/reportSignatureField'
 import { stripLeadingRawJobIdPrefix } from '../lib/jobs/jobFormatting'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { ReportPhotosStrip } from './reports/ReportPhotosStrip'
 
 export type ReportForView = {
   id: string
@@ -150,6 +151,8 @@ export function ReportDetailBody({
       ) : (
         <p style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>No content</p>
       )}
+      {/* The report's photos (punch list #189, PR 5b): in Drive, or not in Drive yet with the reason. Nothing for a report without any. */}
+      <ReportPhotosStrip reportId={report.id} />
     </>
   )
 }

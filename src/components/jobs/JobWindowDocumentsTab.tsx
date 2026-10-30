@@ -20,6 +20,7 @@ import { JobDocumentsContract } from './JobDocumentsContract'
 import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
+import { HoursStatementDevPress } from './HoursStatementDevPress'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 
@@ -323,6 +324,8 @@ export function JobWindowDocumentsTab({
       <JobDocumentsTestReports job={job} />
 
       <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} />
+
+      <HoursStatementDevPress job={job} />
 
       {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
 

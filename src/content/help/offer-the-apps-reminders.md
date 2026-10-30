@@ -29,7 +29,7 @@ Each step has one control called **The app and this reminder**. Press one of its
 - {{button:green|Offers}}. Each morning at 9 AM the app writes the text and puts it on Today's sends on the Dashboard. A person reads it and presses Send. See [work Today's sends](/help/work-todays-sends).
 - {{button:outline|Sends}}. The app texts it at 9 AM from the company number.
 
-The control saves the moment you press it. A short message says what changed. Either way the text waits for the step's quiet days to pass. A customer with no number, or one who sent STOP, gets no text. On Offers the row on Today's sends says why.
+The control saves the moment you press it. A short message says what changed. Either way the text waits for the step's quiet days to pass. A customer with no number, or one who sent STOP, gets no text. A step's line with a blank the app cannot fill waits too. On Offers the row on Today's sends says why.
 
 ## The same control in Flows
 

@@ -6,6 +6,7 @@ import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { saveSupplyInvoice, supabaseSupplyInvoiceDb } from '../lib/materials/supplyInvoiceWrite'
 import { useAuth } from '../hooks/useAuth'
 import { countedLabel } from '../lib/batchWords'
 import { formatErrorMessage } from '../utils/errorHandling'
@@ -46,7 +47,6 @@ import {
   addAllocation,
   allocationTotal,
   dueDateHint,
-  paidAtPayload,
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
@@ -56,14 +56,11 @@ import {
   poLedgerJobMatches,
   removeAllocation,
   setAllocationPct,
-  amountProblem,
   applyPaymentUpdate,
   creditEffectSentence,
   creditPairingLine,
-  creditsInvoicePatch,
   documentKindFromRow,
   documentWords,
-  signedAmountForSave,
   typedAmountFromStored,
   type PoLedgerEntriesByCode,
   type PoLedgerEntry,
@@ -254,8 +251,10 @@ export function SupplyHousesTab({
   const [agingMoveData, setAgingMoveData] = useState<{
     allocations: Record<string, InvoiceJobAllocation[]>
     asks: Record<string, MoveAskRow>
+    /** Candidates whose one job's account at the house is on record as not needed (v2.6086, punch list #178): out of the window. */
+    notNeeded: ReadonlySet<string>
     loaded: boolean
-  }>({ allocations: {}, asks: {}, loaded: false })
+  }>({ allocations: {}, asks: {}, notNeeded: new Set(), loaded: false })
   /** Which unpaid book (by identity) the move data above was read for, and whether the book itself has loaded once — the worked-list door waits on both. */
   const [agingMoveDataBook, setAgingMoveDataBook] = useState<AgingInvoiceRow[] | null>(null)
   const [agingBookLoaded, setAgingBookLoaded] = useState(false)
@@ -595,7 +594,7 @@ export function SupplyHousesTab({
     }
     const cellRows =
       agingCellModal.cell === 'movable'
-        ? movableCandidates(agingUnpaidInvoices, todayYmdInAppTz()).filter((r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1)
+        ? movableCandidates(agingUnpaidInvoices, todayYmdInAppTz()).filter((r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1 && !agingMoveData.notNeeded.has(r.id))
         : invoicesForAgingCell(agingUnpaidInvoices, agingCellModal.houseId, agingCellModal.cell, todayYmdInAppTz())
     const ids = cellRows.map((r) => r.id)
     if (ids.length === 0) {
@@ -678,7 +677,7 @@ export function SupplyHousesTab({
     const candidates = movableCandidates(agingUnpaidInvoices, todayYmdInAppTz())
     const ids = candidates.map((r) => r.id)
     if (ids.length === 0) {
-      setAgingMoveData({ allocations: {}, asks: {}, loaded: true })
+      setAgingMoveData({ allocations: {}, asks: {}, notNeeded: new Set(), loaded: true })
       setAgingMoveDataBook(agingUnpaidInvoices)
       return
     }
@@ -700,7 +699,22 @@ export function SupplyHousesTab({
       const asks: Record<string, MoveAskRow> = {}
       // askRes.error: the table may not be pushed yet — the strip still works, with no asks.
       for (const r of (askRes.error ? [] : askRes.data ?? []) as MoveAskRow[]) asks[r.invoice_id] = r
-      setAgingMoveData({ allocations, asks, loaded: true })
+      // v2.6086: a single-job candidate whose job's account at the house is marked not needed leaves the window.
+      const houseOf = new Map(candidates.map((r) => [r.id, r.supply_house_id]))
+      const pairs = Object.entries(allocations).filter(([, list]) => list.length === 1).map(([invoiceId, list]) => ({ invoiceId, jobId: list[0]!.job_id, houseId: houseOf.get(invoiceId) ?? '' }))
+      const notNeeded = new Set<string>()
+      if (pairs.length > 0) {
+        const accRes = await supabase
+          .from('job_supply_house_accounts')
+          .select('job_id, supply_house_id')
+          .in('job_id', [...new Set(pairs.map((p) => p.jobId))])
+          .in('supply_house_id', [...new Set(pairs.map((p) => p.houseId))])
+          .eq('status', 'not_needed')
+        if (cancelled) return
+        const marked = new Set(((accRes.data ?? []) as { job_id: string; supply_house_id: string }[]).map((a) => `${a.job_id}:${a.supply_house_id}`))
+        for (const p of pairs) if (marked.has(`${p.jobId}:${p.houseId}`)) notNeeded.add(p.invoiceId)
+      }
+      setAgingMoveData({ allocations, asks, notNeeded, loaded: true })
       setAgingMoveDataBook(agingUnpaidInvoices)
     })()
     return () => {
@@ -821,7 +835,7 @@ export function SupplyHousesTab({
   const agingHasCredits = agingMatrix.creditsTotal < -0.005
   /** PR 3: the movable set (current, unflagged, exactly one job) and the strip's numbers. */
   const agingMovable = movableCandidates(agingUnpaidInvoices, agingTodayYmd).filter(
-    (r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1,
+    (r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1 && !agingMoveData.notNeeded.has(r.id),
   )
   const agingMoveStrip = moveStripSummary(agingMovable, new Set(Object.keys(agingMoveData.asks)))
   const agingHasCurrentUnpaid = agingUnpaidInvoices.some(
@@ -992,80 +1006,39 @@ export function SupplyHousesTab({
 
   async function saveInvoice(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedSupplyHouseForDetail || !invoiceNumber.trim() || !invoiceDate) return
-    // v2.3503: the box holds a positive number and the KIND decides the sign, so a slipped minus
-    // key cannot invent a credit and a missing one cannot lose a real credit.
-    const problem = amountProblem(invoiceDocumentKind, invoiceAmount)
-    if (problem) {
-      setError(problem)
-      return
-    }
-    const amt = signedAmountForSave(invoiceDocumentKind, invoiceAmount)
-    if (amt == null) {
-      setError('Amount must be a number.')
-      return
-    }
+    if (!selectedSupplyHouseForDetail) return
     setSavingInvoice(true)
     setError(null)
-    // Per-property flag: forced off unless the invoice is allocated to exactly one job.
-    const effectiveOnJobAccount = invoiceOnJobAccount && invoiceSingleAllocatedJobId != null
-    const priorOnJobAccount = editingInvoice ? editingInvoice.on_job_account === true : false
-    const payload = {
-      supply_house_id: selectedSupplyHouseForDetail.id,
-      invoice_number: invoiceNumber.trim(),
-      invoice_date: invoiceDate,
-      due_date: invoiceDueDate.trim() || null,
-      amount: amt,
-      document_kind: invoiceDocumentKind,
-      link: invoiceLink.trim() || null,
-      is_paid: invoiceIsPaid,
-      // Only when the office typed a day that differs from what's stored — the trigger
-      // stamps now() on the flip to paid and nulls it on the flip back.
-      ...paidAtPayload(invoiceIsPaid, invoicePaidOn, editingInvoice?.paid_at),
-      purchase_order_number: invoicePurchaseOrderNumber.trim() || null,
-      // Sent only when it changes, so untouched saves keep working in the
-      // merge-to-db-push window before the column exists in prod.
-      ...(effectiveOnJobAccount !== priorOnJobAccount ? { on_job_account: effectiveOnJobAccount } : {}),
-      // v2.5035 · the credit's invoice, sent only when it changes (the same window rule as above).
-      ...creditsInvoicePatch(invoiceDocumentKind, invoiceCreditsInvoiceId, editingInvoice as { credits_invoice_id?: string | null } | null),
+    // The one write (punch list #179, v2.6088): the payload rules and the three writes live in supplyInvoiceWrite.ts,
+    // so a bill typed here and a bill filled from its PDF save through the same path.
+    const saved = await saveSupplyInvoice(
+      supabaseSupplyInvoiceDb,
+      {
+        supplyHouseId: selectedSupplyHouseForDetail.id,
+        kind: invoiceDocumentKind,
+        number: invoiceNumber,
+        dateYmd: invoiceDate,
+        dueDateYmd: invoiceDueDate,
+        amountTyped: invoiceAmount,
+        purchaseOrderNumber: invoicePurchaseOrderNumber,
+        link: invoiceLink,
+        isPaid: invoiceIsPaid,
+        paidOnYmd: invoicePaidOn,
+        onJobAccount: invoiceOnJobAccount,
+        allocations: invoiceJobAllocations,
+        creditsInvoiceId: invoiceCreditsInvoiceId,
+      },
+      editingInvoice,
+    )
+    if (!saved.ok) {
+      setError(saved.problem)
+      setSavingInvoice(false)
+      return
     }
-    let invoiceId: string | null = null
-    if (editingInvoice) {
-      const { error: err } = await supabase.from('supply_house_invoices').update(payload).eq('id', editingInvoice.id)
-      if (err) {
-        setError(err.message)
-        setSavingInvoice(false)
-        return
-      }
-      invoiceId = editingInvoice.id
-    } else {
-      const { data: inserted, error: err } = await supabase.from('supply_house_invoices').insert(payload).select('id').single()
-      if (err) {
-        setError(err.message)
-        setSavingInvoice(false)
-        return
-      }
-      invoiceId = (inserted as { id: string })?.id ?? null
-    }
-    if (invoiceId && invoiceJobAllocations.length > 0) {
-      await supabase.from('supply_house_invoice_job_allocations').delete().eq('invoice_id', invoiceId)
-      const toInsert = invoiceJobAllocations.filter((a) => a.job_id && Number(a.pct) > 0).map((a) => ({
-        invoice_id: invoiceId!,
-        job_id: a.job_id,
-        pct: Number(a.pct),
-      }))
-      if (toInsert.length > 0) {
-        const { error: allocErr } = await supabase.from('supply_house_invoice_job_allocations').insert(toInsert)
-        if (allocErr) setError(allocErr.message)
-      }
-    } else if (invoiceId && editingInvoice) {
-      await supabase.from('supply_house_invoice_job_allocations').delete().eq('invoice_id', invoiceId)
-    }
-    if (selectedSupplyHouseForDetail) {
-      await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
-      await loadSupplyHouseSummary()
-      closeInvoiceForm()
-    }
+    if (saved.allocationProblem) setError(saved.allocationProblem)
+    await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+    await loadSupplyHouseSummary()
+    closeInvoiceForm()
     setSavingInvoice(false)
   }
 
@@ -1894,7 +1867,7 @@ export function SupplyHousesTab({
           const credit = isSupplyCredit(inv.amount)
           const isOn = inv.on_job_account === true
           // PR 3: a still-current single-job row moves through the move modal, never a bare flag.
-          const movableRow = !isOn && isMovableAgingInvoice(inv, allocationsOf(inv.id).length, agingTodayYmd)
+          const movableRow = !isOn && isMovableAgingInvoice(inv, allocationsOf(inv.id).length, agingTodayYmd, agingMoveData.notNeeded.has(inv.id) ? 'not_needed' : null)
           const moveAsk = movableRow ? agingMoveData.asks[inv.id] ?? null : null
           const openMoveModal = () => {
             setAgingMoveModalFor(inv.id)

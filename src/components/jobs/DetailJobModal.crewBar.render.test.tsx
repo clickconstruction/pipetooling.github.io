@@ -174,7 +174,8 @@ describe('DetailJobModal · the crew bar on a phone', () => {
     await renderPlainWindow(true)
     const bar = await screen.findByRole('toolbar', { name: 'Job actions' })
     fireEvent.click(within(bar).getByRole('button', { name: 'Leave report' }))
-    const formOf = () => screen.getAllByRole('dialog').find((d) => within(d).queryByRole('button', { name: 'Save report' })) ?? null
+    // On a phone the form's Save names what it writes (v2.6083: Save · job 40%), so the form is the dialog that holds the camera input.
+    const formOf = () => screen.getAllByRole('dialog').find((d) => within(d).queryByTestId('report-camera-input')) ?? null
     await waitFor(() => expect(formOf()).not.toBeNull())
     expect(within(formOf()!).getByRole('heading', { name: '9001 Whitfield water heater' })).toBeTruthy()
   })

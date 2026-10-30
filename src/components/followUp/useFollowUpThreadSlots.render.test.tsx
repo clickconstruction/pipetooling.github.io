@@ -11,6 +11,7 @@ import type { Contact } from '../../lib/contacts/kernel'
 import type { FollowUpThreadIo, FollowUpThreadRows } from '../../lib/followUp/followUpThreadIo'
 import type { BidMoneyLine } from '../../lib/bids/bidMoneyLine'
 import type { ThreadMessage } from '../../lib/messages/thread'
+import { OFFICE_HOURS, type OfficeHours } from '../../lib/messages/hasRule'
 import { BACK_CLEARED_TOAST } from '../../lib/followUp/queue'
 import { owedStore } from '../../lib/followUp/owedStore'
 import { SMOKE_AUTH_USER_ID, renderWithProviders } from '../../test/renderSmokeMocks'
@@ -430,5 +431,40 @@ describe('Write down their word under their line (v2.5649)', () => {
     fireEvent.click(await within(screen.getByTestId('under')).findByRole('button', { name: 'Write down their word' }))
     expect(await screen.findByText('None of their jobs is yours to write on.')).toBeTruthy()
     expect(screen.queryByRole('dialog')).toBeNull()
+  })
+})
+
+/**
+ * Who is off (v2.6060, punch list #141 PR 4): the hook reads the team's Push me hours with the team and hands them to
+ * the header's pill. The hook reads the real clock, so the hours here are on a day that is never today, one hour long:
+ * off whenever the test runs, back inside the week.
+ */
+const notToday = (): OfficeHours => ({ ...OFFICE_HOURS, days: [(new Date().getDay() + 3) % 7], opens: '06:00', closes: '07:00', always: false })
+
+describe('useFollowUpThreadSlots: who is off (v2.6060)', () => {
+  beforeEach(() => {
+    open.contactId = 'greg'
+  })
+
+  it('the header’s pill says the holder is off until their hours open', async () => {
+    const loadPushHours = vi.fn(async () => new Map([['u-rosa', notToday()]]))
+    renderThread(fakeIo({ loadPushHours }))
+    const pill = await header().findByRole('button', { name: /^Rosa has this · off until / })
+    expect(pill.title).toMatch(/^Rosa has the replies and is off until .+\. The office hears at once\./)
+    expect(loadPushHours).toHaveBeenCalledWith([SMOKE_AUTH_USER_ID, 'u-rosa'])
+  })
+
+  it('with nobody holding it and the whole team off, the pill says the office is off', async () => {
+    const loadPushHours = vi.fn(async () => new Map([[SMOKE_AUTH_USER_ID, notToday()], ['u-rosa', notToday()]]))
+    renderThread(fakeIo({ loadPushHours }, rows({ has_user_id: null, has_since: null, has_how: null })))
+    expect(await header().findByRole('button', { name: /^Nobody has it · the office is off until / })).toBeTruthy()
+  })
+
+  it('an io without the read, or a read that fails, leaves the pill as it was', async () => {
+    renderThread(fakeIo())
+    expect(await header().findByRole('button', { name: 'Rosa has this' })).toBeTruthy()
+    cleanup()
+    renderThread(fakeIo({ loadPushHours: vi.fn(async () => Promise.reject(new Error('no'))) }))
+    expect(await header().findByRole('button', { name: 'Rosa has this' })).toBeTruthy()
   })
 })

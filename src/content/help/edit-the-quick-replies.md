@@ -2,7 +2,7 @@
 title: edit the quick replies
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: gc mode, messages, quick reply, quick replies, macro, canned reply, template, saved reply, shortcut, hotkey, edit, edit quick replies, add a line, change a line, remove, removed, bring it back, history, used by, mine, just for me, step
+keywords: gc mode, messages, quick reply, quick replies, macro, canned reply, template, saved reply, shortcut, hotkey, starter lines, edit, edit quick replies, add a line, change a line, remove, removed, bring it back, history, used by, mine, just for me, step
 where: /messages
 order: 118
 ---
@@ -47,6 +47,26 @@ A shortcut is one short word for a line, like **bill**. Type **/bill** in any re
 A word belongs to one team line. When another team line has it, the window says so before it saves. Your own lines may use a word that someone else's own line uses. A line with a shortcut shows it in the list, like **/bill**.
 
 To take a shortcut off, empty the field and press {{button:blue|Save}}.
+
+## The lines the app ships with
+
+The app ships with eleven customer lines, each with a shortcut. Type the shortcut in a reply box and press **Enter**. The line goes in with its blanks filled. You can change the words or the shortcut like any other line.
+
+| Shortcut | When to use it |
+|---|---|
+| **/gotit** | You cannot answer yet. The line says you will call back today. |
+| **/access** | Before the visit. The line asks about a gate code or a pet. |
+| **/photo** | You need to see the problem. The line asks for a photo. |
+| **/late** | The crew is running behind. The line gives the new window. |
+| **/back** | The next visit. The line gives the day and the time. |
+| **/bill** | They ask for the bill. The line carries the pay page. |
+| **/thanks** | They said yes to the work. |
+| **/paid** | Their payment came in. |
+| **/found** | The tech found the problem. This is the **What we found** step's line. |
+| **/estimate** | A day has passed since the estimate. This is the **Approved** step's line. |
+| **/remind** | The bill's pay-by day is here. This is the **Paid** step's line. |
+
+Three lines sit on a step. A step's line is also what the app sends for that step. The other eight sit on no step, so no automatic send changes.
 
 ## Add a line
 

@@ -1,0 +1,62 @@
+{
+  "house_name": "Ridgeway Supply",
+  "document_kind": "invoice",
+  "number": "S1183455",
+  "date": "2026-10-24",
+  "po_text": "OAKMONT DENTAL",
+  "account_ref": "CLICK PLUMBING",
+  "ship_to": "418 Cedar Bend Dr, Oakmont Dental",
+  "job_text": "Oakmont Dental",
+  "terms": "Net 30",
+  "references_number": "",
+  "lines": [
+    {
+      "description": "1/2\" Type L copper 20'",
+      "quantity": "20",
+      "unit_price": "31.40",
+      "extended": "628.00"
+    },
+    {
+      "description": "1/2\" copper 90 elbow",
+      "quantity": "50",
+      "unit_price": "1.12",
+      "extended": "56.00"
+    },
+    {
+      "description": "1/2\" copper tee",
+      "quantity": "30",
+      "unit_price": "1.86",
+      "extended": "55.80"
+    },
+    {
+      "description": "1/2\" copper coupling",
+      "quantity": "40",
+      "unit_price": "0.94",
+      "extended": "37.60"
+    },
+    {
+      "description": "1/2\" ball valve FIP",
+      "quantity": "6",
+      "unit_price": "24.50",
+      "extended": "147.00"
+    },
+    {
+      "description": "3\" PVC DWV pipe 10'",
+      "quantity": "8",
+      "unit_price": "21.75",
+      "extended": "174.00"
+    },
+    {
+      "description": "3\" PVC DWV 90 elbow",
+      "quantity": "10",
+      "unit_price": "5.46",
+      "extended": "54.60"
+    }
+  ],
+  "subtotal": "1153.00",
+  "tax": "95.10",
+  "total": "1284.10",
+  "page_count": 1,
+  "statement_numbers": [],
+  "notes": ""
+}
