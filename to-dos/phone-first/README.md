@@ -2,7 +2,7 @@
 name: "Phone first: the five screens a tech touches, with one thumb and a camera"
 number: 189
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run on a ZZ job is next
+status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day
 summary: >
   A tech's day on the phone is five screens: the Job Mode card with the day's press, the On my
   way sheet, the field report, My Schedule with its percent stepper, and the job window. Walked
@@ -14,11 +14,11 @@ summary: >
   customer's Drive folder as #164 decided, and clock out in one press. #163's waiting bar sits
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
-next: The camera's live run on a ZZ test job (the recipe in v2.6083's fragment): a shot lands in the bucket, the sweep files it in the job's Photos folder within five minutes, and the report card reads in Drive. PR 6 can start, since #164's checklist tables are live. PR 7 waits on #163's PR 3, the field report through the queue.
+next: PR 6 can start, since #164's checklist tables are live. PR 7 waits on #163's PR 3, the field report through the queue. One small fix from the camera's live run: Save names no job percent on a report type that files none.
 size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), seven built; one migration, the report photos table; left: PR 6 (S) and PR 7 (S)
-blocker: None for the camera, since the migration and photo-save are both live. PR 7 waits on #163's PR 3.
+blocker: None for PR 6. PR 7 waits on #163's PR 3.
 ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092
-opinion: every PR the owner's picks unlocked is built and live, with its migration and photo-save; run the camera on a ZZ job; PR 6 can start; PR 7 after #163's PR 3; stay a home screen web app until one of the three triggers fires
+opinion: every PR the owner's picks unlocked is built, live and run on a ZZ job; PR 6 can start; PR 7 after #163's PR 3; stay a home screen web app until one of the three triggers fires
 mockup: to-dos/phone-first/mockup.html
 ---
 
@@ -345,7 +345,7 @@ On the phone preset as the dev with Job Mode on, and on a real iPhone on a ZZ te
 | 2 · the press bar | v2.5905 | built 2026-10-26, live since the 08:45Z deploy on 2026-10-27 |
 | 4 · the job window's bar | v2.5910 | built 2026-10-26, live since the 03:39Z deploy on 2026-10-27 |
 | 5a · the percent by stage, with a precise number | v2.6076 | built 2026-10-29 on the picks of the review canvas, live since the 02:00Z deploy on 2026-10-30: `lib/reports/stagePct.ts`, `StagePctControl` on every stage row and alone on a one-stage job, the stepper as a sheet from the bottom with Not now and Save · job N%, Leave report's percent opening on the job's number (the follow-up below). No migration. |
-| 5b · the camera-first report | v2.6083 | built 2026-10-29, live since the 05:55Z deploy on 2026-10-30: the camera on Leave report for the field roles on a phone, the tiles, the stage chip and the camera on every stage row, the shrink in a worker at the office's size (Settings → Jobs & billing → Photos, Medium the default), the `report_photos` table and the `report-photos` bucket at 2 MB (`20261029220000_report_photos.sql`, pushed on 2026-10-30, in the types since #6497), `photo-save`'s third source (deployed as version 62 at 14:13Z on 2026-10-30, byte for byte main's), the photos on the report card, the guide *take photos for a report*. The live run into Drive is next. |
+| 5b · the camera-first report | v2.6083 | built 2026-10-29, live since the 05:55Z deploy on 2026-10-30: the camera on Leave report for the field roles on a phone, the tiles, the stage chip and the camera on every stage row, the shrink in a worker at the office's size (Settings → Jobs & billing → Photos, Medium the default), the `report_photos` table and the `report-photos` bucket at 2 MB (`20261029220000_report_photos.sql`, pushed on 2026-10-30, in the types since #6497), `photo-save`'s third source (deployed as version 62 at 14:13Z on 2026-10-30, byte for byte main's), the photos on the report card, the guide *take photos for a report*. The camera's live run into Drive passed on 2026-10-30, below. |
 | 3 · 44 px everywhere a tech presses | v2.6089 | built 2026-10-29, live since the 02:00Z deploy on 2026-10-30: `lib/phonePress.ts` holds the heights; the whole-job percent's five chips stand 44 px; the job window's activity pills and the ＋ Report chip stand 32 px on a phone; `phonePressTargets.render.test.tsx` holds every daily press at 375 px. |
 | the Leaving PR (decision 6) | v2.6091 | built 2026-10-29, live since the 00:10Z deploy on 2026-10-30: `leavingOpens` in `lib/jobs/jobWindowBar.ts`; the bridge's `registerOnMyWayOpener` / `requestOnMyWay`, which Job Mode's card answers with its sheet on the day's next block; the Clock In window at z 1020 beside Update Focus, above the job window. |
 | 8 · clock out in one press | v2.6092 | built 2026-10-29, live since the 04:57Z deploy on 2026-10-30: `lib/clock/clockOutNote.ts` writes the note from the day's reports; the review is called Clock out and fills it when it opens, only while the box still holds what it opened on; the card reloads after its own press through the bridge; the pinned row's Job Report button leaves Job Mode at every width. |
@@ -417,6 +417,28 @@ day for the run and taken off after.
   row on 1085 from 2026-10-20 went with them by mistake and was put back with its id and date.
   Left on 1088 as the first run left its own: the Leaving stamp note and the percent's thread note.
 
+**The camera's live run, 2026-10-30.** After the push and the redeploy, on the phone preset at
+375 px as the dev, on the ZZ Test job (1085, the one ZZ job with a Drive folder). Nothing else was
+put on the day.
+
+- **The form.** Leave Report in the job window's activity row opened the camera-first form and
+  clicked the back-camera input once (`capture="environment"`). The type fold's Note kept the
+  job's unset percent unset.
+- **The shot.** A generated 4032 × 3024 shot shrank in the worker from 2.1 MB to 263 KB at
+  1600 px. The tile read sent, under *goes to the job's Drive folder*, with the row and its
+  bucket copy in place.
+- **Save.** *Save · job 0% · 1 photo* filed the Note with *1 photo* on its Stage progress line
+  and the caption *ZZ camera live run: a test* on the photo. The job's percent and status did
+  not move.
+- **Drive.** The 15:00Z cron woke photo-save, version 62, which filed the shot in the job's Drive
+  folder at 15:00:11Z, wrote its Drive id and deleted the bucket copy. The report card's strip
+  read *Photos · 1 photo* and *in Drive · 263 KB*.
+- **Not sent.** The report email and the report push were stubbed in the page, so no one was
+  emailed or pushed about a test report. One subscription emails every report, and neither send
+  skips a test job.
+- **Undone.** The report, now in Recently deleted, and its photo row. The shot stays in the ZZ
+  Test job's Drive folder, since nothing here deletes a Drive file.
+
 ## The mock-up
 
 [`mockup.html`](./mockup.html), served at `/to-dos/phone-first/mockup.html`. Six pairs at 375 ×
@@ -439,6 +461,9 @@ street and number are made up. The desktop is out of scope.
 - **Rows no report holds.** A form closed by the app itself (not by Not now) leaves its
   `report_photos` rows and bucket objects with no `report_id`; the sweep never files them. A
   nightly sweep of rows older than a day, or the queue of #163 once the form rides it.
+- **Save on a report type with no percent.** A Note report's Save reads *Save · job 0% · 1 photo*,
+  though it files no percent and the job's stays unset. Save should drop the job's number when the
+  type has no percent field.
 - **The Job Report button in Job Mode.** Done in PR 8 (v2.6092): the pinned row's button leaves
   Job Mode at every width.
 - **The manual Clock In's typed plan.** Decision 5, answered 2026-10-29: it stays.
