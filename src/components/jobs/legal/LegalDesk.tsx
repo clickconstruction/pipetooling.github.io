@@ -50,8 +50,12 @@ import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
 import { jobOpenBalance } from '../../../lib/legal/legalPacket'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
-import { inHouseWords, offerAmountOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
+import { inHouseWords, isOfferEntry, offerAmountOf, offerMetaOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
+import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
+import { moneyBars } from '../../../lib/legal/moneyBars'
+import LegalMoneyBars from './LegalMoneyBars'
 import { confirmJobOwnerContract, setJobGcFromCustomer } from '../../../lib/legal/subJobIo'
+import type { LegalPaperNextDoor } from '../../../lib/legal/legalPaperNextDoor'
 import { setGcDoneWords } from '../../../lib/legal/suspectedSubJob'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
@@ -132,7 +136,8 @@ export type LegalDeskProps = {
   /** Only a dev changes the collections law firm (RLS on `legal_firms`); the firm window is read only for everyone else. Defaults to `canMarkReady`. */
   canEditFirm?: boolean
   onOpenContract: (job: JobWithDetails) => void
-  onOpenLienInstruments: (job: JobWithDetails) => void
+  /** Opens the job's Lien window; with a door (v2.6104, the Paper tab's next step), the Lien desk on the job or the window on a tab. */
+  onOpenLienInstruments: (job: JobWithDetails, door?: LegalPaperNextDoor) => void
   onOpenEditJob: (jobId: string) => void
   onOpenCallMode: () => void
   onOpenAccountsReceivable: () => void
@@ -934,6 +939,27 @@ export default function LegalDesk(props: LegalDeskProps) {
                     ))}
                   </div>
                 ) : null}
+                {packet && w && w.balance > 0.004 ? (
+                  // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer and the floor marked, what is left after the firm's cut.
+                  <LegalMoneyBars
+                    bars={moneyBars({
+                      bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
+                      retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
+                      retainageAdded: w.retainageAdded,
+                      balance: w.balance,
+                      claim: w.claim,
+                      contingencyPct: w.contingencyPct,
+                      fee: w.fee,
+                      filingCost: w.filingCost,
+                      net: w.net,
+                      offers: (matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []).filter((e) => isOfferEntry(e) && !isVoidedEntry(e)).map((e) => {
+                        const meta = offerMetaOf(e.meta)
+                        return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
+                      }),
+                      floor: settlementFloorOf(matter),
+                    })}
+                  />
+                ) : null}
 
                 {packet && packet.gaps.length > 0 ? (
                   <div style={{ margin: '12px 0 0', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)' }}>
@@ -981,7 +1007,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                               <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', fontSize: '0.82rem' }}>
                                 {answeredGroup ? pill('answered', 'ok') : pill(g.severity === 'stop' ? 'fix' : 'note', g.severity)}
                                 <span>
-                                  {answeredGroup ? <span style={MUTED}>{g.label}</span> : <><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></>}
+                                  {answeredGroup ? <span style={MUTED}>{g.label}</span> : g.chip ? <><span data-legal-gap-chip={g.key} title={`${g.label} — ${g.detail}`}>{pill(g.chip, g.severity)}</span> <span style={MUTED}>{g.brief ?? g.detail}</span></> : <><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></>}
                                   {answerLine}
                                   {answerSheetBlock}
                                 </span>

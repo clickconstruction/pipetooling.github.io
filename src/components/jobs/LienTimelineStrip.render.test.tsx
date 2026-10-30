@@ -31,6 +31,19 @@ const timeline = buildLienTimeline({
 })
 
 describe('LienTimelineStrip — Steps · Windows', () => {
+  it('the Legal desk’s scope opens on Windows and remembers its own choice apart from the Lien window’s (v2.6104)', () => {
+    setLienTimelineView('steps')
+    const { container, unmount } = render(<LienTimelineStrip timeline={timeline} layout="row" viewScope="desk" />)
+    expect(container.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('windows')
+    fireEvent.click(screen.getByRole('button', { name: 'Steps' }))
+    expect(container.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('steps')
+    unmount()
+    // The Lien window's strip still reads its own remembered view.
+    const { container: win } = render(<LienTimelineStrip timeline={timeline} layout="row" />)
+    expect(win.querySelector('[data-lien-timeline]')?.getAttribute('data-view')).toBe('steps')
+    setLienTimelineView('windows', 'desk')
+  })
+
   it('opens on Steps with the first-day line, then switches to Windows and remembers it', () => {
     setLienTimelineView('steps')
     const { container } = render(<LienTimelineStrip timeline={timeline} layout="row" />)
