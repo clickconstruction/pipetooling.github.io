@@ -79,7 +79,11 @@ export default function PunchList() {
   if (!allowed) return null
 
   return (
-    <div style={{ maxWidth: 1080, margin: '0 auto', padding: '0 var(--page-wrap-pad, 1rem) 4rem' }}>
+    // v2.6131: a flex item in Layout's column with auto side margins is sized by its content, so the page drew
+    // narrower than the screen when its lines were short and moved as each load landed (v2.6117, Job Parts
+    // Tally). Pin it to its container like `.pageWrap` (v2.1003); border-box is global, so the max width
+    // is already the outer width and stays.
+    <div style={{ maxWidth: 1080, margin: '0 auto', padding: '0 var(--page-wrap-pad, 1rem) 4rem', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       {/* The row grid stacks on a phone; inline styles cannot carry a media query. */}
       <style>{`
         .punch-row { display: grid; grid-template-columns: 6px 3.75rem minmax(0, 1fr) minmax(160px, 200px) minmax(220px, 260px); }
