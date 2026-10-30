@@ -46,6 +46,8 @@ export type LienDeskJob = {
   master_user_id: string | null
   /** 'YYYY-MM-DD' — the timeline's last-work fallback when the RPC's months are older (v2.3761). */
   last_work_date: string | null
+  /** 'YYYY-MM-DD' — the first approved clock day (v2.6061, migration 20261029190000); absent until the migration is on prod, when the jobs read falls back to the list without it. */
+  first_work_date?: string | null
   /** The day the job was created — the last-day line's fallback when there are no clock hours (v2.4676). */
   created_at?: string | null
   /** The lien clock (v2.3753): the day our contract on the job ended and how; null while open. */
@@ -64,7 +66,10 @@ export type LienDeskJob = {
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name), created_at'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name), created_at'
+
+/** The desk's columns with the first work day (v2.6061): read first, and the list above when the column is not on prod yet. */
+export const LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY = `${LIEN_DESK_JOB_COLUMNS}, first_work_date`
 
 
 /** The four lien-clock columns (v2.3753) on their own — the lien timeline book reads them beside its own job select; the desk and the GC run read them in LIEN_DESK_JOB_COLUMNS. */
@@ -207,13 +212,23 @@ export function useLienDeskData(
         const jobsRead: LienDeskJob[] = []
         for (const chunk of chunkIds(jobIdsRead)) {
           if (chunk.length === 0) continue
+          // The first work day (v2.6061) rides along once its migration is on prod; until then the columns without it, so the desk never goes dark on a client that landed first.
           const part = await withSupabaseRetry(
             () =>
               supabase
                 .from('jobs_ledger')
-                .select(LIEN_DESK_JOB_COLUMNS)
+                .select(LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY)
                 .in('id', chunk),
             'lien desk: jobs',
+          ).catch(() =>
+            withSupabaseRetry(
+              () =>
+                supabase
+                  .from('jobs_ledger')
+                  .select(LIEN_DESK_JOB_COLUMNS)
+                  .in('id', chunk),
+              'lien desk: jobs (without the first work day)',
+            ),
           )
           jobsRead.push(...((part ?? []) as LienDeskJob[]))
         }
