@@ -20,6 +20,7 @@ import { BankingMercuryUserReviewTab } from '../components/banking/BankingMercur
 import { BankingMercuryCategoryReviewTab } from '../components/banking/BankingMercuryCategoryReviewTab'
 import { BankingMercuryReconciliationTab } from '../components/banking/BankingMercuryReconciliationTab'
 import { BankingMercuryVisualsTab } from '../components/banking/BankingMercuryVisualsTab'
+import { BankingCostBatchesTab } from '../components/banking/BankingCostBatchesTab'
 import { MercuryBackfillModal } from '../components/banking/MercuryBackfillModal'
 import { MercuryImportCsvModal, type ImportCsvSubmitPayload, type ImportCsvResult } from '../components/banking/MercuryImportCsvModal'
 import { ManualAccountsModal } from '../components/banking/ManualAccountsModal'
@@ -86,7 +87,7 @@ const MERCURY_TRANSACTIONS_BANKING_LIST_LIMIT = 15000
 const ACCOUNTING_LABELED_PAGE_SIZE = 500
 
 type BankingProduct = 'mercury' | 'stripe'
-type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'card_review' | 'category_review' | 'reconciliation' | 'visuals'
+type MercuryBankingTab = 'ledger' | 'sorting' | 'drag_sort' | 'accounting' | 'card_review' | 'category_review' | 'reconciliation' | 'visuals' | 'cost_batches'
 /** Pre-v2.2899 `?tab=` key for Card Review (the tab was renamed in v2.1262 but its key was not). Read as an alias; never written. */
 const LEGACY_CARD_REVIEW_TAB_KEY = 'user_review'
 /** `?tab=` value → Mercury tab, with the legacy Card Review alias folded in. `null` when unknown. */
@@ -100,6 +101,7 @@ function mercuryTabFromParam(raw: string | null): MercuryBankingTab | null {
     case 'category_review':
     case 'reconciliation':
     case 'visuals':
+    case 'cost_batches':
       return raw
     case LEGACY_CARD_REVIEW_TAB_KEY:
       return 'card_review'
@@ -139,8 +141,8 @@ type BankingPageRole =
 function parseBankingView(params: URLSearchParams, role: BankingPageRole): BankingView {
   if (isStaffBankingRole(role)) {
     const parsed = mercuryTabFromParam(params.get('tab'))
-    // Ledger is dev-only; everything else the strip shows is fair game for staff.
-    const mercuryTab: MercuryBankingTab = parsed && parsed !== 'ledger' ? parsed : 'accounting'
+    // Ledger and Cost batches are dev-only; everything else the strip shows is fair game for staff.
+    const mercuryTab: MercuryBankingTab = parsed && parsed !== 'ledger' && parsed !== 'cost_batches' ? parsed : 'accounting'
     return { product: 'mercury', mercuryTab, stripeTab: 'invoices' }
   }
   if (role !== 'dev') {
@@ -715,6 +717,11 @@ export default function Banking() {
         if (options?.silent !== true) setLoading(false)
         return
       }
+      // Cost batches (dev-only) reads one job's rows and the batch tables itself — no master list.
+      if (bankingView.product === 'mercury' && bankingView.mercuryTab === 'cost_batches') {
+        if (options?.silent !== true) setLoading(false)
+        return
+      }
       return loadAllRows(options)
     },
     [bankingView.product, bankingView.mercuryTab, hideLabeledTransactions, loadAllRows, loadUnlabeledRows, loadLabeledFirstPage],
@@ -1060,7 +1067,8 @@ export default function Banking() {
     bankingView.product === 'mercury' &&
     bankingView.mercuryTab !== 'accounting' &&
     bankingView.mercuryTab !== 'card_review' &&
-    bankingView.mercuryTab !== 'visuals'
+    bankingView.mercuryTab !== 'visuals' &&
+    bankingView.mercuryTab !== 'cost_batches'
   useEffect(() => {
     if (!nicknamesModalOpen || nicknameFactsRowsComplete || !isDevBanking) {
       setNicknameExactCounts(null)
@@ -1558,6 +1566,18 @@ export default function Banking() {
                     >
                       Visuals
                     </button>
+                    {isDevBanking ? (
+                      <button
+                        type="button"
+                        role="tab"
+                        aria-selected={bankingView.mercuryTab === 'cost_batches'}
+                        id="banking-tab-cost-batches"
+                        onClick={() => setMercurySubTab('cost_batches')}
+                        style={pageTabStyle(bankingView.mercuryTab === 'cost_batches')}
+                      >
+                        Cost batches
+                      </button>
+                    ) : null}
                   </>
                 ) : (
                   <>
@@ -2011,6 +2031,12 @@ export default function Banking() {
       {bankingView.product === 'mercury' && bankingView.mercuryTab === 'visuals' && canAccessBanking ? (
         <div role="tabpanel" id="banking-panel-mercury-visuals" aria-labelledby="banking-tab-visuals">
           <BankingMercuryVisualsTab />
+        </div>
+      ) : null}
+
+      {bankingView.product === 'mercury' && bankingView.mercuryTab === 'cost_batches' && isDevBanking ? (
+        <div role="tabpanel" id="banking-panel-mercury-cost-batches" aria-labelledby="banking-tab-cost-batches">
+          <BankingCostBatchesTab />
         </div>
       ) : null}
 

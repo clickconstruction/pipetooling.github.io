@@ -25,6 +25,7 @@ import { useJobLienTimeline } from '../../hooks/useJobLienTimeline'
 import { jobOpenBalance, showJobHistoryLienTimeline } from '../../lib/jobs/jobHistoryLienTimeline'
 import { lienMonthLines } from '../../lib/jobs/lienMonthLines'
 import { JobWindowDocumentsTab } from './JobWindowDocumentsTab'
+import { JobWindowCostMovePanel } from './JobWindowCostMovePanel'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 
 /**
@@ -123,6 +124,10 @@ export function JobWindowModal({
   // open, Escape belongs to that window.
   const [documentsMounted, setDocumentsMounted] = useState(initialTab === 'documents')
   const [documentsEscBlocked, setDocumentsEscBlocked] = useState(false)
+  // Devs: the Costs tab's list of every cost row and its Move cost window (v2.6115) mount on first
+  // sight of the tab; while that window is open, Escape belongs to it.
+  const [costMoveMounted, setCostMoveMounted] = useState(initialTab === 'costs')
+  const [costMoveEscBlocked, setCostMoveEscBlocked] = useState(false)
   // The Job pane reloads when this bumps — form saves must never leave the
   // read view stale behind a tab switch.
   const [detailRefreshKey, setDetailRefreshKey] = useState(0)
@@ -282,6 +287,7 @@ export function JobWindowModal({
                 setTab(t)
                 if (t === 'history') setHistoryMounted(true)
                 if (t === 'documents') setDocumentsMounted(true)
+                if (t === 'costs') setCostMoveMounted(true)
               }}
               style={tabButtonStyle(tab === t)}
             >
@@ -379,8 +385,19 @@ export function JobWindowModal({
               registerRequestClose={(fn) => {
                 formCloseRef.current = fn
               }}
-              externalEscBlocked={detailEscBlocked || documentsEscBlocked}
+              externalEscBlocked={detailEscBlocked || documentsEscBlocked || costMoveEscBlocked}
             />
+            {/* Devs (v2.6115): under the Costs region, every cost row on the job by stream — bank, supply-house,
+                clock, Other — with ticks and Move N rows…, the Move cost window, and the batches that touched
+                the job with their Revert. The owner's shape of the tool: the job's own cost view, a click, a window. */}
+            {costMoveMounted && fullJob ? (
+              <div style={tab !== 'costs' ? { display: 'none' } : undefined}>
+                <JobWindowCostMovePanel
+                  job={{ id: fullJob.id, hcp_number: fullJob.hcp_number, click_number: fullJob.click_number, job_name: fullJob.job_name, job_address: fullJob.job_address, service_type_id: fullJob.service_type_id }}
+                  onOverlayOpenChange={setCostMoveEscBlocked}
+                />
+              </div>
+            ) : null}
           </div>
           {/* History pane (T5-05 / J31-adj3): the Projects day-grid for THIS job — every job, any status. */}
           {historyMounted ? (
