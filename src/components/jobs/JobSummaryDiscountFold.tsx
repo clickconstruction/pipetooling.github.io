@@ -3,7 +3,9 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import { jobSummaryDiscountLeakage, type DiscountEventInput, type DiscountLeakageLine, type DiscountLeakageRowInput } from '../../lib/jobs/jobSummaryDiscounts'
 
-const INK = '#0f7a52'
+/** The discount's words: green-700, light on the dark wash in dark mode (v2.6116); the bars keep the literal. */
+const INK = 'var(--text-green-700)'
+const INK_FILL = '#0f7a52'
 const money = (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
 const pct = (n: number | null) => (n == null ? '—' : `${n.toLocaleString('en-US', { minimumFractionDigits: 1, maximumFractionDigits: 1 })}%`)
 
@@ -111,7 +113,7 @@ function Table({ title, lines, shareHead }: { title: string; lines: DiscountLeak
             <td style={{ ...TD, ...R }}>{pct(l.sharePct)}</td>
             <td style={TD}>
               <div style={{ height: 6, background: 'var(--surface)', borderRadius: 3, overflow: 'hidden' }}>
-                <span style={{ display: 'block', height: '100%', width: `${max > 0 ? (l.givenUsd / max) * 100 : 0}%`, background: INK }} />
+                <span style={{ display: 'block', height: '100%', width: `${max > 0 ? (l.givenUsd / max) * 100 : 0}%`, background: INK_FILL }} />
               </div>
             </td>
           </tr>
