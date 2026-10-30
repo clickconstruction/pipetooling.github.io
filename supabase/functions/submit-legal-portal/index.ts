@@ -11,6 +11,7 @@ import { clientIpFromEdgeRequest } from '../_shared/clientIpFromEdgeRequest.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
 import { legalRecipientSendPatch } from '../_shared/legalNotifyLedger.ts'
 import { firmVoidProblem, voidIsRetry, isLegalClientId, LEGAL_ACTS_PER_MATTER_PER_HOUR, legalActDateProblem, legalPlanDateProblem, legalRateLimitMessage } from '../_shared/legalPortalActs.ts'
+import { counselReadDraftProblem, counselReadEntryBody, counselReadMetaForDb, counselReadMetaFromDraft, type CounselTries } from '../_shared/legalCounselRead.ts'
 import { firmStepDecision, isLegalFirmStep, LEGAL_FIRM_STEP_WORDS, legalMatterOnPortal } from '../_shared/legalStages.ts'
 import { shapeLegalFirmIntake } from '../_shared/legalFirmIntake.ts'
 
@@ -92,7 +93,7 @@ serve(async (req) => {
     const kind = str(body.kind, 40)
     const matterId = str(body.matterId, 64)
     const RECIPIENT_KINDS = ['recipient_add', 'recipient_rules', 'recipient_stop', 'recipient_resume', 'recipient_resend']
-    if (![...RECIPIENT_KINDS, 'intake', 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'plan', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
+    if (![...RECIPIENT_KINDS, 'intake', 'fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'plan', 'read', 'void'].includes(kind)) return jsonResponse({ error: 'Unknown act' }, 400)
 
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
     // The guess gate (v2.4756): wrong keys are counted by caller; ten in an hour and the caller is refused.
@@ -285,6 +286,18 @@ serve(async (req) => {
       }
     } else if (kind === 'question') {
       if (!note) return jsonResponse({ error: 'Type your question.' }, 400)
+    } else if (kind === 'read') {
+      // Punch list #218 PR 2: the firm's read of how the case tries — easy or hard, the costs to try it, the months to
+      // a judgment, why — saved as a note entry with meta.read, the same entry the office writes with legal_set_counsel_read.
+      const text = (v: unknown, max: number) => (typeof v === 'number' ? String(v) : str(v, max))
+      const draft = { tries: str(body.tries, 8) as CounselTries | '', why: note, costText: text(body.costToTry, 20), monthsText: text(body.months, 6) }
+      const problem = counselReadDraftProblem(draft)
+      if (problem) return jsonResponse({ error: problem }, 400)
+      const read = counselReadMetaFromDraft(draft)!
+      entryKind = 'note'
+      entryBody = counselReadEntryBody(read)
+      meta.read = counselReadMetaForDb(read)
+      notice = 'Recorded. The office reads it on Can we sue? and beside the paths.'
     } else if (kind === 'plan') {
       // v2.5800: what is planned, the day it is planned for, and the detail; the same caps legal_plan_add holds.
       if (!note) return jsonResponse({ error: 'Say what is planned.' }, 400)

@@ -52,6 +52,8 @@ vi.mock('./useBidBoardBudgetChips', () => ({
 }))
 // v2.5520: the CountTooling projects behind the board's bids are their own read; this test counts the job index's.
 vi.mock('./useBidCountSourcesByBid', () => ({ useBidCountSourcesByBid: () => new Map() }))
+// v2.6169: the plan sets behind the board's bids are their own read too.
+vi.mock('./useBidPlanSetsByBid', () => ({ useBidPlanSetsByBid: () => new Map() }))
 // The money strips (v2.5651) are the page's other one read; the lens's own smokes cover them.
 vi.mock('./useBidBoardMoneyStrips', () => ({
   useBidBoardMoneyStrips: () => ({ byBid: new Map(), lines: [], loaded: true, reload: () => {} }),
