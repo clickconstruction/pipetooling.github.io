@@ -34,7 +34,7 @@ export function VentTypes({ titleId }: FigureProps) {
       <Label x={160} y={12} size={8} bold color="currentColor">
         stack vent
       </Label>
-      <Label x={160} y={22} size={7.5}>
+      <Label x={208} y={12} size={7.5}>
         6 in above the roof
       </Label>
       <Label x={106} y={60} size={6.5}>

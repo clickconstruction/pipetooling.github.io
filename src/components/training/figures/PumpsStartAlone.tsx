@@ -50,7 +50,7 @@ export function PumpsStartAlone({ titleId }: FigureProps) {
         <Label x={144} y={72} anchor="end" size={6.5}>
           control box
         </Label>
-        <Label x={90} y={73} anchor="middle" size={6.5}>
+        <Label x={90} y={73} anchor="middle" size={6.5} color="var(--text-600)">
           tank
         </Label>
         <Label x={60} y={34} anchor="end" size={6.5}>
