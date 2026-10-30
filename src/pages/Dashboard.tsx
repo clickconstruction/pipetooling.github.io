@@ -1176,9 +1176,9 @@ export default function Dashboard() {
       <div>
         {/* renderModals={false}: the tail modals never mounted in this early return (their openers are inert in Job Mode) — preserved.
             hideBanners: notification banners live in the Job Mode Inbox tab instead (v2.917).
-            hideJobReport on a phone (punch list #189, PR 2): the row's Job Report button opened nothing here, and the
-            press bar's Leave report is the same door; the Tally square stays. `isMobile` is the same 640 px query. */}
-        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners hideJobReport={isMobile} />
+            hideJobReport (punch list #189, PR 2 on a phone, PR 8 at every width): the row's Job Report button opened
+            nothing here, since the report window is the card's own Leave Report; the Tally square stays. */}
+        <DashboardPinnedQuickRow {...pinnedQuickRowSharedProps} renderModals={false} hideBanners hideJobReport />
         {/* Visually-hidden clock mount: DashboardJobModeCard's Clock In / Start First Job actions
             run through the UpdateFocusOpenerBridge, whose opener/apply functions only exist while
             ClockInOutButton is mounted — without this, both card buttons silently no-op ("Update

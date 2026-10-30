@@ -32,6 +32,8 @@ import { bidDisplayName, formatBidValueShort, formatCompactCurrency } from '../.
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { bidBoardDueCellParts, bidBoardLastContactParts, bidBoardNoDueDateParts, bidBoardSentLabel, DUE_SOON_WINDOW_DAYS, UNSENT_NO_DUE_DATE_RED_AFTER_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { BID_BOARD_TOOLS_WRAP_MQ, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
@@ -320,6 +322,8 @@ export function BidsBidBoardTab({
   const [replyBookOpen, setReplyBookOpen] = useState(false)
   const replyBook = useBidReplyBook(authUser?.id)
   const narrowViewport = useNarrowViewport660()
+  // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.
+  const toolsRow = bidBoardToolsRowLayout(useMatchMedia(BID_BOARD_TOOLS_WRAP_MQ))
   const [sectionShowAll, setSectionShowAll] = useState<Record<CappedSectionKey, boolean>>({
     pending: false,
     lost: false,
@@ -1685,8 +1689,10 @@ export function BidsBidBoardTab({
     <div>
       {/* Board tools row: search grows, Archived + Reply book + Customer review sit to its right and never
           wrap off the line — the search input shrinks instead. On phones Reply book and Customer review
-          are their icons, which is what leaves the search its room. */}
-      <div style={{ display: 'flex', flexWrap: 'nowrap', gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
+          are their icons, which is what leaves the search its room. Under 366 px even that is too wide
+          (v2.6109, `bidBoardToolsRow.ts`): the row wraps, the search shares the first line with the
+          development filter and the press group takes the next line, kept to the right. */}
+      <div style={{ display: 'flex', flexWrap: toolsRow.rowWrap, gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
         <input
           type="text"
           placeholder={narrowViewport ? 'Search...' : 'Search (project name or GC/Builder)...'}
@@ -1694,7 +1700,7 @@ export function BidsBidBoardTab({
           onChange={(e) => setBidBoardSearchQuery(e.target.value)}
           /* height matches the Archived / Customer review buttons beside it
              (owner call, v2.1709) — the input's taller line box stuck out. */
-          style={{ flex: '1 1 auto', minWidth: 0, height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
+          style={{ flex: toolsRow.searchFlex, minWidth: 0, height: 36, padding: '0 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }}
         />
         {developmentOptions.length > 0 ? (
           <label
@@ -1729,7 +1735,7 @@ export function BidsBidBoardTab({
             </select>
           </label>
         ) : null}
-        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0 }}>
+        <div style={{ display: 'flex', gap: '0.5rem', flexShrink: 0, marginLeft: toolsRow.groupMarginLeft }}>
           <MarkedBidsToggle compact={narrowViewport} />
           <button
             type="button"
