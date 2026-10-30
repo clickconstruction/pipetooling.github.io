@@ -1199,7 +1199,7 @@
 <section class="shape" id="s2">
 <h2><span class="num">2</span>A figure as its parts</h2>
 <p class="rule"><b>A number with a caveat under it is a bar left undrawn.</b> <i>$612,400 + ? · so far, with 2 holes · about $1.42M with every trade in</i>, <i>RTB $18,400</i>, <i>Margin 31%</i> over five sentences, <i>Owed to you $3,500 · $2,400 queued · $1,100 later</i>: the parts are named in prose, so the reader does the arithmetic to see which part each caveat touches and whether they add up. The shape is one bar with the parts as segments on one scale, or the sum drawn as its rows with each row a door to where it is kept.</p>
-<p class="lives">Lives in the app already as the Legal desk's money bars (<code>moneyBars.ts</code>, v2.6105), the Pipeline row's paid · billed bar, the G702's scheduled-value and this-period columns, and the Workbench's <i>Where the profit lives</i>. 29 of the 131 places take it; eight are drawn here.</p>
+<p class="lives">Lives in the app already as the Legal desk's money bars (<code>moneyBars.ts</code>, v2.6105), the Pipeline row's paid · billed bar, the G702's scheduled-value and this-period columns, and the Workbench's <i>Where the profit lives</i>. 24 of the 131 places take it; every one is drawn here, the eight that matter most first, then the other sixteen, then three on the pages they land on.</p>
 
 <section class="pair" id="bids-2" data-id="bids-2">
   <h3><span class="id">bids-2</span>The Workbench's margin: two bars on one scale, each caveat a mark on the part it touches</h3>
@@ -1229,7 +1229,39 @@
     <p class="gain">The stamped <i>went out at 31%</i> is a ghost tick, so repricing shows as the live margin moving away from it.</p>
     <p class="rule">Reuses the Legal desk's two bars on one scale with marks; the drift's hatch and the strip's coverage chip stay. bids-13's <i>3 fixtures</i> chip opens Labor flashed on those rows.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first draw put the words inside the segments, where <i>2 holes ≈ $180k</i> and <i>GC + markups</i> clipped, and the price column kept three caveat lines. Taunya: <i>this has potential but needs to be redone where all the text fits and it's easier to follow.</i> Redrawn: the bar holds only the numbers, a legend under it names each part and its trades, the price column says two short lines, and the heading says the section's two figures in words instead of a fourth bar. The whole board is drawn below under <i>on the page</i>.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The <i>$2,100 no cost</i> stretch was too narrow and <i>today +$624</i> clipped; the empty stretch is a little wider than true scale and names its figure in the marks row. Taunya: <i>I would like to see the before and after on this.</i> A session is building it behind a switch with a dev-only side-by-side on the live Workbench; the whole tab below is its spec.</p></div>
+  <div class="pick" data-for="bids-2"></div>
+</section>
+
+<section class="pair" id="gc-messages-5" data-id="gc-messages-5">
+  <h3><span class="id">gc-messages-5</span>The Project Board's price: quoted, our budget, the hole's estimate and the markups as one bar</h3>
+  <div class="meta"><span class="chip">GC mode · Project Board</span><span class="chip warn">weight H</span><span class="chip">size M · no migration</span><span class="chip dim">patterns 2 · 12</span><span class="door">Door: <code>/gc</code> → the Project Board → Bidding, each row's price and the heading's sum</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <p class="k">Bidding · 3 · $977,823 priced so far</p>
+      <div class="line"><div><div class="t">Elm Street Clinic</div><div class="s">bid due Sat Oct 24 · Ridgeway Builders</div></div><div style="text-align:right"><b>$612,400 + ?</b><div class="small muted">so far, with 2 holes</div><div class="small muted">about $1.42M with every trade in</div></div></div>
+      <p class="note">In the price card a trade row reads <i>Acme Concrete leaves out rebar supply. No cost set yet, so it counts as $0.</i> The heading adds the rows as <i>priced</i> while a hole counts $0 and a trade carrying our budget counts as a quote.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape · redrawn on the owner's note</div><div class="frame">
+      <div class="gchead"><div class="t">Bidding to the customer · 3</div><div class="b">$977,823 quoted so far · about $1.9M with every trade in</div></div>
+      <div class="gcrow" style="border:0;padding:8px 0 0">
+        <div class="due"><div class="ring">6 d</div><div class="w">days left</div></div>
+        <div><div class="name">Elm Street Clinic</div><div class="cust">Ridgeway Builders · drawn by Sample Architects</div></div>
+        <div class="price">$612,400<span class="s">quoted · we stand behind it</span><span class="s">about $1.42M with every trade in</span></div>
+        <div class="full">
+          <div class="bar"><div class="seg billed" style="width:43%">$612k</div><div class="seg hatch" style="width:29%">$410k</div><div class="seg dashed" style="width:13%">≈ $180k</div><div class="seg grey" style="width:15%">$218k</div></div>
+          <div class="barlegend"><span><i style="background:var(--blue-300)"></i><b>quoted</b> · 5 trades</span><span><i style="background:repeating-linear-gradient(135deg,var(--bg-200) 0 3px,var(--bg-muted) 3px 6px)"></i><b>our budget</b> · 2 trades carrying ours</span><span><i style="border-style:dashed;background:transparent"></i><b>holes</b> · 2 trades, estimated from the lowest good quote</span><span><i style="background:var(--bg-200)"></i><b>GC 8% + fee</b></span></div>
+        </div>
+      </div>
+      <p class="note">The heading's line says the two figures in words; the row's bar draws them. Every segment opens the price card on those trades. The money team sees the whole bar; the others see the quoted part and <i>trades so far</i>.</p>
+    </div></div>
+  </div>
+  <div class="say">
+    <p class="gain">The figure we stand behind is the solid part, and the three guesses that make up the rest are each their own texture with their own door, so <i>about $1.42M</i> is a length, not a caveat.</p>
+    <p class="gain">The heading says the quoted sum and the with-every-trade sum in words, so <i>priced so far</i> stops counting a hole as $0 and a budget as a quote.</p>
+    <p class="rule">Reuses the Legal desk's money bars and the price card's own rows.</p>
+  </div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's notes</div><p>The first draw's words did not fit inside the segments; redrawn with the numbers in the bar and a legend under it, and the whole board follows below. Taunya then marked it Build and wrote: <i>I would need to see it based on data from bids we've been sending out… otherwise I'm worried it's not going to be as informative as we make it look. Would you be able to help me see what real data would look like on here?</i> A session is building it behind a switch with a side-by-side on the live board, and its brief asks for an honest read of what the real bidding rows make of the bar, and what the bar should show when every trade is quoted.</p></div>
   <div class="pick" data-for="gc-messages-5"></div>
 </section>
 
@@ -1262,7 +1294,7 @@
     <p class="gain">A payment left unlinked shows up as a paid segment that is too short before the bill goes out, not after.</p>
     <p class="rule">Reuses the Pipeline row's paid · billed money bar and a sum drawn as its rows.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first draw put the words inside the segments, where <i>2 holes ≈ $180k</i> and <i>GC + markups</i> clipped, and the price column kept three caveat lines. Taunya: <i>this has potential but needs to be redone where all the text fits and it's easier to follow.</i> Redrawn: the bar holds only the numbers, a legend under it names each part and its trades, the price column says two short lines, and the heading says the section's two figures in words instead of a fourth bar. The whole board is drawn below under <i>on the page</i>.</p></div><p>Held as drawn. Asked whether the rows under the bar repeat it: no, the rows carry the doors and the two open bills by day, which a bar cannot.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>Held as drawn. Taunya: <i>I really like the idea of this. Could I see this as a live prototype where you show me the before and after.</i> A session is building it behind a switch with a dev-only side-by-side on Bill Customer.</p></div><p>Held as drawn. Asked whether the rows under the bar repeat it: no, the rows carry the doors and the two open bills by day, which a bar cannot.</p></div>
   <div class="pick" data-for="jobs-pipeline-4"></div>
 </section>
 
@@ -1297,7 +1329,7 @@
     <p class="gain">The three pending sessions land as amber dots on the rows they belong to, so the controller sees whose cash due is short by them.</p>
     <p class="rule">Reuses the money bars and the approvals queue's <i>salary — counts as flat hours</i> chip. The pending read gains the person's id to place the dots.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first draw put the words inside the segments, where <i>2 holes ≈ $180k</i> and <i>GC + markups</i> clipped, and the price column kept three caveat lines. Taunya: <i>this has potential but needs to be redone where all the text fits and it's easier to follow.</i> Redrawn: the bar holds only the numbers, a legend under it names each part and its trades, the price column says two short lines, and the heading says the section's two figures in words instead of a fourth bar. The whole board is drawn below under <i>on the page</i>.</p></div><p>The period bar's third segment lost its words; shortened to <i>no report $3,030</i>. Asked whether a bar per row is too much ink on a payroll table: the bars are 20 px and replace a Status column that said less.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The period bar's third segment lost its words; shortened. Taunya marked it Build and wrote: <i>I really like the idea of this. Could you show me a live prototype where I can see the before and after side by side.</i> A session is building it behind a switch with a dev-only side-by-side on Draft Payroll; the whole window below is its spec.</p></div><p>The period bar's third segment lost its words; shortened to <i>no report $3,030</i>. Asked whether a bar per row is too much ink on a payroll table: the bars are 20 px and replace a Status column that said less.</p></div>
   <div class="pick" data-for="people-docs-1"></div>
 </section>
 
@@ -1332,7 +1364,7 @@
     <p class="gain">A stranger checking the bill against the contract finds the contract line, with its count, and this bill's share of it, instead of a quantity of one at a price nobody set.</p>
     <p class="rule">Reuses the G702/703's scheduled-value and this-period columns, which the trade portal's pay application already draws. The paper, the email's PDF and the Stripe description change together.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first draw put the words inside the segments, where <i>2 holes ≈ $180k</i> and <i>GC + markups</i> clipped, and the price column kept three caveat lines. Taunya: <i>this has potential but needs to be redone where all the text fits and it's easier to follow.</i> Redrawn: the bar holds only the numbers, a legend under it names each part and its trades, the price column says two short lines, and the heading says the section's two figures in words instead of a fourth bar. The whole board is drawn below under <i>on the page</i>.</p></div><p>Held as drawn. Checked that the three contract lines foot (24 × $1,180, 18 × $854, 2 × $9,820) and that the shares sum to the bill.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>Held as drawn; the three contract lines foot and the shares sum to the bill. Taunya: <i>Could I please see this side-by-side of the before and after as a live prototype?</i> A session is building it on the bill preview and the portal's sample bill with a side-by-side, off for real customers.</p></div><p>Held as drawn. Checked that the three contract lines foot (24 × $1,180, 18 × $854, 2 × $9,820) and that the shares sum to the bill.</p></div>
   <div class="pick" data-for="outside-1"></div>
 </section>
 
@@ -1360,7 +1392,7 @@
     <p class="gain"><i>34% built</i> becomes <i>34% paid</i>, which is what it was.</p>
     <p class="rule">Reuses the money bars and their hatch for a figure not on record. The portal's payload already carries billed, paid and next.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first draw put the words inside the segments, where <i>2 holes ≈ $180k</i> and <i>GC + markups</i> clipped, and the price column kept three caveat lines. Taunya: <i>this has potential but needs to be redone where all the text fits and it's easier to follow.</i> Redrawn: the bar holds only the numbers, a legend under it names each part and its trades, the price column says two short lines, and the heading says the section's two figures in words instead of a fourth bar. The whole board is drawn below under <i>on the page</i>.</p></div><p><i>next ≈ $38,000</i> clipped in its segment; now <i>$38k</i>. Asked whether <i>our guess</i> belongs on a customer's page: yes, in those words, since the alternative is a figure they will hold us to.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p><i>next ≈ $38,000</i> clipped; now <i>$38k</i>. Taunya: <i>Could I please see this side-by-side of the before and after as a live prototype? You may need to use test data.</i> A session is building it on the portal's sample owner page (<code>/portal?t=sample-owner</code>) with a side-by-side, off for real customers.</p></div><p><i>next ≈ $38,000</i> clipped in its segment; now <i>$38k</i>. Asked whether <i>our guess</i> belongs on a customer's page: yes, in those words, since the alternative is a figure they will hold us to.</p></div>
   <div class="pick" data-for="outside-2"></div>
 </section>
 
@@ -1390,7 +1422,7 @@
     <p class="gain">A chip names its own day whenever that day is not the next run.</p>
     <p class="rule">Reuses a sum drawn as its rows; a bar of segments per job is optional on this screen.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first draw put the words inside the segments, where <i>2 holes ≈ $180k</i> and <i>GC + markups</i> clipped, and the price column kept three caveat lines. Taunya: <i>this has potential but needs to be redone where all the text fits and it's easier to follow.</i> Redrawn: the bar holds only the numbers, a legend under it names each part and its trades, the price column says two short lines, and the heading says the section's two figures in words instead of a fourth bar. The whole board is drawn below under <i>on the page</i>.</p></div><p>Held as drawn. Asked whether the bands should be a bar: on a phone the rows are the bar.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>Held as drawn. Taunya: <i>Could I please see this side-by-side of the before and after as a live prototype? You may need to use test data.</i> A session is building it on the sub portal's sample page with a side-by-side, and shipping the one-kernel fix for the bands and chips if it is small and clear.</p></div><p>Held as drawn. Asked whether the bands should be a bar: on a phone the rows are the bar.</p></div>
   <div class="pick" data-for="field-2"></div>
 </section>
 
@@ -1420,10 +1452,399 @@
     <p class="gain">A charge a stranger is asked to pay is a sum they can check row by row, with the day, the days late and the arithmetic on each.</p>
     <p class="rule">Reuses the GC statement email's table layout; the facts are already in the interest kernel. The portal's bill shows the same rows.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first draw put the words inside the segments, where <i>2 holes ≈ $180k</i> and <i>GC + markups</i> clipped, and the price column kept three caveat lines. Taunya: <i>this has potential but needs to be redone where all the text fits and it's easier to follow.</i> Redrawn: the bar holds only the numbers, a legend under it names each part and its trades, the price column says two short lines, and the heading says the section's two figures in words instead of a fourth bar. The whole board is drawn below under <i>on the page</i>.</p></div><p>Held as drawn. The arithmetic column reads × 32⁄30 so the customer can redo it; checked that $101 + $184 = $285.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's pick</div><p>Held as drawn; $101 + $184 = $285. Taunya marked it <b>Build</b>; a session is building it, with the <code>gc-customer-email</code> deploy named for her.</p></div><p>Held as drawn. The arithmetic column reads × 32⁄30 so the customer can redo it; checked that $101 + $184 = $285.</p></div>
   <div class="pick" data-for="outside-5"></div>
 </section>
 
+<p class="rule" style="margin-top:34px"><b>The other sixteen places that take the bar.</b> Drawn on the owner's ask of 2026-10-30 after her pass on the eight above; the same bar and the same sum-as-rows, in the words of each screen.</p>
+
+<section class="pair" id="jobs-pipeline-5" data-id="jobs-pipeline-5">
+  <h3><span class="id">jobs-pipeline-5</span>The Pipeline's <i>Ready to ask for</i> tile and the Capable list, as bars whose parts press through</h3>
+  <div class="meta"><span class="chip">Pipeline · overview</span><span class="chip">weight M</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 2 · 8 · 12</span><span class="door">Door: <code>/jobs?tab=stages</code> → the overview's first tile; the Working header's Capable of Being Billed → the list</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now phone">
+      <div class="tile"><div class="q">Ready to ask for</div><div class="a">$1,250</div><div class="why">$0 capable in Working · $1,250 in Ready to Bill</div></div>
+      <p class="note">The list opens on a paragraph: <i>Jobs in Working with value not yet paid, billed, or queued to bill. Sorted by amount. A job split into stages reads its stage plan instead: the stages that passed inspection with nothing unbilled ahead of them…</i> The Working figure mixes two rules (% done × bid less paid and asked for; or the stage plan), and only the paragraph says so.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame phone">
+      <div class="tile"><div class="q">Ready to ask for · $19,650</div>
+        <div class="bar thin"><div class="seg open" style="width:94%">capable in Working $18,400</div><div class="seg this" style="width:6%"></div></div>
+        <div class="barcap"><span>capable in Working · 3 jobs ›</span><span>Ready to Bill $1,250 · 1 ›</span></div>
+      </div>
+      <div class="k">The Capable list</div>
+      <div class="line"><div><div class="t">1321 Cedar Bend, building C <span class="chip dim">by stage plan</span></div><div class="bar thin"><div class="seg paid" style="width:30%">paid</div><div class="seg billed" style="width:25%">billed</div><div class="seg hatch" style="width:13%">queued</div><div class="seg open" style="width:32%">capable $12,400</div></div><div class="barcap"><span>value created $38,600 · stages 1 and 2 passed</span></div></div></div>
+      <div class="line"><div><div class="t">1318 Sample Retail Shell rough-in</div><div class="bar thin"><div class="seg paid" style="width:40%">paid</div><div class="seg open" style="width:60%">capable $6,000</div></div><div class="barcap"><span>value created $10,000 · 40% × $25,000</span></div></div></div>
+      <p class="note">Each row's frame is the value created; what was paid, billed and queued fills it, and the capable piece is what is left. A plan row says so with a chip and lists its stages on hover. The paragraph becomes the legend's hover.</p>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The headline number is two parts a press opens, and every Capable row shows its own making, so a plan job and a formula job no longer look alike until an amber line.</p><p class="rule">Reuses the money bars and the row's own <code>stagesMoneyBar</code>.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn, after one segment's word was given room. Asked whether the tile needs a bar when it is two numbers: yes, because the Working part is the one with two rules behind it, and a press on it is the door the paragraph was standing in for.</p></div>
+  <div class="pick" data-for="jobs-pipeline-5"></div>
+</section>
+
+<section class="pair" id="jobs-pipeline-7" data-id="jobs-pipeline-7">
+  <h3><span class="id">jobs-pipeline-7</span><i>Get contracts signed</i> as one bar of the live jobs' dollars, covered and not</h3>
+  <div class="meta"><span class="chip">Pipeline · Money opportunities</span><span class="chip">weight M</span><span class="chip">size XS · no migration</span><span class="chip dim">patterns 4 · 8</span><span class="door">Door: <code>/jobs?tab=stages</code> → the overview's first opportunity card</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <p class="lead">✍ Get contracts signed</p>
+      <p><b>$319,325</b> of work on 4 live jobs without an agreement</p>
+      <p class="small">0 of 4 live jobs have an agreement on file (accepted estimates and bid-room signatures count).</p>
+      <p class="small muted">Tap a stage to see its gaps. Counting every dollar</p>
+      <div class="tags"><span class="chip">1 waiting</span><span class="chip">1 working</span><span class="chip">1 ready to bill</span><span class="chip">1 billed</span><span class="btn sm primary">Start the sweep →</span></div>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <p class="lead">✍ Get contracts signed <span class="chip dim">every dollar</span></p>
+      <div class="bar"><div class="seg paid" style="width:38%">covered $196k</div><div class="seg amber" style="width:19%">$86k</div><div class="seg amber" style="width:22%">$104k</div><div class="seg amber" style="width:13%">$64k</div><div class="seg amber" style="width:8%">$65k</div></div>
+      <div class="barcap"><span><b>$319,325</b> on 4 live jobs with no agreement</span><span>of $515,000 live</span></div>
+      <div class="tags"><span class="chip warn press">waiting <span class="n">1</span></span><span class="chip warn press">working <span class="n">1</span></span><span class="chip warn press">ready to bill <span class="n">1</span></span><span class="chip warn press">billed <span class="n">1</span></span><span class="btn sm primary">Start the sweep →</span></div>
+      <div class="hover">An agreement is an accepted estimate, a bid-room signature or a signed contract on file.</div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The count is said once, as the amber part of one bar split by stage, and the stage chips that already filter keep their job; the rule and the floor become a hover and a chip.</p><p class="rule">Reuses count chips that filter and a money bar.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn. Asked whether splitting the amber by stage repeats the chips: the chips filter, the bar sizes; they say different things.</p></div>
+  <div class="pick" data-for="jobs-pipeline-7"></div>
+</section>
+
+<section class="pair" id="jobs-money-7" data-id="jobs-money-7">
+  <h3><span class="id">jobs-money-7</span>Job Summary's overhead pool as one bar: charged, off the list, nobody to charge, in flight</h3>
+  <div class="meta"><span class="chip">Job Summary · Overhead</span><span class="chip">weight M</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 2 · 3 · 8</span><span class="door">Door: <code>/jobs?tab=job-summary</code> → Overhead Day-share → the chips under the tiles</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <div class="tile"><div class="q">Overhead charged</div><div class="a">$41,380</div><div class="why">day-share · 22% of gross</div></div>
+      <div class="tags" style="margin-top:8px"><span class="chip">$6,210 of overhead had nobody to charge on 9 days — shown, not charged</span><span class="chip">$2,940 of overhead is in flight — spreads past today, lands as days arrive</span><span class="chip">$1,105 of overhead landed on 3 jobs this list leaves out (HCP # floor) — charged, not shown</span><span class="chip stop">⚠ overhead does not reconcile to the pool — tell a dev</span></div>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <div class="k">The window's pool · $52,100 from People → Overhead</div>
+      <div class="bar"><div class="seg billed" style="width:79%">charged to these jobs $41,380</div><div class="seg grey" style="width:2%"></div><div class="seg hatch" style="width:12%">$6,210</div><div class="seg dashed" style="width:6%">$2,940</div><div class="seg red" style="width:1%"></div></div>
+      <div class="barlegend"><span><i style="background:var(--blue-300)"></i><b>charged to these jobs</b> · 22% of gross</span><span><i style="background:var(--bg-200)"></i><b>on jobs off the list</b> · $1,105 · 3 jobs under the HCP # floor ↗ lower the floor</span><span><i style="background:repeating-linear-gradient(135deg,var(--bg-200) 0 3px,var(--bg-muted) 3px 6px)"></i><b>nobody to charge</b> · $6,210 · 9 days ↗ the days</span><span><i style="border-style:dashed;background:transparent"></i><b>in flight</b> · $2,940 · lands as days arrive</span><span><i style="background:var(--red-300)"></i><b>short of the pool</b> · $465 ↗ tell a dev</span></div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">One sum, its parts side by side on one bar that ends at the pool, so the reader sees they add up and how big each is; a gap at the end is the reconciliation failure, with its amount.</p><p class="rule">Reuses the money bars with words that fall to hover when narrow, and the Days view for the days.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Two segments lost their words at scale; they keep the number and the legend keeps the words. Asked whether the reconciliation gap should be a segment or a chip: a segment, since the point is that it is money the pool holds and nothing charged.</p></div>
+  <div class="pick" data-for="jobs-money-7"></div>
+</section>
+
+<section class="pair" id="jobs-money-9" data-id="jobs-money-9">
+  <h3><span class="id">jobs-money-9</span>Crew P&amp;L's <i>Billed (gross)</i> as a slice of a known whole, the sub's hours hatched</h3>
+  <div class="meta"><span class="chip">Crew P&amp;L</span><span class="chip">weight M</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 8 · 12 · 2</span><span class="door">Door: <code>/jobs?tab=teams-summary</code> → a person's row → its per-job lines, and the paragraph under the table</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <p class="small">Org-wide sub rate (applies everywhere) $/hr <span class="inp">50</span></p>
+      <div class="line"><div><div class="t">Bo Plumber</div><div class="s">≈ $24,300 billed · $9,120 labor · $1,040 vehicle · $14,140 profit · $81/h <span class="chip dim">≈ estimated</span></div><div class="s" style="padding-left:14px">J1318 Sample Retail Shell · 31.5 h · $945 · $7,420</div></div></div>
+      <p class="note">Then ten sentences of footnote: <i>Billed (gross) is the job's gross total bill — not cash collected … Billing credit is hours-weighted: clocked hours for crew, and for sub sheets their cost ÷ the Sub $/hr rate ("equivalent hours" — always ≈ …)</i>. The $50 is still the default.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <p class="small">Org-wide sub rate $/hr <span class="inp">50</span> <span class="src guess">a default, never calibrated</span></p>
+      <div class="line"><div><div class="t">Bo Plumber <span class="muted small">≈ $24,300 billed · $14,140 profit · $81/h</span></div>
+        <div class="s" style="padding-left:14px;margin-top:4px">J1318 Sample Retail Shell · 31.5 h · <b>$7,420</b> of the job's $18,550</div>
+        <div class="bar thin" style="margin-left:14px"><div class="seg billed" style="width:40%">Bo 31.5 h · $7,420</div><div class="seg open" style="width:28%">Hal 22 h</div><div class="seg hatch" style="width:32%">sub ≈ 25 h · $1,250 ÷ $50</div></div>
+        <div class="barlegend" style="margin-left:14px"><span>the job's bill split by everyone's hours · this person's slice lit · the sub's hatched as cost ÷ the rate</span></div>
+      </div></div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The per-job figure is visibly a slice of the job's bill, the sub's share wears its arithmetic, and the rate box says it is a default; the footnote shrinks to the legend.</p><p class="rule">Reuses the money bar segments and the ≈ hatch from the Budget chip.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn. Asked whether the rate box's mark is enough: it is the one place the $50 is typed, so the mark sits where the fix is.</p></div>
+  <div class="pick" data-for="jobs-money-9"></div>
+</section>
+
+<section class="pair" id="jobs-money-11" data-id="jobs-money-11">
+  <h3><span class="id">jobs-money-11</span>Moneyfill's close-week header: out and in as two bars by queue, chips that scroll</h3>
+  <div class="meta"><span class="chip">Moneyfill</span><span class="chip">weight M</span><span class="chip">size XS · no migration</span><span class="chip dim">patterns 2 · 3</span><span class="door">Door: <code>/moneyfill</code> → Close out: Week of Oct 20</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <p class="lead">Close out: Week of Oct 20 <span class="muted small">‹ ›</span> <span style="float:right" class="small">5 of 8 queues at zero · $9,415 still unattributed</span></p>
+      <div class="gauge"><div class="f" style="width:62%"></div></div>
+      <div class="tags" style="margin-top:10px"><span class="chip dim">Card charges $2,140</span><span class="chip dim">Time w/o job 0</span><span class="chip dim">Pending approval 3</span><span class="chip dim">Deposits $6,050</span><span class="chip dim">Supply invoices $1,225</span><span class="chip dim">No % report 2</span></div>
+      <p class="note">The <i>unattributed</i> figure adds money in (deposits not applied) to money out (card charges, supply invoices) and wages, so it measures nothing on its own; the chips are spans; the bar counts queues, not dollars.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <p class="lead">Close out: Week of Oct 20 <span class="muted small">‹ ›</span></p>
+      <div class="k">Out · $3,365 not yet on a job</div>
+      <div class="bar thin"><div class="seg red" style="width:64%">card charges $2,140</div><div class="seg amber" style="width:36%">supply invoices $1,225</div></div>
+      <div class="k">In · $6,050 not yet applied</div>
+      <div class="bar thin"><div class="seg paid" style="width:100%">deposits $6,050 · 2</div></div>
+      <div class="tags"><span class="chip press">card charges <span class="n">$2,140</span></span><span class="chip press">supply invoices <span class="n">$1,225</span></span><span class="chip press">deposits <span class="n">$6,050</span></span><span class="chip press">pending approval <span class="n">3</span></span><span class="chip press">no % report <span class="n">2</span></span><span class="chip ok">time w/o job · 0</span></div>
+      <div class="barcap"><span>attributed <b>$41,200</b> of the week's $50,600 · 81%</span><span>5 of 8 queues at zero</span></div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">Money out and money in are two bars that never add to each other, each split by queue; every chip scrolls to its section; the progress is dollars attributed, which is what the weekly report's confidence rests on.</p><p class="rule">Reuses Quickfill's station counts and the money bars.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn. Asked whether <i>time w/o job</i> at zero belongs on a bar: no, a zero is a chip in the good tone.</p></div>
+  <div class="pick" data-for="jobs-money-11"></div>
+</section>
+
+<section class="pair" id="jobs-money-15" data-id="jobs-money-15">
+  <h3><span class="id">jobs-money-15</span>Money in's <i>Still expected</i> as a thin bar of its kinds, the pace guess hatched</h3>
+  <div class="meta"><span class="chip">Dashboard · Money in</span><span class="chip">weight L–M</span><span class="chip">size XS · no migration</span><span class="chip dim">patterns 2 · 12</span><span class="door">Door: <code>/dashboard</code> → Financials → the Money in bar, closed</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <div class="tags"><span class="chip ok">✓ Came in $18.4K · 6</span><span class="chip">Still expected $42K · 9</span><span class="chip">Last week still out $7.5K · 2</span><span class="chip stop">1 RETURNED</span></div>
+      <p class="note"><i>Expected</i> adds four kinds of row, sent claims, <i>their word</i>, a pace guess from the payer's history, and checks in the drawer, into one figure on the line people see without opening the bar. Opened, each chip is tagged.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <div class="tags"><span class="chip ok">✓ Came in $18.4K · 6</span><span class="chip stop">1 returned</span></div>
+      <div class="k">Still expected · $42K · 9</div>
+      <div class="bar thin"><div class="seg paid" style="width:14%">drawer $6K</div><div class="seg billed" style="width:43%">sent claims $18K · 4</div><div class="seg open" style="width:21%">their word $9K · 2</div><div class="seg hatch-amber" style="width:22%">pace · a guess $9K</div></div>
+      <div class="barcap"><span>a press on a part opens the bar on that kind</span><span>last week still out $7.5K · 2</span></div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">A check in the drawer, a promise and a guess stop adding into one figure on the closed line; the guess is hatched where it sits.</p><p class="rule">Reuses the bar's own kind tags and the <i>guessed</i> mark.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn.</p></div>
+  <div class="pick" data-for="jobs-money-15"></div>
+</section>
+
+<section class="pair" id="gc-messages-8" data-id="gc-messages-8">
+  <h3><span class="id">gc-messages-8</span>The last 7 days' <i>Answered within an hour</i> as its turns, and the estimates as a funnel</h3>
+  <div class="meta"><span class="chip">Messages · The last 7 days</span><span class="chip">weight M</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 1 · 3 · 12</span><span class="door">Door: <code>/messages</code> → 7 days → The last 7 days</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <div class="tiles"><div class="tile"><div class="q">Answered within an hour</div><div class="a">64%</div><div class="why">9 of 14 · ↑ from 50% last week</div></div><div class="tile"><div class="q">Estimates</div><div class="a">6 sent · 4 opened · 1 accepted</div><div class="why">3 opened and quiet</div></div></div>
+      <p class="small muted">Each number opens its rows.</p>
+      <p class="note">64% is made of 14 turns the screen never draws, and its press opens today's <i>Needs a reply</i>, a different set; the funnel is counts in a sentence and opens Waiting on them, not the six estimates.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <div class="tile"><div class="q">Answered within an hour · 9 of 14 · 64%</div>
+        <div class="rows">
+          <div class="r"><span>Kim Park · Tue 8:52 PM</span><span><div class="gauge" style="width:140px;display:inline-block;margin:0 0 0 8px;vertical-align:middle"><div class="f red" style="width:100%"></div><div class="mk ghost" style="left:25%"></div></div> <span class="small muted">not answered · 2 d</span></span></div>
+          <div class="r"><span>Hillcrest Builders · Thu 4:10 PM</span><span><div class="gauge" style="width:140px;display:inline-block;margin:0 0 0 8px;vertical-align:middle"><div class="f red" style="width:60%"></div><div class="mk ghost" style="left:25%"></div></div> <span class="small muted">2 h 24 m</span></span></div>
+          <div class="r"><span>Dana · Fri 2:14 PM</span><span><div class="gauge" style="width:140px;display:inline-block;margin:0 0 0 8px;vertical-align:middle"><div class="f" style="width:6%"></div><div class="mk ghost" style="left:25%"></div></div> <span class="small muted">6 m</span></span></div>
+          <div class="r sub"><span>… 11 more, worst first · the mark is one hour</span><span></span></div>
+        </div>
+      </div>
+      <div class="tile" style="margin-top:8px"><div class="q">Estimates this week</div>
+        <div class="bar thin"><div class="seg billed" style="width:100%">sent 6</div></div>
+        <div class="bar thin"><div class="seg open" style="width:67%">opened 4</div><div class="seg rest" style="width:33%"></div></div>
+        <div class="bar thin"><div class="seg paid" style="width:17%">accepted 1</div><div class="seg hatch" style="width:50%">opened, quiet 3</div><div class="seg rest" style="width:33%"></div></div>
+        <div class="barcap"><span>each bar opens those estimates</span></div>
+      </div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The score opens to the fourteen turns it is made of, each a bar against the hour, worst first, each a door to the thread at that line; the funnel is three bars whose parts open the estimates they count.</p><p class="rule">Reuses Went out's rows and the money bars' stacked bar; the turns and the funnel are already computed in the client.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn. Asked whether fourteen rows of turns is too long for the week strip: the worst three stand open and the rest fold, which is the order the office needs anyway.</p></div>
+  <div class="pick" data-for="gc-messages-8"></div>
+</section>
+
+<section class="pair" id="office-9" data-id="office-9">
+  <h3><span class="id">office-9</span>Needs you's Field capacity: three weeks as bars against the 70% line</h3>
+  <div class="meta"><span class="chip">Dashboard · Needs you</span><span class="chip">weight M</span><span class="chip">size XS · no migration</span><span class="chip dim">patterns 2 · 3</span><span class="door">Door: <code>/dashboard</code> → Needs you → the Capacity line → Open Capacity</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <div class="line"><div><div class="t">Field capacity has run under 70% three weeks running</div><div class="s">58% · 63% · 61% for the weeks of Oct 11, Oct 18 and Oct 25 — 1,020 of 1,680 available field hours, against a field roster of 7. Either the board is short of work for the crew or hours are not being clocked; …</div></div><div><b>61%</b> <span class="btn sm">Open Capacity</span></div></div>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <div class="line"><div><div class="t">Field capacity under 70% three weeks running</div>
+        <div class="gr" style="grid-template-columns:70px minmax(0,1fr) auto"><div class="n">Oct 11</div><div class="gauge"><div class="f" style="width:58%"></div><div class="mk red" style="left:70%"><span>70%</span></div></div><div class="v">58% · 330 of 560 h</div></div>
+        <div class="gr" style="grid-template-columns:70px minmax(0,1fr) auto"><div class="n">Oct 18</div><div class="gauge"><div class="f" style="width:63%"></div><div class="mk red" style="left:70%"></div></div><div class="v">63% · 353 h</div></div>
+        <div class="gr" style="grid-template-columns:70px minmax(0,1fr) auto"><div class="n">Oct 25</div><div class="gauge"><div class="f" style="width:61%"></div><div class="mk red" style="left:70%"></div></div><div class="v">61% · 337 h</div></div>
+        <div class="tags" style="margin-top:14px"><span class="chip dim">roster of 7 · 560 h a week</span></div>
+      </div><div><span class="btn sm">Open Capacity</span></div></div>
+      <p class="note">When the roster could not be read, the chip reads <i>who clocked in · the fallback</i>.</p>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">Three short bars against a dashed 70% say how far under each week was and which way it is heading; the basis is a chip, not a clause.</p><p class="rule">Reuses the Capacity view's own week bars.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn.</p></div>
+  <div class="pick" data-for="office-9"></div>
+</section>
+
+<section class="pair" id="field-6" data-id="field-6">
+  <h3><span class="id">field-6</span>The sub's <i>What you've been paid</i> and each card's Agreed · Paid · Open as one bar in three parts</h3>
+  <div class="meta"><span class="chip">The sub's portal</span><span class="chip">weight M</span><span class="chip">size S–M · a sub-portal deploy</span><span class="chip dim">patterns 2 · 1 · 12</span><span class="door">Door: the sub's portal → under the open jobs → What you've been paid; each job card's three figures</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now phone">
+      <div class="rows"><div class="r"><span>Earned with Click to date</span><span class="amt">$48,200</span></div><div class="r"><span>Paid to date</span><span class="amt">$44,700</span></div><div class="r sum"><span>Balance owed to you</span><span class="amt">$3,500</span></div></div>
+      <div class="card"><div class="h">1318 Sample Retail Shell</div><div class="small">Agreed $6,000 · Paid $5,100 · Open $900</div></div>
+      <p class="note">The totals sum every sheet the sub ever had while the page sends only the open sheets and 90 days of payments; <i>open</i> is floored per sheet so Earned − Paid ≠ Balance once any sheet is overpaid; the card's Paid includes a $300 back-charge; a sheet with no items takes Agreed = paid + backcharges, unmarked.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame phone">
+      <div class="card"><div class="h">1318 Sample Retail Shell <span class="muted small">agreed $6,000</span></div>
+        <div class="bar"><div class="seg paid" style="width:76%">paid $4,800</div><div class="seg red" style="width:5%"></div><div class="seg open" style="width:19%">open $900</div></div>
+        <div class="barlegend"><span><i style="background:var(--green-200)"></i>paid</span><span><i style="background:var(--red-300)"></i>taken back $300 · the chipped tile</span><span><i style="background:var(--blue-200)"></i>open</span></div></div>
+      <div class="card"><div class="h">1321 Cedar Bend, building C <span class="muted small">agreed $4,400 <span class="src guess">from payments · no price on file</span></span></div>
+        <div class="bar"><div class="seg paid" style="width:100%">paid $4,400</div></div></div>
+      <div class="rows"><div class="r"><span>These 4 open jobs · agreed</span><span class="amt">$17,900</span></div><div class="r minus"><span>paid</span><span class="amt">$14,100</span></div><div class="r minus"><span>taken back</span><span class="amt">$300</span></div><div class="r sum"><span>owed to you</span><span class="amt">$3,500</span></div></div>
+      <div class="fold"><span class="k" style="margin:0">Settled jobs · 9 ▾</span> <span class="small muted">each with its own rows, so <i>to date</i> is the sum of what you can open</span></div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">Each card is a bar whose parts sum to Agreed, a deduction is red and not <i>paid</i>, a fallback Agreed says where it came from, and the totals are scoped to the jobs the page draws with the settled ones a fold away.</p><p class="rule">Reuses the signed-in Dashboard's <i>Your money</i> card and the money bars; the sub-portal function sends the settled rows.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>The open segment's word clipped at 15%; widened. Asked whether a sub needs the settled fold at all: yes, since <i>to date</i> without it is the same unreadable total.</p></div>
+  <div class="pick" data-for="field-6"></div>
+</section>
+
+<section class="pair" id="people-docs-10" data-id="people-docs-10">
+  <h3><span class="id">people-docs-10</span>A pay send split across reports, as one bar of its parts behind a <i>1 of 2</i> chip</h3>
+  <div class="meta"><span class="chip">People · Payroll · Payments</span><span class="chip">weight M</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 5 · 9</span><span class="door">Door: <code>/people?tab=pay_stubs</code> → Payments; a pay report's View; People → Offsets</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <table class="t"><thead><tr><th>Paid on</th><th>Person</th><th>Method</th><th class="amt">Amount</th><th>Memo</th></tr></thead><tbody>
+        <tr><td>Oct 24</td><td>Nico Sample</td><td>Apple Pay</td><td class="amt">$743.42</td><td>Apple Pay "Nico" · 1 of 2 from $1,06…</td></tr>
+        <tr><td>Oct 24</td><td>Nico Sample</td><td>Apple Pay</td><td class="amt">$323.81</td><td>Apple Pay "Nico" · 2 of 2 from $1,06…</td></tr>
+      </tbody></table>
+      <p class="small">Offsets: Advance $176.77 · Apple Pay "Nico" · $176.77 of $1,250.00 ahead</p>
+      <p class="note">One send's split across weeks and an advance is said in memo text, cut at 40 characters, with no door from one part to its siblings or to the send.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <div class="tags"><span class="chip dim">By week paid</span><span class="chip dim">By person</span><span class="chip">By send</span></div>
+      <table class="t"><thead><tr><th>Paid on</th><th>Person</th><th>Method</th><th class="amt">Amount</th><th>Of</th></tr></thead><tbody>
+        <tr><td>Oct 24</td><td>Nico Sample</td><td>Apple Pay</td><td class="amt">$743.42</td><td><span class="chip press">1 of 2 · $1,067.23</span></td></tr>
+        <tr><td>Oct 24</td><td>Nico Sample</td><td>Apple Pay</td><td class="amt">$323.81</td><td><span class="chip press">2 of 2 · $1,067.23</span></td></tr>
+      </tbody></table>
+      <div class="fold"><div class="k">The send · Apple Pay "Nico" · Oct 24 · $1,244.00</div>
+        <div class="bar thin"><div class="seg paid" style="width:56%">week of Oct 12 · $743.42</div><div class="seg billed" style="width:26%">week of Oct 19 · $323.81</div><div class="seg hatch" style="width:18%">advance $176.77</div></div>
+        <div class="barcap"><span>source id · mercury 8f3a…</span><span>the advance is $176.77 of $1,250 ahead</span></div></div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">A part names its send and the send opens as one bar of its parts, each report's week and the advance hatched; a <i>By send</i> band stands beside the two the page has.</p><p class="rule">Reuses <code>payRunPaymentBands.ts</code> and the money bars; the parts are grouped by their source already.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn. The <i>By send</i> band is the one new press; the chip on each part is its door.</p></div>
+  <div class="pick" data-for="people-docs-10"></div>
+</section>
+
+<section class="pair" id="people-docs-11" data-id="people-docs-11">
+  <h3><span class="id">people-docs-11</span>Partnerships' balance bridge as one bar across zero</h3>
+  <div class="meta"><span class="chip">Partnerships</span><span class="chip">weight M</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 2 · 8</span><span class="door">Door: <code>/partnerships</code> → a partner → Ledger or Timeline</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <p class="lead">we owe Dale $967.60</p>
+      <p class="small">posted we owe Dale $967.60 · −$1,975.73 not yet on a statement (2) → Dale owes us $1,008.13</p>
+      <p class="note">A balance with its parts in a sentence that crosses zero; the sign convention lives in a tooltip, and the guide spends a section on how three tabs show three numbers that fit as <i>posted + attaching = ledger</i>.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <div class="k">Dale · the balance, across zero</div>
+      <div style="position:relative;display:grid;gap:6px;padding:4px 0">
+        <div style="position:absolute;left:50%;top:0;bottom:0;border-left:2px solid var(--text-strong);z-index:1"></div>
+        <div class="gr" style="grid-template-columns:150px minmax(0,1fr)"><div class="n">Posted</div><div style="position:relative;height:18px"><div style="position:absolute;left:50%;width:24%;top:0;bottom:0;background:var(--green-200);border:1px solid var(--text-green-700);border-radius:0 4px 4px 0;font-size:11px;font-weight:700;color:var(--text-green-700);display:flex;align-items:center;padding-left:6px;white-space:nowrap">we owe Dale $968</div></div></div>
+        <div class="gr" style="grid-template-columns:150px minmax(0,1fr)"><div class="n">Attaching · 2 charges ↗</div><div style="position:relative;height:18px"><div style="position:absolute;right:50%;width:49%;top:0;bottom:0;background:repeating-linear-gradient(135deg,var(--bg-200) 0 4px,transparent 4px 8px);border:1px dashed var(--border-strong);border-radius:4px 0 0 4px;font-size:11px;font-weight:700;color:var(--text-700);display:flex;align-items:center;justify-content:flex-end;padding-right:6px;white-space:nowrap">−$1,976 not yet on a statement</div></div></div>
+        <div class="gr" style="grid-template-columns:150px minmax(0,1fr)"><div class="n">The ledger</div><div style="position:relative;height:18px"><div style="position:absolute;right:50%;width:25%;top:0;bottom:0;background:var(--blue-300);border-radius:4px 0 0 4px;font-size:11px;font-weight:700;color:#fff;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;white-space:nowrap">Dale owes us $1,008</div></div></div>
+      </div>
+      <div class="barcap" style="padding-left:150px"><span>◀ Dale owes us</span><span>zero</span><span>we owe Dale ▶</span></div>
+      <p class="note">The same three rows on the Ledger and Timeline tabs; the hatched row is a door to its two charges.</p>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The posted balance is a solid bar to the right of zero and the two pending charges a hatched step across it to the left, so <i>we owe</i> turning into <i>owes us</i> is seen, not computed.</p><p class="rule">Reuses the money bars (#214 PR 2).</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>The first render put the balance on a single track with four labels, and three of them overprinted. Redrawn as three rows across one zero line, posted to the right, the attaching charges to the left, the ledger's answer under them; nothing overlaps and the sign needs no tooltip.</p></div>
+  <div class="pick" data-for="people-docs-11"></div>
+</section>
+
+<section class="pair" id="people-docs-16" data-id="people-docs-16">
+  <h3><span class="id">people-docs-16</span>Job History's <i>Costs on this day</i> as a bar with the uncounted kinds as stubs</h3>
+  <div class="meta"><span class="chip">Projects · Job History</span><span class="chip">weight L</span><span class="chip">size XS for the marks · M to count the missing kinds</span><span class="chip dim">patterns 2 · 12</span><span class="door">Door: <code>/projects?tab=job-history</code> → a job's day cell</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now phone">
+      <div class="k">Costs on this day</div>
+      <div class="rows"><div class="r"><span>Team labor ›</span><span class="amt">$612.40</span></div><div class="r"><span>Card charges ›</span><span class="amt">$148.22</span></div><div class="r"><span>Supply invoices ›</span><span class="amt">$0.00</span></div><div class="r sum"><span>Total</span><span class="amt">$760.62</span></div></div>
+      <p class="note">The total leaves out sub labor, tally parts and materials without a word, and prices past labor at today's wage.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame phone">
+      <div class="k">Costs on this day · $760.62 counted</div>
+      <div class="bar thin"><div class="seg labor" style="width:80%">team labor $612</div><div class="seg red" style="width:20%">cards $148</div></div>
+      <div class="rows"><div class="r"><span>Team labor › <span class="src guess">at today's wage</span></span><span class="amt">$612.40</span></div><div class="r"><span>Card charges ›</span><span class="amt">$148.22</span></div><div class="r"><span>Supply invoices ›</span><span class="amt">$0.00</span></div><div class="r sub"><span>sub labor · not counted here</span><span class="amt">—</span></div><div class="r sub"><span>tally parts · not counted here</span><span class="amt">—</span></div><div class="r sum"><span>Counted</span><span class="amt">$760.62</span></div></div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The total says what it counts and names what it leaves out, and the labor row says its wage is today's.</p><p class="rule">Reuses the money bars and the Overhead day panel's tabs.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn.</p></div>
+  <div class="pick" data-for="people-docs-16"></div>
+</section>
+
+<section class="pair" id="outside-3" data-id="outside-3">
+  <h3><span class="id">outside-3</span>The trade portal's pay door: the statement of work as a bar with the ask marked, and the month to the day they are paid</h3>
+  <div class="meta"><span class="chip">The trade partner's portal</span><span class="chip warn">weight H</span><span class="chip">size M · no migration expected</span><span class="chip dim">patterns 1 · 2 · 7 · 10</span><span class="door">Door: <code>/t/…</code> → a job they are on → the pay door under the lines</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now phone">
+      <p>Send pay application 2 by Thu Nov 19. It goes on our bill of Nov 25.</p>
+      <p>You can ask for <b>$2,624</b> now. Most of the pay application is filled in for you.</p>
+      <p><span class="btn sm primary">Fill out pay application 2</span></p>
+      <p class="small">Draw 1 · $13,122 · paid<br>Paid so far $13,122 · held $1,458 · left to bill $34,020</p>
+      <p class="note"><i>$2,624</i> is 60% − 50% of the rough-in line less 10% held, made where the sub cannot see it; the chain they care about (cut-off → our bill → the customer pays us → we pay you) stops after the second link.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame phone">
+      <p class="lead">Your statement of work · $48,600</p>
+      <div class="bar"><div class="seg paid" style="width:27%">paid $13,122</div><div class="seg hatch" style="width:3%"></div><div class="seg this" style="width:5.4%">ask</div><div class="seg rest" style="width:64.6%">left to bill $34,020</div></div>
+      <div class="barlegend"><span><i style="background:var(--green-200)"></i>paid</span><span><i style="background:repeating-linear-gradient(135deg,var(--bg-200) 0 3px,var(--bg-muted) 3px 6px)"></i>held 10% · $1,458</span><span><i style="background:var(--blue)"></i>ask now · $2,624 · rough-in 50% → 60%, less the tenth held</span></div>
+      <div class="track short" style="margin-top:14px">
+        <div class="ax"></div>
+        <div class="today" style="left:4%"></div>
+        <div class="tk diam" style="left:40%"></div><div class="lab down" style="left:40%"><b>your cut-off</b><span class="m">Thu Nov 19</span></div>
+        <div class="tk done" style="left:55%"></div><div class="lab up" style="left:55%"><b>our bill</b><span class="m">Nov 25</span></div>
+        <div class="tk guess" style="left:80%"></div><div class="lab down" style="left:80%"><b>customer's due</b><span class="m">Dec 10 · 15 d</span></div>
+        <div class="tk word" style="left:95%"></div><div class="lab up left" style="left:96%"><b>you are paid</b><span class="m">Dec 12</span></div>
+      </div>
+      <p style="margin-top:16px"><span class="btn sm primary">Fill out pay application 2 · $2,624</span></p>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The ask is a segment on the sub's own statement of work, its making one line of legend, and the four days between their cut-off and their money are a strip they can read against today.</p><p class="rule">Reuses the money bars and the strip of days; the pay window already shows the making line by line.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>The press sat on the track's lower labels; room added. Asked whether the <i>ask</i> segment, a twentieth of the bar, reads: its legend line carries the figure and the making, and the segment's job is to show where in the statement it falls.</p></div>
+  <div class="pick" data-for="outside-3"></div>
+</section>
+
+<section class="pair" id="outside-6" data-id="outside-6">
+  <h3><span class="id">outside-6</span>The bid room's total with an add-on taken, as its rows and a button that names both</h3>
+  <div class="meta"><span class="chip">Bid room</span><span class="chip">weight M</span><span class="chip">size XS · client only</span><span class="chip dim">pattern 2</span><span class="door">Door: the GC's link, <code>/bid-room?t=…</code>, with Alternate 2 ticked</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now phone">
+      <div class="rows"><div class="r"><span>To Plans <span class="chip dim">proposed</span></span><span class="amt">$56,343.00</span></div><div class="r"><span>☑ + Alternate 2 — Clubhouse restrooms</span><span class="amt">+ $4,850.00</span></div><div class="r sum"><span>Total — To Plans</span><span class="amt">$61,193.00</span></div></div>
+      <p><span class="btn sm primary">Approve "To Plans" — $61,193.00</span></p>
+      <p class="small muted">Your signature … applies to the option selected above — To Plans.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame phone">
+      <div class="rows"><div class="r"><span>To Plans</span><span class="amt">$56,343.00</span></div><div class="r"><span>☑ Alternate 2 — Clubhouse restrooms</span><span class="amt">$4,850.00</span></div><div class="r sum"><span>Total · To Plans + Alternate 2</span><span class="amt">$61,193.00</span></div></div>
+      <p><span class="btn sm primary">Approve To Plans + Alternate 2 — $61,193.00</span></p>
+      <p class="small muted">Your signature applies to To Plans with Alternate 2, $61,193.00.</p>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">A GC who read <i>To Plans $56,343</i> signs a button that says what they are signing.</p><p class="rule">Reuses the estimate accept page's <code>approveLabel</code> (<i>Approve "…" + 2 add-ons — $5,740.00</i>).</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn.</p></div>
+  <div class="pick" data-for="outside-6"></div>
+</section>
+
+<section class="pair" id="outside-8" data-id="outside-8">
+  <h3><span class="id">outside-8</span>The GC customer's Schedule: <i>work done</i> as one bar of the stages' shares, the move as a ghost</h3>
+  <div class="meta"><span class="chip">The GC customer's portal · the Friday report</span><span class="chip">weight M</span><span class="chip">size M · no migration</span><span class="chip dim">patterns 1 · 4 · 10 · 12</span><span class="door">Door: <code>/portal?t=…</code> → Schedule; Settings → What customers see → the Friday report</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <div class="tiles"><div class="tile"><div class="q">We finish</div><div class="a">Wed Jan 6</div><div class="why">your contract says Jan 8</div></div><div class="tile"><div class="q">Work done</div><div class="a">38%</div><div class="why">we planned 36% by today</div></div><div class="tile"><div class="q">Next for you</div><div class="a">Dried in</div><div class="why">Wed Nov 18</div></div></div>
+      <p class="small">Foundations 100% ▬ &nbsp; Slab 100% ▬ &nbsp; Structure 40% ▬▭ &nbsp; Dry-in 0% &nbsp; Rough-in 0% &nbsp; Finishes 0%</p>
+      <p class="small">We finish two days before the day in your contract. What changed this week: Structure is 2 days later than planned, because of the weather. The finish holds.</p>
+      <p class="note"><i>38%</i> cannot be read off rows of 100 · 100 · 40 · 0 · 0 · 0 because the dollar weights are hidden; the finish is said twice; the move is told in two boxes with two day counts and drawn on neither bar.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <div class="k">Work done · 38% · planned 36%</div>
+      <div class="bar"><div class="seg paid" style="width:12%">Foundations</div><div class="seg paid" style="width:14%">Slab</div><div class="seg" style="width:25%;background:linear-gradient(90deg,var(--blue-300) 40%,var(--bg-subtle) 40%);color:var(--text-strong)">Structure · 40%</div><div class="seg rest" style="width:18%">Dry-in</div><div class="seg rest" style="width:16%">Rough-in</div><div class="seg rest" style="width:15%">Finishes</div></div>
+      <div class="marks" style="height:22px"><div class="mark" style="left:36%">planned 36%</div></div>
+      <div class="barlegend"><span>each stage as wide as its share of the work, filled to its done percent</span></div>
+      <div class="wins labelled" style="margin-top:12px">
+        <div class="wrow"><div class="wl">Structure</div><div class="wax"><div class="wbar ghost" style="left:30%;width:22%">planned</div><div class="wbar solid" style="left:34%;width:22%">Oct 20 – Nov 7</div><div class="wtoday" style="left:46%"><span>today</span></div></div></div>
+        <div class="wrow"><div class="wl">Dry-in</div><div class="wax"><div class="wbar later" style="left:58%;width:20%">Nov 10 – 24</div><div class="wtoday" style="left:46%"></div></div></div>
+        <div class="wrow"><div class="wl">Finish</div><div class="wax"><div class="wtick word" style="left:94%"></div><div class="wtick diam" style="left:97%"></div><div class="wtoday" style="left:46%"></div><div class="lab r" style="left:98%">ours Jan 6 · contract Jan 8</div></div></div>
+      </div>
+      <div class="tags"><span class="chip warn">Structure · 2 days later than planned · weather · the finish holds</span></div>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The 38% is the filled area of a bar whose stages are as wide as their share, with the plan as a tick; the move keeps its ghost on the Gantt and the contract's finish is a diamond beside ours, so the two sentences go. The emails draw the same bar as a table.</p><p class="rule">Reuses the Project Board's stage strip and the strip of days; the shares come from the server, never the dollars.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>The structure stage was drawn as two segments with a muddled label, and the reason chip sat on the moved bar; the stage is now one segment filled to its 40%, and the reason is a line under the rows. Asked whether the customer should see shares at all: shares, never dollars, is already the page's rule, and a bar of shares is the only honest way to draw <i>38% done</i>.</p></div>
+  <div class="pick" data-for="outside-8"></div>
+</section>
+
+<section class="pair" id="outside-10" data-id="outside-10">
+  <h3><span class="id">outside-10</span>The pay application and the certified bill emails, as the G702's four rows</h3>
+  <div class="meta"><span class="chip">The GC customer's emails</span><span class="chip">weight M</span><span class="chip">size S · a function deploy</span><span class="chip dim">patterns 2 · 9</span><span class="door">Door: <code>/gc</code> → a project → Bill the customer → Send pay application / Record the certificate; Settings → What customers see → General contractor</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <p>Pay application 3 for Sample Retail Shell asks for $48,600. It bills the work done through Oct 25, less the 10% you hold and the bills before it.</p>
+      <p class="muted">…</p>
+      <p>Sample Architects certified pay application 3 for Sample Retail Shell at $45,000. That is $3,600 less than we asked. It comes back on the next bill once the work is done.</p>
+      <p class="note">A subtraction in prose with only its answer given; a cut of $3,600 with no line it came off, though the attached form has every figure.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <p class="lead">Pay application 3 · Sample Retail Shell · $48,600</p>
+      <div class="rows"><div class="r"><span>Work done through Oct 25</span><span class="amt">$96,400.00</span></div><div class="r minus"><span>Held · 10%</span><span class="amt">$9,640.00</span></div><div class="r minus"><span>Billed before · applications 1 and 2</span><span class="amt">$38,160.00</span></div><div class="r sum"><span>This application</span><span class="amt">$48,600.00</span></div></div>
+      <p class="lead" style="margin-top:12px">Certified at $45,000 · $3,600 less than asked</p>
+      <table class="t"><thead><tr><th>Line</th><th class="amt">Asked</th><th class="amt">Certified</th></tr></thead><tbody><tr><td>Rough-in plumbing, level 2</td><td class="amt">$24,000</td><td class="amt">$20,400 <span class="chip warn">−$3,600</span></td></tr><tr class="ghost"><td>every other line as asked</td><td class="amt">$24,600</td><td class="amt">$24,600</td></tr></tbody></table>
+      <p class="small muted">The $3,600 comes back on the next application once the work is done.</p>
+    </div></div>
+  </div>
+  <div class="say"><p class="gain">The customer sees the four rows the form carries and, on a cut, the one line the architect certified lower, instead of a sentence with the answer only.</p><p class="rule">Reuses a sum drawn as its rows; the pay application row carries the figures, and <code>gc-customer-email</code> is redeployed by hand.</p></div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Held as drawn. The second table shows only the line that moved and folds the rest into one ghost row, which is what a customer asks.</p></div>
+  <div class="pick" data-for="outside-10"></div>
+</section>
 <p class="rule" style="margin-top:34px"><b>Three of these on the page they land on.</b> On the owner's notes of 2026-10-30: Draft Payroll drawn whole with the bars in place, the Pricing tab whole with the two bars where the strip sits, and the Project Board's price redrawn so every word fits. Each is the real screen's layout at near size, on invented people and jobs.</p>
 
 <section class="pair whole" id="people-docs-1-whole" data-id="people-docs-1">
@@ -1462,7 +1883,7 @@
     <p class="gain">What changed on the window: the <i>Total | Left</i> sentence became the period bar under the dates; the amber banner became one chip in the button row; the Status column became the bar, and the three kinds of figure read apart at a glance.</p>
     <p class="rule">Everything else stays where it is: the dates, Last week · Next week, Generate N reports, Print, the earlier-weeks door, the Tally note once every report exists, the Actions column.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass</div><p>Drawn at the window's real 600 px. The row bars had to shrink to 16 px to fit the table's six columns, so a short part keeps its figure and gives its words to the hover ($373 still fits). Asked whether the row bars should go and only the period bar stay: no, the row is where the controller decides to generate or pay. The pending banner's sentence lives on the chip's hover.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's pick</div><p>Drawn at the window's real 600 px; the row bars shrank to 16 px to fit six columns. Taunya marked people-docs-1 Build and asked for a live side-by-side: a session is building this window as drawn here, behind a switch, with <code>?sbs=1</code> on People → Payroll.</p></div>
   <div class="pick" data-for="people-docs-1"></div>
 </section>
 
@@ -1517,7 +1938,7 @@
     <p class="gain">The first draw put four labels inside a 600 px bar and three caveat lines beside it; none fit. Now the bar holds only the numbers, the words sit under it as a legend that names the trades, and the price column says the two figures in two short lines. A row with every trade quoted draws a plain bar, so a hole is seen by its absence.</p>
     <p class="rule">The heading's line says the section's two figures in words rather than drawing a fourth bar. Every segment still opens the price card on those trades.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass</div><p>Drawn whole on the owner's note. The bar moved to its own line under the row so it has the row's full width, and the numbers inside are the only words it carries; the legend names the trades. Asked whether the heading needs a bar: no, two figures in words read faster than a fourth bar.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's pick</div><p>Drawn whole on her note; the bar moved to its own line under the row. She then asked to see it on real bids: a session is building it behind a switch with <code>?sbs=1</code> on <code>/gc</code>, and will say what the real rows make of the bar.</p></div>
   <div class="pick" data-for="gc-messages-5"></div>
 </section>
 
@@ -1574,7 +1995,7 @@
     <p class="gain">The strip keeps its place and its presses (the version chip, the coverage chip, the lock, Margin · Markup · Tax · Solver); the four tiles become two bars on the left and three tiles on the right, and the five caveat sentences become the legend under the cost bar, each with its door.</p>
     <p class="rule">The price book, the pricing cards, the Send-to row and the bid header are drawn as they are today, so the bars can be judged at the size and in the company they will have.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass</div><p>Drawn at 1,100 px in the strip's own company. The two bars took the strip's left two thirds and the three tiles the right third, so Margin · Markup · Tax · Solver keep their corner, and the five caveats became one legend line under the cost bar. Asked whether the pricing cards above make the revenue bar redundant: the cards say each price's margin; the bar says what today's book and the labor rate do to the live one.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>Drawn at 1,100 px in the strip's own company. Taunya asked for the before and after: a session is building it behind a switch with <code>?sbs=1</code> on the Pricing tab.</p></div>
   <div class="pick" data-for="bids-2"></div>
 </section>
 
@@ -2226,22 +2647,22 @@
     { id: 'outside-2', s: 2, d: true, a: "The customer's portal", t: "The GC customer's Money tab" },
     { id: 'field-2', s: 2, d: true, a: "The sub's portal", t: 'Owed to you' },
     { id: 'outside-5', s: 2, d: true, a: "The customer's emails", t: 'The interest bill' },
-    { id: 'jobs-pipeline-5', s: 2, a: 'Pipeline · overview', t: 'Ready to ask for, and the Capable list', now: 'READY TO ASK FOR $1,250 · $0 capable in Working · $1,250 in Ready to Bill; the list opens on a paragraph explaining two rules', sh: 'The tile as a two-part bar (capable in Working, Ready to Bill) pressing through to its rows; each Capable row its own bar: value created as the frame, paid · billed · queued inside, the capable piece the rest; plan rows marked by stage plan', w: 'M', z: 'S' },
-    { id: 'jobs-pipeline-7', s: 2, a: 'Pipeline · Money opportunities', t: 'Get contracts signed', now: '$319,325 of work on 4 live jobs without an agreement · 0 of 4 live jobs have an agreement on file (accepted estimates and bid-room signatures count)', sh: 'One bar of the live jobs’ dollars, covered green and uncovered amber, split by stage; the stage chips that filter stay; the rule and the floor become the legend’s hover and a chip', w: 'M', z: 'XS' },
-    { id: 'jobs-money-7', s: 2, a: 'Job Summary · Overhead', t: 'The overhead pool, told as four chips', now: '$6,210 of overhead had nobody to charge on 9 days · $2,940 in flight · $1,105 landed on 3 jobs this list leaves out · ⚠ overhead does not reconcile to the pool', sh: 'One bar for the window’s pool: charged to these jobs · to jobs off the list · nobody to charge · in flight, with dollars; a gap or overrun at the end red; each segment a door', w: 'M', z: 'S' },
-    { id: 'jobs-money-9', s: 2, a: 'Crew P&L', t: 'Billed (gross) and the $50 sub rate', now: 'Bo Plumber ≈ $24,300 billed … $7,420 on J1318, then ten sentences of footnote on how billing credit is hours-weighted and sub hours are cost ÷ $50', sh: 'Under each per-job line, the job’s bill as a bar split by everyone’s hours, this person’s slice lit, the sub’s hatched as ≈ $3,000 ÷ $50; the rate box reads a default, never calibrated', w: 'M', z: 'S' },
-    { id: 'jobs-money-11', s: 2, a: 'Moneyfill', t: 'The close-week header', now: '5 of 8 queues at zero · $9,415 still unattributed (money in added to money out and wages); chips with numbers that are spans; a bar that counts queues', sh: 'Chips that scroll to their section; unattributed as two bars, out (card charges · time · supply invoices) and in (deposits), by queue; the progress bar as dollars attributed of the week’s', w: 'M', z: 'XS' },
-    { id: 'jobs-money-15', s: 2, a: 'Dashboard · Money in', t: "The closed line's Still expected", now: 'Still expected $42K · 9: a promise, a check in the drawer and a pace guess added into one figure on the line people see without opening the bar', sh: 'Still expected as a thin stacked bar of its kinds: drawer · sent claim · their word · pace hatched as a guess; a press opens the bar on that kind', w: 'L', z: 'XS' },
-    { id: 'gc-messages-8', s: 2, a: 'Messages · The last 7 days', t: 'Answered within an hour, and Estimates', now: '64% · 9 of 14 · ↑ from 50% last week, made of 14 turns the screen never draws, opening today’s Needs a reply instead; 6 sent · 4 opened · 1 accepted as a sentence', sh: 'The tile opens its 14 turns as rows, each a bar from their line to our answer against an hour mark, red past it, hatched when unanswered; the funnel as one stacked bar whose parts open those estimates', w: 'M', z: 'S' },
-    { id: 'office-9', s: 2, a: 'Dashboard · Needs you', t: 'Field capacity', now: '58% · 63% · 61% for the weeks of Oct 11, Oct 18 and Oct 25 — 1,020 of 1,680 available field hours, against a field roster of 7…', sh: 'Three short bars on the line, one per week, against a dashed line at 70%, hours on hover; the basis a chip (roster of 7, or who clocked in marked as the fallback)', w: 'M', z: 'XS' },
-    { id: 'field-6', s: 2, a: "The sub's portal", t: "What you've been paid, and each card's Agreed · Paid · Open", now: 'Earned $48,200 · Paid $44,700 · Balance $3,500 from rows the page never shows; a $300 back-charge counted as Paid; an Agreed made from the payments, unmarked', sh: 'Each card one bar in three parts: paid green, taken back red, open copper, summing to Agreed; the totals scoped to the jobs drawn, with a Settled jobs fold; a fallback Agreed reads from payments · no price on file', w: 'M', z: 'S–M' },
-    { id: 'people-docs-10', s: 2, a: 'People · Payroll · Payments', t: 'A send split across reports', now: 'Apple Pay "Nico" · 1 of 2 from $1,06… / 2 of 2 from $1,06… / Advance $176.77 of $1,250.00 ahead: a split said in memo text, cut at 40 characters', sh: 'A 1 of 2 chip on each part that opens the send as one bar of its parts (each report’s week, the advance hatched); a By send band mode beside By week paid', w: 'M', z: 'S' },
-    { id: 'people-docs-11', s: 2, a: 'Partnerships', t: 'The balance bridge', now: 'posted we owe Dale $967.60 · −$1,975.73 not yet on a statement (2) → Dale owes us $1,008.13: a balance crossing zero said in a sentence, the sign convention in a tooltip', sh: 'One horizontal bar on a scale with zero marked: posted as a solid bar, the two pending charges as a hatched step from it to the ledger balance, each step a door; the same bar on both tabs', w: 'M', z: 'S' },
-    { id: 'people-docs-16', s: 2, a: 'Projects · Job History', t: "A day's Costs on this day", now: 'Team labor $612.40 · Card charges $148.22 · Supply invoices $0.00 · Total $760.62, leaving out sub labor, tally parts and materials without a word', sh: 'The total as a bar of its parts, with the uncounted kinds as empty labelled stubs (sub labor · not counted here) and a today’s wage mark on the labor row', w: 'L', z: 'XS' },
-    { id: 'outside-3', s: 2, a: "The trade partner's portal", t: 'Report your work and get paid', now: 'You can ask for $2,624 now (60% − 50% of the rough-in line less 10% held, made where the sub cannot see it) · Paid so far $13,122 · held $1,458 · left to bill $34,020', sh: 'The statement of work as one bar: paid, held hatched, ask now in the accent with its held tenth, left to bill; under it a strip of the month: their cut-off, our bill day, the day the customer’s pay is due, the day it reaches them', w: 'H', z: 'M' },
-    { id: 'outside-6', s: 2, a: 'Bid room', t: 'The total with an add-on taken', now: 'To Plans PROPOSED $56,343 · + Alternate 2 $4,850 [ticked] · Total — To Plans $61,193 · [Approve "To Plans" — $61,193]: every label names one part', sh: 'The total as its rows (To Plans $56,343 · Alternate 2 $4,850 · Total $61,193) and the button names both: Approve To Plans + Alternate 2 — $61,193, as the estimate page already does', w: 'M', z: 'XS' },
-    { id: 'outside-8', s: 2, a: "The GC customer's portal · Schedule, the Friday report", t: 'Work done and we finish', now: 'WORK DONE 38% over rows of 100 · 100 · 40 · 0 · 0 · 0 (the dollar weights hidden); the finish said twice; a move told in two boxes with two day counts and drawn on neither bar', sh: 'The stage rows as one bar where each stage’s width is its share of the work (shares, never dollars), filled to its done percent, a tick at the planned 36%; a moved bar keeps a ghost of its planned days; the emails draw the same bar as a table', w: 'M', z: 'M' },
-    { id: 'outside-10', s: 2, a: "The GC customer's emails", t: 'Our pay application, and the certified bill', now: 'Pay application 3 asks for $48,600. It bills the work done through Oct 25, less the 10% you hold and the bills before it · certified at $45,000. That is $3,600 less than we asked', sh: 'The G702’s four rows in the email (work done through Oct 25 · less 10% held · less billed before · this application) and, on a cut, the lines certified lower with asked → certified', w: 'M', z: 'S' },
+    { id: 'jobs-pipeline-5', s: 2, d: true, a: 'Pipeline · overview', t: 'Ready to ask for, and the Capable list', now: 'READY TO ASK FOR $1,250 · $0 capable in Working · $1,250 in Ready to Bill; the list opens on a paragraph explaining two rules', sh: 'The tile as a two-part bar (capable in Working, Ready to Bill) pressing through to its rows; each Capable row its own bar: value created as the frame, paid · billed · queued inside, the capable piece the rest; plan rows marked by stage plan', w: 'M', z: 'S' },
+    { id: 'jobs-pipeline-7', s: 2, d: true, a: 'Pipeline · Money opportunities', t: 'Get contracts signed', now: '$319,325 of work on 4 live jobs without an agreement · 0 of 4 live jobs have an agreement on file (accepted estimates and bid-room signatures count)', sh: 'One bar of the live jobs’ dollars, covered green and uncovered amber, split by stage; the stage chips that filter stay; the rule and the floor become the legend’s hover and a chip', w: 'M', z: 'XS' },
+    { id: 'jobs-money-7', s: 2, d: true, a: 'Job Summary · Overhead', t: 'The overhead pool, told as four chips', now: '$6,210 of overhead had nobody to charge on 9 days · $2,940 in flight · $1,105 landed on 3 jobs this list leaves out · ⚠ overhead does not reconcile to the pool', sh: 'One bar for the window’s pool: charged to these jobs · to jobs off the list · nobody to charge · in flight, with dollars; a gap or overrun at the end red; each segment a door', w: 'M', z: 'S' },
+    { id: 'jobs-money-9', s: 2, d: true, a: 'Crew P&L', t: 'Billed (gross) and the $50 sub rate', now: 'Bo Plumber ≈ $24,300 billed … $7,420 on J1318, then ten sentences of footnote on how billing credit is hours-weighted and sub hours are cost ÷ $50', sh: 'Under each per-job line, the job’s bill as a bar split by everyone’s hours, this person’s slice lit, the sub’s hatched as ≈ $3,000 ÷ $50; the rate box reads a default, never calibrated', w: 'M', z: 'S' },
+    { id: 'jobs-money-11', s: 2, d: true, a: 'Moneyfill', t: 'The close-week header', now: '5 of 8 queues at zero · $9,415 still unattributed (money in added to money out and wages); chips with numbers that are spans; a bar that counts queues', sh: 'Chips that scroll to their section; unattributed as two bars, out (card charges · time · supply invoices) and in (deposits), by queue; the progress bar as dollars attributed of the week’s', w: 'M', z: 'XS' },
+    { id: 'jobs-money-15', s: 2, d: true, a: 'Dashboard · Money in', t: "The closed line's Still expected", now: 'Still expected $42K · 9: a promise, a check in the drawer and a pace guess added into one figure on the line people see without opening the bar', sh: 'Still expected as a thin stacked bar of its kinds: drawer · sent claim · their word · pace hatched as a guess; a press opens the bar on that kind', w: 'L', z: 'XS' },
+    { id: 'gc-messages-8', s: 2, d: true, a: 'Messages · The last 7 days', t: 'Answered within an hour, and Estimates', now: '64% · 9 of 14 · ↑ from 50% last week, made of 14 turns the screen never draws, opening today’s Needs a reply instead; 6 sent · 4 opened · 1 accepted as a sentence', sh: 'The tile opens its 14 turns as rows, each a bar from their line to our answer against an hour mark, red past it, hatched when unanswered; the funnel as one stacked bar whose parts open those estimates', w: 'M', z: 'S' },
+    { id: 'office-9', s: 2, d: true, a: 'Dashboard · Needs you', t: 'Field capacity', now: '58% · 63% · 61% for the weeks of Oct 11, Oct 18 and Oct 25 — 1,020 of 1,680 available field hours, against a field roster of 7…', sh: 'Three short bars on the line, one per week, against a dashed line at 70%, hours on hover; the basis a chip (roster of 7, or who clocked in marked as the fallback)', w: 'M', z: 'XS' },
+    { id: 'field-6', s: 2, d: true, a: "The sub's portal", t: "What you've been paid, and each card's Agreed · Paid · Open", now: 'Earned $48,200 · Paid $44,700 · Balance $3,500 from rows the page never shows; a $300 back-charge counted as Paid; an Agreed made from the payments, unmarked', sh: 'Each card one bar in three parts: paid green, taken back red, open copper, summing to Agreed; the totals scoped to the jobs drawn, with a Settled jobs fold; a fallback Agreed reads from payments · no price on file', w: 'M', z: 'S–M' },
+    { id: 'people-docs-10', s: 2, d: true, a: 'People · Payroll · Payments', t: 'A send split across reports', now: 'Apple Pay "Nico" · 1 of 2 from $1,06… / 2 of 2 from $1,06… / Advance $176.77 of $1,250.00 ahead: a split said in memo text, cut at 40 characters', sh: 'A 1 of 2 chip on each part that opens the send as one bar of its parts (each report’s week, the advance hatched); a By send band mode beside By week paid', w: 'M', z: 'S' },
+    { id: 'people-docs-11', s: 2, d: true, a: 'Partnerships', t: 'The balance bridge', now: 'posted we owe Dale $967.60 · −$1,975.73 not yet on a statement (2) → Dale owes us $1,008.13: a balance crossing zero said in a sentence, the sign convention in a tooltip', sh: 'One horizontal bar on a scale with zero marked: posted as a solid bar, the two pending charges as a hatched step from it to the ledger balance, each step a door; the same bar on both tabs', w: 'M', z: 'S' },
+    { id: 'people-docs-16', s: 2, d: true, a: 'Projects · Job History', t: "A day's Costs on this day", now: 'Team labor $612.40 · Card charges $148.22 · Supply invoices $0.00 · Total $760.62, leaving out sub labor, tally parts and materials without a word', sh: 'The total as a bar of its parts, with the uncounted kinds as empty labelled stubs (sub labor · not counted here) and a today’s wage mark on the labor row', w: 'L', z: 'XS' },
+    { id: 'outside-3', s: 2, d: true, a: "The trade partner's portal", t: 'Report your work and get paid', now: 'You can ask for $2,624 now (60% − 50% of the rough-in line less 10% held, made where the sub cannot see it) · Paid so far $13,122 · held $1,458 · left to bill $34,020', sh: 'The statement of work as one bar: paid, held hatched, ask now in the accent with its held tenth, left to bill; under it a strip of the month: their cut-off, our bill day, the day the customer’s pay is due, the day it reaches them', w: 'H', z: 'M' },
+    { id: 'outside-6', s: 2, d: true, a: 'Bid room', t: 'The total with an add-on taken', now: 'To Plans PROPOSED $56,343 · + Alternate 2 $4,850 [ticked] · Total — To Plans $61,193 · [Approve "To Plans" — $61,193]: every label names one part', sh: 'The total as its rows (To Plans $56,343 · Alternate 2 $4,850 · Total $61,193) and the button names both: Approve To Plans + Alternate 2 — $61,193, as the estimate page already does', w: 'M', z: 'XS' },
+    { id: 'outside-8', s: 2, d: true, a: "The GC customer's portal · Schedule, the Friday report", t: 'Work done and we finish', now: 'WORK DONE 38% over rows of 100 · 100 · 40 · 0 · 0 · 0 (the dollar weights hidden); the finish said twice; a move told in two boxes with two day counts and drawn on neither bar', sh: 'The stage rows as one bar where each stage’s width is its share of the work (shares, never dollars), filled to its done percent, a tick at the planned 36%; a moved bar keeps a ghost of its planned days; the emails draw the same bar as a table', w: 'M', z: 'M' },
+    { id: 'outside-10', s: 2, d: true, a: "The GC customer's emails", t: 'Our pay application, and the certified bill', now: 'Pay application 3 asks for $48,600. It bills the work done through Oct 25, less the 10% you hold and the bills before it · certified at $45,000. That is $3,600 less than we asked', sh: 'The G702’s four rows in the email (work done through Oct 25 · less 10% held · less billed before · this application) and, on a cut, the lines certified lower with asked → certified', w: 'M', z: 'S' },
     // shape 3 · the source on the figure
     { id: 'field-1', s: 3, d: true, a: 'My Schedule · the report · Job Summary', t: 'A job with no percent', with: ['jobs-money-5'] },
     { id: 'bids-3', s: 3, d: true, a: 'Bids · Compare quotes', t: 'No price says where it came from' },
@@ -2332,7 +2753,7 @@
   const PICKS = ['build', 'later', 'drop'];
   const WORDS = { build: 'Build', later: 'Later', drop: 'Drop' };
   // The owner's picks and notes as pasted on 2026-10-30 (the first pass); the browser's and the page's own store sit on top.
-  const SEED = {"people-docs-3": {"pick": "build", "note": "I really like this view. Let's build it.", "at": "2026-10-30T19:10:00.000Z"}, "office-11": {"pick": "build", "note": "", "at": "2026-10-30T19:10:00.000Z"}, "office-13": {"pick": "build", "note": "", "at": "2026-10-30T19:10:00.000Z"}, "gc-messages-2": {"pick": "drop", "note": "This also has potential, but it suffers the same issues as above. In this particular case, it's much easier to just have the text.", "at": "2026-10-30T19:10:00.000Z"}, "jobs-money-4": {"pick": "drop", "note": "We need to communicate very little information here, what we have currently works.", "at": "2026-10-30T19:10:00.000Z"}, "jobs-pipeline-8": {"pick": "drop", "note": "", "at": "2026-10-30T19:10:00.000Z"}, "office-6": {"pick": "drop", "note": "This all has potential, but if this is on the knee", "at": "2026-10-30T19:10:00.000Z"}, "jobs-pipeline-1": {"pick": null, "note": "This has some potential, but only as an alternative view that a user can choose to engage in. How could I offer this as an alternative view? Can you help me build a prototype?", "at": "2026-10-30T19:10:00.000Z"}, "jobs-pipeline-2": {"pick": null, "note": "This has some potential, but the dots are too small and it takes too much cognitive time to align those dots with the index of approved field day, a note, status move, Looks fine. Perhaps you want to give it a refresh?", "at": "2026-10-30T19:10:00.000Z"}, "office-5": {"pick": null, "note": "This could potentially work, I would like to see it as a prototype.", "at": "2026-10-30T19:10:00.000Z"}, "jobs-pipeline-6": {"pick": null, "note": "This can work very well as an alternative view. Could you help me build a prototype where we can see it as an alternative view where the user can choose how they want to view it.", "at": "2026-10-30T19:10:00.000Z"}, "jobs-money-3": {"pick": null, "note": "This has great potential, but I'm uncertain of what it's going to disrupt. I would like to see this as a prototype.", "at": "2026-10-30T19:10:00.000Z"}, "bids-7": {"pick": null, "note": "Can you show me what this would look like live side by side?", "at": "2026-10-30T19:10:00.000Z"}, "bids-9": {"pick": null, "note": "This has some potential, but I don't like how it's visually represented. Could you help me think through why a user will be looking at this section? And then while the user is looking at this section what they need to see. And then based on what they need to see, can you show me those moving parts in as simple yet effective as they could.", "at": "2026-10-30T19:10:00.000Z"}, "bids-10": {"pick": null, "note": "This has some potential, but I think we need to do a better job tying links sent and revisions to people opening them. Maybe with dashed lines.", "at": "2026-10-30T19:10:00.000Z"}, "bids-19": {"pick": null, "note": "There's no index for the contents of these dots and what they mean. I'm worried if they get very close it'll be hard to understand what they're supposed to be. Is there a different way we can present this?", "at": "2026-10-30T19:10:00.000Z"}, "office-8": {"pick": null, "note": "This has pretty good potential. Could you show me your prototype of what this could look like live, side by side with what it looks like now.", "at": "2026-10-30T19:10:00.000Z"}, "field-8": {"pick": null, "note": "This has potential but I am unsure of it. Could I see what it looks like side by side? Will you be able to help me build a prototype where I can see it side by side?", "at": "2026-10-30T19:10:00.000Z"}, "field-11": {"pick": null, "note": "This has pretty good potential. It's just that people don't take the same training over and over and over again. They take different versions of training. So I'm not sure how well it applies. I would like to still see it side by side, as a prototype, on what it could look like if it was live.", "at": "2026-10-30T19:10:00.000Z"}, "people-docs-6": {"pick": null, "note": "This has pretty good potential. Could you show it to me as a prototype so I can see it side by side with how it would look live?", "at": "2026-10-30T19:10:00.000Z"}, "people-docs-8": {"pick": null, "note": "This has great potential. I would like to see it side by side in the form of a prototype.", "at": "2026-10-30T19:10:00.000Z"}, "people-docs-15": {"pick": null, "note": "This has great potential, I would like to see it side by side in the form of a prototype.", "at": "2026-10-30T19:10:00.000Z"}, "outside-12": {"pick": null, "note": "This has some potential. Could you show me how it could look in the form of a prototype side by side with before and after.", "at": "2026-10-30T19:10:00.000Z"}, "outside-13": {"pick": null, "note": "I really like the idea of this. I just want to see it side by side in a prototype before I approve it.", "at": "2026-10-30T19:10:00.000Z"}};
+  const SEED = {"people-docs-3": {"pick": "build", "note": "I really like this view. Let's build it.", "at": "2026-10-30T19:10:00.000Z"}, "office-11": {"pick": "build", "note": "", "at": "2026-10-30T19:10:00.000Z"}, "office-13": {"pick": "build", "note": "", "at": "2026-10-30T19:10:00.000Z"}, "gc-messages-2": {"pick": "drop", "note": "This also has potential, but it suffers the same issues as above. In this particular case, it's much easier to just have the text.", "at": "2026-10-30T19:10:00.000Z"}, "jobs-money-4": {"pick": "drop", "note": "We need to communicate very little information here, what we have currently works.", "at": "2026-10-30T19:10:00.000Z"}, "jobs-pipeline-8": {"pick": "drop", "note": "", "at": "2026-10-30T19:10:00.000Z"}, "office-6": {"pick": "drop", "note": "This all has potential, but if this is on the knee", "at": "2026-10-30T19:10:00.000Z"}, "jobs-pipeline-1": {"pick": null, "note": "This has some potential, but only as an alternative view that a user can choose to engage in. How could I offer this as an alternative view? Can you help me build a prototype?", "at": "2026-10-30T19:10:00.000Z"}, "jobs-pipeline-2": {"pick": null, "note": "This has some potential, but the dots are too small and it takes too much cognitive time to align those dots with the index of approved field day, a note, status move, Looks fine. Perhaps you want to give it a refresh?", "at": "2026-10-30T19:10:00.000Z"}, "office-5": {"pick": null, "note": "This could potentially work, I would like to see it as a prototype.", "at": "2026-10-30T19:10:00.000Z"}, "jobs-pipeline-6": {"pick": null, "note": "This can work very well as an alternative view. Could you help me build a prototype where we can see it as an alternative view where the user can choose how they want to view it.", "at": "2026-10-30T19:10:00.000Z"}, "jobs-money-3": {"pick": null, "note": "This has great potential, but I'm uncertain of what it's going to disrupt. I would like to see this as a prototype.", "at": "2026-10-30T19:10:00.000Z"}, "bids-7": {"pick": null, "note": "Can you show me what this would look like live side by side?", "at": "2026-10-30T19:10:00.000Z"}, "bids-9": {"pick": null, "note": "This has some potential, but I don't like how it's visually represented. Could you help me think through why a user will be looking at this section? And then while the user is looking at this section what they need to see. And then based on what they need to see, can you show me those moving parts in as simple yet effective as they could.", "at": "2026-10-30T19:10:00.000Z"}, "bids-10": {"pick": null, "note": "This has some potential, but I think we need to do a better job tying links sent and revisions to people opening them. Maybe with dashed lines.", "at": "2026-10-30T19:10:00.000Z"}, "bids-19": {"pick": null, "note": "There's no index for the contents of these dots and what they mean. I'm worried if they get very close it'll be hard to understand what they're supposed to be. Is there a different way we can present this?", "at": "2026-10-30T19:10:00.000Z"}, "office-8": {"pick": null, "note": "This has pretty good potential. Could you show me your prototype of what this could look like live, side by side with what it looks like now.", "at": "2026-10-30T19:10:00.000Z"}, "field-8": {"pick": null, "note": "This has potential but I am unsure of it. Could I see what it looks like side by side? Will you be able to help me build a prototype where I can see it side by side?", "at": "2026-10-30T19:10:00.000Z"}, "field-11": {"pick": null, "note": "This has pretty good potential. It's just that people don't take the same training over and over and over again. They take different versions of training. So I'm not sure how well it applies. I would like to still see it side by side, as a prototype, on what it could look like if it was live.", "at": "2026-10-30T19:10:00.000Z"}, "people-docs-6": {"pick": null, "note": "This has pretty good potential. Could you show it to me as a prototype so I can see it side by side with how it would look live?", "at": "2026-10-30T19:10:00.000Z"}, "people-docs-8": {"pick": null, "note": "This has great potential. I would like to see it side by side in the form of a prototype.", "at": "2026-10-30T19:10:00.000Z"}, "people-docs-15": {"pick": null, "note": "This has great potential, I would like to see it side by side in the form of a prototype.", "at": "2026-10-30T19:10:00.000Z"}, "outside-12": {"pick": null, "note": "This has some potential. Could you show me how it could look in the form of a prototype side by side with before and after.", "at": "2026-10-30T19:10:00.000Z"}, "outside-13": {"pick": null, "note": "I really like the idea of this. I just want to see it side by side in a prototype before I approve it.", "at": "2026-10-30T19:10:00.000Z"}, "gc-messages-5": {"pick": "build", "note": "I think this has potential, but I would need to see it based on data from bids we've been sending out and how it could look. Otherwise I'm worried that it's not going to be as informative as we make it look to be here. Would you be able to help me see what real data would look like on here?", "at": "2026-10-30T20:40:00.000Z"}, "people-docs-1": {"pick": "build", "note": "I really like the idea of this. Could you show me a live prototype where I can see the before and after side by side.", "at": "2026-10-30T20:40:00.000Z"}, "outside-5": {"pick": "build", "note": "", "at": "2026-10-30T20:40:00.000Z"}, "bids-2": {"pick": null, "note": "I would like to see the before and after on this.", "at": "2026-10-30T20:40:00.000Z"}, "jobs-pipeline-4": {"pick": null, "note": "I really like the idea of this. Could I see this as a live prototype where you show me the before and after.", "at": "2026-10-30T20:40:00.000Z"}, "outside-1": {"pick": null, "note": "I really like the idea of this. Could I please see this side-by-side of the before and after as a live prototype?", "at": "2026-10-30T20:40:00.000Z"}, "outside-2": {"pick": null, "note": "I really like the idea of this. Could I please see this side-by-side of the before and after as a live prototype? You may need to use test data.", "at": "2026-10-30T20:40:00.000Z"}, "field-2": {"pick": null, "note": "I really like the idea of this. Could I please see this side-by-side of the before and after as a live prototype? You may need to use test data.", "at": "2026-10-30T20:40:00.000Z"}};
   const picks = Object.fromEntries(Object.entries(SEED).map(([k, v]) => [k, Object.assign({}, v)]));
   let db = null;
   let storeState = 'local';
@@ -2474,7 +2895,7 @@
     let answered = 0;
     F.forEach((f) => { const p = picks[f.id]; if (p && p.pick) { counts[p.pick]++; answered++; } });
     const tally = $('#tally');
-    tally.innerHTML = '<span class="chip ok">build <b class="n">' + counts.build + '</b></span><span class="chip">later <b class="n">' + counts.later + '</b></span><span class="chip stop">drop <b class="n">' + counts.drop + '</b></span><span>' + answered + ' of ' + TOTAL + ' answered</span><span class="status ' + (storeState === 'live' ? 'live' : '') + '" id="pick-status">' + (storeState === 'live' ? 'Picks save to this page as you press them.' : storeState === 'refused' ? 'This page is read-only for you; picks stay in this browser.' : 'Picks stay in this browser; Copy my picks to send them. Her picks on shape 1, pasted 2026-10-30, are in the page already.') + '</span>';
+    tally.innerHTML = '<span class="chip ok">build <b class="n">' + counts.build + '</b></span><span class="chip">later <b class="n">' + counts.later + '</b></span><span class="chip stop">drop <b class="n">' + counts.drop + '</b></span><span>' + answered + ' of ' + TOTAL + ' answered</span><span class="status ' + (storeState === 'live' ? 'live' : '') + '" id="pick-status">' + (storeState === 'live' ? 'Picks save to this page as you press them.' : storeState === 'refused' ? 'This page is read-only for you; picks stay in this browser.' : 'Picks stay in this browser; Copy my picks to send them. Her picks on shapes 1 and 2, pasted 2026-10-30, are in the page already.') + '</span>';
     applyShow();
   }
   // storage: the page's db when it is served with one, this browser otherwise
