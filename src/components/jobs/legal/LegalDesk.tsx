@@ -50,6 +50,9 @@ import { jobOpenBalance } from '../../../lib/legal/legalPacket'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { inHouseWords, isOfferEntry, offerAmountOf, offerMetaOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
+import { counselReadMetaFromDraft, currentCounselRead, type CounselReadDraft } from '../../../lib/legal/counselRead'
+import { legalSuitFiled, settlementPaths } from '../../../lib/legal/settlementPaths'
+import LegalSettlementPaths from './LegalSettlementPaths'
 import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
 import { moneyBars } from '../../../lib/legal/moneyBars'
 import LegalMoneyBars from './LegalMoneyBars'
@@ -307,6 +310,13 @@ export default function LegalDesk(props: LegalDeskProps) {
   const inHouse = matterIsInHouse(matter)
   const closed = matterIsClosed(matter)
   const awaitsClose = matterAwaitsClose(matter)
+  // Punch list #218 PR 2: the attorney's read of how the case tries — the latest read entry, the firm's or ours.
+  const counselRead = currentCounselRead(matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], (id) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null))
+  // v2.6105: the Offers log as the bars read it; v2.6176 (punch list #218 PR 3): the paths read the same offers.
+  const standingOffers = (matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []).filter((e) => isOfferEntry(e) && !isVoidedEntry(e)).map((e) => {
+    const meta = offerMetaOf(e.meta)
+    return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
+  })
   const stored = Boolean(legal?.available)
   const groups: Array<{ cap: string; list: LegalAccountSummary[] }> = [
     // v2.5849: *Under review* — the office reads this rail more than a dev does.
@@ -503,6 +513,18 @@ export default function LegalDesk(props: LegalDeskProps) {
   }
   const offerSetStatus = async (entryId: string, status: OfferStatus, note: string): Promise<boolean> =>
     Boolean(await run('Offer status', () => legalRpc('legal_offer_set_status', { p_entry_id: entryId, p_status: status, p_note: note })))
+  /** Punch list #218 PR 2: the office records the attorney's read of how the case tries — the same note entry the firm writes from its portal. */
+  const setCounselRead = async (d: CounselReadDraft): Promise<boolean> => {
+    const read = counselReadMetaFromDraft(d)
+    if (!read) return false
+    const ok = await run('Save the read', async () => {
+      const m = await ensureMatterId()
+      if (m.error || !m.id) return m.error ?? 'The matter could not be made'
+      return legalRpc('legal_set_counsel_read', { p_matter_id: m.id, p_tries: read.tries, p_why: read.why, p_cost_to_try: read.costToTry, p_months: read.months })
+    })
+    if (ok) showToast('Saved — the read shows on Can we sue?, and the firm reads it on its portal.', 'success')
+    return Boolean(ok)
+  }
   const confirmReady = async () => {
     if (sheet?.kind !== 'ready' || !firm) return
     const ok = await run('Attorney-ready', async () => {
@@ -968,7 +990,7 @@ export default function LegalDesk(props: LegalDeskProps) {
 
                 {packet && w ? (
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '12px 0 0' }}>
-                    {deskQuestions(packet).map((c) => (
+                    {deskQuestions(packet, counselRead).map((c) => (
                       <div key={c.label} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
                         <div style={{ ...MUTED, fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>{c.label}</div>
                         <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.answer}{c.chip ? pill(c.chip.text, c.chip.tone) : null}</div>
@@ -977,26 +999,31 @@ export default function LegalDesk(props: LegalDeskProps) {
                     ))}
                   </div>
                 ) : null}
-                {packet && w && w.balance > 0.004 ? (
+                {packet && w && w.balance > 0.004 ? (() => {
                   // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer marked, what is left after the firm's cut.
-                  <LegalMoneyBars
-                    bars={moneyBars({
-                      bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
-                      retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
-                      retainageAdded: w.retainageAdded,
-                      balance: w.balance,
-                      claim: w.claim,
-                      contingencyPct: w.contingencyPct,
-                      fee: w.fee,
-                      filingCost: w.filingCost,
-                      net: w.net,
-                      offers: (matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []).filter((e) => isOfferEntry(e) && !isVoidedEntry(e)).map((e) => {
-                        const meta = offerMetaOf(e.meta)
-                        return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
-                      }),
-                    })}
-                  />
-                ) : null}
+                  // v2.6176 (punch list #218, PR 3): what each path nets, with the walk-away line derived from the cost to continue and marked on the claim bar.
+                  const paths = settlementPaths({ claim: w.claim, contingencyPct: w.contingencyPct, filingCost: w.filingCost, filed: legalSuitFiled(stage), offers: standingOffers, read: counselRead })
+                  return (
+                    <>
+                      <LegalMoneyBars
+                        bars={moneyBars({
+                          bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
+                          retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
+                          retainageAdded: w.retainageAdded,
+                          balance: w.balance,
+                          claim: w.claim,
+                          contingencyPct: w.contingencyPct,
+                          fee: w.fee,
+                          filingCost: w.filingCost,
+                          net: w.net,
+                          offers: standingOffers,
+                          line: paths.line?.amount ?? null,
+                        })}
+                      />
+                      <LegalSettlementPaths paths={paths} />
+                    </>
+                  )
+                })() : null}
 
                 {packet && packet.gaps.length > 0 ? (
                   <div style={{ margin: '12px 0 0', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)' }}>
@@ -1072,7 +1099,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                 {packet ? (
                   <PacketTab tab={tab} onTab={showTab} packet={packet} selected={selected} props={props} openEditCustomer={openEditCustomer} onShowOnEvidence={showOnEvidence} evidenceDoc={evidenceDoc} onEvidenceLanded={() => setEvidenceDoc(null)}
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
-                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, moveStage, voidEntry } : null}
+                    officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, reload: () => void legal?.reload() } : null}
                     narrative={narrativeDesk} busy={busy} planActs={planActs} />
                 ) : null}

@@ -26,6 +26,17 @@ describe('Can we sue?', () => {
     expect(canWeSue(packet({ theory: { key: 'lien' } })).answer).toBe('Only on the lien')
     expect(canWeSue(packet({ theory: { key: 'none' } })).answer).toBe('Not yet')
   })
+  it('carries the attorney’s read as a chip, and whose line it is (punch list #218 PR 2)', () => {
+    const read = { tries: 'hard' as const, why: 'The GC disputes the change order.', costToTry: 2800, months: 9, entryId: 'e', ymd: '2026-10-22', by: 'firm' as const, byName: 'D. Reyes' }
+    const q = canWeSue(packet({ theory: { key: 'contract' } }), read)
+    expect(q.chip).toEqual({ text: 'hard to try', tone: 'warn' })
+    expect(q.why).toBe("They signed an agreement. That is the strongest case we can bring. The firm's read, Oct 22: The GC disputes the change order.")
+    expect(plainWordsFailures(q.why)).toEqual([])
+    expect(canWeSue(packet(), { ...read, tries: 'easy', by: 'office', why: '' }).chip).toEqual({ text: 'easy to try', tone: 'ok' })
+    expect(canWeSue(packet(), { ...read, by: 'office', why: '' }).why).toContain('Our read, Oct 22.')
+    expect(deskQuestions(packet(), read)[0]!.chip?.text).toBe('hard to try')
+    expect(canWeSue(packet()).chip).toBeUndefined()
+  })
 })
 
 describe('How much? and What\'s left for us?', () => {

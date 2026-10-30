@@ -51,6 +51,20 @@ describe('moneyBars — the Legal desk’s money as bars (v2.6105)', () => {
     expect(claim.caption).toBe('The claim · $3,120.50 · asked $7,900.00')
   })
 
+  it('the walk-away line (v2.6176) is a green mark on the claim bar at its amount, and only when the bar is drawn', () => {
+    const { bars } = moneyBars({ ...base, line: 2500 })
+    const claim = bars.find((b) => b.key === 'claim')!
+    // Marks sit in amount order: the line under their offer, then their offer, then ours.
+    expect(claim.marks.map((m) => [m.kind, m.amount, m.label])).toEqual([
+      ['line', 2500, 'above this, settling beats a full win'],
+      ['theirs', 3120.5, 'their offer · Oct 28'],
+      ['ours', 7900, 'our offer · to Nov 12'],
+    ])
+    // The line and their offer sit 8% apart, so their offer takes the second row.
+    expect(claim.marks.map((m) => m.row)).toEqual([0, 1, 0])
+    expect(moneyBars({ ...base, offers: [], line: 2500 }).bars.find((b) => b.key === 'claim')).toBeUndefined()
+  })
+
   it('retainage no bill asks for is drawn once, after the bills, and the claim bar appears for it alone', () => {
     const { bars, words } = moneyBars({ ...base, bills: [base.bills[1]!], retainageOnBillsByJob: new Map(), retainageAdded: 1750, balance: 1750, claim: 3500, offers: [], fee: 1155, net: 1995 })
     const claim = bars.find((b) => b.key === 'claim')!
