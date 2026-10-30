@@ -23,7 +23,7 @@ An **account is the payer**. The payer is the GC, the general contractor, when o
 
 The rail on the left lists accounts by **what Click would keep** if every dollar landed. That is the balance less the firm's share and a filing cost. Under the account name:
 
-- **Can we sue?** answers first. It reads *Yes*, *Yes, on 2 of 3 jobs*, *Only on the lien* or *Not yet*. The line under it says why. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid. The desk says yes on a sworn account when three things are true. The customer received the bill. A report or clock session with GPS places a crew on the property. And no dispute is on record. A lien is a legal claim on the property for unpaid work.
+- **Can we sue?** answers first. It reads *Yes*, *Yes, on 2 of 3 jobs*, *Only on the lien* or *Not yet*. The line under it says why. When the attorney has given a read of the case, a chip says {{chip:yellow|hard to try}} or {{chip:green|easy to try}}. The line then ends with whose read it is, the day, and their why. The firm records its read on its portal. You can record one too, on the Fees & steps tab under **How this case tries**. A sworn account is a suit on an itemized bill that someone at Click swears is true and unpaid. The desk says yes on a sworn account when three things are true. The customer received the bill. A report or clock session with GPS places a crew on the property. And no dispute is on record. A lien is a legal claim on the property for unpaid work.
 - **How much?** is what they owe. The line under it says how many jobs and how old the oldest bill is. When a GC holds retainage on a job, the tile reads the claim instead, with the chip {{chip:green|the claim}}. The line says the open bills inside it and the retainage no bill asks for yet. Retainage already on a bill stays inside the open bills, and the line says so. The firm's cut and *What's left for us?* then work from the claim.
 - **What's left for us?** is the balance after the firm's cut and the filing cost, with a verdict. The verdict is worth it, marginal or not worth it. The line under it says the firm's share and the cost.
 
@@ -100,9 +100,9 @@ Burd & Assoc. owes on the Take 5 job and the lawyer is away. The office plans th
 
 ## Run a case in house
 
-Counsel is away, or not yet hired, and the office works the case itself? Press **Run it in house…** at the top of the desk. Say why in one line, such as *Counsel away until Nov 3*. Press {{button:dark|Run it in house}}. The account moves to **In house** in the left rail. The Fees & steps tab then opens two things. An **Offers** log: press {{button:outline|Log an offer…}}, say who offered, the amount, the day and the day it expires. An open offer's expiry sits on the Timeline. Mark an offer Countered, Accepted, Withdrawn or Expired from its row. And **Question for counsel…**, which saves a question the firm reads once it has the matter.
+Counsel is away, or not yet hired, and the office works the case itself? Press **Run it in house…** at the top of the desk. Say why in one line, such as *Counsel away until Nov 3*. Press {{button:dark|Run it in house}}. The account moves to **In house** in the left rail. The Fees & steps tab then opens three things. **How this case tries**, where you record the attorney's read. Press {{button:outline|Record the read…}} and pick Easy or Hard. Add the costs to try it, the months to a judgment and why. An **Offers** log: press {{button:outline|Log an offer…}}, say who offered, the amount, the day and the day it expires. An open offer's expiry sits on the Timeline. Mark an offer Countered, Accepted, Withdrawn or Expired from its row. And **Question for counsel…**, which saves a question the firm reads once it has the matter.
 
-**Mark attorney ready** still releases the case to the firm. The offers and the questions travel with it. Press **Back to review** to leave In house without releasing.
+**Mark attorney ready** still releases the case to the firm. The read, the offers and the questions travel with it. Press **Back to review** to leave In house without releasing.
 
 ## Two exits
 

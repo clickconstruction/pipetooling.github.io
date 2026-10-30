@@ -375,6 +375,10 @@ describe('LegalDesk · in house (v2.5847)', () => {
     expect(screen.queryByRole('button', { name: 'Run it in house…' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
     expect(document.querySelector('[data-legal-offers]')).toBeTruthy()
+    // Punch list #218 PR 2: the attorney's read opens in house too, with its own door.
+    expect(document.querySelector('[data-legal-counsel-read-panel]')).toBeTruthy()
+    // Two doors while no form is open, the header's and the empty state's, as the Offers log has.
+    expect(document.querySelector('[data-legal-read-add]')).toBeTruthy()
     // No offer yet: the log says so and offers its own door again (punch list #184, sweep C).
     const noOffers = document.querySelector('[data-legal-offers] [data-empty-state]') as HTMLElement
     expect(noOffers.textContent).toBe('No offers yet. Log an offer… adds the first.')
