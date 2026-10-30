@@ -220,3 +220,17 @@ export function roundHeadChipWords(chip: RoundHeadChip, pressed: boolean): strin
 
 /** The per-person switch the Board and the phone's round list share (`useShapeView`). */
 export const QUICKFILL_RHYTHM_STRIP_KEY = 'quickfill-rhythm-strip'
+
+/**
+ * A Quickfill address with the page's `?sbs=1` kept (punch list #217): the Roller's redirect to
+ * the first station and every station press navigate to `/quickfill#<station>`, which would
+ * drop the dev's side-by-side flag; any other search string is left behind, as before.
+ */
+export function keepSideBySide(href: string, search: string): string {
+  const q = new URLSearchParams(search.startsWith('?') ? search.slice(1) : search)
+  if (q.get('sbs') !== '1') return href
+  const hash = href.indexOf('#')
+  const path = hash >= 0 ? href.slice(0, hash) : href
+  const rest = hash >= 0 ? href.slice(hash) : ''
+  return `${path}${path.includes('?') ? '&' : '?'}sbs=1${rest}`
+}
