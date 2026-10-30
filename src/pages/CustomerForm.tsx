@@ -166,7 +166,7 @@ export default function CustomerForm() {
           <label htmlFor="standingPct" style={{ display: 'block', marginBottom: 4 }}>Standing discount</label>
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
             <span style={{ display: 'inline-flex', alignItems: 'stretch', border: '1px solid var(--border-strong)', borderRadius: 6, overflow: 'hidden' }}>
-              <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', fontSize: '0.8rem', fontWeight: 700, color: '#0f7a52', background: 'var(--bg-green-100)', borderRight: '1px solid var(--border)' }}>%</span>
+              <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', padding: '0 0.45rem', fontSize: '0.8rem', fontWeight: 700, color: 'var(--text-green-700)', background: 'var(--bg-green-100)', borderRight: '1px solid var(--border)' }}>%</span>
               <input
                 id="standingPct"
                 type="text"
@@ -184,7 +184,7 @@ export default function CustomerForm() {
                   type="button"
                   onClick={() => setStandingReason((cur) => (cur === r ? null : r))}
                   aria-pressed={standingReason === r}
-                  style={{ border: `1px solid ${standingReason === r ? '#0f7a52' : '#a7dcc2'}`, background: standingReason === r ? '#0f7a52' : 'var(--surface)', color: standingReason === r ? '#ffffff' : '#0f7a52', borderRadius: 999, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
+                  style={{ border: `1px solid ${standingReason === r ? '#0f7a52' : '#a7dcc2'}`, background: standingReason === r ? '#0f7a52' : 'var(--surface)', color: standingReason === r ? '#ffffff' : 'var(--text-green-700)', borderRadius: 999, padding: '2px 10px', fontSize: '0.75rem', fontWeight: 600, cursor: 'pointer', fontFamily: 'inherit' }}
                 >
                   {r}
                 </button>

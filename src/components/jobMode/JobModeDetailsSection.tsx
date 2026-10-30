@@ -15,6 +15,7 @@ import { JobThreadNotesPanel } from '../JobThreadNotesPanel'
 import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
+import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 
 type CustomerContact = {
   customer_name: string | null
@@ -192,6 +193,8 @@ export default function JobModeDetailsSection({
         gap: '0.75rem',
       }}
     >
+      {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet. */}
+      <JobStageChecklistStrip jobId={jobId} rev={updatesRev} />
       <div
         style={{
           display: 'flex',

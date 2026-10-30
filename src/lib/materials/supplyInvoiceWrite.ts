@@ -16,6 +16,8 @@ import { amountProblem, creditsInvoicePatch, paidAtPayload, signedAmountForSave,
 
 /** The form's state at Save. */
 export interface SupplyInvoiceDraft {
+  /** A row id the form chose up front (a bill dropped on the form names its own row in its link); the database picks one otherwise. */
+  id?: string
   supplyHouseId: string
   kind: SupplyDocumentKind
   number: string
@@ -62,6 +64,7 @@ export function supplyInvoicePayload(draft: SupplyInvoiceDraft, prior: PriorSupp
   const effectiveOnJobAccount = draft.onJobAccount && singleAllocatedJobId(draft.allocations) != null
   const priorOnJobAccount = prior ? prior.on_job_account === true : false
   const payload: SupplyInvoicePayload = {
+    ...(draft.id && !prior ? { id: draft.id } : {}),
     supply_house_id: draft.supplyHouseId,
     invoice_number: draft.number.trim(),
     invoice_date: draft.dateYmd,
