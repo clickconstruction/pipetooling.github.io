@@ -258,7 +258,7 @@ export function ApplyPicksToCostsModal({
                     style={{ ...mono, textAlign: 'right', padding: '0.2rem 0.4rem', border: '1px solid #f59e0b', borderRadius: 4, font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
                   />
                 ) : (
-                  <span style={{ ...mono, textAlign: 'right', color: '#15803d', fontWeight: 700 }}>{money(r.afterUnitCents)}</span>
+                  <span style={{ ...mono, textAlign: 'right', color: 'var(--text-green-700)', fontWeight: 700 }}>{money(r.afterUnitCents)}</span>
                 )}
                 <span style={smallMuted}>{r.houseName}{r.lotGroupId ? ' · package' : ''}</span>
               </div>
@@ -275,7 +275,7 @@ export function ApplyPicksToCostsModal({
 
         {marginPreview ? (
           <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.45rem 0.7rem', background: 'var(--bg-subtle)' }}>
-            Margin {marginPreview.before.toFixed(1)}% → <strong style={{ color: marginPreview.after >= marginPreview.before ? '#15803d' : 'var(--text-amber-700)' }}>{marginPreview.after.toFixed(1)}%</strong>
+            Margin {marginPreview.before.toFixed(1)}% → <strong style={{ color: marginPreview.after >= marginPreview.before ? 'var(--text-green-700)' : 'var(--text-amber-700)' }}>{marginPreview.after.toFixed(1)}%</strong>
             {' · '}materials {marginPreview.deltaDollars <= 0 ? 'down' : 'up'} ${Math.abs(marginPreview.deltaDollars).toLocaleString('en-US', { maximumFractionDigits: 0 })} across {plan.rows.length} row{plan.rows.length === 1 ? '' : 's'}
           </p>
         ) : null}

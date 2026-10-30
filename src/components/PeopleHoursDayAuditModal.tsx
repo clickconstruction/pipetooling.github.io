@@ -632,7 +632,7 @@ export function PeopleHoursDayAuditModal({
               border: '1px solid #16a34a',
               borderRadius: 4,
               background: 'var(--bg-green-tint)',
-              color: '#15803d',
+              color: 'var(--text-green-700)',
               cursor: 'pointer',
             }}
           >

@@ -97,7 +97,7 @@ export default function DocumentsAddDriveLinkModal({
   if (!open) return null
 
   const checkMessageColor =
-    checkStatus === 'success' ? '#15803d' : checkStatus === 'warn' ? '#a16207' : '#b91c1c'
+    checkStatus === 'success' ? 'var(--text-green-700)' : checkStatus === 'warn' ? '#a16207' : '#b91c1c'
 
   return (
     <div

@@ -157,6 +157,27 @@ describe("the portal's trade colours and copper (v2.6067, punch list #199)", () 
   })
 })
 
+/** Each line under src/, tests aside, that colours words with the hex: one that must stay a fill or a border. */
+function wordsInLiteral(hex: string): string[] {
+  const words = new RegExp(`(?<![A-Za-z])color:\\s*[^,{}]*'${hex}'`, 'i')
+  const hits: string[] = []
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${entry.name}`
+      if (entry.isDirectory()) walk(path)
+      else if (/\.tsx?$/.test(entry.name) && !entry.name.includes('.test.')) {
+        readFileSync(path, 'utf8')
+          .split('\n')
+          .forEach((line, i) => {
+            if (words.test(line)) hits.push(`${path}:${i + 1}`)
+          })
+      }
+    }
+  }
+  walk('src')
+  return hits
+}
+
 describe("the discount's green, in both themes (v2.6116)", () => {
   for (const theme of THEMES) {
     it(`its words on its green wash: the standing offer's dollars, a standing discount's %, the summary's share, ${theme}: 4.5:1 or better`, () => {
@@ -165,21 +186,20 @@ describe("the discount's green, in both themes (v2.6116)", () => {
   }
 
   it('#0f7a52 colours no words under src/: it read 2.74:1 on the dark surface, so it stays only as a fill under white', () => {
-    const hits: string[] = []
-    const walk = (dir: string) => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const path = `${dir}/${entry.name}`
-        if (entry.isDirectory()) walk(path)
-        else if (/\.tsx?$/.test(entry.name) && !entry.name.includes('.test.')) {
-          readFileSync(path, 'utf8')
-            .split('\n')
-            .forEach((line, i) => {
-              if (/(?<![A-Za-z])color:\s*[^,{}]*'#0f7a52'/i.test(line)) hits.push(`${path}:${i + 1}`)
-            })
-        }
-      }
+    expect(wordsInLiteral('#0f7a52')).toEqual([])
+  })
+})
+
+describe("green-700's words on the grounds the sweep put them on, in both themes (v2.6120)", () => {
+  for (const bg of ['var(--bg-green-tint)', 'var(--bg-subtle)', 'var(--bg-muted)']) {
+    for (const theme of THEMES) {
+      it(`on ${bg}, ${theme}: 4.5:1 or better`, () => {
+        expect(ratio('var(--text-green-700)', bg, theme)).toBeGreaterThanOrEqual(4.5)
+      })
     }
-    walk('src')
-    expect(hits).toEqual([])
+  }
+
+  it("'#15803d' colours no words under src/: it read 2.93:1 on the dark surface, so it stays only as a fill or a border", () => {
+    expect(wordsInLiteral('#15803d')).toEqual([])
   })
 })

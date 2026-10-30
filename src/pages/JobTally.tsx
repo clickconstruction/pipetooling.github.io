@@ -2206,7 +2206,7 @@ export default function JobTally() {
                     <div>
                       <span style={{ fontWeight: 500 }}>{e.fixtureName}</span>
                       {e.isFixtureSent ? (
-                        <div style={{ fontSize: '0.875rem', color: '#15803d', marginTop: '0.25rem' }}>
+                        <div style={{ fontSize: '0.875rem', color: 'var(--text-green-700)', marginTop: '0.25rem' }}>
                           Sent to office for pricing
                         </div>
                       ) : (

@@ -371,7 +371,7 @@ export function RfqDeskModal({
         {coverage ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: '0.8rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem 0.75rem', flexWrap: 'wrap' }}>
             <span style={{ fontSize: '0.8125rem', color: 'var(--text-strong)' }}>
-              <strong>{coverage.total} items</strong> · <strong style={{ color: '#15803d' }}>{coverage.priced}</strong> priced by someone
+              <strong>{coverage.total} items</strong> · <strong style={{ color: 'var(--text-green-700)' }}>{coverage.priced}</strong> priced by someone
               {coverage.bare.length > 0 ? <> · <strong style={{ color: 'var(--text-amber-700)' }}>{coverage.bare.length} still bare</strong></> : ' · full coverage'}
             </span>
             <span style={{ height: 8, borderRadius: 99, flex: 1, minWidth: '6rem', background: 'var(--bg-200)', overflow: 'hidden', display: 'flex' }}>
@@ -456,7 +456,7 @@ export function RfqDeskModal({
                     {bounced ? (
                       <button type="button" style={blueBtn} disabled={busy === r.id} onClick={() => void act(r, 'resend')}>Resend</button>
                     ) : r.status === 'quoted' ? (
-                      <button type="button" style={{ ...ghostBtn, color: '#15803d', borderColor: '#16a34a' }} onClick={onCompare}>Compare</button>
+                      <button type="button" style={{ ...ghostBtn, color: 'var(--text-green-700)', borderColor: '#16a34a' }} onClick={onCompare}>Compare</button>
                     ) : r.sentEmail ? (
                       <button type="button" style={nudgeOk.ok ? blueBtn : { ...ghostBtn, color: 'var(--text-faint)', cursor: 'not-allowed' }} disabled={!nudgeOk.ok || busy === r.id || nudge.busyId === r.id} title={nudgeOk.reason ?? 'Preview the reminder before it sends'} onClick={() => void nudge.previewNudge(r.id)}>Nudge</button>
                     ) : null}

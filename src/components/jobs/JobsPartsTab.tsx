@@ -505,7 +505,7 @@ export default function JobsPartsTab({
                                       <td style={{ padding: '0.5rem 0.75rem' }}>{r.fixture_name || '—'}</td>
                                       <td style={{ padding: '0.5rem 0.75rem' }}>
                                         {r.part_id == null ? (
-                                          <span style={{ color: '#15803d', fontWeight: 500 }}>Fixture (sent for pricing)</span>
+                                          <span style={{ color: 'var(--text-green-700)', fontWeight: 500 }}>Fixture (sent for pricing)</span>
                                         ) : (
                                           <>
                                             {r.part_name ?? '—'}
