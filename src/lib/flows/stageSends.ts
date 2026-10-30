@@ -15,7 +15,7 @@ import { stepLine, type QuickReply } from '../quickReplies/kernel'
 import { channelWord, clockTime, daysAgo, snippetOf, whenWords, type ThreadMessage } from '../messages/thread'
 import type { NeedsReplyRow } from '../followUp/queue'
 import { flowContactKind } from './facts'
-import { appSendMode, sentLately, type AppSends, type NudgeSent, type NudgeText, type TextNumber } from './nudgeDispatch'
+import { appSendMode, blanksLeftWords, sentLately, type AppSends, type NudgeSent, type NudgeText, type TextNumber } from './nudgeDispatch'
 import { stepById, stepReading, type FlowDef, type FlowReading } from './state'
 
 // ---------- the moves the customer feels ----------
@@ -117,7 +117,7 @@ export function stageNotSentWords(why: StageNotSent, left: readonly string[] = [
     case 'no line':
       return 'the team keeps no line for this step'
     case 'blanks left':
-      return left.length ? `the line still has ${left.map((k) => `{${k}}`).join(' and ')}` : 'the line still has a blank'
+      return blanksLeftWords(left)
   }
 }
 

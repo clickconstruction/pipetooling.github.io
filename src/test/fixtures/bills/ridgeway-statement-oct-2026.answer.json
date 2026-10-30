@@ -1,0 +1,24 @@
+{
+  "house_name": "Ridgeway Supply",
+  "document_kind": "statement",
+  "number": "ST-2026-10",
+  "date": "2026-10-31",
+  "po_text": "",
+  "account_ref": "CLICK PLUMBING",
+  "ship_to": "",
+  "job_text": "",
+  "terms": "Net 30",
+  "references_number": "",
+  "lines": [],
+  "subtotal": "",
+  "tax": "",
+  "total": "2508.05",
+  "page_count": 1,
+  "statement_numbers": [
+    "S1183420",
+    "CM-20991",
+    "S1183455",
+    "S1184020"
+  ],
+  "notes": "A statement with a balance forward, not a single bill."
+}
