@@ -80,6 +80,10 @@ The **Dispatch inbox** gets visit requests, a GC's *Need other dates?*, and a GC
 
 The form already knows their number. The form shows ***We'll call you at (512) 555-0142***. The number comes from the customer record, or else the newest job's phone. A *use a different number* link sits beside it. A number is required, because it is what your Call button dials. After sending, they read *We'll call you at … as soon as we can during office hours*. So keep that promise. Push notifications go to the group. To also email specific people, a dev adds them under **Settings → Emails & reports → Portal requests**.
 
+## The GC customer's Money tab, as one bar
+
+The owner of a job we build as the GC reads a Money tab. Its head says the paid share of the sum. We are trying a new head there. One bar draws the whole sum in parts. Paid is green. A bill with the architect is pale amber. A certified bill is full amber. Our guess at the next bill is hatched and named as a guess. The rest is grey. The six lines of the statement sit under it as the legend. *34% built* becomes *34% paid*. See it on [What customers see](/help/see-what-customers-see#open-a-step-large) with {{button:outline|Side by side}}.
+
 ## More on the portal
 
 - The link, the gear and whether they have looked are in [share a customer their portal](/help/share-a-customer-their-portal).

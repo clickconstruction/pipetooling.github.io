@@ -18,6 +18,7 @@
  * work in place; counting retainage as built is one line in `paidPct` if the owner wants it. Pure.
  */
 
+import { moneyBar, type MoneyBar } from './moneyBar'
 import { moneyLines, openChanges, paidPct, signedChanges, statementRows, type CustomerChange, type MoneyLines, type StatementRow } from './moneyLines'
 import {
   changeAmount,
@@ -142,6 +143,8 @@ export interface HistoryEvent {
 
 export interface MoneyStory {
   header: MoneyHeader
+  /** Punch list #217, outside-2 (a prototype): the revised sum as one bar, drawn in place of the header on `?shape=1`. */
+  bar: MoneyBar
   cards: MoneyCard[]
   history: { title: string; events: HistoryEvent[]; investedSoFar: { label: string; amount: string }; toFinish: { label: string; amount: string } }
   statement: { title: string; rows: StatementRow[] }
@@ -324,6 +327,7 @@ export function moneyStory(lang: PortalLang, input: MoneyStoryIn, opts: { showOl
 
   return {
     header: header(lang, input, lines, paidApps, words),
+    bar: moneyBar(lang, input, words, lines),
     cards,
     history: history(lang, input, lines, openApps, paidApps, words),
     statement: { title: words.say(lang, 'statementTitle'), rows: statementRows(lang, lines, words) },
