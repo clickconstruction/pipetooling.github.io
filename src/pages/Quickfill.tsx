@@ -10,6 +10,7 @@ import { QuickfillRoundList } from '../components/quickfill/QuickfillRoundList'
 import { QuickfillRoundScreen } from '../components/quickfill/QuickfillRoundScreen'
 import { QuickfillLastMarkedDoor } from '../components/quickfill/QuickfillLastMarkedDoor'
 import { nextInRound, roundChipColors, roundQueue, roundRows, QUICKFILL_NOTE_FIRST_SECTIONS, QUICKFILL_PERSONAL_SECTIONS, type RoundEvent } from '../lib/quickfill/round'
+import { rhythmMarksBySection } from '../lib/quickfill/stationRhythmStrip'
 import { quickfillFreshnessSummary } from '../lib/quickfill/freshnessSummary'
 import { QuickfillFocusContext } from '../components/quickfill/quickfillViewContext'
 import { QuickfillViewSwitch } from '../components/quickfill/QuickfillViewSwitch'
@@ -1969,6 +1970,11 @@ function QuickfillPage() {
     }
   }, [sectionMarks])
   const roundNow = useMemo(() => new Date(), [sectionMarks, roundEvents]) // eslint-disable-line react-hooks/exhaustive-deps
+  // Each station's marks for the two-week strip (punch list #217, office-8): the same events the chips colour by.
+  const rhythmMarksOf = useMemo(() => {
+    const m = rhythmMarksBySection(roundEvents)
+    return (sectionId: string): ReadonlyArray<string> => m.get(sectionId) ?? []
+  }, [roundEvents])
   const roundRowsValue = useMemo(
     () =>
       roundRows(
@@ -2092,7 +2098,7 @@ function QuickfillPage() {
           ) : (
             <>
               <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.6rem' }}>Quickfill</h1>
-              <QuickfillRoundList rows={roundRowsValue} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} hourNow={companyHour} closeSheet={roundCloseToday} />
+              <QuickfillRoundList rows={roundRowsValue} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} hourNow={companyHour} closeSheet={roundCloseToday} marksOf={rhythmMarksOf} />
             </>
           )}
         </QuickfillRoundScreenContext.Provider>
@@ -2425,6 +2431,8 @@ function QuickfillPage() {
           currentId={rollerMeta?.sectionId ?? null}
           questionOf={(id) => effectiveQuickfillSectionBanner(id, sectionBanners)}
           now={roundNow}
+          hourNow={companyHour}
+          marksOf={rhythmMarksOf}
           onPick={(id) => {
             setRollerBoardOpen(false)
             rollerGo(id)
