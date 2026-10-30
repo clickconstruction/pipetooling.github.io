@@ -64,7 +64,7 @@ The client-side mirror of these rules is `src/lib/costBatches/costBatchPayload.t
 
 ## Revert
 
-`cost_batch_revert(batch_id, reason)` walks the ops in reverse: deletes what an `allocate` inserted (or restores the prior amount and note), re-inserts the allocation it replaced, points supply invoices and clock sessions back, deletes the ESTIMATE other-charge and the batch's own thread notes, marks every op and the batch reverted, and leaves one note per touched job ("Cost batch "…" reverted <date> — <reason>"). A batch reverts exactly once; a second call errors.
+`cost_batch_revert(batch_id, reason)` walks the ops in reverse: deletes what an `allocate` inserted (or restores the prior amount and note), re-inserts the allocation it replaced, points supply invoices and clock sessions back, deletes the ESTIMATE other-charge and the batch's own thread notes, marks every op and the batch reverted, and leaves one note per touched job ("Cost batch "…" reverted <date> — <reason>"). A batch reverts exactly once; a second call errors. Since v2.6111 the job form's materials save upserts Other job charges by id (it used to delete and re-insert every row on each save), so an `ESTIMATE` row a batch wrote keeps its id and the revert can still find it; before that, one edit of the job's charges after the apply put the row beyond the revert.
 
 ## Access model — read before touching
 

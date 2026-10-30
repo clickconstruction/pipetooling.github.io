@@ -211,11 +211,17 @@ export function fixtureInsertRows(jobId: string, fixtures: FixtureRow[]) {
     })
 }
 
-/** Material rows worth persisting, with their insert payloads, in form order. */
+/**
+ * Material rows worth persisting, with their upsert payloads, in form order.
+ * The row's own id rides along (#215 PR 3): a hydrated row keeps the id the
+ * database gave it and a new row keeps the one the form minted, so a save
+ * updates rows in place instead of minting new ones.
+ */
 export function materialInsertRows(jobId: string, materials: MaterialRow[]) {
   return materials
     .filter((m) => (m.description ?? '').trim() !== '' || Number(m.amount) !== 0)
     .map((m, i) => ({
+      id: m.id,
       job_id: jobId,
       description: m.description.trim(),
       amount: m.amount,
