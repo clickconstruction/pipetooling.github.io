@@ -52,6 +52,7 @@ import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { inHouseWords, offerAmountOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 import { confirmJobOwnerContract, setJobGcFromCustomer } from '../../../lib/legal/subJobIo'
+import type { LegalPaperNextDoor } from '../../../lib/legal/legalPaperNextDoor'
 import { setGcDoneWords } from '../../../lib/legal/suspectedSubJob'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
@@ -132,7 +133,8 @@ export type LegalDeskProps = {
   /** Only a dev changes the collections law firm (RLS on `legal_firms`); the firm window is read only for everyone else. Defaults to `canMarkReady`. */
   canEditFirm?: boolean
   onOpenContract: (job: JobWithDetails) => void
-  onOpenLienInstruments: (job: JobWithDetails) => void
+  /** Opens the job's Lien window; with a door (v2.6104, the Paper tab's next step), the Lien desk on the job or the window on a tab. */
+  onOpenLienInstruments: (job: JobWithDetails, door?: LegalPaperNextDoor) => void
   onOpenEditJob: (jobId: string) => void
   onOpenCallMode: () => void
   onOpenAccountsReceivable: () => void
@@ -981,7 +983,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                               <div style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: 10, alignItems: 'start', fontSize: '0.82rem' }}>
                                 {answeredGroup ? pill('answered', 'ok') : pill(g.severity === 'stop' ? 'fix' : 'note', g.severity)}
                                 <span>
-                                  {answeredGroup ? <span style={MUTED}>{g.label}</span> : <><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></>}
+                                  {answeredGroup ? <span style={MUTED}>{g.label}</span> : g.chip ? <><span data-legal-gap-chip={g.key} title={`${g.label} — ${g.detail}`}>{pill(g.chip, g.severity)}</span> <span style={MUTED}>{g.brief ?? g.detail}</span></> : <><b>{g.label}</b> <span style={MUTED}>— {g.detail}</span></>}
                                   {answerLine}
                                   {answerSheetBlock}
                                 </span>

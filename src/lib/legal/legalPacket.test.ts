@@ -218,6 +218,9 @@ describe('buildLegalPacket', () => {
     expect(a?.filingLeft).toBe(daysBetweenYmd(TODAY, '2026-10-15'))
     expect(packet.paper.lienClock.find((c) => c.jobId === 'job-b')?.status).toBe('closed')
     expect(packet.gaps.find((g) => g.key === 'lienfile:job-a')?.label).toMatch(/affidavit possible until 2026-10-15/)
+    // v2.6104: the desk reads the deadline as a chip with the few words after it; the label stays for the prints.
+    expect(packet.gaps.find((g) => g.key === 'lienfile:job-a')?.chip).toBe(`§ 53.052 affidavit · by 2026-10-15 · ${daysBetweenYmd(TODAY, '2026-10-15')} days`)
+    expect(packet.gaps.find((g) => g.key === 'lienfile:job-a')?.brief).toBe('on 717 · no monthly notice for an original contractor · file it before you refer')
     // Subcontractor (GC pays): the monthly notice clock runs.
     const subJob = collectionsJob({ id: 'job-s', hcp_number: '905', customer_id: 'own', customer_name: 'Owner', gc_customer_id: 'gc', gcCustomer: { id: 'gc', name: 'Hilltop' }, invoices: [billedInvoice('inv-s', 6200, '2026-05-30')] })
     const subAcc = groupCollectionsByPayer([subJob], new Map(), TODAY)[0] as LegalAccountSummary
@@ -225,6 +228,8 @@ describe('buildLegalPacket', () => {
     // No property record on 905: a kind not set dates as residential, the 2nd month after July (v2.5031).
     expect(sub.paper.lienClock[0]).toEqual(expect.objectContaining({ noticeDeadline: '2026-09-15', status: 'notice_open' }))
     expect(sub.gaps.find((g) => g.key === 'lien:job-s')?.label).toMatch(/§ 53.056 notice due 2026-09-15/)
+    expect(sub.gaps.find((g) => g.key === 'lien:job-s')?.chip).toMatch(/^§ 53\.056 notice · due 2026-09-15 · \d+ days?$/)
+    expect(sub.gaps.find((g) => g.key === 'lien:job-s')?.brief).toBe('on 905 · file it before you refer')
   })
 
   it('their word reads each instant on the company calendar: a call or promise the evening before the first bill is that evening', () => {

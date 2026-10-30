@@ -459,6 +459,10 @@ export type LegalGap = {
   fix: LegalGapFix
   /** What the office knows (v2.5920): the answer riding under this gap, typed or read from the job's own records. */
   answer?: LegalGapAnswer | null
+  /** The gap as a chip (v2.6104, punch list #214): a deadline's paper, day and days left — `§ 53.056 notice · due 2026-11-16 · 18 days`; the desk draws it in the label's place and the prints keep the label. */
+  chip?: string
+  /** The few words after the chip — `on 891 · file it before you refer`. */
+  brief?: string
 }
 
 export type LegalTheoryKey = 'contract' | 'sworn' | 'lien' | 'none'
@@ -990,10 +994,30 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     }
   }
   for (const c of lienClock) {
+    const days = (n: number) => `${n} day${n === 1 ? '' : 's'}`
     if (c.status === 'notice_open' && c.noticeLeft != null) {
-      gaps.push({ key: `lien:${c.jobId}`, severity: 'warn', label: `Lien window open on ${c.jobLabel} — § 53.056 notice due ${c.noticeDeadline} (${c.noticeLeft} day${c.noticeLeft === 1 ? '' : 's'})`, detail: 'File the notice before you refer; a lien outranks a referral and the firm will ask why it lapsed.', jobId: c.jobId, fix: 'lien_instruments' })
+      gaps.push({
+        key: `lien:${c.jobId}`,
+        severity: 'warn',
+        label: `Lien window open on ${c.jobLabel} — § 53.056 notice due ${c.noticeDeadline} (${days(c.noticeLeft)})`,
+        detail: 'File the notice before you refer; a lien outranks a referral and the firm will ask why it lapsed.',
+        jobId: c.jobId,
+        fix: 'lien_instruments',
+        // v2.6104: the desk reads the deadline as a chip, the sentence stays for the prints.
+        chip: `§ 53.056 notice · due ${c.noticeDeadline} · ${days(c.noticeLeft)}`,
+        brief: `on ${c.jobLabel} · file it before you refer`,
+      })
     } else if (c.status === 'affidavit_open' && c.filingLeft != null) {
-      gaps.push({ key: `lienfile:${c.jobId}`, severity: 'warn', label: `${c.noticeDeadline ? 'Notice window closed on' : 'Affidavit window open on'} ${c.jobLabel} — affidavit possible until ${c.filingDeadline} (${c.filingLeft} day${c.filingLeft === 1 ? '' : 's'})`, detail: c.noticeDeadline ? 'Late notice weakens the lien but the affidavit can still be filed. Ask the firm before it lapses.' : 'An original contractor files the affidavit without a monthly notice. Do it before you refer.', jobId: c.jobId, fix: 'lien_instruments' })
+      gaps.push({
+        key: `lienfile:${c.jobId}`,
+        severity: 'warn',
+        label: `${c.noticeDeadline ? 'Notice window closed on' : 'Affidavit window open on'} ${c.jobLabel} — affidavit possible until ${c.filingDeadline} (${days(c.filingLeft)})`,
+        detail: c.noticeDeadline ? 'Late notice weakens the lien but the affidavit can still be filed. Ask the firm before it lapses.' : 'An original contractor files the affidavit without a monthly notice. Do it before you refer.',
+        jobId: c.jobId,
+        fix: 'lien_instruments',
+        chip: `§ 53.052 affidavit · by ${c.filingDeadline} · ${days(c.filingLeft)}`,
+        brief: c.noticeDeadline ? `on ${c.jobLabel} · the notice window closed, late notice weakens the lien · ask the firm before it lapses` : `on ${c.jobLabel} · no monthly notice for an original contractor · file it before you refer`,
+      })
     }
   }
   if (!account.customerId) gaps.push({ key: 'payer', severity: 'stop', label: 'Payer is a name only', detail: 'The job carries a customer name but no customer record — link it so the packet has an address and contacts.', jobId: null, fix: 'edit_job' })
