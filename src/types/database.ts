@@ -16730,6 +16730,121 @@ export type Database = {
           },
         ]
       }
+      hours_statements: {
+        Row: {
+          contract_document_id: string | null
+          created_at: string
+          gap_from: string | null
+          gap_to: string | null
+          id: string
+          job_ledger_id: string
+          kind: string
+          labor_company: string | null
+          matter_document_id: string | null
+          period_end: string
+          period_start: string
+          person_id: string | null
+          prepared_at: string
+          prepared_by: string | null
+          record_id: string
+          snapshot: Json
+          state: string
+          stated_days: Json
+          updated_at: string
+          user_id: string
+          with_pay: boolean
+        }
+        Insert: {
+          contract_document_id?: string | null
+          created_at?: string
+          gap_from?: string | null
+          gap_to?: string | null
+          id?: string
+          job_ledger_id: string
+          kind: string
+          labor_company?: string | null
+          matter_document_id?: string | null
+          period_end: string
+          period_start: string
+          person_id?: string | null
+          prepared_at?: string
+          prepared_by?: string | null
+          record_id: string
+          snapshot?: Json
+          state?: string
+          stated_days?: Json
+          updated_at?: string
+          user_id: string
+          with_pay?: boolean
+        }
+        Update: {
+          contract_document_id?: string | null
+          created_at?: string
+          gap_from?: string | null
+          gap_to?: string | null
+          id?: string
+          job_ledger_id?: string
+          kind?: string
+          labor_company?: string | null
+          matter_document_id?: string | null
+          period_end?: string
+          period_start?: string
+          person_id?: string | null
+          prepared_at?: string
+          prepared_by?: string | null
+          record_id?: string
+          snapshot?: Json
+          state?: string
+          stated_days?: Json
+          updated_at?: string
+          user_id?: string
+          with_pay?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hours_statements_contract_document_id_fkey"
+            columns: ["contract_document_id"]
+            isOneToOne: false
+            referencedRelation: "person_contract_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hours_statements_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hours_statements_matter_document_id_fkey"
+            columns: ["matter_document_id"]
+            isOneToOne: false
+            referencedRelation: "legal_matter_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hours_statements_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hours_statements_prepared_by_fkey"
+            columns: ["prepared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "hours_statements_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       housing_possessions: {
         Row: {
           created_at: string | null
@@ -19817,6 +19932,7 @@ export type Database = {
           customer_name: string | null
           customer_phone: string | null
           development_id: string | null
+          first_work_date: string | null
           gc_auto_offer_next: boolean
           gc_customer_id: string | null
           gc_shares_stage_dates: boolean
@@ -19884,6 +20000,7 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           development_id?: string | null
+          first_work_date?: string | null
           gc_auto_offer_next?: boolean
           gc_customer_id?: string | null
           gc_shares_stage_dates?: boolean
@@ -19951,6 +20068,7 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           development_id?: string | null
+          first_work_date?: string | null
           gc_auto_offer_next?: boolean
           gc_customer_id?: string | null
           gc_shares_stage_dates?: boolean
@@ -21228,6 +21346,7 @@ export type Database = {
           title: string
           voided_at: string | null
           voided_by: string | null
+          whose: string | null
         }
         Insert: {
           added_at?: string
@@ -21250,6 +21369,7 @@ export type Database = {
           title: string
           voided_at?: string | null
           voided_by?: string | null
+          whose?: string | null
         }
         Update: {
           added_at?: string
@@ -21272,6 +21392,7 @@ export type Database = {
           title?: string
           voided_at?: string | null
           voided_by?: string | null
+          whose?: string | null
         }
         Relationships: [
           {
@@ -28736,6 +28857,98 @@ export type Database = {
           },
         ]
       }
+      report_photos: {
+        Row: {
+          by_name: string
+          by_user_id: string | null
+          bytes: number
+          caption: string
+          created_at: string
+          drive_file_id: string | null
+          fail_why: string | null
+          filed_at: string | null
+          fixture_id: string | null
+          height: number
+          id: string
+          job_id: string
+          original_bytes: number
+          report_id: string | null
+          stage_name: string
+          storage_path: string | null
+          taken_at: string
+          width: number
+        }
+        Insert: {
+          by_name?: string
+          by_user_id?: string | null
+          bytes?: number
+          caption?: string
+          created_at?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
+          fixture_id?: string | null
+          height?: number
+          id?: string
+          job_id: string
+          original_bytes?: number
+          report_id?: string | null
+          stage_name?: string
+          storage_path?: string | null
+          taken_at?: string
+          width?: number
+        }
+        Update: {
+          by_name?: string
+          by_user_id?: string | null
+          bytes?: number
+          caption?: string
+          created_at?: string
+          drive_file_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
+          fixture_id?: string | null
+          height?: number
+          id?: string
+          job_id?: string
+          original_bytes?: number
+          report_id?: string | null
+          stage_name?: string
+          storage_path?: string | null
+          taken_at?: string
+          width?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "report_photos_by_user_id_fkey"
+            columns: ["by_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_photos_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_photos_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "report_photos_report_id_fkey"
+            columns: ["report_id"]
+            isOneToOne: false
+            referencedRelation: "reports"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       report_reads: {
         Row: {
           done_at: string | null
@@ -29499,6 +29712,142 @@ export type Database = {
         }
         Relationships: []
       }
+      stage_checklist_answers: {
+        Row: {
+          answered_at: string | null
+          answered_by: string | null
+          answered_by_name: string
+          created_at: string
+          fixture_id: string
+          id: string
+          job_id: string
+          note: string
+          photo_bytes: number
+          photo_drive_file_id: string | null
+          photo_fail_why: string | null
+          photo_file_name: string | null
+          photo_filed_at: string | null
+          photo_storage_path: string | null
+          photo_taken_at: string | null
+          pick: string | null
+          question_id: string
+          updated_at: string
+        }
+        Insert: {
+          answered_at?: string | null
+          answered_by?: string | null
+          answered_by_name?: string
+          created_at?: string
+          fixture_id: string
+          id?: string
+          job_id: string
+          note?: string
+          photo_bytes?: number
+          photo_drive_file_id?: string | null
+          photo_fail_why?: string | null
+          photo_file_name?: string | null
+          photo_filed_at?: string | null
+          photo_storage_path?: string | null
+          photo_taken_at?: string | null
+          pick?: string | null
+          question_id: string
+          updated_at?: string
+        }
+        Update: {
+          answered_at?: string | null
+          answered_by?: string | null
+          answered_by_name?: string
+          created_at?: string
+          fixture_id?: string
+          id?: string
+          job_id?: string
+          note?: string
+          photo_bytes?: number
+          photo_drive_file_id?: string | null
+          photo_fail_why?: string | null
+          photo_file_name?: string | null
+          photo_filed_at?: string | null
+          photo_storage_path?: string | null
+          photo_taken_at?: string | null
+          pick?: string | null
+          question_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_checklist_answers_answered_by_fkey"
+            columns: ["answered_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "stage_checklist_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stage_checklist_templates: {
+        Row: {
+          asks_photo: boolean
+          created_at: string
+          created_by: string | null
+          id: string
+          retired_at: string | null
+          sort_order: number
+          stage_kind: string
+          updated_at: string
+          words: string
+        }
+        Insert: {
+          asks_photo?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          retired_at?: string | null
+          sort_order?: number
+          stage_kind: string
+          updated_at?: string
+          words: string
+        }
+        Update: {
+          asks_photo?: boolean
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          retired_at?: string | null
+          sort_order?: number
+          stage_kind?: string
+          updated_at?: string
+          words?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stage_checklist_templates_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       statement_acknowledgments: {
         Row: {
           acknowledged_at: string
@@ -30062,6 +30411,82 @@ export type Database = {
           },
         ]
       }
+      supply_bill_reads: {
+        Row: {
+          answer: Json | null
+          attachment_id: string | null
+          cents: number | null
+          file_mime: string | null
+          file_name: string
+          file_path: string
+          id: string
+          input_tokens: number | null
+          model: string
+          ok: boolean
+          output_tokens: number | null
+          read_at: string
+          read_by: string | null
+          supply_house_id: string | null
+          why: string | null
+        }
+        Insert: {
+          answer?: Json | null
+          attachment_id?: string | null
+          cents?: number | null
+          file_mime?: string | null
+          file_name: string
+          file_path: string
+          id?: string
+          input_tokens?: number | null
+          model: string
+          ok: boolean
+          output_tokens?: number | null
+          read_at?: string
+          read_by?: string | null
+          supply_house_id?: string | null
+          why?: string | null
+        }
+        Update: {
+          answer?: Json | null
+          attachment_id?: string | null
+          cents?: number | null
+          file_mime?: string | null
+          file_name?: string
+          file_path?: string
+          id?: string
+          input_tokens?: number | null
+          model?: string
+          ok?: boolean
+          output_tokens?: number | null
+          read_at?: string
+          read_by?: string | null
+          supply_house_id?: string | null
+          why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "supply_bill_reads_attachment_id_fkey"
+            columns: ["attachment_id"]
+            isOneToOne: false
+            referencedRelation: "message_attachments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_bill_reads_read_by_fkey"
+            columns: ["read_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "supply_bill_reads_supply_house_id_fkey"
+            columns: ["supply_house_id"]
+            isOneToOne: false
+            referencedRelation: "supply_houses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       supply_house_contacts: {
         Row: {
           archived_at: string | null
@@ -30313,6 +30738,8 @@ export type Database = {
       supply_house_invoices: {
         Row: {
           amount: number
+          bill_attachment_id: string | null
+          bill_read: Json | null
           created_at: string | null
           credits_invoice_id: string | null
           document_kind: string
@@ -30331,6 +30758,8 @@ export type Database = {
         }
         Insert: {
           amount: number
+          bill_attachment_id?: string | null
+          bill_read?: Json | null
           created_at?: string | null
           credits_invoice_id?: string | null
           document_kind?: string
@@ -30349,6 +30778,8 @@ export type Database = {
         }
         Update: {
           amount?: number
+          bill_attachment_id?: string | null
+          bill_read?: Json | null
           created_at?: string | null
           credits_invoice_id?: string | null
           document_kind?: string
@@ -30366,6 +30797,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "supply_house_invoices_bill_attachment_id_fkey"
+            columns: ["bill_attachment_id"]
+            isOneToOne: false
+            referencedRelation: "message_attachments"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "supply_house_invoices_credits_invoice_id_fkey"
             columns: ["credits_invoice_id"]
@@ -34484,6 +34922,10 @@ export type Database = {
         Args: { p_roadmap_id: string }
         Returns: boolean
       }
+      can_touch_hours_statement: {
+        Args: { p_with_pay: boolean }
+        Returns: boolean
+      }
       can_view_inspection_portal_credentials: { Args: never; Returns: boolean }
       can_write_bid_custom_costs: { Args: never; Returns: boolean }
       can_write_job_budget: { Args: { p_job_id: string }; Returns: boolean }
@@ -38483,6 +38925,7 @@ export type Database = {
         Returns: Json
       }
       quick_replies_seed: { Args: never; Returns: number }
+      quick_replies_seed_starter: { Args: never; Returns: number }
       quick_reply_caller: { Args: { p_what: string }; Returns: string }
       quick_reply_step: {
         Args: { p_for: string; p_step: string }
