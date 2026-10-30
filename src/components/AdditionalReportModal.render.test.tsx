@@ -119,6 +119,38 @@ describe('AdditionalReportModal', () => {
     }
   })
 
+  it('a Save pressed the moment the field draws still files the job’s number', async () => {
+    inserted.length = 0
+    jobRow = { pct_complete: 40, status: 'working', google_drive_link: null, job_pictures_link: null }
+    renderWithProviders(<AdditionalReportModal {...props} />)
+    // Press Save from the mutation that draws the hint, before React runs the effect that seeds the field: the
+    // window a quick press (or a slow CI box) can land in, which filed 0 while the field said 40.
+    const g = globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+    const actWas = g.IS_REACT_ACT_ENVIRONMENT
+    g.IS_REACT_ACT_ENVIRONMENT = false
+    try {
+      await new Promise<void>((resolve) => {
+        const hint = "Opens on the job's 40%. Leave it, and the report files 40%."
+        const pressSave = () => {
+          if (!document.body.textContent?.includes(hint)) return false
+          fireEvent.click(screen.getByRole('button', { name: 'Save report' }))
+          return true
+        }
+        if (pressSave()) return resolve()
+        const watch = new MutationObserver(() => {
+          if (!pressSave()) return
+          watch.disconnect()
+          resolve()
+        })
+        watch.observe(document.body, { childList: true, subtree: true, characterData: true })
+      })
+      await waitFor(() => expect(inserted).toHaveLength(1))
+    } finally {
+      g.IS_REACT_ACT_ENVIRONMENT = actWas
+    }
+    expect((inserted[0]!.field_values as Record<string, string>)['How complete is the job?']).toBe('40')
+  })
+
   it('a pick files the pick, and the line under the field reads what it was', async () => {
     inserted.length = 0
     jobRow = { pct_complete: 40, status: 'working', google_drive_link: null, job_pictures_link: null }

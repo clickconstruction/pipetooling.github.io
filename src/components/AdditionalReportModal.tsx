@@ -405,6 +405,11 @@ export default function AdditionalReportModal({
     for (const f of fields) {
       fv[f.label] = fieldValueForSubmit(f, fieldValues)
     }
+    // An untouched percent files the job's number, as the field and Save already say, even when Save is pressed in
+    // the moment before the seed effect has put it in `fieldValues` (that moment filed 0).
+    if (percentFieldLabel && !linesActive && fieldValues[percentFieldLabel] === undefined && jobPctSeed != null) {
+      fv[percentFieldLabel] = String(jobPctSeed)
+    }
     // Report by line (v2.5663): the number the lines add up to is the percent field, the moved lines in words beside it.
     if (linesActive && lineProgress.lines && percentFieldLabel && lineDerivedPct != null) {
       fv[percentFieldLabel] = String(lineDerivedPct)
