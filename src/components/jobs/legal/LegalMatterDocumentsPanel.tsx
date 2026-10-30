@@ -1,11 +1,12 @@
-import { useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, todayYmdInAppTz } from '../../../utils/dateUtils'
 import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
 import { EmptyState } from '../../EmptyState'
 import { LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_SENT_HOWS, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentKindWords, legalDocumentPassesFilter, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateChipWords, legalDocumentStateWords, legalDocumentTimelineDay, legalDocumentTitleFromName, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalPortalDocumentFromRow, type LegalDocumentDraft, type LegalDocumentFilter, type LegalDocumentSentDraft, type LegalDocumentWhose } from '../../../lib/legal/legalMatterDocuments'
-import { addLegalMatterDocument, legalMatterDocumentLink, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, retireLegalMatterDocument, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { EVIDENCE_LANDING_LIT_MS, evidenceLanding, evidenceRowSelector } from '../../../lib/legal/evidenceLanding'
+import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, retireLegalMatterDocument, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 
 /**
  * Documents for the firm, on the Legal desk's Evidence tab (v2.4810): a drop zone, a title and
@@ -22,6 +23,11 @@ import { addLegalMatterDocument, legalMatterDocumentLink, markLegalMatterDocumen
  * paper…*, guessed from the title for a row with none and never written back) — the state is a
  * chip, the paper's day a column, the *shows* line one line with the rest on hover, and the send
  * record sits behind the row's ⋯ instead of under its title. Filters stand where the count was.
+ *
+ * Since v2.6166 the Timeline's **Show on Evidence ↗** lands here: `landOn` names the row, which scrolls
+ * into view and wears `.legalDocLanded` for a moment (`evidenceLanding` decides what the landing finds;
+ * a filter hiding the row clears to All with one line under the filters, a paper gone from the matter
+ * says so). The address carries the row (`&doc=`) until it is pressed, when `onLandingDone` clears it.
  */
 const shortDay = (ymd: string) => (ymd ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '')
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
@@ -44,7 +50,7 @@ function stateChipColor(state: string): string {
 
 type Pending = { key: string; file: File; draft: LegalDocumentDraft; /** The person picked whose paper it is; the title no longer guesses. */ whoseTouched: boolean }
 
-export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit, onChanged, payerName = '' }: { matterId: string; documents: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; onChanged: () => void; /** The payer's name, for the heading of their paper and the guess (v2.6108). */ payerName?: string }) {
+export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit, onChanged, payerName = '', landOn = null, onLandingDone }: { matterId: string; documents: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; onChanged: () => void; /** The payer's name, for the heading of their paper and the guess (v2.6108). */ payerName?: string; /** The row to land on, lit (v2.6166); from the address. */ landOn?: string | null; /** The landed row was pressed: the address lets the row go. */ onLandingDone?: () => void }) {
   const [pending, setPending] = useState<Pending[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -58,6 +64,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
   const weekStart = companyWeekStartSundayContaining(todayYmd) ?? ''
   const [over, setOver] = useState(false)
   const fileRef = useRef<HTMLInputElement | null>(null)
+  const rootRef = useRef<HTMLDivElement | null>(null)
   const choices = legalDocumentWhoseChoices(payerName)
 
   // v2.6108: each row once as the firm reads it (its day, its state), then the filters and the groups.
@@ -66,6 +73,41 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
   const filterShape = (d: LegalMatterDocumentRow) => ({ state: docOf(d).state, held: Boolean(d.held_reason), addedOn: docOf(d).addedOn })
   const counts = legalDocumentFilterCounts(documents.map(filterShape), weekStart)
   const groups = groupLegalDocumentsByWhose(documents.filter((d) => legalDocumentPassesFilter(filterShape(d), filter, weekStart)), payerName, (d) => legalDocumentTimelineDay(docOf(d)), OUR_NAME)
+
+  // v2.6166: Show on Evidence lands here. The lit row, the one line under the filters, and the row already landed on,
+  // so a reload of the documents (a hold, a send) never scrolls again.
+  const [landed, setLanded] = useState<string | null>(null)
+  const [landingNote, setLandingNote] = useState<string | null>(null)
+  const landedForRef = useRef<string | null>(null)
+  const litTimer = useRef<number | null>(null)
+  useEffect(() => () => { if (litTimer.current != null) window.clearTimeout(litTimer.current) }, [])
+  useEffect(() => {
+    if (!landOn) {
+      landedForRef.current = null
+      setLandingNote(null)
+      return
+    }
+    if (landedForRef.current === landOn) return
+    const landing = evidenceLanding(landOn, documents.map((d) => ({ id: d.id, ...filterShape(d) })), filter, weekStart)
+    if (landing.kind === 'behind_filter') {
+      // The filter clears; this effect runs again with every paper shown and lands then.
+      setFilter('all')
+      setLandingNote(landing.note)
+      return
+    }
+    landedForRef.current = landOn
+    if (landing.kind === 'gone') {
+      setLandingNote(landing.note)
+      return
+    }
+    setLanded(landOn)
+    const calm = typeof window.matchMedia === 'function' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    rootRef.current?.querySelector(evidenceRowSelector(landOn))?.scrollIntoView?.({ block: 'center', behavior: calm ? 'auto' : 'smooth' })
+    if (litTimer.current != null) window.clearTimeout(litTimer.current)
+    litTimer.current = window.setTimeout(() => setLanded((cur) => (cur === landOn ? null : cur)), EVIDENCE_LANDING_LIT_MS)
+    // The filter and the documents are read, never watched: a later change to either is not a new landing.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [landOn, filter, documents])
 
   const take = (files: FileList | File[]) => {
     const next = [...files].map((file) => {
@@ -91,13 +133,10 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
     await addLegalMatterDocument(supabase, matterId, p.draft, p.file)
     setPending((list) => list.filter((x) => x.key !== p.key))
   })
-  const open = (d: LegalMatterDocumentRow) => void act('Could not open the document.', async () => {
-    const url = await legalMatterDocumentLink(supabase, d.storage_path)
-    window.open(url, '_blank', 'noopener')
-  })
+  const open = (d: LegalMatterDocumentRow) => void act('Could not open the document.', () => openLegalMatterDocument(supabase, d))
 
   return (
-    <div data-legal-matter-documents style={{ margin: '0 0 14px', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, display: 'grid', gap: 8 }}>
+    <div ref={rootRef} data-legal-matter-documents style={{ margin: '0 0 14px', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, display: 'grid', gap: 8 }}>
       <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
         <b style={{ fontSize: '0.86rem' }}>Documents for the firm</b>
         {documents.length ? (
@@ -153,6 +192,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
         )
       })}
       {error ? <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.8rem' }}>{error}</div> : null}
+      {landingNote ? <div role="status" data-legal-document-landing-note style={{ ...MUTED, fontSize: '0.78rem' }}>{landingNote}</div> : null}
       {documents.length === 0 && pending.length === 0 ? <div style={{ ...MUTED, fontSize: '0.8rem' }}>Nothing yet. A billing report, a supplier invoice, a signed estimate, an email thread printed to PDF: each with one line on what it shows.</div> : null}
       {documents.length > 0 && groups.length === 0 ? <EmptyState compact main={legalDocumentFilterEmptyWords(filter)} next={{ label: 'Show every paper', onPress: () => setFilter('all') }} /> : null}
       {groups.map((g) => {
@@ -173,7 +213,7 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
               const group = legalDocumentGroupOf(d, payerName, OUR_NAME)
               const day = legalDocumentTimelineDay(doc)
               return (
-                <div key={d.id} data-legal-document={d.id} data-held={d.held_reason ? 'yes' : 'no'} data-legal-document-state={doc.state} data-legal-document-whose={group.key} data-legal-document-guessed={group.guessed ? 'yes' : 'no'} style={{ display: 'grid', gridTemplateColumns: 'auto 3.4rem minmax(0, 1fr) auto', gap: 8, alignItems: 'center', padding: '4px 0', borderTop: '1px dotted var(--border)', fontSize: '0.8rem' }}>
+                <div key={d.id} data-legal-document={d.id} data-held={d.held_reason ? 'yes' : 'no'} data-legal-document-state={doc.state} data-legal-document-whose={group.key} data-legal-document-guessed={group.guessed ? 'yes' : 'no'} data-legal-document-landed={landed === d.id ? 'yes' : undefined} className={landed === d.id ? 'legalDocLanded' : undefined} onClickCapture={landOn === d.id ? () => onLandingDone?.() : undefined} style={{ display: 'grid', gridTemplateColumns: 'auto 3.4rem minmax(0, 1fr) auto', gap: 8, alignItems: 'center', padding: '4px 0', borderTop: '1px dotted var(--border)', fontSize: '0.8rem' }}>
                   <span style={{ display: 'inline-flex', gap: 4, alignItems: 'center' }}>
                     <span data-legal-document-state-chip {...(doc.state === 'draft' ? { 'data-legal-document-draft': '' } : null)} title={stateWords || 'The paper as it stands.'} style={{ ...chip, color: stateChipColor(doc.state) }}>{chipWords}</span>
                     {d.held_reason ? <span data-legal-document-held-chip title={`Held from the firm: ${d.held_reason}`} style={{ ...chip, color: 'var(--text-amber-700)' }}>held</span> : null}
