@@ -229,6 +229,7 @@
   .daysrow { display: grid; grid-template-columns: 116px minmax(0, 1fr); gap: 8px; align-items: center; }
   .daysrow .who { font-size: 11.5px; color: var(--text-700); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .daysrow .days { height: 16px; margin: 1px 0; }
+  .daysrow .days.haspop { margin-top: 30px; }
   .daysrow .days .d { align-content: center; }
   /* steppers */
   .steps { display: flex; align-items: flex-start; gap: 0; margin: 8px 0 4px; overflow-x: auto; }
@@ -329,6 +330,7 @@
   .hrsgrid { display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 6px; align-items: center; }
   .hrsgrid .who { font-size: 11.5px; color: var(--text-700); }
   .days .d.rule { border-left: 2px solid var(--border-strong); }
+  .days.big .dot { width: 10px; height: 10px; } .days.big .dot.note { width: 9px; height: 9px; } .days.big .dot.diam { width: 10px; height: 10px; } .days.big .dot.tick { border-left-width: 6px; border-right-width: 6px; border-bottom-width: 11px; } .daysrow .days.big { height: 26px; }
   .days .dot.wait { background: var(--surface); border: 2px solid var(--text-amber-800); width: 8px; height: 8px; }
   .days .dot.start { width: 8px; height: 8px; border-radius: 0; transform: rotate(45deg); background: var(--text-strong); }
   .cal { display: grid; gap: 3px; margin: 8px 0; }
@@ -500,7 +502,7 @@
     <p class="gain">The guess wears its own ring and its mark names the making (<i>~30 d over 6 payments</i>) with a door to the payments it read; a promise and a guess never draw alike again.</p>
     <p class="rule">Reuses the Lien desk's Deadlines track and its hover cards at row height, and the payment forecast's pace words and breakdown door. The same track belongs on the phone card and on Collections, which draw the same ledger.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass</div><p>The first render put month letters along the top of the track, where they collided with the Billed label; the Lien by label ran off the frame's right edge; and today's label sat on the guessed date's. The months went (the dates name them), today moved under the axis, the lien flag's label is right-aligned under its diamond, and the guess keeps the top row to itself. Asked whether a 74 px track is too tall for a Pipeline row: it is the Lien desk's own track at row height; on the phone card it stays one line and the band's words carry the verdict.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first render's label on the counting day hung off the frame and its dots sat at the foot of tall columns. Taunya, on the second: <i>the dots are too small and it takes too much cognitive time to align those dots with the index. Perhaps you want to give it a refresh?</i> Refreshed: three rows named at the left (field days as bars, notes as dots, the office's two acts), so there is no legend to match, the marks are twice the size, and the two chips name the day each clock counts from.</p></div>
   <div class="pick" data-for="jobs-pipeline-1"></div>
 </section>
 
@@ -514,12 +516,14 @@
       <p><b>Next:</b> Schedule the next visit or close it <span class="btn sm" style="float:right">Schedule it ↗</span></p>
       <p class="note">A quiet card reads <i>Working quiet 12 days — no notes or work logged · 40% done on a $50,000 bid</i>. Idle counts from <code>last_work_date</code>, the last approved field day; quiet counts from the newest note, status move, work or bill, or the last <i>Looks fine</i>. Neither says which day that was, and a note does not reset the idle clock.</p>
     </div></div>
-    <div class="col"><div class="cap opt">The shape</div><div class="frame">
-      <p class="lead">1318 · Sample Retail Shell rough-in <span class="chip">Working</span> <span class="chip warn">idle 59 d</span> <span class="chip dim">quiet 8 d</span></p>
-      <div class="days dense tall" data-n="60" data-dow0="2" data-today="59" data-limit="38" data-from="0" data-marks="0:field,11:note,14:diam,32:note,39:tick,51:note" data-pop="0:since Sep 1 · the last approved field day ↗"></div>
-      <div class="dayslab" data-n="60" data-labels="0:Sep 1|29:Sep 30|38:limit 21 d:hot|59:today:blue:r"></div>
-      <div class="legend"><span><i style="background:var(--text-strong)"></i>approved field day</span><span><i style="background:var(--purple)"></i>a note</span><span><i style="background:var(--bg-amber-100);border-color:var(--text-amber-800)"></i>status move</span><span><i style="background:var(--bg-green-100);border-color:var(--text-green-700)"></i>Looks fine</span></div>
+    <div class="col"><div class="cap opt">The shape · refreshed on the owner's note</div><div class="frame">
+      <p class="lead">1318 · Sample Retail Shell rough-in <span class="chip">Working</span> <span class="chip warn">idle 59 d · since Sep 1</span> <span class="chip dim">quiet 8 d · since a note Oct 22</span></p>
+      <div class="daysrow wide"><div class="who"><b>Field days</b><br><span class="small">approved · the idle clock</span></div><div><div class="days big" data-n="60" data-dow0="2" data-today="59" data-limit="38" data-cols="0:100" data-pop="0:the last approved field day · Sep 1 ↗ open in the feed"></div></div></div>
+      <div class="daysrow wide"><div class="who"><b>Notes</b><br><span class="small">reset the quiet clock, not the idle one</span></div><div><div class="days big" data-n="60" data-dow0="2" data-today="59" data-limit="38" data-marks="11:note,32:note,51:note"></div></div></div>
+      <div class="daysrow wide"><div class="who"><b>The office</b><br><span class="small">moved to Working · said Looks fine</span></div><div><div class="days big" data-n="60" data-dow0="2" data-today="59" data-limit="38" data-marks="14:diam,39:tick"></div></div></div>
+      <div class="daysrow wide"><div class="who"></div><div><div class="dayslab" data-n="60" data-labels="0:Sep 1:l|29:Sep 30|38:21-day limit:hot|59:today:blue:r"></div></div></div>
       <p><b>Next:</b> Schedule the next visit or close it <span class="btn sm" style="float:right">Schedule it ↗</span></p>
+      <p class="note">Three rows, each named at the left, so nothing has to be matched to a legend: the field days are bars, the notes are dots, the office's two acts are a diamond and a tick. The idle chip names the day it counts from; the quiet chip names its note.</p>
     </div></div>
   </div>
   <div class="say">
@@ -527,7 +531,7 @@
     <p class="gain">The three notes since Sep 1 are visible beside the empty field days, which is the whole reason idle and quiet disagree.</p>
     <p class="rule">Reuses the Timeline strip (dots by kind, today kept in view, a press jumps to the day) and the row's own two-week schedule cells. The RPC gains the newest activity's kind and day.</p>
   </div>
-  <div class="pass2"><div class="cap">Second pass</div><p>The first render's label on the counting day hung off the left edge of the frame, and the dots sat at the foot of tall empty columns with today drawn as a box. Labels near an edge now align to it, dots sit on the line, and today is a line. Kept: the dashed limit at 21 days, which is the one thing the number alone cannot say.</p></div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first render's label on the counting day hung off the frame and its dots sat at the foot of tall columns. Taunya, on the second: <i>the dots are too small and it takes too much cognitive time to align those dots with the index. Perhaps you want to give it a refresh?</i> Refreshed: three rows named at the left (field days as bars, notes as dots, the office's two acts), so there is no legend to match, the marks are twice the size, and the two chips name the day each clock counts from.</p></div>
   <div class="pick" data-for="jobs-pipeline-2"></div>
 </section>
 
@@ -2298,7 +2302,9 @@
   const byId = Object.fromEntries(F.map((f) => [f.id, f]));
   const PICKS = ['build', 'later', 'drop'];
   const WORDS = { build: 'Build', later: 'Later', drop: 'Drop' };
-  const picks = {};
+  // The owner's picks and notes as pasted on 2026-10-30 (the first pass); the browser's and the page's own store sit on top.
+  const SEED = {"people-docs-3": {"pick": "build", "note": "I really like this view. Let's build it.", "at": "2026-10-30T17:50:00.000Z"}, "gc-messages-2": {"pick": "drop", "note": "This also has potential, but it suffers the same issues as above. In this particular case, it's much easier to just have the text.", "at": "2026-10-30T17:50:00.000Z"}, "jobs-money-4": {"pick": "drop", "note": "We need to communicate very little information here, what we have currently works.", "at": "2026-10-30T17:50:00.000Z"}, "jobs-pipeline-8": {"pick": "drop", "note": "", "at": "2026-10-30T17:50:00.000Z"}, "jobs-pipeline-1": {"pick": null, "note": "This has some potential, but only as an alternative view that a user can choose to engage in. How could I offer this as an alternative view? Can you help me build a prototype?", "at": "2026-10-30T17:50:00.000Z"}, "jobs-pipeline-2": {"pick": null, "note": "This has some potential, but the dots are too small and it takes too much cognitive time to align those dots with the index of approved field day, a note, status move, Looks fine. Perhaps you want to give it a refresh?", "at": "2026-10-30T17:50:00.000Z"}, "office-5": {"pick": null, "note": "This could potentially work, I would like to see it as a prototype.", "at": "2026-10-30T17:50:00.000Z"}, "jobs-pipeline-6": {"pick": null, "note": "This can work very well as an alternative view. Could you help me build a prototype where we can see it as an alternative view where the user can choose how they want to view it.", "at": "2026-10-30T17:50:00.000Z"}, "jobs-money-3": {"pick": null, "note": "This has great potential, but I'm uncertain of what it's going to disrupt. I would like to see this as a prototype.", "at": "2026-10-30T17:50:00.000Z"}};
+  const picks = Object.fromEntries(Object.entries(SEED).map(([k, v]) => [k, Object.assign({}, v)]));
   let db = null;
   let storeState = 'local';
   let show = 'all';
@@ -2439,7 +2445,7 @@
     let answered = 0;
     F.forEach((f) => { const p = picks[f.id]; if (p && p.pick) { counts[p.pick]++; answered++; } });
     const tally = $('#tally');
-    tally.innerHTML = '<span class="chip ok">build <b class="n">' + counts.build + '</b></span><span class="chip">later <b class="n">' + counts.later + '</b></span><span class="chip stop">drop <b class="n">' + counts.drop + '</b></span><span>' + answered + ' of ' + TOTAL + ' answered</span><span class="status ' + (storeState === 'live' ? 'live' : '') + '" id="pick-status">' + (storeState === 'live' ? 'Picks save to this page as you press them.' : storeState === 'refused' ? 'This page is read-only for you; picks stay in this browser.' : 'Picks stay in this browser; Copy my picks to send them.') + '</span>';
+    tally.innerHTML = '<span class="chip ok">build <b class="n">' + counts.build + '</b></span><span class="chip">later <b class="n">' + counts.later + '</b></span><span class="chip stop">drop <b class="n">' + counts.drop + '</b></span><span>' + answered + ' of ' + TOTAL + ' answered</span><span class="status ' + (storeState === 'live' ? 'live' : '') + '" id="pick-status">' + (storeState === 'live' ? 'Picks save to this page as you press them.' : storeState === 'refused' ? 'This page is read-only for you; picks stay in this browser.' : 'Picks stay in this browser; Copy my picks to send them. The picks pasted on 2026-10-30 are in the page already.') + '</span>';
     applyShow();
   }
   // storage: the page's db when it is served with one, this browser otherwise
