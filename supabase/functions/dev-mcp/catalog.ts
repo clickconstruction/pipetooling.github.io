@@ -1653,6 +1653,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "import-manual-transactions",
   "invite-user",
   "job-drive-folders",
+  "job-photos",
   "job-rating",
   "job-share",
   "legal-notify-dispatch",
