@@ -19,17 +19,24 @@ let releaseSend: (() => void) | null = null
 /** When set, the report's send fails at the fetch layer, as it does with no signal. */
 const signal = { lost: false }
 
-function table(rows: () => unknown[]) {
+/** A read that answers `rows`; with `filterKey`, an `.eq(filterKey, v)` keeps the rows whose key is v (a template's own fields). */
+function table(rows: () => unknown[], filterKey?: string) {
+  let kept: unknown = undefined
+  const pick = () => (filterKey && kept !== undefined ? rows().filter((r) => (r as Record<string, unknown>)[filterKey] === kept) : rows())
   const make = (single: boolean): Record<string, unknown> => {
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'eq', 'order', 'limit', 'in', 'is', 'not', 'gte', 'update', 'delete']) b[m] = () => b
+    for (const m of ['select', 'order', 'limit', 'in', 'is', 'not', 'gte', 'update', 'delete']) b[m] = () => b
+    b.eq = (col: string, v: unknown) => {
+      if (col === filterKey) kept = v
+      return b
+    }
     b.single = () => make(true)
     b.maybeSingle = () => make(true)
     b.insert = (row: Record<string, unknown>) => {
       inserted.push(row)
       return b
     }
-    const result = () => Promise.resolve(single ? { data: rows()[0] ?? null, error: null } : { data: rows(), error: null })
+    const result = () => Promise.resolve(single ? { data: pick()[0] ?? null, error: null } : { data: pick(), error: null })
     b.then = (ok?: (v: unknown) => unknown, bad?: (e: unknown) => unknown) => result().then(ok, bad)
     return b
   }
@@ -47,7 +54,8 @@ vi.mock('../lib/supabase', async () => {
         { id: 'f1', template_id: 't1', label: 'How complete is the job?', input_type: 'percent_0_100', sequence_order: 1 },
         { id: 'f2', template_id: 't1', label: 'What is the status of the job?', input_type: 'long_text', sequence_order: 2 },
         { id: 'f3', template_id: 't1', label: 'What needs to be done to get to the next stage?', input_type: 'long_text', sequence_order: 3 },
-      ])
+        { id: 'f4', template_id: 't2', label: 'What did you see on the walk?', input_type: 'long_text', sequence_order: 1 },
+      ], 'template_id')
     if (t === 'jobs_ledger') return table(() => [{ pct_complete: 32, status: 'working', google_drive_link: 'https://drive.google.com/drive/folders/abc', job_pictures_link: null }])
     if (t === 'reports') return table(() => [{ id: 'r1' }])
     return originalFrom(t)
@@ -181,6 +189,39 @@ describe('AdditionalReportModal, camera first on a phone', () => {
     expect(fv['Stage progress']).toBe('Rough In 35% → 50% · job 32% → 38% · 1 photo on Rough In')
     await waitFor(() => expect(attached).toHaveLength(1))
     expect(attached[0]).toEqual({ reportId: 'r1', photos: [{ id: sent[0]!.id, fixtureId: 'r', stageName: 'Rough In', caption: 'Rough In' }] })
+  })
+
+  it('a report type with no percent field names no job percent on Save and files none (v2.6126)', async () => {
+    inserted.length = 0
+    attached.length = 0
+    sent.length = 0
+    renderWithProviders(<AdditionalReportModal {...props} />)
+    const input = (await screen.findByTestId('report-camera-input')) as HTMLInputElement
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Save · job 32%' })).toBeTruthy())
+
+    // The job keeps its stage lines, but a Walk has no percent field, so its Save names none.
+    fireEvent.click(screen.getByTestId('report-fold-types'))
+    fireEvent.click(screen.getByRole('button', { name: 'Walk' }))
+    // The Walk's own fields have loaded: its one box, and no stages.
+    await screen.findByRole('textbox', { name: 'What did you see on the walk?' })
+    expect(screen.queryByText('How far along is each stage?')).toBeNull()
+    expect(screen.getByRole('button', { name: 'Save report' })).toBeTruthy()
+
+    const file = new File([new Uint8Array(4_200_000)], 'IMG_0002.jpg', { type: 'image/jpeg' })
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [file] } })
+    })
+    await waitFor(() => expect(screen.getByTestId('report-photo-tile').getAttribute('data-status')).toBe('sending'))
+    await act(async () => {
+      releaseSend?.()
+    })
+    await waitFor(() => expect(screen.getByTestId('report-photo-tile').getAttribute('data-status')).toBe('sent'))
+
+    fireEvent.click(screen.getByRole('button', { name: 'Save report · 1 photo' }))
+    await waitFor(() => expect(inserted).toHaveLength(1))
+    const fv = inserted[0]!.field_values as Record<string, string>
+    expect(fv['How complete is the job?']).toBeUndefined()
+    expect(fv['Stage progress']).toBe('1 photo')
   })
 
   it('Not now discards a sent shot that no report holds', async () => {

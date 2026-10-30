@@ -538,8 +538,14 @@ export default function AdditionalReportModal({
   const fields = templateFields[selectedTemplateId] ?? []
   // Save waits for a shot still on its way (the queue of #163 takes this over in PR 7).
   const canSubmit = Boolean(selectedTemplateId && authUserId) && !photosInFlight(tiles)
-  // The Save button's number reads the rule Save files by, so the button never promises what Save will not file.
-  const jobPctForSave = linesActive ? (lineDerivedPct ?? 0) : Number.parseInt(percentFieldValueForSubmit(percentFieldLabel ? fieldValues[percentFieldLabel] : undefined, jobPctSeed), 10) || 0
+  // The percent the report files, for Save's words. A type with no percent field (a Note, a Walk) files none even on a
+  // job with stage lines, so Save names none (v2.6126); an untouched field reads the job's own number, the same rule
+  // Save files by (v2.6132), so the button never promises what Save will not file.
+  const jobPctForSave = !percentFieldLabel
+    ? null
+    : linesActive
+      ? (lineDerivedPct ?? 0)
+      : Number.parseInt(percentFieldValueForSubmit(fieldValues[percentFieldLabel], jobPctSeed), 10) || 0
 
   function reportTypeChipStyles(templateId: string, templateName: string): CSSProperties {
     const selected = selectedTemplateId === templateId

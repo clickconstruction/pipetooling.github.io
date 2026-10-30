@@ -48,6 +48,18 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # Migrations are pushed by hand (CLAUDE.md → Deploy model), so a client that calls a function, table or view only
+      # a still-pending migration creates is refused on prod from this deploy until the push: on 2026-10-30 v2.6099
+      # (#6473) merged at 4:46 AM, deployed at 4:57 AM and every clock press went through land_field_press, whose
+      # migration was pending, until the push. This reads the prod ledger (the same query as migration-drift.yml) and
+      # fails the build when a call in src is ahead of a pending migration, so the site keeps the old client; after
+      # `bash scripts/db-push.sh` lands the migration the script re-runs this deploy. No token, or the API down: a
+      # warning, and the build goes on.
+      - name: Every call the client makes is on prod (holds the deploy until the push)
+        run: npm run check:calls-ahead -- --prod
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+
       # The build draws one 1200×630 share card per help guide (helpSharePagesPlugin, v2.4190) with Playwright's
       # Chromium; without a browser the pages fall back to the site card, so this step is a nicety, not a gate.
       - name: Cache Playwright browsers

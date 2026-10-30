@@ -57,10 +57,11 @@ export function quickPickLabel(pct: number): string {
 
 /**
  * The Save press names what it writes: *Save · job 36%*, and the photos riding with it once the
- * camera lands (PR 5b): *Save · job 36% · 2 photos*.
+ * camera lands (PR 5b): *Save · job 36% · 2 photos*. A report type that files no percent (a Note,
+ * a Walk) names none, so `jobPct` is null there: *Save report*, *Save report · 1 photo* (v2.6126).
  */
-export function saveWords(input: { jobPct: number; photos?: number }): string {
-  const parts = [`Save · job ${clampPct(input.jobPct)}%`]
+export function saveWords(input: { jobPct: number | null; photos?: number }): string {
+  const parts = [input.jobPct == null ? 'Save report' : `Save · job ${clampPct(input.jobPct)}%`]
   const n = input.photos ?? 0
   if (n === 1) parts.push('1 photo')
   else if (n > 1) parts.push(`${n} photos`)
