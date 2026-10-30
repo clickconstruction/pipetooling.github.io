@@ -15,6 +15,11 @@
  */
 import type { SupabaseClient } from 'npm:@supabase/supabase-js@2'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes.ts'
+import { isZzTestJob, isZzTestName } from '../../../zzTestJob.ts'
+
+// The name rule lives on the edge since v2.6127 (`supabase/functions/_shared/zzTestJob.ts`), so a saved report's two
+// sends hold a ZZ job's report back by the rule the Pipeline hides it by; the app reads it from here as before.
+export { isZzTestJob, isZzTestName }
 
 /** The word in a ZZ job's name that marks it as the sink (any case). */
 export const ZZ_SWEEP_SINK_WORD = 'sink'
@@ -60,16 +65,6 @@ export type ZzSweepPlan = {
   tooNew: ZzSweepRow[]
   /** Rows the server filter returned that the name rule does not accept (never swept). */
   skippedNotZz: number
-}
-
-/** The ZZ convention: the name starts with "ZZ" (any case, after trimming). */
-export function isZzTestName(name: string | null | undefined): boolean {
-  return /^zz/i.test((name ?? '').trim())
-}
-
-/** A test job by the convention: its own name or its customer's name is a ZZ name. */
-export function isZzTestJob(row: { job_name?: string | null; customer_name?: string | null }): boolean {
-  return isZzTestName(row.job_name) || isZzTestName(row.customer_name)
 }
 
 /** The sink: a job whose OWN name is a ZZ name and carries the sink word (a ZZ customer alone is not enough). */

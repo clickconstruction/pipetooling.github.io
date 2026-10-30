@@ -4,6 +4,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 // The email itself is `_shared/fieldReportEmail.ts` (v2.4180) — What the team sees renders it on sample data.
 import { buildReportEmail, type ReportContent } from '../_shared/fieldReportEmail.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { readReportSubject, reportSendSkip, type ReportSubject } from '../_shared/reportSubject.ts'
 
 /**
  * Emails reports to configured recipients (report_email_subscriptions).
@@ -20,6 +21,10 @@ import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
  *  - manual { mode:'manual', subscription_id,      — "Send now" from the dashboard;
  *             since_days? }                          emails recent in-scope reports not
  *                                                    yet dispatched to that subscription.
+ *
+ * A report on a ZZ test record — its job's or its customer's name, a project's or a bid's, starts with ZZ
+ * (`_shared/reportSubject.ts`, v2.6127) — is emailed to no one in either mode: auto answers with the reason,
+ * manual leaves it out and counts it. A session's walk on a ZZ job stays in the building.
  *
  * Idempotency: report_email_dispatch_log UNIQUE(subscription_id, report_id).
  * Auth: requires a logged-in user (JWT). Manual mode additionally requires the
@@ -68,7 +73,7 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-async function resolveReportContent(admin: AdminClient, report: ReportRow): Promise<ReportContent> {
+async function resolveReportContent(admin: AdminClient, report: ReportRow, subject: ReportSubject): Promise<ReportContent> {
   const { data: templateRow } = await admin
     .from('report_templates')
     .select('name')
@@ -84,31 +89,15 @@ async function resolveReportContent(admin: AdminClient, report: ReportRow): Prom
     .single()
   const authorName = (authorRow as { name: string | null } | null)?.name ?? 'Someone'
 
+  // The job, project or bid was read once already, for the test-job rule (`readReportSubject`); its words as before.
   let jobDisplay = 'Unknown job'
-  if (report.job_ledger_id) {
-    const { data: jl } = await admin
-      .from('jobs_ledger')
-      .select('job_name, hcp_number')
-      .eq('id', report.job_ledger_id)
-      .single()
-    const j = jl as { job_name: string | null; hcp_number: string | null } | null
-    const name = j?.job_name?.trim() || 'Job'
-    jobDisplay = j?.hcp_number?.trim() ? `${j.hcp_number.trim()} · ${name}` : name
-  } else if (report.project_id) {
-    const { data: proj } = await admin
-      .from('projects')
-      .select('name')
-      .eq('id', report.project_id)
-      .single()
-    jobDisplay = (proj as { name: string | null } | null)?.name?.trim() || 'Project'
-  } else if (report.bid_id) {
-    const { data: bid } = await admin
-      .from('bids')
-      .select('project_name, gc_contact_name')
-      .eq('id', report.bid_id)
-      .single()
-    const b = bid as { project_name: string | null; gc_contact_name: string | null } | null
-    jobDisplay = b?.project_name?.trim() || b?.gc_contact_name?.trim() || 'Bid'
+  if (subject.kind === 'job') {
+    const name = subject.jobName?.trim() || 'Job'
+    jobDisplay = subject.hcpNumber?.trim() ? `${subject.hcpNumber.trim()} · ${name}` : name
+  } else if (subject.kind === 'project') {
+    jobDisplay = subject.name?.trim() || 'Project'
+  } else if (subject.kind === 'bid') {
+    jobDisplay = subject.projectName?.trim() || subject.gcContactName?.trim() || 'Bid'
   }
 
   return {
@@ -217,6 +206,11 @@ serve(async (req) => {
       if (reportErr || !reportData) return json({ error: 'Report not found' }, 404)
       const report = reportData as unknown as ReportRow
 
+      // A report on a ZZ test record reaches no inbox (v2.6127): a session's walk stays in the building.
+      const subject = await readReportSubject(admin, report)
+      const skip = reportSendSkip(subject)
+      if (skip) return json({ ok: true, sent: 0, skipped: skip.reason, message: skip.message })
+
       const { data: subsData } = await admin
         .from('report_email_subscriptions')
         .select('id, recipient_user_id, recipient_email, label, all_authors, auto_send, enabled')
@@ -249,7 +243,7 @@ serve(async (req) => {
       )
       if (matched.length === 0) return json({ ok: true, sent: 0, message: 'No matching subscriptions' })
 
-      const content = await resolveReportContent(admin, report)
+      const content = await resolveReportContent(admin, report, subject)
       let sent = 0
       for (const sub of matched) {
         const outcome = await sendReportToSubscription(admin, sub, report, content, resendApiKey, 'auto')
@@ -311,12 +305,19 @@ serve(async (req) => {
     const toSend = reports.filter((r) => !dispatched.has(r.id))
 
     let sent = 0
+    let skippedTestJobs = 0
     for (const report of toSend) {
-      const content = await resolveReportContent(admin, report)
+      // A report on a ZZ test record is left out and counted (v2.6127); the editor says so.
+      const subject = await readReportSubject(admin, report)
+      if (reportSendSkip(subject)) {
+        skippedTestJobs++
+        continue
+      }
+      const content = await resolveReportContent(admin, report, subject)
       const outcome = await sendReportToSubscription(admin, sub, report, content, resendApiKey, 'manual')
       if (outcome === 'sent') sent++
     }
-    return json({ ok: true, sent, candidates: reports.length, alreadySent: dispatched.size })
+    return json({ ok: true, sent, candidates: reports.length, alreadySent: dispatched.size, skippedTestJobs })
   } catch (error) {
     console.error('send-report-email error:', error)
     return json({ error: error instanceof Error ? error.message : 'Internal server error' }, 500)
