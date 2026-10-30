@@ -44,6 +44,16 @@ There are two kinds:
 
 Repeating tasks stay stocked about five weeks ahead automatically. They keep going until their end date. You set one, or they run forever.
 
+### The calendar under the days
+
+Under the day pills, the window draws this week and the next three. Each day the task lands is filled in. Today has a blue ring. The start day and the end day have a ring inside their fill. A start that is not one of the picked days has an amber ring instead. An amber note under the calendar names the first day that lands. The green sentence stays under the calendar.
+
+For *days after it's done*, the first day is filled in. The days after it are dashed. Each one moves with the day you check off the one before.
+
+For a one-off with a **Due by** date, a grey bar runs from its day to the due day. The due day has a dark ring.
+
+You hover a day to read what it means. The Edit window draws the same calendar.
+
 To see every repeating task in one place, you open **Manage** and tap the {{chip:blue|↻ Repeating}} pill. Each row shows its schedule and a green chip with its next occurrence.
 
 ## Notifications

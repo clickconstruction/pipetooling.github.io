@@ -173,3 +173,22 @@ describe('v2.5198 · the customer’s schedule on its own (the schedule’s PR 1
     expect(m.from).toBe('Click Construction <team@noreply.clicktooling.com>')
   })
 })
+
+describe('v2.6158 · the interest bill as its rows (punch list #217, outside-5)', () => {
+  it('the interest bill sample carries its two late bills as a table, the sum under a rule, and the reminder its one row', () => {
+    const bill = buildSampleEmail('gc-interest-bill', ctx)
+    expect(bill.subject).toBe('Interest on late bills for Sample Retail Shell, $1,254')
+    expect(bill.html.match(/<table/g)).toHaveLength(1)
+    expect(bill.html).toContain('>Pay application 2</td>')
+    expect(bill.html).toContain('>Pay application 3</td>')
+    expect(bill.html).toContain('>open</td>')
+    expect(bill.html).toContain('Interest to today</td>')
+    expect(bill.html).toContain('$675 × 32⁄30.4 = $710')
+    expect(bill.text).toContain('Two bills on Sample Retail Shell went past the day the contract made them due.')
+    const reminder = buildSampleEmail('gc-reminder', ctx)
+    expect(reminder.html.match(/<table/g)).toHaveLength(1)
+    expect(reminder.html).toContain('Interest of 1.5% a month runs on it from Aug 31. $86 has built up so far.')
+    expect(reminder.html).toContain('>Pay application 3</td>')
+    expect(reminder.html).not.toContain('Interest to today')
+  })
+})

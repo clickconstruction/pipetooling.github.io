@@ -2,7 +2,9 @@
  * The Legal desk's address (punch list #182, PR 1): the desk is a page at `/legal-desk`, and
  * what it shows is in the address, so a reload keeps your place and the address bar is the
  * link to paste. `?account=<payer key>` is the account, `&tab=` one of the six tabs by a plain
- * name, `&view=map` the county map. The default view and the default tab are never written.
+ * name, `&view=map` the county map, and since v2.6166 `&doc=<id>` with `&tab=evidence` the
+ * Evidence row to land on (Show on Evidence from the Timeline), lit when the tab opens. The default
+ * view and the default tab are never written, and `doc` rides only with its tab.
  *
  * `/legal` is the firm's own portal, so the desk's route is `/legal-desk`.
  *
@@ -43,6 +45,8 @@ export type LegalDeskAddress = {
   /** Which tab; null when the address names none (the default applies). */
   tab: Tab | null
   view: DeskView
+  /** The Evidence row to land on (v2.6166); null when none, and always null off the Evidence tab. */
+  doc: string | null
 }
 
 /** The tab an address word names, or null for a word the desk does not know. */
@@ -51,11 +55,13 @@ export function legalDeskTabFromWord(word: string | null | undefined): Tab | nul
   return TAB_BY_ADDRESS[word] ?? null
 }
 
-/** The address of a tab, a view and an account: `/legal-desk?account=…&tab=…` or `/legal-desk?view=map`. */
-export function legalDeskHref(parts: { account?: string | null; tab?: Tab | null; view?: DeskView | null } = {}): string {
+/** The address of a tab, a view and an account: `/legal-desk?account=…&tab=…` or `/legal-desk?view=map`; with `doc`, `&tab=evidence&doc=<id>`. */
+export function legalDeskHref(parts: { account?: string | null; tab?: Tab | null; view?: DeskView | null; doc?: string | null } = {}): string {
   const q = new URLSearchParams()
   if (parts.account) q.set('account', parts.account)
   if (parts.tab && parts.tab !== LEGAL_DESK_DEFAULT_TAB) q.set('tab', ADDRESS_BY_TAB[parts.tab])
+  // v2.6166: the Evidence row to land on rides only with its tab; on any other tab the word is dropped.
+  if (parts.doc && parts.tab === 'evidence') q.set('doc', parts.doc)
   // The map keeps the account and the tab in the address: Accounts brings them back as they were.
   if (parts.view === 'map') q.set('view', 'map')
   const s = q.toString()
@@ -65,10 +71,13 @@ export function legalDeskHref(parts: { account?: string | null; tab?: Tab | null
 /** What the address asks the desk to show. An unknown tab word reads as no tab. */
 export function legalDeskFromSearch(search: URLSearchParams): LegalDeskAddress {
   const account = (search.get('account') ?? '').trim()
+  const tab = legalDeskTabFromWord(search.get('tab'))
+  const doc = (search.get('doc') ?? '').trim()
   return {
     account: account || null,
-    tab: legalDeskTabFromWord(search.get('tab')),
+    tab,
     view: search.get('view') === 'map' ? 'map' : 'accounts',
+    doc: tab === 'evidence' && doc ? doc : null,
   }
 }
 

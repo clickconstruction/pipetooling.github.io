@@ -39,7 +39,12 @@ export type LatenessSessionRow = {
   clocked_in_at: string
   rejected_at?: string | null
   revoked_at?: string | null
+  /** `user_punch` for a hand clock-in; `salary_schedule` for a session the salary sync made at schedule time (v2.6140). */
+  origin?: string | null
 }
+
+/** The origin of a clock session the salary sync makes at schedule time — never late, so the strip marks none of the person's days (v2.6140). */
+export const SALARY_SESSION_ORIGIN = 'salary_schedule'
 
 export type PersonDayLateness = {
   /** Exact minutes past the scheduled start (always > LATE_GRACE_MINUTES). */
@@ -48,6 +53,12 @@ export type PersonDayLateness = {
   label: string
   /** The receipt (tooltip): scheduled vs actual, exact figure, grace rule. */
   title: string
+  /** The earliest block's start, minutes since midnight on the wall clock (the strip's receipt, v2.6140). */
+  scheduledStartMinutes: number
+  /** The first clock-in, minutes since midnight on the wall clock (the strip's receipt, v2.6140). */
+  clockInMinutes: number
+  /** The earliest block's job label when the row carried one. */
+  jobLabel: string | null
 }
 
 const wallMinutesFmt = new Intl.DateTimeFormat('en-US', {
@@ -79,7 +90,8 @@ function timeStrToMinutes(t: string): number | null {
   return h * 60 + min
 }
 
-function minutesToClock(mins: number): string {
+/** Minutes since midnight as the clock reads them: 420 → '7:00 AM'. */
+export function minutesToClock(mins: number): string {
   const h24 = Math.floor(mins / 60) % 24
   const m = mins % 60
   const ampm = h24 >= 12 ? 'PM' : 'AM'
@@ -217,7 +229,7 @@ export async function fetchClockInsForUsersInRange(
       async () =>
         await supabase
           .from('clock_sessions')
-          .select('user_id, work_date, clocked_in_at, rejected_at, revoked_at')
+          .select('user_id, work_date, clocked_in_at, rejected_at, revoked_at, origin')
           .in('user_id', userIds)
           .gte('work_date', startYmd)
           .lte('work_date', endYmd),
@@ -239,28 +251,8 @@ export function computeLatenessByCell(
   sessions: readonly LatenessSessionRow[],
   graceMinutes: number = LATE_GRACE_MINUTES,
 ): Map<string, PersonDayLateness> {
-  // Earliest scheduled start (and its job label) per person-day.
-  const startByCell = new Map<string, { mins: number; jobLabel: string | null }>()
-  for (const b of blocks) {
-    const mins = timeStrToMinutes(b.time_start)
-    if (mins == null) continue
-    const key = latenessCellKey(b.assignee_user_id, b.work_date)
-    const cur = startByCell.get(key)
-    if (!cur || mins < cur.mins) {
-      startByCell.set(key, { mins, jobLabel: (b.job_label ?? '').trim() || null })
-    }
-  }
-
-  // First qualifying clock-in per person-day.
-  const clockInByCell = new Map<string, number>()
-  for (const s of sessions) {
-    if (s.rejected_at || s.revoked_at) continue
-    const mins = instantToWallMinutes(s.clocked_in_at)
-    if (mins == null) continue
-    const key = latenessCellKey(s.user_id, s.work_date)
-    const cur = clockInByCell.get(key)
-    if (cur == null || mins < cur) clockInByCell.set(key, mins)
-  }
+  const startByCell = earliestStartByCell(blocks)
+  const clockInByCell = firstClockInByCell(sessions)
 
   const out = new Map<string, PersonDayLateness>()
   for (const [key, start] of startByCell) {
@@ -271,6 +263,9 @@ export function computeLatenessByCell(
     const rounded = Math.round(minutesLate / 5) * 5
     out.set(key, {
       minutesLate,
+      scheduledStartMinutes: start.mins,
+      clockInMinutes: clockIn,
+      jobLabel: start.jobLabel,
       label: `Late ${durationLabel(rounded)}`,
       title:
         `Scheduled ${minutesToClock(start.mins)}${start.jobLabel ? ` (${start.jobLabel})` : ''}` +
@@ -279,6 +274,37 @@ export function computeLatenessByCell(
     })
   }
   return out
+}
+
+/** Earliest scheduled start (and its job label) per person-day, keyed `latenessCellKey`. */
+export function earliestStartByCell(
+  blocks: readonly LatenessBlockRow[],
+): Map<string, { mins: number; jobLabel: string | null }> {
+  const startByCell = new Map<string, { mins: number; jobLabel: string | null }>()
+  for (const b of blocks) {
+    const mins = timeStrToMinutes(b.time_start)
+    if (mins == null) continue
+    const key = latenessCellKey(b.assignee_user_id, b.work_date)
+    const cur = startByCell.get(key)
+    if (!cur || mins < cur.mins) {
+      startByCell.set(key, { mins, jobLabel: (b.job_label ?? '').trim() || null })
+    }
+  }
+  return startByCell
+}
+
+/** First qualifying (not rejected, not revoked) clock-in per person-day, wall-clock minutes, keyed `latenessCellKey`. */
+export function firstClockInByCell(sessions: readonly LatenessSessionRow[]): Map<string, number> {
+  const clockInByCell = new Map<string, number>()
+  for (const s of sessions) {
+    if (s.rejected_at || s.revoked_at) continue
+    const mins = instantToWallMinutes(s.clocked_in_at)
+    if (mins == null) continue
+    const key = latenessCellKey(s.user_id, s.work_date)
+    const cur = clockInByCell.get(key)
+    if (cur == null || mins < cur) clockInByCell.set(key, mins)
+  }
+  return clockInByCell
 }
 
 /** Excuse note beside a derived late day (v2.2556; append-only table). */

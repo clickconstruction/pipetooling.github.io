@@ -4,7 +4,8 @@
  */
 import { addDays } from './building'
 import { appCertified, appOpen, ownerPayAppsSent, ownerPayDue } from './ownerBilling'
-import { ownerInterestOnBill } from './ownerBillingInterest'
+import { INTEREST_TABLE_HEAD, interestRowCells, interestRowOf, ownerInterestOnBill, type InterestRow } from './ownerBillingInterest'
+import { gcEmailTableLines } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import type { GcCustomer, GcProject, GcState, OwnerPayAppSent } from './types'
 import { daysUntil, money, shortDate, weekdayDate } from './words'
 import { payLinkUrl } from '../billing/payLink'
@@ -95,7 +96,11 @@ export interface PayReminderMailFacts {
   dueOn: string | null
   promised: boolean
   lastPaid: { amount: number; on: string } | null
-  interest: { pctPerMonth: number; from: string; amount: number } | null
+  /**
+   * Interest running on it: the rate, the day it fell due, what has built up, and since v2.6158 (punch list #217,
+   * outside-5) its row, the same one the interest bill prints, so the customer can redo the figure.
+   */
+  interest: { pctPerMonth: number; from: string; amount: number; row?: InterestRow | null } | null
   by: string
   note: string
   /** The bill is on card (O8b): what the card page asks with its 3% fee, and the bill's pay link. */
@@ -113,6 +118,8 @@ export function payReminderMail(f: PayReminderMailFacts): { subject: string; lin
       ...(f.lastPaid ? [`Thank you for the ${money(f.lastPaid.amount)} you paid ${shortDate(f.lastPaid.on)}.`] : []),
       ...(f.card ? [`You chose to pay it by card. With the 3% card fee, the card page asks ${cardMoney(f.card.total)}.`] : []),
       ...(f.interest ? [`Interest of ${f.interest.pctPerMonth}% a month runs on it from ${shortDate(f.interest.from)}. ${money(f.interest.amount)} has built up so far.`] : []),
+      // The row behind that figure, as the interest bill prints it: due, paid or open, the days, and the sum to redo.
+      ...(f.interest?.row ? gcEmailTableLines(INTEREST_TABLE_HEAD, [interestRowCells(f.interest.row)]) : []),
       `Please pay it by ${weekdayDate(f.by)}.`,
       ...(f.note.trim() ? [f.note.trim()] : []),
       // A bill on card (O8b) is paid on its card page, so the email says where (O8c). One that is not is not on
@@ -149,7 +156,7 @@ export function payReminderEmail(
     dueOn: due.on,
     promised: due.promised,
     lastPaid: lastPaid ? { amount: lastPaid.amount, on: lastPaid.on } : null,
-    interest: interest && pct ? { pctPerMonth: pct, from: interest.from, amount: interest.amount } : null,
+    interest: interest && pct ? { pctPerMonth: pct, from: interest.from, amount: interest.amount, row: interestRowOf(interest, pct) } : null,
     by,
     note,
     card: app.card?.state === 'onCard' ? { total: app.card.total, payUrl: payLinkUrl(app.card.invoiceId) } : null,

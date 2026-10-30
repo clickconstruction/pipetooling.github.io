@@ -132,7 +132,7 @@ export const FIX_LABEL: Record<LegalGap['fix'], string> = {
   none: '',
 }
 
-export type Sheet = { kind: 'ready'; handling: string; note: string; /** #85 item 20: an optional settlement floor set with the release. */ floor?: string; floorUnit?: 'pct' | 'usd' } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | { kind: 'close'; note: string } | { kind: 'in_house'; note: string } | null
+export type Sheet = { kind: 'ready'; handling: string; note: string } | { kind: 'ask'; note: string } | { kind: 'pull'; note: string } | { kind: 'close'; note: string } | { kind: 'in_house'; note: string } | null
 
 export function daysAgo(iso: string | null | undefined, todayYmd: string): number | null {
   // An instant's day in APP_CALENDAR_TZ, not its first ten characters (the UTC date).
