@@ -9,7 +9,7 @@ import { useDraftPayrollPendingApprovals } from './useDraftPayrollPendingApprova
 
 const reads = vi.hoisted(() => ({
   calls: [] as Array<{ start: string; end: string }>,
-  next: [] as Array<() => Promise<number>>,
+  next: [] as Array<() => Promise<number | { count: number; byUserId: Record<string, number> }>>,
 }))
 
 vi.mock('../lib/supabase', () => ({ supabase: {} }))
@@ -17,10 +17,11 @@ vi.mock('../lib/pay/draftPayrollPendingApprovals', async (importOriginal) => {
   const actual = await importOriginal<typeof import('../lib/pay/draftPayrollPendingApprovals')>()
   return {
     ...actual,
-    fetchPendingApprovalCount: (_supabase: unknown, start: string, end: string) => {
+    fetchPendingApprovals: async (_supabase: unknown, start: string, end: string) => {
       reads.calls.push({ start, end })
       const answer = reads.next.shift()
-      return answer ? answer() : Promise.resolve(0)
+      const got = answer ? await answer() : 0
+      return typeof got === 'number' ? { count: got, byUserId: {} } : got
     },
   }
 })
@@ -43,6 +44,15 @@ describe('useDraftPayrollPendingApprovals', () => {
     expect(reads.calls).toEqual([{ start: '2026-09-20', end: '2026-09-26' }])
     expect(result.current.draftPayrollPendingApprovalLoading).toBe(false)
     expect(result.current.draftPayrollPendingApprovalError).toBeNull()
+  })
+
+  it('keeps each session’s user, so the window can place the dots (punch list #217)', async () => {
+    reads.next.push(() => Promise.resolve({ count: 3, byUserId: { u1: 2, u2: 1 } }))
+    const { result, rerender } = renderHook((p: Props) => useDraftPayrollPendingApprovals(p), { initialProps: OPEN })
+    await waitFor(() => expect(result.current.draftPayrollPendingApprovalCount).toBe(3))
+    expect(result.current.draftPayrollPendingByUserId).toEqual({ u1: 2, u2: 1 })
+    rerender({ ...OPEN, draftOpen: false })
+    await waitFor(() => expect(result.current.draftPayrollPendingByUserId).toEqual({}))
   })
 
   it('reads nothing while the window is closed, or without pay access', async () => {

@@ -24,6 +24,8 @@ You tap the link and land on the next stop with the pay week already selected. T
 
 You open **People → Pay Stubs → Draft Payroll**. The period is the last complete Sun to Sat pay week. You tap {{button:blue|Generate 6 reports}} to make a report for everyone with pay due and no report yet. The button counts them. A report that does not generate stays in the window with the reason and {{button:outline|Try again ▸}}. The rest still generate. You tap {{button:blue|Report}} on a row to make one person's. Either way nothing opens on its own. The row turns into {{button:outline|View}} and {{button:green|Record payment}}. A toast, a small popup note, says the report is there. A salaried person whose whole week is unpaid time off comes to $0 and is left out. So does one who had not started yet. The count beside the button is the list the button uses.
 
+**Show the bars** is a try-out switch at the top of the window. You press {{button:outline|Show the bars}} to see each row's cash due as a bar. A green bar is money sent. A blue bar is a report's net still owed. A hatched bar is an estimate from the hours with no report yet. Its figure wears a small *est.* chip. A *salary 8h* chip means the hours are the flat salary rule. An amber dot on a row means that person has a clock session still waiting on approval. The bar under the dates adds the whole period up the same way. The switch is yours alone and stays set on this device. You press {{button:outline|Show today’s look}} to go back.
+
 When every person with pay due has a report, a green line appears under the buttons:
 
 :::example After generating
