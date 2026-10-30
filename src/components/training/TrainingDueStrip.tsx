@@ -14,7 +14,7 @@ import type { DueChip, TrainingDueStrip as TrainingDueStripModel } from '../../l
  */
 
 const TRACK_H = 14
-const LABELS_H = 40
+const LABELS_H = 48
 
 const TONE: Record<DueChip['tone'], CSSProperties> = {
   red: { background: 'var(--bg-red-100)', color: 'var(--text-red-700)' },
