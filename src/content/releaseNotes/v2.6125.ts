@@ -7,8 +7,9 @@ const note: ReleaseNote = {
   kind: 'fix',
   roles: ['assistant', 'controller', 'master_technician', 'dev'],
   highlights: [
-    'Since October 27 the Unpriced fixtures station could not read the tally on any load. It fails quietly, so it showed a zero and no banner even when fixtures were waiting for a price.',
-    'It reads again. The count of jobs with unpriced fixtures, the age of the oldest one and Price fixtures in Jobs Parts are back when there is something to price.',
+    'Since October 27 the Unpriced fixtures station could not read the tally on any load. It fails quietly, so it showed nothing at all.',
+    'No fixture was waiting for a price in that time, so nothing was missed.',
+    'It reads again. A fixture tallied with no price now shows up there with the count of jobs, the age of the oldest one and Price fixtures in Jobs Parts.',
   ],
 }
 
