@@ -115,7 +115,7 @@ export function TallyChooseJobSheet({ jobs, onlyIds = null, onClearOnly, selecte
       ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query }), { onPress: () => setQuery('') })
       : onlyIds && onClearOnly
         ? emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'jobs', query: '' }), { onPress: onClearOnly })
-        : emptyWords({ kind: 'data', noun: 'jobs', page: { label: 'Jobs', tail: 'is where a job is made.' } })
+        : emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'jobs', page: { label: 'Jobs', tail: 'is where a job is made.' } }), { to: '/jobs' })
     : null
 
   return (
