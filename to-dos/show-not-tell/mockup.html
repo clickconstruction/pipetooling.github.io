@@ -435,7 +435,7 @@
   <p>Eight read-only scans walked every area of the app (the Jobs hub twice, Bids, GC mode and Messages, the office's day and Settings, the phone, People and Documents, and everything a stranger reads or receives) and wrote up <b>131 places</b> where a sentence stands where a shape should. Every one of them wants one of <b>seven shapes</b>, and every shape already lives somewhere in the app since punch list #214 drew the Legal desk's four. This page teaches each shape once with its strongest before-and-after pairs, then lists every other place that takes it, so a yes can be a yes to a shape as much as to a screen.</p>
   <div class="howto">
     <p><b>How to read a pair.</b> The dashed frame on the left is the screen as it draws today, its words close to verbatim. The solid frame on the right is the same screen with the shape drawn. The lines under them say what the shape gains and what rule it keeps, and the blue box is the second pass: what the first render got wrong and what moved.</p>
-    <p><b>How to answer.</b> Every pair and every row has <b>Build · Later · Drop</b> and a line for a note. On the claude.ai copy of this page the picks save as you press them and come straight to me; on the repo copy they stay in this browser, and <b>Copy my picks</b> puts them on the clipboard to paste into a message. A pick on a pair is a pick on that screen; a shape's <b>Build all</b> picks the pair and every row under it.</p>
+    <p><b>How to answer.</b> Every pair and every row has <b>Build · Later · Drop</b> and a line for a note. A dropped item leaves the page as soon as it is marked; <b>Show dropped</b> brings the dropped ones back, so a drop can be undone. On the claude.ai copy of this page the picks save as you press them and come straight to me; on the repo copy they stay in this browser, and <b>Copy my picks</b> puts them on the clipboard to paste into a message. A pick on a pair is a pick on that screen; a shape's <b>Build all</b> picks the pair and every row under it.</p>
   </div>
   <div class="controls">
     <span class="lbl">Theme</span>
@@ -445,6 +445,7 @@
     <button type="button" id="show-all" aria-pressed="true">Drawn pairs and every row</button>
     <button type="button" id="show-drawn" aria-pressed="false">Drawn pairs only</button>
     <button type="button" id="show-picked" aria-pressed="false">My picks</button>
+    <button type="button" id="show-dropped" aria-pressed="false">Show dropped</button>
     <button type="button" id="copy-picks" style="margin-left:auto">Copy my picks</button>
   </div>
   <div class="tally" id="tally"><span class="status" id="pick-status">Picks stay in this browser.</span></div>
@@ -2301,6 +2302,7 @@
   let db = null;
   let storeState = 'local';
   let show = 'all';
+  let showDropped = false;
   const TOTAL = 131;
   const $ = (s, r) => (r || document).querySelector(s);
   const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
@@ -2497,16 +2499,19 @@
   $('#theme-dark').addEventListener('click', () => setTheme('dark'));
   try { const q = new URLSearchParams(location.search).get('theme'); if (q === 'dark' || q === 'light') setTheme(q); else if (root.getAttribute('data-theme') === 'dark') setTheme('dark'); } catch (e) { /* none */ }
   function applyShow() {
-    $$('.pair').forEach((sec) => { const p = picks[sec.dataset.id]; sec.hidden = show === 'picked' && !(p && p.pick); });
+    const dropped = (id) => { const p = picks[id]; return !!(p && p.pick === 'drop'); };
+    $$('.pair').forEach((sec) => { const p = picks[sec.dataset.id]; sec.hidden = (show === 'picked' && !(p && p.pick)) || (!showDropped && dropped(sec.dataset.id)); });
     $$('.also').forEach((a) => {
       if (!$$('tr[data-id]', a).length || show === 'drawn') { a.hidden = true; return; }
       let any = false;
-      $$('tr[data-id]', a).forEach((tr) => { const p = picks[tr.dataset.id]; const h = show === 'picked' && !(p && p.pick); tr.hidden = h; if (!h) any = true; });
+      $$('tr[data-id]', a).forEach((tr) => { const p = picks[tr.dataset.id]; const h = (show === 'picked' && !(p && p.pick)) || (!showDropped && dropped(tr.dataset.id)); tr.hidden = h; if (!h) any = true; });
       a.hidden = show === 'picked' && !any;
     });
     ['all', 'drawn', 'picked'].forEach((k) => $('#show-' + k).setAttribute('aria-pressed', String(show === k)));
+    const sd = $('#show-dropped'); const nd = F.filter((f) => dropped(f.id)).length; sd.setAttribute('aria-pressed', String(showDropped)); sd.textContent = showDropped ? 'Hide dropped' + (nd ? ' · ' + nd : '') : 'Show dropped' + (nd ? ' · ' + nd : '');
   }
   ['all', 'drawn', 'picked'].forEach((k) => $('#show-' + k).addEventListener('click', () => { show = k; applyShow(); }));
+  $('#show-dropped').addEventListener('click', () => { showDropped = !showDropped; applyShow(); });
   applyShow();
   window.__snt = { F, picks, SHAPE_NAMES };
 })();
