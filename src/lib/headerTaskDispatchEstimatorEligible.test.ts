@@ -40,13 +40,15 @@ describe('showEstimatorInboxButton', () => {
 })
 
 describe('showHeaderNewBidButton (v2.6167)', () => {
-  it('is the estimator’s press, off in Farm Mode', () => {
-    expect(showHeaderNewBidButton('estimator', false)).toBe(true)
-    expect(showHeaderNewBidButton('estimator', true)).toBe(false)
+  it('every role that can make a bid has the press, off in Farm Mode', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'superintendent'] as const) {
+      expect(showHeaderNewBidButton(role, false)).toBe(true)
+      expect(showHeaderNewBidButton(role, true)).toBe(false)
+    }
   })
 
-  it('no other role has Bid in the header, so their Bids page keeps its own New Bid on a phone', () => {
-    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'helpers', 'subcontractor'] as const) {
+  it('a primary reads bids and makes none; the field roles have no Bids page', () => {
+    for (const role of ['primary', 'helpers', 'subcontractor'] as const) {
       expect(showHeaderNewBidButton(role, false)).toBe(false)
     }
     expect(showHeaderNewBidButton(null, false)).toBe(false)
