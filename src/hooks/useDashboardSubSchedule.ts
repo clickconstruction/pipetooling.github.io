@@ -149,7 +149,7 @@ export function useDashboardSubSchedule({
     const labelMap = new Map<string, string>()
     for (const j of [...assignedJobs, ...assignedReadyToBillJobs]) {
       if (jobIds.includes(j.id)) {
-        labelMap.set(j.id, subScheduleJobLabel(j.hcp_number, j.job_name))
+        labelMap.set(j.id, subScheduleJobLabel(j.hcp_number, j.click_number, j.job_name))
       }
     }
     const missing = jobIds.filter((id) => !labelMap.has(id))
@@ -167,7 +167,7 @@ export function useDashboardSubSchedule({
             ? Promise.resolve([])
             : withSupabaseRetry(
                 async () =>
-                  await supabase.from('jobs_ledger').select('id, hcp_number, job_name').in('id', missing),
+                  await supabase.from('jobs_ledger').select('id, hcp_number, click_number, job_name').in('id', missing),
                 'dashboardSubScheduleJobLabels',
               ),
           bidIds.length === 0
@@ -182,9 +182,10 @@ export function useDashboardSubSchedule({
         for (const r of (rows ?? []) as Array<{
           id: string
           hcp_number: string | null
+          click_number: string | null
           job_name: string | null
         }>) {
-          labelMap.set(r.id, subScheduleJobLabel(r.hcp_number, r.job_name))
+          labelMap.set(r.id, subScheduleJobLabel(r.hcp_number, r.click_number, r.job_name))
         }
         for (const r of (bidRows ?? []) as Array<{
           id: string

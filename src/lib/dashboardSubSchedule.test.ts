@@ -51,17 +51,26 @@ describe('dedupeSubScheduleBlocks', () => {
 
 describe('subScheduleJobLabel', () => {
   it('joins HCP and job name with a middle dot', () => {
-    expect(subScheduleJobLabel('1234', 'Smith repipe')).toBe('1234 · Smith repipe')
+    expect(subScheduleJobLabel('1234', null, 'Smith repipe')).toBe('1234 · Smith repipe')
   })
 
-  it('falls back to an em dash for a missing/blank HCP', () => {
-    expect(subScheduleJobLabel(null, 'Smith repipe')).toBe('— · Smith repipe')
-    expect(subScheduleJobLabel('  ', 'Smith repipe')).toBe('— · Smith repipe')
+  it('reads the Click number when the job has no HCP number, as the add-a-job window does', () => {
+    expect(subScheduleJobLabel('', '1085', 'ZZ Test')).toBe('1085 · ZZ Test')
+    expect(subScheduleJobLabel(null, ' 1085 ', 'ZZ Test')).toBe('1085 · ZZ Test')
+  })
+
+  it('keeps the HCP number when the job has both', () => {
+    expect(subScheduleJobLabel('1234', '1085', 'Smith repipe')).toBe('1234 · Smith repipe')
+  })
+
+  it('falls back to an em dash when the job has neither number', () => {
+    expect(subScheduleJobLabel(null, null, 'Smith repipe')).toBe('— · Smith repipe')
+    expect(subScheduleJobLabel('  ', '', 'Smith repipe')).toBe('— · Smith repipe')
   })
 
   it("falls back to 'Job' for a missing/blank name", () => {
-    expect(subScheduleJobLabel('1234', null)).toBe('1234 · Job')
-    expect(subScheduleJobLabel(undefined, undefined)).toBe('— · Job')
+    expect(subScheduleJobLabel('1234', null, null)).toBe('1234 · Job')
+    expect(subScheduleJobLabel(undefined, undefined, undefined)).toBe('— · Job')
   })
 })
 
