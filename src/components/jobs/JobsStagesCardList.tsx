@@ -352,7 +352,7 @@ function cardNextChip(ctx: StagesRowRenderContext, job: JobWithDetails) {
       }}
     >
       <span style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>
-        <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: '#15803d' }}>Next</span>
+        <span style={{ fontSize: '0.65rem', fontWeight: 700, textTransform: 'uppercase', color: 'var(--text-green-700)' }}>Next</span>
         <span style={{ margin: '0 0.35rem' }}>·</span>
         {headline}
       </span>
