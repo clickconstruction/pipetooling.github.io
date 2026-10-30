@@ -32,8 +32,7 @@ import { bidDisplayName, formatBidValueShort, formatCompactCurrency } from '../.
 import { formatBidDueTime } from '../../lib/bids/formatBidDueTime'
 import { bidBoardDueCellParts, bidBoardLastContactParts, bidBoardNoDueDateParts, bidBoardSentLabel, DUE_SOON_WINDOW_DAYS, UNSENT_NO_DUE_DATE_RED_AFTER_DAYS, type BidBoardDateCellParts } from '../../lib/bids/bidBoardDateCells'
 import { useNarrowViewport660 } from '../../hooks/useNarrowViewport660'
-import { useMatchMedia } from '../../hooks/useMatchMedia'
-import { BID_BOARD_TOOLS_WRAP_MQ, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
+import { bidBoardSearchPlaceholder, bidBoardToolsRowLayout } from '../../lib/bidBoardToolsRow'
 import { getSubmissionSectionKey, type SubmissionSectionKey } from '../../lib/bids/submissionSections'
 import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bidSentCounts'
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
@@ -323,7 +322,8 @@ export function BidsBidBoardTab({
   const replyBook = useBidReplyBook(authUser?.id)
   const narrowViewport = useNarrowViewport660()
   // v2.6109: under 366 px the tools row cannot hold its fixed parts on one line, so it wraps.
-  const toolsRow = bidBoardToolsRowLayout(useMatchMedia(BID_BOARD_TOOLS_WRAP_MQ))
+  // On a phone the search takes its own line (`bidBoardToolsRow.ts`); the cards' width is the phone's.
+  const toolsRow = bidBoardToolsRowLayout(narrowViewport)
   const [sectionShowAll, setSectionShowAll] = useState<Record<CappedSectionKey, boolean>>({
     pending: false,
     lost: false,
@@ -1687,15 +1687,15 @@ export function BidsBidBoardTab({
 
   return (
     <div>
-      {/* Board tools row: search grows, Archived + Reply book + Customer review sit to its right and never
-          wrap off the line — the search input shrinks instead. On phones Reply book and Customer review
-          are their icons, which is what leaves the search its room. Under 366 px even that is too wide
-          (v2.6109, `bidBoardToolsRow.ts`): the row wraps, the search shares the first line with the
-          development filter and the press group takes the next line, kept to the right. */}
+      {/* Board tools row: on a desk the search grows and Archived + Reply book + Customer review sit to its
+          right on one line, the search shrinking first. On a phone (`bidBoardToolsRow.ts`) the search takes
+          the first line whole — shrunk beside the presses it drew 18 px wide, no search at all — and the
+          development filter and the press group share the next line, the group kept to the right. Reply
+          book and Customer review are their icons there. */}
       <div style={{ display: 'flex', flexWrap: toolsRow.rowWrap, gap: '0.5rem', alignItems: 'center', marginBottom: '1rem' }}>
         <input
           type="text"
-          placeholder={narrowViewport ? 'Search...' : 'Search (project name or GC/Builder)...'}
+          placeholder={bidBoardSearchPlaceholder(narrowViewport)}
           value={bidBoardSearchQuery}
           onChange={(e) => setBidBoardSearchQuery(e.target.value)}
           /* height matches the Archived / Customer review buttons beside it
