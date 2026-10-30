@@ -19,13 +19,23 @@ describe('legalDeskRoute (punch list #182)', () => {
   })
 
   it('reads the address back, with fees as the old name of firm and an unknown word as no tab', () => {
-    expect(legalDeskFromSearch(new URLSearchParams('account=cust%3Aabc&tab=firm'))).toEqual({ account: 'cust:abc', tab: 'fees_steps', view: 'accounts' })
-    expect(legalDeskFromSearch(new URLSearchParams('account=cust%3Aabc&tab=fees'))).toEqual({ account: 'cust:abc', tab: 'fees_steps', view: 'accounts' })
-    expect(legalDeskFromSearch(new URLSearchParams('tab=nonsense'))).toEqual({ account: null, tab: null, view: 'accounts' })
-    expect(legalDeskFromSearch(new URLSearchParams('account=gc%3A1&tab=paper&view=map'))).toEqual({ account: 'gc:1', tab: 'paper', view: 'map' })
-    expect(legalDeskFromSearch(new URLSearchParams(''))).toEqual({ account: null, tab: null, view: 'accounts' })
+    expect(legalDeskFromSearch(new URLSearchParams('account=cust%3Aabc&tab=firm'))).toEqual({ account: 'cust:abc', tab: 'fees_steps', view: 'accounts', doc: null })
+    expect(legalDeskFromSearch(new URLSearchParams('account=cust%3Aabc&tab=fees'))).toEqual({ account: 'cust:abc', tab: 'fees_steps', view: 'accounts', doc: null })
+    expect(legalDeskFromSearch(new URLSearchParams('tab=nonsense'))).toEqual({ account: null, tab: null, view: 'accounts', doc: null })
+    expect(legalDeskFromSearch(new URLSearchParams('account=gc%3A1&tab=paper&view=map'))).toEqual({ account: 'gc:1', tab: 'paper', view: 'map', doc: null })
+    expect(legalDeskFromSearch(new URLSearchParams(''))).toEqual({ account: null, tab: null, view: 'accounts', doc: null })
     expect(legalDeskTabFromWord('timeline')).toBe('timeline')
     expect(legalDeskTabFromWord(null)).toBeNull()
+  })
+
+  it('the Evidence row to land on rides only with its tab (v2.6166)', () => {
+    expect(legalDeskHref({ account: 'gc:1', tab: 'evidence', doc: 'd-7' })).toBe('/legal-desk?account=gc%3A1&tab=evidence&doc=d-7')
+    // Off the Evidence tab the word is dropped on the way out and ignored on the way in.
+    expect(legalDeskHref({ account: 'gc:1', tab: 'timeline', doc: 'd-7' })).toBe('/legal-desk?account=gc%3A1&tab=timeline')
+    expect(legalDeskHref({ account: 'gc:1', tab: 'evidence', doc: null })).toBe('/legal-desk?account=gc%3A1&tab=evidence')
+    expect(legalDeskFromSearch(new URLSearchParams('account=gc%3A1&tab=evidence&doc=d-7'))).toEqual({ account: 'gc:1', tab: 'evidence', view: 'accounts', doc: 'd-7' })
+    expect(legalDeskFromSearch(new URLSearchParams('account=gc%3A1&tab=paper&doc=d-7')).doc).toBeNull()
+    expect(legalDeskFromSearch(new URLSearchParams('account=gc%3A1&tab=evidence&doc=%20')).doc).toBeNull()
   })
 
   it('every link in the wild lands on the page: ?legal=1, ?legal=<key>, &legalTab=fees|timeline', () => {

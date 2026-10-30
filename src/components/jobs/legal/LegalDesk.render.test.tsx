@@ -261,6 +261,23 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     expect(emails.dataset.legalFirmEmails).toBe('paused')
   })
 
+  it('the firm’s name and its county tail are one clipped run, so a tight segment shortens the tail before the name (punch list #182, a follow-up)', async () => {
+    await renderDesk({ canMarkReady: true, canEditReview: true })
+    const door = screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' })
+    const words = door.querySelector<HTMLElement>('[data-legal-firm-words]')!
+    const county = door.querySelector<HTMLElement>('[data-legal-firm-county]')!
+    // One block that ellipsizes from its end: the name leads it and the tail sits inside it, never a nowrap flex item of its
+    // own that keeps its whole width while the name shrinks to nothing (seen on a phone's wrapped header, 2026-10-30).
+    expect(words.firstChild?.textContent).toBe('Barnes & Holt')
+    expect(words.contains(county)).toBe(true)
+    expect(words.textContent).toBe('Barnes & Holt· no counties colored yet')
+    expect(words.style.overflow).toBe('hidden')
+    expect(words.style.textOverflow).toBe('ellipsis')
+    expect(words.style.whiteSpace).toBe('nowrap')
+    expect(county.style.whiteSpace).toBe('')
+    expect(county.style.flex).toBe('')
+  })
+
   it('the firm’s name in the header opens the firm’s window, and a click outside closes only it (v2.4711)', async () => {
     await renderDesk({ canMarkReady: true, canEditReview: true })
     fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
@@ -389,7 +406,7 @@ describe('LegalDesk · in house (v2.5847)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog', { name: 'Run it in house' })).toBeNull()
   })
-  it('in house: the pill, Back to review, the floor and the offers log on Fees & steps, and Question for counsel…', async () => {
+  it('in house: the pill, Back to review, the offers log on Fees & steps, and Question for counsel…', async () => {
     const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
     await settle()
@@ -397,7 +414,6 @@ describe('LegalDesk · in house (v2.5847)', () => {
     expect(screen.getByRole('button', { name: 'Back to review' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Run it in house…' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
-    expect(document.querySelector('[data-legal-floor-chip]')).toBeTruthy()
     expect(document.querySelector('[data-legal-offers]')).toBeTruthy()
     // No offer yet: the log says so and offers its own door again (punch list #184, sweep C).
     const noOffers = document.querySelector('[data-legal-offers] [data-empty-state]') as HTMLElement
