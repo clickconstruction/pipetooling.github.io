@@ -92,7 +92,7 @@ A strip of dots sits under the name. There is one dot for every section in the r
 
 The lit press marks the section for everyone and opens the next one. It is the same mark as the small press in a station's header, with the count it saw. When every section has been looked at the page shows the **close sheet**. It says what is clean, what was worked and is still open, and what you asked about. Each station on it is a door back in.
 
-The Dashboard draws the same round under Needs you, as **The office's round**. The last ten workdays stand as columns. A column's height is the stations marked that day. Hover a column to read its time and who ran the round. A workday the round missed is an empty red ring. Today's column fills in blue as the round runs. The chips {{chip:gray|still open 8 ›}} and {{chip:gray|questions 2 ›}} open Quickfill at the first of those stations. Hover a chip to read every station it counts.
+The Dashboard draws the same round under Needs you, as **The office's round**. The card can also draw the round as columns. Press {{button:outline|Show the columns}} on the card to turn them on for you. Press {{button:outline|Show today's look}} to go back. The last ten workdays stand as columns. A column's height is the stations marked that day. Hover a column to read its time and who ran the round. A workday the round missed is an empty red ring. Today's column fills in blue as the round runs. The chips {{chip:gray|still open 8 ›}} and {{chip:gray|questions 2 ›}} open Quickfill at the first of those stations. Hover a chip to read every station it counts.
 
 ## On a phone: the round
 
