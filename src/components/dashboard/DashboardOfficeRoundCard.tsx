@@ -5,7 +5,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatDayLabel } from '../../lib/quickfill/markHistory'
 import { isMarkOutcome } from '../../lib/quickfill/markOutcome'
 import { officeRoundHeadline, officeRoundState, type OfficeRoundState, type RoundCloseEvent } from '../../lib/quickfill/roundClose'
-import { QUICKFILL_SECTION_LABEL_BY_ID } from '../../lib/quickfill/sections'
+import { foldRetiredSectionId, QUICKFILL_SECTION_LABEL_BY_ID } from '../../lib/quickfill/sections'
 import { quickfillStationHref } from '../../lib/quickfill/stationDeepLink'
 
 /**
@@ -35,7 +35,8 @@ export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
         .limit(2000)
       if (cancelled) return
       const events: RoundCloseEvent[] = (data ?? []).map((r) => ({
-        section_id: r.section_id,
+        // A retired station's events read under the station it folded into (v2.6098: Texts under Messages).
+        section_id: foldRetiredSectionId(r.section_id),
         marked_at: r.marked_at,
         outstanding_count: r.outstanding_count,
         outcome: isMarkOutcome(r.outcome) ? r.outcome : null,

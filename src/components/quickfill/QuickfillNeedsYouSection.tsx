@@ -20,8 +20,8 @@ import { DashboardNeedsYouCard } from '../dashboard/DashboardNeedsYouCard'
  * takes it — so the station cannot fall behind the card again. What differs is
  * named in `needsYouSources.ts`: the stations on this page that carry a line
  * (Job follow-ups for the quiet jobs and, since v2.6093, the idle ones; GC weekly
- * review; People Hours and the Dispatch inbox since v2.5841) and the three
- * sources held back.
+ * review; People Hours and the Dispatch inbox since v2.5841; Messages for the
+ * Customers line and Today's sends since v2.6098) and the three sources held back.
  * Since v2.5774 the station has a third view, **Fill them in**: the deck over
  * the rows behind the lines an assistant clears with a few fields
  * (`NeedsYouFillInDeck`, `useFillInRows`). Since v2.5907 (punch list #178, D's

@@ -15,9 +15,11 @@ import BankPaymentsModal from '../jobs/BankPaymentsModal'
  * (`BankPaymentsModal`, fed by the shared jobs cache exactly as
  * `JobsAccountsReceivable.tsx` feeds it), opened over the card instead.
  * Closing it lands you back where you were; the card refetches its
- * unallocated-deposits count in its `onClose`.
+ * unallocated-deposits count in its `onClose`. Since v2.6096 (punch list #178)
+ * the returned-check line opens the same window on its case (`initialDepositId`,
+ * the page's `?check=<id>`), or on the list when several came back.
  */
-export function DashboardArDepositsModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+export function DashboardArDepositsModal({ open, onClose, initialDepositId = null }: { open: boolean; onClose: () => void; /** A returned check's case to open on (v2.6096, punch list #178): the page's `?check=<id>`. */ initialDepositId?: string | null }) {
   const { user, role } = useAuth()
   const jobFormModal = useJobFormModal()
   const { jobs, jobsListLoading, runFetchJobs } = useJobsListCache()
@@ -44,6 +46,7 @@ export function DashboardArDepositsModal({ open, onClose }: { open: boolean; onC
       billedRows={billedRows}
       billedTargetsLoading={jobsListLoading && billedRows.length === 0}
       onApplied={onApplied}
+      initialDepositId={initialDepositId}
       onOpenEditJob={(jobId) => jobFormModal?.openEditJob(jobId, { onSaved: () => void runFetchJobs(null) })}
     />
   )

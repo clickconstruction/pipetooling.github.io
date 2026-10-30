@@ -16,8 +16,8 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     }
   })
 
-  it('the five windows open in place on both hosts', () => {
-    for (const key of ['ar-deposits', 'tally-team', 'lien-unconditional', 'lien-waivers-to-sign', 'todays-sends'] as const) {
+  it('the six windows open in place on both hosts', () => {
+    for (const key of ['ar-deposits', 'tally-team', 'lien-unconditional', 'lien-waivers-to-sign', 'todays-sends', 'statement-round'] as const) {
       expect(needsYouDoor({ key }, base, 'dashboard')).toEqual({ kind: 'window', window: key })
       expect(needsYouDoor({ key }, base, 'quickfill')).toEqual({ kind: 'window', window: key })
     }
@@ -34,9 +34,9 @@ describe('needsYouDoor · one table for both hosts (punch list #146)', () => {
     expect(needsYouDoor({ key: 'customer-waiting' }, { ...base, customerWaitingInboxHref: '/bids?tab=inbox' }, 'dashboard')).toEqual({ kind: 'station', station: 'dispatch-inbox', href: '/bids?tab=inbox' })
   })
 
-  it('a returned check opens its case, the list with several, Edit Job before the cases load', () => {
-    expect(needsYouDoor({ key: 'returned-check' }, { ...base, returnedCheckIds: ['tx-1'] }, 'quickfill')).toEqual({ kind: 'href', href: '/accounts-receivable?check=tx-1' })
-    expect(needsYouDoor({ key: 'returned-check' }, { ...base, returnedCheckIds: ['tx-1', 'tx-2'] }, 'quickfill')).toEqual({ kind: 'href', href: '/accounts-receivable' })
+  it('a returned check opens its case in place, the list with several, Edit Job before the cases load (v2.6096)', () => {
+    expect(needsYouDoor({ key: 'returned-check' }, { ...base, returnedCheckIds: ['tx-1'] }, 'quickfill')).toEqual({ kind: 'window', window: 'returned-check', depositId: 'tx-1' })
+    expect(needsYouDoor({ key: 'returned-check' }, { ...base, returnedCheckIds: ['tx-1', 'tx-2'] }, 'dashboard')).toEqual({ kind: 'window', window: 'returned-check', depositId: null })
     expect(needsYouDoor({ key: 'returned-check' }, { ...base, returnedCheckIds: [], returnedCheckFirstJobId: 'j-9' }, 'quickfill')).toEqual({ kind: 'href', href: '/jobs?tab=stages&edit=j-9&editFocus=payments' })
   })
 

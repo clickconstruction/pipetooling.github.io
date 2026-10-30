@@ -21,8 +21,8 @@ import type { UserRole } from '../hooks/useAuth'
 export type NeedsYouDoor =
   /** `navigate(href)`. */
   | { kind: 'href'; href: string }
-  /** A window the host mounts over the card. */
-  | { kind: 'window'; window: 'ar-deposits' | 'tally-team' | 'lien-unconditional' | 'lien-waivers-to-sign' | 'todays-sends' }
+  /** A window the host mounts over the card. Since v2.6096 (punch list #178) the statement round (GC Review) and a returned check's case (the Accounts receivable window on that deposit) open in place too. */
+  | { kind: 'window'; window: 'ar-deposits' | 'tally-team' | 'lien-unconditional' | 'lien-waivers-to-sign' | 'todays-sends' | 'statement-round' | 'returned-check'; depositId?: string | null }
   /** The first draft test report in the Test report modal; `href` when there is none or no modal. */
   | { kind: 'test-report'; first: { jobId: string; reportId: string } | null; href: string }
   /** A station on the Quickfill page, or the Teams Inbox card on the Dashboard; `href` when the host cannot show it. */
@@ -118,10 +118,10 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
       return href(bidId ? `/bids?tab=submittals&bidId=${encodeURIComponent(bidId)}` : '/bids?tab=submittals')
     }
     case 'returned-check': {
-      // v2.4325: the case in Accounts Receivable; before the cases load, Edit Job → ③ Payments received.
+      // v2.4325: the case in Accounts Receivable; since v2.6096 that window opens in place, on the one case or on the
+      // list of them (the cases sit on top of To match); before the cases load, Edit Job → ③ Payments received.
       const ids = d.returnedCheckIds ?? []
-      if (ids.length === 1) return href(`/accounts-receivable?check=${encodeURIComponent(ids[0]!)}`)
-      if (ids.length > 1) return href('/accounts-receivable')
+      if (ids.length >= 1) return { kind: 'window', window: 'returned-check', depositId: ids.length === 1 ? ids[0]! : null }
       return href(d.returnedCheckFirstJobId ? `/jobs?tab=stages&edit=${encodeURIComponent(d.returnedCheckFirstJobId)}&editFocus=payments` : STAGES)
     }
     case 'test-reports-ready':
@@ -143,7 +143,8 @@ export function needsYouDoor(item: Pick<NeedsYouItem, 'key'>, d: NeedsYouDoorDat
     case 'gc-review-weekly':
       return href('/jobs?tab=stages&gcReview=1')
     case 'statement-round':
-      return href('/jobs?tab=stages&round=1')
+      // v2.6096: GC Review, the round's list, in place over the card; the Pipeline's `?round=1` opens the same modal.
+      return { kind: 'window', window: 'statement-round' }
     case 'bulk-delete':
       return href('/settings?tab=settings-data#settings-recently-deleted')
     case 'claim-dev':

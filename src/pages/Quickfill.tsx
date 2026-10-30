@@ -65,11 +65,11 @@ import { QuickfillPropertyKindsSection } from '../components/quickfill/Quickfill
 import { useQuickfillPropertyKinds } from '../hooks/useQuickfillPropertyKinds'
 import { QuickfillPercentCompleteSection } from '../components/quickfill/QuickfillPercentCompleteSection'
 import { useQuickfillPercentComplete } from '../hooks/useQuickfillPercentComplete'
-import { useQuickfillTexts } from '../hooks/useQuickfillTexts'
+import { useQuickfillMessages } from '../hooks/useQuickfillMessages'
 import { useQuickfillFieldPhotos } from '../hooks/useQuickfillFieldPhotos'
 import { fieldPhotoAgeRows, fieldPhotosAgedNextLine, fieldPhotosMarkNote, fieldPhotosSince } from '../lib/quickfill/fieldPhotosAge'
 import { formatDayLabel, formatMarkTime } from '../lib/quickfill/markHistory'
-import { textsMarkNoteFor } from '../lib/quickfill/textsLedger'
+import { messagesMarkNoteFor, messagesNextLine } from '../lib/quickfill/messagesStation'
 import { canOpenMessages } from '../lib/gc/access'
 import { QuickfillFieldPhotoHandoverSection } from '../components/quickfill/QuickfillFieldPhotoHandoverSection'
 import { QuickfillJobsCleanupSection } from '../components/quickfill/QuickfillJobsCleanupSection'
@@ -84,7 +84,7 @@ import { QuickfillUndatedBillsSection } from '../components/quickfill/QuickfillU
 import { QuickfillAssistantDailysSection } from '../components/quickfill/QuickfillAssistantDailysSection'
 import { QuickfillDifficultPeopleSection } from '../components/quickfill/QuickfillDifficultPeopleSection'
 import { QuickfillEmailSection } from '../components/quickfill/QuickfillEmailSection'
-import { QuickfillTextsSection } from '../components/quickfill/QuickfillTextsSection'
+import { QuickfillMessagesSection } from '../components/quickfill/QuickfillMessagesSection'
 import { QuickfillPhysicalInboxSection } from '../components/quickfill/QuickfillPhysicalInboxSection'
 import { QuickfillOfficeSection } from '../components/quickfill/QuickfillOfficeSection'
 import { QuickfillScheduleSection } from '../components/quickfill/QuickfillScheduleSection'
@@ -110,10 +110,10 @@ import { fileQuickfillQuestion } from '../lib/quickfill/questionRequestIo'
 import { QuickfillMarkPresses } from '../components/quickfill/QuickfillMarkPresses'
 import { QuickfillNextLine } from '../components/quickfill/QuickfillNextLine'
 import { markHistoryHour } from '../lib/quickfill/markHistory'
-import { QUICKFILL_SECTIONS, type QuickfillSectionMeta } from '../lib/quickfill/sections'
+import { foldRetiredSectionId, QUICKFILL_SECTIONS, type QuickfillSectionMeta } from '../lib/quickfill/sections'
 import { roundCloseSheet } from '../lib/quickfill/roundClose'
 import { QuickfillRoundCloseSheet } from '../components/quickfill/QuickfillRoundCloseSheet'
-import { completeNoBillNextLine, dispatchInboxNextLine, missingJobInfoNextLine, percentCompleteNextLine, propertyKindsNextLine, textsNextLine } from '../lib/quickfill/nextLine'
+import { completeNoBillNextLine, dispatchInboxNextLine, missingJobInfoNextLine, percentCompleteNextLine, propertyKindsNextLine } from '../lib/quickfill/nextLine'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import { isAssistantLike } from '../lib/subcontractorLikeRole'
 import { canAccessBanking } from '../lib/bankingAccess'
@@ -535,24 +535,27 @@ function QuickfillPage() {
     null,
     quickfillPercentComplete.fetchEnabled && !quickfillPercentComplete.loading ? percentCompleteNextLine(quickfillPercentComplete.list.cards) : null,
   )
-  // Texts (v2.5816, punch list #157): the day's text ledger from Messages' own reads; the count is texts needing a reply plus texts not delivered, reported from here so it stays live while the strip is collapsed. The office team alone reads Messages.
-  const quickfillTextsEnabled = canOpenMessages(role)
-  const quickfillTexts = useQuickfillTexts(quickfillTextsEnabled)
+  // Messages (v2.6098, punch list #178; the Texts station of v2.5816 folded into it): the page's lanes and the day's text
+  // ledger from one read of Messages' own queue; the count is the badge's number, reported from here so it stays live
+  // while the strip is collapsed. The office team alone reads Messages.
+  const quickfillMessagesEnabled = canOpenMessages(role)
+  const quickfillMessages = useQuickfillMessages(quickfillMessagesEnabled)
   useReportQuickfillSectionMetric(
-    'texts',
-    quickfillTextsEnabled && quickfillTexts.ledger ? quickfillTexts.ledger.count : null,
-    quickfillTextsEnabled && quickfillTexts.loading,
+    'messages',
+    quickfillMessagesEnabled && quickfillMessages.station ? quickfillMessages.station.count : null,
+    quickfillMessagesEnabled && quickfillMessages.loading,
     null,
     null,
-    quickfillTextsEnabled && quickfillTexts.ledger ? textsNextLine(quickfillTexts.ledger) : null,
+    quickfillMessagesEnabled ? messagesNextLine(quickfillMessages.station) : null,
   )
-  // The words typed under Anything else, held here so every Mark of the station carries them: the foot's and the
-  // header's Mark, Focus's folded line and the round's Looked all write the note from the rows (`textsMarkNoteFor`).
-  const [quickfillTextsTyped, setQuickfillTextsTyped] = useState('')
-  const markTexts = async (outcome?: MarkOutcome, questionWords?: string): Promise<void> => {
-    const note = textsMarkNoteFor({ ledger: quickfillTexts.ledger, typed: quickfillTextsTyped, problem: quickfillTexts.problem })
-    setQuickfillTextsTyped('')
-    await markSectionUpToDate('texts', { noteText: note || null, outcome: outcome ?? null, questionWords })
+  // The words typed under Anything else in the Texts fold, held here so every Mark of the station carries them: the
+  // foot's and the header's Mark, Focus's folded line and the round's Looked all write the note from the lanes and the
+  // rows (`messagesMarkNoteFor`).
+  const [quickfillMessagesTyped, setQuickfillMessagesTyped] = useState('')
+  const markMessages = async (outcome?: MarkOutcome, questionWords?: string): Promise<void> => {
+    const note = messagesMarkNoteFor({ station: quickfillMessages.station, ledger: quickfillMessages.ledger, typed: quickfillMessagesTyped, problem: quickfillMessages.problem })
+    setQuickfillMessagesTyped('')
+    await markSectionUpToDate('messages', { noteText: note || null, outcome: outcome ?? null, questionWords })
   }
   const {
     peopleCount: staleTallyStaffPeopleCount,
@@ -836,6 +839,8 @@ function QuickfillPage() {
         return warningsSectionEligible
       }
       if (sectionId === 'needs-you') return warningsSectionEligible
+      // Messages (v2.6098): the office team reads Messages; the Texts station rendered for everyone with the note alone.
+      if (sectionId === 'messages') return canOpenMessages(role)
       if (sectionId === 'no-customer-stages') return quickfillNoCustomerStages.fetchEnabled
       if (sectionId === 'property-kinds') return quickfillPropertyKinds.fetchEnabled
       if (sectionId === 'percent-complete') return quickfillPercentComplete.fetchEnabled
@@ -959,7 +964,10 @@ function QuickfillPage() {
     const map: Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }> = {}
     for (const row of data ?? []) {
       const r = row as { section_id: string; marked_at: string; marked_by?: string; users?: { name: string | null } | null }
-      map[r.section_id] = {
+      // A retired station's last mark counts for the station it folded into (v2.6098: Texts under Messages), the newer winning.
+      const id = foldRetiredSectionId(r.section_id)
+      if (map[id] && map[id].marked_at >= r.marked_at) continue
+      map[id] = {
         marked_at: r.marked_at,
         marked_by: r.marked_by,
         marked_by_name: r.users?.name ?? null,
@@ -1873,7 +1881,7 @@ function QuickfillPage() {
             />
           </QuickfillSectionWrapper>
         )
-      case 'texts':
+      case 'messages':
         return (
           <QuickfillSectionWrapper
             id={id}
@@ -1881,22 +1889,23 @@ function QuickfillPage() {
             label={label}
             bannerText={bannerText}
             withTopDivider={withTopDivider}
-            color={chipColorOf('texts')}
-            collapsed={isCollapsed('texts') && !forceExpandedSections.has('texts')}
-            mark={sectionMarks['texts']}
-            onMarkUpToDate={(outcome, words) => void markTexts(outcome, words)}
-            onOpenNow={() => openSectionNow('texts')}
-            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'texts', label: 'Texts' })}
+            color={chipColorOf('messages')}
+            collapsed={isCollapsed('messages') && !forceExpandedSections.has('messages')}
+            mark={sectionMarks['messages']}
+            onMarkUpToDate={(outcome, words) => void markMessages(outcome, words)}
+            onOpenNow={() => openSectionNow('messages')}
+            onOpenHistory={() => setMarkHistoryModal({ sectionId: 'messages', label: 'Messages' })}
           >
-            <QuickfillTextsSection
-              ledger={quickfillTexts.ledger}
-              todaysSends={quickfillTexts.todaysSends}
-              loading={quickfillTexts.loading}
-              problem={quickfillTexts.problem}
-              canRead={quickfillTextsEnabled}
-              typed={quickfillTextsTyped}
-              onTyped={setQuickfillTextsTyped}
-              onReload={quickfillTexts.reload}
+            <QuickfillMessagesSection
+              station={quickfillMessages.station}
+              ledger={quickfillMessages.ledger}
+              todaysSends={quickfillMessages.todaysSends}
+              loading={quickfillMessages.loading}
+              problem={quickfillMessages.problem}
+              canRead={quickfillMessagesEnabled}
+              typed={quickfillMessagesTyped}
+              onTyped={setQuickfillMessagesTyped}
+              onReload={quickfillMessages.reload}
             />
           </QuickfillSectionWrapper>
         )
@@ -1951,7 +1960,7 @@ function QuickfillPage() {
         .order('marked_at', { ascending: false })
         .limit(2000)
       if (!cancelled) {
-        setRoundEvents((data ?? []).map((r) => ({ section_id: r.section_id, marked_at: r.marked_at, outstanding_count: r.outstanding_count, outcome: r.outcome ?? null, marked_by_name: r.users?.name ?? null })))
+        setRoundEvents((data ?? []).map((r) => ({ section_id: foldRetiredSectionId(r.section_id), marked_at: r.marked_at, outstanding_count: r.outstanding_count, outcome: r.outcome ?? null, marked_by_name: r.users?.name ?? null })))
         setRoundEventsLoaded(true)
       }
     })()
@@ -1997,7 +2006,7 @@ function QuickfillPage() {
     if (!roundMeta || roundMarking) return
     setRoundMarking(true)
     try {
-      await (roundMeta.sectionId === 'texts' ? markTexts(outcome, words) : markSectionUpToDate(roundMeta.sectionId, { outcome, questionWords: words }))
+      await (roundMeta.sectionId === 'messages' ? markMessages(outcome, words) : markSectionUpToDate(roundMeta.sectionId, { outcome, questionWords: words }))
     } finally {
       setRoundMarking(false)
     }
@@ -2027,7 +2036,7 @@ function QuickfillPage() {
     const nextId = rollerNext(rollerDeckRows, rollerMeta.sectionId)
     setRoundMarking(true)
     try {
-      await (rollerMeta.sectionId === 'texts' ? markTexts(outcome, words) : markSectionUpToDate(rollerMeta.sectionId, { outcome, questionWords: words }))
+      await (rollerMeta.sectionId === 'messages' ? markMessages(outcome, words) : markSectionUpToDate(rollerMeta.sectionId, { outcome, questionWords: words }))
     } finally {
       setRoundMarking(false)
     }

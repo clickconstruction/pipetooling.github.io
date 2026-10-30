@@ -41,7 +41,7 @@ the design is the plans named at the end of this page.
 | The customer's portal, Messages tab | `/portal?t=<token>` | the customer, no login | `src/pages/CustomerPortal.tsx` over the `customer-portal` function |
 | The trade partner's portal | the portal link in the invite email | the trade partner, no login | `src/pages/GcTradePortal.tsx` over `gc-trade-portal` |
 | A kept file's lasting link | `/files/<source>/<id>` (`messages`, `drive`) | anyone signed in whom the file's row lets read | `src/pages/FileOpen.tsx`, `src/lib/files/fileRoute.ts` |
-| Quickfill → Texts, the day's text ledger (v2.5816, punch list #157) | `/quickfill?station=texts` in the Roller, `/quickfill#texts` on the page | the office team (`canOpenMessages`; anyone else keeps the note alone) | `src/components/quickfill/QuickfillTextsSection.tsx` over `src/lib/quickfill/textsLedger.ts` (Needs a reply narrowed to texts, Not delivered from today and yesterday, Went out today, the note the Mark writes) and `textsLedgerIo.ts`, which reads through Follow up's `loadQueue` and Went out's `loadWentOut` and nothing of its own; the hook `useQuickfillTexts` at page level in `Quickfill.tsx` |
+| Quickfill → Messages, the round's second station (v2.6098, punch list #178; the Texts station of v2.5816 folded into it, `/quickfill#texts` landing here) | `/quickfill#messages` on the page and in the Roller | the office team (`canOpenMessages`; anyone else keeps the note alone) | `src/components/quickfill/QuickfillMessagesSection.tsx` over `src/lib/quickfill/messagesStation.ts` (the page's lanes with their counts, each a door to `/messages#<lane>`, which the page lands on; the badge's count; the Next line; the Mark's note) with the Texts ledger folded under the lanes (`QuickfillTextsSection.tsx` over `textsLedger.ts`: Needs a reply narrowed to texts, Not delivered, Went out today); one read, `messagesStationIo.ts` through `textsLedgerIo.ts`'s `readTextsLedgerSources` and `queueFromRows`, Follow up's `loadQueue` and Went out's `loadWentOut` and nothing of its own; the hook `useQuickfillMessages` at page level in `Quickfill.tsx`, re-reading on `useMessagesLive` |
 
 ## The spine: contacts and messages
 
@@ -137,7 +137,7 @@ who last texted them until 5 PM, `has_until`, then the office in its hours, or a
 around-the-clock switch, v2.5721). The screens are `src/components/followUp/`
 (`FollowUpPanel`, `FollowUpSections`, `WhoHasItPill`, `OwedStrip`, `SettlingNote`, `NewLaneCard`, `SortAllDesk`, `AnswerAllDesk`; since v2.5332 `NudgesFromTheFlow` over `useFlowNudges`, whose *Text Greg* and *Email Jonah* open the thread with the nudge written since v2.5714) and the
 two slot hooks that put them in the thread. The Dashboard's Customers line (and `follow_up_count`; since v2.5596 a customer with an open call counts once) counts from the same reads
-(`customerCounts.ts`; on Quickfill since v2.5823 without the texts, which its Texts station holds, `textsElsewhere`).
+(`customerCounts.ts`; on Quickfill the line is carried by the Messages station since v2.6098, which counts the people waiting on us once; v2.5823's `textsElsewhere` flag stays on the kernel, unused by a host).
 
 ## Flows, steps and the morning run
 
