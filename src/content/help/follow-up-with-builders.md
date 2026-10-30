@@ -2,7 +2,7 @@
 title: follow up with builders on their bids
 category: Office
 roles: dev, master_technician, assistant, estimator, primary, superintendent
-keywords: followup, call again, follow up date, next call, later, due, overdue, parked, budget next year, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids, low bid, high bid, rank from the bottom, won, undo won, waiting, open the job, board went quiet
+keywords: followup, call again, follow up date, next call, later, due, overdue, parked, budget next year, builder review, call queue, submission, stale, snooze, PIA, quick log, call sheet, contact people, hit rate, pipeline, why we lost, loss reason, lost bids, price too high, gc lost, waiting to hear, bid tab, chase, pending bids, sent bids, low bid, high bid, rank from the bottom, won, undo won, waiting, open the job, board went quiet, strip of days, chase clock, show the strip, call again day, tab gettable day
 order: 69
 ---
 The Followup tab is where bid follow-up lives. It opens on the Call queue, the list of every builder worth a call.
@@ -16,6 +16,18 @@ The newest lens is {{chip:green|new}} **Call queue**. It is Followup as one list
 - **Chase**: pending bids that are due for a call. That is a day you picked that has come, or no contact in over a week. GC means the general contractor.
 - **Loss reasons**: lost bids with no reason recorded.
 - **Bid tabs**: tabs worth asking for. A bid tab is the GC's list of every bidder's number. Worth asking for means any lost bid without one, or a pending bid sent three weeks ago.
+
+## See each bid's clock as a strip of days
+
+The Call queue can draw each pending bid's clock instead of saying it. Press {{button:outline|Show the strip of days}} at the end of the header row. The header sentence goes. The chips keep their counts. Under each builder's name, every pending bid gets one line and one strip of days.
+
+- A blue dot is the day the bid went out.
+- A filled dot is a call, a text or an email you logged.
+- A diamond is the day to call again. A solid diamond is a day someone promised. A dashed diamond is the rule's day, seven days after the last contact. The words under it say *call again · default*.
+- A green tick is the day the bid tab becomes worth asking for. That is three weeks after the send.
+- The blue column is today.
+
+A bid is **to chase** when today has reached its diamond. You can see it coming a few days out. Hover a day to read what sits on it. Hover the strip to read it as one sentence. Press {{button:outline|Show today's look}} to go back. The choice is yours alone and the app remembers it on this device.
 
 The header line counts **bids** and names the trade you're looking at. It reads *· Plumbing · 96 bids · 99 GC packets to chase · 59 losses need a reason …*. Bids come first. When a bid went to more than one GC, the GC-packet figure follows as the second number. A GC packet is one GC's copy of the bid. That is because the queue lists one row per GC, while a bid is still one bid. Three GCs means three calls. Bold numbers are work owed. The Done column says what's already collected. It reads like *16 of 24 fresh* or *8 of 9 recorded*. A *—* means nothing owed. **Click any row and it drops open in place**. The pending bids open with their one-tap chips. The lost bids open with the six reason chips. The gettable tabs open with the capture panel. So you can collect one thing between meetings without leaving the queue. The one-tap chips on a pending bid are the same ones as Waiting to hear. They are ***Left message · Still pending · Bid tab received · Rebid / RFQ · Won · Lost…***. Every tap writes the bid note and stamps Last Contact for you.
 
@@ -148,6 +160,8 @@ The left rail lists builders holding your open bids, most recently sent on top. 
 :::
 
 **The full picture rides beside the card.** On the right, or below on a phone, **The story so far** is the bid's whole conversation, newest first. It holds every logged call with *what they said* and who logged it. It holds notes added from the Bid Board. That is the same store, both directions. The letter-send is the anchor at the bottom. **show all N** unfolds the rest. Under it, **With <builder> lately** shows the latest word on each of the builder's *other* open bids. You're calling them once about all of it. So a line like *"budget review this week"* on a sibling bid is exactly what to mention while you have them. So is an amber *no contact since sent 7/2*. Tap a line and that bid opens on the card. Your own tap lands at the top of the story the moment you log it.
+
+The same strip of days works here. Press {{button:outline|Show the strip of days}} at the end of the header row. The open bid then draws its clock under its title. The strip takes the place of the *Last contact* line. The send, each contact, the day to call again and the bid tab day sit on their days. The seven days of the rule are the dashed diamond. One press turns the strip on here and on the Call queue.
 
 Log the answer without leaving the card. Use the **What happened?** chips, one tap per bid. They are ***Left message · Still pending · Bid tab received · Rebid / RFQ · Won · Lost…***.
 

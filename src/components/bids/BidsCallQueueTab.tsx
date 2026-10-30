@@ -56,6 +56,10 @@ import {
 } from '../../lib/ledgerDisplayPrefixes'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { telHrefFor } from '../../lib/phoneContact'
+import { loadBidContactInstants } from '../../lib/bids/bidContactInstants'
+import { chaseClockStrip } from '../../lib/bids/chaseClockStrip'
+import { ChaseClockLegend, ChaseClockStrip } from './ChaseClockStrip'
+import { ShapeSwitch, SideBySide, useShapeView } from '../prototypes/SideBySide'
 
 export type BidsCallQueueTabProps = {
   bids: BidWithBuilder[]
@@ -76,6 +80,11 @@ export type BidsCallQueueTabProps = {
   contactPersons?: ReadonlyArray<{ id: string; customer_id: string; name: string; phone: string | null; note: string | null }>
   /** After a person is added to a customer from the queue. */
   onReloadContactPersons?: () => void
+  /**
+   * Every contact's instant per bid, for the chase clock's dots (punch list #217, bids-7). The
+   * tab reads them itself while the strip is on when the caller passes none.
+   */
+  contactInstantsByBid?: Record<string, string[]>
 }
 
 type QueueRowKey = 'chase' | 'reasons' | 'tabs'
@@ -149,6 +158,7 @@ export function BidsCallQueueTab({
   onOpenBuilderCard,
   contactPersons,
   onReloadContactPersons,
+  contactInstantsByBid,
 }: BidsCallQueueTabProps) {
   const confirmDialog = useConfirmDialog()
   const { role: authRole } = useAuth()
@@ -171,6 +181,11 @@ export function BidsCallQueueTab({
   // One instant per mount keeps every memo on the same clock.
   const nowIso = useMemo(() => new Date().toISOString(), [])
   const todayYmd = useMemo(() => todayYmdInAppTz(new Date(nowIso)), [nowIso])
+  // The chase clock as a strip of days (punch list #217, bids-7, a prototype): behind a per-person
+  // switch, off by default; `?sbs=1` draws today's look and the strip together for a dev.
+  const shape = useShapeView('chase-clock')
+  const stripOn = shape.on || shape.sideBySide
+  const [readContactsByBid, setReadContactsByBid] = useState<Record<string, string[]>>({})
 
   // The builder's own day (the call window's "Next follow-up", or a snooze): a bid with no day
   // of its own takes it. Fail-soft: without it bids stand on their own days.
@@ -239,6 +254,34 @@ export function BidsCallQueueTab({
   const queue = useMemo(() => buildCallQueue(mapped, nowIso, { todayYmd, builderNextYmdByKey }), [mapped, nowIso, todayYmd, builderNextYmdByKey])
   const followupOf = (b: CallQueueBid): BidFollowup | null => queue.followupByBid.get(b) ?? null
 
+  // The strip's contact dots: the pending bids' method entries, read only while the strip is on. Fail-soft:
+  // without them the strip still draws the send, the bid's own last-contact stamp and the days.
+  const pendingIdsKey = useMemo(
+    () => (stripOn && !contactInstantsByBid ? [...new Set(mapped.filter((b) => b.outcome === 'pending').map((b) => b.id))].sort().join(',') : ''),
+    [mapped, stripOn, contactInstantsByBid],
+  )
+  useEffect(() => {
+    if (!pendingIdsKey) return
+    let cancelled = false
+    void (async () => {
+      try {
+        const next = await loadBidContactInstants(supabase, pendingIdsKey.split(','))
+        if (!cancelled) setReadContactsByBid(next)
+      } catch {
+        // quiet
+      }
+    })()
+    return () => {
+      cancelled = true
+    }
+  }, [pendingIdsKey])
+  const contactsByBid = contactInstantsByBid ?? readContactsByBid
+  const stripFor = (b: MappedBid) => {
+    const f = followupOf(b)
+    if (!f) return null
+    return chaseClockStrip({ sentIso: b.sentIso, contactIsos: [...(contactsByBid[b.id] ?? []), ...(b.lastContactIso ? [b.lastContactIso] : [])], followup: f, hasTab: b.hasTab, todayYmd })
+  }
+
   const personById = useMemo(() => {
     const map = new Map<string, FollowupPickPerson & { customer_id: string }>()
     for (const p of contactPersons ?? []) map.set(p.id, p)
@@ -287,6 +330,13 @@ export function BidsCallQueueTab({
     }
     return map
   }, [mapped])
+  /** A builder's pending bids in the queue's order: to chase first, then parked, then fresh (the strip's rows). */
+  const pendingBidsOf = (builder: CallQueueBuilder): MappedBid[] => {
+    const order = new Map<CallQueueBid, number>()
+    builder.chase.todo.forEach((b, i) => order.set(b, i))
+    builder.chase.later.forEach((b, i) => order.set(b, 1000 + i))
+    return (bidsByBuilder.get(builder.builderKey) ?? []).filter((b) => b.outcome === 'pending').sort((a, b) => (order.get(a) ?? 2000) - (order.get(b) ?? 2000))
+  }
 
   const visibleBuilders = useMemo(() => {
     let list = queue.builders
@@ -842,16 +892,164 @@ export function BidsCallQueueTab({
     )
   }
 
+  /** The builders in view: today's cards, or the cards with a strip of days per pending bid. */
+  const renderList = (withStrip: boolean) =>
+    whenKey === 'later' ? (
+      laterRows.length === 0 ? (
+        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No bid is waiting on a date. Pick a day under Left message or Still pending and it lands here.</p>
+      ) : null
+    ) : visibleBuilders.length === 0 ? (
+      <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+        {whenKey ? 'Nothing here today. Tap the pill again to see every call.' : 'Nothing matches — clear the search or switch the filter back to All calls.'}
+      </p>
+    ) : (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
+        {visibleBuilders.map((builder) => {
+          const rows: Array<{ key: QueueRowKey; label: string; todo: string | null; todoSub: string | null; done: string }> = [
+            {
+              key: 'chase',
+              label: 'Chase',
+              todo: builder.chase.todo.length > 0 ? `${builder.chase.todo.length} pending` : null,
+              // With the strip on, the verdict words go: the diamond and today say it.
+              todoSub: withStrip
+                ? null
+                : builder.due?.state === 'overdue' ? `promised ${followupDateLabel(builder.due.earliestYmd ?? todayYmd, todayYmd)}`
+                : builder.due?.state === 'due' ? 'promised for today'
+                : builder.chase.oldestQuietDays != null ? `quiet ${builder.chase.oldestQuietDays}d`
+                : null,
+              done: withStrip
+                ? builder.chase.later.length > 0 ? `${builder.chase.later.length} later` : '—'
+                : `${builder.chase.freshCount} of ${builder.stats.pending} fresh${builder.chase.later.length > 0 ? ` · ${builder.chase.later.length} later` : ''}`,
+            },
+            {
+              key: 'reasons',
+              label: 'Loss reasons',
+              todo: builder.reasons.todo.length > 0 ? `${builder.reasons.todo.length} loss${builder.reasons.todo.length === 1 ? '' : 'es'}` : null,
+              todoSub: builder.reasons.todo.length > 0 ? `$${formatCurrency(builder.reasons.dollars)}` : null,
+              done: `${builder.reasons.recordedCount} of ${builder.stats.lost} recorded`,
+            },
+            {
+              key: 'tabs',
+              label: 'Bid tabs',
+              todo: builder.tabs.todo.length > 0 ? `${builder.tabs.todo.length} gettable` : null,
+              todoSub: null,
+              done: `${builder.tabs.recordedCount} recorded`,
+            },
+          ]
+          const open = openRow && openRow.builderKey === builder.builderKey ? openRow.row : null
+          const anyBid = (bidsByBuilder.get(builder.builderKey) ?? [])[0]
+          return (
+            <div
+              key={builder.builderKey}
+              style={{
+                border: `1px solid ${builder.hasWork ? 'var(--border-strong)' : 'var(--border)'}`,
+                borderRadius: 10,
+                background: 'var(--surface)',
+                padding: '0.7rem 0.9rem',
+                boxShadow: builder.hasWork ? '0 2px 8px rgba(15, 23, 42, 0.07)' : 'none',
+              }}
+            >
+              <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
+                <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-strong)' }}>{builder.builderName}</span>
+                {builder.due && builder.due.state !== 'none' ? dayTag(followupOf(builder.chase.todo[0]!)) : null}
+                {builder.phone ? (
+                  <a href={telHrefFor(builder.phone)} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}>
+                    {'☎'} {builder.phone}
+                  </a>
+                ) : null}
+                <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
+                  {builder.stats.won} won · {builder.stats.lost} lost · {builder.stats.pending} pending
+                  {builder.stats.hitRatePct != null ? ` · hit rate ${builder.stats.hitRatePct}%` : ''}
+                  {builder.stats.pendingValue > 0 ? ` · pending $${formatCurrency(builder.stats.pendingValue)}` : ''}
+                </span>
+                {anyBid ? (
+                  <button
+                    type="button"
+                    onClick={() => onOpenBuilderCard(anyBid.raw)}
+                    title="Open the builder card on By builder — contacts, notes, and the full call session"
+                    style={{
+                      marginLeft: 'auto',
+                      fontSize: '0.8125rem',
+                      fontWeight: builder.hasWork ? 700 : 400,
+                      padding: '0.3rem 0.8rem',
+                      borderRadius: 8,
+                      border: builder.hasWork ? 'none' : '1px solid var(--border-strong)',
+                      background: builder.hasWork ? '#3b82f6' : 'transparent',
+                      color: builder.hasWork ? '#fff' : 'var(--text-muted)',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                      font: 'inherit',
+                    }}
+                  >
+                    {'📞'} {builder.hasWork ? 'Start call' : 'Call anyway'}
+                  </button>
+                ) : null}
+              </div>
+
+              {withStrip ? (
+                <div data-chase-clock-bids style={{ display: 'grid', gap: '0.5rem', margin: '0.55rem 0 0.1rem', maxWidth: '46rem' }}>
+                  {pendingBidsOf(builder).map((b) => {
+                    const strip = stripFor(b)
+                    if (!strip) return null
+                    return (
+                      <div key={b.rowKey} data-chase-clock-bid={b.rowKey} style={{ minWidth: 0 }}>
+                        <div style={{ display: 'flex', gap: '0.25rem 0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8125rem' }}>
+                          <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>
+                            {b.label} · {b.project}
+                          </span>
+                          {b.value > 0 ? <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>${formatCurrency(b.value)}</span> : null}
+                          {strip.toChase ? (
+                            <span data-chase-clock-verdict style={{ fontSize: '0.66rem', fontWeight: 700, padding: '0 0.45rem', borderRadius: 999, lineHeight: 1.7, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' }}>to chase</span>
+                          ) : null}
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.72rem' }}>quiet {strip.quietDays} d</span>
+                        </div>
+                        <ChaseClockStrip strip={strip} />
+                      </div>
+                    )
+                  })}
+                </div>
+              ) : null}
+              <div style={{ overflowX: narrowViewport640 ? 'auto' : 'visible' }}>
+                <table style={{ borderCollapse: 'collapse', marginTop: '0.45rem', fontSize: '0.8125rem', width: '100%', maxWidth: '46rem' }}>
+                  <thead>
+                    <tr>
+                      <th style={{ width: '7.5rem', borderBottom: '1px solid var(--border-strong)' }} aria-hidden />
+                      <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600, padding: '0.15rem 1.2rem 0.15rem 0', borderBottom: '1px solid var(--border-strong)' }}>To do</th>
+                      <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600, padding: '0.15rem 0 0.15rem 0', borderBottom: '1px solid var(--border-strong)' }}>Done</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {rows.map((r) => (
+                      <FragmentRow
+                        key={r.key}
+                        row={r}
+                        open={open === r.key}
+                        onToggle={() => toggleRow(builder.builderKey, r.key)}
+                        expansion={open === r.key ? renderExpansion(builder, r.key) : null}
+                      />
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          )
+        })}
+      </div>
+    )
+
+  const headline = (
+    <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
+      <strong style={{ color: 'var(--text-700)' }}>
+        {queue.totals.buildersWithWork} builder{queue.totals.buildersWithWork === 1 ? '' : 's'} worth a call
+      </strong>
+      {/* Tier-2 #20: bids lead, GC packets follow — "96 bids · 99 GC packets to chase". */}
+      {` · ${scopeLabel(sentScope)} · ${bidsAndPacketsLabel(queue.totals.chaseCount, queue.totals.chasePacketRows)} to chase · ${bidsAndPacketsLabel(queue.totals.reasonsCount, queue.totals.reasonsPacketRows, { one: 'loss', many: 'losses' })} need${queue.totals.reasonsCount === 1 ? 's' : ''} a reason · $${formatCurrency(queue.totals.reasonsDollars)} unexplained · ${queue.totals.tabsCount} tabs gettable`}
+    </span>
+  )
   return (
     <div>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', flexWrap: 'wrap' }}>
-        <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          <strong style={{ color: 'var(--text-700)' }}>
-            {queue.totals.buildersWithWork} builder{queue.totals.buildersWithWork === 1 ? '' : 's'} worth a call
-          </strong>
-          {/* Tier-2 #20: bids lead, GC packets follow — "96 bids · 99 GC packets to chase". */}
-          {` · ${scopeLabel(sentScope)} · ${bidsAndPacketsLabel(queue.totals.chaseCount, queue.totals.chasePacketRows)} to chase · ${bidsAndPacketsLabel(queue.totals.reasonsCount, queue.totals.reasonsPacketRows, { one: 'loss', many: 'losses' })} need${queue.totals.reasonsCount === 1 ? 's' : ''} a reason · $${formatCurrency(queue.totals.reasonsDollars)} unexplained · ${queue.totals.tabsCount} tabs gettable`}
-        </span>
+        {stripOn ? null : headline}
         <input
           type="text"
           value={searchQuery}
@@ -860,6 +1058,7 @@ export function BidsCallQueueTab({
           aria-label="Search the call queue"
           style={{ flex: '1 1 11rem', minWidth: '10rem', maxWidth: '18rem', font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }}
         />
+        <ShapeSwitch view={shape} words={{ off: 'Show the strip of days', on: 'Show today’s look' }} style={{ marginLeft: 'auto' }} />
       </div>
       {/* v2.4420: where the open bids stand today. A pill narrows the list; a second tap clears it. */}
       <div role="group" aria-label="Calls by when they are due" style={{ display: 'flex', gap: '0.3rem', flexWrap: 'wrap', alignItems: 'center', margin: '0.55rem 0 0' }}>
@@ -986,120 +1185,28 @@ export function BidsCallQueueTab({
         </div>
       ) : null}
 
-      {whenKey === 'later' ? (
-        laterRows.length === 0 ? (
-          <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>No bid is waiting on a date. Pick a day under Left message or Still pending and it lands here.</p>
-        ) : null
-      ) : visibleBuilders.length === 0 ? (
-        <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-          {whenKey ? 'Nothing here today. Tap the pill again to see every call.' : 'Nothing matches — clear the search or switch the filter back to All calls.'}
-        </p>
+      {shape.sideBySide ? (
+        <SideBySide
+          testId="call-queue-sbs"
+          label="With the strip"
+          today={
+            <>
+              <p style={{ margin: '0 0 0.5rem' }}>{headline}</p>
+              {renderList(false)}
+            </>
+          }
+          shape={
+            <>
+              <ChaseClockLegend style={{ margin: '0 0 0.5rem' }} />
+              {renderList(true)}
+            </>
+          }
+        />
       ) : (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
-          {visibleBuilders.map((builder) => {
-            const rows: Array<{ key: QueueRowKey; label: string; todo: string | null; todoSub: string | null; done: string }> = [
-              {
-                key: 'chase',
-                label: 'Chase',
-                todo: builder.chase.todo.length > 0 ? `${builder.chase.todo.length} pending` : null,
-                todoSub:
-                  builder.due?.state === 'overdue' ? `promised ${followupDateLabel(builder.due.earliestYmd ?? todayYmd, todayYmd)}`
-                  : builder.due?.state === 'due' ? 'promised for today'
-                  : builder.chase.oldestQuietDays != null ? `quiet ${builder.chase.oldestQuietDays}d`
-                  : null,
-                done: `${builder.chase.freshCount} of ${builder.stats.pending} fresh${builder.chase.later.length > 0 ? ` · ${builder.chase.later.length} later` : ''}`,
-              },
-              {
-                key: 'reasons',
-                label: 'Loss reasons',
-                todo: builder.reasons.todo.length > 0 ? `${builder.reasons.todo.length} loss${builder.reasons.todo.length === 1 ? '' : 'es'}` : null,
-                todoSub: builder.reasons.todo.length > 0 ? `$${formatCurrency(builder.reasons.dollars)}` : null,
-                done: `${builder.reasons.recordedCount} of ${builder.stats.lost} recorded`,
-              },
-              {
-                key: 'tabs',
-                label: 'Bid tabs',
-                todo: builder.tabs.todo.length > 0 ? `${builder.tabs.todo.length} gettable` : null,
-                todoSub: null,
-                done: `${builder.tabs.recordedCount} recorded`,
-              },
-            ]
-            const open = openRow && openRow.builderKey === builder.builderKey ? openRow.row : null
-            const anyBid = (bidsByBuilder.get(builder.builderKey) ?? [])[0]
-            return (
-              <div
-                key={builder.builderKey}
-                style={{
-                  border: `1px solid ${builder.hasWork ? 'var(--border-strong)' : 'var(--border)'}`,
-                  borderRadius: 10,
-                  background: 'var(--surface)',
-                  padding: '0.7rem 0.9rem',
-                  boxShadow: builder.hasWork ? '0 2px 8px rgba(15, 23, 42, 0.07)' : 'none',
-                }}
-              >
-                <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
-                  <span style={{ fontSize: '0.95rem', fontWeight: 700, color: 'var(--text-strong)' }}>{builder.builderName}</span>
-                  {builder.due && builder.due.state !== 'none' ? dayTag(followupOf(builder.chase.todo[0]!)) : null}
-                  {builder.phone ? (
-                    <a href={telHrefFor(builder.phone)} style={{ fontSize: '0.8125rem', color: 'var(--text-link)', textDecoration: 'none' }}>
-                      {'☎'} {builder.phone}
-                    </a>
-                  ) : null}
-                  <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-                    {builder.stats.won} won · {builder.stats.lost} lost · {builder.stats.pending} pending
-                    {builder.stats.hitRatePct != null ? ` · hit rate ${builder.stats.hitRatePct}%` : ''}
-                    {builder.stats.pendingValue > 0 ? ` · pending $${formatCurrency(builder.stats.pendingValue)}` : ''}
-                  </span>
-                  {anyBid ? (
-                    <button
-                      type="button"
-                      onClick={() => onOpenBuilderCard(anyBid.raw)}
-                      title="Open the builder card on By builder — contacts, notes, and the full call session"
-                      style={{
-                        marginLeft: 'auto',
-                        fontSize: '0.8125rem',
-                        fontWeight: builder.hasWork ? 700 : 400,
-                        padding: '0.3rem 0.8rem',
-                        borderRadius: 8,
-                        border: builder.hasWork ? 'none' : '1px solid var(--border-strong)',
-                        background: builder.hasWork ? '#3b82f6' : 'transparent',
-                        color: builder.hasWork ? '#fff' : 'var(--text-muted)',
-                        cursor: 'pointer',
-                        whiteSpace: 'nowrap',
-                        font: 'inherit',
-                      }}
-                    >
-                      {'📞'} {builder.hasWork ? 'Start call' : 'Call anyway'}
-                    </button>
-                  ) : null}
-                </div>
-
-                <div style={{ overflowX: narrowViewport640 ? 'auto' : 'visible' }}>
-                  <table style={{ borderCollapse: 'collapse', marginTop: '0.45rem', fontSize: '0.8125rem', width: '100%', maxWidth: '46rem' }}>
-                    <thead>
-                      <tr>
-                        <th style={{ width: '7.5rem', borderBottom: '1px solid var(--border-strong)' }} aria-hidden />
-                        <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600, padding: '0.15rem 1.2rem 0.15rem 0', borderBottom: '1px solid var(--border-strong)' }}>To do</th>
-                        <th style={{ textAlign: 'left', fontSize: '0.66rem', textTransform: 'uppercase', letterSpacing: '0.05em', color: 'var(--text-muted)', fontWeight: 600, padding: '0.15rem 0 0.15rem 0', borderBottom: '1px solid var(--border-strong)' }}>Done</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {rows.map((r) => (
-                        <FragmentRow
-                          key={r.key}
-                          row={r}
-                          open={open === r.key}
-                          onToggle={() => toggleRow(builder.builderKey, r.key)}
-                          expansion={open === r.key ? renderExpansion(builder, r.key) : null}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )
-          })}
-        </div>
+        <>
+          {stripOn ? <ChaseClockLegend style={{ margin: '0 0 0.5rem' }} /> : null}
+          {renderList(stripOn)}
+        </>
       )}
     </div>
   )
