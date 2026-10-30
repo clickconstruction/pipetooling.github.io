@@ -1,8 +1,8 @@
 ---
 name: "Legal desk: show it, don't say it — the lien calendar, the money bars, Evidence by whose paper, the Timeline strip"
 number: 214
-group: ready
-status: picked 2026-10-29 · the owner asked for all four, in order · all four on main 2026-10-30 (PR 4 v2.6107 #6486, 3a v2.6106 #6485, 3b v2.6108 #6487, PR 2 v2.6105 #6484, whose squash carried PR 1's v2.6104) · #6483 lands last with this card's status alone
+group: close
+status: picked 2026-10-29 · the owner asked for all four, in order · all four on main 2026-10-30 (PR 4 v2.6107 #6486, 3a v2.6106 #6485, 3b v2.6108 #6487, PR 2 v2.6105 #6484, whose squash carried PR 1's v2.6104) · #6483 lands last with this card's status alone · left: the owner's look at the four shapes on a live account
 mockup: to-dos/legal-desk-show-not-tell/mockup.html
 summary: >
   The Legal desk's four questions, its account cards and its Timeline line show; four sections still
@@ -12,10 +12,10 @@ summary: >
   the desk opens on the strip's Windows calendar with the next step's button and the deadline as a
   chip; the money as two bars on two scales with every offer marked; Evidence grouped by whose paper
   it is with the state as a chip; the Timeline led by a strip of days with hot overdue rows.
-next: PR 2, the money bars, once #213's PR 2 (the claim reads the retainage on the bills once) is on main, since the bar draws that split.
+next: The owner's look at the four shapes live on a real subcontract account: the Paper tab opening on the Windows calendar with the next step's door, How much? as two bars with every offer marked, Evidence under its five headings with the state as a chip, and the Timeline's strip of days with the overdue rows in red; a week of use, then delete the folder.
 size: M as a train of four (S · M · M · S)
-blocker: PR 3 needs one new column, legal_matter_documents.whose, and PR 2 builds on #213's kernel change.
-opinion: build — the owner picked all four on 2026-10-29 after a second pass on the mock-up
+blocker: None. The owner's look; the whose column (3a) is on prod and #213's PR 2 is on main.
+opinion: your call — all four are built as picked; the look is the owner's
 ---
 
 # Legal desk: show it, don't say it (#214)
@@ -93,6 +93,6 @@ notice and the waiver first. For PR 4, the overdue steps as red rings on the str
 
 ## Where it stands
 
-All four are on main as of 2026-10-30: PR 4 (v2.6107, #6486) merged first, then 3a (v2.6106, #6485, the `whose` column, pushed to prod the same morning), 3b (v2.6108, #6487) and PR 2 (v2.6105, #6484). PR 2 was cut on PR 1 with #213's PR 2 (#6478) merged in, since the bars read its per-job retainage split, so its squash carried PR 1's v2.6104 onto main; #6483 lands last with nothing but this card's status. The claim bar draws nothing on an account with no offer logged and no floor, by design: the bills bar already says it all there. The mock-up found, while being checked against the app, that the
+**Left: the owner's look at the four shapes live, then the folder goes.** All four are on main as of 2026-10-30: PR 4 (v2.6107, #6486) merged first, then 3a (v2.6106, #6485, the `whose` column, pushed to prod the same morning), 3b (v2.6108, #6487) and PR 2 (v2.6105, #6484). PR 2 was cut on PR 1 with #213's PR 2 (#6478) merged in, since the bars read its per-job retainage split, so its squash carried PR 1's v2.6104 onto main; #6483 lands last with nothing but this card's status. The claim bar draws nothing on an account with no offer logged and no floor, by design: the bills bar already says it all there. The mock-up found, while being checked against the app, that the
 calendar already existed behind the strip's switch; PR 1 reuses it rather than drawing the rail again, and its fragment
 says what the mock-up asked for that it does not do (the lane gutter).
