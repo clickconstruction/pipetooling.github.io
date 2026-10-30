@@ -26,6 +26,7 @@ import {
 import type { StripeInvoiceDetailsSuccess } from '../../lib/stripeInvoiceDetailsResponse'
 import type { Json } from '../../types/database'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type FeeLinesRead = { ok: true; lines: unknown } | { ok: false; error: string }
 
@@ -440,8 +441,8 @@ export function SplitBillModal({
             onClick={() => void runSplit()}
             style={{
               padding: '0.5rem 1rem',
-              background: canSubmit ? '#15803d' : '#9ca3af',
-              color: 'white',
+              background: canSubmit ? '#15803d' : DEAD_PRESS_FILL,
+              color: canSubmit ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
               cursor: canSubmit ? 'pointer' : 'not-allowed',

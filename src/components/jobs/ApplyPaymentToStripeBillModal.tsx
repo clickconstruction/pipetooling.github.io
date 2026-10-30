@@ -8,6 +8,7 @@ import type { JobsLedgerInvoiceRow, PaymentRow } from '../../lib/jobs/jobFormTyp
 import { applyToStripeWords } from '../../lib/jobs/applyPaymentToStripeBill'
 import { attributeJobPayments } from '../../lib/jobs/paymentAttribution'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 function money(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -127,7 +128,7 @@ export default function ApplyPaymentToStripeBillModal({
             type="button"
             onClick={() => void submit()}
             disabled={submitting}
-            style={{ padding: '0.5rem 1rem', background: submitting ? '#9ca3af' : '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', background: submitting ? DEAD_PRESS_FILL : '#2563eb', color: submitting ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: submitting ? 'not-allowed' : 'pointer', fontSize: '0.875rem', fontWeight: 500 }}
           >
             {submitting ? 'Working…' : `Apply · $${words.staysDue} stays due`}
           </button>

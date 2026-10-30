@@ -5,6 +5,7 @@ import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEven
 import type { BridgeChip, BridgeState } from '../../lib/roadmapBridge'
 import { RoadmapStageNumberBadge } from './RoadmapStageNumberBadge'
 import AutoGrowTextarea from '../AutoGrowTextarea'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type UserRow = { id: string; name: string; email: string }
 
@@ -792,8 +793,8 @@ export function ChecklistTechTreeTaskCardModal({
                 height: 44,
                 borderRadius: 999,
                 border: 'none',
-                background: posting || !draft.trim() ? '#9ca3af' : '#2563eb',
-                color: 'white',
+                background: posting || !draft.trim() ? DEAD_PRESS_FILL : '#2563eb',
+                color: posting || !draft.trim() ? DEAD_PRESS_TEXT : 'white',
                 fontSize: 16,
                 cursor: posting || !draft.trim() ? 'not-allowed' : 'pointer',
               }}

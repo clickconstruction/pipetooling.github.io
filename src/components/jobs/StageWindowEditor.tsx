@@ -7,6 +7,7 @@ import { useState } from 'react'
 import { defaultStageWindow, stageWindowProblem, type StageWindowSpan } from '../../lib/subs/stageWindow'
 import type { SubsStage } from '../../lib/subs/subsTabRows'
 import { formatCurrency } from '../../lib/jobs/jobFormatting'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type StageWindowEditorProps = {
   /** Line items to choose from; a single fixed stage renders as a label. */
@@ -27,8 +28,8 @@ const btn = (primary: boolean, disabled = false) =>
     fontWeight: 600,
     borderRadius: 5,
     cursor: disabled ? 'not-allowed' : 'pointer',
-    background: disabled ? '#9ca3af' : primary ? '#2563eb' : 'var(--surface)',
-    color: primary ? 'white' : 'var(--text-700)',
+    background: disabled ? DEAD_PRESS_FILL : primary ? '#2563eb' : 'var(--surface)',
+    color: disabled ? DEAD_PRESS_TEXT : primary ? 'white' : 'var(--text-700)',
     border: primary ? 'none' : '1px solid var(--border-strong)',
     whiteSpace: 'nowrap',
   }) as const

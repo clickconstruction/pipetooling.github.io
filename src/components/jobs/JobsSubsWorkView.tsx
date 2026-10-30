@@ -76,6 +76,7 @@ import { subsWorkMoveIsButton, subsWorkPhoneRow } from '../../lib/subs/subsWorkP
 import { ScheduleSheet, ScheduleSheetAction } from '../schedule/ScheduleBlockSheet'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** A sheet with its money, its stage and its people — the board derives everything from these. */
 type SheetLite = WorkOrderBoardSheet & { assignees?: Array<{ person_id: string }> | null; progress_pct?: number | null; progress_at?: string | null }
@@ -109,8 +110,8 @@ const smallBtn = (tone: 'primary' | 'ghost' | 'danger' = 'ghost', disabled = fal
     fontWeight: 600,
     borderRadius: 5,
     cursor: disabled ? 'not-allowed' : 'pointer',
-    background: disabled ? '#9ca3af' : tone === 'primary' ? '#2563eb' : 'var(--surface)',
-    color: tone === 'primary' ? 'white' : tone === 'danger' ? 'var(--text-red-700)' : 'var(--text-700)',
+    background: disabled ? DEAD_PRESS_FILL : tone === 'primary' ? '#2563eb' : 'var(--surface)',
+    color: disabled ? DEAD_PRESS_TEXT : tone === 'primary' ? 'white' : tone === 'danger' ? 'var(--text-red-700)' : 'var(--text-700)',
     border: tone === 'primary' ? 'none' : '1px solid var(--border-strong)',
     whiteSpace: 'nowrap',
   }) as const

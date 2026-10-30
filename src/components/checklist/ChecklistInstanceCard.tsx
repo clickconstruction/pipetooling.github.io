@@ -6,6 +6,7 @@ import {
   type ChecklistCardEvent,
 } from '../../lib/checklistCardEvents'
 import { ChecklistItemActivity, type ChecklistItemActivityItem } from './ChecklistItemActivity'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type ChecklistInstanceCardInstance = {
   id: string
@@ -538,8 +539,8 @@ export function ChecklistInstanceCard({
                 padding: '0 1.25rem',
                 borderRadius: 10,
                 border: 'none',
-                background: posting || !draft.trim() ? '#9ca3af' : '#2563eb',
-                color: 'white',
+                background: posting || !draft.trim() ? DEAD_PRESS_FILL : '#2563eb',
+                color: posting || !draft.trim() ? DEAD_PRESS_TEXT : 'white',
                 fontSize: '1rem',
                 fontWeight: 600,
                 cursor: posting || !draft.trim() ? 'not-allowed' : 'pointer',

@@ -77,6 +77,7 @@ import { LABOR_ASSIGNED_DELIMITER } from '../../lib/combinePeople'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * The sheet form's overlay stands where the app's modal shell stands (1100), above the phone
@@ -2203,9 +2204,9 @@ function JobsSubLaborFormModalInner(
                             laborFixtureEntryMode === 'simple' ||
                             !selectedLaborBookVersionId ||
                             !laborFixtureRows.some((r) => (r.fixture ?? '').trim())
-                              ? '#9ca3af'
+                              ? DEAD_PRESS_FILL
                               : '#3b82f6',
-                          color: 'white',
+                          color: applyingLaborBookHours || laborFixtureEntryMode === 'simple' || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? DEAD_PRESS_TEXT : 'white',
                           border: 'none',
                           borderRadius: 4,
                           cursor:
@@ -2327,8 +2328,8 @@ function JobsSubLaborFormModalInner(
                       style={{
                         flex: 1,
                         padding: '0.6rem 1rem',
-                        background: laborStepNextBlocked ? '#9ca3af' : '#2563eb',
-                        color: 'white',
+                        background: laborStepNextBlocked ? DEAD_PRESS_FILL : '#2563eb',
+                        color: laborStepNextBlocked ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 6,
                         fontSize: '0.875rem',
@@ -2354,8 +2355,8 @@ function JobsSubLaborFormModalInner(
                         style={{
                           flex: 1,
                           padding: '0.6rem 1rem',
-                          background: laborCanSubmit && !laborSaving ? '#2563eb' : '#9ca3af',
-                          color: 'white',
+                          background: laborCanSubmit && !laborSaving ? '#2563eb' : DEAD_PRESS_FILL,
+                          color: laborCanSubmit && !laborSaving ? 'white' : DEAD_PRESS_TEXT,
                           border: 'none',
                           borderRadius: 6,
                           fontSize: '0.875rem',
@@ -2442,8 +2443,8 @@ function JobsSubLaborFormModalInner(
                   title={!laborCanSubmit ? `Required: ${laborMissingFields.join(', ')}` : undefined}
                   style={{
                     padding: '0.5rem 1.25rem',
-                    background: laborCanSubmit && !laborSaving ? '#2563eb' : '#9ca3af',
-                    color: 'white',
+                    background: laborCanSubmit && !laborSaving ? '#2563eb' : DEAD_PRESS_FILL,
+                    color: laborCanSubmit && !laborSaving ? 'white' : DEAD_PRESS_TEXT,
                     border: 'none',
                     borderRadius: 6,
                     fontSize: '0.875rem',

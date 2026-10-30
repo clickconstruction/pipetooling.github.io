@@ -130,6 +130,7 @@ const DashboardSupervisorSection = lazy(() => import('../components/dashboard/Da
 const DashboardTrialVerdictSection = lazy(() => import('../components/dashboard/DashboardTrialVerdictSection'))
 import type { Database } from '../types/database'
 import type { ClockSessionRow, DashboardStripSession } from '../types/clockSessions'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 const HOURS_DAY_CORRECT_BLOCK_TOAST =
   'This day is marked correct in People → Hours. Unmark it there to edit time from the Dashboard.'
@@ -1917,8 +1918,8 @@ export default function Dashboard() {
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
+                  background: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : DEAD_PRESS_FILL,
+                  color: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? 'pointer' : 'not-allowed',

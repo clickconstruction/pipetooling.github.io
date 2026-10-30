@@ -22,6 +22,7 @@ import { supabase } from '../../lib/supabase'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
 import type { BidWithBuilder, EstimatorUser } from '../../types/bidWithBuilder'
 import { type LedgerPrefixMap } from '../../lib/ledgerDisplayPrefixes'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 const MODAL_Z = 10050
 
@@ -753,8 +754,8 @@ export function PackageAndSendBidPricingModal({
               padding: '0.5rem 1rem',
               border: 'none',
               borderRadius: 4,
-              background: sendDisabledBase ? '#9ca3af' : '#2563eb',
-              color: 'white',
+              background: sendDisabledBase ? DEAD_PRESS_FILL : '#2563eb',
+              color: sendDisabledBase ? DEAD_PRESS_TEXT : 'white',
               cursor: sendDisabledBase ? 'not-allowed' : 'pointer',
               fontSize: '0.875rem',
             }}

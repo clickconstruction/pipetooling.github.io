@@ -108,6 +108,9 @@ jobs:
       - name: A batch button says its count
         run: npm run check:batch-words
 
+      - name: A button that cannot be pressed draws the dead-press pair
+        run: npm run check:dead-press
+
       - name: An error names its reason (fails on added lines only)
         run: npm run check:error-words
 

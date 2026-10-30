@@ -59,6 +59,7 @@ import { PayStubPaidNoteIcon } from '../pay/PayStubPaidNoteIcon'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { EmptyState } from '../EmptyState'
 import { searchEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** Compact "7/2" (local month/day, no year) for the ledger's Created / Last Paid cells; full date stays in the title tooltip. */
 function shortMonthDay(timestamp: string): string {
@@ -658,8 +659,8 @@ export default function PeoplePayStubsTab({
                       style={{
                         padding: '0.5rem 1rem',
                         fontSize: '0.9375rem',
-                        background: draftPayrollDisabled ? '#9ca3af' : '#3b82f6',
-                        color: 'white',
+                        background: draftPayrollDisabled ? DEAD_PRESS_FILL : '#3b82f6',
+                        color: draftPayrollDisabled ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 6,
                         cursor: draftPayrollDisabled ? 'not-allowed' : 'pointer',
@@ -1006,7 +1007,7 @@ export default function PeoplePayStubsTab({
                                 onClick={() => onRecordPayment(stub)}
                                 disabled={markingPayStubId === stub.id || fully}
                                 title={fully ? 'Fully paid' : 'Record a payment'}
-                                style={{ padding: '2px 6px', fontSize: '0.8125rem', background: markingPayStubId === stub.id || fully ? '#9ca3af' : '#059669', color: 'white', border: 'none', borderRadius: 4, cursor: markingPayStubId === stub.id || fully ? 'not-allowed' : 'pointer' }}
+                                style={{ padding: '2px 6px', fontSize: '0.8125rem', background: markingPayStubId === stub.id || fully ? DEAD_PRESS_FILL : '#059669', color: markingPayStubId === stub.id || fully ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: markingPayStubId === stub.id || fully ? 'not-allowed' : 'pointer' }}
                               >
                                 {markingPayStubId === stub.id ? '...' : 'Record payment'}
                               </button>

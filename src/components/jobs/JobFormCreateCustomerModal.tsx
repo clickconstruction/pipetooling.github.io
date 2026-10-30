@@ -3,6 +3,7 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { computeSimilarCustomersForCreate } from '../../lib/jobs/similarCustomersForCreate'
 import type { Database } from '../../types/database'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
@@ -164,7 +165,7 @@ export function JobFormCreateCustomerModal({
             type="button"
             disabled={!customerName.trim() || creatingCustomerFromJob}
             onClick={() => onCreate(createCustomerFromJobType)}
-            style={{ padding: '0.5rem 1rem', background: !customerName.trim() || creatingCustomerFromJob ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: !customerName.trim() || creatingCustomerFromJob ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.5rem 1rem', background: !customerName.trim() || creatingCustomerFromJob ? DEAD_PRESS_FILL : '#3b82f6', color: !customerName.trim() || creatingCustomerFromJob ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: !customerName.trim() || creatingCustomerFromJob ? 'not-allowed' : 'pointer' }}
           >
             {creatingCustomerFromJob ? 'Creating…' : 'Create new customer'}
           </button>

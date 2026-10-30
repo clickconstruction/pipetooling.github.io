@@ -15,6 +15,7 @@ import {
   upcomingSessionHours,
   type UpcomingWeekSessionRow,
 } from '../../lib/upcomingPayrollSummary'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type UpcomingWeekSessionsModalProps = {
   personName: string
@@ -246,8 +247,8 @@ export function UpcomingWeekSessionsModal({
               title={approveAllSetAside > 0 ? `${approveAllSetAside} typed by hand or held — approved one at a time, not by this button` : undefined}
               style={{
                 padding: '0.4rem 0.9rem',
-                background: bulkBusy ? '#9ca3af' : '#059669',
-                color: 'white',
+                background: bulkBusy ? DEAD_PRESS_FILL : '#059669',
+                color: bulkBusy ? DEAD_PRESS_TEXT : 'white',
                 border: 'none',
                 borderRadius: 4,
                 cursor: bulkBusy ? 'not-allowed' : 'pointer',
@@ -381,8 +382,8 @@ export function UpcomingWeekSessionsModal({
                               style={{
                                 padding: '2px 8px',
                                 fontSize: '0.75rem',
-                                background: busy || bulkBusy ? '#9ca3af' : '#059669',
-                                color: 'white',
+                                background: busy || bulkBusy ? DEAD_PRESS_FILL : '#059669',
+                                color: busy || bulkBusy ? DEAD_PRESS_TEXT : 'white',
                                 border: 'none',
                                 borderRadius: 4,
                                 cursor: busy || bulkBusy ? 'not-allowed' : 'pointer',

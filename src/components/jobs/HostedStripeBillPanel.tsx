@@ -28,6 +28,7 @@ import {
 } from '../../lib/voidStripeInvoiceForRevert'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
 import { SplitBillModal } from './SplitBillModal'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -806,8 +807,8 @@ export function HostedStripeBillPanel({
                     }}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: !voidConfirmChecked || voidConfirmBusy ? '#9ca3af' : '#ca8a04',
-                      color: 'white',
+                      background: !voidConfirmChecked || voidConfirmBusy ? DEAD_PRESS_FILL : '#ca8a04',
+                      color: !voidConfirmChecked || voidConfirmBusy ? DEAD_PRESS_TEXT : 'white',
                       border: 'none',
                       borderRadius: 4,
                       cursor: !voidConfirmChecked || voidConfirmBusy ? 'not-allowed' : 'pointer',
