@@ -66,7 +66,7 @@ export default function DashboardJobFollowupsBanner({
           justifyContent: 'center',
           borderRadius: 999,
           background: '#f59e0b',
-          color: '#fff',
+          color: 'var(--text-on-bright-solid)',
           fontSize: '0.9375rem',
           fontWeight: 700,
         }}

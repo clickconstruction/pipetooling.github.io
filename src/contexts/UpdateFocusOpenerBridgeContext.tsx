@@ -36,6 +36,19 @@ type UpdateFocusOpenerBridgeContextValue = {
   registerClockOutOpener: (opener: (() => void) | null) => void
   /** Returns false when no clock-out opener is mounted (e.g. salaried users). */
   requestClockOut: () => boolean
+  /**
+   * Job Mode's card registers its On my way opener while mounted (punch list #189, the Leaving PR): the sheet for the
+   * day's next job. The opener answers false when the day has no next job, so the caller falls back to Update Focus.
+   */
+  registerOnMyWayOpener: (opener: (() => boolean) | null) => void
+  /** Returns false when no card is mounted (another page) or the day has no next job. */
+  requestOnMyWay: () => boolean
+  /**
+   * Job Mode's card listens (punch list #189, PR 8): the open session changed under ClockInOutButton — a clock-in, a
+   * job change, a clock-out — so the card reloads at once instead of waiting for a live update. Returns the unsubscribe.
+   */
+  subscribeSessionChanges: (listener: () => void) => () => void
+  notifySessionChanged: () => void
 }
 
 const UpdateFocusOpenerBridgeContext =
@@ -45,6 +58,8 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
   const openerRef = useRef<(() => void) | null>(null)
   const applyDirectRef = useRef<UpdateFocusApplyDirectFn | null>(null)
   const clockOutOpenerRef = useRef<(() => void) | null>(null)
+  const onMyWayOpenerRef = useRef<(() => boolean) | null>(null)
+  const sessionListenersRef = useRef(new Set<() => void>())
 
   const registerUpdateFocusOpener = useCallback((opener: (() => void) | null) => {
     openerRef.current = opener
@@ -80,6 +95,27 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
     return true
   }, [])
 
+  const registerOnMyWayOpener = useCallback((opener: (() => boolean) | null) => {
+    onMyWayOpenerRef.current = opener
+  }, [])
+
+  const requestOnMyWay = useCallback(() => {
+    const fn = onMyWayOpenerRef.current
+    if (!fn) return false
+    return fn()
+  }, [])
+
+  const subscribeSessionChanges = useCallback((listener: () => void) => {
+    sessionListenersRef.current.add(listener)
+    return () => {
+      sessionListenersRef.current.delete(listener)
+    }
+  }, [])
+
+  const notifySessionChanged = useCallback(() => {
+    for (const fn of [...sessionListenersRef.current]) fn()
+  }, [])
+
   const value = useMemo(
     (): UpdateFocusOpenerBridgeContextValue => ({
       registerUpdateFocusOpener,
@@ -88,6 +124,10 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
       applyUpdateFocusDirect,
       registerClockOutOpener,
       requestClockOut,
+      registerOnMyWayOpener,
+      requestOnMyWay,
+      subscribeSessionChanges,
+      notifySessionChanged,
     }),
     [
       registerUpdateFocusOpener,
@@ -96,6 +136,10 @@ export function UpdateFocusOpenerBridgeProvider({ children }: { children: ReactN
       applyUpdateFocusDirect,
       registerClockOutOpener,
       requestClockOut,
+      registerOnMyWayOpener,
+      requestOnMyWay,
+      subscribeSessionChanges,
+      notifySessionChanged,
     ],
   )
 

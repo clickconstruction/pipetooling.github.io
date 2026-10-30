@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { parseLienDeskDraftFields, buildLienNoticeFieldsForJob, buildLienRetainageNoticeFieldsForJob, buildLienAffidavitFieldsForJob, retainageInsideClaim, lienRetainageCoverLetter } from './lienNoticeDraft'
+import { buildLienAffidavitBlocks, filingDocText, type LienAffidavitFields } from '../jobsDocuments/lienFilingDocuments'
 
 const notice = { noticeDate: '2026-09-23', projectDescription: '9703 Lenox Hl', claimantName: 'Click Plumbing and Electrical', laborMaterialsType: 'Plumbing labor and materials', originalContractorName: 'RMC- Dudley Mason', contractedWithIfDifferent: '', claimAmount: '7902.00', contactPerson: 'Robert Douglas, Master Plumber', claimantAddress: '5501 Balcones Dr' }
 
@@ -95,5 +96,34 @@ describe('retainage inside the claim (v2.3753)', () => {
     expect(buildLienAffidavitFieldsForJob({ ...aff, openBalance: 4000 }).unpaidAmount).toBe('4000.00')
     expect(buildLienAffidavitFieldsForJob({ ...aff, openBalance: 4000, claimAmountOff: 500 }).unpaidAmount).toBe('3500.00')
     expect(buildLienAffidavitFieldsForJob({ ...aff, openBalance: 4000 }).contractAmount).toBe('5000.00')
+  })
+})
+
+describe('buildLienAffidavitFieldsForJob · the period paragraph 5 swears (v2.6061)', () => {
+  const base = { jobName: '', jobAddress: '9703 Lenox Hl', isSub: true, originalContractorName: 'RMC', originalContractorAddress: '', ownerName: 'O', ownerAddress: 'A', county: 'Travis', legalDescription: 'Lot 1', customerName: 'RMC', revenue: 5000, paymentsMade: 0, lastMonth: '2026-07', contactPerson: 'R', issuer: null, noticesRecorded: true }
+  const aff = { ...base, todayYmd: '2026-10-29' }
+  const paragraph5 = (fields: LienAffidavitFields) => filingDocText(buildLienAffidavitBlocks(fields))
+  it('a job with sessions swears the first approved day through the last', () => {
+    const fields = buildLienAffidavitFieldsForJob({ ...aff, workDays: { first_work_date: '2026-05-04', last_work_date: '2026-07-17' } })
+    expect([fields.workStart, fields.workEnd]).toEqual(['2026-05-04', '2026-07-17'])
+    expect(paragraph5(fields)).toContain('5. The work was performed and/or materials delivered during the period from May 4, 2026 through July 17, 2026.')
+    // A last day set by hand after the hours ends the period.
+    expect(buildLienAffidavitFieldsForJob({ ...aff, workDays: { first_work_date: '2026-05-04', last_work_date: '2026-07-17', lien_last_work_on: '2026-08-14' } })).toMatchObject({ workStart: '2026-05-04', workEnd: '2026-08-14' })
+  })
+  it('a job with a last day set by hand and no sessions swears the first of that month through the day', () => {
+    const fields = buildLienAffidavitFieldsForJob({ ...aff, workDays: { lien_last_work_on: '2026-07-17' } })
+    expect([fields.workStart, fields.workEnd]).toEqual(['2026-07-01', '2026-07-17'])
+    expect(paragraph5(fields)).toContain('during the period from July 1, 2026 through July 17, 2026.')
+  })
+  it('a job with only a month swears its first to its last day, never one day (the 28th until v2.6061)', () => {
+    const fields = buildLienAffidavitFieldsForJob({ ...aff, workDays: null })
+    expect([fields.workStart, fields.workEnd]).toEqual(['2026-07-01', '2026-07-31'])
+    expect(paragraph5(fields)).toContain('during the period from July 1, 2026 through July 31, 2026.')
+    // A caller with no days and no today: still the month, never one day.
+    expect(buildLienAffidavitFieldsForJob(base)).toMatchObject({ workStart: '2026-07-01', workEnd: '2026-07-31' })
+    // The month still running ends today.
+    expect(buildLienAffidavitFieldsForJob({ ...aff, lastMonth: '2026-10' })).toMatchObject({ workStart: '2026-10-01', workEnd: '2026-10-29' })
+    // No month at all: the paper shows its blanks.
+    expect(paragraph5(buildLienAffidavitFieldsForJob({ ...aff, lastMonth: '' }))).toContain('during the period from — through —.')
   })
 })

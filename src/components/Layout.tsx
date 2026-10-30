@@ -1079,7 +1079,7 @@ export default function Layout() {
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.75rem',
                 background: '#0ea5e9',
-                color: 'white',
+                color: 'var(--text-on-bright-solid)',
                 fontWeight: 600,
                 fontSize: '0.875rem',
               }}
@@ -1133,7 +1133,7 @@ export default function Layout() {
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.5rem',
                 background: '#0ea5e9',
-                color: 'white',
+                color: 'var(--text-on-bright-solid)',
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">

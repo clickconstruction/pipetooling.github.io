@@ -88,6 +88,7 @@ import MapDefaultViewSettingsBlock from '../components/settings/MapDefaultViewSe
 import StripeInvoiceFooterDevSettingsBlock from '../components/settings/StripeInvoiceFooterDevSettingsBlock'
 import PhysicalInvoiceIssuerDevSettingsBlock from '../components/settings/PhysicalInvoiceIssuerDevSettingsBlock'
 import TestReportSettingsBlock from '../components/settings/TestReportSettingsBlock'
+import StageChecklistSettingsCard from '../components/settings/StageChecklistSettingsCard'
 import OwnerAutoConfirmSettingsBlock from '../components/settings/OwnerAutoConfirmSettingsBlock'
 import GcBillDayCutoffSettingsBlock from '../components/settings/GcBillDayCutoffSettingsBlock'
 import { canSeeGcMoney } from '../lib/gc/access'
@@ -1625,6 +1626,8 @@ export default function Settings() {
       )}
       {/* Test reports (v2.3298): the certifier and the paper's text — the office set that files them. */}
       {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <TestReportSettingsBlock />}
+      {/* Stage checklists (punch list #164, PR 2): the office's questions for Rough In, Top Out and Trim Set, the crew answers on the phone. */}
+      {(myRole === 'dev' || myRole === 'master_technician' || isAssistantLike(myRole)) && <StageChecklistSettingsCard />}
       {/* Owner of record (v2.3450): the nightly save-from-the-roll switch, off on day one — master + dev. */}
       {(myRole === 'dev' || myRole === 'master_technician') && <OwnerAutoConfirmSettingsBlock />}
       {/* GC mode (O8c): Pay by card's switch for GC customers, off on day one — the owner and dev. */}
