@@ -49,6 +49,7 @@ import {
   pickJobModeDayPress,
   type PressBarButtonId,
 } from '../../lib/jobMode/pressBar'
+import { PHONE_PRESS_MIN_HEIGHT } from '../../lib/phonePress'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { JobModePressBar } from './JobModePressBar'
 import { useKeptRead } from '../../hooks/useKeptRead'
@@ -230,9 +231,9 @@ const disabledBtnOverlay: CSSProperties = {
   cursor: 'not-allowed',
 }
 
-/** A quiet link under the card's buttons, as a 44 px press on a phone (punch list #189, PR 2). */
+/** A quiet link under the card's buttons, as a 44 px press on a phone (punch list #189, PR 2; the height's one source since PR 3). */
 const quietLinkPhone: CSSProperties = {
-  minHeight: 44,
+  minHeight: PHONE_PRESS_MIN_HEIGHT,
 }
 
 const quietClockOutBtn: CSSProperties = {
@@ -349,7 +350,7 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
       cancelled = true
     }
   }, [])
-  const { requestOpenUpdateFocus, applyUpdateFocusDirect, requestClockOut } = useUpdateFocusOpenerBridge()
+  const { requestOpenUpdateFocus, applyUpdateFocusDirect, requestClockOut, registerOnMyWayOpener, subscribeSessionChanges } = useUpdateFocusOpenerBridge()
 
   const [workDateYmd, setWorkDateYmd] = useState<string>(() => denverCalendarDayKey(Date.now()))
   const [loading, setLoading] = useState(true)
@@ -539,6 +540,11 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
   useEffect(() => {
     void reload()
   }, [reload])
+
+  // The card's own press (punch list #189, PR 8): a clock-in, a job change or a clock-out through the clock button
+  // reloads the card at once. The live run of 2026-10-27 found it keeping the clocked-in state after Wrap Up Day
+  // until a reload, the realtime signal notwithstanding.
+  useEffect(() => subscribeSessionChanges(() => void reload()), [subscribeSessionChanges, reload])
 
   // Realtime: refresh when this user's clock_sessions or job_schedule_blocks
   // change. Realtime only supports a single column filter per subscription, so
@@ -845,6 +851,18 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
     }
     openAdvanceModal(rightButton.intent ?? 'next-job', picked.nextBlock?.job_id ?? null)
   }
+
+  // The job window's Leaving (punch list #189, the Leaving PR): the sheet for the day's next job, through the bridge,
+  // while this card is mounted; false with no next job, so the window opens Update Focus as before.
+  const nextBlockJobId = picked.nextBlock?.job_id ?? null
+  useEffect(() => {
+    registerOnMyWayOpener(() => {
+      if (!nextBlockJobId) return false
+      setOnMyWay({ initialJobId: nextBlockJobId })
+      return true
+    })
+    return () => registerOnMyWayOpener(null)
+  }, [registerOnMyWayOpener, nextBlockJobId])
 
   /** Rail rows a tech can jump to: unvisited, not the current focus. */
   function handleRailRowTap(row: JobModeDayRailRow) {

@@ -20,7 +20,7 @@ import { useFollowUpThreadSlots } from '../../followUp/useFollowUpThreadSlots'
 import type { CourtFacts } from '../../../lib/followUp/courtFacts'
 import { useNewLaneThreadSlots } from '../../followUp/useNewLaneThreadSlots'
 import { useLeadDoorThreadSlots } from '../../messages/useLeadDoorThreadSlots'
-import { hasPaperOffer } from '../../../lib/messages/lineFiles'
+import { hasBillOffer, hasPaperOffer } from '../../../lib/messages/lineFiles'
 import { PaperOffers } from './PaperOffers'
 import { NudgedReplyBox } from './reply/NudgedReplyBox'
 
@@ -163,8 +163,9 @@ export function useThreadSlots(): ThreadSlots {
   const flow: ThreadSlots = { side: (c, acts) => (c.kind === 'unknown' ? null : <FlowTab key={`flow:${c.id}`} at={{ contactId: c.id }} side onHas={acts?.has} />) }
   // Cut 4b: a change order from a customer's message, after cut 2's in both slots it shares.
   const changeOrders = useChangeOrderThreadSlots()
-  // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it.
-  const email: ThreadSlots = { underLine: (m, c) => (hasPaperOffer(m.files, c) ? <PaperOffers key={m.id} message={m} contact={c} /> : null) }
+  // Cut 6: a file that reads as a trade partner's paper, offered under its line until someone answers it; since punch
+  // list #179 (v2.6095) a supply house's PDF or picture the same way, as a bill to record.
+  const email: ThreadSlots = { underLine: (m, c) => (hasPaperOffer(m.files, c) || hasBillOffer(m.files, c) ? <PaperOffers key={m.id} message={m} contact={c} /> : null) }
   // R8 · 8: a customer's line on a Pipeline job goes on its estimate, after cut 4b's in both slots it shares.
   const estimateLines = useEstimateLineThreadSlots()
   // #139 PR 7: our estimate email's line opens the estimate; where its words only repeat the subject, the door is the body.

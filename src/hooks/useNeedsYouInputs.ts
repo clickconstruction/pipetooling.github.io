@@ -38,6 +38,7 @@ import { useGcFollowUpNeeds } from './useGcFollowUpNeeds'
 import { useCustomerMessagesCounts } from './useCustomerMessagesCounts'
 import { useLowRatings } from './useLowRatings'
 import { useTodaysSends } from './useTodaysSends'
+import { useWhileOff } from './useWhileOff'
 import { useClauseNeeds } from './useClauseNeeds'
 import { useRobotBacklogNudge } from './useRobotBacklogNudge'
 import { useRobotSilenceNudge } from './useRobotSilenceNudge'
@@ -184,6 +185,9 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const customerMessages = useCustomerMessagesCounts(customerMessagesEnabled, false)
   const todaysSendsEnabled = on('todaysSends')
   const todaysSends = useTodaysSends(todaysSendsEnabled)
+  // While you were off (v2.6060, punch list #141 PR 4): the pushes the viewer's own hours held, whoever they are.
+  const whileOffEnabled = on('whileOff')
+  const whileOff = useWhileOff(whileOffEnabled, authUserId)
   // The review ask (v2.5946, punch list #185): a low answer nobody has called, for the same office team.
   const lowRatingsEnabled = gcFollowUpEnabled
   const lowRatings = useLowRatings(lowRatingsEnabled)
@@ -271,6 +275,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     customerMessages,
     todaysSendsEnabled,
     todaysSends: todaysSends.need,
+    whileOffEnabled,
+    whileOff: whileOff.need,
     lowRatingsEnabled,
     lowRatings,
     contractClausesEnabled,
@@ -356,6 +362,7 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     bulkHoursTypist: bulkHours.visibleAlerts?.[0] ? { actorId: bulkHours.visibleAlerts[0].actorId, actorName: bulkHours.visibleAlerts[0].actorName } : null,
     customerWaitingInboxHref: customerWaitingCtx?.inboxHref ?? null,
     lowRatingContactId: lowRatings?.need.first?.contactId ?? null,
+    whileOffFirst: whileOff.need?.first ?? null,
   }
 
   return {

@@ -183,11 +183,13 @@ export default function LienDeskAffidavitPane({
         openBalance: entry.openBalance,
         claimAmountOff: correction?.amountOff,
         lastMonth: entry.lastMonth,
+        workDays: job ?? null,
+        todayYmd,
         noticesRecorded: entry.gates.find((g) => g.key === 'notice')?.ok ?? false,
         contactPerson: signerNameFor(job?.master_user_id ?? null),
         issuer,
       }),
-    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction],
+    [job, entry, gc, ownerName, property, signerNameFor, issuer, correction, todayYmd],
   )
   const docHtml = useMemo(
     () => filingDocHtml(buildLienAffidavitBlocks(fields, { letterhead: filingLetterheadFromIssuer(issuer), refItems: [`Job #${job ? effectiveJobLedgerNumber(job.hcp_number, job.click_number) : ''}`, `Last work month ${entry.lastMonth}`, demandDate(todayYmd)] })),

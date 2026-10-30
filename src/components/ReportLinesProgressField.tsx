@@ -1,5 +1,6 @@
-import { useState, type CSSProperties } from 'react'
+import { useState, type CSSProperties, type ReactNode } from 'react'
 import { stagePickerNumber, type StageProgressRow } from '../lib/reports/stageProgressReport'
+import { StagePctControl } from './reports/StagePctControl'
 import {
   LINES_HINT,
   LINES_QUESTION,
@@ -14,14 +15,15 @@ import {
 
 /**
  * Report by line (punch list #130, v2.5663): the percent field on a job with
- * two or more priced lines. The lines in plan order, one open at a time with
- * the chips and the slider techs know from the percent field, each row's own
- * number on the right, and the job's number once under the list — derived by
- * the host from the lines' shares, never a price on the screen. The arithmetic
- * waits behind "how?". The host owns the picks; this component only draws.
+ * two or more priced lines. The lines in plan order, every one in view with its
+ * own number on the right, one open at a time, and the job's number once under
+ * the list — derived by the host from the lines' shares, never a price on the
+ * screen. The arithmetic waits behind "how?". Since punch list #189, PR 5a, the
+ * open row takes the precise-number control (`StagePctControl`: quick picks at
+ * 48 px, −5 and +5 at 56 px, or a typed number) in place of the 33 px chips and
+ * the slider, and a row nobody has reported reads *not started*. The host owns
+ * the picks; this component only draws.
  */
-
-const PERCENT_QUICK_PICKS = [25, 50, 75, 100]
 
 const ROW_GRID: CSSProperties = {
   display: 'grid',
@@ -53,6 +55,7 @@ export function ReportLinesProgressField({
   onPct,
   recordedPct,
   onSwitchToWholeJob,
+  rowFoot,
 }: {
   rows: StageProgressRow[]
   picks: LinePicks
@@ -63,6 +66,8 @@ export function ReportLinesProgressField({
   recordedPct?: number | null
   /** When given, the link under the job line that brings the whole-job slider back. */
   onSwitchToWholeJob?: () => void
+  /** Drawn at the foot of every row, open or not: the photos on the stage and its camera (punch list #189, PR 5b). */
+  rowFoot?: (row: StageProgressRow) => ReactNode
 }) {
   const [showHow, setShowHow] = useState(false)
   const job = jobLine(rows, picks, recordedPct)
@@ -135,48 +140,11 @@ export function ReportLinesProgressField({
                 </button>
               )}
               {open ? (
-                <div style={{ padding: '0 0.7rem 0.6rem', background: 'var(--bg-blue-tint)' }}>
-                  <div style={{ display: 'flex', gap: '0.35rem', marginBottom: 6 }}>
-                    {PERCENT_QUICK_PICKS.map((p) => {
-                      const active = pct === p
-                      return (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => onPct(r.fixtureId, p)}
-                          aria-pressed={active}
-                          aria-label={`Set ${r.name} to ${p} percent`}
-                          style={{
-                            flex: 1,
-                            minWidth: 0,
-                            padding: '0.5rem 0',
-                            fontSize: '0.8125rem',
-                            fontWeight: 600,
-                            border: active ? '1px solid #2563eb' : '1px solid var(--border-strong)',
-                            borderRadius: 6,
-                            background: active ? '#2563eb' : 'var(--surface)',
-                            color: active ? '#fff' : 'var(--text-700)',
-                            cursor: 'pointer',
-                            fontFamily: 'inherit',
-                          }}
-                        >
-                          {p === 100 ? 'Done ✓' : `${p}`}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <input
-                    type="range"
-                    min={0}
-                    max={100}
-                    step={5}
-                    value={pct}
-                    onChange={(e) => onPct(r.fixtureId, Number(e.target.value))}
-                    style={{ width: '100%', accentColor: '#2563eb', display: 'block' }}
-                    aria-label={`${r.name} percent complete`}
-                  />
+                <div style={{ padding: '0.25rem 0.7rem 0.7rem', background: 'var(--bg-blue-tint)' }}>
+                  <StagePctControl name={r.name} value={pct} onChange={(p) => onPct(r.fixtureId, p)} />
                 </div>
               ) : null}
+              {rowFoot ? rowFoot(r) : null}
             </div>
           )
         })}

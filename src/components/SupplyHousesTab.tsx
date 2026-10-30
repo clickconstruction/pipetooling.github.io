@@ -6,6 +6,15 @@ import { telHrefFor } from '../lib/phoneContact'
 import { useNavigate } from 'react-router-dom'
 import { AlertCircle } from 'lucide-react'
 import { supabase } from '../lib/supabase'
+import { saveSupplyInvoice, supabaseSupplyInvoiceDb } from '../lib/materials/supplyInvoiceWrite'
+import { useBillReadSwitch } from '../hooks/useBillReadSwitch'
+import { fileHref, fileUrl } from '../lib/files/fileRoute'
+import { applyPlan, billTint, emptyFields, fillCounts, planBillFill, settle, type BillFillPlan } from '../lib/materials/bills/billFill'
+import { billRowRead, field as billField, type BillFieldKey, type BillFields, type BillRead } from '../lib/materials/bills/billRead'
+import { billCountsByHouse, billsForHouse, type BillCandidate } from '../lib/materials/bills/billsToRecord'
+import { fileToUpload, supabaseBillsIo, type BillReadAnswer, type BillsIo } from '../lib/materials/bills/billsToRecordIo'
+import { LEGEND, NO_PDF_LINE, PDF_PANE_NOTE, START_WORDS, STATUS_YOURS, billsToRecordWords, countLine, dueWords, duplicateWords, houseWords, jobAccountGuessWords, jobFromPairWords, jobGuessWords, jobSettledWords, pairGuessWords, pairMissingWords, paperworkWords, statementWords, sumWords } from '../lib/materials/bills/billWords'
+import { PdfPageCanvas } from './contracts/formStudio/PdfPageCanvas'
 import { useAuth } from '../hooks/useAuth'
 import { countedLabel } from '../lib/batchWords'
 import { formatErrorMessage } from '../utils/errorHandling'
@@ -46,7 +55,6 @@ import {
   addAllocation,
   allocationTotal,
   dueDateHint,
-  paidAtPayload,
   paidOnYmdFromIso,
   poCodeHint,
   poCodeHintText,
@@ -56,14 +64,11 @@ import {
   poLedgerJobMatches,
   removeAllocation,
   setAllocationPct,
-  amountProblem,
   applyPaymentUpdate,
   creditEffectSentence,
   creditPairingLine,
-  creditsInvoicePatch,
   documentKindFromRow,
   documentWords,
-  signedAmountForSave,
   typedAmountFromStored,
   type PoLedgerEntriesByCode,
   type PoLedgerEntry,
@@ -195,6 +200,9 @@ interface SupplyHousesTabProps {
   /** The Needs You line's door (v2.5723): `?list=movable` opens the move window's worked list once the book and its move data are read. */
   openList?: 'movable' | null
   onOpenListHandled?: () => void
+  /** The thread's *Record this bill* (punch list #179, v2.6095): the thread file to pick on the Add invoice window once the house is open. */
+  openBill?: string | null
+  onOpenBillHandled?: () => void
 }
 
 export function SupplyHousesTab({
@@ -208,6 +216,8 @@ export function SupplyHousesTab({
   onAutoOpenHouseHandled,
   openList,
   onOpenListHandled,
+  openBill,
+  onOpenBillHandled,
 }: SupplyHousesTabProps) {
   const navigate = useNavigate()
   const { user: authUser, role: authRole } = useAuth()
@@ -272,6 +282,32 @@ export function SupplyHousesTab({
   /** This house's PO Generator rows by code (plus the house-less ones), for the invoice form's PO check and its card (v2.3599). */
   const [poGeneratorEntriesForSelectedHouse, setPoGeneratorEntriesForSelectedHouse] = useState<PoLedgerEntriesByCode | null>(null)
   const poGeneratorCodesForSelectedHouse = useMemo(() => poLedgerCodes(poGeneratorEntriesForSelectedHouse), [poGeneratorEntriesForSelectedHouse])
+  /**
+   * Supply-house bill capture (punch list #179, v2.6095): the fill from a PDF. The Add invoice window stays the one
+   * way a bill is recorded; its first question is the bill. The switch gates every door; the candidates are the files
+   * on the houses' threads waiting to be recorded (the picker, the rows' counts); a pick reads the file through
+   * `bill-read` and fills the fields, each with where its value came from (`billFields`), never over one the person
+   * typed (`billTypedRef`); the PDF sits beside the fields; Save keeps the read on the row.
+   */
+  const billsIo = useMemo<BillsIo>(() => supabaseBillsIo(), [])
+  const { on: billFillOn, refresh: refreshBillSwitch } = useBillReadSwitch(myRole)
+  const [billCandidates, setBillCandidates] = useState<BillCandidate[]>([])
+  const billCounts = useMemo(() => billCountsByHouse(billCandidates), [billCandidates])
+  const [billPick, setBillPick] = useState<{ source: 'thread'; attachmentId: string } | { source: 'upload'; name: string } | 'none' | null>(null)
+  const [billBusy, setBillBusy] = useState(false)
+  const [billRefusal, setBillRefusal] = useState<string | null>(null)
+  const [billRead, setBillRead] = useState<{ read: BillRead; file: Extract<BillReadAnswer, { ok: true }>['file']; model: string; readId: string | null; readAt: string } | null>(null)
+  const [billPlan, setBillPlan] = useState<BillFillPlan | null>(null)
+  const [billFields, setBillFields] = useState<BillFields>(emptyFields())
+  const billTypedRef = useRef<Set<BillFieldKey>>(new Set())
+  const [billPane, setBillPane] = useState<{ kind: 'pdf'; bytes: ArrayBuffer; href: string } | { kind: 'image'; url: string; href: string } | null>(null)
+  const [billDriveInstead, setBillDriveInstead] = useState(false)
+  const [billSwitchBusy, setBillSwitchBusy] = useState(false)
+  const billFileInputRef = useRef<HTMLInputElement>(null)
+  /** The row's id, chosen when the form opens, so a dropped-in file's lasting link can name the row before Save. */
+  const billInvoiceIdRef = useRef<string>('')
+  /** A bill to open the form on once its house is open: the thread's door, or the row's Record them. */
+  const pendingBillRef = useRef<{ houseId: string; attachmentId: string | null } | null>(null)
   const [supplyHouseDetailLoading, setSupplyHouseDetailLoading] = useState(false)
   const [invoiceFormOpen, setInvoiceFormOpen] = useState(false)
   const [editingInvoice, setEditingInvoice] = useState<SupplyHouseInvoice | null>(null)
@@ -383,6 +419,26 @@ export function SupplyHousesTab({
     }
   }, [summarySort])
   const sortedSupplyHouseSummary = useMemo(() => sortSupplyHouseSummary(supplyHouseSummary, summarySort), [supplyHouseSummary, summarySort])
+  /** The house's row (punch list #179): how many files on its thread wait to be recorded, and the press that opens the form on the first. */
+  const billPill = (houseId: string): ReactNode => {
+    const words = billsToRecordWords(billCounts.get(houseId) ?? 0)
+    if (!words || !billFillOn) return null
+    return (
+      <span data-bills-to-record={houseId} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', marginLeft: '0.5rem', verticalAlign: 'middle' }}>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.05rem 0.5rem', borderRadius: 999, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>{words.pill}</span>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.stopPropagation()
+            openHouseOnBill(houseId, null)
+          }}
+          style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+        >
+          {words.press}
+        </button>
+      </span>
+    )
+  }
   const summaryHeader = (key: SupplyHouseSummarySortKey, label: string, align: 'left' | 'right') => (
     <th aria-sort={ariaSortFor(summarySort, key)} style={{ padding: 0, textAlign: align }}>
       <button
@@ -582,6 +638,33 @@ export function SupplyHousesTab({
     onAutoOpenHouseHandled?.()
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoOpenHouseId, supplyHousesList])
+
+  // Supply-house bill capture (punch list #179): the bills waiting at the houses on the book, for the rows' counts and
+  // the form's picker; read again after a Save or a Not a bill.
+  useEffect(() => {
+    void reloadBillCandidates()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [billFillOn, supplyHouseSummary])
+
+  // The thread's Record this bill: the house opens through autoOpenHouseId; the form opens on the file once it has.
+  useEffect(() => {
+    if (!openBill || !autoOpenHouseId) return
+    pendingBillRef.current = { houseId: autoOpenHouseId, attachmentId: openBill }
+    onOpenBillHandled?.()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openBill, autoOpenHouseId])
+
+  useEffect(() => {
+    const pending = pendingBillRef.current
+    if (!pending || !billFillOn || selectedSupplyHouseForDetail?.id !== pending.houseId) return
+    const candidate = pending.attachmentId ? billCandidates.find((c) => c.attachmentId === pending.attachmentId) : billsForHouse(billCandidates, pending.houseId)[0]
+    if (!candidate) return
+    pendingBillRef.current = null
+    openAddInvoice()
+    // The form's state lands with this render; the pick reads the house alone.
+    setTimeout(() => pickThreadBill(candidate), 0)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedSupplyHouseForDetail, billCandidates, billFillOn])
 
   // The aging-cell modal's Jobs column (v2.5673): one allocations read for just the listed
   // invoices, then the job names — fetched once per open, never for the whole book.
@@ -925,6 +1008,8 @@ export function SupplyHousesTab({
   }
 
   function openAddInvoice() {
+    resetBill()
+    billInvoiceIdRef.current = crypto.randomUUID()
     invoiceOnJobAccountTouchedRef.current = false
     setInvoiceJobAccountKey(null)
     setEditingInvoice(null)
@@ -972,6 +1057,187 @@ export function SupplyHousesTab({
     setInvoiceFormOpen(false)
     setEditingInvoice(null)
     setInvoiceJobSearchText('')
+    resetBill()
+  }
+
+  // ---------- Supply-house bill capture (punch list #179, v2.6095) ----------
+
+  function resetBill() {
+    setBillPick(null)
+    setBillBusy(false)
+    setBillRefusal(null)
+    setBillRead(null)
+    setBillPlan(null)
+    setBillFields(emptyFields())
+    billTypedRef.current = new Set()
+    setBillPane(null)
+    setBillDriveInstead(false)
+  }
+
+  async function reloadBillCandidates() {
+    if (!billFillOn) {
+      setBillCandidates([])
+      return
+    }
+    const ids = supplyHouseSummary.map((r) => r.supply_house_id)
+    setBillCandidates(await billsIo.loadCandidates(ids))
+  }
+
+  /** A field the person typed or answered is theirs: the fill never writes over it again, and the count line says so. */
+  function markBillTyped(key: BillFieldKey, value: string) {
+    if (!billRead) return
+    billTypedRef.current.add(key)
+    setBillFields((f) => settle(f, key, value))
+  }
+
+  /** The plan into the form's state, every field the person typed left as it is. */
+  function applyPlanToForm(plan: BillFillPlan): BillFields {
+    const typed = billTypedRef.current
+    if (!typed.has('kind')) setInvoiceDocumentKind(plan.kind)
+    if (!typed.has('number')) setInvoiceNumber(plan.number)
+    if (!typed.has('date') && plan.dateYmd) setInvoiceDate(plan.dateYmd)
+    if (!typed.has('amount')) setInvoiceAmount(plan.amountTyped)
+    if (!typed.has('purchaseOrder')) setInvoicePurchaseOrderNumber(plan.purchaseOrder)
+    if (!typed.has('dueDate')) setInvoiceDueDate(plan.dueYmd)
+    if (!typed.has('creditsInvoice')) setInvoiceCreditsInvoiceId(plan.creditsInvoiceId)
+    if (!typed.has('link') && !billDriveInstead) setInvoiceLink(plan.fields.link.value)
+    let fields = applyPlan(billFields, plan, typed)
+    if (!typed.has('job')) {
+      // A credit's job is the one on the invoice it credits, not a guess.
+      const paired = plan.kind === 'credit' && plan.pair ? supplyHouseInvoices.find((r) => r.id === plan.pair!.invoiceId) : null
+      const pairedJobs = (paired as SupplyHouseInvoiceWithAllocations | null | undefined)?.job_allocations ?? []
+      if (pairedJobs.length > 0) {
+        setInvoiceJobAllocations(pairedJobs.map((a) => ({ job_id: a.job_id, pct: a.pct })))
+        fields = { ...fields, job: billField(pairedJobs[0]!.job_id, 'read', 'from the invoice it credits') }
+      } else setInvoiceJobAllocations(plan.job ? [{ job_id: plan.job.jobId, pct: 100 }] : [])
+    }
+    if (!typed.has('onJobAccount')) {
+      invoiceOnJobAccountTouchedRef.current = false
+      setInvoiceOnJobAccount(plan.onJobAccount)
+    }
+    setBillFields(fields)
+    return fields
+  }
+
+  /** The fill: the file to the function, the answer planned against what the form holds, the plan into the fields, the paper into the pane. */
+  async function fillFromBill(body: Parameters<BillsIo['readBill']>[0]) {
+    const house = selectedSupplyHouseForDetail
+    if (!house) return
+    setBillBusy(true)
+    setBillRefusal(null)
+    setBillRead(null)
+    setBillPlan(null)
+    setBillPane(null)
+    const answer = await billsIo.readBill(body)
+    if (!answer.ok) {
+      setBillRefusal(answer.words)
+      setBillBusy(false)
+      return
+    }
+    const read = answer.read
+    const [accounts, jobs] = await Promise.all([billsIo.loadAccounts(house.id).catch(() => []), billsIo.searchJobs(read.jobText || read.shipTo).catch(() => [])])
+    const linkUrl = answer.file.attachmentId ? fileUrl('messages', answer.file.attachmentId) : fileUrl('bills', billInvoiceIdRef.current)
+    const plan = planBillFill(read, {
+      houseName: house.name,
+      paymentDay: house.monthly_payment_day,
+      ledger: poGeneratorEntriesForSelectedHouse,
+      accounts,
+      jobs,
+      rows: supplyHouseInvoices,
+      todayYmd: todayYmdInAppTz(),
+      linkUrl,
+      editingId: null,
+    })
+    setBillRead({ read, file: answer.file, model: answer.model, readId: answer.readId, readAt: new Date().toISOString() })
+    setBillPlan(plan)
+    applyPlanToForm(plan)
+    setBillBusy(false)
+    // The paper beside the form: our copy, signed for a minute.
+    const url = await billsIo.fileUrl(answer.file.path).catch(() => null)
+    if (!url) return
+    const href = answer.file.attachmentId ? fileHref('messages', answer.file.attachmentId) : url
+    if (/pdf/i.test(answer.file.mime ?? '') || /\.pdf$/i.test(answer.file.name)) {
+      try {
+        const bytes = await fetch(url).then((r) => r.arrayBuffer())
+        setBillPane({ kind: 'pdf', bytes, href })
+      } catch {
+        setBillPane(null)
+      }
+    } else setBillPane({ kind: 'image', url, href })
+  }
+
+  function pickThreadBill(c: BillCandidate) {
+    if (!selectedSupplyHouseForDetail) return
+    setBillPick({ source: 'thread', attachmentId: c.attachmentId })
+    void fillFromBill({ attachment_id: c.attachmentId, supply_house_id: selectedSupplyHouseForDetail.id })
+  }
+
+  async function pickUploadedBill(file: File) {
+    if (!selectedSupplyHouseForDetail) return
+    setBillPick({ source: 'upload', name: file.name })
+    const upload = await fileToUpload(file)
+    void fillFromBill({ supply_house_id: selectedSupplyHouseForDetail.id, file: upload })
+  }
+
+  /** No PDF, I will type it: the fields the fill wrote go back to blank; the ones the person typed stay. */
+  function pickNoPdf() {
+    const typed = billTypedRef.current
+    const todayYmd = todayYmdInAppTz()
+    const paymentDay = selectedSupplyHouseForDetail?.monthly_payment_day
+    if (!typed.has('kind')) setInvoiceDocumentKind('invoice')
+    if (!typed.has('number')) setInvoiceNumber('')
+    if (!typed.has('date')) setInvoiceDate(todayYmd)
+    if (!typed.has('amount')) setInvoiceAmount('')
+    if (!typed.has('purchaseOrder')) setInvoicePurchaseOrderNumber('')
+    if (!typed.has('dueDate')) setInvoiceDueDate(paymentDay ? nextMonthlyPaymentDueYmd(paymentDay, todayYmd) : '')
+    if (!typed.has('creditsInvoice')) setInvoiceCreditsInvoiceId('')
+    if (!typed.has('link')) setInvoiceLink('')
+    if (!typed.has('job')) setInvoiceJobAllocations([])
+    if (!typed.has('onJobAccount')) setInvoiceOnJobAccount(false)
+    setBillRead(null)
+    setBillPlan(null)
+    setBillPane(null)
+    setBillRefusal(null)
+    setBillFields(emptyFields())
+    setBillPick('none')
+  }
+
+  /** Yes on the job guess: the job is theirs from then on, and the count falls. */
+  function settleJob(jobId: string) {
+    billTypedRef.current.add('job')
+    setBillFields((f) => settle(f, 'job', jobId))
+  }
+
+  /** Pick another job: the guess goes, the search is open. */
+  function pickAnotherJob() {
+    billTypedRef.current.add('job')
+    setInvoiceJobAllocations([])
+    setBillFields((f) => settle(f, 'job', ''))
+  }
+
+  function settlePair(invoiceId: string) {
+    billTypedRef.current.add('creditsInvoice')
+    setBillFields((f) => settle(f, 'creditsInvoice', invoiceId))
+  }
+
+  /** The house opened and its Add invoice window on a bill: the thread's door and the row's Record them. */
+  function openHouseOnBill(houseId: string, attachmentId: string | null) {
+    pendingBillRef.current = { houseId, attachmentId }
+    const sh = supplyHousesList.find((s: SupplyHouse) => s.id === houseId)
+    if (sh) void loadSupplyHouseDetail(sh)
+  }
+
+  async function toggleBillSwitch() {
+    setBillSwitchBusy(true)
+    try {
+      await billsIo.setSwitch(!billFillOn)
+      const on = await refreshBillSwitch()
+      showToast(on ? 'The fill is on. The office can start a bill from its PDF.' : 'The fill is off. Bills are typed from the paper.', 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The switch did not change.'), 'error')
+    } finally {
+      setBillSwitchBusy(false)
+    }
   }
 
   function openApplyPaymentForm() {
@@ -1009,80 +1275,52 @@ export function SupplyHousesTab({
 
   async function saveInvoice(e: React.FormEvent) {
     e.preventDefault()
-    if (!selectedSupplyHouseForDetail || !invoiceNumber.trim() || !invoiceDate) return
-    // v2.3503: the box holds a positive number and the KIND decides the sign, so a slipped minus
-    // key cannot invent a credit and a missing one cannot lose a real credit.
-    const problem = amountProblem(invoiceDocumentKind, invoiceAmount)
-    if (problem) {
-      setError(problem)
-      return
-    }
-    const amt = signedAmountForSave(invoiceDocumentKind, invoiceAmount)
-    if (amt == null) {
-      setError('Amount must be a number.')
-      return
-    }
+    if (!selectedSupplyHouseForDetail) return
     setSavingInvoice(true)
     setError(null)
-    // Per-property flag: forced off unless the invoice is allocated to exactly one job.
-    const effectiveOnJobAccount = invoiceOnJobAccount && invoiceSingleAllocatedJobId != null
-    const priorOnJobAccount = editingInvoice ? editingInvoice.on_job_account === true : false
-    const payload = {
-      supply_house_id: selectedSupplyHouseForDetail.id,
-      invoice_number: invoiceNumber.trim(),
-      invoice_date: invoiceDate,
-      due_date: invoiceDueDate.trim() || null,
-      amount: amt,
-      document_kind: invoiceDocumentKind,
-      link: invoiceLink.trim() || null,
-      is_paid: invoiceIsPaid,
-      // Only when the office typed a day that differs from what's stored — the trigger
-      // stamps now() on the flip to paid and nulls it on the flip back.
-      ...paidAtPayload(invoiceIsPaid, invoicePaidOn, editingInvoice?.paid_at),
-      purchase_order_number: invoicePurchaseOrderNumber.trim() || null,
-      // Sent only when it changes, so untouched saves keep working in the
-      // merge-to-db-push window before the column exists in prod.
-      ...(effectiveOnJobAccount !== priorOnJobAccount ? { on_job_account: effectiveOnJobAccount } : {}),
-      // v2.5035 · the credit's invoice, sent only when it changes (the same window rule as above).
-      ...creditsInvoicePatch(invoiceDocumentKind, invoiceCreditsInvoiceId, editingInvoice as { credits_invoice_id?: string | null } | null),
+    // The one write (punch list #179, v2.6088): the payload rules and the three writes live in supplyInvoiceWrite.ts,
+    // so a bill typed here and a bill filled from its PDF save through the same path.
+    const saved = await saveSupplyInvoice(
+      supabaseSupplyInvoiceDb,
+      {
+        supplyHouseId: selectedSupplyHouseForDetail.id,
+        kind: invoiceDocumentKind,
+        number: invoiceNumber,
+        dateYmd: invoiceDate,
+        dueDateYmd: invoiceDueDate,
+        amountTyped: invoiceAmount,
+        purchaseOrderNumber: invoicePurchaseOrderNumber,
+        link: invoiceLink,
+        isPaid: invoiceIsPaid,
+        paidOnYmd: invoicePaidOn,
+        onJobAccount: invoiceOnJobAccount,
+        allocations: invoiceJobAllocations,
+        creditsInvoiceId: invoiceCreditsInvoiceId,
+        // Supply-house bill capture (punch list #179): the read the row keeps when the bill was filled from its PDF.
+        ...(billRead && billPlan
+          ? {
+              id: billRead.file.attachmentId ? undefined : billInvoiceIdRef.current,
+              billRead: billRowRead({ read: billRead.read, model: billRead.model, readAt: billRead.readAt, readId: billRead.readId, file: { path: billRead.file.path, name: billRead.file.name, mime: billRead.file.mime, attachmentId: billRead.file.attachmentId }, fields: billFields, checks: billPlan.checks }),
+              billAttachmentId: billRead.file.attachmentId,
+            }
+          : {}),
+      },
+      editingInvoice,
+    )
+    if (!saved.ok) {
+      setError(saved.problem)
+      setSavingInvoice(false)
+      return
     }
-    let invoiceId: string | null = null
-    if (editingInvoice) {
-      const { error: err } = await supabase.from('supply_house_invoices').update(payload).eq('id', editingInvoice.id)
-      if (err) {
-        setError(err.message)
-        setSavingInvoice(false)
-        return
-      }
-      invoiceId = editingInvoice.id
-    } else {
-      const { data: inserted, error: err } = await supabase.from('supply_house_invoices').insert(payload).select('id').single()
-      if (err) {
-        setError(err.message)
-        setSavingInvoice(false)
-        return
-      }
-      invoiceId = (inserted as { id: string })?.id ?? null
+    if (saved.allocationProblem) setError(saved.allocationProblem)
+    if (billRead?.file.attachmentId) {
+      // The thread file is on a row now: the offer and the count let it go. A refusal here never undoes the save.
+      await billsIo.markRecorded(billRead.file.attachmentId).catch(() => undefined)
+      void reloadBillCandidates()
     }
-    if (invoiceId && invoiceJobAllocations.length > 0) {
-      await supabase.from('supply_house_invoice_job_allocations').delete().eq('invoice_id', invoiceId)
-      const toInsert = invoiceJobAllocations.filter((a) => a.job_id && Number(a.pct) > 0).map((a) => ({
-        invoice_id: invoiceId!,
-        job_id: a.job_id,
-        pct: Number(a.pct),
-      }))
-      if (toInsert.length > 0) {
-        const { error: allocErr } = await supabase.from('supply_house_invoice_job_allocations').insert(toInsert)
-        if (allocErr) setError(allocErr.message)
-      }
-    } else if (invoiceId && editingInvoice) {
-      await supabase.from('supply_house_invoice_job_allocations').delete().eq('invoice_id', invoiceId)
-    }
-    if (selectedSupplyHouseForDetail) {
-      await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
-      await loadSupplyHouseSummary()
-      closeInvoiceForm()
-    }
+    await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
+    await loadSupplyHouseSummary()
+    closeInvoiceForm()
     setSavingInvoice(false)
   }
 
@@ -1199,6 +1437,14 @@ export function SupplyHousesTab({
       {/* Pane 2 — accounts payable: invoices, aging, balances. Office only; unchanged by the Directory split. */}
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.75rem', marginBottom: '0.5rem', flexWrap: 'wrap' }}>
         <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: 600 }}>Accounts payable</h3>
+        {myRole === 'dev' || myRole === 'master_technician' ? (
+          <span data-bill-switch style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            Fill a bill from its PDF: {billFillOn ? 'on' : 'off'}
+            <button type="button" disabled={billSwitchBusy} onClick={() => void toggleBillSwitch()} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 999, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }}>
+              {billFillOn ? 'Turn it off' : 'Turn it on'}
+            </button>
+          </span>
+        ) : null}
         <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>invoices, aging and balances — office only</span>
       </div>
       <section style={{ marginBottom: '2rem' }}>
@@ -1456,6 +1702,7 @@ export function SupplyHousesTab({
                         <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
                           {[row.monthlyPaymentDay ? `pays on the ${ordinalDay(row.monthlyPaymentDay)}` : '', row.lastInvoiceUpdatedAt ? `updated ${longTimeAgoPhrase(row.lastInvoiceUpdatedAt)}` : ''].filter(Boolean).join(' · ') || 'no invoices yet'}
                         </span>
+                        {billPill(row.supply_house_id)}
                       </span>
                       <span style={{ fontVariantNumeric: 'tabular-nums', fontWeight: row.outstanding > 0 ? 700 : 400, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>${formatCurrency(row.outstanding)}</span>
                       <span aria-hidden style={{ color: 'var(--text-muted)' }}>›</span>
@@ -1495,7 +1742,10 @@ export function SupplyHousesTab({
                           background: isExpanded ? '#f0f9ff' : undefined,
                         }}
                       >
-                        <td style={{ padding: '0.75rem', fontWeight: 500 }}>{row.name}</td>
+                        <td style={{ padding: '0.75rem', fontWeight: 500 }}>
+                          {row.name}
+                          {billPill(row.supply_house_id)}
+                        </td>
                         <td style={{ padding: '0.75rem', textAlign: 'right', fontWeight: row.outstanding > 0 ? 600 : 400 }}>
                           ${formatCurrency(row.outstanding)}
                         </td>
@@ -2359,6 +2609,45 @@ export function SupplyHousesTab({
         const flagOn = invoiceOnJobAccount && invoiceSingleAllocatedJobId != null
         const pdfHref = /^https?:\/\//i.test(invoiceLink.trim()) ? invoiceLink.trim() : null
         const searchOpen = invoiceJobSearchText.trim().length > 0
+        // Supply-house bill capture (punch list #179): the checks as sentences under the fields, and Save still works.
+        const houseBills = billsForHouse(billCandidates, house.id)
+        const billChipStyle = (on: boolean) => ({ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: 999, border: `1px solid ${on ? 'var(--border-blue)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-blue-200)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-base)', cursor: 'pointer' }) as const
+        const sum = billPlan ? sumWords(billPlan.checks.sum, invoiceDocumentKind) : null
+        const dup = billPlan?.checks.duplicate ? duplicateWords(billPlan.checks.duplicate, house.name) : null
+        const dupRow = billPlan?.checks.duplicate ? supplyHouseInvoices.find((r) => r.id === billPlan.checks.duplicate!.invoiceId) : null
+        const billSentences = billRead && billPlan ? (
+          <div data-bill-sentences style={{ display: 'grid', gap: '0.3rem', margin: '-0.25rem 0 0.75rem', fontSize: '0.75rem' }}>
+            {dup ? (
+              <div data-bill-duplicate style={{ padding: '0.3rem 0.5rem', borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span>{dup.line}</span>
+                {dupRow?.link ? <a href={dupRow.link} target="_blank" rel="noopener noreferrer" style={{ fontWeight: 600, color: 'inherit' }}>{dup.press}</a> : null}
+              </div>
+            ) : null}
+            {billPlan.checks.house === 'other' ? <div data-bill-house style={{ padding: '0.3rem 0.5rem', borderRadius: 4, background: 'var(--bg-red-tint)', color: 'var(--text-red-800)' }}>{houseWords(billRead.read.houseName, house.name)}</div> : null}
+            {sum ? (
+              <div data-bill-sum={sum.tone} style={{ padding: '0.3rem 0.5rem', borderRadius: 4, background: sum.tone === 'right' ? 'var(--bg-green-tint)' : 'var(--bg-amber-tint)', color: sum.tone === 'right' ? 'var(--text-green-800)' : 'var(--text-amber-800)', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+                <span>{sum.line}</span>
+                {sum.presses && billPlan.checks.sum.kind === 'off' ? (
+                  <>
+                    <button type="button" onClick={() => { const v = (billPlan.checks.sum as { sumCents: number }).sumCents; setInvoiceAmount((v / 100).toFixed(2)); markBillTyped('amount', (v / 100).toFixed(2)) }} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }}>{sum.presses.useSum}</button>
+                    <button type="button" onClick={() => { const v = (billPlan.checks.sum as { totalCents: number }).totalCents; setInvoiceAmount((v / 100).toFixed(2)); markBillTyped('amount', (v / 100).toFixed(2)) }} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }}>{sum.presses.keepTotal}</button>
+                  </>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+        ) : null
+        const billPairLine = billRead && billPlan && invoiceDocumentKind === 'credit' ? (
+          billFields.creditsInvoice.source === 'guessed' && billPlan.pair ? (
+            <div data-bill-pair style={{ margin: '-0.5rem 0 0.75rem', padding: '0.3rem 0.5rem', borderRadius: 4, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', fontSize: '0.75rem', display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <span>{pairGuessWords(billRead.read.referencesNumber).line}</span>
+              <button type="button" onClick={() => settlePair(billPlan.pair!.invoiceId)} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.5rem', border: '1px solid var(--border-green)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-green-800)', cursor: 'pointer' }}>{pairGuessWords(billRead.read.referencesNumber).yes}</button>
+            </div>
+          ) : billRead.read.referencesNumber && !billPlan.pair && billFields.creditsInvoice.source !== 'typed' ? (
+            <div data-bill-pair-missing style={{ margin: '-0.5rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-amber-800)' }}>{pairMissingWords(billRead.read.referencesNumber)}</div>
+          ) : null
+        ) : null
+        const billDueHint = billPlan ? dueWords(billPlan.due, house.name, house.monthly_payment_day, invoiceDocumentKind) : null
         return (
         <div style={{ position: 'fixed', inset: 0, padding: 'calc(1rem + env(safe-area-inset-top, 0px)) 1rem calc(1rem + env(safe-area-inset-bottom, 0px))', background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 1003 }}>
           {/* This panel is the scroller — the form outgrew short screens once the job-account block landed (v2.2669)
@@ -2374,11 +2663,75 @@ export function SupplyHousesTab({
               <button type="button" onClick={closeInvoiceForm} style={STICKY_MODAL_CLOSE_BUTTON_STYLE} aria-label="Close">×</button>
             </div>
             <form onSubmit={saveInvoice}>
+              {/* The bill (punch list #179, v2.6095): the form's first question. Start from a file on the house's thread, another file, or no PDF. */}
+              {billFillOn && !editingInvoice ? (
+                <div data-bill-section>
+                  <InvoiceFormSection>{START_WORDS.section}</InvoiceFormSection>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', fontSize: '0.8125rem', marginBottom: '0.5rem' }}>
+                    <span style={{ color: 'var(--text-muted)' }}>{START_WORDS.startFrom}</span>
+                    {houseBills.map((c) => {
+                      const on = billPick !== null && billPick !== 'none' && billPick.source === 'thread' && billPick.attachmentId === c.attachmentId
+                      return (
+                        <button key={c.attachmentId} type="button" data-bill-chip={c.attachmentId} disabled={billBusy} onClick={() => pickThreadBill(c)} style={billChipStyle(on)}>
+                          {c.chip}
+                        </button>
+                      )
+                    })}
+                    <button type="button" disabled={billBusy} onClick={() => billFileInputRef.current?.click()} style={billChipStyle(billPick !== null && billPick !== 'none' && billPick.source === 'upload')}>
+                      {billPick !== null && billPick !== 'none' && billPick.source === 'upload' ? billPick.name : START_WORDS.anotherFile}
+                    </button>
+                    <input
+                      ref={billFileInputRef}
+                      type="file"
+                      accept="application/pdf,image/jpeg,image/png,image/gif,image/webp"
+                      aria-label={START_WORDS.anotherFile}
+                      style={{ display: 'none' }}
+                      onChange={(e) => {
+                        const f = e.target.files?.[0]
+                        e.target.value = ''
+                        if (f) void pickUploadedBill(f)
+                      }}
+                    />
+                    <button type="button" disabled={billBusy} onClick={pickNoPdf} style={billChipStyle(billPick === 'none')}>
+                      {START_WORDS.noPdf}
+                    </button>
+                  </div>
+                  {billBusy ? <div role="status" style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{START_WORDS.reading}</div> : null}
+                  {billRefusal ? <div role="status" data-bill-refusal style={{ fontSize: '0.8125rem', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', marginBottom: '0.5rem' }}>{billRefusal}</div> : null}
+                  {billRead && billPlan ? (
+                    <div data-bill-count style={{ fontSize: '0.8125rem', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-subtle)', border: '1px solid var(--border)', marginBottom: '0.5rem' }}>{countLine(fillCounts(billFields, billPlan.checks))}</div>
+                  ) : billPick === 'none' ? (
+                    <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.5rem' }}>{NO_PDF_LINE}</div>
+                  ) : null}
+                  {billPlan?.checks.statement ? <div data-bill-statement style={{ fontSize: '0.8125rem', padding: '0.4rem 0.6rem', borderRadius: 6, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', marginBottom: '0.5rem' }}>{statementWords(billPlan.checks.statement.numbers)}</div> : null}
+                </div>
+              ) : null}
+              <div style={{ display: 'grid', gridTemplateColumns: billPane && !narrowAging ? '200px minmax(0, 1fr)' : '1fr', gap: '0.75rem', alignItems: 'start' }}>
+              {billPane ? (
+                <div data-bill-pane style={{ background: 'var(--bg-subtle)', padding: '0.5rem', borderRadius: 8, overflow: 'hidden' }}>
+                  {narrowAging ? (
+                    <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', fontSize: '0.8125rem' }}>
+                      <span style={{ fontWeight: 600, minWidth: 0, overflowWrap: 'anywhere' }}>{billRead?.file.name}</span>
+                      <a href={billPane.href} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 'auto', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, color: 'var(--text-base)', textDecoration: 'none', whiteSpace: 'nowrap' }}>Open</a>
+                    </div>
+                  ) : billPane.kind === 'pdf' ? (
+                    <a href={billPane.href} target="_blank" rel="noopener noreferrer" title="Open the whole file" style={{ display: 'block' }}>
+                      <PdfPageCanvas bytes={billPane.bytes} page={1} scale={0.3} />
+                    </a>
+                  ) : (
+                    <a href={billPane.href} target="_blank" rel="noopener noreferrer" title="Open the whole file" style={{ display: 'block' }}>
+                      <img src={billPane.url} alt="" style={{ width: '100%', display: 'block', borderRadius: 4 }} />
+                    </a>
+                  )}
+                  {!narrowAging ? <div style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginTop: '0.4rem' }}>{PDF_PANE_NOTE}</div> : null}
+                </div>
+              ) : null}
+              <div style={{ minWidth: 0 }}>
               {/* ① The fields in the order they sit on the paper: number · date · amount, then the PO. */}
               {/* ⓪ What the paper is (v2.3503). The sign is derived from this, never typed. */}
               <InvoiceFormSection>What the paper is</InvoiceFormSection>
               <div style={{ marginBottom: '0.75rem' }}>
-                <div role="radiogroup" aria-label="Document kind" style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 5, overflow: 'hidden' }}>
+                <div role="radiogroup" aria-label="Document kind" style={{ display: 'flex', border: '1px solid var(--border-strong)', borderRadius: 5, overflow: 'hidden', ...(billFields.kind.source === 'read' ? { borderLeft: '3px solid var(--border-green)' } : {}) }}>
                   {(['invoice', 'credit'] as SupplyDocumentKind[]).map((k, i) => {
                     const on = invoiceDocumentKind === k
                     return (
@@ -2387,7 +2740,10 @@ export function SupplyHousesTab({
                         type="button"
                         role="radio"
                         aria-checked={on}
-                        onClick={() => setInvoiceDocumentKind(k)}
+                        onClick={() => {
+                          setInvoiceDocumentKind(k)
+                          markBillTyped('kind', k)
+                        }}
                         style={{
                           flex: 1,
                           padding: '0.45rem 0.5rem',
@@ -2415,15 +2771,15 @@ export function SupplyHousesTab({
               <div style={{ display: 'grid', gridTemplateColumns: narrowAging ? '1fr' : '1.2fr 1fr 1fr', gap: '0.75rem', marginBottom: '0.75rem' }}>
                 <div>
                   <label htmlFor="invoice-number" style={{ ...INVOICE_LABEL_STYLE, whiteSpace: 'nowrap' }}>{invoiceWords.numberLabel} *</label>
-                  <input id="invoice-number" type="text" value={invoiceNumber} onChange={(e) => setInvoiceNumber(e.target.value)} required style={INVOICE_INPUT_STYLE} />
+                  <input id="invoice-number" type="text" value={invoiceNumber} onChange={(e) => { setInvoiceNumber(e.target.value); markBillTyped('number', e.target.value) }} required style={{ ...INVOICE_INPUT_STYLE, ...billTint(billFields.number.source) }} />
                 </div>
                 <div>
                   <label htmlFor="invoice-date" style={INVOICE_LABEL_STYLE}>{invoiceWords.dateLabel} *</label>
-                  <input id="invoice-date" type="date" value={invoiceDate} onChange={(e) => setInvoiceDate(e.target.value)} required style={INVOICE_INPUT_STYLE} />
+                  <input id="invoice-date" type="date" value={invoiceDate} onChange={(e) => { setInvoiceDate(e.target.value); markBillTyped('date', e.target.value) }} required style={{ ...INVOICE_INPUT_STYLE, ...billTint(billFields.date.source) }} />
                 </div>
                 <div>
                   <label htmlFor="invoice-amount" style={INVOICE_LABEL_STYLE}>Amount *</label>
-                  <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 4, paddingLeft: '0.5rem', background: 'var(--surface)' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', border: '1px solid var(--border-strong)', borderRadius: 4, paddingLeft: '0.5rem', background: 'var(--surface)', ...billTint(billPlan?.checks.sum.kind === 'off' && billFields.amount.source === 'read' ? 'guessed' : billFields.amount.source) }}>
                     <span aria-hidden style={{ color: invoiceDocumentKind === 'credit' ? 'var(--text-green-700)' : 'var(--text-muted)', fontWeight: invoiceDocumentKind === 'credit' ? 600 : 400, whiteSpace: 'nowrap' }}>{invoiceWords.amountAdornment}</span>
                     <input
                       id="invoice-amount"
@@ -2432,19 +2788,26 @@ export function SupplyHousesTab({
                       min={0}
                       inputMode="decimal"
                       value={invoiceAmount}
-                      onChange={(e) => setInvoiceAmount(e.target.value)}
+                      onChange={(e) => {
+                        setInvoiceAmount(e.target.value)
+                        markBillTyped('amount', e.target.value)
+                      }}
                       required
                       style={{ flex: 1, minWidth: 0, padding: '0.5rem', border: 'none', background: 'transparent', textAlign: 'right', fontVariantNumeric: 'tabular-nums', font: 'inherit', color: 'inherit' }}
                     />
                   </div>
                 </div>
               </div>
+              {billSentences}
               {invoiceDocumentKind === 'credit' ? (
-                <CreditPairPick rows={supplyHouseInvoices} creditId={editingInvoice?.id ?? null} value={invoiceCreditsInvoiceId} onChange={setInvoiceCreditsInvoiceId} />
+                <>
+                  <CreditPairPick rows={supplyHouseInvoices} creditId={editingInvoice?.id ?? null} value={invoiceCreditsInvoiceId} onChange={(v) => { setInvoiceCreditsInvoiceId(v); markBillTyped('creditsInvoice', v) }} />
+                  {billPairLine}
+                </>
               ) : null}
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="invoice-po" style={INVOICE_LABEL_STYLE}>Purchase order #</label>
-                <input id="invoice-po" type="text" value={invoicePurchaseOrderNumber} onChange={(e) => setInvoicePurchaseOrderNumber(e.target.value)} placeholder="e.g. PO-12345" style={INVOICE_INPUT_STYLE} />
+                <input id="invoice-po" type="text" value={invoicePurchaseOrderNumber} onChange={(e) => { setInvoicePurchaseOrderNumber(e.target.value); markBillTyped('purchaseOrder', e.target.value) }} placeholder="e.g. PO-12345" style={{ ...INVOICE_INPUT_STYLE, ...billTint(billFields.purchaseOrder.source) }} />
                 {/* ② The PO Generator check, while she types — the table's red icon only ever showed after Save. */}
                 {poHint ? (
                   <div
@@ -2519,6 +2882,7 @@ export function SupplyHousesTab({
                           onClick={() => {
                             setInvoiceJobDetailsMap((prev) => ({ ...prev, [j.id]: { hcp_number: j.hcp_number, click_number: j.click_number, job_name: j.job_name, job_address: j.job_address } }))
                             setInvoiceJobAllocations((prev) => addAllocation(prev, j.id))
+                            markBillTyped('job', j.id)
                             setInvoiceJobSearchText('')
                           }}
                           style={{ display: 'block', width: '100%', padding: '0.5rem 0.75rem', textAlign: 'left', border: 'none', borderBottom: '1px solid var(--border)', background: 'none', cursor: already ? 'default' : 'pointer', fontSize: '0.875rem', opacity: already ? 0.5 : 1, font: 'inherit', color: 'inherit' }}
@@ -2545,14 +2909,21 @@ export function SupplyHousesTab({
                   ? `${formatJobLedgerNumberLabel(DEFAULT_JOB_LEDGER_PREFIX, details.hcp_number, details.click_number)} · ${details.job_name || '—'}`
                   : a.job_id.slice(0, 8)
                 const isSingle = invoiceSingleAllocatedJobId === a.job_id
+                // Supply-house bill capture (punch list #179): a job the fill guessed asks for a look; one the person answered, or one a credit took from its invoice, says so.
+                const jobLook = billFields.job.value === a.job_id ? billFields.job.source : 'none'
+                const jobLabelFull = details ? label : (billPlan?.job?.code != null ? poGeneratorEntriesForSelectedHouse?.get(billPlan.job.code)?.jobLabel : undefined) ?? label
+                const jobGuessed = jobLook === 'guessed' && billPlan?.job?.jobId === a.job_id
+                const guessWords = jobGuessed && billPlan?.job ? jobGuessWords(billPlan.job, jobLabelFull) : null
                 return (
                   <div
                     key={a.job_id}
                     data-invoice-job-card
-                    style={{ border: '1px solid var(--border)', borderLeft: `3px solid ${isSingle && flagOn ? '#0f766e' : 'var(--border-strong)'}`, borderRadius: 6, padding: '0.6rem 0.75rem', marginBottom: '0.5rem' }}
+                    data-bill-job={jobLook}
+                    style={{ border: `1px solid ${jobGuessed ? 'var(--border-amber-soft)' : 'var(--border)'}`, borderLeft: `3px solid ${jobGuessed ? 'var(--border-amber-soft)' : isSingle && flagOn ? '#0f766e' : 'var(--border-strong)'}`, background: jobGuessed ? 'var(--bg-amber-tint)' : undefined, borderRadius: 6, padding: '0.6rem 0.75rem', marginBottom: '0.5rem' }}
                   >
                     <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: '0.5rem' }}>
                       <strong style={{ fontSize: '0.9375rem' }}>{label}</strong>
+                      {guessWords ? <span style={{ fontSize: '0.75rem', fontWeight: 700, color: 'var(--text-amber-800)' }}>{guessWords.check}</span> : jobLook === 'typed' && billRead ? <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0f766e' }}>{jobSettledWords(jobLabelFull).check}</span> : jobLook === 'read' && billRead ? <span style={{ fontSize: '0.75rem', fontWeight: 700, color: '#0f766e' }}>{jobFromPairWords(jobLabelFull, billRead.read.referencesNumber).check}</span> : null}
                       <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem', flexShrink: 0 }}>
                         {showPct ? (
                           <>
@@ -2571,7 +2942,10 @@ export function SupplyHousesTab({
                         ) : null}
                         <button
                           type="button"
-                          onClick={() => setInvoiceJobAllocations((prev) => removeAllocation(prev, idx))}
+                          onClick={() => {
+                            setInvoiceJobAllocations((prev) => removeAllocation(prev, idx))
+                            markBillTyped('job', '')
+                          }}
                           style={{ padding: '0.1rem 0.3rem', border: 'none', background: 'none', cursor: 'pointer', color: 'var(--text-muted)', fontSize: '1rem', lineHeight: 1 }}
                           aria-label={`Remove ${label}`}
                           title="Remove job"
@@ -2581,6 +2955,19 @@ export function SupplyHousesTab({
                       </span>
                     </div>
                     {details?.job_address ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{stripTrailingZip(details.job_address)}</div> : null}
+                    {guessWords ? (
+                      <div data-bill-job-guess style={{ marginTop: '0.4rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>
+                        <div>{guessWords.line}</div>
+                        <div style={{ display: 'flex', gap: '0.4rem', marginTop: '0.35rem', flexWrap: 'wrap' }}>
+                          <button type="button" onClick={() => settleJob(a.job_id)} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.6rem', border: '1px solid var(--border-green)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-green-800)', cursor: 'pointer' }}>{guessWords.yes}</button>
+                          <button type="button" onClick={pickAnotherJob} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }}>{guessWords.another}</button>
+                        </div>
+                      </div>
+                    ) : jobLook === 'typed' && billRead ? (
+                      <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{jobSettledWords(jobLabelFull).line}</div>
+                    ) : jobLook === 'read' && billRead ? (
+                      <div style={{ marginTop: '0.3rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{jobFromPairWords(jobLabelFull, billRead.read.referencesNumber).line}</div>
+                    ) : null}
                     {/* ④ The job account is a fact about this job at this house, so it lives on the job card. */}
                     {isSingle ? (
                       <div style={{ marginTop: '0.5rem', paddingTop: '0.5rem', borderTop: '1px dashed var(--border)' }}>
@@ -2591,11 +2978,13 @@ export function SupplyHousesTab({
                             onChange={(e) => {
                               invoiceOnJobAccountTouchedRef.current = true
                               setInvoiceOnJobAccount(e.target.checked)
+                              markBillTyped('onJobAccount', String(e.target.checked))
                             }}
                             style={{ marginTop: 2, accentColor: '#0f766e' }}
                           />
                           <span>
                             <span style={{ fontWeight: 600, fontSize: '0.875rem', color: flagOn ? '#0f766e' : 'var(--text-base)' }}>On {house.name}'s job account</span>
+                            {billFields.onJobAccount.source === 'guessed' ? <span data-bill-account-guess style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }}>{jobAccountGuessWords(house.name).why}</span> : null}
                             <span style={{ display: 'block', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>If this goes unpaid the house bills the property owner, not you.</span>
                           </span>
                         </label>
@@ -2682,11 +3071,11 @@ export function SupplyHousesTab({
               <div style={{ display: 'grid', gridTemplateColumns: narrowAging ? '1fr' : '1fr 1.6fr', gap: '0.75rem', marginBottom: '1rem' }}>
                 <div>
                   <label htmlFor="invoice-due" style={INVOICE_LABEL_STYLE}>Due date</label>
-                  <input id="invoice-due" type="date" value={invoiceDueDate} onChange={(e) => setInvoiceDueDate(e.target.value)} style={INVOICE_INPUT_STYLE} />
-                  {dueHint ? <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{dueHint}</div> : null}
+                  <input id="invoice-due" type="date" value={invoiceDueDate} onChange={(e) => { setInvoiceDueDate(e.target.value); markBillTyped('dueDate', e.target.value) }} style={{ ...INVOICE_INPUT_STYLE, ...billTint(billFields.dueDate.source) }} />
+                  {billDueHint ?? dueHint ? <div style={{ marginTop: '0.25rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{billDueHint ?? dueHint}</div> : null}
                 </div>
                 <fieldset style={{ border: 'none', padding: 0, margin: 0, minWidth: 0 }}>
-                  <legend style={INVOICE_LABEL_STYLE}>Status</legend>
+                  <legend style={INVOICE_LABEL_STYLE}>Status{billRead ? <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {STATUS_YOURS}</span> : null}</legend>
                   <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem 1rem', minHeight: 36 }}>
                     <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', cursor: 'pointer' }}>
                       <input id="invoice-status-unpaid" type="radio" name="invoice-paid-status" checked={!invoiceIsPaid} onChange={() => { setInvoiceIsPaid(false); setInvoicePaidOn('') }} />
@@ -2722,14 +3111,24 @@ export function SupplyHousesTab({
               <InvoiceFormSection>Paperwork</InvoiceFormSection>
               <div style={{ marginBottom: '1rem' }}>
                 <label htmlFor="invoice-link" style={INVOICE_LABEL_STYLE}>{invoiceWords.documentPdfLabel}</label>
+                {billRead && !billDriveInstead ? (
+                  <div data-bill-paperwork style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8125rem', padding: '0.45rem 0.6rem', borderRadius: 4, ...billTint('read') }}>
+                    <span>{paperworkWords(invoiceDocumentKind, billRead.file.name, billRead.file.attachmentId != null).line}</span>
+                    <button type="button" onClick={() => { setBillDriveInstead(true); setInvoiceLink(''); markBillTyped('link', '') }} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }}>{paperworkWords(invoiceDocumentKind, billRead.file.name, false).press}</button>
+                  </div>
+                ) : (
                 <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'stretch' }}>
-                  <input id="invoice-link" type="url" value={invoiceLink} onChange={(e) => setInvoiceLink(e.target.value)} placeholder="https://drive.google.com/…" style={{ ...INVOICE_INPUT_STYLE, flex: 1, minWidth: 0 }} />
+                  <input id="invoice-link" type="url" value={invoiceLink} onChange={(e) => { setInvoiceLink(e.target.value); markBillTyped('link', e.target.value) }} placeholder="https://drive.google.com/…" style={{ ...INVOICE_INPUT_STYLE, flex: 1, minWidth: 0 }} />
                   {pdfHref ? (
                     <a href={pdfHref} target="_blank" rel="noopener noreferrer" style={{ display: 'inline-flex', alignItems: 'center', padding: '0 0.75rem', fontSize: '0.8125rem', fontWeight: 500, border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', textDecoration: 'none', whiteSpace: 'nowrap' }}>
                       Open ↗
                     </a>
                   ) : null}
+                  {billRead && billDriveInstead ? (
+                    <button type="button" onClick={() => { setBillDriveInstead(false); setInvoiceLink(billPlan?.fields.link.value ?? ''); markBillTyped('link', billPlan?.fields.link.value ?? '') }} style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', whiteSpace: 'nowrap' }}>Use our copy</button>
+                  ) : null}
                 </div>
+                )}
               </div>
 
               {/* ⑧ What this credit does, in the office's words, while a wrong house or job can still be fixed. */}
@@ -2753,6 +3152,15 @@ export function SupplyHousesTab({
                 </div>
               ) : null}
 
+              {billRead ? (
+                <div data-bill-legend style={{ display: 'flex', gap: '0.9rem', flexWrap: 'wrap', fontSize: '0.72rem', color: 'var(--text-muted)', margin: '0 0 0.75rem' }}>
+                  <span><span aria-hidden style={{ display: 'inline-block', width: 11, height: 11, verticalAlign: -1, marginRight: 4, borderRadius: 2, ...billTint('read') }} />{LEGEND.paper}</span>
+                  <span><span aria-hidden style={{ display: 'inline-block', width: 11, height: 11, verticalAlign: -1, marginRight: 4, borderRadius: 2, ...billTint('guessed') }} />{LEGEND.guess}</span>
+                  <span><span aria-hidden style={{ display: 'inline-block', width: 11, height: 11, verticalAlign: -1, marginRight: 4, borderRadius: 2, border: '1px solid var(--border-strong)' }} />{LEGEND.yours}</span>
+                </div>
+              ) : null}
+              </div>
+              </div>
               {/* ⑦ Save never scrolls away — the footer sticks to the panel's bottom edge, mirroring the title bar. */}
               <div style={{ position: 'sticky', bottom: 0, zIndex: 2, background: 'var(--surface)', borderTop: '1px solid var(--border)', margin: '0 -1.5rem -1.5rem', padding: '0.75rem 1.5rem', display: 'flex', gap: '0.5rem', justifyContent: 'space-between', alignItems: 'center' }}>
                 {editingInvoice ? (

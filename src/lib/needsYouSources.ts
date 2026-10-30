@@ -62,6 +62,7 @@ export type NeedsYouSource =
   | 'submittals'
   | 'customerWaiting'
   | 'dispatchAged'
+  | 'whileOff'
   // v2.6098 (punch list #178): the Customers line and Today's sends, sources of their own so the Messages station can carry them.
   | 'customerMessages'
   | 'todaysSends'
@@ -109,6 +110,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'submittals',
   'customerWaiting',
   'dispatchAged',
+  'whileOff',
   'customerMessages',
   'todaysSends',
 ]
@@ -189,6 +191,9 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'customerWaiting':
     case 'dispatchAged':
       // The hook or the builder gates these itself (a reviewer, the dev, an approver, a group member).
+      return role != null
+    case 'whileOff':
+      // While you were off (v2.6060, punch list #141 PR 4): the person's own held pushes, whoever they are.
       return role != null
     case 'robotAudits':
     case 'robotBlocked':

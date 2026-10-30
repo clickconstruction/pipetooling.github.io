@@ -163,7 +163,7 @@ describe('QuoteCompareModal with no quote yet (punch list #184, sweep C)', () =>
       renderWithProviders(
         <QuoteCompareModal open onClose={() => {}} onPlugIn={onPlugIn} bidId="b359" bidLabel="BP359" rows={rows} takeoffMaterialsByCountRowId={{}} taxPercent={8.25} currentTotals={null} onCostsApplied={() => {}} />,
       )
-      const line = await screen.findByText(/No quotes on this bid yet\./)
+      const line = (await screen.findByText(/No quotes on this bid yet\./)).closest('[data-empty-state]') as HTMLElement
       expect(line.textContent).toBe('No quotes on this bid yet. + Plug in a quote adds the first.')
       fireEvent.click(within(line).getByRole('button', { name: '+ Plug in a quote' }))
       expect(onPlugIn).toHaveBeenCalledTimes(1)

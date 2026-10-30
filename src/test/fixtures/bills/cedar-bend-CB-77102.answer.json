@@ -1,0 +1,38 @@
+{
+  "house_name": "Cedar Bend Pipe & Supply",
+  "document_kind": "invoice",
+  "number": "CB-77102",
+  "date": "2026-10-21",
+  "po_text": "41190",
+  "account_ref": "CLICK PLUMBING 2208",
+  "ship_to": "2201 Hillside Rd, Riverbend Self Storage",
+  "job_text": "Riverbend Self Storage",
+  "terms": "Net 30",
+  "references_number": "",
+  "lines": [
+    {
+      "description": "2\" PVC Sch 40 pipe 10'",
+      "quantity": "10",
+      "unit_price": "14.20",
+      "extended": "142.00"
+    },
+    {
+      "description": "2\" PVC coupling",
+      "quantity": "12",
+      "unit_price": "1.35",
+      "extended": "16.20"
+    },
+    {
+      "description": "PVC primer and cement",
+      "quantity": "1",
+      "unit_price": "18.90",
+      "extended": "18.90"
+    }
+  ],
+  "subtotal": "177.10",
+  "tax": "14.61",
+  "total": "191.71",
+  "page_count": 1,
+  "statement_numbers": [],
+  "notes": ""
+}

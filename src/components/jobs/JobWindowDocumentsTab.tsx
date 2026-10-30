@@ -20,6 +20,7 @@ import { JobDocumentsContract } from './JobDocumentsContract'
 import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
+import { HoursStatementsSection } from './HoursStatementsSection'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 
@@ -31,7 +32,9 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
  * window on that application; the window sits above the job window and the lists reload when
  * it closes. Since v2.6054 the folders section offers **Make the job’s Drive folders** to the office when the job
  * has no job folder, and since v2.6055 when it has one but no pictures or plans link: the app makes what is missing
- * under Jobs and the window patches its copy of the job with the links.
+ * under Jobs and the window patches its copy of the job with the links. Since v2.6097 (punch list #212, PR 2) the
+ * **Hours statements** section sits after the lien paper: every signed hours statement on the job with its record id and
+ * where it stands, and the press that opens the Hours statement window, for the payroll roles and assistants.
  */
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
@@ -323,6 +326,8 @@ export function JobWindowDocumentsTab({
       <JobDocumentsTestReports job={job} />
 
       <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} />
+
+      <HoursStatementsSection scope={{ kind: 'job', job }} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
 
       {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
 

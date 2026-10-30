@@ -109,6 +109,7 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { EmptyState } from '../EmptyState'
+import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
 
 export type DetailJobScheduleContext = {
   workDate: string
@@ -1300,14 +1301,17 @@ export default function DetailJobModal({
       setSummaryKeeping(false)
     }
   }, [summary, threadNotes])
-  const { requestOpenUpdateFocus } = useUpdateFocusOpenerBridge()
+  const { requestOpenUpdateFocus, requestOnMyWay } = useUpdateFocusOpenerBridge()
   // Arrived / Leaving: one pair of handlers for the composer's chips (desktop) and the phone bar.
-  // Leaving stamps the note, then opens Update Focus (v2.1640).
+  // Leaving stamps the note, then opens the On my way sheet for the day's next job when Job Mode's card is mounted and
+  // the day has one (punch list #189, decision 6, 2026-10-29), else Update Focus as before (v2.1640). Both stand above
+  // this window: the sheet at 1100, Update Focus and Clock In at 1020.
   const stampArrived = () => void threadNotes.submitStamp('arrived')
   const stampLeaving = () => {
     void (async () => {
       const ok = await threadNotes.submitStamp('leaving')
-      if (ok) requestOpenUpdateFocus()
+      if (!ok) return
+      if (!requestOnMyWay()) requestOpenUpdateFocus()
     })()
   }
   const stampsOffered = !paneMode || viewerOnCrew(authUser?.id, (fullJob?.team_members ?? []).map((tm) => tm.user_id), threadNotes.scheduleAssigneeIds)
@@ -2092,6 +2096,14 @@ export default function DetailJobModal({
             >
               📍 {mapsAddressLine}
             </span>
+          </div>
+        ) : null}
+
+        {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, under the address, each
+            opening its sheet. Nothing is drawn until the office types the questions. */}
+        {open && jobId ? (
+          <div style={{ marginTop: '0.75rem' }}>
+            <JobStageChecklistStrip jobId={jobId} />
           </div>
         ) : null}
 

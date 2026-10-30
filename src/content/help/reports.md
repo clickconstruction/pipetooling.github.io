@@ -2,7 +2,7 @@
 title: file and review field reports
 category: Office
 roles: assistant, master_technician, primary, estimator
-keywords: stage, stage progress, each line, how far along, mark each line, weighted percent, reports, job complete, status report, leave report, job window, review, notifications, talk it through, voice, speech, dictate, microphone, draft, drafted, what you said
+keywords: photo, camera, stage, stage progress, each stage, each line, how far along, mark each line, precise number, typed number, weighted percent, reports, job complete, status report, leave report, job window, review, notifications, talk it through, voice, speech, dictate, microphone, draft, drafted, what you said
 where: /jobs?tab=reports
 order: 20
 ---
@@ -12,7 +12,7 @@ The office can also subscribe to the report types they care about.
 
 ## Filing a report (field side)
 
-You tap {{button:blue|Leave Report}} on the Job Mode card, or during clock-out. The **Reporting on** card pre-fills the job from your last report. It says so under the name. You tap {{button:outline|Change}} to search for a different job, project, or bid instead. You choose a report type, fill in the fields, and submit. Your location is attached automatically.
+You tap {{button:blue|Leave Report}} on the Job Mode card, or during clock-out. On a phone the camera opens first, and each shot goes with the report into the customer's Drive folder. See [take photos for a report](/help/take-photos-for-a-report). The **Reporting on** card pre-fills the job from your last report. It says so under the name. You tap {{button:outline|Change}} to search for a different job, project, or bid instead. You choose a report type, fill in the fields, and submit. Your location is attached automatically.
 
 On a phone the report form opens **full screen** with {{button:blue|Save report}} pinned at the bottom. There is no scrolling to find it. If you close the form with something typed, it asks before discarding your entries. Switching report types keeps what you've typed. You can jump from Status to Note and back without losing anything. Only the fields of the type you save are submitted.
 
@@ -55,16 +55,24 @@ The words go under anything already in Notes. Nothing is saved until you press S
 
 Some phones have no speech for the app. Then the button reads *Use the microphone on your keyboard*. Tap Notes, then the microphone key on the keyboard, and talk. The keyboard's microphone works with no signal too. With no signal the button reads *No signal* and says the same. A microphone that is off for the app says so, with the way to allow it.
 
-### On a job with more than one line
+### On a job with more than one stage
 
-Many jobs have more than one priced line on the Bill tab. Those lines are often the stages, like **Rough In**, **Top Out** and **Trim Set**. On such a job the percent question becomes a list of the job's lines. The question reads **How far along is each line?**. You move the lines you worked on. The rest stay as they are. The first line not yet done is open when the form opens. Tap another line to open it. The open line shows four quick picks and a slider. The picks are {{button:outline|25}} {{button:outline|50}} {{button:outline|75}} {{button:outline|Done ✓}}. A line you moved shows the old number and the new one. A line whose draw is already paid reads {{chip:green|✓ Paid}} and cannot be moved. A stage set as **In order** on the Bill tab carries its number. Any other line carries a diamond.
+Many jobs have more than one priced line on the Bill tab. Those lines are often the stages, like **Rough In**, **Top Out** and **Trim Set**. On such a job the percent question becomes a list of the job's stages. The question reads **How far along is each stage?**. Every stage is in view with its own number. Move the stages you worked on. The rest stay as they are. The first stage not yet done is open when the form opens. Tap another stage to open it.
 
-The app works out the job's percent from the lines. Each line counts by its share of the job. The **Job** line under the list shows the job's new percent. Tap **how?** to see each line's share and points. No prices are shown. The job's percent is what the report saves as *How complete is the job?*. So the Pipeline, the Dashboard cards and the activity feed read the same number as before. The report also lists each line you moved under **Stage progress**. The office reads it on the report card.
+The open stage takes a precise number three ways:
 
-{{button:outline-blue|Set the whole-job % instead}} brings back the plain slider. Use it when you would rather call the whole job. Jobs with one priced line never see the list. They report exactly as before. The **Additional report** window on a job's reports list asks the same way.
+1. Tap a quick pick: {{button:outline|25}} {{button:outline|50}} {{button:outline|75}} or {{button:outline|Done ✓}}.
+2. Tap {{button:outline|−5}} or {{button:outline|+5}} to move the number by five.
+3. Tap the number itself. The keypad opens. Type the number and press Done on the keypad.
+
+A stage you moved shows the old number and the new one. A stage nobody has reported reads *not started*. A stage whose draw is already paid reads {{chip:green|✓ Paid}} and cannot be moved. A stage set as **In order** on the Bill tab carries its number. Any other line carries a diamond.
+
+The app works out the job's percent from the stages. Each stage counts by its share of the job. The **Job** line under the list shows the job's new percent. Tap **how?** to see each stage's share and points. No prices are shown. The job's percent is what the report saves as *How complete is the job?*. So the Pipeline, the Dashboard cards and the activity feed read the same number as before. The report also lists each stage you moved under **Stage progress**. The office reads it on the report card.
+
+{{button:outline-blue|Set the whole-job % instead}} brings back the plain slider. Use it when you would rather call the whole job. Jobs with one priced line never see the list. They report with one percent for the job. That percent opens on the job's number, not on 0. The line under it says so. Leave it, and the report files the same number. The **Additional report** window on a job's reports list asks the same way.
 
 :::example Halfway through rough-in
-Job: Underground ✓ Paid · Rough In 35% · Top Out — · Trim Set — · Water heater —. You tap **50** on Rough In. The Job line reads 32% → 38%. You set the water heater too, so you tap its line and **Done ✓**. The Job line reads 32% → 43%. Save. The office sees Rough In at 50% on the Bill tab and the job at 43% everywhere else. The report card reads *Rough In 35% → 50% · Water heater — → 100% · job 32% → 43%*.
+Job: Underground ✓ Paid · Rough In 35% · Top Out not started · Trim Set not started · Water heater not started. You tap **Rough In**, then **+5** twice. Rough In reads 35% → 45%. The Job line reads 32% → 36%. You tap the water heater's line and **Done ✓**. The Job line reads 32% → 56%. Save. The office sees Rough In at 45% on the Bill tab and the job at 56% everywhere else. The report card reads *Rough In 35% → 45% · Water heater — → 100% · job 32% → 56%*.
 :::
 
 ## From a job's window

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { crewJobWindowBar, crewStampOffer, JOB_WINDOW_BAR_MIN_HEIGHT, jobWindowTiles, jobWindowVerb, tabbedJobWindowBar, viewerOnCrew } from './jobWindowBar'
+import { crewJobWindowBar, crewStampOffer, JOB_WINDOW_BAR_MIN_HEIGHT, jobWindowTiles, jobWindowVerb, leavingOpens, tabbedJobWindowBar, viewerOnCrew } from './jobWindowBar'
 import { buildJobThreadStampBody } from '../jobThreadNoteStampBody'
 import type { EditJobBillingBar } from './editJobBillingBar'
 
@@ -143,5 +143,12 @@ describe('crewStampOffer', () => {
     // Someone else's session, and his own from yesterday, say nothing about today.
     expect(crewStampOffer({ viewerName: 'Luis Ortega', notes: [], clockSessions: [session(at('08:00'), null, 'Dana Whitfield')], todayYmd: today })).toBe('arrived')
     expect(crewStampOffer({ viewerName: 'Luis Ortega', notes: [], clockSessions: [session(at('08:00', '2026-10-25'), null)], todayYmd: today })).toBe('arrived')
+  })
+})
+
+describe('leavingOpens', () => {
+  it('opens the On my way sheet when the day has a next job, else Update Focus', () => {
+    expect(leavingOpens({ dayHasNextJob: true })).toBe('on-my-way')
+    expect(leavingOpens({ dayHasNextJob: false })).toBe('update-focus')
   })
 })

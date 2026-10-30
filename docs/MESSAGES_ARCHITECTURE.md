@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-10-29
 ---
 
 ## What it is, in one paragraph
@@ -206,7 +206,14 @@ the kit read once per run through `_shared/walkKit.ts`). Each person's own hours
 `user_push_hours`, v2.6026) hold a push for them since v2.6029 (punch list #141 PR 3): the planner splits each due push
 with `pushDecision`, a held person gets a `notification_history` row with `channel = 'held'` and no push, the office
 hears at once when the holder is off (`message_reply_off`, *Dana wrote to Luis, who is off until 6 AM.*), and a push to
-the Customers seat alone widens to the office roles who are on while the seat is off.
+the Customers seat alone widens to the office roles who are on while the seat is off. What a hold did shows on three
+surfaces (v2.6060, punch list #141 PR 4): the Dashboard's **While you were off** line reads the person's own held rows
+since their hours last closed, one wait per line, a line answered meanwhile left out and named (`messages/whatWaited.ts`
+over `whatWaitedIo.ts`, `useWhileOff`, the Needs you key `while-off`); the thread's pill says *off until 6 AM* for the
+holder, or *the office is off until 6 AM* when nobody has it and every member is (`messages/whoIsOff.ts`, `WhoHasItPill`,
+the team's rows read by the office through `user_push_hours_office_read`, migration `20261029180000`); and the Office
+hours card draws the coverage line while the office is open around the clock (`coverageGaps`, `coverageLine`,
+`pushCoverageIo.ts`).
 
 **Files.** A file on a line is our copy in the private bucket; its lasting link is `/files/messages/<id>`; **Save to
 Drive** (`drive-link`, cut 7b) files it to the job's Drive folder and the link becomes `/files/drive/…`. A reply's files
@@ -235,7 +242,7 @@ accounts and digital twins are hidden from every picker (`activeUsersQuery`'s pr
 | Inboxes (the two boxes: address, number, number id; the number picked from Quo's numbers since v2.5718) | Settings → Phone and texts | `messages_boxes_v1` |
 | The office's wait before it hears a reply nobody answered (0 is at once) | Settings → Phone and texts → Reply push, under the switch (v2.5540) | `messages_office_wait_minutes` |
 | Office hours (the days, the open and the close, or the switch *The office is open around the clock*, `always: true`, under which `officeOpen` is true at every instant, there is no next opening or last close, no after-hours answer is due and the kept days and times come back when it goes off; the tech's hour is read back as a line and, with the after-hours number, stays a dev's by hand) | Settings → Phone and texts → Office hours (v2.5709, punch list #140 PR 1; the switch v2.5721, punch list #141 PR 1; `officeHoursCard.ts`, the owner and a dev) | `messages_office_hours_v1` |
-| Missed calls (the text back after a call nobody answered, punch list #195: the switch, off as it ships, and the three lines, in office hours, after hours and with a voicemail; `quo-webhook` claims each call in `missed_call_replies` and texts through every gate, its line marked `messages.auto` so it neither clears Needs a reply nor starts Waiting on them; the card lists the last ten with what went or why nothing did) | Settings → Phone and texts → Missed calls (v2.6012 the text back, v2.6018 the card; `quo/missedReply.ts`, `messages/missedReplyCard.ts`, the owner and a dev) | `messages_missed_call_reply_v1` |
+| Missed calls (the text back after a call nobody answered, punch list #195: the switch, off as it ships, and the three lines, in office hours, after hours and with a voicemail; `quo-webhook` claims each call in `missed_call_replies` and texts through every gate, its line marked `messages.auto` so it neither clears Needs a reply nor starts Waiting on them; the card lists the last ten with what went or why nothing did, the caller named from the record the thread names, else the number, v2.6036) | Settings → Phone and texts → Missed calls (v2.6012 the text back, v2.6018 the card; `quo/missedReply.ts`, `messages/missedReplyCard.ts`, the owner and a dev) | `messages_missed_call_reply_v1` |
 | Reply push | Settings → Phone and texts | `messages_reply_push_on_v1`; the cron `messages-reply-push`, every minute, calls `messages-notify` |
 | Read bids@ | Settings → Phone and texts | `gmail_sync_on_v1`; the cron `gmail-sync`, every minute (v2.5719) |
 | The reminders the app sends itself, per step: off, offers or sends (v2.5595) | Settings → Flows, on each such step, and Settings → Phone and texts → Reminders the app offers (v2.5720; `messages/remindersCard.ts`, the owner and a dev: every step the app can text across the flows as saved, the same control over the same setting through the Flows tab's io) | `messages_nudge_app_sends_v1`; the cron `messages-nudge-dispatch`, 14:00 and 15:00 UTC; the summary `messages_nudge_last_run_v1` |
