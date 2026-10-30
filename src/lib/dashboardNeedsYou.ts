@@ -47,6 +47,7 @@ import { followupNamesLine, type BidFollowupsDue } from './bids/bidFollowupsDue'
 import { vehicleRecordGapWords, type VehicleRecordGap } from './vehicleRecordGaps'
 import type { GcNeedsYou } from './gc/needsYou'
 import type { CustomerMessagesCounts } from './followUp/customerCounts'
+import { WHAT_WAITED_WORDS, type WhatWaited } from './messages/whatWaited'
 
 /**
  * Residential build, R8 · 14: the Customers line, built, counted and wired. On since R2 PR 3b (v2.5451), with the
@@ -107,6 +108,7 @@ export type NeedsYouItem = {
     | 'job-followups'
     | 'customer-messages'
     | 'todays-sends'
+    | 'while-off'
     | 'rating-low'
     | 'gc-review-weekly'
     | 'bulk-delete'
@@ -214,6 +216,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'customer-messages': 40,
   // The same tier: the texts the morning run prepared for the office to press (Today's sends, v2.5595).
   'todays-sends': 40,
+  // The same tier: the pushes the viewer's own Push me hours held while they were off (v2.6060, punch list #141 PR 4).
+  'while-off': 40,
   // The same tier: a customer who gave three stars or fewer and nobody has called (the review ask, v2.5946).
   'rating-low': 40,
   // Revenue chasing tier: a call somebody promised a GC for a day, due or missed.
@@ -675,6 +679,13 @@ export type NeedsYouInputs = {
    */
   todaysSendsEnabled?: boolean
   todaysSends?: { count: number; line: string } | null
+  /**
+   * While you were off (v2.6060, punch list #141 PR 4): the pushes the viewer's own Push me hours held since they last
+   * closed, one wait per customer's line, as `useWhileOff` reads them (`messages/whatWaited.ts` → `whatWaited`). Everyone
+   * who signs in; null for any time or when nothing waited.
+   */
+  whileOffEnabled?: boolean
+  whileOff?: WhatWaited | null
   /**
    * The review ask (v2.5946, punch list #185): the answers at three stars or fewer that nobody has called, inside thirty
    * days, as `useLowRatings` reads them (`ratings/ratingsOffice.ts` → `lowRatingsNeed`). The GC office team, as Today's
@@ -1298,6 +1309,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
         actionLabel: 'Messages',
       })
     }
+  }
+
+  if (inputs.whileOffEnabled && inputs.whileOff && inputs.whileOff.count > 0) {
+    const w = inputs.whileOff
+    items.push({
+      key: 'while-off',
+      severity: 'amber',
+      kicker: WHAT_WAITED_WORDS.kicker,
+      title: w.title,
+      detail: w.detail,
+      figure: w.count > 99 ? '99+' : String(w.count),
+      actionLabel: WHAT_WAITED_WORDS.action,
+    })
   }
 
   if (inputs.todaysSendsEnabled && inputs.todaysSends && inputs.todaysSends.count > 0) {

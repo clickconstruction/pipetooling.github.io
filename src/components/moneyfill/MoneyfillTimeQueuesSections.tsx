@@ -81,7 +81,7 @@ export function MoneyfillUnassignedTimeSection({ weekMonday }: { weekMonday: str
       ) : data == null ? (
         <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Couldn’t load clock data for this queue.</div>
       ) : data.rows.length === 0 ? (
-        <div style={{ color: '#15803d', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for this week</div>
+        <div style={{ color: 'var(--text-green-700)', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for this week</div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 560 }}>
@@ -194,7 +194,7 @@ export function MoneyfillPendingApprovalSection({
       ) : rows == null ? (
         <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem' }}>Couldn’t load pending sessions.</div>
       ) : rows.length === 0 ? (
-        <div style={{ color: '#15803d', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for pay week {payWeekLabel}</div>
+        <div style={{ color: 'var(--text-green-700)', fontSize: '0.875rem', fontWeight: 600 }}>✓ All clear for pay week {payWeekLabel}</div>
       ) : (
         <div style={{ overflowX: 'auto' }}>
           <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8125rem', minWidth: 560 }}>

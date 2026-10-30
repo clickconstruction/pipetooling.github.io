@@ -62,6 +62,7 @@ export type NeedsYouSource =
   | 'submittals'
   | 'customerWaiting'
   | 'dispatchAged'
+  | 'whileOff'
 
 export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'tally',
@@ -106,6 +107,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'submittals',
   'customerWaiting',
   'dispatchAged',
+  'whileOff',
 ]
 
 /** The office set: the owner, the assistant and the controller. Most company lines are theirs. */
@@ -186,6 +188,9 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'customerWaiting':
     case 'dispatchAged':
       // The hook or the builder gates these itself (a reviewer, the dev, an approver, a group member).
+      return role != null
+    case 'whileOff':
+      // While you were off (v2.6060, punch list #141 PR 4): the person's own held pushes, whoever they are.
       return role != null
     case 'robotAudits':
     case 'robotBlocked':
