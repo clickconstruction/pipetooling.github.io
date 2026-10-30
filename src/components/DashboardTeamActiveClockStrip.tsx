@@ -1731,6 +1731,11 @@ export function DashboardTeamActiveClockStrip({
                       }
                       // Blue count icon (v2.1600): opens the person-day modal in
                       // place; the Dispatch board stays one link away inside it.
+                      // The count sits on the calendar's body (x 96–544, y 288–544
+                      // of the 640 box), drawn again under it so its words have a
+                      // ground of their own: --surface on --text-link reads in both
+                      // themes, where white read 2.54:1 on dark mode's light blue
+                      // (punch list #194, v2.6130).
                       return (
                         <button
                           type="button"
@@ -1755,15 +1760,18 @@ export function DashboardTeamActiveClockStrip({
                             aria-hidden
                             style={{
                               position: 'absolute',
-                              left: 0,
-                              right: 0,
-                              top: '52%',
-                              transform: 'translateY(-38%)',
-                              textAlign: 'center',
+                              left: '15%',
+                              right: '15%',
+                              top: '45%',
+                              bottom: '15%',
+                              display: 'grid',
+                              placeItems: 'center',
+                              background: 'var(--text-link)',
+                              borderRadius: '0 0 1.8px 1.8px',
                               fontSize: '0.5625rem',
                               fontWeight: 700,
                               lineHeight: 1,
-                              color: '#ffffff',
+                              color: 'var(--surface)',
                               pointerEvents: 'none',
                             }}
                           >

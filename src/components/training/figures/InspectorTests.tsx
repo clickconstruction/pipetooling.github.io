@@ -8,12 +8,12 @@ import { DRAIN, RIGHT, SVG_STYLE } from './plumbingTokens'
  * each must hold for 15 minutes. Lesson 29.
  */
 export function InspectorTests({ titleId }: FigureProps) {
-  const gauge = (x: number, y: number, reading: string) => (
+  const gauge = (x: number, y: number, reading: string, side: 'below' | 'right' = 'below') => (
     <g>
       <circle cx={x} cy={y} r="13" fill="var(--surface)" stroke="currentColor" strokeWidth="1.5" />
       <line x1={x} y1={y} x2={x + 6} y2={y - 8} stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       <circle cx={x} cy={y} r="1.5" fill="currentColor" />
-      <text x={x} y={y + 22} fontSize="8" fontWeight="600" fill="currentColor" textAnchor="middle">
+      <text x={side === 'right' ? x + 17 : x} y={side === 'right' ? y + 3 : y + 22} fontSize="8" fontWeight="600" fill="currentColor" textAnchor={side === 'right' ? 'start' : 'middle'}>
         {reading}
       </text>
     </g>
@@ -56,7 +56,7 @@ export function InspectorTests({ titleId }: FigureProps) {
         <Pipe d="M10 76 H60" />
         <rect x="59" y="70" width="5" height="12" fill="var(--surface)" stroke="currentColor" strokeWidth="1.2" />
         <Pipe d="M36 76 V58" bore={4} />
-        {gauge(36, 46, '50 psi')}
+        {gauge(36, 46, '50 psi', 'right')}
         <Label x={48} y={110} anchor="middle" size={6.5} color={RIGHT}>
           every fixture runs at the final,
         </Label>

@@ -19,6 +19,8 @@ export type FirmMatterLike = {
   entries: ReadonlyArray<LegalEntryRow>
   /** Entries the office held back (#85 item 29): the portal passes the function's count (held entries never arrive); the desk's preview reads its packet. */
   heldCount?: number
+  /** The matter's stage (v2.6177, punch list #218 PR 4): once suit is filed the filing cost is spent on every path. Absent reads as not filed. */
+  stage?: string | null
   /** Documents from the office (v2.4810): the portal passes the function's, each with a link; the desk's preview passes its own, without. */
   documents?: ReadonlyArray<LegalPortalDocument>
   /** Documents the office held back; the firm sees the count. */

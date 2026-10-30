@@ -116,7 +116,7 @@ Counsel is away, or not yet hired, and the office works the case itself? Press *
 
 ## Two exits
 
-{{button:outline|⎙ Print packet}} prints the cover sheet, then the five sections with held entries left out. The cover sheet holds the theory, the worth and the gap list. The browser's print-to-PDF is the PDF a firm receives today.
+{{button:outline|⎙ Print packet}} prints the cover sheet, then the five sections with held entries left out. The cover sheet holds the theory, the worth, what each path nets and the gap list. The browser's print-to-PDF is the PDF a firm receives today.
 
 {{button:outline|Write it down…}} sits beside **Mark attorney ready**. It opens a panel under the header that asks **How much will we accept?** for the whole account. A slider, a % box and a $ box move together. The panel shows the split across the account's open bills. For each bill it shows what we forgive and what the bill still owes after. A note of what was agreed is required. The button says exactly what it will do, such as **Write down $811.22 across 2 bills**. Each bill is written down one at a time. A bill the write-down refuses is listed with the reason, and the rest still go. The matter closes as {{chip:gray|Written down}}. The row leaves Collections when the bill clears.
 

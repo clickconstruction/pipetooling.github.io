@@ -33,6 +33,12 @@ describe('buildFirmPacketPrintHtml — the sample matter', () => {
   const { payload, m, packet } = sample()
   const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: payload.firm.handling_name }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries }, particulars: payload.particulars })
 
+  it('carries what each path nets as a table under the note, with the walk-away line in the firm’s own words (v2.6177)', () => {
+    expect(html).toContain('<h3>What each path nets</h3>')
+    expect(html).toContain('<b>Collections and trial</b>')
+    expect(html).toContain('a settlement nets the office more than a full win at trial')
+    expect(html).toContain(`after your ${Math.round(packet.worth.contingencyPct * 100)}%`)
+  })
   it('lists the documents from the office under Section D and letters them as one exhibit (v2.4810)', () => {
     const { payload, m, packet } = sample()
     const html = buildFirmPacketPrintHtml(packet, { preparedOn: payload.preparedOn, companyName: company.name, firm: { name: payload.firm.name, handling: '' }, matter: { stage: m.stage, noteToFirm: m.noteToFirm, releasedAt: m.releasedAt, entries: m.entries, documents: m.documents, heldDocumentCount: m.heldDocumentCount }, particulars: payload.particulars })

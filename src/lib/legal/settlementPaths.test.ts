@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { legalSuitFiled, settlementLineAmount, settlementPaths, type SettlementPathsInput } from './settlementPaths'
+import { legalSuitFiled, settlementLineAmount, settlementPaths, settlementPathsOfMatter, type SettlementPathsInput } from './settlementPaths'
 import { plainWordsFailures } from '../plainWords'
 
 // The card's invented matter (to-dos/legal-desk-settlement-floor): two open bills $14,250, retainage no bill asks for
@@ -92,5 +92,20 @@ describe('settlementPaths — what each path nets (v2.6176, punch list #218 PR 3
     const { paths, line } = settlementPaths({ ...base, claim: 1000, offers: [], read: { ...read, costToTry: 5000 } })
     expect(line).toBeNull()
     expect(paths[0]!.keep).toBeLessThan(0)
+  })
+
+  it('the matter door (v2.6177) reads the standing offers and the current read from the entries, voided ones left out', () => {
+    const entry = (over: Record<string, unknown>) => ({ id: 'e', kind: 'offer', meta: {}, amount: null, occurred_on: '2026-10-20', created_at: '2026-10-20T10:00:00Z', via_portal: false, voided_at: null, created_by: null, ...over })
+    const entries = [
+      entry({ id: 'o1', amount: 9000, meta: { direction: 'received', status: 'open' } }),
+      entry({ id: 'o2', amount: 13500, occurred_on: '2026-10-22', meta: { direction: 'made', status: 'open', expires_on: '2026-11-05' } }),
+      entry({ id: 'o3', amount: 15000, meta: { direction: 'made', status: 'open' }, voided_at: '2026-10-23T00:00:00Z' }),
+      entry({ id: 'r1', kind: 'note', occurred_on: '2026-10-22', via_portal: true, meta: { read: { tries: 'hard', why: 'w', cost_to_try: 2800, months: 9 }, recordedBy: { id: 'x', name: 'D. Reyes' } } }),
+    ]
+    const { paths, line } = settlementPathsOfMatter({ claim: 16350, contingencyPct: 0.33, filingCost: 350 }, 'demand', entries)
+    expect(paths.map((p) => [p.key, p.keep])).toEqual([['offer:o1', 6030], ['offer:o2', 9045], ['trial', 7804.5]])
+    expect(paths[2]!.chip.text).toBe('hard to try')
+    expect(line?.amount).toBe(11648.51)
+    expect(settlementPathsOfMatter({ claim: 16350, contingencyPct: 0.33, filingCost: 350 }, 'suit', entries).line?.amount).toBe(12170.9)
   })
 })

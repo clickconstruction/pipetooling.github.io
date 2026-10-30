@@ -65,6 +65,8 @@ describe('LegalPortal — the sample matter', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Record of contact' }))
     expect(document.body.textContent).toMatch(/Acme Mechanical's contact record with this customer/)
     fireEvent.click(screen.getByRole('button', { name: 'Fees & steps' }))
+    // v2.6177 (punch list #218 PR 4): the same cards the office reads, under the matter card.
+    expect(document.querySelector('[data-legal-settlement-paths] [data-legal-settlement-path="trial"]')).toBeTruthy()
     // Punch list #218 PR 2: the firm's read of how the case tries is the fifth form.
     expect(screen.getByRole('button', { name: 'Save the read' })).toBeTruthy()
     expect(screen.getByLabelText('How this case tries')).toBeTruthy()

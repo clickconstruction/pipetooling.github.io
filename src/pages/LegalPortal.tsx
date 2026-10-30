@@ -392,7 +392,7 @@ export default function LegalPortal() {
               <FirmMatterView
                 packet={packet}
                 companyName={payload.company.name}
-                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
+                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, stage: selected.stage, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
                 tab={tab}
                 onTab={setTab}
                 onOpenCoverage={payload.coverage ? (county) => { setCoverageOpenOn({ county, nonce: Date.now() }); setPanel('coverage') } : undefined}
