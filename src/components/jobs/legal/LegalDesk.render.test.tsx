@@ -127,7 +127,7 @@ describe('LegalDesk', () => {
     renderWithProviders(<LegalDesk collectionsJobs={[]} {...baseProps} />)
     await settle()
     // The good state, in the one empty shape (punch list #184, sweep C).
-    expect(screen.getByText('Nothing is in Collections.').hasAttribute('data-empty-state')).toBe(true)
+    expect(screen.getByText('Nothing is in Collections.').closest('[data-empty-state]')?.textContent).toBe('Nothing is in Collections.')
   })
 })
 

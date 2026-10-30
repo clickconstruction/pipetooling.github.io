@@ -79,7 +79,7 @@ You tap {{button:outline|Job detail}} on the card, or a job on My Schedule. The 
 
 - {{button:green|Arrived}} posts an arrived note on the job's thread. Once you press it or clock in on the job, the button reads {{button:outline-amber|Leaving}} instead.
 - {{button:outline-amber|Leaving}} posts a leaving note. Then the On my way sheet opens for your next job. One press clocks the drive and texts the customer. With no next job on your schedule, Update Focus opens instead, so you can pick any job. The button reads Arrived again for when you come back.
-- {{button:blue|Leave report}} opens the field report form for this job. See [file and review field reports](/help/reports).
+- {{button:blue|Leave report}} opens the phone's camera, then the field report form for this job. Each shot goes with the report into the customer's Drive folder. See [take photos for a report](/help/take-photos-for-a-report) and [file and review field reports](/help/reports).
 - {{button:outline|Note}} opens a note box at the bottom of the screen, with the keyboard under it. You type the note. You press {{button:blue|Save}}. The note lands on the job's thread and the box closes.
 
 Masters and primaries open the tabbed window instead. On a phone the tabbed window's bar carries {{button:green|Arrived}} or {{button:outline-amber|Leaving}} when you are on the job's crew. {{button:outline|Note}} on that bar opens the same note box. See [the bar at the bottom](/help/job-window-tabs#on-a-phone-the-bar-at-the-bottom).

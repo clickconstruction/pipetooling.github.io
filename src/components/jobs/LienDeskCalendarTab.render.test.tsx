@@ -363,7 +363,7 @@ describe('before the Pipeline has read its billed jobs (v2.4321)', () => {
   it('an empty board that was read is empty: the count, then the sentence', () => {
     mount({ rows: [], isMobile: true })
     expect(screen.getByRole('button', { name: 'All · 0 jobs · $0' })).toBeTruthy()
-    expect(screen.getByText('Nothing billed is on a lien clock.').hasAttribute('data-empty-state')).toBe(true)
+    expect(screen.getByText('Nothing billed is on a lien clock.').closest('[data-empty-state]')?.textContent).toBe('Nothing billed is on a lien clock.')
     expect(screen.queryByText('Reading the board…')).toBeNull()
   })
 })
