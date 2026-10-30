@@ -56,6 +56,8 @@ When the app gets no answer at all, the line turns red. The line reads *Could no
 
 When your phone has no signal, the line reads *No signal.* in grey. Nothing is wrong with the app. The line goes when the signal is back.
 
+A clock press, a job note or a field report you make with no signal waits on the phone. The line counts it, like *No signal. 2 waiting to send ›*. Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for what waits and what does not.
+
 ## When the app is opening
 
 Opening the app during a slow spell used to end on the sign-in page. Now the loading screen reads *The app is slow right now. Keep this open.* Keep the tab open. The app signs you in as soon as it answers. You are not signed out.

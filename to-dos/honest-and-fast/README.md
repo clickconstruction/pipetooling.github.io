@@ -15,9 +15,9 @@ summary: >
   moment something has waited four seconds with nothing landing, adds "The page you see was read
   at 7:52 AM." on a kept page, says "Nothing you pressed is lost." only while #163's queue holds
   every press, and reads "Could not reach the app. Retry." when nothing answers at all.
-next: PR 4, Quickfill — the deck and each station's count and next line kept through `useKeptRead` with the stamp "Counts from 7:52 AM · counting again…", Done and Worked it held on a kept station, and the Roller running the hooks of the station on screen and the Focus view, not every station's; then PR 5 Messages. PR 1 (v2.6009) shipped the strip and the auth gate's hold; PR 2 (v2.6031) the shape; PR 3 (v2.6059) the phone's day. The role row is not kept on the device (PR 3 left it, see Where it stands). The words "Nothing you pressed is lost" and the press's green and red wait for #163's queue.
+next: PR 4, Quickfill — the deck and each station's count and next line kept through `useKeptRead` with the stamp "Counts from 7:52 AM · counting again…", Done and Worked it held on a kept station, and the Roller running the hooks of the station on screen and the Focus view, not every station's; then PR 5 Messages. PR 1 (v2.6009) shipped the strip and the auth gate's hold; PR 2 (v2.6031) the shape; PR 3 (v2.6059) the phone's day. The role row is not kept on the device (PR 3 left it, see Where it stands). The words "Nothing you pressed is lost" and the press's green and red shipped with #163's queue (v2.6099).
 size: L as a train of five (S · M · M · M · S), no migration
-blocker: none for PRs 1 to 5; the strip's last words and the press's life on it need #163's queue.
+blocker: none for PRs 1 to 5; the strip's last words and the press's life on it shipped with #163's queue (v2.6099).
 ver: v2.6009 · 6031 · 6059
 opinion: build — the owner took the five calls as recommended on 2026-10-26; PR 1 ships alone and changes a slow morning by itself; give the Dashboard's 630 reads a to-do of their own
 ---
@@ -38,7 +38,7 @@ and asked: *"Can you build a mockup of what this could look like and present it 
 This is a proposal. Nothing here is built until the owner picks. Two things were respected in
 drawing it: the line must be true, so *nothing you pressed is lost* can be said only where a
 press is kept and retried, which is #163's queue
-([`offline-field-queue`](../offline-field-queue/README.md)); and a kept read must say when it
+([v2.6099](../../docs/recent-features/v2.6099.md)); and a kept read must say when it
 was read and that it is being read again, and never pass as live.
 
 ## Today, read and measured
@@ -338,10 +338,10 @@ No migration. No edge function.
 4. **PR 4, Quickfill** (M). The deck and each station's count and next line kept; the Roller
    runs the hooks of the station on screen and the Focus view, not every station's.
 5. **PR 5, Messages** (S). The queue and the bar's counts kept.
-6. **Later, with #163.** The queue's count and door join the strip; *Nothing you pressed is
-   lost* turns on; the press's four steps of part 3 draw in the strip's amber, green and red, with
-   the per-press id in #163's kernel. The Dashboard's reads get their own to-do before its cards
-   are kept.
+6. **With #163, shipped as its PR 2** (v2.6099). The queue's count and door joined the strip;
+   *Nothing you pressed is lost* turned on; the press's four steps of part 3 draw in the strip's
+   amber, green and red, with the per-press id in #163's kernel (v2.6074). The Dashboard's reads
+   get their own to-do before its cards are kept.
 
 ## The mock-up
 
