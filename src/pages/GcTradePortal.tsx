@@ -11,6 +11,10 @@ import { tradePortalState } from '../lib/gc/tradePortalState'
 import { staffAwarePublicHeaders } from '../lib/publicFunctionStaffHeaders'
 import { PUBLIC_PREVIEW_PARAM, isPreviewFlag } from '../lib/publicViewCounting'
 import { INK, PAPER, PORTAL_FONT } from '../lib/portal/portalTheme'
+import { portalShapeMode } from '../lib/portal/portalShape'
+import { withSampleMoves } from '../lib/gc/movedDatesRow'
+import { gcTradePortalSampleScheduleWork } from '../../supabase/functions/_shared/gcTradePortalSample'
+import { useOptionalAuth } from '../hooks/useAuth'
 
 /**
  * GC mode, the trade partner portal (P1b-ii-b, to-dos/gc-mode/PORTAL_REAL_BUILD.md): the no-password page a company
@@ -35,7 +39,9 @@ export default function GcTradePortal() {
     try {
       const res = await fetch(`${supabaseUrl}/functions/v1/gc-trade-portal?t=${encodeURIComponent(token)}${preview ? `&${PUBLIC_PREVIEW_PARAM}=1` : ''}`, { headers: await staffAwarePublicHeaders() })
       const body = (await res.json().catch(() => null)) as unknown
-      return readTradePortalAnswer(res.ok, body)
+      const answer = readTradePortalAnswer(res.ok, body)
+      // Punch list #217 (outside-13): the sample's moves by line come from the fixture until the function carries them.
+      return answer.kind === 'ready' && answer.sample ? { ...answer, scheduleWork: withSampleMoves(answer.scheduleWork, gcTradePortalSampleScheduleWork(answer.today).scheduleWork) } : answer
     } catch {
       return { kind: 'error', key: 'linkFailed' }
     }
@@ -53,6 +59,10 @@ export default function GcTradePortal() {
   }, [read, tries])
 
   const ready = page.kind === 'ready' ? page : null
+  // Punch list #217 (outside-13): the moved dates on the trade's own row, behind the page's own switch (`?shape=1`), and
+  // beside today's look for the office (`?sbs=1` on the sample, or a signed-in dev).
+  const auth = useOptionalAuth()
+  const shape = portalShapeMode(params, { sample: ready?.sample === true, dev: auth?.role === 'dev' })
   const mapped = useMemo(() => (ready ? tradePortalState(ready.slice, ready.today) : null), [ready])
   const messages = useMemo(() => (ready ? sentMessages(ready.slice) : []), [ready])
   const planUrl = useCallback((projectId: string, rev: number) => (ready ? setDriveUrl(ready.slice, projectId, rev) : ''), [ready])
@@ -129,6 +139,7 @@ export default function GcTradePortal() {
           schedules={page.schedules}
           scheduleWork={page.scheduleWork}
           scheduleTodos={page.scheduleTodos}
+          shape={shape}
           flow={page.flow}
         />
         </PortalBillDayContext.Provider>

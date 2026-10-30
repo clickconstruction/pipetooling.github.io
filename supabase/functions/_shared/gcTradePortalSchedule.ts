@@ -175,6 +175,15 @@ export function portalSchedulesFromRows(rows: TradeScheduleRows, companyId: stri
   return out
 }
 
+/** One line a move changed, with its days before and after (punch list #217, outside-13). */
+export interface WorkMovedLine {
+  lineId: string
+  /** The line's own name, without the trade: "Trim and fixtures". */
+  work: string
+  from: { start: string; finish: string }
+  to: { start: string; finish: string }
+}
+
 /** A move the company was told of and has not answered (G-113): its message, rebuilt in the company's language today. */
 export interface WorkDates {
   moveId: string
@@ -182,6 +191,14 @@ export interface WorkDates {
   subject: string
   /** The message's lines after its greeting, as the email had them. */
   lines: string[]
+  /**
+   * The lines the move changed, each with its days before and after (punch list #217, outside-13), so the portal can
+   * draw the move on the line's own row. Absent from a function deployed before it: the page then keeps the block.
+   */
+  moves?: WorkMovedLine[]
+  /** Why, as the office picked it (`ScheduleMoveReason`), and in its own words. Absent from a function deployed before it. */
+  reason?: string
+  note?: string
 }
 
 /** Where the company's newest notice on a bar stands, as its portal shows it. */
@@ -256,7 +273,16 @@ export function portalScheduleWorkFromRows(rows: TradeScheduleRows, companyId: s
   for (const { projectId, state, project } of jobStates(rows, companyId, today)) {
     const dates = datesNotices(state, companyId, lang)
       .filter((n) => n.project.id === projectId)
-      .map((n) => ({ moveId: n.move.id, toldOn: n.move.toldOn ?? n.move.on, subject: n.message.subject, lines: n.message.lines.slice(1) }))
+      .map((n) => ({
+        moveId: n.move.id,
+        toldOn: n.move.toldOn ?? n.move.on,
+        subject: n.message.subject,
+        lines: n.message.lines.slice(1),
+        // Punch list #217 (outside-13): the move's days by line, so the portal can draw it on the line's own row.
+        moves: n.lines.map((l) => ({ lineId: l.lineId, work: l.work, from: { ...l.from }, to: { ...l.to } })),
+        reason: n.move.reason,
+        note: n.move.note,
+      }))
     const late = (project.schedule?.activities ?? []).flatMap((a): WorkLate[] => {
       const door = lateDoor(state, project, companyId, a.lineId)
       if (!door) return []

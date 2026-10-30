@@ -54,7 +54,7 @@ const THUMB_W = Math.round(PHONE_WIDTH * THUMB_SCALE)
 const THUMB_H = 220
 const FRAME_H = 760
 /** Punch list #217: the sample pages with a prototype behind `?shape=1`; each gets a *Side by side* press that opens today's look above it (`?sbs=1`). */
-const SIDE_BY_SIDE_STEPS: ReadonlySet<string> = new Set(['customer-portal'])
+const SIDE_BY_SIDE_STEPS: ReadonlySet<string> = new Set(['customer-portal', 'gc-trade-portal'])
 
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.85rem 1rem', marginBottom: '0.9rem' }
 const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }

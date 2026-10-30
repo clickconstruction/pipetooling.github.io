@@ -16,15 +16,31 @@ import { PortalBlock } from './GcTradePortalUi'
  * dates and the dates to meet sit above the bars, on the whole job's own axis, and never another company's bars.
  */
 
-const C = { blue: '#3b82f6', green: '#16a34a', faint: '#9ca3af' }
+const C = { blue: '#3b82f6', green: '#16a34a', faint: '#9ca3af', amber: '#d97706' }
 
-export function GcTradePortalSchedule({ schedule, today, ownRow }: { schedule: PortalSchedule; today: string; ownRow?: (bar: PortalScheduleBar) => ReactNode }) {
+export function GcTradePortalSchedule({
+  schedule,
+  today,
+  ownRow,
+  ghost,
+}: {
+  schedule: PortalSchedule
+  today: string
+  ownRow?: (bar: PortalScheduleBar) => ReactNode
+  /** Punch list #217 (outside-13): the old days of one of its own bars, a dashed ghost behind it with a label; none as today. */
+  ghost?: (bar: PortalScheduleBar) => { start: string; finish: string; label: string } | null
+}) {
   const { lang, t } = usePortalLang()
   const s = schedule
   const x = (on: string) => `${portalScheduleX(s, on)}%`
   const w = (b: PortalScheduleBar) => `${((daysBetween(b.start, b.finish) + 1) / Math.max(1, daysBetween(s.first, s.last) + 1)) * 100}%`
+  const wSpan = (start: string, finish: string) => `${((daysBetween(start, finish) + 1) / Math.max(1, daysBetween(s.first, s.last) + 1)) * 100}%`
   const row = (b: PortalScheduleBar) => {
     const done = b.pct >= 100
+    // The ghost of the old days (punch list #217, outside-13), kept inside the chart's span.
+    const asked = b.mine && ghost ? ghost(b) : null
+    const clamped = asked ? { ...asked, start: asked.start < s.first ? s.first : asked.start, finish: asked.finish > s.last ? s.last : asked.finish } : null
+    const g = clamped && clamped.start <= clamped.finish ? clamped : null
     return (
       <div key={b.lineId} data-portal-bar={b.mine ? 'mine' : 'theirs'} style={{ display: 'contents' }}>
         <div style={{ minWidth: 0, fontSize: '0.85rem', color: b.mine ? INK : MUTED }}>
@@ -36,7 +52,15 @@ export function GcTradePortalSchedule({ schedule, today, ownRow }: { schedule: P
             {b.slipDays > 0 ? ` · ${t('schedMoved', { days: b.slipDays })}` : ''}
           </div>
         </div>
-        <div style={{ position: 'relative', height: 30 }}>
+        <div style={{ position: 'relative', height: g ? 44 : 30 }}>
+          {g && (
+            <>
+              <span aria-hidden data-portal-ghost={b.lineId} title={g.label} style={{ position: 'absolute', left: x(g.start), width: wSpan(g.start, g.finish), top: 8, height: 14, borderRadius: 4, boxSizing: 'border-box', border: `1.5px dashed ${C.amber}`, background: 'var(--bg-amber-100)', opacity: 0.8 }} />
+              <span data-portal-ghost-label style={{ position: 'absolute', left: x(g.start), top: 25, fontSize: '0.66rem', lineHeight: 1.2, color: MUTED, whiteSpace: 'nowrap' }}>
+                {g.label}
+              </span>
+            </>
+          )}
           <span
             title={`${b.label}: ${pDate(lang, b.start)} – ${pDate(lang, b.finish)}`}
             style={{
