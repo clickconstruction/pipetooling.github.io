@@ -2,7 +2,7 @@
 name: "Job Parts Tally: the Choose job sheet finds a job and leads with the jobs you were on"
 number: 216
 group: close
-status: asked 2026-10-29 from the owner's phone · mocked up 2026-10-29 (three drafts, Draft A picked) · revised the same evening on the owner's "is that the best you can do? I want to see what I am searching for highlighted" (the typed run lit where it landed, number hits first, a customer hit shows the customer line) · the owner's yes 2026-10-29 · built v2.6114 (PR open)
+status: asked 2026-10-29 from the owner's phone · mocked up 2026-10-29 (three drafts, Draft A picked) · revised the same evening on the owner's "is that the best you can do? I want to see what I am searching for highlighted" (the typed run lit where it landed, number hits first, a customer hit shows the customer line) · the owner's yes 2026-10-29 · built v2.6114 (PR #6493, auto-merge armed)
 summary: >
   The Choose job sheet on the tally lists every job the viewer can see, newest number first,
   four hundred rows deep, with no way to search and nothing of the viewer's own day in it.
