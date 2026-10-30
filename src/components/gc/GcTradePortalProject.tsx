@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { GC_COMPANY } from '../../lib/gc/company'
 import { planLabel } from '../../lib/gc/lookups'
 import { questionsCloseOn } from '../../lib/gc/planQuestions'
@@ -6,7 +6,11 @@ import { bidIsStale } from '../../lib/gc/bids'
 import { exclusionListWords } from '../../lib/gc/exclusions'
 import { bidGoodUntil, bidRanOut, portalClosedWords, portalContacts, portalLeavesOut, portalPlanNews, portalPromiseLine, portalQuestions, portalQuoteDue, portalVetting, unclearLines } from '../../lib/gc/portal'
 import { pDate, pWeekday } from '../../lib/gc/portalI18n'
-import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
+import type { PortalSchedule, PortalScheduleBar } from '../../lib/gc/schedule/portalSchedule'
+import { datesLeftForBlock, movedRowsByLine } from '../../lib/gc/movedDatesRow'
+import { PORTAL_SHAPE_LABEL, type PortalShapeMode } from '../../lib/portal/portalShape'
+import { PortalSideBySide } from '../portal/PortalSideBySide'
+import { GcTradePortalMovedRow } from './GcTradePortalMovedRow'
 import type { ScheduleWork } from '../../../supabase/functions/_shared/gcTradePortalSchedule'
 import type { GcProject, Invite, Partner, TradePackage } from '../../lib/gc/types'
 import { daysUntil, money } from '../../lib/gc/words'
@@ -44,6 +48,7 @@ export function GcTradePortalProject({
   onHome,
   schedule = null,
   work = null,
+  shape = 'today',
 }: {
   project: GcProject
   partner: Partner
@@ -55,11 +60,43 @@ export function GcTradePortalProject({
   schedule?: PortalSchedule | null
   /** Its side of the schedule on this job (the Portal's P5d-ii): dates to answer, late doors, look-ahead, crew. Null: none. */
   work?: ScheduleWork | null
+  /** Punch list #217 (outside-13): today's page, the moved dates on the trade's own row, or both one above the other. */
+  shape?: PortalShapeMode
 }) {
-  const { t } = usePortalLang()
+  const { lang, t } = usePortalLang()
   // No press provider: the portal reads only, and none of the schedule's presses is drawn (P5d-ii-2).
   const pressing = usePortalPress() !== null
   const mine = project.packages.flatMap((pkg) => pkg.invites.filter((i) => i.partnerId === partner.id).map((invite) => ({ pkg, invite })))
+  const building = project.stage === 'building'
+  const lateDoor = (bar: PortalScheduleBar) => {
+    const late = pressing ? work?.late.find((l) => l.lineId === bar.lineId) : undefined
+    return late ? <GcTradePortalLate late={late} today={today} /> : null
+  }
+  const chartToday = schedule && building ? <GcTradePortalSchedule schedule={schedule} today={today} ownRow={lateDoor} /> : null
+  // Punch list #217 (outside-13): each told move on the trade's own row — the ghost of its old days behind the bar, the
+  // reason as a chip and the two answers under it — and the block keeps only the moves no row of the chart draws.
+  const moved = useMemo(() => movedRowsByLine(work?.dates ?? [], lang), [work, lang])
+  const datesLeft = useMemo(() => datesLeftForBlock(work?.dates ?? [], new Set((schedule?.mine ?? []).map((b) => b.lineId))), [work, schedule])
+  const chartShape =
+    schedule && building ? (
+      <GcTradePortalSchedule
+        schedule={schedule}
+        today={today}
+        ghost={(bar) => {
+          const row = moved.get(bar.lineId)
+          return row?.ghost ? { ...row.ghost, label: row.wasLabel } : null
+        }}
+        ownRow={(bar) => {
+          const row = moved.get(bar.lineId)
+          return (
+            <>
+              {row ? <GcTradePortalMovedRow row={row} /> : null}
+              {lateDoor(bar)}
+            </>
+          )
+        }}
+      />
+    ) : null
   return (
     <div style={{ padding: '0.9rem', display: 'grid', gap: '0.9rem' }}>
       <div>
@@ -79,20 +116,44 @@ export function GcTradePortalProject({
       </div>
       {/* Its chart first, under the job's name (the schedule's PR 14b, gc 3's pick): its dates frame everything below. Under
           each of its own bars, the late door (P5d-ii-2). Then the two blocks that ask something of it (amendment 2). */}
-      {schedule && project.stage === 'building' && (
-        <GcTradePortalSchedule
-          schedule={schedule}
-          today={today}
-          ownRow={(bar) => {
-            const late = pressing ? work?.late.find((l) => l.lineId === bar.lineId) : undefined
-            return late ? <GcTradePortalLate late={late} today={today} /> : null
-          }}
-        />
-      )}
-      {work && pressing && project.stage === 'building' && (
+      {shape === 'today' ? (
         <>
-          <GcTradePortalDatesMoved dates={work.dates} />
-          <GcTradePortalLookAhead weeks={work.lookAhead} crew={work.crew} />
+          {chartToday}
+          {work && pressing && building && (
+            <>
+              <GcTradePortalDatesMoved dates={work.dates} />
+              <GcTradePortalLookAhead weeks={work.lookAhead} crew={work.crew} />
+            </>
+          )}
+        </>
+      ) : shape === 'shape' ? (
+        <>
+          {chartShape}
+          {work && pressing && building && (
+            <>
+              {datesLeft.length > 0 && <GcTradePortalDatesMoved dates={datesLeft} />}
+              <GcTradePortalLookAhead weeks={work.lookAhead} crew={work.crew} />
+            </>
+          )}
+        </>
+      ) : (
+        <>
+          <PortalSideBySide
+            label={PORTAL_SHAPE_LABEL}
+            today={
+              <div style={{ display: 'grid', gap: '0.9rem' }}>
+                {chartToday}
+                {work && pressing && building && <GcTradePortalDatesMoved dates={work.dates} />}
+              </div>
+            }
+            shape={
+              <div style={{ display: 'grid', gap: '0.9rem' }}>
+                {chartShape}
+                {work && pressing && building && datesLeft.length > 0 && <GcTradePortalDatesMoved dates={datesLeft} />}
+              </div>
+            }
+          />
+          {work && pressing && building && <GcTradePortalLookAhead weeks={work.lookAhead} crew={work.crew} />}
         </>
       )}
       {mine.length === 0 && <div>{t('noInvite')}</div>}

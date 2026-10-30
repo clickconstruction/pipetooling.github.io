@@ -8,6 +8,7 @@ import type { TradeFlowRows } from '../../../supabase/functions/_shared/gcTradeF
 import { todayNoon, tradeFirstPage, withoutPageTodos, type TradePagePress } from '../../lib/portal/tradeFirstPage'
 import type { PortalAsk, PortalTodo } from '../../lib/gc/portal'
 import type { PortalSchedule } from '../../lib/gc/schedule/portalSchedule'
+import type { PortalShapeMode } from '../../lib/portal/portalShape'
 import type { GcState, Partner } from '../../lib/gc/types'
 import { HAIR, INK, MUTED, PAPER, PORTAL_FONT } from '../../lib/portal/portalTheme'
 import { Btn, Chip } from './gcUi'
@@ -45,6 +46,7 @@ export function GcTradePortalView({
   scheduleWork = {},
   scheduleTodos = [],
   flow = null,
+  shape = 'today',
 }: {
   state: GcState
   partnerId: string
@@ -61,6 +63,8 @@ export function GcTradePortalView({
   scheduleTodos?: PortalTodo[]
   /** The company's trade flow rows, for the home's first page (Messages cut 8c). Null: the home as it was. */
   flow?: TradeFlowRows | null
+  /** Punch list #217 (outside-13): today's page, the moved dates on the trade's own row, or both one above the other. */
+  shape?: PortalShapeMode
 }) {
   const partner = state.partners.find((p) => p.id === partnerId)
   const [viewId, setViewId] = useState<string | null>(null)
@@ -131,7 +135,7 @@ export function GcTradePortalView({
         ) : screen === 'papers' ? (
           <GcTradePortalPapersPage state={state} partner={partner} onHome={() => go(null)} onOpenProject={(id) => go(id)} />
         ) : shown ? (
-          <GcTradePortalProject project={shown} partner={partner} today={state.today} planUrl={(rev) => planUrl(shown.id, rev)} onHome={() => go(null)} schedule={schedules[shown.id] ?? null} work={scheduleWork[shown.id] ?? null} />
+          <GcTradePortalProject project={shown} partner={partner} today={state.today} planUrl={(rev) => planUrl(shown.id, rev)} onHome={() => go(null)} schedule={schedules[shown.id] ?? null} work={scheduleWork[shown.id] ?? null} shape={shape} />
         ) : (
           <div style={{ padding: '0.9rem' }}>
             <Home state={state} partner={partner} scheduleTodos={scheduleTodos} flow={flow} onOpenProject={go} onPapers={() => setScreen('papers')} />

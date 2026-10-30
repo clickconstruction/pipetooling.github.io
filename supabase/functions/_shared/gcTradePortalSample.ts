@@ -325,6 +325,10 @@ export function gcTradePortalSampleScheduleWork(today: string): { scheduleWork: 
               'Why: weather: Two days of rain held the drywall.',
               'In your portal, tell us the dates work, or give us another day.',
             ],
+            // The move by line (punch list #217, outside-13): three days later, as the email's second line says.
+            moves: [{ lineId: ID.jobLine2, work: 'Trim and fixtures', from: { start: d(9), finish: d(15) }, to: { start: d(12), finish: d(18) } }],
+            reason: 'weather',
+            note: 'Two days of rain held the drywall.',
           },
         ],
         late: [
