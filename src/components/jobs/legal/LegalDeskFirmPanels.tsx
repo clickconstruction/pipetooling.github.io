@@ -10,7 +10,7 @@ import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPorta
 
 import { OFFER_NEXT_STATUSES, isOfferEntry, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 
-import { MUTED, btn, btnPrimary, SectionTitle, Table, type EntryLike } from './legalDeskShared'
+import { MUTED, btn, btnPrimary, Table, type EntryLike } from './legalDeskShared'
 import { EmptyState } from '../../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../../lib/emptyWords'
 
