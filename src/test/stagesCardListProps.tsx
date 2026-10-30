@@ -44,6 +44,7 @@ export function makeStagesCardListProps(overrides: Partial<JobsStagesTableProps>
     stagesManHoursByJobId: new Map(),
     stagesManHoursLoading: false,
     crewByJobId: new Map(),
+    checklistMarksFor: () => null,
     stagesLaborBreakdownByJobId: new Map(),
     expandedJobThreadId: null,
     toggleStagesJobThreadExpanded: vi.fn(),
