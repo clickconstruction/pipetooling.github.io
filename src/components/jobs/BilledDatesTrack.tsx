@@ -30,27 +30,38 @@ const GREEN_HATCH = 'repeating-linear-gradient(135deg, #86efac 0 3px, var(--bg-g
 const RED_HATCH = 'repeating-linear-gradient(135deg, #fca5a5 0 3px, var(--bg-red-tint) 3px 6px)'
 const AMBER_HATCH = 'repeating-linear-gradient(135deg, #fcd34d 0 3px, var(--bg-amber-tint) 3px 6px)'
 
-const TRACK_H = 64
-const LINE_Y = 33
 const FLAG_H = 12
+/** One label is two lines, the bold word and the quiet one under it. */
+const LABEL_H = 22
+/** The track's rows: a label row above the axis and one below, each doubled only when a second tier is in use. */
+type Geo = { lineY: number; trackH: number }
+function geoFor(marks: ReadonlyArray<BilledTrackMark>): Geo {
+  const up = marks.some((m) => m.side === 'up' && m.tier === 1) ? 2 : 1
+  const down = marks.some((m) => m.side === 'down' && m.tier === 1) ? 2 : 1
+  const lineY = 12 + LABEL_H * up
+  return { lineY, trackH: lineY + 9 + LABEL_H * down }
+}
 
-function bandStyle(kind: TrackModel['band'] extends infer B ? (B extends { kind: infer K } ? K : never) : never, tone: LedgerTone): CSSProperties {
-  const base: CSSProperties = { position: 'absolute', top: LINE_Y - 5, height: 10, borderRadius: 3, boxSizing: 'border-box' }
+function bandStyle(kind: TrackModel['band'] extends infer B ? (B extends { kind: infer K } ? K : never) : never, tone: LedgerTone, g: Geo): CSSProperties {
+  const base: CSSProperties = { position: 'absolute', top: g.lineY - 5, height: 10, borderRadius: 3, boxSizing: 'border-box' }
   if (kind === 'room') return { ...base, background: tone === 'amber' ? AMBER_HATCH : GREEN_HATCH }
   if (kind === 'short') return { ...base, background: RED_HATCH }
   if (kind === 'due') return { ...base, background: tone === 'red' ? RED_HATCH : AMBER_HATCH }
-  if (kind === 'gone') return { ...base, top: 0, height: TRACK_H, borderRadius: 0, background: 'var(--bg-subtle)', borderLeft: '2px solid #dc2626' }
+  if (kind === 'gone') return { ...base, top: 0, height: g.trackH, borderRadius: 0, background: 'var(--bg-subtle)', borderLeft: '2px solid #dc2626' }
   return { ...base, border: `1px dotted ${tone === 'amber' || tone === 'red' ? MARK[tone] : 'var(--border-strong)'}`, background: 'transparent' }
 }
 
-function labelStyle(m: BilledTrackMark): CSSProperties {
+function labelStyle(m: BilledTrackMark, g: Geo): CSSProperties {
   const edge = m.align === 'left' ? { left: `${m.pct}%`, transform: 'translateX(-4px)' } : m.align === 'right' ? { left: `${m.pct}%`, transform: 'translateX(calc(-100% + 4px))' } : { left: `${m.pct}%`, transform: 'translateX(-50%)' }
-  return { position: 'absolute', ...edge, top: m.side === 'up' ? 0 : LINE_Y + 9, lineHeight: 1.15, whiteSpace: 'nowrap', textAlign: m.align === 'right' ? 'right' : m.align === 'left' ? 'left' : 'center', fontSize: 10, pointerEvents: 'none' }
+  // Tier 0 hugs the axis; tier 1 sits one label further out, so two crowded marks never overprint.
+  const top = m.side === 'up' ? g.lineY - 12 - LABEL_H - (m.tier === 1 ? LABEL_H : 0) : g.lineY + 9 + (m.tier === 1 ? LABEL_H : 0)
+  return { position: 'absolute', ...edge, top, lineHeight: 1.15, whiteSpace: 'nowrap', textAlign: m.align === 'right' ? 'right' : m.align === 'left' ? 'left' : 'center', fontSize: 10, pointerEvents: 'none' }
 }
 
-function Glyph({ m }: { m: BilledTrackMark }) {
+function Glyph({ m, g }: { m: BilledTrackMark; g: Geo }) {
   const color = MARK[m.tone]
-  if (m.glyph === 'today') return <span aria-hidden style={{ position: 'absolute', left: `calc(${m.pct}% - 0.5px)`, top: 4, width: 1, height: LINE_Y + 3, background: '#2563eb' }} />
+  const LINE_Y = g.lineY
+  if (m.glyph === 'today') return <span aria-hidden style={{ position: 'absolute', left: `calc(${m.pct}% - 0.5px)`, top: LINE_Y - 30, width: 1, height: 36, background: '#2563eb' }} />
   if (m.glyph === 'dot') return <span aria-hidden style={{ position: 'absolute', left: `calc(${m.pct}% - 4.5px)`, top: LINE_Y - 4.5, width: 9, height: 9, borderRadius: '50%', background: color }} />
   if (m.glyph === 'ring_dashed') return <span aria-hidden style={{ position: 'absolute', left: `calc(${m.pct}% - 6px)`, top: LINE_Y - 6, width: 12, height: 12, borderRadius: '50%', border: `2px dashed ${color}`, background: 'var(--surface)', boxSizing: 'border-box' }} />
   if (m.glyph === 'ring_solid') return <span aria-hidden style={{ position: 'absolute', left: `calc(${m.pct}% - 6px)`, top: LINE_Y - 6, width: 12, height: 12, borderRadius: '50%', border: `2.5px solid ${color}`, background: 'var(--surface)', boxSizing: 'border-box' }} />
@@ -64,7 +75,7 @@ function Glyph({ m }: { m: BilledTrackMark }) {
   )
 }
 
-const pressStyle: CSSProperties = { position: 'absolute', top: 0, height: TRACK_H, width: 22, transform: 'translateX(-11px)', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }
+const pressStyle: CSSProperties = { position: 'absolute', top: 0, bottom: 0, width: 22, transform: 'translateX(-11px)', padding: 0, border: 'none', background: 'transparent', cursor: 'pointer' }
 const chipStyle = (tone: LedgerTone, door: boolean): CSSProperties => ({ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '1px 7px', borderRadius: 999, fontSize: '0.6875rem', lineHeight: 1.3, border: `1px solid ${tone === 'done' || tone === 'plain' ? 'var(--border-strong)' : MARK[tone]}`, color: INK[tone], background: 'var(--surface)', font: 'inherit', cursor: door ? 'pointer' : 'default', whiteSpace: 'nowrap', maxWidth: '100%', overflow: 'hidden', textOverflow: 'ellipsis' })
 
 export default function BilledDatesTrack({ track, onMoney, onLienDesk, onPaySpeeds }: { track: TrackModel; /** Opens They said… / New date…. */ onMoney?: () => void; /** Opens the job's Lien window. */ onLienDesk?: () => void; /** Opens the pay-speeds breakdown, the forecast's door. */ onPaySpeeds?: () => void }) {
@@ -81,13 +92,15 @@ export default function BilledDatesTrack({ track, onMoney, onLienDesk, onPaySpee
   const bandDoor = band ? doorFor(band.action) : undefined
   const tag = track.tag
   const tagDoor = tag ? (tag.action === 'pay-speeds' ? onPaySpeeds : tag.action === 'new-date' ? onMoney : undefined) : undefined
+  const g = geoFor(track.marks)
+  const LINE_Y = g.lineY
   return (
     <div data-testid="billed-dates-track" aria-label={track.full} style={{ width: '100%', maxWidth: '100%', marginTop: '0.35rem', textAlign: 'left', fontVariantNumeric: 'tabular-nums' }}>
-      <div style={{ position: 'relative', height: TRACK_H }}>
+      <div style={{ position: 'relative', height: g.trackH }}>
         <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: LINE_Y, height: 1, background: 'var(--border-strong)' }} />
         {band ? (
           <>
-            <div role="img" aria-label={band.label} title={band.title} data-testid="billed-track-band" data-kind={band.kind} style={{ ...bandStyle(band.kind, band.tone), left: `${band.fromPct}%`, width: `${Math.max(0.6, band.toPct - band.fromPct)}%` }} />
+            <div role="img" aria-label={band.label} title={band.title} data-testid="billed-track-band" data-kind={band.kind} style={{ ...bandStyle(band.kind, band.tone, g), left: `${band.fromPct}%`, width: `${Math.max(0.6, band.toPct - band.fromPct)}%` }} />
             {band.toPct - band.fromPct >= 24 && band.kind !== 'gone' ? (
               <span aria-hidden style={{ position: 'absolute', left: `${(band.fromPct + band.toPct) / 2}%`, transform: 'translateX(-50%)', top: LINE_Y - 4, fontSize: 8, lineHeight: 1, fontWeight: 700, color: INK[band.tone], whiteSpace: 'nowrap', pointerEvents: 'none' }}>{band.label}</span>
             ) : null}
@@ -99,8 +112,8 @@ export default function BilledDatesTrack({ track, onMoney, onLienDesk, onPaySpee
           const ink = m.key === 'today' ? 'var(--text-link)' : m.bold || m.tone === 'amber' || m.tone === 'red' ? INK[m.tone] : 'var(--text-strong)'
           return (
             <span key={m.key} data-testid={`billed-track-mark-${m.key}`} data-glyph={m.glyph}>
-              <Glyph m={m} />
-              <span style={labelStyle(m)}>
+              <Glyph m={m} g={g} />
+              <span style={labelStyle(m, g)}>
                 <b style={{ display: 'block', fontWeight: 600, color: ink }}>{m.label}</b>
                 <span style={{ display: 'block', fontSize: 9, color: m.key === 'money' && m.glyph === 'ring_dashed' ? INK[m.tone] : 'var(--text-muted)' }}>{m.sub}</span>
               </span>

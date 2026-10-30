@@ -27,6 +27,8 @@ export type BilledTrackMark = {
   side: 'up' | 'down'
   /** A label near an edge hangs inward so it stays on the track. */
   align: 'left' | 'center' | 'right'
+  /** Two marks on one side closer than `COLLIDE_PCT` take turns: the second's label sits one line further from the axis. */
+  tier: 0 | 1
   glyph: TrackGlyph
   tone: LedgerTone
   bold: boolean
@@ -75,6 +77,8 @@ const PAD_PCT = 7
 const MIN_SPAN_DAYS = 14
 /** A mark past this percent hangs its label to the left; before `100 - EDGE_PCT`, to the right. */
 const EDGE_PCT = 82
+/** Marks on one side of the axis closer than this many percent would overprint at a Pipeline cell's width. */
+export const COLLIDE_PCT = 16
 
 function alignFor(pct: number): BilledTrackMark['align'] {
   return pct >= EDGE_PCT ? 'right' : pct <= 100 - EDGE_PCT ? 'left' : 'center'
@@ -114,24 +118,31 @@ export function buildBilledDatesTrack(ledger: BilledDatesLedger, todayYmd: strin
   for (const r of dated) {
     const p = pct(r.ymd)
     if (r.key === 'billed') {
-      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: 'Billed', sub: r.date, side: 'up', align: alignFor(p), glyph: 'dot', tone: r.tone, bold: false, action: null, title: r.title })
+      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: 'Billed', sub: r.date, side: 'up', align: alignFor(p), tier: 0, glyph: 'dot', tone: r.tone, bold: false, action: null, title: r.title })
     } else if (r.key === 'money') {
       money = r
       const promise = r.label === 'They said'
-      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: promise ? r.date : `~${r.date}`, sub: promise ? 'their word' : 'guessed', side: 'up', align: alignFor(p), glyph: promise ? 'ring_solid' : 'ring_dashed', tone: promise ? 'blue' : r.tone, bold: false, action: r.action, title: r.title })
+      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: promise ? r.date : `~${r.date}`, sub: promise ? 'their word' : 'guessed', side: 'up', align: alignFor(p), tier: 0, glyph: promise ? 'ring_solid' : 'ring_dashed', tone: promise ? 'blue' : r.tone, bold: false, action: r.action, title: r.title })
     } else if (r.key === 'filed') {
-      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: 'Lien filed', sub: r.date, side: 'down', align: alignFor(p), glyph: 'check', tone: 'green', bold: false, action: r.action, title: r.title })
+      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: 'Lien filed', sub: r.date, side: 'down', align: alignFor(p), tier: 0, glyph: 'check', tone: 'green', bold: false, action: r.action, title: r.title })
     } else if (r.key === 'closed') {
       deadline = r
-      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: r.label, sub: r.date, side: 'down', align: alignFor(p), glyph: 'flag', tone: 'red', bold: false, action: r.action, title: r.title })
+      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: r.label, sub: r.date, side: 'down', align: alignFor(p), tier: 0, glyph: 'flag', tone: 'red', bold: false, action: r.action, title: r.title })
     } else {
       deadline = r
-      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: `${r.label} by ${r.date}`, sub: r.far, side: 'down', align: alignFor(p), glyph: 'flag', tone: r.tone, bold: r.bold, action: r.action, title: r.title })
+      marks.push({ key: r.key, pct: p, ymd: r.ymd, label: `${r.label} by ${r.date}`, sub: r.far, side: 'down', align: alignFor(p), tier: 0, glyph: 'flag', tone: r.tone, bold: r.bold, action: r.action, title: r.title })
     }
   }
   const todayPct = pct(todayYmd)
-  marks.push({ key: 'today', pct: todayPct, ymd: todayYmd, label: 'today', sub: formatYmdMonthDay(todayYmd), side: 'down', align: alignFor(todayPct), glyph: 'today', tone: 'blue', bold: false, action: null, title: `Today, ${formatYmdMonthDay(todayYmd)}` })
+  marks.push({ key: 'today', pct: todayPct, ymd: todayYmd, label: 'today', sub: formatYmdMonthDay(todayYmd), side: 'down', align: alignFor(todayPct), tier: 0, glyph: 'today', tone: 'blue', bold: false, action: null, title: `Today, ${formatYmdMonthDay(todayYmd)}` })
   marks.sort((a, b) => a.pct - b.pct)
+  // Crowded labels take turns: on each side, a mark within COLLIDE_PCT of the one before it flips to the other tier.
+  const last: Record<'up' | 'down', BilledTrackMark | null> = { up: null, down: null }
+  for (const m of marks) {
+    const prev = last[m.side]
+    if (prev && m.pct - prev.pct < COLLIDE_PCT) m.tier = prev.tier === 0 ? 1 : 0
+    last[m.side] = m
+  }
 
   // The band: the verdict already chose the words; the band is where they sit on the axis.
   let band: BilledTrackBand | null = null

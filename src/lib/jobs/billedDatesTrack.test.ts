@@ -33,6 +33,8 @@ describe('buildBilledDatesTrack (v2.6139, punch list #217 jobs-pipeline-1)', () 
     expect(lien).toMatchObject({ label: 'Lien by Dec 15', sub: '76d', side: 'down', glyph: 'flag', align: 'right', bold: false, action: 'lien-desk' })
     // Left to right, inside the padding, and the flag at the far end.
     expect(t.marks.every((m) => m.pct >= 7 && m.pct <= 93)).toBe(true)
+    // The bill and the guess are eleven days apart on a 77-day axis: too close for one line, so the guess takes the second tier; today sits below, alone.
+    expect(t.marks.map((m) => m.tier)).toEqual([0, 0, 1, 0])
     expect(lien!.pct).toBe(93)
     expect(billed!.pct).toBe(7)
     expect(t.band).toMatchObject({ kind: 'room', label: '66d of room', tone: 'green', action: 'lien-desk', fromPct: money!.pct, toPct: lien!.pct })
