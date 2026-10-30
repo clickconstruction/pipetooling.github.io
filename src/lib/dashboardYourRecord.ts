@@ -20,6 +20,8 @@ export type YourRecordSession = {
   clockedOutAt: string | null
   /** Closed-session length; 0 while open. */
   hours: number
+  /** The clock-in instant, for the week strip's hours so far on today's open session (v2.6146); optional. */
+  clockedInAt?: string | null
 }
 
 export type YourRecordJob = {
