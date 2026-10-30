@@ -121,6 +121,8 @@ import { pickActiveVersion } from '../lib/bids/pickActiveVersion'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
+import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
+import { showHeaderNewBidButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
@@ -163,6 +165,9 @@ export default function Bids() {
   // Header layout: one row (trades | board tabs | New Bid) needs ~1150px; below
   // that the board tabs drop to their own single-row scrollable strip (v2.1331).
   const wideBidsHeader = useMatchMedia('(min-width: 1151px)')
+  // v2.6167: an estimator has Bid in the app header (Layout's press, off in Farm Mode). Below the wide
+  // header the page's New Bid would sit a thumb under it, so a phone draws only the header's.
+  const [farmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
@@ -1645,8 +1650,10 @@ export default function Bids() {
 
   // The header's New Bid, and the same press for the empty lists that name it (punch list #184, sweep C).
   const newBidPress = visibleServiceTypes.length > 0 && myRole !== 'primary' ? openNewBid : undefined
+  // v2.6167: on a phone the app header's Bid press (an estimator's) is the one New Bid; the empty lists keep theirs.
+  const headerHasNewBid = showHeaderNewBidButton(myRole, farmModeEnabled && !!authUser?.id)
   const bidsNewBidButton =
-    newBidPress ? (
+    newBidPress && (wideBidsHeader || !headerHasNewBid) ? (
       <button
         type="button"
         onClick={openNewBid}

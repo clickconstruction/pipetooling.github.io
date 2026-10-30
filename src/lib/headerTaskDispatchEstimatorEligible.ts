@@ -39,3 +39,13 @@ export function showHeaderTaskChecklistButton(role: UserRole | null): boolean {
     isSubcontractorLikeRole(role)
   )
 }
+
+/**
+ * The header's **Bid** press, the estimator's New Bid from any page; Farm Mode (the checklist-only
+ * lens) hides every header press. The Bids page reads it too (v2.6167): below its wide header its
+ * own New Bid shares a row with the trades, and an estimator on a phone saw New Bid twice, a
+ * thumb apart. With the header's press on, the page draws none of its own on a phone.
+ */
+export function showHeaderNewBidButton(role: UserRole | null, farmModeActive: boolean): boolean {
+  return role === 'estimator' && !farmModeActive
+}

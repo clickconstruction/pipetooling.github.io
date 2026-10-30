@@ -4,6 +4,7 @@ import { describe, expect, it } from 'vitest'
 import {
   HEADER_ASK_ESTIMATING_LABEL,
   showEstimatorInboxButton,
+  showHeaderNewBidButton,
   showTaskDispatchButton,
 } from './headerTaskDispatchEstimatorEligible'
 
@@ -35,5 +36,25 @@ describe('showEstimatorInboxButton', () => {
       expect(showEstimatorInboxButton(role)).toBe(true)
     }
     expect(showEstimatorInboxButton(null)).toBe(false)
+  })
+})
+
+describe('showHeaderNewBidButton (v2.6167)', () => {
+  it('is the estimator’s press, off in Farm Mode', () => {
+    expect(showHeaderNewBidButton('estimator', false)).toBe(true)
+    expect(showHeaderNewBidButton('estimator', true)).toBe(false)
+  })
+
+  it('no other role has Bid in the header, so their Bids page keeps its own New Bid on a phone', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'primary', 'superintendent', 'helpers', 'subcontractor'] as const) {
+      expect(showHeaderNewBidButton(role, false)).toBe(false)
+    }
+    expect(showHeaderNewBidButton(null, false)).toBe(false)
+  })
+
+  it('Layout draws the header press on this rule alone', () => {
+    const layout = readFileSync(LAYOUT_PATH, 'utf8')
+    expect(layout).toMatch(/showHeaderNewBidButton\(role, farmModeActive\) && \(/)
+    expect(layout).not.toMatch(/role === 'estimator' && !farmModeActive && \(/)
   })
 })

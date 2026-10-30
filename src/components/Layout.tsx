@@ -77,6 +77,7 @@ import { canOpenRoadmap } from '../lib/roadmapVisibility'
 import { usePinModeEnabled } from '../hooks/usePinModeEnabled'
 import {
   HEADER_ASK_ESTIMATING_LABEL,
+  showHeaderNewBidButton,
   showEstimatorInboxButton,
   showHeaderTaskChecklistButton,
   showTaskDispatchButton,
@@ -1181,7 +1182,7 @@ export default function Layout() {
               </svg>
             </button>
           )}
-          {role === 'estimator' && !farmModeActive && (
+          {showHeaderNewBidButton(role, farmModeActive) && (
             <button
               type="button"
               onClick={() => navigate('/bids?new=true')}
