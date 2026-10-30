@@ -126,15 +126,16 @@ describe('People → Hours: pending days and the earlier weeks', () => {
   it('the Review Hours press claims a review only when one is recorded', () => {
     expect(reviewHoursButtonWords([])).toMatchObject({ label: 'Review Hours', checked: false })
     expect(reviewHoursButtonWords([null, null])).toMatchObject({ label: 'Review Hours', checked: false })
-    expect(reviewHoursButtonWords(['2026-10-18', '2026-10-25'])).toEqual({
+    expect(reviewHoursButtonWords(['2026-10-18', '2026-10-18'])).toEqual({
       label: 'Reviewed through Oct 18',
       checked: true,
       title: 'Everyone shown is reviewed through Oct 18. Opens Review Hours.',
     })
+    expect(reviewHoursButtonWords(['2026-10-18', '2026-10-25']).title).toBe('Everyone shown is reviewed through Oct 18. The newest review reaches Oct 25. Opens Review Hours.')
     expect(reviewHoursButtonWords(['2026-10-25', null, '2026-10-18'])).toEqual({
       label: 'Reviewed through Oct 18',
       checked: false,
-      title: 'Everyone with a review is reviewed through Oct 18. 1 shown has no review. Opens Review Hours.',
+      title: 'Everyone with a review is reviewed through Oct 18. The newest review reaches Oct 25. 1 shown has no review. Opens Review Hours.',
     })
     expect(reviewHoursButtonWords(['2026-10-25', null, null]).title).toBe('Everyone with a review is reviewed through Oct 25. 2 shown have no review. Opens Review Hours.')
   })

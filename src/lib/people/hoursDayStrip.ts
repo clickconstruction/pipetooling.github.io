@@ -205,15 +205,17 @@ export function reviewHoursButtonWords(newestEndDateByPerson: ReadonlyArray<stri
   const dates = newestEndDateByPerson.filter((d): d is string => typeof d === 'string' && d !== '')
   if (dates.length === 0) return { label: 'Review Hours', checked: false, title: 'No review is recorded for anyone shown. Opens Review Hours.' }
   const through = dates.reduce((a, b) => (a < b ? a : b))
+  const newest = dates.reduce((a, b) => (a > b ? a : b))
+  const newestWords = newest !== through ? ` The newest review reaches ${shortDayWords(newest)}.` : ''
   const missing = newestEndDateByPerson.length - dates.length
   if (missing > 0) {
     return {
       label: `Reviewed through ${shortDayWords(through)}`,
       checked: false,
-      title: `Everyone with a review is reviewed through ${shortDayWords(through)}. ${missing} shown ${missing === 1 ? 'has' : 'have'} no review. Opens Review Hours.`,
+      title: `Everyone with a review is reviewed through ${shortDayWords(through)}.${newestWords} ${missing} shown ${missing === 1 ? 'has' : 'have'} no review. Opens Review Hours.`,
     }
   }
-  return { label: `Reviewed through ${shortDayWords(through)}`, checked: true, title: `Everyone shown is reviewed through ${shortDayWords(through)}. Opens Review Hours.` }
+  return { label: `Reviewed through ${shortDayWords(through)}`, checked: true, title: `Everyone shown is reviewed through ${shortDayWords(through)}.${newestWords} Opens Review Hours.` }
 }
 
 /** The per-person switch keys the two hours prototypes use (`useShapeView`). */
