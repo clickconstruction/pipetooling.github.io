@@ -47,7 +47,7 @@ import { NO_PROPERTY_RECORD_GAP, resolveLegalJobProperties, type LegalJobOwnerRo
 import { SUSPECTED_SUB_JOB_DETAIL, suspectedSubJob, suspectedSubJobLabel } from './suspectedSubJob'
 import { gapAnswerCounts, gapAnswersByKey, type LegalGapAnswer, type LegalGapAnswerLike } from './legalGapAnswers'
 import { attachEnvelopeAnswers, buildLegalEnvelopes, buildLegalJobTimelines, legalLastWorkBasis, type LegalLastWorkSource, type LegalDeskItemLike, type LegalEnvelope, type LegalJobTimeline, type LegalMailPieceLike } from './legalLienPaper'
-import { claimRetainageForAccount, type LegalPayApplicationLike } from './legalClaimRetainage'
+import { claimRetainage, claimRetainageForAccount, type LegalPayApplicationLike } from './legalClaimRetainage'
 import type { PaymentPromise, PromiseOutcome } from '../jobs/paymentPromises'
 import type { ChaseTouch } from '../jobs/paymentChase'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -490,7 +490,14 @@ export type LegalWorth = {
   /** Facts that argue against pursuing: a "no money" note, a dispute, broken promises, a name-only payer. */
   flags: string[]
   verdict: LegalWorthVerdict
+  /** Every open billed line, with its job and its day (v2.6105, punch list #214): what the money bars draw, one segment each. */
+  openBills: LegalOpenBill[]
+  /** By job id, the retainage that job's sent bills already carry (v2.6103's per-job read): the bars' bracket under that job's bills. */
+  retainageOnBillsByJob: Record<string, number>
 }
+
+/** One open billed line as the money bars read it (v2.6105): the ledger row's words and the day it was billed, with what it still needs. */
+export type LegalOpenBill = { invoiceId: string; jobId: string; jobLabel: string; ymd: string | null; text: string; open: number }
 
 export type LegalExhibit = { letter: string; title: string; count: number }
 
@@ -746,6 +753,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   // The statement of account (item 5): bills at what was billed, the write-down beneath, every payment,
   // then the rows that explain the rest of the job's balance, so the column always reaches the Balance.
   const ledger: LegalLedgerEntry[] = []
+  // v2.6105 (punch list #214): the open billed lines, one per bill, for the money bars.
+  const openBills: LegalOpenBill[] = []
   let billedTotal = 0
   let paidTotal = 0
   let writtenDown = 0
@@ -765,7 +774,10 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       const ymd = calendarYmdInAppTzFromIso(inv.billed_at ?? '') || sentYmd
       billYmd.set(inv.id, ymd)
       billedTotal += amt + wd
-      push(ymd, 'invoice', `Invoice · ${invoiceSentWords(inv.external_send_channel, sentYmd, invoiceReachedCustomer(inv))}`, amt + wd)
+      const text = `Invoice · ${invoiceSentWords(inv.external_send_channel, sentYmd, invoiceReachedCustomer(inv))}`
+      push(ymd, 'invoice', text, amt + wd)
+      const open = money.openByInvoice.get(inv.id) ?? 0
+      if (open > 0.004) openBills.push({ invoiceId: inv.id, jobId: j.id, jobLabel: label, ymd, text, open: round2(open) })
       if (wd > 0) {
         writtenDown += wd
         const note = (inv.agreed_write_down_note ?? '').trim()
@@ -938,20 +950,25 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
   if (!account.customerId) flags.push('payer is a name only')
   // v2.5849 (punch list #171 step 2): the claim is the open bills plus the retainage the GC holds; the firm's cut and the net work from the claim.
   // v2.6103 (punch list #213): only the retainage no sent bill carries is added — a bill sent for the whole amount and paid short by the retainage already holds it in the balance.
-  const retainage = claimRetainageForAccount(
-    jobs.map((j) => ({
-      id: j.id,
-      lien_retainage_held: (j as { lien_retainage_held?: number | null }).lien_retainage_held ?? null,
-      invoices: (j.invoices ?? []).map((i) => ({ id: i.id, amount: i.amount, status: i.status, retainage_release: (i as { retainage_release?: boolean | null }).retainage_release ?? null, open: moneyByJob.get(j.id)?.openByInvoice.get(i.id) })),
-    })),
-    input.payApplications ?? [],
-  )
+  const retainageJobs = jobs.map((j) => ({
+    id: j.id,
+    lien_retainage_held: (j as { lien_retainage_held?: number | null }).lien_retainage_held ?? null,
+    invoices: (j.invoices ?? []).map((i) => ({ id: i.id, amount: i.amount, status: i.status, retainage_release: (i as { retainage_release?: boolean | null }).retainage_release ?? null, open: moneyByJob.get(j.id)?.openByInvoice.get(i.id) })),
+  }))
+  const payApplications = input.payApplications ?? []
+  const retainage = claimRetainageForAccount(retainageJobs, payApplications)
+  // v2.6105 (punch list #214): the same read per job, for the bars' bracket under each job's bills.
+  const retainageOnBillsByJob: Record<string, number> = {}
+  for (const rj of retainageJobs) {
+    const onBills = claimRetainage(rj, payApplications.filter((a) => a.jobId === rj.id)).onBills
+    if (onBills > 0.004) retainageOnBillsByJob[rj.id] = onBills
+  }
   const retainageHeld = retainage.held
   const claim = round2(balance + retainage.added)
   const feeAmt = claim * fee.contingencyPct
   const net = claim - feeAmt - fee.filingCost
   const verdict: LegalWorthVerdict = theory.key === 'none' || noMoney || net <= 0 ? 'not worth it' : net < 500 || flags.length > 0 ? 'marginal' : 'worth it'
-  const worth: LegalWorth = { balance, retainageHeld, retainageOnBills: retainage.onBills, retainageAdded: retainage.added, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict }
+  const worth: LegalWorth = { balance, retainageHeld, retainageOnBills: retainage.onBills, retainageAdded: retainage.added, claim, contingencyPct: fee.contingencyPct, fee: feeAmt, filingCost: fee.filingCost, net, flags, verdict, openBills, retainageOnBillsByJob }
 
   // --- Steps (what we did, in order) ---------------------------------------
   const steps: LegalStep[] = []

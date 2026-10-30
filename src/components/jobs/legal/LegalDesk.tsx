@@ -50,7 +50,10 @@ import { suggestTxCountyForCity } from '../../../lib/txCountyLookup'
 import { jobOpenBalance } from '../../../lib/legal/legalPacket'
 import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/legal/legalTablesRead'
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
-import { inHouseWords, offerAmountOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
+import { inHouseWords, isOfferEntry, offerAmountOf, offerMetaOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
+import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
+import { moneyBars } from '../../../lib/legal/moneyBars'
+import LegalMoneyBars from './LegalMoneyBars'
 import { confirmJobOwnerContract, setJobGcFromCustomer } from '../../../lib/legal/subJobIo'
 import type { LegalPaperNextDoor } from '../../../lib/legal/legalPaperNextDoor'
 import { setGcDoneWords } from '../../../lib/legal/suspectedSubJob'
@@ -935,6 +938,27 @@ export default function LegalDesk(props: LegalDeskProps) {
                       </div>
                     ))}
                   </div>
+                ) : null}
+                {packet && w && w.balance > 0.004 ? (
+                  // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer and the floor marked, what is left after the firm's cut.
+                  <LegalMoneyBars
+                    bars={moneyBars({
+                      bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
+                      retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
+                      retainageAdded: w.retainageAdded,
+                      balance: w.balance,
+                      claim: w.claim,
+                      contingencyPct: w.contingencyPct,
+                      fee: w.fee,
+                      filingCost: w.filingCost,
+                      net: w.net,
+                      offers: (matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []).filter((e) => isOfferEntry(e) && !isVoidedEntry(e)).map((e) => {
+                        const meta = offerMetaOf(e.meta)
+                        return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
+                      }),
+                      floor: settlementFloorOf(matter),
+                    })}
+                  />
                 ) : null}
 
                 {packet && packet.gaps.length > 0 ? (

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { fileNote, fileOpenHref, filedWords, lineFilesFromRows, paperOffer, sizeWords, withLineFiles, type MessageAttachmentRow } from './lineFiles'
+import { billAnswerWords, billOffer, fileNote, fileOpenHref, filedWords, hasBillOffer, lineFilesFromRows, paperOffer, sizeWords, withLineFiles, type MessageAttachmentRow } from './lineFiles'
 
 const row = (over: Partial<MessageAttachmentRow>): MessageAttachmentRow => ({
   id: 'f1',
@@ -100,5 +100,29 @@ describe('paperOffer and filedWords', () => {
     expect(filedWords(filed, { 'u-rosa': 'Rosa' })).toBe('Filed as their certificate · Rosa, Oct 12')
     expect(filedWords({ ...filed, paperAnsweredBy: null, paperAnsweredAt: null }, {})).toBe('Filed as their certificate')
     expect(filedWords(coi, {})).toBeNull()
+  })
+})
+
+describe('billOffer and billAnswerWords (punch list #179)', () => {
+  const ridgeway = { kind: 'supply_house', company: 'Ridgeway Supply', name: 'Counter' }
+  const pdf = lineFilesFromRows([{ id: 'f-bill', message_id: 'm-1', sort_order: 0, kind: 'file', name: 'S1183420.pdf', mime: 'application/pdf', size_bytes: 184_000, bucket_path: 'g-9/S1183420.pdf', left_in_gmail: null, url: null, host: null, paper: null, paper_answer: null, paper_answered_by: null, paper_answered_at: null }]).get('m-1')![0]!
+  it('offers a PDF or a picture with our copy on a supply house’s line, and nothing else', () => {
+    expect(billOffer(pdf, ridgeway)).toEqual({ line: 'This reads like a bill from Ridgeway Supply.', record: 'Record this bill', notABill: 'Not a bill', notABillTitle: 'Takes the offer away for everyone. The file stays on the line.' })
+    expect(billOffer({ ...pdf, icon: 'image', mime: 'image/jpeg' }, { ...ridgeway, company: '' })!.line).toBe('This reads like a bill from Counter.')
+    expect(billOffer(pdf, { kind: 'trade', company: 'Hillside Excavation', name: 'Greg' })).toBeNull()
+    expect(billOffer({ ...pdf, kept: 'tooBig' }, ridgeway)).toBeNull()
+    expect(billOffer({ ...pdf, icon: 'file', mime: 'application/msword' }, ridgeway)).toBeNull()
+    expect(billOffer({ ...pdf, paperAnswer: 'not_it' }, ridgeway)).toBeNull()
+    expect(hasBillOffer([pdf], ridgeway)).toBe(true)
+    expect(hasBillOffer(undefined, ridgeway)).toBe(false)
+  })
+  it('says what became of an answered file', () => {
+    const names = { 'u-marisol': 'Marisol' }
+    expect(billAnswerWords({ ...pdf, paperAnswer: 'filed', paperAnsweredBy: 'u-marisol', paperAnsweredAt: '2026-10-29T20:00:00.000Z' }, ridgeway, names)).toBe('Recorded as a bill · Marisol, Oct 29')
+    expect(billAnswerWords({ ...pdf, paperAnswer: 'not_it', paperAnsweredBy: 'u-marisol', paperAnsweredAt: '2026-10-29T20:00:00.000Z' }, ridgeway, names)).toBe('Not a bill · Marisol, Oct 29')
+    expect(billAnswerWords({ ...pdf, paperAnswer: 'filed' }, ridgeway, {})).toBe('Recorded as a bill')
+    expect(billAnswerWords(pdf, ridgeway, names)).toBeNull()
+    expect(billAnswerWords({ ...pdf, paper: 'coi', paperAnswer: 'filed' }, ridgeway, names)).toBeNull()
+    expect(billAnswerWords({ ...pdf, paperAnswer: 'filed' }, { kind: 'trade' }, names)).toBeNull()
   })
 })

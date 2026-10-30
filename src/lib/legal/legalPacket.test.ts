@@ -202,6 +202,10 @@ describe('buildLegalPacket', () => {
     expect(packet.worth.fee).toBeCloseTo(8782 * 0.33, 2)
     expect(packet.worth.net).toBeCloseTo(8782 - 8782 * 0.33 - 350, 2)
     expect(packet.worth.verdict).toBe('worth it')
+    // v2.6105 (punch list #214): the open billed lines, one per bill, foot to the balance; each carries its job and its billed day for the money bars.
+    expect(packet.worth.openBills.reduce((s, b) => s + b.open, 0)).toBeCloseTo(8782, 2)
+    for (const b of packet.worth.openBills) expect(b).toEqual(expect.objectContaining({ invoiceId: expect.any(String), jobLabel: expect.any(String), ymd: expect.stringMatching(/^\d{4}-\d{2}-\d{2}$/) }))
+    expect(packet.worth.retainageOnBillsByJob).toEqual({})
     // v2.5849 (punch list #171 step 2): with nothing held the claim is the balance; retainage held joins it and the cut follows.
     expect(packet.worth).toEqual(expect.objectContaining({ retainageHeld: 0, retainageOnBills: 0, retainageAdded: 0, claim: 8782 }))
     // v2.6103 (punch list #213): a bill sent for the whole amount and paid short by the retainage already carries it in the balance, so the claim adds nothing; a bill sent net adds the held figure.

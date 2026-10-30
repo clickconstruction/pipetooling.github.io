@@ -23,7 +23,7 @@ function makeClient(opts: { fail?: string; team?: string[] } = {}) {
     const chain = (op: string, payload?: unknown) => {
       const filters: unknown[] = []
       const b: Record<string, unknown> = {}
-      for (const m of ['eq', 'in']) {
+      for (const m of ['eq', 'in', 'not']) {
         b[m] = (...a: unknown[]) => {
           filters.push(m, ...a)
           return b
@@ -216,20 +216,34 @@ describe('writeMaterialsSlice', () => {
     { id: 'm2', description: 'Fittings', amount: 40 },
   ]
 
-  it('deletes the job’s rows, then re-inserts each', async () => {
+  it('upserts the rows by id in one call, then deletes only the job’s rows not among them', async () => {
     const { client, steps } = makeClient()
     await writeMaterialsSlice(client, { jobId: 'job-1', materials })
-    expect(seq(steps)).toEqual(['delete:jobs_ledger_materials', 'insert:jobs_ledger_materials', 'insert:jobs_ledger_materials'])
+    expect(seq(steps)).toEqual(['upsert:jobs_ledger_materials', 'delete:jobs_ledger_materials'])
+    expect(steps[0]?.payload).toEqual({
+      rows: [
+        { id: 'm1', job_id: 'job-1', description: 'Copper', amount: 120, sequence_order: 0 },
+        { id: 'm2', job_id: 'job-1', description: 'Fittings', amount: 40, sequence_order: 1 },
+      ],
+      options: { onConflict: 'id' },
+    })
+    expect(steps[1]?.filters).toEqual(['eq', 'job_id', 'job-1', 'not', 'id', 'in', '(m1,m2)'])
+  })
+
+  it('with nothing worth keeping, deletes the job’s rows and upserts nothing', async () => {
+    const { client, steps } = makeClient()
+    await writeMaterialsSlice(client, { jobId: 'job-1', materials: [{ id: 'm0', description: '', amount: 0 }] })
+    expect(seq(steps)).toEqual(['delete:jobs_ledger_materials'])
     expect(steps[0]?.filters).toEqual(['eq', 'job_id', 'job-1'])
   })
 
-  it('a failed delete inserts nothing; a failed insert stops there', async () => {
+  it('a refused upsert deletes nothing; a refused delete is thrown', async () => {
+    const up = makeClient({ fail: 'upsert:jobs_ledger_materials' })
+    await expect(writeMaterialsSlice(up.client, { jobId: 'job-1', materials })).rejects.toEqual({ message: 'upsert:jobs_ledger_materials refused' })
+    expect(seq(up.steps)).toEqual(['upsert:jobs_ledger_materials'])
     const del = makeClient({ fail: 'delete:jobs_ledger_materials' })
     await expect(writeMaterialsSlice(del.client, { jobId: 'job-1', materials })).rejects.toEqual({ message: 'delete:jobs_ledger_materials refused' })
-    expect(seq(del.steps)).toEqual(['delete:jobs_ledger_materials'])
-    const ins = makeClient({ fail: 'insert:jobs_ledger_materials#1' })
-    await expect(writeMaterialsSlice(ins.client, { jobId: 'job-1', materials })).rejects.toBeTruthy()
-    expect(seq(ins.steps)).toEqual(['delete:jobs_ledger_materials', 'insert:jobs_ledger_materials'])
+    expect(seq(del.steps)).toEqual(['upsert:jobs_ledger_materials', 'delete:jobs_ledger_materials'])
   })
 })
 
