@@ -80,6 +80,10 @@ describe('LegalDesk', () => {
     expect(document.querySelectorAll('[data-legal-money-bar="bills"] [data-legal-money-segment="bill"]').length).toBe(2)
     expect(document.querySelector('[data-legal-money-bar="left_claim"] [data-legal-money-segment="keep"]')).toBeTruthy()
     expect(document.querySelector('[data-legal-money-bar="claim"]')).toBeNull()
+    // v2.6176 (punch list #218 PR 3): what each path nets under the bars — no offer stands, so the trial card alone, not read yet.
+    expect(document.querySelector('[data-legal-settlement-paths] [data-legal-settlement-path="trial"]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-settlement-path="offer"]')).toBeNull()
+    expect(document.querySelector('[data-legal-settlement-paths-words]')!.textContent).toContain('The firm has not said how this case tries.')
     fireEvent.click(screen.getByRole('tab', { name: 'Timeline' }))
     expect(screen.getByText(/theft of service/)).toBeTruthy()
     expect(document.querySelector('[data-legal-timeline-lane="said"]')).toBeTruthy()

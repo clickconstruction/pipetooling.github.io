@@ -51,6 +51,8 @@ import { LEGAL_READ_FAILED_WORDS, LEGAL_READ_MISSING_WORDS } from '../../../lib/
 import { legalIntakeUnseen } from '../../../lib/legal/legalFirmIntake'
 import { inHouseWords, isOfferEntry, offerAmountOf, offerMetaOf, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 import { counselReadMetaFromDraft, currentCounselRead, type CounselReadDraft } from '../../../lib/legal/counselRead'
+import { legalSuitFiled, settlementPaths } from '../../../lib/legal/settlementPaths'
+import LegalSettlementPaths from './LegalSettlementPaths'
 import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
 import { moneyBars } from '../../../lib/legal/moneyBars'
 import LegalMoneyBars from './LegalMoneyBars'
@@ -283,6 +285,11 @@ export default function LegalDesk(props: LegalDeskProps) {
   const awaitsClose = matterAwaitsClose(matter)
   // Punch list #218 PR 2: the attorney's read of how the case tries — the latest read entry, the firm's or ours.
   const counselRead = currentCounselRead(matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : [], (id) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null))
+  // v2.6105: the Offers log as the bars read it; v2.6176 (punch list #218 PR 3): the paths read the same offers.
+  const standingOffers = (matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []).filter((e) => isOfferEntry(e) && !isVoidedEntry(e)).map((e) => {
+    const meta = offerMetaOf(e.meta)
+    return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
+  })
   const stored = Boolean(legal?.available)
   const groups: Array<{ cap: string; list: LegalAccountSummary[] }> = [
     // v2.5849: *Under review* — the office reads this rail more than a dev does.
@@ -936,26 +943,31 @@ export default function LegalDesk(props: LegalDeskProps) {
                     ))}
                   </div>
                 ) : null}
-                {packet && w && w.balance > 0.004 ? (
+                {packet && w && w.balance > 0.004 ? (() => {
                   // v2.6105 (punch list #214, PR 2): the same money as bars — the open bills by part, the claim with every standing offer marked, what is left after the firm's cut.
-                  <LegalMoneyBars
-                    bars={moneyBars({
-                      bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
-                      retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
-                      retainageAdded: w.retainageAdded,
-                      balance: w.balance,
-                      claim: w.claim,
-                      contingencyPct: w.contingencyPct,
-                      fee: w.fee,
-                      filingCost: w.filingCost,
-                      net: w.net,
-                      offers: (matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []).filter((e) => isOfferEntry(e) && !isVoidedEntry(e)).map((e) => {
-                        const meta = offerMetaOf(e.meta)
-                        return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
-                      }),
-                    })}
-                  />
-                ) : null}
+                  // v2.6176 (punch list #218, PR 3): what each path nets, with the walk-away line derived from the cost to continue and marked on the claim bar.
+                  const paths = settlementPaths({ claim: w.claim, contingencyPct: w.contingencyPct, filingCost: w.filingCost, filed: legalSuitFiled(stage), offers: standingOffers, read: counselRead })
+                  return (
+                    <>
+                      <LegalMoneyBars
+                        bars={moneyBars({
+                          bills: w.openBills.map((b) => ({ key: b.invoiceId, jobId: b.jobId, jobLabel: b.jobLabel, ymd: b.ymd, text: b.text, open: b.open })),
+                          retainageOnBillsByJob: new Map(Object.entries(w.retainageOnBillsByJob)),
+                          retainageAdded: w.retainageAdded,
+                          balance: w.balance,
+                          claim: w.claim,
+                          contingencyPct: w.contingencyPct,
+                          fee: w.fee,
+                          filingCost: w.filingCost,
+                          net: w.net,
+                          offers: standingOffers,
+                          line: paths.line?.amount ?? null,
+                        })}
+                      />
+                      <LegalSettlementPaths paths={paths} />
+                    </>
+                  )
+                })() : null}
 
                 {packet && packet.gaps.length > 0 ? (
                   <div style={{ margin: '12px 0 0', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)' }}>
