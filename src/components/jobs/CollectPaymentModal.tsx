@@ -1097,7 +1097,7 @@ export default function CollectPaymentModal({
             <p style={{ fontSize: '0.875rem', color: 'var(--text-700)', margin: '0 0 1rem' }}>
               Dispatch now has your Invoice Request, you can call them and close this tab. The{' '}
               <strong>Collect Payment</strong> button will turn{' '}
-              <strong style={{ color: '#15803d' }}>green</strong> when the invoice is approved and has been
+              <strong style={{ color: 'var(--text-green-700)' }}>green</strong> when the invoice is approved and has been
               sent to the customer via email.
             </p>
             <div
@@ -1508,7 +1508,7 @@ export default function CollectPaymentModal({
                 }}
               >
                 <span>Call Dispatch</span>
-                <span style={{ fontWeight: 500, color: '#15803d' }}>{dispatchPhone.display}</span>
+                <span style={{ fontWeight: 500, color: 'var(--text-green-700)' }}>{dispatchPhone.display}</span>
               </span>
             </a>
           ) : step === 1 && !loadingPayload ? (

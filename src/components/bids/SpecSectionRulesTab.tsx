@@ -66,7 +66,7 @@ function Standing({ standing, rulesById }: { standing: RuleStanding | undefined;
   const more = standing.wins - standing.sampleWins.length
   return (
     <details>
-      <summary style={{ cursor: 'pointer', fontSize: '0.8125rem', color: '#15803d', fontWeight: 600 }}>
+      <summary style={{ cursor: 'pointer', fontSize: '0.8125rem', color: 'var(--text-green-700)', fontWeight: 600 }}>
         Decides {plural(standing.wins, 'name', 'names')} on {plural(standing.winBids, 'bid', 'bids')}
       </summary>
       <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.1rem', ...muted }}>

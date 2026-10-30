@@ -28,7 +28,7 @@ export function TipOver({ titleId }: FigureProps) {
           <line x1="58" y1="35" x2="60" y2="48" />
           <line x1="48" y1="26" x2="58" y2="27" />
           <line x1="48" y1="28" x2="58" y2="29" />
-          <line x1="44" y1="24" x2="53" y2="36" stroke="#15803d" strokeWidth="3" />
+          <line x1="44" y1="24" x2="53" y2="36" stroke="var(--text-green-700)" strokeWidth="3" />
         </g>
         {machine(170)}
         <circle cx="287" cy="86" r="5" fill="var(--surface)" />
@@ -37,12 +37,12 @@ export function TipOver({ titleId }: FigureProps) {
         <line x1="280" y1="106" x2="288" y2="122" />
         <line x1="284" y1="96" x2="296" y2="102" />
         <line x1="284" y1="96" x2="274" y2="94" />
-        <path d="M258 40 c12 8 20 20 24 36" stroke="#dc2626" strokeWidth="2.5" strokeDasharray="4 3" />
-        <polygon points="282,80 277,72 287,72" fill="#dc2626" stroke="none" />
+        <path d="M258 40 c12 8 20 20 24 36" stroke="var(--text-red-600)" strokeWidth="2.5" strokeDasharray="4 3" />
+        <polygon points="282,80 277,72 287,72" fill="var(--text-red-600)" stroke="none" />
       </g>
       <g fontSize="10" fontWeight="700" textAnchor="middle">
-        <text x="66" y="14" fill="#15803d">stay in, belted</text>
-        <text x="220" y="14" fill="#991b1b">never jump</text>
+        <text x="66" y="14" fill="var(--text-green-700)">stay in, belted</text>
+        <text x="220" y="14" fill="var(--text-red-800)">never jump</text>
       </g>
       <g fontSize="8.5" fill="var(--text-muted)" textAnchor="middle">
         <text x="70" y="146">grip the wheel, lean away</text>

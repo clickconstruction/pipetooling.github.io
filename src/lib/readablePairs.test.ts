@@ -15,6 +15,8 @@ import { PORTAL_TRADE_COLORS } from './portal/portalPayload'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER } from './portal/portalTheme'
 import { TRADE_COLORS } from './tradeColors'
 import { BID_SERVICE_TYPE_TAGS } from '../utils/unifiedJobBidSearch'
+import { RIGHT, WRONG } from '../components/training/figures/plumbingTokens'
+import { SALES_BAR_INKS } from './bridge/sales/salesBarInks'
 
 /**
  * The four pairs What everyone sees measured under 3:1 on 2026-10-27, held at 4.5:1 since v2.5981:
@@ -65,6 +67,7 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "the overhead lens window's heading, method C (v2.6082)", fg: OVERHEAD_METHOD_INKS.C, bg: 'var(--surface)' },
     { label: "a guide's Example caption on its light panel (v2.6085)", fg: GUIDE_CAPTION_INK, bg: GUIDE_PANEL_GROUND },
     { label: "a guide's grey mock button (v2.6085)", fg: GUIDE_DEAD_BUTTON.ink, bg: GUIDE_DEAD_BUTTON.fill },
+    { label: "the nav's Messages count on its red (v2.6151)", fg: '#ffffff', bg: '#b91c1c' },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {
@@ -107,6 +110,53 @@ describe('words on a wash over a fill', () => {
     const ground = over({ r: 0, g: 0, b: 0, a: 0.25 }, hexToRgba('#3b82f6'))
     expect(contrastRatio(hexToRgba('#ffffff'), ground)).toBeGreaterThanOrEqual(4.5)
   })
+})
+
+describe("the training figures' words on the grounds they are drawn on, in both themes (v2.6133)", () => {
+  const pairs: { label: string; fg: string; bg: string }[] = [
+    { label: 'the right way, RIGHT, on the surface', fg: RIGHT, bg: 'var(--surface)' },
+    { label: "the right way on a grey ground: the fire classes, two systems' air gap", fg: RIGHT, bg: 'var(--bg-subtle)' },
+    { label: "the stud setback's 1-1/4 in on the amber plate", fg: RIGHT, bg: 'var(--bg-amber-100)' },
+    { label: "the fire classes' dry chemical in the red C column", fg: 'var(--text-green-800)', bg: 'var(--bg-red-100)' },
+    { label: 'the wrong way, WRONG, on the surface', fg: WRONG, bg: 'var(--surface)' },
+    { label: 'the wrong way on a grey ground: the frost-proof bib', fg: WRONG, bg: 'var(--bg-subtle)' },
+    { label: 'the hazards in red-800 on the surface: call 911, never jump, the mA scale', fg: 'var(--text-red-800)', bg: 'var(--surface)' },
+    { label: "never water and the swing radius's blind spots on their red wash", fg: 'var(--text-red-800)', bg: 'var(--bg-red-100)' },
+    { label: "the cave-in signs inside the trench's grey", fg: 'var(--text-red-800)', bg: 'var(--bg-subtle)' },
+    { label: "the swing radius's red rope marks it on the surface", fg: 'var(--text-red-600)', bg: 'var(--surface)' },
+    { label: 'the warnings in amber on the surface: limited approach, 19.5%, protect', fg: 'var(--text-amber-700)', bg: 'var(--surface)' },
+    { label: "two systems' out: gravity on its grey", fg: 'var(--text-amber-700)', bg: 'var(--bg-subtle)' },
+    { label: 'the cold labels in blue on the surface: cold in, cold', fg: 'var(--text-link)', bg: 'var(--surface)' },
+    { label: "two systems' in: pressure on its grey", fg: 'var(--text-link)', bg: 'var(--bg-subtle)' },
+    { label: "the water heater's cold sinks inside the tank's blue", fg: 'var(--text-blue-700)', bg: 'var(--bg-blue-200)' },
+  ]
+  for (const p of pairs) {
+    for (const theme of THEMES) {
+      it(`${p.label}, ${theme}: 4.5:1 or better`, () => {
+        expect(ratio(p.fg, p.bg, theme)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
+
+  it('the six literal inks stay only where a figure draws a real object: the copper print, the flags, the signs, the GHS border, the STOP paddle, the rope and the numbered badges', () => {
+    const dir = 'src/components/training/figures'
+    const counts: Record<string, number> = {}
+    for (const name of readdirSync(dir)) {
+      const n = (readFileSync(`${dir}/${name}`, 'utf8').match(/#(15803d|b91c1c|991b1b|dc2626|b45309|2563eb)\b/gi) ?? []).length
+      if (n) counts[name] = n
+    }
+    expect(counts).toEqual({ 'CopperTypes.tsx': 3, 'DigFlags.tsx': 2, 'ExcavatorSiteMap.tsx': 2, 'HandSignals.tsx': 1, 'HazcomPictograms.tsx': 1, 'SignColours.tsx': 2, 'SwingRadius.tsx': 1 })
+  })
+})
+
+describe("the Sales desk bar's dollars on their fills, in both themes (v2.6133)", () => {
+  for (const [segment, { fill, words }] of Object.entries(SALES_BAR_INKS)) {
+    for (const theme of THEMES) {
+      it(`${segment}: ${words} on ${fill}, ${theme}: 4.5:1 or better`, () => {
+        expect(ratio(words, fill, theme)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
 })
 
 describe("the portal's paper: every text tier on every ground", () => {
@@ -157,6 +207,27 @@ describe("the portal's trade colours and copper (v2.6067, punch list #199)", () 
   })
 })
 
+/** Each line under src/, tests aside, that colours words with the hex: one that must stay a fill or a border. */
+function wordsInLiteral(hex: string): string[] {
+  const words = new RegExp(`(?<![A-Za-z])color:\\s*[^,{}]*'${hex}'`, 'i')
+  const hits: string[] = []
+  const walk = (dir: string) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const path = `${dir}/${entry.name}`
+      if (entry.isDirectory()) walk(path)
+      else if (/\.tsx?$/.test(entry.name) && !entry.name.includes('.test.')) {
+        readFileSync(path, 'utf8')
+          .split('\n')
+          .forEach((line, i) => {
+            if (words.test(line)) hits.push(`${path}:${i + 1}`)
+          })
+      }
+    }
+  }
+  walk('src')
+  return hits
+}
+
 describe("the discount's green, in both themes (v2.6116)", () => {
   for (const theme of THEMES) {
     it(`its words on its green wash: the standing offer's dollars, a standing discount's %, the summary's share, ${theme}: 4.5:1 or better`, () => {
@@ -165,21 +236,20 @@ describe("the discount's green, in both themes (v2.6116)", () => {
   }
 
   it('#0f7a52 colours no words under src/: it read 2.74:1 on the dark surface, so it stays only as a fill under white', () => {
-    const hits: string[] = []
-    const walk = (dir: string) => {
-      for (const entry of readdirSync(dir, { withFileTypes: true })) {
-        const path = `${dir}/${entry.name}`
-        if (entry.isDirectory()) walk(path)
-        else if (/\.tsx?$/.test(entry.name) && !entry.name.includes('.test.')) {
-          readFileSync(path, 'utf8')
-            .split('\n')
-            .forEach((line, i) => {
-              if (/(?<![A-Za-z])color:\s*[^,{}]*'#0f7a52'/i.test(line)) hits.push(`${path}:${i + 1}`)
-            })
-        }
-      }
+    expect(wordsInLiteral('#0f7a52')).toEqual([])
+  })
+})
+
+describe("green-700's words on the grounds the sweep put them on, in both themes (v2.6120)", () => {
+  for (const bg of ['var(--bg-green-tint)', 'var(--bg-subtle)', 'var(--bg-muted)']) {
+    for (const theme of THEMES) {
+      it(`on ${bg}, ${theme}: 4.5:1 or better`, () => {
+        expect(ratio('var(--text-green-700)', bg, theme)).toBeGreaterThanOrEqual(4.5)
+      })
     }
-    walk('src')
-    expect(hits).toEqual([])
+  }
+
+  it("'#15803d' colours no words under src/: it read 2.93:1 on the dark surface, so it stays only as a fill or a border", () => {
+    expect(wordsInLiteral('#15803d')).toEqual([])
   })
 })

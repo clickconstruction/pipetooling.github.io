@@ -18,6 +18,7 @@ import { JOB_CREATED_FROM_BID_EVENT } from '../lib/bids/wonMomentActions'
 import type { BidWithBuilder } from '../types/bidWithBuilder'
 import { useBidBoardBudgetChips } from './useBidBoardBudgetChips'
 import { useBidCountSourcesByBid } from './useBidCountSourcesByBid'
+import { useBidPlanSetsByBid } from './useBidPlanSetsByBid'
 import { useBidBoardJobAccountStrips } from './useBidBoardJobAccountStrips'
 import { useBidBoardMoneyStrips } from './useBidBoardMoneyStrips'
 import type { useBidGcPackets } from './useBidGcPackets'
@@ -67,6 +68,8 @@ export function useBidBoardScope(input: {
   const bidBoardBudgetChips = useBidBoardBudgetChips([...peopleBids, ...robotBids], canSeeBidBoardJobLinks(myRole), jobsByBidGen)
   // The CountTooling projects behind each bid (v2.5520): the board draws one chip per link beyond the bid's own.
   const bidBoardCountSources = useBidCountSourcesByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true)
+  // The plan sets on each bid (v2.6169): the board's plans icon opens one directly and offers two or more in a picker.
+  const bidBoardPlanSets = useBidPlanSetsByBid(useMemo(() => [...peopleBids, ...robotBids].map((b) => b.id), [peopleBids, robotBids]), true)
   // Job accounts (v2.3520 / PR 1b): ONE `list_bid_job_account_strip` read for every won or started bid on the
   // page — the board's chips and header count, the Followup control's count, and the Job accounts lens all
   // read it. (The job-created trigger moves a bid to Started the moment its job opens, so both outcomes.)
@@ -136,6 +139,7 @@ export function useBidBoardScope(input: {
     jobsByBidId,
     bidBoardBudgetChips,
     bidBoardCountSources,
+    bidBoardPlanSets,
     jobAccountStrips,
     jobAccountsMissingCount,
     moneyStrips,

@@ -519,7 +519,7 @@ export function ClockSessionStripActionsModal({
                   padding: '0.5rem 1rem',
                   border: '1px solid #22c55e',
                   background: 'var(--bg-green-tint)',
-                  color: '#15803d',
+                  color: 'var(--text-green-700)',
                   borderRadius: 4,
                   cursor: footerBusy ? 'not-allowed' : 'pointer',
                   fontWeight: 600,

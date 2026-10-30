@@ -195,7 +195,7 @@ A thread for a number we do not know has a {{button:blue|Who is this?}} button. 
 1. Press {{button:blue|Who is this?}}.
 2. Type three letters of their name or their company.
 3. Press the person or the company in the list.
-4. Pick what they are to us.
+4. Pick what they are to us. A supply house or someone at one needs no pick.
 5. If the person is someone else at that company, type their own name.
 6. Press {{button:blue|This is who it is}}.
 

@@ -308,11 +308,8 @@ serve(async (req) => {
     const recipients = ((recRows ?? []) as Row[]).map((r) => ({ id: r.id, name: r.name, email: r.email, role: r.role, mode: r.mode, scope: r.scope, digestWeekday: r.digest_weekday, digestTime: r.digest_time, confirmed: r.confirmed_at != null, paused: r.paused_at != null, addedViaPortal: Boolean(r.added_via_portal), failingSince: typeof r.send_failed_since === 'string' ? todayYmdInAppTz(new Date(r.send_failed_since)) : null }))
     const firmPaused = (firm as Row).paused_at != null
 
-    // Item 20's floor columns ride the named list once its migration (20261006140000) is pushed; until then the
-    // read without them answers, and every matter reads no floor (item 23 names the columns, so '*' is gone).
-    const readMatters = (cols: string) => admin.from('legal_matters').select<string, Row>(cols).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
-    let matterRes = await readMatters(`${MATTER_COUNSEL_SELECT.matters}, settlement_floor_amount, settlement_floor_pct`)
-    if (matterRes.error) matterRes = await readMatters(MATTER_COUNSEL_SELECT.matters)
+    // Item 23 names the columns, so '*' is gone. v2.4643's floor columns no longer ride along: v2.6170 (punch list #218) retired the gate.
+    const matterRes = await admin.from('legal_matters').select<string, Row>(MATTER_COUNSEL_SELECT.matters).eq('firm_id', link.firm_id).in('stage', LEGAL_PORTAL_STAGES).is('closed_at', null).order('released_at')
     const matterRows = matterRes.data
     const matters = (matterRows ?? []) as Row[]
     // #85 item 16: a matter the office pulled back stays readable, slim — the reason, the firm's own fees and
@@ -561,8 +558,6 @@ serve(async (req) => {
           const r = narrativeRows.get(m.id as string)
           return r ? legalNarrativeFromRow(r as { narrative_md?: string | null; narrative_updated_at?: string | null }, (r.narrative_updated_by ? userName.get(r.narrative_updated_by as string) : null) ?? '', (iso) => todayYmdInAppTz(new Date(iso))) : null
         })(),
-        // #85 item 20: the office's settlement floor (dollars or a percent of the balance); both null = none.
-        settlementFloor: { amount: m.settlement_floor_amount ?? null, pct: m.settlement_floor_pct ?? null },
         sharedOverrides,
         jobs: jobsWithDetails,
         customer,

@@ -153,12 +153,12 @@ function LensFrame({ spec, displayWidth, maxHeight, live, admitted, onLoaded, on
           result = auditFrame(win)
         } catch (e) {
           // A check that cannot read the screen says so, so a sweep never waits on it.
-          result = { sideways: null, lowContrast: [], brokenImages: [], errors: [`The check could not read this screen: ${formatErrorMessage(e)}`] }
+          result = { sideways: null, lowContrast: [], overlaps: [], brokenImages: [], errors: [`The check could not read this screen: ${formatErrorMessage(e)}`] }
         }
         onAudit(spec.key, result)
       } else if (!audited && age >= SETTLE_GIVE_UP_MS) {
         audited = true
-        onAudit(spec.key, { sideways: null, lowContrast: [], brokenImages: [], errors: [`The screen drew nothing in ${SETTLE_GIVE_UP_MS / 1000} seconds.`] })
+        onAudit(spec.key, { sideways: null, lowContrast: [], overlaps: [], brokenImages: [], errors: [`The screen drew nothing in ${SETTLE_GIVE_UP_MS / 1000} seconds.`] })
       }
     }
     const t = setInterval(read, 1000)
@@ -220,13 +220,18 @@ function LensFrame({ spec, displayWidth, maxHeight, live, admitted, onLoaded, on
           Open alone ↗
         </button>
       </span>
-      {audit && (audit.lowContrast.length > 0 || audit.errors.length > 0 || audit.brokenImages.length > 0) && (
+      {audit && (audit.lowContrast.length > 0 || audit.overlaps.length > 0 || audit.errors.length > 0 || audit.brokenImages.length > 0) && (
         <details style={MUTED}>
           <summary style={{ cursor: 'pointer', color: 'var(--text-link)' }}>What the check found</summary>
           <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.1rem' }}>
             {audit.lowContrast.slice(0, 6).map((c) => (
-              <li key={`${c.text}|${c.color}`}>
+              <li key={`${c.text}|${c.color}|${c.bg}`}>
                 {c.ratio}:1 · “{c.text}” in {c.color} on {c.bg}
+              </li>
+            ))}
+            {audit.overlaps.slice(0, 4).map((o) => (
+              <li key={`overlap|${o.text}`}>
+                Overlapped · “{o.text}”, {o.by === 'line' ? 'a line crosses it' : 'a shape is drawn over it'}
               </li>
             ))}
             {audit.brokenImages.slice(0, 4).map((s) => (
@@ -426,6 +431,7 @@ export function SettingsWhatEveryoneSeesTab() {
               {[
                 [count((a) => a.sideways !== null), 'scroll sideways'],
                 [count((a) => a.lowContrast.length > 0), 'have text under 3:1'],
+                [count((a) => a.overlaps.length > 0), 'have overlapped text'],
                 [count((a) => a.brokenImages.length > 0), 'have a broken image'],
                 [count((a) => a.errors.length > 0), 'caught an error'],
               ].map(([n, words]) => (

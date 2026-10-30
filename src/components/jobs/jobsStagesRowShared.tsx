@@ -1087,7 +1087,7 @@ export function renderStagesJobColumnEstimateFooter(linked: JobWithDetails['link
     <div style={{ marginTop: '0.35rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
       <Link
         to={`/estimates/${linked.estimate_number}`}
-        style={{ color: '#15803d', textDecoration: 'none', fontWeight: 500 }}
+        style={{ color: 'var(--text-green-700)', textDecoration: 'none', fontWeight: 500 }}
       >
         Quote #{linked.estimate_number}
         {title ? ` — ${title}` : ''}

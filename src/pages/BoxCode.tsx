@@ -25,7 +25,11 @@ export default function BoxCode() {
   }, [wanted])
   if (found && found !== 'looking') return <Navigate to={`/tally?tab=on-site&job=${found.jobId}&container=${found.id}`} replace />
   return (
-    <div style={{ padding: '1.5rem 1rem', maxWidth: 480, margin: '0 auto', display: 'grid', gap: '0.75rem' }}>
+    // v2.6131: a flex item in Layout's column with auto side margins is sized by its content, so the page drew
+    // narrower than the screen when its lines were short and moved as each load landed (v2.6117, Job Parts
+    // Tally). Pin it to its container like `.pageWrap` (v2.1003); border-box is global, so the max width
+    // is already the outer width and stays.
+    <div style={{ padding: '1.5rem 1rem', maxWidth: 480, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box', display: 'grid', gap: '0.75rem' }}>
       {found === 'looking' ? (
         <p style={{ margin: 0, color: 'var(--text-muted)' }}>Finding box {wanted}…</p>
       ) : (

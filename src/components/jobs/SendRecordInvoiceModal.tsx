@@ -3229,7 +3229,7 @@ export default function SendRecordInvoiceModal({
             )}
             {stripeSuccessInvoice ? (
               <>
-                <p style={{ fontSize: '0.875rem', color: '#15803d', marginBottom: '0.75rem', fontWeight: 600 }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-green-700)', marginBottom: '0.75rem', fontWeight: 600 }}>
                   Stripe invoice created
                   {stripeSuccessInvoice.stripe_invoice_status
                     ? ` (${stripeSuccessInvoice.stripe_invoice_status})`
@@ -3298,7 +3298,7 @@ export default function SendRecordInvoiceModal({
               </>
             ) : stripeResult ? (
               <>
-                <p style={{ fontSize: '0.875rem', color: '#15803d', marginBottom: '0.5rem', fontWeight: 600 }}>
+                <p style={{ fontSize: '0.875rem', color: 'var(--text-green-700)', marginBottom: '0.5rem', fontWeight: 600 }}>
                   {stripeResult.idempotent ? 'Stripe invoice already exists.' : 'Stripe invoice created.'}{' '}
                   {stripeResult.stripe_invoice_status ? `(${stripeResult.stripe_invoice_status})` : ''}
                 </p>

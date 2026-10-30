@@ -26,7 +26,7 @@ export function ConfinedSpaceRoles({ titleId }: FigureProps) {
         <line x1="130" y1="46" x2="130" y2="130" strokeDasharray="3 3" />
         {person(130, 136)}
         {person(84, 48)}
-        <rect x="94" y="68" width="10" height="7" fill="var(--bg-green-100)" stroke="#15803d" strokeWidth="1" />
+        <rect x="94" y="68" width="10" height="7" fill="var(--bg-green-100)" stroke="var(--text-green-700)" strokeWidth="1" />
         {person(224, 48)}
         <rect x="236" y="60" width="14" height="18" fill="var(--surface)" strokeWidth="1" />
         <line x1="239" y1="65" x2="247" y2="65" strokeWidth="1" />
@@ -43,11 +43,11 @@ export function ConfinedSpaceRoles({ titleId }: FigureProps) {
         <text x="224" y="37" fill="var(--text-muted)" fontSize="8">checks rescue is ready</text>
       </g>
       <g fontSize="8.5">
-        <text x="166" y="116" fill="#15803d" fontWeight="600">rescue order</text>
+        <text x="166" y="116" fill="var(--text-green-700)" fontWeight="600">rescue order</text>
         <text x="166" y="128" fill="currentColor">1 the entrant gets out</text>
         <text x="166" y="140" fill="currentColor">2 the attendant hoists</text>
         <text x="166" y="152" fill="currentColor">3 the rescue service</text>
-        <text x="166" y="168" fill="#991b1b" fontWeight="600">coworkers never go in</text>
+        <text x="166" y="168" fill="var(--text-red-800)" fontWeight="600">coworkers never go in</text>
         <text x="4" y="116" fill="var(--text-muted)" fontSize="8">the tripod</text>
         <text x="4" y="126" fill="var(--text-muted)" fontSize="8">and winch</text>
       </g>

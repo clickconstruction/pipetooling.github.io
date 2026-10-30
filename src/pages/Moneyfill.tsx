@@ -182,7 +182,7 @@ export default function Moneyfill() {
                 }}
               >
                 {c.label}
-                <b style={{ color: c.count == null ? 'var(--text-faint)' : c.count === 0 ? '#15803d' : 'var(--text-red-700)', fontVariantNumeric: 'tabular-nums' }}>
+                <b style={{ color: c.count == null ? 'var(--text-faint)' : c.count === 0 ? 'var(--text-green-700)' : 'var(--text-red-700)', fontVariantNumeric: 'tabular-nums' }}>
                   {c.count == null
                     ? '—'
                     : c.dollars != null && c.dollars > 0

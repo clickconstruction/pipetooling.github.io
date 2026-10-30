@@ -112,7 +112,7 @@ function HoursDaySection(props: {
                 {Math.round(a.valueCreated) > 0 ? (
                   <>
                     <span
-                      style={{ color: '#15803d', fontVariantNumeric: 'tabular-nums' }}
+                      style={{ color: 'var(--text-green-700)', fontVariantNumeric: 'tabular-nums' }}
                       title="Value created this day — this person's cost-share of the job's Value Created (same basis as the Gross Revenue column; pct_complete null counts as 100%)."
                     >
                       {`[${fmtMoney(a.valueCreated)}]`}
@@ -173,9 +173,9 @@ export function HoursBreakdownBody(props: {
     <>
       {sortedDailyRows.some((d) => d.crewAllocations.length > 0) ? (
         <p className="caption" style={{ marginTop: 0 }}>
-          <span style={{ color: '#15803d' }}>[$ value created]</span> (share of day) HCP | Job &mdash; Address
+          <span style={{ color: 'var(--text-green-700)' }}>[$ value created]</span> (share of day) HCP | Job &mdash; Address
           <br />
-          <span style={{ color: '#15803d' }}>[$ value]</span> is this person&rsquo;s value labor share of the
+          <span style={{ color: 'var(--text-green-700)' }}>[$ value]</span> is this person&rsquo;s value labor share of the
           job&rsquo;s Value that day
         </p>
       ) : null}

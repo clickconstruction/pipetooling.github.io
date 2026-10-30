@@ -1,0 +1,622 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Legal desk header: the contract party, the building's owner, the venue</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+  /* Punch list #219. Every name, job, street, number and dollar here is made up, the same cast as the #214 mock-up:
+     Northline Builders (the GC, office in Lubbock), Quick Lube at 2208 Whitestone Blvd, Cedar Park (job 742, Williamson
+     County), owner of record CP RETAIL HOLDINGS LLC (mails to Denver), Hale & Rowe the firm, Ortega Legal a second
+     firm. The shapes are real: a subcontract account whose payer's office is 350 miles from the building. Today is
+     Fri, Oct 30, 2026. Tokens are src/index.css's (light values and the [data-theme="dark"] block); the app's
+     saturated colours stay literal. The street-map frame (shape V2) is live over OpenStreetMap when online. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-muted: #6b7280; --text-faint: #9ca3af; --text-green-700: #15803d; --bg-green-100: #dcfce7; --text-amber-800: #92400e; --bg-amber-tint: #fffbeb; --bg-amber-100: #fef3c7; --text-red-700: #b91c1c; --bg-red-tint: #fef2f2; --bg-red-100: #fee2e2; --text-blue-700: #1d4ed8; --bg-blue-tint: #eff6ff; --text-link: #2563eb; --shadow: 0 1px 2px rgba(17,24,39,.06), 0 4px 14px rgba(17,24,39,.06); --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280; --text-green-700: #86efac; --bg-green-100: #14532d; --text-amber-800: #fcd34d; --bg-amber-tint: #2a2410; --bg-amber-100: #4a3005; --text-red-700: #fca5a5; --bg-red-tint: #3a1a1a; --bg-red-100: #5a1d1d; --text-blue-700: #93c5fd; --bg-blue-tint: #1e2a44; --text-link: #93c5fd; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 38ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b { color: var(--text-strong); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button, nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; text-decoration: none; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  h2 .pick { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 999px; padding: 2px 9px; }
+  h2 .no { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); background: var(--bg-muted); border: 1px solid var(--border); border-radius: 999px; padding: 2px 9px; }
+  h3 { font-size: 15px; margin: 24px 0 6px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  blockquote { margin: 12px 0 0; padding: 8px 14px; border-left: 3px solid var(--border-strong); color: var(--text-base); max-width: 96ch; font-style: italic; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .pass2 { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--text-blue-700); background: var(--bg-blue-tint); border-radius: 10px; max-width: 104ch; }
+  .pass2 .cap { color: var(--text-blue-700); margin-bottom: 4px; }
+  .pass2 p { margin: 4px 0; color: var(--text-700); }
+  .pass2 ol { margin: 6px 0 0; padding-left: 20px; }
+  .pass2 li { margin: 4px 0; color: var(--text-700); }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap .sp { flex: 1; }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; margin: 10px 0 0; font-size: 13px; line-height: 1.45; }
+  .frame.now { border-style: dashed; }
+  .callout { font-size: 10.5px; font-weight: 600; color: var(--text-red-700); background: var(--bg-red-100); border-radius: 4px; padding: 1px 6px; white-space: nowrap; vertical-align: 1px; }
+  .callout.ok { color: var(--text-green-700); background: var(--bg-green-100); }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; vertical-align: 1px; }
+  .chip.warn { color: var(--text-amber-800); background: var(--bg-amber-100); border-color: var(--text-amber-800); }
+  .chip.ok { color: var(--text-green-700); background: var(--bg-green-100); border-color: var(--text-green-700); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); color: var(--text-700); font: 500 12px var(--font); padding: 3px 9px; white-space: nowrap; cursor: pointer; }
+  .btn.primary { background: var(--text-700); color: var(--surface); border-color: var(--text-700); }
+  .btn.sm { font-size: 11px; padding: 2px 7px; }
+  .muted { color: var(--text-muted); }
+
+  /* the desk header, as it stands */
+  .hdr { display: flex; align-items: center; flex-wrap: wrap; gap: 10px 14px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
+  .hdr .ttl { display: flex; gap: 10px; align-items: flex-start; flex: 1 1 260px; min-width: 0; }
+  .hdr h4 { margin: 0; font-size: 17px; color: var(--text-strong); }
+  .hdr .sub { color: var(--text-muted); font-size: 12px; }
+  .ctl { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .seg { display: inline-flex; align-items: stretch; height: 30px; border: 1px solid var(--border-strong); border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .seg > span { display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-left: 1px solid var(--border); color: var(--text-700); font-size: 12px; font-weight: 500; white-space: nowrap; }
+  .seg > :first-child { border-left: none; }
+  .seg .on { background: var(--bg-muted); color: var(--text-strong); font-weight: 600; }
+  .seg .firm { font-weight: 600; }
+  .seg .quiet { color: var(--text-muted); font-weight: 500; }
+  .seg .amber { background: var(--bg-amber-tint); color: var(--text-amber-800); font-weight: 600; }
+  .ico { width: 30px; height: 30px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-700); border: 1px solid var(--border-strong); border-radius: 50%; font-size: 13px; font-weight: 600; }
+  .body { display: grid; grid-template-columns: 236px 1fr; }
+  .rail { border-right: 1px solid var(--border); padding: 10px; }
+  .rail .rc { font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); padding: 4px 6px 6px; }
+  .rail .acct { border: 1px solid var(--border); border-radius: 6px; padding: 7px 9px; margin-bottom: 6px; font-size: 12px; }
+  .rail .acct.on { background: var(--bg-muted); border-color: var(--border-strong); }
+  .rail .acct b { display: flex; justify-content: space-between; }
+  .rail .acct .m { color: var(--text-muted); font-size: 11px; display: flex; justify-content: space-between; gap: 6px; }
+  .main { padding: 14px 18px 16px; min-width: 0; }
+  .head { display: flex; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .head .nm { font-size: 17px; font-weight: 700; color: var(--text-strong); }
+  .head .addr { color: var(--text-muted); font-size: 12px; }
+  .head .addr .venue { color: var(--text-base); }
+  .head .bal { margin-left: auto; text-align: right; }
+  .head .bal b { font-size: 19px; font-variant-numeric: tabular-nums; }
+  .head .bal .m { color: var(--text-muted); font-size: 11.5px; }
+  .acts { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; margin-top: 10px; }
+  .cards { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin-top: 12px; }
+  .card { border: 1px solid var(--border); border-radius: 6px; padding: 8px 10px; }
+  .card .q { font-size: 10px; text-transform: uppercase; letter-spacing: .06em; color: var(--text-muted); }
+  .card .a { font-weight: 600; font-size: 13.5px; color: var(--text-strong); }
+  .card .w { color: var(--text-muted); font-size: 11.5px; }
+  .lines { color: var(--text-muted); font-size: 12px; margin-top: 4px; display: grid; gap: 1px; }
+  .lines .l b { color: var(--text-base); font-weight: 600; }
+  .lines .l .k { display: inline-block; min-width: 118px; text-transform: uppercase; letter-spacing: .06em; font-size: 10px; font-weight: 700; }
+
+  /* Draft A: the parties strip */
+  .strip { display: grid; grid-template-columns: 1fr 1fr 1.25fr; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; margin-top: 10px; background: var(--surface); }
+  .strip .cell { position: relative; padding: 7px 26px 8px 11px; border-left: 1px solid var(--border); min-width: 0; cursor: pointer; }
+  .strip .cell:first-child { border-left: none; }
+  .strip .cell:hover { background: var(--bg-subtle); }
+  .strip .cell .k { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); margin-bottom: 1px; display: flex; align-items: center; gap: 6px; }
+  .strip .cell .v { font-weight: 600; font-size: 13px; line-height: 1.3; color: var(--text-strong); }
+  .strip .cell .m { color: var(--text-muted); font-size: 11.5px; line-height: 1.35; }
+  .strip .cell .chev { position: absolute; right: 9px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 14px; }
+  .strip .cell.amber { background: var(--bg-amber-tint); }
+  .strip .cell.amber .v, .strip .cell.amber .k { color: var(--text-amber-800); }
+  .strip .cell.span2 { grid-column: span 2; }
+  .strip .cell .mapico { width: 14px; height: 14px; vertical-align: -2px; color: var(--text-blue-700); }
+  .strip.phone { grid-template-columns: 1fr; }
+  .strip.phone .cell { border-left: none; border-top: 1px solid var(--border); }
+  .strip.phone .cell:first-child { border-top: none; }
+
+  /* the lens frame */
+  .lens { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; padding: 14px 18px 18px; align-items: start; }
+  .lens .sum { color: var(--text-muted); font-size: 12px; margin-bottom: 4px; }
+  .lens svg { width: 100%; height: auto; display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); }
+  .lens .key { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin-top: 6px; font-size: 12px; color: var(--text-muted); }
+  .lens .key i { width: 10px; height: 10px; border-radius: 50%; display: inline-block; vertical-align: -1px; margin-right: 5px; }
+  .side { display: grid; gap: 10px; align-content: start; }
+  .sbox { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface); font-size: 12.5px; }
+  .sbox h5 { margin: 0 0 4px; font-size: 13px; color: var(--text-strong); }
+  .sbox .row { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-top: 1px solid var(--border); }
+  .sbox .row .m { color: var(--text-muted); font-size: 11.5px; }
+  .sbox .sw { width: 10px; height: 10px; border-radius: 2px; display: inline-block; vertical-align: -1px; margin-right: 6px; border: 1px solid var(--border-strong); }
+  .sbox .case { border: 1px solid var(--border-strong); border-radius: 6px; padding: 6px 8px; margin-top: 6px; background: var(--bg-blue-tint); }
+  .sbox .case .n { font-weight: 600; color: var(--text-strong); display: flex; justify-content: space-between; }
+  .sbox .case .m { color: var(--text-muted); font-size: 11.5px; }
+  .place { border: 1px solid var(--border); border-radius: 8px; padding: 9px 11px; background: var(--surface); }
+  .place.on { border-color: var(--text-strong); box-shadow: inset 3px 0 0 var(--text-blue-700); }
+  .place .k { font-size: 9.5px; font-weight: 700; text-transform: uppercase; letter-spacing: .07em; color: var(--text-muted); display: flex; justify-content: space-between; gap: 8px; }
+  .place .v { font-weight: 600; font-size: 12.5px; color: var(--text-strong); }
+  .place .m { color: var(--text-muted); font-size: 11.5px; }
+  .place .row { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; }
+  .rule { font-size: 11.5px; color: var(--text-muted); border-top: 1px solid var(--border); padding-top: 8px; }
+  .rule b { color: var(--text-base); }
+  .doors { display: flex; gap: 6px; flex-wrap: wrap; }
+  .link { color: var(--text-link); text-decoration: underline; cursor: pointer; font-size: 11.5px; }
+
+  /* the street-map window (V2) */
+  .win { margin: 14px 16px 18px; border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: 0 12px 40px rgba(0,0,0,.18); background: var(--surface); overflow: hidden; }
+  .win .whdr { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .win .whdr h4 { margin: 0; font-size: 14px; flex: 1; color: var(--text-strong); }
+  .win .whdr .m { color: var(--text-muted); font-size: 12px; }
+  .win .wbody { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 14px; padding: 14px; }
+  .mapbox { border: 1px solid var(--border); border-radius: 8px; background: var(--bg-muted); height: 340px; position: relative; overflow: hidden; }
+  .mapbox .fallback { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; color: var(--text-muted); font-size: 12px; text-align: center; padding: 20px; }
+  .mapkey { display: flex; gap: 14px; flex-wrap: wrap; align-items: center; margin: 8px 0 0; font-size: 11.5px; color: var(--text-muted); }
+  .mapkey .sw { width: 12px; height: 12px; border-radius: 3px; display: inline-block; vertical-align: -2px; margin-right: 5px; border: 1px solid var(--border-strong); }
+
+  /* the phone frame */
+  .phone { width: 375px; max-width: 100%; margin: 10px 0 0; border: 1px solid var(--border-strong); border-radius: 22px; overflow: hidden; background: var(--surface); font-size: 13px; box-shadow: var(--shadow); }
+  .phone .bar { height: 32px; background: var(--bg-muted); border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: center; font-size: 11px; color: var(--text-muted); font-weight: 600; letter-spacing: .04em; }
+  .phone .p { padding: 12px; }
+  .phone .nm { font-size: 19px; font-weight: 700; color: var(--text-strong); }
+  .phone .addr { color: var(--text-muted); font-size: 12.5px; }
+  .phone .bal { font-size: 22px; font-weight: 700; margin-top: 6px; color: var(--text-strong); }
+  .phone .bal .m { font-size: 12px; color: var(--text-muted); font-weight: 400; display: block; }
+  .phone .tabs { display: flex; gap: 14px; border-bottom: 1px solid var(--border); margin: 0 -12px 10px; padding: 0 12px 6px; font-size: 13px; color: var(--text-muted); white-space: nowrap; overflow: hidden; }
+  .phone .tabs .on { color: var(--text-strong); font-weight: 600; border-bottom: 2px solid var(--text-strong); margin-bottom: -7px; padding-bottom: 5px; }
+  .phone .lensmap svg { width: 100%; height: auto; display: block; border: 1px solid var(--border); border-radius: 8px; background: var(--bg-subtle); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; align-items: start; }
+  .states { display: grid; grid-template-columns: repeat(auto-fit, minmax(500px, 1fr)); gap: 12px; margin-top: 12px; }
+  .state { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 12px; }
+  .state .k { font-weight: 600; margin-bottom: 2px; color: var(--text-strong); }
+  .state .why { color: var(--text-muted); font-size: 12px; margin-bottom: 8px; }
+  .state .strip { margin-top: 0; font-size: 12px; }
+  .state .strip .cell .v { font-size: 12.5px; }
+  .q { border: 1px solid var(--border-strong); border-radius: 8px; padding: 10px 14px; margin-top: 10px; background: var(--surface); max-width: 96ch; }
+  .q b { display: block; }
+  .q .m { color: var(--text-muted); font-size: 12.5px; }
+  .rec { border: 1px solid var(--text-green-700); background: var(--bg-green-100); border-radius: 10px; padding: 12px 14px; margin-top: 12px; max-width: 104ch; color: var(--text-700); }
+  .rec b { color: var(--text-green-700); }
+  ul, ol { max-width: 104ch; }
+  li { margin-bottom: 6px; }
+  @media (max-width: 900px) { .body { grid-template-columns: 1fr; } .rail { display: none; } .cards { grid-template-columns: 1fr 1fr; } .strip { grid-template-columns: 1fr; } .strip .cell { border-left: none; border-top: 1px solid var(--border); } .strip .cell:first-child { border-top: none; } .strip .cell.span2 { grid-column: auto; } .lens, .win .wbody, .two { grid-template-columns: 1fr; } .states { grid-template-columns: 1fr; } h1 { font-size: 22px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <p class="eyebrow">Punch list #219 · the Legal desk header · mock-up 2026-10-30 · every name here is made up</p>
+    <h1>The three facts an attorney asks first, under the account's name: who we have a contract with, who owns the building, and the venue with the map one press away</h1>
+    <p>Three shapes of the header carrying the three facts, two shapes of the map the venue opens, every state, the phone, the firm's portal, and a second pass over all of it. Nothing here is built.</p>
+    <div class="controls"><span class="lbl">Theme</span><button type="button" aria-pressed="true" onclick="setTheme('light', this)">Light</button><button type="button" aria-pressed="false" onclick="setTheme('dark', this)">Dark</button></div>
+    <nav class="jump"><a href="#today">Today</a><a href="#a">A · the strip</a><a href="#b">B · three lines</a><a href="#c">C · title-band chips</a><a href="#venue">The venue press</a><a href="#states">States</a><a href="#portal">The portal</a><a href="#pass2">Second pass</a><a href="#rec">Recommendation</a></nav>
+  </header>
+
+  <blockquote>In the legal desk, I would like to improve the header, I think we should show the person we have a contract with, the person who owns the building, and the venue where a person can click on it and it brings up a map. — the owner, 2026-10-30</blockquote>
+
+  <h2 id="today"><span class="num">0</span> Today, on a subcontract account</h2>
+  <p class="lede">What the account's head carries now, as read on the dev server on a live subcontract account (the names here are made up). Three faults the ask points at: <b>the address under the name is the payer's office</b>, 350 miles from the building; <b>the venue is a twenty-word sentence</b> that mostly explains the firm; and <b>the owner of the building is nowhere in the head</b>. The owner is a column in the Property record table, under the four questions, the money bars and the fix list.</p>
+  <div class="frame now">
+    <div class="main">
+      <div class="head">
+        <div style="min-width:0">
+          <div class="nm">Northline Builders</div>
+          <div class="addr">742 · 1900 Mesa Drive, Ste 4, Lubbock, TX 79424 <span class="callout">the payer's office, not the building</span><br><span class="venue">Venue · Williamson County, from the property record · no counties are colored yet, so Hale &amp; Rowe takes every account</span> <span class="callout">20 words, half of them about the firm</span></div>
+        </div>
+        <div class="bal"><b>$3,140.00</b><div class="m">balance · oldest 113d</div></div>
+      </div>
+      <div class="acts"><span class="chip warn">Ready with 2 notes</span> <span class="btn">⎙ Print packet</span> <span style="flex:1"></span> <span class="btn primary">⚖ Mark attorney ready…</span> <span class="btn">Run it in house…</span> <span class="btn">Write it down…</span></div>
+      <div class="cards">
+        <div class="card"><div class="q">Can we sue?</div><div class="a">Yes</div><div class="w">They signed an agreement.</div></div>
+        <div class="card"><div class="q">How much?</div><div class="a">$3,140.00</div><div class="w">Owed on 1 job.</div></div>
+        <div class="card"><div class="q">What's left for us?</div><div class="a">$1,754.00</div><div class="w">The firm takes 33%.</div></div>
+        <div class="card"><div class="q">What could go wrong?</div><div class="a">They dispute the work</div><div class="w">The firm will have to prove it.</div></div>
+      </div>
+      <div class="cap" style="margin-top:14px">… the money bars, the fix list, the six tabs, and only then, under Account → Property record:</div>
+      <div style="margin-top:6px;border:1px solid var(--border);border-radius:6px;padding:6px 10px;font-size:11.5px;display:grid;grid-template-columns:auto 1fr auto auto;gap:6px 14px;color:var(--text-muted)"><span class="cap">Job</span><span class="cap">Address</span><span class="cap">County</span><span class="cap">Owner of record</span><span>742</span><span>2208 Whitestone Blvd, Cedar Park, TX 78613</span><span>Williamson</span><span style="color:var(--text-strong);font-weight:600">CP RETAIL HOLDINGS LLC <span class="callout">the owner, four screens down</span></span></div>
+    </div>
+  </div>
+  <div class="say">
+    <p class="rule"><b>Where the three facts live today.</b> The contract party is the packet's payer: the GC when one pays the job, else the customer, with the signed agreement and its signer on the Paper tab. The building's owner is the property record's owner of record, as the lien notice and the affidavit read it. The venue county comes from the property record, else from where the job's address falls on the county map, else from a guess by its city, and the justice precinct from the office's court map.</p>
+  </div>
+
+  <h2 id="a"><span class="num">A</span> The parties strip <span class="pick">picked</span></h2>
+  <p class="lede">One row of three cells under the account's name, in the owner's order: <b>Contract with</b>, <b>Owns the building</b>, <b>Venue</b>. Each cell is a name in bold, one quiet line of what the record says, and a door. The contract cell opens the customer (Edit customer, the door the desk already has). The owner cell opens the property record. <b>The venue cell opens the map.</b> The line under the name becomes the building's address, since the name is the payer and the building is what the case is about; the payer's own city moves into its cell. The venue sentence goes; the firm segment in the desk's header already says <i>why this firm</i> when you hover it. Nothing else in the head moves.</p>
+  <div class="frame">
+    <div class="hdr">
+      <span class="btn">← Pipeline</span>
+      <div class="ttl"><span style="font-size:18px">⚖</span><div><h4>Legal Desk</h4><div class="sub">Collections accounts, the way the firm would receive them. Three paths: run it in house, mark it attorney-ready, or write it down.</div></div></div>
+      <div class="ctl">
+        <span class="seg"><span class="on">Accounts</span><span>Map</span></span>
+        <span class="seg"><span class="firm">Hale &amp; Rowe <span class="quiet">· no counties colored yet</span> ›</span><span>✉ Emails</span><span>🔗 Portal link</span></span>
+        <span class="btn" style="height:30px;border-radius:8px">Firms…</span>
+        <span class="ico">?</span>
+      </div>
+    </div>
+    <div class="body">
+      <div class="rail">
+        <div class="rc">3 accounts · $19,772.50 · by what Click would keep</div>
+        <div class="rc" style="padding-top:8px">Under review · 2</div>
+        <div class="acct on"><b>Northline Builders <span>$3,140.00</span></b><div class="m"><span>1 job · GC pays · signed</span><span>keeps ~$1,754.00</span></div><div class="m">8d in Collections · oldest bill 113d</div></div>
+        <div class="acct"><b>Rockport Masonry <span>$1,712.50</span></b><div class="m"><span>1 job · GC pays · 1 no contract</span><span>keeps ~$797.38</span></div></div>
+        <div class="rc" style="padding-top:8px">With the firm · 1</div>
+        <div class="acct"><b>Little Oaks Academy <span>$14,920.00</span></b><div class="m"><span>3 jobs · 3 no contract</span><span>new</span></div></div>
+      </div>
+      <div class="main">
+        <div class="head">
+          <div style="min-width:0">
+            <div class="nm">Northline Builders</div>
+            <div class="addr">742 · Quick Lube · 2208 Whitestone Blvd, Cedar Park, TX 78613 <span class="callout ok">the building</span></div>
+          </div>
+          <div class="bal"><b>$3,140.00</b><div class="m">balance · oldest 113d</div></div>
+        </div>
+        <div class="strip">
+          <div class="cell" title="Opens Edit customer">
+            <div class="k">Contract with</div>
+            <div class="v">Northline Builders</div>
+            <div class="m">general contractor · subcontract signed by R. Vance · Lubbock, TX</div>
+            <span class="chev">›</span>
+          </div>
+          <div class="cell" title="Opens the property record">
+            <div class="k">Owns the building</div>
+            <div class="v">CP RETAIL HOLDINGS LLC</div>
+            <div class="m">owner of record · mails to Denver, CO · commercial</div>
+            <span class="chev">›</span>
+          </div>
+          <div class="cell" title="Brings up the map">
+            <div class="k">Venue <svg class="mapico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div>
+            <div class="v">Williamson County · justice precinct not yet</div>
+            <div class="m">where the work was done · or Lubbock County, where Northline is · within $20,000</div>
+            <span class="chev">›</span>
+          </div>
+        </div>
+        <div class="acts"><span class="chip warn">Ready with 2 notes</span> <span class="btn">⎙ Print packet</span> <span style="flex:1"></span> <span class="btn primary">⚖ Mark attorney ready…</span> <span class="btn">Run it in house…</span> <span class="btn">Write it down…</span></div>
+        <div class="cards">
+          <div class="card"><div class="q">Can we sue?</div><div class="a">Yes</div><div class="w">They signed an agreement.</div></div>
+          <div class="card"><div class="q">How much?</div><div class="a">$3,140.00</div><div class="w">Owed on 1 job.</div></div>
+          <div class="card"><div class="q">What's left for us?</div><div class="a">$1,754.00</div><div class="w">The firm takes 33%.</div></div>
+          <div class="card"><div class="q">What could go wrong?</div><div class="a">They dispute the work</div><div class="w">The firm will have to prove it.</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="say">
+    <p class="gain"><b>A first-timer reads</b> the payer's name, then three labels and three names. The eyebrow words are the owner's own: contract with, owns the building, venue.</p>
+    <p class="gain"><b>Unknowns have a shape</b>: an amber cell says what is missing and its press is the record that fills it (the states below).</p>
+    <p class="gain"><b>On a phone</b> the three cells stack as rows in one box; nothing hides in prose and the venue row is as tall as a thumb.</p>
+    <p class="lose"><b>Costs</b> one row of height, 52 px, paid for by the venue sentence it replaces.</p>
+  </div>
+
+  <h3>On a phone</h3>
+  <div class="two">
+    <div>
+      <div class="phone">
+        <div class="bar">375 · the account, stacked</div>
+        <div class="p">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="btn sm">← Accounts</span><span style="font-weight:700;color:var(--text-strong)">⚖ Legal Desk</span></div>
+          <div class="tabs"><span>Narrative</span><span class="on">Account</span><span>Paper</span><span>Evidence</span><span>With the firm</span></div>
+          <div class="nm">Northline Builders</div>
+          <div class="addr">742 · Quick Lube · 2208 Whitestone Blvd, Cedar Park, TX 78613</div>
+          <div class="strip phone">
+            <div class="cell"><div class="k">Contract with</div><div class="v">Northline Builders</div><div class="m">general contractor · subcontract signed by R. Vance · Lubbock, TX</div><span class="chev">›</span></div>
+            <div class="cell"><div class="k">Owns the building</div><div class="v">CP RETAIL HOLDINGS LLC</div><div class="m">owner of record · mails to Denver, CO</div><span class="chev">›</span></div>
+            <div class="cell"><div class="k">Venue <svg class="mapico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 10c0 6-8 12-8 12s-8-6-8-12a8 8 0 0 1 16 0Z"/><circle cx="12" cy="10" r="3"/></svg></div><div class="v">Williamson County · justice precinct not yet</div><div class="m">where the work was done · or Lubbock County, where Northline is</div><span class="chev">›</span></div>
+          </div>
+          <div class="bal">$3,140.00<span class="m">balance · oldest 113d</span></div>
+          <div class="acts"><span class="chip warn">Ready with 2 notes</span> <span class="btn sm">⎙ Print packet</span></div>
+          <div class="acts" style="margin-top:6px"><span class="btn primary">⚖ Mark attorney ready…</span> <span class="btn">Run it in house…</span></div>
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="phone">
+        <div class="bar">375 · the venue press: the Map, on this county</div>
+        <div class="p">
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px"><span class="btn sm">← Accounts</span><span style="font-weight:700;color:var(--text-strong)">⚖ Legal Desk</span><span class="seg" style="margin-left:auto;height:26px"><span>Accounts</span><span class="on">Map</span></span></div>
+          <div class="muted" style="font-size:12px;margin-bottom:4px">9 accounts · 11 jobs · $24,310.00 open</div>
+          <div class="lensmap">
+            <svg viewBox="0 0 351 200" aria-hidden="true">
+              <g fill="#dbe7f3" stroke="#aab2bd" stroke-width="1">
+                <polygon points="20,40 80,30 110,60 90,110 30,100"/>
+                <polygon points="110,60 190,50 230,90 200,130 150,120 90,110" fill="#cfe1ef"/>
+                <polygon points="190,50 260,40 300,70 280,120 230,90"/>
+                <polygon points="90,110 150,120 160,170 100,185 60,150"/>
+                <polygon points="150,120 200,130 240,160 210,195 160,170" fill="#cfe1ef"/>
+                <polygon points="230,90 280,120 330,130 320,180 240,160 200,130"/>
+              </g>
+              <polygon points="110,60 190,50 230,90 200,130 150,120 90,110" fill="none" stroke="#1d4ed8" stroke-width="2.5"/>
+              <text x="128" y="96" font-size="9" font-weight="700" fill="#1d4ed8" letter-spacing=".06em">WILLIAMSON</text>
+              <text x="166" y="158" font-size="8" fill="#6b7280">TRAVIS</text>
+              <text x="40" y="78" font-size="8" fill="#6b7280">BURNET</text>
+              <circle cx="168" cy="112" r="9" fill="none" stroke="#1d4ed8" stroke-width="2"/>
+              <circle cx="168" cy="112" r="5" fill="#b45309"/>
+              <circle cx="140" cy="88" r="4" fill="#b45309"/>
+              <circle cx="190" cy="150" r="4" fill="#15803d"/>
+              <circle cx="60" cy="130" r="4" fill="#dc2626"/>
+            </svg>
+          </div>
+          <div class="sbox" style="margin-top:8px">
+            <h5>Williamson County · Hale &amp; Rowe</h5>
+            <div class="case"><div class="n">Northline Builders <span>$3,140.00</span></div><div class="m">Needs a dev’s eyes · job 742 · Quick Lube, Cedar Park</div></div>
+            <div class="place on" style="margin-top:8px"><div class="k"><span>Where the work was done</span></div><div class="v">Williamson County · justice precinct not yet</div></div>
+            <div class="place" style="margin-top:6px"><div class="k"><span>Where the defendant is</span></div><div class="v">Lubbock County · justice precinct not yet</div><div class="m">350 mi from the building · off this map</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="b"><span class="num">B</span> Three labelled lines under the name <span class="no">not picked</span></h2>
+  <p class="lede">The same three facts as three lines of text under the name, each led by its label, the venue line a link. The smallest change, and honest. <b>Not picked</b>: a label and a name in one grey run read as a caption, not as a door. An unknown owner has no shape but the word <i>unknown</i>. On a phone it is six lines of small type before the balance, and the venue link is one word wide.</p>
+  <div class="frame">
+    <div class="main">
+      <div class="head">
+        <div style="min-width:0">
+          <div class="nm">Northline Builders</div>
+          <div class="addr">742 · Quick Lube · 2208 Whitestone Blvd, Cedar Park, TX 78613</div>
+          <div class="lines">
+            <div class="l"><span class="k">Contract with</span> <b>Northline Builders</b> · general contractor · subcontract signed by R. Vance</div>
+            <div class="l"><span class="k">Owns the building</span> <b>CP RETAIL HOLDINGS LLC</b> · owner of record · mails to Denver, CO</div>
+            <div class="l"><span class="k">Venue</span> <b><span class="link">Williamson County · justice precinct not yet ›</span></b> · or Lubbock County, where Northline is</div>
+          </div>
+        </div>
+        <div class="bal"><b>$3,140.00</b><div class="m">balance · oldest 113d</div></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="c"><span class="num">C</span> Chips in the title band <span class="no">not picked</span></h2>
+  <p class="lede">The three facts as segments in the desk's header row, beside the firm group, the venue chip the map's door. <b>Not picked</b>: the facts belong to the account and the row belongs to the desk (the view switch, the firm's three doors, Firms…, the legend). The row already wraps at 1040 px on the live desk; with three more segments the firm's name is the first thing cut, and on a phone the band is four lines of chips above the account's name. A reader would also have to look up, away from the name, to learn who the parties are.</p>
+  <div class="frame">
+    <div class="hdr">
+      <span class="btn">← Pipeline</span>
+      <div class="ttl"><span style="font-size:18px">⚖</span><div><h4>Legal Desk</h4><div class="sub">Collections accounts, the way the firm would receive them.</div></div></div>
+      <div class="ctl">
+        <span class="seg"><span class="on">Accounts</span><span>Map</span></span>
+        <span class="seg"><span class="firm">Northline Builders</span><span class="quiet">CP RETAIL HOLDINGS LLC</span><span>Williamson County 🗺</span></span>
+        <span class="seg"><span class="firm">Hale &amp; Rowe ›</span><span>✉ Emails</span><span>🔗 Portal link</span></span>
+        <span class="btn" style="height:30px;border-radius:8px">Firms…</span>
+        <span class="ico">?</span>
+      </div>
+    </div>
+    <div class="main" style="padding-top:10px"><div class="head"><div><div class="nm">Northline Builders</div><div class="addr">742 · 1900 Mesa Drive, Ste 4, Lubbock, TX 79424</div></div><div class="bal"><b>$3,140.00</b><div class="m">balance · oldest 113d</div></div></div></div>
+  </div>
+
+  <h2 id="venue"><span class="num">V</span> The venue press: which map comes up</h2>
+  <p class="lede">Two shapes. <b>V1 reuses the desk's Map</b>: the press switches the desk to Map with this account's county outlined, its dot held, and the county card open on the case. The card gains the two places a suit can be filed, in the packet's own words (TRCP 502.4: where the work was done, where the defendant is), and the one line about the court's limit. Nothing new is drawn; the lens already places every account by its job's point and shows which firm covers the county. <b>V2 is a window on the street map</b>: the Map page's Leaflet drawing opened on the building, with the county's outline and the precinct's shape when the office has drawn one. It shows streets and the building's exact spot, which venue does not need, and it is a second map on one desk.</p>
+
+  <h3>V1 · the desk's Map, opened on this county with the case held <span class="pick">recommended</span></h3>
+  <div class="frame">
+    <div class="hdr">
+      <span class="btn">← Pipeline</span>
+      <div class="ttl"><span style="font-size:18px">⚖</span><div><h4>Legal Desk</h4><div class="sub">Collections accounts, the way the firm would receive them.</div></div></div>
+      <div class="ctl">
+        <span class="seg"><span>Accounts</span><span class="on">Map</span></span>
+        <span class="seg"><span class="firm">Hale &amp; Rowe <span class="quiet">· Williamson</span> ›</span><span>✉ Emails</span><span>🔗 Portal link</span></span>
+        <span class="btn" style="height:30px;border-radius:8px">Firms…</span>
+        <span class="ico">?</span>
+      </div>
+    </div>
+    <div class="lens">
+      <div style="min-width:0">
+        <div class="sum">9 accounts · 11 jobs · $24,310.00 open</div>
+        <svg viewBox="0 0 640 360" aria-hidden="true">
+          <g fill="#e5e7eb" stroke="#aab2bd" stroke-width="1">
+            <polygon points="40,70 140,50 190,100 160,180 60,170"/>
+            <polygon points="190,100 330,80 400,140 350,220 270,210 160,180" fill="#cfe1ef"/>
+            <polygon points="330,80 450,60 520,110 490,190 400,140"/>
+            <polygon points="60,170 160,180 180,270 100,300 30,240"/>
+            <polygon points="160,180 270,210 330,290 280,340 180,330 180,270" fill="#cfe1ef"/>
+            <polygon points="270,210 350,220 400,140 490,190 560,210 540,300 440,320 330,290"/>
+            <polygon points="330,290 440,320 430,355 300,355 280,340" fill="#e6d6ee"/>
+            <polygon points="540,300 600,250 630,330 560,350 440,320" fill="#e6d6ee"/>
+          </g>
+          <polygon points="190,100 330,80 400,140 350,220 270,210 160,180" fill="none" stroke="#1d4ed8" stroke-width="3"/>
+          <text x="236" y="150" font-size="12" font-weight="700" fill="#1d4ed8" letter-spacing=".08em">WILLIAMSON</text>
+          <text x="210" y="265" font-size="11" fill="#6b7280" letter-spacing=".06em">TRAVIS</text>
+          <text x="80" y="120" font-size="11" fill="#6b7280" letter-spacing=".06em">BURNET</text>
+          <text x="400" y="110" font-size="11" fill="#6b7280" letter-spacing=".06em">BELL</text>
+          <text x="420" y="270" font-size="11" fill="#6b7280" letter-spacing=".06em">BASTROP</text>
+          <text x="330" y="340" font-size="11" fill="#7a3e8f" letter-spacing=".06em">HAYS</text>
+          <circle cx="300" cy="175" r="13" fill="none" stroke="#1d4ed8" stroke-width="2.5"/>
+          <circle cx="300" cy="175" r="7" fill="#b45309"/>
+          <text x="318" y="179" font-size="12" font-weight="600" fill="#111827">Northline Builders · 742</text>
+          <circle cx="245" cy="130" r="6" fill="#b45309"/>
+          <circle cx="235" cy="300" r="6" fill="#15803d"/>
+          <circle cx="250" cy="312" r="6" fill="#15803d"/>
+          <circle cx="90" cy="220" r="6" fill="#dc2626"/>
+          <circle cx="470" cy="250" r="6" fill="#6b7280"/>
+          <circle cx="380" cy="330" r="6" fill="#b45309"/>
+          <text x="470" y="40" font-size="11" fill="#6b7280">▲ drag · pinch · double tap to zoom</text>
+        </svg>
+        <div class="key"><span><i style="background:#b45309"></i>Needs a dev’s eyes</span><span><i style="background:#15803d"></i>With the firm</span><span><i style="background:#6b7280"></i>Given up on</span><span><i style="background:#dc2626"></i>No firm covers it</span></div>
+      </div>
+      <div class="side">
+        <div class="sbox">
+          <h5>Who covers what</h5>
+          <div class="row"><span><span class="sw" style="background:#cfe1ef"></span>Hale &amp; Rowe<div class="m">Williamson, Travis</div></span><span style="text-align:right"><b>6 cases</b><div class="m">$19,210.00</div></span></div>
+          <div class="row"><span><span class="sw" style="background:#e6d6ee"></span>Ortega Legal<div class="m">Hays, Comal</div></span><span style="text-align:right"><b>2 cases</b><div class="m">$4,050.00</div></span></div>
+          <div class="row"><span><span class="sw" style="background:#e5e7eb"></span>No firm covers it<div class="m">Burnet</div></span><span style="text-align:right"><b>1 case</b><div class="m">$1,050.00</div></span></div>
+        </div>
+        <div class="sbox">
+          <h5>Williamson County · Hale &amp; Rowe</h5>
+          <div class="muted" style="font-size:11.5px">2 cases · $4,852.50 · tap a case to open the desk on it</div>
+          <div class="case"><div class="n">Northline Builders <span>$3,140.00</span></div><div class="m">Needs a dev’s eyes · job 742 · Quick Lube, Cedar Park</div><div class="m" style="margin-top:4px"><span class="link">Open on the desk ›</span></div></div>
+          <div class="row"><span>Rockport Masonry<div class="m">Needs a dev’s eyes · 1 job</div></span><span style="text-align:right">$1,712.50</span></div>
+          <div class="cap" style="margin-top:10px">Venue for job 742 <span class="callout ok">new on the card</span></div>
+          <div class="place on" style="margin-top:6px"><div class="k"><span>Where the work was done</span></div><div class="v">Williamson County · justice precinct not yet</div><div class="m">2208 Whitestone Blvd, Cedar Park · the county from the property record</div></div>
+          <div class="place" style="margin-top:6px"><div class="k"><span>Where the defendant is</span></div><div class="v">Lubbock County · justice precinct not yet</div><div class="m">Northline Builders, Lubbock · 350 mi from the building · <span class="link">Show ›</span></div></div>
+          <div class="rule" style="margin-top:8px">$3,140.00 is within the justice court limit of $20,000. A lien foreclosure goes to district court in Williamson County.</div>
+          <div class="doors" style="margin-top:8px"><span class="btn sm">Draw the precincts on the Map page ↗</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="say">
+    <p class="gain"><b>One map on the desk.</b> The lens is the Settings picker's drawing with a flag; the venue press adds an opening state (this county, this case held) and a venue block on the county card. The case's dot, its stand and the firm that covers the county are already there.</p>
+    <p class="gain"><b>Venue is the county.</b> No record on the desk carries a justice precinct today; the office has not drawn its court map. Until it does, every precinct reads <i>not yet</i>, and a street map would show nothing a county map does not.</p>
+    <p class="gain"><b>When the precincts are drawn</b>, they are polygons in longitude and latitude, the same as the county lines. They can be drawn onto this map (<code>countyAt</code> already projects points onto it), and the dot then sits on its side of the precinct line here, with no second map.</p>
+    <p class="lose"><b>Costs</b>: the defendant's county is usually off the lens's central view; <i>Show ›</i> pans to it or says it is off the map, as the legend does for a case with no county.</p>
+  </div>
+
+  <h3>V2 · a window on the street map <span class="no">not recommended</span></h3>
+  <p class="lede">A window over the desk: the Map page's street map opened on the building, the county line, the precinct's shape when drawn, and the two places beside it. Drawn here live when you are online: drag and zoom it. <b>Not recommended today</b>: it is a second map on one desk, it needs the office's precincts to say anything the county map does not, and the Map page is where those precincts are drawn. The window's parts that matter, the two places and the rule lines, are what V1 puts on the county card.</p>
+  <div class="frame">
+    <div style="background:rgba(17,24,39,.28);padding:1px 0">
+      <div class="win">
+        <div class="whdr"><h4>Venue · Northline Builders</h4><span class="m">job 742</span><span class="btn sm">✕</span></div>
+        <div class="wbody">
+          <div style="min-width:0">
+            <div class="mapbox" id="venue-map"><div class="fallback" id="venue-fallback">The street map, opened on 2208 Whitestone Blvd, Cedar Park: the building's pin, the Williamson County line, the precinct's shape when the office has drawn it. (Live when online.)</div></div>
+            <div class="mapkey"><span><span class="sw" style="background:#1d4ed8;opacity:.9"></span>the building</span><span><span class="sw" style="background:rgba(29,78,216,.14);border-color:#1d4ed8"></span>Williamson County</span><span><span class="sw" style="background:transparent;border:1.5px dashed #92400e"></span>a justice precinct, once the office draws it</span><span><span class="sw" style="background:#b91c1c;opacity:.9"></span>the defendant</span></div>
+          </div>
+          <div class="side">
+            <div class="place on" id="pl-work">
+              <div class="k"><span>Where the work was done</span><span>job 742</span></div>
+              <div class="v">Williamson County · justice precinct not yet</div>
+              <div class="m">2208 Whitestone Blvd, Cedar Park, TX 78613 · the property record names the county</div>
+              <div class="row"><span class="btn sm" onclick="venueShow('work')">Show</span><span class="link">Directions ↗</span></div>
+            </div>
+            <div class="place" id="pl-def">
+              <div class="k"><span>Where the defendant is</span><span>Northline Builders</span></div>
+              <div class="v">Lubbock County · justice precinct not yet</div>
+              <div class="m">1900 Mesa Drive, Ste 4, Lubbock, TX 79424 · by the job address, a guess from its city · 350 mi from the building</div>
+              <div class="row"><span class="btn sm" onclick="venueShow('def')">Show</span></div>
+            </div>
+            <div class="rule">$3,140.00 is within the justice court limit of $20,000. A lien foreclosure goes to district court in Williamson County.</div>
+            <div class="rule">County from the property record. The precinct comes with the office's court map. TRCP 502.4 gives either venue and the choice is counsel's.</div>
+            <div class="doors"><span class="btn sm">Every case on the county map ›</span><span class="btn sm">Court areas on the Map page ↗</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="states"><span class="num">S</span> The states the strip can be in</h2>
+  <p class="lede">The same three cells read every account on the desk. The words are the record's; nothing is guessed. An amber cell is a gap, and its press is the door that closes it, the way the firm segment works today.</p>
+  <div class="states">
+    <div class="state">
+      <div class="k">A direct job: the customer owns the building</div>
+      <div class="why">A homeowner account. The payer and the owner of record are one person, so the two cells are one, and the venue's two places are one county.</div>
+      <div class="strip">
+        <div class="cell span2"><div class="k">Contract with · owns the building</div><div class="v">Dana Okafor</div><div class="m">homeowner · owner of record · homestead · no contract, a sworn account</div><span class="chev">›</span></div>
+        <div class="cell"><div class="k">Venue</div><div class="v">Guadalupe County · justice precinct not yet</div><div class="m">where the work was done and where they live</div><span class="chev">›</span></div>
+      </div>
+    </div>
+    <div class="state">
+      <div class="k">The owner is not on the record</div>
+      <div class="why">A GC job whose property record has no owner. The cell is amber and opens the record, where the office types the owner. The lien affidavit cannot go without it.</div>
+      <div class="strip">
+        <div class="cell"><div class="k">Contract with</div><div class="v">Rockport Masonry</div><div class="m">general contractor · no contract, a sworn account · San Marcos, TX</div><span class="chev">›</span></div>
+        <div class="cell amber"><div class="k">Owns the building</div><div class="v">Not on the record</div><div class="m">Add the owner to the property record.</div><span class="chev">›</span></div>
+        <div class="cell"><div class="k">Venue</div><div class="v">Hays County · justice precinct not yet</div><div class="m">where the work was done and where they are</div><span class="chev">›</span></div>
+      </div>
+    </div>
+    <div class="state">
+      <div class="k">The county is unknown</div>
+      <div class="why">No property record names a county and the job address does not place it. Two cells are amber and both open the same door: link the job to its property record, the door the firm segment offers today.</div>
+      <div class="strip">
+        <div class="cell"><div class="k">Contract with</div><div class="v">Kestrel Build Co</div><div class="m">general contractor · no contract, a sworn account</div><span class="chev">›</span></div>
+        <div class="cell amber"><div class="k">Owns the building</div><div class="v">No property record</div><div class="m">Link the job to its property record.</div><span class="chev">›</span></div>
+        <div class="cell amber"><div class="k">Venue</div><div class="v">County unknown</div><div class="m">The same record names it.</div><span class="chev">›</span></div>
+      </div>
+    </div>
+    <div class="state">
+      <div class="k">Two buildings on one account</div>
+      <div class="why">An account with jobs on two properties. The owner cell counts them and its press opens the Property record table, which already lists each. The venue cell leads with the county holding the larger balance, as the firm rule does.</div>
+      <div class="strip">
+        <div class="cell"><div class="k">Contract with</div><div class="v">Pecan Street Builders</div><div class="m">general contractor · 2 subcontracts signed · Austin, TX</div><span class="chev">›</span></div>
+        <div class="cell"><div class="k">Owns the buildings</div><div class="v">2 buildings · 2 owners</div><div class="m">OAK HILL RETAIL LP · LOOP 360 HOLDINGS LLC</div><span class="chev">›</span></div>
+        <div class="cell"><div class="k">Venue</div><div class="v">Travis County ($9,120) · Hays County ($2,400)</div><div class="m">where the work was done · or Travis County, where they are</div><span class="chev">›</span></div>
+      </div>
+    </div>
+    <div class="state">
+      <div class="k">With the firm, or given up on</div>
+      <div class="why">The strip stays: the facts do not change when the matter is released or set aside. Today the venue sentence disappears for a released matter; the cell does not.</div>
+      <div class="strip" style="opacity:.75">
+        <div class="cell"><div class="k">Contract with</div><div class="v">Little Oaks Academy</div><div class="m">customer · no contract, a sworn account · Dripping Springs, TX</div><span class="chev">›</span></div>
+        <div class="cell"><div class="k">Owns the building</div><div class="v">LO CAMPUS PARTNERS LP</div><div class="m">owner of record · commercial</div><span class="chev">›</span></div>
+        <div class="cell"><div class="k">Venue</div><div class="v">Hays County · justice precinct not yet</div><div class="m">where the work was done and where they are</div><span class="chev">›</span></div>
+      </div>
+    </div>
+    <div class="state">
+      <div class="k">The payer is a name only</div>
+      <div class="why">No customer record behind the payer. The contract cell is amber and its press is the desk's existing <i>Link a customer</i> door; the other two cells read from the job's property record as before.</div>
+      <div class="strip">
+        <div class="cell amber"><div class="k">Contract with</div><div class="v">Bluebonnet Pools</div><div class="m">name only, no customer record. Link a customer.</div><span class="chev">›</span></div>
+        <div class="cell"><div class="k">Owns the building</div><div class="v">M. Reyes</div><div class="m">owner of record · homestead</div><span class="chev">›</span></div>
+        <div class="cell"><div class="k">Venue</div><div class="v">Comal County · justice precinct not yet</div><div class="m">where the work was done</div><span class="chev">›</span></div>
+      </div>
+    </div>
+  </div>
+
+  <h2 id="portal"><span class="num">P</span> The firm's portal</h2>
+  <p class="lede">The firm's matter page (the <code>legal-portal</code> mirror) already carries the same facts further down: the Payer line, the Property record table and the <i>Where to file</i> block. <b>Mirror the strip there</b>, in a third PR: the firm reads the same three first, and its intake asks exactly these. The portal's cells have no office doors (no Edit customer, no property record): the first two are plain, and the venue cell opens the portal's own <i>Who covers what</i> map (v2.5862, counts only) on the county. One kernel feeds both, so the office and the firm never disagree about who the owner is.</p>
+
+  <h2 id="pass2"><span class="num">·</span> Is this the best we can do? The second pass</h2>
+  <div class="pass2">
+    <div class="cap">What the first draft had, and what changed after asking</div>
+    <ol>
+      <li><b>The first draft kept the payer's office under the name.</b> On a GC account that reads as the building's address, and it is not. The line under the name is now the job's address, and the payer's city sits in the Contract cell. Every other number in the head is about the job too.</li>
+      <li><b>The first draft drew four cells</b>, a fourth for Click, so the row read as the lien chain. Cut: a box that never changes is noise, and the chain is already said by the Contract cell's <i>general contractor</i>, which is what makes Click a subcontractor for the lien clock.</li>
+      <li><b>The first draft opened a second map.</b> A street-map window won the first pass on the strength of the precinct line. Weighed again: no record carries a precinct today, the office's court map is not drawn, and when it is, its shapes can be laid on the county map the desk already has. The venue press now opens the desk's Map on the county with the case held, and the county card gains the two places and the rule lines. The window stays drawn above as V2 for the comparison.</li>
+      <li><b>The owner's name as the record spells it.</b> The appraisal district writes CP RETAIL HOLDINGS LLC in capitals, and the first draft cased it. Left as written: the lien affidavit names the owner the way the record does, and the desk should have one spelling, not two. The quiet line, in the desk's own words, says what the record is.</li>
+      <li><b>The contract cell names the signer.</b> The agreement's signer is already on the Paper tab's coverage (<code>signer_printed_name</code>, the co-signer when there is one), so the cell can say <i>subcontract signed by R. Vance</i> and not only <i>signed</i>. When no one signed, it says <i>no contract, a sworn account</i>, the words the Account tab's Basis column uses.</li>
+      <li><b>The venue cell says two counties, in one line.</b> The first draft said only the property's county. The packet's rule already gives both places and the printed packet already says so; when both are the same county the cell says <i>where the work was done and where they live</i>, which is its own fact.</li>
+      <li><b>The venue sentence's firm words are not lost.</b> <i>No counties are colored yet, so the firm takes every account</i> is the firm segment's hover title today and stays there; the amber states keep their doors on the firm segment and gain the same amber on the venue cell. Two cells can be amber for one gap; they open the same record.</li>
+      <li><b>A sixth state was missing</b>: a payer with no customer record. Added above; its door is the desk's existing <i>Link a customer</i>.</li>
+      <li><b>Cut</b>: a cell for the tenant or the brand (on no record the desk reads); a courthouse pin (the court map holds shapes, not courthouses, and a guessed address would be the one guessed thing on this desk); a fourth place for the firm's office (the firm covers counties, not a point); an inline fold under the strip for the map (it needs the height of the four question cards and pushes them off the screen on every press).</li>
+    </ol>
+  </div>
+
+  <h2 id="rec"><span class="num">✓</span> Recommendation</h2>
+  <div class="rec"><b>Build A with V1</b>: the parties strip under the account's name, and the venue cell opening the desk's own Map on the county with the case held and the two places on the county card. Reason: it answers the three questions in one row at the top of the account, every unknown has a shape and a door, the phone gets the same three rows, and it draws no second map while the county is the whole of what the records can say about venue. The street map returns only if the office draws its precincts and the county map cannot carry them.</div>
+  <div class="q"><b>1. The map behind the venue: the desk's Map on the county (V1, recommended), or the street-map window (V2)?</b><div class="m">V1 draws nothing new and keeps one map; V2 shows streets and, later, the precinct's shape.</div></div>
+  <div class="q"><b>2. The line under the name: the building's address (as drawn), or the payer's office as today?</b><div class="m">Drawn: the building. The payer's city is in its own cell.</div></div>
+  <div class="q"><b>3. The Contract cell's door: the customer's record (as drawn), or the Paper tab where the agreement is?</b><div class="m">Drawn: the customer, the desk's existing door; the cell already says who signed, and the paper is one tab away.</div></div>
+  <div class="q"><b>4. Mirror the strip on the firm's portal (recommended as PR 3)?</b><div class="m">The portal already has the facts lower down; the strip puts them first for the firm too.</div></div>
+
+  <h3>What building it means</h3>
+  <ul>
+    <li><b>PR 1, the strip</b> (S): a pure kernel <code>src/lib/legal/legalParties.ts</code> that reads the packet (the payer and its signed coverage, <code>account.properties</code>, <code>venuePlaces</code>, <code>justiceCourtCap</code>, the firm's venue read) into three cells with a state and a door, with tests for every state above; <code>LegalPartiesStrip.tsx</code> under the name on both layouts; the name line reads the job's address; the venue sentence retired; render smoke, the guide, release note and fragment.</li>
+    <li><b>PR 2, the venue press</b> (S): <code>LegalDeskMapView</code> takes an opening county and held case; <code>LegalCountyContentsCard</code> gains the venue block for the held case (the two places, the rule lines, the Map page door); the strip's venue cell presses it.</li>
+    <li><b>PR 3, the portal</b> (S, a <code>legal-portal</code> deploy): the same kernel on the firm's matter page, the venue cell opening Who covers what.</li>
+  </ul>
+</div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+  function setTheme(t, btn) {
+    document.documentElement.setAttribute('data-theme', t)
+    document.querySelectorAll('.controls button').forEach(function (b) { b.setAttribute('aria-pressed', b === btn ? 'true' : 'false') })
+  }
+  // V2's live frame: Williamson County's outline is the repo's own file (public/geo/tx-counties.json, the Census 20m line);
+  // the building's pin and the precinct shape are illustrative. Offline, the words stay.
+  var WILLIAMSON = [[-97.828,30.904],[-97.963,30.786],[-98.05,30.624],[-97.957,30.628],[-97.847,30.473],[-97.747,30.449],[-97.596,30.501],[-97.37,30.42],[-97.334,30.403],[-97.155,30.457],[-97.27,30.735],[-97.315,30.752],[-97.624,30.87],[-97.828,30.904]].map(function (p) { return [p[1], p[0]] });
+  var PRECINCT = [[30.90,-97.98],[30.90,-97.80],[30.74,-97.74],[30.60,-97.78],[30.47,-97.85],[30.62,-98.05],[30.79,-97.96]];
+  var BUILDING = [30.520, -97.830];
+  var DEFENDANT = [33.520, -101.880];
+  var venueMap = null;
+  function venueShow(which) {
+    var work = document.getElementById('pl-work'), def = document.getElementById('pl-def');
+    work.classList.toggle('on', which === 'work'); def.classList.toggle('on', which === 'def');
+    if (!venueMap) return;
+    if (which === 'work') venueMap.flyTo([30.655, -97.64], 10, { duration: 0.8 }); else venueMap.flyTo(DEFENDANT, 10, { duration: 0.8 });
+  }
+  try {
+    if (window.L) {
+      var box = document.getElementById('venue-map');
+      document.getElementById('venue-fallback').remove();
+      venueMap = L.map(box, { scrollWheelZoom: false }).setView([30.655, -97.64], 10);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(venueMap);
+      L.polygon(WILLIAMSON, { color: '#1d4ed8', weight: 1.5, fillColor: '#1d4ed8', fillOpacity: 0.08 }).addTo(venueMap);
+      L.tooltip({ permanent: true, direction: 'center', className: 'mk-county' }).setContent('Williamson County').setLatLng([30.52, -97.40]).addTo(venueMap);
+      L.polygon(PRECINCT, { color: '#92400e', weight: 1.5, dashArray: '6 5', fill: false }).addTo(venueMap).bindTooltip('A justice precinct, once the office draws it (an illustration)', { permanent: false });
+      L.circleMarker(BUILDING, { radius: 8, color: '#fff', weight: 2, fillColor: '#1d4ed8', fillOpacity: 1 }).addTo(venueMap).bindTooltip('2208 Whitestone Blvd, Cedar Park · job 742', { permanent: true, direction: 'right', offset: [8, 0] });
+      L.circleMarker(DEFENDANT, { radius: 8, color: '#fff', weight: 2, fillColor: '#b91c1c', fillOpacity: 1 }).addTo(venueMap).bindTooltip('Northline Builders · 1900 Mesa Drive, Lubbock', { permanent: true, direction: 'right', offset: [8, 0] });
+      var style = document.createElement('style');
+      style.textContent = '.mk-county{background:transparent;border:none;box-shadow:none;color:#1d4ed8;font:700 11px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;letter-spacing:.08em;text-transform:uppercase;opacity:.75}.leaflet-tooltip{font:12px -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}';
+      document.head.appendChild(style);
+    }
+  } catch (e) { /* offline: the words stay */ }
+</script>
+</body>
+</html>

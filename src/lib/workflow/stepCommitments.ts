@@ -94,6 +94,15 @@ export function commitmentBalance(
  * accept only — enforced by caller). 'withdraw' returns an unanswered offer
  * to draft; 'reoffer' reopens a declined order (new window/amount allowed).
  */
+/**
+ * The patch that cancels a commitment (v2.6129, punch list #178). Only a draft may hold no amount
+ * (`step_commitments_amount_when_sent_check`), so an unpriced draft cancels at $0. Without it the database
+ * refuses the discard and the Needs you line that counts unpriced drafts never clears.
+ */
+export function cancelCommitmentPatch(amount: number | null): { status: 'cancelled'; amount?: number } {
+  return amount == null ? { status: 'cancelled', amount: 0 } : { status: 'cancelled' }
+}
+
 export function nextCommitmentActions(status: string): Array<'offer' | 'accept' | 'withdraw' | 'reoffer' | 'cancel'> {
   switch (status) {
     case 'draft':

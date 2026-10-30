@@ -22,9 +22,9 @@ export function HandSignals({ titleId }: FigureProps) {
           <>
             <line x1="30" y1="50" x2="4" y2="50" />
             <line x1="30" y1="50" x2="42" y2="70" />
-            <line x1="0" y1="60" x2="20" y2="60" stroke="#dc2626" strokeWidth="2" />
-            <polygon points="-4,60 2,56 2,64" fill="#dc2626" stroke="none" />
-            <polygon points="24,60 18,56 18,64" fill="#dc2626" stroke="none" />
+            <line x1="0" y1="60" x2="20" y2="60" stroke="var(--text-red-600)" strokeWidth="2" />
+            <polygon points="-4,60 2,56 2,64" fill="var(--text-red-600)" stroke="none" />
+            <polygon points="24,60 18,56 18,64" fill="var(--text-red-600)" stroke="none" />
           </>
         ))}
         {person(60, (
@@ -32,8 +32,8 @@ export function HandSignals({ titleId }: FigureProps) {
             <line x1="30" y1="50" x2="44" y2="38" />
             <line x1="44" y1="38" x2="44" y2="20" />
             <line x1="30" y1="50" x2="18" y2="70" />
-            <path d="M44 7 a7 7 0 1 1 -7 7" stroke="#15803d" strokeWidth="2" />
-            <polygon points="37,9 33,15 41,15" fill="#15803d" stroke="none" />
+            <path d="M44 7 a7 7 0 1 1 -7 7" stroke="var(--text-green-700)" strokeWidth="2" />
+            <polygon points="37,9 33,15 41,15" fill="var(--text-green-700)" stroke="none" />
           </>
         ))}
         {person(120, (
@@ -41,8 +41,8 @@ export function HandSignals({ titleId }: FigureProps) {
             <line x1="30" y1="50" x2="44" y2="62" />
             <line x1="44" y1="62" x2="44" y2="84" />
             <line x1="30" y1="50" x2="18" y2="70" />
-            <path d="M44 83 a7 7 0 1 1 -7 7" stroke="#15803d" strokeWidth="2" />
-            <polygon points="37,85 33,91 41,91" fill="#15803d" stroke="none" />
+            <path d="M44 83 a7 7 0 1 1 -7 7" stroke="var(--text-green-700)" strokeWidth="2" />
+            <polygon points="37,85 33,91 41,91" fill="var(--text-green-700)" stroke="none" />
           </>
         ))}
         {person(190, (

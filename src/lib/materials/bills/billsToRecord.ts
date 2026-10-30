@@ -37,6 +37,27 @@ export interface BillCandidate {
 const lineOf = (r: BillCandidateRow): { contact_id: string | null; at: string | null } | null => (Array.isArray(r.messages) ? r.messages[0] ?? null : r.messages)
 
 /**
+ * Which house each contact's lines come from: a house's own contact (its counter, or someone named on its row) by its
+ * `supply_house_id`, and a rep's contact by the rep's house (v2.6136), as the thread's `houseOfContact` reads one. A
+ * rep with no house names none.
+ */
+export function houseOfContacts(
+  houseContacts: ReadonlyArray<{ id: string; supply_house_id: string | null }>,
+  reps: ReadonlyArray<{ id: string; supply_house_id: string | null }>,
+  repContacts: ReadonlyArray<{ id: string; supply_house_contact_id: string | null }>,
+): Map<string, string> {
+  const out = new Map<string, string>()
+  for (const c of houseContacts) if (c.supply_house_id) out.set(c.id, c.supply_house_id)
+  const houseOfRep = new Map<string, string>()
+  for (const r of reps) if (r.supply_house_id) houseOfRep.set(r.id, r.supply_house_id)
+  for (const c of repContacts) {
+    const house = c.supply_house_contact_id ? houseOfRep.get(c.supply_house_contact_id) : undefined
+    if (house) out.set(c.id, house)
+  }
+  return out
+}
+
+/**
  * The rows that are bills to record, newest first: a PDF or a picture with our copy, unanswered, whose line's contact is
  * one of the houses asked for, and not on an invoice row.
  */

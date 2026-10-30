@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billCandidates, billCountsByHouse, billsForHouse, type BillCandidateRow } from './billsToRecord'
+import { billCandidates, billCountsByHouse, billsForHouse, houseOfContacts, type BillCandidateRow } from './billsToRecord'
 
 const row = (over: Partial<BillCandidateRow>): BillCandidateRow => ({
   id: 'att-1',
@@ -55,6 +55,26 @@ describe('billCandidates', () => {
       new Set(['on-row']),
     )
     expect(out.map((c) => c.attachmentId)).toEqual(['kept'])
+  })
+  it('counts a rep’s bill at the rep’s house, beside the house’s own contacts (v2.6136)', () => {
+    const houseOf = houseOfContacts(
+      [
+        { id: 'c-ridgeway', supply_house_id: 'sh-ridgeway' },
+        { id: 'c-cedar', supply_house_id: 'sh-cedar' },
+      ],
+      [
+        { id: 'rep-ray', supply_house_id: 'sh-ridgeway' },
+        { id: 'rep-gone', supply_house_id: null },
+      ],
+      [
+        { id: 'c-ray', supply_house_contact_id: 'rep-ray' },
+        { id: 'c-gone', supply_house_contact_id: 'rep-gone' },
+        { id: 'c-other', supply_house_contact_id: 'rep-elsewhere' },
+      ],
+    )
+    expect(houseOf).toEqual(new Map([['c-ridgeway', 'sh-ridgeway'], ['c-cedar', 'sh-cedar'], ['c-ray', 'sh-ridgeway']]))
+    const out = billCandidates([row({ id: 'from-ray', messages: { contact_id: 'c-ray', at: '2026-10-23T13:40:00.000Z' } })], houseOf, new Set())
+    expect(billCountsByHouse(out)).toEqual(new Map([['sh-ridgeway', 1]]))
   })
   it('reads the day in the company’s calendar, from the line, else from the file', () => {
     const late = billCandidates([row({ id: 'x', messages: { contact_id: 'c-ridgeway', at: '2026-10-23T03:30:00.000Z' } })], HOUSES, new Set())

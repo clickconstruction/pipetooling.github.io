@@ -265,7 +265,7 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
         </div>
       ))}
       {row.paymentEvents.map((e, i) => (
-        <div key={`p-${i}`} style={{ color: '#15803d' }}>
+        <div key={`p-${i}`} style={{ color: 'var(--text-green-700)' }}>
           💵 {e.label} — ${formatCurrency(e.amount)}
         </div>
       ))}
@@ -287,14 +287,14 @@ function JobChargesTimelineTooltip({ active, payload }: TimelineTooltipProps) {
           </>
         )}
         {row.paymentsToDate > 0 && (
-          <div style={{ color: '#15803d' }}>
+          <div style={{ color: 'var(--text-green-700)' }}>
             Paid: ${formatCurrency(row.paymentsToDate)}
           </div>
         )}
         <div
           style={{
             fontWeight: 600,
-            color: row.profit >= 0 ? '#15803d' : 'var(--text-red-700)',
+            color: row.profit >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)',
           }}
         >
           Cash position: {signedCurrency(row.profit)}
