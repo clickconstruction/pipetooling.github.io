@@ -20558,34 +20558,28 @@ export type Database = {
       jobs_ledger_materials: {
         Row: {
           amount: number
-          charged_on: string | null
           created_at: string | null
           description: string
           id: string
           job_id: string
-          memo: string | null
           sequence_order: number
           source_bid_id: string | null
         }
         Insert: {
           amount?: number
-          charged_on?: string | null
           created_at?: string | null
           description?: string
           id?: string
           job_id: string
-          memo?: string | null
           sequence_order?: number
           source_bid_id?: string | null
         }
         Update: {
           amount?: number
-          charged_on?: string | null
           created_at?: string | null
           description?: string
           id?: string
           job_id?: string
-          memo?: string | null
           sequence_order?: number
           source_bid_id?: string | null
         }
