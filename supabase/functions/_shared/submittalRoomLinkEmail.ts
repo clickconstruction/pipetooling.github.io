@@ -122,7 +122,7 @@ export function buildSubmittalRoomLinkEmail(input: RoomLinkEmailInput): { subjec
   <p>${escapeHtml(greet)}</p>
   ${note ? `<p style="white-space:pre-wrap">${escapeHtml(note)}</p>\n  ` : ''}<p>${escapeHtml(ready)}</p>
   <p>${escapeHtml(can)}</p>
-  <p><a href="${link}" style="display:inline-block;background:#b0662f;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600">Open the review</a></p>
+  <p><a href="${link}" style="display:inline-block;background:#9a5b2b;color:#fff;text-decoration:none;padding:10px 16px;border-radius:6px;font-weight:600">Open the review</a></p>
   <p style="color:#5b6577;font-size:12px;word-break:break-all">${link}</p>
   <p style="color:#5b6577;font-size:13px">${escapeHtml(yours)}</p>
   <p style="color:#5b6577;font-size:13px">${escapeHtml(sign)}</p>

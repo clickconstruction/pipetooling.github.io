@@ -266,13 +266,19 @@ export function movableCandidates<T extends { amount: number | null; due_date: s
   )
 }
 
-/** A candidate with exactly one job is movable; null allocation count = not known yet. */
+/**
+ * A candidate with exactly one job is movable; null allocation count = not known yet. Since
+ * v2.6086 (punch list #178) a job whose account at the house is on record as not needed takes
+ * its charges out of the window — the house would not move them — so the caller passes the
+ * pair's account status when it has it (`count_supply_house_move_window()` reads the same rule).
+ */
 export function isMovableAgingInvoice(
   inv: { amount: number | null; due_date: string | null; on_job_account?: boolean | null },
   allocationCount: number | null,
   todayYmd: string,
+  accountStatus: string | null | undefined = null,
 ): boolean {
-  return movableCandidates([inv], todayYmd).length === 1 && allocationCount === 1
+  return movableCandidates([inv], todayYmd).length === 1 && allocationCount === 1 && accountStatus !== 'not_needed'
 }
 
 export type MoveStripSummary = { count: number; dollars: number; askedCount: number; soonestDueYmd: string | null }

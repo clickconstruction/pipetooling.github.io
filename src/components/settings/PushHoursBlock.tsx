@@ -37,8 +37,8 @@ function dayStyle(on: boolean, busy: boolean): CSSProperties {
     fontSize: '0.85rem',
     fontWeight: 600,
     cursor: busy ? 'default' : 'pointer',
-    background: on ? 'var(--text-blue-500)' : 'var(--surface)',
-    color: on ? 'white' : 'var(--text-base)',
+    background: on ? 'var(--text-link)' : 'var(--surface)',
+    color: on ? 'var(--surface)' : 'var(--text-base)',
     opacity: busy ? 0.6 : 1,
   }
 }

@@ -264,8 +264,10 @@ export function SupplyHousesTab({
   const [agingMoveData, setAgingMoveData] = useState<{
     allocations: Record<string, InvoiceJobAllocation[]>
     asks: Record<string, MoveAskRow>
+    /** Candidates whose one job's account at the house is on record as not needed (v2.6086, punch list #178): out of the window. */
+    notNeeded: ReadonlySet<string>
     loaded: boolean
-  }>({ allocations: {}, asks: {}, loaded: false })
+  }>({ allocations: {}, asks: {}, notNeeded: new Set(), loaded: false })
   /** Which unpaid book (by identity) the move data above was read for, and whether the book itself has loaded once — the worked-list door waits on both. */
   const [agingMoveDataBook, setAgingMoveDataBook] = useState<AgingInvoiceRow[] | null>(null)
   const [agingBookLoaded, setAgingBookLoaded] = useState(false)
@@ -678,7 +680,7 @@ export function SupplyHousesTab({
     }
     const cellRows =
       agingCellModal.cell === 'movable'
-        ? movableCandidates(agingUnpaidInvoices, todayYmdInAppTz()).filter((r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1)
+        ? movableCandidates(agingUnpaidInvoices, todayYmdInAppTz()).filter((r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1 && !agingMoveData.notNeeded.has(r.id))
         : invoicesForAgingCell(agingUnpaidInvoices, agingCellModal.houseId, agingCellModal.cell, todayYmdInAppTz())
     const ids = cellRows.map((r) => r.id)
     if (ids.length === 0) {
@@ -761,7 +763,7 @@ export function SupplyHousesTab({
     const candidates = movableCandidates(agingUnpaidInvoices, todayYmdInAppTz())
     const ids = candidates.map((r) => r.id)
     if (ids.length === 0) {
-      setAgingMoveData({ allocations: {}, asks: {}, loaded: true })
+      setAgingMoveData({ allocations: {}, asks: {}, notNeeded: new Set(), loaded: true })
       setAgingMoveDataBook(agingUnpaidInvoices)
       return
     }
@@ -783,7 +785,22 @@ export function SupplyHousesTab({
       const asks: Record<string, MoveAskRow> = {}
       // askRes.error: the table may not be pushed yet — the strip still works, with no asks.
       for (const r of (askRes.error ? [] : askRes.data ?? []) as MoveAskRow[]) asks[r.invoice_id] = r
-      setAgingMoveData({ allocations, asks, loaded: true })
+      // v2.6086: a single-job candidate whose job's account at the house is marked not needed leaves the window.
+      const houseOf = new Map(candidates.map((r) => [r.id, r.supply_house_id]))
+      const pairs = Object.entries(allocations).filter(([, list]) => list.length === 1).map(([invoiceId, list]) => ({ invoiceId, jobId: list[0]!.job_id, houseId: houseOf.get(invoiceId) ?? '' }))
+      const notNeeded = new Set<string>()
+      if (pairs.length > 0) {
+        const accRes = await supabase
+          .from('job_supply_house_accounts')
+          .select('job_id, supply_house_id')
+          .in('job_id', [...new Set(pairs.map((p) => p.jobId))])
+          .in('supply_house_id', [...new Set(pairs.map((p) => p.houseId))])
+          .eq('status', 'not_needed')
+        if (cancelled) return
+        const marked = new Set(((accRes.data ?? []) as { job_id: string; supply_house_id: string }[]).map((a) => `${a.job_id}:${a.supply_house_id}`))
+        for (const p of pairs) if (marked.has(`${p.jobId}:${p.houseId}`)) notNeeded.add(p.invoiceId)
+      }
+      setAgingMoveData({ allocations, asks, notNeeded, loaded: true })
       setAgingMoveDataBook(agingUnpaidInvoices)
     })()
     return () => {
@@ -904,7 +921,7 @@ export function SupplyHousesTab({
   const agingHasCredits = agingMatrix.creditsTotal < -0.005
   /** PR 3: the movable set (current, unflagged, exactly one job) and the strip's numbers. */
   const agingMovable = movableCandidates(agingUnpaidInvoices, agingTodayYmd).filter(
-    (r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1,
+    (r) => (agingMoveData.allocations[r.id]?.length ?? 0) === 1 && !agingMoveData.notNeeded.has(r.id),
   )
   const agingMoveStrip = moveStripSummary(agingMovable, new Set(Object.keys(agingMoveData.asks)))
   const agingHasCurrentUnpaid = agingUnpaidInvoices.some(
@@ -2144,7 +2161,7 @@ export function SupplyHousesTab({
           const credit = isSupplyCredit(inv.amount)
           const isOn = inv.on_job_account === true
           // PR 3: a still-current single-job row moves through the move modal, never a bare flag.
-          const movableRow = !isOn && isMovableAgingInvoice(inv, allocationsOf(inv.id).length, agingTodayYmd)
+          const movableRow = !isOn && isMovableAgingInvoice(inv, allocationsOf(inv.id).length, agingTodayYmd, agingMoveData.notNeeded.has(inv.id) ? 'not_needed' : null)
           const moveAsk = movableRow ? agingMoveData.asks[inv.id] ?? null : null
           const openMoveModal = () => {
             setAgingMoveModalFor(inv.id)

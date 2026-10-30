@@ -1339,7 +1339,7 @@ function ChecklistHistoryTab({ authUserId, canViewOthers, canEditHistory, setErr
         )}
         {!isNarrow && (
           <span style={{ display: 'inline-flex', gap: '0.4rem', flexWrap: 'wrap', alignItems: 'center' }}>
-            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, background: '#22c55e', color: 'white' }}>✓ You</span>
+            <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, background: '#22c55e', color: 'var(--text-on-bright-solid)' }}>✓ You</span>
             <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, background: 'var(--bg-amber-tint)', border: '1px solid #d97706', color: 'var(--text-amber-800)' }}>✓ Someone else</span>
             <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, background: 'var(--bg-red-100)', border: '1px solid #dc2626', color: 'var(--text-red-700)' }}>✗ Missed</span>
             <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.5rem', borderRadius: 7, border: '1px dashed var(--border-400)', color: 'var(--text-muted)' }}>Not due</span>

@@ -52,7 +52,7 @@ describe('BridgePctPrompt', () => {
     fireEvent.click(screen.getAllByTestId('bridge-pct-prompt-set')[0]!)
     expect(screen.getByRole('dialog', { name: 'Update % done for J951 · Ortiz repipe' })).toBeTruthy()
     await waitFor(() => expect(screen.getByText('Save 0%')).toBeTruthy())
-    fireEvent.click(screen.getByText('Cancel'))
+    fireEvent.click(screen.getByText('Not now'))
     expect(screen.queryByRole('dialog')).toBeNull()
     expect(onSaved).not.toHaveBeenCalled()
   })
