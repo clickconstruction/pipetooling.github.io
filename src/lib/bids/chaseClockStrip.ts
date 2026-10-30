@@ -30,6 +30,8 @@ export type ChaseClockDay = {
   today: boolean
   /** The marks on the day, the ones that matter first. */
   marks: ChaseClockMark[]
+  /** The marks belong to days before the strip starts, pinned to its first column so an old bid still shows its clock. */
+  pinned: boolean
   /** The day's hover: "Oct 27 · a contact". */
   title: string
 }
@@ -105,8 +107,10 @@ function dowOf(ymd: string): number {
   return new Date(Date.UTC(Number(ymd.slice(0, 4)), Number(ymd.slice(5, 7)) - 1, Number(ymd.slice(8, 10)))).getUTCDay()
 }
 
-function md(ymd: string): string {
-  return formatWorkDateYmdMonthDayShort(ymd)
+/** "Oct 3", with the year when it is not today's: "Oct 3, 2025". */
+function md(ymd: string, todayYmd: string): string {
+  const base = formatWorkDateYmdMonthDayShort(ymd)
+  return ymd.slice(0, 4) === todayYmd.slice(0, 4) ? base : `${base}, ${ymd.slice(0, 4)}`
 }
 
 function later(a: string, b: string): string {
@@ -114,16 +118,16 @@ function later(a: string, b: string): string {
 }
 
 /** The call-again day with its words. Null only when the follow-up has no day and the bid no send. */
-export function chaseClockCallAgain(followup: BidFollowup, sentYmd: string): ChaseClockCallAgain | null {
-  if (followup.source === 'bid' && followup.dueYmd) return { ymd: followup.dueYmd, source: 'bid', words: `call again · ${md(followup.dueYmd)} · promised` }
-  if (followup.source === 'builder' && followup.dueYmd) return { ymd: followup.dueYmd, source: 'builder', words: `call again · ${md(followup.dueYmd)} · the builder's day` }
+export function chaseClockCallAgain(followup: BidFollowup, sentYmd: string, todayYmd: string): ChaseClockCallAgain | null {
+  if (followup.source === 'bid' && followup.dueYmd) return { ymd: followup.dueYmd, source: 'bid', words: `call again · ${md(followup.dueYmd, todayYmd)} · promised` }
+  if (followup.source === 'builder' && followup.dueYmd) return { ymd: followup.dueYmd, source: 'builder', words: `call again · ${md(followup.dueYmd, todayYmd)} · the builder's day` }
   if (followup.dueYmd) {
     // The rule's day, never before the send: a contact older than the send does not start the clock.
     const ymd = later(followup.dueYmd, sentYmd)
-    return { ymd, source: 'default', words: `call again · ${md(ymd)} · the rule's ${PENDING_CHASE_STALE_CONTACT_DAYS} days after the last contact` }
+    return { ymd, source: 'default', words: `call again · ${md(ymd, todayYmd)} · the rule's ${PENDING_CHASE_STALE_CONTACT_DAYS} days after the last contact` }
   }
   if (!sentYmd) return null
-  return { ymd: sentYmd, source: 'default', words: `call again · ${md(sentYmd)} · the day it went out, nobody has called since` }
+  return { ymd: sentYmd, source: 'default', words: `call again · ${md(sentYmd, todayYmd)} · the day it went out, nobody has called since` }
 }
 
 const LABEL_RANK: Record<ChaseClockLabelTone, number> = { amber: 0, blue: 1, muted: 2, green: 3 }
@@ -154,7 +158,7 @@ export function chaseClockStrip(input: ChaseClockInput): ChaseClockStrip | null 
   if (!sentYmd) return null
   const { todayYmd } = input
   const contactYmds = [...new Set(input.contactIsos.map(dayOf).filter((d) => d && d >= sentYmd))].sort()
-  const callAgain = chaseClockCallAgain(input.followup, sentYmd)
+  const callAgain = chaseClockCallAgain(input.followup, sentYmd, todayYmd)
   const gettableYmd = input.hasTab ? null : ymdAddDays(sentYmd, TAB_GETTABLE_AFTER_DAYS)
   const gettable = gettableYmd ? { ymd: gettableYmd, past: gettableYmd <= todayYmd } : null
 
@@ -168,55 +172,65 @@ export function chaseClockStrip(input: ChaseClockInput): ChaseClockStrip | null 
   }
   const sentOnStrip = sentYmd >= startYmd
 
+  // A mark on a day before the strip starts is pinned to the first column, so a bid sent a year ago
+  // with nobody called since still shows its send, its diamond and its tick, not an empty row.
   const days: ChaseClockDay[] = []
   for (let ymd = startYmd; ymd <= endYmd; ymd = ymdAddDays(ymd, 1)) {
+    const first = ymd === startYmd
+    const on = (markYmd: string) => markYmd === ymd || (first && markYmd < startYmd)
     const marks: ChaseClockMark[] = []
     const words: string[] = []
-    if (ymd === sentYmd) {
+    let pinned = false
+    if (on(sentYmd)) {
       marks.push('sent')
-      words.push('sent')
+      words.push(sentYmd === ymd ? 'sent' : `sent ${md(sentYmd, todayYmd)}`)
+      pinned ||= sentYmd !== ymd
     }
     if (contactYmds.includes(ymd)) {
       marks.push('contact')
       words.push('a contact')
     }
-    if (callAgain && ymd === callAgain.ymd) {
+    if (callAgain && on(callAgain.ymd)) {
       marks.push(callAgain.source === 'default' ? 'default' : 'promised')
       words.push(callAgain.words)
+      pinned ||= callAgain.ymd !== ymd
     }
-    if (gettable && ymd === gettable.ymd) {
+    if (gettable && on(gettable.ymd)) {
       marks.push('gettable')
-      words.push('tab gettable from here')
+      words.push(gettable.ymd === ymd ? 'tab gettable from here' : `tab gettable since ${md(gettable.ymd, todayYmd)}`)
+      pinned ||= gettable.ymd !== ymd
     }
     marks.sort((a, b) => MARK_ORDER.indexOf(a) - MARK_ORDER.indexOf(b))
     const dow = dowOf(ymd)
-    days.push({ ymd, dow, weekend: dow === 0 || dow === 6, today: ymd === todayYmd, marks, title: [md(ymd), ymd === todayYmd ? 'today' : '', ...words].filter(Boolean).join(' · ') })
+    days.push({ ymd, dow, weekend: dow === 0 || dow === 6, today: ymd === todayYmd, marks, pinned, title: [md(ymd, todayYmd), ymd === todayYmd ? 'today' : '', pinned ? 'before the strip starts' : '', ...words].filter(Boolean).join(' · ') })
   }
 
   const lastContact = contactYmds[contactYmds.length - 1] ?? null
   const quietDays = Math.max(0, ymdDaysBetween(lastContact ?? sentYmd, todayYmd) ?? 0)
   const toChase = followupNeedsCall(input.followup)
 
+  // A mark pinned to the first column labels that column, with ‹ for the days it stands for.
+  const pin = (ymd: string) => (ymd < startYmd ? startYmd : ymd)
   const wanted: Array<Omit<ChaseClockLabel, 'align'>> = []
-  if (sentOnStrip) wanted.push({ ymd: sentYmd, text: `sent ${md(sentYmd)}`, tone: 'muted' })
+  wanted.push({ ymd: pin(sentYmd), text: sentOnStrip ? `sent ${md(sentYmd, todayYmd)}` : `‹ sent ${md(sentYmd, todayYmd)}`, tone: 'muted' })
   if (todayYmd >= startYmd && todayYmd <= endYmd) wanted.push({ ymd: todayYmd, text: 'today', tone: 'blue' })
-  if (callAgain) wanted.push({ ymd: callAgain.ymd, text: callAgain.source === 'default' ? 'call again · default' : 'call again · promised', tone: 'amber' })
-  if (gettable) wanted.push({ ymd: gettable.ymd, text: gettable.past ? `tab gettable since ${md(gettable.ymd)}` : `tab gettable ${md(gettable.ymd)}`, tone: 'green' })
+  if (callAgain) wanted.push({ ymd: pin(callAgain.ymd), text: `${callAgain.ymd < startYmd ? '‹ ' : ''}call again · ${callAgain.source === 'default' ? 'default' : 'promised'}`, tone: 'amber' })
+  if (gettable) wanted.push({ ymd: pin(gettable.ymd), text: gettable.past ? `${gettable.ymd < startYmd ? '‹ ' : ''}tab gettable since ${md(gettable.ymd, todayYmd)}` : `tab gettable ${md(gettable.ymd, todayYmd)}`, tone: 'green' })
   const labels = chaseClockLabels(wanted, startYmd, endYmd)
 
   const parts: string[] = []
-  parts.push(sentOnStrip ? `Sent ${md(sentYmd)}.` : `Sent ${md(sentYmd)}, before the strip starts.`)
+  parts.push(sentOnStrip ? `Sent ${md(sentYmd, todayYmd)}.` : `Sent ${md(sentYmd, todayYmd)}, before the strip starts.`)
   parts.push(
     contactYmds.length === 0
       ? 'No contact since it went out.'
-      : `${contactYmds.length} contact${contactYmds.length === 1 ? '' : 's'}, the last ${md(lastContact!)}.`,
+      : `${contactYmds.length} contact${contactYmds.length === 1 ? '' : 's'}, the last ${md(lastContact!, todayYmd)}.`,
   )
   if (callAgain) {
     const rel = callAgain.ymd < todayYmd ? 'passed' : callAgain.ymd === todayYmd ? 'is today' : 'is ahead'
     parts.push(`${callAgain.words.replace(/^call again/, 'Call again')}, ${rel}.`)
   }
-  if (gettable) parts.push(gettable.past ? `Tab gettable since ${md(gettable.ymd)}.` : `Tab gettable from ${md(gettable.ymd)}.`)
-  parts.push(`Today ${md(todayYmd)}: ${quietDays} day${quietDays === 1 ? '' : 's'} quiet${toChase ? ', to chase' : ''}.`)
+  if (gettable) parts.push(gettable.past ? `Tab gettable since ${md(gettable.ymd, todayYmd)}.` : `Tab gettable from ${md(gettable.ymd, todayYmd)}.`)
+  parts.push(`Today ${md(todayYmd, todayYmd)}: ${quietDays} day${quietDays === 1 ? '' : 's'} quiet${toChase ? ', to chase' : ''}.`)
 
   return { startYmd, endYmd, days, sentYmd, sentOnStrip, contactYmds, callAgain, gettable, toChase, quietDays, labels, words: parts.join(' ') }
 }

@@ -84,11 +84,26 @@ describe('chaseClockStrip', () => {
     expect(strip.days.length).toBe(CHASE_CLOCK_MAX_DAYS)
     expect(strip.sentOnStrip).toBe(false)
     expect(strip.days.some((d) => d.today)).toBe(true)
-    expect(strip.labels.some((l) => l.text.startsWith('sent'))).toBe(false)
     expect(strip.words.startsWith('Sent Jul 1, before the strip starts.')).toBe(true)
-    // The gettable day (Jul 22) is off the strip too: no tick drawn, but the sentence still says it.
-    expect(strip.days.some((d) => d.marks.includes('gettable'))).toBe(false)
+    // The send and the gettable day (Jul 22) are off the strip: both pin to the first column, marked as before the strip.
+    const first = strip.days[0]!
+    expect(first.pinned).toBe(true)
+    expect(first.marks).toEqual(['gettable', 'sent'])
+    expect(first.title).toBe('Sep 23 · before the strip starts · sent Jul 1 · tab gettable since Jul 22')
+    expect(strip.days.slice(1).some((d) => d.pinned || d.marks.includes('gettable') || d.marks.includes('sent'))).toBe(false)
+    // The first column's label is the send's, with ‹ for the days it stands for; the gettable day's gave way to it. The rule's diamond (Oct 8) is on the strip.
+    expect(strip.labels.map((l) => l.text)).toEqual(['‹ sent Jul 1', 'call again · default', 'today'])
     expect(strip.words).toContain('Tab gettable since Jul 22.')
+  })
+
+  it('a bid sent last year with nobody called since: the diamond on its send day pins to the first column, and the dates carry the year', () => {
+    const strip = chaseClockStrip({ sentIso: '2025-10-03', contactIsos: [], followup: followupOf('2025-10-03', null), hasTab: false, todayYmd: TODAY })!
+    expect(strip.callAgain).toEqual({ ymd: '2025-10-03', source: 'default', words: 'call again · Oct 3, 2025 · the day it went out, nobody has called since' })
+    expect(strip.days[0]!.marks).toEqual(['default', 'gettable', 'sent'])
+    expect(strip.days[0]!.pinned).toBe(true)
+    expect(strip.toChase).toBe(true)
+    expect(strip.labels.map((l) => l.text)).toEqual(['‹ call again · default', 'today'])
+    expect(strip.words).toBe('Sent Oct 3, 2025, before the strip starts. No contact since it went out. Call again · Oct 3, 2025 · the day it went out, nobody has called since, passed. Tab gettable since Oct 24, 2025. Today Oct 30: 392 days quiet, to chase.')
   })
 
   it('a bid with no send day draws nothing', () => {

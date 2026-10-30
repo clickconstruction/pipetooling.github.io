@@ -50,8 +50,9 @@ export function ChaseClockStrip({ strip, testId }: { strip: Strip; testId?: stri
             key={d.ymd}
             data-chase-clock-day={d.ymd}
             data-today={d.today ? 'yes' : undefined}
+            data-pinned={d.pinned ? 'yes' : undefined}
             title={d.title}
-            style={{ display: 'grid', gap: 2, alignContent: 'end', justifyItems: 'center', height: '100%', padding: '0 0 3px', borderRadius: 3, boxSizing: 'border-box', background: d.today ? 'var(--bg-blue-tint)' : d.weekend ? 'var(--bg-muted)' : 'transparent', outline: d.today ? '1px solid var(--text-link)' : undefined, minWidth: 0 }}
+            style={{ display: 'grid', gap: 2, alignContent: 'end', justifyItems: 'center', height: '100%', padding: '0 0 3px', borderRadius: 3, boxSizing: 'border-box', background: d.today ? 'var(--bg-blue-tint)' : d.weekend ? 'var(--bg-muted)' : 'transparent', outline: d.today ? '1px solid var(--text-link)' : undefined, borderLeft: d.pinned ? '2px dashed var(--border-strong)' : undefined, minWidth: 0 }}
           >
             {d.marks.map((m, i) => <i key={i} aria-hidden data-chase-clock-mark={m} style={markStyle(m)} />)}
           </span>
