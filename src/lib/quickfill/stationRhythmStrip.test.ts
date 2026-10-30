@@ -6,6 +6,7 @@ import {
   RHYTHM_STRIP_CELLS,
   RHYTHM_STRIP_DAYS_BACK,
   filterRoundRows,
+  keepSideBySide,
   rhythmDueYmd,
   rhythmMarksBySection,
   rhythmStripAxis,
@@ -203,5 +204,15 @@ describe('the phone head as chips', () => {
     expect(filterRoundRows(rows, null)).toHaveLength(5)
     expect(roundHeadChipWords({ filter: 'due', label: 'due', n: 2, tone: 'red' }, false)).toBe('due · 2')
     expect(roundHeadChipWords({ filter: 'due', label: 'due', n: 2, tone: 'red' }, true)).toBe('due · 2 · showing only these')
+  })
+})
+
+describe('keepSideBySide', () => {
+  it('keeps ?sbs=1 across the station addresses and leaves everything else alone', () => {
+    expect(keepSideBySide('/quickfill#email', '?sbs=1')).toBe('/quickfill?sbs=1#email')
+    expect(keepSideBySide('/quickfill', '?sbs=1&view=roller')).toBe('/quickfill?sbs=1')
+    expect(keepSideBySide('/quickfill?view=focus#email', 'sbs=1')).toBe('/quickfill?view=focus&sbs=1#email')
+    expect(keepSideBySide('/quickfill#email', '?view=roller')).toBe('/quickfill#email')
+    expect(keepSideBySide('/quickfill#email', '')).toBe('/quickfill#email')
   })
 })
