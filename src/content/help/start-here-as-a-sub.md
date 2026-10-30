@@ -20,7 +20,7 @@ Need a job's address and nothing else? Tap the {{icon:search}} **search icon** i
 3. **File a report** if the job needs one, with photos.
 4. **Clock out.** Tap **Clock out** under the Job Mode card. On your last job of the day, the card's red {{button:red|Wrap Up Day}} button does it instead. On the full Dashboard, the red timer button clocks you out too. Clocking out asks up to three things, each for a reason:
    - **Assign your spending before you clock out**. This prompt shows when a company card purchase of yours isn't on a job yet. The purchase can be from any day, not just today. Assign it now, or skip and sort it later in Job Parts Tally.
-   - **Review before clock out** asks *What did you work on?* The answer is a short note, and it is required. The review also asks which job the time goes to. The job you're on is listed first, with a {{chip:green|You are here}} tag.
+   - **Clock out** asks *What did you work on?* The note is filled from the reports you filed today. Edit it if you like. With no report today, you type a short note. The note is required. The review also asks which job the time goes to. The job you're on is listed first, with a {{chip:green|You are here}} tag.
    - **Missing reports from today** shows red buttons, one per scheduled job with no report yet. Tap one to file it now, or finish clocking out and file it later.
    Then tap {{button:red|Complete clock out}}. Your hours go to the office for approval automatically.
 
