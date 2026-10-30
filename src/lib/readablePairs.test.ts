@@ -4,8 +4,12 @@ import { SAFETY_ORANGE, SAFETY_ORANGE_TEXT, TEXT_ON_SAFETY_ORANGE } from './bids
 import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from './clock/clockColors'
 import { MORE_SWIPE_GREY } from './people/usersTabPhone'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from './deadPress'
+import { JOB_ACTIVITY_EVENT_RENDER } from './jobActivityEvent'
+import { PURSUIT_OUTCOME_CHIP_COLORS } from './bids/pursuitOutcomeColors'
+import { OVERHEAD_METHOD_INKS } from './overheadMethodInks'
+import { GUIDE_CAPTION_INK, GUIDE_DEAD_BUTTON, GUIDE_PANEL_GROUND } from './helpGuideIllustrations'
 import { GOOD_THROUGH_PASSED_CHIP_COLORS } from './estimates/estimateGoodThroughChip'
-import { contrastRatio } from './lens/lensAudit'
+import { contrastRatio, over, parseRgb } from './lens/lensAudit'
 import { hexToRgba, parseThemeTokens, type ThemeName } from './lens/lensTokens'
 import { PORTAL_TRADE_COLORS } from './portal/portalPayload'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER } from './portal/portalTheme'
@@ -48,6 +52,19 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "a form's orange hint on the surface (v2.6063)", fg: SAFETY_ORANGE_TEXT, bg: 'var(--surface)' },
     { label: 'a picked chip, a picked weekday, a Save or a blue press filled with --text-link (v2.6068)', fg: 'var(--surface)', bg: 'var(--text-link)' },
     { label: "People → Users' phone row, swipe to More (v2.6068)", fg: '#ffffff', bg: MORE_SWIPE_GREY },
+    { label: "the follow-ups count and a follow-up's job number on amber (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#f59e0b' },
+    { label: "the Checklist's ✓ You on green (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#22c55e' },
+    { label: "the header's dispatch press on sky (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#0ea5e9' },
+    { label: 'Next, ✓ All clear and the discount in green-700 on the surface (v2.6075)', fg: 'var(--text-green-700)', bg: 'var(--surface)' },
+    { label: 'the Bid Costs unsent chip (v2.6081)', fg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.fg, bg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.bg },
+    { label: "People → Overhead's method A on the page (v2.6082)", fg: OVERHEAD_METHOD_INKS.A, bg: 'var(--bg-page)' },
+    { label: "People → Overhead's method B on the page (v2.6082)", fg: OVERHEAD_METHOD_INKS.B, bg: 'var(--bg-page)' },
+    { label: "People → Overhead's method C on the page (v2.6082)", fg: OVERHEAD_METHOD_INKS.C, bg: 'var(--bg-page)' },
+    { label: "the overhead lens window's heading, method A (v2.6082)", fg: OVERHEAD_METHOD_INKS.A, bg: 'var(--surface)' },
+    { label: "the overhead lens window's heading, method B (v2.6082)", fg: OVERHEAD_METHOD_INKS.B, bg: 'var(--surface)' },
+    { label: "the overhead lens window's heading, method C (v2.6082)", fg: OVERHEAD_METHOD_INKS.C, bg: 'var(--surface)' },
+    { label: "a guide's Example caption on its light panel (v2.6085)", fg: GUIDE_CAPTION_INK, bg: GUIDE_PANEL_GROUND },
+    { label: "a guide's grey mock button (v2.6085)", fg: GUIDE_DEAD_BUTTON.ink, bg: GUIDE_DEAD_BUTTON.fill },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {
@@ -56,6 +73,40 @@ describe('the pairs What everyone sees found, in both themes', () => {
       })
     }
   }
+})
+
+describe("a job's activity tags on the surface, in both themes (v2.6078)", () => {
+  const tagColors = [...new Set(Object.values(JOB_ACTIVITY_EVENT_RENDER).map((m) => m.tagColor))]
+  for (const fg of tagColors) {
+    for (const theme of THEMES) {
+      it(`${fg} on the surface, ${theme}: 4.5:1 or better`, () => {
+        expect(ratio(fg, 'var(--surface)', theme)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
+})
+
+describe('words on a wash over a fill', () => {
+  /** A chip's rgba wash laid over a ground token, as the theme draws it. */
+  const washed = (wash: string, ground: string, theme: ThemeName) => {
+    const w = parseRgb(wash)
+    if (!w) throw new Error(`not an rgba wash: ${wash}`)
+    return over(w, hexToRgba(drawn(ground, theme)))
+  }
+  for (const [outcome, c] of Object.entries(PURSUIT_OUTCOME_CHIP_COLORS)) {
+    if (!c.bg.startsWith('rgba')) continue
+    for (const ground of ['var(--bg-page)', 'var(--surface)']) {
+      for (const theme of THEMES) {
+        it(`the Bid Costs ${outcome} chip on its wash over ${ground}, ${theme}: 4.5:1 or better (v2.6081)`, () => {
+          expect(contrastRatio(hexToRgba(drawn(c.fg, theme)), washed(c.bg, ground, theme))).toBeGreaterThanOrEqual(4.5)
+        })
+      }
+    }
+  }
+  it("the Bids lens bar's count pill: white on a 25% black wash over the open lens's blue, 4.5:1 or better (v2.6070)", () => {
+    const ground = over({ r: 0, g: 0, b: 0, a: 0.25 }, hexToRgba('#3b82f6'))
+    expect(contrastRatio(hexToRgba('#ffffff'), ground)).toBeGreaterThanOrEqual(4.5)
+  })
 })
 
 describe("the portal's paper: every text tier on every ground", () => {
