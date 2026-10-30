@@ -1,0 +1,503 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Legal desk: affidavits from the desk</title>
+<style>
+  /* Every name, job, street, day and fact here is made up: Northline Builders (the GC), Quick Lube at 2208 Whitestone Blvd,
+     Cedar Park (job 742), our RMP Daniel Alvarez, the witness Thanh Nguyen of Brightline Electric (the electrical sub),
+     Hale & Rowe the firm, a superintendent named Pruitt, material counted in a mechanical room. The statute words are
+     quoted from the Texas statutes and the Secretary of State's sample forms as read on 2026-10-30. Today is Fri, Oct 30,
+     2026. Tokens are src/index.css's (light values and the [data-theme="dark"] block); saturated colours stay literal. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-muted: #6b7280; --text-faint: #9ca3af; --text-green-700: #15803d; --bg-green-100: #dcfce7; --text-amber-800: #92400e; --bg-amber-100: #fef3c7; --text-red-700: #b91c1c; --bg-red-100: #fee2e2; --text-blue-700: #1d4ed8; --bg-blue-tint: #eff6ff; --text-purple-700: #6d28d9; --bg-purple-tint: #f3e8ff; --shadow: 0 1px 2px rgba(17,24,39,.06), 0 4px 14px rgba(17,24,39,.06); --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --paper-font: Georgia, "Times New Roman", serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280; --text-green-700: #86efac; --bg-green-100: #14532d; --text-amber-800: #fcd34d; --bg-amber-100: #4a3005; --text-red-700: #fca5a5; --bg-red-100: #5a1d1d; --text-blue-700: #93c5fd; --bg-blue-tint: #1e2a44; --text-purple-700: #c4b5fd; --bg-purple-tint: #2e1f5e; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 36ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b { color: var(--text-strong); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button, nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; text-decoration: none; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  h3 { font-size: 15px; margin: 22px 0 6px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .pass2 { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--text-blue-700); background: var(--bg-blue-tint); border-radius: 10px; max-width: 104ch; }
+  .pass2 .cap { color: var(--text-blue-700); margin-bottom: 4px; }
+  .pass2 p { margin: 4px 0; color: var(--text-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 480px; max-width: 100%; }
+  .col.narrow { flex: 0 1 420px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 14px 16px; overflow-x: auto; font-size: 13.5px; }
+  .frame.now { border-style: dashed; background: var(--bg-subtle); }
+  .k { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin: 10px 0 4px; }
+  .k:first-child { margin-top: 0; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; vertical-align: middle; }
+  .chip.ok { color: var(--text-green-700); background: var(--bg-green-100); border-color: var(--text-green-700); }
+  .chip.warn { color: var(--text-amber-800); background: var(--bg-amber-100); border-color: var(--text-amber-800); }
+  .chip.stop { color: var(--text-red-700); background: var(--bg-red-100); border-color: var(--text-red-700); }
+  .chip.info { color: var(--text-blue-700); background: var(--bg-blue-tint); border-color: var(--text-blue-700); }
+  .chip.said { color: var(--text-purple-700); background: var(--bg-purple-tint); border-color: var(--text-purple-700); }
+  .chip.dim { color: var(--text-muted); background: var(--bg-muted); border-color: var(--border); }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 4px 10px; white-space: nowrap; }
+  .btn.primary { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .btn.split { padding: 0; overflow: hidden; }
+  .btn.split span { padding: 4px 10px; }
+  .btn.split span + span { border-left: 1px solid var(--border-strong); padding: 4px 8px; }
+  .btn.primary.split span + span { border-left-color: var(--bg-page); }
+  .muted { color: var(--text-muted); }
+  .note { font-size: 12.5px; color: var(--text-700); }
+  .steps { display: grid; gap: 0; counter-reset: s; }
+  .steps .s { display: grid; grid-template-columns: 26px 1fr auto; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .steps .s::before { counter-increment: s; content: counter(s); font-weight: 700; color: var(--text-muted); font-size: 12px; }
+  .steps .s .where { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-faint); text-align: right; white-space: nowrap; }
+  .steps .s.bad .where { color: var(--text-red-700); }
+  /* the window */
+  .win { border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); box-shadow: var(--shadow); overflow: hidden; }
+  .win .wh { display: flex; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); }
+  .win .wh b { font-size: 14px; }
+  .win .wh .x { margin-left: auto; color: var(--text-muted); font-size: 16px; }
+  .win .wb { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(0, 1fr); gap: 18px; padding: 14px; }
+  .win .wb > * { min-width: 0; }
+  .field .in { min-width: 0; }
+  .win .wf { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid var(--border); background: var(--bg-subtle); }
+  .field { display: grid; gap: 3px; margin-bottom: 10px; }
+  .field label { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+  .field .in { border: 1px solid var(--border); border-radius: 6px; padding: 6px 8px; background: var(--surface); color: var(--text-strong); font-size: 13px; min-height: 30px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .field .in.ta { display: block; min-height: 180px; line-height: 1.55; font-size: 12.8px; color: var(--text-base); }
+  .field .in.ta p { margin: 0 0 6px; }
+  .field .in.ta p.sel { background: var(--bg-blue-tint); outline: 1px solid var(--text-blue-700); border-radius: 3px; padding: 0 2px; }
+  .field .help { font-size: 11.5px; color: var(--text-muted); }
+  .field .help b { color: var(--text-700); }
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .seg { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 8px; overflow: hidden; }
+  .seg span { padding: 5px 10px; font-size: 12.5px; font-weight: 600; color: var(--text-700); border-left: 1px solid var(--border); white-space: nowrap; }
+  .seg span:first-child { border-left: 0; }
+  .seg span.on { background: var(--text-strong); color: var(--bg-page); }
+  .picks { display: flex; gap: 6px; flex-wrap: wrap; }
+  .picks .chip { cursor: default; }
+  .picks .chip.on { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .rec { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--bg-subtle); }
+  .rec .r { display: grid; grid-template-columns: 58px 1fr; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+  .rec .r:last-child { border-bottom: 0; }
+  .rec .r .d { font-weight: 700; color: var(--text-strong); font-variant-numeric: tabular-nums; }
+  .rec .r .what { color: var(--text-700); }
+  .rec .r .what small { display: block; color: var(--text-muted); }
+  .rec .r.hit { background: var(--bg-green-100); margin: 0 -6px; padding: 5px 6px; border-radius: 4px; }
+  .rec .r.miss .d { color: var(--text-amber-800); }
+  /* the print sheet */
+  .sheet { border: 1px solid var(--border-strong); border-radius: 10px; background: var(--surface); box-shadow: var(--shadow); padding: 8px; display: grid; gap: 2px; max-width: 360px; }
+  .sheet .o { display: grid; grid-template-columns: 1fr auto; gap: 10px; padding: 8px 10px; border-radius: 6px; align-items: center; }
+  .sheet .o:hover, .sheet .o.on { background: var(--bg-muted); }
+  .sheet .o b { display: block; font-size: 13px; }
+  .sheet .o small { color: var(--text-muted); font-size: 11.5px; }
+  .sheet .o .n { font-size: 11px; color: var(--text-faint); }
+  .sheet .hd { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); padding: 6px 10px 2px; }
+  /* the paper */
+  .paper { background: #fff; color: #111; border: 1px solid #cfd4db; box-shadow: 0 2px 10px rgba(0,0,0,.15); padding: 26px 30px; font: 10.6px/1.5 var(--paper-font); width: 100%; max-width: 440px; min-height: 560px; position: relative; }
+  .paper h4 { margin: 0 0 2px; font-size: 13px; text-align: center; letter-spacing: .04em; text-transform: uppercase; }
+  .paper .re { text-align: center; font-size: 9.6px; color: #333; margin-bottom: 12px; }
+  .paper .venue { margin: 10px 0 8px; font-weight: 700; letter-spacing: .04em; }
+  .paper .venue span { display: block; }
+  .paper ol { margin: 0 0 10px; padding-left: 20px; }
+  .paper ol li { margin: 0 0 5px; }
+  .paper .sig { margin-top: 14px; }
+  .paper .line { border-bottom: 1px solid #111; width: 220px; height: 22px; }
+  .paper .cap2 { font-size: 9.6px; color: #333; }
+  .paper .jurat { margin-top: 16px; padding-top: 10px; border-top: 1px dashed #999; }
+  .paper .seal { position: absolute; right: 30px; width: 86px; height: 86px; border: 1.5px dashed #777; border-radius: 50%; display: grid; place-items: center; font: 8px/1.2 var(--font); color: #777; text-align: center; padding: 6px; }
+  .paper .blank { display: inline-block; border-bottom: 1px solid #111; min-width: 48px; height: 12px; vertical-align: -2px; margin: 0 2px; }
+  .paper .blank.w { min-width: 110px; }
+  .paper .tie { margin: 0 0 10px; font-style: italic; color: #333; }
+  .paper .pn { position: absolute; bottom: 10px; right: 30px; font-size: 8.6px; color: #666; }
+  .paper .hand { font-family: "Bradley Hand", "Segoe Script", cursive; color: #1d4ed8; }
+  .pstack { display: flex; gap: 14px; flex-wrap: wrap; align-items: flex-start; }
+  .pstack > div { display: grid; gap: 6px; flex: 1 1 300px; max-width: 460px; min-width: 0; }
+  .law { border-left: 3px solid var(--text-blue-700); padding: 6px 12px; margin: 10px 0; font-size: 12.5px; color: var(--text-700); background: var(--bg-blue-tint); border-radius: 0 8px 8px 0; }
+  .law b { color: var(--text-blue-700); }
+  .law q { font-style: italic; }
+  /* phone */
+  .phones { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .phones > div { flex: 1 1 390px; min-width: 0; max-width: 100%; display: grid; gap: 6px; justify-items: start; }
+  .phone { width: 390px; max-width: 100%; border: 10px solid var(--text-strong); border-radius: 38px; overflow: hidden; background: var(--bg-page); font-size: 13px; }
+  .phone .bar { height: 30px; display: flex; justify-content: center; align-items: center; background: var(--bg-page); }
+  .phone .bar i { width: 110px; height: 22px; background: var(--text-strong); border-radius: 12px; display: block; }
+  .phone .app { padding: 10px 12px 18px; display: grid; gap: 10px; }
+  .phone .win { border-radius: 10px; }
+  .phone .win .wb { grid-template-columns: 1fr; padding: 10px; gap: 10px; }
+  .phone .field { margin-bottom: 0; }
+  .phone .wf { padding: 8px 10px; }
+  .phone .paper { padding: 14px 16px; min-height: 0; font-size: 9.6px; max-width: 100%; }
+  .phone .paper .seal { right: 16px; width: 70px; height: 70px; font-size: 7px; }
+  .pcount { display: grid; gap: 4px; font-size: 12.5px; color: var(--text-700); }
+  .pcount div { display: grid; grid-template-columns: 22px 1fr; gap: 8px; }
+  .pcount div b { display: inline-flex; width: 20px; height: 20px; border-radius: 50%; background: var(--text-strong); color: var(--bg-page); align-items: center; justify-content: center; font-size: 11px; }
+  .toast { position: relative; margin: 0 12px; padding: 8px 10px; border-radius: 8px; background: var(--text-strong); color: var(--bg-page); font-size: 12px; text-align: center; }
+  /* timeline & evidence */
+  .ent { display: grid; grid-template-columns: 96px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); }
+  .ent .d { font-weight: 700; color: var(--text-strong); font-size: 12.5px; }
+  .ent .d small { display: block; font-weight: 500; color: var(--text-muted); }
+  .ent .h { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .ent .h .t { font-weight: 600; color: var(--text-strong); }
+  .ent .h .by { font-size: 11.5px; color: var(--text-faint); }
+  .ent .body { font-size: 12.5px; color: var(--text-700); margin-top: 2px; }
+  .ent .body q { font-style: italic; }
+  .ent .st { font-size: 12px; color: var(--text-muted); margin-top: 3px; }
+  .ent .st.amber { color: var(--text-amber-800); font-weight: 600; }
+  .ent .acts { display: flex; gap: 6px; margin-top: 4px; flex-wrap: wrap; }
+  .ent .acts .btn { font-size: 11.5px; padding: 2px 8px; }
+  .lanes { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 8px; }
+  .grp { margin-top: 10px; }
+  .grp .gh { display: flex; gap: 8px; align-items: baseline; font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); padding: 4px 0; border-bottom: 1px solid var(--border-strong); }
+  .grp .gh .n { color: var(--text-strong); }
+  .doc { display: grid; grid-template-columns: 76px 64px minmax(0, 1fr) 24px; gap: 10px; align-items: baseline; padding: 6px 0; border-bottom: 1px solid var(--border); }
+  .doc > * { min-width: 0; }
+  .doc .day { font-size: 12px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+  .doc .t { font-weight: 600; color: var(--text-strong); }
+  .doc .sh { font-size: 12px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .doc .more { color: var(--text-faint); text-align: right; }
+  .portal { border: 1px solid var(--border); border-radius: 10px; background: var(--bg-subtle); padding: 10px 14px; }
+  .portal .ph { font-size: 11px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 6px; display: flex; gap: 8px; align-items: center; }
+  .crit { display: grid; gap: 8px; max-width: 104ch; }
+  .crit .c { border: 1px solid var(--border); border-radius: 8px; padding: 8px 12px; background: var(--surface); display: grid; grid-template-columns: 170px 1fr; gap: 12px; }
+  .crit .c .q { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding-top: 2px; }
+  .crit .c .a { font-size: 13px; color: var(--text-700); }
+  .crit .c .a b { color: var(--text-strong); }
+  @media (max-width: 720px) {
+    .win .wb { grid-template-columns: 1fr; }
+    .seg { flex-wrap: wrap; }
+    .seg span { white-space: normal; border-left: 0; }
+    .win .wh { flex-wrap: wrap; }
+    .win .wh .chip { white-space: normal; }
+    .field .in { flex-wrap: wrap; }
+    .two { grid-template-columns: 1fr; }
+    .doc { grid-template-columns: 1fr; gap: 2px; } .doc .more { display: none; }
+    .ent { grid-template-columns: 1fr; gap: 2px; }
+    .crit .c { grid-template-columns: 1fr; gap: 4px; }
+    .steps .s { grid-template-columns: 26px 1fr; } .steps .s .where { grid-column: 2; text-align: left; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Legal desk · a mock-up, not the app · punch list #220 · 2026-10-30</p>
+  <h1>Affidavits from the desk: one window, two forms, three print faces</h1>
+  <p>The office made one affidavit by hand this month in nine steps across four tools, and a date in it was wrong. One window on the Legal desk does it in four presses: type the statement with its title, who swears it, the day it is about and the county it is signed in; pick <b>how it is signed</b>, before a notary or under penalty of perjury with no notary; <b>print</b> the whole paper, the statement alone, or the signing page alone to staple on a handwritten statement; <b>file the signed scan</b> and confirm the two days. The text lands on the Timeline's Said lane, the scan on Evidence, linked. The blue <i>Second pass</i> box under each section says what the first render showed and what changed.</p>
+  <div class="controls">
+    <span class="lbl">Theme</span>
+    <button type="button" aria-pressed="true" data-theme-pick="light">Light</button>
+    <button type="button" aria-pressed="false" data-theme-pick="dark">Dark</button>
+  </div>
+  <nav class="jump"><a href="#hand">1 · By hand, then the window</a><a href="#draft">2 · Drafting</a><a href="#print">3 · The print faces</a><a href="#phone">4 · In the field, on a phone</a><a href="#file">5 · Filing the scan</a><a href="#leaves">6 · What it leaves</a><a href="#crit">7 · Is this the best we can do?</a></nav>
+</header>
+
+<!-- ============================================================ 1 -->
+<h2 id="hand"><span class="num">1</span> By hand this month, then the window</h2>
+<p class="lede">What the office did for one sworn statement on a live account, read from the case folder's notes, beside what the window does. The record check in step 9 is what would have caught the date.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">Today · nine steps, four tools</div>
+    <div class="frame now">
+      <div class="steps">
+        <div class="s"><span>Draft the statement as numbered paragraphs, with a venue caption and a jurat typed from memory</span><span class="where">a chat</span></div>
+        <div class="s"><span>Export it to PDF</span><span class="where">the chat</span></div>
+        <div class="s"><span>Print it</span><span class="where">a printer</span></div>
+        <div class="s"><span>Drive to a notary in the affiant's home county; sign; the notary fills the county and the day by hand</span><span class="where">the road</span></div>
+        <div class="s"><span>Scan the signed paper</span><span class="where">a scanner</span></div>
+        <div class="s"><span>Upload the scan to Evidence with a title and a <i>shows</i> line</span><span class="where">the desk</span></div>
+        <div class="s"><span>Type a Timeline step dated the signing day and mark it done</span><span class="where">the desk</span></div>
+        <div class="s"><span>Write the same sentence into the narrative</span><span class="where">the desk</span></div>
+        <div class="s bad"><span>Four days later a public record disagrees with a date in paragraph 6. Draft a supplemental affidavit in a word processor with two brackets only the affiant can fill. Back to step 2.</span><span class="where">a word processor</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap opt">With the window · four presses, one row with three states</div>
+    <div class="frame">
+      <div class="steps">
+        <div class="s"><span>Evidence tab → <span class="btn">Swear a statement…</span> Type the title, pick who swears it, the day it is about, how it is signed, the county. Type the paragraphs. <b>The record check beside the day lists the affiant's clock sessions, reports and notes in the span.</b></span><span class="where">the desk</span></div>
+        <div class="s"><span><span class="btn primary split"><span>Print</span><span>▾</span></span> — the whole paper, the statement alone, or the signing page alone. Each print is noted on the row.</span><span class="where">the desk or the phone</span></div>
+        <div class="s"><span>The affiant signs before a notary, or signs the declaration with no notary. The blanks for the county and the day are theirs to fill.</span><span class="where">the office, the road or the site</span></div>
+        <div class="s"><span><span class="btn">File the signed copy…</span> drop the scan, confirm the day it is about, type the signing day off the jurat, say whether it reads as printed. The row turns <span class="chip ok">signed</span>: the text on the Timeline's Said lane, the scan on Evidence, linked.</span><span class="where">the desk or the phone</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pass2" id="pass2-1"><div class="cap">Second pass · written after the render</div><p>The two columns read as meant: nine rows that end in a red one, four rows that end in a green chip. Nothing moved. One honest word added to the count: the four presses are four screens, and the typing inside the first is the real work; the window saves the steps around it, not the writing.</p></div>
+
+<!-- ============================================================ 2 -->
+<h2 id="draft"><span class="num">2</span> Drafting, at desk width</h2>
+<p class="lede">The window opens from the Evidence tab's <b>Swear a statement…</b> door, beside <b>Choose files</b>, and from the Timeline composer's kind tag. The left column is what the paper will say; the right column is what the record says about those days.</p>
+<div class="win">
+  <div class="wh"><b>Swear a statement</b><span class="chip dim">Northline Builders · job 742 · Quick Lube, Cedar Park</span><span class="chip warn">draft · not signed</span><span class="x">✕</span></div>
+  <div class="wb">
+    <div>
+      <div class="field"><label>Title</label><div class="in">Affidavit of Daniel Alvarez</div><div class="help">Reads on the paper, the Timeline and the Evidence row.</div></div>
+      <div class="two">
+        <div class="field"><label>Who swears it</label><div class="in"><span class="chip on" style="background:var(--text-strong);color:var(--bg-page);border-color:var(--text-strong)">Daniel Alvarez · team</span><span class="chip dim">or type a witness</span></div><div class="help">One of our team from the roster, or a witness you type.</div></div>
+        <div class="field"><label>Their role, one line</label><div class="in">Responsible Master Plumber of record for Click Plumbing and Electrical, License No. M-00000</div><div class="help">Prefilled from the roster. Edit it.</div></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>The day it is about</label><div class="in">Sep 3, 2026 <span class="muted">to</span> Sep 17, 2026</div><div class="help">Where the statement sits on the Timeline. <b>The signing day is not typed.</b> The notary writes it on the paper and you read it off the scan.</div></div>
+        <div class="field"><label>How it is signed</label><div class="in" style="padding:3px 4px"><span class="seg"><span class="on">Before a notary</span><span>No notary, under penalty of perjury</span></span></div><div class="help">A notary is a trip. The declaration is a signature. A court reads both. Only a paper the county clerk files needs the notary.</div></div>
+      </div>
+      <div class="field"><label>Signed in</label><div class="in picks"><span class="chip on">Travis County · the office's</span><span class="chip">Williamson County · the property's</span><span class="chip">Leave it blank for the notary</span></div><div class="help">Where the notary watches the signing. Not where the job is.</div></div>
+      <div class="field"><label>The statement</label>
+        <div class="in ta">
+          <p>1. My name is Daniel Alvarez. I am over eighteen years of age, of sound mind, and capable of making this affidavit. The facts stated in it are within my personal knowledge and are true and correct.</p>
+          <p>2. I am the Responsible Master Plumber of record for Click Plumbing and Electrical, License No. M-00000. I was the plumber in charge of the rough-in at Quick Lube, 2208 Whitestone Blvd, Cedar Park, Texas, under Northline Builders' job 742.</p>
+          <p>3. On September 3, 2026, at about 7:40 in the morning, I was on the site with two of my crew. Northline's superintendent, Mr. Pruitt, told me the concrete pour had moved and that we should leave until he called.</p>
+          <p class="sel">4. Before we left I counted and photographed the material staged in the mechanical room: fourteen sticks of 4-inch PVC, two floor drains and the water heater pan. The photographs are in Click's field report for that day.</p>
+          <p>5. Northline never called us back. On September 17, 2026, I drove past the site and saw the mechanical room empty.</p>
+          <p>6. No one at Click gave Northline or anyone else permission to use that material.</p>
+        </div>
+        <div class="help">Paragraph 1 is the opener for one of our team. It changes for a witness and for the declaration. Everything else is yours.</div>
+      </div>
+    </div>
+    <div>
+      <div class="k">What the record says about Sep 3 to Sep 17</div>
+      <div class="rec">
+        <div class="r hit"><span class="d">Sep 3</span><span class="what">Clock session · D. Alvarez · 7:12 to 8:05 · job 742<small>with R. Ortiz and J. Lee</small></span></div>
+        <div class="r hit"><span class="d">Sep 3</span><span class="what">Field report · D. Alvarez · 8 photos<small>"Material staged in mech room, counted, told to leave by super"</small></span></div>
+        <div class="r"><span class="d">Sep 9</span><span class="what">Job thread · office · "Called Northline, no answer, left voicemail"</span></div>
+        <div class="r miss"><span class="d">Sep 17</span><span class="what">Nothing recorded on this day<small>No clock session, report or note. The paragraph that names it rests on the affiant's word alone.</small></span></div>
+        <div class="r"><span class="d">Sep 21</span><span class="what">Collections note · "GC says material was theirs"</span></div>
+      </div>
+      <p class="note muted" style="margin:8px 0 0">From the account's clock sessions, field reports and job-thread notes in the span, by the affiant where they have one. Nothing here goes on the paper. It is a check, so a date is caught before anyone swears to it.</p>
+      <div class="k" style="margin-top:16px">Prints of this draft</div>
+      <p class="note muted">None yet. Each print adds a line here: when, by whom, which face, and the text as printed.</p>
+    </div>
+  </div>
+  <div class="wf"><span class="btn primary">Save the draft</span><span class="btn split"><span>Print</span><span>▾</span></span><span class="muted" style="font-size:12px">Saves to the Timeline's Said lane on Sep 3 as a draft. The firm reads it as a draft.</span><span class="btn" style="margin-left:auto">Not signed…</span></div>
+</div>
+<h3>The same window for a witness</h3>
+<p class="lede">A typed witness flips the defaults: the opener names them and their stake, and <i>No notary</i> is on, because the point of a declaration is a signature in the field. The county defaults to the property's, where they will sign.</p>
+<div class="win" style="max-width:860px">
+  <div class="wh"><b>Swear a statement</b><span class="chip dim">Northline Builders · job 742</span><span class="chip warn">draft · not signed</span><span class="x">✕</span></div>
+  <div class="wb" style="grid-template-columns:1fr">
+    <div>
+      <div class="two">
+        <div class="field"><label>Who swears it</label><div class="in">Thanh Nguyen <span class="chip dim">witness</span></div></div>
+        <div class="field"><label>Their role, one line</label><div class="in">foreman for Brightline Electric, the electrical subcontractor on the job</div></div>
+      </div>
+      <div class="two">
+        <div class="field"><label>How it is signed</label><div class="in" style="padding:3px 4px"><span class="seg"><span>Before a notary</span><span class="on">No notary, under penalty of perjury</span></span></div><div class="help">They sign where they stand. No notary, no trip. The paper carries their date of birth and address, which you type when you print and the app never keeps.</div></div>
+        <div class="field"><label>Signed in</label><div class="in picks"><span class="chip">Travis County · the office's</span><span class="chip on">Williamson County · the property's</span><span class="chip">Leave it blank</span></div><div class="help">Where they sign. The declaration says <i>Executed in ___ County</i>.</div></div>
+      </div>
+      <div class="field"><label>The statement</label><div class="in ta" style="min-height:0"><p>1. My name is Thanh Nguyen. I am over eighteen years of age, of sound mind, and capable of making this declaration. I am the foreman for Brightline Electric, the electrical subcontractor on the job at 2208 Whitestone Blvd, Cedar Park, Texas. I have no interest in the outcome of this dispute. The facts stated here are within my personal knowledge and are true and correct.</p><p class="muted">2. …</p></div></div>
+    </div>
+  </div>
+</div>
+<div class="pass2" id="pass2-2"><div class="cap">Second pass · written after the render</div><p>At desk width the window read first time. At phone width the first render ran past the frame on the right: the header's account chip, the two-way <i>How it is signed</i> switch and the statement box were all clipped, because a grid cell holding a no-wrap chip refuses to shrink. Fixed: every cell and field may shrink, the switch wraps into two rows on a phone and the header's chips break their line. Kept as drawn: the witness frame's county picks wrap onto two rows at 860px, since the third pick is the rare one.</p></div>
+
+<!-- ============================================================ 3 -->
+<h2 id="print"><span class="num">3</span> The print faces, and the words they carry</h2>
+<p class="lede">The form was picked once at the top, so <b>Print ▾</b> offers three faces, not five. The owner's four — with jurat, alone, jurat only, unsworn declaration — are these three under each of the two forms. The statute words are quoted from the source, not from memory.</p>
+<div class="row">
+  <div class="col narrow">
+    <div class="cap opt">Print ▾ · the sheet</div>
+    <div class="sheet">
+      <div class="hd">Print, before a notary</div>
+      <div class="o on"><div><b>The whole paper</b><small>The statement, the signature line and the jurat for the notary. 2 pages.</small></div><span class="n">Print</span></div>
+      <div class="o"><div><b>The statement alone</b><small>No signing block. To read over together before anyone signs.</small></div><span class="n">▾</span></div>
+      <div class="o"><div><b>The signing page alone</b><small>The jurat with a line naming the handwritten statement it is stapled to. 1 page.</small></div><span class="n">▾</span></div>
+      <div class="hd" style="margin-top:6px">Switch the form</div>
+      <div class="o"><div><b>No notary, under penalty of perjury</b><small>The opener and the signing block change. The county defaults to the property's.</small></div><span class="n">↺</span></div>
+    </div>
+    <div class="law"><b>Where the words come from.</b> Tex. Gov't Code § 312.011(1): <q>"Affidavit" means a statement in writing of a fact or facts signed by the party making it, sworn to before an officer authorized to administer oaths, and officially certified to by the officer under his seal of office.</q> The jurat is that certificate. The Secretary of State's sample form (Sept 2019): <q>State of Texas · County of ___ · Sworn to and subscribed before me on the ___ day of ___, (year), by (name of signer). · (Personalized Seal) · Notary Public's Signature.</q> § 406.013(a): the seal carries <q>the words "Notary Public, State of Texas" around a star of five points</q> and <q>the notary public's name, the notary public's identifying number, and the date the notary public's commission expires</q>, so the printed block needs the signature line and room for the seal; the printed-name and commission lines are a courtesy. The Lien desk prints these same words under the § 53.054 lien affidavit today; the kernel lifts them so both papers read one jurat.</div>
+    <div class="law"><b>The declaration.</b> Tex. Civ. Prac. &amp; Rem. Code § 132.001(a): <q>Except as provided by Subsection (b), an unsworn declaration may be used in lieu of a written sworn declaration, verification, certification, oath, or affidavit required by statute or required by a rule, order, or requirement adopted as provided by law.</q> (b): <q>This section does not apply to a lien required to be filed with a county clerk, an instrument concerning real or personal property required to be filed with a county clerk, or an oath of office or an oath required to be taken before a specified official other than a notary public.</q> (c): it must be <q>in writing; and subscribed by the person making the declaration as true under penalty of perjury.</q> (d): the jurat, quoted whole on the paper at right. So the § 53.054 lien affidavit stays a notarized paper on the Lien desk, and this window never offers the declaration for it.</div>
+  </div>
+  <div class="col">
+    <div class="cap opt">The three faces · before a notary · as the office's printer and the phone's share sheet get them</div>
+    <div class="pstack">
+      <div>
+        <div class="cap">The whole paper · page 2 of 2 (the signature and the jurat)</div>
+        <div class="paper">
+          <ol start="5" style="margin-top:0"><li>Northline never called us back. On September 17, 2026, I drove past the site and saw the mechanical room empty.</li><li>No one at Click gave Northline or anyone else permission to use that material.</li></ol>
+          <div class="sig">Signed on the <span class="blank"></span> day of <span class="blank w"></span>, 20<span class="blank" style="min-width:28px"></span>.<div class="line" style="margin-top:18px"></div><div class="cap2">Daniel Alvarez, Affiant<br>Responsible Master Plumber of record for Click Plumbing and Electrical, License No. M-00000</div></div>
+          <div class="jurat">
+            <div class="venue"><span>STATE OF TEXAS</span><span>COUNTY OF TRAVIS</span></div>
+            <div class="seal">(Personalized Seal)<br>Notary Public, State of Texas · name · ID · expires</div>
+            <p style="margin:0 0 10px;max-width:calc(100% - 104px)">Sworn to and subscribed before me on the <span class="blank"></span> day of <span class="blank w"></span>, 20<span class="blank" style="min-width:28px"></span>, by Daniel Alvarez.</p>
+            <div class="line" style="margin-top:22px"></div><div class="cap2">Notary Public, State of Texas<br>Printed name: <span class="blank w"></span><br>My commission expires: <span class="blank w"></span></div>
+          </div>
+          <div class="pn">Affidavit of Daniel Alvarez · page 2 of 2</div>
+        </div>
+      </div>
+      <div>
+        <div class="cap">The signing page alone · to staple on a handwritten statement</div>
+        <div class="paper" style="min-height:400px">
+          <h4>Jurat</h4>
+          <p class="tie">Attached to the handwritten statement of Daniel Alvarez, <span class="blank" style="min-width:30px"></span> pages, each initialed by the signer.</p>
+          <div class="venue"><span>STATE OF TEXAS</span><span>COUNTY OF <span class="blank w"></span></span></div>
+          <div class="seal" style="top:140px">(Personalized Seal)</div>
+          <p style="margin:0 0 10px;max-width:calc(100% - 104px)">Sworn to and subscribed before me on the <span class="blank"></span> day of <span class="blank w"></span>, 20<span class="blank" style="min-width:28px"></span>, by Daniel Alvarez.</p>
+          <div class="line" style="margin-top:26px"></div><div class="cap2">Notary Public, State of Texas<br>Printed name: <span class="blank w"></span><br>My commission expires: <span class="blank w"></span></div>
+          <p class="cap2" style="margin-top:26px">The county is left blank when the signing is away from the office. The notary fills it. A jurat never floats: the line at the top names what it is stapled to, and the signer initials each page.</p>
+        </div>
+      </div>
+      <div>
+        <div class="cap">No notary · the declaration's signing block, § 132.001(d), with the blanks the window fills at print time</div>
+        <div class="paper" style="min-height:400px">
+          <ol start="6" style="margin-top:0"><li>…permission to use that material.</li></ol>
+          <div class="jurat" style="border-top:0;padding-top:0;margin-top:8px">
+            <p style="margin:0 0 8px">My name is <u>Thanh</u> <u>Van</u> <u>Nguyen</u>, my date of birth is <u>March 14, 1988</u>, and my address is <u>1400 Example Rd, Round Rock, Texas 78664</u>, and <u>United States of America</u>. I declare under penalty of perjury that the foregoing is true and correct.</p>
+            <p style="margin:0 0 8px">Executed in <u>Williamson</u> County, State of <u>Texas</u>, on the <span class="blank"></span> day of <span class="blank w"></span>, <span class="blank" style="min-width:40px"></span>.</p>
+            <div class="line" style="margin-top:22px"></div><div class="cap2">Declarant</div>
+          </div>
+          <p class="cap2" style="margin-top:18px">Statute form, § 132.001(d): <i>"My name is __ (First) __ (Middle) __ (Last), my date of birth is __, and my address is __ (Street), __ (City), __ (State), __ (Zip Code) and __ (Country). I declare under penalty of perjury that the foregoing is true and correct. Executed in __ County, State of __, on the __ day of __ (Month), __ (Year)."</i> The name, birth date and address are typed when you press Print, kept for the session so a reprint does not ask again, and never saved. The day is the declarant's to fill.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pass2" id="pass2-3"><div class="cap">Second pass · written after the render</div><p>The seal overprinted the last words of the jurat on both papers (<i>by Daniel Alvarez.</i> ran under the circle), because the sentence was given a fixed width while the paper shrank with the column. Fixed: the jurat's sentence now stops short of the seal whatever the paper's width, on the whole paper and on the signing page alone. The declaration paper leaves the right half of its row empty at desk width; kept, since the three faces read top to bottom on a phone anyway, and the law boxes at left are what the eye should land on next.</p></div>
+
+<!-- ============================================================ 4 -->
+<h2 id="phone"><span class="num">4</span> In the field, on a phone</h2>
+<p class="lede">The witness dislikes paragraph 4. The office edits it on the phone and prints again. Or the witness wants to write their own, so the office prints the signing page alone. The paper draws inside the window and prints from it: no popup, so Safari has nothing to block.</p>
+<div class="phones">
+  <div>
+    <div class="cap opt">The sentence changed, four presses to a new page</div>
+    <div class="phone">
+      <div class="bar"><i></i></div>
+      <div class="app">
+        <div class="win">
+          <div class="wh"><b style="font-size:13px">Affidavit of Daniel Alvarez</b><span class="chip warn">printed 2× · last 2:14 PM</span><span class="x">✕</span></div>
+          <div class="wb">
+            <div class="field"><label>The statement</label><div class="in ta" style="min-height:0;font-size:12.5px"><p class="muted">3. …we should leave until he called.</p><p class="sel">4. Before we left I counted and photographed the material staged in the mechanical room: fourteen sticks of 4-inch PVC, two floor drains and the water heater pan. <span class="hand" style="font-family:inherit;color:var(--text-blue-700);font-weight:600">I did not count the fittings.</span> The photographs are in Click's field report for that day.</p><p class="muted">5. Northline never called us back…</p></div></div>
+          </div>
+          <div class="wf"><span class="btn">Save</span><span class="btn primary split"><span>Print</span><span>▾</span></span><span class="muted" style="font-size:11.5px">whole paper · before a notary</span></div>
+        </div>
+        <div class="toast">The print sheet opens. AirPrint, or Save to Files for a PDF to text or AirDrop.</div>
+        <div class="pcount"><div><b>1</b>Open the draft from the Timeline or Evidence row</div><div><b>2</b>Tap the sentence, change it</div><div><b>3</b>Print</div><div><b>4</b>The phone's print sheet: a printer, or Save to Files</div></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap opt">The witness writes their own · the signing page alone</div>
+    <div class="phone">
+      <div class="bar"><i></i></div>
+      <div class="app">
+        <div class="win">
+          <div class="wh"><b style="font-size:13px">Statement of Thanh Nguyen</b><span class="chip warn">draft</span><span class="x">✕</span></div>
+          <div class="wb">
+            <div class="sheet" style="max-width:100%;box-shadow:none;border-color:var(--border)">
+              <div class="hd">Print, no notary</div>
+              <div class="o"><div><b>The whole paper</b></div></div>
+              <div class="o"><div><b>The statement alone</b></div></div>
+              <div class="o on"><div><b>The signing page alone</b><small>The declaration block, stapled on what they wrote.</small></div><span class="n">●</span></div>
+            </div>
+            <div class="paper">
+              <h4>Declaration</h4>
+              <p class="tie">Attached to the handwritten statement of Thanh Nguyen, <span class="blank" style="min-width:24px"></span> pages, each initialed by the signer.</p>
+              <p style="margin:0 0 6px">My name is <u>Thanh</u> <u>Van</u> <u>Nguyen</u>, my date of birth is <u>March 14, 1988</u>, and my address is <u>1400 Example Rd, Round Rock, Texas 78664</u>, and <u>United States of America</u>. I declare under penalty of perjury that the foregoing is true and correct.</p>
+              <p style="margin:0">Executed in <u>Williamson</u> County, State of <u>Texas</u>, on the <span class="blank"></span> day of <span class="blank w"></span>, <span class="blank" style="min-width:36px"></span>.</p>
+              <div class="line" style="margin-top:18px;width:160px"></div><div class="cap2">Declarant</div>
+            </div>
+          </div>
+          <div class="wf"><span class="btn primary">Print this page</span><span class="muted" style="font-size:11.5px">asks the name, birth date and address first; keeps them for this session only</span></div>
+        </div>
+        <div class="pcount"><div><b>1</b>Open the draft</div><div><b>2</b>Print ▾</div><div><b>3</b>The signing page alone, type the three lines</div><div><b>4</b>The phone's print sheet</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="pass2" id="pass2-4"><div class="cap">Second pass · written after the render</div><p>At desk width the two phones read side by side. At 390px the second frame ran off the right edge with its caption, because the frames were given a width and not a shrink rule. Fixed: each frame shrinks to the screen it is on. A second look at the first phone: the edited sentence in blue is the one change the witness asked for, and the print log chip above it (<i>printed 2× · last 2:14 PM</i>) is what the record will say was handed over; both read without a caption.</p></div>
+
+<!-- ============================================================ 5 -->
+<h2 id="file"><span class="num">5</span> Filing the scan</h2>
+<p class="lede">The signed paper comes back as a scan or a phone photo. <b>File the signed copy…</b> on the draft's row takes it through the same path as the Evidence tab's add press, with two confirmations the office cannot skip.</p>
+<div class="win" style="max-width:860px">
+  <div class="wh"><b>File the signed copy</b><span class="chip dim">Affidavit of Daniel Alvarez</span><span class="x">✕</span></div>
+  <div class="wb" style="grid-template-columns:1fr">
+    <div>
+      <div class="field"><label>The scan</label><div class="in" style="border-style:dashed;justify-content:center;padding:14px">📄 Affidavit of Daniel Alvarez - signed.pdf · 612 KB <span class="btn" style="margin-left:10px">Choose another</span></div><div class="help">A PDF or a photo, up to 10 MB. The same rules as Documents for the firm.</div></div>
+      <div class="two">
+        <div class="field"><label>The day it is about</label><div class="in">Sep 3, 2026 <span class="muted">to</span> Sep 17, 2026 <span class="chip ok" style="margin-left:auto">confirm</span></div><div class="help">As typed in the draft. Change it if the signed paper says otherwise.</div></div>
+        <div class="field"><label>Signed on</label><div class="in">Oct 29, 2026</div><div class="help">Read it off the jurat. The notary wrote it by hand. This is the Evidence row's day.</div></div>
+      </div>
+      <div class="field"><label>Is the signed paper the text as last printed, Oct 28 at 2:14 PM?</label><div class="in" style="padding:3px 4px"><span class="seg"><span class="on">Yes, as printed</span><span>They changed it by hand</span></span></div><div class="help"><b>As printed</b> marks that print's text as the sworn text. <b>Changed by hand</b> keeps the text as printed and marks it <i>see the scan for hand changes</i>. The scan governs.</div></div>
+      <div class="two">
+        <div class="field"><label>Whose paper</label><div class="in">Our record</div><div class="help">A team member's or a neighbour's statement is our record. A supplier's person's is the supplier's.</div></div>
+        <div class="field"><label>Shows, one line</label><div class="in">Sworn Oct 29 before a notary in Travis County. What he saw on Sep 3 and Sep 17 at the site.</div><div class="help">Prefilled from the form and the day. The firm reads this line beside the title.</div></div>
+      </div>
+    </div>
+  </div>
+  <div class="wf"><span class="btn primary">File the signed copy</span><span class="muted" style="font-size:12px">Evidence gets the scan on Oct 29. The Timeline's Sep 3 line turns <i>signed</i>. The two are linked. Nothing else to type.</span></div>
+</div>
+<div class="pass2" id="pass2-5"><div class="cap">Second pass · written after the render</div><p>Nothing moved. One thing changed in the words: the green <i>confirm</i> chip in the day field reads as a state, not a press. The build drops it. Confirming the day is pressing <b>File the signed copy</b> with the day as shown, and changing it is typing in the field; the help line says so. The <i>as last printed, Oct 28 at 2:14 PM</i> question names the print it means, so the office never has to remember which print the witness took away.</p></div>
+
+<!-- ============================================================ 6 -->
+<h2 id="leaves"><span class="num">6</span> What it leaves: the Timeline line and the Evidence row</h2>
+<p class="lede">One line in the Said lane on the day it is about, one row on Evidence on the day it was signed, each pointing at the other. The firm reads both on its portal. A draft that never comes back is the amber line.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">Timeline · Said lane · the desk</div>
+    <div class="frame">
+      <div class="lanes"><span class="chip">All · 31</span><span class="chip said">Said · 5</span><span class="chip">Did · 9</span><span class="chip">Paper · 12</span><span class="chip">Planned · 5</span></div>
+      <div class="ent"><div class="d">Thu, Sep 3<small>to Sep 17</small></div><div><div class="h"><span class="chip said">sworn statement · job 742</span><span class="t">Affidavit of Daniel Alvarez</span><span class="by">Daniel Alvarez · team</span></div><div class="body"><q>Northline's superintendent, Mr. Pruitt, told me the concrete pour had moved and that we should leave until he called. Before we left I counted and photographed the material staged in the mechanical room…</q> <span class="muted">Read all 6 paragraphs ›</span></div><div class="st">Sworn Oct 29 before a notary in Travis County. The signed copy is on Evidence. Printed twice before the signing.</div><div class="acts"><span class="btn">Open the signed copy</span><span class="btn">Quote it in the narrative</span><span class="btn">⋯</span></div></div></div>
+      <div class="ent"><div class="d">Mon, Sep 9</div><div><div class="h"><span class="chip said">declaration · job 742</span><span class="t">Statement of Thanh Nguyen</span><span class="by">Thanh Nguyen · witness</span></div><div class="body"><q>On September 9 I saw two of Northline's own men carrying 4-inch PVC out of the mechanical room to the trench on the north side…</q></div><div class="st amber">Draft · not signed. Printed once, Oct 16, the signing page alone. 14 days with no signed copy.</div><div class="acts"><span class="btn">Print</span><span class="btn">File the signed copy…</span><span class="btn">Not signed…</span></div></div></div>
+      <div class="ent" style="border-bottom:0"><div class="d">Thu, Oct 29</div><div><div class="h"><span class="chip">document · final</span><span class="t">Affidavit of Daniel Alvarez</span><span class="by">Grace · the office</span></div><div class="body">Sworn Oct 29 before a notary in Travis County. What he saw on Sep 3 and Sep 17 at the site.</div><div class="st">Dated Oct 29. Added to Evidence Oct 30. <span class="muted">The statement on the Timeline ›</span></div></div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap opt">Evidence · Documents for the firm · the desk</div>
+    <div class="frame" style="overflow-x:hidden">
+      <div class="grp"><div class="gh">Our record <span class="n">6</span></div>
+        <div class="doc"><span class="day">Oct 29</span><span class="chip dim">final</span><span><div class="t">Affidavit of Daniel Alvarez</div><div class="sh">Sworn Oct 29 before a notary in Travis County. What he saw on Sep 3 and Sep 17 at the site.</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="day">Sep 3</span><span class="chip dim">final</span><span><div class="t">Field report, Sep 3, mechanical room</div><div class="sh">8 photos of the staged material, counted, before the crew left</div></span><span class="more">⋯</span></div>
+        <div class="doc"><span class="day">Oct 16</span><span class="chip warn">draft</span><span><div class="t">Statement of Thanh Nguyen</div><div class="sh">Declaration, not signed. The signing page alone was printed Oct 16.</div></span><span class="more">⋯</span></div>
+      </div>
+      <p class="note muted" style="margin-top:10px">The draft row is the statement itself until a scan is filed, so the <b>Drafts</b> filter counts it with the letters in draft. Its ⋯ reads Print, File the signed copy…, Not signed…. The signed row's ⋯ gains <i>The statement on the Timeline</i>.</p>
+    </div>
+    <div class="cap opt" style="margin-top:12px">What the firm sees · Hale &amp; Rowe's portal</div>
+    <div class="portal">
+      <div class="ph">Timeline · Said</div>
+      <div class="ent" style="border-bottom:0;padding-top:0"><div class="d">Thu, Sep 3</div><div><div class="h"><span class="chip said">sworn statement by the office's team</span><span class="t">Affidavit of Daniel Alvarez</span></div><div class="body"><q>Northline's superintendent, Mr. Pruitt, told me the concrete pour had moved…</q> <span class="muted">Read all ›</span></div><div class="st">Sworn Oct 29 before a notary in Travis County. The signed copy is under Evidence.</div></div></div>
+      <div class="ph" style="margin-top:10px">Evidence · Our record</div>
+      <div class="doc" style="border-bottom:0"><span class="day">Oct 29</span><span class="chip dim">final</span><span><div class="t">Affidavit of Daniel Alvarez</div><div class="sh">Sworn Oct 29 before a notary in Travis County. What he saw on Sep 3 and Sep 17 at the site.</div></span><span class="more">↗</span></div>
+      <p class="note muted" style="margin:8px 0 0">A draft reaches the firm as <span class="chip warn">draft · not signed</span>, as a letter's draft does today, so counsel can ask for a change before the witness signs. The office can hold it back like any planned step.</p>
+    </div>
+  </div>
+</div>
+<div class="pass2" id="pass2-6"><div class="cap">Second pass · written after the render</div><p>Nothing moved. The draft's amber line is the one row on the whole page that shouts, and it should: it is the statement nobody signed. On a live account the Sep 3 statement and the Oct 29 scan sit many rows apart, which is why each carries the other's door (<i>Open the signed copy</i>, <i>The statement on the Timeline ›</i>). The firm's view says <i>by the office's team</i> where the desk says <i>team</i>, the same way its kind words differ from ours everywhere else.</p></div>
+
+<!-- ============================================================ 7 -->
+<h2 id="crit"><span class="num">7</span> Is this the best we can do?</h2>
+<p class="lede">The questions a first-timer, the witness, the firm and a bad week put to the design, and what the drawing answers.</p>
+<div class="crit">
+  <div class="c"><span class="q">What a first-timer presses first</span><span class="a"><b>Swear a statement…</b> beside <b>Choose files</b> on the Evidence tab, because the scan lands there and that is where the office already goes with a paper. The Timeline composer's kind tag offers it too, and the Said lane's empty words name it. One window, two doors. The first field asks who swears it, and the roster pick fills the role line, so the first thing typed is the title and the second is the story.</span></div>
+  <div class="c"><span class="q">What the witness holds</span><span class="a">Two Letter pages at most: numbered paragraphs in a serif, a signature line with their name and role under it, then the signing block <b>on the same page as the signature</b>, never alone on a page of its own. When they wrote their own, the signing page names what it is stapled to and asks for their initials on each page, so no notary or court calls it a loose jurat.</span></div>
+  <div class="c"><span class="q">What the firm sees</span><span class="a">The statement's text in its Timeline's Said lane with the chip <i>sworn statement</i> or <i>declaration</i>, and the scan under Evidence with the sworn line, linked. A draft shows as a draft with a loud chip, as a letter's draft does today, so counsel can ask for a change before the signing. <b>Open call for the owner:</b> some firms would rather never see an unsigned statement. The hold works per statement either way.</span></div>
+  <div class="c"><span class="q">The scan never comes back</span><span class="a">The draft stays on the Timeline as a draft chip on the day it is about, turns amber after fourteen days (<i>printed 14 days ago · no signed copy</i>), and sits under the Evidence tab's <b>Drafts</b> filter. <b>Not signed…</b> voids it with a reason the line keeps: <i>Undone: would not sign the September paragraph.</i> Nothing pretends it was sworn.</span></div>
+  <div class="c"><span class="q">The text changed after the print</span><span class="a">Each print keeps its text. Filing asks whether the signed paper reads as last printed. <i>They changed it by hand</i> keeps the printed text and marks it, so the Timeline never quotes a sentence nobody swore to without saying so. The scan governs.</span></div>
+  <div class="c"><span class="q">A birth date and a home address</span><span class="a">The declaration must carry them. They are typed at print time, held in the window for the session so a reprint after an edit does not ask twice, and never saved: not in the entry, not on the Timeline, not in the Evidence line. The scan carries them to the firm, as it must.</span></div>
+  <div class="c"><span class="q">Fewer presses still?</span><span class="a">The desk could offer <b>Swear it</b> on a field report's row and prefill the day and the first paragraph from the report, and on a clock session the same. That is a later door, not this card. The record check already puts the report beside the day.</span></div>
+</div>
+<div class="pass2" id="pass2-7"><div class="cap">Second pass · written after the render</div><p>Nothing moved. The open call for the owner stands in the third row: whether the firm reads a draft before the witness signs. The drawing takes the letter's rule (drafts travel, loudly chipped, held on request) because the desk already teaches it; a firm that says otherwise gets the hold.</p></div>
+</div>
+<script>
+  document.querySelectorAll('[data-theme-pick]').forEach(b => b.addEventListener('click', () => {
+    document.documentElement.setAttribute('data-theme', b.dataset.themePick);
+    document.querySelectorAll('[data-theme-pick]').forEach(x => x.setAttribute('aria-pressed', String(x === b)));
+  }));
+</script>
+</body>
+</html>

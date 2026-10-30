@@ -19,6 +19,7 @@ import {
   type ReviewQueueInstance,
   type ReviewQueueRow,
 } from '../../lib/checklistReviewQueue'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * "Checklist review" inbox section (Phase 3 of the checklist-card redesign):
@@ -486,8 +487,8 @@ export function ChecklistReviewInboxSection({
                         padding: '0.35rem 0.9rem',
                         borderRadius: 6,
                         border: 'none',
-                        background: busy || !draft.trim() ? '#9ca3af' : '#d97706',
-                        color: 'white',
+                        background: busy || !draft.trim() ? DEAD_PRESS_FILL : '#d97706',
+                        color: busy || !draft.trim() ? DEAD_PRESS_TEXT : 'white',
                         fontSize: '0.8125rem',
                         fontWeight: 500,
                         cursor: busy || !draft.trim() ? 'not-allowed' : 'pointer',

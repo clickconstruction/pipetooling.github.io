@@ -9,6 +9,7 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { installDomShims, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 import { lostBidFillInRows, type LostBidSource } from '../../lib/needsYou/fillInLostBids'
+import { vehicleFillInRows } from '../../lib/needsYou/fillInVehicles'
 import type { LostBidFillInIo } from '../../lib/needsYou/fillInLostBidsIo'
 import { NeedsYouFillInDeck } from './NeedsYouFillInDeck'
 import type { FillInRow } from '../../hooks/useFillInRows'
@@ -38,7 +39,7 @@ const bid = (id: string, value: number, project: string): LostBidSource => ({
   bids_gc_builders: null,
 })
 
-function harness() {
+function harness(lead: FillInRow[] = []) {
   const saves: unknown[] = []
   const undos: unknown[] = []
   const io: LostBidFillInIo = {
@@ -51,7 +52,7 @@ function harness() {
       undos.push(a)
     },
   }
-  let rows: FillInRow[] = lostBidFillInRows([bid('bid-412', 84_300, 'Oak Street clinic'), bid('bid-398', 41_000, 'Pinecrest warehouse'), bid('bid-407', 22_750, 'Riverbend duplex')])
+  let rows: FillInRow[] = [...lead, ...lostBidFillInRows([bid('bid-412', 84_300, 'Oak Street clinic'), bid('bid-398', 41_000, 'Pinecrest warehouse'), bid('bid-407', 22_750, 'Riverbend duplex')])]
   const saved: string[] = []
   const restored: string[] = []
   const onExit = vi.fn()
@@ -174,6 +175,23 @@ describe('NeedsYouFillInDeck · lost bids', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Back to it' }))
     await settle()
     expect(cardTitle()).toBe('b412 Oak Street clinic · Ridgeway Builders · $84,300')
+  })
+
+  it('opened on its line, Skip and Save keep to that line\'s rows before the rest (v2.6129)', async () => {
+    const h = harness(vehicleFillInRows([{ vehicleId: 'v-1', name: '2007 Ram 3500', holderUserId: 'u-2', holderName: 'Ana Ruiz', missing: ['registration'], insuranceOnPlan: false }], []))
+    h.render()
+    await settle()
+    expect(cardTitle()).toBe('b412 Oak Street clinic · Ridgeway Builders · $84,300')
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
+    await settle()
+    expect(cardTitle()).toBe('b398 Pinecrest warehouse · Ridgeway Builders · $41,000')
+    fireEvent.click(screen.getByRole('radio', { name: 'No answer' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Save and next' }))
+    await waitFor(() => expect(cardTitle()).toBe('b407 Riverbend duplex · Ridgeway Builders · $22,750'))
+    // The line's rows all saved or skipped: the deck's own order, the vehicle on top.
+    fireEvent.click(screen.getByRole('button', { name: 'Skip' }))
+    await settle()
+    expect(cardTitle()).toContain('2007 Ram 3500')
   })
 
   it('the end counts what was saved and offers the Mark', async () => {

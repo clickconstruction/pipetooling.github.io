@@ -108,3 +108,13 @@ export async function legalMatterDocumentLink(db: SupabaseClient<Database>, stor
   if (error || !data?.signedUrl) throw new Error(error?.message ?? 'Could not open the document')
   return data.signedUrl
 }
+
+/**
+ * Open the paper itself in a new browser tab (v2.6166): the Evidence row's own press, shared with the
+ * Timeline's *Open the paper* so both open one way. A file the session may not read, or one gone from
+ * the bucket, throws with the storage's own reason for `formatErrorMessage` to word.
+ */
+export async function openLegalMatterDocument(db: SupabaseClient<Database>, row: Pick<LegalMatterDocumentRow, 'storage_path'>): Promise<void> {
+  const url = await legalMatterDocumentLink(db, row.storage_path)
+  window.open(url, '_blank', 'noopener')
+}

@@ -5,6 +5,7 @@
  * the state.
  */
 import type { BidDateSentAttestation, BidSentAckKey } from '../../hooks/useBidDateSentAttestation'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 const ACK_ROWS: { key: BidSentAckKey; label: string }[] = [
   { key: 'email', label: 'I sent the bid via email and the client knew it was coming' },
@@ -115,8 +116,8 @@ export function BidSentAttestationModal({
             onClick={modal.confirm}
             style={{
               padding: '0.5rem 1rem',
-              background: !allAcked ? '#9ca3af' : '#2563eb',
-              color: 'white',
+              background: !allAcked ? DEAD_PRESS_FILL : '#2563eb',
+              color: !allAcked ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 4,
               cursor: !allAcked ? 'not-allowed' : 'pointer',

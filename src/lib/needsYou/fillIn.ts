@@ -76,11 +76,17 @@ export function fillInOrder<T extends { key: string }>(rows: readonly T[], skipp
   return needsYouWalkOrder(rows, skippedKeys)
 }
 
-/** The row the deck opens on: the first of `startKind` when asked and present, else the first. */
-export function fillInStartIndex<T extends { kind: FillInKind }>(rows: readonly T[], startKind: FillInKind | null | undefined): number {
-  if (!startKind) return 0
-  const i = rows.findIndex((r) => r.kind === startKind)
-  return i < 0 ? 0 : i
+/**
+ * The walk with the asked kind first (v2.6129, punch list #178): a line's Fill them in keeps to that line's rows past
+ * every Save and Skip, then the deck's own order once none is left unskipped. Skipped rows wait at the back.
+ */
+export function fillInKindFirst<T extends { key: string; kind: FillInKind }>(order: readonly T[], startKind: FillInKind | null | undefined, skippedKeys: readonly string[]): T[] {
+  if (!startKind) return [...order]
+  const skipped = new Set(skippedKeys)
+  const lead = order.filter((r) => r.kind === startKind && !skipped.has(r.key))
+  if (lead.length === 0) return [...order]
+  const leadKeys = new Set(lead.map((r) => r.key))
+  return [...lead, ...order.filter((r) => !leadKeys.has(r.key))]
 }
 
 /** "3 of 12 · 2 saved" — the position among every row this visit opened with, the saved count after the dot. */

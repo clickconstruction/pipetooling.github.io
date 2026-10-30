@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { supabase } from '../../lib/supabase'
-import { commitmentBalance, commitmentRail, nextCommitmentActions } from '../../lib/workflow/stepCommitments'
+import { cancelCommitmentPatch, commitmentBalance, commitmentRail, nextCommitmentActions } from '../../lib/workflow/stepCommitments'
 import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import { formatWorkOrderWindow, notifyWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
 import { pickerComplianceSummary, type ComplianceDocInput } from '../../lib/people/subCompliance'
@@ -142,7 +142,7 @@ export function StepCommitmentPanel({
         ? { status: 'accepted', accepted_at: nowIso }
         : action === 'withdraw'
           ? { status: 'draft', offered_at: null }
-          : { status: 'cancelled' }
+          : cancelCommitmentPatch(commitment.amount)
     const { error } = await supabase.from('step_commitments').update(update).eq('id', commitment.id)
     setSaving(false)
     if (error) {

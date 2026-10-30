@@ -14,6 +14,7 @@ import {
   type PayStubPaymentRow,
 } from '../../lib/payStubPayments'
 import { withSupabaseRetry, formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type StubPick = {
   id: string
@@ -421,8 +422,8 @@ export function PayStubLessModal({
             style={{
               padding: '0.35rem 0.75rem',
               fontSize: '0.8125rem',
-              background: deductionsLocked || savingManual ? '#9ca3af' : '#3b82f6',
-              color: 'white',
+              background: deductionsLocked || savingManual ? DEAD_PRESS_FILL : '#3b82f6',
+              color: deductionsLocked || savingManual ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 6,
               cursor: deductionsLocked || savingManual ? 'not-allowed' : 'pointer',
@@ -458,8 +459,8 @@ export function PayStubLessModal({
                       padding: '1px 8px',
                       fontSize: '0.75rem',
                       background:
-                        deductionsLocked || attachingOffsetId !== null || creditBlocked ? '#9ca3af' : '#059669',
-                      color: 'white',
+                        deductionsLocked || attachingOffsetId !== null || creditBlocked ? DEAD_PRESS_FILL : '#059669',
+                      color: deductionsLocked || attachingOffsetId !== null || creditBlocked ? DEAD_PRESS_TEXT : 'white',
                       border: 'none',
                       borderRadius: 4,
                       cursor:

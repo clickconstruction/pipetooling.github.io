@@ -57,7 +57,7 @@ The switch now reads {{button:green|On}}. The days and times fold away. The line
 
 The app keeps your days and times under the switch. Press the {{button:green|On}} switch and save to use them again.
 
-One more line can appear under the switch, in amber. The line reads like *Nobody hears a reply from 11 PM to 6 AM. Rosa, Evan and Taunya are all off then.* Each person sets their own hours under **Push me** on the Your account tab. The office is open, but nobody in the office is pushed in those hours. A reply then waits on Needs a reply until someone's hours open. Ask someone to widen their hours, or take the replies in the morning. Only the owner or a dev sees the line.
+One more line can appear under the switch, in amber. The line reads like *Nobody hears a reply from 11 PM to 6 AM. Rosa, Evan and Taunya are all off then.* Above the line, the card draws the hours the line is read from. Each office person has a row. Each person’s **Push me** hours are a blue bar across the day. The hours nobody is pushed are a red striped column through every row. The column's times sit on its top edge. A weekend nobody covers is a red chip under the rows. When the days differ, each set of days gets its own rows. You press **You** on your own row to open your Push me hours. You press another name to open that person's desk. Each person sets their own hours under **Push me** on the Your account tab. The office is open, but nobody in the office is pushed in those hours. A reply then waits on Needs a reply until someone's hours open. Ask someone to widen their hours, or take the replies in the morning. Only the owner or a dev sees the line.
 
 ## Turn it off
 

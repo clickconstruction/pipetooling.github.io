@@ -13,6 +13,7 @@ import {
 } from '../lib/turnawayTripCharge'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 export type CreateTripChargeTarget = {
   requestId: string
@@ -208,7 +209,7 @@ export default function CreateTripChargeModal({ target, onClose, onCreated }: Pr
             <button
               type="submit"
               disabled={!canSubmit}
-              style={{ padding: '0.5rem 1rem', background: canSubmit ? '#d97706' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: canSubmit ? 'pointer' : 'not-allowed' }}
+              style={{ padding: '0.5rem 1rem', background: canSubmit ? '#d97706' : DEAD_PRESS_FILL, color: canSubmit ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canSubmit ? 'pointer' : 'not-allowed' }}
             >
               {submitting ? 'Creating…' : 'Create trip charge'}
             </button>

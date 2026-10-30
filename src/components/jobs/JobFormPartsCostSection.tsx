@@ -11,6 +11,7 @@ import { materialRowHasUserContent } from '../../lib/jobs/jobFormRows'
 import { splitEstimateDescription } from '../../lib/jobs/otherChargeRowDisplay'
 import { EstimateChip, OtherChargeAmountInput } from './OtherChargeInputs'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { formatMercuryCardChargesPostedDate } from '../../lib/formatMercuryCardChargesPostedDate'
 import { formatMercuryDebitCardIdCompact } from '../../lib/mercuryRawDebitCard'
 import {
@@ -131,6 +132,8 @@ export function JobFormPartsCostSection({
   const [focusedDescriptionId, setFocusedDescriptionId] = useState<string | null>(null)
   // #215 PR 2: a row's memo line stays hidden until it has text or "+ memo" summons it.
   const [memoOpenIds, setMemoOpenIds] = useState<ReadonlySet<string>>(() => new Set())
+  /** Under 640px the charge row stacks like the #215 mock-up's phone view: the date on a line of its own. */
+  const narrowViewport = useNarrowViewport640()
 
   return (
     <>
@@ -313,12 +316,18 @@ export function JobFormPartsCostSection({
                     return visibleRows.map((row, idx) => {
                     const canRemove = materials.length > 1 || materialRowHasUserContent(row)
                     const removeTitle = materials.length > 1 ? 'Remove' : 'Clear row'
+                    // The row is a grid (v2.6164): date, description, amount and the trash share the first
+                    // line, and the memo sits under the description and the amount. Before this the row
+                    // wrapped, so the trash fell onto a line of its own under the date.
                     return (
                       <div
                         key={row.id}
                         style={{
-                          display: 'flex',
-                          flexWrap: 'wrap',
+                          display: 'grid',
+                          gridTemplateColumns: narrowViewport ? 'minmax(0, 1fr) 7rem 23px' : '8.4rem minmax(0, 1fr) 7rem 23px',
+                          gridTemplateAreas: narrowViewport
+                            ? '"date date ." "desc amt trash" "memo memo ."'
+                            : '"date desc amt trash" ". memo memo ."',
                           alignItems: 'center',
                           gap: '0.2rem 0.5rem',
                           padding: '0.4rem 0.75rem',
@@ -332,7 +341,7 @@ export function JobFormPartsCostSection({
                           aria-label="Other charge date"
                           title="The date the charge applies to"
                           style={{
-                            flex: '0 0 auto',
+                            gridArea: 'date',
                             width: '8.4rem',
                             padding: '0.25rem 0.1rem',
                             border: 'none',
@@ -347,7 +356,7 @@ export function JobFormPartsCostSection({
                           const est = splitEstimateDescription(row.description)
                           const chip = est.estimate && focusedDescriptionId !== row.id
                           return (
-                            <span style={{ flex: '1 1 12rem', minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
+                            <span style={{ gridArea: 'desc', minWidth: 0, display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
                               {chip ? <EstimateChip /> : null}
                               <input
                                 type="text"
@@ -375,11 +384,13 @@ export function JobFormPartsCostSection({
                             </span>
                           )
                         })()}
-                        <OtherChargeAmountInput
-                          value={Number(row.amount) || 0}
-                          onChange={(n) => updateMaterialRow(row.id, { amount: n })}
-                          aria-label="Other charge amount"
-                        />
+                        <span style={{ gridArea: 'amt', display: 'inline-flex', justifyContent: 'flex-end' }}>
+                          <OtherChargeAmountInput
+                            value={Number(row.amount) || 0}
+                            onChange={(n) => updateMaterialRow(row.id, { amount: n })}
+                            aria-label="Other charge amount"
+                          />
+                        </span>
                         {canRemove ? (
                           <button
                             type="button"
@@ -400,12 +411,13 @@ export function JobFormPartsCostSection({
                               alignItems: 'center',
                               justifyContent: 'center',
                               flexShrink: 0,
+                              gridArea: 'trash',
                             }}
                           >
                             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={15} height={15} fill="currentColor" aria-hidden><path d="M232.7 69.9L224 96L128 96C110.3 96 96 110.3 96 128C96 145.7 110.3 160 128 160L512 160C529.7 160 544 145.7 544 128C544 110.3 529.7 96 512 96L416 96L407.3 69.9C402.9 56.8 390.7 48 376.9 48L263.1 48C249.3 48 237.1 56.8 232.7 69.9zM512 208L128 208L149.1 531.1C150.7 556.4 171.7 576 197 576L443 576C468.3 576 489.3 556.4 490.9 531.1L512 208z" /></svg>
                           </button>
                         ) : (
-                          <span aria-hidden style={{ width: 23, flexShrink: 0 }} />
+                          <span aria-hidden style={{ gridArea: 'trash', width: 23, flexShrink: 0 }} />
                         )}
                         {(row.memo ?? '') !== '' || memoOpenIds.has(row.id) ? (
                           <input
@@ -416,7 +428,8 @@ export function JobFormPartsCostSection({
                             aria-label="Other charge memo"
                             autoFocus={memoOpenIds.has(row.id) && (row.memo ?? '') === ''}
                             style={{
-                              flex: '1 1 100%',
+                              gridArea: 'memo',
+                              width: '100%',
                               minWidth: 0,
                               padding: '0.1rem 0.1rem',
                               border: 'none',
@@ -433,7 +446,8 @@ export function JobFormPartsCostSection({
                             onClick={() => setMemoOpenIds((prev) => new Set(prev).add(row.id))}
                             aria-label="Add a memo to this charge"
                             style={{
-                              flex: '1 1 100%',
+                              gridArea: 'memo',
+                              justifySelf: 'start',
                               textAlign: 'left',
                               padding: '0 0.1rem',
                               background: 'transparent',

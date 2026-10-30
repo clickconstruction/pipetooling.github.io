@@ -2,6 +2,7 @@ import type { MercuryDepositFacts } from '../../lib/jobs/billsAndPayments'
 import { unlinkLeavesStripeBillUntouched } from '../../lib/jobs/jobFormPaymentPredicates'
 import type { PaymentRow } from '../../lib/jobs/jobFormTypes'
 import { normalizeJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type EditingJob = Parameters<typeof unlinkLeavesStripeBillUntouched>[1]
 
@@ -144,8 +145,8 @@ export function JobFormMercuryUnlinkConfirm({ rowId, payments, editing, busyRowI
               disabled={Boolean(busyRowId)}
               style={{
                 padding: '0.5rem 1rem',
-                background: busyRowId ? '#9ca3af' : '#3b82f6',
-                color: 'white',
+                background: busyRowId ? DEAD_PRESS_FILL : '#3b82f6',
+                color: busyRowId ? DEAD_PRESS_TEXT : 'white',
                 border: 'none',
                 borderRadius: 6,
                 cursor: busyRowId ? 'not-allowed' : 'pointer',

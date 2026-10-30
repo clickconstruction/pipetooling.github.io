@@ -7,7 +7,7 @@ export function PoisonIvy({ titleId }: FigureProps) {
   )
   return (
     <svg viewBox="0 0 300 130" role="img" aria-labelledby={titleId} style={{ display: 'block', width: '100%', height: 'auto', maxWidth: 420, color: 'var(--text-base)' }}>
-      <g stroke="#15803d" strokeWidth="1.5" fill="var(--bg-green-100)" strokeLinejoin="round">
+      <g stroke="var(--text-green-700)" strokeWidth="1.5" fill="var(--bg-green-100)" strokeLinejoin="round">
         <line x1="70" y1="110" x2="70" y2="62" />
         {leaf(70, 62, 0, 18, 40)}
         {leaf(68, 70, -55, 16, 34)}
@@ -20,7 +20,7 @@ export function PoisonIvy({ titleId }: FigureProps) {
         {leaf(215, 76, 85, 10, 26)}
       </g>
       <g fontSize="9.5" fill="currentColor" textAnchor="middle">
-        <text x="70" y="124" fontWeight="600" fill="#991b1b">
+        <text x="70" y="124" fontWeight="600" fill="var(--text-red-800)">
           leaves of three, let it be
         </text>
         <text x="210" y="124" fill="var(--text-muted)">

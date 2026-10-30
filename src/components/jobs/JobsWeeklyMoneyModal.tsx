@@ -127,10 +127,10 @@ function JobRows({ rows, lens }: { rows: WeeklyMoneyJobRow[]; lens: WeeklyMoneyL
               >
                 {formatWeeklyMoneyPlain(r.moneyOut)}
               </td>
-              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.moneyIn > 0 ? '#15803d' : 'var(--text-muted)', fontWeight: r.moneyIn > 0 ? 600 : 400 }}>
+              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: r.moneyIn > 0 ? 'var(--text-green-700)' : 'var(--text-muted)', fontWeight: r.moneyIn > 0 ? 600 : 400 }}>
                 {r.moneyIn > 0 ? formatWeeklyMoneyPlain(r.moneyIn) : '—'}
               </td>
-              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? '#b45309' : net >= 0 ? '#15803d' : 'var(--text-red-700)' }}>
+              <td style={{ padding: '0.3rem 0.4rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', fontWeight: 700, color: net == null ? '#b45309' : net >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
                 {net != null ? formatWeeklyMoneySigned(net) : '?'}
               </td>
             </tr>
@@ -266,7 +266,7 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
   const kpi = (k: string, v: string, tone?: 'pos' | 'neg') => (
     <div style={{ padding: '0.4rem 0.6rem', borderRight: '1px solid var(--border)', flex: 1, minWidth: 108 }}>
       <div style={{ fontSize: '0.625rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>{k}</div>
-      <div style={{ fontSize: '1.0625rem', fontWeight: 650, fontVariantNumeric: 'tabular-nums', color: tone === 'pos' ? '#15803d' : tone === 'neg' ? 'var(--text-red-700)' : 'inherit' }}>{v}</div>
+      <div style={{ fontSize: '1.0625rem', fontWeight: 650, fontVariantNumeric: 'tabular-nums', color: tone === 'pos' ? 'var(--text-green-700)' : tone === 'neg' ? 'var(--text-red-700)' : 'inherit' }}>{v}</div>
     </div>
   )
 
@@ -425,7 +425,7 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
                 {view.made.length > 0 ? (
                   <div style={{ marginBottom: '1rem' }}>
                     <p style={sectionHeadStyle}>
-                      <span style={{ color: '#15803d' }}>Made money this week</span>
+                      <span style={{ color: 'var(--text-green-700)' }}>Made money this week</span>
                       <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}> · {view.made.length} job{view.made.length === 1 ? '' : 's'}</span>
                     </p>
                     <JobRows rows={view.made} lens={lens} />

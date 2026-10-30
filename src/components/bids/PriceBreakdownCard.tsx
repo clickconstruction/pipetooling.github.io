@@ -139,7 +139,7 @@ export function PriceBreakdownCard({ input, companyMarkup, onMarkupChange, onMar
           </tbody>
         </table>
       </div>
-      <div style={{ marginTop: '0.5rem', fontSize: '0.76rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: note.tone === 'warn' ? 'rgba(245, 158, 11, 0.14)' : 'rgba(22, 163, 74, 0.12)', color: note.tone === 'warn' ? 'var(--text-amber-700)' : '#15803d', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
+      <div style={{ marginTop: '0.5rem', fontSize: '0.76rem', padding: '0.4rem 0.6rem', borderRadius: 8, background: note.tone === 'warn' ? 'rgba(245, 158, 11, 0.14)' : 'rgba(22, 163, 74, 0.12)', color: note.tone === 'warn' ? 'var(--text-amber-700)' : 'var(--text-green-700)', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap' }}>
         <span>{note.words}</span>
         {!b.laborCosted && b.hours === 0 && onOpenLabor ? (
           <button type="button" onClick={onOpenLabor} style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '0.2rem 0.6rem', borderRadius: 6, border: '1px solid #b45309', background: 'var(--surface)', color: 'var(--text-amber-700)', cursor: 'pointer' }}>

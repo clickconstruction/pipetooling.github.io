@@ -18,6 +18,7 @@ import { DISCOUNT_REASON_PRESETS, standingDiscountFromCustomer } from '../lib/jo
 import { CUSTOMER_PAYMENT_TERMS, isCustomerPaymentTerms, parseCustomerTerms, type CustomerPaymentTerms } from '../lib/customerPaymentTerms'
 import CustomerContactsSection from './customers/CustomerContactsSection'
 import CustomerPropertiesSection from './customers/CustomerPropertiesSection'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 type CustomerRow = Database['public']['Tables']['customers']['Row']
 
@@ -963,8 +964,8 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                     style={{
                       marginTop: '1rem',
                       padding: '0.5rem 1rem',
-                      background: canMerge ? '#7c3aed' : '#d1d5db',
-                      color: 'white',
+                      background: canMerge ? '#7c3aed' : DEAD_PRESS_FILL,
+                      color: canMerge ? 'white' : DEAD_PRESS_TEXT,
                       border: 'none',
                       borderRadius: 4,
                       cursor: canMerge && !merging ? 'pointer' : 'not-allowed',

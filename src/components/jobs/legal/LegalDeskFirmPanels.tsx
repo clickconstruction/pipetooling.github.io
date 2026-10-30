@@ -1,5 +1,4 @@
 import { useState, type CSSProperties } from 'react'
-import { ChevronRight } from 'lucide-react'
 
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 
@@ -7,69 +6,19 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
-import { type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
-import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
 
 import { OFFER_NEXT_STATUSES, isOfferEntry, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 
-import { MUTED, btn, btnPrimary, SectionTitle, Table, type EntryLike } from './legalDeskShared'
+import { MUTED, btn, btnPrimary, Table, type EntryLike } from './legalDeskShared'
 import { EmptyState } from '../../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../../lib/emptyWords'
 
 /**
- * The With-the-firm panels (v2.5852, the split): the settlement floor editor, the offers log, a settlement ask's
- * answer, and the undo and voided-text pieces the tabs share. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182).
+ * The With-the-firm panels (v2.5852, the split): the offers log, a settlement ask's answer (an ask from before v2.6170
+ * retired the floor), and the undo and voided-text pieces the tabs share. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182).
  */
-export function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalSettlementFloor | null; balance: number; busy: boolean; onSave: (amount: number | null, pct: number | null) => Promise<void> }) {
-  const [open, setOpen] = useState(false)
-  const [ctl, setCtl] = useState<FloorControl>(() => floorControlStart(floor, balance))
-  const start = () => { setCtl(floorControlStart(floor, balance)); setOpen(true) }
-  const valid = floorControlValid(ctl)
-  const save = async () => { const plan = floorControlSave(ctl); await onSave(plan.amount, plan.pct); setOpen(false) }
-  const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: open ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }
-  // Longhands, not the `border` shorthand with a `borderColor` over it: the box flips between the two styles and React warns on the mix (v2.5780).
-  const box: CSSProperties = { font: 'inherit', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 6px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', textAlign: 'right' }
-  const boxOn: CSSProperties = { ...box, borderColor: '#2563eb' }
-  return (
-    <div data-legal-settlement-floor-editor>
-      <SectionTitle>Settlement authority</SectionTitle>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
-        <span>The firm may settle at</span>
-        <button type="button" onClick={() => (open ? setOpen(false) : start())} aria-expanded={open} aria-label={`Settlement floor: ${floorChipWords(floor, formatLegalMoney)}. Change it`} style={chip} data-legal-floor-chip>
-          {floorChipWords(floor, formatLegalMoney)}
-          <ChevronRight size={13} aria-hidden style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }} />
-        </button>
-        <span style={MUTED}>{floorTodayWords(floor, balance, formatLegalMoney)}</span>
-      </div>
-      {open ? (
-        <div
-          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
-          style={{ margin: '8px 0 0', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)', maxWidth: 520 }}
-          data-legal-floor-panel
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6, fontSize: '0.84rem' }}>
-            <input type="text" inputMode="numeric" value={ctl.pctText} onChange={(e) => setCtl(floorControlTypePct(ctl, e.target.value, balance))} placeholder="0" aria-label="Settlement floor, percent of the balance" style={{ ...(ctl.unit === 'pct' ? boxOn : box), width: 52 }} />
-            <span style={{ fontWeight: 600 }}>%</span>
-            <span style={MUTED}>or</span>
-            <span style={{ fontWeight: 600 }}>$</span>
-            <input type="text" inputMode="decimal" value={ctl.usdText} onChange={(e) => setCtl(floorControlTypeUsd(ctl, e.target.value, balance))} placeholder="0.00" aria-label="Settlement floor in dollars" style={{ ...(ctl.unit === 'usd' ? boxOn : box), width: 110 }} />
-            <span style={MUTED}>of {formatLegalMoney(balance)}</span>
-          </div>
-          <input type="range" min={0} max={100} step={1} value={ctl.pct} onChange={(e) => setCtl(floorControlFromPct(Number(e.target.value), balance))} aria-label="Settlement floor slider" autoFocus style={{ width: '100%', accentColor: '#2563eb' }} />
-          <div style={{ ...MUTED, display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem' }}><span>Any amount</span><span>50%</span><span>The full balance</span></div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-            <button type="button" disabled={busy || !valid} onClick={() => void save()} style={btnPrimary}>Save</button>
-            <button type="button" disabled={busy} onClick={() => setOpen(false)} style={btn}>Cancel</button>
-            <span style={{ ...MUTED, fontSize: '0.74rem' }} data-legal-floor-saves>{floorControlSavesWords(ctl, formatLegalMoney)}</span>
-          </div>
-        </div>
-      ) : null}
-    </div>
-  )
-}
-
-/** #85 item 20: the office's answer to a settlement under its floor — sign off moves the stage to settled. */
+/** #85 item 20: the office's answer to a settlement ask from before v2.6170 retired the floor — sign off moves the stage to settled. */
 /**
  * Offers (punch list #172, v2.5847): the log of offers made and received while the office runs the case or the
  * firm has it — the day, who, the amount, the day it expires, the status — and *Log an offer…*. An open offer's

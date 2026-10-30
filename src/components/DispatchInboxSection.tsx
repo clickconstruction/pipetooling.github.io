@@ -32,6 +32,7 @@ import {
   DISPATCH_REQUEST_AGE,
   shouldRecordAgingOpen,
 } from '../lib/ageState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 export type DispatchInboxRow = {
   id: string
@@ -902,8 +903,8 @@ export function DispatchInboxSection({
                                     transition: dispatchBtnTransition,
                                     ...(dispatchRowSaving
                                       ? {
-                                          background: '#d1d5db',
-                                          color: 'white',
+                                          background: DEAD_PRESS_FILL,
+                                          color: DEAD_PRESS_TEXT,
                                           cursor: 'not-allowed',
                                         }
                                       : hasDispatchNoteContent
@@ -945,8 +946,8 @@ export function DispatchInboxSection({
                                     transition: dispatchBtnTransition,
                                     ...(dispatchRowSaving
                                       ? {
-                                          background: '#d1d5db',
-                                          color: 'white',
+                                          background: DEAD_PRESS_FILL,
+                                          color: DEAD_PRESS_TEXT,
                                           cursor: 'not-allowed',
                                         }
                                       : hasDispatchNoteContent

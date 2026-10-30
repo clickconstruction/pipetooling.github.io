@@ -41,5 +41,9 @@ describe('stagePct', () => {
     expect(saveWords({ jobPct: 36, photos: 0 })).toBe('Save · job 36%')
     expect(saveWords({ jobPct: 36, photos: 1 })).toBe('Save · job 36% · 1 photo')
     expect(saveWords({ jobPct: 36, photos: 2 })).toBe('Save · job 36% · 2 photos')
+    // A report type that files no percent names none (v2.6126).
+    expect(saveWords({ jobPct: null })).toBe('Save report')
+    expect(saveWords({ jobPct: null, photos: 1 })).toBe('Save report · 1 photo')
+    expect(saveWords({ jobPct: null, photos: 2 })).toBe('Save report · 2 photos')
   })
 })

@@ -75,6 +75,7 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { EmptyState } from '../EmptyState'
 import { vehicleLedgerEmptyWords, vehiclesEmptyWords } from '../../lib/people/peopleEmptyWords'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * People → Vehicles (v2.1644 fleet redesign): a card per vehicle answering
@@ -1546,8 +1547,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   disabled={savingReading}
                   style={{
                     padding: '0.45rem 0.9rem',
-                    background: savingReading ? '#9ca3af' : '#3b82f6',
-                    color: '#fff',
+                    background: savingReading ? DEAD_PRESS_FILL : '#3b82f6',
+                    color: savingReading ? DEAD_PRESS_TEXT : '#fff',
                     border: 'none',
                     borderRadius: 6,
                     fontWeight: 500,
@@ -1644,8 +1645,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       disabled={insCostSaving || preview == null}
                       style={{
                         padding: '0.45rem 0.9rem',
-                        background: insCostSaving || preview == null ? '#9ca3af' : '#3b82f6',
-                        color: '#fff',
+                        background: insCostSaving || preview == null ? DEAD_PRESS_FILL : '#3b82f6',
+                        color: insCostSaving || preview == null ? DEAD_PRESS_TEXT : '#fff',
                         border: 'none',
                         borderRadius: 6,
                         fontWeight: 500,
@@ -1833,8 +1834,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                         disabled={taskSaving || !newTaskTitle.trim()}
                         style={{
                           padding: '0.45rem 0.9rem',
-                          background: taskSaving || !newTaskTitle.trim() ? '#9ca3af' : '#3b82f6',
-                          color: '#fff',
+                          background: taskSaving || !newTaskTitle.trim() ? DEAD_PRESS_FILL : '#3b82f6',
+                          color: taskSaving || !newTaskTitle.trim() ? DEAD_PRESS_TEXT : '#fff',
                           border: 'none',
                           borderRadius: 6,
                           fontWeight: 500,
@@ -2239,8 +2240,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={handOffSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: handOffSaving ? '#9ca3af' : '#3b82f6',
-                  color: '#fff',
+                  background: handOffSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  color: handOffSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
                   cursor: handOffSaving ? 'not-allowed' : 'pointer',
@@ -2299,8 +2300,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={serviceSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: serviceSaving ? '#9ca3af' : '#3b82f6',
-                  color: '#fff',
+                  background: serviceSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  color: serviceSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
                   cursor: serviceSaving ? 'not-allowed' : 'pointer',
@@ -2358,8 +2359,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={problemSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: problemSaving ? '#9ca3af' : '#3b82f6',
-                  color: '#fff',
+                  background: problemSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  color: problemSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
                   cursor: problemSaving ? 'not-allowed' : 'pointer',
@@ -2395,8 +2396,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={resolveSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: resolveSaving ? '#9ca3af' : '#16a34a',
-                  color: '#fff',
+                  background: resolveSaving ? DEAD_PRESS_FILL : '#16a34a',
+                  color: resolveSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
                   cursor: resolveSaving ? 'not-allowed' : 'pointer',
@@ -2619,7 +2620,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 type="button"
                 onClick={() => void saveCheckinSettings()}
                 disabled={checkinSettingsSaving}
-                style={{ padding: '0.5rem 1rem', background: checkinSettingsSaving ? '#9ca3af' : '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: checkinSettingsSaving ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: checkinSettingsSaving ? DEAD_PRESS_FILL : '#3b82f6', color: checkinSettingsSaving ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 6, cursor: checkinSettingsSaving ? 'not-allowed' : 'pointer' }}
               >
                 {checkinSettingsSaving ? 'Saving…' : 'Save'}
               </button>
@@ -2660,8 +2661,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={planSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: planSaving ? '#9ca3af' : '#3b82f6',
-                  color: '#fff',
+                  background: planSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  color: planSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
                   cursor: planSaving ? 'not-allowed' : 'pointer',
@@ -2754,8 +2755,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                     disabled={insSaving}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: insSaving ? '#9ca3af' : '#3b82f6',
-                      color: '#fff',
+                      background: insSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                      color: insSaving ? DEAD_PRESS_TEXT : '#fff',
                       border: 'none',
                       borderRadius: 6,
                       cursor: insSaving ? 'not-allowed' : 'pointer',
@@ -2845,7 +2846,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 type="button"
                 onClick={() => void saveTaskEdit()}
                 disabled={editTaskSaving || !editTaskTitle.trim()}
-                style={{ padding: '0.5rem 1rem', background: editTaskSaving || !editTaskTitle.trim() ? '#9ca3af' : '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: editTaskSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                style={{ padding: '0.5rem 1rem', background: editTaskSaving || !editTaskTitle.trim() ? DEAD_PRESS_FILL : '#3b82f6', color: editTaskSaving || !editTaskTitle.trim() ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: editTaskSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
               >
                 {editTaskSaving ? 'Saving…' : 'Save'}
               </button>
@@ -2892,8 +2893,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={assignSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: assignSaving ? '#9ca3af' : '#3b82f6',
-                  color: '#fff',
+                  background: assignSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  color: assignSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
                   cursor: assignSaving ? 'not-allowed' : 'pointer',
@@ -2928,8 +2929,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={takeOffSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: takeOffSaving ? '#9ca3af' : '#d97706',
-                  color: '#fff',
+                  background: takeOffSaving ? DEAD_PRESS_FILL : '#d97706',
+                  color: takeOffSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
                   cursor: takeOffSaving ? 'not-allowed' : 'pointer',

@@ -575,7 +575,7 @@ export function StripeInvoiceSendFromStripeButton({
           style={{
             margin: micro ? '0' : '0.45rem 0 0',
             fontSize: micro ? '0.625rem' : '0.8125rem',
-            color: '#15803d',
+            color: 'var(--text-green-700)',
             textAlign: messageAlign,
             alignSelf: 'stretch',
             lineHeight: micro ? 1.35 : 1.45,

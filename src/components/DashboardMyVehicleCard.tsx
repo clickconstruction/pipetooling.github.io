@@ -19,6 +19,7 @@ import {
   type FleetProblemReport,
   type FleetServiceEvent,
 } from '../lib/vehicleFleet'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 /**
  * Dashboard "My Vehicle" card (v2.1648, Vehicles fleet phase 4): renders just
@@ -313,8 +314,8 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
                 disabled={savingVehicleId === v.id}
                 style={{
                   padding: '0.45rem 0.8rem',
-                  background: savingVehicleId === v.id ? '#9ca3af' : '#3b82f6',
-                  color: '#fff',
+                  background: savingVehicleId === v.id ? DEAD_PRESS_FILL : '#3b82f6',
+                  color: savingVehicleId === v.id ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
                   fontWeight: 500,
@@ -372,8 +373,8 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
                   style={{
                     width: '100%',
                     padding: '0.45rem 0.8rem',
-                    background: reportSaving ? '#9ca3af' : '#3b82f6',
-                    color: '#fff',
+                    background: reportSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                    color: reportSaving ? DEAD_PRESS_TEXT : '#fff',
                     border: 'none',
                     borderRadius: 6,
                     fontWeight: 500,

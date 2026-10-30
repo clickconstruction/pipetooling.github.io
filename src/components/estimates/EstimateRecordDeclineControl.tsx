@@ -4,6 +4,7 @@ import {
   ESTIMATE_DECLINE_REASON_MAX,
   type EstimateDeclineChannel,
 } from '../../../supabase/functions/_shared/estimateDecline'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * "Record a decline (phone / in person)" on a sent estimate (v2.2873, journey-map J17-N1):
@@ -142,8 +143,8 @@ export default function EstimateRecordDeclineControl({ busy, onRecord, style }: 
             fontWeight: 600,
             border: 'none',
             borderRadius: 4,
-            background: busy ? '#9ca3af' : '#b91c1c',
-            color: 'white',
+            background: busy ? DEAD_PRESS_FILL : '#b91c1c',
+            color: busy ? DEAD_PRESS_TEXT : 'white',
             cursor: busy ? 'not-allowed' : 'pointer',
           }}
           aria-label="Mark this estimate declined"

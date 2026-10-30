@@ -3,6 +3,7 @@ import { scheduleBlockAnchorId, type JobScheduleBlockRow } from '../../lib/jobSc
 import { scheduleFormatWindow } from '../../lib/jobScheduleChicago'
 import { buildMoveDayChips } from '../../lib/scheduleDispatchMoveBlock'
 import type { LinkedCopyMode } from '../../lib/scheduleDispatchLinkedCopy'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * The Dispatch hub's mode banners (the SCHEDULE_DISPATCH map's step 5): the strip above the board
@@ -332,8 +333,8 @@ export function ScheduleDispatchMultiCellBar({
                 fontWeight: 600,
                 border: 'none',
                 borderRadius: 8,
-                background: hubMultiCellAddSelection.size === 0 ? '#9ca3af' : '#2563eb',
-                color: '#fff',
+                background: hubMultiCellAddSelection.size === 0 ? DEAD_PRESS_FILL : '#2563eb',
+                color: hubMultiCellAddSelection.size === 0 ? DEAD_PRESS_TEXT : '#fff',
                 cursor: hubMultiCellAddSelection.size === 0 ? 'not-allowed' : 'pointer',
                 boxShadow: '0 4px 14px rgba(0,0,0,0.2)',
               }}

@@ -10155,6 +10155,44 @@ export type Database = {
           },
         ]
       }
+      field_presses: {
+        Row: {
+          id: string
+          kind: string
+          landed_at: string
+          late: boolean
+          pressed_at: string
+          result: Json
+          user_id: string
+        }
+        Insert: {
+          id: string
+          kind: string
+          landed_at?: string
+          late?: boolean
+          pressed_at: string
+          result?: Json
+          user_id: string
+        }
+        Update: {
+          id?: string
+          kind?: string
+          landed_at?: string
+          late?: boolean
+          pressed_at?: string
+          result?: Json
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "field_presses_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fixture_component_corrections: {
         Row: {
           action: string
@@ -37030,6 +37068,15 @@ export type Database = {
         Returns: boolean
       }
       keep_job_baseline_now: { Args: { p_job_id: string }; Returns: boolean }
+      land_field_press: {
+        Args: {
+          p_id: string
+          p_kind: string
+          p_payload: Json
+          p_pressed_at: string
+        }
+        Returns: Json
+      }
       latest_bid_cell_history: {
         Args: { p_bid_id: string }
         Returns: {

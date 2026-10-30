@@ -607,7 +607,7 @@ export function QuoteCompareModal({
             })()}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
               {houseCols.map((h) => (
-                <span key={h.supplyHouseId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${h.expired ? 'var(--border-strong)' : '#bbf7d0'}`, background: h.expired ? 'var(--bg-muted)' : 'var(--bg-green-tint)', color: h.expired ? 'var(--text-muted)' : '#15803d', borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.75rem', fontWeight: 600 }}>
+                <span key={h.supplyHouseId} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, border: `1px solid ${h.expired ? 'var(--border-strong)' : '#bbf7d0'}`, background: h.expired ? 'var(--bg-muted)' : 'var(--bg-green-tint)', color: h.expired ? 'var(--text-muted)' : 'var(--text-green-700)', borderRadius: 999, padding: '0.25rem 0.7rem', fontSize: '0.75rem', fontWeight: 600 }}>
                   {h.houseName} · {h.quotedLines} of {h.totalLines} lines{h.expired ? ' · expired' : ''}
                   {h.commonLinesTotalCents != null ? ` · ${money(h.commonLinesTotalCents)}${comparison.commonLineCount > 0 ? ` on ${comparison.commonLineCount} common` : ''}` : ''}
                   {h.freightCents != null && h.freightCents > 0 ? ` + ${money(h.freightCents)} freight${h.commonWithFreightCents != null ? ` = ${money(h.commonWithFreightCents)}` : ''}` : ''}
@@ -933,7 +933,7 @@ function CellButton({ cell, best, onPick, onSettle }: { cell: CompareRowCell; be
         font: 'inherit',
         fontSize: '0.8125rem',
         fontVariantNumeric: 'tabular-nums',
-        color: cell.cantSupply ? 'var(--text-faint)' : cell.expired ? 'var(--text-faint)' : best ? '#15803d' : 'var(--text-strong)',
+        color: cell.cantSupply ? 'var(--text-faint)' : cell.expired ? 'var(--text-faint)' : best ? 'var(--text-green-700)' : 'var(--text-strong)',
         fontWeight: best ? 700 : 400,
         textDecoration: cell.expired ? 'line-through' : undefined,
       }}

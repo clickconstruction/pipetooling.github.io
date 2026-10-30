@@ -114,6 +114,8 @@ const NOTICE_INK = '#d97706'
 const LIEN_INK = 'var(--text-700)'
 const RED_INK = '#b91c1c'
 const GREEN_INK = '#15803d'
+/** v2.6120: a green count's words take the token, light on the dark surface in dark mode; the flags and the ✓ circle keep GREEN_INK under white. */
+const GREEN_WORDS = 'var(--text-green-700)'
 /** v2.5522: the in-the-mail circle — amber, the colour of a notice still owed. */
 const MAILED_INK = '#d97706'
 function noticeInk(tone: LienRunwayTone): string {
@@ -467,7 +469,7 @@ function GroupTrack({ g, axis, onPen, onDraft, onRecord }: { g: LienCalendarGrou
                     {p.kind === 'notice' ? <span style={{ position: 'absolute', left: 3.5, top: 1.5, width: 6, height: 5, background: 'var(--surface)', clipPath: 'polygon(0 0, 100% 50%, 0 100%)' }} /> : null}
                   </>
                 )}
-                {p.n > 1 ? <span style={{ position: 'absolute', left: 4, top: FLAG_H + 2, fontSize: 10, lineHeight: 1, fontWeight: 700, color: p.ink }}>{p.n}</span> : null}
+                {p.n > 1 ? <span style={{ position: 'absolute', left: 4, top: FLAG_H + 2, fontSize: 10, lineHeight: 1, fontWeight: 700, color: p.ink === GREEN_INK ? GREEN_WORDS : p.ink }}>{p.n}</span> : null}
               </span>
             ))}
           </div>

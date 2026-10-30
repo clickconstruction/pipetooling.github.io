@@ -580,7 +580,7 @@ export function AssignSessionJobPopover({
                                 alignItems: 'flex-end',
                                 gap: '0.2rem',
                                 textAlign: 'right',
-                                color: isCurrent ? '#15803d' : 'var(--text-blue-800)',
+                                color: isCurrent ? 'var(--text-green-700)' : 'var(--text-blue-800)',
                                 fontVariantNumeric: 'tabular-nums',
                               }}
                             >

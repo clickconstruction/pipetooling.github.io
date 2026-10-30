@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { DEV_MCP_ENV_VAR, devMcpConnectorHeader, devMcpKeyCanCopy, devMcpKeyLabel, devMcpSetupCommand, devMcpShellLine, formatDevMcpKey, isMissingColumnError, isMissingFunctionError, lastRevealByKey, splitDevMcpKeys } from './devMcpKeys'
+import { DEV_MCP_CLAUDE_SETTINGS_PATH, DEV_MCP_ENV_VAR, devMcpConnectorHeader, devMcpKeyCanCopy, devMcpKeyLabel, devMcpSettingsWrite, devMcpSetupCommand, devMcpShellLine, formatDevMcpKey, isMissingColumnError, isMissingFunctionError, lastRevealByKey, splitDevMcpKeys } from './devMcpKeys'
 
 describe('devMcpKeys', () => {
   it('prefixes a key and writes the shell line around it', () => {
@@ -14,6 +14,24 @@ describe('devMcpKeys', () => {
     expect(cmd).toContain(`echo "export ${DEV_MCP_ENV_VAR}='ptd_ab12'" >> ~/.zshrc`)
     expect(cmd).toContain('quit Claude Code and open it again')
     expect(cmd.split('\n')).toHaveLength(1) // one line: one paste, one Return
+  })
+
+  it('the setup command also writes the key into Claude Code\u2019s settings, merging, with python3 behind node (v2.6123)', () => {
+    const cmd = devMcpSetupCommand('ptd_ab12')
+    const write = devMcpSettingsWrite('ptd_ab12')
+    expect(cmd).toContain(write)
+    expect(DEV_MCP_CLAUDE_SETTINGS_PATH).toBe('$HOME/.claude/settings.json')
+    expect(write.startsWith('mkdir -p "$HOME/.claude" && (node -e ')).toBe(true)
+    expect(write).toContain(' 2>/dev/null || python3 -c ')
+    // the key is an argument to both scripts, never text inside them
+    expect(write.match(/'ptd_ab12'/g)).toHaveLength(2)
+    // a settings file that exists but is not JSON throws in both scripts, so the command prints no Saved
+    expect(write).toContain('if(fs.existsSync(p))j=JSON.parse(fs.readFileSync(p,"utf8"))')
+    expect(write).toContain(`j.env=Object.assign({},j.env||{},{${DEV_MCP_ENV_VAR}:k})`)
+    expect(write).toContain(`j["env"]=dict(j.get("env") or {},**{"${DEV_MCP_ENV_VAR}":k})`)
+    // the settings write runs before the Saved, so a failed write prints no Saved
+    expect(cmd.indexOf(write)).toBeLessThan(cmd.indexOf('Saved.'))
+    expect(cmd.split('\n')).toHaveLength(1)
   })
 
   it('the connector header carries the scheme, because Claude sends the value exactly as typed', () => {

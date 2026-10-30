@@ -416,7 +416,7 @@ export function PeopleHoursAlignModal({
                                 borderRadius: 999,
                                 background:
                                   'var(--bg-green-tint, rgba(34,197,94,0.12))',
-                                color: 'var(--text-green-700, #15803d)',
+                                color: 'var(--text-green-700)',
                                 border: '1px solid var(--border)',
                               }}
                             >
@@ -456,7 +456,7 @@ export function PeopleHoursAlignModal({
                             <span
                               style={{
                                 fontSize: '0.8125rem',
-                                color: 'var(--text-green-700, #15803d)',
+                                color: 'var(--text-green-700)',
                               }}
                             >
                               ✓ {done.label}

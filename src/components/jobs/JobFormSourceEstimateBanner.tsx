@@ -84,7 +84,7 @@ export function JobFormSourceEstimateBanner({
             <strong>Source estimate:</strong>{' '}
             <Link
               to={`/estimates/${sourceEstimateForJob.estimate_number}`}
-              style={{ color: '#15803d', fontWeight: 600 }}
+              style={{ color: 'var(--text-green-700)', fontWeight: 600 }}
             >
               #{sourceEstimateForJob.estimate_number}
             </Link>

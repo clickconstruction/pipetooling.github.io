@@ -29,7 +29,7 @@ export function ExcavatorSiteMap({ titleId }: FigureProps) {
         <line x1="34" y1="134" x2="34" y2="150" />
         <polyline points="34,150 29,160" />
         <polyline points="34,150 39,160" />
-        <line x1="40" y1="140" x2="70" y2="172" stroke="#15803d" strokeWidth="1.5" />
+        <line x1="40" y1="140" x2="70" y2="172" stroke="var(--text-green-700)" strokeWidth="1.5" />
       </g>
       {mark(126, 116, '1')}
       {mark(160, 46, '2')}
@@ -39,7 +39,7 @@ export function ExcavatorSiteMap({ titleId }: FigureProps) {
         <text x="8" y="96" fill="var(--text-muted)">you,</text>
         <text x="8" y="107" fill="var(--text-muted)">outside</text>
         <text x="8" y="118" fill="var(--text-muted)">the rope</text>
-        <text x="74" y="181" fill="#15803d" fontSize="9">a tag line</text>
+        <text x="74" y="181" fill="var(--text-green-700)" fontSize="9">a tag line</text>
         <text x="206" y="181" fill="var(--text-muted)">the pipe</text>
         <text x="14" y="181" fill="var(--text-muted)" fontSize="9">the trench</text>
         <text x="12" y="206" fontWeight="600">1</text>

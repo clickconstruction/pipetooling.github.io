@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { EmptyState } from '../EmptyState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Company documents (company_documents, v2.941): dev-maintained name+link rows
@@ -262,7 +263,7 @@ export default function SettingsCompanyDocumentsSection({
                   type="button"
                   disabled={busy || !newName.trim() || !newLink.trim()}
                   onClick={() => void addDoc()}
-                  style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: busy || !newName.trim() || !newLink.trim() ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: busy || !newName.trim() || !newLink.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: busy || !newName.trim() || !newLink.trim() ? DEAD_PRESS_FILL : '#3b82f6', color: busy || !newName.trim() || !newLink.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: busy || !newName.trim() || !newLink.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                 >
                   + Add document
                 </button>

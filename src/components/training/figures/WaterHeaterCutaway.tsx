@@ -36,10 +36,10 @@ export function WaterHeaterCutaway({ titleId }: FigureProps) {
         <Valve x={106} y={160} kind="stop" bore={5} />
       </g>
       <Pipe d="M110 160 H100" bore={5} />
-      <Label x={123} y={10} anchor="end" bold color="#2563eb">
+      <Label x={123} y={10} anchor="end" bold color="var(--text-link)">
         cold in
       </Label>
-      <Label x={176} y={10} bold color="#b91c1c">
+      <Label x={176} y={10} bold color="var(--text-red-700)">
         hot out
       </Label>
       <Label x={76} y={40} anchor="middle" size={7.5}>
@@ -72,7 +72,7 @@ export function WaterHeaterCutaway({ titleId }: FigureProps) {
       <Label x={96} y={184} anchor="end" size={8}>
         drain
       </Label>
-      <Label x={150} y={120} anchor="middle" size={8} color="#2563eb">
+      <Label x={150} y={120} anchor="middle" size={8} color="var(--text-blue-700)">
         cold sinks
       </Label>
       <Label x={190} y={188} size={8}>

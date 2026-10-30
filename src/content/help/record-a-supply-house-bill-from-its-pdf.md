@@ -52,6 +52,8 @@ Under **Paperwork** the form names our copy of the file. It becomes the row's {{
 
 A bill you save leaves the count and the thread's offer.
 
+A bill from an address nobody has named gets no offer yet. Press {{button:blue|Who is this?}} on its thread and type the house's name. Pick the house, or the rep who sent it. Its PDFs then get the offer. They count on the house's row too.
+
 ## When the fill cannot read
 
 The form says why in one line and stays typeable. The owner or a dev turns the fill on from the Supply houses tab. The model key lives on **Settings → Phone and texts → Model keys**. The fill reads a PDF or a JPEG, PNG, GIF or WebP picture up to 10 MB.

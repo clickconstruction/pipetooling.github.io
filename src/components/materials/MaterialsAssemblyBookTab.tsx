@@ -7,6 +7,7 @@ import type { MaterialTemplate, TemplateItemWithDetails } from '../../hooks/useM
 import { TemplatePricesManager } from './TemplatePricesManager'
 import { EmptyState } from '../EmptyState'
 import { assemblyListEmptyWords } from '../../lib/materials/materialsEmptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
@@ -984,8 +985,8 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                 disabled={addingItemFromModal || (addItemModalType === 'part' && !addItemModalPartId) || (addItemModalType === 'template' && !addItemModalTemplateId)}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
+                  background: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? '#3b82f6' : DEAD_PRESS_FILL,
+                  color: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? 'pointer' : 'not-allowed',

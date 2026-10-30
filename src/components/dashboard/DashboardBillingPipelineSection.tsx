@@ -36,6 +36,7 @@ import { postSendBackReasonNote } from '../../lib/jobs/postSendBackReasonNote'
 import { EmptyState } from '../EmptyState'
 import { READY_TO_BILL_EMPTY } from '../../lib/dashboard/dashboardEmptyWords'
 import type { UserRole } from '../../hooks/useAuth'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 function ReadyToBillJobIconToolbar({
   jobId,
@@ -666,7 +667,7 @@ export function DashboardBillingPipelineSection({
                     }
                   })()
                 }}
-                style={{ padding: '0.5rem 1rem', background: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}
+                style={{ padding: '0.5rem 1rem', background: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : DEAD_PRESS_FILL, color: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}
               >
                 {invoiceStatusUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}
               </button>
@@ -773,8 +774,8 @@ export function DashboardBillingPipelineSection({
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : '#9ca3af',
-                  color: 'white',
+                  background: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : DEAD_PRESS_FILL,
+                  color: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? 'pointer' : 'not-allowed',

@@ -2,7 +2,7 @@
 title: see every screen as every role
 category: Office
 roles: dev
-keywords: what everyone sees, every screen, every role, lens, sealed frame, invented data, test data, sample company, style review, theme, dark mode, light mode, phone, tablet, desk, empty state, loading, failing, offline, training mode, gaps, open alone, settings
+keywords: what everyone sees, every screen, every role, lens, drawing, chart, overlapped, sealed frame, invented data, test data, sample company, style review, theme, dark mode, light mode, phone, tablet, desk, empty state, loading, failing, offline, training mode, gaps, open alone, settings
 order: 67
 ---
 **Settings → What everyone sees** draws any screen of the app as any role. The real app draws it, signed in as an invented person at an invented company. Nothing on the tab reads or writes a real row.
@@ -50,12 +50,15 @@ Frames load one after another. The first one fetches the app, and the rest load 
 
 Pick **Every screen**, then press {{button:blue|Check every screen}}. The tab draws the screens six at a time and checks each one as it settles. A checked screen makes room for the next, so the whole list gets checked while you watch.
 
-Each check looks for four things:
+Each check looks for five things:
 
 - text that falls under 3 to 1 against what it sits on
+- a word in a drawing or a chart that a line or a shape runs across
 - a page that scrolls sideways
 - a picture that does not load
 - an error the screen caught
+
+Text includes the words of a drawing or a chart. Each word is read against the shapes drawn under it, not only the page.
 
 A screen with none of them wears {{chip:green|Clean}}. A screen with one wears what it found, such as {{chip:red|Scrolls sideways}}. The count line above the cards adds them up, such as *3 scroll sideways*. **Screens to look at** lists each one, and a tap on a name scrolls to its card.
 

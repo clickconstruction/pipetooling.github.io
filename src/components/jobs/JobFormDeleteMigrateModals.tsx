@@ -10,6 +10,7 @@ import { UnifiedSearchResultRow } from '../search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../../hooks/useJobBidSearchEvidence'
 import { JobCombineStatusNotice } from './JobCombineStatusNotice'
 import { useJobStatusPctPair } from './useJobStatusPctPair'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type JobFormDeleteMigrateModalsProps = {
   editing: JobWithDetails | null
@@ -244,8 +245,8 @@ export function JobFormDeleteMigrateModals({
                   disabled
                   style={{
                     padding: '0.5rem 1rem',
-                    background: '#9ca3af',
-                    color: 'white',
+                    background: DEAD_PRESS_FILL,
+                    color: DEAD_PRESS_TEXT,
                     border: 'none',
                     borderRadius: 6,
                     cursor: 'not-allowed',
@@ -269,8 +270,8 @@ export function JobFormDeleteMigrateModals({
                   disabled={deletingId === editing.id}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: deletingId === editing.id ? '#9ca3af' : '#1d4ed8',
-                    color: 'white',
+                    background: deletingId === editing.id ? DEAD_PRESS_FILL : '#1d4ed8',
+                    color: deletingId === editing.id ? DEAD_PRESS_TEXT : 'white',
                     border: 'none',
                     borderRadius: 6,
                     cursor: deletingId === editing.id ? 'not-allowed' : 'pointer',
@@ -287,8 +288,8 @@ export function JobFormDeleteMigrateModals({
                   disabled={deletingId === editing.id}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: deletingId === editing.id ? '#9ca3af' : '#b91c1c',
-                    color: 'white',
+                    background: deletingId === editing.id ? DEAD_PRESS_FILL : '#b91c1c',
+                    color: deletingId === editing.id ? DEAD_PRESS_TEXT : 'white',
                     border: 'none',
                     borderRadius: 6,
                     cursor: deletingId === editing.id ? 'not-allowed' : 'pointer',
@@ -719,8 +720,8 @@ export function JobFormDeleteMigrateModals({
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: confirmDisabled ? '#9ca3af' : '#b91c1c',
-                  color: 'white',
+                  background: confirmDisabled ? DEAD_PRESS_FILL : '#b91c1c',
+                  color: confirmDisabled ? DEAD_PRESS_TEXT : 'white',
                   border: 'none',
                   borderRadius: 6,
                   cursor: confirmDisabled ? 'not-allowed' : 'pointer',

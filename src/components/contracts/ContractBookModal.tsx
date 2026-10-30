@@ -16,6 +16,7 @@ import {
 } from '../../lib/contractBodyFormat'
 import { openContractBookEntryPreview } from '../../lib/contractBookPreview'
 import { ContractBodyDisplay } from './ContractBodyDisplay'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type ContractBookTemplate = { id: string; name: string; sequence_order: number }
 
@@ -1198,8 +1199,8 @@ export function ContractBookModal({
                   fontWeight: 600,
                   border: 'none',
                   borderRadius: 6,
-                  background: deleting ? '#9ca3af' : '#dc2626',
-                  color: '#fff',
+                  background: deleting ? DEAD_PRESS_FILL : '#dc2626',
+                  color: deleting ? DEAD_PRESS_TEXT : '#fff',
                   cursor: deleting ? 'not-allowed' : 'pointer',
                 }}
               >

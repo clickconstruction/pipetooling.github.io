@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { portalShortUrl } from '../../lib/portal/portalShortOrigin'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
-import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
+import { cancelCommitmentPatch, type StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import {
   buildSheetWorkOrderSnapshot,
   buildWorkOrderReferences,
@@ -26,6 +26,7 @@ import { SheetRail } from './SheetRail'
 import { SheetStoryModal } from './SheetStoryModal'
 import SubPortalGlobeButton from '../people/SubPortalGlobeButton'
 import { effectiveSubSheetStage, subSheetWorkEndYmd } from '../../lib/subSheetStageDerived'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * "Work order" box on a Sub Labor sheet (Sub Work Orders train, PR 2 —
@@ -125,8 +126,8 @@ const inputStyle = {
 const primaryBtn = (disabled: boolean) =>
   ({
     padding: '0.4rem 0.9rem',
-    background: disabled ? '#9ca3af' : '#2563eb',
-    color: 'white',
+    background: disabled ? DEAD_PRESS_FILL : '#2563eb',
+    color: disabled ? DEAD_PRESS_TEXT : 'white',
     border: 'none',
     borderRadius: 6,
     fontSize: '0.8125rem',
@@ -453,7 +454,7 @@ export function SubSheetWorkOrderPanel({
         ? { status: 'draft', offered_at: null, offer_expires_at: null }
         : action === 'accept'
           ? { status: 'accepted', accepted_at: nowIso }
-          : { status: 'cancelled' }
+          : cancelCommitmentPatch(commitment.amount)
     setSaving(true)
     const { data, error } = await supabase.from('step_commitments').update(update).eq('id', commitment.id).select('*').single()
     setSaving(false)

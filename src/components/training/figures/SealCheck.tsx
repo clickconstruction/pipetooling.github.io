@@ -25,8 +25,8 @@ export function SealCheck({ titleId }: FigureProps) {
         {head(251)}
         <path d="M235 56 c0 -8 7 -12 16 -12 s16 4 16 12 c0 10 -7 16 -16 16 s-16 -6 -16 -16z" fill="var(--bg-subtle)" />
         <path d="M226 70 c6 -4 10 -4 14 0 M262 70 c6 -4 10 -4 14 0" strokeWidth="2.5" />
-        <path d="M251 88 v10 M245 92 l6 6 l6 -6" stroke="#15803d" strokeWidth="2" />
-        <path d="M232 46 l-6 -4 M270 46 l6 -4" stroke="#15803d" strokeWidth="2" />
+        <path d="M251 88 v10 M245 92 l6 6 l6 -6" stroke="var(--text-green-700)" strokeWidth="2" />
+        <path d="M232 46 l-6 -4 M270 46 l6 -4" stroke="var(--text-green-700)" strokeWidth="2" />
       </g>
       <g fontSize="9" fontWeight="600" fill="currentColor" textAnchor="middle">
         <text x="49" y="16">1 inspect</text>

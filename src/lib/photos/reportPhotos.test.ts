@@ -68,6 +68,9 @@ describe('reportPhotos', () => {
     expect(reportSaveWords({ jobPct: 36, tiles: [tile({ id: 'a' })], saving: true })).toBe('Saving…')
     // A failed shot does not ride and does not hold Save.
     expect(reportSaveWords({ jobPct: 36, tiles: [tile({ id: 'a' }), tile({ id: 'b', status: 'failed' })], saving: false })).toBe('Save · job 36% · 1 photo')
+    // A Note or a Walk files no percent: Save names the report and its photos only (v2.6126).
+    expect(reportSaveWords({ jobPct: null, tiles: [tile({ id: 'a' })], saving: false })).toBe('Save report · 1 photo')
+    expect(reportSaveWords({ jobPct: null, tiles: [], saving: false })).toBe('Save report')
   })
 
   it('reads a card row: in Drive, not yet, or not yet with the reason', () => {

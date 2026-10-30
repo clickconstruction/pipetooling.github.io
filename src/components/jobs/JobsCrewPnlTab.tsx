@@ -510,7 +510,7 @@ export default function JobsCrewPnlTab({
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(summary.totals.laborCost)}</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }} data-testid="crew-pnl-vehicle-total">{summary.totals.vehicleCost > 0 ? `$${formatCurrency(summary.totals.vehicleCost)}` : '—'}</td>
                   <td style={{ padding: '0.75rem', textAlign: 'right' }}>${formatCurrency(summary.totals.billing)}</td>
-                  <td style={{ padding: '0.75rem', textAlign: 'right', color: summary.totals.profit >= 0 ? '#15803d' : 'var(--text-red-700)' }}>
+                  <td style={{ padding: '0.75rem', textAlign: 'right', color: summary.totals.profit >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}>
                     {summary.totals.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(summary.totals.profit))}
                   </td>
                   <td style={{ padding: '0.75rem' }} />
@@ -636,7 +636,7 @@ function CrewPnlRow({
           {row.billing > 0 ? `${row.hasEstimatedBilling ? '≈ ' : ''}$${formatCurrency(row.billing)}` : '—'}
         </td>
         <td
-          style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, color: row.profit >= 0 ? '#15803d' : 'var(--text-red-700)' }}
+          style={{ padding: '0.75rem', textAlign: 'right', fontWeight: 600, color: row.profit >= 0 ? 'var(--text-green-700)' : 'var(--text-red-700)' }}
         >
           {row.profit < 0 ? '−' : ''}${formatCurrency(Math.abs(row.profit))}
         </td>

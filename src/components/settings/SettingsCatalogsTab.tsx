@@ -18,6 +18,7 @@ import type {
   PartType,
   ServiceType,
 } from '../../types/settingsRows'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type SettingsCatalogsTabProps = {
   assemblyTypeAssemblyCounts: Record<string, number>
@@ -491,8 +492,8 @@ export default function SettingsCatalogsTab({
                       disabled={serviceTypeSaving}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: serviceTypeSaving ? '#d1d5db' : '#3b82f6',
-                        color: 'white',
+                        background: serviceTypeSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                        color: serviceTypeSaving ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 4,
                         cursor: serviceTypeSaving ? 'not-allowed' : 'pointer',
@@ -555,8 +556,8 @@ export default function SettingsCatalogsTab({
                   disabled={removingUnusedPartTypes || unusedPartTypeCount === 0}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: removingUnusedPartTypes ? '#d1d5db' : '#dc2626',
-                    color: 'white',
+                    background: removingUnusedPartTypes ? DEAD_PRESS_FILL : '#dc2626',
+                    color: removingUnusedPartTypes ? DEAD_PRESS_TEXT : 'white',
                     border: 'none',
                     borderRadius: 4,
                     cursor: removingUnusedPartTypes || unusedPartTypeCount === 0 ? 'not-allowed' : 'pointer',
@@ -741,8 +742,8 @@ export default function SettingsCatalogsTab({
                       disabled={partTypeSaving}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: partTypeSaving ? '#d1d5db' : '#3b82f6',
-                        color: 'white',
+                        background: partTypeSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                        color: partTypeSaving ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 4,
                         cursor: partTypeSaving ? 'not-allowed' : 'pointer',
@@ -805,8 +806,8 @@ export default function SettingsCatalogsTab({
                   disabled={removingUnusedAssemblyTypes || unusedAssemblyTypeCount === 0}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: removingUnusedAssemblyTypes ? '#d1d5db' : '#dc2626',
-                    color: 'white',
+                    background: removingUnusedAssemblyTypes ? DEAD_PRESS_FILL : '#dc2626',
+                    color: removingUnusedAssemblyTypes ? DEAD_PRESS_TEXT : 'white',
                     border: 'none',
                     borderRadius: 4,
                     cursor: removingUnusedAssemblyTypes || unusedAssemblyTypeCount === 0 ? 'not-allowed' : 'pointer',
@@ -950,8 +951,8 @@ export default function SettingsCatalogsTab({
                       disabled={assemblyTypeSaving}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: assemblyTypeSaving ? '#d1d5db' : '#3b82f6',
-                        color: 'white',
+                        background: assemblyTypeSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                        color: assemblyTypeSaving ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 4,
                         cursor: assemblyTypeSaving ? 'not-allowed' : 'pointer',
@@ -1006,7 +1007,7 @@ export default function SettingsCatalogsTab({
                   onClick={() => removeUnusedFixtureTypes()}
                   disabled={removingUnusedFixtureTypes}
                   title="Remove book names with 0 takeoff, 0 labor, 0 price"
-                  style={{ padding: '0.5rem 1rem', background: removingUnusedFixtureTypes ? '#d1d5db' : 'var(--bg-muted)', color: 'inherit', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: removingUnusedFixtureTypes ? 'not-allowed' : 'pointer'
+                  style={{ padding: '0.5rem 1rem', background: removingUnusedFixtureTypes ? DEAD_PRESS_FILL : 'var(--bg-muted)', color: removingUnusedFixtureTypes ? DEAD_PRESS_TEXT : 'inherit', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: removingUnusedFixtureTypes ? 'not-allowed' : 'pointer'
                   }}
                 >
                   {removingUnusedFixtureTypes ? 'Removing…' : 'Remove unused book names (0 takeoff, 0 labor, 0 price)'}
@@ -1137,8 +1138,8 @@ export default function SettingsCatalogsTab({
                       disabled={fixtureTypeSaving}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: fixtureTypeSaving ? '#d1d5db' : '#3b82f6',
-                        color: 'white',
+                        background: fixtureTypeSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                        color: fixtureTypeSaving ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 4,
                         cursor: fixtureTypeSaving ? 'not-allowed' : 'pointer',

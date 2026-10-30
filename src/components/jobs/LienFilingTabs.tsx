@@ -33,6 +33,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 import { homesteadStatementApplies } from '../../lib/jobs/lienNoticeDraft'
 import { lienWorkSpan, type LienWorkSpan } from '../../lib/jobs/lienWorkSpan'
+import { lienTradeWords } from '../../lib/jobs/lienTradeWords'
 
 /**
  * The statutory filing tabs of the Lien instruments modal (v2.2645, phase 3):
@@ -150,12 +151,17 @@ export default function LienFilingTabs({
 
   // ---------- documents ----------
 
+  // The trade, never the job's name (v2.6118, as the desk's draft since v2.4719): a job is often named for its customer, and this tab's
+  // affidavit swore "the kind of work … was: Bruce Hall"; its notice said plumbing on an electrical job.
+  const tradeName = job.serviceType?.name
+  const laborMaterials = useMemo(() => lienTradeWords(tradeName).laborMaterials, [tradeName])
+
   const noticeFields: LienNoticeFields = useMemo(
     () => ({
       noticeDate: todayYmd(),
       projectDescription: [job.job_name?.trim(), cleanStoredAddress(job.job_address)].filter(Boolean).join(' — '),
       claimantName: (issuer?.companyName ?? '').trim() || 'Click Plumbing and Electrical',
-      laborMaterialsType: 'Plumbing labor and materials',
+      laborMaterialsType: laborMaterials,
       originalContractorName,
       contractedWithIfDifferent: '',
       claimAmount: openBalance.toFixed(2),
@@ -163,7 +169,7 @@ export default function LienFilingTabs({
       claimantAddress: (issuer?.addressText ?? '').replace(/\r?\n/g, ', ').trim(),
       ...(homesteadStatementApplies(property) ? { homesteadStatement: true } : {}),
     }),
-    [job, issuer, originalContractorName, openBalance, signerNameFallback, property],
+    [job, issuer, laborMaterials, originalContractorName, openBalance, signerNameFallback, property],
   )
 
   // The real period of the work (v2.6061): the first approved day through the last, or the day set by hand. This tab swore the last day twice.
@@ -177,7 +183,7 @@ export default function LienFilingTabs({
       legalDescription: property.legalDescription,
       propertyAddress: cleanStoredAddress(job.job_address),
       contractedWithName: isSub ? originalContractorName : ownerName || (job.customer_name ?? '').trim(),
-      workDescription: (job.job_name ?? '').trim() || 'Plumbing labor and materials',
+      workDescription: laborMaterials,
       workStart: affidavitSpan.workStart,
       workEnd: affidavitSpan.workEnd,
       ownerName,
@@ -189,7 +195,7 @@ export default function LienFilingTabs({
       unpaidAmount: openBalance.toFixed(2),
       includeNoticesSworn: !isSub || liveNotices.length > 0,
     }),
-    [property, signerNameFallback, issuer, job, isSub, originalContractorName, ownerName, openBalance, liveNotices.length, affidavitSpan],
+    [property, signerNameFallback, issuer, job, isSub, originalContractorName, ownerName, openBalance, liveNotices.length, affidavitSpan, laborMaterials],
   )
 
   const releaseFields: ReleaseOfRecordFields = useMemo(

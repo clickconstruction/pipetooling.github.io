@@ -7,6 +7,7 @@ import { readEdgeFunctionErrorBody } from '../../lib/readEdgeFunctionErrorBody'
 import { sendBackStripeBilledLine } from '../../lib/voidStripeInvoiceForRevert'
 import type { InvoiceWithJobForBillView } from './HostedStripeBillPanel'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** What the modal did, for the host's toast. */
 export type UnwindStripeOobResult = {
@@ -224,8 +225,8 @@ export default function UnwindStripeOobPaymentModal({
             disabled={submitting}
             style={{
               padding: '0.5rem 1rem',
-              background: submitting ? '#9ca3af' : '#b91c1c',
-              color: 'white',
+              background: submitting ? DEAD_PRESS_FILL : '#b91c1c',
+              color: submitting ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 6,
               cursor: submitting ? 'not-allowed' : 'pointer',

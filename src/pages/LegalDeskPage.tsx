@@ -98,7 +98,7 @@ export default function LegalDeskPage() {
   const address = useMemo(() => legalDeskFromSearch(searchParams), [searchParams])
   const here = `${location.pathname}${location.search}`
   const onAddressChange = useCallback(
-    (next: { account: LegalPayerKey | null; tab: Tab; view: DeskView }) => {
+    (next: { account: LegalPayerKey | null; tab: Tab; view: DeskView; doc: string | null }) => {
       // No account open (a phone's list, v2.5984) has no tab to name: the address is the list and its view.
       const href = legalDeskHref(next.account ? next : { view: next.view })
       // The entry's state rides along: on a phone it says the account was opened from the list.
@@ -174,6 +174,7 @@ export default function LegalDeskPage() {
         companyName={PORTAL_COMPANY.name}
         initialPayerKey={address.account}
         initialTab={address.tab}
+        initialDoc={address.doc}
         initialView={address.view}
         onAddressChange={onAddressChange}
         legal={legal}

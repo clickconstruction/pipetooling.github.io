@@ -20,6 +20,7 @@ import {
   stripePaymentPlan,
 } from '../../lib/jobs/stripePartPayment'
 import { heldStripeMarkNote, markPaidHoldsStripeClose } from '../../lib/jobs/heldStripeMark'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type JobsLedgerInvoice = Database['public']['Tables']['jobs_ledger_invoices']['Row']
 type JobsLedgerPayment = Database['public']['Tables']['jobs_ledger_payments']['Row']
@@ -671,8 +672,8 @@ export default function BilledPaymentConfirmationModal({
             onClick={() => void submit()}
             style={{
               padding: '0.5rem 1rem',
-              background: submitting ? '#9ca3af' : '#3b82f6',
-              color: 'white',
+              background: submitting ? DEAD_PRESS_FILL : '#3b82f6',
+              color: submitting ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 4,
               cursor: submitting ? 'not-allowed' : 'pointer',

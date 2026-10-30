@@ -4,6 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../hooks/useReloadDraft'
 import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Settings → Jobs & dispatch: the sub portal's pay schedule (sub-portal
@@ -118,7 +119,7 @@ export default function SubPortalPaySettingsBlock() {
             type="button"
             disabled={saving}
             onClick={() => void save()}
-            style={{ padding: '0.45rem 1rem', background: saving ? '#9ca3af' : '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', cursor: saving ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.45rem 1rem', background: saving ? DEAD_PRESS_FILL : '#2563eb', color: saving ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.85rem', cursor: saving ? 'not-allowed' : 'pointer' }}
           >
             {saving ? 'Saving…' : 'Save'}
           </button>

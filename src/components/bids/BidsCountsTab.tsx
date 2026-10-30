@@ -48,6 +48,7 @@ import { referenceGradeChip, referenceGradeChipApplies } from '../../lib/bids/re
 import { GRADE_COLORS } from './RobotReferenceGradeModal'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** v2.4720: rows per insert statement on an import (PostgREST takes the whole array; chunked only so a huge paste stays well under the request limit). */
 const COUNTS_IMPORT_INSERT_CHUNK = 500
@@ -1742,8 +1743,8 @@ export function BidsCountsTab({
                 title={!countsImportText.trim() ? 'Paste fixture/count data to import' : countsImportBusy ? 'Importing — one moment' : undefined}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: countsImportText.trim() ? '#059669' : '#d1d5db',
-                  color: 'white',
+                  background: countsImportText.trim() ? '#059669' : DEAD_PRESS_FILL,
+                  color: countsImportText.trim() ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: countsImportBusy ? 'wait' : countsImportText.trim() ? 'pointer' : 'not-allowed',

@@ -28,17 +28,17 @@ export function TwoSystems({ titleId }: FigureProps) {
       <Flow x={255} y={188} angle={3} />
       <Flow x={200} y={50} angle={90} color="var(--text-muted)" />
       <Sink x={150} y={100} />
-      <line x1="150" y1="87" x2="150" y2="99" stroke={'#15803d'} strokeWidth="1.2" strokeDasharray="2 2" />
-      <Label x={46} y={116} bold color="#2563eb">
+      <line x1="150" y1="87" x2="150" y2="99" stroke={'var(--text-green-700)'} strokeWidth="1.2" strokeDasharray="2 2" />
+      <Label x={46} y={116} bold color="var(--text-link)">
         in: pressure
       </Label>
-      <Label x={222} y={178} bold color="#b45309">
+      <Label x={222} y={178} bold color="var(--text-amber-700)">
         out: gravity
       </Label>
       <Label x={210} y={34} bold>
         vent: air
       </Label>
-      <Label x={108} y={92} anchor="end" size={8} color="#15803d">
+      <Label x={108} y={92} anchor="end" size={8} color="var(--text-green-700)">
         air gap
       </Label>
       <Label x={150} y={72} anchor="middle" bold color="currentColor">

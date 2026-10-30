@@ -5,7 +5,7 @@ file: docs/COST_BATCHES.md
 type: Feature reference + agent writing convention
 purpose: The audited, reversible entrypoint for moving job cost around — bank-transaction allocations, supply-house invoice allocations, clock sessions, ESTIMATE other-charges, thread notes — as one batch with a before-image undo. Schema, the two RPCs, the cost_agent role, and the convention any agent or dev follows when using it.
 audience: Developers, AI Agents
-last_updated: 2026-09-09
+last_updated: 2026-10-29
 ---
 
 ## What this is
@@ -57,7 +57,7 @@ Out of reach by construction: every payments table, deletes other than the alloc
 
 The return value is the summary: `{ batch_id, dry_run, op_count, by_job: { <job_id>: { allocated, supply, clock_sessions, other_charges, notes } }, ops: [ { seq, op, before, after } ] }`. On a dry run `batch_id` is `null`.
 
-The client-side mirror of these rules is `src/lib/costBatches/costBatchPayload.ts` (`validateCostBatchPayload`, `summarizeCostBatchOps`, `buildCostBatchPayload`) — reject a bad payload before the round-trip, and summarise a plan the way the function will.
+The client-side mirror of these rules is `src/lib/costBatches/costBatchPayload.ts` (`validateCostBatchPayload`, `summarizeCostBatchOps`, `buildCostBatchPayload`) — reject a bad payload before the round-trip, and summarise a plan the way the function will. The Move cost screen's kernels sit beside it (v2.6115): `costMoveRows.ts` (which rows a batch can move and the op each becomes), `costMovePlan.ts` (the notes, the label, the whole payload), `costBatchDryRunCompare.ts` (the dry run against the plan), `costBatchList.ts` (the audit rows, which jobs an op touched, the revert word).
 
 ## Dry run is the default, and it is the real code path
 
@@ -103,6 +103,6 @@ The client-side mirror of these rules is `src/lib/costBatches/costBatchPayload.t
 
 - **From a coding agent, with no database password** (v2.3722): dev-mcp's `plan_cost_batch(batch)` → `apply_cost_batch(batch, plan_hash)` → `revert_cost_batch(batch_id, reason)` call the same two RPCs as the dev whose key it is, and the convention above is enforced in the door — apply re-runs the dry run and writes only when it still matches the plan the agent quoted ([`dev-mcp/README.md`](./dev-mcp/README.md)).
 
-## Not yet built
+## The dev screens — the job window's Costs tab and Banking → Cost batches (v2.6115)
 
-A dev screen listing batches with a revert button (Banking is the natural home). Until then devs read the two tables and call the RPCs from SQL or through dev-mcp; agents use the role.
+The convention above as screens, in the owner's shape (2026-10-30: see every cost on a job, click, a window appears, the cost goes to another job). On the **job window's Costs tab**, under the cost region, a dev sees every cost row on the job in one list by stream — bank allocations with card, category and note; supply-house invoice allocations with their share; clock sessions by person; Other job charges, listed but never movable (the RPC has no op for them) — with totals per stream, a tick per row (a click anywhere on a movable row ticks it), a press per stream and per person, and tick-by-card and tick-by-date helpers. **Move N rows…** opens the **Move cost window** (`CostMoveModal`) on the ticked rows: pick the job they go to, write the reason and the plan's name, and the kernels in `src/lib/costBatches/` build the batch — `allocate` with `from_job_id` for a bank row, `supply_repoint`, `clock_repoint`, a `thread_note` on each job in the house form — through `buildCostBatchPayload`. **Dry-run** calls `cost_batch_apply(payload, true)` and lays the reply's `by_job` beside the plan's `summarizeCostBatchOps`, to the cent; **Apply** is live only after a matching dry run of that exact plan and the dev's word that the summary was read, runs the dry run once more and writes only when it still matches, then the job's rows and its batch list are read again. Under the list, the batches that touched the job, each with its ops on demand and **Revert** behind the typed word `revert` and a reason (`cost_batch_revert`). **Banking → Cost batches** (`/banking?product=mercury&tab=cost_batches`, devs only) is the audit: every batch company-wide, newest first, with the same cards and Revert; `?job=<jobs_ledger.id>` (or the picker) adds the batches that touched one job. Agents keep the role and dev-mcp; the screens and they call the same two functions.

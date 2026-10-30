@@ -423,7 +423,7 @@ export function PlugInQuotesModal({
                       />
                     ) : null}
                     <SearchableSelect value={l.fixture ?? ''} onChange={(v) => patchLine(l.key, { fixture: v || null, confidence: 'manual' })} options={fixtureOptions} placeholder="assign a fixture…" portalZIndex={MODAL_Z + 10} listMinWidthPx={340} fillViewportHeight />
-                    <span style={{ fontSize: '0.72rem', color: l.confidence === 'exact' ? '#15803d' : l.confidence === 'fuzzy' ? 'var(--text-amber-700)' : 'var(--text-muted)', overflowWrap: 'anywhere' }}>
+                    <span style={{ fontSize: '0.72rem', color: l.confidence === 'exact' ? 'var(--text-green-700)' : l.confidence === 'fuzzy' ? 'var(--text-amber-700)' : 'var(--text-muted)', overflowWrap: 'anywhere' }}>
                       {l.raw ? `${l.confidence === 'exact' ? '✓' : l.confidence === 'fuzzy' ? '?' : '·'} “${l.raw}”` : 'typed'}
                       {l.raw && /\b(all.?in|package|lot\b|combo|bundle)\b/i.test(l.raw) ? (
                         <span style={{ display: 'block', color: 'var(--text-amber-700)', fontWeight: 600 }}>package wording — one price for several items? plug totals carefully</span>

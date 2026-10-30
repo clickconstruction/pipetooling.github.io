@@ -12,6 +12,7 @@ import { SupplyHouseWebsiteLink } from '../SupplyHouseWebsiteLink'
 import { MaterialsPoLaneSignpost } from './MaterialsPoLaneSignpost'
 import { EmptyState } from '../EmptyState'
 import { purchaseOrdersEmptyWords } from '../../lib/materials/materialsEmptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type SupplyHouse = Database['public']['Tables']['supply_houses']['Row']
 type PurchaseOrder = Database['public']['Tables']['purchase_orders']['Row']
@@ -957,8 +958,8 @@ export function MaterialsPurchaseOrdersTab({
                         disabled={duplicatingPO === selectedPO.id}
                         style={{ 
                           padding: '0.5rem 1rem', 
-                          background: duplicatingPO === selectedPO.id ? '#9ca3af' : '#059669', 
-                          color: 'white', 
+                          background: duplicatingPO === selectedPO.id ? DEAD_PRESS_FILL : '#059669', 
+                          color: duplicatingPO === selectedPO.id ? DEAD_PRESS_TEXT : 'white', 
                           border: 'none', 
                           borderRadius: 4, 
                           cursor: duplicatingPO === selectedPO.id ? 'not-allowed' : 'pointer' 

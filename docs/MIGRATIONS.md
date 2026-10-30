@@ -78,7 +78,7 @@ when_to_read:
 
 This document tracks all database migrations in the PipeTooling project. Migrations live in `supabase/migrations/`.
 
-> **⚠️ Migrations are NOT applied by CI.** Merging to `main` deploys only the **client** (GitHub Pages) — it never runs `supabase db push`. The database and the client deploy on **separate tracks**: apply migrations manually with `supabase db push` against the linked prod project (`yewfzhbofbbyvkvtaatw`), and **sequence them** with the client when a change is coupled (e.g. a behavior the new client must understand — usually deploy the client first, then apply the migration). If `db push` reports a local/remote history mismatch, see the [migration drift runbook](../AGENTS.md#migration-history-drift-linked-project).
+> **⚠️ Migrations are NOT applied by CI.** Merging to `main` deploys only the **client** (GitHub Pages) — it never runs `supabase db push`. The database and the client deploy on **separate tracks**: apply migrations manually with `supabase db push` against the linked prod project (`yewfzhbofbbyvkvtaatw`), and **sequence them** with the client when a change is coupled (a behavior the old client would misread: deploy the client first, then apply the migration; a function, table or view the client calls that only the migration creates: push right after the merge, before the Pages deploy finishes — `npm run check:calls-ahead` labels such a PR and holds the deploy until the push, `CLAUDE.md` → Deploy model). If `db push` reports a local/remote history mismatch, see the [migration drift runbook](../AGENTS.md#migration-history-drift-linked-project).
 
 ### Migration Naming Convention
 

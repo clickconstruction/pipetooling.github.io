@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { useNavigate } from 'react-router-dom'
 import type { UserRole } from '../../hooks/useAuth'
 import { recordNavClick } from '../../lib/navClickTelemetry'
@@ -8,10 +8,10 @@ import { NEEDS_YOU_ACTION_BG, NEEDS_YOU_ACTION_FG, NEEDS_YOU_RAIL, NEEDS_YOU_WAL
 import {
   FILL_IN_KIND_WORDS,
   fillInDoneWords,
+  fillInKindFirst,
   fillInKindPositionWords,
   fillInOrder,
   fillInProgressWords,
-  fillInStartIndex,
   pushFillInHandled,
   type FillInHandled,
   type FillInKind,
@@ -179,16 +179,14 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
   const [purchase, setPurchase] = useState<PurchaseDecision>(EMPTY_PURCHASE_DECISION)
   const [moveWindow, setMoveWindow] = useState<MoveWindowDecision>(EMPTY_MOVE_WINDOW_DECISION)
   const [workOrder, setWorkOrder] = useState<WorkOrderDecision>(EMPTY_WORK_ORDER_DECISION)
-  const openedOn = useRef<FillInKind | null>(startKind)
 
-  const order = useMemo(() => fillInOrder(rows, skippedKeys), [rows, skippedKeys])
+  // The asked kind's rows first, past every Save and Skip, then the deck's own order (v2.6129); a trail tap brings a row back.
+  const order = useMemo(() => fillInKindFirst(fillInOrder(rows, skippedKeys), startKind, skippedKeys), [rows, skippedKeys, startKind])
   const total = rows.length + savedKeys.length
   const saved = savedKeys.length
   const skipped = handled.filter((h) => h.how === 'skipped' && rows.some((r) => r.key === h.row.key)).length
 
-  // The first row: the asked kind's first on open, then the deck's own order; a trail tap brings a row back.
-  const startIndex = openedOn.current && handled.length === 0 && skippedKeys.length === 0 ? fillInStartIndex(order, openedOn.current) : 0
-  const current = (rows.find((r) => r.key === revisitKey) ?? order[startIndex] ?? order[0]) ?? null
+  const current = (rows.find((r) => r.key === revisitKey) ?? order[0]) ?? null
   const position = current ? saved + rows.findIndex((r) => r.key === current.key) + 1 : total
   const ofKind = current ? rows.filter((r) => r.kind === current.kind) : []
   const kindPosition = current ? ofKind.findIndex((r) => r.key === current.key) + 1 : 0
@@ -230,7 +228,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     recordNavClick(userId, role, 'needs-you', '#fill-skip')
     setHandled((t) => pushHandled(t, { row, how: 'skipped', words: 'skipped · still on the list', undo: null }))
     setRevisitKey(null)
-    openedOn.current = null
     setSkippedKeys((keys) => {
       const live = keys.filter((k) => k !== row.key && rows.some((r) => r.key === k))
       return live.length + 1 >= rows.length ? [row.key] : [...live, row.key]
@@ -254,7 +251,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setHandled((t) => pushHandled(t, { row, how: 'saved', words, undo }))
           setSavedKeys((k) => [...k, row.key])
           setRevisitKey(null)
-          openedOn.current = null
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, 'Could not save the reason'), 'error')
@@ -277,7 +273,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setHandled((t) => pushHandled(t, { row, how: 'saved', words, undo }))
           setSavedKeys((k) => [...k, row.key])
           setRevisitKey(null)
-          openedOn.current = null
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, 'Could not save the records'), 'error')
@@ -300,7 +295,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setHandled((t) => pushHandled(t, { row, how: 'saved', words, undo }))
           setSavedKeys((k) => [...k, row.key])
           setRevisitKey(null)
-          openedOn.current = null
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, 'Could not save the job account'), 'error')
@@ -323,7 +317,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setHandled((t) => pushHandled(t, { row, how: 'saved', words: purchaseTrailWords(writes), undo }))
           setSavedKeys((k) => [...k, row.key])
           setRevisitKey(null)
-          openedOn.current = null
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, 'Could not put the purchase on a job'), 'error')
@@ -346,7 +339,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setHandled((t) => pushHandled(t, { row, how: 'saved', words: workOrderTrailWords(writes), undo }))
           setSavedKeys((k) => [...k, row.key])
           setRevisitKey(null)
-          openedOn.current = null
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, 'Could not price the work order'), 'error')
@@ -368,7 +360,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setHandled((t) => pushHandled(t, { row, how: 'saved', words: moveWindowTrailWords(writes), undo }))
           setSavedKeys((k) => [...k, row.key])
           setRevisitKey(null)
-          openedOn.current = null
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, writes.choice === 'asked' ? 'The email did not send' : 'Could not settle the charge'), 'error')
@@ -397,7 +388,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setHandled((t) => pushHandled(t, { row, how: 'saved', words: contractMissingTrailWords(writes), undo }))
           setSavedKeys((k) => [...k, row.key])
           setRevisitKey(null)
-          openedOn.current = null
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, 'Could not save the contract answer'), 'error')
@@ -423,7 +413,6 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           setHandled((t) => pushHandled(t, { row, how: 'saved', words: contractTrailWords(writes, row), undo: null }))
           setSavedKeys((k) => [...k, row.key])
           setRevisitKey(null)
-          openedOn.current = null
           onRowSaved(row)
         } catch (e) {
           showToast(formatErrorMessage(e, 'Could not do that with the contract'), 'error')

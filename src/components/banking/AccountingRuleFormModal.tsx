@@ -15,6 +15,7 @@ import type { Json } from '../../types/database'
 import { PayStubDeleteIcon } from '../pay/PayStubDeleteIcon'
 import type { CategoryTagLookups, CategoryTagRow } from '../../lib/banking/categoryTags'
 import { CategoryTagChip } from './CategoryTagChip'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type DragLabelRow = Database['public']['Tables']['mercury_drag_sort_labels']['Row']
 
@@ -850,8 +851,8 @@ export function AccountingRuleFormModal({
                 disabled={deleting}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: deleting ? '#9ca3af' : '#b91c1c',
-                  color: 'white',
+                  background: deleting ? DEAD_PRESS_FILL : '#b91c1c',
+                  color: deleting ? DEAD_PRESS_TEXT : 'white',
                   border: 'none',
                   borderRadius: 6,
                   cursor: deleting ? 'not-allowed' : 'pointer',
