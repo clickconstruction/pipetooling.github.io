@@ -22,6 +22,7 @@ import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '.
 import { venuePlaces, whereToFileText } from './jpVenue'
 import { legalOfficeContactPrintLines, type LegalOfficeContacts } from './legalOfficeContacts'
 import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from './legalMatterDocuments'
+import { settlementPathsOfMatter } from './settlementPaths'
 
 export type FirmPacketPrintOptions = {
   preparedOn: string
@@ -53,6 +54,9 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   const contingency = contingencyEntries(opts.matter.entries)
   const { feesTotal, demand } = firmDemand(a.totals.balance, opts.matter.entries)
   const stage = legalFirmStageWords(opts.matter.stage)
+  // v2.6177 (punch list #218 PR 4): what each path nets, the cards the office reads, as rows the firm keeps.
+  const paths = settlementPathsOfMatter(packet.worth, opts.matter.stage, opts.matter.entries)
+  const pathRows = paths.paths.map((p) => row([`<b>${esc(p.title)}</b>`, formatLegalMoney(p.gross), formatLegalMoney(p.keep), esc(p.when), esc(p.caveat || p.chip.text)], [false, true, true]))
   const firstBilled = a.ledger.find((e) => e.kind === 'invoice' && e.ymd)?.ymd ?? null
 
   // A. Account
@@ -158,6 +162,7 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   </div>
 </div>
 ${opts.matter.noteToFirm ? `<div class="note"><b>From the office:</b> ${esc(opts.matter.noteToFirm)}</div>` : ''}
+${pathRows.length ? `<h3>What each path nets</h3>\n${table(['Path', 'Starts from', 'The office keeps', 'When', 'Read'], pathRows, '')}${paths.line ? `<p class="muted">Above ${formatLegalMoney(paths.line.amount)} a settlement nets the office more than a full win at trial: the claim less the costs to continue, divided by what the office keeps after your ${Math.round(packet.worth.contingencyPct * 100)}%.</p>` : ''}` : ''}
 ${opts.matter.narrative?.markdown ? `<h2>Narrative</h2>\n<p class="muted">${esc(legalNarrativeBandWords(opts.matter.narrative))}</p>\n<div class="narrative">${legalNarrativeHtml(opts.matter.narrative.markdown)}</div>\n` : ''}<h2>Exhibits</h2>
 ${packet.exhibits.length || docs.length ? `<table><thead><tr><th></th><th>Exhibit</th><th>Items</th><th>Where</th></tr></thead><tbody>${exhibitItems}</tbody></table>` : '<p class="muted">Nothing to letter yet.</p>'}
 <h2><span class="sec">A</span> Account</h2>

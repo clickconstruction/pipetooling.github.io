@@ -2,6 +2,9 @@ import { formatLegalMoney } from './legalPacket'
 import type { CounselRead } from './counselRead'
 import { counselTriesWords } from './counselRead'
 import { moneyBarDayWords, offerStands, type MoneyBarOffer } from './moneyBars'
+import { currentCounselRead } from './counselRead'
+import { isOfferEntry, offerMetaOf } from './legalOffers'
+import { isVoidedEntry } from '../../../supabase/functions/_shared/legalPortalActs'
 
 /**
  * What each path nets (punch list #218, direction C, PR 3). The owner's words of 2026-10-30: the
@@ -167,4 +170,24 @@ export function settlementPaths(input: SettlementPathsInput): SettlementPaths {
   if (line) parts.push(`An offer above ${formatLegalMoney(line.amount)} beats a full win.`)
   if (trial) parts.push(input.read ? `The firm reads this case as ${counselTriesWords(input.read.tries)}.` : 'The firm has not said how this case tries.')
   return { paths, line, words: parts.join(' ') }
+}
+
+type MatterEntryLike = { id: string; kind: string; meta: unknown; amount: number | null; occurred_on: string; created_at: string; via_portal: boolean; voided_at?: string | null; created_by?: string | null }
+
+/**
+ * The paths of a matter from what every reader holds (v2.6177, PR 4): the worth's claim and fee model, the stage
+ * (filed or not), and the matter's entries — the standing offers and the current read come from them. The desk,
+ * the firm's view and both prints call this, so the office and the firm read one set of cards.
+ */
+export function settlementPathsOfMatter(
+  worth: Pick<SettlementPathsInput, 'claim' | 'contingencyPct' | 'filingCost'>,
+  stage: string | null | undefined,
+  entries: ReadonlyArray<MatterEntryLike>,
+  nameOf: (userId: string | null | undefined) => string | null = () => null,
+): SettlementPaths {
+  const offers: MoneyBarOffer[] = entries.filter((e) => isOfferEntry(e) && !isVoidedEntry(e)).map((e) => {
+    const meta = offerMetaOf(e.meta)
+    return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
+  })
+  return settlementPaths({ claim: worth.claim, contingencyPct: worth.contingencyPct, filingCost: worth.filingCost, filed: legalSuitFiled(stage), offers, read: currentCounselRead(entries, nameOf) })
 }
