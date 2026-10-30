@@ -81,15 +81,25 @@ export async function writeBillingSlice(
   return { heldPaymentDates: unfinishedPaymentDateBoxes(upserts) }
 }
 
-/** The materials slice: every row deleted, then re-inserted one at a time. Throws the first failed write. */
+/**
+ * The materials slice (#215 PR 3): the rows worth keeping are upserted by id in
+ * one call, then the job's rows not among them are deleted. Until v2.6111 the
+ * save deleted every row and re-inserted them, so a row's id and created_at
+ * changed on every save and a cost batch's revert could no longer find the
+ * ESTIMATE row it had written. The upsert runs first so a refused write leaves
+ * the old rows standing. Throws the first failed write.
+ */
 export async function writeMaterialsSlice(supabase: SupabaseClient, args: { jobId: string; materials: MaterialRow[] }): Promise<void> {
   const { jobId } = args
-  const { error: delMatErr } = await supabase.from('jobs_ledger_materials').delete().eq('job_id', jobId)
-  if (delMatErr) throw delMatErr
-  for (const row of materialInsertRows(jobId, args.materials)) {
-    const { error: insMatErr } = await supabase.from('jobs_ledger_materials').insert(row)
-    if (insMatErr) throw insMatErr
+  const rows = materialInsertRows(jobId, args.materials)
+  if (rows.length > 0) {
+    const { error: upMatErr } = await supabase.from('jobs_ledger_materials').upsert(rows, { onConflict: 'id' })
+    if (upMatErr) throw upMatErr
   }
+  let del = supabase.from('jobs_ledger_materials').delete().eq('job_id', jobId)
+  if (rows.length > 0) del = del.not('id', 'in', `(${rows.map((r) => r.id).join(',')})`)
+  const { error: delMatErr } = await del
+  if (delMatErr) throw delMatErr
 }
 
 /** The team slice: read who is on the job, add the missing, then remove the dropped. Throws the first failed call. */

@@ -117,6 +117,7 @@ export type JobsStagesTableProps = {
   stagesManHoursByJobId: StagesRowRenderContext['stagesManHoursByJobId']
   stagesManHoursLoading: StagesRowRenderContext['stagesManHoursLoading']
   crewByJobId: StagesRowRenderContext['crewByJobId']
+  checklistMarksFor?: StagesRowRenderContext['checklistMarksFor']
   stagesLaborBreakdownByJobId: StagesRowRenderContext['stagesLaborBreakdownByJobId']
   expandedJobThreadId: StagesRowRenderContext['expandedJobThreadId']
   toggleStagesJobThreadExpanded: StagesRowRenderContext['toggleStagesJobThreadExpanded']
@@ -192,6 +193,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     stagesManHoursByJobId,
     stagesManHoursLoading,
     crewByJobId,
+    checklistMarksFor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -240,6 +242,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     stagesManHoursByJobId,
     stagesManHoursLoading,
     crewByJobId,
+    checklistMarksFor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -414,6 +417,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                   <StagesProgressPaymentCell
                     model={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).model}
                     view={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).view}
+                    checklist={stagesRowSharedCtx.checklistMarksFor?.(j) ?? null}
                     pctComplete={j.pct_complete ?? null}
                     billSentAlert={stagesBillSentPctAlert(j)}
                     pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}

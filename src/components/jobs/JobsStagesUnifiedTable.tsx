@@ -135,6 +135,7 @@ export type JobsStagesUnifiedTableProps = {
   stagesManHoursByJobId: StagesRowRenderContext['stagesManHoursByJobId']
   stagesManHoursLoading: StagesRowRenderContext['stagesManHoursLoading']
   crewByJobId: StagesRowRenderContext['crewByJobId']
+  checklistMarksFor?: StagesRowRenderContext['checklistMarksFor']
   stagesLaborBreakdownByJobId: StagesRowRenderContext['stagesLaborBreakdownByJobId']
   expandedJobThreadId: StagesRowRenderContext['expandedJobThreadId']
   toggleStagesJobThreadExpanded: StagesRowRenderContext['toggleStagesJobThreadExpanded']
@@ -229,6 +230,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     stagesManHoursByJobId,
     stagesManHoursLoading,
     crewByJobId,
+    checklistMarksFor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -276,6 +278,7 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     stagesManHoursByJobId,
     stagesManHoursLoading,
     crewByJobId,
+    checklistMarksFor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,

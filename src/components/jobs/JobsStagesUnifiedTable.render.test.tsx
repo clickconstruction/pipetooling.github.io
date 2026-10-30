@@ -67,6 +67,7 @@ function makeProps(overrides: Partial<JobsStagesUnifiedTableProps> = {}): JobsSt
     stagesManHoursByJobId: new Map(),
     stagesManHoursLoading: false,
     crewByJobId: new Map(),
+    checklistMarksFor: () => null,
     stagesLaborBreakdownByJobId: new Map(),
     expandedJobThreadId: null,
     toggleStagesJobThreadExpanded: vi.fn(),

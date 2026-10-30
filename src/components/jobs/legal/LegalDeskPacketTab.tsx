@@ -4,6 +4,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { envelopeKindWords, envelopeMonthsWords, envelopeSharesWords, envelopeWentOutWords, legalLastWorkWords } from '../../../lib/legal/legalLienPaper'
 import { conversationRows, conversationStateWords, conversationWho, entryRecordedByWords, isConversationEntry, legalEntryKindWords, stepProposalOf, type LegalAskFlavor } from '../../../lib/legal/legalAsks'
 import LienTimelineStrip from '../LienTimelineStrip'
+import { legalPaperNextDoor } from '../../../lib/legal/legalPaperNextDoor'
 import LienStopPaperWindow from '../LienStopPaperWindow'
 import { lienStopCounselPaper } from '../../../lib/legal/lienStopCounselPaper'
 import { formatLegalMoney, type LegalAccountSummary, type LegalPacket, legalSessionWords } from '../../../lib/legal/legalPacket'
@@ -153,7 +154,17 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
               <div style={{ fontWeight: 700, fontVariantNumeric: 'tabular-nums' }}>{formatLegalMoney(t.openBalance)} open</div>
               {t.retainageWords ? <div style={{ ...MUTED, fontSize: '0.76rem' }}>{t.retainageWords}</div> : null}
             </div>
-            <LienTimelineStrip timeline={t.timeline} onOpenStep={(st) => setStop({ jobId: t.jobId, index: Math.max(0, t.timeline.steps.findIndex((x) => x.key === st.key)) })} />
+            <LienTimelineStrip
+              timeline={t.timeline}
+              viewScope="desk"
+              nextDoor={(() => {
+                // v2.6104 (punch list #214, PR 1): the next step's own press at the verdict band's right — the Lien desk for a notice, the Lien window's tab for the rest.
+                const door = legalPaperNextDoor(t.timeline.next)
+                const job = door ? jobOf(t.jobId) : null
+                return door && job ? <button type="button" data-legal-paper-next-door={door.to} onClick={() => props.onOpenLienInstruments(job, door)} style={{ ...btn, fontWeight: 700 }}>{door.label}</button> : null
+              })()}
+              onOpenStep={(st) => setStop({ jobId: t.jobId, index: Math.max(0, t.timeline.steps.findIndex((x) => x.key === st.key)) })}
+            />
             {stop && stop.jobId === t.jobId ? (
               <LienStopPaperWindow
                 steps={t.timeline.steps}
