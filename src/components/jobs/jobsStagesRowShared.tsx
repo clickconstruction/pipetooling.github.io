@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { JobCrewPosition } from '../../lib/jobs/jobCrewPosition'
+import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
+import type { MarkFixture } from '../../lib/jobs/stageChecklistMarks'
 import { customerListImpliesLinkedRow } from '../../lib/jobs/customerLinkHeuristics'
 import { Link, type NavigateFunction } from 'react-router-dom'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
@@ -66,6 +68,8 @@ export type StagesRowRenderContext = {
   stagesManHoursLoading: boolean
   /** v2.3419: where the crew is per job (`useJobCrewPositions`); empty until the feed answers. */
   crewByJobId: ReadonlyMap<string, JobCrewPosition>
+  /** A checklist per stage (punch list #164, PR 4): each stage's standing for a row's line items, or null while no question exists (`stageChecklistMarks`). */
+  checklistMarksFor?: (job: { fixtures?: ReadonlyArray<MarkFixture> | null }) => ReadonlyMap<string, StageChecklistState> | null
   stagesLaborBreakdownByJobId: Map<string, Array<{ personName: string; hours: number }>>
   expandedJobThreadId: string | null
   toggleStagesJobThreadExpanded: (id: string) => void

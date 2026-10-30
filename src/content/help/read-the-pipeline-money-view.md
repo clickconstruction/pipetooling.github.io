@@ -77,3 +77,11 @@ You open Pipeline cold, in a new browser tab, after a reload, or on a phone that
 ## The board is still the board
 
 Everything below the cards is identical in both views. That is the jump strip with the stage counts, and every section from Waiting to Paid in Full. New only adds the layer on top. Nothing about how you work rows changes.
+
+## A stage that reads not ready
+
+A stage can have a checklist. The office writes the questions once for Rough In, Top Out and Trim Set. The crew answers them on the phone.
+
+A stage with a question left reads **not ready** under the bar. Its name turns amber with a small box before it. Hold the pointer on the name to read the count, such as checklist 2 of 3 answered. The bar's fill and its tick do not change. The mark goes once every question is answered.
+
+A stage kind with no questions carries no mark. See [write the questions for a stage checklist](/help/write-the-questions-for-a-stage-checklist).

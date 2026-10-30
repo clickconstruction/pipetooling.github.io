@@ -4,6 +4,7 @@ import type { ProgressPaymentView } from '../../lib/jobs/progressPaymentCell'
 import { buildJobMoneyBar, MONEY_BAR_TRACK, type MoneyBarBillMark } from '../../lib/jobs/jobMoneyBar'
 import StagesStageBar from './StagesStageBar'
 import type { StagesBillSentPctAlert } from '../../lib/jobs/stagesBillSentPctAlert'
+import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
 
 const PAID_COLOR = '#16a34a'
 const BILLED_COLOR = '#2563eb'
@@ -55,6 +56,8 @@ type StagesProgressPaymentCellProps = {
   onStageClick?: () => void
   /** v2.4353: a bill row's own bill on the bar (`billMarkFor`); null on job rows and single-bill jobs. */
   billMark?: MoneyBarBillMark | null
+  /** A checklist per stage (punch list #164, PR 4): each stage's standing by fixture id, for the not-ready mark under the bar. */
+  checklist?: ReadonlyMap<string, StageChecklistState> | null
 }
 
 function swatch(color?: string) {
@@ -80,7 +83,7 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onStageClick, billMark = null }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onStageClick, billMark = null, checklist = null }: StagesProgressPaymentCellProps) {
   // The legend's amber and empty rows belong to the classic money reading; on a
   // job drawn as stages the bar already says which stage the money is on.
   const stageBar = view?.mode === 'stages'
@@ -266,7 +269,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
             </div>
           </div>
         ) : (
-          <StagesStageBar view={view} pctComplete={pctComplete} compact={compact} onStageClick={onStageClick} billMark={billMark} />
+          <StagesStageBar view={view} pctComplete={pctComplete} compact={compact} onStageClick={onStageClick} billMark={billMark} checklist={checklist} />
         )
       ) : (
       <div

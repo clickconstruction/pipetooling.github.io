@@ -157,8 +157,8 @@ describe('insert-row payload builders', () => {
       { id: 'c', description: '', amount: 12.5 },
     ])
     expect(rows.map((r) => r.sequence_order)).toEqual([0, 1])
-    expect(rows[0]).toMatchObject({ description: 'Gas line parts', amount: 0 })
-    expect(rows[1]).toMatchObject({ description: '', amount: 12.5 })
+    expect(rows[0]).toMatchObject({ id: 'b', description: 'Gas line parts', amount: 0 })
+    expect(rows[1]).toMatchObject({ id: 'c', description: '', amount: 12.5 })
   })
 })
 
