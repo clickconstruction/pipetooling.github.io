@@ -76,6 +76,15 @@ describe('LegalDesk', () => {
     expect(document.querySelector('[data-legal-gap-answer-sheet]')).toBeNull()
     expect(screen.getByText('Can we sue?')).toBeTruthy()
     expect(screen.getByText("What's left for us?")).toBeTruthy()
+    // v2.6172 (punch list #219): the parties strip under the name — the customer, the owner of record (none on the stub's
+    // record, so amber with the record's door), the venue (no county on the stub, so amber too); the venue cell is the Map's door.
+    const parties = document.querySelector('[data-legal-parties]')!
+    expect(parties).toBeTruthy()
+    expect([...parties.querySelectorAll('[data-legal-party]')].map((b) => b.getAttribute('data-legal-party'))).toEqual(['contract', 'owner', 'venue'])
+    expect(parties.querySelector('[data-legal-party="contract"]')!.textContent).toContain('The Learning Experience')
+    expect(parties.querySelector('[data-legal-party="owner"]')!.getAttribute('data-legal-party-amber')).toBe('true')
+    expect(document.querySelector('[data-legal-account-line]')!.textContent).toMatch(/^717 · 718/)
+    expect(document.querySelector('[data-legal-venue-line]')).toBeNull()
     // v2.6105 (punch list #214, PR 2): the money as bars under the questions — one segment per open bill (two jobs, a bill each), the keep · firm · filing bar, no claim bar while nothing is offered or added.
     expect(document.querySelectorAll('[data-legal-money-bar="bills"] [data-legal-money-segment="bill"]').length).toBe(2)
     expect(document.querySelector('[data-legal-money-bar="left_claim"] [data-legal-money-segment="keep"]')).toBeTruthy()

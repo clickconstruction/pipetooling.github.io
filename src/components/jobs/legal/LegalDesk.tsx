@@ -60,6 +60,8 @@ import { setGcDoneWords } from '../../../lib/legal/suspectedSubJob'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { legalNotReachingLine } from '../../../lib/legal/legalNotifyLedger'
 import { useLegalPacketData } from './useLegalPacketData'
+import LegalPartiesStrip from './LegalPartiesStrip'
+import { partiesStrip, type PartyDoor } from '../../../lib/legal/legalParties'
 
 import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
@@ -272,6 +274,23 @@ export default function LegalDesk(props: LegalDeskProps) {
   /** The shown firm's people (`legal_firm_recipients.firm_id`); rows from before the column count for every firm. */
   const firmRecipients = useMemo(() => (legal?.recipients ?? []).filter((r) => !r.firm_id || !firm || r.firm_id === firm.id), [legal?.recipients, firm])
   const { packet, loading, failed, reload } = useLegalPacketData(selected, users, selected != null, holdOverrides, fee, matter?.id ?? null)
+  /** The parties strip (punch list #219, v2.6172): the three cells under the name, read from the packet and the venue counties. */
+  const parties = useMemo(() => {
+    if (!packet || !selected) return null
+    const a = packet.account
+    return partiesStrip({
+      payer: { name: a.payer.name, viaGc: a.payer.viaGc, customerId: a.payer.customerId },
+      customerType: a.customerType,
+      customerAddress: a.customerAddress,
+      customerCounty: a.customerCounty,
+      customerPrecinct: a.customerPrecinct,
+      agreements: packet.paper.agreements,
+      properties: a.properties,
+      jobs: a.jobs.map((j) => ({ label: j.label, address: j.address })),
+      counties: selectedFirm?.counties ?? [],
+      balance: selected.balance,
+    })
+  }, [packet, selected, selectedFirm])
 
 
   const stage = matter?.stage ?? 'review'
@@ -297,6 +316,11 @@ export default function LegalDesk(props: LegalDeskProps) {
   const openEditCustomer = () => {
     if (selected?.customerId && editCustomer) editCustomer.openEditCustomerModal(selected.customerId, { onSaved: reload })
     else if (firstJob) props.onOpenEditJob(firstJob.id)
+  }
+  /** A cell of the parties strip pressed (punch list #219): the customer, the property record (on the customer's profile), or the map. */
+  const pressParty = (door: PartyDoor) => {
+    if (door === 'venue') { pressView('map'); return }
+    openEditCustomer()
   }
   const fixGap = (g: LegalGap) => {
     const job = jobById(g.jobId)
@@ -899,9 +923,9 @@ export default function LegalDesk(props: LegalDeskProps) {
                 <div style={{ display: 'flex', alignItems: 'flex-start', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 240 }}>
                     <div style={{ fontSize: '1.15rem', fontWeight: 700 }}>{selected.name}</div>
-                    <div style={{ ...MUTED, fontSize: '0.8rem' }}>
-                      {selected.jobs.map((j) => j.hcp_number || j.click_number).filter(Boolean).join(' · ')}{packet?.account.customerAddress ? ` · ${packet.account.customerAddress}` : ''}
-                      {venueLine && !selectedGivenUp ? <><br /><span data-legal-venue-line>{venueLine}</span></> : null}
+                    {/* The line under the name is the building (punch list #219): the job numbers and the job's address, never the payer's office; the venue sentence is the strip's cell now. */}
+                    <div style={{ ...MUTED, fontSize: '0.8rem' }} data-legal-account-line>
+                      {parties ? parties.addressLine : selected.jobs.map((j) => j.hcp_number || j.click_number).filter(Boolean).join(' · ')}
                       {matter?.review_requested_at && !withFirm && !closed ? <><br /><span style={{ color: 'var(--text-blue-700)' }}>{requesterName} asked for a dev’s eyes{requestedDays != null ? ` ${requestedDays}d ago` : ''}{matter.review_request_note ? `: “${matter.review_request_note}”` : ''}</span></> : null}
                       {withFirm && matter?.note_to_firm ? <><br /><span style={MUTED}>Note to the firm: “{matter.note_to_firm}”</span></> : null}
                     </div>
@@ -910,6 +934,11 @@ export default function LegalDesk(props: LegalDeskProps) {
                     <div style={{ ...NUM, fontSize: '1.3rem', fontWeight: 700 }}>{formatLegalMoney(selected.balance)}</div>
                     <div style={{ ...MUTED, fontSize: '0.76rem' }}>balance{selected.oldestDays == null ? '' : ` · oldest ${selected.oldestDays}d`}</div>
                   </div>
+                  {parties ? (
+                    <div style={{ width: '100%' }}>
+                      <LegalPartiesStrip strip={parties} stacked={stacked} onPress={pressParty} />
+                    </div>
+                  ) : null}
                   <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', width: '100%' }}>
                     {packet ? pill(packet.readiness.label, packet.readiness.stops > 0 ? 'stop' : packet.readiness.warns > 0 ? 'warn' : 'ok') : null}
                     <button type="button" onClick={printPacket} disabled={!packet} style={{ ...btn, opacity: packet ? 1 : 0.5 }}>⎙ Print packet</button>
