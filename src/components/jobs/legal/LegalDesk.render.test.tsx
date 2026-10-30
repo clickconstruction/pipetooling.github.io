@@ -91,6 +91,10 @@ describe('LegalDesk', () => {
     expect(document.querySelectorAll('[data-legal-money-bar="bills"] [data-legal-money-segment="bill"]').length).toBe(2)
     expect(document.querySelector('[data-legal-money-bar="left_claim"] [data-legal-money-segment="keep"]')).toBeTruthy()
     expect(document.querySelector('[data-legal-money-bar="claim"]')).toBeNull()
+    // v2.6176 (punch list #218 PR 3): what each path nets under the bars — no offer stands, so the trial card alone, not read yet.
+    expect(document.querySelector('[data-legal-settlement-paths] [data-legal-settlement-path="trial"]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-settlement-path="offer"]')).toBeNull()
+    expect(document.querySelector('[data-legal-settlement-paths-words]')!.textContent).toContain('The firm has not said how this case tries.')
     fireEvent.click(screen.getByRole('tab', { name: 'Timeline' }))
     expect(screen.getByText(/theft of service/)).toBeTruthy()
     expect(document.querySelector('[data-legal-timeline-lane="said"]')).toBeTruthy()
@@ -415,6 +419,10 @@ describe('LegalDesk · in house (v2.5847)', () => {
     expect(screen.queryByRole('button', { name: 'Run it in house…' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
     expect(document.querySelector('[data-legal-offers]')).toBeTruthy()
+    // Punch list #218 PR 2: the attorney's read opens in house too, with its own door.
+    expect(document.querySelector('[data-legal-counsel-read-panel]')).toBeTruthy()
+    // Two doors while no form is open, the header's and the empty state's, as the Offers log has.
+    expect(document.querySelector('[data-legal-read-add]')).toBeTruthy()
     // No offer yet: the log says so and offers its own door again (punch list #184, sweep C).
     const noOffers = document.querySelector('[data-legal-offers] [data-empty-state]') as HTMLElement
     expect(noOffers.textContent).toBe('No offers yet. Log an offer… adds the first.')

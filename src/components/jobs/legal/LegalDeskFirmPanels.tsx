@@ -10,14 +10,74 @@ import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPorta
 
 import { OFFER_NEXT_STATUSES, isOfferEntry, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 
-import { MUTED, btn, btnPrimary, Table, type EntryLike } from './legalDeskShared'
+import { MUTED, btn, btnPrimary, pill, Table, type EntryLike } from './legalDeskShared'
+import { counselReadDraftProblem, counselReadFacts, counselReadLine, counselTriesWords, type CounselRead, type CounselReadDraft, type CounselTries } from '../../../lib/legal/counselRead'
+import { moneyBarDayWords } from '../../../lib/legal/moneyBars'
 import { EmptyState } from '../../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../../lib/emptyWords'
 
 /**
- * The With-the-firm panels (v2.5852, the split): the offers log, a settlement ask's answer (an ask from before v2.6170
- * retired the floor), and the undo and voided-text pieces the tabs share. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182).
+ * The With-the-firm panels (v2.5852, the split): the attorney's read of how the case tries (punch list #218 PR 2), the
+ * offers log, a settlement ask's answer (an ask from before v2.6170 retired the floor), and the undo and voided-text pieces the tabs share. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182).
  */
+/**
+ * The attorney's read of how the case tries (punch list #218 PR 2): the current read as a chip with whose it is, the
+ * day, the why and the facts; *Record the read…* (or *Change the read…*) opens the form — easy or hard, the costs
+ * to try it, the months to a judgment, why — and *Save the read* writes the same note entry the firm writes from its
+ * portal. Undo is the entry's, on the matter's table.
+ */
+export function CounselReadPanel({ read, busy, onSave }: { read: CounselRead | null; busy: boolean; onSave: (d: CounselReadDraft) => Promise<boolean> }) {
+  const [draft, setDraft] = useState<CounselReadDraft | null>(null)
+  const problem = draft ? counselReadDraftProblem(draft) : null
+  const dayWords = (ymd: string) => moneyBarDayWords(ymd) || ymd
+  const input: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 7px', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', minWidth: 0 }
+  const start = () => setDraft({ tries: read?.tries ?? '', why: '', costText: read?.costToTry != null ? String(read.costToTry) : '', monthsText: read?.months != null ? String(read.months) : '' })
+  // Empty words (punch list #184): the panel's own door, offered again while no form is open.
+  const noRead = emptyWords({ kind: 'make', noun: 'read of the case', control: 'Record the read…' })
+  const save = async () => {
+    if (!draft || problem) return
+    if (await onSave(draft)) setDraft(null)
+  }
+  const triesButton = (t: CounselTries, label: string) => (
+    <button type="button" aria-pressed={draft?.tries === t} onClick={() => draft && setDraft({ ...draft, tries: t })} style={draft?.tries === t ? btnPrimary : btn}>{label}</button>
+  )
+  const facts = read ? counselReadFacts(read) : ''
+  return (
+    <div data-legal-counsel-read-panel style={{ margin: '0 0 14px', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <b style={{ fontSize: '0.86rem' }}>How this case tries</b>
+        <span style={{ ...MUTED, fontSize: '0.78rem' }}>the attorney’s read · easy or hard, the costs to try it, the months to a judgment · the firm records it on its portal</span>
+        {!draft ? <button type="button" onClick={start} style={{ ...btn, marginLeft: 'auto' }} data-legal-read-add>{read ? 'Change the read…' : 'Record the read…'}</button> : null}
+      </div>
+      {read ? (
+        <div data-legal-counsel-read style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
+          {pill(counselTriesWords(read.tries), read.tries === 'hard' ? 'warn' : 'ok')}
+          <span>{counselReadLine(read, dayWords, 'office')}</span>
+          {facts ? <span style={MUTED}>{facts}</span> : null}
+        </div>
+      ) : null}
+      {draft ? (
+        <form data-legal-read-form onSubmit={(e) => { e.preventDefault(); void save() }} style={{ display: 'grid', gap: 6, padding: '8px', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.78rem' }}>
+            <span style={MUTED}>To try</span>
+            {triesButton('easy', 'Easy')}
+            {triesButton('hard', 'Hard')}
+            <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Costs to try it<input aria-label="Costs to try it" inputMode="decimal" value={draft.costText} placeholder="$ amount" onChange={(e) => setDraft({ ...draft, costText: e.target.value })} style={{ ...input, width: 100 }} /></label>
+            <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Months to a judgment<input aria-label="Months to a judgment" inputMode="numeric" value={draft.monthsText} placeholder="9" onChange={(e) => setDraft({ ...draft, monthsText: e.target.value })} style={{ ...input, width: 54 }} /></label>
+          </div>
+          <input aria-label="Why" value={draft.why} placeholder="Why, in one line: what the other side disputes, what proving it takes" onChange={(e) => setDraft({ ...draft, why: e.target.value })} style={input} />
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="submit" disabled={busy || Boolean(problem)} style={{ ...btnPrimary, opacity: busy || problem ? 0.6 : 1 }}>Save the read</button>
+            <button type="button" onClick={() => setDraft(null)} style={btn}>Cancel</button>
+            {problem && draft.tries ? <span style={{ ...MUTED, fontSize: '0.76rem' }}>{problem}</span> : null}
+          </div>
+        </form>
+      ) : null}
+      {!read && !draft ? <EmptyState compact {...emptyWordsWithPress(noRead, { onPress: start })} /> : null}
+    </div>
+  )
+}
+
 /** #85 item 20: the office's answer to a settlement ask from before v2.6170 retired the floor — sign off moves the stage to settled. */
 /**
  * Offers (punch list #172, v2.5847): the log of offers made and received while the office runs the case or the

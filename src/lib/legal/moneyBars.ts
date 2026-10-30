@@ -17,7 +17,8 @@ import type { OfferStatus } from './legalOffers'
  *   asks for yet, or an offer. The bills as one block, the added retainage after it, and, when an
  *   offer reaches past the claim on record, a hatched stretch to the largest of them, named as
  *   such: the desk never invents a figure, it shows that one was asked for. (v2.6170, punch list
- *   #218, took the office's floor off the bar with the gate it stood for.)
+ *   #218, took the office's floor off the bar with the gate it stood for; v2.6176 put the derived
+ *   walk-away line in its place — `settlementPaths.ts` works it, this kernel only marks it.)
  * - **What's left for us**: keep · the firm's cut · the filing cost, on the claim; and on the bills
  *   alone when the claim is larger, because the firm's cut on a disputed claim is a different
  *   decision from its cut on an undisputed balance.
@@ -38,12 +39,14 @@ export type MoneyBarsInput = {
   filingCost: number
   net: number
   offers: ReadonlyArray<MoneyBarOffer>
+  /** The walk-away line (v2.6176, `settlementPaths.ts`): the offer at which settling nets a full win; marked on the claim bar when it is drawn. */
+  line?: number | null
 }
 
 export type MoneyBarSegmentKind = 'bill' | 'bills' | 'retainage' | 'beyond' | 'keep' | 'fee' | 'filing' | 'short'
 export type MoneyBarSegment = { key: string; kind: MoneyBarSegmentKind; label: string; title: string; amount: number; fraction: number }
 export type MoneyBarBracket = { key: string; label: string; amount: number; fromFraction: number; toFraction: number }
-export type MoneyBarMark = { key: string; kind: 'theirs' | 'ours'; label: string; amount: number; fraction: number; row: 0 | 1 }
+export type MoneyBarMark = { key: string; kind: 'theirs' | 'ours' | 'line'; label: string; amount: number; fraction: number; row: 0 | 1 }
 export type MoneyBarKey = 'bills' | 'claim' | 'left_claim' | 'left_bills'
 export type MoneyBar = { key: MoneyBarKey; caption: string; total: number; segments: MoneyBarSegment[]; brackets: MoneyBarBracket[]; marks: MoneyBarMark[] }
 
@@ -151,6 +154,7 @@ export function moneyBars(input: MoneyBarsInput): MoneyBars {
         amount: round2(o.amount),
         fraction: frac(o.amount, scale),
       })),
+      ...(input.line != null && input.line > 0.004 ? [{ key: 'line', kind: 'line' as const, label: 'above this, settling beats a full win', amount: round2(input.line), fraction: frac(input.line, scale) }] : []),
     ])
     bars.push({ key: 'claim', caption: `The claim · ${formatLegalMoney(claim)}${beyond > 0.004 ? ` · asked ${formatLegalMoney(scale)}` : ''}`, total: scale, segments, brackets: [], marks })
   }

@@ -550,6 +550,11 @@ function FirmActs({ matter, act, busy, notice, actFailure, todayYmd }: { matter:
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
   const [question, setQuestion] = useState('')
+  // Punch list #218 PR 2: the firm's read of how the case tries.
+  const [readTries, setReadTries] = useState('')
+  const [readCost, setReadCost] = useState('')
+  const [readMonths, setReadMonths] = useState('')
+  const [readWhy, setReadWhy] = useState('')
   // #85 item 18 (c): the date it happened, today unless the firm says otherwise.
   const [feeOn, setFeeOn] = useState(todayYmd)
   const [stepOn, setStepOn] = useState(todayYmd)
@@ -597,6 +602,13 @@ function FirmActs({ matter, act, busy, notice, actFailure, todayYmd }: { matter:
       <form onSubmit={submit({ kind: 'question', note: question }, () => setQuestion(''))} className="legalPortalForm legalPortalForm--ask">
         <label style={lab}>Ask the office<input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Do you have the signed change order for the HVAC add?" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Send</button>
+      </form>
+      <form onSubmit={submit({ kind: 'read', tries: readTries, costToTry: readCost, months: readMonths, note: readWhy }, () => { setReadWhy('') })} className="legalPortalForm legalPortalForm--fee" data-legal-read-form>
+        <label style={lab}>How this case tries<select value={readTries} onChange={(e) => setReadTries(e.target.value)} required style={input}><option value="">Pick one</option><option value="easy">Easy to try</option><option value="hard">Hard to try</option></select></label>
+        <label style={lab}>Costs to try it<input type="number" min={0} step="0.01" value={readCost} onChange={(e) => setReadCost(e.target.value)} placeholder="2800" style={input} /></label>
+        <label style={lab}>Months to a judgment<input type="number" min={0} max={120} step={1} value={readMonths} onChange={(e) => setReadMonths(e.target.value)} placeholder="9" style={input} /></label>
+        <label style={lab}>Why<input value={readWhy} onChange={(e) => setReadWhy(e.target.value)} placeholder="What they dispute, and what proving it takes" style={input} /></label>
+        <button type="submit" disabled={busy} style={btn}>Save the read</button>
       </form>
       <p style={{ fontSize: portalSmall(11.5), color: FAINT, margin: 0 }}>The office applies a payment you report to the job and records your contingency. A step you record sets the matter's stage for you and the office.</p>
     </div>

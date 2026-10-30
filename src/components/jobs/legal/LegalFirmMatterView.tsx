@@ -9,6 +9,8 @@ import { conversationRows, conversationStateWords, conversationWho, entryRecorde
 import { ownerMailingAddressCell, propertyKindCell, propertySourceNote } from '../../../lib/legal/legalProperty'
 import { legalDocumentDayWords, legalDocumentKindWords, legalDocumentSizeWords, legalDocumentStateWords, type LegalPortalDocument } from '../../../lib/legal/legalMatterDocuments'
 import { legalNarrativeBandWords } from '../../../lib/legal/legalNarrative'
+import { counselReadFacts, counselReadLine, counselTriesWords, currentCounselRead } from '../../../lib/legal/counselRead'
+import { moneyBarDayWords } from '../../../lib/legal/moneyBars'
 import { legalNarrativeHtml } from '../../../lib/legal/legalNarrativeHtml'
 import { courtWords, justiceCourtCap, lienForeclosureLine, PRECINCT_NOT_YET_TITLE, venuePlaces, VENUE_SOURCE_LINE } from '../../../lib/legal/jpVenue'
 import LienTimelineStrip from '../LienTimelineStrip'
@@ -358,6 +360,11 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
             <div style={{ fontSize: 12.5, color: MUTED }} data-legal-account-line>{strip.addressLine || packet.account.customerAddress}</div>
             {/* v2.6170 (punch list #218): the firm settles for what can be had; the office's floor is retired. */}
             <div data-legal-settling style={{ fontSize: 12.5, marginTop: 6, padding: '5px 9px', background: NOTE_BAND, borderRadius: 4, color: INK }}><b>Settling:</b> Settle as you can. Record the settlement with its amount.</div>
+            {(() => {
+              // Punch list #218 PR 2: the current read of how the case tries — yours or the office's — under the settling line.
+              const read = currentCounselRead(matter.entries)
+              return read ? <div data-legal-counsel-read style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>How this case tries:</b> {counselTriesWords(read.tries)}. {counselReadLine(read, (ymd) => moneyBarDayWords(ymd) || ymd, 'firm')} {counselReadFacts(read)}</div> : null
+            })()}
             {matter.noteToFirm ? <div style={{ fontSize: 12.5, marginTop: 4, color: MUTED }}><b style={{ color: INK }}>From the office:</b> {matter.noteToFirm}</div> : null}
           </div>
           <div className="legalMatterHeadSums" style={{ textAlign: 'right' }}>

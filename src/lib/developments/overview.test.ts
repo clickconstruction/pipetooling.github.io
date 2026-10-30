@@ -11,6 +11,7 @@ import {
   pulseWords,
   requestIsOpen,
   sharedAddressWords,
+  stateUppercased,
   sitePeople,
   splitMembers,
   type MemberBid,
@@ -103,6 +104,15 @@ describe('the site address', () => {
     expect(sharedAddressWords(members)).toBe('Gun Dog Trail, Neeses, SC')
     expect(sharedAddressWords({ bids: [], jobs: [] })).toBeNull()
     expect(sharedAddressWords({ bids: [bid({ id: 'b', address: '  ' })], jobs: [] })).toBeNull()
+  })
+
+  it('sharedAddressWords prints the state in capitals however the rows typed it', () => {
+    const typed = { bids: [], jobs: [job({ id: 'j1', job_address: 'Gun Dog Trail, Neeses, Sc' }), job({ id: 'j2', job_address: 'Gun Dog Trail, Neeses, Sc' })] }
+    expect(sharedAddressWords(typed)).toBe('Gun Dog Trail, Neeses, SC')
+    expect(stateUppercased('Gun Dog Trail, Neeses, sc 29107')).toBe('Gun Dog Trail, Neeses, SC 29107')
+    expect(stateUppercased('5501 Balcones Dr, Austin, TX')).toBe('5501 Balcones Dr, Austin, TX')
+    expect(stateUppercased('12921 FM 20, Kingsbury')).toBe('12921 FM 20, Kingsbury')
+    expect(stateUppercased('Gun Dog Trail')).toBe('Gun Dog Trail')
   })
   it('addressSearchPattern keeps the words before the first street suffix, at most three', () => {
     expect(addressSearchPattern('gun dog trail neeses sc')).toBe('%gun%dog%')
