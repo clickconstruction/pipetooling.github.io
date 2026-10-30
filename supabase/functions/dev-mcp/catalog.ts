@@ -1173,6 +1173,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "legal_portal_link_token_by_id": [{"args":{"p_link_id":"string"},"returns":"string"}],
   "legal_pull_back": [{"args":{"p_matter_id":"string","p_note?":"string"},"returns":"Json"}],
   "legal_replace_firm": [{"args":{"p_contingency_pct?":"number","p_email?":"string","p_filing_cost?":"number","p_handling_name?":"string","p_name":"string","p_old_firm_id":"string","p_phone?":"string"},"returns":"Json"}],
+  "legal_set_counsel_read": [{"args":{"p_cost_to_try?":"number","p_matter_id":"string","p_months?":"number","p_tries":"string","p_why?":"string"},"returns":"Json"}],
   "legal_set_in_house": [{"args":{"p_customer_id":"string","p_job_ids":"string[]","p_payer_key":"string","p_payer_name":"string","p_why?":"string"},"returns":"Json"}],
   "legal_set_narrative": [{"args":{"p_markdown":"string","p_matter_id":"string"},"returns":"Json"}],
   "legal_set_settlement_floor": [{"args":{"p_amount?":"number","p_matter_id":"string","p_pct?":"number"},"returns":"Json"}],
