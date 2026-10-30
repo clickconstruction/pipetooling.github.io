@@ -67,6 +67,7 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "the overhead lens window's heading, method C (v2.6082)", fg: OVERHEAD_METHOD_INKS.C, bg: 'var(--surface)' },
     { label: "a guide's Example caption on its light panel (v2.6085)", fg: GUIDE_CAPTION_INK, bg: GUIDE_PANEL_GROUND },
     { label: "a guide's grey mock button (v2.6085)", fg: GUIDE_DEAD_BUTTON.ink, bg: GUIDE_DEAD_BUTTON.fill },
+    { label: "the nav's Messages count on its red (v2.6151)", fg: '#ffffff', bg: '#b91c1c' },
   ]
   for (const p of pairs) {
     for (const theme of THEMES) {
