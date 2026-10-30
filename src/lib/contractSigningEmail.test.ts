@@ -34,7 +34,7 @@ describe('buildContractSigningEmail', () => {
 
   it('renders the paper: wordmark, the document, the sender, three steps, the button, expiry, portal band, Spanish line', () => {
     const { html, text } = buildContractSigningEmail(base)
-    expect(html).toContain('CLICK<span style="color:#b0662f">.</span>')
+    expect(html).toContain('CLICK<span style="color:#9a5b2b">.</span>')
     expect(html).toContain('<h1')
     expect(html).toContain('Master Subcontract Agreement')
     expect(html).toContain('Sent to you by Robert Douglas · Click Plumbing and Electrical')

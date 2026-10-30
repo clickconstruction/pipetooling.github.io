@@ -16,7 +16,7 @@ export const PORTAL_ADDRESS_MAX_CHARS = 48
 export const PORTAL_CARD_BLURB = 'Every open bill and payment, with no login.'
 
 const INK = '#16283c'
-const COPPER = '#b0662f'
+const COPPER = '#9a5b2b'
 const CREAM = '#f6f3ec'
 const MUTED = '#5b6676'
 

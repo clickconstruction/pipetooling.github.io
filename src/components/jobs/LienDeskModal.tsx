@@ -757,6 +757,8 @@ export default function LienDeskModal({
           openBalance: e?.openBalance,
           claimAmountOff: correction?.amountOff,
           lastMonth: e?.lastMonth ?? '',
+          workDays: rowJob ?? null,
+          todayYmd,
           noticesRecorded: e?.gates.find((g) => g.key === 'notice')?.ok ?? false,
           contactPerson: f.contactPerson,
           issuer,

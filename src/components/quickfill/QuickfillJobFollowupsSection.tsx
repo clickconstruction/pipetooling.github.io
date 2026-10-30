@@ -45,7 +45,8 @@ const badgeStyle = (tone: 'amber' | 'red'): CSSProperties => ({
   justifyContent: 'center',
   borderRadius: 999,
   background: tone === 'red' ? '#dc2626' : '#f59e0b',
-  color: '#fff',
+  // Words on a bright fill (v2.6070): dark on the amber, 8.26:1; white stays on the red, 4.83:1, where dark would read 3.67:1.
+  color: tone === 'red' ? '#fff' : 'var(--text-on-bright-solid)',
   fontSize: '0.9375rem',
   fontWeight: 700,
 })
