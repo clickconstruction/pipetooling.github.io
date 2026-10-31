@@ -15,6 +15,8 @@ You put bids and jobs into a development first. The guide [group bids and jobs i
 2. Find the house line near the top. It names the development with a small house.
 3. Press the development's name.
 
+A Pipeline row has the same door. Press the development name under the job's customer, marked with the house.
+
 The page opens with the site's name, its customer and its GC at the top. Under them you see who is on site and five counts.
 
 ## Read the five counts

@@ -91,12 +91,15 @@ describe('the ledger names on the customer lines (v2.5904)', () => {
       gcCustomer: { id: 'gc-ridgeway', name: 'Ridgeway Builders' },
       development: { id: 'dev-cedar', name: 'Cedar Loop' },
     })
-    const ctx = { ...ctxWith(vi.fn()), onDevelopmentFilter: vi.fn() } as StagesRowRenderContext
+    const ctx = ctxWith(vi.fn())
     for (const render of [renderJobCustomerLine, renderJobCustomerAndAddressLine]) {
       renderWithProviders(<>{render(ctx, named)}</>)
       const names = [...document.querySelectorAll('button, [role="button"]')].map((b) => navButtonName(b)).filter((n): n is string => !!n)
       expect(names).toContain('customer-messages')
-      expect(names).toContain('development-filter')
+      // The development name is a door to its page (v2.6201), an anchor and not a button, named without the site.
+      const door = document.querySelector('a[data-nav="development-page"]')
+      expect(door?.getAttribute('href')).toBe('/developments/dev-cedar')
+      expect(door?.getAttribute('aria-label')).not.toMatch(/Cedar/)
       for (const n of names) expect(n).not.toMatch(/Dana|Whitfield|Ridgeway|Cedar|555/)
       cleanup()
     }
