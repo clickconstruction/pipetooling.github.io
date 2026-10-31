@@ -10,7 +10,7 @@ import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthRead
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
-import { divisionBidFolderByKey } from '../_shared/bidPlansFolders.ts'
+import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robotPlansDivisionFolderName, robotPlansPathWords } from '../_shared/bidPlansFolders.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -36,7 +36,7 @@ import { divisionBidFolderByKey } from '../_shared/bidPlansFolders.ts'
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.12.1'
+const SERVER_VERSION = '0.12.2'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -244,12 +244,12 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'plan_file_plans',
-    description: "Dry-run filing a plan set for the robots (v2.6185): the PDF you hold goes into Drive under the bid's division folder (a folder named for the project, the one the bid form's Find looks in) and becomes the set the robot reads — bids.plans_link, the folder link — with a named row on the Bid Board. The bytes never ride in a tool call: the reply carries a one-shot upload_url (two hours) into the bid's folder of the private bid-submittals bucket and the curl line to PUT the file there; the plan commits to the file's size and sha256, the bid's plans link before, its division and folder name, under a plan_hash. A live bid in plumbing, electrical or HVAC only; a bid that already has plans is refused unless replace. Nothing is written.",
+    description: "Dry-run filing a plan set for the robots (v2.6185): the PDF you hold goes into Drive, in the PipeTooling Jobs Shared Drive under Bid plans › <Division> › <project> (since v2.6241; the office's division folders stay view-only), and becomes the set the robot reads — bids.plans_link, the folder link — with a named row on the Bid Board. The bytes never ride in a tool call: the reply carries a one-shot upload_url (two hours) into the bid's folder of the private bid-submittals bucket and the curl line to PUT the file there; the plan commits to the file's size and sha256, the bid's plans link before, its division and folder name, under a plan_hash. A live bid in plumbing, electrical or HVAC only; a bid that already has plans is refused unless replace. Nothing is written.",
     inputSchema: { type: 'object', properties: { plans: { type: 'object', description: "{ bid (bids.id — find_bid), file_name (ending .pdf), size_bytes, sha256, replace?, set_name?, memo? }" } }, required: ['plans'] },
   },
   {
     name: 'apply_file_plans',
-    description: 'File the set you planned, once the PUT is done: the same plans plus the plan_hash from plan_file_plans. Runs the dry run again first and files only when it still matches; then reads the staged copy back, refuses it when its size or sha256 differ from the plan, when it is not a PDF or runs past 200 pages (CountTooling’s cap), copies it into Drive under the division folder as the intake service account, stamps the bid through dev_bid_write (plans_link = the folder link, a bid_plan_sets row named for the set), removes the staged copy, and runs plan-fetch’s readiness probe. Replies with the Drive links, the page count, the probe and what happens next. Drive is the only place the plans stay.',
+    description: 'File the set you planned, once the PUT is done: the same plans plus the plan_hash from plan_file_plans. Runs the dry run again first and files only when it still matches; then reads the staged copy back, refuses it when its size or sha256 differ from the plan, when it is not a PDF or runs past 200 pages (CountTooling’s cap), copies it into the PipeTooling Jobs Shared Drive (Bid plans › <Division> › <project>) as the intake service account, stamps the bid through dev_bid_write (plans_link = the folder link, a bid_plan_sets row named for the set), removes the staged copy, and runs plan-fetch’s readiness probe. Replies with the Drive links, the page count, the probe and what happens next. Drive is the only place the plans stay.',
     inputSchema: { type: 'object', properties: { plans: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['plans', 'plan_hash'] },
   },
   {
@@ -274,7 +274,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are nineteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) and plan_file_plans → apply_file_plans (a plan set into Drive under the bid's division folder and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are nineteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) and plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -449,8 +449,9 @@ function rowCountOf(body: unknown): number | null {
 // v2.6185: the plan set a dev's agent files for the robots. The bytes never ride in a tool call:
 // plan_file_plans hands back a one-shot upload URL into the bid's folder of the private
 // bid-submittals bucket (as the dev — the bucket's own policy applies), apply_file_plans reads the
-// staged copy back, checks it against the plan, copies it into Drive under the division folder and
-// removes the staged copy. Drive is the only place the plans stay (the owner, 2026-09-29).
+// staged copy back, checks it against the plan, copies it into Drive (since v2.6241 the PipeTooling Jobs Shared
+// Drive, Bid plans › <Division> › <project>: a service account owns no file in a My Drive) and removes the
+// staged copy. Drive is the only place the plans stay (the owner, 2026-09-29).
 const ROBOT_PLANS_BUCKET = 'bid-submittals'
 const ROBOT_PLANS_MAX_PAGES = 200
 const robotPlansStagePath = (bidId: string, sha256: string) => `${bidId}/robot-plans/${sha256.slice(0, 16)}.pdf`
@@ -730,7 +731,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       // v2.6185: the plan set into Drive and onto the bid — the same grammar as every write
       // (dev_bid_write, action file_plans) with the file's leg around it: plan hands back the
       // staging URL; apply reads the staged copy, checks it against the plan, copies it into Drive
-      // under the division folder, stamps the bid through the RPC with p_link, removes the staged
+      // (the Shared Drive, v2.6241), stamps the bid through the RPC with p_link, removes the staged
       // copy and probes. Never as anyone else.
       if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
       const built = writeRpcBody(name, args)
@@ -784,10 +785,18 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       let folderLink = ''
       let fileLink = ''
       let reused = false
+      // v2.6241: the PipeTooling Jobs Shared Drive, Bid plans › <Division> › <project>. Each level is found or made,
+      // and targetUrl follows the deepest folder reached so a refusal names where it stopped.
+      const targetName = robotPlansPathWords(division.key)
+      let targetUrl = driveFolderUrl(ROBOT_PLANS_SHARED_DRIVE.id)
       try {
         const token = await googleAccessToken(saJson)
-        const folder = await findOrCreateFolder(token, division.folderId, folderName)
-        folderLink = `https://drive.google.com/drive/folders/${folder.id}`
+        const bidPlans = await findOrCreateFolder(token, ROBOT_PLANS_SHARED_DRIVE.id, ROBOT_PLANS_SHARED_DRIVE.folderName)
+        targetUrl = driveFolderUrl(bidPlans.id)
+        const divisionFolder = await findOrCreateFolder(token, bidPlans.id, robotPlansDivisionFolderName(division.key))
+        targetUrl = driveFolderUrl(divisionFolder.id)
+        const folder = await findOrCreateFolder(token, divisionFolder.id, folderName)
+        folderLink = driveFolderUrl(folder.id)
         const impersonate = Deno.env.get('DRIVE_IMPERSONATE_USER')?.trim()
         const upToken = impersonate ? await googleAccessToken(saJson, impersonate) : token
         const existing = await findExistingFile(upToken, folder.id, plans.file_name)
@@ -803,7 +812,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         } catch {
           serviceAccount = null
         }
-        return errored(driveFilingRefusal({ message: e instanceof Error ? e.message : String(e), serviceAccount, division, folderName, folderLink }))
+        return errored(driveFilingRefusal({ message: e instanceof Error ? e.message : String(e), serviceAccount, target: { name: targetName, url: targetUrl }, division, folderName }))
       }
       const res = await restPost(session, rpcPath, { ...built.body, p_link: { folder_link: folderLink, file_link: fileLink, pages } })
       if (!res.ok) return errored(`${restError(res.status, res.body)} — the set IS in Drive at ${fileLink} (folder ${folderLink}): paste the folder link on the bid form, or plan again with replace: true.`)
@@ -813,7 +822,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const bidTag = typeof reply.bid_number === 'string' ? `b${reply.bid_number}` : null
       return ok({
         ...reply,
-        drive: { folder_link: folderLink, file_link: fileLink, folder_name: folderName, division: division.key, file_reused: reused },
+        drive: { folder_link: folderLink, file_link: fileLink, folder_name: folderName, path: robotPlansPathWords(division.key, folderName), division: division.key, file_reused: reused },
         pages,
         bytes: bytes.length,
         staged_removed: stagedRemoved,
