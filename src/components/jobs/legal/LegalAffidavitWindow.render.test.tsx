@@ -120,6 +120,16 @@ describe('LegalAffidavitWindow (punch list #220, v2.6210)', () => {
     expect(screen.getByText('What the record says about Sep 3')).toBeTruthy()
   })
 
+  it('a signed statement’s record check says it is off, and the name reads as on the signed paper (v2.6248)', () => {
+    const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'x', occurred_on: '2026-09-03', meta: { title: 'T', affiant: { kind: 'team', user_id: 'u-da', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', state: 'signed', signed_on: '2026-10-29', document_id: 'doc-1', prints: [] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }
+    open({ entry })
+    expect(document.querySelector('[data-legal-affidavit-record-check]')!.textContent).toContain('Not read again once the signed copy is filed.')
+    expect(document.querySelector('[data-legal-affidavit-record-check]')!.textContent).not.toContain('Pick the day it is about')
+    expect(screen.getByText('As it reads on the signed paper.')).toBeTruthy()
+    const last = check.calls[check.calls.length - 1] as { enabled: boolean }
+    expect(last.enabled).toBe(false)
+  })
+
   it('a statement being changed opens on its words; a signed one is read only with its door to the Timeline', async () => {
     const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'Northline never called us back.', occurred_on: '2026-09-03', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', user_id: 'u-da', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', incident_to: '2026-09-17', venue_county: 'Guadalupe', state: 'printed', prints: [{ at: '2026-10-28T19:14:00Z', by: 'u-g', face: 'whole', text: '' }] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }
     const { onSave } = open({ entry })
