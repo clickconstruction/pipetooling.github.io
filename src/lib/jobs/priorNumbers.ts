@@ -29,7 +29,7 @@ export function priorNumberLabels(entries: readonly string[] | null | undefined,
   for (const e of entries ?? []) {
     const p = parsePriorNumber(e)
     if (!p) continue
-    const label = formatJobLedgerNumberLabel(prefix ?? null, p.kind === 'hcp' ? p.number : null, p.kind === 'click' ? p.number : null)
+    const label = formatJobLedgerNumberLabel(prefix ?? '', p.kind === 'hcp' ? p.number : null, p.kind === 'click' ? p.number : null)
     if (label && !out.includes(label)) out.push(label)
   }
   return out
