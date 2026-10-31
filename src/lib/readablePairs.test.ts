@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { SAFETY_ORANGE_TEXT, SAFETY_ORANGE_UNDER_WORDS, TEXT_ON_SAFETY_ORANGE } from './bids/bidStyles'
 import { CLOCK_IN_ACCENT_TEXT, CLOCK_IN_ACCENT_UNDER_WORDS } from './clock/clockColors'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from './orangeUnderWords'
+import { SKY_UNDER_WORDS, SKY_UNDER_WORDS_HOVER, WORDS_ON_SKY } from './skyUnderWords'
 import { MORE_SWIPE_GREY } from './people/usersTabPhone'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from './deadPress'
 import { JOB_ACTIVITY_EVENT_RENDER } from './jobActivityEvent'
@@ -61,7 +62,8 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "People → Users' phone row, swipe to More (v2.6068)", fg: '#ffffff', bg: MORE_SWIPE_GREY },
     { label: "an amber count or press with words, on the deep orange: the follow-ups count, a follow-up's job number, the inbox's N open (v2.6070, white since v2.6186)", fg: WORDS_ON_ORANGE, bg: ORANGE_UNDER_WORDS },
     { label: "the Checklist's ✓ You on green (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#22c55e' },
-    { label: "the header's dispatch press and the dispatch mode ticks on the deep sky (v2.6070, white since v2.6186)", fg: '#ffffff', bg: '#0369a1' },
+    { label: "a sky press on the deep sky: the header's dispatch press and the dispatch mode ticks (v2.6070, white since v2.6186), and every other sky press since v2.6196", fg: WORDS_ON_SKY, bg: SKY_UNDER_WORDS },
+    { label: "a workflow's Set Start or Approve hovered, on the darker sky (v2.6196)", fg: WORDS_ON_SKY, bg: SKY_UNDER_WORDS_HOVER },
     { label: "a blue press with white words on #2563eb in both themes: the cost move's Move, Apply and Done, and the payroll sort chips (v2.6186)", fg: '#ffffff', bg: '#2563eb' },
     { label: 'Next, ✓ All clear and the discount in green-700 on the surface (v2.6075)', fg: 'var(--text-green-700)', bg: 'var(--surface)' },
     { label: 'the Bid Costs unsent chip (v2.6081)', fg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.fg, bg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.bg },

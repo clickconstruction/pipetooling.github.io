@@ -16,6 +16,7 @@ import {
 import { ContractScopeLibraryTab } from './ContractScopeLibraryTab'
 import { FormStudio } from './formStudio/FormStudio'
 import { EmptyState } from '../EmptyState'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 
 /**
  * Contract library (v2.1411): one modal for the whole contracts library —
@@ -499,8 +500,8 @@ export function ContractLibraryModal({
                             fontWeight: 600,
                             border: 'none',
                             borderRadius: 6,
-                            background: '#0ea5e9',
-                            color: '#fff',
+                            background: SKY_UNDER_WORDS,
+                            color: WORDS_ON_SKY,
                             cursor: 'pointer',
                           }}
                         >

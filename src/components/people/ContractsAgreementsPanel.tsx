@@ -7,6 +7,7 @@ import {
 } from '../../lib/contractsAgreementsPanel'
 import { EmptyState } from '../EmptyState'
 import { agreementsEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 
 /**
  * Desktop Agreements panel for People → Contracts (v2.1407): one card per
@@ -120,8 +121,8 @@ export function ContractsAgreementsPanel({
                     padding: '0.2rem 0.5rem',
                     fontSize: '0.75rem',
                     fontWeight: 600,
-                    background: '#0ea5e9',
-                    color: '#fff',
+                    background: SKY_UNDER_WORDS,
+                    color: WORDS_ON_SKY,
                     border: 'none',
                     borderRadius: 4,
                     cursor: 'pointer',
