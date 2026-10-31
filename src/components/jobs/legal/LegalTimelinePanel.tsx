@@ -59,6 +59,10 @@ export type TimelinePlanActs = {
   canUndo?: (item: LegalTimelineItem) => boolean
   /** The office's hold door; absent on the portal. */
   hold?: TimelineHold
+  /** Swear a statement (punch list #220, v2.6210): opens the window on a new statement, on the day the composer holds. */
+  swearStatement?: (on: string) => void
+  /** Open the window on a statement's row. */
+  editStatement?: (entryId: string) => void
 }
 
 export type LegalTimelinePanelProps = {
@@ -196,7 +200,7 @@ export default function LegalTimelinePanel({ timeline: whole, todayYmd, reader, 
       {total === 0 ? (
         // Empty words (punch list #184, sweep C): an empty lane offers All, and "Press Add to the timeline" is that press now.
         <div data-legal-timeline-empty>
-          <EmptyState compact {...timelineEmptyWords({ laneLabel: lane ? LEGAL_TIMELINE_LANES.find((l) => l.lane === lane)?.label ?? null : null, canAdd, composerOpen, showAll: () => setLane(null), openComposer: () => setComposerOpen(true) })} />
+          <EmptyState compact {...timelineEmptyWords({ laneLabel: lane ? LEGAL_TIMELINE_LANES.find((l) => l.lane === lane)?.label ?? null : null, canAdd, composerOpen, showAll: () => setLane(null), openComposer: () => setComposerOpen(true), swear: acts?.swearStatement ? () => acts.swearStatement!(todayYmd) : undefined })} />
         </div>
       ) : null}
       {timeline.past.length ? (
@@ -271,6 +275,7 @@ function ComposerForm({ look, todayYmd, acts, btn, deadlines, onClose }: { look:
         {both ? (
           <button type="button" data-legal-composer-kind={kind} onClick={() => setOverride(kind === 'plan' ? 'event' : 'plan')} title="The day decides; press to change it" style={{ font: 'inherit', fontSize: '0.68rem', fontWeight: 600, padding: '2px 8px', borderRadius: 999, background: look.band, color: kind === 'plan' ? look.accent : look.muted, border: `1px solid ${look.hair}`, cursor: 'pointer', whiteSpace: 'nowrap' }}>{kind === 'plan' ? 'planned step' : 'happened'}</button>
         ) : null}
+        {acts.swearStatement ? <button type="button" data-legal-composer-swear onClick={() => { acts.swearStatement!(draft.on); onClose() }} title="A sworn statement or a declaration, drafted in its own window on the day typed here" style={{ ...btn, height: 24, fontSize: '0.7rem' }}>Swear a statement…</button> : null}
       </div>
       {both ? <div style={{ fontSize: '0.72rem', color: look.faint, marginTop: -2 }}>{kind === 'plan' ? 'A day ahead of today makes this a planned step. Tap the tag to change it.' : 'Today or earlier records what happened. Tap the tag to change it.'}</div> : null}
       <textarea aria-label={kind === 'plan' ? 'Notes' : 'Event notes'} value={draft.notes} rows={draft.notes.length > 90 ? 3 : 1} placeholder={kind === 'plan' ? 'Who does it, what goes with it, what happens if they do not answer' : 'Who was there, what was said, what it changes'} onChange={(e) => setDraft({ ...draft, notes: e.target.value })} style={{ ...input, resize: 'vertical' }} />
@@ -399,6 +404,9 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
   const struck = item.voided || item.held
   const input = inputStyle(look)
   const canEdit = Boolean(acts?.update) && item.isLivePlan
+  // v2.6210 (punch list #220): a statement opens in its window — Edit while a draft, Open once signed; a draft nobody signs is dropped with Not signed….
+  const canOpenStatement = item.kind === 'statement' && Boolean(acts?.editStatement) && !item.voided
+  const isStatement = item.kind === 'statement'
   const canDone = Boolean(acts?.markDone) && item.isLivePlan
   const canHold = Boolean(acts?.hold) && (item.kind === 'plan' || item.kind === 'event' || item.kind === 'said' || item.kind === 'statement' || (item.kind === 'entry' && item.entryKind === 'offer')) && !item.voided
   const holdKey = timelineHoldKey(item)
@@ -455,20 +463,21 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
         ) : null}
         {mode === 'undo' && acts?.undo ? (
           <form data-legal-plan-undo onSubmit={(e) => { e.preventDefault(); if (reason.trim()) void acts.undo!(item.entryId ?? '', reason.trim()).then((ok) => { if (ok) close() }) }} style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
-            <input autoFocus aria-label="Why undo it" value={reason} placeholder={reader === 'office' ? 'Why: the firm reads the reason' : 'Why: the office reads the reason'} onChange={(e) => setReason(e.target.value)} style={{ ...input, flex: '1 1 220px' }} />
-            <button type="submit" disabled={acts.busy || !reason.trim()} style={{ ...btn, color: look.stop }}>Undo</button>
+            <input autoFocus aria-label="Why undo it" value={reason} placeholder={isStatement ? 'Why: would not sign the September paragraph' : reader === 'office' ? 'Why: the firm reads the reason' : 'Why: the office reads the reason'} onChange={(e) => setReason(e.target.value)} style={{ ...input, flex: '1 1 220px' }} />
+            <button type="submit" disabled={acts.busy || !reason.trim()} style={{ ...btn, color: look.stop }}>{isStatement && item.state !== 'happened' ? 'Drop the draft' : 'Undo'}</button>
             <button type="button" onClick={close} style={btn}>Cancel</button>
           </form>
         ) : null}
         {mode === null ? (
-          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: canEdit || canDone || canHold || canUndo || canRecord || canOpenPaper || (item.kind === 'document' && onOpenEvidence) || (item.held && acts?.hold) ? 6 : 0 }}>
+          <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginTop: canEdit || canOpenStatement || canDone || canHold || canUndo || canRecord || canOpenPaper || (item.kind === 'document' && onOpenEvidence) || (item.held && acts?.hold) ? 6 : 0 }}>
             {item.state === 'overdue' && canDone ? <button type="button" data-legal-timeline-done-first onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={{ ...btn, background: look.text, color: look.surface, borderColor: look.text }}>Mark done</button> : null}
             {canRecord ? <button type="button" data-legal-timeline-record onClick={() => onOpenLienWindow!(item.deadlineJobId!)} style={btn} title="Opens the job’s Lien window, where the paper is recorded">Record it…</button> : null}
             {canEdit ? <button type="button" onClick={() => setMode('edit')} style={btn}>Edit</button> : null}
+            {canOpenStatement ? <button type="button" data-legal-statement-open onClick={() => acts!.editStatement!(item.entryId ?? '')} style={btn}>{item.state === 'happened' ? 'Open' : 'Edit'}</button> : null}
             {canDone && item.state !== 'overdue' ? <button type="button" onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={btn}>Mark done</button> : null}
             {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title={item.kind === 'event' ? 'Keep this event from the firm, with a reason only the office reads' : item.kind === 'statement' ? 'Keep this statement from the firm, with a reason only the office reads' : 'Keep this planned step from the firm, with a reason only the office reads'}>Hold from counsel…</button> : null}
             {item.held && acts?.hold && holdKey ? <button type="button" onClick={() => void acts.hold!.shareAgain(holdKey)} disabled={acts.busy} style={btn}>Share with counsel</button> : null}
-            {canUndo ? <button type="button" onClick={() => setMode('undo')} style={btn}>Undo…</button> : null}
+            {canUndo ? <button type="button" onClick={() => setMode('undo')} style={btn}>{isStatement && item.state !== 'happened' ? 'Not signed…' : 'Undo…'}</button> : null}
             {canOpenPaper ? <button type="button" data-legal-timeline-open-paper aria-busy={opening || undefined} onClick={() => void openPaper()} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the file itself in a new browser tab; the Timeline stays">Open the paper</button> : null}
             {item.kind === 'document' && onOpenEvidence ? <button type="button" data-legal-timeline-show-evidence onClick={() => onOpenEvidence(item.documentId)} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the Evidence tab on this paper’s row, lit">Show on Evidence ↗</button> : null}
           </div>

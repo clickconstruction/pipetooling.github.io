@@ -8,6 +8,7 @@ import { useState, type ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { BID_STATUS_COLOR, bidMoney, bidStatusWord, jobOpenOnBill, type MemberBid, type MemberJob } from '../../lib/developments/overview'
 import { doneFoldWords, type PieceRow } from '../../lib/developments/pieces'
+import { costBreakdownWords, type SiteCostsRead } from '../../lib/developments/siteCosts'
 import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import type { HistoryPiece } from '../../lib/developments/history'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../../lib/jobsLedgerStatusPipeline'
@@ -38,6 +39,21 @@ export type PiecesProps = {
   busy?: boolean
   /** False for a reader with no money (`readDoor.ts`, v2.6053): no price under a bid, no figure under a job, the Done fold's count alone. True when absent. */
   moneyShown?: boolean
+  /** The jobs' costs (v2.6215), dev and controller only: absent, no column; else the read's state and, once read, a row per job. */
+  costsByJobId?: SiteCostsRead
+}
+
+/** The Costs cell: the parts buckets and the sub labor as one figure, the buckets in the title; faint words with none, while reading, or when a source would not read. */
+function CostCell({ costs, jobId }: { costs: SiteCostsRead; jobId: string }) {
+  if (costs.state === 'reading') return <span style={{ color: 'var(--text-faint)' }}>…</span>
+  if (costs.state === 'failed') return <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }} title="A cost source would not read; the job window has the figure">not read</span>
+  const row = costs.byJobId.get(jobId)
+  if (!row || row.total === 0) return <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>none yet</span>
+  return (
+    <span title={costBreakdownWords(row, money)} style={{ fontWeight: 600, color: 'var(--text-strong)', cursor: 'help' }} data-testid="piece-costs">
+      {money(row.total)}
+    </span>
+  )
 }
 
 function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy, moneyShown }: { bid: MemberBid; label: string; estimator: string | null; open: () => void; unpair?: () => void; putBackOnBoard?: () => void; busy?: boolean; moneyShown: boolean }) {
@@ -197,6 +213,11 @@ export function DevelopmentPieces(props: PiecesProps) {
             <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
               {row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} moneyShown={moneyShown} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : null}
               {row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} moneyShown={moneyShown} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : null}
+              {props.costsByJobId !== undefined && row.job ? (
+                <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
+                  costs <CostCell costs={props.costsByJobId} jobId={row.job.id} />
+                </div>
+              ) : null}
               {!row.bid && !(pairing && row.job) ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no bid here</span> : null}
               {!row.job && !(pairing && row.bid) ? <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)' }}>no job yet</span> : null}
               <div>
@@ -213,7 +234,8 @@ export function DevelopmentPieces(props: PiecesProps) {
             {/* The two record columns get the room: in pair mode each gap cell carries four presses on one row. */}
             <th style={{ ...th, width: '18%' }}>Name</th>
             <th style={{ ...th, width: '27%' }}>Bid</th>
-            <th style={{ ...th, width: '33%' }}>Job</th>
+            <th style={{ ...th, width: props.costsByJobId !== undefined ? '25%' : '33%' }}>Job</th>
+            {props.costsByJobId !== undefined ? <th style={{ ...th, width: '8%' }}>Costs</th> : null}
             <th style={{ ...th, width: anyWaiting ? '12%' : '22%' }}>Plans</th>
             {anyWaiting ? <th style={{ ...th, width: '10%' }}>Waiting on</th> : null}
           </tr>
@@ -241,6 +263,13 @@ export function DevelopmentPieces(props: PiecesProps) {
               </td>
               <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} moneyShown={moneyShown} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>
               <td style={td}>{row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} moneyShown={moneyShown} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : <span style={{ color: 'var(--text-faint)' }}>no job yet</span>}</td>
+              {props.costsByJobId !== undefined && row.job ? (
+                <td style={td}>
+                  <CostCell costs={props.costsByJobId} jobId={row.job.id} />
+                </td>
+              ) : props.costsByJobId !== undefined ? (
+                <td style={td} />
+              ) : null}
               <td style={td}>
                 <PlansCell row={row} />
               </td>

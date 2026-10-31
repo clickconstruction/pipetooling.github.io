@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { DatabaseError } from '../../utils/errorHandling'
 import { pressProblem, recordsOfContacts, supabaseFollowUpIo } from './followUpIo'
 
@@ -187,5 +187,28 @@ describe('pressProblem', () => {
   it('leaves a policy’s refusal and anything else to the house’s words', () => {
     expect(pressProblem(refusal('42501', 'new row violates row-level security policy for table "messages"'))).toBe("You don't have permission to take a conversation.")
     expect(pressProblem(new Error('boom'))).toBe('boom')
+  })
+})
+
+describe('a hand-off pings the person (v2.6228)', () => {
+  it('calls messages-notify with the conversation after hand_to, never for a put-back, and stands when the push fails', async () => {
+    const { client, calls } = fakeClient({}, { data: null })
+    const invoke = vi.fn(async () => ({ data: { success: true }, error: null }))
+    ;(client as unknown as { functions: unknown }).functions = { invoke }
+    const io = supabaseFollowUpIo(client)
+    await io.handTo('c1', 'u-wendi')
+    await Promise.resolve()
+    expect(calls.map((c) => c.fn)).toContain('hand_to')
+    expect(invoke).toHaveBeenCalledWith('messages-notify', { body: { handed: { contact_id: 'c1' } } })
+    await io.handTo('c1', null)
+    await Promise.resolve()
+    expect(invoke).toHaveBeenCalledTimes(1)
+    ;(client as unknown as { functions: unknown }).functions = { invoke: vi.fn(async () => Promise.reject(new Error('no push'))) }
+    await expect(io.handTo('c1', 'u-rosa')).resolves.toBeUndefined()
+  })
+
+  it('a client with no functions door hands on and pings nobody', async () => {
+    const { client } = fakeClient({}, { data: null })
+    await expect(supabaseFollowUpIo(client).handTo('c1', 'u-wendi')).resolves.toBeUndefined()
   })
 })

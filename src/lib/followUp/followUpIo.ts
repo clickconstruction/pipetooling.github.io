@@ -170,6 +170,16 @@ async function loadJobStates(db: SupabaseClient, jobs: readonly ContactJobRow[])
 }
 
 /** Follow up's reads and presses on a client: the app's own unless a test hands it another. */
+/** The hand-off's ping (v2.6228): `{ handed: { contact_id } }` to messages-notify as the user. A client with no functions door (a smoke's fake) pings nobody. */
+async function pingHanded(db: SupabaseClient, contactId: string): Promise<void> {
+  try {
+    const fns = (db as unknown as { functions?: { invoke?: (name: string, opts: { body: unknown }) => Promise<unknown> } }).functions
+    if (fns?.invoke) await fns.invoke('messages-notify', { body: { handed: { contact_id: contactId } } })
+  } catch {
+    // A push that fails changes nothing on the thread.
+  }
+}
+
 export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
   // The cut 1 and cut 2 tables join the generated types with the lead's types PR; until then the client is untyped.
   const db = client as SupabaseClient
@@ -242,6 +252,9 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
     },
     async handTo(contactId, userId) {
       await call('hand_to', { p_contact_id: contactId, p_user_id: userId }, 'hand a conversation on')
+      // The person it went to hears (v2.6228): a push through messages-notify, which checks the hand is fresh and the
+      // caller's and skips a hand to oneself. Fail-soft and not awaited: the hand stands whether or not the push goes.
+      if (userId) void pingHanded(db, contactId)
     },
     async setState(contactId, state) {
       return (await call<string | null>('set_state', { p_contact_id: contactId, p_state: state }, 'change a conversation')) ?? null

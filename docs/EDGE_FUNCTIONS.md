@@ -901,6 +901,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 
 ### dev-mcp
 
+> **v2.6239 (server 0.12.1) — a Drive refusal names its fix**: when `apply_file_plans`' Drive leg fails, the reply comes from `driveFilingRefusal` in `_shared/devMcpWrites.ts` (tested in `src/lib/devMcp/devMcpWrites.test.ts`): Drive's reason, then for a permission refusal the service account (its `client_email`), the division folder and the share that fixes it (Editor, Content manager on a Shared Drive); for storage quota the Shared Drive move or `DRIVE_IMPERSONATE_USER`; for a 404 that the account cannot see the folder; for a rate limit a wait. Every branch keeps the by-hand door (drop the file in, press Find the folder) and says the same plan applies again. Found live 2026-10-31 on ZZ bid b566, where the old words said only *Drive refused the filing*. Redeploy after the merge.
+
 > **v2.6187 (server 0.12.0) — a twin setup code from the dev seat**: `mint_twin_setup_code({ label, twin?, rounds? })` POSTs `twin-setup` `action: mint` as the dev — the ten-minute, single-use code *Set up on this Mac* makes (dev-for-any-twin and ten per ten minutes enforced there; `twin_setup_codes` keeps the minter and the redeeming Mac). The reply is the code and the redeem command, `python3 scripts/twin/redeem_setup_code.py <code>`, which mints the key server-side and writes it to `~/pt-twin-digest/twin.token` (mode 600); the key never comes back through this door. Refused through `view_as`; the one write outside the plan→apply grammar. **Redeploy** after the merge.
 
 > **v2.6185 (server 0.11.0) — a plan set into Drive and onto the bid**: `plan_file_plans(plans)` / `apply_file_plans(plans, plan_hash)` POST `dev_bid_write` with action `file_plans` (the RPC shipped with v2.6183): `plans = { bid, file_name, size_bytes, sha256, replace?, set_name?, memo? }`. The bytes never ride in a tool call: the plan's reply carries `upload_url`, a one-shot signed upload (two hours) into `bid-submittals/<bid>/robot-plans/<sha16>.pdf` made as the dev, and the curl line; apply reads the staged copy back, refuses a size or sha256 that differ from the plan, a non-PDF or more than 200 pages, copies it into Drive under the bid's division folder in a folder named for the project (`_shared/bidPlansFolders.ts`, the folders the bid form's Find looks in; the intake service account, `DRIVE_IMPERSONATE_USER` honoured; a same-name file is reused), POSTs the RPC with `p_link = { folder_link, file_link, pages }` (`bids.plans_link` = the folder link, a `bid_plan_sets` row named for the set), removes the staged copy and runs plan-fetch's `probe=1`. The reply carries the Drive links, the page count, the probe and the next step; a Drive refusal keeps the staged copy and says why. `WRITE_VERBS` is nineteen verbs over eight RPCs. **Deploy after v2.6183's migration is pushed.**
@@ -3246,6 +3248,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-notification
 
+> **v2.6240 — `deno check` passes again**: handing the service-role client to `readReportSubject` ran TypeScript past its instantiation limit (TS2589), since checking supabase-js's client against [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)'s structural chain resolves its `eq` over a plain string column. The read takes anything with a `from` now (`ReportSubjectDb`) and reads it through the chain inside. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.6217 — through each person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`). The answer gains `held`. **Redeploy** once merged.
 
 > **v2.6127 — a report on a ZZ test job reaches no phone**: right after the report is read, its job, project or bid is read by name (`readReportSubject`, [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)), and when the name — or the job's customer's name — starts with ZZ ([`_shared/zzTestJob.ts`](../supabase/functions/_shared/zzTestJob.ts), the one rule the Pipeline hides ZZ jobs by, which `src/lib/jobs/zzTestJobSweep.ts` re-exports) the function answers `{ success: true, message: 'ZZ test job: nothing sent', push_sent: 0, skipped: 'zz_test_job' }` before it reads a preference. A session's walk on a ZZ job (`AGENTS.md` → ZZ test rows need no approval) used to buzz every phone opted in for that kind of report. **Redeploy required.**
@@ -3277,6 +3281,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 ---
 
 ### send-report-email
+
+> **v2.6240 — `deno check` passes again**: handing the service-role client to `readReportSubject` ran TypeScript past its instantiation limit (TS2589), since checking supabase-js's client against [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)'s structural chain resolves its `eq` over a plain string column. The read takes anything with a `from` now (`ReportSubjectDb`) and reads it through the chain inside. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.6127 — a report on a ZZ test job reaches no inbox**: `auto` reads the report's job, project or bid by name first (`readReportSubject`, [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)) and answers `{ ok: true, sent: 0, skipped: 'zz_test_job', message: 'ZZ test job: nothing sent' }` when the name, or the job's customer's name, starts with ZZ ([`_shared/zzTestJob.ts`](../supabase/functions/_shared/zzTestJob.ts)) — before it reads a subscription, so the every-report subscription gets nothing and no dispatch row is written; `manual` leaves such reports out of **Send now** and counts them (`skippedTestJobs`), which the person's editor says. The job display on the email comes from the same read, as before. **Redeploy required.**
 
@@ -3353,6 +3359,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ### notify-lien-approval
 
+> **v2.6240 — `deno check` passes again**: the `item` the function reads was annotated with the columns its branches share, and the pen-record words read `item.signed_witness_how`, which the annotation did not name (TS2339). It names it now. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.6217 — through each leader's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); a held leader is not emailed for it either, since the Needs you card carries the notice, and the email fallback is unchanged for a leader on with no device. The answer gains `held`. **Redeploy** once merged.
 
 **Purpose** (v2.4872): the leader's phone buzzes when the office sends a lien notice for his approval. The Lien desk's **Send for approval** calls it right after `submitLienDeskItem` lands the item in *Awaiting approval* (never after a standing rule approved or held it). Before this the pile count went up and nobody was told.
@@ -3393,6 +3401,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ### messages-notify
 
+> **v2.6228 — a hand-off pings the person it went to**: a fourth body, `{ "handed": { "contact_id": "<contacts.id>" } }`, as the user, right after `hand_to` (`followUpIo.handTo`). The function refuses unless the thread's `has_how` is `handed` to someone other than the caller within the last 15 minutes (`handedFresh`) and the caller wrote an event line on it in that time (the hand's own); it builds the words itself ([`src/lib/messages/handedPush.ts`](../src/lib/messages/handedPush.ts), mirrored: *Rosa handed you Dale Ferris*, the newest line in, the thread at it), keeps the person's push hours (`pushDecision` over `pushHoursFor`, a held row with no push), sends through the same `pushToPerson` as a reply's push and records one `notification_history` row as `message_handed`. Answers `{ pushed, held, devices }`. **Redeploy required.**
+
 > **v2.6029 — a push outside a person's hours waits for them, and the office hears at once when the holder is off** (punch list #141 PR 3): a reply's push reads every row of `user_push_hours` once per run (fail-soft: no table yet, or a row that does not read, is any time) and the planner holds whoever is off (`pushDecision` in `messages/pushHours.ts`, now in the copy): a held person gets a `notification_history` row with `channel = 'held'` (migration `20261028210000`) and no push, and the line is never pushed to them later. When whoever has the reply is off at the line's time, the office hears at once as `message_reply_off`, *Dana wrote to Luis, who is off until 6 AM.* then her words. A push to the office that is the Customers seat alone, the seat off, widens to the office roles who are on. The answer gains `held`. **Redeploy** once merged, after `20261028200000` and `20261028210000` are pushed, in that order.
 
 > **v2.5728 — the walk kit's thread pushes the devs alone** (punch list #142 PR 6): a reply's push reads `walk_kit_v1` once per run (`_shared/walkKit.ts`) and a line on the kit's contact pushes the real dev accounts at once, as one `message_reply`, never the holder, the office's wait push or the after-hours push (`notifyPlan.ts`'s kit branch, `kit` and `devs` on its input). Nothing changes while no kit is set up. **Redeploy** once merged.
@@ -3413,6 +3423,10 @@ One of:
 
 ```json
 { "proposal_ids": ["<contract_clause_proposals.id>", "…"] }
+```
+
+```json
+{ "handed": { "contact_id": "<contacts.id>" } }
 ```
 
 ```json
