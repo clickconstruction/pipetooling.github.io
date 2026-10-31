@@ -144,7 +144,9 @@ describe('DraftPayrollModal with the bars', () => {
     expect(within(paco).getByTitle('$872.00 still owed on the report (its net less what is paid)')).toBeTruthy()
     const rosa = screen.getByTestId('draft-payroll-row-bar-Rosa Sample')
     expect(within(rosa).getByText('no report yet')).toBeTruthy()
-    expect(screen.getAllByText('est.')).toHaveLength(1)
+    // No est. chip (the owner, 2026-10-30): the pill says it, the hover keeps the words.
+    expect(screen.queryByText('est.')).toBeNull()
+    expect(screen.getByTitle(/estimate from the hours and the wage/)).toBeTruthy()
     // salary 8h sits under the $ figure, not beside the name (the owner, 2026-10-30).
     const salary = screen.getByText('salary 8h')
     expect(salary.closest('td')?.querySelector('[data-draft-payroll-money]')).toBeTruthy()

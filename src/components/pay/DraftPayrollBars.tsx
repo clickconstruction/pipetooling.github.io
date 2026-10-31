@@ -3,8 +3,6 @@ import { MONEY_BAR_TONE } from '../../lib/jobs/jobMoneyBar'
 import { formatCurrency } from '../../lib/format'
 import { SALARY_FLAT_HOURS_CHIP, SALARY_FLAT_HOURS_TITLE } from '../../lib/people/approvalsSessionChips'
 import {
-  ESTIMATE_CHIP,
-  ESTIMATE_CHIP_TITLE,
   SALARY_FLAT_HOURS_SHORT_CHIP,
   pendingDotTitle,
   pendingDotWords,
@@ -122,24 +120,15 @@ const CHIP: CSSProperties = {
 }
 
 /** The $ column's figure with the cents drawn smaller (the owner, 2026-10-30): *$1,200* and a lighter *.00*. */
-export function DraftPayrollMoney({ amount }: { amount: number }) {
+export function DraftPayrollMoney({ amount, title }: { amount: number; title?: string }) {
   const whole = formatCurrency(amount)
   const dot = whole.lastIndexOf('.')
   const dollars = dot >= 0 ? whole.slice(0, dot) : whole
   const cents = dot >= 0 ? whole.slice(dot) : ''
   return (
-    <span data-draft-payroll-money style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+    <span data-draft-payroll-money title={title} style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
       ${dollars}
       {cents ? <span style={{ fontSize: '0.72em', color: 'var(--text-muted)' }}>{cents}</span> : null}
-    </span>
-  )
-}
-
-/** *est.* beside a figure that is a live estimate from the hours. */
-export function DraftPayrollEstChip() {
-  return (
-    <span data-draft-payroll-est title={ESTIMATE_CHIP_TITLE} style={{ ...CHIP, background: 'var(--bg-subtle)', border: '1px solid var(--border-strong)', color: 'var(--text-muted)', fontStyle: 'italic' }}>
-      {ESTIMATE_CHIP}
     </span>
   )
 }

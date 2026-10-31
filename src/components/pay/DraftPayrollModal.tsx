@@ -25,9 +25,9 @@ import { isoWeekNumberFromGregorianYmd, localCalendarDayKey, ymdAddDays } from '
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { lastPayStubPaymentPaidAt } from '../../lib/payStubPayments'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { draftPayrollBars, pendingChipTitle, pendingChipWords, type DraftPayrollRowBarInput } from '../../lib/pay/draftPayrollBars'
+import { ESTIMATE_CHIP_TITLE, draftPayrollBars, pendingChipTitle, pendingChipWords, type DraftPayrollRowBarInput } from '../../lib/pay/draftPayrollBars'
 import { ShapeSwitch, SideBySide, useShapeView } from '../prototypes/SideBySide'
-import { DraftPayrollEstChip, DraftPayrollMoney, DraftPayrollPendingDot, DraftPayrollPeriodBar, DraftPayrollRowBarCell, DraftPayrollSalaryChip } from './DraftPayrollBars'
+import { DraftPayrollMoney, DraftPayrollPendingDot, DraftPayrollPeriodBar, DraftPayrollRowBarCell, DraftPayrollSalaryChip } from './DraftPayrollBars'
 
 /** The per-person switch's key (punch list #217, people-docs-1): `pt-shape-view:draft-payroll-bars:<userId>`. */
 export const DRAFT_PAYROLL_BARS_SHAPE_KEY = 'draft-payroll-bars'
@@ -758,8 +758,8 @@ export function DraftPayrollModal({
                             )}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            {rowBar ? <DraftPayrollMoney amount={draftPayrollRowCashDue(stub?.gross_pay, estGross)} /> : `$${formatCurrency(draftPayrollRowCashDue(stub?.gross_pay, estGross))}`}
-                            {rowBar?.estimated ? <DraftPayrollEstChip /> : null}
+                            {/* No est. chip (the owner, 2026-10-30: "drop it"): the no-report-yet pill says it; the hover keeps the words. */}
+                            {rowBar ? <DraftPayrollMoney amount={draftPayrollRowCashDue(stub?.gross_pay, estGross)} title={rowBar.estimated ? ESTIMATE_CHIP_TITLE : undefined} /> : `$${formatCurrency(draftPayrollRowCashDue(stub?.gross_pay, estGross))}`}
                             {rowBar?.salaryFlat ? <DraftPayrollSalaryChip /> : null}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
