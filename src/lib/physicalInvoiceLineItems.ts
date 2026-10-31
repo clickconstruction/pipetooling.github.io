@@ -1,6 +1,7 @@
 import { billPaymentSlices, type AttributionBill } from './jobs/paymentAttribution'
 import type { Database } from '../types/database'
 import { buildScaledFixtureLineDrafts } from './physicalInvoiceFixtureScaling'
+import { progressBillShare, type ProgressBillShare } from './physicalInvoiceShare'
 import { PORTAL_GENERIC_PAYMENT_METHOD, portalPaymentMethodLabel } from './portal/portalJobGroups'
 import { APP_CALENDAR_TZ } from '../utils/dateUtils'
 import {
@@ -188,6 +189,8 @@ export function resolvePhysicalInvoiceLinePresentation(
   breakdownMatches: boolean
   serviceLines: PhysicalInvoiceServiceLine[]
   materialLines: PhysicalInvoiceMaterialLine[]
+  /** Punch list #217, outside-1: when the service lines were scaled from the contract's, each beside the line it came from. */
+  share?: ProgressBillShare | null
 } {
   const billRounded = Math.round(billDollars * 100) / 100
   const materialLines = buildMaterialLinesFromMaterials(materials)
@@ -289,11 +292,15 @@ export function resolvePhysicalInvoiceLinePresentation(
   const rawMaterials = materialLines
   const naturalBillMatch = fixtureMaterialTotalMatchesBill(billRounded, rawServices, rawMaterials)
   const breakdownMatches = naturalBillMatch && !scaled.proportionalScalingUsed
+  // The lines the scaling spread the bill over, for the paper that says so (a discounted job's are its net-priced rows).
+  const contractLines = hasDiscounts ? buildBillableServiceLinesFromFixtures(netPricedRows(allFixtures ?? fixtures, fixtures)) : rawServices
+  const share = scaled.proportionalScalingUsed ? progressBillShare(contractLines, serviceLines) : null
 
   return {
     breakdownMatches,
     serviceLines,
     materialLines,
+    share,
   }
 }
 

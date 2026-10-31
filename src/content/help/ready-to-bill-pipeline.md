@@ -175,6 +175,8 @@ You press {{button:blue|Bill Customer}}. The modal opens on **Stripe bill**. It 
 
 - **Stripe bill**: creates and sends a hosted Stripe invoice by email. This is the standard path. Payment status syncs back automatically.
 - **Physical invoice**: a mailed paper invoice, with a date and optional memo. Next to the on-screen invoice preview sit two check-before-you-send buttons. {{button:outline|Preview}} opens the PDF in a new tab. {{button:outline|Preview email}} opens the exact email the customer will receive, without sending anything. That is the subject, body, and the payment-history card.
+
+A bill that is part of the job prints the job's lines scaled to the bill. We are trying a new shape for that paper. It says once what share of the contract the bill is. Each line shows the contract line with its count beside this bill's share. See it on [What customers see](/help/see-what-customers-see#open-a-step-large) with {{button:outline|Side by side}}.
 - **▾**: reveals **HouseCall Pro**, which records a bill you sent through HCP. The form says so on its face. It reads *Records the bill as sent through HouseCall Pro — ClickTooling emails nobody*. Nothing leaves the app on this channel. The job moves to Billed Awaiting Payment and the customer sees nothing from here. It is tucked away on purpose. Most billing should go through Stripe.
 
 A job needs a linked customer before it can be billed. For Stripe the customer needs an email. The modal guides you if something is missing.
