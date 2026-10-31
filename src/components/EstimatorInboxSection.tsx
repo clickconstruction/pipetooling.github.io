@@ -15,6 +15,7 @@ import { RequestPrioritySheet } from './RequestPrioritySheet'
 import { isCustomerWaiting, portalKindLabel, type RequestPriority } from '../lib/requestPriority'
 import { parsePortalRequestPayload } from '../lib/portalRequestPayload'
 import { ageChipStyle, describeAge, ESTIMATOR_REQUEST_AGE } from '../lib/ageState'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 export type EstimatorInboxRow = {
   id: string
@@ -622,8 +623,8 @@ export function EstimatorInboxSection({
                                     transition: dispatchBtnTransition,
                                     ...(dispatchRowSaving
                                       ? {
-                                          background: '#d1d5db',
-                                          color: 'white',
+                                          background: DEAD_PRESS_FILL,
+                                          color: DEAD_PRESS_TEXT,
                                           cursor: 'not-allowed',
                                         }
                                       : hasDispatchNoteContent
@@ -665,8 +666,8 @@ export function EstimatorInboxSection({
                                     transition: dispatchBtnTransition,
                                     ...(dispatchRowSaving
                                       ? {
-                                          background: '#d1d5db',
-                                          color: 'white',
+                                          background: DEAD_PRESS_FILL,
+                                          color: DEAD_PRESS_TEXT,
                                           cursor: 'not-allowed',
                                         }
                                       : hasDispatchNoteContent

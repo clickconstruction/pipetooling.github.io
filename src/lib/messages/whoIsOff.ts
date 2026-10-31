@@ -64,8 +64,9 @@ export function offPillTip(off: ThreadOff): string {
 
 // ---------- the Office hours card's coverage line ----------
 
-/** Someone in the office, with their hours: null is any time. */
+/** Someone in the office, with their hours: null is any time. The id is for the grid's row press (v2.6154). */
 export interface CoverageMember {
+  id?: string
   name: string
   hours: OfficeHours | null
 }
@@ -124,13 +125,13 @@ export function coverageGaps(members: ReadonlyArray<CoverageMember>): CoverageGa
 }
 
 /** "8 PM", "7:30 AM": a clock from minutes into a day. */
-function clock(m: number): string {
+export function clock(m: number): string {
   const inDay = ((m % DAY) + DAY) % DAY
   return timeWords(`${String(Math.floor(inDay / 60)).padStart(2, '0')}:${String(inDay % 60).padStart(2, '0')}`).replace(':00 ', ' ')
 }
 
 /** "Fri 8 PM": a day and a clock from minutes into the week, wrapping past Saturday. */
-function dayClock(m: number): string {
+export function dayClock(m: number): string {
   return `${DAY_SHORT[Math.floor(m / DAY) % 7]} ${clock(m)}`
 }
 

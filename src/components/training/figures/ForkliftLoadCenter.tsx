@@ -17,7 +17,7 @@ export function ForkliftLoadCenter({ titleId }: FigureProps) {
         <line x1="146" y1="40" x2="146" y2="176" strokeWidth="2" />
         <line x1="146" y1="136" x2="230" y2="136" strokeWidth="4" />
         <rect x="150" y="92" width="60" height="44" fill="var(--bg-blue-tint)" />
-        <circle cx="174" cy="114" r="4" fill="#dc2626" stroke="none" />
+        <circle cx="174" cy="114" r="4" fill="var(--text-red-600)" stroke="none" />
       </g>
       <g stroke="var(--text-muted)" strokeWidth="1" fill="none">
         <line x1="146" y1="50" x2="174" y2="50" />
@@ -29,8 +29,8 @@ export function ForkliftLoadCenter({ titleId }: FigureProps) {
         <text x="150" y="40" fill="var(--text-muted)" fontSize="9.5">load center · 24 in</text>
         <text x="216" y="110" fontSize="9.5">its weight</text>
         <text x="216" y="122" fontSize="9.5">sits here</text>
-        <text x="236" y="152" fill="#991b1b" fontSize="9.5">out at the tips,</text>
-        <text x="236" y="164" fill="#991b1b" fontSize="9.5">the truck tips</text>
+        <text x="236" y="152" fill="var(--text-red-800)" fontSize="9.5">out at the tips,</text>
+        <text x="236" y="164" fill="var(--text-red-800)" fontSize="9.5">the truck tips</text>
         <text x="6" y="196" fill="var(--text-muted)" fontSize="9.5">the rating assumes 24 in; keep the load low while you move</text>
         <text x="6" y="210" fill="var(--text-muted)" fontSize="9.5">an empty truck is top-heavy too, so no speeding up after a drop</text>
       </g>

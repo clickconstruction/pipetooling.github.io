@@ -2,7 +2,7 @@
 name: "Phone first: the five screens a tech touches, with one thumb and a camera"
 number: 189
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day
+status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day, and its one finding was fixed as v2.6126
 summary: >
   A tech's day on the phone is five screens: the Job Mode card with the day's press, the On my
   way sheet, the field report, My Schedule with its percent stepper, and the job window. Walked
@@ -14,10 +14,10 @@ summary: >
   customer's Drive folder as #164 decided, and clock out in one press. #163's waiting bar sits
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
-next: PR 6 can start, since #164's checklist tables are live. PR 7 waits on #163's PR 3, the field report through the queue. One small fix from the camera's live run: Save names no job percent on a report type that files none.
+next: PR 6 can start, since #164's checklist tables are live. PR 7 waits on #163's PR 3, the field report through the queue.
 size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), seven built; one migration, the report photos table; left: PR 6 (S) and PR 7 (S)
 blocker: None for PR 6. PR 7 waits on #163's PR 3.
-ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092
+ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092 · 6126
 opinion: every PR the owner's picks unlocked is built, live and run on a ZZ job; PR 6 can start; PR 7 after #163's PR 3; stay a home screen web app until one of the three triggers fires
 mockup: to-dos/phone-first/mockup.html
 ---
@@ -453,7 +453,9 @@ street and number are made up. The desktop is out of scope.
 
 - **The report form's percent.** Done in PR 5a (v2.6076): the percent opens on the job's number
   and `AdditionalReportModal.render.test.tsx` opens a one-line job at 40%, presses Save with
-  nothing touched and reads 40 on the insert.
+  nothing touched and reads 40 on the insert. A Save in the moment before the seed effect ran
+  filed 0 (three CI runs on 2026-10-30); v2.6132 made the rule the kernel's,
+  `percentFieldValueForSubmit`, read by Save and by the Save button's words alike.
 - **A Needs you line for report photos with no folder.** Decision 4 counted on a line that asks
   the office for a folder link; none exists. One line for the office, *N report photos wait for a
   Drive folder on job 972*, opening the job window's Documents tab where **Make the job's Drive
@@ -461,9 +463,8 @@ street and number are made up. The desktop is out of scope.
 - **Rows no report holds.** A form closed by the app itself (not by Not now) leaves its
   `report_photos` rows and bucket objects with no `report_id`; the sweep never files them. A
   nightly sweep of rows older than a day, or the queue of #163 once the form rides it.
-- **Save on a report type with no percent.** A Note report's Save reads *Save · job 0% · 1 photo*,
-  though it files no percent and the job's stays unset. Save should drop the job's number when the
-  type has no percent field.
+- **Save on a report type with no percent.** Done in v2.6126: a Note or a Walk files no percent, so
+  its Save reads *Save report*, or *Save report · 1 photo*. The live run had read *Save · job 0%*.
 - **The Job Report button in Job Mode.** Done in PR 8 (v2.6092): the pinned row's button leaves
   Job Mode at every width.
 - **The manual Clock In's typed plan.** Decision 5, answered 2026-10-29: it stays.

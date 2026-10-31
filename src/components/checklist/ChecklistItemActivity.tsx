@@ -4,6 +4,7 @@ import { stripStamp, type ChecklistCardEvent } from '../../lib/checklistCardEven
 import { buildManageTimeline, commentTargetInstance, type ManageInstanceLite } from '../../lib/checklistManageActivity'
 import type { DueChangeRow } from '../../lib/checklistDuePushes'
 import { localCalendarDayKey, todayYmdInAppTz } from '../../utils/dateUtils'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** A long-running repeating task can have years of instances — cap the activity fetch. */
 export const ITEM_ACTIVITY_INSTANCE_CAP = 120
@@ -360,8 +361,8 @@ export function ChecklistItemActivity({
                 padding: '0 1rem',
                 borderRadius: 10,
                 border: 'none',
-                background: posting || completing || !draft.trim() ? '#9ca3af' : '#2563eb',
-                color: 'white',
+                background: posting || completing || !draft.trim() ? DEAD_PRESS_FILL : '#2563eb',
+                color: posting || completing || !draft.trim() ? DEAD_PRESS_TEXT : 'white',
                 fontSize: '0.9375rem',
                 fontWeight: 600,
                 cursor: posting || completing || !draft.trim() ? 'not-allowed' : 'pointer',
@@ -381,8 +382,8 @@ export function ChecklistItemActivity({
                   padding: '0 1rem',
                   borderRadius: 10,
                   border: 'none',
-                  background: posting || completing ? '#9ca3af' : '#16a34a',
-                  color: 'white',
+                  background: posting || completing ? DEAD_PRESS_FILL : '#16a34a',
+                  color: posting || completing ? DEAD_PRESS_TEXT : 'white',
                   fontSize: '0.9375rem',
                   fontWeight: 600,
                   cursor: posting || completing ? 'not-allowed' : 'pointer',

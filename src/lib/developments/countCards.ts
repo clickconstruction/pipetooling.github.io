@@ -285,18 +285,23 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
       const total = priced.reduce((s, b) => s + (bidMoney(b) ?? 0), 0)
       const rows = undecided.map((b) => {
         const s = bidStatusWord(b)
-        const words = s === 'sent' ? `sent, ${ageWords(daysSince(b.bid_date_sent, inp.nowMs))}` : s === 'archived' ? `archived ${inp.shortDay(b.working_board_archived_at)}` : 'working'
+        const words = s === 'sent' ? `sent, ${ageWords(daysSince(b.bid_date_sent, inp.nowMs))}` : 'working'
         return bidRow(b, inp, bidMoney(b) == null ? `${words} · not counted` : words)
       })
       if (undecided.length === 0) {
         const won = members.bids.filter((b) => bidStatusWord(b) === 'won')
         const lost = members.bids.filter((b) => bidStatusWord(b) === 'lost')
+        // Archived bids sit apart: put away with no send, they are neither in play nor decided.
+        const archived = members.bids.filter((b) => bidStatusWord(b) === 'archived')
         const c = cap([
           { label: 'Undecided', state: 'none', rows: [] },
           { label: 'Won', state: won.length ? plural(won.length, 'bid') : 'none', rows: won.map((b) => bidRow(b, inp, bidMeta(b, inp))) },
           { label: 'Lost', state: lost.length ? plural(lost.length, 'bid') : 'none', rows: lost.map((b) => bidRow(b, inp, bidMeta(b, inp))) },
+          ...(archived.length ? [{ label: 'Archived', state: plural(archived.length, 'bid'), rows: archived.map((b) => bidRow(b, inp, bidMeta(b, inp))) }] : []),
         ])
-        return { head: members.bids.length ? 'Every bid is decided' : `No bid in ${siteName}`, headMeta: members.bids.length ? plural(members.bids.length, 'bid') : null, groups: c.groups, more: c.more, folded: null, foot: { door: 'bids', label: 'Bid Board ›', note: null }, empty: null }
+        const head = members.bids.length === 0 ? `No bid in ${siteName}` : archived.length ? 'No bid in play' : 'Every bid is decided'
+        const note = archived.length ? `${plural(archived.length, 'archived bid')} ${archived.length === 1 ? 'sits' : 'sit'} apart, not counted` : null
+        return { head, headMeta: members.bids.length ? plural(members.bids.length, 'bid') : null, groups: c.groups, more: c.more, folded: null, foot: { door: 'bids', label: 'Bid Board ›', note }, empty: null }
       }
       const c = cap([{ label: 'Undecided', rows }])
       return {

@@ -1,5 +1,4 @@
 import { useState, type CSSProperties } from 'react'
-import { ChevronRight } from 'lucide-react'
 
 import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 
@@ -7,69 +6,79 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
-import { type LegalSettlementFloor } from '../../../../supabase/functions/_shared/legalSettlement'
-import { floorChipWords, floorControlFromPct, floorControlSave, floorControlSavesWords, floorControlStart, floorControlTypePct, floorControlTypeUsd, floorControlValid, floorTodayWords, type FloorControl } from '../../../lib/legal/settlementFloorControl'
 import { isVoidedEntry } from '../../../../supabase/functions/_shared/legalPortalActs'
 
 import { OFFER_NEXT_STATUSES, isOfferEntry, offerDraftProblem, offerKindWords, offerMetaOf, offerStatusWords, type LegalOfferDraft, type OfferStatus } from '../../../lib/legal/legalOffers'
 
-import { MUTED, btn, btnPrimary, SectionTitle, Table, type EntryLike } from './legalDeskShared'
+import { MUTED, btn, btnPrimary, pill, Table, type EntryLike } from './legalDeskShared'
+import { counselReadDraftProblem, counselReadFacts, counselReadLine, counselTriesWords, type CounselRead, type CounselReadDraft, type CounselTries } from '../../../lib/legal/counselRead'
+import { moneyBarDayWords } from '../../../lib/legal/moneyBars'
 import { EmptyState } from '../../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../../lib/emptyWords'
 
 /**
- * The With-the-firm panels (v2.5852, the split): the settlement floor editor, the offers log, a settlement ask's
- * answer, and the undo and voided-text pieces the tabs share. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182).
+ * The With-the-firm panels (v2.5852, the split): the attorney's read of how the case tries (punch list #218 PR 2), the
+ * offers log, a settlement ask's answer (an ask from before v2.6170 retired the floor), and the undo and voided-text pieces the tabs share. Split out of `LegalDesk.tsx` (`LegalDeskModal.tsx` until punch list #182).
  */
-export function SettlementFloorEditor({ floor, balance, busy, onSave }: { floor: LegalSettlementFloor | null; balance: number; busy: boolean; onSave: (amount: number | null, pct: number | null) => Promise<void> }) {
-  const [open, setOpen] = useState(false)
-  const [ctl, setCtl] = useState<FloorControl>(() => floorControlStart(floor, balance))
-  const start = () => { setCtl(floorControlStart(floor, balance)); setOpen(true) }
-  const valid = floorControlValid(ctl)
-  const save = async () => { const plan = floorControlSave(ctl); await onSave(plan.amount, plan.pct); setOpen(false) }
-  const chip: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-strong)', background: open ? 'var(--bg-muted)' : 'var(--surface)', color: 'var(--text)', font: 'inherit', fontWeight: 600, cursor: 'pointer' }
-  // Longhands, not the `border` shorthand with a `borderColor` over it: the box flips between the two styles and React warns on the mix (v2.5780).
-  const box: CSSProperties = { font: 'inherit', fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', padding: '2px 6px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', textAlign: 'right' }
-  const boxOn: CSSProperties = { ...box, borderColor: '#2563eb' }
+/**
+ * The attorney's read of how the case tries (punch list #218 PR 2): the current read as a chip with whose it is, the
+ * day, the why and the facts; *Record the read…* (or *Change the read…*) opens the form — easy or hard, the costs
+ * to try it, the months to a judgment, why — and *Save the read* writes the same note entry the firm writes from its
+ * portal. Undo is the entry's, on the matter's table.
+ */
+export function CounselReadPanel({ read, busy, onSave }: { read: CounselRead | null; busy: boolean; onSave: (d: CounselReadDraft) => Promise<boolean> }) {
+  const [draft, setDraft] = useState<CounselReadDraft | null>(null)
+  const problem = draft ? counselReadDraftProblem(draft) : null
+  const dayWords = (ymd: string) => moneyBarDayWords(ymd) || ymd
+  const input: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 7px', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', minWidth: 0 }
+  const start = () => setDraft({ tries: read?.tries ?? '', why: '', costText: read?.costToTry != null ? String(read.costToTry) : '', monthsText: read?.months != null ? String(read.months) : '' })
+  // Empty words (punch list #184): the panel's own door, offered again while no form is open.
+  const noRead = emptyWords({ kind: 'make', noun: 'read of the case', control: 'Record the read…' })
+  const save = async () => {
+    if (!draft || problem) return
+    if (await onSave(draft)) setDraft(null)
+  }
+  const triesButton = (t: CounselTries, label: string) => (
+    <button type="button" aria-pressed={draft?.tries === t} onClick={() => draft && setDraft({ ...draft, tries: t })} style={draft?.tries === t ? btnPrimary : btn}>{label}</button>
+  )
+  const facts = read ? counselReadFacts(read) : ''
   return (
-    <div data-legal-settlement-floor-editor>
-      <SectionTitle>Settlement authority</SectionTitle>
-      <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
-        <span>The firm may settle at</span>
-        <button type="button" onClick={() => (open ? setOpen(false) : start())} aria-expanded={open} aria-label={`Settlement floor: ${floorChipWords(floor, formatLegalMoney)}. Change it`} style={chip} data-legal-floor-chip>
-          {floorChipWords(floor, formatLegalMoney)}
-          <ChevronRight size={13} aria-hidden style={{ transform: open ? 'rotate(90deg)' : 'none', transition: 'transform 120ms' }} />
-        </button>
-        <span style={MUTED}>{floorTodayWords(floor, balance, formatLegalMoney)}</span>
+    <div data-legal-counsel-read-panel style={{ margin: '0 0 14px', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, display: 'grid', gap: 8 }}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <b style={{ fontSize: '0.86rem' }}>How this case tries</b>
+        <span style={{ ...MUTED, fontSize: '0.78rem' }}>the attorney’s read · easy or hard, the costs to try it, the months to a judgment · the firm records it on its portal</span>
+        {!draft ? <button type="button" onClick={start} style={{ ...btn, marginLeft: 'auto' }} data-legal-read-add>{read ? 'Change the read…' : 'Record the read…'}</button> : null}
       </div>
-      {open ? (
-        <div
-          onKeyDown={(e) => { if (e.key === 'Escape') { e.stopPropagation(); setOpen(false) } }}
-          style={{ margin: '8px 0 0', padding: '10px 12px', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--bg-muted)', maxWidth: 520 }}
-          data-legal-floor-panel
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap', marginBottom: 6, fontSize: '0.84rem' }}>
-            <input type="text" inputMode="numeric" value={ctl.pctText} onChange={(e) => setCtl(floorControlTypePct(ctl, e.target.value, balance))} placeholder="0" aria-label="Settlement floor, percent of the balance" style={{ ...(ctl.unit === 'pct' ? boxOn : box), width: 52 }} />
-            <span style={{ fontWeight: 600 }}>%</span>
-            <span style={MUTED}>or</span>
-            <span style={{ fontWeight: 600 }}>$</span>
-            <input type="text" inputMode="decimal" value={ctl.usdText} onChange={(e) => setCtl(floorControlTypeUsd(ctl, e.target.value, balance))} placeholder="0.00" aria-label="Settlement floor in dollars" style={{ ...(ctl.unit === 'usd' ? boxOn : box), width: 110 }} />
-            <span style={MUTED}>of {formatLegalMoney(balance)}</span>
-          </div>
-          <input type="range" min={0} max={100} step={1} value={ctl.pct} onChange={(e) => setCtl(floorControlFromPct(Number(e.target.value), balance))} aria-label="Settlement floor slider" autoFocus style={{ width: '100%', accentColor: '#2563eb' }} />
-          <div style={{ ...MUTED, display: 'flex', justifyContent: 'space-between', fontSize: '0.68rem' }}><span>Any amount</span><span>50%</span><span>The full balance</span></div>
-          <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
-            <button type="button" disabled={busy || !valid} onClick={() => void save()} style={btnPrimary}>Save</button>
-            <button type="button" disabled={busy} onClick={() => setOpen(false)} style={btn}>Cancel</button>
-            <span style={{ ...MUTED, fontSize: '0.74rem' }} data-legal-floor-saves>{floorControlSavesWords(ctl, formatLegalMoney)}</span>
-          </div>
+      {read ? (
+        <div data-legal-counsel-read style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', fontSize: '0.84rem' }}>
+          {pill(counselTriesWords(read.tries), read.tries === 'hard' ? 'warn' : 'ok')}
+          <span>{counselReadLine(read, dayWords, 'office')}</span>
+          {facts ? <span style={MUTED}>{facts}</span> : null}
         </div>
       ) : null}
+      {draft ? (
+        <form data-legal-read-form onSubmit={(e) => { e.preventDefault(); void save() }} style={{ display: 'grid', gap: 6, padding: '8px', border: '1px dashed var(--border-strong)', borderRadius: 6 }}>
+          <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.78rem' }}>
+            <span style={MUTED}>To try</span>
+            {triesButton('easy', 'Easy')}
+            {triesButton('hard', 'Hard')}
+            <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Costs to try it<input aria-label="Costs to try it" inputMode="decimal" value={draft.costText} placeholder="$ amount" onChange={(e) => setDraft({ ...draft, costText: e.target.value })} style={{ ...input, width: 100 }} /></label>
+            <label style={{ display: 'inline-flex', gap: 4, alignItems: 'center', ...MUTED }}>Months to a judgment<input aria-label="Months to a judgment" inputMode="numeric" value={draft.monthsText} placeholder="9" onChange={(e) => setDraft({ ...draft, monthsText: e.target.value })} style={{ ...input, width: 54 }} /></label>
+          </div>
+          <input aria-label="Why" value={draft.why} placeholder="Why, in one line: what the other side disputes, what proving it takes" onChange={(e) => setDraft({ ...draft, why: e.target.value })} style={input} />
+          <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button type="submit" disabled={busy || Boolean(problem)} style={{ ...btnPrimary, opacity: busy || problem ? 0.6 : 1 }}>Save the read</button>
+            <button type="button" onClick={() => setDraft(null)} style={btn}>Cancel</button>
+            {problem && draft.tries ? <span style={{ ...MUTED, fontSize: '0.76rem' }}>{problem}</span> : null}
+          </div>
+        </form>
+      ) : null}
+      {!read && !draft ? <EmptyState compact {...emptyWordsWithPress(noRead, { onPress: start })} /> : null}
     </div>
   )
 }
 
-/** #85 item 20: the office's answer to a settlement under its floor — sign off moves the stage to settled. */
+/** #85 item 20: the office's answer to a settlement ask from before v2.6170 retired the floor — sign off moves the stage to settled. */
 /**
  * Offers (punch list #172, v2.5847): the log of offers made and received while the office runs the case or the
  * firm has it — the day, who, the amount, the day it expires, the status — and *Log an offer…*. An open offer's

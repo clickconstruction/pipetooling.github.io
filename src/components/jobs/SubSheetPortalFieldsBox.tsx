@@ -15,6 +15,7 @@ import type { SetSubSheetStageResult, SubPortalOfficeWriteResult } from '../../t
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../hooks/useReloadDraft'
 import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * "Shown on the sub's portal" box — the stage the sheet is at (v2.2767:
@@ -250,8 +251,8 @@ export function SubSheetPortalFieldsBox({
             disabled={saving}
             style={{
               padding: '0.4rem 0.9rem',
-              background: saving ? '#9ca3af' : '#2563eb',
-              color: 'white',
+              background: saving ? DEAD_PRESS_FILL : '#2563eb',
+              color: saving ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 6,
               fontSize: '0.8125rem',

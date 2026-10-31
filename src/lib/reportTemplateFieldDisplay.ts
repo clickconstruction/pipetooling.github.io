@@ -65,13 +65,35 @@ export function formatReportFieldValueForThreadSummary(label: string, value: str
 
 type FieldForSubmit = { label: string; input_type?: string | null }
 
+/** What the form opened its percent on, for `fieldValueForSubmit` (punch list #189, PR 5a). */
+export type PercentSubmitOpts = {
+  /** The job's own percent the untouched field opened on; null when the job has none or the form seeds nothing. */
+  percentSeed?: number | null
+  /** Report by line (v2.5663): the lines' number takes the field, so the seed never applies. */
+  linesActive?: boolean
+}
+
+/**
+ * The percent a report files from its percent field (punch list #189, PR 5a). An untouched field files the number
+ * the form opened on (`seed`, the job's own percent), a pick files the pick, and with no number on record an
+ * untouched field files 0. The effect that writes the seed into the form's values is passive, so a Save in the
+ * moment before it ran read the field as untouched and filed 0 while the field said 40 (the CI flake of 2026-10-30):
+ * this rule gives Save, the Save button's words and the job's mirrored percent the same number whichever moment the
+ * press lands in. With the lines active the lines' own number takes the field, so the seed never applies.
+ */
+export function percentFieldValueForSubmit(raw: string | undefined | null, seed: number | null | undefined, linesActive = false): string {
+  if (!linesActive && raw == null && seed != null) return normalizePercentFieldValueToString(String(seed))
+  return normalizePercentFieldValueToString(raw)
+}
+
 export function fieldValueForSubmit(
   f: FieldForSubmit,
   fieldValues: Record<string, string>,
+  opts?: PercentSubmitOpts,
 ): string {
   const it = f.input_type ?? 'long_text'
   if (it === 'percent_0_100') {
-    return normalizePercentFieldValueToString(fieldValues[f.label])
+    return percentFieldValueForSubmit(fieldValues[f.label], opts?.percentSeed ?? null, opts?.linesActive ?? false)
   }
   if (it === 'signature_png') {
     return fieldValues[f.label] ?? ''

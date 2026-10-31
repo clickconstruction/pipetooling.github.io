@@ -1,6 +1,7 @@
 import type { RefObject } from 'react'
 import { ModalShell } from './ModalShell'
 import { countedLabel } from '../../lib/batchWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Confirmation dialog for clearing all count rows on a bid.
@@ -72,8 +73,8 @@ export function ClearAllCountsModal({
           disabled={confirmDisabled}
           style={{
             padding: '0.5rem 1rem',
-            background: confirmDisabled ? '#d1d5db' : '#b91c1c',
-            color: 'white',
+            background: confirmDisabled ? DEAD_PRESS_FILL : '#b91c1c',
+            color: confirmDisabled ? DEAD_PRESS_TEXT : 'white',
             border: 'none',
             borderRadius: 4,
             cursor: confirmDisabled ? 'not-allowed' : 'pointer',

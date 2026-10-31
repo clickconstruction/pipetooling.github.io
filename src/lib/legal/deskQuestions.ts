@@ -4,6 +4,8 @@
  * the same answers, so the desk and the paper say one thing.
  */
 import { formatLegalMoney, type LegalPacket, type LegalWorthVerdict } from './legalPacket'
+import { counselReadLine, counselTriesWords, type CounselRead } from './counselRead'
+import { moneyBarDayWords } from './moneyBars'
 
 export type DeskQuestionTone = 'ok' | 'warn' | 'stop'
 export type DeskQuestion = { label: string; answer: string; why: string; chip?: { text: string; tone: DeskQuestionTone } }
@@ -13,25 +15,31 @@ function jobsWords(labels: ReadonlyArray<string>): string {
   return `Jobs ${labels.slice(0, -1).join(', ')} and ${labels[labels.length - 1]}`
 }
 
-export function canWeSue(packet: Pick<LegalPacket, 'theory' | 'account'>): DeskQuestion {
+/**
+ * Punch list #218 PR 2: the attorney's read of how the case tries rides the answer as a chip (*hard to try* amber,
+ * *easy to try* green) and the why ends with whose read it is and their line. No read, no chip: the answer reads as before.
+ */
+export function canWeSue(packet: Pick<LegalPacket, 'theory' | 'account'>, read: CounselRead | null = null): DeskQuestion {
   const label = 'Can we sue?'
   const jobs = packet.account.jobs
+  const withRead = (q: DeskQuestion): DeskQuestion =>
+    read ? { ...q, why: `${q.why} ${counselReadLine(read, (ymd) => moneyBarDayWords(ymd) || ymd, 'office')}`, chip: { text: counselTriesWords(read.tries), tone: read.tries === 'hard' ? 'warn' : 'ok' } } : q
   switch (packet.theory.key) {
     case 'contract':
-      return { label, answer: 'Yes', why: 'They signed an agreement. That is the strongest case we can bring.' }
+      return withRead({ label, answer: 'Yes', why: 'They signed an agreement. That is the strongest case we can bring.' })
     case 'sworn': {
       const short = jobs.filter((j) => j.swornMissing.length > 0).map((j) => j.label)
-      if (short.length === 0) return { label, answer: 'Yes', why: 'As a sworn account. They got the bill, GPS puts our crew on site, and nobody disputed it.' }
-      return {
+      if (short.length === 0) return withRead({ label, answer: 'Yes', why: 'As a sworn account. They got the bill, GPS puts our crew on site, and nobody disputed it.' })
+      return withRead({
         label,
         answer: `Yes, on ${jobs.length - short.length} of ${jobs.length} jobs`,
         why: `As a sworn account. ${jobsWords(short)} still ${short.length === 1 ? 'needs' : 'need'} a signed agreement or field proof.`,
-      }
+      })
     }
     case 'lien':
-      return { label, answer: 'Only on the lien', why: 'No agreement or sworn account yet. The property record is complete and a lien window is open.' }
+      return withRead({ label, answer: 'Only on the lien', why: 'No agreement or sworn account yet. The property record is complete and a lien window is open.' })
     default:
-      return { label, answer: 'Not yet', why: 'Nothing an attorney can take to court. The list below says what is missing.' }
+      return withRead({ label, answer: 'Not yet', why: 'Nothing an attorney can take to court. The list below says what is missing.' })
   }
 }
 
@@ -81,6 +89,6 @@ export function whatCouldGoWrong(packet: Pick<LegalPacket, 'worth' | 'theory'>):
   return { label, answer: `${flags.length} things`, why: flags.map((f) => (f.why ? `${f.answer}. ${f.why}` : `${f.answer}.`)).join(' ') }
 }
 
-export function deskQuestions(packet: Pick<LegalPacket, 'theory' | 'account' | 'worth'>): DeskQuestion[] {
-  return [canWeSue(packet), howMuch(packet), whatsLeftForUs(packet), whatCouldGoWrong(packet)]
+export function deskQuestions(packet: Pick<LegalPacket, 'theory' | 'account' | 'worth'>, read: CounselRead | null = null): DeskQuestion[] {
+  return [canWeSue(packet, read), howMuch(packet), whatsLeftForUs(packet), whatCouldGoWrong(packet)]
 }

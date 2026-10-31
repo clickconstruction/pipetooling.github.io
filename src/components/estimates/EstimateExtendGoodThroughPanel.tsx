@@ -17,6 +17,7 @@ import {
   extendPresetYmd,
   goodThroughState,
 } from '../../lib/estimates/estimateGoodThroughExtend'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type EstimateExtendGoodThroughPanelProps = {
   /** `estimates.valid_until` as the row holds it. */
@@ -132,8 +133,8 @@ export default function EstimateExtendGoodThroughPanel({ validUntil, todayYmd, b
             fontWeight: 500,
             border: 'none',
             borderRadius: 4,
-            background: busy || problem !== null ? '#9ca3af' : '#3b82f6',
-            color: 'white',
+            background: busy || problem !== null ? DEAD_PRESS_FILL : '#3b82f6',
+            color: busy || problem !== null ? DEAD_PRESS_TEXT : 'white',
             cursor: busy || problem !== null ? 'not-allowed' : 'pointer',
           }}
           title="Moves the good-through date. The link the customer has keeps working through the new day."

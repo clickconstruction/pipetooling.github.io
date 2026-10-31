@@ -67,11 +67,11 @@ describe('LegalDesk on its page (punch list #182)', () => {
     expect(screen.queryByLabelText('Full screen')).toBeNull()
     expect(screen.getByRole('button', { name: '← Pipeline' })).toBeTruthy()
     // The account resolved to the one payer, the default tab, the Accounts view.
-    await waitFor(() => expect(onAddressChange).toHaveBeenCalledWith({ account: 'c:ridgeway', tab: 'account', view: 'accounts' }))
+    await waitFor(() => expect(onAddressChange).toHaveBeenCalledWith({ account: 'c:ridgeway', tab: 'account', view: 'accounts', doc: null }))
     fireEvent.click(screen.getByRole('tab', { name: 'Timeline' }))
-    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ account: 'c:ridgeway', tab: 'timeline', view: 'accounts' }))
+    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ account: 'c:ridgeway', tab: 'timeline', view: 'accounts', doc: null }))
     fireEvent.click(screen.getByRole('button', { name: 'Map' }))
-    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ account: 'c:ridgeway', tab: 'timeline', view: 'map' }))
+    await waitFor(() => expect(onAddressChange).toHaveBeenLastCalledWith({ account: 'c:ridgeway', tab: 'timeline', view: 'map', doc: null }))
   })
 
   it('the address is the truth on the page: a tab it names opens, a tab word gone from it returns to the default; the window keeps its own', async () => {
@@ -138,10 +138,10 @@ describe('LegalDesk on its page (punch list #182)', () => {
     await settle()
     fireEvent.click(screen.getByRole('button', { name: 'Map' }))
     await settle()
-    expect(onAddressChange).toHaveBeenLastCalledWith({ account: null, tab: 'account', view: 'map' })
+    expect(onAddressChange).toHaveBeenLastCalledWith({ account: null, tab: 'account', view: 'map', doc: null })
     expect((container.querySelector('[data-legal-map-grid]') as HTMLElement).style.gridTemplateColumns).toBe('minmax(0, 1fr)')
     fireEvent.click(screen.getByRole('button', { name: 'Accounts' }))
-    expect(onAddressChange).toHaveBeenLastCalledWith({ account: null, tab: 'account', view: 'accounts' })
+    expect(onAddressChange).toHaveBeenLastCalledWith({ account: null, tab: 'account', view: 'accounts', doc: null })
     unmount()
     const computer = renderWithProviders(<LegalDesk {...baseProps} initialView="map" />)
     await settle()

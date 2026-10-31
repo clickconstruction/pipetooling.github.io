@@ -1370,6 +1370,72 @@ export type Database = {
           },
         ]
       }
+      bid_plan_sets: {
+        Row: {
+          bid_id: string
+          check_note: string | null
+          checked_at: string | null
+          created_at: string
+          created_by: string | null
+          file_count: number | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          link: string
+          memo: string
+          name: string
+          plan_date: string | null
+          updated_at: string
+        }
+        Insert: {
+          bid_id: string
+          check_note?: string | null
+          checked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_count?: number | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          link: string
+          memo?: string
+          name: string
+          plan_date?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bid_id?: string
+          check_note?: string | null
+          checked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          file_count?: number | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          link?: string
+          memo?: string
+          name?: string
+          plan_date?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_plan_sets_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_sets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       bid_price_matrix_requests: {
         Row: {
           bid_id: string
@@ -37293,6 +37359,16 @@ export type Database = {
           p_name: string
           p_old_firm_id: string
           p_phone?: string
+        }
+        Returns: Json
+      }
+      legal_set_counsel_read: {
+        Args: {
+          p_cost_to_try?: number
+          p_matter_id: string
+          p_months?: number
+          p_tries: string
+          p_why?: string
         }
         Returns: Json
       }

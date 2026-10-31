@@ -11,6 +11,7 @@ import { DELETE_DRAFT_BILL_LABEL } from '../../lib/deleteDraftBillLabel'
 import type { InvoiceWithJob } from '../../lib/jobsStagesBoard'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import { invoiceNeedsStripeVoidForRevert } from '../../lib/voidStripeInvoiceForRevert'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 export type StagesSendBackInvoiceTarget = { inv: InvoiceWithJob; action: 'delete' | 'revert' }
 
@@ -65,7 +66,7 @@ export function StagesSendBackInvoiceModal({
               type="button"
               disabled={!checked || busy}
               onClick={onConfirm}
-              style={{ padding: '0.5rem 1rem', background: checked && !busy ? '#3b82f6' : '#9ca3af', color: 'white', border: 'none', borderRadius: 4, cursor: checked && !busy ? 'pointer' : 'not-allowed' }}
+              style={{ padding: '0.5rem 1rem', background: checked && !busy ? '#3b82f6' : DEAD_PRESS_FILL, color: checked && !busy ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: checked && !busy ? 'pointer' : 'not-allowed' }}
             >
               {busy ? '…' : target.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}
             </button>

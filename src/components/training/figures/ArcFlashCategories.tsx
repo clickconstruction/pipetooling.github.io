@@ -24,7 +24,7 @@ export function ArcFlashCategories({ titleId }: FigureProps) {
             <text x="6" y={y + 12} fontSize="10" fontWeight="700" fill="currentColor">
               {n}
             </text>
-            <rect x="18" y={y} width={w} height="16" rx="3" fill={i < 2 ? 'var(--bg-amber-100)' : 'var(--bg-red-100)'} stroke={i < 2 ? '#b45309' : '#b91c1c'} strokeWidth="1" />
+            <rect x="18" y={y} width={w} height="16" rx="3" fill={i < 2 ? 'var(--bg-amber-100)' : 'var(--bg-red-100)'} stroke={i < 2 ? 'var(--text-amber-700)' : 'var(--text-red-700)'} strokeWidth="1" />
             <text x={18 + w + 6} y={y + 12} fontSize="9.5" fill="currentColor">
               {cal}
             </text>
@@ -35,9 +35,9 @@ export function ArcFlashCategories({ titleId }: FigureProps) {
         over natural fibers: synthetics melt onto you
       </text>
       <g stroke="currentColor" strokeWidth="1.5" fill="none">
-        <circle cx="90" cy="190" r="44" stroke="#b91c1c" strokeDasharray="4 3" />
-        <circle cx="90" cy="190" r="30" stroke="#b45309" strokeDasharray="4 3" />
-        <circle cx="90" cy="190" r="16" stroke="#991b1b" />
+        <circle cx="90" cy="190" r="44" stroke="var(--text-red-700)" strokeDasharray="4 3" />
+        <circle cx="90" cy="190" r="30" stroke="var(--text-amber-700)" strokeDasharray="4 3" />
+        <circle cx="90" cy="190" r="16" stroke="var(--text-red-800)" />
         <rect x="83" y="183" width="14" height="14" fill="var(--bg-subtle)" />
         <g stroke="var(--text-muted)" strokeWidth="1">
           <line x1="132" y1="176" x2="150" y2="160" />
@@ -46,10 +46,10 @@ export function ArcFlashCategories({ titleId }: FigureProps) {
         </g>
       </g>
       <g fontSize="9" fill="currentColor">
-        <text x="154" y="163" fill="#b91c1c">arc flash boundary: a burn</text>
-        <text x="154" y="189" fill="#b45309">limited approach: a shock</text>
-        <text x="154" y="215" fill="#991b1b">restricted: qualified only,</text>
-        <text x="154" y="226" fill="#991b1b">in shock PPE</text>
+        <text x="154" y="163" fill="var(--text-red-700)">arc flash boundary: a burn</text>
+        <text x="154" y="189" fill="var(--text-amber-700)">limited approach: a shock</text>
+        <text x="154" y="215" fill="var(--text-red-800)">restricted: qualified only,</text>
+        <text x="154" y="226" fill="var(--text-red-800)">in shock PPE</text>
         <text x="90" y="142" fill="var(--text-muted)" fontSize="8.5" textAnchor="middle">live equipment</text>
       </g>
       <text x="6" y="246" fontSize="9" fill="var(--text-muted)">

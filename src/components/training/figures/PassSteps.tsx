@@ -17,9 +17,9 @@ export function PassSteps({ titleId }: FigureProps) {
         <line x1="110" y1="66" x2="130" y2="88" />
         <path d="M130 96 c2 -6 6 -8 6 -12 c2 4 4 6 4 10 a5 5 0 0 1 -10 2z" fill="#f97316" stroke="none" />
         <line x1="124" y1="98" x2="142" y2="98" strokeWidth="2" />
-        <rect x="178" y="64" width="14" height="30" rx="4" fill="var(--bg-red-100)" />
-        <path d="M186 60 q10 -6 14 2" strokeWidth="3" />
-        <path d="M196 54 l6 -8" strokeWidth="2" />
+        <rect x="188" y="64" width="14" height="30" rx="4" fill="var(--bg-red-100)" />
+        <path d="M196 60 q10 -6 14 2" strokeWidth="3" />
+        <path d="M206 54 l6 -8" strokeWidth="2" />
         <rect x="252" y="64" width="14" height="30" rx="4" fill="var(--bg-red-100)" />
         <path d="M240 98 q26 -10 52 0" strokeWidth="2" />
         <polygon points="238,98 244,94 244,102" fill="currentColor" stroke="none" />

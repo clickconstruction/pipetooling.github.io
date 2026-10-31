@@ -1,0 +1,543 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Legal desk: the settlement floor</title>
+<style>
+  /* Every name, job and dollar here is made up: Marlow Commercial (the GC), the dental clinic on Brazos (job 742),
+     Hale & Rowe the firm, D. Reyes at the firm. The shapes are real: a subcontract job with two open bills, retainage
+     no bill asks for yet, a demand sent and no suit filed, their offer, our counter, and a floor at 80% of the
+     balance. Today is Fri, Oct 30, 2026. Tokens are src/index.css's (light values and the [data-theme="dark"]
+     block); the app's saturated colours stay literal, as LegalMoneyBars.tsx keeps them. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-muted: #6b7280; --text-faint: #9ca3af; --text-green-700: #15803d; --text-green-800: #166534; --bg-green-100: #dcfce7; --bg-green-200: #bbf7d0; --text-amber-800: #92400e; --bg-amber-100: #fef3c7; --text-red-700: #b91c1c; --bg-red-100: #fee2e2; --bg-red-200: #fecaca; --text-blue-700: #1d4ed8; --bg-blue-tint: #eff6ff; --shadow: 0 1px 2px rgba(17,24,39,.06), 0 4px 14px rgba(17,24,39,.06); --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280; --text-green-700: #86efac; --text-green-800: #bbf7d0; --bg-green-100: #14532d; --bg-green-200: #166534; --text-amber-800: #fcd34d; --bg-amber-100: #4a3005; --text-red-700: #fca5a5; --bg-red-100: #5a1d1d; --bg-red-200: #7f1d1d; --text-blue-700: #93c5fd; --bg-blue-tint: #1e2a44; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 36ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b { color: var(--text-strong); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button, nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; text-decoration: none; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  h2 .num.pick { background: var(--text-green-700); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .pass2 { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--text-blue-700); background: var(--bg-blue-tint); border-radius: 10px; max-width: 104ch; }
+  .pass2 .cap { color: var(--text-blue-700); margin-bottom: 4px; }
+  .pass2 p { margin: 4px 0; color: var(--text-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 460px; max-width: 100%; }
+  .col.full { flex-basis: 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap.opt { color: var(--text-green-700); }
+  .cap.firm { color: #9a6700; }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 14px 16px; overflow-x: auto; font-size: 13.5px; min-width: 0; }
+  .frame.now { border-style: dashed; background: var(--bg-subtle); }
+  .frame.portal { border-color: #c9a227; background: var(--surface); }
+  .k { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin: 10px 0 4px; }
+  .k:first-child { margin-top: 0; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; vertical-align: middle; }
+  .chip.ok { color: var(--text-green-700); background: var(--bg-green-100); border-color: var(--text-green-700); }
+  .chip.warn { color: var(--text-amber-800); background: var(--bg-amber-100); border-color: var(--text-amber-800); }
+  .chip.stop { color: var(--text-red-700); background: var(--bg-red-100); border-color: var(--text-red-700); }
+  .chip.info { color: var(--text-blue-700); background: var(--bg-blue-tint); border-color: var(--text-blue-700); }
+  .chip.dim { color: var(--text-muted); background: var(--bg-muted); border-color: var(--border); }
+  .chip.door { cursor: pointer; padding-right: 6px; }
+  .chip.door::after { content: "›"; font-weight: 800; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 7px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 4px 10px; white-space: nowrap; }
+  .btn.primary { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  .btn.copper { background: #b45309; color: #fff; border-color: #b45309; }
+  .btn.dead { color: var(--text-faint); border-color: var(--border); background: var(--bg-muted); }
+  .muted { color: var(--text-muted); }
+  .note { font-size: 12.5px; color: var(--text-700); }
+  .prose { margin: 8px 0; color: var(--text-base); }
+  .sect { font-size: 11.5px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-strong); border-bottom: 1px solid var(--border-strong); padding-bottom: 3px; margin: 12px 0 8px; }
+  .sect:first-child { margin-top: 0; }
+  .line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .box { display: inline-block; border: 1px solid var(--border-strong); border-radius: 4px; padding: 2px 7px; font: 500 12.5px var(--font); background: var(--surface); color: var(--text-base); min-width: 64px; }
+  .box.on { border-color: #2563eb; box-shadow: 0 0 0 2px rgba(37,99,235,.18); }
+  .box.wide { min-width: 220px; }
+  .panel { margin-top: 8px; padding: 10px 12px; border: 1px dashed var(--border-strong); border-radius: 8px; display: grid; gap: 8px; background: var(--bg-subtle); }
+  .slider { position: relative; height: 18px; margin: 4px 2px; }
+  .slider .track { position: absolute; left: 0; right: 0; top: 7px; height: 4px; border-radius: 2px; background: var(--bg-200); }
+  .slider .fill { position: absolute; left: 0; top: 7px; height: 4px; border-radius: 2px; background: #2563eb; }
+  .slider .knob { position: absolute; top: 1px; width: 16px; height: 16px; border-radius: 50%; background: #2563eb; border: 2px solid var(--surface); box-shadow: 0 0 0 1px #2563eb; transform: translateX(-50%); }
+  .slider-cap { display: flex; justify-content: space-between; font-size: 11px; color: var(--text-muted); }
+  .band { padding: 6px 10px; border-radius: 4px; background: #fdf3d7; color: #3b2f0b; font-size: 12.5px; }
+  :root[data-theme="dark"] .band { background: #4a3a10; color: #fde68a; }
+  .portal-card { border: 1px solid #e6d9a8; border-radius: 8px; padding: 10px 12px; }
+  :root[data-theme="dark"] .portal-card { border-color: #6b5a1e; }
+  .pc-name { font-size: 17px; font-weight: 700; color: var(--text-strong); }
+  .pc-sub { font-size: 12px; color: var(--text-muted); }
+  .form { display: grid; gap: 6px; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); align-items: end; }
+  .form label { display: grid; gap: 3px; font-size: 11.5px; color: var(--text-muted); }
+  .form .box { display: block; width: 100%; }
+  .form .act { align-self: end; }
+  .seg2 { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 7px; overflow: hidden; }
+  .seg2 span { padding: 3px 12px; font: 600 12.5px var(--font); color: var(--text-700); }
+  .seg2 span.on { background: var(--text-strong); color: var(--bg-page); }
+  .conv { display: grid; grid-template-columns: 70px 1fr; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--border); align-items: start; }
+  .conv .d { font-weight: 700; color: var(--text-strong); font-size: 12.5px; }
+  .conv .who { font-weight: 600; color: var(--text-strong); }
+  .conv .acts { display: flex; gap: 6px; margin-top: 6px; flex-wrap: wrap; align-items: center; }
+  .needs { display: grid; grid-template-columns: 24px 1fr; gap: 10px; align-items: start; padding: 8px 10px; border: 1px solid var(--border); border-radius: 8px; }
+  .needs .t { font-weight: 700; color: var(--text-strong); }
+  .needs .n { display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; border-radius: 50%; background: var(--text-red-700); color: #fff; font-size: 11px; font-weight: 800; }
+  .needs.ok .n { background: var(--text-green-700); }
+  /* questions */
+  .qcards { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 10px; }
+  .qcard { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; background: var(--surface); min-width: 0; }
+  .qcard .q { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); }
+  .qcard .a { font-size: 19px; font-weight: 800; color: var(--text-strong); margin: 2px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .qcard .why { font-size: 12.5px; color: var(--text-700); }
+  /* money bars */
+  .mb { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); display: grid; gap: 10px; }
+  .bc { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; font-size: 11.5px; }
+  .bc b { color: var(--text-strong); }
+  .bc .muted { font-variant-numeric: tabular-nums; }
+  .bar { display: flex; height: 26px; border-radius: 5px; overflow: hidden; border: 1px solid var(--border-strong); }
+  .bar.thin { height: 20px; }
+  .seg { display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 700; color: var(--text-strong); border-right: 1px solid var(--surface); white-space: nowrap; overflow: hidden; min-width: 0; }
+  .seg.b1 { background: #bfdbfe; color: #111827; }
+  .seg.b2 { background: #93c5fd; color: #111827; }
+  .seg.bills { background: #3b82f6; color: #fff; }
+  .seg.ret { background: #bfdbfe; color: #111827; }
+  .seg.keep { background: var(--bg-green-200); color: var(--text-green-800); }
+  .seg.fee { background: repeating-linear-gradient(135deg, #fecaca 0 5px, #fee2e2 5px 10px); color: #b42318; }
+  .seg.filing { background: #fca5a5; color: #b42318; }
+  .seg.try { background: #f87171; color: #fff; }
+  .seg.letgo { background: repeating-linear-gradient(135deg, var(--bg-200) 0 5px, var(--bg-muted) 5px 10px); color: var(--text-muted); }
+  .seg.none { background: transparent; border-right: 0; }
+  .brk { position: relative; height: 18px; }
+  .brk span { position: absolute; top: 0; height: 6px; border-left: 1px solid var(--text-muted); border-right: 1px solid var(--text-muted); border-bottom: 1px solid var(--text-muted); }
+  .brk span i { position: absolute; top: 6px; left: 0; font-size: 10.5px; color: var(--text-muted); white-space: nowrap; font-style: normal; }
+  .marks { position: relative; height: 32px; }
+  .marks.two { height: 56px; }
+  .mark { position: absolute; top: 0; transform: translateX(-50%); font-size: 10.5px; line-height: 1.2; text-align: center; white-space: nowrap; }
+  .mark::before { content: ""; display: block; width: 2px; height: 8px; margin: 0 auto 2px; background: var(--text-strong); }
+  .mark.r2 { top: 24px; }
+  .mark.r2::before { height: 30px; margin-top: -24px; }
+  .mark.theirs::before { background: #1d4ed8; } .mark.theirs b { color: var(--text-blue-700); }
+  .mark.ours::before { background: var(--text-strong); }
+  .mark.floor::before { background: #9a6700; } .mark.floor b { color: #9a6700; }
+  :root[data-theme="dark"] .mark.floor b { color: #fcd34d; }
+  .mark.line::before { background: var(--text-green-700); width: 3px; } .mark.line b { color: var(--text-green-700); }
+  .mark.band { transform: none; text-align: left; }
+  .marks.three { height: 76px; }
+  .mark.r3 { top: 44px; }
+  .mark.r3::before { height: 50px; margin-top: -44px; }
+  .bandbar { position: absolute; top: 0; height: 8px; background: rgba(154,103,0,.25); border-left: 2px solid #9a6700; border-right: 2px solid #9a6700; }
+  .words { font-size: 11.5px; color: var(--text-muted); }
+  /* the paths */
+  .paths { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 10px; margin-top: 8px; }
+  .path { border: 1px solid var(--border); border-radius: 10px; padding: 10px 12px; min-width: 0; display: grid; gap: 6px; align-content: start; }
+  .path.pick { border-color: var(--text-green-700); }
+  .path .h { display: flex; gap: 8px; align-items: baseline; justify-content: space-between; flex-wrap: wrap; }
+  .path .h b { font-size: 13px; }
+  .path .big { font-size: 20px; font-weight: 800; color: var(--text-strong); line-height: 1.1; }
+  .path .big small { font-size: 11.5px; font-weight: 600; color: var(--text-muted); display: block; }
+  .path .rows { display: grid; gap: 2px; font-size: 12px; }
+  .path .rows div { display: flex; justify-content: space-between; gap: 8px; }
+  .path .rows .m { color: var(--text-muted); }
+  .path .rows .red { color: var(--text-red-700); }
+  .path .rows .green { color: var(--text-green-700); font-weight: 700; }
+  .path .when { display: flex; gap: 6px; align-items: center; font-size: 12px; color: var(--text-700); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-700); margin-top: 4px; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; border: 1px solid var(--border-strong); }
+  table.t { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  table.t th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-strong); padding: 4px 6px; }
+  table.t td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.t td.n, table.t th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.t td.red { color: var(--text-red-700); }
+  table.t td.green { color: var(--text-green-700); }
+  table.crit { font-size: 13px; }
+  table.crit td:first-child { font-weight: 700; color: var(--text-strong); white-space: nowrap; }
+  table.crit tr.pick td { background: var(--bg-green-100); }
+  @media (max-width: 640px) {
+    .conv { grid-template-columns: 1fr; gap: 2px; } .needs { grid-template-columns: 1fr; }
+    /* A phone has no room for labels at their amounts: the marks stay as stems on the bar and their words list under it, in order. */
+    .marks, .marks.two, .marks.three { height: auto; display: grid; gap: 2px; padding-top: 6px; }
+    .mark, .mark.r2, .mark.r3, .mark.band { position: static; transform: none; text-align: left; top: auto; display: flex; gap: 6px; align-items: baseline; white-space: normal; font-size: 11.5px; }
+    .mark::before, .mark.r2::before, .mark.r3::before { width: 10px; height: 3px; margin: 0; border-radius: 2px; flex: none; }
+    .mark br { display: none; }
+    .bandbar { display: none; }
+    .path .bar .seg { font-size: 0; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Legal desk · a mock-up, not the app · 2026-10-30 · punch list #218</p>
+  <h1>The settlement floor: what it does today, and five ways to show what could happen</h1>
+  <p>The owner: <i>not all of the legal items need a settlement floor. Some cases are hard to try and some are easy to try. They should be settled for what they are able to be settled for, and that should be done by the attorney, and we get what we get. If they don't settle it costs us more in collections and in taking them to trial.</i> Then: <i>how could we improve the settlement floor to better represent what is happening and what could happen? Removing it is also an option.</i></p>
+  <p>Every name and figure is invented. One matter runs through every frame: the dental clinic on Brazos (job 742), a subcontract under Marlow Commercial, two open bills <b>$14,250.00</b>, retainage no bill asks for yet <b>$2,100.00</b>, so the claim is <b>$16,350.00</b>. Hale &amp; Rowe have it; 33% and $350 to file; the demand is out, no suit yet. Their offer <b>$9,000.00</b> on Oct 20, our counter <b>$13,500.00</b> to Nov 5. Today's floor: 80% of the balance, <b>$11,400.00</b>.</p>
+  <div class="controls">
+    <span class="lbl">Theme</span>
+    <button type="button" aria-pressed="true" data-theme-pick="light">Light</button>
+    <button type="button" aria-pressed="false" data-theme-pick="dark">Dark</button>
+  </div>
+  <nav class="jump"><a href="#today">0 · Today</a><a href="#a">A · Remove it</a><a href="#b">B · A posture</a><a href="#c">C · What could happen</a><a href="#d">D · What it cost</a><a href="#e">E · Flip it</a><a href="#pick">The pick</a></nav>
+</header>
+
+<!-- ============================================================ 0 -->
+<h2 id="today"><span class="num">0</span> Today: one number the office picks, and a gate the firm meets</h2>
+<p class="lede">The floor is set on Fees &amp; steps with a slider, drawn as an amber mark on the claim bar, read by the firm as permission, and met once: a <i>Settled</i> step under it becomes an ask the office signs off. Nothing on any of the four screens says what trial would net, how hard the case is, or how long each path takes.</p>
+<div class="row">
+  <div class="col full">
+    <div class="cap">The desk · the four questions and the money bars, as v2.6105 draws them</div>
+    <div class="frame now">
+      <div class="qcards">
+        <div class="qcard"><div class="q">Can we sue?</div><div class="a">Yes</div><div class="why">They signed an agreement. That is the strongest case we can bring.</div></div>
+        <div class="qcard"><div class="q">How much?</div><div class="a">$16,350.00 <span class="chip ok">the claim</span></div><div class="why">Open bills $14,250.00 inside it, plus retainage $2,100.00 that no bill asks for yet. The oldest bill is 113 days old.</div></div>
+        <div class="qcard"><div class="q">What's left for us?</div><div class="a">$10,604.50 <span class="chip ok">worth it</span></div><div class="why">The firm takes 33%, or $5,395.50 of the claim, and filing costs $350.00.</div></div>
+        <div class="qcard"><div class="q">What could go wrong?</div><div class="a">They dispute the work</div><div class="why">The firm will have to prove the work was done.</div></div>
+      </div>
+      <div class="mb">
+        <div><div class="bc"><b>On the bills · 2 open bills</b><span class="muted">$14,250.00</span></div>
+          <div class="bar"><span class="seg b1" style="flex:68.4 1 0">742 · Jul 9</span><span class="seg b2" style="flex:31.6 1 0">742 · Aug 20</span></div></div>
+        <div><div class="bc"><b>The claim · $16,350.00</b><span class="muted">$16,350.00</span></div>
+          <div class="bar thin"><span class="seg bills" style="flex:87.2 1 0">the bills $14,250.00</span><span class="seg ret" style="flex:12.8 1 0">retainage</span></div>
+          <div class="marks two">
+            <div class="mark theirs" style="left:55%"><b>their offer · Oct 20</b><br>$9,000.00</div>
+            <div class="mark floor r2" style="left:69.7%"><b>our floor</b><br>$11,400.00</div>
+            <div class="mark ours" style="left:82.6%"><b>our offer · to Nov 5</b><br>$13,500.00</div>
+          </div></div>
+        <div><div class="bc"><b>What's left, on the claim · $10,604.50 left</b><span class="muted">$16,350.00</span></div>
+          <div class="bar thin"><span class="seg keep" style="flex:64.9 1 0">we keep $10,604.50</span><span class="seg fee" style="flex:33 1 0">firm 33% · $5,395.50</span><span class="seg filing" style="flex:2.1 1 0"></span></div></div>
+        <div><div class="bc"><b>What's left, on the bills alone · $9,197.50 left</b><span class="muted">$14,250.00</span></div>
+          <div class="bar thin"><span class="seg keep" style="flex:64.5 1 0">we keep $9,197.50</span><span class="seg fee" style="flex:33 1 0">firm 33% · $4,702.50</span><span class="seg filing" style="flex:2.5 1 0"></span></div></div>
+        <div class="words">2 open bills, $14,250.00. The claim adds $2,100.00 of retainage no bill asks for yet. Their offer of $9,000.00 leaves $7,350.00 of the claim.</div>
+      </div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">The desk · Fees &amp; steps → Settlement authority, the chip and its panel open</div>
+    <div class="frame now">
+      <div class="sect">Settlement authority</div>
+      <div class="line">The firm may settle at <span class="chip door">80% or more</span> <span class="muted">That is $11,400.00 today. Below that, the firm asks us.</span></div>
+      <div class="panel">
+        <div class="line"><span class="box on">80</span> % of the balance <span class="muted">or</span> $ <span class="box">11,400</span></div>
+        <div class="slider"><div class="track"></div><div class="fill" style="width:80%"></div><div class="knob" style="left:80%"></div></div>
+        <div class="slider-cap"><span>Any amount</span><span>50%</span><span>The full balance</span></div>
+        <div class="line"><span class="btn primary">Save</span> <span class="btn">Cancel</span> <span class="muted" style="font-size:11.5px">Saves as 80% of the balance, so it moves as payments land.</span></div>
+      </div>
+      <div class="sect" style="margin-top:14px">The conversation · 1 from the firm waiting on you</div>
+      <div class="conv"><div class="d">Oct 21</div><div><span class="who">D. Reyes at the firm asked to settle at $9,000.00</span> <span class="chip warn">waiting on you</span><div class="note">Proposed settlement $9,000.00 — the GC's last number before suit; they cite the disputed change order.</div><div class="acts"><span class="btn primary">Sign off</span><span class="btn">Not yet</span><span class="box wide muted">a note for the firm (optional)</span></div></div></div>
+      <div class="sect" style="margin-top:14px">Needs You · the Dashboard card</div>
+      <div class="needs"><span class="n">1</span><div><div class="t">Legal</div><div class="note">1 settlement below your floor to sign off</div></div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap firm">The firm's portal · the matter card and the Settled step</div>
+    <div class="frame now portal">
+      <div class="portal-card">
+        <div class="k">Matter</div>
+        <div class="pc-name">Marlow Commercial</div>
+        <div class="pc-sub">1200 Brazos St, Austin · Travis County · owner of record: Brazos Dental Holdings LLC</div>
+        <div class="band" style="margin-top:6px"><b>Settlement authority:</b> You may settle at $11,400.00 or above (80% of the balance). Below that, ask.</div>
+        <div class="pc-sub" style="margin-top:4px"><b>From the office:</b> The change order is signed; the super's photos are on Evidence.</div>
+      </div>
+      <div class="k" style="margin-top:12px">Record a step</div>
+      <div class="form">
+        <label>Record a step<span class="box">Settled</span></label>
+        <label>Date<span class="box">2026-10-21</span></label>
+        <label>Settlement amount<span class="box on">9,000.00</span></label>
+        <label>Detail<span class="box">GC's final number before suit</span></label>
+        <span class="btn act">Record step</span>
+      </div>
+      <div class="band" style="margin-top:10px">$9,000.00 is below the office's floor of $11,400.00. It went to the office as a settlement ask. The stage moves when they sign off.</div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">What it shows: the floor as a mark beside the offers, so a reader sees at once that their offer sits under it and ours over it.</p>
+  <p class="lose">What it does not: anything about trial. The slider's marks are <i>Any amount · 50% · The full balance</i>. The office can set the floor above what even a full win at trial would net after the firm's cut and its costs, and no screen would say so. The firm's card reads permission, not information.</p>
+  <p class="lose">What it costs: the stage waits on a sign-off, the ask sits on Needs You, and a <i>Not yet</i> leaves no trace of what the refused offer was worth against what came later.</p>
+  <p class="rule">The four questions, the verdict, the write-down panel, the Timeline and both prints never read the floor. Removing it changes one gate, one block, one mark, one card line and one Needs You line.</p>
+</div>
+
+<!-- ============================================================ A -->
+<h2 id="a"><span class="num">A</span> Remove it: the attorney settles, the record carries the amount</h2>
+<p class="lede">The block, the ready sheet's field, the mark and the gate go. A <i>Settled</i> step always moves the stage and always carries its amount. What is happening stays drawn: every offer on the claim bar, the settlement on Needs You as money to apply.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">The desk · Fees &amp; steps opens on the Offers log; the claim bar keeps the offers</div>
+    <div class="frame">
+      <div class="sect">Offers <span class="muted" style="font-weight:500;text-transform:none;letter-spacing:0">made or received · the firm reads them on its portal</span></div>
+      <table class="t"><tr><th>Day</th><th>Offer</th><th class="n">Amount</th><th>Expires</th><th>Status</th></tr>
+        <tr><td>2026-10-20</td><td>offer received · the GC's last number before suit</td><td class="n">$9,000.00</td><td>—</td><td>Open</td></tr>
+        <tr><td>2026-10-22</td><td>offer made · our counter</td><td class="n">$13,500.00</td><td>2026-11-05</td><td>Open</td></tr></table>
+      <div class="mb" style="margin-top:12px">
+        <div><div class="bc"><b>The claim · $16,350.00</b><span class="muted">$16,350.00</span></div>
+          <div class="bar thin"><span class="seg bills" style="flex:87.2 1 0">the bills $14,250.00</span><span class="seg ret" style="flex:12.8 1 0">retainage</span></div>
+          <div class="marks"><div class="mark theirs" style="left:55%"><b>their offer · Oct 20</b><br>$9,000.00</div><div class="mark ours" style="left:82.6%"><b>our offer · to Nov 5</b><br>$13,500.00</div></div></div>
+      </div>
+      <div class="sect" style="margin-top:14px">Needs You · the Dashboard card</div>
+      <div class="needs ok"><span class="n">1</span><div><div class="t">Legal</div><div class="note">1 settlement to apply · $9,000.00 settled Oct 21 on Marlow Commercial</div></div></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap firm">The firm's portal · the card line and the Settled step</div>
+    <div class="frame portal">
+      <div class="portal-card">
+        <div class="k">Matter</div>
+        <div class="pc-name">Marlow Commercial</div>
+        <div class="band" style="margin-top:6px"><b>Settling:</b> Settle as you can. Record the settlement with its amount.</div>
+      </div>
+      <div class="k" style="margin-top:12px">Record a step</div>
+      <div class="form">
+        <label>Record a step<span class="box">Settled</span></label>
+        <label>Date<span class="box">2026-10-21</span></label>
+        <label>Settlement amount<span class="box on">9,000.00</span></label>
+        <label>Detail<span class="box">GC's final number before suit</span></label>
+        <span class="btn act">Record step</span>
+      </div>
+      <div class="band" style="margin-top:10px">Settled at $9,000.00. The office sees it and applies the payment when it lands.</div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">Nothing blocks a settlement. The attorney settles for what can be had, and the stage says so the same minute.</p>
+  <p class="gain">The amount is always on the record. Today it is optional without a floor, so a <i>Settled</i> step can carry no figure at all.</p>
+  <p class="lose">The office loses its say before the deed: a lowball taken on a Tuesday is on the record by Wednesday. The attorney loses a figure to point to when the other side asks what we would take.</p>
+  <p class="rule">No migration: the two columns stay null and unread, and an open ask can still be signed off until none are left. S.</p>
+</div>
+
+<!-- ============================================================ B -->
+<h2 id="b"><span class="num">B</span> A posture per matter: <i>settle as counsel can</i>, and a floor only where the office asks for one</h2>
+<p class="lede">Today's chip reads <i>any amount</i>, an empty thing waiting to be filled. A posture records the decision instead, with one line of why, and keeps the slider behind a door for the rare matter.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">The desk · Fees &amp; steps → How we settle</div>
+    <div class="frame">
+      <div class="sect">How we settle</div>
+      <div class="line"><span class="chip door ok">Settle as counsel can</span> <span class="muted">A hard case. The GC disputes the change order.</span></div>
+      <div class="panel">
+        <div class="line"><span class="seg2"><span class="on">Settle as counsel can</span><span>Hold a floor</span></span></div>
+        <div class="line">Why <span class="box wide">A hard case. The GC disputes the change order.</span></div>
+        <div class="line"><span class="btn primary">Save</span> <span class="btn">Cancel</span> <span class="muted" style="font-size:11.5px">Saves the posture. The firm settles and records it without asking us.</span></div>
+      </div>
+      <div class="note muted" style="margin-top:8px">With <i>Hold a floor</i> pressed, today's slider opens under the why, and the firm's card reads the floor as it does today.</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap firm">The firm's portal · the card line</div>
+    <div class="frame portal">
+      <div class="portal-card">
+        <div class="k">Matter</div>
+        <div class="pc-name">Marlow Commercial</div>
+        <div class="band" style="margin-top:6px"><b>How the office wants this settled:</b> Settle as you can. A hard case. The GC disputes the change order. Record the settlement with its amount.</div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The absence of a floor becomes a decision with a date and a reason, which the firm reads as an instruction.</p>
+  <p class="lose">It is today with better words. The floor is already optional and already defaults to none. B is worth doing only if a floor is kept at all, and then only as the door inside C.</p>
+  <p class="rule">One column, <code>settlement_posture</code>, and the why. S.</p>
+</div>
+
+<!-- ============================================================ C -->
+<h2 id="c"><span class="num pick">C</span> Replace it with what could happen: the attorney's read, the two paths side by side, and a line derived from the cost to continue</h2>
+<p class="lede">Three parts. The firm records how the case tries, in two values and a sentence. The desk draws each path's net and time from numbers it already holds. The walk-away line is arithmetic, not a demand: the offer at which settling nets the same as winning everything at trial.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap firm">The firm's portal · a new act, How this case tries</div>
+    <div class="frame portal">
+      <div class="k">How this case tries</div>
+      <div class="form">
+        <label>To try<span class="seg2"><span>Easy</span><span class="on">Hard</span></span></label>
+        <label>Costs to try it<span class="box">2,800</span></label>
+        <label>Months to a judgment<span class="box">9</span></label>
+        <label>Recorded by<span class="box">D. Reyes</span></label>
+      </div>
+      <div class="form" style="margin-top:6px;grid-template-columns:1fr auto">
+        <label>Why<span class="box">The GC's counter disputes the change order. Proving it needs the super on the stand.</span></label>
+        <span class="btn act">Save the read</span>
+      </div>
+      <div class="note muted" style="margin-top:8px">Dated and named like every firm act. The office can set the same in house, as <i>our read</i>, until a firm has the case.</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap opt">The desk · Can we sue? carries the read</div>
+    <div class="frame">
+      <div class="qcards" style="grid-template-columns:1fr">
+        <div class="qcard"><div class="q">Can we sue?</div><div class="a">Yes <span class="chip warn">hard to try</span></div><div class="why">They signed an agreement. That is the strongest case we can bring. The firm's read, Oct 22: the GC's counter disputes the change order. Proving it needs the super on the stand.</div></div>
+      </div>
+      <div class="note muted" style="margin-top:8px">No read yet reads <span class="chip dim">not read yet</span> with <i>Ask the firm how this case tries</i> as the press. An easy case reads <span class="chip ok">easy to try</span>.</div>
+    </div>
+  </div>
+  <div class="col full">
+    <div class="cap opt">The desk · under the money bars: each path's net and time, on one scale, and the derived line on the claim bar</div>
+    <div class="frame">
+      <div class="mb" style="margin-top:0">
+        <div><div class="bc"><b>The claim · $16,350.00</b><span class="muted">$16,350.00</span></div>
+          <div class="bar thin"><span class="seg bills" style="flex:87.2 1 0">the bills $14,250.00</span><span class="seg ret" style="flex:12.8 1 0">retainage</span></div>
+          <div class="marks two">
+            <div class="mark theirs" style="left:55%"><b>their offer · Oct 20</b><br>$9,000.00</div>
+            <div class="mark line r2" style="left:71.2%"><b>above this, settling beats a full win</b><br>$11,648.51</div>
+            <div class="mark ours" style="left:82.6%"><b>our offer · to Nov 5</b><br>$13,500.00</div>
+          </div></div>
+      </div>
+      <div class="sect" style="margin-top:14px">What each path nets <span class="muted" style="font-weight:500;text-transform:none;letter-spacing:0">every bar on the claim's scale · the firm's 33% and $350 to file · the firm's read of Oct 22</span></div>
+      <div class="paths">
+        <div class="path">
+          <div class="h"><b>Settle at their offer</b><span class="chip info">$9,000.00</span></div>
+          <div class="bar thin"><span class="seg keep" style="flex:36.9 1 0">we keep</span><span class="seg fee" style="flex:18.2 1 0">firm</span><span class="seg letgo" style="flex:44.9 1 0">let go $7,350.00</span></div>
+          <div class="big">$6,030.00 <small>we keep</small></div>
+          <div class="rows"><div><span class="m">their offer</span><span>$9,000.00</span></div><div><span class="m">firm 33%</span><span class="red">− $2,970.00</span></div><div><span class="m">we let go of the claim</span><span class="m">$7,350.00</span></div></div>
+          <div class="when">⏱ <b>within the month</b></div>
+        </div>
+        <div class="path">
+          <div class="h"><b>Settle at our counter</b><span class="chip">$13,500.00</span></div>
+          <div class="bar thin"><span class="seg keep" style="flex:55.3 1 0">we keep</span><span class="seg fee" style="flex:27.2 1 0">firm</span><span class="seg letgo" style="flex:17.4 1 0">let go</span></div>
+          <div class="big">$9,045.00 <small>we keep</small></div>
+          <div class="rows"><div><span class="m">our counter</span><span>$13,500.00</span></div><div><span class="m">firm 33%</span><span class="red">− $4,455.00</span></div><div><span class="m">we let go of the claim</span><span class="m">$2,850.00</span></div></div>
+          <div class="when">⏱ <b>within the month</b> <span class="muted">if they take it by Nov 5</span></div>
+        </div>
+        <div class="path">
+          <div class="h"><b>Collections and trial</b><span class="chip warn">hard to try</span></div>
+          <div class="bar thin"><span class="seg keep" style="flex:47.7 1 0">we keep</span><span class="seg fee" style="flex:33 1 0">firm</span><span class="seg filing" style="flex:2.1 1 0"></span><span class="seg try" style="flex:17.1 1 0">to try</span></div>
+          <div class="big">$7,804.50 <small>we keep at a full win</small></div>
+          <div class="rows"><div><span class="m">the claim</span><span>$16,350.00</span></div><div><span class="m">firm 33%</span><span class="red">− $5,395.50</span></div><div><span class="m">filing</span><span class="red">− $350.00</span></div><div><span class="m">costs to try it, the firm's figure</span><span class="red">− $2,800.00</span></div></div>
+          <div class="when">⏱ <b>9 months to a judgment</b> <span class="muted">then collecting it</span></div>
+          <div class="note" style="color:var(--text-amber-800)">A hard case. A full win is not the likely end. The firm's call.</div>
+        </div>
+      </div>
+      <div class="legend"><span><i style="background:var(--bg-green-200)"></i>we keep</span><span><i style="background:repeating-linear-gradient(135deg,#fecaca 0 5px,#fee2e2 5px 10px)"></i>the firm's cut</span><span><i style="background:#fca5a5"></i>filing</span><span><i style="background:#f87171"></i>costs to try</span><span><i style="background:repeating-linear-gradient(135deg,var(--bg-200) 0 5px,var(--bg-muted) 5px 10px)"></i>the claim we let go</span></div>
+      <div class="words" style="margin-top:8px">Their offer nets $6,030.00 within the month. A full win at trial nets $7,804.50 after nine months and $3,150.00 of costs. An offer above $11,648.51 beats a full win. The firm reads this case as hard to try.</div>
+    </div>
+  </div>
+  <div class="col full">
+    <div class="cap firm">The firm's portal · the same paths under the matter card, so the attorney sees what we net</div>
+    <div class="frame portal">
+      <div class="portal-card">
+        <div class="pc-name">Marlow Commercial</div>
+        <div class="band" style="margin-top:6px"><b>Settling:</b> Settle as you can. Record the settlement with its amount. Above $11,648.51 a settlement nets the office more than a full win at trial.</div>
+      </div>
+      <div class="paths" style="margin-top:10px">
+        <div class="path"><div class="h"><b>Their offer</b><span class="chip info">$9,000.00</span></div><div class="bar thin"><span class="seg keep" style="flex:36.9 1 0">office keeps $6,030.00</span><span class="seg fee" style="flex:18.2 1 0">firm</span><span class="seg letgo" style="flex:44.9 1 0"></span></div></div>
+        <div class="path"><div class="h"><b>Our counter</b><span class="chip">$13,500.00</span></div><div class="bar thin"><span class="seg keep" style="flex:55.3 1 0">office keeps $9,045.00</span><span class="seg fee" style="flex:27.2 1 0">firm</span><span class="seg letgo" style="flex:17.4 1 0"></span></div></div>
+        <div class="path"><div class="h"><b>A full win at trial</b><span class="chip warn">hard · your read</span></div><div class="bar thin"><span class="seg keep" style="flex:47.7 1 0">office keeps $7,804.50</span><span class="seg fee" style="flex:33 1 0">firm</span><span class="seg filing" style="flex:2.1 1 0"></span><span class="seg try" style="flex:17.1 1 0"></span></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">This is the only direction that draws both halves of the question. What is happening: the offers as they stand. What could happen: each path's net, its time, and the attorney's word on how hard it is.</p>
+  <p class="gain">The walk-away number is derived, not demanded. The claim less the filing cost and the costs to try, divided by what we keep after the firm's cut. It moves as the firm's costs land, and it reads <i>settling beats a full win above this</i>, never <i>the office will not take less</i>.</p>
+  <p class="rule">No invented figure. A chance of winning would be one, so there is none. The read is the attorney's word in two values and a sentence; the rest is arithmetic on numbers the desk holds or the firm types.</p>
+  <p class="lose">The office's say before the deed goes with the gate. What stays: every offer on the bar against the line, <i>Countered</i> on the Offers log, and a question to the firm. If the owner wants a hard say kept for the rare matter, B's <i>Hold a floor</i> door fits inside this block.</p>
+  <p class="lose">One rate. The firm's row carries one contingency percent; firms often charge less before suit than at trial. If Hale &amp; Rowe do, the firm row wants a second rate and the trial path reads it.</p>
+  <p class="rule">A train of four: the gate goes (S) · the read, a migration and one portal act (M) · the paths kernel and the panel (M) · the same panel on the portal and in the printed packet (S).</p>
+</div>
+
+<!-- ============================================================ D -->
+<h2 id="d"><span class="num">D</span> Show what the floor has cost: refused offers against how the matter ended</h2>
+<p class="lede">The floor is a bet that holding out nets more. The record can settle the bet: each refused offer against the amount the matter ended at, the costs added since, and the days between. One line per closed matter, and a rollup on the firm's window.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">The desk · a closed matter's header line</div>
+    <div class="frame">
+      <div class="line"><span class="chip dim">settled Mar 14</span> <b>Marlow Commercial</b> <span class="muted">· 742</span></div>
+      <div class="note" style="margin-top:6px;color:var(--text-amber-800)">Their offer of $9,000.00 on Oct 20 was refused under the floor. The case settled Mar 14 at $8,500.00 after $1,900.00 more in costs, 145 days later.</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap opt">The firm's window · the rollup, every closed matter with a refused offer behind it</div>
+    <div class="frame">
+      <table class="t"><tr><th>Matter</th><th class="n">Refused</th><th class="n">Ended at</th><th class="n">Costs since</th><th class="n">Days</th><th class="n">Apart</th></tr>
+        <tr><td>Marlow Commercial · 742</td><td class="n">$9,000.00</td><td class="n">$8,500.00</td><td class="n">$1,900.00</td><td class="n">145</td><td class="n red">− $2,400.00</td></tr>
+        <tr><td>Pinecrest Homes · 611</td><td class="n">$4,200.00</td><td class="n">$6,000.00</td><td class="n">$600.00</td><td class="n">62</td><td class="n green">+ $1,200.00</td></tr>
+        <tr><td>Carter Dental · 688</td><td class="n">$11,000.00</td><td class="n">$0.00 · uncollectible</td><td class="n">$3,100.00</td><td class="n">310</td><td class="n red">− $14,100.00</td></tr></table>
+      <div class="note muted" style="margin-top:6px">Apart is what the matter ended at, less the costs since, less the refused offer. Reads the Offers log, the settlement asks and the settled step. Nothing new is stored.</div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The one honest answer to whether a floor ever paid. It needs no new column: the asks, the offers and the end are on the matter already.</p>
+  <p class="lose">The floor shipped on 2026-10-05. There is almost nothing to read yet, and a closed matter with a refused offer behind it may be a year away.</p>
+  <p class="rule">Not a direction on its own: the lens that proves or disproves the floor over time. Build the one line per matter with whichever direction wins, and the rollup once there are rows. S.</p>
+</div>
+
+<!-- ============================================================ E -->
+<h2 id="e"><span class="num">E</span> Flip it: the firm records what it expects, the office reads it</h2>
+<p class="lede">Today the office tells the firm a number. Flipped, the firm tells the office a range it expects the case to settle in, with its read of why, and the desk draws it as a band on the claim bar.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap firm">The firm's portal · What you expect</div>
+    <div class="frame portal">
+      <div class="k">What you expect</div>
+      <div class="form"><label>Likely settles between<span class="box">8,000</span></label><label>and<span class="box">10,500</span></label><label>Why<span class="box">The change order is the fight. Juries split on these.</span></label><span class="btn act">Save</span></div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap opt">The desk · the band on the claim bar</div>
+    <div class="frame">
+      <div class="mb" style="margin-top:0">
+        <div><div class="bc"><b>The claim · $16,350.00</b><span class="muted">$16,350.00</span></div>
+          <div class="bar thin"><span class="seg bills" style="flex:87.2 1 0">the bills $14,250.00</span><span class="seg ret" style="flex:12.8 1 0">retainage</span></div>
+          <div class="marks three">
+            <div class="bandbar" style="left:48.9%;width:15.3%"></div>
+            <div class="mark band floor" style="left:48.9%;top:10px"><b>the firm expects $8,000.00 to $10,500.00</b></div>
+            <div class="mark theirs r3" style="left:55%"><b>their offer · Oct 20</b><br>$9,000.00</div>
+            <div class="mark ours r3" style="left:82.6%"><b>our offer · to Nov 5</b><br>$13,500.00</div>
+          </div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">Their offer lands inside what the firm expected, and the picture says so without a sentence.</p>
+  <p class="lose">A firm may not want a range in writing. A band with no costs beside it still does not say what we net on either path.</p>
+  <p class="rule">Folds into C as the read's optional range, drawn as this band when the firm offers one. S.</p>
+</div>
+
+<!-- ============================================================ pick -->
+<h2 id="pick"><span class="num pick">✓</span> Is this the best we can do? The pick</h2>
+<div class="row"><div class="col full"><div class="frame">
+<table class="t crit">
+  <tr><th></th><th>What is happening</th><th>What could happen</th><th>What it loses</th><th>Size</th></tr>
+  <tr><td>A · Remove it</td><td>the offers on the bar, the settlement on Needs You</td><td>nothing</td><td>the office's say before the deed; a figure to point to</td><td>S</td></tr>
+  <tr><td>B · A posture</td><td>as today</td><td>nothing; today with better words</td><td>little, and gains little</td><td>S</td></tr>
+  <tr class="pick"><td>C · What could happen</td><td>the offers on the bar against the derived line</td><td>each path's net and time; the attorney's read of how hard it is</td><td>the gate, by design; one rate until the firm row carries two</td><td>M, four PRs</td></tr>
+  <tr><td>D · What it cost</td><td>what did happen, read later</td><td>nothing</td><td>nothing to read until a matter closes behind a refused offer</td><td>S</td></tr>
+  <tr><td>E · Flip it</td><td>the firm's range on the bar</td><td>the firm's guess, with nothing to weigh it against</td><td>a firm's willingness to write a range</td><td>S</td></tr>
+</table>
+<p class="prose" style="margin-top:12px"><b>The recommendation: C, with A folded in.</b> The gate goes first, in one small PR, because the owner's words say the attorney settles. Then the read, the paths and the derived line, each a small PR. E's band rides in as the read's optional range. D's one line per matter lands with the train; its rollup waits for rows. The two floor columns stay, null and unread, so a hard floor can come back without a migration if a matter ever needs one.</p>
+<p class="prose"><b>Owner's calls inside C:</b> whether the firm's row carries a second rate for trial; whether the office may set the read in house; whether B's <i>Hold a floor</i> door stays inside the block for the rare matter, or the floor goes for good.</p>
+</div></div></div>
+
+<div class="pass2"><div class="cap">Second pass · what the first render showed</div>
+<p>Checked at the pane's width, at 1280 px and at a phone width, in light and in dark. Three overprints, all fixed: in E the band's label sat on top of both offer labels at every width, so the offers took a third row under it; on a phone the claim bar's three marks ran into each other and the derived line's amount fell out of the frame, so under 640 px the marks keep their stems on the bar and their words list under it in order; and on a phone the portal's path bars clipped <i>office keeps $6,030.00</i> at the left edge, so the in-bar words go there and the figures beside the bars carry it. What held: the derived line on the claim bar's second row reads clear of our offer at every width; the three path columns compare on one scale once the caption says so and the grey <i>let go</i> stretch is drawn; dark mode reads with the derived line in green and the firm's frame in its copper.</p>
+</div>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var picks = document.querySelectorAll('[data-theme-pick]');
+    picks.forEach(function (b) {
+      b.addEventListener('click', function () {
+        root.setAttribute('data-theme', b.getAttribute('data-theme-pick'));
+        picks.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      });
+    });
+  })();
+</script>
+</body>
+</html>

@@ -299,7 +299,7 @@ export function OnMyWaySheet({ userId, me, role, destinations, initialJobId, lea
                 data-testid="on-my-way-destination"
               >
                 <span style={{ fontWeight: 700 }}>{d.label}</span>
-                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: picked ? '#15803d' : 'var(--text-muted)', alignSelf: 'center' }}>{d.suggested ? ON_MY_WAY_WORDS.suggested : ''}</span>
+                <span style={{ fontSize: '0.75rem', fontWeight: 700, color: picked ? 'var(--text-green-700)' : 'var(--text-muted)', alignSelf: 'center' }}>{d.suggested ? ON_MY_WAY_WORDS.suggested : ''}</span>
                 <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', gridColumn: 1 }}>{d.sublabel}</span>
               </button>
             )

@@ -9,6 +9,7 @@ import { normalizeDayEditorSession, type DayEditorSession } from '../../lib/myTi
 import { supabase } from '../../lib/supabase'
 import { DatabaseError, formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { useLedgerPrefixMap } from '../../contexts/LedgerDisplayPrefixContext'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type CalendarSessionRow = {
   id: string
@@ -354,8 +355,8 @@ export function CopyDayJobMixModal({
                   padding: '0.5rem 0.85rem',
                   border: 'none',
                   borderRadius: 4,
-                  background: canPickContinue ? '#2563eb' : '#9ca3af',
-                  color: 'white',
+                  background: canPickContinue ? '#2563eb' : DEAD_PRESS_FILL,
+                  color: canPickContinue ? 'white' : DEAD_PRESS_TEXT,
                   cursor: canPickContinue && !busy ? 'pointer' : 'not-allowed',
                 }}
               >
@@ -404,8 +405,8 @@ export function CopyDayJobMixModal({
                   padding: '0.5rem 0.85rem',
                   border: 'none',
                   borderRadius: 4,
-                  background: busy ? '#9ca3af' : '#b45309',
-                  color: 'white',
+                  background: busy ? DEAD_PRESS_FILL : '#b45309',
+                  color: busy ? DEAD_PRESS_TEXT : 'white',
                   cursor: busy ? 'not-allowed' : 'pointer',
                 }}
               >

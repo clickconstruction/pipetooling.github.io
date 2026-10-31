@@ -23,8 +23,8 @@ export function NoiseByTool({ titleId }: FigureProps) {
         {[80, 85, 90, 95, 100, 105, 110, 115].map((db) => (
           <line key={db} x1={x(db)} y1="116" x2={x(db)} y2="124" />
         ))}
-        <line x1={x(85)} y1="110" x2={x(85)} y2="128" stroke="#b45309" strokeWidth="3" />
-        <line x1={x(90)} y1="110" x2={x(90)} y2="128" stroke="#b91c1c" strokeWidth="3" />
+        <line x1={x(85)} y1="110" x2={x(85)} y2="128" stroke="var(--text-amber-700)" strokeWidth="3" />
+        <line x1={x(90)} y1="110" x2={x(90)} y2="128" stroke="var(--text-red-700)" strokeWidth="3" />
       </g>
       <g fontSize="9" fill="var(--text-muted)" textAnchor="middle">
         {[80, 85, 90, 95, 100, 105, 110, 115].map((db) => (
@@ -42,7 +42,7 @@ export function NoiseByTool({ titleId }: FigureProps) {
         <text x={x(110)} y="40">chainsaw</text>
         <line x1={x(110)} y1="44" x2={x(110)} y2="58" stroke="currentColor" strokeWidth="1" />
       </g>
-      <g fontSize="8.5" fill="#991b1b" textAnchor="middle">
+      <g fontSize="8.5" fill="var(--text-red-800)" textAnchor="middle">
         {steps.map(([db, t]) => (
           <text key={db} x={x(db)} y="76">
             {t}
@@ -53,8 +53,8 @@ export function NoiseByTool({ titleId }: FigureProps) {
         </text>
       </g>
       <g fontSize="8.5" textAnchor="middle">
-        <text x={x(85)} y="150" fill="#b45309">protect</text>
-        <text x={x(90)} y="150" fill="#b91c1c">PEL</text>
+        <text x={x(85)} y="150" fill="var(--text-amber-700)">protect</text>
+        <text x={x(90)} y="150" fill="var(--text-red-700)">PEL</text>
       </g>
       <text x="20" y="176" fontSize="9.5" fill="var(--text-muted)">
         if you must raise your voice at 2 to 3 ft, it is over 85

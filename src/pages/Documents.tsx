@@ -457,7 +457,7 @@ function DocumentsEstimatesLedger({ embedSearch, onClearEmbedSearch }: Documents
                         <>
                           <Link
                             to={`/jobs?edit=${r.job_ledger_id}`}
-                            style={{ fontWeight: 500, color: '#15803d' }}
+                            style={{ fontWeight: 500, color: 'var(--text-green-700)' }}
                           >
                             {(() => {
                               const hcp = ledgerLinkedJobHcp(r)
@@ -1726,7 +1726,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                                 style={{
                                   display: 'block',
                                   fontWeight: 500,
-                                  color: '#15803d',
+                                  color: 'var(--text-green-700)',
                                   textDecoration: 'none',
                                   maxWidth: '14rem',
                                 }}
@@ -1759,7 +1759,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                         <span>
                           <span style={{ fontWeight: 500 }}>{(r.invoice_number ?? '').trim() || '—'}</span>
                           {r.is_paid ? (
-                            <span style={{ marginLeft: '0.35rem', fontSize: '0.75rem', color: '#15803d' }}>(Paid)</span>
+                            <span style={{ marginLeft: '0.35rem', fontSize: '0.75rem', color: 'var(--text-green-700)' }}>(Paid)</span>
                           ) : null}
                         </span>
                       </div>
@@ -1866,7 +1866,11 @@ export default function Documents() {
   }
 
   return (
-    <div style={{ position: 'relative', padding: '0.35rem 1.25rem 1rem', maxWidth: 1200, margin: '0 auto' }}>
+    // v2.6131: a flex item in Layout's column with auto side margins is sized by its content, so the page drew
+    // narrower than the screen when its lines were short and moved as each load landed (v2.6117, Job Parts
+    // Tally). Pin it to its container like `.pageWrap` (v2.1003); border-box is global, so the max width
+    // is already the outer width and stays.
+    <div style={{ position: 'relative', padding: '0.35rem 1.25rem 1rem', maxWidth: 1200, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <h1 style={documentsPageVisuallyHiddenH1Style}>Documents</h1>
 
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>

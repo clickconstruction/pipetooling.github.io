@@ -181,6 +181,25 @@ describe('ThreadWindow: a person\'s thread (Messages, cut 1)', () => {
     expect(w.nameContact).toHaveBeenCalledWith('c-unknown', { record: { table: 'gc_companies', id: 'gc-alamo' }, kind: 'trade', name: 'Dee' })
   })
 
+  it('Who is this?: an address that sends a supply house’s bills is named as the house or a rep (punch list #179)', async () => {
+    const house: RecordHit = { record: { table: 'supply_houses', id: 'sh-ridgeway' }, label: 'Ridgeway Supply', sub: 'Supply house', kind: 'supply_house' }
+    const rep: RecordHit = { record: { table: 'supply_house_contacts', id: 'rep-ray' }, label: 'Ray Ortiz', sub: 'At Ridgeway Supply', kind: 'supply_house' }
+    const unknown = spineMessagesView().contacts.find((c) => c.id === 'c-unknown')!
+    const w = { ...writes(), searchRecords: vi.fn(() => Promise.resolve([house, rep])) }
+    renderWithProviders(<WhoIsThisWindow contact={unknown} box="team" writes={w} onNamed={vi.fn()} onClose={vi.fn()} />)
+    const who = screen.getByRole('dialog', { name: /^Who is this\?/ })
+    fireEvent.change(within(who).getByRole('textbox', { name: 'Their name or their company' }), { target: { value: 'Ridgeway' } })
+    fireEvent.click(await within(who).findByRole('option', { name: /^Ridgeway Supply/ }))
+    expect(within(who).getByText('On Supply houses, so a supply house. Their PDFs and pictures can be recorded as bills.')).toBeTruthy()
+    expect(within(who).queryByRole('combobox', { name: 'What they are to us' })).toBeNull()
+    fireEvent.click(within(who).getByRole('button', { name: 'This is who it is' }))
+    await waitFor(() => expect(w.nameContact).toHaveBeenCalledWith('c-unknown', { record: { table: 'supply_houses', id: 'sh-ridgeway' }, kind: 'supply_house', name: '' }))
+    fireEvent.click(within(who).getByRole('option', { name: /Ray Ortiz/ }))
+    expect(within(who).queryByRole('textbox', { name: /^Their own name/ })).toBeNull()
+    fireEvent.click(within(who).getByRole('button', { name: 'This is who it is' }))
+    await waitFor(() => expect(w.nameContact).toHaveBeenLastCalledWith('c-unknown', { record: { table: 'supply_house_contacts', id: 'rep-ray' }, kind: 'supply_house', name: null }))
+  })
+
   it('Who is this?: the box their line came in on puts its own kinds first (R6)', async () => {
     const dana: RecordHit = { record: { table: 'customers', id: 'cu-dana' }, label: 'Dana Whitfield', sub: 'Customer', kind: 'customer' }
     const view = spineMessagesView()

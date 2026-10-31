@@ -41,6 +41,7 @@ import {
 } from '../../lib/map/mapCanvasTypes'
 import type { PinsMapCanvasProps } from './PinsMapCanvas'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
+import { pinLabelInkHex } from '../../lib/map/pinLabelInk'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { googleScrollwheelOption } from '../../lib/map/scrollZoomGate'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -176,7 +177,7 @@ function PinMarker({
       ref={markerRef}
       position={{ lat: pin.lat, lng: pin.lng }}
       icon={pinIcon(pin, selected, isMobile)}
-      label={pin.label ? { text: pin.label, color: '#ffffff', fontWeight: '800', fontSize: '11px' } : undefined}
+      label={pin.label ? { text: pin.label, color: pinLabelInkHex(pin.color), fontWeight: '800', fontSize: '11px' } : undefined}
       title={pin.title}
       onClick={() => onSelect(pin.id)}
     />
@@ -199,7 +200,7 @@ function ClusterMarker({ cluster, noun }: { cluster: PinCluster<MapCanvasPin>; n
         strokeColor: cluster.ringColor ?? '#ffffff',
         strokeWeight: cluster.ringColor ? 4 : 2,
       }}
-      label={{ text: clusterLabel(cluster.count), color: '#ffffff', fontWeight: '700', fontSize: r >= 18 ? '13px' : '11px' }}
+      label={{ text: clusterLabel(cluster.count), color: pinLabelInkHex(cluster.color), fontWeight: '700', fontSize: r >= 18 ? '13px' : '11px' }}
       onClick={() => {
         if (!map) return
         const b = clusterBounds(cluster)

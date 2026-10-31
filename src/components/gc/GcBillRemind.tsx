@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Btn, input } from './gcUi'
 import { payReminderEmail, payReminderSentWords, payReminderStep } from '../../lib/gc/ownerBillingRemind'
 import type { GcProject, GcState, OwnerPayAppSent } from '../../lib/gc/types'
+import { GcEmailLines } from './GcEmailLines'
 
 /**
  * GC mode, the real build, Owner Billing's O5b: remind the customer to pay a late bill in Bill the customer, ported
@@ -79,9 +80,7 @@ export function GcBillRemind({
           </label>
           <div style={{ display: 'grid', gap: '0.3rem', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 6, padding: '0.45rem 0.6rem', fontSize: '0.85rem' }}>
             <strong>{email.subject}</strong>
-            {email.lines.map((line, i) => (
-              <div key={i}>{line}</div>
-            ))}
+            <GcEmailLines lines={email.lines} />
           </div>
           <div style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{`It goes to ${project.owner || 'the customer'} by email, with their portal link when they have one.`}</div>
           <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>

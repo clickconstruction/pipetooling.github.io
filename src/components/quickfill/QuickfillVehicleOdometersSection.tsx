@@ -29,6 +29,7 @@ import {
   type VehicleCheckinSettings,
 } from '../../lib/vehicleCheckinSettings'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * Quickfill "Vehicle check-ins" station (v2.2199, owner mockup 9ebd178b):
@@ -512,8 +513,8 @@ export function QuickfillVehicleOdometersSection({ lastMarkedAt = null }: { /** 
                     disabled={saving}
                     style={{
                       padding: '0.4rem 0.8rem',
-                      background: saving ? '#9ca3af' : '#3b82f6',
-                      color: '#fff',
+                      background: saving ? DEAD_PRESS_FILL : '#3b82f6',
+                      color: saving ? DEAD_PRESS_TEXT : '#fff',
                       border: 'none',
                       borderRadius: 6,
                       fontWeight: 500,

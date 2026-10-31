@@ -22,7 +22,7 @@ export function PlumberMistakes({ titleId }: FigureProps) {
         {wrongWords}
       </text>
       <g transform="translate(0 98)">{right}</g>
-      <text x={W / 2} y="160" fontSize="6" fill={RIGHT} textAnchor="middle">
+      <text x={W / 2} y="163" fontSize="6" fill={RIGHT} textAnchor="middle">
         {rightWords}
       </text>
     </g>

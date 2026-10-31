@@ -22,6 +22,7 @@ import { bulkPayReportWords, type PayReportFailure } from '../../lib/pay/bulkPay
 import { EMPTY_HOURS_ROSTER_MESSAGE } from '../../lib/people/hoursGridRoster'
 import { PayStubDeleteIcon } from './PayStubDeleteIcon'
 import { isoWeekNumberFromGregorianYmd, localCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /** Matches People Pay History `PayStubRow` so callbacks can pass stubs through to `viewPayStub` / `openPayStubMarkPaidModal`. */
 export type DraftPayrollPayStub = {
@@ -513,8 +514,8 @@ export function DraftPayrollModal({
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.8125rem',
                     fontWeight: 500,
-                    background: bulkGenerating || bulkMissingCount === 0 || start > end ? '#9ca3af' : '#3b82f6',
-                    color: 'white',
+                    background: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_FILL : '#3b82f6',
+                    color: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_TEXT : 'white',
                     border: 'none',
                     borderRadius: 6,
                     cursor: bulkGenerating || bulkMissingCount === 0 || start > end ? 'not-allowed' : 'pointer',
@@ -829,8 +830,8 @@ export function DraftPayrollModal({
                                     style={{
                                       padding: '2px 6px',
                                       fontSize: '0.8125rem',
-                                      background: markingPayStubId === stub.id ? '#9ca3af' : '#059669',
-                                      color: 'white',
+                                      background: markingPayStubId === stub.id ? DEAD_PRESS_FILL : '#059669',
+                                      color: markingPayStubId === stub.id ? DEAD_PRESS_TEXT : 'white',
                                       border: 'none',
                                       borderRadius: 4,
                                       cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer',
@@ -848,8 +849,8 @@ export function DraftPayrollModal({
                                 style={{
                                   padding: '2px 6px',
                                   fontSize: '0.8125rem',
-                                  background: isGenerating || estGross <= 0 || bulkGenerating ? '#9ca3af' : '#3b82f6',
-                                  color: 'white',
+                                  background: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_FILL : '#3b82f6',
+                                  color: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_TEXT : 'white',
                                   border: 'none',
                                   borderRadius: 4,
                                   cursor: isGenerating || estGross <= 0 || bulkGenerating ? 'not-allowed' : 'pointer',

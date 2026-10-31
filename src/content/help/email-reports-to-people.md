@@ -45,7 +45,7 @@ Already-filed reports can be pushed out on demand.
 2. Click {{button:outline|Send now}}.
 3. It emails every matching report from the last 14 days that hasn't already been sent to them. Then it tells you how many went out.
 
-Reports are never sent twice to the same person. Auto-send and **Send now** share the same record of what's already gone out.
+Reports are never sent twice to the same person. Auto-send and **Send now** share the same record of what's already gone out. A report on a ZZ test job is never sent by either. **Send now** says how many it left out.
 
 ## Turn a person off or remove them
 

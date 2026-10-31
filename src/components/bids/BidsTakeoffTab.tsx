@@ -104,6 +104,7 @@ import type {
   MaterialTemplateWithAssemblyType,
   TakeoffRoughPartLineRow,
 } from '../../lib/bids/bidPricingEngineTypes'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type MaterialPart = Database['public']['Tables']['material_parts']['Row']
 
@@ -1679,7 +1680,7 @@ export function BidsTakeoffTab({
                     type="button"
                     onClick={() => void printTakeoffBreakdown()}
                     disabled={takeoffPrinting}
-                    style={{ padding: '0.5rem 1rem', background: takeoffPrinting ? '#9ca3af' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: takeoffPrinting ? 'wait' : 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: takeoffPrinting ? DEAD_PRESS_FILL : '#3b82f6', color: takeoffPrinting ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: takeoffPrinting ? 'wait' : 'pointer' }}
                   >
                     {takeoffPrinting ? 'Preparing…' : 'Print'}
                   </button>

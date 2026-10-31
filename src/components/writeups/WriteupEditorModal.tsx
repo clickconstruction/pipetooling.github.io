@@ -306,7 +306,8 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
               lineHeight: 1.5,
             }}
           >
-            <strong>From clock records:</strong> {contextNote}
+            <strong>From clock records</strong>
+            <div style={{ whiteSpace: 'pre-line' }}>{contextNote}</div>
           </div>
         ) : null}
         {schemaBlocks.length > 0 && (

@@ -1,6 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
+import { readReportSubject, reportSendSkip } from '../_shared/reportSubject.ts'
 
 /** Matches client `reportTemplateDisplayName` legacy alias for notification copy. */
 const LEGACY_SUPERINTENDENT_REPORT_TEMPLATE_NAME = 'Superintendent Report'
@@ -85,6 +86,19 @@ serve(async (req) => {
       )
     }
 
+    // A report on a ZZ test record reaches no phone (v2.6127): a session's walk stays in the building.
+    const subject = await readReportSubject(
+      adminClient,
+      reportRow as { job_ledger_id: string | null; project_id: string | null; bid_id: string | null },
+    )
+    const skip = reportSendSkip(subject)
+    if (skip) {
+      return new Response(
+        JSON.stringify({ success: true, message: skip.message, push_sent: 0, skipped: skip.reason }),
+        { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Fetch template name
     const { data: templateRow } = await adminClient
       .from('report_templates')
@@ -104,35 +118,14 @@ serve(async (req) => {
       .single()
     const creatorName = (creatorRow as { name: string | null } | null)?.name ?? 'Someone'
 
-    // Fetch job / project / bid display
+    // The job, project or bid the report is about, read once above for the test-job rule; its words as before.
     let jobDisplay = 'Unknown job'
-    const r = reportRow as {
-      job_ledger_id: string | null
-      project_id: string | null
-      bid_id: string | null
-    }
-    if (r.job_ledger_id) {
-      const { data: jl } = await adminClient
-        .from('jobs_ledger')
-        .select('job_name')
-        .eq('id', r.job_ledger_id)
-        .single()
-      jobDisplay = (jl as { job_name: string | null } | null)?.job_name ?? jobDisplay
-    } else if (r.project_id) {
-      const { data: proj } = await adminClient
-        .from('projects')
-        .select('name')
-        .eq('id', r.project_id)
-        .single()
-      jobDisplay = (proj as { name: string | null } | null)?.name ?? jobDisplay
-    } else if (r.bid_id) {
-      const { data: bid } = await adminClient
-        .from('bids')
-        .select('project_name, gc_contact_name')
-        .eq('id', r.bid_id)
-        .single()
-      const b = bid as { project_name: string | null; gc_contact_name: string | null } | null
-      jobDisplay = b?.project_name?.trim() || b?.gc_contact_name?.trim() || 'Bid'
+    if (subject.kind === 'job') {
+      jobDisplay = subject.jobName ?? jobDisplay
+    } else if (subject.kind === 'project') {
+      jobDisplay = subject.name ?? jobDisplay
+    } else if (subject.kind === 'bid') {
+      jobDisplay = subject.projectName?.trim() || subject.gcContactName?.trim() || 'Bid'
     }
 
     const pushTitle = `New ${templateName}`

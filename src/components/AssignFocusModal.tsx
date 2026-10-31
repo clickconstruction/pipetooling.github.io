@@ -9,6 +9,7 @@ import {
 import { UnifiedSearchResultRow } from './search/UnifiedSearchResultRow'
 import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { useLedgerDisplayPrefixes } from '../contexts/LedgerDisplayPrefixContext'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 type Props = {
   sessionIds: string[]
@@ -205,8 +206,8 @@ export function AssignFocusModal({ sessionIds, label, onSaved, onClose, overlayZ
               padding: '0.35rem 0.75rem',
               border: 'none',
               borderRadius: 4,
-              background: selectedItem && !loading ? '#2563eb' : '#d1d5db',
-              color: 'white',
+              background: selectedItem && !loading ? '#2563eb' : DEAD_PRESS_FILL,
+              color: selectedItem && !loading ? 'white' : DEAD_PRESS_TEXT,
               cursor: selectedItem && !loading ? 'pointer' : 'not-allowed',
               fontSize: '0.875rem',
             }}

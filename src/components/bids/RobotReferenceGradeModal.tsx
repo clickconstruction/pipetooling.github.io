@@ -2,12 +2,17 @@ import type { Bid } from '../../types/bids'
 import { referenceGrade, referenceQualityFlags, type ReferenceGradeLetter } from '../../lib/bids/referenceGrade'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
 
+/**
+ * Each grade's fill, under its white letter. X's grey was `#9ca3af`, 2.54:1 under the white X on the
+ * Bid Board's robot badge; `#6b7280` reads 4.83:1 in both themes (punch list #194, v2.6130), held by
+ * `src/lib/readablePairs.test.ts`.
+ */
 export const GRADE_COLORS: Record<ReferenceGradeLetter, string> = {
   A: '#16a34a',
   B: '#d97706',
   C: '#d97706',
   D: '#d97706',
-  X: '#9ca3af',
+  X: '#6b7280',
 }
 
 const GRADE_MEANING: Record<ReferenceGradeLetter, string> = {

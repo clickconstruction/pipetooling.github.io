@@ -7,7 +7,7 @@ import type { FigureProps } from './figureProps'
 export function LiftingZone({ titleId }: FigureProps) {
   return (
     <svg viewBox="0 0 300 236" role="img" aria-labelledby={titleId} style={{ display: 'block', width: '100%', height: 'auto', maxWidth: 420, color: 'var(--text-base)' }}>
-      <rect x="66" y="84" width="128" height="78" rx="6" fill="var(--bg-green-100)" stroke="#15803d" strokeWidth="1" />
+      <rect x="66" y="84" width="128" height="78" rx="6" fill="var(--bg-green-100)" stroke="var(--text-green-700)" strokeWidth="1" />
       <g stroke="currentColor" strokeWidth="2" fill="none" strokeLinecap="round" strokeLinejoin="round">
         <circle cx="130" cy="28" r="13" fill="var(--surface)" />
         <path d="M103 56 H157 L163 130 H97 Z" fill="var(--surface)" />
@@ -28,8 +28,8 @@ export function LiftingZone({ titleId }: FigureProps) {
         <line x1="186" y1="113" x2="196" y2="113" />
       </g>
       <g fontSize="9.5" fill="currentColor">
-        <text x="6" y="92" fill="#15803d">mid-chest</text>
-        <text x="6" y="164" fill="#15803d">mid-thigh</text>
+        <text x="6" y="92" fill="var(--text-green-700)">mid-chest</text>
+        <text x="6" y="164" fill="var(--text-green-700)">mid-thigh</text>
         <text x="200" y="80">precision work</text>
         <text x="200" y="91">4 in above the elbow</text>
         <text x="200" y="104" fontWeight="600">the elbow</text>

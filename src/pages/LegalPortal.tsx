@@ -74,6 +74,8 @@ export default function LegalPortal() {
   const [selectedId, setSelectedId] = useState<string | null>(null)
   // Narrative first when the office wrote one (v2.4812); the view falls back to Account when it did not.
   const [tab, setTab] = useState<FirmTab>('narrative')
+  /** The matter's Venue cell (punch list #219, v2.6175): Who covers what opened on the county. */
+  const [coverageOpenOn, setCoverageOpenOn] = useState<{ county: string | null; nonce: number } | null>(null)
   // Start here (v2.4820) opens first on a browser's first visit; after that the portal opens on Matters.
   const [panel, setPanel] = useState<'start' | 'matters' | 'grid' | 'coverage' | 'notifications'>(() => (readStartSeen() ? 'matters' : 'start'))
   useEffect(() => {
@@ -353,7 +355,7 @@ export default function LegalPortal() {
         ) : null}
         {payload && panel === 'notifications' ? <div data-legal-tour="notifications"><NotificationsPanel payload={payload} act={act} busy={busy} notice={notice} noticeWarn={noticeWarn} actFailure={actFailure} /></div> : null}
         {payload && panel === 'grid' && payload.lienBook ? <div data-legal-tour="grid"><LegalPortalLienGrid raw={payload.lienBook} todayYmd={payload.preparedOn} companyName={payload.company.name} initialShow={sample ? 'all' : 'due'} /></div> : null}
-        {payload && panel === 'coverage' && payload.coverage ? <div data-legal-tour="coverage"><LegalPortalCoverage coverage={payload.coverage} firmId={payload.firm.id} /></div> : null}
+        {payload && panel === 'coverage' && payload.coverage ? <div data-legal-tour="coverage"><LegalPortalCoverage coverage={payload.coverage} firmId={payload.firm.id} openOn={coverageOpenOn} /></div> : null}
         {refreshNote && state.kind === 'ready' ? <div role="status" data-legal-refresh-note style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, color: PAPER_RED, borderRadius: 4, marginBottom: 10 }}>{refreshNote}</div> : null}
         {state.kind === 'loading' ? <p style={{ color: MUTED }}>Opening the portal…</p> : null}
         {state.kind === 'error' ? (
@@ -390,9 +392,10 @@ export default function LegalPortal() {
               <FirmMatterView
                 packet={packet}
                 companyName={payload.company.name}
-                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, settlementFloor: selected.settlementFloor, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
+                matter={{ payerName: selected.payer.name, noteToFirm: selected.noteToFirm, contracts: selected.contracts, entries: selected.entries, heldCount: selected.heldCount, stage: selected.stage, documents: selected.documents, heldDocumentCount: selected.heldDocumentCount, narrative: selected.narrative }}
                 tab={tab}
                 onTab={setTab}
+                onOpenCoverage={payload.coverage ? (county) => { setCoverageOpenOn({ county, nonce: Date.now() }); setPanel('coverage') } : undefined}
                 onUndo={(entryId, reason) => act({ kind: 'void', matterId: selected.id, entryId, note: reason })}
                 timelineActs={<FirmPlanForm matter={selected} act={act} busy={busy} />}
                 acts={<><RecordedByPicker recipients={payload.recipients} value={recordedById} onChange={(id) => { setRecordedById(id); try { window.localStorage.setItem(RECORDED_BY_KEY, id) } catch { /* private window: the pick lasts this visit */ } }} /><FirmAsks matter={selected} act={act} busy={busy} /><FirmActs matter={selected} act={act} busy={busy} notice={notice} actFailure={actFailure} todayYmd={payload.preparedOn} /></>}
@@ -542,11 +545,16 @@ function FirmActs({ matter, act, busy, notice, actFailure, todayYmd }: { matter:
   const [feeNote, setFeeNote] = useState('')
   const [stage, setStage] = useState<LegalFirmStep>('demand')
   const [stepNote, setStepNote] = useState('')
-  /** #85 item 20: the settlement amount, checked against the office's floor. */
+  /** The settlement amount on a Settled step — always required since v2.6170 (punch list #218) retired the office's floor. */
   const [settleAmount, setSettleAmount] = useState('')
   const [payAmount, setPayAmount] = useState('')
   const [payNote, setPayNote] = useState('')
   const [question, setQuestion] = useState('')
+  // Punch list #218 PR 2: the firm's read of how the case tries.
+  const [readTries, setReadTries] = useState('')
+  const [readCost, setReadCost] = useState('')
+  const [readMonths, setReadMonths] = useState('')
+  const [readWhy, setReadWhy] = useState('')
   // #85 item 18 (c): the date it happened, today unless the firm says otherwise.
   const [feeOn, setFeeOn] = useState(todayYmd)
   const [stepOn, setStepOn] = useState(todayYmd)
@@ -581,7 +589,7 @@ function FirmActs({ matter, act, busy, notice, actFailure, todayYmd }: { matter:
       <form onSubmit={submit({ kind: 'step', stage, note: stepNote, occurredOn: stepOn, ...(stage === 'settled' && settleAmount ? { amount: Number(settleAmount) } : {}) }, () => { setStepNote(''); setSettleAmount('') })} className={`legalPortalForm ${stage === 'settled' ? 'legalPortalForm--fee' : 'legalPortalForm--note'}`}>
         <label style={lab}>Record a step<select value={stage} onChange={(e) => { if (isLegalFirmStep(e.target.value)) setStage(e.target.value) }} style={input}>{LEGAL_FIRM_STEP_GROUPS.map((g) => <optgroup key={g.label} label={g.label}>{g.steps.map((s) => <option key={s} value={s}>{LEGAL_FIRM_STEP_WORDS[s]}</option>)}</optgroup>)}</select></label>
         <label style={lab}>Date<input type="date" value={stepOn} max={todayYmd} onChange={(e) => setStepOn(e.target.value)} required style={input} /></label>
-        {stage === 'settled' ? <label style={lab}>Settlement amount<input type="number" min={1} step="0.01" value={settleAmount} onChange={(e) => setSettleAmount(e.target.value)} placeholder={matter.settlementFloor ? 'required' : 'optional'} required={Boolean(matter.settlementFloor)} style={input} /></label> : null}
+        {stage === 'settled' ? <label style={lab}>Settlement amount<input type="number" min={1} step="0.01" value={settleAmount} onChange={(e) => setSettleAmount(e.target.value)} placeholder="Amount" required style={input} /></label> : null}
         <label style={lab}>Detail<input value={stepNote} onChange={(e) => setStepNote(e.target.value)} placeholder="Court, cause no., amount, terms…" style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Record step</button>
       </form>
@@ -594,6 +602,13 @@ function FirmActs({ matter, act, busy, notice, actFailure, todayYmd }: { matter:
       <form onSubmit={submit({ kind: 'question', note: question }, () => setQuestion(''))} className="legalPortalForm legalPortalForm--ask">
         <label style={lab}>Ask the office<input value={question} onChange={(e) => setQuestion(e.target.value)} placeholder="e.g. Do you have the signed change order for the HVAC add?" required style={input} /></label>
         <button type="submit" disabled={busy} style={btn}>Send</button>
+      </form>
+      <form onSubmit={submit({ kind: 'read', tries: readTries, costToTry: readCost, months: readMonths, note: readWhy }, () => { setReadWhy('') })} className="legalPortalForm legalPortalForm--fee" data-legal-read-form>
+        <label style={lab}>How this case tries<select value={readTries} onChange={(e) => setReadTries(e.target.value)} required style={input}><option value="">Pick one</option><option value="easy">Easy to try</option><option value="hard">Hard to try</option></select></label>
+        <label style={lab}>Costs to try it<input type="number" min={0} step="0.01" value={readCost} onChange={(e) => setReadCost(e.target.value)} placeholder="2800" style={input} /></label>
+        <label style={lab}>Months to a judgment<input type="number" min={0} max={120} step={1} value={readMonths} onChange={(e) => setReadMonths(e.target.value)} placeholder="9" style={input} /></label>
+        <label style={lab}>Why<input value={readWhy} onChange={(e) => setReadWhy(e.target.value)} placeholder="What they dispute, and what proving it takes" style={input} /></label>
+        <button type="submit" disabled={busy} style={btn}>Save the read</button>
       </form>
       <p style={{ fontSize: portalSmall(11.5), color: FAINT, margin: 0 }}>The office applies a payment you report to the job and records your contingency. A step you record sets the matter's stage for you and the office.</p>
     </div>

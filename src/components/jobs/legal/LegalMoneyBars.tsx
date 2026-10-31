@@ -38,7 +38,7 @@ function fill(s: MoneyBarSegment, i: number): CSSProperties {
   }
 }
 
-const MARK_INK: Record<'theirs' | 'ours' | 'floor', string> = { theirs: '#1d4ed8', ours: 'var(--text-strong)', floor: '#9a6700' }
+const MARK_INK: Record<'theirs' | 'ours' | 'line', string> = { theirs: '#1d4ed8', ours: 'var(--text-strong)', line: '#1f7a3a' }
 
 function Bar({ bar }: { bar: MoneyBar }) {
   const thin = bar.key !== 'bills'

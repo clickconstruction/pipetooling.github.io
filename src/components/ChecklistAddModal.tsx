@@ -15,6 +15,7 @@ import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistS
 import { REMINDER_PRESETS, dayBeforeApplicable, reminderSummary, scopeFromDaily } from '../lib/checklistReminderOptions'
 import { ymdAddDays } from '../utils/dateUtils'
 import { ChecklistCrewTagsRow } from './checklist/ChecklistCrewTagsRow'
+import { ChecklistScheduleCalendar } from './checklist/ChecklistScheduleCalendar'
 import { checklistJobLinks, composeChecklistJobTitle, type ChecklistJobPreset } from '../lib/checklistJobPreset'
 
 const FALLBACK_ASSIGNEE_EMAIL = 'taunya@clickplumbing.com'
@@ -1126,6 +1127,19 @@ export default function ChecklistAddModal({
                   )}
                 </div>
               ) : null}
+              {/* The schedule drawn (punch list #217, office-13): this week and the next three, the sentence under it as the caption. */}
+              <ChecklistScheduleCalendar
+                input={{
+                  when,
+                  repeatMode,
+                  startDate: form.start_date,
+                  todayStr: toLocalDateString(new Date()),
+                  daysOfWeek: form.repeat_days_of_week,
+                  daysAfter: form.repeat_days_after,
+                  endDate: form.repeat_end_date || null,
+                  dueDate: when !== 'repeat' ? form.due_date || null : null,
+                }}
+              />
               <div
                 role="status"
                 style={{

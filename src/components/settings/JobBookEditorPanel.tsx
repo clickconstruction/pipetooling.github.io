@@ -15,6 +15,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { supabase } from '../../lib/supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import type { Database } from '../../types/database'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type JobBookRow = Database['public']['Tables']['job_book_entries']['Row']
 type ServiceTypeMini = { id: string; name: string }
@@ -526,8 +527,8 @@ export default function JobBookEditorPanel({
                 onClick={() => void performDelete(deleteConfirmId)}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: deletingId == null ? '#dc2626' : '#9ca3af',
-                  color: 'white',
+                  background: deletingId == null ? '#dc2626' : DEAD_PRESS_FILL,
+                  color: deletingId == null ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
                   cursor: deletingId == null ? 'pointer' : 'not-allowed',

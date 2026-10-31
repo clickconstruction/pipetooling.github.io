@@ -204,7 +204,7 @@ export function SupplyHouseContactsSection({
           </span>
           {showAddedBy && r.created_by && names[r.created_by] ? <span style={mini}>· added by {names[r.created_by]}</span> : null}
           {r.is_default ? (
-            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: '#15803d', border: '1px solid #16a34a', borderRadius: 999, padding: '0.05rem 0.5rem' }}>default</span>
+            <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-green-700)', border: '1px solid #16a34a', borderRadius: 999, padding: '0.05rem 0.5rem' }}>default</span>
           ) : (
             <button type="button" disabled={busy} onClick={() => void makeDefault(r.id)} style={{ font: 'inherit', fontSize: '0.68rem', padding: '0.1rem 0.5rem', background: 'var(--bg-muted)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)', borderRadius: 999, cursor: 'pointer' }}>
               make default

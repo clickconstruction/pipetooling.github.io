@@ -9,6 +9,8 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, cleanup, within } from '@testing-library/react'
 import { makeInvoice, makeJob, renderWithProviders, settle } from '../../../test/renderSmokeMocks'
+import LegalDeskMapView from './LegalDeskMapView'
+import type { VenueBlock } from '../../../lib/legal/legalParties'
 import LegalDesk from './LegalDesk'
 
 vi.mock('../../../hooks/useAuth', async () => {
@@ -76,10 +78,23 @@ describe('LegalDesk', () => {
     expect(document.querySelector('[data-legal-gap-answer-sheet]')).toBeNull()
     expect(screen.getByText('Can we sue?')).toBeTruthy()
     expect(screen.getByText("What's left for us?")).toBeTruthy()
+    // v2.6172 (punch list #219): the parties strip under the name — the customer, the owner of record (none on the stub's
+    // record, so amber with the record's door), the venue (no county on the stub, so amber too); the venue cell is the Map's door.
+    const parties = document.querySelector('[data-legal-parties]')!
+    expect(parties).toBeTruthy()
+    expect([...parties.querySelectorAll('[data-legal-party]')].map((b) => b.getAttribute('data-legal-party'))).toEqual(['contract', 'owner', 'venue'])
+    expect(parties.querySelector('[data-legal-party="contract"]')!.textContent).toContain('The Learning Experience')
+    expect(parties.querySelector('[data-legal-party="owner"]')!.getAttribute('data-legal-party-amber')).toBe('true')
+    expect(document.querySelector('[data-legal-account-line]')!.textContent).toMatch(/^717 · 718/)
+    expect(document.querySelector('[data-legal-venue-line]')).toBeNull()
     // v2.6105 (punch list #214, PR 2): the money as bars under the questions — one segment per open bill (two jobs, a bill each), the keep · firm · filing bar, no claim bar while nothing is offered or added.
     expect(document.querySelectorAll('[data-legal-money-bar="bills"] [data-legal-money-segment="bill"]').length).toBe(2)
     expect(document.querySelector('[data-legal-money-bar="left_claim"] [data-legal-money-segment="keep"]')).toBeTruthy()
     expect(document.querySelector('[data-legal-money-bar="claim"]')).toBeNull()
+    // v2.6176 (punch list #218 PR 3): what each path nets under the bars — no offer stands, so the trial card alone, not read yet.
+    expect(document.querySelector('[data-legal-settlement-paths] [data-legal-settlement-path="trial"]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-settlement-path="offer"]')).toBeNull()
+    expect(document.querySelector('[data-legal-settlement-paths-words]')!.textContent).toContain('The firm has not said how this case tries.')
     fireEvent.click(screen.getByRole('tab', { name: 'Timeline' }))
     expect(screen.getByText(/theft of service/)).toBeTruthy()
     expect(document.querySelector('[data-legal-timeline-lane="said"]')).toBeTruthy()
@@ -98,6 +113,18 @@ describe('LegalDesk', () => {
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
     // The fees list is the firm's to fill, so its empty state names who and offers no press (punch list #184, sweep C).
     expect(document.querySelector('[data-legal-fees-empty] [data-empty-state]')!.textContent).toBe('No fees or costs yet. No firm is on this account. When one is, the fees and costs it adds list here and roll into the total demand.')
+  })
+
+  it('the Map opened from the venue press lists the county, holds the case and draws its venue block (v2.6174, punch list #219)', () => {
+    const c = { id: 'case-1', key: 'c:tle', name: 'The Learning Experience', balance: 7502, jobLabels: '717', jobCount: 1, viaGc: false, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: 30.5, lng: -97.8, county: 'Williamson', countyFrom: 'record' } as unknown as Parameters<typeof LegalDeskMapView>[0]['cases'][number]
+    const venue: VenueBlock = { title: 'Venue for job 717', places: [{ basis: 'work', label: 'Where the work was done', main: 'Williamson County · justice precinct not yet', quiet: '1 Main St · the county from the property record', county: 'Williamson', jobLabels: ['717'] }], rules: ['$7,502.00 is within the justice court limit.'], source: 'County from the property record.' }
+    renderWithProviders(<LegalDeskMapView cases={[c]} loading={false} firms={[]} countiesByFirm={new Map()} onOpenCase={noop} openOn={{ county: 'Williamson', heldId: 'case-1', nonce: 1 }} venueFor={(x) => (x.key === 'c:tle' ? venue : null)} />)
+    expect(document.querySelector('[data-legal-county-card="Williamson"]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-county-case="case-1"]')?.getAttribute('data-held')).toBe('1')
+    const block = document.querySelector('[data-legal-venue-block]')!
+    expect(block.textContent).toContain('Venue for job 717')
+    expect(block.querySelector('[data-legal-venue-place="work"]')!.textContent).toContain('Williamson County · justice precinct not yet')
+    expect(block.querySelector('[data-legal-venue-court-areas]')!.getAttribute('href')).toBe('/map')
   })
 
   it("on Paper, a stop's title opens the window on the stop as evidence — the record, the rule, the Lien window door (v2.4800)", async () => {
@@ -238,6 +265,23 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     expect(emails.dataset.legalFirmEmails).toBe('paused')
   })
 
+  it('the firm’s name and its county tail are one clipped run, so a tight segment shortens the tail before the name (punch list #182, a follow-up)', async () => {
+    await renderDesk({ canMarkReady: true, canEditReview: true })
+    const door = screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' })
+    const words = door.querySelector<HTMLElement>('[data-legal-firm-words]')!
+    const county = door.querySelector<HTMLElement>('[data-legal-firm-county]')!
+    // One block that ellipsizes from its end: the name leads it and the tail sits inside it, never a nowrap flex item of its
+    // own that keeps its whole width while the name shrinks to nothing (seen on a phone's wrapped header, 2026-10-30).
+    expect(words.firstChild?.textContent).toBe('Barnes & Holt')
+    expect(words.contains(county)).toBe(true)
+    expect(words.textContent).toBe('Barnes & Holt· no counties colored yet')
+    expect(words.style.overflow).toBe('hidden')
+    expect(words.style.textOverflow).toBe('ellipsis')
+    expect(words.style.whiteSpace).toBe('nowrap')
+    expect(county.style.whiteSpace).toBe('')
+    expect(county.style.flex).toBe('')
+  })
+
   it('the firm’s name in the header opens the firm’s window, and a click outside closes only it (v2.4711)', async () => {
     await renderDesk({ canMarkReady: true, canEditReview: true })
     fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
@@ -366,7 +410,7 @@ describe('LegalDesk · in house (v2.5847)', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
     expect(screen.queryByRole('dialog', { name: 'Run it in house' })).toBeNull()
   })
-  it('in house: the pill, Back to review, the floor and the offers log on Fees & steps, and Question for counsel…', async () => {
+  it('in house: the pill, Back to review, the offers log on Fees & steps, and Question for counsel…', async () => {
     const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
     await settle()
@@ -374,8 +418,11 @@ describe('LegalDesk · in house (v2.5847)', () => {
     expect(screen.getByRole('button', { name: 'Back to review' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Run it in house…' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))
-    expect(document.querySelector('[data-legal-floor-chip]')).toBeTruthy()
     expect(document.querySelector('[data-legal-offers]')).toBeTruthy()
+    // Punch list #218 PR 2: the attorney's read opens in house too, with its own door.
+    expect(document.querySelector('[data-legal-counsel-read-panel]')).toBeTruthy()
+    // Two doors while no form is open, the header's and the empty state's, as the Offers log has.
+    expect(document.querySelector('[data-legal-read-add]')).toBeTruthy()
     // No offer yet: the log says so and offers its own door again (punch list #184, sweep C).
     const noOffers = document.querySelector('[data-legal-offers] [data-empty-state]') as HTMLElement
     expect(noOffers.textContent).toBe('No offers yet. Log an offer… adds the first.')

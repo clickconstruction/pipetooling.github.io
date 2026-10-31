@@ -14,7 +14,7 @@ import { isTurnawayTemplateName } from '../lib/turnaway'
 import AutoGrowTextarea from './AutoGrowTextarea'
 import OfflineRetryPanel from './OfflineRetryPanel'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
-import { fieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
+import { fieldValueForSubmit, percentFieldValueForSubmit } from '../lib/reportTemplateFieldDisplay'
 import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
@@ -56,6 +56,7 @@ import JobReportsModal from './JobReportsModal'
 import { stripAddressZip } from '../lib/dashboardScheduleCardLines'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -403,12 +404,9 @@ export default function AdditionalReportModal({
     }
     const fv: Record<string, string> = {}
     for (const f of fields) {
-      fv[f.label] = fieldValueForSubmit(f, fieldValues)
-    }
-    // An untouched percent files the job's number, as the field and Save already say, even when Save is pressed in
-    // the moment before the seed effect has put it in `fieldValues` (that moment filed 0).
-    if (percentFieldLabel && !linesActive && fieldValues[percentFieldLabel] === undefined && jobPctSeed != null) {
-      fv[percentFieldLabel] = String(jobPctSeed)
+      // An untouched percent files the job's number, as the field and Save already say, even when Save is pressed in
+      // the moment before the seed effect has put it in `fieldValues` (that moment filed 0): the kernel's rule.
+      fv[f.label] = fieldValueForSubmit(f, fieldValues, { percentSeed: jobPctSeed, linesActive })
     }
     // Report by line (v2.5663): the number the lines add up to is the percent field, the moved lines in words beside it.
     if (linesActive && lineProgress.lines && percentFieldLabel && lineDerivedPct != null) {
@@ -542,12 +540,13 @@ export default function AdditionalReportModal({
   // Save waits for a shot still on its way (the queue of #163 takes this over in PR 7).
   const canSubmit = Boolean(selectedTemplateId && authUserId) && !photosInFlight(tiles)
   // The percent the report files, for Save's words. A type with no percent field (a Note, a Walk) files none even on a
-  // job with stage lines, so Save names none (v2.6126; the camera's live run of #189 read *Save · job 0%* on a Note).
+  // job with stage lines, so Save names none (v2.6126); an untouched field reads the job's own number, the same rule
+  // Save files by (v2.6132), so the button never promises what Save will not file.
   const jobPctForSave = !percentFieldLabel
     ? null
     : linesActive
       ? (lineDerivedPct ?? 0)
-      : Number.parseInt(fieldValues[percentFieldLabel] ?? String(jobPctSeed ?? 0), 10) || 0
+      : Number.parseInt(percentFieldValueForSubmit(fieldValues[percentFieldLabel], jobPctSeed), 10) || 0
 
   function reportTypeChipStyles(templateId: string, templateName: string): CSSProperties {
     const selected = selectedTemplateId === templateId
@@ -941,7 +940,7 @@ export default function AdditionalReportModal({
             <button type="button" onClick={handleClose} style={{ padding: '0.5rem 0.75rem', minHeight: cameraFirst ? 48 : undefined, border: cameraFirst ? '1px solid var(--border-strong)' : 'none', borderRadius: cameraFirst ? 10 : undefined, background: cameraFirst ? 'var(--surface)' : 'none', color: cameraFirst ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer', fontSize: cameraFirst ? '0.9375rem' : '0.875rem', fontWeight: cameraFirst ? 600 : undefined }}>
               {cameraFirst ? STAGE_PCT_WORDS.notNow : 'Cancel'}
             </button>
-            <button type="submit" disabled={!canSubmit || saving} style={{ marginLeft: 'auto', flex: cameraFirst ? 1 : undefined, minHeight: cameraFirst ? 48 : undefined, padding: '0.5rem 1.25rem', background: canSubmit && !saving ? '#2563eb' : '#9ca3af', color: 'white', border: 'none', borderRadius: cameraFirst ? 10 : 6, fontWeight: 600, fontSize: cameraFirst ? '0.9375rem' : undefined, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>
+            <button type="submit" disabled={!canSubmit || saving} style={{ marginLeft: 'auto', flex: cameraFirst ? 1 : undefined, minHeight: cameraFirst ? 48 : undefined, padding: '0.5rem 1.25rem', background: canSubmit && !saving ? '#2563eb' : DEAD_PRESS_FILL, color: canSubmit && !saving ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: cameraFirst ? 10 : 6, fontWeight: 600, fontSize: cameraFirst ? '0.9375rem' : undefined, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>
               {cameraFirst ? reportSaveWords({ jobPct: jobPctForSave, tiles, saving }) : saving ? 'Saving…' : photosInFlight(tiles) ? reportSaveWords({ jobPct: jobPctForSave, tiles, saving }) : 'Save report'}
             </button>
           </div>

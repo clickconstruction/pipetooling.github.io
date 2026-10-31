@@ -48,7 +48,7 @@ export function Breaker({ x, y, amps, open, angle = 0 }: { x: number; y: number;
       <circle cx={8} cy={0} r={2} fill="currentColor" />
       <line x1={-8} y1={0} x2={open ? 3 : 8} y2={open ? -12 : 0} stroke="currentColor" strokeWidth={CONDUCTOR + 0.4} strokeLinecap="round" />
       {amps != null && (
-        <text x={0} y={open ? -16 : -6} fontSize="7" fill="var(--text-muted)" textAnchor="middle" stroke="none" transform={`rotate(${-angle})`}>
+        <text x={0} y={open ? -16 : -6} fontSize="7" fill="var(--text-muted)" textAnchor="middle" stroke="var(--surface)" strokeWidth={2} paintOrder="stroke" transform={`rotate(${-angle})`}>
           {amps} A
         </text>
       )}

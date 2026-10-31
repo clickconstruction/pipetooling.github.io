@@ -40,7 +40,7 @@ export function supabasePushCoverageIo(client: unknown = supabase): PushCoverage
           )
         if (rows.error) return []
         const byId = new Map(((rows.data ?? []) as Array<{ user_id: string; days: unknown; opens: unknown; closes: unknown }>).map((r) => [r.user_id, parsePushHours(r)]))
-        return people.map((p) => ({ name: p.name, hours: byId.get(p.id) ?? null })).sort((a, b) => a.name.localeCompare(b.name))
+        return people.map((p) => ({ id: p.id, name: p.name, hours: byId.get(p.id) ?? null })).sort((a, b) => a.name.localeCompare(b.name))
       } catch {
         return []
       }

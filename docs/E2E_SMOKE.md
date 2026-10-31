@@ -42,7 +42,7 @@ There is no staging environment, so production is the only real render target. T
 
 ## The lens report
 
-Playwright, non-gating, needing no account or secret (v2.5972). `.github/workflows/lens-report.yml` builds main and the pull request and serves both with `vite preview`; `scripts/lens/lensShots.mjs` opens 16 screens of each as sealed frames at one fixed moment, light and dark at 375 and 1280; `scripts/lens/lensReport.mjs` compares them into the run's **lens-report** artifact. It runs on a PR touching `src/index.css`, any `src/**/*.css`, `portalTheme.ts`, `src/lib/lens/**` or `scripts/lens/**`, and on demand; the main build and capture are `continue-on-error`, so a broken baseline is silent.
+Playwright, non-gating, needing no account or secret (v2.5972). `.github/workflows/lens-report.yml` builds main and the pull request and serves both with `vite preview`; `scripts/lens/lensShots.mjs` opens 16 screens of each as sealed frames at one fixed moment, light and dark at 375 and 1280; `scripts/lens/lensReport.mjs` compares them into the run's **lens-report** artifact. The report compares pixels and notes caught errors; the checks themselves, `auditFrame` in `src/lib/lens/lensAudit.ts` (text under 3:1, an SVG drawing's words read on the shapes under them since v2.6137, and the words a line crosses), run in Settings → What everyone sees and in any sweep that evaluates that file in a sealed frame ([the lens](GLOSSARY.md#the-lenss-sealed-frame-what-everyone-sees-v25960)). The report runs on a PR touching `src/index.css`, any `src/**/*.css`, `portalTheme.ts`, `src/lib/lens/**` or `scripts/lens/**`, and on demand; the main build and capture are `continue-on-error`, so a broken baseline is silent.
 
 ## The Bids live walk
 
