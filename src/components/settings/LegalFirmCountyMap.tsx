@@ -26,7 +26,7 @@ const CENTRAL_TEXAS = { w: -99.3, e: -96.9, s: 28.95, n: 31.05 }
 
 type ViewName = 'central' | 'all'
 
-export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null, idleWords, litFirmId = null, also }: {
+export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null, idleWords, litFirmId = null, also, bridgeFirmId = null }: {
   assignments: CountyAssignments
   hues: ReadonlyMap<string, FirmHue>
   firmNames: ReadonlyMap<string, string>
@@ -48,6 +48,8 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
   litFirmId?: string | null
   /** county → the firms that also cover it (punch list #222, PR 3, v2.6227): a shared county draws in stripes of its first call and the next firm. */
   also?: ReadonlyMap<string, ReadonlyArray<string>>
+  /** The bridge's firm (v2.6233): while no county is colored, a case's dot keeps its stand instead of reading `none`. */
+  bridgeFirmId?: string | null
 }) {
   const patternPrefix = `lfc${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   const [map, setMap] = useState<CountyMap | null>(null)
@@ -334,7 +336,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                 if (c.lat == null || c.lng == null) return null
                 const [x, y] = map.project(c.lng, c.lat)
                 if (!inView(vb, x, y)) return null
-                const stand = effectiveStand(c, assignments)
+                const stand = effectiveStand(c, assignments, bridgeFirmId)
                 const held = c.id === heldCaseId
                 return (
                   <circle

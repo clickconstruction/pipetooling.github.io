@@ -127,7 +127,7 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
           <span aria-hidden>⚖</span>
           <div style={{ flex: 1, fontWeight: 600, minWidth: 0 }} data-legal-firm-title>
             {firm ? firm.name : 'The collections law firm'}
-            {firm ? <span style={{ fontWeight: 400, fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 8 }}>the collections law firm</span> : null}
+            {firm ? <span style={{ display: 'block', fontWeight: 400, fontSize: '0.74rem', color: 'var(--text-muted)' }}>the collections law firm</span> : null}
           </div>
           {canEdit ? (
             <a href={LEGAL_FIRM_SETTINGS_HREF} target="_blank" rel="noreferrer" style={{ ...btn, textDecoration: 'none' }} title="The same block on its Settings page, in a new tab">Open in Settings ↗</a>
