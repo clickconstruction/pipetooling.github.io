@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobContractCoverage } from '../jobs/jobContractCoverage'
-import { contractStateWords, mailsToWords, partiesStrip, payerRoleWords, precinctWords, venueBlock, type PartiesInput, type PartiesProperty } from './legalParties'
+import { cityStateWords, contractStateWords, mailsToWords, partiesStrip, payerRoleWords, precinctWords, venueBlock, type PartiesInput, type PartiesProperty } from './legalParties'
 
 const signed = (names: string[]): JobContractCoverage => ({ kind: 'signed', source: 'contract', signedAt: '2026-05-27', signerName: names.join(' and '), signerNames: names, contractId: 'c1', estimateNumber: null } as JobContractCoverage)
 
@@ -141,6 +141,15 @@ describe('the words', () => {
     expect(contractStateWords([{ coverage: signed(['R. Vance']) }, { coverage: { kind: 'draft', contractId: 'c2' } }], true)).toBe('1 of 2 signed')
     expect(contractStateWords([{ coverage: { kind: 'not_needed', at: '2026-01-01', reason: null } }], true)).toBe('no agreement of ours needed')
     expect(contractStateWords([{ coverage: { kind: 'sent', contractId: 'c', revision: 1, sentAt: '2026-01-01', viewCount: 0, recipientEmail: null } }], false)).toBe('agreement sent, not signed')
+  })
+  it('a signing mode typed after the name, and a suite typed before the city, are dropped (v2.6184)', () => {
+    expect(contractStateWords([{ coverage: signed(['Sam Owner electronically']) }], true)).toBe('subcontract signed by Sam Owner')
+    expect(contractStateWords([{ coverage: signed(['Sam Owner on paper', 'Alex Owner']) }], false)).toBe('agreement signed by Sam Owner and Alex Owner')
+    expect(cityStateWords('1900 Mesa Drive, Ste B Lubbock, TX 79424')).toBe('Lubbock, TX')
+    expect(cityStateWords('1900 Mesa Drive, Suite 4 Lubbock, TX 79424')).toBe('Lubbock, TX')
+    expect(cityStateWords('1900 Mesa Drive, Lubbock, TX 79424')).toBe('Lubbock, TX')
+    const s = partiesStrip(gcInput({ customerAddress: '1900 Mesa Drive, Ste B Lubbock, TX 79424', agreements: [{ jobLabel: '742', coverage: signed(['R. Vance electronically']) }] }))
+    expect(s.cells[0]!.quiet).toBe('general contractor · subcontract signed by R. Vance · Lubbock, TX')
   })
   it('where an owner mails', () => {
     expect(mailsToWords('100 Main St Suite 4, Denver, CO 80202')).toBe('Denver, CO')

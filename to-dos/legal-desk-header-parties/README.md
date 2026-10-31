@@ -1,8 +1,8 @@
 ---
 name: "Legal desk header: the account's head shows who we have a contract with, who owns the building, and the venue, with the map one press away"
 number: 219
-group: gated
-status: asked 2026-10-30 · read and mocked up 2026-10-30 (three shapes of the header, two shapes of the map, the states, the portal, a second pass) · branch `claude/elastic-snyder-dfe3fe` · waiting on the owner's pick
+group: close
+status: asked 2026-10-30 · mocked up 2026-10-30 (PR #6556) · the owner picked A with V1 the same day · built and merged 2026-10-30 as v2.6172 (the strip, #6562), v2.6174 (the Venue press on the Map, #6564) and v2.6175 (the firm's portal, #6566); v2.6184 cleans the signer and city words · the owner's look at the live strip, then retire
 summary: >
   The Legal desk's account head says the payer's name, the payer's office address, a twenty-word
   venue sentence and the balance. The three facts an attorney asks first are not in it: who Click
@@ -12,7 +12,7 @@ summary: >
   and for the venue the desk's own Map opened on the county with the case held and the two places
   a suit can be filed on the county card. The line under the name becomes the building's address;
   the venue sentence goes. The firm's portal mirrors the strip in a third PR.
-next: the owner's pick (A with V1 is recommended) and his answers to the four questions in the mock-up, then three small PRs: the strip, the venue press, the portal's mirror.
+next: the owner's look at the live strip on a real subcontract account (the three cells, Venue on the Map with the county card's block, the firm's page), then delete the folder; the release notes and fragments carry the record.
 size: S + S + S
 blocker: None. The owner's look at mockup.html.
 opinion: build A with V1, all three PRs; the strip alone already answers two of the three, and V1 draws no second map
