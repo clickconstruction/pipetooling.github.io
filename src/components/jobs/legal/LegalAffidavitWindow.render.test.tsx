@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import LegalAffidavitWindow from './LegalAffidavitWindow'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
-import type { RecordCheckLine, StatementDraft } from '../../../lib/legal/affidavitPaper'
+import type { RecordCheckLine, StatementDraft, StatementFace } from '../../../lib/legal/affidavitPaper'
 
 const check = vi.hoisted(() => ({ lines: [] as RecordCheckLine[], loading: false, failed: [] as string[], calls: [] as unknown[] }))
 vi.mock('./useStatementRecordCheck', () => ({ useStatementRecordCheck: (input: unknown) => { check.calls.push(input); return { lines: check.lines, loading: check.loading, failed: check.failed } } }))
@@ -20,7 +20,7 @@ const roster = [
 const account = { payerName: 'Northline Builders', jobs: [{ id: 'j1', label: '742' }], propertyCounty: 'Williamson' }
 function open(over: Partial<Parameters<typeof LegalAffidavitWindow>[0]> = {}) {
   // Typed parameters, so a test may read a call's arguments by index.
-  const onSave = vi.fn(async (_draft: StatementDraft, _entryId: string | null): Promise<boolean> => true)
+  const onSave = vi.fn(async (_draft: StatementDraft, _entryId: string | null): Promise<string | null> => 'st-new')
   const onClose = vi.fn()
   render(<LegalAffidavitWindow entry={null} initialOn="2026-09-03" account={account} roster={roster} officeCounty="Guadalupe" todayYmd={TODAY} busy={false} onSave={onSave} onClose={onClose} zIndex={800} {...over} />)
   return { onSave, onClose }
@@ -137,5 +137,42 @@ describe('LegalAffidavitWindow (punch list #220, v2.6210)', () => {
     expect(screen.getByText(/The signed copy is filed/)).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'The statement on the Timeline ↗' }))
     expect(onShowTimeline).toHaveBeenCalled()
+  })
+})
+
+describe('LegalAffidavitWindow · Print ▾ (punch list #220, v2.6211)', () => {
+  it('Print saves a new draft first, opens the sheet on the whole paper, and the sheet’s Print notes the print on the new row', async () => {
+    const onPrint = vi.fn(async (_id: string, _face: StatementFace, _text: string): Promise<boolean> => true)
+    const { onSave, onClose } = open({ onPrint })
+    const print = document.querySelector('[data-legal-affidavit-print]') as HTMLButtonElement
+    expect(print.disabled).toBe(true)
+    fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: 'u-da' } })
+    fireEvent.change(screen.getByLabelText('The statement'), { target: { value: 'Northline never called us back.' } })
+    expect(print.disabled).toBe(false)
+    fireEvent.click(print)
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(onSave.mock.calls[0]![1]).toBeNull()
+    await waitFor(() => expect(document.querySelector('[data-legal-print-frame]')).toBeTruthy())
+    expect(onClose).not.toHaveBeenCalled()
+    const frame = document.querySelector('[data-legal-print-frame]') as HTMLIFrameElement
+    Object.defineProperty(frame.contentWindow!, 'print', { value: vi.fn(), configurable: true })
+    fireEvent.click(document.querySelector('[data-legal-print-press]')!)
+    await waitFor(() => expect(onPrint).toHaveBeenCalledTimes(1))
+    expect(onPrint.mock.calls[0]![0]).toBe('st-new')
+    expect(onPrint.mock.calls[0]![1]).toBe('whole')
+    expect(onPrint.mock.calls[0]![2]).toMatch(/^1\. My name is Daniel Alvarez\./)
+    fireEvent.click(screen.getByRole('button', { name: 'Back to the statement' }))
+    expect(screen.getByLabelText('The statement')).toBeTruthy()
+  })
+  it('▾ offers the three faces, and a row’s Print opens the window on the sheet', () => {
+    const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'x', occurred_on: '2026-09-03', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', user_id: 'u-da', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', state: 'draft', prints: [] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }
+    open({ entry })
+    fireEvent.click(document.querySelector('[data-legal-affidavit-print-faces]')!)
+    expect([...document.querySelectorAll('[data-legal-affidavit-faces-menu] [role="menuitem"]')].map((b) => b.textContent)).toEqual(['The whole paper', 'The statement alone', 'The signing page alone'])
+    fireEvent.click(screen.getByRole('menuitem', { name: 'The signing page alone' }))
+    expect(document.querySelector('[data-legal-print-face="signing"]')!.getAttribute('aria-pressed')).toBe('true')
+    cleanup()
+    open({ entry, initialPrint: 'whole' })
+    expect(document.querySelector('[data-legal-print-frame]')).toBeTruthy()
   })
 })
