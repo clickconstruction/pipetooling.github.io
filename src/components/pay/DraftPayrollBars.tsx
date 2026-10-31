@@ -37,14 +37,18 @@ function fill(kind: DraftPayrollBarPartKind): CSSProperties {
   }
 }
 
-function Bar({ parts, height, words, labelFrom, testId }: { parts: DraftPayrollBarPart[]; height: number; words: string; labelFrom: number; testId: string }) {
+/**
+ * `fit` (the owner, 2026-10-30: "*paid Tue* bar should be no wider than its text"): the bar is as wide as its
+ * words, each part its label with a little room, instead of filling the cell; the period bar still fills.
+ */
+function Bar({ parts, height, words, labelFrom, testId, fit = false }: { parts: DraftPayrollBarPart[]; height: number; words: string; labelFrom: number; testId: string; fit?: boolean }) {
   return (
     <div
       role="img"
       aria-label={words}
       title={words}
       data-testid={testId}
-      style={{ display: 'flex', height, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', minWidth: 0 }}
+      style={{ display: fit ? 'inline-flex' : 'flex', width: fit ? 'auto' : undefined, maxWidth: '100%', height, borderRadius: 4, overflow: 'hidden', border: '1px solid var(--border-strong)', background: 'var(--bg-subtle)', minWidth: fit ? undefined : 0, verticalAlign: 'middle' }}
     >
       {parts.map((p) => (
         <span
@@ -53,7 +57,8 @@ function Bar({ parts, height, words, labelFrom, testId }: { parts: DraftPayrollB
           title={p.title}
           style={{
             ...fill(p.kind),
-            flex: `${Math.max(p.fraction, 0.001)} 1 0`,
+            flex: fit ? '0 0 auto' : `${Math.max(p.fraction, 0.001)} 1 0`,
+            padding: fit ? '0 7px' : undefined,
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -61,11 +66,11 @@ function Bar({ parts, height, words, labelFrom, testId }: { parts: DraftPayrollB
             fontWeight: 700,
             whiteSpace: 'nowrap',
             overflow: 'hidden',
-            minWidth: 0,
+            minWidth: fit ? undefined : 0,
             borderRight: '1px solid var(--surface)',
           }}
         >
-          {p.fraction >= labelFrom ? p.label : ''}
+          {fit || p.fraction >= labelFrom ? p.label : ''}
         </span>
       ))}
     </div>
@@ -85,10 +90,8 @@ export function DraftPayrollPeriodBar({ bar }: { bar: PeriodBar }) {
 /** One row's Cash due cell: the thin bar, and the Review press when the row still needs one. */
 export function DraftPayrollRowBarCell({ bar, onReview }: { bar: RowBar; onReview?: () => void }) {
   return (
-    <div data-draft-payroll-row-bar={bar.person} style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', minWidth: 120 }}>
-      <div style={{ flex: '1 1 auto', minWidth: 0 }}>
-        <Bar parts={bar.parts} height={16} words={bar.words} labelFrom={0.3} testId={`draft-payroll-row-bar-${bar.person}`} />
-      </div>
+    <div data-draft-payroll-row-bar={bar.person} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', maxWidth: '100%' }}>
+      <Bar parts={bar.parts} height={16} words={bar.words} labelFrom={0.3} testId={`draft-payroll-row-bar-${bar.person}`} fit />
       {onReview ? (
         <button
           type="button"

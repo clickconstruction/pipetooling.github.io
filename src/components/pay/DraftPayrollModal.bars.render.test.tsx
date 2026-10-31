@@ -102,6 +102,7 @@ describe('DraftPayrollModal with the bars', () => {
     mount(<DraftPayrollModal {...props()} />)
     expect(screen.getByText(/1 of 5 paid · Total: \$4,498\.00 \| Left: \$3,054\.00/)).toBeTruthy()
     expect(screen.getByText('Status')).toBeTruthy()
+    expect(screen.getByRole('columnheader', { name: 'Paid' })).toBeTruthy()
     expect(screen.getByText(/clock sessions in this period still need approval/)).toBeTruthy()
     expect(screen.queryByTestId('draft-payroll-period-bar')).toBeNull()
     expect(screen.getByRole('button', { name: 'Show the bars' })).toBeTruthy()
@@ -127,6 +128,8 @@ describe('DraftPayrollModal with the bars', () => {
     fireEvent.click(chip)
     expect(screen.getByText('Cash due')).toBeTruthy()
     expect(screen.queryByText('Status')).toBeNull()
+    // The Paid column goes with the bars (the owner, 2026-10-30): the green bar and Record payment say it.
+    expect(screen.queryByRole('columnheader', { name: 'Paid' })).toBeNull()
     expect(screen.getByText('2 waiting', { exact: false })).toBeTruthy()
     expect(screen.getByText('1 waiting', { exact: false })).toBeTruthy()
 
@@ -148,13 +151,13 @@ describe('DraftPayrollModal with the bars', () => {
     // A report with nothing paid on it: Record payment, blue, in Cash due, and not in Actions (the owner, 2026-10-30).
     const sidRow = screen.getByText('Sid Sample').closest('tr') as HTMLElement
     const sidCells = sidRow.querySelectorAll('td')
-    const recordInCashDue = within(sidCells[2] as HTMLElement).getByRole('button', { name: 'Record payment' })
+    const recordInCashDue = within(sidCells[1] as HTMLElement).getByRole('button', { name: 'Record payment' })
     expect(recordInCashDue.getAttribute('data-draft-payroll-record-in-cash-due')).not.toBeNull()
-    expect(within(sidCells[5] as HTMLElement).queryByRole('button', { name: 'Record payment' })).toBeNull()
+    expect(within(sidCells[4] as HTMLElement).queryByRole('button', { name: 'Record payment' })).toBeNull()
     expect(screen.queryByTestId('draft-payroll-row-bar-Sid Sample')).toBeNull()
     // A part-paid report keeps its bar and its Record payment in Actions.
     const pacoRow = screen.getByText('Paco Sample').closest('tr') as HTMLElement
-    expect(within(pacoRow.querySelectorAll('td')[5] as HTMLElement).getByRole('button', { name: 'Record payment' })).toBeTruthy()
+    expect(within(pacoRow.querySelectorAll('td')[4] as HTMLElement).getByRole('button', { name: 'Record payment' })).toBeTruthy()
     // The $ column draws its cents smaller.
     const money = screen.getAllByText((_, el) => el?.hasAttribute('data-draft-payroll-money') === true && el.textContent === '$1,071.00')
     expect(money).toHaveLength(1)

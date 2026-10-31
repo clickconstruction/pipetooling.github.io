@@ -576,22 +576,24 @@ export function DraftPayrollModal({
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
                     <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: 36 }}>Paid</th>
+                      {/* The owner (2026-10-30): with the bars the Paid column goes; the green bar and Record payment say it. */}
+                      {!withBars ? <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: 36 }}>Paid</th> : null}
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
                       {withBars ? (
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: '34%' }}>Cash due</th>
+                        // width 1% + nowrap (the owner, 2026-10-30): the column is as wide as its widest press or bar, no wider.
+                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', width: '1%', whiteSpace: 'nowrap' }}>Cash due</th>
                       ) : (
                         <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
                       )}
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>{withBars ? '$' : 'Cash Due'}</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: withBars ? 'center' : 'right' }}>{withBars ? '$' : 'Cash Due'}</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredPeople.length === 0 && peopleNames.length > 0 ? (
                       <tr>
-                        <td colSpan={6} style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        <td colSpan={withBars ? 5 : 6} style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                           Everyone has 0 hours for this period. Enable <strong>Show 0 hours</strong> to list them.
                         </td>
                       </tr>
@@ -629,6 +631,7 @@ export function DraftPayrollModal({
                       const recordInCashDue = rowBar != null && stub != null && status === 'Report only'
                       return (
                         <tr key={person} style={{ borderBottom: '1px solid var(--border)' }}>
+                          {withBars ? null : (
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub && !stubFullyPaid ? (
                               <input
@@ -646,12 +649,13 @@ export function DraftPayrollModal({
                               <span style={{ color: 'var(--text-faint-300)' }}>—</span>
                             )}
                           </td>
+                          )}
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {person}
                             {rowBar && rowBar.pendingSessions > 0 ? <DraftPayrollPendingDot n={rowBar.pendingSessions} onPress={pendingPress} /> : null}
                           </td>
                           {rowBar ? (
-                            <td style={{ padding: '0.5rem 0.75rem' }}>
+                            <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
                               {recordInCashDue && stub ? (
                                 <button
                                   type="button"
