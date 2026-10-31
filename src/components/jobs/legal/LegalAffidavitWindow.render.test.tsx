@@ -201,3 +201,39 @@ describe('LegalAffidavitWindow · File the signed copy… (punch list #220, v2.6
     expect(document.querySelector('[data-legal-affidavit-file]')).toBeNull()
   })
 })
+
+describe('LegalAffidavitWindow · the business-records preset (punch list #220, v2.6213)', () => {
+  it('Start from the records form writes the title, the role and the rule’s paragraphs from the picks, and stops once edited by hand', () => {
+    open({ documents: [{ id: 'd1', title: 'Final invoice 891' }, { id: 'd2', title: 'The clock for job 891' }] })
+    fireEvent.click(document.querySelector('[data-legal-affidavit-preset="records"]')!)
+    fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: 'u-g' } })
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Business Records Affidavit of Grace Lee')
+    expect((screen.getByLabelText('Their role, one line') as HTMLInputElement).value).toBe('custodian of records for Click Plumbing and Electrical')
+    const body = screen.getByLabelText('The statement') as HTMLTextAreaElement
+    expect(body.value.split('\n')[0]).toBe('I am the custodian of records of Click Plumbing and Electrical and am familiar with the manner in which its records are created and maintained by virtue of my duties and responsibilities.')
+    expect(body.value).toContain('Attached are ____ pages of records.')
+    fireEvent.click(document.querySelector('[data-legal-affidavit-record="d1"]')!)
+    fireEvent.click(document.querySelector('[data-legal-affidavit-record="d2"]')!)
+    fireEvent.change(screen.getByLabelText('Pages of records'), { target: { value: '14' } })
+    expect(body.value).toContain('Attached are 14 pages of records.')
+    expect(body.value).toContain('The records attached are: Final invoice 891; The clock for job 891.')
+    fireEvent.change(screen.getByLabelText('The affiant’s standing'), { target: { value: 'owner' } })
+    expect(body.value.startsWith('I am an owner of Click Plumbing and Electrical')).toBe(true)
+    expect((screen.getByLabelText('Their role, one line') as HTMLInputElement).value).toBe('an owner of Click Plumbing and Electrical')
+    // The office edits a paragraph: the picks stop rewriting.
+    fireEvent.change(body, { target: { value: body.value + '\nThe clock is kept by the app.' } })
+    fireEvent.click(document.querySelector('[data-legal-affidavit-record="d1"]')!)
+    expect(body.value).toContain('The clock is kept by the app.')
+    expect(document.querySelector('[data-legal-affidavit-records]')!.textContent).toContain('The paragraphs were edited by hand.')
+    expect(document.querySelector('[data-legal-affidavit-records]')!.textContent).toContain('at least 14 days before trial')
+    // Back to a plain statement: the edited paragraphs stay, the title follows the affiant again.
+    fireEvent.click(document.querySelector('[data-legal-affidavit-preset="statement"]')!)
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Grace Lee')
+    expect(document.querySelector('[data-legal-affidavit-records]')).toBeNull()
+  })
+  it('a statement being changed offers no Start from', () => {
+    const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'x', occurred_on: '2026-09-03', meta: { title: 'T', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }
+    open({ entry })
+    expect(document.querySelector('[data-legal-affidavit-preset="records"]')).toBeNull()
+  })
+})

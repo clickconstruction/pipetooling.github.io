@@ -1358,6 +1358,7 @@ export default function LegalDesk(props: LegalDeskProps) {
           initialPrint={statementWin.print}
           onFile={statementFile}
           initialFile={statementWin.file}
+          documents={matterDocuments.map((d) => ({ id: d.id, title: d.title }))}
           onClose={() => setStatementWin(null)}
           onShowTimeline={() => showTab('timeline')}
           zIndex={DESK_LAYER_Z + 12}
