@@ -234,6 +234,8 @@ export function BidsCountsTab({
     robotFixtures.reload()
     // The take registers the robot as a count source server-side; re-read the sources so the rows shade at once (v2.6237).
     setCountSourcesRefresh((n) => n + 1)
+    // And the stage's counts (taken, set aside), so its line says the new number now, not at the next minute's read.
+    robotProgress.reload()
   }
   const robotWhen = (iso: string): string => {
     const t = Date.parse(iso)
