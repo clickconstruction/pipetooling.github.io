@@ -10,31 +10,12 @@
  * folder made inside them is readable without a share step.
  */
 import { jobFolderName } from '../../../supabase/functions/_shared/submittalDriveNames'
+import { DIVISION_BID_FOLDERS, divisionBidFolderFor, driveFolderUrl, type DivisionBidFolder, type DivisionKey } from '../../../supabase/functions/_shared/bidPlansFolders'
 
-export type DivisionKey = 'plumbing' | 'electrical' | 'hvac'
-
-export type DivisionBidFolder = { key: DivisionKey; label: string; folderId: string; url: string }
-
-export function driveFolderUrl(id: string): string {
-  return `https://drive.google.com/drive/folders/${id}`
-}
-
-/** The office's three bid folders, one per division (the links the bid form has carried since the Project Folder field). */
-export const DIVISION_BID_FOLDERS: ReadonlyArray<DivisionBidFolder> = [
-  { key: 'plumbing', label: 'plumbing', folderId: '1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB', url: driveFolderUrl('1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB') },
-  { key: 'electrical', label: 'electrical', folderId: '10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2', url: driveFolderUrl('10gkh2r2xtyy2vlT3p_HnqgJI28vNN1q2') },
-  { key: 'hvac', label: 'HVAC', folderId: '1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL', url: driveFolderUrl('1PU1lRZOxSwm--bCQ1LcQ7eXYu5GTDKOL') },
-]
-
-/** The division folder a service type's bids live in; null until a service type is picked or when it is none of the three. */
-export function divisionBidFolderFor(serviceTypeName: string | null | undefined): DivisionBidFolder | null {
-  const n = (serviceTypeName ?? '').trim().toLowerCase()
-  if (!n) return null
-  if (/plumb/.test(n)) return DIVISION_BID_FOLDERS[0]!
-  if (/electric/.test(n)) return DIVISION_BID_FOLDERS[1]!
-  if (/hvac|heat|air/.test(n)) return DIVISION_BID_FOLDERS[2]!
-  return null
-}
+// The three division folders and the service-type rule live in `_shared/bidPlansFolders.ts` since
+// v2.6185, so the dev seat's apply_file_plans files a set into the same folder Find looks in.
+export { DIVISION_BID_FOLDERS, divisionBidFolderFor, driveFolderUrl }
+export type { DivisionBidFolder, DivisionKey }
 
 /** The name the estimator copies and gives the folder: the project name, the way the job folder is named. */
 export function bidPlansFolderName(bid: { project_name: string | null; bid_number: string | null; id: string }): string {

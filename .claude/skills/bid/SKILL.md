@@ -27,8 +27,12 @@ python3 scripts/twin/twin.py get_answers            # honour redactions; never t
 python3 scripts/twin/twin.py get_assignments
 ```
 
-If the key file is missing or any call returns 401, STOP: the key needs
-re-issuing at Settings → Digital twins. Do not improvise auth.
+If the key file is missing or any call returns 401, get a fresh key the house
+way: call `mint_twin_setup_code` on the dev seat (dev-mcp) with a label naming
+this Mac, then `python3 scripts/twin/redeem_setup_code.py <code>` — the script
+writes the key to `~/pt-twin-digest/twin.token` and prints nothing secret. Never
+print or read the key yourself. With no dev seat either, STOP: a person issues
+it at Settings → Digital twins. Do not improvise auth.
 
 **An answered plans ask is your run (v2.3223 / v2.3229).** `next_shadow` now hands
 back one of YOUR unlocked shells whose plans ask a person answered "Attached —
