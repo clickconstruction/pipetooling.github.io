@@ -527,8 +527,8 @@ export function DraftPayrollModal({
                     </span>
                   )
                 ) : null}
-                {/* With the bars (the owner, 2026-10-30) the zero sentence goes: a dead Generate button says it, and a row that still needs Review says its own. */}
-                {withBars && bulkMissingCount === 0 ? null : (
+                {/* With the bars (the owner, 2026-10-30) the count sentence goes: Generate N reports carries the count, and a row that still needs Review says its own. */}
+                {withBars ? null : (
                   <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                     {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with pay due and no report yet`}
                   </span>
