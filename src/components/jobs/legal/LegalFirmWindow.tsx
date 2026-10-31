@@ -1,14 +1,11 @@
-import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import LegalFirmSettingsBlock from '../../settings/LegalFirmSettingsBlock'
-import LegalFirmCountyMap from '../../settings/LegalFirmCountyMap'
 import LegalFirmReplacePanel from './LegalFirmReplacePanel'
+import LegalFirmCoverage from './LegalFirmCoverage'
 import { legalFirmFacts, legalFirmFactsWords } from '../../../lib/legal/legalFirmFacts'
-import { assignmentsFromCountiesByFirm, countyWords, firmHues, firmLegend } from '../../../lib/legal/firmCounties'
-import { uncoveredWords, type LegalMapCase } from '../../../lib/legal/firmMap'
-import { coverageCasesChip, coverageCountyChip, coverageHintWords, coverageNudgeButton, coverageNudgeWords, coverageState, coverageSumWords, firmWindowCoverage } from '../../../lib/legal/firmWindowCoverage'
-import { formatLegalMoney } from '../../../lib/legal/legalPacket'
+import type { LegalMapCase } from '../../../lib/legal/firmMap'
 import { legalIntakeAnswerRows, legalIntakeSentWords, legalIntakeUnseen, shapeLegalFirmIntake } from '../../../lib/legal/legalFirmIntake'
 import { companyShortName } from '../../../lib/legal/legalPortalStart'
 import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
@@ -31,13 +28,13 @@ export const LEGAL_FIRM_SETTINGS_HREF = '/settings?tab=settings-jobs#settings-le
  * Under it, a dev's *Replace with a new firm…* (v2.4712, `LegalFirmReplacePanel`).
  *
  * Since v2.6195 (punch list #222, PR 1) the window is titled with the firm's name and opens on
- * **Where <firm> covers** (`FirmCoverage`): the county map with this firm's counties in color and
+ * **Where <firm> covers** (`LegalFirmCoverage`): the county map with this firm's counties in color and
  * the other firms' faint, a row per county with its cases and open dollars (the Map view's own
  * numbers), *Show on the desk map ›*, and, while no county is colored for any firm, the nudge that
- * names the bridge with *Color its counties…*. The details and Click's particulars fold to one
- * line each inside the Settings block.
+ * names the bridge. Since v2.6221 (PR 2) a dev extends the firm's counties there, in place. The
+ * details and Click's particulars fold to one line each inside the Settings block.
  */
-export default function LegalFirmWindow({ firm, matters, recipients, canEdit, onClose, onSaved, onShowAccount, zIndex, firms = [], countiesByFirm = null, cases = [], onShowOnMap, onColorCounties }: {
+export default function LegalFirmWindow({ firm, matters, recipients, canEdit, onClose, onSaved, onShowAccount, zIndex, firms = [], countiesByFirm = null, cases = [], onShowOnMap }: {
   firm: LegalFirmRow | null
   matters: ReadonlyArray<LegalMatterRow>
   recipients: ReadonlyArray<LegalRecipientRow>
@@ -55,8 +52,6 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
   cases?: ReadonlyArray<LegalMapCase>
   /** *Show on the desk map ›*: the desk opens its Map view with this firm lit. */
   onShowOnMap?: (firmId: string) => void
-  /** *Color its counties…* under the nudge: the desk opens Firms… with this firm picked. A dev's door. */
-  onColorCounties?: (firmId: string) => void
 }) {
   const [linkLive, setLinkLive] = useState<boolean | null>(null)
   const firmId = firm?.id ?? null
@@ -135,7 +130,7 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
           {/* The facts first for a dev (the block's details fold now, and the facts must not fold with them); the read-only view keeps them under its rows. */}
           {canEdit && factsLine ? <div style={{ marginBottom: 12 }}>{factsLine}</div> : null}
           {firm && countiesByFirm ? (
-            <FirmCoverage key={`coverage-${firm.id}`} firm={firm} firms={firms} countiesByFirm={countiesByFirm} cases={cases} canEdit={canEdit} onShowOnMap={onShowOnMap} onColorCounties={onColorCounties} />
+            <LegalFirmCoverage key={`coverage-${firm.id}`} firm={firm} firms={firms} countiesByFirm={countiesByFirm} cases={cases} canEdit={canEdit} onShowOnMap={onShowOnMap} onSaved={onSaved} />
           ) : null}
           {canEdit ? (
             <div style={{ marginTop: countiesByFirm ? 16 : 0, paddingTop: countiesByFirm ? 14 : 0, borderTop: countiesByFirm ? '1px solid var(--border)' : undefined }}>
@@ -151,117 +146,6 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
         </div>
       </div>
     </div>
-  )
-}
-
-/**
- * Where the firm covers (punch list #222, PR 1, v2.6195): the county map in lens mode with this firm lit, one
- * row per county with the cases and open dollars that count for the firm (`firmWindowCoverage`, the Map
- * view's legend rule), the sum row, *Show on the desk map ›*, and in place of the map the nudge while no
- * county is colored for any firm, or the line that the firm covers none while others do. Everyone on the
- * desk reads it; only a dev gets *Color its counties…*.
- */
-function FirmCoverage({ firm, firms, countiesByFirm, cases, canEdit, onShowOnMap, onColorCounties }: {
-  firm: LegalFirmRow
-  firms: ReadonlyArray<LegalFirmRow>
-  countiesByFirm: ReadonlyMap<string, ReadonlyArray<string>>
-  cases: ReadonlyArray<LegalMapCase>
-  canEdit: boolean
-  onShowOnMap?: (firmId: string) => void
-  onColorCounties?: (firmId: string) => void
-}) {
-  const [county, setCounty] = useState<string | null>(null)
-  const assignments = useMemo(() => assignmentsFromCountiesByFirm(countiesByFirm), [countiesByFirm])
-  const hues = useMemo(() => firmHues(firms), [firms])
-  const legend = useMemo(() => firmLegend(firms, assignments), [firms, assignments])
-  const firmNames = useMemo(() => new Map(firms.map((f) => [f.id, f.name] as const)), [firms])
-  const coverage = useMemo(() => firmWindowCoverage(firm.id, countiesByFirm, cases), [firm.id, countiesByFirm, cases])
-  const state = coverageState(firm.id, countiesByFirm, firms.filter((f) => f.active).length)
-  const nudge = coverageNudgeWords(firm.name, state)
-  const flag = state.kind === 'covers' ? uncoveredWords(cases, assignments) : null
-  const th: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '3px 6px', borderBottom: '1px solid var(--border-strong)', whiteSpace: 'nowrap' }
-  const td: CSSProperties = { padding: '5px 6px', borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }
-  const num: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
-  return (
-    <section data-legal-firm-coverage={state.kind} style={{ marginTop: 2 }}>
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-        <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Where {firm.name} covers</h4>
-        <span data-legal-firm-coverage-counties style={chip}>{coverageCountyChip(coverage.counties)}</span>
-        <span data-legal-firm-coverage-cases style={chip}>{coverageCasesChip(coverage.cases, coverage.balance)}</span>
-      </div>
-      {nudge ? (
-        <div data-legal-firm-nudge={state.kind} style={{ marginTop: 8, background: 'var(--bg-amber-tint)', border: '1px solid var(--border-amber-soft)', color: 'var(--text-amber-800)', borderRadius: 8, padding: '10px 12px', fontSize: '0.84rem' }}>
-          {nudge}
-          {canEdit && onColorCounties ? (
-            <div style={{ marginTop: 8 }}>
-              <button type="button" onClick={() => onColorCounties(firm.id)} style={btnPrimary} data-legal-firm-color-counties>{coverageNudgeButton(firm.name)}</button>
-            </div>
-          ) : null}
-        </div>
-      ) : (
-        <p style={{ margin: '2px 0 8px', fontSize: '0.8rem', color: 'var(--text-muted)' }}>{coverageHintWords(firm.name)}</p>
-      )}
-      {state.kind === 'covers' ? (
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 14, alignItems: 'start' }}>
-          <div style={{ minWidth: 0 }}>
-            <LegalFirmCountyMap
-              lens
-              litFirmId={firm.id}
-              assignments={assignments}
-              hues={hues}
-              firmNames={firmNames}
-              legend={legend}
-              pickedFirmId={null}
-              cases={cases}
-              heldCaseId={null}
-              selectedCounty={county}
-              onPress={setCounty}
-              onHoverCounty={() => {}}
-              onPressCase={(c) => setCounty(c.county)}
-              idleWords={`${firm.name}’s counties in color, the other firms’ faint. Tap a county to hold it in the list.`}
-            />
-            {flag ? <div data-legal-firm-coverage-flag style={{ background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 6, padding: '6px 10px', fontSize: '0.78rem', marginTop: 8 }}>{flag}</div> : null}
-          </div>
-          <div style={{ minWidth: 0 }}>
-            <table data-legal-firm-coverage-rows style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.84rem' }}>
-              <thead>
-                <tr>
-                  <th style={th}>County</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Cases</th>
-                  <th style={{ ...th, textAlign: 'right' }}>Open</th>
-                </tr>
-              </thead>
-              <tbody>
-                {coverage.rows.map((r) => {
-                  const held = county === r.county
-                  return (
-                    <tr key={r.county} data-legal-firm-coverage-row={r.county} data-held={held ? '1' : undefined} style={{ background: held ? 'var(--bg-subtle)' : undefined }}>
-                      <td style={{ ...td, fontWeight: 600 }}>
-                        <button type="button" onClick={() => setCounty(held ? null : r.county)} aria-pressed={held} title={held ? 'Let go of the county' : `Hold ${countyWords(r.county)} on the map`} style={{ padding: 0, background: 'none', border: 'none', font: 'inherit', fontWeight: 600, color: 'var(--text)', cursor: 'pointer', textAlign: 'left' }}>
-                          {countyWords(r.county)}
-                        </button>
-                      </td>
-                      <td style={num}>{r.cases}</td>
-                      <td style={{ ...num, color: r.cases ? undefined : 'var(--text-muted)' }}>{r.cases ? formatLegalMoney(r.balance) : '—'}</td>
-                    </tr>
-                  )
-                })}
-                <tr data-legal-firm-coverage-sum style={{ fontWeight: 600 }}>
-                  <td style={{ ...td, borderBottom: 0 }}>{coverageSumWords(coverage)}</td>
-                  <td style={{ ...num, borderBottom: 0 }}>{coverage.cases}</td>
-                  <td style={{ ...num, borderBottom: 0, color: coverage.cases ? undefined : 'var(--text-muted)' }}>{coverage.cases ? formatLegalMoney(coverage.balance) : '—'}</td>
-                </tr>
-              </tbody>
-            </table>
-            {onShowOnMap ? (
-              <div style={{ marginTop: 10 }}>
-                <button type="button" onClick={() => onShowOnMap(firm.id)} style={btn} data-legal-firm-show-on-map title="The desk’s Map view with this firm lit: its counties in color, the other firms’ faint">Show on the desk map ›</button>
-              </div>
-            ) : null}
-          </div>
-        </div>
-      ) : null}
-    </section>
   )
 }
 
@@ -342,5 +226,4 @@ function ReadOnlyFirm({ firm, factsLine }: { firm: LegalFirmRow | null; factsLin
 }
 
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
 const chip: CSSProperties = { border: '1px solid var(--border)', borderRadius: 999, padding: '1px 9px', background: 'var(--bg-subtle)', color: 'var(--text)', fontSize: '0.8rem' }

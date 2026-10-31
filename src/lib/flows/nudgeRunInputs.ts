@@ -15,6 +15,7 @@
  */
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1 } from '../appSettingsKeys'
 import { firstName } from '../contacts/names'
+import { billPapers, type Paper, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from '../messages/papers'
 import type { QuickReply, QuickReplyFor, QuickReplyScope } from '../quickReplies/kernel'
 import { flowFromRows, type FlowStepRow } from './editor'
 import { FLOW_KINDS, flowContactKind, type FlowKind } from './facts'
@@ -60,6 +61,17 @@ export type RunQuickReplyRow = {
 export type RunQuickReplyUseRow = { quick_reply_id: string; user_id: string | null }
 /** An open `nudge_offers` row (v2.5595): a text waiting on Today's sends, so the run never prepares a second. */
 export type RunOfferRow = { contact_id: string; step_key: string; bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null }
+/** `jobs_ledger`, as the reply box's paper read selects it (`messages/papersIo.ts`), with whose job it is. */
+export type RunBillJobRow = PaperJobRow & { customer_id: string | null }
+/**
+ * The residential customers' bills (punch list #124, v2.6224): their Pipeline jobs, every bill on them and every payment,
+ * what `billPapers` needs to say which bill is open and what is left on it, the way the reply box does at a press.
+ */
+export interface RunBillRows {
+  jobs: readonly RunBillJobRow[]
+  invoices: readonly PaperInvoiceRow[]
+  payments: readonly PaperPaymentRow[]
+}
 
 export interface NudgeRunRows {
   contacts: readonly RunContactRow[]
@@ -83,6 +95,8 @@ export interface NudgeRunRows {
   appSends: unknown
   /** The texts waiting on Today's sends (`nudge_offers`, open), when the run reads them. */
   offers?: readonly RunOfferRow[]
+  /** The residential customers' jobs, bills and payments, when the run reads them, for `{amount}` and `{bill}` (v2.6224). */
+  bills?: RunBillRows
 }
 
 /** A text number with the `contact_channels` row the send writes the line on. */
@@ -121,6 +135,28 @@ export function appSendsFrom(stored: unknown): AppSends {
     if (!steps || typeof steps !== 'object' || Array.isArray(steps)) continue
     const on = Object.entries(steps as Record<string, unknown>).filter(([, v]) => v === true || v === 'offer')
     if (on.length) out[kind] = Object.fromEntries(on.map(([id, v]) => [id, v === 'offer' ? 'offer' : true]))
+  }
+  return out
+}
+
+/**
+ * Each customer's bills as the reply box offers them, by customer id: the open ones first, the newest billed first
+ * (`billPapers`, the box's own kernel). A customer with no bill has no entry. The jobs, bills and payments are each
+ * customer's own, so a bill never reads another customer's payments.
+ */
+export function billPapersByCustomer(bills: RunBillRows): Map<string, Paper[]> {
+  const out = new Map<string, Paper[]>()
+  const jobsByCustomer = new Map<string, RunBillJobRow[]>()
+  for (const j of bills.jobs) {
+    if (!j.customer_id) continue
+    const list = jobsByCustomer.get(j.customer_id) ?? []
+    list.push(j)
+    jobsByCustomer.set(j.customer_id, list)
+  }
+  for (const [customerId, jobs] of jobsByCustomer) {
+    const ids = new Set(jobs.map((j) => j.id))
+    const papers = billPapers({ jobs, invoices: bills.invoices.filter((i) => ids.has(i.job_id)), payments: bills.payments.filter((p) => p.job_id != null && ids.has(p.job_id)) })
+    if (papers.length) out.set(customerId, papers)
   }
   return out
 }
@@ -254,6 +290,8 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
   const links: Partial<Record<string, string>> = {}
   const snoozed: Partial<Record<string, string>> = {}
   const prefers: NonNullable<NudgeRunInput['prefers']> = {}
+  const papers: NonNullable<NudgeRunInput['papers']> = {}
+  const billsByCustomer = rows.bills ? billPapersByCustomer(rows.bills) : null
   const unread: string[] = []
   for (const contact of rows.contacts) {
     if (opts.walkKitContactId && contact.id === opts.walkKitContactId) continue
@@ -287,6 +325,9 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
     if (link) links[contact.id] = link
     if (contact.snoozed_until) snoozed[contact.id] = contact.snoozed_until
     if (contact.prefers === 'text' || contact.prefers === 'email' || contact.prefers === 'either') prefers[contact.id] = contact.prefers
+    // A residential customer's bills, for the Paid reminder's {amount} and {bill} (v2.6224); the box reads them by the customer too.
+    const bills = contact.kind === 'residential' && customerId ? billsByCustomer?.get(customerId) : undefined
+    if (bills?.length) papers[contact.id] = bills
   }
   return {
     input: {
@@ -301,6 +342,7 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
       snoozed,
       offered: offeredFrom(rows.offers ?? []),
       prefers,
+      papers,
     },
     channelIds,
     unread,

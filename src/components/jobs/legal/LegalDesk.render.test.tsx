@@ -307,13 +307,14 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     expect(document.querySelector('[data-legal-map-legend-row="firm-1"]')!.getAttribute('aria-pressed')).toBe('true')
   })
 
-  it('while no county is colored, the window’s Color its counties… opens Firms… (v2.6195)', async () => {
+  it('while no county is colored, the window’s Color its counties… opens the picker in the window itself (v2.6195, v2.6221)', async () => {
     await renderDesk({ canMarkReady: true, canEditReview: true })
     fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
     expect(document.querySelector('[data-legal-firm-nudge]')!.getAttribute('data-legal-firm-nudge')).toBe('nothing_colored')
     fireEvent.click(screen.getByRole('button', { name: 'Color Barnes & Holt’s counties…' }))
-    expect(screen.queryByRole('dialog', { name: 'The collections law firm' })).toBeNull()
-    expect(screen.getByRole('dialog', { name: 'Collections law firms' })).toBeTruthy()
+    expect(screen.getByRole('dialog', { name: 'The collections law firm' })).toBeTruthy()
+    expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('extending')
+    expect(screen.queryByRole('dialog', { name: 'Collections law firms' })).toBeNull()
   })
 
   it('with no firm, the header and the release sheet both open the firm’s window (v2.4711)', async () => {

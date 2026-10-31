@@ -26,6 +26,10 @@
  * morning entirely (`nudgeRunReads`' `walkKitContactId`, and the office's morning texts), so a walk never texts or
  * offers a reminder to the company's own number.
  *
+ * The residential customers' bills (punch list #124, v2.6224): the run reads their Pipeline jobs, bills and payments as
+ * the reply box's paper read does, and the kernel fills a Paid reminder's {amount}, {bill} and {number} from the job's
+ * newest open bill; with no open bill on the job the text waits as before (`blanks left`).
+ *
  * Customers wait until the run can read their page: `customer_portal_views` and `customer_portal_papers` are the
  * office's alone, so the service role cannot read them, and the run never texts a customer off a partial read.
  * The switch (`messages_nudge_app_sends_v1`) is `{}` as it ships, so every step is off and every run sends nothing. A
@@ -47,7 +51,7 @@ import { mintRatingLink, needsRatingLink, ratingAnswered } from '../_shared/rati
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 } from '../_shared/gcKernels/lib/appSettingsKeys.ts'
 import { FLOW_KINDS } from '../_shared/gcKernels/lib/flows/facts.ts'
 import { notSentWords, planNudgeRun, type NudgeKept, type NudgeOffer } from '../_shared/gcKernels/lib/flows/nudgeDispatch.ts'
-import { APP_SENDS_SETTING_KEY, nudgeRunReads, type NudgeRunRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
+import { APP_SENDS_SETTING_KEY, nudgeRunReads, type NudgeRunRows, type RunBillRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
 import { runHourNow, runSummary, type RunRefused } from '../_shared/gcKernels/lib/flows/nudgeRunLog.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import type { JobAt } from '../_shared/gcKernels/lib/quo/rows.ts'
@@ -122,6 +126,29 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     got.channels.push(...channels)
   }
 
+  // The residential customers' bills (punch list #124, v2.6224): their Pipeline jobs, bills and payments, the columns the
+  // reply box's paper read selects (`messages/papersIo.ts`), so the kernel fills {amount}, {bill} and {number} from the
+  // job's newest open bill as the box does at a press. A customer the flow rows name no customer id for has no bills.
+  const customerIds = [
+    ...new Set(contacts.flatMap((c) => (c.kind === 'residential' ? [(flowRows[c.id] as { card?: { customer_id?: string | null } } | undefined)?.card?.customer_id ?? null] : [])).filter((id): id is string => Boolean(id))),
+  ]
+  const bills: RunBillRows = { jobs: [], invoices: [], payments: [] }
+  for (const ids of chunks(customerIds, CHUNK)) {
+    const jobs = await all<RunBillRows['jobs'][number]>(
+      (a, b) => admin.from('jobs_ledger').select('id, status, revenue, payments_made, collections_at, uncollectible_at, job_name, hcp_number, click_number, billing_only, customer_id').in('customer_id', ids).order('id').range(a, b),
+      'jobs_ledger',
+    )
+    bills.jobs = [...bills.jobs, ...jobs]
+  }
+  for (const ids of chunks(bills.jobs.map((j) => j.id), CHUNK)) {
+    const [invoices, payments] = await Promise.all([
+      all<RunBillRows['invoices'][number]>((a, b) => admin.from('jobs_ledger_invoices').select('id, job_id, status, amount, sequence_order, billed_at, stripe_invoice_id').in('job_id', ids).order('id').range(a, b), 'jobs_ledger_invoices'),
+      all<RunBillRows['payments'][number]>((a, b) => admin.from('jobs_ledger_payments').select('invoice_id, job_id, amount, paid_on, sequence_order').in('job_id', ids).order('id').range(a, b), 'jobs_ledger_payments'),
+    ])
+    bills.invoices = [...bills.invoices, ...invoices]
+    bills.payments = [...bills.payments, ...payments]
+  }
+
   const [steps, quickReplies, uses, switchRow, offers] = await Promise.all([
     all<any>((a, b) => admin.from('flow_steps').select('*, flows!inner(kind)').order('id').range(a, b), 'flow_steps'),
     all<any>((a, b) => admin.from('quick_replies').select('id, text, for_kind, step_key, scope, added_by, added_at, removed_at').eq('scope', 'team').order('id').range(a, b), 'quick_replies'),
@@ -150,6 +177,7 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     uses,
     appSends: switchRow.data?.value_text ?? null,
     offers,
+    bills,
   }
   return { rows, customersHeld: customersHeld ?? 0, offers }
 }
