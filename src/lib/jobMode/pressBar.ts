@@ -14,7 +14,7 @@
  * from here.
  */
 import type { UserRole } from '../../hooks/useAuth'
-import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from '../clock/clockColors'
+import { CLOCK_IN_ACCENT_TEXT, CLOCK_IN_ACCENT_UNDER_WORDS } from '../clock/clockColors'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../deadPress'
 import type { JobModeState } from '../jobModePickCurrentNext'
 import { isSubcontractorLikeRole } from '../subcontractorLikeRole'
@@ -48,19 +48,19 @@ export type DayPressKind = 'manual-clock-in' | 'next' | 'im-here' | 'wrap-up' | 
 export type DayPressTone = 'orange' | 'green' | 'blue' | 'red' | 'grey'
 
 /**
- * The day's press colours by tone, the card's own: Clock In in the clock-in orange (v2.3193), On my
+ * The day's press colours by tone, the card's own: Clock In in the clock-in orange's deep shade (v2.3193, deep since v2.6186), On my
  * way green, I'm here blue (v2.5573), Wrap Up Day red, a dead press the theme's grey (`DEAD_PRESS_FILL`, v2.6062). Action colours stay literal
  * (CLAUDE.md → Theme tokens); the desktop grid and the press bar both read them here.
  */
 export const DAY_PRESS_COLORS: Record<DayPressTone, string> = {
-  orange: CLOCK_IN_ACCENT_ORANGE,
+  orange: CLOCK_IN_ACCENT_UNDER_WORDS,
   green: '#16a34a',
   blue: '#1d4ed8',
   red: '#dc2626',
   grey: DEAD_PRESS_FILL,
 }
 
-/** The words on each press colour: white, but dark on the clock-in orange, where white read 2.94:1 (v2.5981), and the theme's dark grey on a dead press, where white read 2.54:1 (v2.6062). */
+/** The words on each press colour: white, on the clock-in orange too since its fill deepened (v2.6186; v2.5981 had them dark), and the theme's dark grey on a dead press, where white read 2.54:1 (v2.6062). */
 export const DAY_PRESS_TEXT: Record<DayPressTone, string> = {
   orange: CLOCK_IN_ACCENT_TEXT,
   green: 'white',

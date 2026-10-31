@@ -121,6 +121,8 @@ import { pickActiveVersion } from '../lib/bids/pickActiveVersion'
 import { recordNavClick } from '../lib/navClickTelemetry'
 import { ScrollableTabStrip } from '../components/ScrollableTabStrip'
 import { useMatchMedia } from '../hooks/useMatchMedia'
+import { useFarmModeEnabled } from '../hooks/useFarmModeEnabled'
+import { showHeaderNewBidButton } from '../lib/headerTaskDispatchEstimatorEligible'
 import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
@@ -163,6 +165,10 @@ export default function Bids() {
   // Header layout: one row (trades | board tabs | New Bid) needs ~1150px; below
   // that the board tabs drop to their own single-row scrollable strip (v2.1331).
   const wideBidsHeader = useMatchMedia('(min-width: 1151px)')
+  // v2.6167: every role that can make a bid has Bid in the app header (Layout's press, off in Farm Mode).
+  // Below the wide header the page's New Bid wrapped onto a row of its own under the trades, so there the
+  // header's press is the one New Bid.
+  const [farmModeEnabled] = useFarmModeEnabled(authUser?.id ?? null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedServiceTypeId, setSelectedServiceTypeId] = useState<string>('')
@@ -1646,8 +1652,10 @@ export default function Bids() {
 
   // The header's New Bid, and the same press for the empty lists that name it (punch list #184, sweep C).
   const newBidPress = visibleServiceTypes.length > 0 && myRole !== 'primary' ? openNewBid : undefined
+  // v2.6167: below the wide header the app header's Bid press is the one New Bid; the empty lists keep theirs.
+  const headerHasNewBid = showHeaderNewBidButton(myRole, farmModeEnabled && !!authUser?.id)
   const bidsNewBidButton =
-    newBidPress ? (
+    newBidPress && (wideBidsHeader || !headerHasNewBid) ? (
       <button
         type="button"
         onClick={openNewBid}
@@ -1704,7 +1712,8 @@ export default function Bids() {
       {/* Header (v2.1331): trades (segmented) + board tabs + New Bid. One row on wide
           screens; below ~1150px trades + New Bid share a row and the board tabs drop
           to their own single-row scrollable strip. */}
-      <div style={{ marginBottom: '0.65rem' }}>
+      {/* v2.6167: below the wide header the strips stack, so the gap between them is a hair, not a row. */}
+      <div style={{ marginBottom: wideBidsHeader ? '0.65rem' : '0.25rem' }}>
         {wideBidsHeader ? (
           <div
             style={{
@@ -1743,7 +1752,7 @@ export default function Bids() {
       {/* Bid-detail tabs (v2.1331): one row always — centered while they fit,
           horizontally scrollable with edge fades when they don't. v2.5736: the Plans
           button at the row's end opens the Plans panel on the bid the tab holds. */}
-      <div style={{ borderBottom: '2px solid var(--border)', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+      <div style={{ borderBottom: '2px solid var(--border)', marginBottom: '0.75rem', display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
         <div style={{ flex: '1 1 auto', minWidth: 0 }}>
         <ScrollableTabStrip activeKey={activeTab} ariaLabel="Bid detail tabs">
         {bidsTabOpenFor('counts', myRole) && (

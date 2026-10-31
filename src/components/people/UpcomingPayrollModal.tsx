@@ -297,8 +297,8 @@ export function UpcomingPayrollModal({ lines, currentWeekLabel, formatPeriod, zI
                     style={{
                       font: 'inherit',
                       padding: '0.2rem 0.55rem',
-                      background: active ? 'var(--text-link)' : 'var(--surface)',
-                      color: active ? 'var(--text-on-bright-solid)' : 'var(--text-700)',
+                      background: active ? '#2563eb' : 'var(--surface)',
+                      color: active ? '#ffffff' : 'var(--text-700)',
                       border: 'none',
                       borderLeft: i === 0 ? 'none' : '1px solid var(--border-strong)',
                       cursor: 'pointer',

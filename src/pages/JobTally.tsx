@@ -48,6 +48,7 @@ import { TallyPayrollRulesModal } from '../components/tally/TallyPayrollRulesMod
 import { TallyMarkPayrollConfirmModal } from '../components/tally/TallyMarkPayrollConfirmModal'
 import { EmptyState } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../lib/orangeUnderWords'
 
 type TallyLinkedDebitCardRow = Database['public']['Functions']['list_my_linked_mercury_debit_cards_for_tally']['Returns'][number]
 type TallyTxSortKey = 'posted_at' | 'amount' | 'counterparty_name'
@@ -1089,8 +1090,8 @@ export default function JobTally() {
                         marginLeft: '0.35rem',
                         padding: '0.125rem 0.5rem',
                         borderRadius: 9999,
-                        background: '#f59e0b',
-                        color: '#1c1917',
+                        background: ORANGE_UNDER_WORDS,
+                        color: WORDS_ON_ORANGE,
                         fontWeight: 600,
                         fontVariantNumeric: 'tabular-nums',
                       }}

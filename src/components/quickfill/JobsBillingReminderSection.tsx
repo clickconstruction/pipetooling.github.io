@@ -5,6 +5,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useReportQuickfillSectionMetric } from '../../contexts/QuickfillSectionMetricsContext'
 import type { Database } from '../../types/database'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 type JobsLedgerRow = Database['public']['Tables']['jobs_ledger']['Row']
 type JobsLedgerMaterial = Database['public']['Tables']['jobs_ledger_materials']['Row']
@@ -140,8 +141,8 @@ export function JobsBillingReminderSection({ minHcpNumber }: { minHcpNumber: num
         to="/jobs?tab=billing"
         style={{
           padding: '0.35rem 0.75rem',
-          background: '#f59e0b',
-          color: 'white',
+          background: ORANGE_UNDER_WORDS,
+          color: WORDS_ON_ORANGE,
           borderRadius: 6,
           textDecoration: 'none',
           fontWeight: 600,

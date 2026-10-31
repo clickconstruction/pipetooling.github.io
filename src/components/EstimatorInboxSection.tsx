@@ -16,6 +16,7 @@ import { isCustomerWaiting, portalKindLabel, type RequestPriority } from '../lib
 import { parsePortalRequestPayload } from '../lib/portalRequestPayload'
 import { ageChipStyle, describeAge, ESTIMATOR_REQUEST_AGE } from '../lib/ageState'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../lib/orangeUnderWords'
 
 export type EstimatorInboxRow = {
   id: string
@@ -202,8 +203,8 @@ export function EstimatorInboxSection({
               fontSize: '0.75rem',
               fontWeight: 700,
               whiteSpace: 'nowrap',
-              background: hasOpenWork ? '#f59e0b' : 'var(--bg-muted)',
-              color: hasOpenWork ? '#ffffff' : 'var(--text-700)',
+              background: hasOpenWork ? ORANGE_UNDER_WORDS : 'var(--bg-muted)',
+              color: hasOpenWork ? WORDS_ON_ORANGE : 'var(--text-700)',
             }}
           >
             {headerBadge === 'open'

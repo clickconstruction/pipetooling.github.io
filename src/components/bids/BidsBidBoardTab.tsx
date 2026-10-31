@@ -69,7 +69,7 @@ import { BID_MARK_SAVE_FAILED, BidMarkInitial, MarkedBidsToggle, useBidMarkReque
 import { bidBoardEmptyWords, bidGroupEmptyWords } from '../../lib/bids/bidsEmptyWords'
 import { EmptyState } from '../EmptyState'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
-import { SAFETY_ORANGE, TEXT_ON_SAFETY_ORANGE } from '../../lib/bids/bidStyles'
+import { SAFETY_ORANGE_UNDER_WORDS, TEXT_ON_SAFETY_ORANGE } from '../../lib/bids/bidStyles'
 import {
   BID_BOARD_DEVELOPMENT_FILTER_NONE,
   bidDevelopmentName,
@@ -1921,7 +1921,7 @@ export function BidsBidBoardTab({
                       borderRadius: 999,
                       padding: '0.05rem 0.4rem',
                       fontVariantNumeric: 'tabular-nums',
-                      background: key === 'pending' && count > 0 ? SAFETY_ORANGE : 'var(--bg-muted)',
+                      background: key === 'pending' && count > 0 ? SAFETY_ORANGE_UNDER_WORDS : 'var(--bg-muted)',
                       color: key === 'pending' && count > 0 ? TEXT_ON_SAFETY_ORANGE : 'var(--text-muted)',
                     }}
                   >
@@ -2034,8 +2034,8 @@ export function BidsBidBoardTab({
                               height: '0.875rem',
                               padding: lostBidsMissingLossReasonCount > 9 ? '0 3px' : 0,
                               borderRadius: 999,
-                              background: '#f59e0b',
-                              color: '#fff',
+                              background: SAFETY_ORANGE_UNDER_WORDS,
+                              color: TEXT_ON_SAFETY_ORANGE,
                               fontSize: '0.5625rem',
                               fontWeight: 700,
                               lineHeight: '0.875rem',

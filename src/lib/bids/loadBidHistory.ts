@@ -94,7 +94,8 @@ export async function removeBidAddedRows(table: string, ids: ReadonlyArray<strin
 
 /**
  * What hangs on each count row outside the ledger (punch list #73, PR 6): the submittal ticks (ticked
- * ones only) and items, the rows hidden from the pricing page and the old By Stage picks, read for the count rows
+ * ones only) and items, the rows hidden from the pricing page, the old By Stage picks and the robot fixtures the window
+ * landed (v2.6180), read for the count rows
  * an Undo would remove, before it is offered and again on the press. A row with none is left out.
  * Throws a failed read, so Undo stays off rather than guess.
  */

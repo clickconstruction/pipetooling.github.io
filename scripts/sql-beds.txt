@@ -63,6 +63,7 @@ sent-copy-stamps
 messages-tech-send
 salary-sync-open-punch
 count-sources
+robot-fixtures
 helper-on-job
 people-phone
 training
