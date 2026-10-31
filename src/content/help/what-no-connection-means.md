@@ -15,6 +15,8 @@ The app sends every save and every read to the server over the internet. When th
 
 Nothing from that press. The words you typed are still in the form. Nothing was half saved, so you do not need to check the record.
 
+Clock In, Clock Out, a job note and a field report work another way. With no signal the phone keeps them and sends them when the signal is back. Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops).
+
 ## What to do
 
 1. Check the signal. On a phone, step outside or turn Wi-Fi off and on.

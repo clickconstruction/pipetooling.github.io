@@ -79,6 +79,18 @@ describe('offlineRecoveryState', () => {
     expect(s.phase).toBe('failed')
     expect(s.showRetry).toBe(false)
   })
+
+  it('a read may say a lost signal in its own words, never the write sentence; Back online reads as before (v2.6198)', () => {
+    const words = 'No connection, so the clock could not load. It loads again when the signal is back.'
+    const first = offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 0, idempotent: true, offlineMessage: words })
+    expect(first.phase).toBe('offline')
+    expect(first.message).toBe(words)
+    expect(first.showRetry).toBe(true)
+    expect(offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 1, idempotent: true, offlineMessage: words }).message).toBe(`${words}${STILL_OFFLINE_SUFFIX}`)
+    expect(offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0, idempotent: true, reconnected: true, offlineMessage: words }).message).toBe(BACK_ONLINE_AUTO_MESSAGE)
+    // A refusal keeps its own sentence.
+    expect(offlineRecoveryState({ online: false, lastError: REFUSED, attempts: 0, idempotent: true, offlineMessage: words }).message).toBe(REFUSED.message)
+  })
 })
 
 describe('recoveryFailureFromError', () => {

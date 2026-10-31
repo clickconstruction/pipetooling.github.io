@@ -23,6 +23,7 @@ import { getTeamFeedbackEligibility } from '../lib/teamFeedback'
 import { fetchSelfSalaryClockState } from '../lib/selfSalaryClockState'
 import {
   OperationTimeoutError,
+  errorKindOf,
   formatErrorMessage,
   withSupabaseRetry,
 } from '../utils/errorHandling'
@@ -64,8 +65,15 @@ import { fetchRecentClockJobPicksForUser, type RecentClockJobPick } from '../lib
 import { useFirstAssistantDispatchPhone } from '../hooks/useFirstAssistantDispatchPhone'
 import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
 import { outbox } from '../lib/offline/outboxState'
-import { pendingClockIn } from '../hooks/useOutbox'
-import { KEPT_ON_PHONE_WORDS, pendingOpenSession, pressIdOfSession } from '../lib/offline/pendingSession'
+import {
+  CLOCK_READ_OFFLINE_WORDS,
+  KEPT_ON_PHONE_WORDS,
+  clockPressStates,
+  clockReadWithKeptPresses,
+  clockReadsAgain,
+  pendingOpenSession,
+  pressIdOfSession,
+} from '../lib/offline/pendingSession'
 import { ClockPressLine } from './clock/ClockPressLine'
 import {
   CLOCK_IN_NO_PICKS_HEADLINE,
@@ -213,6 +221,8 @@ export default function ClockInOutButton({
   const [error, setError] = useState<string | null>(null)
   /** v2.4350 · the last load of your clock state failed: say so plainly, offer Try again, and load again when the app comes back on screen. */
   const [loadFailed, setLoadFailed] = useState(false)
+  /** v2.6198 · that load never reached the server: the Retry panel in the clock's read words, reading again when the signal is back. */
+  const [readFailure, setReadFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [clockInModalOpen, setClockInModalOpen] = useState(false)
   /** Clock In: show orange summary. Update Focus / clock out: gray chip. Only after unified search tap. */
   const [associationChipFromSearch, setAssociationChipFromSearch] = useState(false)
@@ -405,60 +415,61 @@ export default function ClockInOutButton({
       })(),
     ])
 
+    const failures = [openResult, todayResult].flatMap((r) => (r.ok ? [] : [r.error]))
+    // A read that never reached the server (v2.6198) draws on the Retry panel in the clock's read words and reads
+    // again when the signal is back: the write sentence's *nothing was saved* under a clock-out kept on the phone
+    // read as the press failing. Any other failure keeps v2.4350's line and its Try again.
+    const lostSignal = failures.find((e) => errorKindOf(e) === 'network')
+    setReadFailure(lostSignal ? recoveryFailureFromError(lostSignal, "Could not load today's time") : null)
     const errParts: string[] = []
-    if (!openResult.ok) {
+    if (!lostSignal && !openResult.ok) {
       errParts.push(formatErrorMessage(openResult.error, 'Could not load open clock session'))
     }
-    if (!todayResult.ok) {
+    if (!lostSignal && !todayResult.ok) {
       errParts.push(formatErrorMessage(todayResult.error, 'Could not load today clock sessions'))
     }
     // The two reads usually fail together and for the same reason: say it once.
     setError(errParts.length > 0 ? [...new Set(errParts)].join(' ') : null)
-    setLoadFailed(errParts.length > 0)
+    setLoadFailed(failures.length > 0)
 
+    // The presses still on the phone laid over the read (punch list #163): a clock-in waiting is the open session
+    // until it lands, and a clock-out waiting closes its session, though the read landed before the press did.
+    const open = openResult.ok && openResult.row && !openResult.row.clocked_out_at ? openResult.row : null
+    const view = clockReadWithKeptPresses({ open, today: todayResult.ok ? todayResult.sessions : [] }, outbox.presses())
     if (openResult.ok) {
-      const open = openResult.row
-      if (open && !open.clocked_out_at) {
-        setOpenSession({
-          id: open.id,
-          clocked_in_at: open.clocked_in_at,
-          work_date: open.work_date?.trim() || denverCalendarDayKey(new Date(open.clocked_in_at).getTime()),
-          notes: open.notes ?? '',
-          job_ledger_id: open.job_ledger_id,
-          bid_id: open.bid_id,
-        })
-      } else {
-        // A clock-in still on the phone (punch list #163 PR 2): the button is clocked in on it until it lands.
-        const pending = pendingClockIn(outbox.presses())
-        setOpenSession(pending ? pendingOpenSession(pending) : null)
-      }
+      const o = view.open
+      setOpenSession(
+        o
+          ? {
+              id: o.id,
+              clocked_in_at: o.clocked_in_at,
+              work_date: o.work_date?.trim() || denverCalendarDayKey(new Date(o.clocked_in_at).getTime()),
+              notes: o.notes ?? '',
+              job_ledger_id: o.job_ledger_id,
+              bid_id: o.bid_id,
+            }
+          : null,
+      )
     }
 
     if (todayResult.ok) {
-      const pending = openResult.ok && !openResult.row ? pendingClockIn(outbox.presses()) : null
-      const sessions = pending ? [...todayResult.sessions, pendingOpenSession(pending)] : todayResult.sessions
-      setTodaySessions(sessions)
-      setTotalSecondsToday(sessions.length > 0 ? computeTotalSecondsToday(sessions) : 0)
+      setTodaySessions(view.today)
+      setTotalSecondsToday(view.today.length > 0 ? computeTotalSecondsToday(view.today) : 0)
     }
   }, [userId])
 
   // A queued clock press landed, was refused or was dropped (punch list #163 PR 2): read the clock again.
-  // A try that failed changes nothing here, so a lost signal never has the button re-reading every 30 s.
-  const outboxSignatureRef = useRef('')
+  // A try that failed changes nothing here, so a lost signal never has the button re-reading every 30 s;
+  // nor does a press kept with no signal, which its handler drew and whose read could only fail under it (v2.6198).
+  const outboxStatesRef = useRef<ReadonlyMap<string, string>>(new Map())
   useEffect(() => {
     if (!userId) return
-    const signature = () =>
-      outbox
-        .presses()
-        .filter((p) => p.kind === 'clock-in' || p.kind === 'clock-out')
-        .map((p) => `${p.id}:${p.state === 'waiting' || p.state === 'sending' ? 'w' : p.state}`)
-        .join('|')
-    outboxSignatureRef.current = signature()
+    outboxStatesRef.current = clockPressStates(outbox.presses())
     return outbox.subscribe(() => {
-      const next = signature()
-      if (next === outboxSignatureRef.current) return
-      outboxSignatureRef.current = next
-      void fetchSessions()
+      const next = clockPressStates(outbox.presses())
+      const again = clockReadsAgain(outboxStatesRef.current, next, typeof navigator === 'undefined' || navigator.onLine !== false)
+      outboxStatesRef.current = next
+      if (again) void fetchSessions()
     })
   }, [userId, fetchSessions])
 
@@ -2007,6 +2018,16 @@ export default function ClockInOutButton({
     ) : null}
       {/* The line beside the clock flips with the strip (punch list #163 PR 2): waiting, sent, or could not be sent. */}
       <ClockPressLine style={{ margin: embedded ? '0.25rem 0 0' : '-0.5rem 0 0.75rem' }} />
+      {/* The clock's own read with no signal (v2.6198): its read words, never the write sentence, and it reads again by itself. */}
+      <OfflineRetryPanel
+        failure={readFailure}
+        onRetry={fetchSessions}
+        surface="clock-read"
+        idempotent
+        offlineMessage={CLOCK_READ_OFFLINE_WORDS}
+        style={{ margin: embedded ? '0.25rem 0 0' : '-0.5rem 0 0.75rem' }}
+        messageStyle={{ fontSize: '0.8125rem' }}
+      />
       {error && (
         <span style={{ color: 'var(--text-red-600)', fontSize: '0.875rem' }} data-testid="clock-load-error">
           {/* The button says it, so the sentence does not. */}
