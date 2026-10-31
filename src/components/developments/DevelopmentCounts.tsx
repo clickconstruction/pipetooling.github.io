@@ -92,14 +92,17 @@ export function DevelopmentCounts({ tiles, cards, phone, onRow, onFoot, onPress 
         {tiles.map((t, i) => {
           const isOpen = open === t.key
           const last = i === tiles.length - 1
+          // A phone draws two tiles a row; an odd fifth one spans the row, so no cell sits blank.
+          const spans = phone && last && tiles.length % 2 === 1
           return (
             <div
               key={t.key}
               className="developmentCountTile"
               data-open={isOpen ? '1' : undefined}
               data-pinned={isOpen && pinned ? '1' : undefined}
+              data-spans={spans ? '1' : undefined}
               data-testid={`development-count-${t.key}`}
-              style={{ position: 'relative', minWidth: 0, borderRight: phone ? (i % 2 === 0 ? '1px solid var(--border)' : 'none') : last ? 'none' : '1px solid var(--border)', borderBottom: phone && i < tiles.length - 1 ? '1px solid var(--border)' : 'none', borderRadius: i === 0 ? '8px 0 0 8px' : last && !phone ? '0 8px 8px 0' : 0 }}
+              style={{ position: 'relative', minWidth: 0, gridColumn: spans ? '1 / -1' : undefined, borderRight: phone ? (i % 2 === 0 && !spans ? '1px solid var(--border)' : 'none') : last ? 'none' : '1px solid var(--border)', borderBottom: phone && i < tiles.length - 1 ? '1px solid var(--border)' : 'none', borderRadius: i === 0 ? '8px 0 0 8px' : last && !phone ? '0 8px 8px 0' : spans ? '0 0 8px 8px' : 0 }}
               onMouseEnter={() => hover(t.key)}
               onMouseLeave={leave}
             >
