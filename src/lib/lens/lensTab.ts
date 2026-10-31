@@ -5,6 +5,8 @@
  */
 import { customerJourneys, type JourneyId } from '../customerJourneys'
 import { doorsFor, plainViewer, type Door } from '../search/doors'
+import type { Course, CourseLesson } from '../training/courseContent'
+import { lessonItems } from '../training/figures'
 import type { LensAsk } from './answer/lensEngine'
 import { LENS_MOODS, type LensConfig, type LensMood, type LensTheme } from './lensName'
 import { LENS_PEOPLE, LENS_ROLES, type LensRole } from './lensPeople'
@@ -37,16 +39,50 @@ export type LensKnobs = { as: LensRole; where: string; mood: LensMood; across: L
 
 export const DEFAULT_KNOBS: LensKnobs = { as: 'estimator', where: 'page:/dashboard', mood: 'full', across: 'widths', width: 'phone', theme: 'light', audience: null }
 
-/** A screen the lens can draw: a page, a window with a link, or a Settings card. */
-export type LensScreen = { id: string; label: string; where: string; to: string; kind: Door['kind'] }
+/** A screen the lens can draw: a page, a window with a link, a Settings card, or a training lesson. */
+export type LensScreen = { id: string; label: string; where: string; to: string; kind: Door['kind'] | 'lesson' }
+
+/** What a lesson's screen reads from its course. */
+export type LensCourse = Pick<Course, 'slug' | 'title'> & { lessons: readonly Pick<CourseLesson, 'key' | 'order' | 'title' | 'mustKnow' | 'traps'>[] }
+
+/**
+ * What the lens draws beside the door index, handed in by the caller: the training courses live in a Vite-only module
+ * (`courseRegistry`), loaded apart so their words never ride in the Settings chunk.
+ */
+export type LensSources = { courses?: readonly LensCourse[] }
 
 const DRAWN_KINDS = new Set<Door['kind']>(['page', 'window', 'settings'])
 
-/** Every screen a role can open, from the door index, through the app's own gates. */
-export function lensScreens(role: LensRole): LensScreen[] {
-  return doorsFor(plainViewer(role))
+/**
+ * The door a dev reads a course that is off by (Training.tsx). The lens world turns no course on, so every lesson is
+ * behind it, and a role that holds it reads them all.
+ */
+const holdsCoursePreview = (doors: readonly Door[]) => doors.some((d) => d.id === 'dev:page-training-preview')
+
+/** Each lesson that draws a figure, at its own door (`/training/<slug>?lesson=<key>`), in course and lesson order. */
+export function lessonScreens(courses: readonly LensCourse[]): LensScreen[] {
+  return courses.flatMap((c) =>
+    c.lessons
+      .filter((l) => lessonItems([...l.mustKnow, ...l.traps]).some((item) => item.kind === 'figure'))
+      .map((l): LensScreen => ({ id: `lesson:${c.slug}/${l.key}`, label: `${c.title} · Lesson ${l.order} · ${l.title}`, where: 'Training', to: `/training/${c.slug}?lesson=${encodeURIComponent(l.key)}`, kind: 'lesson' })),
+  )
+}
+
+/** True when the role's screens end with the lessons. */
+export function lensReadsLessons(role: LensRole): boolean {
+  return holdsCoursePreview(doorsFor(plainViewer(role)))
+}
+
+/**
+ * Every screen a role can open, from the door index, through the app's own gates. A role that holds the course preview
+ * door also gets every lesson that draws a figure, so each drawing is drawn and checked once, as the dev.
+ */
+export function lensScreens(role: LensRole, sources: LensSources = {}): LensScreen[] {
+  const doors = doorsFor(plainViewer(role))
+  const screens: LensScreen[] = doors
     .filter((d) => DRAWN_KINDS.has(d.kind))
     .map((d) => ({ id: d.id, label: d.label, where: d.where, to: d.to, kind: d.kind }))
+  return holdsCoursePreview(doors) ? [...screens, ...lessonScreens(sources.courses ?? [])] : screens
 }
 
 export type LensFrameSpec = {
@@ -64,8 +100,8 @@ export type LensFrameSpec = {
   fallback?: string
 }
 
-function screenFor(role: LensRole, where: string): { screen: LensScreen | null; fallback?: string } {
-  const screens = lensScreens(role)
+function screenFor(role: LensRole, where: string, sources: LensSources): { screen: LensScreen | null; fallback?: string } {
+  const screens = lensScreens(role, sources)
   const hit = screens.find((s) => s.id === where)
   if (hit) return { screen: hit }
   const home = screens.find((s) => s.id === 'page:/dashboard') ?? screens[0] ?? null
@@ -118,17 +154,17 @@ function audienceFrames(k: LensKnobs, audience: LensAudience): LensFrameSpec[] {
   return screen ? LENS_WIDTH_ORDER.map((w) => spec(screen, w, LENS_WIDTHS[w].label)) : []
 }
 
-export function lensFrames(k: LensKnobs): LensFrameSpec[] {
+export function lensFrames(k: LensKnobs, sources: LensSources = {}): LensFrameSpec[] {
   if (k.audience) return audienceFrames(k, k.audience)
   if (k.across === 'sheet') {
     // Every screen the role can open, once each, under the held state, width and theme.
     const seen = new Set<string>()
-    return lensScreens(k.as)
+    return lensScreens(k.as, sources)
       .filter((s) => !seen.has(s.to) && seen.add(s.to))
       .map((s) => specFor(k.as, s, k.mood, k.theme, k.width, s.label))
   }
   const spec = (as: LensRole, mood: LensMood, theme: LensTheme, width: LensWidth, lead: string): LensFrameSpec | null => {
-    const { screen, fallback } = screenFor(as, k.where)
+    const { screen, fallback } = screenFor(as, k.where, sources)
     return screen ? specFor(as, screen, mood, theme, width, lead, fallback) : null
   }
   const out: (LensFrameSpec | null)[] = []

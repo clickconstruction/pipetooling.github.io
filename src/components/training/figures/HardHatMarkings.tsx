@@ -29,7 +29,7 @@ export function HardHatMarkings({ titleId }: FigureProps) {
           const a = (i / 12) * Math.PI * 2
           return <line key={i} x1={206 + Math.sin(a) * 28} y1={60 - Math.cos(a) * 28} x2={206 + Math.sin(a) * 34} y2={60 - Math.cos(a) * 34} />
         })}
-        <polygon points="206,60 212,36 200,36" fill="#dc2626" stroke="none" />
+        <polygon points="206,60 212,36 200,36" fill="var(--text-red-600)" stroke="none" />
       </g>
       <g fontSize="9.5" fill="currentColor">
         <text x="206" y="112" textAnchor="middle" fontWeight="600">

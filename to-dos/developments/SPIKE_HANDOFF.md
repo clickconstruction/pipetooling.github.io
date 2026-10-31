@@ -51,7 +51,8 @@ and the device-store history (`readHistoryEntries` in `history.ts`; the table re
    `get_history` read that returns the stream as the page draws it, every body whole (the owner:
    *mcp will still need to be able to read all of it*); the `docs/EDGE_FUNCTIONS.md`
    section and TOC line; deploy `dev-mcp` after the migration. The first thing written through it,
-   on the owner's say-so, is the backfill from the site lead's mailbox export (193 lines; the
+   on the owner's say-so, is the backfill from the site lead's mailbox export — done 2026-10-30,
+   188 lines, one per thread once the notices, invitations and delivery failures were dropped (the
    shaping script and its output stay outside the repo, see `SPIKE.md`).
 4. **The pairing PR** (between PR 2 and PR 3, as the lead leans): pair mode, the picker, New job from
    a bid, the backfill sheet, *Pair bids with jobs*, the won press with a confirm window; the guide

@@ -328,7 +328,58 @@ export function gcWeeklyReportLines(body: string): string[] {
  * sends that kind's row, never the request's lines, but the request is checked first.
  */
 export function gcCustomerEmailMaxLines(kind: GcCustomerEmailKind): number {
-  return kind === 'schedule' ? 80 : 30
+  return kind === 'schedule' || kind === 'interest_bill' ? 80 : 30
+}
+
+/**
+ * A table inside the lines (v2.6158, punch list #217 outside-5): a line that starts with `| ` is a row of cells split
+ * on ` | `, and one that starts with `|= ` is the sum row, drawn under a rule with its empty cells folded into the
+ * label. A run of them is one table, its first row the head. The lines stay plain strings, so a reminder's row keeps
+ * them as it keeps every other line, and a text-only reader sees the cells joined by dots.
+ */
+export const GC_EMAIL_TABLE_MARK = '|'
+export const GC_EMAIL_TABLE_SUM_MARK = '|='
+
+/** The lines of one table: the head, each row, and the sum row when there is one. A cell never carries a bar. */
+export function gcEmailTableLines(head: readonly string[], rows: readonly (readonly string[])[], sum?: readonly string[]): string[] {
+  const line = (cells: readonly string[], mark: string) => `${mark} ${cells.map((c) => c.replace(/\|/g, '/').trim()).join(' | ')} |`
+  return [line(head, GC_EMAIL_TABLE_MARK), ...rows.map((r) => line(r, GC_EMAIL_TABLE_MARK)), ...(sum ? [line(sum, GC_EMAIL_TABLE_SUM_MARK)] : [])]
+}
+
+/** A line read back as a table row, or null for a paragraph. */
+export function gcEmailTableRow(line: string): { cells: string[]; sum: boolean } | null {
+  const sum = line.startsWith(`${GC_EMAIL_TABLE_SUM_MARK} `)
+  if (!sum && !line.startsWith(`${GC_EMAIL_TABLE_MARK} `)) return null
+  const body = line.slice(sum ? GC_EMAIL_TABLE_SUM_MARK.length : GC_EMAIL_TABLE_MARK.length).replace(/\s*\|\s*$/, '')
+  return { cells: body.split('|').map((c) => c.trim()), sum }
+}
+
+/** A cell that reads as a figure: a dollar amount, a count, a minus. The column lines up on the right. */
+export function gcEmailCellIsFigure(cell: string): boolean {
+  return /^[−-]?\$|^\d/.test(cell)
+}
+
+/** A table's rows as a text-only reader sees them: the cells that say something, joined by dots. */
+export function gcEmailTableText(rows: readonly { cells: string[]; sum: boolean }[]): string[] {
+  return rows.map((r) => r.cells.filter((c) => c !== '').join(' · '))
+}
+
+type GcEmailBlock = { kind: 'p'; text: string } | { kind: 'table'; rows: { cells: string[]; sum: boolean }[] }
+
+/** The lines as paragraphs and tables, a run of table lines one table. */
+export function gcEmailBlocks(lines: readonly string[]): GcEmailBlock[] {
+  const out: GcEmailBlock[] = []
+  for (const l of lines) {
+    const row = gcEmailTableRow(l)
+    if (!row) {
+      out.push({ kind: 'p', text: l })
+      continue
+    }
+    const last = out[out.length - 1]
+    if (last && last.kind === 'table') last.rows.push(row)
+    else out.push({ kind: 'table', rows: [row] })
+  }
+  return out
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -401,6 +452,29 @@ export function gcCustomerEmailCardFeeLine(fee: number): string {
 }
 
 /**
+ * A table in the email, in the GC statement email's layout: a head over a two-point rule, a hairline under each row,
+ * figures on the right, and the sum row bold under a rule with its empty cells folded into its label.
+ */
+function gcEmailTableHtml(rows: readonly { cells: string[]; sum: boolean }[]): string {
+  const [head, ...body] = rows
+  if (!head) return ''
+  const figures = head.cells.map((_, i) => body.filter((r) => !r.sum).some((r) => (r.cells[i] ?? '') !== '') && body.filter((r) => !r.sum).every((r) => (r.cells[i] ?? '') === '' || gcEmailCellIsFigure(r.cells[i] ?? '')))
+  const align = (i: number) => (figures[i] ? 'right' : 'left')
+  const th = head.cells.map((c, i) => `<th style="padding:6px;border-bottom:2px solid ${INK};font-size:12px;color:${MUTED};font-weight:600;text-align:${align(i)}">${esc(c)}</th>`).join('')
+  const tr = body
+    .map((r) => {
+      if (r.sum) {
+        const kept = r.cells.map((c, i) => ({ c, i })).filter(({ c, i }) => i === 0 || c !== '')
+        const span = (k: number) => (k + 1 < kept.length ? (kept[k + 1]?.i ?? r.cells.length) - (kept[k]?.i ?? 0) : r.cells.length - (kept[k]?.i ?? 0))
+        return `<tr>${kept.map(({ c, i }, k) => `<td colspan="${span(k)}" style="padding:9px 6px;border-top:2px solid ${INK};font-size:14px;font-weight:bold;text-align:${i === 0 ? 'left' : align(i)}">${esc(c)}</td>`).join('')}</tr>`
+      }
+      return `<tr>${r.cells.map((c, i) => `<td style="padding:7px 6px;border-bottom:1px solid ${HAIR};font-size:13px;vertical-align:top;text-align:${align(i)}${figures[i] ? ';white-space:nowrap' : ''}">${esc(c)}</td>`).join('')}</tr>`
+    })
+    .join('')
+  return `<table style="width:100%;border-collapse:collapse;margin:0 0 12px"><thead><tr>${th}</tr></thead><tbody>${tr}</tbody></table>`
+}
+
+/**
  * The email a GC customer or its architect reads: our name on top, the window's lines, the portal line when there is
  * one, then who it is from.
  */
@@ -413,8 +487,9 @@ export function buildGcCustomerEmail(input: GcCustomerEmailInput): { subject: st
   const words = fee !== null ? GC_CUSTOMER_EMAIL_CARD_PORTAL_WORDS : (input.portalWords ?? GC_CUSTOMER_EMAIL_PORTAL_WORDS)
   const feeLine = fee !== null ? gcCustomerEmailCardFeeLine(fee) : null
   const framed = input.framed !== false
+  const blocks = gcEmailBlocks(input.lines)
   const text = [
-    ...input.lines.flatMap((l) => [l, '']),
+    ...blocks.flatMap((b) => (b.kind === 'p' ? [b.text, ''] : [...gcEmailTableText(b.rows), ''])),
     ...(portal ? [`${words} ${portal}`, ''] : []),
     ...(feeLine ? [feeLine, ''] : []),
     ...(framed ? ['Thank you,', input.signer, input.gc] : []),
@@ -433,7 +508,7 @@ export function buildGcCustomerEmail(input: GcCustomerEmailInput): { subject: st
     `<div style="background:${PAPER};color:${INK};border:1px solid ${INK};border-radius:10px;overflow:hidden">` +
     `<div style="background:${INK};color:${PAPER};padding:10px 16px;font-size:12px;letter-spacing:0.08em;text-transform:uppercase">${esc(input.gc)}</div>` +
     `<div style="padding:16px;font-size:15px;line-height:1.5">` +
-    input.lines.map(p).join('') +
+    blocks.map((b) => (b.kind === 'p' ? p(b.text) : gcEmailTableHtml(b.rows))).join('') +
     portalP +
     (framed ? `<p style="margin:0;padding-top:10px;border-top:1px solid ${HAIR};color:${MUTED};font-size:13px">Thank you,<br>${esc(input.signer)}<br>${esc(input.gc)}</p>` : '') +
     `</div></div></div></body></html>`

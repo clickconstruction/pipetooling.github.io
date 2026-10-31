@@ -16,6 +16,7 @@ import 'leaflet/dist/leaflet.css'
 import { CircleMarker, MapContainer, Marker, Popup, TileLayer, useMap, useMapEvents } from 'react-leaflet'
 import { LeafletOfficeAnchor } from './LeafletOfficeAnchor'
 import { clusterBounds, clusterLabel, clusterPins, clusterRadiusPx, type PinCluster } from '../../lib/map/clusterPins'
+import { pinLabelInk } from '../../lib/map/pinLabelInk'
 import { mapPulseTarget } from '../../lib/map/pulseTarget'
 import { leafletScrollWheelZoom } from '../../lib/map/scrollZoomGate'
 import { mapPointsBounds, type MapPoint } from '../../lib/map/mapPointsBounds'
@@ -87,7 +88,7 @@ function clusterIcon(c: PinCluster<MapCanvasPin>): L.DivIcon {
   const ring = c.ringColor ? `box-shadow:0 0 0 3px ${c.ringColor};` : ''
   return L.divIcon({
     className: 'pins-map-cluster',
-    html: `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${c.color};opacity:.92;border:2px solid var(--surface);${ring}display:grid;place-items:center;color:#fff;font:700 ${r >= 18 ? 13 : 11}px system-ui,sans-serif;">${clusterLabel(c.count)}</div>`,
+    html: `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${c.color};opacity:.92;border:2px solid var(--surface);${ring}display:grid;place-items:center;color:${pinLabelInk(c.color)};font:700 ${r >= 18 ? 13 : 11}px system-ui,sans-serif;">${clusterLabel(c.count)}</div>`,
     iconSize: [r * 2, r * 2],
     iconAnchor: [r, r],
   })
@@ -130,7 +131,7 @@ function labelledPinIcon(p: MapCanvasPin, selected: boolean, isMobile: boolean):
   const stroke = selected ? MAP_CANVAS_SELECTED_COLOR : (p.ringColor ?? 'var(--surface)')
   return L.divIcon({
     className: 'pins-map-labelled',
-    html: `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${p.color};opacity:${selected ? 0.95 : 0.88};border:${selected || p.ringColor ? 3 : 2}px solid ${stroke};box-sizing:border-box;display:grid;place-items:center;color:#fff;font:800 11px system-ui,sans-serif;line-height:1;">${p.label ?? ''}</div>`,
+    html: `<div style="width:${r * 2}px;height:${r * 2}px;border-radius:50%;background:${p.color};opacity:${selected ? 0.95 : 0.88};border:${selected || p.ringColor ? 3 : 2}px solid ${stroke};box-sizing:border-box;display:grid;place-items:center;color:${pinLabelInk(p.color)};font:800 11px system-ui,sans-serif;line-height:1;">${p.label ?? ''}</div>`,
     iconSize: [r * 2, r * 2],
     iconAnchor: [r, r],
   })

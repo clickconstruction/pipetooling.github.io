@@ -71,10 +71,10 @@ export function WaterHeaterCircuit({ titleId }: FigureProps) {
       <Label x={196} y={82} anchor="middle" size={6} bold color="currentColor">
         240 V
       </Label>
-      <Label x={196} y={91} anchor="middle" size={6}>
+      <Label x={196} y={91} anchor="middle" size={6} color="var(--text-600)">
         no neutral
       </Label>
-      <Label x={196} y={100} anchor="middle" size={6}>
+      <Label x={196} y={100} anchor="middle" size={6} color="var(--text-600)">
         one at a time
       </Label>
     </svg>

@@ -16,7 +16,7 @@ export function CurrentScale({ titleId }: FigureProps) {
       </g>
       <g stroke="currentColor" strokeWidth="2">
         <line x1="82" y1="205" x2="98" y2="205" />
-        <line x1="82" y1="180" x2="98" y2="180" stroke="#15803d" strokeWidth="3" />
+        <line x1="82" y1="180" x2="98" y2="180" stroke="var(--text-green-700)" strokeWidth="3" />
         <line x1="82" y1="140" x2="98" y2="140" />
         <line x1="82" y1="105" x2="98" y2="105" />
         <line x1="82" y1="80" x2="98" y2="80" />
@@ -24,10 +24,10 @@ export function CurrentScale({ titleId }: FigureProps) {
       </g>
       <g fontSize="10.5" fill="currentColor">
         <text x="106" y="209">1 mA · a tingle</text>
-        <text x="106" y="184" fill="#15803d">5 mA · the GFCI trips here</text>
-        <text x="106" y="144" fill="#991b1b">30 mA · you cannot let go</text>
-        <text x="106" y="109" fill="#991b1b">50 to 150 mA · breathing stops</text>
-        <text x="106" y="84" fill="#991b1b">200 mA · the heart can stop</text>
+        <text x="106" y="184" fill="var(--text-green-700)">5 mA · the GFCI trips here</text>
+        <text x="106" y="144" fill="var(--text-red-800)">30 mA · you cannot let go</text>
+        <text x="106" y="109" fill="var(--text-red-800)">50 to 150 mA · breathing stops</text>
+        <text x="106" y="84" fill="var(--text-red-800)">200 mA · the heart can stop</text>
         <text x="106" y="34">15,000 mA · the breaker trips</text>
         <text x="106" y="47" fill="var(--text-muted)" fontSize="9.5">it protects the wiring, not you</text>
         <text x="8" y="130" fill="var(--text-muted)" fontSize="9.5" transform="rotate(-90 8 130)">more current</text>

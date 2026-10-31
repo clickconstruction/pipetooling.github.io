@@ -25,13 +25,16 @@ export function Subpanel({ titleId }: FigureProps) {
       </Label>
       <Conductor d="M54 58 H62 M78 58 H118 V50 H192" />
       <Conductor d="M54 72 H62 M78 72 H112 V62 H192" />
-      <Breaker x={70} y={58} amps={60} />
+      <Breaker x={70} y={58} />
       <Breaker x={70} y={72} />
       <line x1="70" y1="58" x2="70" y2="72" stroke="currentColor" strokeWidth="1.2" strokeDasharray="2 1" />
       <Conductor d="M24 86 H118 V74 H192" wire="neutral" />
       <Conductor d="M76 96 H124 V86 H192" wire="ground" />
       <Label x={140} y={42} anchor="middle" size={6.5} bold color="currentColor">
         one breaker feeds it
+      </Label>
+      <Label x={104} y={53} anchor="middle" size={7}>
+        60 A
       </Label>
       <Label x={140} y={104} anchor="middle" size={6.5}>
         its real off

@@ -6,8 +6,9 @@
  * `gc-customer-email` frames them (`supabase/functions/_shared/gcCustomerEmails.ts`). Pure: built from plain facts,
  * so the customer journeys' sample emails use the same words.
  */
-import { CUSTOMER_EMAIL_ERRORS, type CustomerEmailErrorKey } from '../../../supabase/functions/_shared/gcCustomerEmails'
+import { CUSTOMER_EMAIL_ERRORS, gcEmailTableLines, type CustomerEmailErrorKey } from '../../../supabase/functions/_shared/gcCustomerEmails'
 import { changeOrderDays, daysWords, ownerExpectPaidOn } from './ownerBilling'
+import { INTEREST_MONTH_LINE, INTEREST_TABLE_HEAD, interestRowCells, interestRowNotes, interestRows, interestRowsTotal, interestSumCells, type InterestRow } from './ownerBillingInterest'
 import { customerGreeting, helloLine } from './ownerBillingRemind'
 import { isTimeExtension } from './timeExtension'
 import type { ChangeOrder, GcProject, GcState, OwnerPayAppSent } from './types'
@@ -175,29 +176,55 @@ export function changeOrderMail(f: ChangeOrderMailFacts): { subject: string; lin
   }
 }
 
-/** What an interest bill's email says (O6b-2): the job, what it comes to, and the rate. */
+/**
+ * What an interest bill's email says (O6b-2): the job, what it comes to, the rate, and since v2.6158 (punch list #217,
+ * outside-5) the late bills as rows, so the sum is one a stranger can check row by row.
+ */
 export interface InterestBillMailFacts {
   job: string
   greeting: string
+  /** What this bill asks: the interest built up and not billed before. */
   amount: number
   pctPerMonth: number | null
+  /** Every late bill with interest on it, oldest first (`interestRows`). Empty: the email says the sum alone. */
+  rows: InterestRow[]
 }
 
 export function interestBillMailFacts(state: GcState, project: GcProject, amount: number): InterestBillMailFacts {
-  return { job: project.name, greeting: greetingOf(state, project), amount, pctPerMonth: project.ownerLateInterest?.pctPerMonth ?? null }
+  return { job: project.name, greeting: greetingOf(state, project), amount, pctPerMonth: project.ownerLateInterest?.pctPerMonth ?? null, rows: interestRows(state, project) }
 }
 
 /**
- * Our bill for the interest on late bills, in the prototype's words but two: the bills went past the day they were
- * due (some are still open, not all paid late), and no Pay, so they reply with their day.
+ * Our bill for the interest on late bills: each late bill as a row (the bill, the day it fell due, the day it was paid
+ * or open, the days late, what was open, and the interest as a sum they can redo), the total under a rule, and no Pay,
+ * so they reply with their day. With no rows (the rate gone from the job), the sum alone, as before.
  */
 export function interestBillMail(f: InterestBillMailFacts): { subject: string; lines: string[] } {
+  const subject = `Interest on late bills for ${f.job}, ${money(f.amount)}`
+  if (f.rows.length === 0 || !f.pctPerMonth) {
+    return {
+      subject,
+      lines: [
+        helloLine(f.greeting),
+        `Some of your bills on ${f.job} went past the day they were due by the contract.`,
+        `The interest on them comes to ${money(f.amount)}${f.pctPerMonth ? `, at ${f.pctPerMonth}% a month` : ''}.`,
+        'Reply with the day you will pay.',
+      ],
+    }
+  }
+  const total = interestRowsTotal(f.rows)
+  const before = total - f.amount
+  const count = f.rows.length === 1 ? 'One bill' : f.rows.length === 2 ? 'Two bills' : `${f.rows.length} bills`
   return {
-    subject: `Interest on late bills for ${f.job}, ${money(f.amount)}`,
+    subject,
     lines: [
       helloLine(f.greeting),
-      `Some of your bills on ${f.job} went past the day they were due by the contract.`,
-      `The interest on them comes to ${money(f.amount)}${f.pctPerMonth ? `, at ${f.pctPerMonth}% a month` : ''}.`,
+      `${count} on ${f.job} went past the day the contract made ${f.rows.length === 1 ? 'it' : 'them'} due. Interest runs at ${f.pctPerMonth}% a month from that day.`,
+      ...gcEmailTableLines(INTEREST_TABLE_HEAD, f.rows.map(interestRowCells), interestSumCells(f.rows)),
+      INTEREST_MONTH_LINE,
+      ...interestRowNotes(f.rows),
+      // An earlier interest bill took its share: this one asks for what built up since.
+      ...(before > 0.5 ? [`Our earlier interest bills asked for ${money(before)} of it. This bill asks for ${money(f.amount)}.`] : []),
       'Reply with the day you will pay.',
     ],
   }

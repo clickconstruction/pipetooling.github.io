@@ -201,7 +201,7 @@ export const DEV_DOORS: readonly DevDoor[] = [
   d({ id: 'page-templates', label: 'Templates', area: 'Other pages', to: '/templates', who: 'dev', what: 'The project workflow templates.', gate: { file: 'src/pages/Templates.tsx', text: "role !== 'dev'" } }),
   d({ id: 'page-duplicates', label: 'Duplicate materials', area: 'Other pages', to: '/duplicates', who: 'dev', what: 'Find and merge duplicate parts in the catalog.', gate: { file: 'src/pages/Duplicates.tsx', text: "myRole !== 'dev'" } }),
   d({ id: 'page-punch-list', label: 'Punch list', area: 'Other pages', to: '/punch-list', who: 'owner or dev', what: 'The to-do board, rendered from the repo.', gate: { file: 'src/lib/todos/punchListAccess.ts', text: 'export function canOpenPunchList' } }),
-  d({ id: 'page-training-preview', label: 'Read a course that is off', area: 'Other pages', to: '/training/osha-30', who: 'dev', what: 'Open a training course as a preview before it is switched on.', gate: { file: 'src/pages/Training.tsx', text: "const isDev = role === 'dev'" } }),
+  d({ id: 'page-training-preview', label: 'Read a course that is off', area: 'Other pages', to: '/training/osha-30-refresher', who: 'dev', what: 'Open a training course as a preview before it is switched on.', gate: { file: 'src/pages/Training.tsx', text: "const isDev = role === 'dev'" } }),
 ]
 
 /** The route part of a door's link: `/jobs?tab=stages&stagesMoney=1` reads as `/jobs`. */

@@ -26,7 +26,7 @@ export function FallTimeline({ titleId }: FigureProps) {
         <text x={x(1)} y="46">1 s</text>
         <text x={(x(0) + x(0.3)) / 2} y="94" fill="var(--text-muted)">realize</text>
         <text x={(x(0.3) + x(0.63)) / 2} y="94" fill="var(--text-muted)">react</text>
-        <text x={(x(0.63) + x(1)) / 2} y="94" fill="#991b1b">16 ft down</text>
+        <text x={(x(0.63) + x(1)) / 2} y="94" fill="var(--text-red-800)">16 ft down</text>
       </g>
       <text x="30" y="24" fontSize="10" fontWeight="600" fill="currentColor">
         the fall
@@ -44,7 +44,7 @@ export function FallTimeline({ titleId }: FigureProps) {
       <g fontSize="9" fill="currentColor" textAnchor="middle">
         <text x="62" y="138" textAnchor="start">3 to 5 min</text>
         <text x="270" y="138" textAnchor="end">30 min</text>
-        <text x="166" y="180" fill="#991b1b">suspension trauma: the harness itself hurts you, then kills</text>
+        <text x="166" y="180" fill="var(--text-red-800)">suspension trauma: the harness itself hurts you, then kills</text>
       </g>
       <text x="30" y="192" fontSize="9" fill="var(--text-muted)">
         the rescue plan is written before anyone goes up

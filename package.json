@@ -114,6 +114,7 @@
     "test:pg:sent-copy-stamps": "bash scripts/pgtest-sent-copy-stamps.sh",
     "test:pg:salary-sync-open-punch": "bash scripts/pgtest-salary-sync-open-punch.sh",
     "test:pg:count-sources": "bash scripts/pgtest-count-sources.sh",
+    "test:pg:robot-fixtures": "bash scripts/pgtest-robot-fixtures.sh",
     "test:pg:people-phone": "bash scripts/pgtest-people-phone.sh",
     "test:pg:training": "bash scripts/pgtest-training.sh",
     "test:pg:on-my-way": "bash scripts/pgtest-on-my-way.sh",

@@ -22,7 +22,7 @@ Nothing moved off the page. The old tabs are the views in that row.
 
 - **People** is who is here. **Users** is the roster with logins and chips. **Subs** is the subcontractor list. **Person** is one person's whole desk as a page. **Day book** is what each office person got done on any day, read from the app's own records. See *see what the office got done on any day*.
 - **Pay** is the money side of people. **Hours** is the timesheet grid and clock sessions. **Payroll** is the pay reports and ledger. **Offsets** is deductions and balances. **Employment** is start and end dates and time off. **Overhead** is office labor on the overhead job.
-- **Paperwork** is what people sign and hold. **Contracts** is the Contract library, packets, and signing status. **Licenses**, **Writeups**, and the dev-only **HR** files sit beside it.
+- **Paperwork** is what people sign and hold. **Contracts** is the Contract library, packets, and signing status. **Licenses**, **Writeups**, and the dev-only **HR** files sit beside it. Writeups also draws one person's attendance as a strip of days. See [see a person's lates and start a write-up](/help/see-a-persons-lates-and-start-a-write-up).
 - **Fleet & Housing** holds **Vehicles**, the fleet board, and **Housing**.
 - **Review** and **Feedback** appear for devs only.
 

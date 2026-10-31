@@ -4,7 +4,7 @@ import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { portalShortUrl } from '../../lib/portal/portalShortOrigin'
 import { notifySheetWorkOrderOffered } from '../../lib/workflow/workOrderNotifications'
-import type { StepCommitmentRow } from '../../lib/workflow/stepCommitments'
+import { cancelCommitmentPatch, type StepCommitmentRow } from '../../lib/workflow/stepCommitments'
 import {
   buildSheetWorkOrderSnapshot,
   buildWorkOrderReferences,
@@ -454,7 +454,7 @@ export function SubSheetWorkOrderPanel({
         ? { status: 'draft', offered_at: null, offer_expires_at: null }
         : action === 'accept'
           ? { status: 'accepted', accepted_at: nowIso }
-          : { status: 'cancelled' }
+          : cancelCommitmentPatch(commitment.amount)
     setSaving(true)
     const { data, error } = await supabase.from('step_commitments').update(update).eq('id', commitment.id).select('*').single()
     setSaving(false)

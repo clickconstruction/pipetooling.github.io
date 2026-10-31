@@ -28,7 +28,7 @@ export function SolventJoint({ titleId }: FigureProps) {
       <Label x={36} y={100} size={8}>
         push in, hold 30 seconds
       </Label>
-      <Label x={140} y={32} size={8} color="#7c3aed">
+      <Label x={140} y={32} size={8} color="var(--text-violet-700)">
         cement melts the two faces
       </Label>
       <Label x={140} y={110} size={8}>

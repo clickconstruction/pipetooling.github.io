@@ -153,6 +153,10 @@ describe('buildFirmActivity', () => {
     ], [m1, m2])
     expect(a).toEqual(expect.objectContaining({ count: 2, answers: 2, signoffs: 1, questions: 0, firstKey: 'c:sam' }))
   })
+  it('counts the firm’s read of how the case tries (punch list #218 PR 2)', () => {
+    const a = buildFirmActivity([{ ...e('9', 'm1', 'note', null, '2026-09-11T10:00:00Z'), meta: { read: { tries: 'hard', why: 'The GC disputes the change order.' } } }], [m1])
+    expect(a).toEqual(expect.objectContaining({ count: 1, reads: 1, questions: 0 }))
+  })
   it('is empty with nothing open', () => {
     expect(buildFirmActivity([], [m1]).count).toBe(0)
   })

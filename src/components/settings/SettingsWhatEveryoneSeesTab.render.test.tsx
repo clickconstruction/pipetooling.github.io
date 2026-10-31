@@ -1,11 +1,31 @@
 // @vitest-environment jsdom
-import { act, fireEvent, screen } from '@testing-library/react'
+import { act, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { parseLensName } from '../../lib/lens/lensName'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SettingsWhatEveryoneSeesTab } from './SettingsWhatEveryoneSeesTab'
 
+// The tab loads the courses apart; one small course stands in for the bundle's three.
+vi.mock('../../lib/training/courseRegistry', () => ({
+  TRAINING_COURSES: [
+    {
+      slug: 'pipes',
+      title: 'Pipes',
+      lessons: [
+        { key: '01-in', order: 1, title: 'In', mustKnow: ['{{figure:two-systems|In under pressure, out by gravity.}}'], traps: [] },
+        { key: '02-words', order: 2, title: 'Words', mustKnow: ['Only words here.'], traps: [] },
+      ],
+    },
+  ],
+  findCourse: () => null,
+}))
+
 const frames = () => [...document.querySelectorAll('iframe')]
+/** The Where list's Lessons group, as the option words; null when the role lists none. */
+const lessonOptions = () => {
+  const group = (screen.getByRole('combobox', { name: 'Where' }) as HTMLSelectElement).querySelector('optgroup[label="Lessons"]')
+  return group ? [...group.querySelectorAll('option')].map((o) => o.textContent) : null
+}
 /** Frames load one after another: each frame's load lets the next one in. */
 const loadEach = () => {
   for (let round = 0; round < 12; round++) {
@@ -62,6 +82,16 @@ describe('Settings → What everyone sees', () => {
     const where = screen.getByRole('combobox', { name: 'Where' }) as HTMLSelectElement
     expect([...where.options].some((o) => o.value === 'page:/dashboard')).toBe(true)
     expect([...where.options].some((o) => o.value.startsWith('page:/bids'))).toBe(false)
+  })
+
+  it('ends the dev\'s list with each training lesson that draws a figure, and the estimator\'s with none', async () => {
+    renderWithProviders(<SettingsWhatEveryoneSeesTab />)
+    expect(lessonOptions()).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Dev' }))
+    await waitFor(() => expect(lessonOptions()).toEqual(['Pipes · Lesson 1 · In · Training']))
+    expect(screen.getByText(/screens dev can open$/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Estimator' }))
+    expect(lessonOptions()).toBeNull()
   })
 
   it('lays every screen out as cards, and Check every screen draws them six at a time', () => {

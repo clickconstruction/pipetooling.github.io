@@ -11,6 +11,7 @@ import {
   pulseWords,
   requestIsOpen,
   sharedAddressWords,
+  stateUppercased,
   sitePeople,
   splitMembers,
   type MemberBid,
@@ -63,11 +64,14 @@ describe('bidStatusWord, bidUndecided, bidMoney', () => {
     expect(bidStatusWord({ outcome: null, bid_date_sent: null, working_board_archived_at: '2026-10-02' })).toBe('archived')
     expect(bidStatusWord({ outcome: null, bid_date_sent: null, working_board_archived_at: null })).toBe('working')
   })
-  it('is undecided until won or lost, archived included', () => {
-    expect(bidUndecided({ outcome: null })).toBe(true)
-    expect(bidUndecided({ outcome: 'won' })).toBe(false)
-    expect(bidUndecided({ outcome: 'lost' })).toBe(false)
-    expect(bidUndecided(bid({ id: 'BP401', working_board_archived_at: '2026-10-02' }))).toBe(true)
+  it('is undecided while sent or working; won, lost and archived are not', () => {
+    expect(bidUndecided(bid({ id: 'BP400' }))).toBe(true)
+    expect(bidUndecided(bid({ id: 'BP401', bid_date_sent: '2026-10-01' }))).toBe(true)
+    expect(bidUndecided(bid({ id: 'BP402', outcome: 'won' }))).toBe(false)
+    expect(bidUndecided(bid({ id: 'BP403', outcome: 'lost' }))).toBe(false)
+    expect(bidUndecided(bid({ id: 'BP404', working_board_archived_at: '2026-10-02' }))).toBe(false)
+    // Sent, then archived off the board: the answer is still out, so it stays undecided.
+    expect(bidUndecided(bid({ id: 'BP405', bid_date_sent: '2026-10-01', working_board_archived_at: '2026-10-02' }))).toBe(true)
   })
   it('shows the agreed value once won, else the bid value, else the priced revenue', () => {
     expect(bidMoney({ outcome: 'won', agreed_value: 9000, bid_value: 8500, priced_revenue_usd: 8000 })).toBe(9000)
@@ -103,6 +107,15 @@ describe('the site address', () => {
     expect(sharedAddressWords(members)).toBe('Gun Dog Trail, Neeses, SC')
     expect(sharedAddressWords({ bids: [], jobs: [] })).toBeNull()
     expect(sharedAddressWords({ bids: [bid({ id: 'b', address: '  ' })], jobs: [] })).toBeNull()
+  })
+
+  it('sharedAddressWords prints the state in capitals however the rows typed it', () => {
+    const typed = { bids: [], jobs: [job({ id: 'j1', job_address: 'Gun Dog Trail, Neeses, Sc' }), job({ id: 'j2', job_address: 'Gun Dog Trail, Neeses, Sc' })] }
+    expect(sharedAddressWords(typed)).toBe('Gun Dog Trail, Neeses, SC')
+    expect(stateUppercased('Gun Dog Trail, Neeses, sc 29107')).toBe('Gun Dog Trail, Neeses, SC 29107')
+    expect(stateUppercased('5501 Balcones Dr, Austin, TX')).toBe('5501 Balcones Dr, Austin, TX')
+    expect(stateUppercased('12921 FM 20, Kingsbury')).toBe('12921 FM 20, Kingsbury')
+    expect(stateUppercased('Gun Dog Trail')).toBe('Gun Dog Trail')
   })
   it('addressSearchPattern keeps the words before the first street suffix, at most three', () => {
     expect(addressSearchPattern('gun dog trail neeses sc')).toBe('%gun%dog%')
@@ -148,8 +161,8 @@ describe('headCounts', () => {
       request({ id: 'r3', created_at: '2026-09-01T00:00:00Z', closed_at: '2026-09-02T00:00:00Z' }),
     ]
     expect(headCounts(members, requests, NOW)).toEqual({
-      waiting: { count: 2, oldestAgeDays: 8 }, bids: { total: 4, undecided: 2, sent: 1, archived: 1 },
-      jobs: { total: 3, open: 2, working: 1 }, bidUndecidedUsd: 12500, openOnBillsUsd: 3500,
+      waiting: { count: 2, oldestAgeDays: 8 }, bids: { total: 4, undecided: 1, sent: 1, archived: 1 },
+      jobs: { total: 3, open: 2, working: 1 }, bidUndecidedUsd: 12000, openOnBillsUsd: 3500,
     })
   })
 })

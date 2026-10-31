@@ -180,7 +180,9 @@ function sizeMb(bytes: number): string {
 // metadata GET — no bytes — and records it on the bid (plans_robot_readable /
 // _probed_at / _probe_note) so the board can show it and next_shadow can skip it.
 
-type ProbeResult = { readable: boolean; note: string | null; name?: string | null; mime?: string | null; size?: number | null }
+// `count` (2026-10-30, plan sets): how many PDFs stand behind the link — 1 for a file, the folder's PDF count — so the
+// bid form's Plan sets field can say *3 PDFs · 42 MB* beside each set.
+type ProbeResult = { readable: boolean; note: string | null; name?: string | null; mime?: string | null; size?: number | null; count?: number | null }
 
 const NOT_SHARED_NOTE = 'Drive 404 — the folder is not shared with the intake service account (or was moved/deleted)'
 const NO_PERMISSION_NOTE = 'Drive 403 — the intake service account has no permission on this folder'
@@ -207,6 +209,7 @@ async function probeFolder(folderId: string, token: string): Promise<ProbeResult
     name: listing.files.length === 1 ? listing.files[0].name : `${listing.files.length} PDFs`,
     mime: 'application/pdf',
     size: total || null,
+    count: listing.files.length,
     files: listing.files,
   }
 }
@@ -234,7 +237,7 @@ async function probePlansLink(plansLink: string | null, token: string | null): P
   if (mime && mime !== 'application/pdf' && !mime.startsWith('application/vnd.google-apps.')) {
     return { readable: false, note: `file is ${mime}, not a PDF — robots take PDF plan sets`, name: meta.name ?? null, mime, size: meta.size ? Number(meta.size) : null }
   }
-  return { readable: true, note: null, name: meta.name ?? null, mime, size: meta.size ? Number(meta.size) : null }
+  return { readable: true, note: null, name: meta.name ?? null, mime, size: meta.size ? Number(meta.size) : null, count: 1 }
 }
 
 async function recordProbe(admin: SupabaseClient, bidId: string, r: ProbeResult): Promise<void> {
@@ -301,7 +304,8 @@ serve(async (req) => {
     if (probeUrl) {
       if (isTwin) return json({ error: 'probe_url is for staff sessions' }, 403)
       const r = await probePlansLink(probeUrl, await googleAccessToken(saJson))
-      return json({ readable: r.readable, note: r.note, name: r.name ?? null })
+      // Plan sets (2026-10-30): the bytes in all and the PDF count ride along, so a set's row can carry them.
+      return json({ readable: r.readable, note: r.note, name: r.name ?? null, size: r.size ?? null, count: r.count ?? null })
     }
 
     // Find the folder (v2.4162): the bid form asks for the child of a division bid

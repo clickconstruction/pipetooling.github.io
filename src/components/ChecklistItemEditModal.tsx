@@ -5,6 +5,7 @@ import { getNextDisplayOrders } from '../utils/checklistOrder'
 import { SearchableSelect } from './SearchableSelect'
 import { SearchableMultiSelect } from './SearchableMultiSelect'
 import { checklistScheduleSummary, startNotOnChosenDay } from '../lib/checklistScheduleSummary'
+import { ChecklistScheduleCalendar } from './checklist/ChecklistScheduleCalendar'
 import { originallyDueLine, summarizeDuePushes, type DueChangeRow } from '../lib/checklistDuePushes'
 import { syncChecklistTitleTextareaHeight } from '../lib/syncChecklistTitleTextareaHeight'
 import { applyEditRegeneration } from '../lib/checklistEditRegenerate'
@@ -640,6 +641,19 @@ export function ChecklistItemEditModal({
                   )}
                 </div>
               ) : null}
+              {/* The schedule drawn (punch list #217, office-13): this week and the next three, the sentence under it as the caption. */}
+              <ChecklistScheduleCalendar
+                input={{
+                  when,
+                  repeatMode,
+                  startDate: form.start_date,
+                  todayStr: todayYmdInAppTz(),
+                  daysOfWeek: form.repeat_days_of_week,
+                  daysAfter: form.repeat_days_after,
+                  endDate: form.repeat_end_date || null,
+                  dueDate: when !== 'repeat' ? form.due_date || null : null,
+                }}
+              />
               <div
                 role="status"
                 style={{

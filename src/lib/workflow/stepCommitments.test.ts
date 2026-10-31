@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest'
-import { commitmentBalance, commitmentRail, nextCommitmentActions } from './stepCommitments'
+import { cancelCommitmentPatch, commitmentBalance, commitmentRail, nextCommitmentActions } from './stepCommitments'
+
+describe('cancelCommitmentPatch (v2.6129)', () => {
+  it('cancels an unpriced draft at $0, since only a draft may hold no amount', () => {
+    expect(cancelCommitmentPatch(null)).toEqual({ status: 'cancelled', amount: 0 })
+    expect(cancelCommitmentPatch(1250)).toEqual({ status: 'cancelled' })
+    expect(cancelCommitmentPatch(0)).toEqual({ status: 'cancelled' })
+  })
+})
 
 describe('commitmentRail', () => {
   it('marks the money front as "now" before work starts, labeled Awaiting answer while offered', () => {

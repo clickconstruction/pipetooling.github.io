@@ -50,7 +50,11 @@ describe('LegalPortal — the sample matter', () => {
     const fetchSpy = await openSample()
     expect(fetchSpy).not.toHaveBeenCalled()
     expect(document.body.textContent).toMatch(/14,400/)
-    expect(document.body.textContent).toMatch(/Hays County · owner of record: Alvarado Holdings LLC/)
+    // v2.6175 (punch list #219): the parties strip under the matter's name — the owner of record and the venue county as cells, the venue cell the door to Who covers what.
+    const parties = document.querySelector('[data-legal-parties]')!
+    expect(parties.querySelector('[data-legal-party="owner"]')!.textContent).toContain('Alvarado Holdings LLC')
+    expect(parties.querySelector('[data-legal-party="venue"]')!.textContent).toContain('Hays County')
+    expect(parties.querySelector('[data-legal-party="contract"]')!.getAttribute('data-legal-party-door')).toBe('none')
     expect(document.body.textContent).not.toMatch(/NaN|undefined/)
   })
 
@@ -61,6 +65,11 @@ describe('LegalPortal — the sample matter', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Record of contact' }))
     expect(document.body.textContent).toMatch(/Acme Mechanical's contact record with this customer/)
     fireEvent.click(screen.getByRole('button', { name: 'Fees & steps' }))
+    // v2.6177 (punch list #218 PR 4): the same cards the office reads, under the matter card.
+    expect(document.querySelector('[data-legal-settlement-paths] [data-legal-settlement-path="trial"]')).toBeTruthy()
+    // Punch list #218 PR 2: the firm's read of how the case tries is the fifth form.
+    expect(screen.getByRole('button', { name: 'Save the read' })).toBeTruthy()
+    expect(screen.getByLabelText('How this case tries')).toBeTruthy()
     expect(document.body.textContent).toMatch(/Account history, oldest first/)
     expect(document.body.textContent).toMatch(/Attorney fee/)
     expect(document.body.textContent).not.toMatch(/Needs You|Their word|From Click|Click’s|What Click did|chose to share/)
@@ -227,7 +236,7 @@ describe('LegalPortal — the sample matter', () => {
     expect([...split.children].map((c) => c.className)).toEqual(['legalPortalMain', 'legalPortalList', 'legalPortalAside'])
     fireEvent.click(screen.getByRole('button', { name: 'Fees & steps' }))
     const forms = [...document.querySelectorAll('form.legalPortalForm')] as HTMLElement[]
-    expect(forms).toHaveLength(4)
+    expect(forms).toHaveLength(5) // five since punch list #218 PR 2: the firm’s read
     for (const f of forms) expect(f.style.gridTemplateColumns).toBe('')
   })
 

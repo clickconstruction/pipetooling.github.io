@@ -12,7 +12,7 @@ import { checkSupabaseError, formatErrorMessage } from '../../../utils/errorHand
 import { DEFAULT_JOB_LEDGER_PREFIX, formatJobLedgerNumberLabel } from '../../ledgerDisplayPrefixes'
 import type { MatchableAccount, MatchableJob } from './billMatch'
 import { BILL_READ_SWITCH_KEY, BILL_READ_WORDS, billReadIsOn, type BillRead } from './billRead'
-import { billCandidates, type BillCandidate, type BillCandidateRow } from './billsToRecord'
+import { billCandidates, houseOfContacts, type BillCandidate, type BillCandidateRow } from './billsToRecord'
 
 /** What `bill-read` answers. */
 export type BillReadAnswer =
@@ -59,10 +59,20 @@ export function supabaseBillsIo(given?: SupabaseClient<Database>): BillsIo {
     async loadCandidates(houseIds) {
       if (houseIds.length === 0) return []
       try {
-        const { data: contacts, error } = await (await from('contacts')).select('id, supply_house_id').in('supply_house_id', [...houseIds])
-        if (error) return []
-        const houseOf = new Map<string, string>()
-        for (const c of (contacts ?? []) as Array<{ id: string; supply_house_id: string }>) houseOf.set(c.id, c.supply_house_id)
+        const [houseContacts, reps] = await Promise.all([
+          (await from('contacts')).select('id, supply_house_id').in('supply_house_id', [...houseIds]),
+          (await from('supply_house_contacts')).select('id, supply_house_id').in('supply_house_id', [...houseIds]),
+        ])
+        if (houseContacts.error) return []
+        // A rep's lines count at their house too (v2.6136); a rep read that fails leaves the house's own lines.
+        const repRows = reps.error ? [] : ((reps.data ?? []) as Array<{ id: string; supply_house_id: string | null }>)
+        const repContacts =
+          repRows.length > 0 ? await (await from('contacts')).select('id, supply_house_contact_id').in('supply_house_contact_id', repRows.map((r) => r.id)) : null
+        const houseOf = houseOfContacts(
+          (houseContacts.data ?? []) as Array<{ id: string; supply_house_id: string | null }>,
+          repRows,
+          repContacts && !repContacts.error ? ((repContacts.data ?? []) as Array<{ id: string; supply_house_contact_id: string | null }>) : [],
+        )
         if (houseOf.size === 0) return []
         const { data: rows, error: rowsError } = await (await from('message_attachments'))
           .select('id, message_id, name, mime, bucket_path, kind, paper_answer, created_at, messages!inner(contact_id, at)')

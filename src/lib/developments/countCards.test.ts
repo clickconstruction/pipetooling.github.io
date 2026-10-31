@@ -93,7 +93,7 @@ describe('buildCountCard bids — by status in the board’s order', () => {
   it('groups in order with their counts, drops an empty status, and each row says where it stands', () => {
     const card = buildCountCard('bids', inputs({ members: { bids: [wonBid, archivedBid, workingBid, sentBid], jobs: [] } }))
     expect(card.head).toBe('4 bids on Harlow Ranch')
-    expect(card.headMeta).toBe('by status · 3 undecided')
+    expect(card.headMeta).toBe('by status · 2 undecided')
     expect(card.groups.map((g) => g.label)).toEqual(['Sent · 1', 'Working · 1', 'Archived · 1', 'Won · 1'])
     expect(card.groups[0]!.rows[0]).toMatchObject({ number: 'BP401', value: '$42,000', meta: 'sent 2026-10-24 · Dana' })
     expect(card.groups[1]!.rows[0]).toMatchObject({ number: 'BP402', value: '$48,000', meta: 'Luis' })
@@ -154,18 +154,29 @@ describe('buildCountCard jobs — by stage, the paid ones folded', () => {
 describe('buildCountCard bidUndecided — the bids still in play, biggest first', () => {
   it('adds up the priced ones, says which were not counted, and dates each', () => {
     const today = bid({ id: 'b406', project_name: 'Gate', bid_date_sent: '2026-10-29', bid_value: 1000 })
-    const card = buildCountCard('bidUndecided', inputs({ members: { bids: [sentBid, wonBid, archivedBid, workingBid, today], jobs: [] } }))
+    const unpriced = bid({ id: 'b407', project_name: 'Fence' })
+    const card = buildCountCard('bidUndecided', inputs({ members: { bids: [sentBid, wonBid, archivedBid, workingBid, today, unpriced], jobs: [] } }))
     expect(card.head).toBe('$91,000 bid, undecided')
     expect(card.headMeta).toBe('4 bids')
     expect(card.groups.map((g) => g.label)).toEqual(['Undecided · 4'])
+    // The archived bid is not in play, so it is not a row here; the Bids tile names it.
     expect(card.groups[0]!.rows.map((r) => [r.number, r.value, r.meta])).toEqual([
       ['BP402', '$48,000', 'working'],
       ['BP401', '$42,000', 'sent, 5 days'],
       ['BP406', '$1,000', 'sent, today'],
-      ['BP404', 'no price yet', 'archived 2026-09-30 · not counted'],
+      ['BP407', 'no price yet', 'working · not counted'],
     ])
     expect(card.foot).toEqual({ door: 'bids', label: 'Bid Board ›', note: 'the 3 with a price add up to the figure' })
     expect(buildCountCard('bidUndecided', inputs({ members: { bids: [sentBid, workingBid], jobs: [] } })).foot.note).toBe('they add up to the figure')
+  })
+
+  it('archived bids sit apart: with none in play the card lists the won, the lost and the archived', () => {
+    const card = buildCountCard('bidUndecided', inputs({ members: { bids: [wonBid, archivedBid], jobs: [] } }))
+    expect(card.head).toBe('No bid in play')
+    expect(card.headMeta).toBe('2 bids')
+    expect(card.groups.map((g) => [g.label, g.state, g.rows.length])).toEqual([['Undecided', 'none', 0], ['Won', '1 bid', 1], ['Lost', 'none', 0], ['Archived', '1 bid', 1]])
+    expect(card.groups[3]!.rows[0]).toMatchObject({ number: 'BP404', value: 'no price yet', meta: 'archived 2026-09-30' })
+    expect(card.foot).toEqual({ door: 'bids', label: 'Bid Board ›', note: '1 archived bid sits apart, not counted' })
   })
 
   it('every bid decided: the won and the lost, each a group; no bid at all says so', () => {

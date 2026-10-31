@@ -1,4 +1,5 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
+import type { VenueBlock } from '../../../lib/legal/legalParties'
 import { assignmentsFromCountiesByFirm, countiesLine, firmHues, firmLegend, NO_FIRM_HUE } from '../../../lib/legal/firmCounties'
 import { legendCounts, lensSummaryWords, STAND_COLOR, STAND_WORDS, uncoveredCounties, uncoveredWords, type LegalMapCase, type LegalMapStandOrNone } from '../../../lib/legal/firmMap'
 import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
@@ -18,7 +19,9 @@ import LegalCountyContentsCard from '../../settings/LegalCountyContentsCard'
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 const STANDS: LegalMapStandOrNone[] = ['eyes', 'firm', 'gave', 'none']
 
-export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm, onOpenCase, stacked = false }: {
+export type LegalMapOpenOn = { county: string | null; heldId: string | null; nonce: number }
+
+export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm, onOpenCase, stacked = false, openOn = null, venueFor }: {
   cases: ReadonlyArray<LegalMapCase>
   loading: boolean
   /** The active firms, as `useLegalMatters.activeFirms`. */
@@ -28,9 +31,20 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
   onOpenCase: (payerKey: string) => void
   /** A phone (the desk's stacked layout, v2.5984): one column, **Who covers what** under the map. Beside it, the map had 27 px. */
   stacked?: boolean
+  /** The venue press (punch list #219, v2.6174): open on this county with this case held; a new `nonce` opens again. */
+  openOn?: LegalMapOpenOn | null
+  /** The held case's venue block for the county card, when the desk knows it (the selected account's). */
+  venueFor?: (c: LegalMapCase) => VenueBlock | null
 }) {
-  const [county, setCounty] = useState<string | null>(null)
-  const [heldId, setHeldId] = useState<string | null>(null)
+  const [county, setCounty] = useState<string | null>(openOn?.county ?? null)
+  const [heldId, setHeldId] = useState<string | null>(openOn?.heldId ?? null)
+  useEffect(() => {
+    if (!openOn) return
+    setCounty(openOn.county)
+    setHeldId(openOn.heldId)
+  }, [openOn])
+  const heldCase = useMemo(() => (heldId ? cases.find((c) => c.id === heldId) ?? null : null), [cases, heldId])
+  const venue = heldCase && venueFor ? venueFor(heldCase) : null
   const firmNames = useMemo(() => new Map(firms.map((f) => [f.id, f.name] as const)), [firms])
   const assignments = useMemo(() => assignmentsFromCountiesByFirm(countiesByFirm), [countiesByFirm])
   const hues = useMemo(() => firmHues(firms), [firms])
@@ -97,7 +111,7 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
             })}
             {firms.length === 0 ? <div style={{ ...MUTED, fontSize: '0.74rem' }}>No firm yet. Add one and color its counties under Firms.</div> : null}
           </div>
-          <LegalCountyContentsCard lens county={county} cases={cases} assignments={assignments} firmNames={firmNames} heldId={heldId} onHold={pressCase} onOpen={(c) => onOpenCase(c.key)} />
+          <LegalCountyContentsCard lens county={county} cases={cases} assignments={assignments} firmNames={firmNames} heldId={heldId} onHold={pressCase} onOpen={(c) => onOpenCase(c.key)} venue={venue} />
         </div>
       </div>
     </div>

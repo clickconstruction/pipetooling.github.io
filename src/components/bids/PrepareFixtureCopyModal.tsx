@@ -586,7 +586,7 @@ export function PrepareFixtureCopyModal({
               <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ display: 'flex', alignItems: 'center', padding: '0.35rem 0.75rem', background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
                   <span style={{ fontSize: '0.7rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>Exactly what you’ll paste</span>
-                  <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: '#15803d', fontWeight: 600 }}>updates live</span>
+                  <span style={{ marginLeft: 'auto', fontSize: '0.75rem', color: 'var(--text-green-700)', fontWeight: 600 }}>updates live</span>
                 </div>
                 <pre style={{ margin: 0, padding: '0.7rem 0.85rem', fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-strong)', background: 'var(--surface)', flex: 1, overflow: 'auto', maxHeight: '48vh', whiteSpace: 'pre-wrap' }}>{copyText}</pre>
               </div>

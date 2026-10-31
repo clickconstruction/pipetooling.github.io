@@ -490,7 +490,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
         {canonicalUrlCheckStatus === 'success' && canonicalUrlCheckMessage ? (
           <p
             role="status"
-            style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: '#15803d', lineHeight: 1.45 }}
+            style={{ margin: '0.5rem 0 0', fontSize: '0.85rem', color: 'var(--text-green-700)', lineHeight: 1.45 }}
           >
             {canonicalUrlCheckMessage}
           </p>

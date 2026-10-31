@@ -5,6 +5,10 @@
  * untouched percent field with it, says so under the field, and an untouched Save files that number; a pick files
  * the pick and the line reads *Was 40%.* The save goes through the outbox's RPC (punch list #163 PR 3): with no
  * signal the report is kept on the phone and the form closes on the kept words.
+ *
+ * The seeded value has no sign of its own on the screen: the control and the hint read 40 from the seed before the
+ * passive effect writes it into the form's values, so no test can wait for that moment. Save's number is the rule in
+ * `percentFieldValueForSubmit` (the same whichever moment the press lands in); the third test presses in the gap.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -83,6 +87,8 @@ describe('AdditionalReportModal', () => {
     jobRow = { pct_complete: 40, status: 'working', google_drive_link: null, job_pictures_link: null }
     renderWithProviders(<AdditionalReportModal {...props} />)
     await waitFor(() => expect(screen.getByText("Opens on the job's 40%. Leave it, and the report files 40%.")).toBeTruthy())
+    // The control itself opened on 40: the slider and its readout.
+    expect(screen.getByLabelText('How complete is the job?: 40 percent complete')).toBeTruthy()
     expect(screen.getByText('40%')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Save report' }))
     await waitFor(() => expect(inserted).toHaveLength(1))
@@ -100,6 +106,7 @@ describe('AdditionalReportModal', () => {
     try {
       renderWithProviders(<AdditionalReportModal {...props} onSaved={onSaved} onClose={onClose} />)
       await waitFor(() => expect(screen.getByText("Opens on the job's 40%. Leave it, and the report files 40%.")).toBeTruthy())
+      expect(screen.getByLabelText('How complete is the job?: 40 percent complete')).toBeTruthy()
       fireEvent.click(screen.getByRole('button', { name: 'Save report' }))
       await waitFor(() => expect(onSaved).toHaveBeenCalled())
       expect(onClose).toHaveBeenCalled()

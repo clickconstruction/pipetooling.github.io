@@ -160,7 +160,7 @@ const headerStatusLine: CSSProperties = {
 }
 
 /** The leg's line under the header (v2.5573): on the way in the clock's green, on site in the ink. */
-const onTheWayLine: CSSProperties = { ...headerStatusLine, color: '#15803d', fontWeight: 700 }
+const onTheWayLine: CSSProperties = { ...headerStatusLine, color: 'var(--text-green-700)', fontWeight: 700 }
 const onSiteLine: CSSProperties = { ...headerStatusLine, color: 'var(--text-strong)', fontWeight: 600 }
 
 const buttonRow: CSSProperties = {

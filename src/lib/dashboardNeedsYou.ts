@@ -1846,12 +1846,13 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   if (inputs.legalFirmActivityEnabled && inputs.legalFirmActivity && inputs.legalFirmActivity.count > 0) {
     const f = inputs.legalFirmActivity
     const parts: string[] = []
-    if (f.settlements) parts.push(`${f.settlements} settlement${f.settlements === 1 ? '' : 's'} below your floor to sign off`)
+    if (f.settlements) parts.push(`${f.settlements} settlement${f.settlements === 1 ? '' : 's'} to sign off`)
     if (f.payments) parts.push(`${f.payments} payment${f.payments === 1 ? '' : 's'} received by counsel ($${Math.round(f.paymentTotal).toLocaleString('en-US')}) to apply to the job`)
     if (f.questions) parts.push(`${f.questions} question${f.questions === 1 ? '' : 's'} to answer`)
     if (f.answers) parts.push(`${f.answers} answer${f.answers === 1 ? '' : 's'} from counsel${f.signoffs ? ` (${f.signoffs} sign-off${f.signoffs === 1 ? '' : 's'} granted)` : ''}`)
     if (f.fees) parts.push(`${f.fees} fee${f.fees === 1 ? '' : 's'} or cost${f.fees === 1 ? '' : 's'} added ($${Math.round(f.feeTotal).toLocaleString('en-US')})`)
     if (f.steps) parts.push(`${f.steps} step${f.steps === 1 ? '' : 's'} recorded`)
+    if (f.reads) parts.push(`${f.reads} read${f.reads === 1 ? '' : 's'} of how a case tries`)
     items.push({
       key: 'legal-firm-activity',
       severity: f.settlements || f.payments || f.questions || f.signoffs ? 'amber' : 'blue',

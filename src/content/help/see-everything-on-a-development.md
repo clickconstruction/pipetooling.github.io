@@ -21,6 +21,8 @@ The page opens with the site's name, its customer and its GC at the top. Under t
 
 The counts are Waiting, Bids, Jobs, Bid undecided and Open on bills. Each one is a rule over the site's records.
 
+Bid undecided counts the bids sent or still being worked. An archived bid sits apart and is not counted. The Bids count names how many are archived.
+
 1. Rest your pointer on a count.
 2. A card drops under it with the records behind the number. Each record is a door.
 3. Press the count to keep the card open. Press Escape to close it.

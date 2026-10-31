@@ -332,7 +332,7 @@ export function DashboardRecentReportsSection({
                             }}
                           >
                             {isRead ? (
-                              <span aria-label="Opened" title="Opened" style={{ flexShrink: 0, marginTop: 4, color: 'var(--text-green-700, #15803d)', fontSize: '0.8rem', lineHeight: 1 }}>
+                              <span aria-label="Opened" title="Opened" style={{ flexShrink: 0, marginTop: 4, color: 'var(--text-green-700)', fontSize: '0.8rem', lineHeight: 1 }}>
                                 ✓
                               </span>
                             ) : (

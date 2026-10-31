@@ -11,7 +11,7 @@ You open it at Bids → Bid Board. The sections are **Unsent / Working**, **Not 
 
 ## Jump between sections
 
-Above the sections sits one tools row. It holds the search box and {{button:outline|Archived}}, the box icon with a count of archived bids. It holds {{button:outline|Reply book}}, wording the team reuses. See [reuse a reply the team has already written](?g=use-the-reply-book). It holds {{button:outline|Customer review}}. On a phone the last two are their icons.
+Above the sections sits one tools row. It holds the search box and {{button:outline|Archived}}, the box icon with a count of archived bids. It holds {{button:outline|Reply book}}, wording the team reuses. See [reuse a reply the team has already written](?g=use-the-reply-book). It holds {{button:outline|Customer review}}. On a phone the search box takes its own line, and the last two buttons are their icons.
 
 A pill row stays pinned at the top of the board:
 

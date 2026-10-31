@@ -8,7 +8,7 @@ import { applyDraftStyle, draftCss, type ThemeDraft } from '../../lib/lens/lensT
 import type { LensDraftMode } from './LensThemeDraft'
 import { formatLensName, LENS_MOODS, type LensMood, type LensTheme } from '../../lib/lens/lensName'
 import { LENS_PEOPLE, LENS_ROLES, type LensRole } from '../../lib/lens/lensPeople'
-import { DEFAULT_KNOBS, LENS_AUDIENCES, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, admittedFrames, askSummary, audienceScreens, lensFrames, lensScreens, sweepWindow, type LensAcross, type LensAudience, type LensFrameSpec, type LensKnobs, type LensWidth } from '../../lib/lens/lensTab'
+import { DEFAULT_KNOBS, LENS_AUDIENCES, LENS_MOOD_LABELS, LENS_WIDTH_ORDER, LENS_WIDTHS, admittedFrames, askSummary, audienceScreens, lensFrames, lensReadsLessons, lensScreens, sweepWindow, type LensAcross, type LensAudience, type LensFrameSpec, type LensKnobs, type LensSources, type LensWidth } from '../../lib/lens/lensTab'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
@@ -153,12 +153,12 @@ function LensFrame({ spec, displayWidth, maxHeight, live, admitted, onLoaded, on
           result = auditFrame(win)
         } catch (e) {
           // A check that cannot read the screen says so, so a sweep never waits on it.
-          result = { sideways: null, lowContrast: [], brokenImages: [], errors: [`The check could not read this screen: ${formatErrorMessage(e)}`] }
+          result = { sideways: null, lowContrast: [], overlaps: [], brokenImages: [], errors: [`The check could not read this screen: ${formatErrorMessage(e)}`] }
         }
         onAudit(spec.key, result)
       } else if (!audited && age >= SETTLE_GIVE_UP_MS) {
         audited = true
-        onAudit(spec.key, { sideways: null, lowContrast: [], brokenImages: [], errors: [`The screen drew nothing in ${SETTLE_GIVE_UP_MS / 1000} seconds.`] })
+        onAudit(spec.key, { sideways: null, lowContrast: [], overlaps: [], brokenImages: [], errors: [`The screen drew nothing in ${SETTLE_GIVE_UP_MS / 1000} seconds.`] })
       }
     }
     const t = setInterval(read, 1000)
@@ -220,13 +220,18 @@ function LensFrame({ spec, displayWidth, maxHeight, live, admitted, onLoaded, on
           Open alone ↗
         </button>
       </span>
-      {audit && (audit.lowContrast.length > 0 || audit.errors.length > 0 || audit.brokenImages.length > 0) && (
+      {audit && (audit.lowContrast.length > 0 || audit.overlaps.length > 0 || audit.errors.length > 0 || audit.brokenImages.length > 0) && (
         <details style={MUTED}>
           <summary style={{ cursor: 'pointer', color: 'var(--text-link)' }}>What the check found</summary>
           <ul style={{ margin: '0.25rem 0 0', paddingLeft: '1.1rem' }}>
             {audit.lowContrast.slice(0, 6).map((c) => (
-              <li key={`${c.text}|${c.color}`}>
+              <li key={`${c.text}|${c.color}|${c.bg}`}>
                 {c.ratio}:1 · “{c.text}” in {c.color} on {c.bg}
+              </li>
+            ))}
+            {audit.overlaps.slice(0, 4).map((o) => (
+              <li key={`overlap|${o.text}`}>
+                Overlapped · “{o.text}”, {o.by === 'line' ? 'a line crosses it' : 'a shape is drawn over it'}
               </li>
             ))}
             {audit.brokenImages.slice(0, 4).map((s) => (
@@ -269,8 +274,24 @@ export function SettingsWhatEveryoneSeesTab() {
   const narrow = useIsMobile()
   const [stageRef, stageWidth] = useMeasuredWidth<HTMLDivElement>()
   const [wrapRef, wrapWidth] = useMeasuredWidth<HTMLDivElement>()
-  const screens = useMemo(() => (k.audience ? audienceScreens(k.audience) : lensScreens(k.as)), [k.as, k.audience])
-  const frames = useMemo(() => lensFrames(k), [k])
+  // The training lessons, for the role that reads them: loaded apart, so their words never ride in this chunk.
+  const [sources, setSources] = useState<LensSources>({})
+  const [lessonsError, setLessonsError] = useState<string | null>(null)
+  useEffect(() => {
+    let alive = true
+    import('../../lib/training/courseRegistry')
+      .then((m) => {
+        if (alive) setSources({ courses: m.TRAINING_COURSES })
+      })
+      .catch((e: unknown) => {
+        if (alive) setLessonsError(`The lessons did not load: ${formatErrorMessage(e)}`)
+      })
+    return () => {
+      alive = false
+    }
+  }, [])
+  const screens = useMemo(() => (k.audience ? audienceScreens(k.audience) : lensScreens(k.as, sources)), [k.as, k.audience, sources])
+  const frames = useMemo(() => lensFrames(k, sources), [k, sources])
   const maxLive = narrow ? 1 : MAX_LIVE
   const sheet = k.across === 'sheet'
   const [live, setLive] = useState<readonly string[]>([])
@@ -322,13 +343,13 @@ export function SettingsWhatEveryoneSeesTab() {
       if (next.across !== 'sheet') next.across = 'widths'
       return next
     }
-    if (patch.as && !lensScreens(patch.as).some((s) => s.id === next.where)) next.where = 'page:/dashboard'
+    if (patch.as && !lensScreens(patch.as, sources).some((s) => s.id === next.where)) next.where = 'page:/dashboard'
     return next
   })
   const groups = useMemo(() => {
     const by = new Map<string, typeof screens>()
     for (const s of screens) {
-      const g = s.kind === 'window' ? 'Windows' : s.kind === 'settings' ? 'Settings' : 'Pages'
+      const g = s.kind === 'window' ? 'Windows' : s.kind === 'settings' ? 'Settings' : s.kind === 'lesson' ? 'Lessons' : 'Pages'
       by.set(g, [...(by.get(g) ?? []), s])
     }
     return [...by.entries()]
@@ -370,7 +391,7 @@ export function SettingsWhatEveryoneSeesTab() {
                 </optgroup>
               ))}
             </select>
-            <span style={MUTED}>{k.audience ? `${screens.length} pages the ${LENS_AUDIENCES.find((a) => a.id === k.audience)?.label.toLowerCase()} sees, each on its sample. Their emails, texts and papers are on What customers see.` : `${screens.length} screens ${LENS_PEOPLE[k.as].label.toLowerCase()} can open`}</span>
+            <span style={MUTED}>{k.audience ? `${screens.length} pages the ${LENS_AUDIENCES.find((a) => a.id === k.audience)?.label.toLowerCase()} sees, each on its sample. Their emails, texts and papers are on What customers see.` : `${screens.length} screens ${LENS_PEOPLE[k.as].label.toLowerCase()} can open${lessonsError && lensReadsLessons(k.as) ? `. ${lessonsError}` : ''}`}</span>
           </span>
         </Row>
         <Row label="State">
@@ -410,6 +431,7 @@ export function SettingsWhatEveryoneSeesTab() {
               {[
                 [count((a) => a.sideways !== null), 'scroll sideways'],
                 [count((a) => a.lowContrast.length > 0), 'have text under 3:1'],
+                [count((a) => a.overlaps.length > 0), 'have overlapped text'],
                 [count((a) => a.brokenImages.length > 0), 'have a broken image'],
                 [count((a) => a.errors.length > 0), 'caught an error'],
               ].map(([n, words]) => (
