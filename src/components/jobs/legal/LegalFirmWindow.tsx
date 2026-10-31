@@ -4,9 +4,14 @@ import { supabase } from '../../../lib/supabase'
 import LegalFirmSettingsBlock from '../../settings/LegalFirmSettingsBlock'
 import LegalFirmReplacePanel from './LegalFirmReplacePanel'
 import LegalFirmCoverage from './LegalFirmCoverage'
+import LegalFirmHandOffSheet from './LegalFirmHandOffSheet'
+import { useToastContext } from '../../../contexts/ToastContext'
+import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { legalFirmFacts, legalFirmFactsWords } from '../../../lib/legal/legalFirmFacts'
 import type { LegalMapCase } from '../../../lib/legal/firmMap'
 import type { Coverage } from '../../../lib/legal/firmCounties'
+import { coveredBy, handOffErrorWords, retireHold, retireReadyWords } from '../../../lib/legal/firmHandOff'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../../lib/deadPress'
 import { legalIntakeAnswerRows, legalIntakeSentWords, legalIntakeUnseen, shapeLegalFirmIntake } from '../../../lib/legal/legalFirmIntake'
 import { companyShortName } from '../../../lib/legal/legalPortalStart'
 import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
@@ -15,13 +20,6 @@ import { readLegalOfficeContacts } from '../../../lib/legal/legalOfficeContactsI
 import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../lib/legal/legalMatters'
 
 const db = supabase as unknown as SupabaseClient
-
-/** The counties only this firm covers: a replace leaves them with no firm (a county it shares keeps its other firm). */
-function soleCountiesOf(coverage: Coverage, firmId: string): string[] {
-  const out: string[] = []
-  for (const [county, cover] of coverage) if (cover.first === firmId && cover.also.length === 0) out.push(county)
-  return out
-}
 
 /** Where Settings keeps the firm: the Jobs & billing tab, at the block's anchor. */
 export const LEGAL_FIRM_SETTINGS_HREF = '/settings?tab=settings-jobs#settings-legal-firm'
@@ -109,6 +107,9 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
     </div>
   ) : null
   const facts = firm ? legalFirmFacts(firm.id, matters, recipients, linkLive) : null
+  /** How many counties this firm covers, first call or not (v2.6233): hand-off and retire read it. */
+  const countiesHeld = firm && coverage ? coveredBy(coverage, firm.id).length : 0
+  const [handOffOpen, setHandOffOpen] = useState(false)
   const factsLine = facts ? (
     <div data-legal-firm-facts style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', fontSize: '0.8rem' }}>
       <span style={{ color: 'var(--text-muted)' }}>On this firm now:</span>
@@ -138,13 +139,15 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
           {/* The facts first for a dev (the block's details fold now, and the facts must not fold with them); the read-only view keeps them under its rows. */}
           {canEdit && factsLine ? <div style={{ marginBottom: 12 }}>{factsLine}</div> : null}
           {firm && coverage ? (
-            <LegalFirmCoverage key={`coverage-${firm.id}`} firm={firm} firms={firms} coverage={coverage} cases={cases} canEdit={canEdit} onShowOnMap={onShowOnMap} onSaved={onSaved} />
+            <LegalFirmCoverage key={`coverage-${firm.id}`} firm={firm} firms={firms} coverage={coverage} cases={cases} canEdit={canEdit} onShowOnMap={onShowOnMap} onSaved={onSaved} onHandOff={canEdit && countiesHeld > 0 ? () => setHandOffOpen(true) : undefined} />
           ) : null}
           {canEdit ? (
             <div style={{ marginTop: coverage ? 16 : 0, paddingTop: coverage ? 14 : 0, borderTop: coverage ? '1px solid var(--border)' : undefined }}>
               {/* Keyed on the firm, so a replace remounts the block on the new one. */}
               <LegalFirmSettingsBlock key={firm?.id ?? 'none'} inWindow firmId={firm?.id ?? null} onSaved={onSaved} />
-              {firm && facts ? <LegalFirmReplacePanel key={`replace-${firm.id}`} firm={firm} facts={facts} onReplaced={onSaved} onShowAccount={onShowAccount} counties={coverage ? soleCountiesOf(coverage, firm.id) : []} /> : null}
+              {/* v2.6233 (punch list #222, PR 4): a firm that covers counties hands them off instead; Replace stays for the one that covers none (the bridge's stand-in). */}
+              {firm && facts && countiesHeld === 0 ? <LegalFirmReplacePanel key={`replace-${firm.id}`} firm={firm} facts={facts} onReplaced={onSaved} onShowAccount={onShowAccount} /> : null}
+              {firm && facts && coverage ? <RetireFirmRow key={`retire-${firm.id}`} firm={firm} countiesLeft={countiesHeld} liveMatters={facts.withFirm} otherFirms={firms.filter((f) => f.active && f.id !== firm.id).length} onRetired={onSaved} /> : null}
             </div>
           ) : (
             <div style={{ marginTop: coverage ? 16 : 0 }}>
@@ -153,7 +156,63 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
           )}
         </div>
       </div>
+      {handOffOpen && firm && coverage && facts ? (
+        <LegalFirmHandOffSheet firm={firm} firms={firms} coverage={coverage} cases={cases} liveMatters={facts.withFirm} zIndex={zIndex + 2} onCancel={() => setHandOffOpen(false)} onDone={() => { setHandOffOpen(false); onSaved() }} />
+      ) : null}
     </div>
+  )
+}
+
+/**
+ * Retire this firm, the window's last section (punch list #222, PR 4, v2.6233): its own step, dead with its reason
+ * while the firm covers a county, holds an account, or is the only firm that stands; ready, it asks once and
+ * retires through `legal_retire_firm`. The link stops, the people stop getting emails, the history stays.
+ */
+function RetireFirmRow({ firm, countiesLeft, liveMatters, otherFirms, onRetired }: {
+  firm: LegalFirmRow
+  countiesLeft: number
+  liveMatters: ReadonlyArray<{ payerName: string }>
+  otherFirms: number
+  onRetired: () => void
+}) {
+  const confirm = useConfirmDialog()
+  const { showToast } = useToastContext()
+  const [busy, setBusy] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const hold = retireHold(firm.name, countiesLeft, liveMatters, otherFirms)
+  const press = async () => {
+    if (hold || busy) return
+    const yes = await confirm({ title: `Retire ${firm.name}`, message: retireReadyWords(firm.name), confirmLabel: `Retire ${firm.name}`, cancelLabel: 'Keep it', danger: true, cancelIsSafe: true })
+    if (!yes) return
+    setBusy(true)
+    setError(null)
+    try {
+      const { data, error: rpcError } = await db.rpc('legal_retire_firm', { p_firm_id: firm.id })
+      if (rpcError) {
+        setError(handOffErrorWords(rpcError))
+        return
+      }
+      const answer = (data ?? {}) as { error?: string }
+      if (answer.error) {
+        setError(answer.error)
+        return
+      }
+      showToast(`${firm.name} is retired. Its history stays.`, 'success')
+      onRetired()
+    } finally {
+      setBusy(false)
+    }
+  }
+  const dead = Boolean(hold) || busy
+  return (
+    <section data-legal-firm-retire={hold ? 'held' : 'ready'} style={{ marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }}>
+      <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Retire this firm</h4>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 6 }}>
+        <button type="button" onClick={() => void press()} disabled={dead} style={dead ? { ...btn, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: DEAD_PRESS_FILL, cursor: 'default' } : btn} data-legal-firm-retire-press>{busy ? 'Retiring…' : `Retire ${firm.name}`}</button>
+        <span data-legal-firm-retire-why style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{hold ?? retireReadyWords(firm.name)}</span>
+      </div>
+      {error ? <p role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.84rem', margin: '8px 0 0' }}>{error}</p> : null}
+    </section>
   )
 }
 
@@ -233,5 +292,6 @@ function ReadOnlyFirm({ firm, factsLine }: { firm: LegalFirmRow | null; factsLin
   )
 }
 
-const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }
+// Longhands: Retire flips between its dead and live styles, and React drops a border shorthand under a changing borderColor.
+const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 const chip: CSSProperties = { border: '1px solid var(--border)', borderRadius: 999, padding: '1px 9px', background: 'var(--bg-subtle)', color: 'var(--text)', fontSize: '0.8rem' }

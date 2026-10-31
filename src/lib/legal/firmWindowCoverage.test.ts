@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { bridgeEndsWords, coverageCasesChip, coverageCountyChip, coverageNudgeButton, coverageNudgeWords, coverageState, coverageSumWords, firmWindowCoverage, replaceLeavesUncoveredWords } from './firmWindowCoverage'
+import { bridgeEndsWords, coverageCasesChip, coverageCountyChip, coverageNudgeButton, coverageNudgeWords, coverageState, coverageSumWords, firmWindowCoverage } from './firmWindowCoverage'
 import { coverageFromCountiesByFirm } from './firmCounties'
 
 const byFirm = coverageFromCountiesByFirm(new Map<string, string[]>([
@@ -102,12 +102,5 @@ describe('firmWindowCoverage', () => {
       { name: 'D', county: 'Hays' },
       { name: 'E', county: 'Hays' },
     ])).toBe('Saving ends the default. 5 cases sit where no firm covers: A in Bexar County, B, whose county is unknown, C in Comal County and 2 more. Add their counties too, or the desk cannot release them.')
-  })
-
-  it('the replace warning names the counties that would go uncovered, and is silent when there are none', () => {
-    expect(replaceLeavesUncoveredWords('Snell', [])).toBeNull()
-    expect(replaceLeavesUncoveredWords('Snell', ['Travis'])).toBe('Replacing retires Snell everywhere. Travis County would have no firm until you color it for the new firm under Firms….')
-    expect(replaceLeavesUncoveredWords('Snell', ['Williamson', 'Bell'])).toBe('Replacing retires Snell everywhere. Its 2 counties, Bell County and Williamson County, would have no firm until you color them for the new firm under Firms….')
-    expect(replaceLeavesUncoveredWords('Snell', ['Williamson', 'Bell', 'Travis'])).toBe('Replacing retires Snell everywhere. Its 3 counties, Bell County, Travis County and Williamson County, would have no firm until you color them for the new firm under Firms….')
   })
 })
