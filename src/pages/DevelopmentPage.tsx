@@ -47,6 +47,8 @@ import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developme
 import { bidMoney, bidStatusWord, bidUndecided, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, plansNeedWords, type PlanCarrier } from '../lib/developments/plans'
+import { canSeeSiteCosts } from '../lib/developments/siteCosts'
+import { useSiteCosts } from '../hooks/useSiteCosts'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
 import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/developments/pairing'
 import { markWonConfirm, markedWonBack, pairAllConfirm, pairConfirm, pairedAllBack, pairedWords, unpairConfirm, unpairedWords, type PairingConfirm } from '../lib/developments/pairingConfirm'
@@ -158,6 +160,9 @@ export default function DevelopmentPage() {
   const counts = useMemo(() => (shown && data ? headCounts(shown, data.requests, nowMs) : null), [shown, data, nowMs])
   const people = useMemo(() => (shown && data ? sitePeople({ members: shown, names: data.names, teamMembers: data.teamMembers, jobLabel }) : null), [shown, data, jobLabel])
   const plans = useMemo(() => (shown && data ? buildPlansView({ members: shown, bidChanges: data.bidChanges, names: data.names, bidLabel, jobLabel }) : null), [shown, data, bidLabel, jobLabel])
+  // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.
+  const shownJobIds = useMemo(() => (shown ? shown.jobs.map((j) => j.id) : []), [shown])
+  const costsByJobId = useSiteCosts(shownJobIds, canSeeSiteCosts(role))
   const pieces = useMemo(() => (shown && data && plans ? buildPieceRows({ members: shown, requests: data.requests, plans, customerName: data.customer?.name ?? null, nowMs }) : []), [shown, data, plans, nowMs])
   const feed = useMemo<ChangeLine[]>(
     () =>
@@ -1052,7 +1057,7 @@ export default function DevelopmentPage() {
           {shown.bids.length + shown.jobs.length === 0 ? (
             <EmptyState main={`Nothing in ${dev.name} yet.`} next={{ label: 'Bid Board', to: '/bids' }} tail={`and the Pipeline have a Development picker on Edit Bid and Edit Job, and a saved record at a shared address offers Put it in ${dev.name}.`} compact />
           ) : (
-            <DevelopmentPieces rows={pieces} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={moneyShown ? pairing : undefined} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} onHistory={showPieceHistory} busy={busy} moneyShown={moneyShown} />
+            <DevelopmentPieces rows={pieces} costsByJobId={costsByJobId} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={moneyShown ? pairing : undefined} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} onHistory={showPieceHistory} busy={busy} moneyShown={moneyShown} />
           )}
         </Card>
 

@@ -1669,3 +1669,8 @@ The Submittals tables are **pricing-side data on the bid**: `bid_specified_produ
 ### Robot rounds (v2.5733, punch list #142)
 
 `robot_agents()` (the Console's status rows, which name robot keys) and `robot_rounds_stop()` (**Stop the rounds** / **Start again** on one key) answer only a `dev` or a `master_technician`, checked inside the SECURITY DEFINER functions; everyone else gets no rows or a refusal. `robot_progress()` and `robot_run_signals()` (v2.5732, the bar on the bid and *Read the run*) answer the bid roles — dev, master, assistant, controller, estimator — and select no money column.
+
+## Development page (v2.6040+)
+
+- The page itself opens for every signed-in office role; an estimator reads it with no money (`readDoor.ts`, v2.6053).
+- **Costs on the Jobs & bids table (v2.6215)**: dev and controller only (`canSeeSiteCosts`, `src/lib/developments/siteCosts.ts`) — each job's parts buckets and sub labor as one figure, the same number the Job window's profit band shows. Masters, assistants and estimators see no Costs column.

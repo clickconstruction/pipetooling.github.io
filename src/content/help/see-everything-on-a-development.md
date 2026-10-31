@@ -1,7 +1,7 @@
 ---
 title: see everything on a development in one place
 category: Office
-roles: dev, master_technician, assistant, estimator
+roles: dev, master_technician, assistant, controller, estimator
 keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
 order: 75
 ---
@@ -63,7 +63,7 @@ Notes a record carries with no date sit under the chips in a block called On rec
 
 ## Pair each bid with the job it became
 
-Pieces lists each bid beside the job it became. A gap in the row means the pair is not on record yet.
+Pieces lists each bid beside the job it became. A gap in the row means the pair is not on record yet. A dev or a controller also sees a Costs column: each job's parts and sub labor as one figure. Rest on it to see the buckets.
 
 1. Press {{button:outline|Pair bids with jobs}} above the table.
 2. In a gap, press the likely pair the page names, or press {{button:outline|Pick the job}} to choose one.
