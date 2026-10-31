@@ -125,20 +125,35 @@ export function DevelopmentHistoryComposer({ groups, preferKey, phone, busy, onK
 }
 
 
-export function DevelopmentHistoryChips({ chip, onChip, piece, onClearPiece }: { chip: HistoryChip; onChip: (chip: HistoryChip) => void; piece: HistoryPiece | null; onClearPiece: () => void }) {
+export function DevelopmentHistoryChips({ chip, onChip, piece, onClearPiece, phone = false }: { chip: HistoryChip; onChip: (chip: HistoryChip) => void; piece: HistoryPiece | null; onClearPiece: () => void; phone?: boolean }) {
+  const chips = HISTORY_CHIPS.map((c) => (
+    <button key={c.key} type="button" className="developmentHistoryChip" data-on={chip === c.key ? '1' : undefined} aria-pressed={chip === c.key} title={c.title} style={phone ? { flexShrink: 0 } : undefined} onClick={() => onChip(c.key)} data-testid={`history-chip-${c.key}`}>
+      {c.label}
+    </button>
+  ))
+  const pieceChip = piece ? (
+    <button type="button" className="developmentChipPress isOn" onClick={onClearPiece} title="Every piece again" data-testid="history-piece-chip">
+      {piece.label} only <span aria-hidden>×</span>
+    </button>
+  ) : null
+  if (phone) {
+    // A phone keeps the seven chips in one row that scrolls sideways, as the Pipeline's stage strip does,
+    // so none wraps onto a line of its own; the piece chip sits under the strip where it is always in view.
+    return (
+      <div style={{ marginBottom: 8 }} data-testid="history-chips" data-phone="1">
+        <div style={{ display: 'flex', gap: 6, alignItems: 'center', overflowX: 'auto', WebkitOverflowScrolling: 'touch', paddingBottom: 4 }} data-testid="history-chips-strip">
+          <span style={{ ...capStyle, flexShrink: 0 }}>Show</span>
+          {chips}
+        </div>
+        {pieceChip ? <div style={{ marginTop: 4 }}>{pieceChip}</div> : null}
+      </div>
+    )
+  }
   return (
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', alignItems: 'center', marginBottom: 8 }} data-testid="history-chips">
       <span style={capStyle}>Show</span>
-      {HISTORY_CHIPS.map((c) => (
-        <button key={c.key} type="button" className="developmentHistoryChip" data-on={chip === c.key ? '1' : undefined} aria-pressed={chip === c.key} title={c.title} onClick={() => onChip(c.key)} data-testid={`history-chip-${c.key}`}>
-          {c.label}
-        </button>
-      ))}
-      {piece ? (
-        <button type="button" className="developmentChipPress isOn" onClick={onClearPiece} title="Every piece again" data-testid="history-piece-chip">
-          {piece.label} only <span aria-hidden>×</span>
-        </button>
-      ) : null}
+      {chips}
+      {pieceChip}
     </div>
   )
 }

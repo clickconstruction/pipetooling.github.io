@@ -122,9 +122,9 @@ function HubPeopleBlockCard({
     requirement: effectiveRequirement,
     hasNote: Boolean(block.note),
   })
-  const chainsColor = surroundingIconColorForRequirement(effectiveRequirement, '#1d4ed8')
-  const minusColor = surroundingIconColorForRequirement(effectiveRequirement, '#b91c1c')
-  const plusColor = surroundingIconColorForRequirement(effectiveRequirement, '#1d4ed8')
+  const chainsColor = surroundingIconColorForRequirement(effectiveRequirement, 'var(--text-blue-700)')
+  const minusColor = surroundingIconColorForRequirement(effectiveRequirement, 'var(--text-red-700)')
+  const plusColor = surroundingIconColorForRequirement(effectiveRequirement, 'var(--text-blue-700)')
   const plusButtonRef = useRef<HTMLButtonElement>(null)
   const placementPickingActive = cardPlacementMode != null
   const linkedCopyActive = linkedCopyStage != null

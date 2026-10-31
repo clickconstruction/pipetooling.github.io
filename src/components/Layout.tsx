@@ -101,6 +101,7 @@ import { useIsPartner } from '../hooks/useIsPartner'
 import { PartnerStatementNavLink } from './partner/PartnerStatementNavLink'
 import { canOpenMessages } from '../lib/gc/access'
 import { MessagesBadge } from './MessagesBadge'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../lib/skyUnderWords'
 
 const navStyle = ({ isActive }: { isActive: boolean }) => ({
   fontWeight: isActive ? 600 : undefined,
@@ -1083,8 +1084,9 @@ export default function Layout() {
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.75rem',
                 // White on the deep sky (v2.6186), 5.93:1: white on #0ea5e9 read 2.77:1, and the owner likes white on blue.
-                background: '#0369a1',
-                color: '#ffffff',
+                // Every sky press reads the same pair since v2.6196 (lib/skyUnderWords).
+                background: SKY_UNDER_WORDS,
+                color: WORDS_ON_SKY,
                 fontWeight: 600,
                 fontSize: '0.875rem',
               }}
@@ -1137,8 +1139,8 @@ export default function Layout() {
               style={{
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.5rem',
-                background: '#0369a1',
-                color: '#ffffff',
+                background: SKY_UNDER_WORDS,
+                color: WORDS_ON_SKY,
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
@@ -1419,7 +1421,7 @@ export default function Layout() {
                         justifyContent: 'center',
                         borderRadius: 3,
                         border: '1px solid var(--border-400)',
-                        background: dispatchModeEnabled ? '#0369a1' : 'var(--surface)',
+                        background: dispatchModeEnabled ? SKY_UNDER_WORDS : 'var(--surface)',
                         color: 'white',
                         fontSize: '0.75rem',
                         lineHeight: 1,
@@ -1468,7 +1470,7 @@ export default function Layout() {
                         justifyContent: 'center',
                         borderRadius: 3,
                         border: '1px solid var(--border-400)',
-                        background: dispatchModePoEnabled ? '#0369a1' : 'var(--surface)',
+                        background: dispatchModePoEnabled ? SKY_UNDER_WORDS : 'var(--surface)',
                         color: 'white',
                         fontSize: '0.75rem',
                         lineHeight: 1,

@@ -155,7 +155,6 @@ export type JobsStagesUnifiedTableProps = {
   openQuickAssignForJob: StagesRowRenderContext['openQuickAssignForJob']
   authRole: StagesRowRenderContext['authRole']
   loadJobs: StagesRowRenderContext['loadJobs']
-  onDevelopmentFilter?: StagesRowRenderContext['onDevelopmentFilter']
   jobContractCoverageByJobId?: StagesRowRenderContext['jobContractCoverageByJobId']
   propertyKindByJobId?: StagesRowRenderContext['propertyKindByJobId']
   onPropertyKindSaved?: StagesRowRenderContext['onPropertyKindSaved']
@@ -250,7 +249,6 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     openQuickAssignForJob,
     authRole,
     loadJobs,
-    onDevelopmentFilter,
     jobContractCoverageByJobId,
     propertyKindByJobId,
     onPropertyKindSaved,
@@ -299,7 +297,6 @@ export default function JobsStagesUnifiedTable(props: JobsStagesUnifiedTableProp
     dispatchTaskModal,
     checklistAddModal,
     loadJobs,
-    onDevelopmentFilter,
     jobContractCoverageByJobId,
     propertyKindByJobId,
     onPropertyKindSaved,

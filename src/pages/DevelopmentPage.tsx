@@ -995,7 +995,7 @@ export default function DevelopmentPage() {
                   </SmallButton>
                 </div>
               )}
-              <DevelopmentHistoryChips chip={histChip} onChip={setHistChip} piece={histPiece} onClearPiece={() => setHistPiece(null)} />
+              <DevelopmentHistoryChips chip={histChip} onChip={setHistChip} piece={histPiece} onClearPiece={() => setHistPiece(null)} phone={phone} />
               {onRecordShown.length > 0 ? (
                 <div data-testid="history-on-record" style={{ marginBottom: 10, padding: '6px 10px', border: '1px dashed var(--border-strong)', borderRadius: 6, fontSize: '0.8rem' }}>
                   <div style={{ ...capStyle, marginBottom: 2 }} title="Notes the records carry with no date: a bid's notes, a job's collections note, the customer's terms">
