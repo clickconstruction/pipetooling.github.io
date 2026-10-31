@@ -15,6 +15,7 @@ import { FinishedDateInput } from '../FinishedDateInput'
 import { SUB_DOCUMENT_TYPE_LABEL, suggestedRetype } from '../../lib/people/subDocumentDraft'
 import { EmptyState } from '../EmptyState'
 import { subsRosterEmptyWords } from '../../lib/people/peopleEmptyWords'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 
 /**
  * People → Subs: one row per subcontractor relationship (RUN_SUBS_PLAN
@@ -640,7 +641,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                         disabled={saving}
                         onClick={() => void reactivateSub(row.personId)}
                         title={`Make ${row.name} active again`}
-                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.5rem', borderRadius: 5, border: 'none', background: '#0ea5e9', color: '#fff', cursor: saving ? 'wait' : 'pointer' }}
+                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.1rem 0.5rem', borderRadius: 5, border: 'none', background: SKY_UNDER_WORDS, color: WORDS_ON_SKY, cursor: saving ? 'wait' : 'pointer' }}
                       >
                         {saving ? 'Saving…' : 'Reactivate'}
                       </button>
@@ -685,7 +686,7 @@ export default function PeopleSubsTab({ onOpenHire }: { onOpenHire?: () => void 
                         style={{ padding: '0.2rem 0.4rem', borderRadius: 5, border: '1px solid var(--border)', fontSize: '0.75rem', fontFamily: 'inherit' }}
                       />
                       <div style={{ display: 'flex', gap: 6 }}>
-                        <button type="submit" disabled={saving} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 5, border: 'none', background: '#0ea5e9', color: '#fff', cursor: saving ? 'wait' : 'pointer' }}>
+                        <button type="submit" disabled={saving} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 5, border: 'none', background: SKY_UNDER_WORDS, color: WORDS_ON_SKY, cursor: saving ? 'wait' : 'pointer' }}>
                           {saving ? 'Saving…' : 'Put on the bench'}
                         </button>
                         <button type="button" disabled={saving} onClick={() => setBenchForm(null)} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.5rem', borderRadius: 5, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>

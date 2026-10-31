@@ -1018,7 +1018,8 @@ button:focus-visible {
   padding: 0.2rem 0.5rem;
   font-size: 0.75rem;
   font-weight: 500;
-  background: #0ea5e9;
+  /* Sky under words, white on it (v2.6196, lib/skyUnderWords). */
+  background: #0369a1;
   border: none;
   border-radius: 6px;
   color: white;
@@ -1026,7 +1027,7 @@ button:focus-visible {
   transition: background 0.15s;
 }
 .workflow .wf-btn-info:hover {
-  background: #0284c7;
+  background: #075985;
 }
 
 .workflow .wf-btn-danger {
@@ -1341,7 +1342,8 @@ button:focus-visible {
   padding: 0.2rem 0.5rem;
   font-size: 0.75rem;
   font-weight: 500;
-  background: #0ea5e9;
+  /* Sky under words, white on it (v2.6196, lib/skyUnderWords). */
+  background: #0369a1;
   border: none;
   border-radius: 6px;
   color: white;
@@ -1349,7 +1351,7 @@ button:focus-visible {
   transition: background 0.15s;
 }
 .assignedStageCard .wf-btn-info:hover {
-  background: #0284c7;
+  background: #075985;
 }
 .assignedStageCard .wf-btn-danger {
   padding: 0.25rem 0.5rem;
