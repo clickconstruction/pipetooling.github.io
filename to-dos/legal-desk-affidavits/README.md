@@ -2,7 +2,7 @@
 name: "Legal desk: affidavits from the desk — the thinking, the window and the print faces"
 number: 220
 group: waiting
-status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 (claude/220-affidavit-window) · PRs 4–6 claimed on the claude/220-affidavit-* branches
+status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 · PR 4 the print faces v2.6211 (claude/220-affidavit-print) · PRs 5–6 claimed on the claude/220-affidavit-* branches
 mockup: to-dos/legal-desk-affidavits/mockup.html
 summary: >
   The office made one affidavit by hand this month: drafted in a chat, exported, printed, driven to a
@@ -13,7 +13,7 @@ summary: >
   how it is signed, before a notary or under penalty of perjury with no notary; print the paper, the
   statement alone, or the signing page alone to staple on a handwritten statement; file the signed scan
   and confirm the two days. The text lands on the Timeline's Said lane, the scan on Evidence, linked.
-next: PR 4, the print faces, then PRs 5–6 in order; after PR 2 merges, `supabase db push` and `supabase functions deploy legal-portal` (PR 3's client calls the RPCs, so the push comes before its deploy). Question 3 (drafts to counsel) is still open and the default follows the everything-goes rule until the owner says otherwise.
+next: PR 5, filing the signed scan, then PR 6; after PR 2 merges, `supabase db push` and `supabase functions deploy legal-portal` (PR 3's client calls the RPCs, so the push comes before its deploy). Question 3 (drafts to counsel) is still open and the default follows the everything-goes rule until the owner says otherwise.
 size: M as a train of six (S · S · M · S · M · S)
 blocker: None. The owner answered 2026-10-30; the one open question (drafts to counsel) changes no PR before 5.
 opinion: build as recommended with the owner's defaults — before a notary for everyone, Guadalupe County on the venue line, blank one tap away; the one design call still open is whether the firm reads a draft before the witness signs
@@ -156,10 +156,11 @@ The signing page alone is never a loose jurat. It names what it is attached to: 
 handwritten statement of T. Nguyen, ___ pages, each initialed by the signer.* A notary will not sign a jurat that
 floats, and a court should not have to guess.
 
-On the phone the paper draws **inside the window** on a light sheet (`data-theme="light"`) and **Print** calls the
-browser's print on that sheet through a print stylesheet that hides the app. Nothing opens a new tab: Safari's popup
-rule blocked the Lien desk's `window.open` print on phones more than once. From the print sheet, AirPrint prints it or
-*Save to Files* makes the PDF to AirDrop or text. The desktop keeps the new tab the lien papers use.
+The paper draws **inside the window** on a light sheet (the lien papers' own print page in a frame) and **Print** calls the
+frame's print, on every device (built so in PR 4: one path, and the desktop sees the page before its print dialog; the card
+had kept the lien papers' new tab for the desktop). Nothing opens a new tab: Safari's popup rule blocked the Lien desk's
+`window.open` print on phones more than once. From the print sheet, AirPrint prints it or *Save to Files* makes the PDF;
+**Save as PDF** beside Print makes the file outright, to text or AirDrop.
 
 ### Revisions: drafts are kept, each print is noted, the scan closes it
 

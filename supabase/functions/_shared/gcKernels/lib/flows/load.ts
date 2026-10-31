@@ -21,6 +21,7 @@ import type { FactStamp, FlowStamps, JobStamps, LaneStamps, OffFlow, RoundStamp,
 import type { Qualifications } from '../hiring/tradeScale.ts'
 import type { CandidateRow } from './candidateLoad.ts'
 import { jobOfMark } from './person.ts'
+import type { ResidentialRows } from './residentialLoad.ts'
 import type { SubPersonRows } from './subOnboardingLoad.ts'
 
 // ---------- the rows, as the query layer selects them ----------
@@ -149,6 +150,12 @@ export type FlowRows = {
   subPerson?: SubPersonRows | null
   /** A candidate's or a sub's qualifications (2026-10-23): the trade levels, the license and the home, read by `readFlowPerson`. */
   qualifications?: Qualifications | null
+  /**
+   * A residential customer's Pipeline rows (v2.6232): `readFlowPerson` and the morning run read them beside `flow_rows`
+   * (`residentialRows.ts`), and `personFlowFrom` reads their stamps from them (`residentialStampsFor`). Unset, their
+   * lanes read empty.
+   */
+  residential?: ResidentialRows | null
   contactJobs?: readonly ContactJobRow[]
   /** A user id to the name the card says ("Rosa"). */
   userNames?: Readonly<Record<string, string>>

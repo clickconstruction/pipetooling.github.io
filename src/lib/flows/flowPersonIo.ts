@@ -15,12 +15,15 @@ import type { CompanyPaperRow } from '../gc/companyPapers'
 import { loadQualifications, type QualificationsOf } from '../hiring/qualificationsIo'
 import type { Qualifications } from '../hiring/tradeScale'
 import type { CandidateRow } from './candidateLoad'
+import { flowFirst } from './nudgeRunInputs'
+import type { ResidentialRows } from './residentialLoad'
+import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, residentialRowsOf, type PipelineRows } from './residentialRows'
 import { SEED_FLOWS } from './seed'
 import type { SubPersonRows } from './subOnboardingLoad'
 import type { FlowDef } from './state'
 
-/** The contact as the panel names them. */
-export type FlowContact = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; team_prospect_id?: string | null; person_id?: string | null }
+/** The contact as the panel names them; `customer_id` is a residential customer's record (v2.6232). */
+export type FlowContact = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; team_prospect_id?: string | null; person_id?: string | null; customer_id?: string | null }
 
 export type FlowPersonRead = {
   contact: FlowContact
@@ -100,7 +103,7 @@ export function readFlowPerson(contactId: string): Promise<FlowPersonRead> {
 
 async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
   const [contactA, rowsA, holdsA, sentA, notesA, linesA, owedA] = await Promise.all([
-    table('contacts').select('id, kind, name, goes_by, team_prospect_id, person_id').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<FlowContact>>,
+    table('contacts').select('id, kind, name, goes_by, team_prospect_id, person_id, customer_id').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<FlowContact>>,
     call<FlowRows>('flow_rows', { p_contact: contactId }),
     table('nudge_holds').select('id, step_key, project_id, jobs_ledger_id, until_on, released_at').eq('contact_id', contactId) as unknown as Promise<Answer<HoldRow[]>>,
     table('nudge_sent').select('step_key, project_id, jobs_ledger_id, sent_at, sent_by').eq('contact_id', contactId) as unknown as Promise<Answer<SentRow[]>>,
@@ -141,6 +144,9 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
     }
     rows.qualifications = await qualificationsOf({ personId: contact.person_id })
   }
+  // A residential customer's steps read their Pipeline rows (v2.6232): `flow_rows` carries days and marks and never an
+  // amount, so their jobs, blocks, clock-ins, reports, estimates, moves, bills, payments and texts are read here.
+  if (contact.kind === 'residential') rows.residential = await residentialOf(contact, rows)
   return {
     contact,
     flow: await readFlowDef(contact.kind),
@@ -152,6 +158,55 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
     lines: check(linesA, 'Their thread') ?? [],
     owed: check(owedA, 'What we owe them') ?? [],
   }
+}
+
+/** An RPC the reader may not be allowed, read soft: a refusal or a lost signal leaves it null, and a bill's due day unset. */
+async function softCall(fn: string): Promise<unknown> {
+  try {
+    const a = await call<unknown>(fn, {})
+    return a.error ? null : a.data
+  } catch {
+    return null
+  }
+}
+
+/**
+ * One residential customer's Pipeline rows (`residentialLoad.ts`'s `ResidentialRows`), the columns `PIPELINE_SELECTS`
+ * names: the jobs they are the customer on and the ones the office tied to them (`contact_jobs.jobs_ledger_id`),
+ * everything on those jobs, their own texts out, and the two pay-day RPCs the Stages tab calls (soft: a role the gate
+ * refuses reads no pace, and the bill's due day stays unset). A table the reader may not read fails with its reason.
+ */
+async function residentialOf(contact: FlowContact, rows: FlowRows): Promise<ResidentialRows> {
+  const customerId = contact.customer_id ?? rows.card?.customer_id ?? null
+  const jobsRead = (customerId ? table('jobs_ledger').select(PIPELINE_SELECTS.jobs).eq('customer_id', customerId) : Promise.resolve({ data: [], error: null })) as unknown as Promise<Answer<PipelineRows['jobs'][number][]>>
+  const [jobsA, tiesA, textsA, paySpeeds, promisedPay] = await Promise.all([
+    jobsRead,
+    table('contact_jobs').select(PIPELINE_SELECTS.contactJobs).eq('contact_id', contact.id).not('jobs_ledger_id', 'is', null) as unknown as Promise<Answer<PipelineRows['contactJobs'][number][]>>,
+    table('messages').select(PIPELINE_SELECTS.texts).eq('contact_id', contact.id).eq('channel', 'text').eq('direction', 'out') as unknown as Promise<Answer<PipelineRows['texts'][number][]>>,
+    softCall('get_billed_customer_pay_speeds'),
+    softCall('list_job_promised_pay_dates'),
+  ])
+  const own = check(jobsA, 'Their jobs') ?? []
+  const contactJobs = check(tiesA, 'Their jobs') ?? []
+  const tiedIds = contactJobs.flatMap((t) => (t.jobs_ledger_id && !own.some((j) => j.id === t.jobs_ledger_id) ? [t.jobs_ledger_id] : []))
+  const tied = tiedIds.length ? (check((await table('jobs_ledger').select(PIPELINE_SELECTS.jobs).in('id', tiedIds)) as unknown as Answer<PipelineRows['jobs'][number][]>, 'Their jobs') ?? []) : []
+  const jobs = [...own, ...tied]
+  const ids = jobs.map((j) => j.id)
+  const on = <T>(name: string, select: string, column: string, what: string): Promise<T[]> =>
+    ids.length ? (table(name).select(select).in(column, ids) as unknown as Promise<Answer<T[]>>).then((a) => check(a, what) ?? []) : Promise.resolve([])
+  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments] = await Promise.all([
+    on<PipelineRows['blocks'][number]>('job_schedule_blocks', PIPELINE_SELECTS.blocks, 'job_id', 'Their visits'),
+    on<PipelineRows['clockSessions'][number]>('clock_sessions', PIPELINE_SELECTS.clockSessions, 'job_ledger_id', 'Their visits'),
+    on<PipelineRows['reports'][number]>('reports', PIPELINE_SELECTS.reports, 'job_ledger_id', 'Their reports'),
+    on<PipelineRows['estimates'][number]>('estimates', PIPELINE_SELECTS.estimates, 'job_ledger_id', 'Their estimates'),
+    on<PipelineRows['statusEvents'][number]>('job_status_events', PIPELINE_SELECTS.statusEvents, 'job_id', 'Their jobs'),
+    on<PipelineRows['invoices'][number]>('jobs_ledger_invoices', PIPELINE_SELECTS.invoices, 'job_id', 'Their bills'),
+    on<PipelineRows['payments'][number]>('jobs_ledger_payments', PIPELINE_SELECTS.payments, 'job_id', 'Their payments'),
+  ])
+  return residentialRowsOf(
+    { ...NO_PIPELINE_ROWS, jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, texts: check(textsA, 'Their texts') ?? [], paySpeeds, promisedPay },
+    { contact: rows.contact, firstName: flowFirst(contact, rows.card), customerId, userNames: rows.userNames, skips: rows.skips },
+  )
 }
 
 /** A customer's page, read back; the card goes without it when it cannot be read (the flow itself still reads). */

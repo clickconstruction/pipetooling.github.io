@@ -61,8 +61,8 @@ export type TimelinePlanActs = {
   hold?: TimelineHold
   /** Swear a statement (punch list #220, v2.6210): opens the window on a new statement, on the day the composer holds. */
   swearStatement?: (on: string) => void
-  /** Open the window on a statement's row. */
-  editStatement?: (entryId: string) => void
+  /** Open the window on a statement's row; `print` opens it on the print sheet (v2.6211). */
+  editStatement?: (entryId: string, opts?: { print?: boolean }) => void
 }
 
 export type LegalTimelinePanelProps = {
@@ -474,6 +474,7 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
             {canRecord ? <button type="button" data-legal-timeline-record onClick={() => onOpenLienWindow!(item.deadlineJobId!)} style={btn} title="Opens the job’s Lien window, where the paper is recorded">Record it…</button> : null}
             {canEdit ? <button type="button" onClick={() => setMode('edit')} style={btn}>Edit</button> : null}
             {canOpenStatement ? <button type="button" data-legal-statement-open onClick={() => acts!.editStatement!(item.entryId ?? '')} style={btn}>{item.state === 'happened' ? 'Open' : 'Edit'}</button> : null}
+            {canOpenStatement ? <button type="button" data-legal-statement-print onClick={() => acts!.editStatement!(item.entryId ?? '', { print: true })} style={btn} title="The paper as it prints, in the statement’s window">Print</button> : null}
             {canDone && item.state !== 'overdue' ? <button type="button" onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={btn}>Mark done</button> : null}
             {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title={item.kind === 'event' ? 'Keep this event from the firm, with a reason only the office reads' : item.kind === 'statement' ? 'Keep this statement from the firm, with a reason only the office reads' : 'Keep this planned step from the firm, with a reason only the office reads'}>Hold from counsel…</button> : null}
             {item.held && acts?.hold && holdKey ? <button type="button" onClick={() => void acts.hold!.shareAgain(holdKey)} disabled={acts.busy} style={btn}>Share with counsel</button> : null}
