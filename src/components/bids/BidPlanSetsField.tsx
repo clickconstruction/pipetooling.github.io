@@ -11,8 +11,10 @@ import {
   planSetFileFromProbe,
   planSetFileWords,
   samePlanLink,
+  versionChipWords,
   type BidPlanSetRow,
 } from '../../lib/bids/bidPlanSets'
+import { fetchBidVersionNames } from '../../lib/bids/bidVersionNames'
 
 /**
  * Edit Bid → Plans → Plan sets (v2.6169): one row per set of plans on the bid — its name, date, memo
@@ -48,6 +50,7 @@ async function probeLink(link: string): Promise<ProbeAnswer | null> {
 export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlanSetsFieldProps) {
   const { user } = useAuth()
   const [rows, setRows] = useState<BidPlanSetRow[]>([])
+  const [versionNames, setVersionNames] = useState<ReadonlyMap<string, string>>(new Map())
   const [loaded, setLoaded] = useState(false)
   const [gen, setGen] = useState(0)
   const [adding, setAdding] = useState(false)
@@ -65,6 +68,7 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
         if (err) throw err
         if (cancelled) return
         setRows(((data ?? []) as BidPlanSetRow[]).sort(comparePlanSets))
+        if ((data ?? []).some((r) => (r as BidPlanSetRow).bid_version_id)) setVersionNames(await fetchBidVersionNames(bidId))
       } catch (e) {
         if (!cancelled) setError(formatErrorMessage(e, 'Could not read the plan sets'))
       } finally {
@@ -177,6 +181,11 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 600 }}>{row.name}</span>
                     {date ? <span style={{ fontSize: '0.76rem', color: 'var(--text-muted)' }}>{date}</span> : null}
+                    {row.bid_version_id && versionChipWords(versionNames.get(row.bid_version_id)) ? (
+                      <span data-testid="bid-plan-set-version" style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)' }} title="This set came with the bid adopted as this version">
+                        {versionChipWords(versionNames.get(row.bid_version_id))}
+                      </span>
+                    ) : null}
                     {robotReads ? (
                       <span data-testid="bid-plan-set-robot" style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', color: 'var(--text-blue-800)' }}>
                         Robot reads this
