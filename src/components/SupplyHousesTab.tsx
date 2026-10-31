@@ -31,6 +31,8 @@ import { useJobBidSearchEvidence } from '../hooks/useJobBidSearchEvidence'
 import { longTimeAgoPhrase } from '../lib/subcontractorLastActivityCompact'
 import {
   AGING_BUCKETS,
+  agingCellModalDoors,
+  agingCellRowDoors,
   agingCellTitle,
   buildSupplyHouseAgingMatrix,
   countSupplyHousesPastDue60,
@@ -44,6 +46,7 @@ import {
   type AgingBucketKey,
   type AgingCellKey,
 } from '../lib/supplyHouseAging'
+import { AgingInvoiceDoor, AgingMakePaymentDoor, AgingRowDoors } from './materials/AgingCellDoors'
 import { SUPPLY_MOVE_ASK_AGE, ageState } from '../lib/ageState'
 import { SupplyHouseDirectory } from './materials/SupplyHouseDirectory'
 import { useSupplyHouseEditor } from './materials/useSupplyHouseEditor'
@@ -256,6 +259,15 @@ export function SupplyHousesTab({
   const [agingCellReps, setAgingCellReps] = useState<Record<string, JobAccountRep[]>>({})
   const [agingCellMarkOpenedFor, setAgingCellMarkOpenedFor] = useState<{ inv: AgingInvoiceRow; flagOnOpen: boolean } | null>(null)
   const [agingCellFlagAnywayFor, setAgingCellFlagAnywayFor] = useState<string | null>(null)
+  /**
+   * PR 4 (the doors): the one row or house whose detail is loading behind a press, so a second
+   * press cannot open two forms; the field the form opens on (Add a due date › / Pick a job ›);
+   * and a counter the form's save bumps so the open modal re-reads its jobs (a job picked from
+   * the modal moves the row out of No job yet without closing and reopening it).
+   */
+  const [agingCellDoorBusy, setAgingCellDoorBusy] = useState<string | null>(null)
+  const agingCellFormFocusRef = useRef<'invoice-due' | 'invoice-job-search' | null>(null)
+  const [agingCellJobsRefresh, setAgingCellJobsRefresh] = useState(0)
   /**
    * PR 3 (the move window): the allocations and open asks behind the strip — read once per
    * summary load for the still-current unflagged invoices — plus the move modal's state.
@@ -518,7 +530,7 @@ export function SupplyHousesTab({
     setSupplyHouseSummaryLoading(false)
   }
 
-  async function loadSupplyHouseDetail(sh: SupplyHouse) {
+  async function loadSupplyHouseDetail(sh: SupplyHouse): Promise<SupplyHouseInvoiceWithAllocations[]> {
     setSupplyHouseDetailLoading(true)
     setPoGeneratorEntriesForSelectedHouse(null)
     const shRes = await supabase.from('supply_houses').select('*').eq('id', sh.id).single()
@@ -614,6 +626,7 @@ export function SupplyHousesTab({
       setPoGeneratorEntriesForSelectedHouse(byCode)
     }
     setSupplyHouseDetailLoading(false)
+    return invoicesWithAllocations
   }
 
   useEffect(() => {
@@ -750,7 +763,19 @@ export function SupplyHousesTab({
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [agingCellModal])
+  }, [agingCellModal, agingCellJobsRefresh])
+
+  // PR 4: the field a modal door asked for gets the focus once the form is on screen.
+  useEffect(() => {
+    const id = agingCellFormFocusRef.current
+    if (!invoiceFormOpen || !id) return
+    agingCellFormFocusRef.current = null
+    const el = document.getElementById(id)
+    if (el instanceof HTMLElement) {
+      el.focus()
+      el.scrollIntoView?.({ block: 'center' })
+    }
+  }, [invoiceFormOpen])
 
   /**
    * PR 2's one write: the flag flips, every reader re-derives from the same state (the
@@ -1321,6 +1346,7 @@ export function SupplyHousesTab({
     await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
     await loadSupplyHouseSummary()
     closeInvoiceForm()
+    if (agingCellModal) setAgingCellJobsRefresh((n) => n + 1)
     setSavingInvoice(false)
   }
 
@@ -1344,6 +1370,7 @@ export function SupplyHousesTab({
       await loadSupplyHouseDetail(selectedSupplyHouseForDetail)
       await loadSupplyHouseSummary()
       closeInvoiceForm()
+      if (agingCellModal) setAgingCellJobsRefresh((n) => n + 1)
     }
   }
 
@@ -1352,6 +1379,53 @@ export function SupplyHousesTab({
     const sh = supplyHousesList.find((s: SupplyHouse) => s.id === supplyHouseId)
     if (!sh) return
     loadSupplyHouseDetail(sh)
+  }
+
+  /**
+   * The doors out of the cell modal (punch list #132 PR 4): a row opens its invoice through
+   * the house detail — the same door the expanded house's pencil is — and the modal stays
+   * under the form. The house detail is loaded first because the form reads the house (its
+   * PO ledger, its pay day) and the invoice with its allocations from it; `focus` names the
+   * field Add a due date › or Pick a job › land on, so the act is one press and one field.
+   */
+  async function openInvoiceFromAgingCell(inv: AgingInvoiceRow, focus: 'invoice-due' | 'invoice-job-search' | null) {
+    if (agingCellDoorBusy) return
+    const sh = supplyHousesList.find((s: SupplyHouse) => s.id === inv.supply_house_id)
+    if (!sh) {
+      showToast('This house is not in the list on screen. Reload the page and try again.', 'error')
+      return
+    }
+    setAgingCellDoorBusy(inv.id)
+    try {
+      const rows = await loadSupplyHouseDetail(sh)
+      const full = rows.find((r) => r.id === inv.id)
+      if (!full) {
+        showToast(`Invoice ${inv.invoice_number} is no longer on ${sh.name}. The table reads it again.`, 'error')
+        await loadSupplyHouseSummary()
+        return
+      }
+      agingCellFormFocusRef.current = focus
+      openEditInvoice(full)
+    } finally {
+      setAgingCellDoorBusy(null)
+    }
+  }
+
+  /** Make a payment › on a house-scoped modal: the house's own Apply Payment, over the modal. */
+  async function openPaymentFromAgingCell(houseId: string) {
+    if (agingCellDoorBusy) return
+    const sh = supplyHousesList.find((s: SupplyHouse) => s.id === houseId)
+    if (!sh) {
+      showToast('This house is not in the list on screen. Reload the page and try again.', 'error')
+      return
+    }
+    setAgingCellDoorBusy(`house:${houseId}`)
+    try {
+      await loadSupplyHouseDetail(sh)
+      openApplyPaymentForm()
+    } finally {
+      setAgingCellDoorBusy(null)
+    }
   }
 
   /**
@@ -2175,7 +2249,7 @@ export function SupplyHousesTab({
           const rowNote = [pair, note].filter(Boolean).join(' · ')
           return (
             <div key={inv.id} className="aging-win-row">
-              <span className="aging-win-inv">{inv.invoice_number}</span>
+              <AgingInvoiceDoor invoiceNumber={inv.invoice_number} busy={agingCellDoorBusy === inv.id} onOpen={() => void openInvoiceFromAgingCell(inv, null)} />
               <span className="aging-win-po" title={poDate}>{poDate}</span>
               {/* A credit never wears an age chip — it has a size, not an age (v2.3500). */}
               {credit ? (
@@ -2193,6 +2267,12 @@ export function SupplyHousesTab({
               )}
               <span className={`aging-win-amt${credit ? ' aging-win-amt--credit' : ''}`}>{money(Number(inv.amount ?? 0))}</span>
               <span className="aging-win-rowstate">
+                <AgingRowDoors
+                  doors={agingCellRowDoors(inv, agingCellAccountsLoaded ? allocationsOf(inv.id).length : null)}
+                  busy={agingCellDoorBusy === inv.id}
+                  onAddDueDate={() => void openInvoiceFromAgingCell(inv, 'invoice-due')}
+                  onPickJob={() => void openInvoiceFromAgingCell(inv, 'invoice-job-search')}
+                />
                 {credit ? null : isOn ? (
                   <button type="button" className="aging-win-state aging-win-state--on" onClick={() => void setInvoiceJobAcct(inv, false)} title={`${JOB_ACCOUNT_LINE_TITLE} Press to take it off.`}>
                     On it ✓
@@ -2387,7 +2467,7 @@ export function SupplyHousesTab({
                       <div className="aging-win-job">
                         <div className="aging-win-job-head">
                           <div className="aging-win-job-name">No job yet</div>
-                          <div className="aging-win-job-meta">Open {houseNameOf(g.key)} and choose its job first.</div>
+                          <div className="aging-win-job-meta">Press Pick a job › on the row to choose its job.</div>
                         </div>
                         <div className="aging-win-rows">{g.byJob.noJob.map((r) => renderRow(r, null, null))}</div>
                       </div>
@@ -2422,17 +2502,20 @@ export function SupplyHousesTab({
                     </>
                   )}
                 </div>
-                {houseId ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setAgingCellModal(null)
-                      openHouseFromAging(houseId)
-                    }}
-                    style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
-                  >
-                    Open {houseName} ›
-                  </button>
+                {houseId && agingCellModalDoors(houseId, cell).openHouse ? (
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
+                    <AgingMakePaymentDoor doors={agingCellModalDoors(houseId, cell)} busy={agingCellDoorBusy === `house:${houseId}`} onMakePayment={() => void openPaymentFromAgingCell(houseId)} />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAgingCellModal(null)
+                        openHouseFromAging(houseId)
+                      }}
+                      style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    >
+                      Open {houseName} ›
+                    </button>
+                  </div>
                 ) : null}
               </div>
               {/* PR 3: the move modal — the attested call, or the emailed request with a follow-up. */}
