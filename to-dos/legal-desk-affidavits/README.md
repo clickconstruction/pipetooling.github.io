@@ -2,7 +2,7 @@
 name: "Legal desk: affidavits from the desk — the thinking, the window and the print faces"
 number: 220
 group: waiting
-status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 (claude/220-affidavit-migration) · PRs 3–6 claimed on the claude/220-affidavit-* branches
+status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 (claude/220-affidavit-window) · PRs 4–6 claimed on the claude/220-affidavit-* branches
 mockup: to-dos/legal-desk-affidavits/mockup.html
 summary: >
   The office made one affidavit by hand this month: drafted in a chat, exported, printed, driven to a
@@ -13,7 +13,7 @@ summary: >
   how it is signed, before a notary or under penalty of perjury with no notary; print the paper, the
   statement alone, or the signing page alone to staple on a handwritten statement; file the signed scan
   and confirm the two days. The text lands on the Timeline's Said lane, the scan on Evidence, linked.
-next: PR 3, the window and its doors, then PRs 4–6 in order; after PR 2 merges, `supabase db push` and `supabase functions deploy legal-portal`. Question 3 (drafts to counsel) is still open and the default follows the everything-goes rule until the owner says otherwise.
+next: PR 4, the print faces, then PRs 5–6 in order; after PR 2 merges, `supabase db push` and `supabase functions deploy legal-portal` (PR 3's client calls the RPCs, so the push comes before its deploy). Question 3 (drafts to counsel) is still open and the default follows the everything-goes rule until the owner says otherwise.
 size: M as a train of six (S · S · M · S · M · S)
 blocker: None. The owner answered 2026-10-30; the one open question (drafts to counsel) changes no PR before 5.
 opinion: build as recommended with the owner's defaults — before a notary for everyone, Guadalupe County on the venue line, blank one tap away; the one design call still open is whether the firm reads a draft before the witness signs
@@ -172,7 +172,9 @@ line's chip reads *draft · not signed* or *printed twice · last Oct 28*, with 
 Filing the scan asks one more question: *Is the signed paper the text as last printed?* **Yes, as printed** marks that
 print's text as the sworn text. **They changed it by hand** keeps the entry's text as printed, marks it *see the scan
 for hand changes*, and the scan governs. A draft nobody signs stays a draft chip on the Timeline, amber after fourteen
-days (*printed 14 days ago · no signed copy*), counted under the Evidence tab's **Drafts** filter; **Not signed…**
+days (*printed 14 days ago · no signed copy*), listed in the Evidence tab's **Sworn statements** strip above the documents
+(built so in PR 3: a strip of its own in place of the card's draft rows under the **Drafts** filter, so a draft never
+pretends to be a document and the filters stay the documents'); **Not signed…**
 voids it with a reason the Timeline reads as *Undone: would not sign the September paragraph.*
 
 ### Where it lands
