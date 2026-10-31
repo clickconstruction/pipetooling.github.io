@@ -5,6 +5,7 @@
  * `messages/owed.ts`, `messages/promises.ts`). No client here: `followUpIo.ts` fetches. The row types are written out
  * until the generated types carry the tables; the lead's one types PR swaps them for `Tables<'…'>`.
  */
+import type { SetAsideRow } from './setAsideFold'
 import type { Contact } from '../contacts/kernel'
 import type { CallTaskRecord } from '../calls/callTasks'
 import type { CallTaskDbRow } from '../calls/callTasksIo'
@@ -115,6 +116,8 @@ export interface FollowUpRows {
   jobStates?: LaneJobRows
   /** The open calls to make (v2.5596), every person's; none before the push. */
   callTasks?: readonly CallTaskDbRow[]
+  /** The notices the reader set aside this week and nobody put back (v2.6231); none before the push, a soft read. */
+  setAside?: readonly SetAsideRow[]
 }
 
 const STATES: ReadonlySet<string> = new Set<ContactState>(['waiting', 'snoozed', 'done'])

@@ -542,9 +542,16 @@ describe('Bid it? (punch list #223 PR 3, v2.6222)', () => {
     expect(newLane([ridgeway], [mail()], new Set(), NOW)[0]?.sort).toBe('bid')
   })
 
+  it('makes no row at all for an addendum the reader landed on its bid (v2.6231): the thread sits on the bid', () => {
+    const addendum = invitation({ subject: 'Addendum 2 - Oak Hill Clinic, Boerne', text: 'Addendum 2 is posted.', links: [], at: NOW })!
+    expect(newLane([dale], [mail({ jobId: 'bid:b1', invitation: addendum })], new Set(), NOW)).toEqual([])
+    // A plain question from an unnamed sender that names the bid still asks who they are.
+    expect(newLane([dale], [mail({ jobId: 'bid:b1', invitation: null })], new Set(), NOW)[0]?.sort).toBe('who')
+  })
+
   it('stops asking once the line is answered, or on a bid', () => {
     expect(newLane([dale], [mail({ invitation: { ...INVITE, answer: { what: 'kept', at: NOW, by: null } } })], new Set(), NOW)[0]?.sort).toBe('who')
-    expect(newLane([dale], [mail({ jobId: 'bid:b1' })], new Set(), NOW)[0]?.sort).toBe('who')
+    expect(newLane([dale], [mail({ jobId: 'bid:b1' })], new Set(), NOW)).toEqual([])
     expect(newLane([dale], [mail({ invitation: null })], new Set(), NOW)[0]?.sort).toBe('who')
     // Not for us closes the thread; a later invitation from them asks again.
     expect(newLane([{ ...dale, kind: 'customer' }], [mail({ id: 'm-1', invitation: { ...INVITE, answer: { what: 'not_for_us', at: NOW, by: null, reason: 'too far' } } }), mail({ id: 'm-2', at: '2026-10-13T14:00:00Z' })], new Set(), NOW)[0]?.sort).toBe('bid')

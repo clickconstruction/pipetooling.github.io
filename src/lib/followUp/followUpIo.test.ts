@@ -30,6 +30,16 @@ function fakeClient(data: Record<string, unknown[]> = {}, rpcResult: { data?: un
         q.filters.push(`${col} is ${String(v)}`)
         return chain
       },
+      gte(col: string, v: unknown) {
+        q.filters.push(`${col} gte ${String(v)}`)
+        return chain
+      },
+      order() {
+        return chain
+      },
+      limit() {
+        return chain
+      },
       then(resolve: (r: { data: unknown[]; error: null; status: number }) => unknown) {
         return Promise.resolve({ data: data[table] ?? [], error: null, status: 200 }).then(resolve)
       },
@@ -62,6 +72,8 @@ describe('loadQueue', () => {
       ['contact_jobs', ['contact.state in waiting,snoozed']],
       // The calls to make (v2.5596).
       ['call_tasks', ['done_at is null']],
+      // The notices set aside this week (v2.6231), the fold under New.
+      ['email_set_aside', ['put_back_at is null', expect.stringMatching(/^at gte 20/)]],
     ])
     expect(queries[0]!.select).toContain('state, snoozed_until, has_user_id, has_since, has_how')
     // R0's four kinds point at their records, and a lead's prospect is embedded. Follow up never holds a supply house
@@ -84,8 +96,8 @@ describe('loadQueue', () => {
     ]
     const { client, queries } = fakeClient({ contact_jobs: jobs, gc_projects: [{ project_id: 'p1', stage: 'building', lost_on: null }], jobs_ledger: [{ id: 'j1', status: 'paid' }] })
     const rows = await supabaseFollowUpIo(client).loadQueue('2026-10-02')
-    // After the eight queue reads and the calls' (v2.5596), the two job-state reads.
-    expect(queries.slice(9).map((q) => [q.table, q.select, q.filters])).toEqual([
+    // After the eight queue reads, the calls' (v2.5596) and the set-aside's (v2.6231), the two job-state reads.
+    expect(queries.slice(10).map((q) => [q.table, q.select, q.filters])).toEqual([
       ['gc_projects', 'project_id, stage, lost_on', ['project_id in p1']],
       ['jobs_ledger', 'id, status', ['id in j1']],
     ])
@@ -140,6 +152,7 @@ describe('the presses', () => {
     await io.backDone('n1')
     await io.highlight('m1', 'detention pond')
     await io.unhighlight('h1')
+    await io.putBack('s1')
     expect(calls).toEqual([
       { fn: 'take_it', args: { p_contact_id: 'c1' } },
       { fn: 'hand_to', args: { p_contact_id: 'c1', p_user_id: null } },
@@ -158,6 +171,7 @@ describe('the presses', () => {
       { fn: 'back_done', args: { p_note_id: 'n1' } },
       { fn: 'highlight', args: { p_message_id: 'm1', p_text: 'detention pond' } },
       { fn: 'unhighlight', args: { p_highlight_id: 'h1' } },
+      { fn: 'email_put_back', args: { p_id: 's1' } },
     ])
   })
 

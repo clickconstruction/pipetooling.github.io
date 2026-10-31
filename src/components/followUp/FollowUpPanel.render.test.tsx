@@ -160,6 +160,7 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}, rows: FollowUpRows = ROWS):
     callDone: vi.fn(async () => undefined),
     callMove: vi.fn(async () => undefined),
     setPrefers: vi.fn(async () => undefined),
+    putBack: vi.fn(async () => undefined),
     ...overrides,
   }
 }
@@ -522,5 +523,33 @@ describe('FollowUpPanel: a lead’s doors on their row (punch list #140 PR 8)', 
     expect(leadIo.convert).toHaveBeenCalledWith('lena', expect.objectContaining({ name: 'Lena Ortiz', phone: '(830) 555-0101', words: 'Can you come Thursday?' }), { userId: expect.any(String) }, expect.any(String))
     await waitFor(() => expect(leadDoorsStand.openNewJob).toHaveBeenCalledWith(expect.objectContaining({ prefillCustomer: { name: 'Lena Ortiz', phone: '(830) 555-0101', email: null, note: 'Can you come Thursday?' } })))
     expect(say).not.toHaveBeenCalledWith(expect.stringMatching(/not/), 'error')
+  })
+})
+
+describe('the notices set aside (punch list #223 PR 4, v2.6231)', () => {
+  it('folds them under New with the count, and Put back presses through the io and reads again', async () => {
+    const rows: FollowUpRows = {
+      ...ROWS,
+      setAside: [
+        { id: 's1', mailbox: 'bids', from_address: 'news@alamosurety.example', from_name: 'Alamo Surety Partners', subject: 'Five surety trends', at: '2026-10-01T13:00:00.000Z', reason: 'body_cue' },
+        { id: 's2', mailbox: 'bids', from_address: 'deals@hillcountrysupply.example', from_name: null, subject: 'November specials', at: '2026-10-02T13:00:00.000Z', reason: 'marked_domain' },
+      ],
+    }
+    const io = fakeIo({}, rows)
+    const say = vi.fn()
+    renderWithProviders(<FollowUpPanel me={ME} team={[ME, ROSA]} io={io} onOpenThread={vi.fn()} say={say} todayYmd={TODAY} />)
+    const fold = await screen.findByText('2 notices set aside this week')
+    const details = fold.closest('details')!
+    expect(within(details).getByText(/Alamo Surety Partners/)).toBeTruthy()
+    fireEvent.click(within(details).getAllByRole('button', { name: 'Put back' })[0]!)
+    await waitFor(() => expect(io.putBack).toHaveBeenCalledWith('s2'))
+    await waitFor(() => expect(io.loadQueue).toHaveBeenCalledTimes(2))
+    expect(say).toHaveBeenCalledWith('Put back. The next read takes it, within a few minutes.', 'success')
+  })
+
+  it('draws no fold when nothing was set aside', async () => {
+    renderWithProviders(<FollowUpPanel me={ME} team={[ME, ROSA]} io={fakeIo()} onOpenThread={vi.fn()} say={vi.fn()} todayYmd={TODAY} />)
+    await screen.findByRole('region', { name: 'New' })
+    expect(screen.queryByText(/set aside this week/)).toBeNull()
   })
 })

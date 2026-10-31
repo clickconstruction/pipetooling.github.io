@@ -19,6 +19,9 @@
  *     out, under the teammate's name (`emailLine.ts`'s `emailParty`). Before that every staff address was left out.
  *   - Mail the reader leaves out (`leftOut.ts`: bulk, no-reply, Gmail's other tabs, the box's own and the app's) stays
  *     with no label.
+ *   - A notice set aside (punch list #223 PR 4, v2.6231) is written down on `email_set_aside`, a marked sender's mail
+ *     and a mail whose foot says unsubscribe, so New counts them and **Put back** marks one for the next run, which
+ *     takes it after all; a subject that names a live bid lands the line on that bid (`bidInSubject`).
  *   - An invitation to bid (punch list #223 PR 3, v2.6222): `emailIn/invitation.ts` reads each line in, and what it
  *     read rides on the line as `messages.invitation`, so the New lane asks *Bid it?*; the trade seat (the estimator's)
  *     is handed the thread when nobody has it.
@@ -64,9 +67,10 @@ import { kitCarries, type WalkKit } from '../_shared/gcKernels/lib/walk/kit.ts'
 import { loadWalkKit } from '../_shared/walkKit.ts'
 import { readForwarded } from '../_shared/gcKernels/lib/emailIn/forwarded.ts'
 import { walkHistory, type HistoryWalk, type Took } from '../_shared/gcKernels/lib/emailIn/historyWalk.ts'
-import { base64UrlBytes, parseAddress, readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
+import { base64UrlBytes, parseAddress, readGmailMessage, type EmailIn } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
 import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
-import { leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
+import { bulkByBody, leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
+import { bidInSubject, type LiveBid } from '../_shared/gcKernels/lib/emailIn/bidInSubject.ts'
 import { leftOutSenders, type LeftOutSenderMatch, type LeftOutSenderRow } from '../_shared/gcKernels/lib/emailIn/leftOutSenders.ts'
 import { invitation } from '../_shared/gcKernels/lib/emailIn/invitation.ts'
 import { ASSIGN_RULE_KEY, parseAssignSeats, type AssignRuleSeats } from '../_shared/gcKernels/lib/followUp/assignSeats.ts'
@@ -114,6 +118,8 @@ interface Ctx {
   isNotice: (address: string) => LeftOutSenderMatch
   /** *Who gets a new message*'s seats (v2.6222): an invitation to bid is held by the trade seat, the estimator's. */
   seats: AssignRuleSeats
+  /** The bids we are pricing (v2.6231): a subject that names one lands the line on it. */
+  liveBids: readonly LiveBid[]
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -167,6 +173,32 @@ async function loadLeftOutSenders(admin: Admin): Promise<LeftOutSenderRow[]> {
   const { data, error } = await admin.from('email_left_out_senders').select('value, kind, mailbox')
   if (error) throw new Error(`Reading the senders marked a notice failed: ${error.message}`)
   return (data ?? []) as LeftOutSenderRow[]
+}
+
+/** The bids we are pricing: undecided and still on the working board, for a subject that names one (v2.6231). */
+async function loadLiveBids(admin: Admin): Promise<LiveBid[]> {
+  const { data, error } = await admin.from('bids').select('id, project_name').is('outcome', null).is('working_board_archived_at', null).limit(2000)
+  if (error) throw new Error(`Reading the live bids failed: ${error.message}`)
+  return (data ?? []) as LiveBid[]
+}
+
+/**
+ * A mail set aside as a notice (v2.6231), written down so New can count it and offer Put back. Fail-soft: a row that
+ * does not write leaves the mail where it was, in Gmail.
+ */
+async function setAside(ctx: Ctx, email: EmailIn, reason: 'marked_address' | 'marked_domain' | 'body_cue'): Promise<void> {
+  const row = {
+    mailbox: ctx.box,
+    gmail_id: email.gmailId,
+    rfc_message_id: rfcMessageId(email),
+    from_address: (email.from?.address ?? '').toLowerCase(),
+    from_name: email.from?.name || null,
+    subject: email.subject || null,
+    at: email.at ?? nowIso(),
+    reason,
+  }
+  const { error } = await ctx.admin.from('email_set_aside').upsert(row, { onConflict: 'mailbox,gmail_id', ignoreDuplicates: true })
+  if (error) console.warn(`gmail-sync: ${email.gmailId} set aside was not written down: ${error.message}`)
 }
 
 async function loadPrefixes(admin: Admin): Promise<LedgerPrefixMap> {
@@ -227,7 +259,8 @@ async function jobFor(ctx: Ctx, contactId: string, subject: string): Promise<str
     },
     mine,
   )
-  return jobInSubject(subject, jobs) ?? star
+  // A live bid's name in the subject (v2.6231) wins over the star: an addendum belongs to its bid, whoever sent it.
+  return jobInSubject(subject, jobs) ?? bidInSubject(subject, ctx.liveBids) ?? star
 }
 
 /** A file's name as a path part: the bucket takes letters, digits, dots, dashes, underscores and spaces. */
@@ -242,7 +275,7 @@ async function heldLine(ctx: Ctx, rfc: string | null): Promise<boolean> {
 }
 
 /** One message: read, placed, tied, its files copied, written once, then labelled. */
-async function takeOne(ctx: Ctx, id: string): Promise<Took> {
+async function takeOne(ctx: Ctx, id: string, putBack = false): Promise<Took> {
   let m
   try {
     m = await gmailMessage(ctx.token, id)
@@ -253,11 +286,21 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   if (m.labelIds?.includes(ctx.labelId)) return 'already'
   const email = readGmailMessage(m)
   const fwd = readForwarded(email, ctx.isOurs)
-  if (fwd ? outsideInbox(email) : leftOut(email, ctx.isTheBox)) return 'left'
+  // A mail put back (v2.6231) is read with its foot's cue and the marked list set aside; the headers' rules still hold.
+  const left = fwd ? (outsideInbox(email) ? 'notInbox' : null) : leftOut(putBack ? { ...email, text: '' } : email, ctx.isTheBox)
+  if (left) {
+    // A notice by its foot alone (v2.6200) is written down, so New can count it and Put back can take it.
+    if (!fwd && left === 'bulk' && !leftOut({ ...email, text: '' }, ctx.isTheBox) && bulkByBody(email.text)) await setAside(ctx, email, 'body_cue')
+    return 'left'
+  }
   const party = emailParty(email, fwd, { isOurs: ctx.isOurs, isTheBox: ctx.isTheBox })
   if (!party) return 'left'
   // A sender the office marked a notice (v2.6202): left in Gmail with no label, and never placed, so the done thread stays done.
-  if (party.direction === 'in' && ctx.isNotice(party.address.address)) return 'left'
+  const notice = party.direction === 'in' && !putBack ? ctx.isNotice(party.address.address) : null
+  if (notice) {
+    await setAside(ctx, email, notice.kind === 'domain' ? 'marked_domain' : 'marked_address')
+    return 'left'
+  }
   // The same mail, read first in the other box: no address placed, no file copied, no line. Only this box's label.
   if (await heldLine(ctx, rfcMessageId(email))) {
     await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
@@ -342,7 +385,7 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
 }
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
-async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap, notices: readonly LeftOutSenderRow[], seats: AssignRuleSeats): Promise<Record<string, unknown>> {
+async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap, notices: readonly LeftOutSenderRow[], seats: AssignRuleSeats, liveBids: readonly LiveBid[]): Promise<Record<string, unknown>> {
   const startedAt = nowIso()
   await saveState(admin, b.mailbox, { last_run_at: startedAt })
   try {
@@ -359,7 +402,18 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
       return { ok: true, started: true }
     }
 
-    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox), seats }
+    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox), seats, liveBids }
+    // The notices put back (v2.6231): each taken after all, then stamped, so a mail long gone is never asked for again.
+    try {
+      const backs = await rows<{ id: string; gmail_id: string }>(admin.from('email_set_aside').select('id, gmail_id').eq('mailbox', b.mailbox).not('put_back_at', 'is', null).is('taken_at', null).limit(20), 'the notices put back')
+      for (const back of backs) {
+        const took = await takeOne(ctx, back.gmail_id, true)
+        const { error } = await admin.from('email_set_aside').update({ taken_at: nowIso() }).eq('id', back.id)
+        if (error) console.warn(`gmail-sync: put back ${back.id} was taken (${took}) but not stamped: ${error.message}`)
+      }
+    } catch (e) {
+      console.warn('gmail-sync: the notices put back were not read this run', e instanceof Error ? e.message : e)
+    }
     let walk: HistoryWalk
     try {
       walk = await walkHistory(state.history_id, (pageToken) => gmailHistory(token, state.history_id, pageToken), (id) => takeOne(ctx, id), MAX_PER_RUN)
@@ -403,11 +457,12 @@ async function run(admin: Admin): Promise<{ ok: boolean; boxes: Record<string, u
   // The seats, once a run (v2.6222): a missing or unreadable row reads as no seats, and nobody is handed an invitation.
   const { data: seatsRow } = await admin.from('app_settings').select('value_text').eq('key', ASSIGN_RULE_KEY).maybeSingle()
   const seats = parseAssignSeats(seatsRow?.value_text)
+  const liveBids = await loadLiveBids(admin)
   const out: Record<string, unknown> = {}
   let ok = true
   for (const b of boxes) {
     try {
-      out[b.mailbox] = await runBox(admin, saJson, b, team, prefixes, notices, seats)
+      out[b.mailbox] = await runBox(admin, saJson, b, team, prefixes, notices, seats, liveBids)
     } catch (e) {
       ok = false
       console.error(`gmail-sync ${b.mailbox}`, e)

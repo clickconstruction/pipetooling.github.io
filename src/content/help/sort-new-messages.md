@@ -2,7 +2,7 @@
 title: sort new messages before anyone answers them
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, bid it, start a bid, not for us, addendum, solicitation, rfp, itb, due date, notice, newsletter, not a person, unsubscribe, leave out
+keywords: messages, follow up, new, sort, set aside, put back, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, bid it, start a bid, not for us, addendum, solicitation, rfp, itb, due date, notice, newsletter, not a person, unsubscribe, leave out
 where: /messages
 order: 119
 ---
@@ -43,7 +43,7 @@ A general contractor's bid platform or a public agency sends us an invitation to
 - Type why under **Not for us, because**, then press **Not for us**. The thread keeps the reason in a grey line. The row closes. Their next invitation shows again.
 - Press **Keep it with** the sender to leave the bid for later. The row then asks who they are, or who has it.
 
-The bid is a Plumbing bid with the rule's estimator on it. Open it to add the address, the plans and the rest. An addendum to a bid we are pricing reads the same way. Press **Keep it** and tie the line to the bid with **Which job?** when it comes up.
+The bid is a Plumbing bid with the rule's estimator on it. Open it to add the address, the plans and the rest. An addendum whose subject names a bid we are pricing lands on that bid's thread. No row is made. The estimator sees it on the bid.
 
 ## Who is this?
 
@@ -87,6 +87,16 @@ Some mail to bids@ is not a person writing to us. A newsletter, a supply house's
 The thread goes to Done with a grey line, *Marked a notice*. Nothing in Gmail changes. Search still finds the thread, and the **Who is this?** pill on Messages still lists it. Their next email stays in Gmail with no label.
 
 Pressed it by mistake? Open the thread. The strip at the top reads *Marked a notice*. Press **Not a notice after all**. The address comes off the list and the row is back in New.
+
+## Notices set aside
+
+The app sets a notice aside on its own in two cases. The sender is marked a notice. Or the mail says unsubscribe at its foot. It writes each one down. Under the rows in New a fold counts them. It reads *3 notices set aside this week*. Press it to see each sender and subject. Hover a row to read why.
+
+Was one a real message? Press **Put back** on it. The next read takes it after all, within a few minutes. It lands in New like any other mail. Nothing in Gmail changes either way.
+
+:::example The fold under New
+{{button:outline|3 notices set aside this week}} &nbsp; Alamo Surety Partners · *Five surety trends* · yesterday &nbsp; {{button:outline|Put back}}
+:::
 
 An invitation to bid from a general contractor is not a notice. The contractor is a customer. Its row asks [Bid it?](#bid-it) instead.
 
