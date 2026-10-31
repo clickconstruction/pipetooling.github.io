@@ -32,7 +32,7 @@ import { execFileSync } from 'node:child_process'
 import { appendFileSync, readdirSync, readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { CALLS_AHEAD_ADVICE, CALLS_AHEAD_LABEL, callsAhead, namesCreatedIn, schemaCallsIn, type CallAhead, type CreatedName, type SchemaCall } from '../src/lib/callsAhead'
+import { CALLS_AHEAD_ADVICE, CALLS_AHEAD_LABEL, callsAhead, callsAheadLabelCalls, ghFailureWords, labelAlreadyExists, namesCreatedIn, schemaCallsIn, type CallAhead, type CreatedName, type SchemaCall } from '../src/lib/callsAhead'
 import { changedLinesFromDiff } from '../src/lib/pronounOpeners'
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..')
@@ -108,13 +108,29 @@ function labelPullRequest(): void {
     number = undefined
   }
   if (!number) return
+  // GITHUB_REPOSITORY in Actions; elsewhere gh fills {owner}/{repo} from the checkout.
+  const calls = callsAheadLabelCalls(process.env.GITHUB_REPOSITORY || '{owner}/{repo}', number)
+  const gh = (args: string[]) => execFileSync('gh', args, { cwd: ROOT, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'] })
+  const part = (e: unknown, key: 'stdout' | 'stderr' | 'message') => String((e as Record<string, unknown> | null)?.[key] ?? '')
   try {
-    execFileSync('gh', ['label', 'create', CALLS_AHEAD_LABEL, '--color', 'D93F0B', '--description', 'The client calls what only its migration creates: push right after the merge, before the Pages deploy finishes', '--force'], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] })
-    execFileSync('gh', ['pr', 'edit', String(number), '--add-label', CALLS_AHEAD_LABEL], { cwd: ROOT, stdio: ['ignore', 'pipe', 'pipe'] })
+    let present = true
+    try {
+      gh(calls.read)
+    } catch {
+      present = false
+    }
+    if (!present) {
+      try {
+        gh(calls.make)
+      } catch (e) {
+        if (!labelAlreadyExists(part(e, 'stdout'))) throw e
+      }
+    }
+    gh(calls.add)
     console.log(`check-calls-ahead: labelled #${number} "${CALLS_AHEAD_LABEL}".`)
   } catch (e) {
-    const reason = e instanceof Error ? e.message.split('\n')[0] : String(e)
-    console.log(`::warning::check-calls-ahead: could not label #${number} "${CALLS_AHEAD_LABEL}" (${reason}); the warnings above and the step summary stand.`)
+    const reason = ghFailureWords(part(e, 'stdout'), part(e, 'stderr'), part(e, 'message') || String(e))
+    console.log(`::warning::check-calls-ahead: could not label #${number} "${CALLS_AHEAD_LABEL}" (${escapeData(reason)}); the warnings above and the step summary stand.`)
   }
 }
 

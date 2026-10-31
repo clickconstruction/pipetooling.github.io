@@ -118,7 +118,7 @@ describe('LegalDesk', () => {
   it('the Map opened from the venue press lists the county, holds the case and draws its venue block (v2.6174, punch list #219)', () => {
     const c = { id: 'case-1', key: 'c:tle', name: 'The Learning Experience', balance: 7502, jobLabels: '717', jobCount: 1, viaGc: false, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: 30.5, lng: -97.8, county: 'Williamson', countyFrom: 'record' } as unknown as Parameters<typeof LegalDeskMapView>[0]['cases'][number]
     const venue: VenueBlock = { title: 'Venue for job 717', places: [{ basis: 'work', label: 'Where the work was done', main: 'Williamson County · justice precinct not yet', quiet: '1 Main St · the county from the property record', county: 'Williamson', jobLabels: ['717'] }], rules: ['$7,502.00 is within the justice court limit.'], source: 'County from the property record.' }
-    renderWithProviders(<LegalDeskMapView cases={[c]} loading={false} firms={[]} countiesByFirm={new Map()} onOpenCase={noop} openOn={{ county: 'Williamson', heldId: 'case-1', nonce: 1 }} venueFor={(x) => (x.key === 'c:tle' ? venue : null)} />)
+    renderWithProviders(<LegalDeskMapView cases={[c]} loading={false} firms={[]} coverage={new Map()} onOpenCase={noop} openOn={{ county: 'Williamson', heldId: 'case-1', nonce: 1 }} venueFor={(x) => (x.key === 'c:tle' ? venue : null)} />)
     expect(document.querySelector('[data-legal-county-card="Williamson"]')).toBeTruthy()
     expect(document.querySelector('[data-legal-county-case="case-1"]')?.getAttribute('data-held')).toBe('1')
     const block = document.querySelector('[data-legal-venue-block]')!

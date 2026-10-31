@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { VenueBlock } from '../../../lib/legal/legalParties'
-import { assignmentsFromCountiesByFirm, countiesLine, firmHues, firmLegend, NO_FIRM_HUE } from '../../../lib/legal/firmCounties'
+import { alsoCountiesOf, alsoCovers, countiesByFirmOfCoverage, countiesLine, firmHues, firmLegend, firstCalls, NO_FIRM_HUE, type Coverage } from '../../../lib/legal/firmCounties'
 import { legendCounts, lensSummaryWords, STAND_COLOR, STAND_WORDS, uncoveredCounties, uncoveredWords, type LegalMapCase, type LegalMapStandOrNone } from '../../../lib/legal/firmMap'
 import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
 import LegalFirmCountyMap from '../../settings/LegalFirmCountyMap'
@@ -27,12 +27,13 @@ export type LegalMapOpenOn = {
   nonce: number
 }
 
-export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm, onOpenCase, stacked = false, openOn = null, venueFor }: {
+export default function LegalDeskMapView({ cases, loading, firms, coverage, onOpenCase, stacked = false, openOn = null, venueFor }: {
   cases: ReadonlyArray<LegalMapCase>
   loading: boolean
   /** The active firms, as `useLegalMatters.activeFirms`. */
   firms: ReadonlyArray<LegalFirmRow>
-  countiesByFirm: ReadonlyMap<string, ReadonlyArray<string>>
+  /** county → first call and the firms that also cover it (v2.6227); a shared county draws striped. */
+  coverage: Coverage
   /** A dot or a case pressed: the desk opens on that account under Accounts. */
   onOpenCase: (payerKey: string) => void
   /** A phone (the desk's stacked layout, v2.5984): one column, **Who covers what** under the map. Beside it, the map had 27 px. */
@@ -55,7 +56,9 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
   const heldCase = useMemo(() => (heldId ? cases.find((c) => c.id === heldId) ?? null : null), [cases, heldId])
   const venue = heldCase && venueFor ? venueFor(heldCase) : null
   const firmNames = useMemo(() => new Map(firms.map((f) => [f.id, f.name] as const)), [firms])
-  const assignments = useMemo(() => assignmentsFromCountiesByFirm(countiesByFirm), [countiesByFirm])
+  const assignments = useMemo(() => firstCalls(coverage), [coverage])
+  const also = useMemo(() => alsoCovers(coverage), [coverage])
+  const countiesByFirm = useMemo(() => countiesByFirmOfCoverage(coverage, firms.map((f) => f.id)), [coverage, firms])
   const hues = useMemo(() => firmHues(firms), [firms])
   const legend = useMemo(() => firmLegend(firms, assignments), [firms, assignments])
   const counts = useMemo(() => legendCounts(cases, assignments, firms), [cases, assignments, firms])
@@ -82,6 +85,7 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
             legend={legend}
             pickedFirmId={null}
             litFirmId={litFirmId}
+            also={also}
             cases={cases}
             heldCaseId={heldId}
             selectedCounty={county}
@@ -111,7 +115,7 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
                   <span style={{ minWidth: 0 }}>
                     <span aria-hidden style={{ width: 10, height: 10, borderRadius: 2, background: hue.fill, border: `1px solid ${hue.border}`, display: 'inline-block', verticalAlign: -1, marginRight: 6 }} />
                     {row.name}
-                    <span style={{ ...MUTED, fontSize: '0.72rem', display: 'block' }}>{row.firmId ? countiesLine(counties) : counties.join(', ') || 'off the map'}</span>
+                    <span style={{ ...MUTED, fontSize: '0.72rem', display: 'block' }}>{row.firmId ? countiesLine(counties, alsoCountiesOf(coverage, row.firmId)) : counties.join(', ') || 'off the map'}</span>
                   </span>
                   <span style={{ textAlign: 'right', flexShrink: 0 }}>
                     <b>{row.count} {row.count === 1 ? 'case' : 'cases'}</b>
@@ -133,7 +137,7 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
             })}
             {firms.length === 0 ? <div style={{ ...MUTED, fontSize: '0.74rem' }}>No firm yet. Add one and color its counties under Firms.</div> : null}
           </div>
-          <LegalCountyContentsCard lens county={county} cases={cases} assignments={assignments} firmNames={firmNames} heldId={heldId} onHold={pressCase} onOpen={(c) => onOpenCase(c.key)} venue={venue} />
+          <LegalCountyContentsCard lens county={county} cases={cases} assignments={assignments} also={also} firmNames={firmNames} heldId={heldId} onHold={pressCase} onOpen={(c) => onOpenCase(c.key)} venue={venue} />
         </div>
       </div>
     </div>

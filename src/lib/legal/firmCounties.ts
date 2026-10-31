@@ -3,11 +3,15 @@
  * picker on Settings → Jobs & billing → Collections law firms, and the shared reads the
  * desk's Map lens (PR 3) and the portal's Who covers what (PR 4) use.
  *
- * The state is one map, county → firm id. `legal_firm_counties` holds it as one live row per
- * county (`until IS NULL`); the picker edits a draft of that map and saves the difference.
- * A county nobody covers is absent from the map: no default firm, ever. A click on a county
- * another firm holds never takes it over silently — the kernel answers `held` and the screen
- * asks before `moveCounty` applies it.
+ * Since v2.6227 (punch list #222, PR 3) several firms may cover one county, and one of them is
+ * its **first call**: the firm the desk picks for a release there unless the office switches.
+ * `legal_firm_counties` holds one live row per firm per county (`until IS NULL`) with a
+ * `first_call` flag, at most one per county. The picker edits a draft `Coverage` (county →
+ * first call and the firms that also cover it) and saves the difference through one database
+ * call. Everything that only needs the firm the desk picks still reads `CountyAssignments`,
+ * county → first-call firm (`firstCalls`). A county nobody covers is absent: no default firm,
+ * ever. A press on a county another firm covers never takes it over silently — the kernel
+ * answers `held` and the screen asks whether to share it, take first call, or move it.
  */
 
 export type LegalFirmCountyRow = {
@@ -17,10 +21,18 @@ export type LegalFirmCountyRow = {
   since: string
   until: string | null
   set_by: string | null
+  /** v2.6227: this firm is the county's first call. Absent before the migration, when each county had one row: read as true. */
+  first_call?: boolean | null
 }
 
-/** county → firm id. Counties with no firm are absent. */
+/** county → the firm the desk picks there (the first call). Counties with no firm are absent. */
 export type CountyAssignments = ReadonlyMap<string, string>
+
+/** One county's firms: the first call, and the firms that also cover it, longest-standing first. */
+export type CountyCover = { first: string; also: readonly string[] }
+
+/** county → its cover. Counties with no firm are absent. */
+export type Coverage = ReadonlyMap<string, CountyCover>
 
 type FirmLike = { id: string; name: string; active: boolean; created_at?: string | null }
 
@@ -29,30 +41,99 @@ export function liveFirmCountyRows<R extends Pick<LegalFirmCountyRow, 'firm_id' 
   return rows.filter((r) => r.until == null && (!activeFirmIds || activeFirmIds.has(r.firm_id)))
 }
 
-/** The saved map, county → firm id, from the live rows. */
-export function savedAssignments(rows: ReadonlyArray<Pick<LegalFirmCountyRow, 'firm_id' | 'county' | 'until'>>, activeFirmIds?: ReadonlySet<string>): Map<string, string> {
-  const out = new Map<string, string>()
-  for (const r of liveFirmCountyRows(rows, activeFirmIds)) out.set(r.county, r.firm_id)
+type CoverRow = Pick<LegalFirmCountyRow, 'firm_id' | 'county' | 'until'> & { since?: string | null; id?: string; first_call?: boolean | null }
+
+/**
+ * The saved coverage from the live rows of the firms that stand. The first call is the row flagged
+ * `first_call` (absent reads as true: before v2.6227 each county had one row); with none flagged, as
+ * when the first call's firm was retired, the longest-standing firm leads. The rest also cover it.
+ */
+export function savedCoverage(rows: ReadonlyArray<CoverRow>, activeFirmIds?: ReadonlySet<string>): Map<string, CountyCover> {
+  const byCounty = new Map<string, CoverRow[]>()
+  for (const r of liveFirmCountyRows(rows, activeFirmIds)) byCounty.set(r.county, [...(byCounty.get(r.county) ?? []), r])
+  const out = new Map<string, CountyCover>()
+  for (const [county, list] of byCounty) {
+    const sorted = [...list].sort((a, b) => (a.since ?? '').localeCompare(b.since ?? '') || (a.id ?? a.firm_id).localeCompare(b.id ?? b.firm_id))
+    const first = sorted.find((r) => r.first_call !== false) ?? sorted[0]!
+    const also = sorted.filter((r) => r !== first).map((r) => r.firm_id).filter((id, i, all) => id !== first.firm_id && all.indexOf(id) === i)
+    out.set(county, { first: first.firm_id, also })
+  }
   return out
 }
 
-/** The county → firm map back from `countiesByFirm` (the desk reads the hook's shape; the map and the lens read assignments, v2.5784). */
-export function assignmentsFromCountiesByFirm(byFirm: ReadonlyMap<string, ReadonlyArray<string>>): Map<string, string> {
+/** county → first-call firm: what the venue rule, the map's colors and the legend's counts read. */
+export function firstCalls(coverage: Coverage): Map<string, string> {
   const out = new Map<string, string>()
-  for (const [firmId, counties] of byFirm) for (const county of counties) out.set(county, firmId)
+  for (const [county, cover] of coverage) out.set(county, cover.first)
   return out
 }
 
-/** Each active firm's counties, sorted; a firm with none gets an empty list. */
-export function countiesByFirm(rows: ReadonlyArray<Pick<LegalFirmCountyRow, 'firm_id' | 'county' | 'until'>>, firms: ReadonlyArray<FirmLike>): Map<string, string[]> {
-  const active = firms.filter((f) => f.active)
-  const out = new Map<string, string[]>(active.map((f) => [f.id, [] as string[]]))
-  for (const [county, firmId] of savedAssignments(rows, new Set(active.map((f) => f.id)))) out.get(firmId)?.push(county)
+/** county → the firms that also cover it, for the counties more than one firm covers. */
+export function alsoCovers(coverage: Coverage): Map<string, readonly string[]> {
+  const out = new Map<string, readonly string[]>()
+  for (const [county, cover] of coverage) if (cover.also.length) out.set(county, cover.also)
+  return out
+}
+
+/** The cover's firms, first call first. */
+export function firmsOfCover(cover: CountyCover | null | undefined): string[] {
+  return cover ? [cover.first, ...cover.also] : []
+}
+
+/** A coverage where each county has one firm, from a first-call map (a draft or a fixture written the old way). */
+export function coverageOf(assignments: CountyAssignments): Map<string, CountyCover> {
+  const out = new Map<string, CountyCover>()
+  for (const [county, firmId] of assignments) out.set(county, { first: firmId, also: [] })
+  return out
+}
+
+/**
+ * Coverage from each firm's counties when no first call is known (the portal's counts-only payload): the
+ * firm earliest in `order` (the hue order, oldest first) leads a shared county; the rest also cover it.
+ */
+export function coverageFromCountiesByFirm(byFirm: ReadonlyMap<string, ReadonlyArray<string>>, order: ReadonlyArray<string> = [...byFirm.keys()]): Map<string, CountyCover> {
+  const rank = (id: string) => {
+    const i = order.indexOf(id)
+    return i === -1 ? Number.MAX_SAFE_INTEGER : i
+  }
+  const firmsByCounty = new Map<string, string[]>()
+  for (const [firmId, counties] of byFirm) for (const county of counties) firmsByCounty.set(county, [...(firmsByCounty.get(county) ?? []), firmId])
+  const out = new Map<string, CountyCover>()
+  for (const [county, firms] of firmsByCounty) {
+    const sorted = [...firms].sort((a, b) => rank(a) - rank(b))
+    out.set(county, { first: sorted[0]!, also: sorted.slice(1) })
+  }
+  return out
+}
+
+/** The saved map, county → first-call firm, from the live rows. */
+export function savedAssignments(rows: ReadonlyArray<CoverRow>, activeFirmIds?: ReadonlySet<string>): Map<string, string> {
+  return firstCalls(savedCoverage(rows, activeFirmIds))
+}
+
+/** Each firm's counties from a coverage, first call or not, sorted; `ids` seeds an empty list for a firm with none. */
+export function countiesByFirmOfCoverage(coverage: Coverage, ids: ReadonlyArray<string> = []): Map<string, string[]> {
+  const out = new Map<string, string[]>(ids.map((id) => [id, [] as string[]]))
+  for (const [county, cover] of coverage) for (const firmId of firmsOfCover(cover)) out.set(firmId, [...(out.get(firmId) ?? []), county])
   for (const list of out.values()) list.sort((a, b) => a.localeCompare(b))
   return out
 }
 
-/** The counties a firm holds in a draft, sorted. */
+/** Each active firm's counties, first call or not, sorted; a firm with none gets an empty list. */
+export function countiesByFirm(rows: ReadonlyArray<CoverRow>, firms: ReadonlyArray<FirmLike>): Map<string, string[]> {
+  const active = firms.filter((f) => f.active)
+  const ids = active.map((f) => f.id)
+  return countiesByFirmOfCoverage(savedCoverage(rows, new Set(ids)), ids)
+}
+
+/** The counties a firm covers without being first call there, in a coverage. */
+export function alsoCountiesOf(coverage: Coverage, firmId: string): Set<string> {
+  const out = new Set<string>()
+  for (const [county, cover] of coverage) if (cover.also.includes(firmId)) out.add(county)
+  return out
+}
+
+/** The counties a firm is first call for in a draft, sorted. */
 export function countiesOf(assignments: CountyAssignments, firmId: string): string[] {
   const out: string[] = []
   for (const [county, id] of assignments) if (id === firmId) out.push(county)
@@ -65,51 +146,90 @@ export type CountyPress =
   | { kind: 'held'; byFirmId: string }
 
 /**
- * One click on a county with a firm picked. Its own county clears; a free county colors;
- * another firm's county is left as it was and answered `held`, for the screen to ask.
+ * One press on a county with a firm picked. A free county colors for it, first call. A county it
+ * covers, first call or not, clears for it; when it was first call and another firm also covers
+ * the county, the longest-standing of those becomes first call. A county only other firms cover
+ * is left as it was and answered `held` (with its first call), for the screen to ask.
  */
-export function pressCounty(draft: CountyAssignments, county: string, firmId: string): { next: Map<string, string>; press: CountyPress } {
+export function pressCounty(draft: Coverage, county: string, firmId: string): { next: Map<string, CountyCover>; press: CountyPress } {
   const next = new Map(draft)
-  const holder = draft.get(county) ?? null
-  if (holder === firmId) {
-    next.delete(county)
+  const cover = draft.get(county) ?? null
+  if (!cover) {
+    next.set(county, { first: firmId, also: [] })
+    return { next, press: { kind: 'colored' } }
+  }
+  if (cover.first === firmId) {
+    if (cover.also.length) next.set(county, { first: cover.also[0]!, also: cover.also.slice(1) })
+    else next.delete(county)
     return { next, press: { kind: 'cleared' } }
   }
-  if (holder) return { next, press: { kind: 'held', byFirmId: holder } }
-  next.set(county, firmId)
-  return { next, press: { kind: 'colored' } }
+  if (cover.also.includes(firmId)) {
+    next.set(county, { first: cover.first, also: cover.also.filter((id) => id !== firmId) })
+    return { next, press: { kind: 'cleared' } }
+  }
+  return { next, press: { kind: 'held', byFirmId: cover.first } }
 }
 
-/** After the person said yes: the county moves to the picked firm. */
-export function moveCounty(draft: CountyAssignments, county: string, firmId: string): Map<string, string> {
+/** The three answers to a held county: cover it too, take first call there, or take it over. */
+export type HeldAnswer = 'share' | 'first_call' | 'move'
+
+/** After the person picked: the picked firm covers the county as they said. A county nobody covers colors for it. */
+export function answerHeld(draft: Coverage, county: string, firmId: string, answer: HeldAnswer): Map<string, CountyCover> {
   const next = new Map(draft)
-  next.set(county, firmId)
+  const cover = draft.get(county) ?? null
+  if (!cover || answer === 'move') {
+    next.set(county, { first: firmId, also: [] })
+    return next
+  }
+  const others = firmsOfCover(cover).filter((id) => id !== firmId)
+  if (answer === 'share') next.set(county, cover.first === firmId ? cover : { first: cover.first, also: [...cover.also.filter((id) => id !== firmId), firmId] })
+  else next.set(county, { first: firmId, also: others })
   return next
 }
 
-export type CountyChange = { county: string; from: string | null; to: string | null }
+/** A firm that also covers a county takes first call there; the old first call keeps covering it. No-op otherwise. */
+export function makeFirstCall(draft: Coverage, county: string, firmId: string): Map<string, CountyCover> {
+  const cover = draft.get(county) ?? null
+  if (!cover || cover.first === firmId || !cover.also.includes(firmId)) return new Map(draft)
+  return answerHeld(draft, county, firmId, 'first_call')
+}
 
-/** What differs between the saved map and the draft, by county. Empty means nothing to save. */
-export function countyChanges(saved: CountyAssignments, draft: CountyAssignments): CountyChange[] {
+/** `move` for the old two-way question (kept for callers that never share). */
+export function moveCounty(draft: Coverage, county: string, firmId: string): Map<string, CountyCover> {
+  return answerHeld(draft, county, firmId, 'move')
+}
+
+export type CountyChange = { county: string; from: CountyCover | null; to: CountyCover | null }
+
+function sameCover(a: CountyCover | null, b: CountyCover | null): boolean {
+  if (!a || !b) return a === b
+  if (a.first !== b.first) return false
+  const x = [...a.also].sort()
+  const y = [...b.also].sort()
+  return x.length === y.length && x.every((id, i) => id === y[i])
+}
+
+/** What differs between the saved coverage and the draft, by county: a firm added or gone, or the first call moved. Empty means nothing to save. */
+export function countyChanges(saved: Coverage, draft: Coverage): CountyChange[] {
   const counties = new Set<string>([...saved.keys(), ...draft.keys()])
   const out: CountyChange[] = []
   for (const county of counties) {
     const from = saved.get(county) ?? null
     const to = draft.get(county) ?? null
-    if (from !== to) out.push({ county, from, to })
+    if (!sameCover(from, to)) out.push({ county, from, to })
   }
   return out.sort((a, b) => a.county.localeCompare(b.county))
 }
 
+/** One county as `legal_save_county_coverage` takes it: the firms that should cover it, its first call, and the firms the picker read. */
+export type CountySave = { county: string; firms: string[]; first_call: string | null; was: string[] }
+
 /**
- * The writes a save makes, in order: close the live row of every county that changes hands
- * or clears, then insert the new live rows. Closes go first so the one-firm-per-county index
- * never sees two live rows for a county.
+ * The save's payload. `was` lets the database refuse a county another tab changed since this picker
+ * read it (the save then changes nothing); an empty `firms` clears the county.
  */
-export function countyWritePlan(changes: ReadonlyArray<CountyChange>, setBy: string | null): { close: string[]; insert: Array<{ firm_id: string; county: string; set_by: string | null }> } {
-  const close = changes.filter((c) => c.from !== null).map((c) => c.county)
-  const insert = changes.filter((c): c is CountyChange & { to: string } => c.to !== null).map((c) => ({ firm_id: c.to, county: c.county, set_by: setBy }))
-  return { close, insert }
+export function countySavePayload(changes: ReadonlyArray<CountyChange>): CountySave[] {
+  return changes.map((c) => ({ county: c.county, firms: firmsOfCover(c.to), first_call: c.to?.first ?? null, was: firmsOfCover(c.from).sort() }))
 }
 
 function countyCount(n: number): string {
@@ -121,10 +241,13 @@ export function changedWords(changed: number): string {
   return changed === 0 ? 'Nothing to save.' : `${countyCount(changed)} changed. Save to make it so.`
 }
 
-/** A firm card's county line: `3 counties · Bexar, Comal, Guadalupe`, or `No counties yet`. */
-export function countiesLine(counties: ReadonlyArray<string>): string {
+/**
+ * A firm card's county line: `3 counties · Bexar, Comal, Guadalupe`, or `No counties yet`. A county the firm
+ * covers without being first call there reads `Comal (also)` (v2.6227).
+ */
+export function countiesLine(counties: ReadonlyArray<string>, alsoIn: ReadonlySet<string> = new Set()): string {
   if (counties.length === 0) return 'No counties yet'
-  return `${countyCount(counties.length)} · ${counties.join(', ')}`
+  return `${countyCount(counties.length)} · ${counties.map((c) => (alsoIn.has(c) ? `${c} (also)` : c)).join(', ')}`
 }
 
 /** `Bexar County` — the county as the desk names it. */
@@ -142,6 +265,27 @@ export function pressWords(press: CountyPress, county: string, firmName: string,
 /** The question before a county moves between firms. */
 export function moveQuestion(county: string, holderName: string, firmName: string): string {
   return `${county} is ${holderName}’s. Move it to ${firmName}? Matters already with ${holderName} stay there.`
+}
+
+/** The held county's three answers, each a label and one plain line under it (v2.6227). */
+export function heldChoices(county: string, holderName: string, firmName: string): Array<{ answer: HeldAnswer; label: string; detail: string }> {
+  return [
+    { answer: 'share', label: 'Share it', detail: `Both cover ${county}. ${holderName} stays first call, and the office can switch a release to ${firmName}.` },
+    { answer: 'first_call', label: `Make ${firmName} first call`, detail: `Both cover ${county}. New releases there go to ${firmName} unless the office switches.` },
+    { answer: 'move', label: `Move it to ${firmName}`, detail: `${holderName} stops covering ${county}.` },
+  ]
+}
+
+/** Over the three answers: whose county it is and what never moves. */
+export function heldQuestion(county: string, holderName: string, firmName: string): string {
+  return `${county} is ${holderName}’s. How should ${firmName} cover it? Matters already with ${holderName} stay there.`
+}
+
+/** The toast after an answer. */
+export function heldDoneWords(answer: HeldAnswer, county: string, firmName: string, holderName: string): string {
+  if (answer === 'share') return `${firmName} covers ${county} too once you save. ${holderName} stays first call.`
+  if (answer === 'first_call') return `${firmName} is first call in ${county} once you save. ${holderName} still covers it.`
+  return movedWords(county, firmName)
 }
 
 /** The toast after a move. */

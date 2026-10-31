@@ -64,7 +64,7 @@ vi.mock('../../lib/legal/txCountyMapIo', () => ({
 import LegalFirmSettingsBlock from './LegalFirmSettingsBlock'
 
 describe('LegalFirmSettingsBlock', () => {
-  it('draws both firms with their counties, colors a free county for the picked firm, and asks before moving a held one', async () => {
+  it('draws both firms with their counties, colors a free county for the picked firm, and asks three ways on a held one (v2.6227)', async () => {
     const { container } = renderWithProviders(<LegalFirmSettingsBlock />)
     const cards = await screen.findAllByText(/count(y|ies)/)
     expect(cards.length).toBeGreaterThan(0)
@@ -84,9 +84,15 @@ describe('LegalFirmSettingsBlock', () => {
     expect(screen.getByText('1 county changed. Save to make it so.')).toBeTruthy()
     expect((screen.getByRole('button', { name: 'Save counties' }) as HTMLButtonElement).disabled).toBe(false)
 
+    // v2.6227: a held county asks three ways; Share it keeps Austin first call and adds Snell.
     fireEvent.click(container.querySelector('path[data-county="Travis"]')!)
-    await screen.findByText('Travis is Austin Collections Firm’s. Move it to Snell Law Firm, PLLC? Matters already with Austin Collections Firm stay there.')
+    await screen.findByText('Travis is Austin Collections Firm’s. How should Snell Law Firm, PLLC cover it? Matters already with Austin Collections Firm stay there.')
     expect(container.querySelector('path[data-county="Travis"]')?.getAttribute('data-firm')).toBe('firm-b')
+    fireEvent.click(screen.getByRole('button', { name: /^Share it/ }))
+    await waitFor(() => expect(container.querySelector('[data-legal-firm-card="firm-a"] [data-legal-firm-counties]')?.textContent).toBe('3 counties · Bexar, Comal, Travis (also)'))
+    expect(container.querySelector('path[data-county="Travis"]')?.getAttribute('data-firm')).toBe('firm-b')
+    expect(container.querySelector('path[data-county="Travis"]')?.getAttribute('data-shared')).toBe('1')
+    expect(screen.getByText('2 counties changed. Save to make it so.')).toBeTruthy()
 
     fireEvent.click(screen.getByRole('button', { name: 'Undo changes' }))
     await waitFor(() => expect(screen.getByText('Nothing to save.')).toBeTruthy())

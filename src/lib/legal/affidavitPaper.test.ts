@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { filingDocHtml, filingDocText } from '../jobsDocuments/lienFilingDocuments'
-import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_SEAL_WORDS, JURAT_STATE_LINE, juratCountyLine, juratSentence } from './juratWords'
+import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from './juratWords'
 import {
   DECLARANT_BLANK, DECLARATION_PERJURY_SENTENCE, DECLARATION_STATUTE_FORM, FORM_HELP_WORDS, OFFICE_COUNTY_DEFAULT, SIGNED_ON_LINE, STATEMENT_DRAFT_AMBER_DAYS,
-  attachedToLine, declarantProblem, lastPrintWords, statementFilingProblem, statementFilingShows, declarationJurat, defaultStatementForm, defaultVenueCounty, incidentSpanWords, isStatementEntry, printCountWords, recordCheckHeading, recordCheckLines,
+  attachedToLine, declarantProblem, fullNameWords, isOneWordName, lastPrintWords, statementFilingProblem, statementFilingShows, declarationJurat, defaultStatementForm, defaultVenueCounty, incidentSpanWords, isStatementEntry, printCountWords, recordCheckHeading, recordCheckLines,
   statementByWords, statementChipWords, statementDraftProblem, statementFirmKindWords, statementHoldKey, statementKindWords, statementMetaOf, statementOpener, statementPaperBlocks, statementParagraphs,
-  signatureRoleLine, statementPrintTitle, statementPrintedText, statementShowsLine, statementSignedWords, statementStateWords, suggestedStatementTitle, venueChoices,
+  signatureRoleLine, statementFiledWords, statementPrintTitle, statementPrintedText, statementShowsLine, statementSignedWords, statementStateWords, suggestedStatementTitle, venueChoices,
   type StatementDraft, type StatementMeta,
 } from './affidavitPaper'
 import { plainWordsFailures } from '../plainWords'
@@ -28,7 +28,6 @@ describe('the statute words, character for character', () => {
     expect(juratSentence('Daniel Alvarez')).toBe('SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by Daniel Alvarez.')
     expect(juratSentence('')).toBe('SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by _______________.')
     expect(JURAT_NOTARY_TITLE).toBe('Notary Public, State of Texas')
-    expect(JURAT_SEAL_WORDS).toBe('(Personalized Seal)')
     expect(JURAT_COURTESY_LINES).toEqual(['Printed name: ______________________________', 'My commission expires: ______________________'])
   })
   it('the declaration’s jurat is § 132.001(d) whole', () => {
@@ -42,10 +41,12 @@ describe('the statute words, character for character', () => {
     const lien = filingDocText([{ kind: 'notarial', who: 'Malachi Click' }])
     expect(lien).toBe(`STATE OF TEXAS\nCOUNTY OF ___________\n\n${juratSentence('Malachi Click')}\n\n________________________________\nNotary Public, State of Texas`)
     const desk = filingDocText([{ kind: 'notarial', who: 'Daniel Alvarez', county: 'Guadalupe', courtesy: true }])
-    expect(desk).toBe(`STATE OF TEXAS\nCOUNTY OF GUADALUPE\n\n${juratSentence('Daniel Alvarez')}\n\n(Personalized Seal)\n\n________________________________\nNotary Public, State of Texas\n\nPrinted name: ______________________________\nMy commission expires: ______________________`)
+    expect(desk).toBe(`STATE OF TEXAS\nCOUNTY OF GUADALUPE\n\n${juratSentence('Daniel Alvarez')}\n\n________________________________\nNotary Public, State of Texas\n\nPrinted name: ______________________________\nMy commission expires: ______________________`)
     const html = filingDocHtml([{ kind: 'notarial', who: 'Daniel Alvarez', county: '', courtesy: true }])
     expect(html).toContain('COUNTY OF ___________')
-    expect(html).toContain('data-jurat-seal')
+    // v2.6249: no seal caption; the room above the signature stays blank for the notary's seal.
+    expect(html).not.toContain('Seal')
+    expect(html).toContain('margin:3.6em 0 0')
     expect(html).toContain('by Daniel Alvarez.')
     // The lien's block never grew the courtesy lines or a county.
     expect(filingDocHtml([{ kind: 'notarial', who: 'Malachi Click' }])).not.toContain('Printed name')
@@ -86,7 +87,7 @@ describe('the three faces under each form', () => {
     expect(t).toContain(SIGNED_ON_LINE)
     expect(t).toContain('Daniel Alvarez, Affiant\nResponsible Master Plumber of record for Click Plumbing and Electrical, License No. M-00000')
     expect(t).toContain(juratSentence('Daniel Alvarez'))
-    expect(t).toContain('(Personalized Seal)')
+    expect(t).not.toContain('Seal')
     expect(t).toContain('My commission expires')
     // The jurat carries the county twice: the caption at the top and the certificate at the end.
     expect(t.match(/COUNTY OF GUADALUPE/g)).toHaveLength(2)
@@ -110,16 +111,19 @@ describe('the three faces under each form', () => {
     expect(attachedToLine('declaration', 'Thanh Nguyen')).toBe('This declaration is attached to the handwritten statement of Thanh Nguyen, _____ pages, each initialed by the signer.')
   })
   it('no notary, the whole paper: no venue caption, the § 132.001(d) block with the details typed at print time, the day left blank', () => {
-    const d: StatementDraft = { ...draft, affiant: nguyen, form: 'declaration', title: 'Declaration of Thanh Nguyen', venueCounty: 'Williamson' }
-    const declarant = { ...DECLARANT_BLANK, firstName: 'Thanh', middleName: 'Van', lastName: 'Nguyen', dateOfBirth: '1988-03-14', street: '1400 Example Rd', city: 'Round Rock', zip: '78664' }
+    // v2.6243: the block reads the statement's full name, so ¶1, the block and the signature name the declarant one way.
+    const d: StatementDraft = { ...draft, affiant: { ...nguyen, name: ' Thanh  Van Nguyen ' }, form: 'declaration', title: 'Declaration of Thanh Van Nguyen', venueCounty: 'Williamson' }
+    const declarant = { ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1400 Example Rd', city: 'Round Rock', zip: '78664' }
     const t = texts(d, 'whole', declarant)
     expect(t).not.toContain('STATE OF TEXAS')
     expect(t).not.toContain('SWORN TO')
-    expect(t).toContain('1. My name is Thanh Nguyen. I am over eighteen years of age, of sound mind, and capable of making this declaration. I am the foreman')
+    expect(t).toContain('1. My name is Thanh Van Nguyen. I am over eighteen years of age, of sound mind, and capable of making this declaration. I am the foreman')
     expect(t).toContain('My name is Thanh Van Nguyen, my date of birth is March 14, 1988, and my address is 1400 Example Rd, Round Rock, Texas 78664, and United States of America. I declare under penalty of perjury that the foregoing is true and correct.')
     expect(t).toContain('Executed in Williamson County, State of Texas, on the ______ day of __________, __________.')
-    expect(t).toContain('Thanh Nguyen, Declarant')
+    expect(t).toContain('Thanh Van Nguyen, Declarant')
+    expect(t).not.toMatch(/Thanh +Nguyen|Thanh {2}Van/)
     expect(t).not.toContain('Notary Public')
+    expect(texts(d, 'signing', declarant)).toContain('This declaration is attached to the handwritten statement of Thanh Van Nguyen, _____ pages')
   })
   it('no notary with no details yet: the statute’s own blanks print, so the paper can be filled by hand', () => {
     const d: StatementDraft = { ...draft, affiant: nguyen, form: 'declaration', venueCounty: '' }
@@ -127,13 +131,24 @@ describe('the three faces under each form', () => {
     expect(t).toContain('DECLARATION\n\nThis declaration is attached to the handwritten statement of Thanh Nguyen')
     expect(t).toContain('My name is __________ (First) __________ (Middle) __________ (Last), my date of birth is __________')
     expect(t).toContain('Executed in __________ County, State of Texas, on the ______ day of __________, __________.')
-    expect(declarationJurat(null, '').statement).toBe(DECLARATION_STATUTE_FORM.slice(0, DECLARATION_STATUTE_FORM.indexOf(' Executed in')))
+    expect(declarationJurat(null, '', 'Thanh Nguyen').statement).toBe(DECLARATION_STATUTE_FORM.slice(0, DECLARATION_STATUTE_FORM.indexOf(' Executed in')))
   })
-  it('the declarant’s details are whole or the print waits', () => {
-    expect(declarantProblem(DECLARANT_BLANK)).toBe('Type the declarant’s first and last name as the statute asks.')
-    expect(declarantProblem({ ...DECLARANT_BLANK, firstName: 'Thanh', lastName: 'Nguyen' })).toBe('Type the declarant’s date of birth.')
-    expect(declarantProblem({ ...DECLARANT_BLANK, firstName: 'Thanh', lastName: 'Nguyen', dateOfBirth: '1988-03-14' })).toBe('Type the declarant’s street, city, state, zip code and country.')
-    expect(declarantProblem({ ...DECLARANT_BLANK, firstName: 'Thanh', lastName: 'Nguyen', dateOfBirth: '1988-03-14', street: '1 Rd', city: 'Seguin', zip: '78155' })).toBeNull()
+  it('the declarant’s details are whole or the print waits; the name is the statement’s, and one word waits too (v2.6243)', () => {
+    expect(declarantProblem(DECLARANT_BLANK, ' ')).toBe('Type their full name on the statement first.')
+    const oneWord = declarantProblem({ ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1 Rd', city: 'Seguin', zip: '78155' }, ' Malachi ')
+    expect(oneWord).toBe('Their full name is one word. Texas asks for a first and a last name. Go back and type it as it reads on their ID.')
+    expect(plainWordsFailures(oneWord!)).toEqual([])
+    expect(declarantProblem(DECLARANT_BLANK, 'Thanh Nguyen')).toBe('Type the declarant’s date of birth.')
+    expect(declarantProblem({ ...DECLARANT_BLANK, dateOfBirth: '1988-03-14' }, 'Thanh Nguyen')).toBe('Type the declarant’s street, city, state, zip code and country.')
+    expect(declarantProblem({ ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1 Rd', city: 'Seguin', zip: '78155' }, 'Thanh Nguyen')).toBeNull()
+    expect(Object.keys(DECLARANT_BLANK)).not.toContain('firstName')
+  })
+  it('a name prints trimmed with one space between words; one word is flagged', () => {
+    expect(fullNameWords('  Thanh   Van Nguyen ')).toBe('Thanh Van Nguyen')
+    expect(isOneWordName(' Malachi ')).toBe(true)
+    expect(isOneWordName('Thanh Van Nguyen')).toBe(false)
+    expect(isOneWordName('  ')).toBe(false)
+    expect(statementOpener({ ...nguyen, name: 'Thanh  Nguyen' }, 'notary').startsWith('My name is Thanh Nguyen. I am over eighteen')).toBe(true)
   })
   it('the print title names the face', () => {
     expect(statementPrintTitle(draft, 'whole')).toBe('Affidavit of Daniel Alvarez')
@@ -171,6 +186,16 @@ describe('the draft’s rules', () => {
     expect(venueChoices({ officeCounty: 'Guadalupe', propertyCounty: 'guadalupe', form: 'notary' }).map((c) => c.value)).toEqual(['Guadalupe', ''])
     expect(venueChoices({ officeCounty: '', propertyCounty: null, form: 'notary' }).map((c) => c.value)).toEqual([''])
     for (const c of venueChoices({ officeCounty: 'Guadalupe', propertyCounty: 'Williamson', form: 'declaration' })) expect(plainWordsFailures(c.note)).toEqual([])
+  })
+  it('a declaration’s picks name the signer, never a notary; one county for the office and the property says so (v2.6245)', () => {
+    const picks = venueChoices({ officeCounty: 'Guadalupe', propertyCounty: 'Williamson', form: 'declaration' })
+    expect(picks.map((c) => c.words)).toEqual(['Guadalupe County · the office’s', 'Williamson County · the property’s', 'Leave it blank for the signer'])
+    expect(picks.map((c) => c.note)).toEqual(['Where they sign. The declaration says Executed in this county.', 'Where they sign. The declaration says Executed in this county.', 'They write the county in by hand where they sign.'])
+    for (const c of picks) expect(c.note).not.toMatch(/notary/)
+    const same = venueChoices({ officeCounty: 'Guadalupe', propertyCounty: 'Guadalupe', form: 'declaration' })
+    expect(same.map((c) => c.words)).toEqual(['Guadalupe County · the office’s and the property’s', 'Leave it blank for the signer'])
+    expect(venueChoices({ officeCounty: 'Guadalupe', propertyCounty: 'guadalupe', form: 'notary' }).map((c) => c.words)).toEqual(['Guadalupe County · the office’s and the property’s', 'Leave it blank for the notary'])
+    for (const c of [...picks, ...same]) expect(plainWordsFailures(c.note)).toEqual([])
     expect(plainWordsFailures(FORM_HELP_WORDS)).toEqual([])
   })
 })
@@ -287,5 +312,13 @@ describe('the role under a signature (v2.6238)', () => {
     const t = filingDocText(statementPaperBlocks({ draft: d, face: 'whole', declarant: null }))
     expect(t).toContain('Thanh Nguyen, Declarant\nForeman for Brightline Electric, the electrical subcontractor on the job')
     expect(t).toContain('I am the foreman for Brightline Electric, the electrical subcontractor on the job.')
+  })
+})
+
+describe('statementFiledWords (v2.6246)', () => {
+  it('names the signing day in words, never the typed day', () => {
+    expect(statementFiledWords('2026-10-30')).toBe('Filed. The signed copy is on Evidence on Oct 30. The statement reads sworn on the Timeline.')
+    expect(statementFiledWords('2026-10-30')).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+    expect(plainWordsFailures(statementFiledWords('2026-10-30'))).toEqual([])
   })
 })

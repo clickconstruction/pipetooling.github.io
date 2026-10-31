@@ -62,6 +62,62 @@ export const CALLS_AHEAD_ADVICE =
 /** The GitHub label the check puts on a pull request whose client calls ahead of its migration. */
 export const CALLS_AHEAD_LABEL = 'push right after the merge'
 
+/** GitHub refuses a label whose description runs past 100 characters (v2.6254: 110 kept the label off every PR). */
+export const GITHUB_LABEL_DESCRIPTION_MAX = 100
+
+/** The label's color, and the line GitHub's label list shows under it. */
+export const CALLS_AHEAD_LABEL_COLOR = 'D93F0B'
+export const CALLS_AHEAD_LABEL_DESCRIPTION = 'Its client calls what only its migration creates: push right after the merge'
+
+/**
+ * The `gh api` calls that put the label on pull request `number` of `repo` (`owner/name`): read the
+ * label, make it when the repo lacks it, add it to the pull request. REST throughout, since
+ * `gh pr edit` fails quietly in this repo. `pull-requests: write` covers all three: GitHub lists
+ * every label endpoint under both the Issues and the Pull requests permission.
+ */
+export function callsAheadLabelCalls(repo: string, number: number): { read: string[]; make: string[]; add: string[] } {
+  const base = `repos/${repo}`
+  return {
+    read: ['api', `${base}/labels/${encodeURIComponent(CALLS_AHEAD_LABEL)}`],
+    make: ['api', '-X', 'POST', `${base}/labels`, '-f', `name=${CALLS_AHEAD_LABEL}`, '-f', `color=${CALLS_AHEAD_LABEL_COLOR}`, '-f', `description=${CALLS_AHEAD_LABEL_DESCRIPTION}`],
+    add: ['api', '-X', 'POST', `${base}/issues/${number}/labels`, '-f', `labels[]=${CALLS_AHEAD_LABEL}`],
+  }
+}
+
+type GitHubErrorBody = { message?: string; errors?: Array<{ message?: string; field?: string; code?: string }> }
+
+function gitHubErrorBody(stdout: string): GitHubErrorBody | null {
+  try {
+    const body = JSON.parse(stdout) as unknown
+    return body && typeof body === 'object' ? (body as GitHubErrorBody) : null
+  } catch {
+    return null
+  }
+}
+
+/** True when a failed make says the label is already there (another run made it first): carry on to the add. */
+export function labelAlreadyExists(stdout: string): boolean {
+  return (gitHubErrorBody(stdout)?.errors ?? []).some((e) => e.code === 'already_exists')
+}
+
+/**
+ * Why a `gh api` call failed, in GitHub's own words: the response's message and field errors when
+ * it sent JSON (`Validation Failed: description is too long (maximum is 100 characters)`), else the
+ * first line gh wrote, else the first line of the error itself. Never the command line alone when
+ * GitHub said more.
+ */
+export function ghFailureWords(stdout: string, stderr: string, message: string): string {
+  const body = gitHubErrorBody(stdout)
+  if (body) {
+    const details = (body.errors ?? []).map((e) => e.message ?? [e.field, e.code].filter(Boolean).join(' ')).filter((d) => d.length > 0)
+    const head = body.message ?? ''
+    if (details.length > 0) return head ? `${head}: ${details.join('; ')}` : details.join('; ')
+    if (head) return head
+  }
+  const line = stderr.split('\n').map((l) => l.trim()).find((l) => l.length > 0)
+  return line ?? message.split('\n')[0] ?? ''
+}
+
 function literalText(expr: Expression): string | null {
   const e = ts.isAsExpression(expr) || ts.isTypeAssertionExpression(expr) ? expr.expression : expr
   if (ts.isStringLiteral(e) || ts.isNoSubstitutionTemplateLiteral(e)) return e.text

@@ -9,10 +9,13 @@
 import { filingDocPdfBlob, filingDocPrintHtml } from '../jobsDocuments/lienFilingDocuments'
 import { attachedToLine, declarantProblem, statementPaperBlocks, statementPrintTitle, statementPrintedText, type DeclarantDetails, type StatementDraft, type StatementFace } from './affidavitPaper'
 
-/** The declaration's block names the declarant: the whole paper and the signing page wait on the details; the statement alone does not. */
-export function printNeedsDeclarant(form: StatementDraft['form'], face: StatementFace, details: DeclarantDetails | null): boolean {
-  if (form !== 'declaration' || face === 'statement') return false
-  return !details || declarantProblem(details) !== null
+/**
+ * The declaration's block names the declarant: the whole paper and the signing page wait on the details and on a full
+ * name of two words or more (v2.6243); the statement alone does not.
+ */
+export function printNeedsDeclarant(draft: Pick<StatementDraft, 'form' | 'affiant'>, face: StatementFace, details: DeclarantDetails | null): boolean {
+  if (draft.form !== 'declaration' || face === 'statement') return false
+  return !details || declarantProblem(details, draft.affiant.name) !== null
 }
 
 /** The paper's footer: the title, the account, and which face it is when not the whole. */

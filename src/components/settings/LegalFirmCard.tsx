@@ -24,10 +24,12 @@ const label = { display: 'grid', gap: 4, fontSize: '0.8rem', color: 'var(--text-
  * folded to its facts, with *Edit details* for the form; a new firm opens on the form. In
  * the Legal desk's firm window (`bare`) it is the form alone, as before v2.5756.
  */
-export default function LegalFirmCard({ firm, hue, counties, picked, bare = false, startOpen = false, firmFacts = null, onPick, onSaved, onDiscard }: {
+export default function LegalFirmCard({ firm, hue, counties, alsoIn, picked, bare = false, startOpen = false, firmFacts = null, onPick, onSaved, onDiscard }: {
   firm: LegalFirmRow | null
   hue?: FirmHue
   counties?: ReadonlyArray<string>
+  /** The counties among them the firm covers without being first call (v2.6227): the line marks them `(also)`. */
+  alsoIn?: ReadonlySet<string>
   picked?: boolean
   bare?: boolean
   startOpen?: boolean
@@ -139,7 +141,7 @@ export default function LegalFirmCard({ firm, hue, counties, picked, bare = fals
             <span style={{ display: 'block', color: 'var(--text-muted)', fontSize: '0.76rem', marginTop: 2 }}>
               {firm.handling_name || 'no handling person yet'} · {firm.contingency_pct}% · ${firm.filing_cost} filing
             </span>
-            <span data-legal-firm-counties style={{ display: 'block', fontSize: '0.8rem', marginTop: 6 }}>{countiesLine(counties ?? [])}</span>
+            <span data-legal-firm-counties style={{ display: 'block', fontSize: '0.8rem', marginTop: 6 }}>{countiesLine(counties ?? [], alsoIn)}</span>
           </>
         ) : null}
       </button>

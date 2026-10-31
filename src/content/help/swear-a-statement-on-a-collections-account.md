@@ -23,7 +23,7 @@ Open the desk at `/legal-desk` and pick the account. Open the **Evidence** tab. 
 4. Type the **Title**. The desk suggests *Affidavit of* and the name.
 5. Pick **The day it is about**. Add a last day in **to** when the statement spans several days. The statement sits on the Timeline on the first day. The signing day is not typed here.
 6. Pick **How it is signed**. {{button:outline|Before a notary}} is on to start. Press {{button:outline|No notary, under penalty of perjury}} for a witness who signs where they stand.
-7. Pick **Signed in**. The office's county is on to start. Press {{button:outline|Leave it blank for the notary}} when the signing happens somewhere else.
+7. Pick **Signed in**. The office's county is on to start. Press {{button:outline|Leave it blank for the notary}} when the signing happens somewhere else. A declaration starts on the property's county. Its blank reads {{button:outline|Leave it blank for the signer}}.
 8. Type the statement, one paragraph per line. Paragraph 1 is written for you. The paper numbers the rest.
 9. Press {{button:dark|Save the draft}}.
 
@@ -49,7 +49,7 @@ Press {{button:outline|Print}} in the window. A new or changed draft saves first
 
 Press the ▾ beside Print to pick a face. **The whole paper** is the statement, the signature line and the jurat. **The statement alone** has no signing block. Read it over together before anyone signs. **The signing page alone** is the jurat with a line naming the handwritten statement it is stapled to. Print it when a witness writes their own words. The signer initials each page.
 
-A declaration with no notary asks for the declarant's full name, date of birth and address. Texas puts them on the paper. Type them when you print. The desk keeps them for this session only and never saves them. Each print is noted on the row: when, by whom and which face.
+A declaration with no notary asks for the declarant's date of birth and address when you print. Texas puts them on the paper beside the full name. The name comes from **Their full name** in the window, so the paper names them one way. A name of one word holds the print. Press {{button:outline|Change the name}} and type it as it reads on their ID. The desk keeps the date of birth and the address for this session only. It never saves them. Each print is noted on the row: when, by whom and which face.
 
 :::example The witness dislikes a sentence
 Open the draft from the Timeline. Change the sentence. Press Print. The print sheet opens on the new page. Four presses, on a phone or at the desk.

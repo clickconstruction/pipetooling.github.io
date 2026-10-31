@@ -11,7 +11,8 @@
  * subscribed before me on the ___ day of ___, (year), by (name of signer) · (Personalized Seal) ·
  * Notary Public's Signature. The seal itself carries the notary's name, identifying number and
  * commission expiry (§ 406.013(a)), so the block needs the signature line and room for the seal;
- * a printed-name line and a *My commission expires* line are a courtesy the notary fills.
+ * a printed-name line and a *My commission expires* line are a courtesy the notary fills. The room
+ * is blank (v2.6249): a *(Personalized Seal)* caption is not needed, a notary knows where the seal goes.
  */
 
 /** The venue caption's first line. */
@@ -36,9 +37,6 @@ export function juratSentence(who: string): string {
 
 /** Under the notary's signature line. */
 export const JURAT_NOTARY_TITLE = 'Notary Public, State of Texas'
-
-/** Where the seal goes; the notary's own seal carries the name, the number and the expiry (§ 406.013(a)). */
-export const JURAT_SEAL_WORDS = '(Personalized Seal)'
 
 /** The two courtesy lines a notary fills under the title; the seal already carries both. */
 export const JURAT_COURTESY_LINES: ReadonlyArray<string> = ['Printed name: ______________________________', 'My commission expires: ______________________']
