@@ -21,6 +21,14 @@ opinion: build — start with shape 3 (a mark and a door, XS to S each, and fiel
 
 # Show it, don't say it: seven shapes for the 131 places the app still tells (#217)
 
+## Pick up here
+
+- **The page** is `mockup.html` beside this file: open it from a clone (double-click; it needs no server) or at `/to-dos/show-not-tell/mockup.html` on the dev server. The owner's live copy is the claude.ai artifact (https://claude.ai/artifact/3f74NuNKDsMAtpGcFgCV1v), whose store keeps her presses as she makes them.
+- **The picks** are `picks.json`: every pick, the owner's note and when it was acted on. The page loads it when built, so a fresh clone opens on the last save. To save: press **Export picks** on the page, put the file here, rebuild and commit, or hand it to a session. Picks pressed in a browser stay in that browser until exported.
+- **The prototypes** are `prototypes.json`, one row each; `npm run proto -- <id>` opens one on any machine (*How to verify*, below).
+- **The parts** are `parts/`; `bash to-dos/show-not-tell/build.sh` concatenates them in name order, injects the two JSON files and writes `mockup.html`. Edit a part, never the built page; rebuild; commit both.
+- **Where it stands**: shapes 1 and 2 are picked and in motion (every bar on the page); shapes 3 to 7 wait on picks, Build · Later · Drop on each pair, with a note line for words. The owner's words on a pair are in its blue box.
+
 ## The ask
 
 Taunya, 2026-10-30: *"I would like to scan the app for areas we are telling too much instead of showing and
@@ -109,6 +117,8 @@ them on invented data, and the pairs whose surfaces the lens has no rows for say
 After a train lands, the pair's *Today* frame is what the screen no longer draws.
 
 Every prototype and build is listed in `prototypes.json` beside this file (id, PR, branch, state, version, port, door, whether the door signs in as the dev), the one list the page's bars and `npm run proto` both read. To jump into one on any machine: clone the repo, `npm install`, and for the doors that sign in as the dev put the main checkout's `.env.local` beside `package.json` (it holds the dev login's secret; the portal and sample pages need none); then `npm run proto -- <id>` (or the PR number) fetches the PR's branch into `.claude/worktrees/proto-<id>`, symlinks `node_modules` and `.env.local` in, starts Vite there on the prototype's own port and opens its door with today's look above the shape (`?sbs=1`). `npm run proto` alone prints the list; `--no-open`, `--port N` and `--fresh` do what they say. A shipped one is on main, so it serves the checkout you are in. When a PR merges, its row's `kind` turns `shipped` and its door moves to main; when one closes, its row goes.
+
+The page is built, not hand-edited: `parts/` holds its pieces (the head and styles, the header, one file per shape and the script), and `build.sh` writes `mockup.html` with `prototypes.json` and `picks.json` injected where the script says `/*MANIFEST*/null` and `/*PICKS*/null`. The claude.ai copy is published from the same build's body fragment (`FRAGMENT_OUT=<file>`).
 
 ## Where it stands
 

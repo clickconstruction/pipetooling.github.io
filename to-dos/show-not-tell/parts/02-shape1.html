@@ -1,0 +1,187 @@
+<section class="shape" id="s1">
+<h2><span class="num">1</span>A date against today</h2>
+<p class="rule"><b>A time said in words is a position left undrawn.</b> <i>Expected Nov 8 · in 9d</i>, <i>No field work in 59 days</i>, <i>quiet 5d</i>, <i>No round Thu, Oct 29</i>, <i>Late 6× · median 18m</i>: each is a count from a day the screen never shows, so the reader cannot see what started the clock, how near the limit sits, or whether the pattern is every Thursday or every day. The shape is a strip of days with today marked and the counting day labelled, or three dates on one track against today.</p>
+<p class="lives">Lives in the app already as the Legal desk's Timeline strip (<code>timelineStrip.ts</code>, v2.6107), the Lien desk's Deadlines track, the Lien window's Windows calendar (v2.3815) and Quickfill's Mark history tiles. 24 of the 131 places take it; every one is drawn here, the six that matter most first.</p>
+
+<section class="pair" id="jobs-pipeline-1" data-id="jobs-pipeline-1">
+  <h3><span class="id">jobs-pipeline-1</span>The Billed row's three dates, with the guessed one marked</h3>
+  <div class="meta"><span class="chip">Pipeline</span><span class="chip warn">weight H</span><span class="chip">size M · no migration</span><span class="chip dim">patterns 12 · 10 · 1</span><span class="door">Door: <code>/jobs?tab=stages</code> → Billed Awaiting Payment → any row, the lines under its money bar</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now phone">
+      <p class="lead">1319 · Hillcrest Builders · Office remodel <span class="muted" style="float:right">$24,600</span></p>
+      <div class="bar thin"><div class="seg paid" style="width:40%">40% Paid</div><div class="seg billed" style="width:60%">60% Billed</div></div>
+      <p>● Billed Oct 9 · <span class="muted">21d ago</span><br>● Expected Nov 8 · <span class="muted">in 9d</span><br>○ Lien by Dec 15 · <span class="muted">46d</span><br><span class="muted">Can run late · 37d</span></p>
+      <div class="hover">Billed Oct 9 + Hillcrest Builders's median pay speed (~30 days over 6 payments, last 12 months) → expected Nov 8</div>
+      <p class="note">With no history the money line drops out and the verdict reads <i>Ask for a date</i>. With a promise it reads <i>They said Nov 20</i>, with <i>expected Nov 8 by their history</i> under it. <i>Expected</i> wears the same filled dot as <i>Billed</i>, a fact and a median drawn alike.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <p class="lead">1319 · Hillcrest Builders · Office remodel <span class="muted" style="float:right">$24,600</span></p>
+      <div class="bar thin"><div class="seg paid" style="width:40%">40% Paid</div><div class="seg billed" style="width:60%">60% Billed</div></div>
+      <div class="track">
+        <div class="ax"></div>
+        <div class="band room" style="left:47.5%;width:46.5%"><span class="bl">37 days of room</span></div>
+        <div class="tk done" style="left:10%"></div>
+        <div class="lab up" style="left:10%"><b>Billed</b><span class="m">Oct 9</span></div>
+        <div class="today" style="left:36%"></div>
+        <div class="lab down" style="left:36%"><b style="color:var(--blue)">today</b><span class="m">Oct 30</span></div>
+        <div class="tk guess" style="left:47.5%"></div>
+        <div class="lab up" style="left:47.5%"><b>~Nov 8</b><span class="m">guessed</span></div>
+        <div class="tk flag" style="left:94%"></div>
+        <div class="lab down left" style="left:97%"><b>Lien by Dec 15</b><span class="m">46 d</span></div>
+      </div>
+      <div class="tags"><span class="src guess">guessed · ~30 d over 6 payments <span class="door">↗ their pay speeds</span></span><span class="chip ok">37 days of room</span></div>
+      <p class="note">Their word turns the ring solid blue and reads <b>They said Nov 20</b>. No history drops the ring, and the band's label reads <b>Ask for a date</b>. Past the flag with nothing in, the band turns red and the Lien desk's own footer takes over.</p>
+    </div></div>
+  </div>
+  <div class="say">
+    <p class="gain">The three dates sit on one axis against today, so <i>can run late · 37d</i> is a length the eye measures, and the lien flag is a place, not a count.</p>
+    <p class="gain">The guess wears its own ring and its mark names the making (<i>~30 d over 6 payments</i>) with a door to the payments it read; a promise and a guess never draw alike again.</p>
+    <p class="rule">Reuses the Lien desk's Deadlines track and its hover cards at row height, and the payment forecast's pace words and breakdown door. The same track belongs on the phone card and on Collections, which draw the same ledger.</p>
+  </div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first render put month letters along the top of the track, where they collided with the Billed label; the Lien by label ran off the frame's right edge; and today's label sat on the guessed date's. The months went, today moved under the axis, the lien flag's label is right-aligned under its diamond, and the guess keeps the top row to itself. Taunya: <i>this has some potential, but only as an alternative view that a user can choose to engage in. Can you help me build a prototype?</i> A session is building it as a remembered <b>Words · Track</b> choice that defaults to today's words, with the Job tab's strip (jobs-pipeline-6) on the same choice.</p></div>
+  <div class="pick" data-for="jobs-pipeline-1"></div>
+</section>
+
+<section class="pair" id="jobs-pipeline-2" data-id="jobs-pipeline-2">
+  <h3><span class="id">jobs-pipeline-2</span>The Follow-ups card's <i>No field work in 59 days</i>, as the days themselves</h3>
+  <div class="meta"><span class="chip">Pipeline · Follow-ups deck</span><span class="chip warn">weight H</span><span class="chip">size S · one more column from the RPC</span><span class="chip dim">patterns 1 · 10 · 9</span><span class="door">Door: <code>/jobs?tab=stages</code> → Follow-ups → the deck, or <code>?followups=idle</code></span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <p class="lead">1318 · Sample Retail Shell rough-in <span class="chip">Working</span> <span class="chip warn">idle 59 days</span></p>
+      <p><b>Why it's here:</b> No field work in 59 days · $86,400 bid</p>
+      <p><b>Next:</b> Schedule the next visit or close it <span class="btn sm" style="float:right">Schedule it ↗</span></p>
+      <p class="note">A quiet card reads <i>Working quiet 12 days — no notes or work logged · 40% done on a $50,000 bid</i>. Idle counts from <code>last_work_date</code>, the last approved field day; quiet counts from the newest note, status move, work or bill, or the last <i>Looks fine</i>. Neither says which day that was, and a note does not reset the idle clock.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape · refreshed on the owner's note</div><div class="frame">
+      <p class="lead">1318 · Sample Retail Shell rough-in <span class="chip">Working</span> <span class="chip warn">idle 59 d · since Sep 1</span> <span class="chip dim">quiet 8 d · since a note Oct 22</span></p>
+      <div class="daysrow wide"><div class="who"><b>Field days</b><br><span class="small">approved · the idle clock</span></div><div><div class="days big" data-n="60" data-dow0="2" data-today="59" data-limit="38" data-cols="0:100" data-pop="0:the last approved field day · Sep 1 ↗ open in the feed"></div></div></div>
+      <div class="daysrow wide"><div class="who"><b>Notes</b><br><span class="small">reset the quiet clock, not the idle one</span></div><div><div class="days big" data-n="60" data-dow0="2" data-today="59" data-limit="38" data-marks="11:note,32:note,51:note"></div></div></div>
+      <div class="daysrow wide"><div class="who"><b>The office</b><br><span class="small">moved to Working · said Looks fine</span></div><div><div class="days big" data-n="60" data-dow0="2" data-today="59" data-limit="38" data-marks="14:diam,39:tick"></div></div></div>
+      <div class="daysrow wide"><div class="who"></div><div><div class="dayslab" data-n="60" data-labels="0:Sep 1:l|29:Sep 30|38:21-day limit:hot|59:today:blue:r"></div></div></div>
+      <p><b>Next:</b> Schedule the next visit or close it <span class="btn sm" style="float:right">Schedule it ↗</span></p>
+      <p class="note">Three rows, each named at the left, so nothing has to be matched to a legend: the field days are bars, the notes are dots, the office's two acts are a diamond and a tick. The idle chip names the day it counts from; the quiet chip names its note.</p>
+    </div></div>
+  </div>
+  <div class="say">
+    <p class="gain">The day the clock counts from is a labelled dot with a door into the job's activity, so <i>59 days</i> can be checked in one glance, and the dashed limit shows how far past 21 days the job sits.</p>
+    <p class="gain">The three notes since Sep 1 are visible beside the empty field days, which is the whole reason idle and quiet disagree.</p>
+    <p class="rule">Reuses the Timeline strip (dots by kind, today kept in view, a press jumps to the day) and the row's own two-week schedule cells. The RPC gains the newest activity's kind and day.</p>
+  </div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The first render's label on the counting day hung off the frame and its dots sat at the foot of tall columns. Taunya, on the second: <i>the dots are too small and it takes too much cognitive time to align those dots with the index. Perhaps you want to give it a refresh?</i> Refreshed: three rows named at the left (field days as bars, notes as dots, the office's two acts), so there is no legend to match, the marks are twice the size, and the two chips name the day each clock counts from.</p></div>
+  <div class="pick" data-for="jobs-pipeline-2"></div>
+</section>
+
+<section class="pair" id="gc-messages-2" data-id="gc-messages-2">
+  <h3><span class="id">gc-messages-2</span>Nudges from the flow: their last word, ours, today and the nudge day on one strip</h3>
+  <div class="meta"><span class="chip">GC mode · Follow up</span><span class="chip warn">weight H</span><span class="chip">size M · no migration</span><span class="chip dim">patterns 10 · 7 · 1 · 8</span><span class="door">Door: <code>/gc?view=followUp</code> → Nudges from the flow; a thread's flow rail → a step → Reminder</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <div class="line"><div><div class="t">Rio Fire Co <span class="chip">Papers in</span> <span class="chip">Statement of work</span></div><div class="s">no word from them yet · the flow says a call. We are waiting on their W-9. · Statement of work: no word from them yet</div><div class="tags"><span class="btn sm">Call Rio Fire Co</span><span class="btn sm">Hold until Mon</span><span class="btn sm">Remind now</span></div></div><div class="muted small">Our move · a call</div></div>
+      <div class="line"><div><div class="t">Brightline Architects <span class="chip">Certify pay apps</span></div><div class="s">with Brightline Architects 20 days · Elm Street Owner LLC's pay application waits on it</div></div><div class="muted small">Our move · an email</div></div>
+      <p class="note">Under the section: <i>A step's nudge comes when it is on now, the move is theirs, and the thread has been quiet that many days. A promised day comes before the count. Answering them, or the fact turning true, clears the row…</i> On the step card: <i>Reminder · Text after 5 quiet days, sent by the app. Morgan has been quiet 3 days, so not yet.</i></p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <div class="line"><div>
+        <div class="t">Rio Fire Co <span class="chip">Papers in</span> <span class="chip warn">quiet 9 of 5 days</span> <span class="chip info">W-9 ↗ went Oct 24 · waiting on them</span></div>
+        <div class="days" data-n="14" data-dow0="6" data-today="13" data-marks="4:their,7:ours,9:diam"></div>
+        <div class="dayslab" data-n="14" data-labels="4:their last word · Oct 21:l|13:today:blue:r"></div>
+        <div class="legend"><span><i style="border-radius:50%;background:var(--purple)"></i>their last word</span><span><i style="border-radius:50%;background:var(--blue)"></i>our last message</span><span><i style="background:var(--bg-amber-100);border-color:var(--text-amber-800);transform:rotate(45deg)"></i>the nudge day</span></div>
+        <div class="tags"><span class="btn sm">Call Rio Fire Co</span><span class="btn sm">Hold until Mon</span><span class="btn sm">Remind now</span></div>
+      </div><div class="muted small">Our move · a call</div></div>
+      <div class="line"><div>
+        <div class="t">Brightline Architects <span class="chip">Certify pay apps</span> <span class="chip dim">held to Mon Nov 2</span></div>
+        <div class="days" data-n="17" data-dow0="6" data-today="13" data-marks="0:their,2:ours" data-shade="14-16"></div>
+        <div class="dayslab" data-n="17" data-labels="0:their last word · Oct 10 · 20 d:l|13:today:blue|16:held to Mon:hot:r"></div>
+      </div><div class="muted small">Our move · an email</div></div>
+      <div class="fold"><div class="k">The step card, same strip</div><div class="t">Morgan · <span class="chip">quiet 3 of 5</span> <span class="chip info guess">nudge Mon · the app · 9 AM ↗ Flows</span></div><div class="days" data-n="8" data-dow0="4" data-today="5" data-marks="2:their,7:diam"></div><div class="dayslab" data-n="8" data-labels="2:their last word · Mon:l|5:today:blue|7:nudge Mon:r"></div></div>
+    </div></div>
+  </div>
+  <div class="say">
+    <p class="gain">The countdown is a position: their last word, our last message and the nudge day sit on one strip against today, so <i>quiet 9 of 5 days</i> is a distance and a hold is a bar to Monday.</p>
+    <p class="gain">The diamond carries who sends it (<i>the app · 9 AM</i>) with a door to that step's switch in Settings → Flows, so <i>sent by the app</i> is a promise the reader can check against Off · Offers · Sends.</p>
+    <p class="rule">The paragraphs under the section go behind <b>?</b>, as they did on <code>/messages</code> in v2.5802. Reuses the Timeline strip, the flow rail's paper marks and the lane bands.</p>
+  </div>
+  <div class="pass2"><div class="cap">Second pass</div><p>Three labels under a fourteen-day strip overprinted each other (their last word · our W-9 ask · nudge day). Two labels stay, their last word and today, and a legend names the dots once for both rows. Brightline's hold was drawn as one shaded day; it is now a band from today to Monday, which is what a hold is.</p></div>
+  <div class="pick" data-for="gc-messages-2"></div>
+</section>
+
+<section class="pair" id="office-5" data-id="office-5">
+  <h3><span class="id">office-5</span>The office's round: ten workdays as columns, the miss as an empty ring</h3>
+  <div class="meta"><span class="chip">Dashboard</span><span class="chip">weight M</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 1 · 3 · 10</span><span class="door">Door: <code>/dashboard</code> → The office's round, under Needs you; its twin is each station's rhythm line on Quickfill (office-8)</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now phone">
+      <p class="lead">The office's round <span class="chip stop">No round Thu, Oct 29</span></p>
+      <p>The round did not run that day. The stations wait on Quickfill. <span class="muted">Open Quickfill ›</span></p>
+      <p class="note">On a day it ran: <i>Today 9:51 AM · Dana · 23 stations · 8 still open · 2 questions</i>. Before it runs: <i>No round yet today · Thu 9:51 AM · 23 stations · 8 still open</i>. A day with one stamp counts as a round, the same as a day with all 23.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame phone">
+      <p class="lead">The office's round <span class="chip press">still open <span class="n">8</span> ›</span> <span class="chip press">questions <span class="n">2</span> ›</span></p>
+      <div class="days tall" data-n="10" data-today="9" data-cols="0:78,1:91,2:100,3:65,4:87,5:96,6:83,7:91,8:miss,9:35:today" data-pop="7:Tue Oct 27 · 9:40 AM · Dana · 21 of 23"></div>
+      <div class="dayslab" data-n="10" data-labels="0:Mon Oct 19:l|4:Fri 23|8:Thu 29 · no round:hot|9:today:blue:r"></div>
+      <p class="note">Each column is the stations marked that day out of 23, its time and who on hover. A miss is the empty red ring. Today's column fills as the round runs.</p>
+    </div></div>
+  </div>
+  <div class="say">
+    <p class="gain">The owner sees the pattern the card already reads: a short day, a missed Thursday, a round that stops at eight stations every day.</p>
+    <p class="gain">The counts are chips that open those stations on Quickfill instead of a sentence that ends in <i>Open Quickfill</i>.</p>
+    <p class="rule">Reuses the Timeline strip's day columns and Quickfill's Mark history tiles; the card already reads the ten days of marks.</p>
+  </div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The hover card over Tuesday's column sat on the card's title; the strip now leaves room for it. Asked whether a column is the right mark for a round: yes, since the count that matters is stations marked out of 23 and a column is a fraction; the miss stays a ring so an empty day never reads as a short one. Taunya: <i>this could potentially work, I would like to see it as a prototype.</i> A session is building it as a draft PR to look at.</p></div>
+  <div class="pick" data-for="office-5"></div>
+</section>
+
+<section class="pair" id="jobs-money-4" data-id="jobs-money-4">
+  <h3><span class="id">jobs-money-4</span>An estimate's <i>opened Tue · quiet 5d</i>, as the opens by device with the scanners hollow</h3>
+  <div class="meta"><span class="chip">Estimates</span><span class="chip warn">weight H</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 1 · 10 · 12</span><span class="door">Door: <code>/estimates</code> → Pipeline → Sent → a row's chip; the estimate → Customer activity</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <table class="t"><tr><td>Sent</td><td>Hill St water heater</td><td class="amt">$4,380</td><td><span class="chip">opened Tue · quiet 3d</span></td></tr><tr><td>Sent</td><td>Oak Ln repipe</td><td class="amt">$9,362</td><td><span class="chip warn">never opened · sent 7d ago — nudge?</span></td></tr></table>
+      <div class="hover">Customer opened this 22 times</div>
+      <p class="note">The detail lists every event as a bullet: <i>Opened the link · [map] — Oct 27, 2026 3:30 PM 3d ago</i>, one per view, without the list's scanner rule (link views in the first 60 s from two or more addresses are set aside). A real estimate carried 27 opens from 16 addresses, three option views from three addresses inside three seconds, and the rule never saw them because it looks only at the first minute.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <p class="lead">Hill St water heater <span class="muted">$4,380 · sent Thu Oct 22</span> <span class="chip">opened Tue · quiet 3d</span></p>
+      <div class="daysrow"><div class="who">their phone</div><div><div class="days" data-n="9" data-dow0="4" data-today="8" data-marks="3:open,5:open,5:open,5:open"></div></div></div>
+      <div class="daysrow"><div class="who">a laptop · Austin</div><div><div class="days" data-n="9" data-dow0="4" data-today="8" data-marks="3:open"></div></div></div>
+      <div class="daysrow"><div class="who faint">looks like a scanner</div><div><div class="days" data-n="9" data-dow0="4" data-today="8" data-marks="0:scan,0:scan,0:scan"></div></div></div>
+      <div class="dayslab" data-n="9" data-labels="0:sent Oct 22:l|3:Sun|5:Tue · last open|8:today:blue:r"></div>
+      <div class="tags"><span class="src">3 scanner views set aside · within 40 s of the send, from 3 addresses</span></div>
+      <p class="note">On the Sent list the chip keeps its words and this strip is its hover; <i>never opened</i> reads <i>never opened · 3 scanner views set aside</i>. The detail's bullets fold under the strip.</p>
+    </div></div>
+  </div>
+  <div class="say">
+    <p class="gain">A person's opens and a machine's bursts are told apart by shape, and <i>quiet 3d</i> is the gap between the last filled dot and today.</p>
+    <p class="gain">The list and the detail read the same strip, so they can no longer disagree about whether the customer looked.</p>
+    <p class="rule">Reuses the Timeline strip in rows and the address map button for a row's door. <i>Nudge?</i> stays the press, now resting on something the office can see.</p>
+  </div>
+  <div class="pass2"><div class="cap">Second pass</div><p>The row names clipped (<i>looks like a scanner</i>); widened. Asked whether the three opens on Tuesday should stack or count: they stack, because three dots on one day is the burst the rule is looking for, and a count would hide it.</p></div>
+  <div class="pick" data-for="jobs-money-4"></div>
+</section>
+
+<section class="pair" id="people-docs-3" data-id="people-docs-3">
+  <h3><span class="id">people-docs-3</span>A write-up's attendance card: ninety days of dots, each late sized by its minutes</h3>
+  <div class="meta"><span class="chip">People · Write-ups</span><span class="chip warn">weight H</span><span class="chip">size S · no migration</span><span class="chip dim">patterns 3 · 10 · 12</span><span class="door">Door: <code>/people?tab=writeups</code> → one person in Subject → Show attendance (derived)</span></div>
+  <div class="row">
+    <div class="col"><div class="cap">Today</div><div class="frame now">
+      <p class="lead">Attendance — Hal Sample, last 90 days <span class="chip dim">derived from clock records</span></p>
+      <p>Late 6× (1 excused) · median 18m &nbsp; NCNS 1 &nbsp; On time 52 of 59 scheduled days</p>
+      <p><span class="chip warn">⚠ 4 lates in the last 30 days.</span> <span class="btn sm" style="float:right">Start a tardiness write-up →</span></p>
+      <p class="note">The press opens a write-up prefilled with <i>4 unexcused lates in the last 30 days, median 18m over 90 days. Most recent: 2026-10-27 (20m), …</i>. Late is the first clock-in against the earliest schedule block, past a 15-minute grace; the reader cannot see which days, against which block, or how the grace fell, before a disciplinary paper starts from them.</p>
+    </div></div>
+    <div class="col"><div class="cap opt">The shape</div><div class="frame">
+      <p class="lead">Attendance — Hal Sample, last 90 days <span class="chip dim">derived from clock records</span> <span class="chip warn">late <span class="n">6</span> · 1 excused</span> <span class="chip stop">NCNS <span class="n">1</span></span> <span class="chip ok">on time <span class="n">52</span> of 59</span></p>
+      <div class="days dense tall" data-n="90" data-dow0="0" data-today="89" data-shade="60-89" data-sched="1,2,3,4,5" data-marks="12:amber mid,32:amber big,39:ncns,51:exc,65:amber big,73:amber,79:amber mid,86:amber mid" data-pop="86:Oct 27 · block 7:00 AM · clocked 7:35 · 20 min past grace ↗"></div>
+      <div class="dayslab" data-n="90" data-labels="0:Aug 2:l|30:Sep 1|60:Oct 1 · last 30 days:hot|89:today:blue:r"></div>
+      <div class="legend"><span><i style="border-radius:50%"></i>scheduled, on time</span><span><i style="border-radius:50%;background:var(--text-amber-800)"></i>late, sized by minutes</span><span><i style="background:var(--text-red-700);transform:rotate(45deg)"></i>no call, no show</span><span><i style="border:0;border-top:2px solid var(--text-faint);height:0;transform:rotate(-45deg)"></i>excused</span></div>
+      <p><span class="btn sm" style="float:right">Start a tardiness write-up →</span> <span class="note">The write-up carries the strip, not the sentence.</span></p>
+    </div></div>
+  </div>
+  <div class="say">
+    <p class="gain">Each late is a dot a press turns into its receipt (the block's start, the first clock-in, the minutes past grace), so a paper about someone's record starts from days they can see.</p>
+    <p class="gain">The shaded last thirty days show the four lates the warning counts; a cluster and a scatter no longer read the same.</p>
+    <p class="rule">Reuses the Timeline strip; the board's late chip receipt already reads the same kernel. Salaried people stay unmarked, since their sessions are made at schedule time.</p>
+  </div>
+  <div class="pass2"><div class="cap">Second pass · and the owner's note</div><p>The receipt card for Oct 27 ran off the right edge of the frame; it now aligns to the edge it is near. Kept the scheduled-day rings even though fifty-two of them is a lot of ink: the gaps, days with no block, are what make a late day readable against the roster. Taunya: <i>I really like this view. Let's build it.</i> A session is building it.</p></div>
+  <div class="pick" data-for="people-docs-3"></div>
+</section>
+
