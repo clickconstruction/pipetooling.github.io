@@ -625,6 +625,8 @@ export function DraftPayrollModal({
                       const isGenerating = generatingPayStubPerson === person
                       const rowBar = withBars ? barsByPerson.get(person) : undefined
                       const needsReview = !stub && estGross > 0 && reviewItems.length > 0
+                      // The owner (2026-10-30): a report with nothing paid on it shows Record payment, blue, in Cash due instead of a bar reading *report due*.
+                      const recordInCashDue = rowBar != null && stub != null && status === 'Report only'
                       return (
                         <tr key={person} style={{ borderBottom: '1px solid var(--border)' }}>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -650,7 +652,29 @@ export function DraftPayrollModal({
                           </td>
                           {rowBar ? (
                             <td style={{ padding: '0.5rem 0.75rem' }}>
-                              <DraftPayrollRowBarCell bar={rowBar} onReview={needsReview ? () => setReviewDaysDetail({ personName: person, items: reviewItems }) : undefined} />
+                              {recordInCashDue && stub ? (
+                                <button
+                                  type="button"
+                                  data-draft-payroll-record-in-cash-due
+                                  onClick={() => onRecordPayment(stub)}
+                                  disabled={markingPayStubId === stub.id}
+                                  title={rowBar.words}
+                                  style={{
+                                    padding: '2px 8px',
+                                    fontSize: '0.8125rem',
+                                    background: markingPayStubId === stub.id ? DEAD_PRESS_FILL : '#3b82f6',
+                                    color: markingPayStubId === stub.id ? DEAD_PRESS_TEXT : 'white',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {markingPayStubId === stub.id ? '...' : 'Record payment'}
+                                </button>
+                              ) : (
+                                <DraftPayrollRowBarCell bar={rowBar} onReview={needsReview ? () => setReviewDaysDetail({ personName: person, items: reviewItems }) : undefined} />
+                              )}
                             </td>
                           ) : (
                           <td style={{ padding: '0.5rem 0.75rem' }}>
@@ -772,7 +796,7 @@ export function DraftPayrollModal({
                                     )}
                                   </button>
                                 ) : null}
-                                {!stubFullyPaid ? (
+                                {!stubFullyPaid && !recordInCashDue ? (
                                   <button
                                     type="button"
                                     onClick={() => onRecordPayment(stub)}

@@ -25,8 +25,8 @@ const START = '2026-10-18'
 const END = '2026-10-24'
 
 function props(over: Partial<DraftPayrollModalProps> = {}): DraftPayrollModalProps {
-  const cost: Record<string, number> = { 'Hal Sample': 1071 / 5, 'Rosa Sample': 1120 / 5, 'Paco Sample': 1245 / 5, 'Eli Sample': 0 }
-  const hours: Record<string, number> = { 'Hal Sample': 38.25 / 5, 'Rosa Sample': 8, 'Paco Sample': 41.5 / 5, 'Eli Sample': 0 }
+  const cost: Record<string, number> = { 'Hal Sample': 1071 / 5, 'Rosa Sample': 1120 / 5, 'Paco Sample': 1245 / 5, 'Sid Sample': 1062 / 5, 'Eli Sample': 0 }
+  const hours: Record<string, number> = { 'Hal Sample': 38.25 / 5, 'Rosa Sample': 8, 'Paco Sample': 41.5 / 5, 'Sid Sample': 36 / 5, 'Eli Sample': 0 }
   const weekday = (d: string) => {
     const n = new Date(`${d}T12:00:00`).getDay()
     return n >= 1 && n <= 5
@@ -46,10 +46,12 @@ function props(over: Partial<DraftPayrollModalProps> = {}): DraftPayrollModalPro
     pendingCount: 3,
     canAccessHours: true,
     onOpenHoursForPeriod: vi.fn(),
-    peopleNames: ['Hal Sample', 'Rosa Sample', 'Paco Sample', 'Eli Sample'],
+    peopleNames: ['Hal Sample', 'Rosa Sample', 'Paco Sample', 'Sid Sample', 'Eli Sample'],
     payStubs: [
       { id: 's-hal', person_name: 'Hal Sample', period_start: START, period_end: END, hours_total: 38.25, gross_pay: 1071, created_at: null, paid_at: '2026-10-23T18:00:00Z', paid_by: null, paid_note: null },
       { id: 's-paco', person_name: 'Paco Sample', period_start: START, period_end: END, hours_total: 41.5, gross_pay: 1245, created_at: null, paid_at: null, paid_by: null, paid_note: null },
+      // A report with nothing paid on it yet: Record payment sits in Cash due.
+      { id: 's-sid', person_name: 'Sid Sample', period_start: START, period_end: END, hours_total: 36, gross_pay: 1062, created_at: null, paid_at: null, paid_by: null, paid_note: null },
     ],
     payStubPaymentsByStubId: {
       's-hal': [{ id: 'p1', pay_stub_id: 's-hal', amount: 1071, paid_at: '2026-10-23T18:00:00Z', memo: null, created_at: null, created_by: null }],
@@ -98,7 +100,7 @@ afterEach(cleanup)
 describe('DraftPayrollModal with the bars', () => {
   it('reads as today with the switch off: the sentence, the Status column and the banner', () => {
     mount(<DraftPayrollModal {...props()} />)
-    expect(screen.getByText(/1 of 4 paid · Total: \$3,436\.00 \| Left: \$1,992\.00/)).toBeTruthy()
+    expect(screen.getByText(/1 of 5 paid · Total: \$4,498\.00 \| Left: \$3,054\.00/)).toBeTruthy()
     expect(screen.getByText('Status')).toBeTruthy()
     expect(screen.getByText(/clock sessions in this period still need approval/)).toBeTruthy()
     expect(screen.queryByTestId('draft-payroll-period-bar')).toBeNull()
@@ -113,10 +115,10 @@ describe('DraftPayrollModal with the bars', () => {
 
     // The period bar in place of the sentence, with the same three kinds of money.
     const period = screen.getByTestId('draft-payroll-period-bar')
-    expect(screen.queryByText(/Total: \$3,436\.00/)).toBeNull()
-    expect(screen.getByText('This period · $3,436.00 · 1 of 4 paid')).toBeTruthy()
+    expect(screen.queryByText(/Total: \$4,498\.00/)).toBeNull()
+    expect(screen.getByText('This period · $4,498.00 · 1 of 5 paid')).toBeTruthy()
     expect(within(period).getByTitle('$1,444.00 paid')).toBeTruthy()
-    expect(within(period).getByTitle('$872.00 owed on a report')).toBeTruthy()
+    expect(within(period).getByTitle('$1,934.00 owed on a report')).toBeTruthy()
     expect(within(period).getByTitle('$1,120.00 no report yet')).toBeTruthy()
 
     // The banner is one chip in the button row; the dots sit on the rows whose sessions wait.
@@ -142,7 +144,17 @@ describe('DraftPayrollModal with the bars', () => {
     expect(salary.closest('td')?.querySelector('[data-draft-payroll-money]')).toBeTruthy()
     // The owner (2026-10-30): no legend under the period bar and no key paragraph under the table; the words are inside the parts and on the hover.
     expect(screen.queryByText(/A green bar is money sent/)).toBeNull()
-    expect(within(period).getByText('owed $872.00')).toBeTruthy()
+    expect(within(period).getByText('owed $1,934.00')).toBeTruthy()
+    // A report with nothing paid on it: Record payment, blue, in Cash due, and not in Actions (the owner, 2026-10-30).
+    const sidRow = screen.getByText('Sid Sample').closest('tr') as HTMLElement
+    const sidCells = sidRow.querySelectorAll('td')
+    const recordInCashDue = within(sidCells[2] as HTMLElement).getByRole('button', { name: 'Record payment' })
+    expect(recordInCashDue.getAttribute('data-draft-payroll-record-in-cash-due')).not.toBeNull()
+    expect(within(sidCells[5] as HTMLElement).queryByRole('button', { name: 'Record payment' })).toBeNull()
+    expect(screen.queryByTestId('draft-payroll-row-bar-Sid Sample')).toBeNull()
+    // A part-paid report keeps its bar and its Record payment in Actions.
+    const pacoRow = screen.getByText('Paco Sample').closest('tr') as HTMLElement
+    expect(within(pacoRow.querySelectorAll('td')[5] as HTMLElement).getByRole('button', { name: 'Record payment' })).toBeTruthy()
     // The $ column draws its cents smaller.
     const money = screen.getAllByText((_, el) => el?.hasAttribute('data-draft-payroll-money') === true && el.textContent === '$1,071.00')
     expect(money).toHaveLength(1)
@@ -155,7 +167,7 @@ describe('DraftPayrollModal with the bars', () => {
     const both = screen.getByTestId('draft-payroll-side-by-side')
     expect(within(both).getByText('Today')).toBeTruthy()
     expect(within(both).getByText('With the bars')).toBeTruthy()
-    expect(within(both).getByText(/Total: \$3,436\.00/)).toBeTruthy()
+    expect(within(both).getByText(/Total: \$4,498\.00/)).toBeTruthy()
     expect(within(both).getByTestId('draft-payroll-period-bar')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Show the bars' })).toBeNull()
   })
@@ -163,6 +175,6 @@ describe('DraftPayrollModal with the bars', () => {
   it('?sbs=1 does nothing for anyone but a dev', () => {
     mount(<DraftPayrollModal {...props()} />, '/people?tab=pay_stubs&sbs=1')
     expect(screen.queryByTestId('draft-payroll-side-by-side')).toBeNull()
-    expect(screen.getByText(/Total: \$3,436\.00/)).toBeTruthy()
+    expect(screen.getByText(/Total: \$4,498\.00/)).toBeTruthy()
   })
 })
