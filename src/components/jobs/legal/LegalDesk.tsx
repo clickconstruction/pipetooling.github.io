@@ -40,8 +40,9 @@ import { DeskLegendCard } from '../../help/LegendCard'
 import { LEGAL_DESK_LEGEND } from '../../../lib/legal/legalDeskLegend'
 import LegalDeskMapView from './LegalDeskMapView'
 import LegalFirmsWindow from './LegalFirmsWindow'
+import LegalReleaseFirmChooser from './LegalReleaseFirmChooser'
 import { useLegalMapCases } from '../../../hooks/useLegalMapCases'
-import { assignmentsFromCountiesByFirm, countyWords } from '../../../lib/legal/firmCounties'
+import { alsoCovers, countyWords, coverageFromCountiesByFirm, firstCalls } from '../../../lib/legal/firmCounties'
 import { LEGAL_NOTHING_IN_COLLECTIONS } from '../../../lib/legal/firmMap'
 import { EmptyState } from '../../EmptyState'
 import { cityOfAddress, firmForAccount, firmOf, firmSegmentWords, releaseHoldWords, switchWords, venueLineWords, type FirmForAccount, type VenueJob } from '../../../lib/legal/firmForAccount'
@@ -167,7 +168,10 @@ export default function LegalDesk(props: LegalDeskProps) {
   // v2.4794: the accounts the office gave up on — read like any other, never marked attorney-ready.
   const rawGivenUp = useMemo(() => groupCollectionsByPayer(uncollectibleJobs, contractCoverage, todayYmd), [uncollectibleJobs, contractCoverage, todayYmd])
   const firmNames = useMemo(() => new Map((legal?.firms ?? []).map((f) => [f.id, f.name] as const)), [legal?.firms])
-  const assignments = useMemo(() => assignmentsFromCountiesByFirm(legal?.countiesByFirm ?? EMPTY_COUNTIES), [legal?.countiesByFirm])
+  // v2.6227 (punch list #222, PR 3): a county may have several firms; the venue rule reads each county's first call and the firms that also cover it.
+  const coverage = useMemo(() => legal?.coverage ?? coverageFromCountiesByFirm(legal?.countiesByFirm ?? EMPTY_COUNTIES, (legal?.activeFirms ?? []).map((f) => f.id)), [legal?.coverage, legal?.countiesByFirm, legal?.activeFirms])
+  const assignments = useMemo(() => firstCalls(coverage), [coverage])
+  const alsoByCounty = useMemo(() => alsoCovers(coverage), [coverage])
   // v2.5792 (punch list #144 PR 2): every job's venue county — the property record's, else where its geocode falls — shared with the Map.
   const mapCases = useLegalMapCases({ accounts: rawAccounts, givenUp: rawGivenUp, byPayerKey: legal?.byPayerKey ?? EMPTY_MATTERS, firmNames }, Boolean(legal?.available))
   /** The office's switch on a two-county account: the firm id picked for this release; cleared when the account changes. */
@@ -183,8 +187,8 @@ export default function LegalDesk(props: LegalDeskProps) {
       const guess = placed ? '' : suggestTxCountyForCity(cityOfAddress(j.job_address))
       return { jobId: j.id, label: j.hcp_number || (j.click_number == null ? '' : String(j.click_number)) || '—', county: placed?.county ?? guess, from: placed ? placed.from : guess ? 'address' : 'none', balance: jobOpenBalance(j) }
     })
-    return firmForAccount({ jobs, matterFirmId: matterIsWithFirm(m) || matterAwaitsClose(m) ? m?.firm_id ?? null : null, assignments, firms: legal?.firms ?? [], override })
-  }, [legal?.byPayerKey, legal?.firms, mapCases.countyByJobId, assignments])
+    return firmForAccount({ jobs, matterFirmId: matterIsWithFirm(m) || matterAwaitsClose(m) ? m?.firm_id ?? null : null, assignments, also: alsoByCounty, firms: legal?.firms ?? [], override })
+  }, [legal?.byPayerKey, legal?.firms, mapCases.countyByJobId, assignments, alsoByCounty])
   // The rail's "keeps ~" reads each account's own firm's fee model.
   const accounts = useMemo(() => sortAccountsByNet(rawAccounts, (a) => quickNet(a.balance, feeModelOf(firmOf(firmFor(a))))), [rawAccounts, firmFor])
   const givenUpAccounts = useMemo(() => sortAccountsByNet(rawGivenUp, (a) => quickNet(a.balance, feeModelOf(firmOf(firmFor(a))))), [rawGivenUp, firmFor])
@@ -924,7 +928,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             cases={mapCases.cases}
             loading={mapCases.loading}
             firms={legal?.activeFirms ?? []}
-            countiesByFirm={legal?.countiesByFirm ?? new Map()}
+            coverage={coverage}
             stacked={stacked}
             openOn={mapOpenOn}
             venueFor={venueFor}
@@ -1162,6 +1166,8 @@ export default function LegalDesk(props: LegalDeskProps) {
                   This is the release. The matter goes to <b>{firm.name}</b> the moment you confirm — {selected.jobs.length} job{selected.jobs.length === 1 ? '' : 's'}, {formatLegalMoney(selected.balance)}, theory <b>{packet.theory.label}</b>, exhibits A–{packet.exhibits[packet.exhibits.length - 1]?.letter ?? 'A'}.
                   {packet.theirWord.heldCount ? <> <b>{packet.theirWord.heldCount} entr{packet.theirWord.heldCount === 1 ? 'y is' : 'ies are'} held back</b> from the firm.</> : null}
                 </p>
+                {/* v2.6227 (punch list #222, PR 3): every firm that could take it, its role, its fee model and what Click keeps; the pick is the header's switch. */}
+                <LegalReleaseFirmChooser account={selectedFirm} pickedId={firm.id} balance={selected.balance} alsoByCounty={alsoByCounty} onPick={setFirmOverride} />
                 {packet.worth.verdict === 'not worth it' ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>Click keeps {formatLegalMoney(packet.worth.net)}.</b> The firm’s cut and costs eat what is left. Write down / stop pursuing is the other exit.</p> : null}
                 {packet.readiness.stops ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>{packet.readiness.stops} red gap{packet.readiness.stops === 1 ? '' : 's'} still open</b> — {packet.gaps.filter((g) => g.severity === 'stop').map((g) => g.label).join('; ')}. You can mark anyway; the packet says so on its cover sheet.</p> : null}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
@@ -1274,7 +1280,7 @@ export default function LegalDesk(props: LegalDeskProps) {
           onSaved={() => { void legal?.reload() }}
           onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); showTab('account') }}
           firms={legal?.activeFirms ?? []}
-          countiesByFirm={legal?.countiesByFirm ?? EMPTY_COUNTIES}
+          coverage={coverage}
           cases={mapCases.cases}
           // Punch list #222: the Map opens with this firm lit (PR 1); a dev extends the firm's counties inside the window (PR 2).
           onShowOnMap={(id) => { setFirmOpen(false); setMapOpenOn({ county: null, heldId: null, firmId: id, nonce: Date.now() }); pressView('map') }}

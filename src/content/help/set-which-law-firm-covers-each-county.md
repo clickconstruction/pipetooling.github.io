@@ -2,7 +2,7 @@
 title: set which law firm covers each county
 category: Billing & Money
 roles: dev
-keywords: legal, attorney, law firm, collections, county, counties, venue, territory, map, texas, settings, jobs and billing, who covers, zoom, cases, dots
+keywords: legal, attorney, law firm, collections, county, counties, venue, territory, map, texas, settings, jobs and billing, who covers, zoom, cases, dots, share, shared, first call, stripes
 where: /settings?tab=settings-jobs#settings-legal-firm
 ---
 You color counties on a Texas map so each collections law firm covers its own area. A collections suit is filed in the county where the customer is. So the firm for an account is the firm that covers that county.
@@ -40,11 +40,21 @@ Each case on the card has an **Open on the desk** link. The link opens the Legal
 
 The dots are for reference while you color. The Legal desk's own **Map** view works the cases. Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney#see-every-case-on-the-map).
 
-## When another firm already holds the county
+## When another firm already covers the county
 
-A county keeps the color of the firm that holds it. Click it while a different firm is picked, and the app asks before it moves. Say yes and the county moves to the picked firm. Say no and nothing changes.
+A county keeps the color of the firm that covers it. Click it while a different firm is picked, and the app asks how the picked firm should cover it.
 
-Moving a county changes new releases only. An account already with the old firm stays with the old firm.
+- **Share it.** Both firms cover the county. The firm that had it stays first call.
+- **Make the picked firm first call.** Both firms cover the county. New releases there go to the picked firm.
+- **Move it.** The picked firm takes the county. The other firm stops covering it.
+
+Press {{button:outline|Leave it}} to change nothing.
+
+## What first call means
+
+Two firms can share a county. One of them is its first call. The Legal desk picks the first call for a release in that county. The office can still switch a release to the other firm. Click a county your picked firm shares to take it off for that firm. When the first call comes off, the other firm becomes first call.
+
+Sharing, moving or clearing a county changes new releases only. An account already with a firm stays with that firm.
 
 ## Add the second firm
 
@@ -53,10 +63,11 @@ Press {{button:outline|Add a firm}} under the firm cards. Fill in the name, the 
 ## What the colors mean
 
 - A colored county has a firm. The legend under the map names each color.
+- A striped county has two firms. The first call's color sits under thin lines in the other firm's color.
 - A gray county has no firm yet. The app never guesses a firm for it.
 
-Each firm's card lists its counties in words, for a quick read without the map.
+Each firm's card lists its counties in words, for a quick read without the map. A county the firm covers without being first call has the word also after its name.
 
 ## What comes next
 
-The Legal desk reads each account's county and picks the firm from this map. An account in a gray county reads *No firm covers* that county. The desk cannot release it until you color the county. While no county is colored at all, the one firm takes every account. The desk's **Map** view shows the same counties with every case. A dev can open this block over the desk with its **Firms…** button. Read [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails) for each firm's people.
+The Legal desk reads each account's county and picks that county's first call from this map. An account in a gray county reads *No firm covers* that county. The desk cannot release it until you color the county. While no county is colored at all, the one firm takes every account. The desk's **Map** view shows the same counties with every case. A dev can open this block over the desk with its **Firms…** button. Read [manage who at the law firm gets emails](/help/manage-who-at-the-law-firm-gets-emails) for each firm's people.

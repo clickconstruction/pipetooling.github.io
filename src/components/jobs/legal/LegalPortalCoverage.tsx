@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { assignmentsFromCountiesByFirm, countiesLine, countyWords, firmHues, firmLegend, NO_FIRM_HUE } from '../../../lib/legal/firmCounties'
+import { alsoCovers, countiesLine, countyWords, coverageFromCountiesByFirm, firmHues, firmLegend, firmsOfCover, firstCalls, NO_FIRM_HUE } from '../../../lib/legal/firmCounties'
 import { coverageCountWords, coverageMatterWords, type FirmCoverage } from '../../../lib/legal/legalFirmCoverage'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED } from '../../../lib/portal/portalTheme'
 import { portalSmall } from '../../../lib/legal/legalPortalCards'
@@ -27,13 +27,27 @@ export default function LegalPortalCoverage({ coverage, firmId, openOn = null }:
   const [county, setCounty] = useState<string | null>(openOn?.county ?? null)
   useEffect(() => { if (openOn) setCounty(openOn.county) }, [openOn])
   const firmLikes = useMemo(() => coverage.firms.map((f) => ({ id: f.id, name: f.name, active: true, created_at: f.createdAt })), [coverage.firms])
-  const assignments = useMemo(() => assignmentsFromCountiesByFirm(new Map(coverage.firms.map((f) => [f.id, f.counties]))), [coverage.firms])
+  // v2.6227 (punch list #222, PR 3): two firms may cover one county. The payload names no first call, so the
+  // oldest firm leads a shared county's color and the county draws striped; the words say it is shared.
+  const shared = useMemo(() => coverageFromCountiesByFirm(new Map(coverage.firms.map((f) => [f.id, f.counties])), coverage.firms.map((f) => f.id)), [coverage.firms])
+  const assignments = useMemo(() => firstCalls(shared), [shared])
+  const also = useMemo(() => alsoCovers(shared), [shared])
   const hues = useMemo(() => firmHues(firmLikes), [firmLikes])
   const legend = useMemo(() => firmLegend(firmLikes, assignments), [firmLikes, assignments])
   const firmNames = useMemo(() => new Map(coverage.firms.map((f) => [f.id, f.name] as const)), [coverage.firms])
 
-  const holder = county ? assignments.get(county) ?? null : null
+  const holders = county ? firmsOfCover(shared.get(county)) : []
   const countyCount = county ? coverage.countyCounts[county] ?? 0 : 0
+
+  /** A firm's counties, a shared one named with the firm it shares with: `Comal (shared with Alamo Collections Law)`. */
+  const sharedLine = (id: string, counties: ReadonlyArray<string>): string => {
+    const line = countiesLine(counties)
+    const notes = counties
+      .map((c) => ({ c, with: firmsOfCover(shared.get(c)).filter((x) => x !== id).map((x) => (x === firmId ? 'you' : firmNames.get(x) ?? 'another firm')) }))
+      .filter((n) => n.with.length)
+    if (notes.length === 0) return line
+    return notes.reduce((acc, n) => acc.replace(new RegExp(`(^|, |· )${n.c}(?=,|$)`), `$1${n.c} (shared with ${n.with.join(' and ')})`), line)
+  }
 
   return (
     <div data-legal-coverage style={{ display: 'flex', flexWrap: 'wrap', gap: 14, alignItems: 'flex-start' }}>
@@ -48,6 +62,7 @@ export default function LegalPortalCoverage({ coverage, firmId, openOn = null }:
           firmNames={firmNames}
           legend={legend}
           pickedFirmId={null}
+          also={also}
           cases={[]}
           heldCaseId={null}
           selectedCounty={county}
@@ -69,7 +84,7 @@ export default function LegalPortalCoverage({ coverage, firmId, openOn = null }:
                   {f.name}
                   {f.id === firmId ? <span style={{ color: COPPER, fontWeight: 700 }}> · your firm</span> : null}
                 </div>
-                <div style={{ fontSize: portalSmall(11.5), color: MUTED }}>{countiesLine(f.counties)}</div>
+                <div style={{ fontSize: portalSmall(11.5), color: MUTED }}>{sharedLine(f.id, f.counties)}</div>
                 <div style={{ fontSize: portalSmall(11.5), color: MUTED }}>{coverageMatterWords(f.matterCount)}</div>
               </div>
             )
@@ -82,7 +97,7 @@ export default function LegalPortalCoverage({ coverage, firmId, openOn = null }:
           {county ? (
             <>
               <div style={{ fontSize: 13.5, fontWeight: 600, color: INK, marginTop: 4 }}>{countyWords(county)}</div>
-              <div style={{ fontSize: 12.5, color: MUTED }}>{holder ? `Covered by ${firmNames.get(holder) ?? 'a firm'}` : 'No firm covers it yet'}</div>
+              <div style={{ fontSize: 12.5, color: MUTED }}>{holders.length ? `Covered by ${holders.map((id) => firmNames.get(id) ?? 'a firm').join(' and ')}` : 'No firm covers it yet'}</div>
               <div data-legal-coverage-count style={{ fontSize: 12.5, color: INK, marginTop: 2 }}>{coverageCountWords(countyCount)}</div>
             </>
           ) : (

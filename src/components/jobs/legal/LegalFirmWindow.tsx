@@ -6,6 +6,7 @@ import LegalFirmReplacePanel from './LegalFirmReplacePanel'
 import LegalFirmCoverage from './LegalFirmCoverage'
 import { legalFirmFacts, legalFirmFactsWords } from '../../../lib/legal/legalFirmFacts'
 import type { LegalMapCase } from '../../../lib/legal/firmMap'
+import type { Coverage } from '../../../lib/legal/firmCounties'
 import { legalIntakeAnswerRows, legalIntakeSentWords, legalIntakeUnseen, shapeLegalFirmIntake } from '../../../lib/legal/legalFirmIntake'
 import { companyShortName } from '../../../lib/legal/legalPortalStart'
 import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
@@ -14,6 +15,13 @@ import { readLegalOfficeContacts } from '../../../lib/legal/legalOfficeContactsI
 import type { LegalFirmRow, LegalMatterRow, LegalRecipientRow } from '../../../lib/legal/legalMatters'
 
 const db = supabase as unknown as SupabaseClient
+
+/** The counties only this firm covers: a replace leaves them with no firm (a county it shares keeps its other firm). */
+function soleCountiesOf(coverage: Coverage, firmId: string): string[] {
+  const out: string[] = []
+  for (const [county, cover] of coverage) if (cover.first === firmId && cover.also.length === 0) out.push(county)
+  return out
+}
 
 /** Where Settings keeps the firm: the Jobs & billing tab, at the block's anchor. */
 export const LEGAL_FIRM_SETTINGS_HREF = '/settings?tab=settings-jobs#settings-legal-firm'
@@ -34,7 +42,7 @@ export const LEGAL_FIRM_SETTINGS_HREF = '/settings?tab=settings-jobs#settings-le
  * names the bridge. Since v2.6221 (PR 2) a dev extends the firm's counties there, in place. The
  * details and Click's particulars fold to one line each inside the Settings block.
  */
-export default function LegalFirmWindow({ firm, matters, recipients, canEdit, onClose, onSaved, onShowAccount, zIndex, firms = [], countiesByFirm = null, cases = [], onShowOnMap }: {
+export default function LegalFirmWindow({ firm, matters, recipients, canEdit, onClose, onSaved, onShowAccount, zIndex, firms = [], coverage = null, cases = [], onShowOnMap }: {
   firm: LegalFirmRow | null
   matters: ReadonlyArray<LegalMatterRow>
   recipients: ReadonlyArray<LegalRecipientRow>
@@ -46,8 +54,8 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
   zIndex: number
   /** The active firms, as `useLegalMatters.activeFirms`, for the map's hues (punch list #222, PR 1). */
   firms?: ReadonlyArray<LegalFirmRow>
-  /** Each firm's counties; null draws no coverage section (a mount without the desk's data). */
-  countiesByFirm?: ReadonlyMap<string, ReadonlyArray<string>> | null
+  /** county → first call and the firms that also cover it (v2.6227); null draws no coverage section (a mount without the desk's data). */
+  coverage?: Coverage | null
   /** The desk's cases on the map (`useLegalMapCases`), for the rows' counts and the dots. */
   cases?: ReadonlyArray<LegalMapCase>
   /** *Show on the desk map ›*: the desk opens its Map view with this firm lit. */
@@ -129,17 +137,17 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
           {firm ? <FirmIntakeAnswers key={firm.id} firm={firm} onSeen={onSaved} /> : null}
           {/* The facts first for a dev (the block's details fold now, and the facts must not fold with them); the read-only view keeps them under its rows. */}
           {canEdit && factsLine ? <div style={{ marginBottom: 12 }}>{factsLine}</div> : null}
-          {firm && countiesByFirm ? (
-            <LegalFirmCoverage key={`coverage-${firm.id}`} firm={firm} firms={firms} countiesByFirm={countiesByFirm} cases={cases} canEdit={canEdit} onShowOnMap={onShowOnMap} onSaved={onSaved} />
+          {firm && coverage ? (
+            <LegalFirmCoverage key={`coverage-${firm.id}`} firm={firm} firms={firms} coverage={coverage} cases={cases} canEdit={canEdit} onShowOnMap={onShowOnMap} onSaved={onSaved} />
           ) : null}
           {canEdit ? (
-            <div style={{ marginTop: countiesByFirm ? 16 : 0, paddingTop: countiesByFirm ? 14 : 0, borderTop: countiesByFirm ? '1px solid var(--border)' : undefined }}>
+            <div style={{ marginTop: coverage ? 16 : 0, paddingTop: coverage ? 14 : 0, borderTop: coverage ? '1px solid var(--border)' : undefined }}>
               {/* Keyed on the firm, so a replace remounts the block on the new one. */}
               <LegalFirmSettingsBlock key={firm?.id ?? 'none'} inWindow firmId={firm?.id ?? null} onSaved={onSaved} />
-              {firm && facts ? <LegalFirmReplacePanel key={`replace-${firm.id}`} firm={firm} facts={facts} onReplaced={onSaved} onShowAccount={onShowAccount} counties={countiesByFirm?.get(firm.id) ?? []} /> : null}
+              {firm && facts ? <LegalFirmReplacePanel key={`replace-${firm.id}`} firm={firm} facts={facts} onReplaced={onSaved} onShowAccount={onShowAccount} counties={coverage ? soleCountiesOf(coverage, firm.id) : []} /> : null}
             </div>
           ) : (
-            <div style={{ marginTop: countiesByFirm ? 16 : 0 }}>
+            <div style={{ marginTop: coverage ? 16 : 0 }}>
               <ReadOnlyFirm firm={firm} factsLine={factsLine} />
             </div>
           )}

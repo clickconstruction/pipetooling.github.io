@@ -1,10 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { bridgeEndsWords, coverageCasesChip, coverageCountyChip, coverageNudgeButton, coverageNudgeWords, coverageState, coverageSumWords, firmWindowCoverage, replaceLeavesUncoveredWords } from './firmWindowCoverage'
+import { coverageFromCountiesByFirm } from './firmCounties'
 
-const byFirm = new Map<string, string[]>([
+const byFirm = coverageFromCountiesByFirm(new Map<string, string[]>([
   ['snell', ['Williamson', 'Travis', 'Bell', 'Hays']],
   ['alamo', ['Bexar', 'Comal']],
-])
+]))
 
 const cases = [
   { county: 'Travis', firmId: 'snell', balance: 15781.82 },
@@ -24,19 +25,20 @@ describe('firmWindowCoverage', () => {
   it('one row per county the firm covers, largest open balance first, with the cases that count for the firm', () => {
     const c = firmWindowCoverage('snell', byFirm, cases)
     expect(c.rows).toEqual([
-      { county: 'Travis', cases: 2, balance: 17020.47 },
-      { county: 'Williamson', cases: 2, balance: 4688.84 },
-      { county: 'Bell', cases: 1, balance: 4050 },
-      { county: 'Hays', cases: 0, balance: 0 },
+      { county: 'Travis', cases: 2, balance: 17020.47, role: 'first', firstCall: 'snell' },
+      { county: 'Williamson', cases: 2, balance: 4688.84, role: 'first', firstCall: 'snell' },
+      { county: 'Bell', cases: 1, balance: 4050, role: 'first', firstCall: 'snell' },
+      { county: 'Hays', cases: 0, balance: 0, role: 'first', firstCall: 'snell' },
     ])
     expect(c.counties).toBe(4)
+    expect(c.also).toBe(0)
     expect(c.elsewhere).toEqual({ cases: 1, balance: 500 })
     expect(c.cases).toBe(6)
     expect(c.balance).toBe(26259.31)
   })
 
   it('a firm with no counties has no rows, and its released cases still count for it', () => {
-    const c = firmWindowCoverage('alamo', new Map([['snell', ['Travis']]]), cases)
+    const c = firmWindowCoverage('alamo', coverageFromCountiesByFirm(new Map([['snell', ['Travis']]])), cases)
     expect(c.rows).toEqual([])
     expect(c.elsewhere).toEqual({ cases: 1, balance: 900 })
     expect(c.cases).toBe(1)
@@ -50,11 +52,30 @@ describe('firmWindowCoverage', () => {
     expect(coverageCasesChip(1, 2976.34)).toBe('1 case · $2,976.34')
     expect(coverageSumWords({ counties: 4, elsewhere: { cases: 0, balance: 0 } })).toBe('4 counties')
     expect(coverageSumWords({ counties: 4, elsewhere: { cases: 1, balance: 500 } })).toBe('4 counties · 1 case with the firm elsewhere')
+    expect(coverageSumWords({ counties: 5, also: 1, elsewhere: { cases: 0, balance: 0 } })).toBe('5 counties · 1 shared')
+  })
+
+  it('a county the firm shares: the row reads also, names the first call, and counts only the cases already with the firm (v2.6227)', () => {
+    // Comal: Alamo first call, Snell also. One case under review there (Alamo's), one released to Snell there.
+    const shared = new Map([['Comal', { first: 'alamo', also: ['snell'] }], ['Travis', { first: 'snell', also: [] }]])
+    const here = [
+      { county: 'Comal', firmId: null, balance: 2140 },
+      { county: 'Comal', firmId: 'snell', balance: 309.16 },
+      { county: 'Travis', firmId: null, balance: 1000 },
+    ]
+    const snell = firmWindowCoverage('snell', shared, here)
+    expect(snell.rows).toEqual([
+      { county: 'Travis', cases: 1, balance: 1000, role: 'first', firstCall: 'snell' },
+      { county: 'Comal', cases: 1, balance: 309.16, role: 'also', firstCall: 'alamo' },
+    ])
+    expect(snell.also).toBe(1)
+    const alamo = firmWindowCoverage('alamo', shared, here)
+    expect(alamo.rows).toEqual([{ county: 'Comal', cases: 1, balance: 2140, role: 'first', firstCall: 'alamo' }])
+    expect(coverageState('snell', shared, 2)).toEqual({ kind: 'covers' })
   })
 
   it('the state: covers, nothing colored anywhere, or none here while others cover', () => {
     expect(coverageState('snell', byFirm, 2)).toEqual({ kind: 'covers' })
-    expect(coverageState('snell', new Map([['snell', []]]), 1)).toEqual({ kind: 'nothing_colored', firms: 1 })
     expect(coverageState('snell', new Map(), 1)).toEqual({ kind: 'nothing_colored', firms: 1 })
     expect(coverageState('new', byFirm, 3)).toEqual({ kind: 'none_here' })
   })

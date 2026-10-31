@@ -53,7 +53,7 @@ const firm: LegalFirmRow = { id: 'firm-1', name: 'ZZ Test Firm', handling_name: 
 const matters = [{ id: 'm1', firm_id: 'firm-1', stage: 'referred', closed_at: null, payer_name: 'Brazos Ridge Contracting', payer_key: 'c:brazos' }] as unknown as LegalMatterRow[]
 const recipients = [{ id: 'r1', firm_id: 'firm-1', removed_at: null }, { id: 'r2', firm_id: 'firm-1', removed_at: null }] as unknown as LegalRecipientRow[]
 
-type CoverageProps = Pick<ComponentProps<typeof LegalFirmWindow>, 'firms' | 'countiesByFirm' | 'cases' | 'onShowOnMap'>
+type CoverageProps = Pick<ComponentProps<typeof LegalFirmWindow>, 'firms' | 'coverage' | 'cases' | 'onShowOnMap'>
 
 function renderWindow(extra: { canEdit: boolean; firm?: LegalFirmRow | null } & CoverageProps) {
   const onClose = vi.fn()
@@ -64,7 +64,7 @@ function renderWindow(extra: { canEdit: boolean; firm?: LegalFirmRow | null } & 
 }
 
 /** Punch list #222, PR 1: the desk's coverage data, as `LegalDesk` passes it. Travis holds two cases, Williamson one; one case with the firm sits in Bastrop, which it no longer covers; Gonzales has a case and no firm. */
-const COVERED = new Map<string, string[]>([['firm-1', ['Travis', 'Williamson']]])
+const COVERED = new Map([['Travis', { first: 'firm-1', also: [] }], ['Williamson', { first: 'firm-1', also: [] }]])
 const CASES = [
   { id: 'a', key: 'c:a', name: 'Brazos Ridge Contracting', balance: 15781.82, jobLabels: '701', jobCount: 1, viaGc: false, stand: 'firm', firmId: 'firm-1', note: 'with ZZ Test Firm', lat: null, lng: null, county: 'Travis', countyFrom: 'record' },
   { id: 'b', key: 'c:b', name: 'Bryan Herber', balance: 1238.65, jobLabels: '702', jobCount: 1, viaGc: false, stand: 'gave', firmId: null, note: 'given up on', lat: null, lng: null, county: 'Travis', countyFrom: 'record' },
@@ -102,7 +102,7 @@ describe('LegalFirmWindow', () => {
 
   it('opens on where the firm covers: the title, the chips, a row per county with its cases and dollars, the sum, the flag and Show on the desk map (v2.6195)', async () => {
     const onShowOnMap = vi.fn()
-    renderWindow({ canEdit: true, firms: FIRMS, countiesByFirm: COVERED, cases: CASES, onShowOnMap })
+    renderWindow({ canEdit: true, firms: FIRMS, coverage: COVERED, cases: CASES, onShowOnMap })
     await settle()
     expect(document.querySelector('[data-legal-firm-title]')!.textContent).toContain('ZZ Test Firm')
     expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('covers')
@@ -131,7 +131,7 @@ describe('LegalFirmWindow', () => {
 
   it('while no county is colored for any firm, the nudge names the bridge, and its press opens the picker in place where an area colors a metro and Save writes it (v2.6195, v2.6221)', async () => {
     db.writes.length = 0
-    const { onSaved } = renderWindow({ canEdit: true, firms: FIRMS, countiesByFirm: new Map([['firm-1', []]]), cases: CASES })
+    const { onSaved } = renderWindow({ canEdit: true, firms: FIRMS, coverage: new Map(), cases: CASES })
     await settle()
     const nudge = document.querySelector('[data-legal-firm-nudge]')!
     expect(nudge.getAttribute('data-legal-firm-nudge')).toBe('nothing_colored')
@@ -155,13 +155,14 @@ describe('LegalFirmWindow', () => {
     expect(document.querySelector('[data-legal-firm-bridge-ends]')!.textContent).toBe('Saving ends the default. 1 case sits where no firm covers: Kettle Creek Farms in Gonzales County. Add its county too, or the desk cannot release it.')
     fireEvent.click(screen.getByRole('button', { name: 'Save 5 counties' }))
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
-    const insert = db.writes.find((w) => w.table === 'legal_firm_counties' && w.op === 'insert')!
-    expect((insert.payload as Array<{ county: string; firm_id: string }>).map((r) => `${r.firm_id}:${r.county}`).sort()).toEqual(['firm-1:Bastrop', 'firm-1:Caldwell', 'firm-1:Hays', 'firm-1:Travis', 'firm-1:Williamson'])
+    // v2.6227: one database call, every county with its firms, its first call and what the picker read.
+    const save = db.rpcs.find((r) => r.name === 'legal_save_county_coverage')!
+    expect((save.args as { p_counties: Array<{ county: string; firms: string[]; first_call: string; was: string[] }> }).p_counties.map((c) => `${c.county}:${c.firms.join('+')}:${c.first_call}:${c.was.length}`)).toEqual(['Bastrop:firm-1:firm-1:0', 'Caldwell:firm-1:firm-1:0', 'Hays:firm-1:firm-1:0', 'Travis:firm-1:firm-1:0', 'Williamson:firm-1:firm-1:0'])
     expect(await screen.findByText('5 counties saved. The Legal desk reads them now.')).toBeTruthy()
   })
 
   it('the office reads the coverage too, without the dev’s presses (v2.6195)', async () => {
-    renderWindow({ canEdit: false, firms: FIRMS, countiesByFirm: new Map(), cases: CASES })
+    renderWindow({ canEdit: false, firms: FIRMS, coverage: new Map(), cases: CASES })
     await settle()
     expect(document.querySelector('[data-legal-firm-nudge]')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Color ZZ Test Firm’s counties…' })).toBeNull()
@@ -169,11 +170,31 @@ describe('LegalFirmWindow', () => {
   })
 
   it('the office sees no Extend coverage… on a firm that covers counties (v2.6221)', async () => {
-    renderWindow({ canEdit: false, firms: FIRMS, countiesByFirm: COVERED, cases: CASES, onShowOnMap: vi.fn() })
+    renderWindow({ canEdit: false, firms: FIRMS, coverage: COVERED, cases: CASES, onShowOnMap: vi.fn() })
     await settle()
     expect(document.querySelector('[data-legal-firm-coverage-rows]')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Extend coverage…' })).toBeNull()
     expect(screen.getByRole('button', { name: 'Show on the desk map ›' })).toBeTruthy()
+  })
+
+  it('a county the firm shares reads also with the first call named; while editing, Make first call changes it (v2.6227)', async () => {
+    db.rpcs.length = 0
+    const ALAMO = { ...firm, id: 'firm-2', name: 'ZZ Alamo' } as LegalFirmRow
+    const shared = new Map([['Travis', { first: 'firm-1', also: [] }], ['Comal', { first: 'firm-2', also: ['firm-1'] }]])
+    const { onSaved } = renderWindow({ canEdit: true, firms: [firm, ALAMO], coverage: shared, cases: CASES })
+    await settle()
+    expect(document.querySelector('[data-legal-firm-coverage-counties]')!.textContent).toBe('2 counties')
+    expect(document.querySelector('[data-legal-firm-coverage-row="Comal"] [data-legal-firm-coverage-also]')!.textContent).toBe('also covers · ZZ Alamo first call')
+    expect(document.querySelector('[data-legal-firm-coverage-sum]')!.textContent).toContain('2 counties · 1 shared')
+    expect(screen.queryByRole('button', { name: 'Make first call' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Extend coverage…' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Make first call' }))
+    expect(await screen.findByText('ZZ Test Firm is first call in Comal once you save. ZZ Alamo still covers it.')).toBeTruthy()
+    expect(document.querySelector('[data-legal-firm-extend-changes]')!.textContent).toBe('Takes first call in Comal County from ZZ Alamo.')
+    fireEvent.click(screen.getByRole('button', { name: 'Save 1 county' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    const save = db.rpcs.find((r) => r.name === 'legal_save_county_coverage')!
+    expect((save.args as { p_counties: unknown }).p_counties).toEqual([{ county: 'Comal', firms: ['firm-1', 'firm-2'], first_call: 'firm-1', was: ['firm-1', 'firm-2'] }])
   })
 
   it('Click’s particulars fold behind Edit particulars in the window (v2.6195)', async () => {
