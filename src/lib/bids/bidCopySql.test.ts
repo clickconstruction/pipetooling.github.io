@@ -196,7 +196,11 @@ describe('a copy that runs as the caller writes no table closed to the caller (v
         const privs = m[2]!.toUpperCase()
         const ops = /\bALL\b/.test(privs) ? ['INSERT', 'UPDATE', 'DELETE'] : ['INSERT', 'UPDATE', 'DELETE'].filter((op) => privs.includes(op))
         const set = shut.get(m[3]!) ?? new Set<string>()
-        for (const op of ops) (m[1]!.toUpperCase() === 'REVOKE' ? set.add(op) : set.delete(op))
+        const revoke = m[1]!.toUpperCase() === 'REVOKE'
+        for (const op of ops) {
+          if (revoke) set.add(op)
+          else set.delete(op)
+        }
         shut.set(m[3]!, set)
       }
     }
