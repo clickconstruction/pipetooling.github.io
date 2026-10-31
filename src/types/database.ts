@@ -3735,6 +3735,9 @@ export type Database = {
           outcome_at: string | null
           outcome_note: string | null
           sort_order: number
+          owner_user_id: string | null
+          locked_by: string | null
+          locked_at: string | null
           source_bid_version_id: string | null
           starred_price_book_version_id: string | null
         }
@@ -3751,6 +3754,9 @@ export type Database = {
           outcome_at?: string | null
           outcome_note?: string | null
           sort_order?: number
+          owner_user_id?: string | null
+          locked_by?: string | null
+          locked_at?: string | null
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
         }
@@ -3767,6 +3773,9 @@ export type Database = {
           outcome_at?: string | null
           outcome_note?: string | null
           sort_order?: number
+          owner_user_id?: string | null
+          locked_by?: string | null
+          locked_at?: string | null
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
         }
