@@ -616,7 +616,7 @@ SELECT bct.same('undo: what hangs on a count row outside the ledger is what Undo
      JOIN pg_attribute a ON a.attrelid = c.conrelid AND a.attnum = c.conkey[1]
     WHERE c.contype = 'f' AND c.confrelid = 'public.bids_count_rows'::regclass
       AND NOT (cl.relname::text = ANY (public.bid_changes_tables()))),
-  'bid_count_row_submission_hides.count_row_id bid_submittal_items.source_count_row_id bid_submittal_takeoff_choices.count_row_id bids_takeoff_template_mappings.count_row_id');
+  'bid_count_row_submission_hides.count_row_id bid_fixture_pull_rows.count_row_id bid_submittal_items.source_count_row_id bid_submittal_takeoff_choices.count_row_id bids_takeoff_template_mappings.count_row_id');
 
 SELECT 'bid_changes PASSED' AS result;
 ROLLBACK;

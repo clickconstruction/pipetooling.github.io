@@ -155,6 +155,8 @@ describe('loadBidUndoUnseen (PR 6)', () => {
       bid_submittal_takeoff_choices: [{ count_row_id: 'c1', ticked: true }, { count_row_id: 'c120', ticked: true }, { count_row_id: 'c7', ticked: false }],
       bid_submittal_items: [{ source_count_row_id: 'c1' }, { source_count_row_id: 'c1' }],
       bid_count_row_submission_hides: [{ count_row_id: 'c-not-asked' }],
+      // v2.6180: a robot fixture the window landed on the row.
+      bid_fixture_pull_rows: [{ count_row_id: 'c120' }],
     })
     const got = await loadBidUndoUnseen(ids, client)
     expect(asked).toEqual([
@@ -162,8 +164,9 @@ describe('loadBidUndoUnseen (PR 6)', () => {
       'bid_submittal_items.source_count_row_id:100', 'bid_submittal_items.source_count_row_id:50',
       'bid_submittal_takeoff_choices.count_row_id:100 ticked=true', 'bid_submittal_takeoff_choices.count_row_id:50 ticked=true',
       'bids_takeoff_template_mappings.count_row_id:100', 'bids_takeoff_template_mappings.count_row_id:50',
+      'bid_fixture_pull_rows.count_row_id:100', 'bid_fixture_pull_rows.count_row_id:50',
     ])
-    expect(Object.fromEntries(got)).toEqual({ c1: { ticks: 1, hides: 0, items: 2, mappings: 0 }, c120: { ticks: 1, hides: 0, items: 0, mappings: 0 } })
+    expect(Object.fromEntries(got)).toEqual({ c1: { ticks: 1, hides: 0, items: 2, mappings: 0, fixtures: 0 }, c120: { ticks: 1, hides: 0, items: 0, mappings: 0, fixtures: 1 } })
   })
 
   it('throws a failed read, so Undo stays off', async () => {

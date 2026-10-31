@@ -280,7 +280,8 @@ describe('what hangs on a count row outside the ledger', () => {
     expect(bidUndoGateUnseen(removing, read('c-2', { items: 1 }))).toEqual({ ready: false, reason: 'Undo is off. Rows it added carry work History cannot see: 1 submittal item.' })
     expect(bidUndoGateUnseen(removing, read('c-1', { hides: 1 }))).toEqual({ ready: false, reason: 'Undo is off. Rows it added carry work History cannot see: 1 row hidden from the pricing page.' })
     expect(bidUndoGateUnseen(removing, read('c-2', { mappings: 3 }))).toEqual({ ready: false, reason: 'Undo is off. Rows it added carry work History cannot see: 3 By Stage picks.' })
-    expect(bidUndoUnseenReason({ ticks: 1, hides: 0, items: 2, mappings: 0 })).toBe('Undo is off. Rows it added carry work History cannot see: 1 submittal tick and 2 submittal items.')
+    expect(bidUndoGateUnseen(removing, read('c-1', { fixtures: 2 }))).toEqual({ ready: false, reason: 'Undo is off. Rows it added carry work History cannot see: 2 robot fixtures the robot fixtures window landed.' })
+    expect(bidUndoUnseenReason({ ticks: 1, hides: 0, items: 2, mappings: 0, fixtures: 0 })).toBe('Undo is off. Rows it added carry work History cannot see: 1 submittal tick and 2 submittal items.')
   })
 
   it('offers Undo when nothing hangs there, waits while the read is out, and stays off when it failed', () => {

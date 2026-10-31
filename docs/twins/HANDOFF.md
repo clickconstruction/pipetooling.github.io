@@ -79,6 +79,13 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
 - **Fleet admin**: Settings → System → Digital twins (dev-only) — mint, tokens, rungs,
   CT/TT-seat status, the calibration standard; the fresh-key card carries **Copy Desktop
   setup command**. Running and watching moved to Bids → 🤖 Robots → **Console** (v2.3224).
+- **Robot fixtures, the ground (v2.6180, punch list #221, PR 1 of five)**: after `paste_counts` a
+  round calls `put_fixtures` once — every fixture tag with its backing text, pins, check and the
+  robot's price — landing in `bid_fixture_pulls` / `bid_fixture_pull_rows` under the human bid.
+  Five RPCs (`take_robot_fixtures`, `untake_…`, `set_aside_…`, `put_back_…`, `price_…`) are the
+  estimator's doors; `score_locked_shadows` writes `twin_shadow_runs.fixtures_score` at send and
+  a run she took fixtures on reads `assisted_at`. No surface yet: the window, the shade, the stage
+  strip and the assisted chip are PRs 2–5 (`to-dos/robot-fixtures/README.md`).
 
 ## The fleet roadmap & gates
 
