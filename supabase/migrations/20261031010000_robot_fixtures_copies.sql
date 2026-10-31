@@ -230,7 +230,7 @@ BEGIN
   RETURNING id INTO v_new_bid_id;
 
   FOR r_count IN
-    SELECT id, fixture, count, group_tag, page, sequence_order, unit, kind, tags, split_material_cents, split_markup_pct, split_taxable
+    SELECT id, fixture, count, group_tag, page, sequence_order, unit, kind, tags, split_material_cents, split_markup_pct, split_taxable, plan_tag
     FROM public.bids_count_rows
     WHERE bid_id = p_source_bid_id
       AND bid_version_id IS NOT DISTINCT FROM v_version
