@@ -275,18 +275,19 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
                 </select>
                 <span style={help}>One of our team from the roster, or a witness you type.</span>
               </label>
-              {kindOf === 'witness' ? (
+              {kindOf === 'witness' || draft.affiant.userId ? (
+                // v2.6238: one name field for every affiant. A roster name may be a first name only, and the paper, the jurat and the notary need the name on their ID.
                 <label style={label}>
-                  The witness’s name
-                  <input aria-label="The witness’s name" value={draft.affiant.name} onChange={(e) => setAffiant({ ...draft.affiant, name: e.target.value })} placeholder="Thanh Nguyen" disabled={signed} style={input} />
-                  <span style={help}>As it will read on the paper.</span>
+                  Their full name
+                  <input aria-label="Their full name" value={draft.affiant.name} onChange={(e) => setAffiant({ ...draft.affiant, name: e.target.value })} placeholder={kindOf === 'witness' ? 'Thanh Van Nguyen' : 'First, middle and last name'} disabled={signed} style={input} />
+                  <span style={help}>{kindOf === 'witness' ? 'As it reads on their ID.' : 'Prefilled from the roster. Type it as it reads on their ID.'}{draft.form === 'notary' ? ' The notary checks it.' : ''}</span>
                 </label>
               ) : null}
             </div>
             <label style={label}>
               Their role, one line
               <input aria-label="Their role, one line" value={draft.affiant.role} onChange={(e) => { setRoleTouched(true); setAffiant({ ...draft.affiant, role: e.target.value }) }} placeholder={kindOf === 'witness' ? 'the foreman for Brightline Electric, the electrical subcontractor on the job' : 'Responsible Master Plumber of record for Click Plumbing and Electrical, License No. …'} disabled={signed} style={input} />
-              <span style={help}>{kindOf === 'witness' ? 'Who they are and why they were there. The paper adds that they have no stake.' : roleTouched ? 'Edited. The paper reads it as typed.' : 'Prefilled from the roster. Edit it.'}</span>
+              <span style={help}>{kindOf === 'witness' ? 'Who they are and why they were there. The paper adds that they have no stake.' : roleTouched ? 'Edited. The paper reads it as typed.' : picks.find((u) => u.id === draft.affiant.userId)?.role === 'master_technician' ? 'Prefilled from the roster. Add the license number, then edit as you like.' : 'Prefilled from the roster. Edit it.'}</span>
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'auto auto minmax(0, 1fr)', gap: 10, alignItems: 'end', minWidth: 0 }}>
               <label style={label}>
