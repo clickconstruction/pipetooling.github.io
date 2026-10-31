@@ -1,12 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { formatErrorMessage } from '../utils/errorHandling'
-import { draftPayrollPeriodIsValid, fetchPendingApprovalCount } from '../lib/pay/draftPayrollPendingApprovals'
+import { draftPayrollPeriodIsValid, fetchPendingApprovals } from '../lib/pay/draftPayrollPendingApprovals'
 
 export type DraftPayrollPendingApprovals = {
   draftPayrollPendingApprovalCount: number | null
   draftPayrollPendingApprovalLoading: boolean
   draftPayrollPendingApprovalError: string | null
+  /** The same sessions by the user they belong to (punch list #217): the amber dots on Draft Payroll's rows. */
+  draftPayrollPendingByUserId: Readonly<Record<string, number>>
   /** Re-count for a period — the day editor's save and the clock-session realtime feed call it. */
   loadDraftPayrollPendingApprovals: (periodStart: string, periodEnd: string) => Promise<void>
 }
@@ -30,6 +32,7 @@ export function useDraftPayrollPendingApprovals({
   const [draftPayrollPendingApprovalCount, setDraftPayrollPendingApprovalCount] = useState<number | null>(null)
   const [draftPayrollPendingApprovalLoading, setDraftPayrollPendingApprovalLoading] = useState(false)
   const [draftPayrollPendingApprovalError, setDraftPayrollPendingApprovalError] = useState<string | null>(null)
+  const [draftPayrollPendingByUserId, setDraftPayrollPendingByUserId] = useState<Readonly<Record<string, number>>>({})
   const draftPayrollPendingFetchIdRef = useRef(0)
 
   const loadDraftPayrollPendingApprovals = useCallback(async (start: string, end: string) => {
@@ -38,13 +41,15 @@ export function useDraftPayrollPendingApprovals({
     setDraftPayrollPendingApprovalLoading(true)
     setDraftPayrollPendingApprovalError(null)
     try {
-      const count = await fetchPendingApprovalCount(supabase, start, end)
+      const pending = await fetchPendingApprovals(supabase, start, end)
       if (fetchId !== draftPayrollPendingFetchIdRef.current) return
-      setDraftPayrollPendingApprovalCount(count)
+      setDraftPayrollPendingApprovalCount(pending.count)
+      setDraftPayrollPendingByUserId(pending.byUserId)
     } catch (e) {
       if (fetchId !== draftPayrollPendingFetchIdRef.current) return
       setDraftPayrollPendingApprovalError(formatErrorMessage(e, 'Could not load pending approvals'))
       setDraftPayrollPendingApprovalCount(null)
+      setDraftPayrollPendingByUserId({})
     } finally {
       if (fetchId === draftPayrollPendingFetchIdRef.current) {
         setDraftPayrollPendingApprovalLoading(false)
@@ -56,6 +61,7 @@ export function useDraftPayrollPendingApprovals({
     if (!draftOpen || !canAccessPay) {
       if (!draftOpen) {
         setDraftPayrollPendingApprovalCount(null)
+        setDraftPayrollPendingByUserId({})
         setDraftPayrollPendingApprovalLoading(false)
         setDraftPayrollPendingApprovalError(null)
       }
@@ -72,5 +78,5 @@ export function useDraftPayrollPendingApprovals({
     return () => clearTimeout(t)
   }, [draftOpen, canAccessPay, periodStart, periodEnd, loadDraftPayrollPendingApprovals])
 
-  return { draftPayrollPendingApprovalCount, draftPayrollPendingApprovalLoading, draftPayrollPendingApprovalError, loadDraftPayrollPendingApprovals }
+  return { draftPayrollPendingApprovalCount, draftPayrollPendingApprovalLoading, draftPayrollPendingApprovalError, draftPayrollPendingByUserId, loadDraftPayrollPendingApprovals }
 }
