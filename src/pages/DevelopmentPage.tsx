@@ -27,7 +27,8 @@ import { DevelopmentAskSheet, type AskAboutOption, type AskPreset } from '../com
 import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/developments/DevelopmentChipConfirm'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
-import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
+import { DevelopmentPlansCard } from '../components/developments/DevelopmentSideCards'
+import { DevelopmentQuestionsLook } from '../components/developments/DevelopmentQuestionsLook'
 import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import { DevelopmentCounts, type CountTileSpec } from '../components/developments/DevelopmentCounts'
 import { buildAtAddressCard, buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey, type CountPress } from '../lib/developments/countCards'
@@ -1136,7 +1137,7 @@ export default function DevelopmentPage() {
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>
-          <DevelopmentQuestionsCard requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} waitingCard={cards.waiting} onRow={openCountRow} onPress={pressCount} />
+          <DevelopmentQuestionsLook requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} onAsk={(lane) => openAsk({ lane })} phone={phone} />
         </Card>
       </div>
       {chipConfirm ? (
