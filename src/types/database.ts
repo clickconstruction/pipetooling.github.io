@@ -835,7 +835,6 @@ export type Database = {
       bid_count_sources: {
         Row: {
           bid_id: string
-          bid_version_id: string | null
           first_imported_at: string
           id: string
           imported_by: string | null
@@ -848,7 +847,6 @@ export type Database = {
         }
         Insert: {
           bid_id: string
-          bid_version_id?: string | null
           first_imported_at?: string
           id?: string
           imported_by?: string | null
@@ -861,7 +859,6 @@ export type Database = {
         }
         Update: {
           bid_id?: string
-          bid_version_id?: string | null
           first_imported_at?: string
           id?: string
           imported_by?: string | null
@@ -1610,7 +1607,6 @@ export type Database = {
       bid_plan_sets: {
         Row: {
           bid_id: string
-          bid_version_id: string | null
           check_note: string | null
           checked_at: string | null
           created_at: string
@@ -1627,7 +1623,6 @@ export type Database = {
         }
         Insert: {
           bid_id: string
-          bid_version_id?: string | null
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -1644,7 +1639,6 @@ export type Database = {
         }
         Update: {
           bid_id?: string
-          bid_version_id?: string | null
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
