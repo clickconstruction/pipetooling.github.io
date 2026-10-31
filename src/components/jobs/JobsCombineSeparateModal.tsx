@@ -894,7 +894,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                   {cInfoOpen ? (
                     <p style={{ margin: '0.5rem 0 0', fontSize: '0.875rem', color: 'var(--text-700)', lineHeight: 1.5 }}>
                       Move labor, parts, materials, Specific Work, and related rows from the <strong>source</strong> job into
-                      the <strong>target</strong> job, add the source <strong>Job total (revenue)</strong> to the target, then
+                      the <strong>target</strong> job, keep the source's HCP # and C# on the target as prior numbers (search still finds them), add the source <strong>Job total (revenue)</strong> to the target, then
                       remove the source job. Matches <strong>Edit Job → Migrate and Delete</strong>. <strong>Moving the
                       rows cannot be reversed</strong> — a dev can restore the removed source job for 90 days
                       (<strong>Settings → Data &amp; migration → Recently deleted</strong>), but anything moved to the
