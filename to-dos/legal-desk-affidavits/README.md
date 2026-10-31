@@ -1,8 +1,8 @@
 ---
 name: "Legal desk: affidavits from the desk — the thinking, the window and the print faces"
 number: 220
-group: waiting
-status: card and mock-up 2026-10-30 · nothing built · waiting on the owner's yes and his five answers (the notary first) · branch claude/legal-affidavit-window-635485
+group: close
+status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 · PR 4 the print faces v2.6211 · PR 5 filing the scan v2.6212 · PR 6 the business-records preset v2.6213 · all six built 2026-10-31 · PR 7 the affiant's full name v2.6238 (claude/220-affidavit-full-name), from the live walk · PR 8 a declaration names its signer one way v2.6243 (claude/220-affidavit-one-name), from the live screenshots
 mockup: to-dos/legal-desk-affidavits/mockup.html
 summary: >
   The office made one affidavit by hand this month: drafted in a chat, exported, printed, driven to a
@@ -13,10 +13,10 @@ summary: >
   how it is signed, before a notary or under penalty of perjury with no notary; print the paper, the
   statement alone, or the signing page alone to staple on a handwritten statement; file the signed scan
   and confirm the two days. The text lands on the Timeline's Said lane, the scan on Evidence, linked.
-next: The owner reads the thinking and the mock-up and says yes or picks otherwise; he answers the five questions at the end, the notary first. Then PR 1, the kernel with the statute words under test.
-size: M as a train of five (S · S · M · S · M)
-blocker: The owner's yes. The notary question decides the default form.
-opinion: build as recommended — the one design call still open is whether the firm reads a draft before the witness signs, and that is the owner's
+next: the merges in order, then the push and the portal deploy, then the owner's look at a live account; after PR 2 merges, `supabase db push` and `supabase functions deploy legal-portal` (PR 3's client calls the RPCs, so the push comes before its deploy). Question 3 (drafts to counsel) is still open and the default follows the everything-goes rule until the owner says otherwise.
+size: M as a train of six (S · S · M · S · M · S)
+blocker: None. The owner answered 2026-10-30; the one open question (drafts to counsel) changes no PR before 5.
+opinion: build as recommended with the owner's defaults — before a notary for everyone, Guadalupe County on the venue line, blank one tap away; the one design call still open is whether the firm reads a draft before the witness signs
 ---
 
 # Legal desk: affidavits from the desk (#220)
@@ -42,10 +42,12 @@ Each question below has an answer and the reason. The mock-up draws the answers;
 
 Three people swear statements on a collections account, and the window serves two of them now:
 
-1. **One of our team** — the responsible master plumber, a tech who was on site, the office person who sent or received
-   a paper. The office knows the facts from the clock, the field reports and the job thread, so the office drafts and
-   the affiant reads. The opener names the role: *I am the Responsible Master Plumber of record for Click Plumbing and
-   Electrical, License No. …* Picked from the team roster; the role line prefills from it and can be edited.
+1. **One of our team** — generally the responsible master plumber, but any team member who heard or saw something: a
+   tech who was on site, the office person who sent or received a paper (the owner, 2026-10-30). The office knows the
+   facts from the clock, the field reports and the job thread, so the office drafts and the affiant reads. The opener
+   names the role: *I am the Responsible Master Plumber of record for Click Plumbing and Electrical, License No. …*
+   Picked from the team roster, every team member listed with the RMP first; the role line prefills from it and can be
+   edited.
 2. **A third-party witness** — a neighbour, a supplier's driver, another trade's foreman, the GC's own worker. The
    office drafts from the witness's words, or the witness writes it out by hand and the office prints the signing page
    alone to staple on top. The opener says who they are in one line and that they have no stake: *I am the foreman for
@@ -94,9 +96,12 @@ not serve *a lien required to be filed with a county clerk* or *an instrument co
 required to be filed with a county clerk*, so the § 53.054 lien affidavit stays a notarized paper on the Lien desk,
 and this window never offers the declaration for it. The declaration fits a witness in the field who will sign now
 and never make a notary appointment, and a team member's statement that would otherwise wait a week. The notary fits a
-statement the firm wants to carry the most weight, and anything signed at the office when a notary is there. Default:
-**before a notary** for a team member, **no notary** for a third-party witness; one tap changes it, and the body's
-opener and the signing block change with it. The declaration puts the declarant's date of birth and home address on
+statement the firm wants to carry the most weight, and anything signed at the office when a notary is there. The office
+has notaries on staff (Paige Bloomer among them) and signs everything in person: the paper is printed, signed before
+the notary, scanned and uploaded (the owner, 2026-10-30). A notary is no trip here, so the default is **before a
+notary** for a team member and for a third-party witness alike; one tap changes it to **no notary** for a witness in the
+field who will sign now and never come by, and the body's opener and the signing block change with it. No remote
+online notarization: the jurat's words stay the in-person ones. The declaration puts the declarant's date of birth and home address on
 the paper. They are typed at print time, held in the window for the session so a reprint after an edit does not ask
 again, and **never saved**: not in the entry, not on the Timeline, not in the Evidence row's line. The signed scan
 carries them, as it must.
@@ -119,15 +124,16 @@ line with its day. A statement that says *August 10* while the clock says *Augus
 ### The venue line
 
 *State of Texas, County of ___* at the top of the jurat is where the affiant stands when the notary watches the
-signing, not where the job is. The office's own county is the default for a notarized paper, and the window says so in
-plain words under the pick: *Where the notary watches the signing. Not where the job is.* The property's county is one
-tap away for a signing on site, and *Leave it blank for the notary* is the third pick, because the hand-made one was
-sworn in the affiant's home county, not the office's. The declaration's *Executed in ___ County* is where the declarant
+signing, not where the job is. **Guadalupe County** is the default for a notarized paper: the overwhelming majority are
+sworn there, before the office's own notary (the owner, 2026-10-30). The window says so in plain words under the pick:
+*Where the notary watches the signing. Not where the job is.* *Leave it blank for the notary* is the second pick,
+because the hand-made one was sworn in the affiant's home county, not the office's, and a paper signed elsewhere is
+right when the notary writes the county in by hand. The property's county is the third, for a signing on site. The declaration's *Executed in ___ County* is where the declarant
 signs, so its default is the property's county, since the point of the form is a signature in the field.
 
-The office's county is not in the app today (`PORTAL_COMPANY` carries a name, a phone and a tagline). PR 3 adds one
-company setting (`app_settings.office_county`), typed once in Settings; until it is set the pick shows the property's
-county and the blank.
+The office's county is not in the app today (`PORTAL_COMPANY` carries a name, a phone and a tagline). PR 2's migration
+seeds one company setting (`app_settings.office_county` = *Guadalupe*) and PR 3 shows it in Settings for the day it
+changes; the pick never waits on a typed value.
 
 ### The field flow, and how many presses
 
@@ -150,10 +156,11 @@ The signing page alone is never a loose jurat. It names what it is attached to: 
 handwritten statement of T. Nguyen, ___ pages, each initialed by the signer.* A notary will not sign a jurat that
 floats, and a court should not have to guess.
 
-On the phone the paper draws **inside the window** on a light sheet (`data-theme="light"`) and **Print** calls the
-browser's print on that sheet through a print stylesheet that hides the app. Nothing opens a new tab: Safari's popup
-rule blocked the Lien desk's `window.open` print on phones more than once. From the print sheet, AirPrint prints it or
-*Save to Files* makes the PDF to AirDrop or text. The desktop keeps the new tab the lien papers use.
+The paper draws **inside the window** on a light sheet (the lien papers' own print page in a frame) and **Print** calls the
+frame's print, on every device (built so in PR 4: one path, and the desktop sees the page before its print dialog; the card
+had kept the lien papers' new tab for the desktop). Nothing opens a new tab: Safari's popup rule blocked the Lien desk's
+`window.open` print on phones more than once. From the print sheet, AirPrint prints it or *Save to Files* makes the PDF;
+**Save as PDF** beside Print makes the file outright, to text or AirDrop.
 
 ### Revisions: drafts are kept, each print is noted, the scan closes it
 
@@ -166,7 +173,9 @@ line's chip reads *draft · not signed* or *printed twice · last Oct 28*, with 
 Filing the scan asks one more question: *Is the signed paper the text as last printed?* **Yes, as printed** marks that
 print's text as the sworn text. **They changed it by hand** keeps the entry's text as printed, marks it *see the scan
 for hand changes*, and the scan governs. A draft nobody signs stays a draft chip on the Timeline, amber after fourteen
-days (*printed 14 days ago · no signed copy*), counted under the Evidence tab's **Drafts** filter; **Not signed…**
+days (*printed 14 days ago · no signed copy*), listed in the Evidence tab's **Sworn statements** strip above the documents
+(built so in PR 3: a strip of its own in place of the card's draft rows under the **Drafts** filter, so a draft never
+pretends to be a document and the filters stay the documents'); **Not signed…**
 voids it with a reason the Timeline reads as *Undone: would not sign the September paragraph.*
 
 ### Where it lands
@@ -272,9 +281,10 @@ reads them. The blue *Second pass* box under each section says what the first re
 | 4 | **The print faces**: the split button, the three faces, the paper drawn in the window on a light sheet with a print stylesheet, the print log appended at each print, the desktop's new tab kept; the declarant's details asked at print time and held for the session only. | S |
 | 5 | **Filing the scan**: **File the signed copy…** on the draft's row and in the window: drop or choose the scan, confirm the incident day, type the signing day off the jurat, *as printed* or *changed by hand*, `whose`; the document row through `addLegalMatterDocument`, the entry → signed with `document_id`; the Evidence row's ⋯ *The statement on the Timeline*; the firm's Evidence and Timeline read both. `PROJECT_DOCUMENTATION.md` / `GLOSSARY.md` for the window. | M |
 
-Later, not in the train: dev-mcp `plan_matter_statement` / `apply_matter_statement`; the business-records affidavit
-preset (Tex. R. Evid. 902(10)); *Insert the statements* in the narrative; remote online notarization if the owner
-wants it (the jurat's words change under Tex. Gov't Code ch. 406, subch. C).
+| 6 | **The business-records affidavit** as a preset on the same window (Tex. R. Evid. 902(10), the form in 902(10)(B) quoted verbatim): the office as custodian of records, the affiant picked from the roster, the records named by their Evidence rows (the invoices, the clock, the job thread) with the row count and page count the form asks for; printed and filed through PRs 4 and 5 unchanged. Wanted by the owner (2026-10-30) if it adds value: it is what lets the firm put our invoices and the clock into evidence without calling anyone to testify, and the firm asks for it on every account that reaches suit. | S |
+
+Later, not in the train: dev-mcp `plan_matter_statement` / `apply_matter_statement`; *Insert the statements* in the
+narrative. Not wanted: remote online notarization — the office signs everything in person (the owner, 2026-10-30).
 
 ## How to verify
 
@@ -289,21 +299,31 @@ signing day under *Our record* with the sworn line, the Timeline item reads *Swo
 browser's print sheet with the app hidden. `npx vitest run src/lib/legal src/components/jobs/legal` after each PR, and
 `grep -rl lienFilingDocuments src --include='*.test.ts*'` for PR 1's jurat lift.
 
-## Questions only the owner can answer
+## The owner's answers (2026-10-30)
 
-1. **The notary.** Who on the team holds a Texas notary commission, or will one (a four-year commission, a small bond,
-   no exam)? Or a mobile notary when a witness signs in the field? Or remote online notarization, which lets a witness
-   sign from their phone and changes the jurat's words? The answer sets the default form for a team member.
-2. **The firm's wish for a team member's statement.** Is a notarized affidavit what the firm wants from our RMP, or is
-   the unsworn declaration enough for the file and the notary kept for what goes to a court?
-3. **Drafts to counsel.** Should the firm read a statement's draft before the witness signs, as it reads a letter's
-   draft today, or should a statement travel only once signed?
-4. **The office's county.** Which county is the office's for the venue line, and should the hand-made affidavit's
-   county (the affiant's home county) be offered too, as *where this affiant signed last time*?
-5. **The business-records affidavit.** Should the same window make the Rule 902(10) affidavit the firm will ask for to
-   attach the invoices and the clock, as a preset, in the train or after it?
+1. **The notary.** Staff notaries, Paige Bloomer among them. No digital notaries: everything signed is signed in person,
+   printed, then scanned and re-uploaded. → Default **before a notary** for every affiant; the declaration one tap away;
+   no remote online notarization.
+2. **Who swears.** Generally the RMP, but any team member on the project who heard or saw something. → The roster pick
+   lists every team member, the RMP first. (The question as asked — whether the firm would settle for a declaration —
+   falls away: with a notary on staff the sworn form costs nothing.)
+3. **Drafts to counsel.** Not answered. → The default follows the desk's rule since 2026-10-05: everything goes to
+   counsel unless the office holds it, so a draft travels with its loud *draft · not signed* chip and *Hold from counsel*
+   on its ⋯ keeps it home. One sentence from the owner flips the default to signed-only; it changes PR 2's portal line
+   and nothing before it.
+4. **The county.** Guadalupe County, Texas, for the overwhelming majority; blank must stay an option for the notary to
+   fill when the paper is signed elsewhere. → Guadalupe seeded as the office county; *Leave it blank for the notary* the
+   second pick; the property's county the third. The affiant's last county is not offered.
+5. **The business-records affidavit.** The owner is not sure how it would be used but wants it if it adds value. → PR 6,
+   after the train, as a preset; its value is in the plan row.
 
 ## Where it stands
 
-Card and mock-up only, 2026-10-30. Nothing built. The owner's yes and his five answers come first; PR 1 is the kernel
-and needs none of the answers except the notary's, which sets a default.
+Built in six PRs on 2026-10-31 (v2.6208–v2.6213), each on its own `claude/220-affidavit-*` branch and stacked until the
+one before it merges: the kernel and the shared jurat; the migration, the RPCs, the Said lane and the office county;
+the window, its doors and the record check; the print sheet with the three faces and Save as PDF; filing the signed
+scan with the two links; the business-records preset (Tex. R. Evid. 902(10)(B), quoted from the Supreme Court's order
+of 2014-08-19). Left after the merges: `supabase db push`, `supabase functions deploy legal-portal`, the owner's look on a
+live account. Later, not in the train: dev-mcp `plan_matter_statement` / `apply_matter_statement`; *Insert the
+statements* in the narrative. Question 3 (drafts to counsel) stays answered by the desk's rule until the owner says
+otherwise.

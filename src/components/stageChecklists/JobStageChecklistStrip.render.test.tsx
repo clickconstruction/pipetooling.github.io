@@ -34,7 +34,7 @@ const Q: StageChecklistQuestion[] = [
 ]
 
 let seq = 0
-const answer = (key: AnswerKey, over: Partial<JobAnswer> = {}): JobAnswer => ({ id: over.id ?? `a${++seq}`, fixtureId: key.fixtureId, questionId: key.questionId, pick: null, note: '', photo: null, storagePath: null, ...over })
+const answer = (key: AnswerKey, over: Partial<JobAnswer> = {}): JobAnswer => ({ id: over.id ?? `a${++seq}`, fixtureId: key.fixtureId, questionId: key.questionId, pick: null, note: '', photo: null, storagePath: null, reportPhotoId: null, ...over })
 
 function fakeIo(over: Partial<StageChecklistSheetIo> = {}, answers: JobAnswer[] = [], questions: StageChecklistQuestion[] = Q): StageChecklistSheetIo {
   const kept = new Map<string, JobAnswer>(answers.map((a) => [`${a.fixtureId}|${a.questionId}`, a]))
@@ -117,6 +117,19 @@ describe('JobStageChecklistStrip', () => {
     await waitFor(() => expect(document.querySelector('[data-checklist-foot]')!.textContent).toBe('2 of 2 answered. Rough In reads ready on the Pipeline.'))
     expect(done().disabled).toBe(false)
     expect(await screen.findByText('On its way to the customer’s Drive folder.')).toBeTruthy()
+  })
+
+  it('shows a photo taken on a field report (punch list #189, PR 6): the thumbnail from the report bucket, the words saying where it came from', async () => {
+    const fromReport = answer(
+      { jobId: JOB, fixtureId: 'f1', questionId: 'q1' },
+      { id: 'a-r', pick: 'yes', reportPhotoId: 'rp1', photo: { fileName: '2026-10-31 Rough In · Did the water test hold.jpg', takenAt: '2026-10-31T15:00:00.000Z', state: 'waiting', driveFileId: null, failWhy: null } },
+    )
+    const io = fakeIo({ photoUrl: vi.fn(async () => 'blob:report-photo') }, [fromReport])
+    renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={io} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Rough In checklist: 1 of 2 answered, not ready' }))
+    expect(await screen.findByText('Taken on a field report. On its way to the customer’s Drive folder.')).toBeTruthy()
+    await waitFor(() => expect(io.photoUrl).toHaveBeenCalledWith({ storagePath: null, reportPhotoId: 'rp1', jobId: JOB }))
+    expect((await screen.findByRole('img', { name: '2026-10-31 Rough In · Did the water test hold.jpg' })).getAttribute('src')).toBe('blob:report-photo')
   })
 
   it('saves a note when the box is left', async () => {

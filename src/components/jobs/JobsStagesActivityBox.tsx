@@ -339,7 +339,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
               }}
               aria-label="Add a note to this job's activity"
               style={{
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 999,
@@ -412,7 +412,7 @@ export function JobsStagesActivityBox({ job, ctx, loadActivityForJob, submitNote
               void post()
             }}
             disabled={submitting}
-            style={{ background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 999, padding: '1px 12px', fontSize: '0.71875rem', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer' }}
+            style={{ background: '#2563eb', color: '#fff', border: 'none', borderRadius: 999, padding: '1px 12px', fontSize: '0.71875rem', fontWeight: 700, cursor: submitting ? 'not-allowed' : 'pointer' }}
           >
             {submitting ? '…' : 'Post'}
           </button>

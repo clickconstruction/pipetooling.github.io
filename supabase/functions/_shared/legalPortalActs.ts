@@ -96,7 +96,7 @@ export function voidIsRetry(e: { voided_at: string | null; voided_via_portal?: b
   return Boolean(e.voided_at) && e.voided_via_portal === true && (e.void_reason ?? '').trim() === reason.trim()
 }
 
-/** The office undoes the fees, costs, notes and planned steps it wrote (`legal_void_entry` holds the same rule; planned steps since v2.5800). */
+/** The office undoes the fees, costs, notes, planned steps and statements it wrote (`legal_void_entry` holds the same rule; planned steps since v2.5800, statements since v2.6209). */
 export function officeCanVoid(e: VoidableEntry): boolean {
-  return !e.via_portal && !e.voided_at && (e.kind === 'fee' || e.kind === 'cost' || e.kind === 'note' || e.kind === 'plan')
+  return !e.via_portal && !e.voided_at && (e.kind === 'fee' || e.kind === 'cost' || e.kind === 'note' || e.kind === 'plan' || e.kind === 'statement')
 }

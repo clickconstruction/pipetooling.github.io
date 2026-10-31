@@ -2,7 +2,7 @@
 name: "Phone first: the five screens a tech touches, with one thumb and a camera"
 number: 189
 group: gated
-status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day, and its one finding was fixed as v2.6126
+status: proposed 2026-10-26 from the owner's holistic look at the phone, lens 4 · the owner answered the same day; PR 2, the press bar, built as v2.5905 and PR 4, the job window's bar in both windows, as v2.5910, both live and run press by press on the ZZ test job on 2026-10-27 · the picks of 2026-10-29 on the review canvas (sections 3, 4, 6 and 8 as redrawn, Leaving opens the On my way sheet, a home screen web app, the clock-out note filled from the day's reports, a photo with no folder kept and marked, the typed plan stays) · built the same day as five PRs, PR 5a v2.6076, PR 5b v2.6083, PR 3 v2.6089, the Leaving PR v2.6091 and PR 8 v2.6092, run live on the ZZ test jobs at 375 px before the queue took them, all five live by the 05:55Z deploy on 2026-10-30 · the report photos migration on prod since the push of 2026-10-30, and photo-save redeployed with the report sweep at 14:13Z the same day; the camera's live run passed on the ZZ Test job at 15:00Z the same day, and its one finding was fixed as v2.6126 · PR 6, a photo answers a checklist question, built 2026-10-31 as v2.6219 with one additive migration, the `report_photo_id` column and its two mirror triggers, merged as #6625 at 11:16Z and live since the 11:32Z deploy the same day; the migration pushed the same day with the drift check fully applied, in the types and the dev-mcp catalog since #6646
 summary: >
   A tech's day on the phone is five screens: the Job Mode card with the day's press, the On my
   way sheet, the field report, My Schedule with its percent stepper, and the job window. Walked
@@ -14,11 +14,11 @@ summary: >
   customer's Drive folder as #164 decided, and clock out in one press. #163's waiting bar sits
   under the status bar on every screen and #164's gallery under the address. The position on
   native: stay a home screen web app, with three named triggers for revisiting it.
-next: PR 6 can start, since #164's checklist tables are live. PR 7 waits on #163's PR 3, the field report through the queue.
-size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), seven built; one migration, the report photos table; left: PR 6 (S) and PR 7 (S)
-blocker: None for PR 6. PR 7 waits on #163's PR 3.
-ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092 · 6126
-opinion: every PR the owner's picks unlocked is built, live and run on a ZZ job; PR 6 can start; PR 7 after #163's PR 3; stay a home screen web app until one of the three triggers fires
+next: run PR 6 live on a ZZ job once the office types a stage checklist question that asks for a photo; prod has none yet, and no ZZ job has a Rough In, Top Out or Trim Set line, so the run needs a ZZ job with two such lines. PR 7 waits on #163's PR 3, the field report through the queue.
+size: L as a train of nine (S · XS · S · M · M · S · S · S, and the Leaving PR at XS), eight built; two migrations, the report photos table and the answer's report photo column; left: PR 7 (S)
+blocker: PR 7 waits on #163's PR 3.
+ver: v2.5905 · 5910 · 6076 · 6083 · 6089 · 6091 · 6092 · 6126 · 6219
+opinion: every PR the owner's picks unlocked is built and live; PR 6 waits on a live run once a photo question exists; PR 7 after #163's PR 3; stay a home screen web app until one of the three triggers fires
 mockup: to-dos/phone-first/mockup.html
 ---
 
@@ -205,12 +205,13 @@ the five screens.
 | 4 · the crew's job window gets the bar | `resolveJobWindowMode` keeps the plain window for helpers, subs and superintendents, and `DetailJobModal` in phone pane mode gains `JobWindowActionBar` with Arrived or Leaving, Leave report and Note. Note opens the composer as a bottom sheet over the keyboard. The gallery strip under the address, read from the folder, lands here once #164's PR 5 ships. **Built as v2.5910** in both windows: the tabbed window's bar carries the stamp for a viewer on the crew, and its Note opens the same sheet. | S |
 | 5a · the percent by stage, with a precise number | `ReportLinesProgressField` redrawn: every stage in view, the open row with 48 px picks, a −5 and +5 at 56 px and a typed number, the Job line under it. The same control in `FieldPctUpdateModal`, drawn as a bottom sheet on a phone, and alone on a one-stage job in place of the six chips. `AdditionalReportModal` seeds the job's number. The kernel `lib/reports/stagePct.ts` holds the steps and the clamps, with tests. No migration. The guides *file and review field reports* and *update how done a job is from my dashboard*. | M |
 | 5b · the camera-first report | `AdditionalReportModal` opens on the camera for the field roles, draws the tiles, puts a photo on its stage, folds the typed parts and pins Save. `lib/photos/shrink.ts` shrinks a shot on the phone in a worker, with tests on sizes and orientation, and the Settings → Photos row. One migration: `report_photos` with the three fences, and the `report-photos` bucket with its 2 MB cap. `photo-save` learns the new bucket and table. The guide *file and review field reports* and a new guide *take photos for a report*. | M |
-| 6 · a photo answers a checklist question | The checklist chip under a tile, the answer written to #164's table. Waits on #164's tables. | S |
+| 6 · a photo answers a checklist question | The checklist chip under a tile, the answer written to #164's table with the photo's `report_photos` id. Waited on #164's tables. | S |
 | 7 · the bar and the queue on these screens | After #163's PR 2: the bar's place under the inset, the press bar's *waiting to send* beat, the report and its photos through the queue. | S |
 | 8 · clock out in one press | The review's note filled from the day's reports and jobs by `lib/clock/clockOutNote.ts`, with tests. The title becomes Clock out. | S |
 
-PRs 2, 3, 4, 5a and 8 need no migration. PR 5b carries the one migration and follows 5a. PR 6
-can start now that #164's tables are live, and PR 7 waits on #163's PR 3.
+PRs 2, 3, 4, 5a and 8 need no migration. PR 5b carries the report photos migration and follows 5a.
+PR 6 carries a second, the answer row's `report_photo_id` and its mirror triggers, because #164's
+answer table had no way to name a report photo (its fragment says why). PR 7 waits on #163's PR 3.
 
 ## Is this the best we can do?
 
@@ -349,7 +350,7 @@ On the phone preset as the dev with Job Mode on, and on a real iPhone on a ZZ te
 | 3 · 44 px everywhere a tech presses | v2.6089 | built 2026-10-29, live since the 02:00Z deploy on 2026-10-30: `lib/phonePress.ts` holds the heights; the whole-job percent's five chips stand 44 px; the job window's activity pills and the ＋ Report chip stand 32 px on a phone; `phonePressTargets.render.test.tsx` holds every daily press at 375 px. |
 | the Leaving PR (decision 6) | v2.6091 | built 2026-10-29, live since the 00:10Z deploy on 2026-10-30: `leavingOpens` in `lib/jobs/jobWindowBar.ts`; the bridge's `registerOnMyWayOpener` / `requestOnMyWay`, which Job Mode's card answers with its sheet on the day's next block; the Clock In window at z 1020 beside Update Focus, above the job window. |
 | 8 · clock out in one press | v2.6092 | built 2026-10-29, live since the 04:57Z deploy on 2026-10-30: `lib/clock/clockOutNote.ts` writes the note from the day's reports; the review is called Clock out and fills it when it opens, only while the box still holds what it opened on; the card reloads after its own press through the bridge; the pinned row's Job Report button leaves Job Mode at every width. |
-| 6 · a photo answers a checklist question | — | can start: #164's checklist tables (v2.6077) were pushed on 2026-10-30 and are in the types |
+| 6 · a photo answers a checklist question | v2.6219 | built 2026-10-31: `lib/photos/reportPhotoChecklist.ts` (which chips a tile offers, what a pick does, what Save writes, tested); the question chips under the stage chips in `ReportPhotoTiles`, *Or it answers a checklist question*; Save writes the answer row through `answerQuestionsWithReportPhotos` after the attach, best-effort; the sheet draws a report photo's thumbnail from the report bucket with *Taken on a field report.*; the caption and Stage progress name the question. The migration `20261031150000_checklist_answer_report_photo.sql` (the `report_photo_id` column, the two mirror triggers) was pushed the same day with the drift check fully applied, and #6646 carried the types and the dev-mcp catalog; no edge deploy of its own. The live run waits on a photo question the office types and a ZZ job with two checklist-kind lines. |
 | 7 · the bar and the queue on these screens | — | #163's PR 2 is on main (v2.6099: the store, the bar on #183's strip, the clock through the queue); the field report through the queue waits on #163's PR 3, and #163 keeps photos out of its train (its call of 2026-10-29), so the photos' leg is this PR's own |
 
 PRs 2 and 4 were checked at 375 px as the dev before merging, nothing pressed that saves. The press bar
@@ -475,5 +476,10 @@ street and number are made up. The desktop is out of scope.
   both above the job window at 1010.
 - **Add me to the job crew.** Done by punch list #196 (v2.6066): the add-a-job window on My
   Schedule drops the box and says the job joins your crew.
+- **A one-line job offers no question chip.** The report reads a one-line job as no stage lines
+  (`useJobLineProgress`), so its tile asks nothing and a photo question on that one line is not a
+  chip; the sheet's own Take the photo answers it. On 2026-10-31 that was one open job of 49, a
+  combined rough in, top out and trim line. The chips would read the job's stages from
+  `loadJobStages` when the report has no lines.
 - **A Turnaway's dispatch title.** It shows a dash where the job number belongs when the job's
   number sits in the Click number field.

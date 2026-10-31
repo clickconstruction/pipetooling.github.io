@@ -835,6 +835,7 @@ export type Database = {
       bid_count_sources: {
         Row: {
           bid_id: string
+          bid_version_id: string | null
           first_imported_at: string
           id: string
           imported_by: string | null
@@ -842,10 +843,12 @@ export type Database = {
           link: string
           project_name: string | null
           scope: string
+          source_kind: string
           token: string | null
         }
         Insert: {
           bid_id: string
+          bid_version_id?: string | null
           first_imported_at?: string
           id?: string
           imported_by?: string | null
@@ -853,10 +856,12 @@ export type Database = {
           link: string
           project_name?: string | null
           scope?: string
+          source_kind?: string
           token?: string | null
         }
         Update: {
           bid_id?: string
+          bid_version_id?: string | null
           first_imported_at?: string
           id?: string
           imported_by?: string | null
@@ -864,6 +869,7 @@ export type Database = {
           link?: string
           project_name?: string | null
           scope?: string
+          source_kind?: string
           token?: string | null
         }
         Relationships: [
@@ -872,6 +878,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_sources_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
             referencedColumns: ["id"]
           },
           {
@@ -912,6 +925,237 @@ export type Database = {
             columns: ["user_id"]
             isOneToOne: true
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_fixture_pull_rows: {
+        Row: {
+          agreement: string | null
+          backing: Json
+          bid_id: string
+          confidence: number | null
+          connections: Json | null
+          count: number
+          count_row_id: string | null
+          created_at: string
+          ct_pin_ids: Json | null
+          custom_price_id: string | null
+          description: string | null
+          id: string
+          manufacturer: string | null
+          model: string | null
+          name: string
+          per_sheet: Json
+          priced_as: string | null
+          prior_count: number | null
+          pull_id: string
+          remark: string | null
+          robot_book_entry: string | null
+          robot_unit_price: number | null
+          scope_flag: string | null
+          sequence_order: number
+          set_aside_at: string | null
+          set_aside_by: string | null
+          set_aside_reason: string | null
+          tag: string
+          taken_as: string | null
+          taken_at: string | null
+          taken_by: string | null
+          taken_count: number | null
+          taken_version_id: string | null
+          unit: string
+        }
+        Insert: {
+          agreement?: string | null
+          backing?: Json
+          bid_id: string
+          confidence?: number | null
+          connections?: Json | null
+          count?: number
+          count_row_id?: string | null
+          created_at?: string
+          ct_pin_ids?: Json | null
+          custom_price_id?: string | null
+          description?: string | null
+          id?: string
+          manufacturer?: string | null
+          model?: string | null
+          name: string
+          per_sheet?: Json
+          priced_as?: string | null
+          prior_count?: number | null
+          pull_id: string
+          remark?: string | null
+          robot_book_entry?: string | null
+          robot_unit_price?: number | null
+          scope_flag?: string | null
+          sequence_order?: number
+          set_aside_at?: string | null
+          set_aside_by?: string | null
+          set_aside_reason?: string | null
+          tag: string
+          taken_as?: string | null
+          taken_at?: string | null
+          taken_by?: string | null
+          taken_count?: number | null
+          taken_version_id?: string | null
+          unit?: string
+        }
+        Update: {
+          agreement?: string | null
+          backing?: Json
+          bid_id?: string
+          confidence?: number | null
+          connections?: Json | null
+          count?: number
+          count_row_id?: string | null
+          created_at?: string
+          ct_pin_ids?: Json | null
+          custom_price_id?: string | null
+          description?: string | null
+          id?: string
+          manufacturer?: string | null
+          model?: string | null
+          name?: string
+          per_sheet?: Json
+          priced_as?: string | null
+          prior_count?: number | null
+          pull_id?: string
+          remark?: string | null
+          robot_book_entry?: string | null
+          robot_unit_price?: number | null
+          scope_flag?: string | null
+          sequence_order?: number
+          set_aside_at?: string | null
+          set_aside_by?: string | null
+          set_aside_reason?: string | null
+          tag?: string
+          taken_as?: string | null
+          taken_at?: string | null
+          taken_by?: string | null
+          taken_count?: number | null
+          taken_version_id?: string | null
+          unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_fixture_pull_rows_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_fixture_pull_rows_count_row_id_fkey"
+            columns: ["count_row_id"]
+            isOneToOne: false
+            referencedRelation: "bids_count_rows"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_fixture_pull_rows_custom_price_id_fkey"
+            columns: ["custom_price_id"]
+            isOneToOne: false
+            referencedRelation: "bid_count_row_custom_prices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_fixture_pull_rows_pull_id_fkey"
+            columns: ["pull_id"]
+            isOneToOne: false
+            referencedRelation: "bid_fixture_pulls"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_fixture_pull_rows_set_aside_by_fkey"
+            columns: ["set_aside_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_fixture_pull_rows_taken_by_fkey"
+            columns: ["taken_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bid_fixture_pulls: {
+        Row: {
+          bid_id: string
+          check_summary: Json
+          created_at: string
+          created_by: string | null
+          ct_link: string | null
+          id: string
+          plan_link: string | null
+          read_at: string
+          robot_total: number | null
+          shadow_run_id: string | null
+          sheet_count: number | null
+          shell_bid_id: string | null
+          source: string
+        }
+        Insert: {
+          bid_id: string
+          check_summary?: Json
+          created_at?: string
+          created_by?: string | null
+          ct_link?: string | null
+          id?: string
+          plan_link?: string | null
+          read_at?: string
+          robot_total?: number | null
+          shadow_run_id?: string | null
+          sheet_count?: number | null
+          shell_bid_id?: string | null
+          source?: string
+        }
+        Update: {
+          bid_id?: string
+          check_summary?: Json
+          created_at?: string
+          created_by?: string | null
+          ct_link?: string | null
+          id?: string
+          plan_link?: string | null
+          read_at?: string
+          robot_total?: number | null
+          shadow_run_id?: string | null
+          sheet_count?: number | null
+          shell_bid_id?: string | null
+          source?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bid_fixture_pulls_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_fixture_pulls_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_fixture_pulls_shadow_run_id_fkey"
+            columns: ["shadow_run_id"]
+            isOneToOne: false
+            referencedRelation: "twin_shadow_runs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_fixture_pulls_shell_bid_id_fkey"
+            columns: ["shell_bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
             referencedColumns: ["id"]
           },
         ]
@@ -1373,6 +1617,7 @@ export type Database = {
       bid_plan_sets: {
         Row: {
           bid_id: string
+          bid_version_id: string | null
           check_note: string | null
           checked_at: string | null
           created_at: string
@@ -1389,6 +1634,7 @@ export type Database = {
         }
         Insert: {
           bid_id: string
+          bid_version_id?: string | null
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -1405,6 +1651,7 @@ export type Database = {
         }
         Update: {
           bid_id?: string
+          bid_version_id?: string | null
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -1425,6 +1672,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_sets_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
             referencedColumns: ["id"]
           },
           {
@@ -3495,11 +3749,14 @@ export type Database = {
           id: string
           include_in_submission: boolean
           is_alternate: boolean
+          locked_at: string | null
+          locked_by: string | null
           loss_category: string | null
           name: string
           outcome: string | null
           outcome_at: string | null
           outcome_note: string | null
+          owner_user_id: string | null
           sort_order: number
           source_bid_version_id: string | null
           starred_price_book_version_id: string | null
@@ -3511,11 +3768,14 @@ export type Database = {
           id?: string
           include_in_submission?: boolean
           is_alternate?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
           loss_category?: string | null
           name: string
           outcome?: string | null
           outcome_at?: string | null
           outcome_note?: string | null
+          owner_user_id?: string | null
           sort_order?: number
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
@@ -3527,11 +3787,14 @@ export type Database = {
           id?: string
           include_in_submission?: boolean
           is_alternate?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
           loss_category?: string | null
           name?: string
           outcome?: string | null
           outcome_at?: string | null
           outcome_note?: string | null
+          owner_user_id?: string | null
           sort_order?: number
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
@@ -3549,6 +3812,20 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_versions_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_versions_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -4157,6 +4434,7 @@ export type Database = {
           id: string
           kind: string | null
           page: string | null
+          plan_tag: string | null
           sequence_order: number
           source_shares: Json | null
           split_markup_pct: number | null
@@ -4175,6 +4453,7 @@ export type Database = {
           id?: string
           kind?: string | null
           page?: string | null
+          plan_tag?: string | null
           sequence_order?: number
           source_shares?: Json | null
           split_markup_pct?: number | null
@@ -4193,6 +4472,7 @@ export type Database = {
           id?: string
           kind?: string | null
           page?: string | null
+          plan_tag?: string | null
           sequence_order?: number
           source_shares?: Json | null
           split_markup_pct?: number | null
@@ -9312,6 +9592,51 @@ export type Database = {
           {
             foreignKeyName: "email_box_watch_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_left_out_senders: {
+        Row: {
+          contact_id: string | null
+          id: string
+          kind: string
+          mailbox: string | null
+          marked_at: string
+          marked_by: string | null
+          value: string
+        }
+        Insert: {
+          contact_id?: string | null
+          id?: string
+          kind: string
+          mailbox?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          value: string
+        }
+        Update: {
+          contact_id?: string | null
+          id?: string
+          kind?: string
+          mailbox?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_left_out_senders_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_left_out_senders_marked_by_fkey"
+            columns: ["marked_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -20069,6 +20394,7 @@ export type Database = {
           partner_person_id: string | null
           payments_made: number | null
           pct_complete: number | null
+          prior_numbers: string[]
           project_id: string | null
           revenue: number | null
           service_type_id: string
@@ -20137,6 +20463,7 @@ export type Database = {
           partner_person_id?: string | null
           payments_made?: number | null
           pct_complete?: number | null
+          prior_numbers?: string[]
           project_id?: string | null
           revenue?: number | null
           service_type_id: string
@@ -20205,6 +20532,7 @@ export type Database = {
           partner_person_id?: string | null
           payments_made?: number | null
           pct_complete?: number | null
+          prior_numbers?: string[]
           project_id?: string | null
           revenue?: number | null
           service_type_id?: string
@@ -29841,6 +30169,7 @@ export type Database = {
           photo_taken_at: string | null
           pick: string | null
           question_id: string
+          report_photo_id: string | null
           updated_at: string
         }
         Insert: {
@@ -29861,6 +30190,7 @@ export type Database = {
           photo_taken_at?: string | null
           pick?: string | null
           question_id: string
+          report_photo_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -29881,6 +30211,7 @@ export type Database = {
           photo_taken_at?: string | null
           pick?: string | null
           question_id?: string
+          report_photo_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -29910,6 +30241,13 @@ export type Database = {
             columns: ["question_id"]
             isOneToOne: false
             referencedRelation: "stage_checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_report_photo_id_fkey"
+            columns: ["report_photo_id"]
+            isOneToOne: false
+            referencedRelation: "report_photos"
             referencedColumns: ["id"]
           },
         ]
@@ -32555,9 +32893,12 @@ export type Database = {
       }
       twin_shadow_runs: {
         Row: {
+          assist_kind: string | null
+          assisted_at: string | null
           axis: string | null
           created_at: string
           delta_pct: number | null
+          fixtures_score: Json | null
           id: string
           locked_at: string | null
           locked_total: number | null
@@ -32572,9 +32913,12 @@ export type Database = {
           twin_user_id: string
         }
         Insert: {
+          assist_kind?: string | null
+          assisted_at?: string | null
           axis?: string | null
           created_at?: string
           delta_pct?: number | null
+          fixtures_score?: Json | null
           id?: string
           locked_at?: string | null
           locked_total?: number | null
@@ -32589,9 +32933,12 @@ export type Database = {
           twin_user_id: string
         }
         Update: {
+          assist_kind?: string | null
+          assisted_at?: string | null
           axis?: string | null
           created_at?: string
           delta_pct?: number | null
+          fixtures_score?: Json | null
           id?: string
           locked_at?: string | null
           locked_total?: number | null
@@ -34888,6 +35235,8 @@ export type Database = {
           project_name: string
         }[]
       }
+      bid_version_lock_may_override: { Args: never; Returns: boolean }
+      bid_version_lock_refusal: { Args: { p_version: string }; Returns: string }
       bio_line_say: {
         Args: { p_id: string; p_say: boolean }
         Returns: undefined
@@ -35480,6 +35829,10 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: Json
       }
+      dev_bid_write: {
+        Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
+        Returns: Json
+      }
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
       dev_health_sampler_gaps: { Args: { p_hours?: number }; Returns: Json }
@@ -35607,6 +35960,7 @@ export type Database = {
         Returns: number
       }
       email_box_can_see: { Args: { p_watch: string }; Returns: boolean }
+      email_open_mail_domain: { Args: { p_domain: string }; Returns: boolean }
       email_place_address: {
         Args: { p_name: string; p_value: string }
         Returns: {
@@ -36848,7 +37202,6 @@ export type Database = {
       get_my_partner_jobs: { Args: never; Returns: Json }
       get_my_partner_ledger: { Args: { p_weeks?: number }; Returns: Json }
       get_my_partner_summary: { Args: never; Returns: Json }
-      get_my_statement_round: { Args: never; Returns: Json }
       get_my_statement_week: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_paid_profit_stats: { Args: never; Returns: Json }
@@ -36912,10 +37265,6 @@ export type Database = {
         Returns: Json
       }
       get_stages_enrichment: { Args: { p_job_ids: string[] }; Returns: Json }
-      get_statement_round_for_user: {
-        Args: { p_user_id: string }
-        Returns: Json
-      }
       get_statement_week_for_office: { Args: never; Returns: Json }
       get_supervised_days_payload: {
         Args: { p_from: string; p_to: string }
@@ -37392,6 +37741,60 @@ export type Database = {
       }
       legal_set_stage: {
         Args: { p_entry_id?: string; p_matter_id: string; p_stage: string }
+        Returns: Json
+      }
+      legal_statement_add: {
+        Args: {
+          p_affiant: Json
+          p_body: string
+          p_form?: string
+          p_incident_to?: string
+          p_matter_id: string
+          p_on: string
+          p_source?: string
+          p_title: string
+          p_venue_county?: string
+        }
+        Returns: Json
+      }
+      legal_statement_affiant_clean: {
+        Args: { p_affiant: Json }
+        Returns: Json
+      }
+      legal_statement_affiant_problem: {
+        Args: { p_affiant: Json }
+        Returns: string
+      }
+      legal_statement_print: {
+        Args: { p_entry_id: string; p_face: string; p_text?: string }
+        Returns: Json
+      }
+      legal_statement_sign: {
+        Args: {
+          p_as_printed?: boolean
+          p_clear_incident_to?: boolean
+          p_document_id: string
+          p_entry_id: string
+          p_incident_to?: string
+          p_on?: string
+          p_signed_on: string
+        }
+        Returns: Json
+      }
+      legal_statement_update: {
+        Args: {
+          p_affiant?: Json
+          p_body?: string
+          p_clear_incident_to?: boolean
+          p_clear_venue_county?: boolean
+          p_entry_id: string
+          p_form?: string
+          p_incident_to?: string
+          p_on?: string
+          p_source?: string
+          p_title?: string
+          p_venue_county?: string
+        }
         Returns: Json
       }
       legal_void_entry: {
@@ -38328,13 +38731,19 @@ export type Database = {
       list_shadow_runs: {
         Args: never
         Returns: {
+          assisted_at: string
           axis: string
           created_at: string
           delta_pct: number
+          fixtures_found: number
+          fixtures_score: Json
+          fixtures_set_aside: number
+          fixtures_taken: number
           id: string
           locked_at: string
           locked_total: number
           project_name: string
+          reference_bid_id: string
           reference_bid_number: string
           reference_kind: string
           reference_sent_at: string
@@ -38678,6 +39087,10 @@ export type Database = {
             Args: { p_job_id: string; p_note?: string; p_paid_on?: string }
             Returns: Json
           }
+      mark_notice: {
+        Args: { p_contact_id: string; p_scope: string }
+        Returns: undefined
+      }
       mark_owed: {
         Args: {
           p_by_day?: string
@@ -39022,6 +39435,10 @@ export type Database = {
         Args: { p_survivor: string; p_victim: string }
         Returns: Json
       }
+      price_robot_fixtures: {
+        Args: { p_bid_id: string; p_price_book_version_id: string }
+        Returns: Json
+      }
       primary_can_access_bid: { Args: { p_bid_id: string }; Returns: boolean }
       primary_can_access_estimate: {
         Args: { p_estimate_id: string }
@@ -39045,6 +39462,7 @@ export type Database = {
         Returns: Json
       }
       put_back_lost_dispute_bill: { Args: { p_case_id: string }; Returns: Json }
+      put_back_robot_fixtures: { Args: { p_row_ids: string[] }; Returns: Json }
       put_in_development: {
         Args: {
           p_bid_ids?: string[]
@@ -39400,12 +39818,49 @@ export type Database = {
           twin_user_id: string
         }[]
       }
+      robot_fixture_gate: {
+        Args: { p_bid_id: string; p_door: string }
+        Returns: undefined
+      }
+      robot_fixture_land_row: {
+        Args: {
+          p_bid_version_id: string
+          p_count: number
+          p_price_version: string
+          p_row_id: string
+          p_source_id: string
+          p_user: string
+        }
+        Returns: string
+      }
+      robot_fixture_source: {
+        Args: { p_bid_id: string; p_pull_id: string; p_user: string }
+        Returns: string
+      }
+      robot_fixtures_follow_adopt: {
+        Args: {
+          p_new_version_id: string
+          p_source_bid_id: string
+          p_target_bid_id: string
+        }
+        Returns: number
+      }
+      robot_fixtures_follow_clone: {
+        Args: { p_bid_id: string; p_map: Json; p_target_bid_version_id: string }
+        Returns: number
+      }
       robot_progress: {
         Args: { p_bid_ids: string[] }
         Returns: {
+          assisted_at: string
           bid_id: string
           claimed_at: string
           counted_at: string
+          fixtures_at: string
+          fixtures_found: number
+          fixtures_set_aside: number
+          fixtures_sure: number
+          fixtures_taken: number
           heartbeat_at: string
           heartbeat_is_round: boolean
           heartbeat_progress: Json
@@ -39616,6 +40071,10 @@ export type Database = {
           p_note: string
           p_stripe_credit_note_id: string
         }
+        Returns: Json
+      }
+      set_aside_robot_fixtures: {
+        Args: { p_reason?: string; p_row_ids: string[] }
         Returns: Json
       }
       set_back_day: {
@@ -39981,6 +40440,14 @@ export type Database = {
         Args: { p_mercury_transaction_id: string }
         Returns: Json
       }
+      take_robot_fixtures: {
+        Args: {
+          p_bid_version_id?: string
+          p_row_ids: string[]
+          p_updates?: Json
+        }
+        Returns: Json
+      }
       takeoff_fixture_history: {
         Args: {
           p_bids_per_key?: number
@@ -40077,10 +40544,16 @@ export type Database = {
         Returns: boolean
       }
       unhighlight: { Args: { p_highlight_id: string }; Returns: undefined }
+      unmark_notice: { Args: { p_contact_id: string }; Returns: undefined }
       unresolve_noncard_transaction_attribution: {
         Args: { p_mercury_transaction_id: string }
         Returns: undefined
       }
+      untake_robot_fixture_rows: {
+        Args: { p_pull_id: string; p_row_ids?: string[] }
+        Returns: Json
+      }
+      untake_robot_fixtures: { Args: { p_pull_id: string }; Returns: Json }
       update_bids_count_rows_order:
         | {
             Args: { p_bid_id: string; p_ordered_ids: string[] }

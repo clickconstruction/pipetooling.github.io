@@ -102,15 +102,18 @@ const WAIT_WORDS: Readonly<Partial<Record<GuessKind, string>>> = {
 /**
  * Why a guess cannot name the number from one press, or null when it can. A guess with its record names them as it, a
  * lead needs no record, *Someone else* opens *Who is this?*, a new customer is made by the press itself (v2.5795), and
- * so are a new trade partner, a supply house and a candidate (spike). A guess with none of those waits for its record.
+ * so are a new trade partner, a supply house and a candidate (spike); a notice marks and closes (v2.6202). A guess with
+ * none of those waits for its record.
  */
-export function guessWait(guess: Pick<WhoGuess, 'kind' | 'record'> & Partial<Pick<WhoGuess, 'makes' | 'makesRecord'>>): string | null {
-  if (guess.record || guess.kind === 'lead' || guess.kind === 'someone_else' || guess.makes || guess.makesRecord) return null
+export function guessWait(guess: Pick<WhoGuess, 'kind' | 'record'> & Partial<Pick<WhoGuess, 'makes' | 'makesRecord' | 'notice'>>): string | null {
+  if (guess.record || guess.kind === 'lead' || guess.kind === 'someone_else' || guess.makes || guess.makesRecord || guess.notice) return null
   return WAIT_WORDS[guess.kind] ?? null
 }
 
 /** What a *Who is this?* press says once it lands. */
-export function namedWords(guess: Pick<WhoGuess, 'kind' | 'label' | 'name'> & Partial<Pick<WhoGuess, 'makes' | 'makesRecord'>>): string {
+export function namedWords(guess: Pick<WhoGuess, 'kind' | 'label' | 'name'> & Partial<Pick<WhoGuess, 'makes' | 'makesRecord' | 'notice'>>): string {
+  // A notice, not a person (v2.6202): the thread is done, and the reader leaves the sender out from now on.
+  if (guess.notice) return guess.notice.scope === 'domain' ? `Everything from ${guess.notice.value} is a notice now. Their next mail stays in Gmail.` : `${guess.notice.value} is a notice now. Their next mail stays in Gmail.`
   if (guess.makes) return `${guess.makes.customerName.trim() || guess.name || 'They'} is a customer now. The thread moves to them.`
   if (guess.makesRecord) {
     const who = guess.makesRecord.name.trim() || guess.name || 'They'

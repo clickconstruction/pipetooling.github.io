@@ -153,7 +153,7 @@ export function BidsPriceBookDrawer({
               type="button"
               disabled={offer.applying}
               onClick={() => void offer.onApply()}
-              style={{ font: 'inherit', fontSize: '0.76rem', fontWeight: 700, padding: '0.26rem 0.7rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: offer.applying ? 'wait' : 'pointer', opacity: offer.applying ? 0.6 : 1 }}
+              style={{ font: 'inherit', fontSize: '0.76rem', fontWeight: 700, padding: '0.26rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: offer.applying ? 'wait' : 'pointer', opacity: offer.applying ? 0.6 : 1 }}
             >
               {offer.applying
                 ? 'Working…'
@@ -207,7 +207,7 @@ export function BidsPriceBookDrawer({
           {expanded ? '‹' : '›'}
         </button>
         {expanded ? (
-          <button type="button" onClick={doors.onAddBook} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.55rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
+          <button type="button" onClick={doors.onAddBook} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, padding: '0.2rem 0.55rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}>
             Add book
           </button>
         ) : null}
@@ -226,7 +226,7 @@ export function BidsPriceBookDrawer({
               })()
             }}
             title={`Price this bid from ${drawerName} — and make it your default for new bids`}
-            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, padding: '0.3rem 0.8rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: switchBusy ? 'wait' : 'pointer', opacity: switchBusy ? 0.6 : 1 }}
+            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, padding: '0.3rem 0.8rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: switchBusy ? 'wait' : 'pointer', opacity: switchBusy ? 0.6 : 1 }}
           >
             {switchBusy ? 'Switching…' : `Use ${drawerName} on this bid`}
           </button>
@@ -277,7 +277,7 @@ export function BidsPriceBookDrawer({
           type="button"
           onClick={doors.onAddEntry}
           disabled={!browsedTemplateId}
-          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
         >
           Add entry
         </button>

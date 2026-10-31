@@ -19,9 +19,9 @@ const label: CSSProperties = { display: 'block', fontSize: '0.8rem', fontWeight:
 const field: CSSProperties = { width: '100%', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, padding: '0.35rem 0.5rem', background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.875rem' }
 const note: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)' }
 const btn = (primary: boolean): CSSProperties => ({
-  border: `1px solid ${primary ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-  background: primary ? 'var(--text-blue-500)' : 'var(--surface)',
-  color: primary ? 'var(--surface)' : 'var(--text-700)',
+  border: `1px solid ${primary ? '#2563eb' : 'var(--border-strong)'}`,
+  background: primary ? '#2563eb' : 'var(--surface)',
+  color: primary ? '#fff' : 'var(--text-700)',
   borderRadius: 8,
   padding: '0.35rem 0.85rem',
   cursor: 'pointer',

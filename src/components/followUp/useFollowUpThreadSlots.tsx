@@ -11,7 +11,10 @@
  * the customer's one job with money open, else a pick (`messages/wordFromLine.ts` over `list_customer_money_strip`).
  */
 import { useCallback, useEffect, useMemo, useRef, useState, useSyncExternalStore } from 'react'
+import type { Contact } from '../../lib/contacts/kernel'
+import type { ThreadMessage } from '../../lib/messages/thread'
 import { useOptionalToastContext } from '../../contexts/ToastContext'
+import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { callFirst, CALL_WORDS, callWhat, dayAfter } from '../../lib/calls/callTasks'
 import { useOptionalAuth } from '../../hooks/useAuth'
 import { courtFactsFromRows } from '../../lib/followUp/courtFacts'
@@ -23,6 +26,7 @@ import { owedStore } from '../../lib/followUp/owedStore'
 import { owedDayToast, owedMarkedToast, owedWhatToast, type DayKept } from '../../lib/messages/owed'
 import type { Teammate } from '../../lib/followUp/team'
 import { NO_PUSH_HOURS, type PushHoursByUser } from '../../lib/messages/pushHours'
+import { newestLineIn, SEND_AS_TASK, threadTaskPreset } from '../../lib/messages/threadTask'
 import { backPillTip, threadStateRows } from '../../lib/followUp/thread'
 import { canOpenGcProjects } from '../../lib/gc/access'
 import { jobLabelOf, lineTakesWord, wordChannel, wordLanding, WORD_PICK_WORDS, WORD_PRESS, type WordLanding } from '../../lib/messages/wordFromLine'
@@ -55,6 +59,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   const { contactId } = useThreadWindow()
   // Optional, so a window drawn without the app's providers (another cut's smoke) draws none of cut 2's pieces.
   const auth = useOptionalAuth()
+  // Send as task (v2.6228): Add a task with this thread on its bar, for any thread, when the dialog's provider is here.
+  const addTask = useChecklistAddModal()
   const toasts = useOptionalToastContext()
   const reread = useMessagesReread()
   const user = auth?.user ?? null
@@ -149,6 +155,17 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
   const nowIso = new Date().toISOString()
   // A slot draws only for the person the rows were read for.
   const mine = (id: string) => id === contactId
+  const taskRow = (c: Contact, lines: readonly ThreadMessage[]): ThreadMenuRow[] =>
+    addTask
+      ? [
+          {
+            key: 'send-as-task',
+            label: SEND_AS_TASK.label,
+            tip: SEND_AS_TASK.tip,
+            onPress: () => addTask.openAddModal({ preset: threadTaskPreset(c, newestLineIn(lines, c.id), window.location.origin) }),
+          },
+        ]
+      : []
 
   return {
     court: (c) => (mine(c.id) ? court : null),
@@ -305,8 +322,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
         />
       )
     },
-    menuRows: (c): ThreadMenuRow[] =>
-      mine(c.id)
+    menuRows: (c, lines = []): ThreadMenuRow[] => [
+      ...(mine(c.id)
         ? [
             ...threadStateRows(followUpContactOf(c, rows.contact, userNames).state, todayYmd).map((r) => ({
               key: `follow-up-${r.move}`,
@@ -326,6 +343,8 @@ export function useFollowUpThreadSlots(io: FollowUpThreadIo = DEFAULT_IO, loadLi
                 }))
               : []),
           ]
-        : [],
+        : []),
+      ...taskRow(c, lines),
+    ],
   }
 }

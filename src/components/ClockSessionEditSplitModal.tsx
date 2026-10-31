@@ -287,9 +287,9 @@ function ClockSessionCreateModal({
             disabled={!canSave}
             style={{
               padding: '0.5rem 1rem',
-              border: '1px solid #3b82f6',
+              border: '1px solid #2563eb',
               borderRadius: 4,
-              background: '#3b82f6',
+              background: '#2563eb',
               color: 'white',
               cursor: canSave ? 'pointer' : 'not-allowed',
             }}
@@ -798,7 +798,7 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                         return sm <= im || sm >= om || h1 < 0.01 || h2 < 0.01
                       })())
                 }
-                style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', border: '1px solid #2563eb', borderRadius: 4, background: '#2563eb', color: 'white', cursor: 'pointer' }}
               >
                 {saving ? 'Splitting…' : 'Split'}
               </button>
@@ -898,9 +898,9 @@ function ClockSessionEditSplitModalEdit({ session, onClose, onSaved, showToast, 
                 }
                 style={{
                   padding: '0.5rem 1rem',
-                  border: '1px solid #3b82f6',
+                  border: '1px solid #2563eb',
                   borderRadius: 4,
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   cursor:
                     notes.trim() &&

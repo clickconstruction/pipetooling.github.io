@@ -413,6 +413,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'put_plan_memo',
+    description:
+      "Write the memo line on one of your bid's plan sets (v2.6207): what you think changed on the plans, in one line a person reads on Edit Bid and on the Development page's Plans look. Lands on the set whose link is the bid's plans_link (the set you read), or on the set named by `set`; a bid with a plans link and no set row gets one. Only on bids you created or are assigned.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Bid (e.g. 'b406' or uuid) — must be yours (assigned/created)" },
+        memo: { type: 'string', description: 'The memo line (max 2000 chars): what changed, in plain words. An empty string clears it.' },
+        set: { type: 'string', description: "Optional: the set's name (e.g. 'Addendum 2') or its Drive link. Left out, the set the robot reads (the bid's plans_link)." },
+      },
+      required: ['bid', 'memo'],
+    },
+  },
+  {
     name: 'add_bid_note',
     description:
       "Write one entry to a bid's audit ledger — the pipeline's flight recorder ('[pipeline STG-N] …' stamps, scorecards, run logs). Only on bids you created or are the assigned estimator for. Notes never move the follow-up clock.",
@@ -562,7 +576,7 @@ const TOOLS = [
   {
     name: 'put_fixtures',
     description:
-      "STG-5b (v1.9.0, punch list #221, Robot fixtures PR 1): the fixtures you found, written down once after paste_counts and before lock_shadow so the estimator's window can offer them row by row — one entry per fixture tag: tag, the name you priced it as (book_entry, a 🤖 Robot Default entry; unit_price fills from the book when you leave it out), the schedule row (description, manufacturer, model, connections), count and unit, per_sheet [{sheet, page, count, pins: [{x, y}] 0..1 of the page}], backing [{kind: schedule|note|legend|callout, sheet, page, text, flags: []}] — every line of plan text that names the tag, with its flag (exclusion, scope, by_others, existing, coordination) — scope_flag ('by_others' | 'existing' | 'alternate' when the plans give the fixture away), confidence 0..1, agreement ('agree' | 'conflict' | 'unverifiable': schedule vs drawn vs riser), remark (one sentence in your words), ct_pin_ids. Lands under the HUMAN bid your shell is paired to; replaces your earlier write unless a person has taken or set aside a row of it (then this is a later read). At most 400 fixtures. Never a total on the ledger line.",
+      "STG-5b (v1.9.0, punch list #221, Robot fixtures PR 1): the fixtures you found, written down once after paste_counts and before lock_shadow (right after it is fine when you missed it) so the estimator's window can offer them row by row — one entry per fixture tag: tag, the name you priced it as (book_entry, a 🤖 Robot Default entry; unit_price fills from the book when you leave it out), the schedule row (description, manufacturer, model, connections), count and unit, per_sheet [{sheet, page, count, pins: [{x, y}] 0..1 of the page}], backing [{kind: schedule|note|legend|callout, sheet, page, text, flags: []}] — every line of plan text that names the tag, with its flag (exclusion, scope, by_others, existing, coordination) — scope_flag ('by_others' | 'existing' | 'alternate' when the plans give the fixture away), confidence 0..1, agreement ('agree' | 'conflict' | 'unverifiable': schedule vs drawn vs riser), remark (one sentence in your words), ct_pin_ids. Lands under the HUMAN bid your shell is paired to; replaces your earlier write unless a person has taken or set aside a row of it (then this is a later read). At most 400 fixtures. Never a total on the ledger line.",
     inputSchema: {
       type: 'object',
       properties: {
@@ -2739,6 +2753,41 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         score_id: score.id,
       }, null, 2))
     }
+    case 'put_plan_memo': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      if (!ref || typeof args.memo !== 'string') return textContent('put_plan_memo needs bid + memo', true)
+      const memo = String(args.memo).trim().slice(0, 2000)
+      const which = String(args.set ?? '').trim()
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let q = admin.from('bids').select('id, bid_number, estimator_id, created_by, plans_link')
+      q = uuidRe.test(ref) ? q.eq('id', ref) : q.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid, error } = await q.maybeSingle()
+      if (error) return textContent(`Bid lookup failed: ${error.message}`, true)
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.estimator_id !== twin.twinUserId && bid.created_by !== twin.twinUserId && !(await pricerMayTouchBid(admin, twin, bid.id))) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — a memo lands only on your own bids.`, true)
+      }
+      const { data: sets, error: setsErr } = await admin.from('bid_plan_sets').select('id, name, link, memo').eq('bid_id', bid.id)
+      if (setsErr) return textContent(`Plan sets read failed: ${setsErr.message}`, true)
+      const norm = (l: string | null | undefined) => (l ?? '').trim().replace(/[?&]usp=[^&#]*/g, '').replace(/\?$/, '').replace(/\/+$/, '')
+      const robotLink = String(bid.plans_link ?? '').trim()
+      const target = which
+        ? (sets ?? []).find((r) => r.name.trim().toLowerCase() === which.toLowerCase() || (norm(r.link).length > 0 && norm(r.link) === norm(which)))
+        : (sets ?? []).find((r) => norm(r.link).length > 0 && norm(r.link) === norm(robotLink))
+      if (target) {
+        const { error: upErr } = await admin.from('bid_plan_sets').update({ memo }).eq('id', target.id)
+        if (upErr) return textContent(`Memo not saved: ${upErr.message}`, true)
+        return textContent(`Memo kept on b${bid.bid_number} · ${target.name}: ${memo || '(cleared)'}`)
+      }
+      if (which) return textContent(`b${bid.bid_number} has no set named or linked "${which}" — its sets: ${(sets ?? []).map((r) => r.name).join(', ') || 'none'}.`, true)
+      if (!robotLink) return textContent(`b${bid.bid_number} has no plans link — file_plans first, then the memo has a set to land on.`, true)
+      const { error: insErr } = await admin.from('bid_plan_sets').insert({ bid_id: bid.id, name: 'Plans', link: robotLink, memo, created_by: twin.twinUserId })
+      if (insErr) return textContent(`Memo not saved: ${insErr.message}`, true)
+      return textContent(`Memo kept on b${bid.bid_number} · Plans (a set row now holds the bid's plans link): ${memo || '(cleared)'}`)
+    }
     case 'add_bid_note': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -3110,8 +3159,16 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         bid_id: bid.id,
         notes: `[pipeline STG-5] via twin-mcp paste_counts: ${parsed.length} rows written and book-assigned (🤖 Robot Default, ${overrides} price overrides${costNote}${altNote}) → priced $${total.toLocaleString()}${expected != null ? ` = expected_total $${expected.toLocaleString()}` : ' (no expected_total passed)'}.`,
       }).then(() => {}, () => {})
+      // Robot fixtures (v2.6237, punch list #221): a shadow shell hands its fixtures over next (STG-5b). A round whose
+      // round.md predates the step (it is written once, by Set up on this Mac) reads it here, so the window gets its list.
+      const { data: shadowOfShell } = await admin.from('twin_shadow_runs').select('id').eq('shadow_bid_id', bid.id).neq('status', 'void').limit(1).maybeSingle()
+      const pullsOfShell = shadowOfShell ? ((await admin.from('bid_fixture_pulls').select('id', { count: 'exact', head: true }).eq('shell_bid_id', bid.id)).count ?? 0) : 0
+      const fixturesNext = shadowOfShell && pullsOfShell === 0
+        ? "STG-5b now, before lock_shadow: put_fixtures(bid, fixtures) once. Every fixture tag you counted, with its book_entry, per_sheet with your pins, every plan line that names the tag with its flags, scope_flag, agreement and confidence. The estimator's window offers them once you seal."
+        : null
       return textContent(JSON.stringify({
         ok: true, bid: `b${bid.bid_number}`, rows: parsed.length, priced_total: total,
+        ...(fixturesNext ? { fixtures_next: fixturesNext } : {}),
         replaced: (existing ?? 0) > 0 ? existing : 0, overrides,
         costed_rows: costed.length, labor_hours_total: laborHoursTotal, alternates: altNames,
         next: expected == null ? 'No expected_total passed — verify the Counts tab total equals your LOCK before scoring.' : 'LOCK note next if not already on the ledger, then score_backtest (STG-6).',
@@ -3801,7 +3858,12 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         bid_id: bid.id,
         notes: `[shadow LOCK] Blind total $${total.toLocaleString()} locked at ${new Date().toISOString()} — before the human number exists. Scoring is automatic when the reference is sent.`,
       }).then(() => {}, () => {})
-      return textContent(JSON.stringify({ ok: true, shadow_bid: `b${bid.bid_number}`, locked_total: total, status: 'locked' }, null, 2))
+      // Robot fixtures (v2.6237): the window opens at the seal, so a shell with no pull is reminded here.
+      const pullsAtLock = (await admin.from('bid_fixture_pulls').select('id', { count: 'exact', head: true }).eq('shell_bid_id', bid.id)).count ?? 0
+      return textContent(JSON.stringify({
+        ok: true, shadow_bid: `b${bid.bid_number}`, locked_total: total, status: 'locked', fixtures_handed_over: pullsAtLock > 0,
+        ...(pullsAtLock > 0 ? {} : { next: "put_fixtures(bid, fixtures) now (STG-5b). It is allowed after the lock. The estimator's robot fixtures window opens at the seal and stays empty until you hand them over." }),
+      }, null, 2))
     }
     case 'score_shadows': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
@@ -3839,25 +3901,27 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       // math takes STANDARD-teacher runs only (v2.3080); practice runs are counted
       // beside them so the difference is visible.
       const { data: allScored } = await admin.from('twin_shadow_runs')
-        .select('axis, delta_pct, scored_at, teacher_user_id').eq('status', 'scored').order('scored_at', { ascending: false })
+        .select('axis, delta_pct, scored_at, teacher_user_id, assisted_at').eq('status', 'scored').order('scored_at', { ascending: false })
       const { data: standards } = await admin.from('users').select('id').eq('calibration_standard', true)
       const standardIds = new Set(((standards ?? []) as Array<{ id: string }>).map((u) => u.id))
-      const byAxis: Record<string, { standard: number[]; practice: number[] }> = {}
+      const byAxis: Record<string, { standard: number[]; practice: number[]; assisted: number }> = {}
       for (const r of allScored ?? []) {
-        const bucket = (byAxis[r.axis ?? 'unclassified'] ??= { standard: [], practice: [] })
-        const isStandard = !!r.teacher_user_id && standardIds.has(r.teacher_user_id as string)
+        const bucket = (byAxis[r.axis ?? 'unclassified'] ??= { standard: [], practice: [], assisted: 0 })
+        // v2.6237: a run the estimator took robot fixtures on is counted with practice, never toward the gate.
+        if (r.assisted_at) bucket.assisted++
+        const isStandard = !!r.teacher_user_id && standardIds.has(r.teacher_user_id as string) && !r.assisted_at
         ;(isStandard ? bucket.standard : bucket.practice).push(Number(r.delta_pct))
       }
-      const scoreboard = Object.entries(byAxis).map(([axis, { standard, practice }]) => {
+      const scoreboard = Object.entries(byAxis).map(([axis, { standard, practice, assisted }]) => {
         const all = [...standard, ...practice]
         return {
-          axis, runs: all.length, standard_runs: standard.length, practice_runs: practice.length,
+          axis, runs: all.length, standard_runs: standard.length, practice_runs: practice.length, assisted_runs: assisted,
           mean_abs_pct: all.length ? Math.round((all.reduce((s, d) => s + Math.abs(d), 0) / all.length) * 10) / 10 : null,
           last5_in_8pct: standard.slice(0, 5).filter((d) => Math.abs(d) <= 8).length,
           gate_b_met: standard.length >= 5 && standard.slice(0, 5).every((d) => Math.abs(d) <= 8),
         }
       })
-      return textContent(JSON.stringify({ newly_scored: scored, scoreboard, gate_note: 'gate_b_met / last5_in_8pct count calibration-standard teachers only (users.calibration_standard); practice_runs are shown, not gated.' }, null, 2))
+      return textContent(JSON.stringify({ newly_scored: scored, scoreboard, gate_note: 'gate_b_met / last5_in_8pct count calibration-standard teachers only (users.calibration_standard), never an assisted run (the estimator took robot fixtures, v2.6237); practice_runs are shown, not gated.' }, null, 2))
     }
     default:
       return textContent(`Unknown tool: ${name}`, true)
@@ -3873,7 +3937,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.9.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.10.1' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

@@ -24,6 +24,7 @@ import { formatCurrency } from '../../lib/format'
 import { loadUpcomingClockSessions } from '../../lib/upcomingPayrollSessions'
 import { EmptyState } from '../EmptyState'
 import { employmentRosterEmptyWords, TIME_OFF_EMPTY } from '../../lib/people/peopleEmptyWords'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 type EmploymentPersonRow = {
   id: string
@@ -804,8 +805,8 @@ export default function PeopleEmploymentTab({
                   style={{
                     padding: '0.45rem 0.9rem',
                     fontWeight: 600,
-                    color: 'white',
-                    background: !datesDirty || saving ? 'var(--text-faint-300)' : '#2563eb',
+                    color: !datesDirty || saving ? DEAD_PRESS_TEXT : 'white',
+                    background: !datesDirty || saving ? DEAD_PRESS_FILL : '#2563eb',
                     border: 'none',
                     borderRadius: 6,
                     cursor: !datesDirty || saving ? 'default' : 'pointer',
@@ -1022,8 +1023,8 @@ export default function PeopleEmploymentTab({
                       style={{
                         padding: '0.45rem 0.9rem',
                         fontWeight: 600,
-                        color: 'white',
-                        background: toSaving ? 'var(--text-faint-300)' : '#ea580c',
+                        color: toSaving ? DEAD_PRESS_TEXT : 'white',
+                        background: toSaving ? DEAD_PRESS_FILL : '#ea580c',
                         border: 'none',
                         borderRadius: 6,
                         cursor: toSaving ? 'wait' : 'pointer',

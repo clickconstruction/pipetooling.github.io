@@ -644,7 +644,7 @@ export function MaterialsPurchaseOrdersTab({
                                                     const priceToUse = isValidPrice ? newPriceNum : row.price
                                                     updatePOItemSupplyHouse(item.id, row.supply_house_id, priceToUse)
                                                   }}
-                                                  style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                                  style={{ padding: '0.25rem 0.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
                                                 >
                                                   Use for PO
                                                 </button>
@@ -932,7 +932,7 @@ export function MaterialsPurchaseOrdersTab({
                   <button
                     type="button"
                     onClick={() => printPOForSupplyHouse(selectedPO, parseFloat(viewedPOTaxPercent) || 0)}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Print for Supply House
                   </button>
@@ -972,7 +972,7 @@ export function MaterialsPurchaseOrdersTab({
                         onClick={() => {
                           window.location.href = '/projects'
                         }}
-                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                        style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                       >
                         Go to Projects to Add
                       </button>

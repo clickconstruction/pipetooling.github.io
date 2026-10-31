@@ -416,7 +416,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
               padding: '0.25rem 0.45rem',
               border: 'none',
               borderRadius: 6,
-              background: '#3b82f6',
+              background: '#2563eb',
               color: '#fff',
               cursor: 'pointer',
               flexShrink: 0,
@@ -475,7 +475,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
               border: '1px solid var(--border-strong)',
               borderRadius: 6,
               background:
-                canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#3b82f6' : 'var(--bg-subtle)',
+                canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#2563eb' : 'var(--bg-subtle)',
               color: canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? '#fff' : 'var(--text-faint)',
               cursor:
                 canonicalUrlIsCheckable && canonicalUrlCheckStatus !== 'loading' ? 'pointer' : 'not-allowed',
@@ -1944,7 +1944,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                   fontWeight: 600,
                   border: 'none',
                   borderRadius: 6,
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: '#fff',
                   cursor: 'pointer',
                 }}
@@ -1990,7 +1990,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                   <section aria-label="Office sections to complete" style={{ border: '1px solid var(--border)', borderLeft: '3px solid var(--border-amber, #d97706)', borderRadius: 6, background: 'var(--bg-amber-tint, #fdf1e3)', padding: '0.6rem 0.8rem', marginBottom: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>
                       Office sections to complete
-                      <span style={{ fontSize: '0.6875rem', fontWeight: 700, background: 'var(--text-amber-700, #9a5b12)', color: '#fff', borderRadius: 999, padding: '0 0.45rem' }}>{queue.length}</span>
+                      <span style={{ fontSize: '0.6875rem', fontWeight: 700, background: '#b45309', color: '#fff', borderRadius: 999, padding: '0 0.45rem' }}>{queue.length}</span>
                       <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>signed by the person; the PDF is not final until the office finishes its part</span>
                     </div>
                     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>
@@ -2184,7 +2184,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                           setAssignPacketsSelectedIds(new Set())
                                           setAssignPacketMenuOpenId(null)
                                         }}
-                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                        style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                       >
                                         Assign packets
                                       </button>
@@ -2677,7 +2677,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                 }
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: '#fff',
                   border: 'none',
                   borderRadius: 6,
@@ -3319,7 +3319,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                     }
                     style={{
                       padding: '0.5rem 1rem',
-                      background: '#3b82f6',
+                      background: '#2563eb',
                       color: '#fff',
                       border: 'none',
                       borderRadius: 6,

@@ -2,6 +2,8 @@ import { useEffect, useState } from 'react'
 import type { Bid } from '../../types/bids'
 import { robotRowState, robotStatusTimeline, type RobotRowInput } from '../../lib/bids/robotRowState'
 import type { RobotProgress } from '../../lib/bids/robotProgress'
+import type { RobotStage } from '../../lib/bids/robotStage'
+import { RobotStageStrip } from './RobotStageStrip'
 import { useRobotRunSignals } from '../../hooks/useRobotProgress'
 import { heartbeatDetailWords, heartbeatWords } from '../../../supabase/functions/_shared/twinHeartbeat'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -26,6 +28,9 @@ type RobotStatusSheetProps = {
   onLeaveToMe?: (bid: Bid) => void
   /** v2.5751: open with Read the run already unfolded — the comparison modal's door on a sent bid's live run. */
   runOpenAtStart?: boolean
+  /** Robot fixtures (punch list #221, PR 3b): the bid's standing with the robots; the door to the fixtures opens once sealed. */
+  stage?: RobotStage | null
+  onOpenFixtures?: (bid: Bid) => void
 }
 
 /** Remembered per browser: the first visit shows What the robot touches open; later visits fold it. */
@@ -56,7 +61,7 @@ export function RobotStatusSheet(props: RobotStatusSheetProps) {
   return <RobotStatusSheetBody {...props} input={props.input} />
 }
 
-function RobotStatusSheetBody({ input, twin, progress = null, onClose, onOpenRobotBoard, onCompare, onToggleRequest, onOpenQuestions, onLeaveToMe, runOpenAtStart = false }: RobotStatusSheetProps & { input: RobotRowInput & { bid: Bid } }) {
+function RobotStatusSheetBody({ input, twin, progress = null, onClose, onOpenRobotBoard, onCompare, onToggleRequest, onOpenQuestions, onLeaveToMe, runOpenAtStart = false, stage = null, onOpenFixtures }: RobotStatusSheetProps & { input: RobotRowInput & { bid: Bid } }) {
   const { bid } = input
   const state = robotRowState(input)
   const steps = robotStatusTimeline(input)
@@ -117,6 +122,8 @@ function RobotStatusSheetBody({ input, twin, progress = null, onClose, onOpenRob
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
         </div>
+
+        {stage && !stage.void ? <RobotStageStrip stage={stage} variant="full" /> : null}
 
         <ol style={{ listStyle: 'none', margin: '0 0 1rem', padding: '0 0 0 0.6rem', borderLeft: '2px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           {steps.map((s, i) => {
@@ -180,6 +187,11 @@ function RobotStatusSheetBody({ input, twin, progress = null, onClose, onOpenRob
         ) : null}
 
         <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', borderTop: '1px solid var(--border)', paddingTop: '0.75rem', alignItems: 'center' }}>
+          {stage?.fixturesOpen && onOpenFixtures && !bid.bid_date_sent ? (
+            <button type="button" onClick={() => onOpenFixtures(bid)} data-testid="robot-status-fixtures" style={{ ...btn(true), background: '#2563eb', color: '#fff', borderColor: '#2563eb' }} title="The fixtures the robot found on this bid's plans, on the Counts tab">
+              {stage.fixturesTaken > 0 ? `${stage.fixturesTaken} of ${stage.fixturesFound} fixtures on your count · Review` : `Fixtures ready · ${stage.fixturesFound} · Review them`}
+            </button>
+          ) : null}
           {(scored || !!bid.bid_date_sent) && twin ? (
             <button type="button" onClick={() => onCompare(twin, bid)} style={btn(true)}>Compare counts and pricing</button>
           ) : null}
@@ -249,6 +261,6 @@ function ProgressBar({ progress }: { progress: RobotProgress }) {
 
 function btn(primary: boolean): React.CSSProperties {
   return primary
-    ? { padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }
+    ? { padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }
     : { padding: '0.45rem 0.85rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', color: 'inherit', cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }
 }

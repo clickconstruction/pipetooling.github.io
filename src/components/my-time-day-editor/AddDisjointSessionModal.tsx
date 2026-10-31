@@ -250,7 +250,7 @@ export function AddDisjointSessionModal({
               padding: '0.45rem 0.85rem',
               border: 'none',
               borderRadius: 4,
-              background: '#3b82f6',
+              background: '#2563eb',
               color: 'white',
               fontWeight: 600,
               cursor: 'pointer',

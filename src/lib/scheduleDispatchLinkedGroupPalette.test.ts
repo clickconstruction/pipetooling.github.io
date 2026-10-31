@@ -6,7 +6,7 @@ describe('buildLinkedGroupAccentMap', () => {
   it('picks the accent from the id, the same one every time', () => {
     const first = buildLinkedGroupAccentMap(['a', 'b'])
     const again = buildLinkedGroupAccentMap(['b', 'a'])
-    expect(first.get('a')).toEqual({ borderColor: '#4d7c0f', background: '#f7fee7' })
+    expect(first.get('a')).toEqual({ borderColor: '#4d7c0f', background: 'var(--bg-lime-tint)' })
     expect(first.get('b')).toEqual({ borderColor: '#c2410c', background: 'var(--bg-orange-tint)' })
     expect(again.get('a')).toEqual(first.get('a'))
     expect(again.get('b')).toEqual(first.get('b'))

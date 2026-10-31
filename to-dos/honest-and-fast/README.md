@@ -2,7 +2,7 @@
 name: "Honest and fast: the last read kept, and a plain line when the app is slow"
 number: 183
 group: ready
-status: PR 1 live (v2.6009, the strip and the auth gate's hold) · PR 2 live (v2.6031, the kept-read shape, the Pipeline re-pointed, the strip names the time) · PR 3 built (v2.6059, My Schedule and Job Mode keep the day, a failed schedule read never lands as an empty day) · PR 4, Quickfill, is the next step · the owner took the five calls as recommended on 2026-10-26 ("I like your suggestions, I just can't build it right now") · the press's life on the strip decided the same afternoon
+status: PR 1 live (v2.6009, the strip and the auth gate's hold) · PR 2 live (v2.6031, the kept-read shape, the Pipeline re-pointed, the strip names the time) · PR 3 live (v2.6059, My Schedule and Job Mode keep the day, a failed schedule read never lands as an empty day) · PR 4 built (v2.6223, Quickfill's deck and each station's count and Next line kept, Done and Worked it held, the Roller reading only the station on screen) · PR 5, Messages, is the next step · the owner took the five calls as recommended on 2026-10-26 ("I like your suggestions, I just can't build it right now") · the press's life on the strip decided the same afternoon
 summary: >
   During a database freeze every live read hangs, so a daily screen shows a spinner, two grey
   bars or a blank, and a person cannot tell a freeze from a dead app. On a cold open the auth
@@ -15,10 +15,10 @@ summary: >
   moment something has waited four seconds with nothing landing, adds "The page you see was read
   at 7:52 AM." on a kept page, says "Nothing you pressed is lost." only while #163's queue holds
   every press, and reads "Could not reach the app. Retry." when nothing answers at all.
-next: PR 4, Quickfill — the deck and each station's count and next line kept through `useKeptRead` with the stamp "Counts from 7:52 AM · counting again…", Done and Worked it held on a kept station, and the Roller running the hooks of the station on screen and the Focus view, not every station's; then PR 5 Messages. PR 1 (v2.6009) shipped the strip and the auth gate's hold; PR 2 (v2.6031) the shape; PR 3 (v2.6059) the phone's day. The role row is not kept on the device (PR 3 left it, see Where it stands). The words "Nothing you pressed is lost" and the press's green and red shipped with #163's queue (v2.6099).
+next: PR 5, Messages — the queue and the bar's counts kept through `useKeptRead` with the stamp "Who was waiting at 7:52 AM · reading again…" and Take it held on a kept row; then delete this folder. PR 1 (v2.6009) shipped the strip and the auth gate's hold; PR 2 (v2.6031) the shape; PR 3 (v2.6059) the phone's day; PR 4 (v2.6223) Quickfill's deck. The role row is not kept on the device (PR 3 left it, see Where it stands). The words "Nothing you pressed is lost" and the press's green and red shipped with #163's queue (v2.6099).
 size: L as a train of five (S · M · M · M · S), no migration
 blocker: none for PRs 1 to 5; the strip's last words and the press's life on it shipped with #163's queue (v2.6099).
-ver: v2.6009 · 6031 · 6059
+ver: v2.6009 · 6031 · 6059 · 6223
 opinion: build — the owner took the five calls as recommended on 2026-10-26; PR 1 ships alone and changes a slow morning by itself; give the Dashboard's 630 reads a to-do of their own
 ---
 
@@ -335,8 +335,10 @@ No migration. No edge function.
    Job Mode keep today's read, keyed by the day, under the stamp *Your day as read at 7:52 AM*;
    the schedule's failed read shows the kept day or its reason, never *No blocks scheduled.*
    This is #163's step 4, taken here.
-4. **PR 4, Quickfill** (M). The deck and each station's count and next line kept; the Roller
-   runs the hooks of the station on screen and the Focus view, not every station's.
+4. **PR 4, Quickfill** (M) — **built as v2.6223** (fragment
+   [`docs/recent-features/v2.6223.md`](../../docs/recent-features/v2.6223.md)). The deck and each
+   station's count and next line kept; the Roller runs the hooks of the station on screen, the
+   Page and Focus every station's.
 5. **PR 5, Messages** (S). The queue and the bar's counts kept.
 6. **With #163, shipped as its PR 2** (v2.6099). The queue's count and door joined the strip;
    *Nothing you pressed is lost* turned on; the press's four steps of part 3 draw in the strip's
@@ -425,3 +427,29 @@ card if the owner wants it. Verified on the dev server at 375 wide in light and 
 schedule rows and the reads held, both cards kept, landed and failed (the fragment's Verified);
 View as… could not show it, since the hook keeps nothing in an impersonated session. PR 4,
 Quickfill, is next.
+
+**PR 4 built 2026-10-31 (v2.6223).** Quickfill as planned, with one change of shape argued in
+the build: the deck is kept, not every station's body. The Roller and the phone's round keep one
+row per station (`lib/quickfill/keptDeck.ts`, the key `user:quickfill:deck`): the label, the
+count and where it came from, the Next line of a station that counted, the last mark and the
+last five marks' times. The round's state is not kept but re-read against the clock when the
+deck is drawn (`quickfillKeptDeckRows` hands the kept marks back to `roundRows`), so a station
+marked at 7:50 reads as due again by evening rather than as fresh all day. The write waits for
+the marks, the 60-day history, the layout settings and the on-screen station's count
+(`quickfillDeckLoading`), nothing else, since the other stations' counts on the deck are the
+history's *at last look*. On a kept deck the Roller and the round draw the stamp *Counts from
+7:52 AM · counting again…* over the strip, the station's line *3 open at 7:52 AM* and its kept
+Next line, the counts muted under `data-kept-read` on the head, the bar, the list and the Board,
+and Done and Worked it as dead presses (`deadPress.ts`, `markPresses`' `held`) with *reading
+again…*; Skip, Not sure, the dots, Groups and the station's own body stay live. A failed marks or
+history read (both now say so through `recoveryFailureFromError`) keeps the kept deck up with
+the stamp's Retry, and with nothing kept the Roller draws `OfflineRetryPanel` where the close
+sheet goes. The read diet: `quickfillStationReadsOn` gates the six heavy page-level hooks
+(Missing job info, Property kinds, Percent complete, Messages, Field photos, Complete no bill)
+to the station on screen on the Roller and the round, each hook taking `enabled` while
+`fetchEnabled` stays the role's answer; the Page and Focus run every station's. Not gated:
+Unreachable Prospects (its count decides whether the station exists), Unpriced Fixtures, the
+stale-tally count and the dispatch inbox, which feeds two stations and the trip-charge door; the
+Page and Focus views keep nothing, since every station draws its own body there and keeping
+thirty bodies' rows is the wrong kind of fast (the Dashboard's argument). PR 5, Messages, is
+next, and this folder goes when it lands.

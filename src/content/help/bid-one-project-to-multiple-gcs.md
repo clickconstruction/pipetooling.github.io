@@ -29,7 +29,7 @@ On **Pricing**, the Workbench shows the packet you are on. It reads *This GC —
 
 - The {{chip:green|★ base}} option is the price on that GC's letter. Cover Letter, {{button:green|Share with a teammate}}, Print and the bid value all use it. {{button:outline|☆ Make base}} moves it, with a confirm. **Share with a teammate** does exactly that. It hands the pricing package to someone on your team. It never sends anything to the GC and never marks the bid sent. Share while viewing a non-base price and it asks which to send. You can send the base, the one you are viewing, or **both** in one package.
 - Every price card ends in a bar that answers **who sees this price**. Green reads *★ The price on their letter*. Blue reads *On their letter · alternate*. An alternate is a price they may take instead of the base. Gray reads *Only you see this*. The bar's links do the work. They are **offer as alternate**, **stop offering** and **☆ make base**. The GC's chip on the Send to strip counts what they are getting: {{chip:blue|gets 2 prices}}.
-- {{button:outline|＋ Add price}} asks what you want. **Another price for this GC** lets you name it. Offer it right away or keep it to compare. **Another GC** opens the same GC-first modal as the strip. Or pick **Adopt an existing bid**.
+- {{button:outline|＋ Add price}} asks what you want. **Another price for this GC** lets you name it. Offer it right away or keep it to compare. **Another GC** opens the same GC-first modal as the strip. Or pick **Adopt an existing bid**. The adopted bid's counts, takeoff and prices become that version's own. Its CountTooling projects and plan sets come along too, each marked with the version's name. Each plan set's memo names the bid it came from.
 - A packet that has not been priced yet shows the start panel. {{button:blue|Price from WENDI}} opens the Workbench on that packet's own counts, priced from your book. The panel still offers to copy prices from a priced packet. See *price a bid with the Workbench*.
 
 ## Write each GC's letter
@@ -87,6 +87,16 @@ The bid's GC stops answering or loses the project. Another GC on the bid should 
 Every GC card in Edit Bid carries its own **due date & time**, **submitted-to** contact, and **ITB links**. An ITB is an invitation to bid. Press **＋ due / submitted to / ITB** under a card. Or press **✎ edit** once something is set. Three builders, three deadlines.
 
 The bid's board due date rolls up on its own. It becomes the **earliest due among the GCs you have not sent to yet**. Once a GC's letter goes out, their deadline stops driving the board. A bid where you never set per-GC dues keeps its hand-set due date exactly as before.
+
+## Lock a version
+
+Two estimators may price the same job as two versions. A lock keeps one version in one pair of hands.
+
+1. Find your version on the Versions strip.
+2. Press the open lock beside its name. The lock is off on every version until someone presses it.
+3. The version now reads {{chip:yellow|Locked · you}}. Only you change its counts, takeoff, prices, CountTooling projects and plan sets.
+
+Everyone else still reads it, sends it and copies it. If they try to change it, the app says who locked it. It tells them to ask you, or a master. Press the closed lock to open it again. A dev or a master can open any lock. Every lock and unlock leaves a line in the bid's log.
 
 ## Tips
 

@@ -409,7 +409,7 @@ export function DraftPayrollModal({
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.8125rem',
                     fontWeight: 500,
-                    background: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_FILL : '#3b82f6',
+                    background: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_FILL : '#2563eb',
                     color: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_TEXT : 'white',
                     border: 'none',
                     borderRadius: 6,
@@ -590,7 +590,7 @@ export function DraftPayrollModal({
                                   style={{
                                     padding: '2px 8px',
                                     fontSize: '0.8125rem',
-                                    background: markingPayStubId === stub.id ? DEAD_PRESS_FILL : '#3b82f6',
+                                    background: markingPayStubId === stub.id ? DEAD_PRESS_FILL : '#2563eb',
                                     color: markingPayStubId === stub.id ? DEAD_PRESS_TEXT : 'white',
                                     border: 'none',
                                     borderRadius: 4,
@@ -708,7 +708,7 @@ export function DraftPayrollModal({
                                 style={{
                                   padding: '2px 6px',
                                   fontSize: '0.8125rem',
-                                  background: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_FILL : '#3b82f6',
+                                  background: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_FILL : '#2563eb',
                                   color: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_TEXT : 'white',
                                   border: 'none',
                                   borderRadius: 4,
@@ -961,7 +961,7 @@ export function DraftPayrollModal({
                 style={{
                   padding: '0.4rem 0.9rem',
                   fontSize: '0.875rem',
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   border: 'none',
                   borderRadius: 6,

@@ -182,9 +182,9 @@ export function SmallButton({ onClick, children, title, primary, disabled }: { o
       style={{
         height: 30,
         padding: '0 0.8rem',
-        border: primary ? '1px solid var(--text-link)' : '1px solid var(--border-strong)',
+        border: primary ? '1px solid #2563eb' : '1px solid var(--border-strong)',
         borderRadius: 5,
-        background: primary ? 'var(--text-link)' : 'var(--surface)',
+        background: primary ? '#2563eb' : 'var(--surface)',
         color: primary ? '#fff' : 'var(--text-700)',
         fontSize: '0.78rem',
         fontWeight: 600,

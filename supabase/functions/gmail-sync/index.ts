@@ -19,6 +19,9 @@
  *     out, under the teammate's name (`emailLine.ts`'s `emailParty`). Before that every staff address was left out.
  *   - Mail the reader leaves out (`leftOut.ts`: bulk, no-reply, Gmail's other tabs, the box's own and the app's) stays
  *     with no label.
+ *   - A sender the office marked **A notice, not a person** (punch list #223 PR 1, v2.6202: `email_left_out_senders`,
+ *     an address or a company's whole domain, read once per run through `leftOutSenders.ts`) is left out the same way,
+ *     before the address is placed, so nothing flips their done thread back to waiting.
  * - The sender's address finds its contact or makes the Who is this? row (`email_place_address`).
  * - The subject's job number, or a job's name among the sender's own, ties the line (`jobInSubject.ts`). Else the
  *   person's star does, and with no star the line sits on the person.
@@ -61,6 +64,7 @@ import { walkHistory, type HistoryWalk, type Took } from '../_shared/gcKernels/l
 import { base64UrlBytes, parseAddress, readGmailMessage } from '../_shared/gcKernels/lib/emailIn/gmailMessage.ts'
 import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
 import { leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
+import { leftOutSenders, type LeftOutSenderMatch, type LeftOutSenderRow } from '../_shared/gcKernels/lib/emailIn/leftOutSenders.ts'
 import { subjectJobs, subjectNumbers, type SubjectBidRow, type SubjectPipelineRow, type SubjectProjectRow } from '../_shared/gcKernels/lib/emailIn/subjectJobs.ts'
 import { buildLedgerPrefixMap, type LedgerPrefixMap } from '../_shared/gcKernels/lib/ledgerDisplayPrefixes.ts'
 
@@ -101,6 +105,8 @@ interface Ctx {
   kit: WalkKit | null
   carried: (address: string) => boolean
   prefixes: LedgerPrefixMap
+  /** The senders the office marked a notice (v2.6202), for this box: the row that matches, or null. */
+  isNotice: (address: string) => LeftOutSenderMatch
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -147,6 +153,13 @@ async function loadTeam(admin: Admin, settings: BoxSettings | null, boxes: reado
     kit,
     carried,
   }
+}
+
+/** The senders the office marked a notice (`email_left_out_senders`, v2.6202), read once per run. */
+async function loadLeftOutSenders(admin: Admin): Promise<LeftOutSenderRow[]> {
+  const { data, error } = await admin.from('email_left_out_senders').select('value, kind, mailbox')
+  if (error) throw new Error(`Reading the senders marked a notice failed: ${error.message}`)
+  return (data ?? []) as LeftOutSenderRow[]
 }
 
 async function loadPrefixes(admin: Admin): Promise<LedgerPrefixMap> {
@@ -236,6 +249,8 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   if (fwd ? outsideInbox(email) : leftOut(email, ctx.isTheBox)) return 'left'
   const party = emailParty(email, fwd, { isOurs: ctx.isOurs, isTheBox: ctx.isTheBox })
   if (!party) return 'left'
+  // A sender the office marked a notice (v2.6202): left in Gmail with no label, and never placed, so the done thread stays done.
+  if (party.direction === 'in' && ctx.isNotice(party.address.address)) return 'left'
   // The same mail, read first in the other box: no address placed, no file copied, no line. Only this box's label.
   if (await heldLine(ctx, rfcMessageId(email))) {
     await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
@@ -309,7 +324,7 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
 }
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
-async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap): Promise<Record<string, unknown>> {
+async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap, notices: readonly LeftOutSenderRow[]): Promise<Record<string, unknown>> {
   const startedAt = nowIso()
   await saveState(admin, b.mailbox, { last_run_at: startedAt })
   try {
@@ -326,7 +341,7 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
       return { ok: true, started: true }
     }
 
-    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes }
+    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox) }
     let walk: HistoryWalk
     try {
       walk = await walkHistory(state.history_id, (pageToken) => gmailHistory(token, state.history_id, pageToken), (id) => takeOne(ctx, id), MAX_PER_RUN)
@@ -366,11 +381,12 @@ async function run(admin: Admin): Promise<{ ok: boolean; boxes: Record<string, u
   }
   const team = await loadTeam(admin, settings, boxes.map((b) => b.address))
   const prefixes = await loadPrefixes(admin)
+  const notices = await loadLeftOutSenders(admin)
   const out: Record<string, unknown> = {}
   let ok = true
   for (const b of boxes) {
     try {
-      out[b.mailbox] = await runBox(admin, saJson, b, team, prefixes)
+      out[b.mailbox] = await runBox(admin, saJson, b, team, prefixes, notices)
     } catch (e) {
       ok = false
       console.error(`gmail-sync ${b.mailbox}`, e)

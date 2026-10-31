@@ -8,6 +8,7 @@ import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
 import HideHcpFieldSettingsBlock from './HideHcpFieldSettingsBlock'
 import SubPortalPaySettingsBlock from './SubPortalPaySettingsBlock'
 import LegalFirmSettingsBlock from './LegalFirmSettingsBlock'
+import OfficeCountySettingsBlock from './OfficeCountySettingsBlock'
 import UncollectibleListSettingsBlock from './UncollectibleListSettingsBlock'
 import JobAddressCityListSettingsBlock from './JobAddressCityListSettingsBlock'
 import TxCountyMapSettingsBlock from './TxCountyMapSettingsBlock'
@@ -71,6 +72,7 @@ export default function SettingsJobsTab({
       <HideHcpFieldSettingsBlock />
       <SubPortalPaySettingsBlock />
       <LegalFirmSettingsBlock />
+      <OfficeCountySettingsBlock />
       <UncollectibleListSettingsBlock />
       {/* Company owner account (one company, v2.2972) + bulk job re-assign */}
       <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>
@@ -245,7 +247,7 @@ export default function SettingsJobsTab({
                 type="button"
                 onClick={confirmReassignJobs}
                 disabled={reassignSubmitting}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reassignSubmitting ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: reassignSubmitting ? 'not-allowed' : 'pointer' }}
               >
                 {reassignSubmitting ? 'Re-assigning…' : 'Confirm'}
               </button>
@@ -297,7 +299,7 @@ export default function SettingsJobsTab({
               <button
                 type="submit"
                 disabled={defaultLaborRateSaving}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
               >
                 {defaultLaborRateSaving ? 'Saving…' : 'Save'}
               </button>

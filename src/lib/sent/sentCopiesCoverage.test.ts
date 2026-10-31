@@ -60,6 +60,10 @@ const NOT_A_SEND: Readonly<Record<string, string>> = {
   'pages/SubPortal.tsx': 'the sub prints from their own portal page',
   'components/gc/gcTradePortalPrint.ts': 'the trade partner prints its own list of papers from its own portal page',
   'components/gc/messages/MessageWindow.tsx': 'one message from a person\'s thread, printed or saved as a PDF: the message is kept in the thread already',
+  // Punch list #220 (v2.6211): a sworn statement's paper, printed for its affiant to read and sign.
+  'components/jobs/legal/LegalStatementPrintSheet.tsx': 'a sworn statement\'s draft, printed for its affiant to read and sign: each print is kept on the statement\'s own row (the text as printed, by whom, which face) and the signed copy is filed on the matter\'s Evidence when it comes back; a document per print would bury the day',
+  'components/jobs/legal/LegalTimelinePanel.tsx': 'a door to the statement\'s print sheet ({ print: true }); nothing prints here',
+  'components/jobs/legal/LegalDeskPacketTab.tsx': 'a door to the statement\'s print sheet ({ print: true }); nothing prints here',
 }
 
 function sourceFiles(dir: string, out: string[] = []): string[] {

@@ -6,6 +6,7 @@ import {
   APP_SENDS_SETTING_KEY,
   PERSON_LINES,
   appSendsFrom,
+  billPapersByCustomer,
   flowFirst,
   flowsByKind,
   newestLines,
@@ -16,12 +17,15 @@ import {
   quickRepliesFrom,
   textNumberOf,
   type NudgeRunRows,
+  type RunBillRows,
   type RunChannelRow,
   type RunLineRow,
   type RunQuickReplyRow,
   type RunStepRow,
 } from './nudgeRunInputs'
+import { nudgeRows } from './nudges'
 import { personFlowFrom } from './person'
+import { NO_PIPELINE_ROWS, type PipelineRows } from './residentialRows'
 import { SEED_FLOWS } from './seed'
 
 /** The run's morning: Fri Oct 2, 9 AM Central. */
@@ -329,5 +333,120 @@ describe('nudgeRunReads: everyone’s flow for the morning run', () => {
     expect(nudgeRunReads(base, MORNING, { origin: ORIGIN }).input.links).toEqual({})
     const linked = nudgeRunReads({ ...base, customerLinks: { 'cust-bell': 'https://clicktooling.com/c/bell' } }, MORNING, { origin: ORIGIN })
     expect(linked.input.links).toEqual({ elena: 'https://clicktooling.com/c/bell' })
+  })
+})
+
+describe('a residential customer’s steps read from their Pipeline rows (v2.6232)', () => {
+  /** Dana Whitfield's water heater job, billed Fri Oct 9 and not paid; she pays in 9 days, so her pay-by day was Oct 18. */
+  const PIPELINE: PipelineRows = {
+    ...NO_PIPELINE_ROWS,
+    jobs: [{ id: 'job-1312', created_at: '2026-10-03T13:00:00Z', status: 'billed', revenue: 1850, customer_id: 'cust-dana', gc_customer_id: null, bill_to_party: 'customer', customer_name: 'Dana Whitfield', job_name: 'the water heater' }],
+    contactJobs: [{ contact_id: 'dana', jobs_ledger_id: 'job-1312', is_default: true }],
+    blocks: [{ job_id: 'job-1312', work_date: '2026-10-05', created_at: '2026-10-03T13:10:00Z', created_by: 'u-rosa' }],
+    clockSessions: [{ job_ledger_id: 'job-1312', user_id: 'u-luis', clocked_in_at: '2026-10-05T14:35:00Z', revoked_at: null, rejected_at: null }],
+    reports: [{ job_ledger_id: 'job-1312', created_by_user_id: 'u-luis', created_at: '2026-10-05T16:00:00Z', field_values: { 'What did you find?': 'The tank is leaking at the base.' } }],
+    estimates: [{ job_ledger_id: 'job-1312', doc_kind: 'estimate', status: 'customer_accepted', sent_at: '2026-10-05T18:00:00Z', acceptor_consented_at: '2026-10-06T13:00:00Z' }],
+    statusEvents: [
+      { job_id: 'job-1312', to_status: 'working', changed_at: '2026-10-07T13:00:00Z', changed_by_user_id: 'u-rosa' },
+      { job_id: 'job-1312', to_status: 'ready_to_bill', changed_at: '2026-10-08T22:00:00Z', changed_by_user_id: 'u-rosa' },
+      { job_id: 'job-1312', to_status: 'billed', changed_at: '2026-10-09T15:00:00Z', changed_by_user_id: 'u-rosa' },
+    ],
+    invoices: [{ id: 'inv-1312', job_id: 'job-1312', status: 'billed', amount: 1850, sequence_order: 1, billed_at: '2026-10-09T15:00:00Z', sent_to_customer_at: null, estimated_bill_date: null, created_at: '2026-10-08T22:00:00Z', sent_by_user_id: 'u-rosa', bill_to_party: null, bill_to_email: null }],
+    texts: [{ contact_id: 'dana', jobs_ledger_id: 'job-1312', channel: 'text', direction: 'out', at: '2026-10-05T14:02:00Z', body: 'Dana, this is Luis with Click Plumbing. We are on our way, about 30 minutes out.', who_user_id: 'u-luis', who_text: '' }],
+    paySpeeds: { company: { medianDays: 21, samples: 40 }, customers: { 'cust-dana': { medianDays: 9, samples: 2 } }, segments: { residential: null, commercial: null }, customerTypes: {}, receipts: {} },
+    promisedPay: {},
+  }
+  /** `flow_rows` for a residential contact names no customer on the card; the contact row carries it. */
+  const DANA_FLOW_ROWS: FlowRows = {
+    contact: { id: 'dana', kind: 'residential', off_since: null, off_why: null, off_by: null },
+    userNames: { 'u-luis': 'Luis', 'u-rosa': 'Rosa' },
+    card: { name: 'Dana Whitfield', goes_by: null, company: null, trades: [], customer_id: null },
+  }
+  const DANA_PHONE: RunChannelRow = { id: 'ch-dana', contact_id: 'dana', kind: 'phone', value: '(210) 555-0142', opted_out_at: null, created_at: '2026-10-03T13:00:00Z' }
+  /** Mon Oct 26, 9 AM Central: a week past her pay-by day. */
+  const LATE_MORNING = new Date('2026-10-26T14:00:00Z')
+  const danaRows = (change: Partial<NudgeRunRows> = {}): NudgeRunRows =>
+    rowsFor({
+      contacts: [{ id: 'dana', kind: 'residential', name: 'Dana Whitfield', goes_by: null, snoozed_until: null, customer_id: 'cust-dana' }],
+      flowRows: { dana: DANA_FLOW_ROWS },
+      lines: [{ contact_id: 'dana', direction: 'out', at: '2026-10-09T15:00:00Z', channel_id: 'ch-dana' }],
+      channels: [DANA_PHONE],
+      pipeline: PIPELINE,
+      ...change,
+    })
+
+  it('puts Dana on Paid from her Pipeline rows, by her contact’s customer id, and names her job', () => {
+    const { input, unread } = nudgeRunReads(danaRows(), LATE_MORNING, { origin: ORIGIN })
+    const dana = input.people[0]!
+    expect(unread).toEqual([])
+    expect([dana.reading.kind, dana.reading.nowStepId, dana.reading.nowJobId]).toEqual(['residential', 'paid', 'job-1312'])
+    expect(dana.jobs).toEqual({ 'job-1312': 'the water heater' })
+    expect(dana.first).toBe('Dana')
+  })
+
+  it('has her Paid step due in planNudgeRun’s input once her pay-by day has passed, so the run texts the reminder', () => {
+    const { input } = nudgeRunReads(danaRows({ appSends: { residential: { paid: true } } }), LATE_MORNING, { origin: ORIGIN })
+    const due = nudgeRows(input.people, LATE_MORNING).flatMap((r) => r.steps.filter((s) => s.due).map((s) => `${r.contactId} ${s.stepId}@${s.jobId}`))
+    expect(due).toEqual(['dana paid@job-1312'])
+    const run = planNudgeRun(input)
+    expect(run.texts.map((t) => [t.contactId, t.stepId, t.jobId])).toEqual([['dana', 'paid', 'job-1312']])
+    expect(run.texts[0]!.body).toBe('Dana, checking on the bill. Need the pay page sent again?')
+  })
+
+  it('reads her lanes empty, with nothing due, when the run has no Pipeline rows', () => {
+    const { input } = nudgeRunReads(danaRows({ pipeline: undefined, appSends: { residential: { paid: true } } }), LATE_MORNING, { origin: ORIGIN })
+    expect(input.people[0]!.reading.nowStepId).toBeNull()
+    expect(planNudgeRun(input).texts).toEqual([])
+  })
+
+  it('leaves a trade partner’s rows as they were', () => {
+    const rows = danaRows({ contacts: [...danaRows().contacts, { id: 'tom', kind: 'trade', name: 'Tom Riddle', goes_by: null, snoozed_until: null }], flowRows: { dana: DANA_FLOW_ROWS, tom: TOM_ROWS } })
+    const { input } = nudgeRunReads(rows, LATE_MORNING, { origin: ORIGIN })
+    expect(input.people.map((p) => [p.id, p.reading.kind])).toEqual([
+      ['dana', 'residential'],
+      ['tom', 'trade'],
+    ])
+  })
+})
+
+describe('the residential customers’ bills, for {amount} and {bill} (punch list #124, v2.6224)', () => {
+  const INV = '0f4b6a1e-2c3d-4e5f-8a9b-0c1d2e3f4a5b'
+  const OTHER = '7a1c2d3e-4f50-4617-8899-aabbccddeeff'
+  const job = (id: string, customer_id: string, job_name: string) => ({ id, status: 'billed', revenue: 1200, payments_made: 0, collections_at: null, uncollectible_at: null, job_name, hcp_number: id, click_number: null, billing_only: false, customer_id })
+  /** Dana’s water heater bill, half paid; Evan’s bill on another job, with the payment that would cover Dana’s if it leaked across. */
+  const BILLS: RunBillRows = {
+    jobs: [job('1312', 'cust-dana', 'the water heater'), job('2000', 'cust-evan', 'the kitchen sink')],
+    invoices: [
+      { id: INV, job_id: '1312', status: 'billed', amount: 1200, sequence_order: 1, billed_at: '2026-10-08T15:00:00Z', stripe_invoice_id: 'in_1Q2w3e' },
+      { id: OTHER, job_id: '2000', status: 'billed', amount: 1200, sequence_order: 1, billed_at: '2026-10-09T15:00:00Z', stripe_invoice_id: null },
+    ],
+    payments: [
+      { invoice_id: INV, job_id: '1312', amount: 559.5, paid_on: '2026-10-10', sequence_order: null },
+      { invoice_id: null, job_id: '2000', amount: 1200, paid_on: '2026-10-11', sequence_order: null },
+    ],
+  }
+  const DANA_ROWS: FlowRows = {
+    contact: { id: 'dana', kind: 'residential', off_since: null, off_why: null, off_by: null },
+    card: { name: 'Dana Whitfield', goes_by: null, company: null, trades: [], customer_id: 'cust-dana' },
+  }
+
+  it('reads each customer’s bills as the reply box does, their own payments and no one else’s', () => {
+    const by = billPapersByCustomer(BILLS)
+    expect(by.get('cust-dana')).toEqual([expect.objectContaining({ kind: 'bill', id: INV, jobId: '1312', job: 'the water heater', number: '1312', open: true, amount: 640.5, payUrl: `https://clicktooling.com/pay/${INV}` })])
+    // Evan’s unlinked payment covers his bill, so it is a paid copy, not open; it never pays Dana’s.
+    expect(by.get('cust-evan')).toEqual([expect.objectContaining({ id: OTHER, open: false, payUrl: null })])
+    expect(billPapersByCustomer({ jobs: [], invoices: [], payments: [] }).size).toBe(0)
+  })
+
+  it('hands a residential customer their papers by contact, and nobody else any', () => {
+    const rows = rowsFor({
+      contacts: [{ id: 'dana', kind: 'residential', name: 'Dana Whitfield', goes_by: null, snoozed_until: null }, { id: 'tom', kind: 'trade', name: 'Tom Riddle', goes_by: null, snoozed_until: null }],
+      flowRows: { dana: DANA_ROWS, tom: TOM_ROWS },
+      bills: BILLS,
+    })
+    const { input } = nudgeRunReads(rows, MORNING, { origin: ORIGIN })
+    expect(Object.keys(input.papers ?? {})).toEqual(['dana'])
+    expect(input.papers?.dana?.map((p) => [p.id, p.kind === 'bill' ? p.amount : null])).toEqual([[INV, 640.5]])
+    expect(nudgeRunReads(rowsFor({ contacts: rows.contacts, flowRows: rows.flowRows }), MORNING, { origin: ORIGIN }).input.papers).toEqual({})
   })
 })

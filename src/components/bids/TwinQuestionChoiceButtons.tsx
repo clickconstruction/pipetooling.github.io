@@ -39,7 +39,7 @@ export function TwinQuestionChoiceButtons({ choices, disabled, fanOut, onPick, o
           onClick={() => onPick(c)}
           style={
             c.recommended
-              ? { ...BASE, background: '#3b82f6', color: 'white', border: '1px solid #3b82f6', fontWeight: 600 }
+              ? { ...BASE, background: '#2563eb', color: 'white', border: '1px solid #2563eb', fontWeight: 600 }
               : { ...BASE, background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border-strong)' }
           }
         >

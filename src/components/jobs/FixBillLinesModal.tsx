@@ -118,7 +118,7 @@ export default function FixBillLinesModal({
                     type="button"
                     onClick={() => void createLine(item)}
                     disabled={st.saving}
-                    style={{ padding: '0.35rem 0.7rem', fontSize: '0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: st.saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                    style={{ padding: '0.35rem 0.7rem', fontSize: '0.8rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: st.saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
                   >
                     {st.saving ? '…' : 'Create line'}
                   </button>

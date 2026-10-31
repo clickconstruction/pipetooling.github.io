@@ -345,7 +345,7 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
             type="button"
             disabled={busy}
             onClick={() => void billWithLine()}
-            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
           >
             {busy ? '…' : 'Create line & mark Billed'}
           </button>
@@ -386,7 +386,7 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
               padding: '0.35rem 0.75rem',
               fontSize: '0.8125rem',
               fontWeight: 600,
-              background: sendBackReasonError(sendBackReason) == null && !busy ? '#3b82f6' : 'var(--bg-muted)',
+              background: sendBackReasonError(sendBackReason) == null && !busy ? '#2563eb' : 'var(--bg-muted)',
               color: sendBackReasonError(sendBackReason) == null && !busy ? '#fff' : 'var(--text-muted)',
               border: 'none',
               borderRadius: 6,
@@ -423,7 +423,7 @@ export default function JobStatusStepper({ job, authRole, onChanged }: {
             type="button"
             disabled={busy}
             onClick={() => void commitCollections(collectionsConfirm)}
-            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
           >
             {busy ? '…' : 'Confirm'}
           </button>

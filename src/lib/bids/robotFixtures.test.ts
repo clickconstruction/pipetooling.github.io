@@ -9,6 +9,9 @@ import {
   fixtureButtonWords,
   fixtureSetLineWords,
   fixturesAddedToast,
+  fixturesUndoneToast,
+  fixturesScoreOf,
+  fixturesScoreWords,
   isSure,
   moneyWords,
   pairRobotFixtures,
@@ -147,7 +150,7 @@ describe('the button and the foot', () => {
   it('names the count, the price and what stays', () => {
     const b = fixtureButtonWords({ add: new Set(['wc', 'ms']), update: new Set() }, review, 2)
     expect(b.button).toBe('Add 2 fixtures')
-    expect(b.foot).toBe('2 rows land on your count, shaded, $2,446 at the robot’s prices. Your book prices the ones it knows. The robot’s price fills the rest, marked. Your 2 other rows stay as they are.')
+    expect(b.foot).toBe('2 rows land on your count, shaded, $2,446 at the robot’s prices. Your book prices the ones it knows. The robot’s price fills the rest, marked. Your 2 rows stay as they are.')
     expect(plainWordsFailures(b.foot)).toEqual([])
   })
   it('says the update too', () => {
@@ -162,6 +165,13 @@ describe('the button and the foot', () => {
   it('the toast', () => {
     expect(fixturesAddedToast(15, 0)).toBe('15 fixtures added from the robot.')
     expect(fixturesAddedToast(1, 1)).toBe('1 fixture added from the robot, 1 row updated.')
+    // v2.6242: Undo says what its one press did, never that every robot row is gone.
+    expect(fixturesUndoneToast({ removed: 1, restored: 0, kept: 0 })).toBe('1 fixture taken back.')
+    expect(fixturesUndoneToast({ removed: 0, restored: 1, kept: 0 })).toBe('1 row back to your number.')
+    expect(fixturesUndoneToast({ removed: 4, restored: 1, kept: 0 })).toBe('4 fixtures taken back, 1 row back to your number.')
+    expect(fixturesUndoneToast({ removed: 2, restored: 0, kept: 1 })).toBe('2 fixtures taken back. 1 stays because you changed it.')
+    expect(fixturesUndoneToast({ removed: 0, restored: 0, kept: 2 })).toBe('Nothing to undo. 2 stay because you changed them.')
+    expect(fixturesUndoneToast({ removed: 0, restored: 0, kept: 0 })).toBe('Nothing to undo.')
   })
 })
 
@@ -206,5 +216,20 @@ describe('the fallback read of a substrate', () => {
   })
   it('is empty without a substrate', () => {
     expect(deriveFixtureRows(null, [])).toEqual([])
+  })
+})
+
+describe('the fixtures score at send', () => {
+  it('reads the column and says it plainly', () => {
+    const s = fixturesScoreOf({ found: 23, taken: 19, changed: 2, set_aside: 2, left: 0, missed: 3, reasons: { by_others: 1, wrong_count: 1 } })
+    expect(s).toEqual({ found: 23, taken: 19, changed: 2, set_aside: 2, left: 0, missed: 3, reasons: { by_others: 1, wrong_count: 1 } })
+    expect(fixturesScoreWords(s!)).toBe('Fixtures: 19 of 23 taken, 2 changed, 2 set aside, 3 the robot missed.')
+    expect(plainWordsFailures(fixturesScoreWords(s!))).toEqual([])
+  })
+  it('is null without a score and says only what is there', () => {
+    expect(fixturesScoreOf(null)).toBeNull()
+    expect(fixturesScoreOf([1])).toBeNull()
+    expect(fixturesScoreWords(fixturesScoreOf({ found: '5', taken: 5 })!)).toBe('Fixtures: 5 of 5 taken.')
+    expect(fixturesScoreWords(fixturesScoreOf({ found: 5, taken: 2, left: 3 })!)).toBe('Fixtures: 2 of 5 taken, 3 not taken.')
   })
 })

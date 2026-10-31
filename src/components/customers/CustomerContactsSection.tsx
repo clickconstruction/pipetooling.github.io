@@ -111,7 +111,7 @@ export default function CustomerContactsSection({ customerId }: { customerId: st
         </span>
       </label>
       <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
-        <button type="button" disabled={busy || !draft.name.trim()} onClick={() => void save()} style={{ ...smallBtn, background: '#3b82f6', color: 'white', border: 'none', fontWeight: 600 }}>
+        <button type="button" disabled={busy || !draft.name.trim()} onClick={() => void save()} style={{ ...smallBtn, background: '#2563eb', color: 'white', border: 'none', fontWeight: 600 }}>
           {editingId === 'new' ? 'Add contact' : 'Done'}
         </button>
         <button type="button" disabled={busy} onClick={close} style={smallBtn}>

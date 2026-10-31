@@ -88,7 +88,7 @@ export function SignedSignatureBlock({
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.9rem', marginTop: compact ? '0.6rem' : '0.85rem', fontSize: '0.74rem', color: 'var(--text-muted)' }}>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
           {consentedAtIso || isPaper ? (
-            <span aria-hidden style={{ display: 'inline-flex', width: 14, height: 14, borderRadius: 3, background: 'var(--text-green-700)', color: 'white', fontSize: '0.6rem', alignItems: 'center', justifyContent: 'center' }}>✓</span>
+            <span aria-hidden style={{ display: 'inline-flex', width: 14, height: 14, borderRadius: 3, background: '#15803d', color: 'white', fontSize: '0.6rem', alignItems: 'center', justifyContent: 'center' }}>✓</span>
           ) : null}
           <span>
             <b style={{ color: 'var(--text-700)', fontWeight: 600 }}>{isPaper ? 'On file' : consentedAtIso ? 'Consent recorded' : 'Signed'}</b>

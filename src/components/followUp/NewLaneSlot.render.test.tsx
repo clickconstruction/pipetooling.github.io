@@ -112,6 +112,8 @@ function fakeIo(over: Partial<NewLaneCardIo> = {}, rows: Record<string, NewLaneC
   return {
     loadCard: vi.fn(async (contactId: string) => rows[contactId]!),
     loadKnown: vi.fn(async () => ({ customers: [{ id: 'alvarez', name: 'Alvarez Family Dental' }] })),
+    markNotice: vi.fn(async () => undefined),
+    unmarkNotice: vi.fn(async () => undefined),
     name: vi.fn(async (contactId: string) => contactId),
     makeCustomer: vi.fn(async (contactId: string) => contactId),
     makeRecord: vi.fn(async (contactId: string) => contactId),
@@ -131,6 +133,57 @@ function renderSlot(contact: Contact, io: NewLaneCardIo = fakeIo()) {
 }
 
 const card = (head: string) => within(screen.getByRole('region', { name: `Sort: ${head}` }))
+
+describe('A notice, not a person (punch list #223 PR 1, v2.6202)', () => {
+  it('ends an email’s Who is this? with the two notice presses, and the address’s press marks it', async () => {
+    const io = fakeIo()
+    const { say, reread } = renderSlot(DALE, io)
+    expect(await screen.findByText('A notice, not a person')).toBeTruthy()
+    const who = card('Who is this?')
+    const address = who.getByRole('button', { name: /Mark dale@ridgeway.example a notice/ })
+    expect(address.closest('[data-notice]')?.getAttribute('data-notice')).toBe('address')
+    expect(who.getByRole('button', { name: /And everything from ridgeway.example/ }).closest('[data-notice]')?.getAttribute('data-notice')).toBe('domain')
+    fireEvent.click(address)
+    await waitFor(() => expect(io.markNotice).toHaveBeenCalledWith('dale', 'address'))
+    expect(say).toHaveBeenCalledWith('dale@ridgeway.example is a notice now. Their next mail stays in Gmail.', 'success')
+    expect(reread).toHaveBeenCalled()
+  })
+
+  it('the domain’s press marks the whole domain', async () => {
+    const io = fakeIo()
+    renderSlot(DALE, io)
+    fireEvent.click(await screen.findByRole('button', { name: /And everything from ridgeway.example/ }))
+    await waitFor(() => expect(io.markNotice).toHaveBeenCalledWith('dale', 'domain'))
+  })
+
+  it('offers no notice press for a number', async () => {
+    renderSlot(KEVIN)
+    await screen.findByText('Kevin Alvarez at Alvarez Family Dental')
+    expect(screen.queryByText('A notice, not a person')).toBeNull()
+  })
+
+  it('draws the undo strip in the card’s place once the thread is done by the press, and Not a notice after all puts it back', async () => {
+    const rows: Record<string, NewLaneCardRows> = {
+      dale: { ...ROWS.dale!, contact: { state: 'done', snoozed_until: null, has_user_id: null }, notice: [{ value: 'ridgeway.example', kind: 'domain' }, { value: 'dale@ridgeway.example', kind: 'address' }] },
+    }
+    const io = fakeIo({}, rows)
+    const { say } = renderSlot(DALE, io)
+    const strip = within(await screen.findByRole('region', { name: 'Marked a notice' }))
+    expect(strip.getByText('Marked a notice: everything from ridgeway.example · their next mail stays in Gmail.')).toBeTruthy()
+    expect(screen.queryByRole('region', { name: /^Sort:/ })).toBeNull()
+    fireEvent.click(strip.getByRole('button', { name: 'Not a notice after all' }))
+    await waitFor(() => expect(io.unmarkNotice).toHaveBeenCalledWith('dale'))
+    expect(say).toHaveBeenCalledWith('The sender is back in New. Their next mail lands again.', 'success')
+  })
+
+  it('draws nothing for a done thread that was never marked', async () => {
+    const rows: Record<string, NewLaneCardRows> = { dale: { ...ROWS.dale!, contact: { state: 'done', snoozed_until: null, has_user_id: null } } }
+    const io = fakeIo({}, rows)
+    renderSlot(DALE, io)
+    await waitFor(() => expect(io.loadCard).toHaveBeenCalled())
+    expect(screen.queryByRole('region')).toBeNull()
+  })
+})
 
 describe('the sort card above the thread', () => {
   it('Who is this?: the team line’s guesses, the ones that need a record waiting with where to make it', async () => {
@@ -214,7 +267,7 @@ describe('the sort card above the thread', () => {
     expect(await screen.findByText('A customer we know')).toBeTruthy()
     const who = card('Who is this?')
     const blue = who.getByRole('button', { name: 'Who is this?' })
-    expect(blue.style.background).toBe('var(--text-blue-700)')
+    expect(blue.style.background).toBe('rgb(29, 78, 216)')
     expect(acts.whoDrawn).toHaveBeenLastCalledWith(true)
     fireEvent.click(blue)
     expect(acts.openWho).toHaveBeenCalledTimes(1)

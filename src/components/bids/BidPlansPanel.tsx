@@ -48,7 +48,7 @@ export function BidPlansButton({ bid, onOpen }: { bid: BidWithBuilder | null; on
  * never a count of the robot's own. Under it: the hits with Open sheet, the sheet index, the
  * schedules as tables, the notes with their flags.
  */
-export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose, userId = null, shadowSealed = null }: { bid: BidWithBuilder | null; shellBidId: string | null; canWrite: boolean; open: boolean; onClose: () => void; /** v2.5737: who asks. */ userId?: string | null; /** v2.5737: the bid's shadow is sealed (true), open (false) or there is none (null) — the robot looks only once sealed or none. */ shadowSealed?: boolean | null }) {
+export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose, userId = null, shadowSealed = null, openAtPage = null, fixturesReady = false }: { bid: BidWithBuilder | null; shellBidId: string | null; canWrite: boolean; open: boolean; onClose: () => void; /** v2.5737: who asks. */ userId?: string | null; /** v2.5737: the bid's shadow is sealed (true), open (false) or there is none (null) — the robot looks only once sealed or none. */ shadowSealed?: boolean | null; /** Robot fixtures (punch list #221, PR 3b): Open sheet from the fixtures window — `{ page, nonce }` so the same page opens twice. */ openAtPage?: { page: number; nonce: number } | null; /** PR 4: the robot's fixtures are ready on this bid — the footer says where. */ fixturesReady?: boolean }) {
   const phone = useMatchMedia('(max-width: 640px)')
   const { showToast } = useToastContext()
   // v2.5737 (PR 7): Ask the robot to look — the thread on the bid, an ask as yourself, an RFI from an answer.
@@ -113,6 +113,13 @@ export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose, userId
   const schedules = useMemo(() => substrateSchedules(substrate), [substrate])
   const inTrade = substrate?.rollup?.sheet_inventory?.in_trade?.length ?? null
 
+  // Robot fixtures (PR 3b): Open sheet from the fixtures window lands here once the pages are known.
+  const openAtKey = openAtPage ? `${openAtPage.page}:${openAtPage.nonce}` : ''
+  useEffect(() => {
+    if (!open || !openAtPage || state.kind !== 'ready') return
+    void openSheet(openAtPage.page)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, openAtKey, state.kind])
   async function openSheet(page: number) {
     setViewer({ page, scale: phone ? 0.45 : 0.7 })
     if (bytes || bytesState === 'loading' || !bid) return
@@ -189,7 +196,7 @@ export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose, userId
                 }
               })()
             }}
-            style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+            style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}
           >
             Ask the robot to look
           </button>
@@ -341,7 +348,7 @@ export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose, userId
       ) : null}
 
       <p style={{ margin: '0.8rem 0 0', fontSize: '0.72rem', color: 'var(--text-muted)', borderTop: '1px solid var(--border)', paddingTop: '0.4rem' }}>
-        The panel says what the plans say and where. Counts come after you send. Everyone in the office sees this thread on the bid.
+        The panel says what the plans say and where. Counts come after you send.{fixturesReady ? ' The robot\u2019s fixtures are on the Counts tab.' : ''} Everyone in the office sees this thread on the bid.
       </p>
     </aside>
   )

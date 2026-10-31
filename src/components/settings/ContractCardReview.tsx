@@ -8,7 +8,7 @@ import { REVIEW_NOTE_MAX } from '../../lib/contracts/fetchContractHistory'
  */
 
 const PILL: CSSProperties = { font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
-const PRIMARY: CSSProperties = { ...PILL, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+const PRIMARY: CSSProperties = { ...PILL, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 const MUTED: CSSProperties = { fontSize: '0.76rem', color: 'var(--text-muted)' }
 
 export type ContractCardReviewProps = {

@@ -44,6 +44,10 @@ import {
   type ReportPhotoTile,
 } from '../lib/photos/reportPhotos'
 import { attachReportPhotos, discardReportPhotos, loadReportPhotoSize, sendReportPhoto } from '../lib/photos/reportPhotosIo'
+import { answerFailWords, checklistAnswerWrites, checklistPhotoChips, tileAnswering, tileOnStage, type ChecklistPhotoChip } from '../lib/photos/reportPhotoChecklist'
+import { loadQuestions } from '../lib/jobs/stageChecklistIo'
+import { answerQuestionsWithReportPhotos } from '../lib/jobs/stageChecklistSheetIo'
+import type { StageChecklistQuestion } from '../lib/jobs/stageChecklist'
 import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
 import { STAGE_PCT_WORDS } from '../lib/reports/stagePct'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
@@ -125,6 +129,9 @@ export default function AdditionalReportModal({
   const [tiles, setTiles] = useState<ReportPhotoTile[]>([])
   const [photoSize, setPhotoSize] = useState<ReportPhotoSize>('medium')
   const [lastShrink, setLastShrink] = useState<string | null>(null)
+  // A photo answers a checklist question (punch list #189, PR 6): the live questions, so one that asks for a photo
+  // is a chip under a new tile. A failed read offers no chips; the form never waits on it.
+  const [questions, setQuestions] = useState<StageChecklistQuestion[]>([])
   const [showOtherTypes, setShowOtherTypes] = useState(false)
   const [showWhatIsNext, setShowWhatIsNext] = useState(false)
   const cameraInputRef = useRef<HTMLInputElement>(null)
@@ -253,6 +260,14 @@ export default function AdditionalReportModal({
     void loadReportPhotoSize().then((size) => {
       if (live) setPhotoSize(size)
     })
+    loadQuestions().then(
+      (qs) => {
+        if (live) setQuestions(qs)
+      },
+      () => {
+        if (live) setQuestions([])
+      },
+    )
     return () => {
       live = false
     }
@@ -336,6 +351,8 @@ export default function AdditionalReportModal({
         shrunk: false,
         fixtureId: stage?.fixtureId ?? null,
         stageName: stage?.name ?? null,
+        questionId: null,
+        questionWords: null,
         storagePath: null,
         takenAt,
         failWhy: null,
@@ -361,11 +378,18 @@ export default function AdditionalReportModal({
   }
 
   function putTileOnStage(tileId: string, stage: ReportPhotoStage) {
-    setTiles((prev) => prev.map((t) => (t.id === tileId ? { ...t, fixtureId: stage.fixtureId, stageName: stage.name } : t)))
+    setTiles((prev) => prev.map((t) => (t.id === tileId ? tileOnStage(t, stage) : t)))
+  }
+
+  /** A question chip (PR 6): the tile goes on the question's stage and is its answer once the report saves. */
+  function putTileOnQuestion(tileId: string, chip: ChecklistPhotoChip) {
+    setTiles((prev) => prev.map((t) => (t.id === tileId ? tileAnswering(t, chip) : t)))
   }
 
   /** The stages a photo can sit on: the job's priced lines, a paid one never (its number is locked). */
   const photoStages: ReportPhotoStage[] = (lineProgress.lines ?? []).filter((r) => !r.drawPaid).map((r) => ({ fixtureId: r.fixtureId, name: r.name }))
+  /** The checklist questions that ask for a photo on those stages, each a chip under a new tile (PR 6). */
+  const photoChips = checklistPhotoChips(photoStages, questions)
   const jobHasFolder = jobLinksLoading ? null : Boolean(customerFilesUrl || customerPicturesUrl)
 
   function reset() {
@@ -485,11 +509,19 @@ export default function AdditionalReportModal({
       const whatGotDone = firstLong ? (fv[firstLong] ?? '') : ''
       const attached = await attachReportPhotos(
         inserted.id,
-        riding.map((t) => ({ id: t.id, fixtureId: t.fixtureId, stageName: t.stageName, caption: reportPhotoCaption({ stageName: t.stageName, whatGotDone }) })),
+        riding.map((t) => ({ id: t.id, fixtureId: t.fixtureId, stageName: t.stageName, caption: reportPhotoCaption({ stageName: t.stageName, whatGotDone, questionWords: t.questionWords }) })),
       )
       attachedRef.current = true
       if (attached.failed.length) {
         showToast(`Report saved, but ${attached.failed.length === 1 ? 'a photo' : `${attached.failed.length} photos`} did not attach: ${attached.failed[0]}`, 'warning')
+      }
+      // A photo answers a checklist question (PR 6): each attached shot a question chip placed goes onto the
+      // stage checklist's answer row with its report photo id. Best-effort: the report stands saved either way.
+      const failedIds = new Set(attached.failedIds ?? [])
+      const answers = checklistAnswerWrites({ jobId, tiles: riding.filter((t) => !failedIds.has(t.id)) })
+      if (answers.length > 0) {
+        const wrote = await answerQuestionsWithReportPhotos(answers, { userId: authUserId, name: profileName?.trim() || '' })
+        if (wrote.failed.length) showToast(answerFailWords(wrote.failed.length, wrote.failed[0]!), 'warning')
       }
     }
     // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
@@ -767,8 +799,10 @@ export default function AdditionalReportModal({
                 <ReportPhotoTiles
                   tiles={tiles}
                   stages={photoStages}
+                  chips={photoChips}
                   onTake={() => openCamera(null)}
                   onStage={putTileOnStage}
+                  onAnswer={putTileOnQuestion}
                   onRemove={removeTile}
                   onRetry={retryTile}
                   captureWords={cameraFirst ? (tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.take) : REPORT_PHOTO_WORDS.add}

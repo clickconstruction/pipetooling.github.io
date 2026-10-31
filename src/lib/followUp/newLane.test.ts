@@ -14,6 +14,8 @@ import {
   viaWords,
   whoGuesses,
   whoHead,
+  noticeGuesses,
+  NOTICE_BLOCK,
   type HasPerson,
   type LaneJob,
   type NewLaneContact,
@@ -256,6 +258,8 @@ describe('whoGuesses', () => {
       ['candidate', 'A candidate, to the hiring board'],
       ['team', 'One of our own team'],
       ['someone_else', 'Someone else'],
+      ['notice', 'Mark estimating@bexarsteel.example a notice'],
+      ['notice', 'And everything from bexarsteel.example'],
     ])
     expect(g[1]).toMatchObject({ record: { table: 'gc_companies', id: 'g-bexar' }, newPerson: false, words: 'The trade partner asked on Boerne. This address goes on their record.' })
   })
@@ -268,6 +272,8 @@ describe('whoGuesses', () => {
       'A candidate, to the hiring board',
       'One of our own team',
       'Someone else',
+      'Mark estimating@bexarsteel.example a notice',
+      'And everything from bexarsteel.example',
     ])
     expect(whoGuesses(row('kevin'), null, KNOWN)).toEqual(whoGuesses(row('kevin'), 'team', KNOWN))
   })
@@ -342,6 +348,30 @@ describe('whoGuesses', () => {
         'Gmail',
       ])
     })
+  })
+})
+
+describe('A notice, not a person (punch list #223 PR 1, v2.6202)', () => {
+  it('ends an email’s card with the address’s press, then the domain’s when it is a company’s own', () => {
+    const g = noticeGuesses({ address: 'news@alamosurety.example', domain: 'alamosurety.example', name: null })
+    expect(g.map((x) => [x.kind, x.label, x.notice])).toEqual([
+      ['notice', 'Mark news@alamosurety.example a notice', { scope: 'address', value: 'news@alamosurety.example' }],
+      ['notice', 'And everything from alamosurety.example', { scope: 'domain', value: 'alamosurety.example' }],
+    ])
+    expect(g[0]).toMatchObject({ record: null, newPerson: false, words: 'Closes the row and leaves this address out from now on. Search still finds the thread.' })
+    expect(NOTICE_BLOCK).toBe('A notice, not a person')
+  })
+
+  it('offers the address alone for an open mail service, and nothing for a number', () => {
+    const gmail = { ...row('bexar'), who: 'deals@gmail.com' }
+    expect(whoGuesses(gmail, 'bids', KNOWN).filter((x) => x.kind === 'notice').map((x) => x.label)).toEqual(['Mark deals@gmail.com a notice'])
+    expect(whoGuesses(row('kevin'), 'team', KNOWN).some((x) => x.kind === 'notice')).toBe(false)
+    expect(noticeGuesses({ address: '', domain: '', name: 'Kevin Alvarez' })).toEqual([])
+  })
+
+  it('reads the address behind a name from the channels', () => {
+    const dale = { who: 'Dale Ferris', body: '', channels: [{ kind: 'email' as const, value: 'Dale@Ridgeway.example' }] }
+    expect(whoGuesses(dale, 'bids', {}).filter((x) => x.kind === 'notice').map((x) => x.label)).toEqual(['Mark dale@ridgeway.example a notice', 'And everything from ridgeway.example'])
   })
 })
 

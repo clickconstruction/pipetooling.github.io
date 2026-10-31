@@ -234,7 +234,7 @@ export function MoneyfillPendingApprovalSection({
                       disabled={approvingIds.has(r.id)}
                       onClick={() => void approve(r.id)}
                       title="Approve this session (same approve_clock_sessions path as People → Hours)"
-                      style={{ padding: '0.2rem 0.65rem', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: 5, background: '#3b82f6', color: 'white', cursor: approvingIds.has(r.id) ? 'wait' : 'pointer', marginRight: 6 }}
+                      style={{ padding: '0.2rem 0.65rem', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: 5, background: '#2563eb', color: 'white', cursor: approvingIds.has(r.id) ? 'wait' : 'pointer', marginRight: 6 }}
                     >
                       {approvingIds.has(r.id) ? 'Approving…' : 'Approve'}
                     </button>

@@ -41,6 +41,12 @@ Your value and sent date are already saved when the envelope opens. That is the 
 
 The robot may have caught something. You raise or lower the bid afterwards. The score stays as it was taken. A note lands on the bid: *Bid value revised after seeing the robot's number: $148,200 → $151,400 (+$3,200)*. That is the robot earning its keep, on the record.
 
+## If you took the robot's fixtures
+
+A bid you took robot fixtures on reads assisted. The envelope still opens at send with the robot's number and the gap. The run sits beside the practice runs on the Scoreboard. It never counts toward a job type's five in a row.
+
+The envelope also scores the fixtures against your final list. It says how many you took, changed or set aside. It also says how many the robot missed. See [add the robot's fixtures to your count](/help/add-the-robots-fixtures-to-your-count).
+
 ## Later, from the Robot Board
 
 Every bid with a robot run sits on **Bids → 🤖 Robots → Robot Board**. It sits in the same section it has on the Bid Board. A row whose audit is still waiting carries {{button:outline-blue|Review now}}. That opens the same envelope. It serves a run you skipped at send. It also serves an older backtest, a robot run on a bid already decided.

@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import LegalTimelinePanel, { PORTAL_LOOK, type TimelinePlanActs } from './LegalTimelinePanel'
 import { buildLegalTimeline, planHoldKey, timelineDocumentsFromRows } from '../../../lib/legal/legalTimeline'
+import { statementHoldKey } from '../../../lib/legal/affidavitPaper'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 afterEach(cleanup)
@@ -394,5 +395,99 @@ describe('LegalTimelinePanel · a document line’s two doors (v2.6166)', () => 
     unmount()
     render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
     expect(docLine().querySelectorAll('button').length).toBe(0)
+  })
+})
+
+describe('LegalTimelinePanel · a statement on the Said lane (punch list #220, v2.6209)', () => {
+  const rows: LegalEntryRow[] = [
+    entry({ id: 'st', kind: 'statement', occurred_on: '2026-09-03', body: 'Northline never called us back.', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', user_id: 'u1', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', state: 'draft', prints: [], source: 'office' } }),
+    entry({ id: 'st-signed', kind: 'statement', occurred_on: '2026-09-09', body: 'I saw their men carrying PVC.', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen', role: 'the foreman' }, form: 'declaration', state: 'signed', prints: [], signed_on: '2026-10-20', document_id: 'd1', source: 'office' } }),
+  ]
+  const t = (reader: 'office' | 'firm') => buildLegalTimeline({ entries: rows, todayYmd: TODAY, reader, userNameOf: () => 'Grace' })
+
+  it('draws the title, the chip, the paragraphs and the by-line on the day it is about, and holds it under its own key', async () => {
+    const a = acts({ canUndo: (i) => i.kind === 'statement' && !i.voided })
+    render(<LegalTimelinePanel timeline={t('office')} todayYmd={TODAY} reader="office" acts={a} lanes />)
+    const item = document.querySelector('[data-legal-timeline-item="entry:st"]')!
+    expect(item.getAttribute('data-legal-timeline-lane')).toBe('said')
+    expect(item.getAttribute('data-legal-timeline-day')).toBe('2026-09-03')
+    expect(item.textContent).toContain('Affidavit of Daniel Alvarez')
+    expect(item.textContent).toContain('sworn statement · draft')
+    expect(item.textContent).toContain('Northline never called us back.')
+    expect(item.textContent).toContain('Daniel Alvarez · team')
+    expect(item.textContent).toContain('Draft · not signed.')
+    const signed = document.querySelector('[data-legal-timeline-item="entry:st-signed"]')!
+    expect(signed.textContent).toContain('Signed Oct 20 under penalty of perjury. The signed copy is on Evidence.')
+    expect(within(signed as HTMLElement).queryByRole('button', { name: 'Edit' })).toBeNull()
+    expect(within(signed as HTMLElement).queryByRole('button', { name: 'Mark done' })).toBeNull()
+    fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Hold from counsel…' }))
+    fireEvent.change(within(item as HTMLElement).getByLabelText('Why counsel should not see it'), { target: { value: 'signed first' } })
+    fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Hold back' }))
+    await waitFor(() => expect(a.hold!.holdBack).toHaveBeenCalledWith(statementHoldKey('st'), 'signed first'))
+    // v2.6210: a draft's undo reads Not signed…; the form's button Drop the draft.
+    fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Not signed…' }))
+    expect(within(item as HTMLElement).getByLabelText('Why undo it')).toBeTruthy()
+    expect(within(item as HTMLElement).getByRole('button', { name: 'Drop the draft' })).toBeTruthy()
+  })
+  it('on the portal the statement reads in the firm’s words, with no hold and no undo', () => {
+    render(<LegalTimelinePanel timeline={t('firm')} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
+    const item = document.querySelector('[data-legal-timeline-item="entry:st"]')!
+    expect(item.textContent).toContain("sworn statement by the office's team · draft, not signed")
+    expect(screen.queryByRole('button', { name: 'Hold from counsel…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Undo…' })).toBeNull()
+  })
+})
+
+describe('LegalTimelinePanel · swear a statement from the line (punch list #220, v2.6210)', () => {
+  const rows: LegalEntryRow[] = [entry({ id: 'st', kind: 'statement', occurred_on: '2026-09-03', body: 'x', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] } })]
+  it('the composer offers Swear a statement… on the day typed, and the Said lane’s empty words offer it too', () => {
+    const swear = vi.fn()
+    const a = acts({ swearStatement: swear, editStatement: vi.fn() })
+    render(<LegalTimelinePanel timeline={buildLegalTimeline({ entries: [], todayYmd: TODAY, reader: 'office' })} todayYmd={TODAY} reader="office" acts={a} lanes />)
+    fireEvent.click(document.querySelector('[data-legal-composer-door]')!)
+    fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-09-03' } })
+    fireEvent.click(document.querySelector('[data-legal-composer-swear]')!)
+    expect(swear).toHaveBeenCalledWith('2026-09-03')
+    expect(document.querySelector('[data-legal-composer]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Said · 0' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Swear a statement…' }))
+    expect(swear).toHaveBeenCalledWith(TODAY)
+  })
+  it('a draft’s row offers Edit into the window and Not signed… → Drop the draft', async () => {
+    const edit = vi.fn()
+    const a = acts({ swearStatement: vi.fn(), editStatement: edit, canUndo: (i) => i.kind === 'statement' && !i.voided })
+    render(<LegalTimelinePanel timeline={buildLegalTimeline({ entries: rows, todayYmd: TODAY, reader: 'office' })} todayYmd={TODAY} reader="office" acts={a} />)
+    const item = document.querySelector('[data-legal-timeline-item="entry:st"]') as HTMLElement
+    fireEvent.click(within(item).getByRole('button', { name: 'Edit' }))
+    expect(edit).toHaveBeenCalledWith('st')
+    fireEvent.click(within(item).getByRole('button', { name: 'Not signed…' }))
+    fireEvent.change(within(item).getByLabelText('Why undo it'), { target: { value: 'would not sign the September paragraph' } })
+    fireEvent.click(within(item).getByRole('button', { name: 'Drop the draft' }))
+    await waitFor(() => expect(a.undo).toHaveBeenCalledWith('st', 'would not sign the September paragraph'))
+  })
+})
+
+describe('LegalTimelinePanel · a signed statement’s doors (punch list #220, v2.6212)', () => {
+  it('a signed row opens its scan and lands on Evidence; a draft offers File the signed copy… into the window', async () => {
+    const rows: LegalEntryRow[] = [
+      entry({ id: 'st-signed', kind: 'statement', occurred_on: '2026-09-09', body: 'x', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen' }, form: 'declaration', state: 'signed', prints: [], signed_on: '2026-10-20', document_id: 'd-scan' } }),
+      entry({ id: 'st-draft', kind: 'statement', occurred_on: '2026-09-03', body: 'x', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] } }),
+    ]
+    const openDoc = vi.fn(async () => {})
+    const openEvidence = vi.fn()
+    const edit = vi.fn()
+    render(<LegalTimelinePanel timeline={buildLegalTimeline({ entries: rows, todayYmd: TODAY, reader: 'office' })} todayYmd={TODAY} reader="office" acts={acts({ editStatement: edit })} onOpenDocument={openDoc} onOpenEvidence={openEvidence} />)
+    const signed = document.querySelector('[data-legal-timeline-item="entry:st-signed"]') as HTMLElement
+    fireEvent.click(within(signed).getByRole('button', { name: 'Open the signed copy' }))
+    await waitFor(() => expect(openDoc).toHaveBeenCalledWith('d-scan'))
+    fireEvent.click(within(signed).getByRole('button', { name: 'Show on Evidence ↗' }))
+    expect(openEvidence).toHaveBeenCalledWith('d-scan')
+    expect(within(signed).queryByRole('button', { name: 'File the signed copy…' })).toBeNull()
+    const draft = document.querySelector('[data-legal-timeline-item="entry:st-draft"]') as HTMLElement
+    expect(within(draft).queryByRole('button', { name: 'Open the signed copy' })).toBeNull()
+    fireEvent.click(within(draft).getByRole('button', { name: 'File the signed copy…' }))
+    expect(edit).toHaveBeenCalledWith('st-draft', { file: true })
+    fireEvent.click(within(draft).getByRole('button', { name: 'Print' }))
+    expect(edit).toHaveBeenCalledWith('st-draft', { print: true })
   })
 })

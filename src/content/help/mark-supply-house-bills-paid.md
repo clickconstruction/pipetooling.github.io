@@ -36,6 +36,20 @@ The bills sit under their job. Each job's heading says its job account state in 
 
 The **Total** row opens the same window across every house, grouped by house. The **Owed** cell shows everything one house owes. The **Credits open** cell lists the house's credit memos. The blue button at the bottom is named for the house. Press it to open the house and work on those bills. What each job's state means is in [work a cell by job](/help/mark-an-invoice-on-a-job-account#work-a-cell-by-job).
 
+## Fix a bill from the cell
+
+Every bill in the window is a door. Press its number and the bill opens in the same Edit window the house uses. The cell's window stays behind it. Save, and the cell counts again.
+
+A bill with no due date sits in the **No due date** cell. The row offers {{button:outline|Add a due date ›}}. Press it and the bill opens with the **Due date** box ready. Type the date and press {{button:green|Save}}. The bill moves to its aging column.
+
+A bill with no job sits under **No job yet**. The row offers {{button:outline|Pick a job ›}}. Press it and the bill opens with the job search ready. Choose the job there. The window then shows the bill under that job.
+
+A house's window offers {{button:outline|Make a payment ›}} at the bottom. Press it and the house's **Apply Payment** window opens over the cell. Tick the bills and press {{button:green|Apply}}. The **Total** row's window spans every house, so it has no payment button.
+
+:::example A No due date row
+**S124687508.003** · PO 4112 · Jul 3, 2026 · no due date · **$412.80** · {{button:outline|Add a due date ›}}
+:::
+
 ## On a phone
 
 On a phone, Accounts payable is a list of houses with what each is owed. Tap a house and its own screen opens. That is the screen to hold while you are on the phone with them:

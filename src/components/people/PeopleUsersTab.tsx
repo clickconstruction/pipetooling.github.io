@@ -534,7 +534,7 @@ export function PeopleUsersTab({
             {label} <span style={{ fontWeight: 500, fontSize: '0.8125rem', color: 'var(--text-muted)' }}>{describeGroupCount(rails.map((v) => v.rail))}</span>
           </h2>
           {sectionKind !== 'dev' && canCreatePeopleInRoster ? (
-            <button type="button" onClick={() => openAdd(sectionKind)} style={{ padding: '0.25rem 0.65rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
+            <button type="button" onClick={() => openAdd(sectionKind)} style={{ padding: '0.25rem 0.65rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }}>
               Add
             </button>
           ) : null}
@@ -609,11 +609,11 @@ export function PeopleUsersTab({
               style={{ flex: '1 1 8rem', minWidth: 0, padding: '0.45rem 0.7rem', fontSize: '0.9375rem', lineHeight: 1.35, border: '1px solid var(--border-strong)', borderRadius: 8, boxSizing: 'border-box' }}
             />
             {canCreatePeopleInRoster && onOpenHire ? (
-              <button type="button" onClick={() => onOpenHire()} title="Hire someone — login, roster row, pay, workday, packet" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+              <button type="button" onClick={() => onOpenHire()} title="Hire someone — login, roster row, pay, workday, packet" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                 + Hire
               </button>
             ) : canCreatePeopleInRoster ? (
-              <button type="button" onClick={() => openAdd('helper')} title="Add to roster" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
+              <button type="button" onClick={() => openAdd('helper')} title="Add to roster" style={{ whiteSpace: 'nowrap', padding: '0.45rem 0.8rem', fontSize: '0.9375rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: 'pointer', fontWeight: 600, fontFamily: 'inherit' }}>
                 + Add
               </button>
             ) : null}
@@ -709,7 +709,7 @@ export function PeopleUsersTab({
             Archived ({archivedCount})
           </button>
           {canCreatePeopleInRoster && onOpenHire ? (
-            <button type="button" onClick={() => onOpenHire()} style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }} title="One form: the person, their login, pay, workday and paperwork (v2.3701)">
+            <button type="button" onClick={() => onOpenHire()} style={{ whiteSpace: 'nowrap', padding: '0.3rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600 }} title="One form: the person, their login, pay, workday and paperwork (v2.3701)">
               + Hire
             </button>
           ) : null}
@@ -1103,7 +1103,7 @@ export function PeopleUsersTab({
                       setLinkTarget(null)
                     }
                   }}
-                  style={{ padding: '0.45rem 0.9rem', background: !linkUserId || linkSaving ? DEAD_PRESS_FILL : '#3b82f6', color: !linkUserId || linkSaving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: !linkUserId || linkSaving ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.45rem 0.9rem', background: !linkUserId || linkSaving ? DEAD_PRESS_FILL : '#2563eb', color: !linkUserId || linkSaving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: !linkUserId || linkSaving ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                 >
                   {linkSaving ? 'Linking…' : 'Link'}
                 </button>

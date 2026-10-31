@@ -42,7 +42,7 @@ const btn: CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
 }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 
 export type JobContractFileSheetProps = {
   jobId: string

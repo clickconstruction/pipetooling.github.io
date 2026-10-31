@@ -382,3 +382,45 @@ export function planMismatch(verb: WriteVerb, quoted: string, fresh: string): st
   const planVerb = planVerbFor(verb)
   return `Nothing written: the plan you quoted (${quoted.slice(0, 12)}…) is not what this dry run gives now (${fresh.slice(0, 12)}…) — the payload differs, or the rows it touches changed since. Call ${planVerb} again and read it.`
 }
+
+/**
+ * apply_file_plans' Drive leg failed (v2.6239): the words name Drive's reason and the one fix, so the agent can
+ * hand a person the exact step. Found live 2026-10-31 on ZZ bid b566, where the old words said only "Drive refused
+ * the filing". Since v2.6241 the seat files into a Shared Drive (`target`), and the by-hand door stays the office's
+ * division folder, where the bid form's Find looks. Storage quota is tested first because Drive answers it with a
+ * 403 too.
+ */
+export type DriveFilingFailure = {
+  /** Drive's error, as driveUpload throws it ("Folder create failed (403): …"). */
+  message: string
+  /** The service account's client_email; null when the key cannot be read. */
+  serviceAccount: string | null
+  /** Where the seat files: its path in words ("PipeTooling Jobs › Bid plans › Plumbing") and the deepest folder it reached. */
+  target: { name: string; url: string }
+  /** The office's division folder a person drops the file into by hand. */
+  division: { label: string; url: string }
+  /** The project folder's name, the one the bid form's Find looks for. */
+  folderName: string
+}
+
+export function driveFilingRefusal(f: DriveFilingFailure): string {
+  const reason = f.message.trim().replace(/[.\s]+$/, '')
+  const account = f.serviceAccount ? `The intake service account (${f.serviceAccount})` : 'The intake service account'
+  const grantTo = f.serviceAccount ?? 'the intake service account (the client_email in GOOGLE_SERVICE_ACCOUNT_JSON)'
+  const grant = `A manager of ${f.target.url} gives ${grantTo} write access there: Contributor on a Shared Drive, Editor on a My Drive folder.`
+  const byHand = `Until then a person drops the file into a folder named "${f.folderName}" in the ${f.division.label} bids folder (${f.division.url}) and presses Find the folder on the bid form.`
+  const retry = 'The staged copy is still there: call apply_file_plans again with the same plans and plan_hash.'
+  if (/storage ?quota/i.test(reason)) {
+    return `Drive refused the upload: ${reason}. ${f.target.name} is not on a Shared Drive the service account is in, so it has no storage there. File into a Shared Drive folder the service account belongs to, or set DRIVE_IMPERSONATE_USER (docs/DRIVE_INTAKE_SETUP.md). ${byHand} ${retry}`
+  }
+  if (/rate ?limit/i.test(reason)) {
+    return `Drive is rate-limiting the service account: ${reason}. Wait a minute. ${retry}`
+  }
+  if (/sufficient permissions|not have permission|forbidden/i.test(reason)) {
+    return `Drive refused the filing: ${reason}. ${account} can see ${f.target.name} but cannot write in it. ${grant} ${byHand} ${retry}`
+  }
+  if (/\(404\)|not found/i.test(reason)) {
+    return `Drive refused the filing: ${reason}. ${account} cannot see ${f.target.name} at all. ${grant} ${byHand} ${retry}`
+  }
+  return `Drive refused the filing: ${reason}. ${byHand} ${retry}`
+}

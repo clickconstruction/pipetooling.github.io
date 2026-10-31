@@ -38,7 +38,7 @@ import type { JobWithDetails } from '../types/jobWithDetails'
 import type { DeskView, Tab } from '../components/jobs/legal/legalDeskShared'
 import type { LegalPayerKey } from '../lib/legal/legalPacket'
 
-type DeskUser = { id: string; name: string | null }
+type DeskUser = { id: string; name: string | null; role: string | null; title: string | null }
 
 /** The same people the Jobs page shows the desk: the office and the field, and a dev's fellow devs. */
 const DESK_USER_ROLES = ['assistant', 'controller', 'master_technician', 'subcontractor', 'helpers', 'estimator', 'primary', 'superintendent']
@@ -81,7 +81,7 @@ export default function LegalDeskPage() {
     let live = true
     void (async () => {
       const [people, devs] = await Promise.all([
-        fetchActiveUsers<DeskUser>('id, name', { roles: DESK_USER_ROLES }),
+        fetchActiveUsers<DeskUser>('id, name, role, title', { roles: DESK_USER_ROLES }),
         role === 'dev' ? fetchActiveUsers<DeskUser>('id, name', { roles: [], includeDev: true }) : Promise.resolve({ data: [] as DeskUser[], error: null }),
       ])
       if (!live) return
