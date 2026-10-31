@@ -89,6 +89,8 @@ export const ENTRIES = {
   'lib/emailIn/gmailMessage.ts': { values: ['readGmailMessage', 'base64UrlBytes', 'parseAddress'], types: ['EmailIn', 'GmailMessage'] },
   'lib/emailIn/forwarded.ts': { values: ['readForwarded'], types: ['Forwarded'] },
   'lib/emailIn/leftOut.ts': { values: ['leftOut', 'outsideInbox'], types: ['LeftOut'] },
+  // A notice, not a person (punch list #223 PR 1, v2.6202): the senders the office marked, which the reader leaves out.
+  'lib/emailIn/leftOutSenders.ts': { values: ['leftOutSenders', 'domainOf', 'OPEN_MAIL_DOMAINS', 'NOTICE_LINES'], types: ['LeftOutSenderMatch', 'LeftOutSenderRow'] },
   'lib/emailIn/emailLine.ts': { values: ['emailLine', 'emailParty', 'emailFileRows'], types: ['EmailLine', 'EmailFileRow'] },
   'lib/emailIn/jobInSubject.ts': { values: ['jobInSubject'], types: ['SubjectJob'] },
   'lib/emailIn/subjectJobs.ts': { values: ['subjectJobs', 'subjectNumbers'], types: ['SubjectJobRows'] },
