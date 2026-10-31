@@ -83,7 +83,7 @@ function Seg({ value, options, onChange, disabled }: { value: string; options: A
       {options.map((o) => {
         const on = o.key === value
         return (
-          <button key={o.key} type="button" aria-pressed={on} disabled={disabled} onClick={() => onChange(o.key)} style={{ ...SEG_BTN, ...(on ? { background: o.tone === 'gray' ? 'var(--text-muted)' : ROBOT_BLUE, color: '#fff', fontWeight: 600 } : {}) }}>
+          <button key={o.key} type="button" aria-pressed={on} disabled={disabled} onClick={() => onChange(o.key)} style={{ ...SEG_BTN, ...(on ? { background: o.tone === 'gray' ? 'var(--text-muted)' : ROBOT_BLUE, color: o.tone === 'gray' ? 'var(--surface)' : '#fff', fontWeight: 600 } : {}) }}>
             {o.label}
           </button>
         )
