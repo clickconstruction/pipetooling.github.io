@@ -126,6 +126,7 @@ describe('DraftPayrollModal with the bars', () => {
     expect(screen.queryByText(/clock sessions in this period still need approval/)).toBeNull()
     const chip = screen.getByText('3 sessions await approval ›')
     fireEvent.click(chip)
+    expect(screen.getByText('1 with pay due and no report yet')).toBeTruthy()
     expect(screen.getByText('Cash due')).toBeTruthy()
     expect(screen.queryByText('Status')).toBeNull()
     // The Paid column goes with the bars (the owner, 2026-10-30): the green bar and Record payment say it.
@@ -171,7 +172,10 @@ describe('DraftPayrollModal with the bars', () => {
     const todayNote = screen.getByText(/Every report for this period is generated/).closest('[role="status"]') as HTMLElement
     const table = document.querySelector('table') as HTMLElement
     expect(todayNote.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    expect(screen.getByText('No one needs a report for this period.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Show the bars' }))
+    // The zero sentence goes with the bars (the owner, 2026-10-30).
+    expect(screen.queryByText('No one needs a report for this period.')).toBeNull()
     const barsNote = screen.getByText(/Every report for this period is generated/).closest('[role="status"]') as HTMLElement
     const barsTable = document.querySelector('table') as HTMLElement
     expect(barsNote.compareDocumentPosition(barsTable) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
