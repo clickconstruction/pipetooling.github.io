@@ -314,7 +314,7 @@ export default function JobReportsModal({
               marginTop: '1rem',
               padding: '0.5rem 1rem',
               fontSize: '0.875rem',
-              background: '#3b82f6',
+              background: '#2563eb',
               color: 'white',
               border: 'none',
               borderRadius: 6,

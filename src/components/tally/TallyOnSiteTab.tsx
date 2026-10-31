@@ -51,6 +51,8 @@ const btn: CSSProperties = { minHeight: TOUCH_MIN, padding: '0 0.9rem', borderRa
 const btnPrimary: CSSProperties = { ...btn, background: BLUE, borderColor: BLUE, color: '#fff' }
 const btnGo: CSSProperties = { ...btn, background: GREEN, borderColor: GREEN, color: '#fff' }
 const btnBlock: CSSProperties = { width: '100%' }
+/** A box screen's chip row: three on one line at 375, so the words stay short and never wrap. */
+const chip: CSSProperties = { ...btn, minHeight: 36, fontSize: '0.8rem', padding: '0 0.5rem', borderRadius: 999, fontWeight: 600, whiteSpace: 'nowrap' }
 const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, minHeight: 36, color: 'var(--text-link)', textDecoration: 'underline', font: 'inherit', cursor: 'pointer' }
 const card: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem' }
 const input: CSSProperties = { width: '100%', minHeight: TOUCH_MIN, padding: '0.6rem 0.9rem', fontSize: '1rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)' }
@@ -93,7 +95,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
   const [placeFilter, setPlaceFilter] = useState<string>('all')
   /** The flow row's two filters (#209): the boxes Used was pressed on today, or the boxes due a count. */
   const [flowFilter, setFlowFilter] = useState<'none' | 'used' | 'due'>('none')
-  /** The last thing done to a box on this screen, so the Photo press reads "Photo after Put in" for a few minutes (#209). */
+  /** The last thing done to a box on this screen, so the Photo press turns blue for a few minutes and the picture is named "A1 after Put in" (#209). */
   const [lastAct, setLastAct] = useState<{ containerId: string; what: string; at: number } | null>(null)
   // The site map opens on the job's address, placed through the app's geocode cache, until a box is pinned.
   const addr = job?.job_address?.trim() ?? ''
@@ -387,10 +389,11 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       {container.kind !== 'unsorted' ? (
         <div style={{ display: 'grid', gap: '0.35rem', ...muted }}>
           <span>At <b style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{placeName(places, container.locationId)}</b>{container.where ? `, ${container.where}` : ''}{container.lat != null ? ' · pinned on the map' : ''}</span>
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-            <button type="button" style={{ ...btn, minHeight: 36, fontSize: '0.8rem', padding: '0 0.7rem', borderRadius: 999, fontWeight: 600 }} onClick={() => setSheet({ kind: 'move-box', container })}>Move this box</button>
-            <button type="button" style={{ ...btn, minHeight: 36, fontSize: '0.8rem', padding: '0 0.7rem', borderRadius: 999, fontWeight: 600, gap: '0.3rem' }} onClick={() => setSheet({ kind: 'pin', container })}><span aria-hidden>◎</span>{container.lat != null ? 'On the map' : 'Mark on the map'}</button>
-            <PhotoPress jobId={jobId} containerId={container.id} containerLabel={container.label} after={after} byUserId={byUserId} byName={byName} onToast={showToast} style={{ ...btn, minHeight: 36, fontSize: '0.8rem', padding: '0 0.7rem', borderRadius: 999, fontWeight: 600, gap: '0.35rem', ...(after ? { borderColor: BLUE, color: BLUE } : {}) }} />
+          {/* Three chips on one line at 375 (v2.6229): a three-column grid and short words; the words that were cut live on the chips' aria-labels. */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: '0.4rem' }}>
+            <button type="button" style={chip} aria-label={`Move ${container.label} to another place`} onClick={() => setSheet({ kind: 'move-box', container })}>Move box</button>
+            <button type="button" style={{ ...chip, gap: '0.3rem' }} aria-label={container.lat != null ? `${container.label} is on the map: open it` : `Mark ${container.label} on the map`} onClick={() => setSheet({ kind: 'pin', container })}><span aria-hidden>◎</span>{container.lat != null ? 'On the map' : 'Pin on map'}</button>
+            <PhotoPress jobId={jobId} containerId={container.id} containerLabel={container.label} after={after} byUserId={byUserId} byName={byName} onToast={showToast} style={{ ...chip, gap: '0.35rem', ...(after ? { borderColor: BLUE, color: BLUE } : {}) }} />
           </div>
         </div>
       ) : null}

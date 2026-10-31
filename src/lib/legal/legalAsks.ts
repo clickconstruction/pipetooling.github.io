@@ -1,5 +1,6 @@
 import type { LegalEntryRow } from './legalMatters'
 import { offerKindWords, offerMetaOf } from './legalOffers'
+import { statementKindWords, statementMetaOf } from './affidavitPaper'
 import { recordedByOf } from '../../../supabase/functions/_shared/legalPortalActs'
 
 /**
@@ -144,6 +145,8 @@ export function legalEntryKindWords(e: Pick<LegalEntryRow, 'kind' | 'via_portal'
   if (e.kind === 'event') return 'happened'
   // v2.5847 (punch list #172): an offer made or received.
   if (e.kind === 'offer') return offerKindWords(offerMetaOf(e.meta))
+  // v2.6209 (punch list #220): a sworn statement or a declaration, a draft until the signed copy is filed.
+  if (e.kind === 'statement') return statementKindWords(statementMetaOf(e.meta))
   return e.kind.replace('_', ' ')
 }
 

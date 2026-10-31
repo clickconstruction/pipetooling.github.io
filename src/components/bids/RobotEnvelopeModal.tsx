@@ -326,7 +326,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
                         {isDraft ? (
                           <div style={{ display: 'flex', gap: '0.4rem' }}>
                             <input value={draft.text} onChange={(e) => setDraft((d) => (d ? { ...d, text: e.target.value } : d))} style={{ flex: 1, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8rem' }} />
-                            <button type="button" onClick={() => void postDraft()} disabled={busy === key} style={{ padding: '0.35rem 0.7rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.78rem' }}>Post</button>
+                            <button type="button" onClick={() => void postDraft()} disabled={busy === key} style={{ padding: '0.35rem 0.7rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.78rem' }}>Post</button>
                           </div>
                         ) : null}
                       </div>
@@ -357,7 +357,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
                         ) : (
                           <div style={{ display: 'flex', gap: '0.4rem' }}>
                             <input value={answers[key] ?? ''} onChange={(e) => setAnswers((p) => ({ ...p, [key]: e.target.value }))} placeholder="Your answer — the robot reads it next run" style={{ flex: 1, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8rem' }} />
-                            <button type="button" disabled={busy === key} onClick={() => void answerTwinQuestion(q, answers[key] ?? '')} style={{ padding: '0.35rem 0.7rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.78rem' }}>Answer</button>
+                            <button type="button" disabled={busy === key} onClick={() => void answerTwinQuestion(q, answers[key] ?? '')} style={{ padding: '0.35rem 0.7rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.78rem' }}>Answer</button>
                           </div>
                         )}
                       </div>
@@ -371,7 +371,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
                         <span>🤖 {q.body}{ctx ? <span style={{ display: 'block', fontSize: '0.72rem', color: 'var(--text-muted)' }}>{ctx}</span> : null}</span>
                         <div style={{ display: 'flex', gap: '0.4rem' }}>
                           <input value={answers[key] ?? ''} onChange={(e) => setAnswers((p) => ({ ...p, [key]: e.target.value }))} placeholder="Your answer" style={{ flex: 1, padding: '0.35rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, fontSize: '0.8rem' }} />
-                          <button type="button" disabled={busy === key || !canVerdict} onClick={() => void answerAuditQuestion(q, answers[key] ?? '')} style={{ padding: '0.35rem 0.7rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.78rem' }}>Answer</button>
+                          <button type="button" disabled={busy === key || !canVerdict} onClick={() => void answerAuditQuestion(q, answers[key] ?? '')} style={{ padding: '0.35rem 0.7rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', fontSize: '0.78rem' }}>Answer</button>
                         </div>
                       </div>
                     )
@@ -395,7 +395,7 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
             Later
           </button>
           {canVerdict ? (
-            <button type="button" onClick={() => void finish()} disabled={busy === 'finish'} style={{ padding: '0.45rem 0.9rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.82rem' }}>
+            <button type="button" onClick={() => void finish()} disabled={busy === 'finish'} style={{ padding: '0.45rem 0.9rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.82rem' }}>
               {busy === 'finish' ? 'Finishing…' : 'Finish audit'}
             </button>
           ) : null}

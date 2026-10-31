@@ -111,7 +111,7 @@ export default function BidJobBackfillSettingsBlock() {
                   <b>{pairs.length}</b> match{pairs.length === 1 ? '' : 'es'} · {clean} clear{ambiguous > 0 ? ` · ${ambiguous} ambiguous (a job or a bid with two matches — pick by hand)` : ''}
                 </span>
                 {clean > 0 ? (
-                  <button type="button" onClick={() => void linkAll()} disabled={busy != null} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
+                  <button type="button" onClick={() => void linkAll()} disabled={busy != null} style={{ padding: '0.35rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}>
                     {busy === 'all' ? 'Linking…' : `Link all ${clean} unambiguous`}
                   </button>
                 ) : null}

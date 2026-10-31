@@ -155,7 +155,7 @@ export function StagesSendBackJobModal({
               style={{
                 padding: '0.5rem 1rem',
                 background:
-                  (!needsAttestation || checked) && !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+                  (!needsAttestation || checked) && !busy ? '#2563eb' : DEAD_PRESS_FILL,
                 color: (!needsAttestation || checked) && !busy ? 'white' : DEAD_PRESS_TEXT,
                 border: 'none',
                 borderRadius: 4,

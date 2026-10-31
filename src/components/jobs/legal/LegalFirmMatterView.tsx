@@ -277,7 +277,8 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, 
   const contingency = contingencyEntries(matter.entries)
   // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
   // Planned steps (v2.5800) live on the Timeline tab, so On this matter stays as it was.
-  const steps = matter.entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && e.kind !== 'plan' && !isConversationEntry(e))
+  // v2.6209: a statement reads on the Timeline's Said lane, not in this table.
+  const steps = matter.entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && e.kind !== 'plan' && e.kind !== 'statement' && !isConversationEntry(e))
   const talk = conversationRows(matter.entries)
   return (
     <div>

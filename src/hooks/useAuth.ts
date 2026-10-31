@@ -154,6 +154,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       // background without flashing the loading screen mid-session.
       if (roleResolvedForUserIdRef.current !== userId) {
         setRoleResolved(false)
+        // Another person's role and name never stand for this one, not even while a read with no signal is read
+        // again (v2.6198): only the same person keeps them through a failed read.
+        setRole(null)
+        setProfileName(null)
+        setEstimatorProspectsAccess(false)
+        setTeamProspectsAccess(false)
+        setReadOnly(false)
       }
       const settleRole = () => {
         roleResolvedForUserIdRef.current = userId
@@ -191,11 +198,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .select('name, role, estimator_prospects_access, team_prospects_access, read_only')
           .eq('id', userId)
           .single()
-          .then(({ data, error: rowError }) => {
+          .then(({ data, error: rowError, status }) => {
             if (cancelled) return
             // A read the freeze failed (its statement timeout, or any refusal while the app is
             // slow) is read again in 5 s rather than settling a null role for the whole session.
-            if ((rowError || !data) && shouldRetryRoleRead(rowError)) {
+            // So is one that never reached the server: an auth event with no signal keeps the role
+            // and the name already read (punch list #163's live test, v2.6198).
+            if ((rowError || !data) && shouldRetryRoleRead(rowError ? { code: rowError.code, message: rowError.message, status } : null)) {
               retryTimer = setTimeout(readRole, ROLE_READ_RETRY_MS)
               return
             }

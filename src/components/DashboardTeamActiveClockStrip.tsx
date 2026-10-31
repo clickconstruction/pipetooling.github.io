@@ -1699,7 +1699,7 @@ export function DashboardTeamActiveClockStrip({
                       const jobCount = dispatchJobCounts.get(s.user_id) ?? 0
                       const hasJobs = jobCount > 0
                       const calendarSvg = (
-                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill="currentColor" aria-hidden="true">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width={18} height={18} fill={hasJobs ? '#2563eb' : 'currentColor'} aria-hidden="true">
                           <path d="M224 64C206.3 64 192 78.3 192 96L192 128L160 128C124.7 128 96 156.7 96 192L96 240L544 240L544 192C544 156.7 515.3 128 480 128L448 128L448 96C448 78.3 433.7 64 416 64C398.3 64 384 78.3 384 96L384 128L256 128L256 96C256 78.3 241.7 64 224 64zM96 288L96 480C96 515.3 124.7 544 160 544L480 544C515.3 544 544 515.3 544 480L544 288L96 288z" />
                         </svg>
                       )
@@ -1733,9 +1733,9 @@ export function DashboardTeamActiveClockStrip({
                       // place; the Dispatch board stays one link away inside it.
                       // The count sits on the calendar's body (x 96–544, y 288–544
                       // of the 640 box), drawn again under it so its words have a
-                      // ground of their own: --surface on --text-link reads in both
-                      // themes, where white read 2.54:1 on dark mode's light blue
-                      // (punch list #194, v2.6130).
+                      // ground of their own: white on #2563eb, the icon and the box
+                      // both, deep in both themes (v2.6190), where white read 2.54:1
+                      // on dark mode's light blue (punch list #194, v2.6130).
                       return (
                         <button
                           type="button"
@@ -1766,12 +1766,12 @@ export function DashboardTeamActiveClockStrip({
                               bottom: '15%',
                               display: 'grid',
                               placeItems: 'center',
-                              background: 'var(--text-link)',
+                              background: '#2563eb',
                               borderRadius: '0 0 1.8px 1.8px',
                               fontSize: '0.5625rem',
                               fontWeight: 700,
                               lineHeight: 1,
-                              color: 'var(--surface)',
+                              color: '#fff',
                               pointerEvents: 'none',
                             }}
                           >

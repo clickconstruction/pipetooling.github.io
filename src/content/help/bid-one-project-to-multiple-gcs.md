@@ -88,6 +88,16 @@ Every GC card in Edit Bid carries its own **due date & time**, **submitted-to** 
 
 The bid's board due date rolls up on its own. It becomes the **earliest due among the GCs you have not sent to yet**. Once a GC's letter goes out, their deadline stops driving the board. A bid where you never set per-GC dues keeps its hand-set due date exactly as before.
 
+## Lock a version
+
+Two estimators may price the same job as two versions. A lock keeps one version in one pair of hands.
+
+1. Find your version on the Versions strip.
+2. Press the open lock beside its name. The lock is off on every version until someone presses it.
+3. The version now reads {{chip:yellow|Locked · you}}. Only you change its counts, takeoff, prices, CountTooling projects and plan sets.
+
+Everyone else still reads it, sends it and copies it. If they try to change it, the app says who locked it. It tells them to ask you, or a master. Press the closed lock to open it again. A dev or a master can open any lock. Every lock and unlock leaves a line in the bid's log.
+
 ## Tips
 
 - Labor and cost are shared by the whole bid. Switching packets changes revenue, not cost.

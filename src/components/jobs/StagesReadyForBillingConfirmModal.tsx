@@ -50,7 +50,7 @@ export function StagesReadyForBillingConfirmModal({
         </div>
         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
           <button type="button" onClick={onCancel} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-          <button type="button" disabled={!ready} onClick={() => void onConfirm()} style={{ padding: '0.5rem 1rem', background: ready ? '#3b82f6' : DEAD_PRESS_FILL, color: ready ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: ready ? 'pointer' : 'not-allowed' }}>{busy ? '…' : 'Confirm'}</button>
+          <button type="button" disabled={!ready} onClick={() => void onConfirm()} style={{ padding: '0.5rem 1rem', background: ready ? '#2563eb' : DEAD_PRESS_FILL, color: ready ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: ready ? 'pointer' : 'not-allowed' }}>{busy ? '…' : 'Confirm'}</button>
         </div>
       </div>
     </div>

@@ -193,8 +193,8 @@ export default function PaySpeedDataHealthModal({
   }
 
   const pillStyle = (active: boolean): CSSProperties => ({
-    border: `1px solid ${active ? 'var(--text-link)' : 'var(--border-strong)'}`,
-    background: active ? 'var(--text-link)' : 'var(--surface)',
+    border: `1px solid ${active ? '#2563eb' : 'var(--border-strong)'}`,
+    background: active ? '#2563eb' : 'var(--surface)',
     color: active ? '#fff' : 'var(--text-muted)',
     borderRadius: 9999,
     fontSize: '0.72rem',

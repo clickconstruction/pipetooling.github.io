@@ -13,6 +13,8 @@ export interface KeptReadStampProps {
   readAt: number
   /** The page's own words before the time; *Read at* when unset. */
   lead?: string
+  /** The page's own word for the read in flight; *reading again…* when unset (Quickfill: *counting again…*). */
+  again?: string
   /** The live read failed: the stamp says so and offers Retry. */
   failed?: boolean
   onRetry?: () => void
@@ -21,8 +23,8 @@ export interface KeptReadStampProps {
   className?: string
 }
 
-export function KeptReadStamp({ readAt, lead, failed = false, onRetry, format, className }: KeptReadStampProps) {
-  const words = keptReadStampWords({ readAt, lead, failed, format })
+export function KeptReadStamp({ readAt, lead, again, failed = false, onRetry, format, className }: KeptReadStampProps) {
+  const words = keptReadStampWords({ readAt, lead, again, failed, format })
   return (
     <p className={className ? `keptReadStamp ${className}` : 'keptReadStamp'} role="status" data-kept-read-stamp={failed ? 'failed' : 'reading'}>
       <strong>{words.stamp}</strong>

@@ -265,7 +265,7 @@ export function DashboardRecentReportsSection({
               {newCount > 0 ? (
                 <span
                   aria-label={`${newCount} new ${newCount === 1 ? 'report' : 'reports'}`}
-                  style={{ background: '#3b82f6', color: '#ffffff', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, padding: '0.1rem 0.55rem', whiteSpace: 'nowrap' }}
+                  style={{ background: '#2563eb', color: '#ffffff', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, padding: '0.1rem 0.55rem', whiteSpace: 'nowrap' }}
                 >
                   {newCount} new
                 </span>

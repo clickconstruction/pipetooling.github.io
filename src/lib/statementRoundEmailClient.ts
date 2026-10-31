@@ -1,5 +1,5 @@
 /**
- * IO for the `statement_round` stream (v2.2771): the round RPCs, the
+ * IO for the `statement_round` stream (v2.2771): the office week RPC, the
  * statement-round-email-dispatch edge function (preview / test send, caller
  * JWT), and statement_round_email_requests (scheduled chains are plain
  * RLS-gated rows; the pg_cron dispatcher sends). Pure logic lives in
@@ -8,34 +8,19 @@
 import { supabase } from './supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { isOfficeWeekPayload, type OfficeWeekPayload } from './statementWeekEmail'
-import { parseStatementRoundPayload, type StatementRoundChainInsert, type StatementRoundPayload, type StatementRoundRequestRow } from './statementRoundEmail'
-
-/** The signed-in user's round (office roles; null otherwise or on error). */
-export async function fetchMyStatementRound(): Promise<StatementRoundPayload | null> {
-  try {
-    const data = await withSupabaseRetry(async () => await supabase.rpc('get_my_statement_round'), 'my statement round')
-    return parseStatementRoundPayload(data)
-  } catch {
-    return null
-  }
-}
+import type { StatementRoundChainInsert, StatementRoundRequestRow } from './statementRoundEmail'
 
 /**
  * The office's statement week (punch list #49) — every GC over the line,
- * whoever its account man is. `missing` = the database has no such function
- * yet, so the caller falls back to the per-sender round.
+ * whoever its account man is — from get_my_statement_week. Null on a refusal
+ * or a lost signal so the Needs You row stays quiet.
  */
-export async function fetchMyStatementWeek(): Promise<{ week: OfficeWeekPayload | null; missing: boolean }> {
+export async function fetchMyStatementWeek(): Promise<OfficeWeekPayload | null> {
   try {
-    const { data, error } = await supabase.rpc('get_my_statement_week')
-    if (error) {
-      const e = error as { code?: string; message?: string }
-      const missing = e.code === 'PGRST202' || e.code === '42883' || /could not find the function|does not exist/i.test(e.message ?? '')
-      return { week: null, missing }
-    }
-    return { week: isOfficeWeekPayload(data) ? data : null, missing: false }
+    const data = await withSupabaseRetry(async () => await supabase.rpc('get_my_statement_week'), 'my statement week')
+    return isOfficeWeekPayload(data) ? data : null
   } catch {
-    return { week: null, missing: false }
+    return null
   }
 }
 

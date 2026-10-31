@@ -84,7 +84,7 @@ export default function PhysicalInvoiceResendButton({
                   type="button"
                   disabled={sending}
                   onClick={() => void send()}
-                  style={{ background: 'var(--text-link)', color: '#fff', border: '1px solid var(--text-link)' }}
+                  style={{ background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }}
                 >
                   {sending ? 'Sending…' : 'Send email'}
                 </button>

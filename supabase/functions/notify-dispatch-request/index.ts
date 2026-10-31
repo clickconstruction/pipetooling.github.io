@@ -1,7 +1,12 @@
+// notify-dispatch-request: the dispatch group's push when a request is filed, the requester's when it is answered.
+// A person's hours (punch list #141 PR 5, v2.6217): every push goes through _shared/pushHoursSend.ts, which pushes
+// the people on and holds a person outside their Push me hours, writing the row as `held` and sending nothing; the
+// dispatchers on still hear, and the requester sees the answer on Job Mode's strip.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from '../_shared/ledgerDisplayPrefixes.ts'
+import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -106,53 +111,37 @@ async function notifyRequester(
   const push = composeClosurePush(row.title, note, mode)
   const templateType = mode === 'closed' ? 'dispatch_request_closed' : 'dispatch_request_reopened'
 
-  let pushSent = 0
-  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-  if (vapidPublicKey && vapidPrivateKey) {
-    webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
-    const { data: subscriptions } = await adminClient
-      .from('push_subscriptions')
-      .select('endpoint, p256dh_key, auth_key')
-      .eq('user_id', recipient_user_id)
-    const pushPayload = JSON.stringify({
-      title: push.title,
-      body: push.body,
-      url: '/job-mode/inbox',
-      tag: `dispatch-${row.id}-${mode}`,
-    })
-    for (const sub of (subscriptions ?? []) as Array<{ endpoint: string; p256dh_key: string; auth_key: string }>) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
-          pushPayload,
-          { TTL: 86400 },
-        )
-        pushSent++
-      } catch (pushErr) {
-        console.error('Push send error:', sub.endpoint?.substring(0, 50), pushErr)
-      }
-    }
-  }
+  // Through the requester's hours (#141 PR 5): off, the helper writes their row as held and sends nothing.
+  const result = await sendPushHonouringHours(
+    adminClient,
+    { userIds: [recipient_user_id], title: push.title, body: push.body, url: '/job-mode/inbox', tag: `dispatch-${row.id}-${mode}`, templateType },
+    webPushSender(adminClient, 'notify-dispatch-request'),
+    { record: 'none' },
+  )
+  const pushSent = result.devices
+  const held = result.held.length > 0
 
   // Always on record for the requester — this is the row Settings → Notifications
-  // and the Job Mode inbox can show, subscription or not.
-  const { error: histErr } = await adminClient.from('notification_history').insert({
-    recipient_user_id,
-    template_type: templateType,
-    title: push.title,
-    body_preview: push.body.substring(0, 200),
-    channel: 'push',
-  })
-  if (histErr) console.error('notification_history insert:', histErr.message)
+  // and the Job Mode inbox can show, subscription or not. A held requester has the held row instead.
+  if (!held) {
+    const { error: histErr } = await adminClient.from('notification_history').insert({
+      recipient_user_id,
+      template_type: templateType,
+      title: push.title,
+      body_preview: push.body.substring(0, 200),
+      channel: 'push',
+    })
+    if (histErr) console.error('notification_history insert:', histErr.message)
+  }
 
   return json(200, {
     success: true,
     mode,
-    message: pushSent > 0 ? 'Requester notified' : 'Requester has no push subscription; logged only',
+    message: held ? 'Requester is off; held for their hours' : pushSent > 0 ? 'Requester notified' : 'Requester has no push subscription; logged only',
     push_sent: pushSent,
     recipients: 1,
     notified: pushSent > 0,
+    held: held ? 1 : 0,
   })
 }
 
@@ -354,60 +343,22 @@ serve(async (req) => {
 
     const pushTitle = 'Task Dispatch'
 
-    webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
-
-    let pushSent = 0
     const tag = `dispatch-${dispatchRow.id}`
 
-    for (const recipient_user_id of recipientIds) {
-      const { data: subscriptions } = await adminClient
-        .from('push_subscriptions')
-        .select('endpoint, p256dh_key, auth_key')
-        .eq('user_id', recipient_user_id)
-
-      let sentForRecipient = 0
-      if (subscriptions && subscriptions.length > 0) {
-        const pushPayload = JSON.stringify({
-          title: pushTitle,
-          body: pushBody,
-          url: '/dashboard',
-          tag,
-        })
-        for (const sub of subscriptions) {
-          try {
-            await webpush.sendNotification(
-              {
-                endpoint: sub.endpoint,
-                keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
-              },
-              pushPayload,
-              { TTL: 86400 },
-            )
-            sentForRecipient++
-            pushSent++
-          } catch (pushErr) {
-            console.error('Push send error:', sub.endpoint?.substring(0, 50), pushErr)
-          }
-        }
-      }
-
-      if (sentForRecipient > 0) {
-        await adminClient.from('notification_history').insert({
-          recipient_user_id,
-          template_type: 'dispatch_request',
-          title: pushTitle,
-          body_preview: pushBody.substring(0, 200),
-          channel: 'push',
-        })
-      }
-    }
+    // Through each member's hours (#141 PR 5): the dispatchers on are pushed, one off is held with a row and no push.
+    const result = await sendPushHonouringHours(
+      adminClient,
+      { userIds: recipientIds, title: pushTitle, body: pushBody, url: '/dashboard', tag, templateType: 'dispatch_request' },
+      webPushSender(adminClient, 'notify-dispatch-request'),
+    )
 
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Dispatch notifications processed',
-        push_sent: pushSent,
+        push_sent: result.devices,
         recipients: recipientIds.length,
+        held: result.held.length,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

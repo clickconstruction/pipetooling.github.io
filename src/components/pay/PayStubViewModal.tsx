@@ -90,7 +90,7 @@ export function PayStubViewModal({ title, html, zIndex, onClose }: PayStubViewMo
             onClick={handlePrint}
             style={{
               padding: '0.4rem 0.9rem',
-              background: '#3b82f6',
+              background: '#2563eb',
               color: 'white',
               border: 'none',
               borderRadius: 4,

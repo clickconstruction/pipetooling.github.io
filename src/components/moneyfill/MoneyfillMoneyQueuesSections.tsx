@@ -61,7 +61,7 @@ const primaryBtn: React.CSSProperties = {
   fontWeight: 600,
   border: 'none',
   borderRadius: 5,
-  background: '#3b82f6',
+  background: '#2563eb',
   color: 'white',
   cursor: 'pointer',
   whiteSpace: 'nowrap',

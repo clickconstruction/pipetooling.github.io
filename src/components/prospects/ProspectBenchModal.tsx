@@ -178,7 +178,7 @@ export function ProspectBenchModal({
             type="button"
             onClick={save}
             disabled={saving}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
           >
             {saving ? 'Saving…' : ask && askNow ? BENCH_SAVE_AND_ASK : BENCH_SAVE}
           </button>

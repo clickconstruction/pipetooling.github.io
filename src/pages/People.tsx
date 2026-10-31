@@ -1981,7 +1981,7 @@ export default function People() {
                   }
                   setSearchParams(next, { replace: true })
                 }}
-                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.3rem 0.8rem', border: 'none', background: payrollView === v ? 'var(--text-link)' : 'var(--surface)', color: payrollView === v ? 'var(--surface)' : 'var(--text-700)', cursor: 'pointer' }}
+                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 650, padding: '0.3rem 0.8rem', border: 'none', background: payrollView === v ? '#2563eb' : 'var(--surface)', color: payrollView === v ? '#fff' : 'var(--text-700)', cursor: 'pointer' }}
               >
                 {label}
               </button>

@@ -55,6 +55,7 @@ import { buildRobotStage, type RobotStageRow } from '../../lib/bids/robotStage'
 import { fixturesAddedToast, SET_ASIDE_REASON_WORDS, type FixtureReview, type FixtureTicks, type HerCountRow, type SetAsideReason } from '../../lib/bids/robotFixtures'
 import { isRobotRow, robotRowPill, robotSourceIds, setAsideFoldWords, SET_ASIDE_WORDS } from '../../lib/bids/robotFixtureShade'
 import { RobotFixturesWindow } from './RobotFixturesWindow'
+import { RobotStageStrip } from './RobotStageStrip'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /** v2.4720: rows per insert statement on an import (PostgREST takes the whole array; chunked only so a huge paste stays well under the request limit). */
@@ -69,6 +70,10 @@ type BidsCountsTabProps = {
    * bid is selected, so the landing rings the box instead of the button.
    */
   openImportRequest?: number
+  /** Robot fixtures (punch list #221, PR 3b): bumps when the robot status sheet's door asks for the window. */
+  openRobotFixturesRequest?: number
+  /** Robot fixtures (PR 3b): Open sheet in the window opens the Plans panel at that page. */
+  onOpenPlansAt?: (page: number) => void
   /** Role gating for those doors (superintendents never reach Pricing / Cover Letter). */
   bidFlowDoorAllowed?: (door: BidFlowDoor) => boolean
   bids: BidWithBuilder[]
@@ -124,6 +129,8 @@ function SheetSortableRow({ id, flash, robot, children }: { id: string; flash?: 
 export function BidsCountsTab({
   onOpenBidFlowDoor,
   openImportRequest,
+  openRobotFixturesRequest = 0,
+  onOpenPlansAt,
   bidFlowDoorAllowed,
   bids,
   selectedBidForCounts,
@@ -276,6 +283,18 @@ export function BidsCountsTab({
       setRobotBusy(false)
     }
   }
+  // The status sheet's door (PR 3b): the window opens once the bid is selected and its pull is read; each press once.
+  const robotRequestHandled = useRef(0)
+  useEffect(() => {
+    if (openRobotFixturesRequest > robotRequestHandled.current && robotStage?.fixturesOpen && robotPull) {
+      robotRequestHandled.current = openRobotFixturesRequest
+      setRobotWindowOpen(true)
+    }
+  }, [openRobotFixturesRequest, robotStage?.fixturesOpen, robotPull])
+  // The stage (PR 4): one line beside the bid flow's pill, unfolding to the seven stops; folds with the flow's fold.
+  const robotStagePill = robotStage && !robotStage.void ? (
+    <RobotStageStrip stage={robotStage} variant="inline" onOpenFixtures={robotStage.fixturesOpen && robotPull ? () => setRobotWindowOpen(true) : null} />
+  ) : null
   const robotFixturesButton = robotStage?.fixturesOpen && robotPull ? (
     <button
       type="button"
@@ -1177,6 +1196,7 @@ export function BidsCountsTab({
                   reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
                 />
               </div>
+              {robotStagePill}
               {gradeChipEl}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                 {robotFixturesButton}
@@ -1216,6 +1236,7 @@ export function BidsCountsTab({
                   }}
                   reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
                 />
+                {robotStagePill}
                 {gradeChipEl}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto' }}>
@@ -1383,7 +1404,7 @@ export function BidsCountsTab({
                       title={g.alternate ? 'An alternate — priced with and without. Click to fold it back into the base bid.' : 'Make this group an alternate — priced with and without.'}
                       disabled={!selectedBidForCounts}
                       onClick={() => { if (selectedBidForCounts) void saveAlternateTags(selectedBidForCounts.id, toggleAlternateTag(altTags, g.label, !g.alternate)) }}
-                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, border: '1px solid ' + (g.alternate ? 'var(--text-amber-700)' : 'var(--border-strong)'), background: g.alternate ? 'var(--text-amber-700)' : 'var(--surface)', color: g.alternate ? 'white' : 'var(--text-muted)', cursor: 'pointer' }}
+                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, border: '1px solid ' + (g.alternate ? '#b45309' : 'var(--border-strong)'), background: g.alternate ? '#b45309' : 'var(--surface)', color: g.alternate ? 'white' : 'var(--text-muted)', cursor: 'pointer' }}
                     >
                       {g.alternate ? 'Alternate · on' : 'Alternate'}
                     </button>
@@ -1539,13 +1560,13 @@ export function BidsCountsTab({
                 `}</style>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.8rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden' }}>
-                    <button type="button" onClick={() => setSheetMode('list')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'list' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'list' ? '#fff' : 'var(--text-muted)' }}>
+                    <button type="button" onClick={() => setSheetMode('list')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'list' ? '#2563eb' : 'var(--surface)', color: sheetMode === 'list' ? '#fff' : 'var(--text-muted)' }}>
                       List
                     </button>
-                    <button type="button" onClick={() => setSheetMode('pages')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'pages' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'pages' ? '#fff' : 'var(--text-muted)' }}>
+                    <button type="button" onClick={() => setSheetMode('pages')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'pages' ? '#2563eb' : 'var(--surface)', color: sheetMode === 'pages' ? '#fff' : 'var(--text-muted)' }}>
                       By plan page
                     </button>
-                    <button type="button" onClick={() => setSheetMode('groups')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'groups' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'groups' ? '#fff' : 'var(--text-muted)' }}>
+                    <button type="button" onClick={() => setSheetMode('groups')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'groups' ? '#2563eb' : 'var(--surface)', color: sheetMode === 'groups' ? '#fff' : 'var(--text-muted)' }}>
                       By group
                     </button>
                   </div>
@@ -1619,7 +1640,7 @@ export function BidsCountsTab({
                               role="radio"
                               aria-checked={eff === u}
                               onClick={() => setQaUnit(u === auto ? null : u)}
-                              style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '0.38rem 0.5rem', border: 'none', cursor: 'pointer', background: eff === u ? '#3b82f6' : 'var(--surface)', color: eff === u ? '#fff' : 'var(--text-muted)' }}
+                              style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '0.38rem 0.5rem', border: 'none', cursor: 'pointer', background: eff === u ? '#2563eb' : 'var(--surface)', color: eff === u ? '#fff' : 'var(--text-muted)' }}
                             >
                               {COUNT_UNIT_LABEL[u]}
                             </button>
@@ -1673,7 +1694,7 @@ export function BidsCountsTab({
                       type="button"
                       onClick={() => void sheetQuickAdd()}
                       disabled={qaBusy || dup != null}
-                      style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: qaBusy || dup != null ? 'not-allowed' : 'pointer', opacity: dup != null ? 0.6 : 1 }}
+                      style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.75rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: qaBusy || dup != null ? 'not-allowed' : 'pointer', opacity: dup != null ? 0.6 : 1 }}
                     >
                       {qaBusy ? 'Adding…' : 'Add ⏎'}
                     </button>
@@ -1841,8 +1862,8 @@ export function BidsCountsTab({
           onTake={(ticks, review) => void robotTake(ticks, review)}
           onSetAside={(ids, reason) => void robotSetAside(ids, reason)}
           onPutBack={(ids) => void robotPutBack(ids)}
-          onOpenSheet={null}
-          onOpenPlans={null}
+          onOpenSheet={onOpenPlansAt ? (page) => onOpenPlansAt(page) : null}
+          onOpenPlans={onOpenPlansAt ? () => onOpenPlansAt(1) : null}
           onClose={() => setRobotWindowOpen(false)}
         />
       )}

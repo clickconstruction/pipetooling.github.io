@@ -590,8 +590,8 @@ export default function PeoplePayStubsTab({
                             fontWeight: 600,
                             padding: '0.5rem 0.8rem',
                             border: 'none',
-                            background: paidSegment === v ? 'var(--text-link)' : 'var(--surface)',
-                            color: paidSegment === v ? 'var(--surface)' : 'var(--text-700)',
+                            background: paidSegment === v ? '#2563eb' : 'var(--surface)',
+                            color: paidSegment === v ? '#fff' : 'var(--text-700)',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                           }}
@@ -659,7 +659,7 @@ export default function PeoplePayStubsTab({
                       style={{
                         padding: '0.5rem 1rem',
                         fontSize: '0.9375rem',
-                        background: draftPayrollDisabled ? DEAD_PRESS_FILL : '#3b82f6',
+                        background: draftPayrollDisabled ? DEAD_PRESS_FILL : '#2563eb',
                         color: draftPayrollDisabled ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 6,
@@ -1045,7 +1045,7 @@ export default function PeoplePayStubsTab({
                               type="button"
                               onClick={() => onViewStub(stub)}
                               title="View the pay report in a modal"
-                              style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: '0.35rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                              style={{ padding: '2px 6px', fontSize: '0.8125rem', marginRight: '0.35rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                             >
                               View
                             </button>

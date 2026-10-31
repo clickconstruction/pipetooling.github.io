@@ -121,7 +121,7 @@ export default function CustomerPropertySheet({ draft, onChange, isNew, isPrimar
         <CustomerPropertyRecordPanel key={lookupKey} address={draft.address} fields={draft} onChange={(patch) => onChange(patch)} autoLookup={draft.address.trim().length > 0} />
       </div>
       <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', paddingTop: '0.2rem' }}>
-        <button type="button" disabled={!canDone} onClick={onDone} style={{ ...smallBtn, background: '#3b82f6', color: 'white', border: 'none', fontWeight: 600, opacity: canDone ? 1 : 0.6 }}>
+        <button type="button" disabled={!canDone} onClick={onDone} style={{ ...smallBtn, background: '#2563eb', color: 'white', border: 'none', fontWeight: 600, opacity: canDone ? 1 : 0.6 }}>
           {busy ? 'Saving…' : isNew ? 'Add property' : 'Done'}
         </button>
         <button type="button" disabled={busy} onClick={onCancel} style={smallBtn}>

@@ -184,5 +184,5 @@ export function peopleCountColor(count: number): PeopleCountColors {
   if (count === 2) return { background: '#bfdbfe', foreground: '#1e3a8a' }
   if (count === 3) return { background: '#93c5fd', foreground: '#1e3a8a' }
   if (count === 4) return { background: '#60a5fa', foreground: '#ffffff' }
-  return { background: '#3b82f6', foreground: '#ffffff' }
+  return { background: '#2563eb', foreground: '#ffffff' }
 }

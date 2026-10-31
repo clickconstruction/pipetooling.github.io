@@ -33,11 +33,14 @@ type Props = {
 const DONE = 'var(--text-green-700, #15803d)'
 const NEXT = 'var(--text-blue-500, #3b82f6)'
 const TODO = 'var(--border-strong)'
+/** Fills under white words, deep in both themes where the tokens above turn pale in dark (v2.6190). */
+const DONE_FILL = '#15803d'
+const NEXT_PRESS = '#2563eb'
 
 function nodeColors(step: BidFlowStep, decided: boolean): { border: string; bg: string; fg: string; dash: boolean; ring: boolean } {
   switch (step.state) {
     case 'done':
-      return { border: DONE, bg: DONE, fg: '#fff', dash: false, ring: false }
+      return { border: DONE_FILL, bg: DONE_FILL, fg: '#fff', dash: false, ring: false }
     case 'next':
       return { border: NEXT, bg: 'var(--surface)', fg: NEXT, dash: false, ring: !decided }
     case 'untracked':
@@ -201,8 +204,8 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
                   padding: '0.25rem 0.65rem',
                   borderRadius: 6,
                   cursor: 'pointer',
-                  border: stamped ? '1px solid var(--border)' : `1px solid ${NEXT}`,
-                  background: stamped ? 'var(--surface)' : NEXT,
+                  border: stamped ? '1px solid var(--border)' : `1px solid ${NEXT_PRESS}`,
+                  background: stamped ? 'var(--surface)' : NEXT_PRESS,
                   color: stamped ? 'var(--text-muted)' : '#fff',
                 }}
               >
@@ -383,7 +386,7 @@ export function BidFlowStrip({ flow, variant, onOpenDoor, canOpenDoor, bidLabel,
             type="button"
             onClick={() => onOpenDoor?.('review', review)}
             title="Mark this bid reviewed — who, when, and your notes"
-            style={{ fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 999, cursor: 'pointer', border: `1px solid ${NEXT}`, background: NEXT, color: '#fff', whiteSpace: 'nowrap' }}
+            style={{ fontFamily: 'inherit', fontSize: '0.74rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 999, cursor: 'pointer', border: `1px solid ${NEXT_PRESS}`, background: NEXT_PRESS, color: '#fff', whiteSpace: 'nowrap' }}
           >
             Mark reviewed
           </button>

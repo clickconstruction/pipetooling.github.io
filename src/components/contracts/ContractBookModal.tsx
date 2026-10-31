@@ -656,7 +656,7 @@ export function ContractBookModal({
                       fontWeight: 600,
                       border: 'none',
                       borderRadius: 6,
-                      background: '#3b82f6',
+                      background: '#2563eb',
                       color: '#fff',
                       cursor: addSaving ? 'not-allowed' : 'pointer',
                     }}
@@ -1115,7 +1115,7 @@ export function ContractBookModal({
                               fontWeight: 600,
                               border: 'none',
                               borderRadius: 6,
-                              background: '#3b82f6',
+                              background: '#2563eb',
                               color: '#fff',
                               cursor: saving || deleting ? 'not-allowed' : 'pointer',
                             }}

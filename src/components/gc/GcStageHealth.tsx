@@ -292,7 +292,7 @@ function DaySquare({ d, openEnd, narrow, sz = ROOMY }: { d: CalendarDay; openEnd
         </span>
       )}
       {d.tag && (
-        <span aria-hidden style={{ position: 'absolute', top: -7, right: -7, minWidth: 15, height: 15, padding: '0 3px', borderRadius: 8, background: 'var(--text-blue-500)', color: '#fff', fontSize: '0.58rem', fontWeight: 800, display: 'grid', placeItems: 'center', boxSizing: 'border-box' }}>
+        <span aria-hidden style={{ position: 'absolute', top: -7, right: -7, minWidth: 15, height: 15, padding: '0 3px', borderRadius: 8, background: '#2563eb', color: '#fff', fontSize: '0.58rem', fontWeight: 800, display: 'grid', placeItems: 'center', boxSizing: 'border-box' }}>
           {d.tag}
         </span>
       )}

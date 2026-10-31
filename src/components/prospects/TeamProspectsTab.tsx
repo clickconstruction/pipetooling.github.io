@@ -1668,7 +1668,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
               type="button"
               disabled={busy || !newRoleName.trim()}
               onClick={addRole}
-              style={{ padding: '0.45rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy || !newRoleName.trim() ? 'not-allowed' : 'pointer' }}
+              style={{ padding: '0.45rem 0.8rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: busy || !newRoleName.trim() ? 'not-allowed' : 'pointer' }}
             >
               Add
             </button>
@@ -1680,7 +1680,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
           <button
             type="button"
             onClick={() => setAddingRole(true)}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
           >
             + Add role
           </button>
@@ -2103,7 +2103,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
                 type="button"
                 onClick={saveNewCandidate}
                 disabled={busy}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
               >
                 {busy ? 'Saving…' : 'Save'}
               </button>
@@ -2131,7 +2131,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
                 type="button"
                 onClick={saveEdit}
                 disabled={busy}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
               >
                 {busy ? 'Saving…' : 'Save'}
               </button>
@@ -2200,7 +2200,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
                 type="button"
                 onClick={saveReview}
                 disabled={busy}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer' }}
               >
                 {busy ? 'Saving…' : 'Save review'}
               </button>
@@ -2307,7 +2307,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
                       </button>
                       <span style={{ flex: 1 }} />
                       {dirty && (
-                        <button type="button" disabled={busy || !draft.label.trim()} onClick={() => void saveOnboardingItem(item)} style={{ ...smallButtonStyle(busy), background: '#3b82f6', color: 'white', border: 'none', fontWeight: 600 }}>
+                        <button type="button" disabled={busy || !draft.label.trim()} onClick={() => void saveOnboardingItem(item)} style={{ ...smallButtonStyle(busy), background: '#2563eb', color: 'white', border: 'none', fontWeight: 600 }}>
                           Save
                         </button>
                       )}
@@ -2341,7 +2341,7 @@ export default function TeamProspectsTab({ authUserId, isDev, resolveMasterId, s
                   type="button"
                   disabled={busy || !newItemLabel.trim()}
                   onClick={() => void addOnboardingItem()}
-                  style={{ padding: '0.45rem 0.9rem', background: busy || !newItemLabel.trim() ? DEAD_PRESS_FILL : '#3b82f6', color: busy || !newItemLabel.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: busy || !newItemLabel.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.45rem 0.9rem', background: busy || !newItemLabel.trim() ? DEAD_PRESS_FILL : '#2563eb', color: busy || !newItemLabel.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: busy || !newItemLabel.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                 >
                   Add item
                 </button>

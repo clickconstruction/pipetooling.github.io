@@ -301,7 +301,7 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
               </div>
             ) : null}
             {paper.act ? (
-              <button type="button" data-testid="lien-stop-paper-act" onClick={paper.act.onPress} style={{ padding: '0.45rem 0.9rem', borderRadius: 8, border: '1px solid var(--border-blue)', background: 'var(--text-link)', color: '#fff', font: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
+              <button type="button" data-testid="lien-stop-paper-act" onClick={paper.act.onPress} style={{ padding: '0.45rem 0.9rem', borderRadius: 8, border: '1px solid var(--border-blue)', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.85rem', fontWeight: 700, cursor: 'pointer', textAlign: 'left' }}>
                 {paper.act.label}
               </button>
             ) : null}
@@ -329,7 +329,7 @@ export default function LienStopPaperWindow({ steps, index, onIndex, onClose, jo
                 <span aria-hidden style={{ fontSize: '1rem' }}>⚠</span>
                 <span data-testid="lien-stop-paper-hold" style={{ minWidth: 0 }}>{hold.words}</span>
                 {hold.act ? (
-                  <button type="button" data-testid="lien-stop-paper-hold-act" onClick={hold.act.onPress} style={{ padding: '0.3rem 0.75rem', borderRadius: 7, border: '1px solid var(--border-blue)', background: 'var(--text-link)', color: '#fff', font: 'inherit', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+                  <button type="button" data-testid="lien-stop-paper-hold-act" onClick={hold.act.onPress} style={{ padding: '0.3rem 0.75rem', borderRadius: 7, border: '1px solid var(--border-blue)', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.78rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}>
                     {hold.act.label}
                   </button>
                 ) : null}

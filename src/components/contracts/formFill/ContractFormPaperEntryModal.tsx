@@ -265,7 +265,7 @@ export function ContractFormPaperEntryModal({ personName, personId, forms, onClo
             <button type="button" onClick={onClose} disabled={!!submitting} style={btn}>
               Cancel
             </button>
-            <button type="button" onClick={() => void file(false)} disabled={!!submitting || blockers.length > 0} style={{ ...btn, background: 'var(--text-blue-700, #1d4ed8)', color: '#fff', borderColor: 'transparent', fontWeight: 700 }}>
+            <button type="button" onClick={() => void file(false)} disabled={!!submitting || blockers.length > 0} style={{ ...btn, background: '#1d4ed8', color: '#fff', borderColor: 'transparent', fontWeight: 700 }}>
               {submitting === 'file' ? 'Filing…' : 'File as signed on paper'}
             </button>
           </div>
