@@ -72,7 +72,7 @@ export function PeopleHoursTeams({ open, onToggle, canAccessPay, showPeopleForMa
                 <input type="date" value={teamPeriodEnd} onChange={(e) => setTeamPeriodEnd(e.target.value)} style={{ padding: '0.35rem', border: '1px solid var(--border-strong)', borderRadius: 4 }} />
               </label>
               {canAccessPay && (
-                <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
+                <button type="button" onClick={addTeam} style={{ padding: '0.35rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}>
                   Add team
                 </button>
               )}

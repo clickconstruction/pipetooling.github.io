@@ -22,8 +22,8 @@ describe('the words', () => {
     expect(askIsSendable({ title: 'a'.repeat(ASK_TITLE_MAX + 1) })).toBe(false)
   })
   it('the Plans ask names the count and asks which set', () => {
-    expect(askTitleForPlans(1)).toBe('1 piece is on an older plan set or none: which set do we build from?')
-    expect(askTitleForPlans(42)).toBe('42 pieces are on an older plan set or none: which set do we build from?')
+    expect(askTitleForPlans(1)).toBe('1 job or bid is on an older plan set or none: which set do we build from?')
+    expect(askTitleForPlans(42)).toBe('42 jobs and bids are on an older plan set or none: which set do we build from?')
   })
   it('the sent words name the lane and the piece', () => {
     expect(askSentWords({ lane: 'dispatch', about: { kind: 'site' }, title: 'x' }, 'Harlow Ranch')).toBe('Asked Dispatch about Harlow Ranch. The answer comes back here, under Questions.')

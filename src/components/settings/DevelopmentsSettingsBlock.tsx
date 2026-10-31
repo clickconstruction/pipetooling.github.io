@@ -345,7 +345,7 @@ export default function DevelopmentsSettingsBlock() {
                   type="button"
                   onClick={() => void createDevelopment()}
                   disabled={creating}
-                  style={{ padding: '0.4rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: creating ? 'not-allowed' : 'pointer', fontWeight: 500, fontSize: '0.875rem' }}
+                  style={{ padding: '0.4rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: creating ? 'not-allowed' : 'pointer', fontWeight: 500, fontSize: '0.875rem' }}
                 >
                   {creating ? 'Creating…' : '+ New development'}
                 </button>

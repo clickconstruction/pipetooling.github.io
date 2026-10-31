@@ -470,7 +470,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                             style={{
                               padding: '0.35rem 0.75rem',
                               fontSize: '0.8125rem',
-                              background: '#3b82f6',
+                              background: '#2563eb',
                               color: 'white',
                               border: 'none',
                               borderRadius: 4,

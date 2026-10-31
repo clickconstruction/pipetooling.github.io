@@ -1,5 +1,7 @@
 import { useState, type CSSProperties } from 'react'
 import { markPressBarLabel, markPresses, type MarkOutcome } from '../../lib/quickfill/markOutcome'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { READING_AGAIN_WORDS } from '../../lib/keptRead'
 
 /**
  * The three presses every station bar offers (punch list #176, change 1): Done, lit at zero;
@@ -7,7 +9,9 @@ import { markPressBarLabel, markPresses, type MarkOutcome } from '../../lib/quic
  * say what is unclear and sends it as a Dispatch inbox request. One component, four layouts:
  * the Roller's bar (`bar`, with the small hint under each word), the phone round's stack
  * (`stack`), the Page's foot (`foot`) and the station header's small pair (`small`, Done or
- * Worked it beside Not sure). The press's meaning is the kernel's, `markPresses`.
+ * Worked it beside Not sure). The press's meaning is the kernel's, `markPresses`. `held` (punch
+ * list #183 PR 4): the count on screen is the device's kept read, so Done and Worked it are dead
+ * presses (`deadPress.ts`, `keptPress`) with the hint *reading again…* until the live read lands.
  */
 export type QuickfillMarkPressesLayout = 'bar' | 'stack' | 'foot' | 'small'
 
@@ -20,6 +24,7 @@ const PALETTE: Record<MarkOutcome, { background: string; border: string; color: 
 export function QuickfillMarkPresses({
   count,
   loading = false,
+  held = false,
   noun = 'open',
   nextLabel = null,
   layout,
@@ -30,6 +35,8 @@ export function QuickfillMarkPresses({
   count: number | null
   /** The station is still counting (v2.5868): Done and Worked it wait, dimmed, so no press saves a mark with no count. */
   loading?: boolean
+  /** The count on screen is a kept read (#183 PR 4): Done and Worked it are held, dead, with *reading again…*; Not sure stays lit. */
+  held?: boolean
   /** The count's word: *open*, *due*, *waiting*. */
   noun?: string
   /** On the Roller and the round the lit press also says where it goes: *next →* or *done ✓*. */
@@ -42,7 +49,7 @@ export function QuickfillMarkPresses({
 }) {
   const [asking, setAsking] = useState(false)
   const [words, setWords] = useState('')
-  const presses = markPresses(count, noun, loading)
+  const presses = markPresses(count, noun, loading, held)
   const small = layout === 'small'
   const stack = layout === 'stack'
   const showHints = layout === 'bar'
@@ -50,12 +57,14 @@ export function QuickfillMarkPresses({
   const btn = (press: (typeof presses)[number]) => {
     const p = PALETTE[press.outcome]
     const lit = press.enabled && !marking
+    // A held press is dead, not dim: the theme's own grey pair, so its words still read (`deadPress.ts`).
+    const dead = held && !loading && !lit && press.outcome !== 'question'
     const style: CSSProperties = {
       padding: small ? '0.3rem 0.6rem' : stack ? '0.75rem 0.9rem' : '0.6rem 0.8rem',
       borderRadius: small ? 6 : 10,
       border: `1px solid ${lit ? p.border : 'var(--border)'}`,
-      background: lit ? p.background : 'var(--surface)',
-      color: lit ? p.color : 'var(--text-muted)',
+      background: lit ? p.background : dead ? DEAD_PRESS_FILL : 'var(--surface)',
+      color: lit ? p.color : dead ? DEAD_PRESS_TEXT : 'var(--text-muted)',
       fontWeight: press.outcome === 'question' ? 600 : 700,
       fontSize: small ? '0.75rem' : '0.9375rem',
       cursor: lit ? 'pointer' : 'default',
@@ -72,7 +81,9 @@ export function QuickfillMarkPresses({
         type="button"
         disabled={!lit}
         aria-disabled={!lit}
-        title={small ? `${press.label} · ${press.hint}` : press.hint}
+        className={dead ? 'keptPress' : undefined}
+        data-held={dead || undefined}
+        title={dead ? READING_AGAIN_WORDS : small ? `${press.label} · ${press.hint}` : press.hint}
         aria-label={`${press.label} · ${stationLabel}`}
         onClick={() => {
           if (!lit) return

@@ -455,7 +455,7 @@ export function BidPreviewModal({
               <button
                 type="button"
                 onClick={() => onRequestEditBid(bid.id)}
-                style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: '#3b82f6', color: 'white', border: '1px solid #3b82f6', borderRadius: 5, cursor: 'pointer' }}
+                style={{ padding: '0.45rem 0.7rem', fontSize: '0.85rem', background: '#2563eb', color: 'white', border: '1px solid #2563eb', borderRadius: 5, cursor: 'pointer' }}
               >
                 Edit bid
               </button>

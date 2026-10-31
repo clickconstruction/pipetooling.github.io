@@ -231,7 +231,7 @@ export function RoomRevisionChips({ revisions, selectedId, onSelect }: { revisio
   return (
     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: '0.8rem' }} data-testid="room-revisions">
       {revisions.map((r) => (
-        <button key={r.id} type="button" aria-pressed={r.id === selectedId} aria-disabled={onSelect ? undefined : true} onClick={onSelect ? () => onSelect(r.id) : undefined} style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: r.id === selectedId ? 'var(--text-strong)' : 'var(--surface)', color: r.id === selectedId ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', fontWeight: r.id === selectedId ? 700 : 500, cursor: onSelect ? 'pointer' : 'default' }}>
+        <button key={r.id} type="button" aria-pressed={r.id === selectedId} aria-disabled={onSelect ? undefined : true} onClick={onSelect ? () => onSelect(r.id) : undefined} style={{ padding: '0.3rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: r.id === selectedId ? 'var(--text-strong)' : 'var(--surface)', color: r.id === selectedId ? 'var(--surface)' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', fontWeight: r.id === selectedId ? 700 : 500, cursor: onSelect ? 'pointer' : 'default' }}>
           Rev {r.rev}{r.current ? ' · current' : ''}{r.answeredByEmailAt ? ` · answered by email · ${roomShortDate(r.answeredByEmailAt)}` : r.sharedAt ? ` · ${roomShortDate(r.sharedAt)}` : ''}
         </button>
       ))}

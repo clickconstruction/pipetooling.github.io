@@ -72,6 +72,9 @@ describe('legalFirmWords · punch list #85 item 3 · the firm reads its own word
     expect(firmEntryKindWords(entry('answer', false))).toBe("the office's answer")
     expect(firmEntryKindWords(entry('plan', true))).toBe('your planned step')
     expect(firmEntryKindWords(entry('plan', false))).toBe('planned step by the office')
+    // v2.6209 (punch list #220): a statement, by whom, and whether it is signed yet.
+    expect(firmEntryKindWords(entry('statement', false, { form: 'notary', state: 'signed', affiant: { kind: 'team', name: 'D. Alvarez' } }))).toBe("sworn statement by the office's team")
+    expect(firmEntryKindWords(entry('statement', false, { form: 'declaration', state: 'draft', affiant: { kind: 'witness', name: 'T. Nguyen' } }))).toBe('unsworn declaration by a witness · draft, not signed')
     for (const k of ['fee', 'cost', 'step', 'question', 'answer', 'payment_received', 'recovery_applied', 'note', 'plan']) {
       expect(firmEntryKindWords(entry(k, true))).not.toMatch(/_/)
       expect(firmEntryKindWords(entry(k, false))).not.toMatch(/_/)

@@ -2,7 +2,7 @@
 title: run the office day with Quickfill
 category: Office
 roles: dev, master_technician, assistant
-keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked, focus, view, page, switch, groups with work, roller, one at a time, board, groups
+keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked, focus, view, page, switch, groups with work, roller, one at a time, board, groups, slow, counts from, counting again, kept, at last look
 where: /quickfill
 order: 10
 ---
@@ -91,6 +91,30 @@ A strip of dots sits under the name. There is one dot for every section in the r
 {{button:outline|Groups ▾}} opens the Board. The Board shows every section in the round as a card. Each card has the count, the question and when it was last looked at. You tap a card to go there.
 
 The lit press marks the section for everyone and opens the next one. It is the same mark as the small press in a station's header, with the count it saw. When every section has been looked at the page shows the **close sheet**. It says what is clean, what was worked and is still open, and what you asked about. Each station on it is a door back in. The Dashboard shows the same sheet in two lines, under Needs you, as **The office's round**.
+
+## When the app is slow
+
+The Roller and the phone's round keep the deck you last read on your device. On a slow morning the deck draws at once. A line above it reads *Counts from 7:52 AM · counting again…*. The time is when your device last read the counts. Each station's count and Next line are the ones from that read. They read faded until the live count lands.
+
+:::example A slow morning on the Roller
+
+**Counts from 7:52 AM · counting again…**
+
+**Messages** · 2 of 9
+
+Next: Reply to Ridgeway Builders · waiting 3 days
+
+*3 open at 7:52 AM · last look 22h ago · Marisol*
+
+{{button:outline|Done · 0 open}} {{button:outline|Worked it · 3 left}} {{button:outline|Not sure what to do}}
+
+:::
+
+{{button:green|Done}} and {{button:blue|Worked it}} wait while the count on screen is the kept one. They sit grey and say *reading again…* when you hover. A mark never records yesterday's count. {{button:outline|Skip}}, {{button:outline|Not sure what to do}}, the dots and {{button:outline|Groups ▾}} stay live. The line goes when the live read lands.
+
+When the live read fails, the deck stays. The line reads *Counts from 7:52 AM · could not read again · Retry*. Press {{button:outline|Retry}} to read the round again. With nothing kept, the Roller names what went wrong.
+
+On the Roller only the station on screen counts its rows. Every other station shows its count *at last look*, from its mark history. The Page and Focus still count every station.
 
 ## On a phone: the round
 

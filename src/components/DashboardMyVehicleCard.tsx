@@ -314,7 +314,7 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
                 disabled={savingVehicleId === v.id}
                 style={{
                   padding: '0.45rem 0.8rem',
-                  background: savingVehicleId === v.id ? DEAD_PRESS_FILL : '#3b82f6',
+                  background: savingVehicleId === v.id ? DEAD_PRESS_FILL : '#2563eb',
                   color: savingVehicleId === v.id ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
@@ -373,7 +373,7 @@ export default function DashboardMyVehicleCard({ userId }: DashboardMyVehicleCar
                   style={{
                     width: '100%',
                     padding: '0.45rem 0.8rem',
-                    background: reportSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                    background: reportSaving ? DEAD_PRESS_FILL : '#2563eb',
                     color: reportSaving ? DEAD_PRESS_TEXT : '#fff',
                     border: 'none',
                     borderRadius: 6,

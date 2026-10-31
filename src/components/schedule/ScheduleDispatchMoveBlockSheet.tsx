@@ -37,9 +37,9 @@ const chipBase: CSSProperties = {
 
 const chipOn: CSSProperties = {
   ...chipBase,
-  background: 'var(--text-link)',
-  borderColor: 'var(--text-link)',
-  color: 'var(--surface)',
+  background: '#2563eb',
+  borderColor: '#2563eb',
+  color: '#fff',
 }
 
 const chipSource: CSSProperties = {
@@ -122,8 +122,8 @@ export default function ScheduleDispatchMoveBlockSheet({
               padding: '0.5rem 1rem',
               borderRadius: 8,
               border: 'none',
-              background: 'var(--text-link)',
-              color: 'var(--surface)',
+              background: '#2563eb',
+              color: '#fff',
               cursor: saving || !changed ? 'not-allowed' : 'pointer',
               opacity: saving || !changed ? 0.55 : 1,
             }}

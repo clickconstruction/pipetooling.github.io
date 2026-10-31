@@ -229,7 +229,7 @@ export default function SettingsCompanyDocumentsSection({
                       </button>
                       <span style={{ flex: 1 }} />
                       {dirty && (
-                        <button type="button" disabled={busy || !d.name.trim() || !d.link_url.trim()} onClick={() => void saveDoc(doc.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
+                        <button type="button" disabled={busy || !d.name.trim() || !d.link_url.trim()} onClick={() => void saveDoc(doc.id)} style={{ padding: '0.25rem 0.7rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}>
                           Save
                         </button>
                       )}
@@ -263,7 +263,7 @@ export default function SettingsCompanyDocumentsSection({
                   type="button"
                   disabled={busy || !newName.trim() || !newLink.trim()}
                   onClick={() => void addDoc()}
-                  style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: busy || !newName.trim() || !newLink.trim() ? DEAD_PRESS_FILL : '#3b82f6', color: busy || !newName.trim() || !newLink.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: busy || !newName.trim() || !newLink.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                  style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: busy || !newName.trim() || !newLink.trim() ? DEAD_PRESS_FILL : '#2563eb', color: busy || !newName.trim() || !newLink.trim() ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 6, cursor: busy || !newName.trim() || !newLink.trim() ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                 >
                   + Add document
                 </button>

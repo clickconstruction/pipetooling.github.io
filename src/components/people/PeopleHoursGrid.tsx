@@ -812,7 +812,7 @@ export function PeopleHoursGrid({
                 <button
                   type="button"
                   onClick={commitSheetHours}
-                  style={{ height: 44, padding: '0 1.1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
+                  style={{ height: 44, padding: '0 1.1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 8, fontWeight: 600, cursor: 'pointer' }}
                 >
                   Save
                 </button>

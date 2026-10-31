@@ -90,7 +90,7 @@ function FloorLine({ coverage }: { coverage: PipelineContractCoverage }) {
           autoFocus
           style={{ width: 84, padding: '0.15rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.74rem' }}
         />
-        <button type="button" disabled={busy} onClick={() => void save()} style={{ padding: '0.15rem 0.5rem', borderRadius: 5, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: 'white', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
+        <button type="button" disabled={busy} onClick={() => void save()} style={{ padding: '0.15rem 0.5rem', borderRadius: 5, border: '1px solid #2563eb', background: '#2563eb', color: 'white', font: 'inherit', fontSize: '0.72rem', fontWeight: 600, cursor: 'pointer' }}>
           {busy ? 'Saving…' : 'Save'}
         </button>
         <button type="button" disabled={busy} onClick={() => setEditing(false)} style={{ padding: '0.15rem 0.4rem', borderRadius: 5, border: '1px solid transparent', background: 'transparent', color: 'var(--text-muted)', font: 'inherit', fontSize: '0.72rem', cursor: 'pointer' }}>
@@ -219,7 +219,7 @@ export function PipelineContractCoverageCard({
       <button
         type="button"
         onClick={onStartSweep}
-        style={{ padding: '0.35rem 0.8rem', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: 'var(--surface)', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
+        style={{ padding: '0.35rem 0.8rem', borderRadius: 7, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.8rem', fontWeight: 700, cursor: 'pointer', whiteSpace: 'nowrap' }}
       >
         Start the sweep →
       </button>

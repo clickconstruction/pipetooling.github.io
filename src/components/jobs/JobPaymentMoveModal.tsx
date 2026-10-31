@@ -61,7 +61,7 @@ const card: CSSProperties = { background: 'var(--surface)', color: 'var(--text-b
 const label: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 const input: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.5rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, font: 'inherit', background: 'var(--surface)', color: 'var(--text-base)' }
 const ghost: CSSProperties = { font: 'inherit', padding: '0.45rem 0.9rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }
-const blue: CSSProperties = { font: 'inherit', padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer', fontWeight: 600 }
+const blue: CSSProperties = { font: 'inherit', padding: '0.45rem 1rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer', fontWeight: 600 }
 
 function jobLabel(j: Pick<Candidate, 'hcp_number' | 'click_number' | 'job_name'>): string {
   const n = effectiveJobLedgerNumber(j.hcp_number, j.click_number)

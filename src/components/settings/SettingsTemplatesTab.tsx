@@ -1168,7 +1168,7 @@ export default function SettingsTemplatesTab({ authUser, users, setError }: Sett
                       )}
                     </div>
                   </div>
-                  <button type="submit" disabled={reportSettingsSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reportSettingsSaving ? 'not-allowed' : 'pointer' }}>
+                  <button type="submit" disabled={reportSettingsSaving} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: reportSettingsSaving ? 'not-allowed' : 'pointer' }}>
                     {reportSettingsSaving ? 'Saving…' : 'Save report settings'}
                   </button>
                 </form>

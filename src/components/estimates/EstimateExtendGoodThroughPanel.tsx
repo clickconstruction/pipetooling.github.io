@@ -133,7 +133,7 @@ export default function EstimateExtendGoodThroughPanel({ validUntil, todayYmd, b
             fontWeight: 500,
             border: 'none',
             borderRadius: 4,
-            background: busy || problem !== null ? DEAD_PRESS_FILL : '#3b82f6',
+            background: busy || problem !== null ? DEAD_PRESS_FILL : '#2563eb',
             color: busy || problem !== null ? DEAD_PRESS_TEXT : 'white',
             cursor: busy || problem !== null ? 'not-allowed' : 'pointer',
           }}

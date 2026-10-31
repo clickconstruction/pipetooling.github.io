@@ -65,9 +65,9 @@ export function GcRoundWindow({ spec, onClose, onAction }: { spec: RoundSpec; on
               type="button"
               onClick={() => onAction(a.kind, spec)}
               style={{
-                border: `1px solid ${a.kind === 'ask-again' ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-                background: a.kind === 'ask-again' ? 'var(--text-blue-500)' : 'var(--surface)',
-                color: a.kind === 'ask-again' ? 'var(--surface)' : 'var(--text-700)',
+                border: `1px solid ${a.kind === 'ask-again' ? '#2563eb' : 'var(--border-strong)'}`,
+                background: a.kind === 'ask-again' ? '#2563eb' : 'var(--surface)',
+                color: a.kind === 'ask-again' ? '#fff' : 'var(--text-700)',
                 borderRadius: 8,
                 padding: '0.3rem 0.75rem',
                 cursor: 'pointer',

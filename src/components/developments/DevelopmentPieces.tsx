@@ -8,6 +8,7 @@ import { useState, type ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { BID_STATUS_COLOR, bidMoney, bidStatusWord, jobOpenOnBill, type MemberBid, type MemberJob } from '../../lib/developments/overview'
 import { doneFoldWords, type PieceRow } from '../../lib/developments/pieces'
+import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import type { HistoryPiece } from '../../lib/developments/history'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../../lib/jobsLedgerStatusPipeline'
 import { Chip, LinkButton, money, PressChip, shortDay } from './developmentPageBits'
@@ -80,6 +81,8 @@ function JobCell({ job, label, crew, open, moneyShown }: { job: MemberJob; label
     moneyShown ? (openOnBill > 0 ? `${money(openOnBill)} open` : revenue > 0 ? money(revenue) : '$0') : null,
     crew.length ? `${crew[0]}${crew.length > 1 ? `, +${crew.length - 1}` : ''}` : (job.status ?? '').toLowerCase() === 'waiting' ? 'not scheduled' : null,
     job.last_work_date ? `last work ${shortDay(job.last_work_date)}` : null,
+    // The numbers the job answered to before a combine (v2.6226): the HCP numbers from the old system stay readable.
+    priorNumbersBare(job.prior_numbers) || null,
   ]
     .filter((x): x is string => !!x)
     .join(' · ')
@@ -208,7 +211,7 @@ export function DevelopmentPieces(props: PiecesProps) {
         <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
             {/* The two record columns get the room: in pair mode each gap cell carries four presses on one row. */}
-            <th style={{ ...th, width: '18%' }}>Piece</th>
+            <th style={{ ...th, width: '18%' }}>Name</th>
             <th style={{ ...th, width: '27%' }}>Bid</th>
             <th style={{ ...th, width: '33%' }}>Job</th>
             <th style={{ ...th, width: anyWaiting ? '12%' : '22%' }}>Plans</th>
@@ -264,7 +267,7 @@ export function DevelopmentPieces(props: PiecesProps) {
           {rowsOf(openShown, false)}
           {phone && open.length > PHONE_CAP && !showAll ? (
             <div style={{ marginTop: 8 }}>
-              <LinkButton onClick={() => setShowAll(true)}>Show the other {open.length - PHONE_CAP} pieces</LinkButton>
+              <LinkButton onClick={() => setShowAll(true)}>Show the other {open.length - PHONE_CAP} rows</LinkButton>
             </div>
           ) : null}
         </div>

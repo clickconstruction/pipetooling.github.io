@@ -619,7 +619,7 @@ export function PartFormModal({
               <button
                 type="submit"
                 disabled={savingPart}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
                 {savingPart ? 'Saving...' : (!editingPart && addModeSaveLabel) || 'Save'}
               </button>

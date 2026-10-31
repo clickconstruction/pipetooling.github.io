@@ -71,7 +71,7 @@ export default function JobWorkOrderStrip({
           type="button"
           style={
             !readOnly && (coverage.kind === 'none' || coverage.kind === 'draft' || coverage.kind === 'declined')
-              ? { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+              ? { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
               : btn
           }
           onClick={primary}

@@ -27,6 +27,13 @@ export interface ShadowRunRow {
    */
   teacher_name?: string | null
   teacher_standard?: boolean | null
+  /** v2.6236 (punch list #221): the reference bid's id, the assisted stamp, the newest pull's counts once sealed, the fixtures score; absent before the migration. */
+  reference_bid_id?: string | null
+  assisted_at?: string | null
+  fixtures_found?: number | null
+  fixtures_taken?: number | null
+  fixtures_set_aside?: number | null
+  fixtures_score?: unknown
   /** v2.3234: 'best_effort' | 'sent' — which human number a scored run measured against; absent before the migration. */
   reference_kind?: string | null
 }

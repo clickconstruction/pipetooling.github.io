@@ -3,6 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import LegalTimelinePanel, { PORTAL_LOOK, type TimelinePlanActs } from './LegalTimelinePanel'
 import { buildLegalTimeline, planHoldKey, timelineDocumentsFromRows } from '../../../lib/legal/legalTimeline'
+import { statementHoldKey } from '../../../lib/legal/affidavitPaper'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 afterEach(cleanup)
@@ -394,5 +395,43 @@ describe('LegalTimelinePanel · a document line’s two doors (v2.6166)', () => 
     unmount()
     render(<LegalTimelinePanel timeline={timeline()} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
     expect(docLine().querySelectorAll('button').length).toBe(0)
+  })
+})
+
+describe('LegalTimelinePanel · a statement on the Said lane (punch list #220, v2.6209)', () => {
+  const rows: LegalEntryRow[] = [
+    entry({ id: 'st', kind: 'statement', occurred_on: '2026-09-03', body: 'Northline never called us back.', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', user_id: 'u1', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', state: 'draft', prints: [], source: 'office' } }),
+    entry({ id: 'st-signed', kind: 'statement', occurred_on: '2026-09-09', body: 'I saw their men carrying PVC.', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen', role: 'the foreman' }, form: 'declaration', state: 'signed', prints: [], signed_on: '2026-10-20', document_id: 'd1', source: 'office' } }),
+  ]
+  const t = (reader: 'office' | 'firm') => buildLegalTimeline({ entries: rows, todayYmd: TODAY, reader, userNameOf: () => 'Grace' })
+
+  it('draws the title, the chip, the paragraphs and the by-line on the day it is about, and holds it under its own key', async () => {
+    const a = acts({ canUndo: (i) => i.kind === 'statement' && !i.voided })
+    render(<LegalTimelinePanel timeline={t('office')} todayYmd={TODAY} reader="office" acts={a} lanes />)
+    const item = document.querySelector('[data-legal-timeline-item="entry:st"]')!
+    expect(item.getAttribute('data-legal-timeline-lane')).toBe('said')
+    expect(item.getAttribute('data-legal-timeline-day')).toBe('2026-09-03')
+    expect(item.textContent).toContain('Affidavit of Daniel Alvarez')
+    expect(item.textContent).toContain('sworn statement · draft')
+    expect(item.textContent).toContain('Northline never called us back.')
+    expect(item.textContent).toContain('Daniel Alvarez · team')
+    expect(item.textContent).toContain('Draft · not signed.')
+    const signed = document.querySelector('[data-legal-timeline-item="entry:st-signed"]')!
+    expect(signed.textContent).toContain('Signed Oct 20 under penalty of perjury. The signed copy is on Evidence.')
+    expect(within(signed as HTMLElement).queryByRole('button', { name: 'Edit' })).toBeNull()
+    expect(within(signed as HTMLElement).queryByRole('button', { name: 'Mark done' })).toBeNull()
+    fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Hold from counsel…' }))
+    fireEvent.change(within(item as HTMLElement).getByLabelText('Why counsel should not see it'), { target: { value: 'signed first' } })
+    fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Hold back' }))
+    await waitFor(() => expect(a.hold!.holdBack).toHaveBeenCalledWith(statementHoldKey('st'), 'signed first'))
+    fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Undo…' }))
+    expect(within(item as HTMLElement).getByLabelText('Why undo it')).toBeTruthy()
+  })
+  it('on the portal the statement reads in the firm’s words, with no hold and no undo', () => {
+    render(<LegalTimelinePanel timeline={t('firm')} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
+    const item = document.querySelector('[data-legal-timeline-item="entry:st"]')!
+    expect(item.textContent).toContain("sworn statement by the office's team · draft, not signed")
+    expect(screen.queryByRole('button', { name: 'Hold from counsel…' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Undo…' })).toBeNull()
   })
 })

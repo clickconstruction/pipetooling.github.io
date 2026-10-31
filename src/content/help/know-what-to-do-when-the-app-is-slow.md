@@ -2,7 +2,7 @@
 title: know what to do when the app is slow
 category: Getting Started
 roles: all
-keywords: slow, the app is slow right now, could not reach the app, retry, freeze, loading, keep this open, no signal, spinner, blank page, signed out, read at, kept, stamp, faded, the page you see, your day as read at, my schedule, job mode, no blocks scheduled
+keywords: slow, the app is slow right now, could not reach the app, retry, freeze, loading, keep this open, no signal, spinner, blank page, signed out, read at, kept, stamp, faded, the page you see, your day as read at, my schedule, job mode, no blocks scheduled, counts from, quickfill, roller, round
 ---
 A slow morning used to look like a dead app. Now one line at the top of every screen says so.
 
@@ -47,6 +47,10 @@ The presses that write on the day wait until the live read lands. {{button:outli
 When the live read fails, the day stays. The line reads *Your day as read at 7:52 AM · could not read again · Retry*. Press {{button:outline|Retry}} to read the day again. With nothing kept, My Schedule names what went wrong instead of an empty day. It never says *Nothing scheduled today* when the read failed.
 
 Each day is kept under its own date. Yesterday's day is never shown as today's.
+
+## The office's round
+
+Quickfill's Roller and the phone's round keep the deck you last read on your device. On a slow morning the round draws at once. A line above it reads *Counts from 7:52 AM · counting again…*. Each station's count and Next line are from that read. {{button:green|Done}} and {{button:blue|Worked it}} wait until the live count lands. {{button:outline|Skip}} and {{button:outline|Not sure what to do}} stay live. Read [run the office day with Quickfill](/help/quickfill#when-the-app-is-slow) for the whole of it.
 
 ## Could not reach the app
 

@@ -19,7 +19,7 @@ const box: CSSProperties = { background: 'var(--surface)', color: 'var(--text-st
 const kv: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.25rem 0.75rem', fontSize: '0.8125rem' }
 const k: CSSProperties = { color: 'var(--text-muted)' }
 const btn: CSSProperties = { padding: '0.45rem 0.85rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 7, font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer', textDecoration: 'none', display: 'inline-block' }
-const primary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white', fontWeight: 600 }
+const primary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
 const chipStyle = (on: boolean): CSSProperties => ({ padding: '0.3rem 0.75rem', borderRadius: 999, borderWidth: 1, borderStyle: 'solid', borderColor: on ? 'var(--text-link)' : 'var(--border-strong)', background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', fontWeight: on ? 600 : 400, fontSize: '0.8125rem', fontFamily: 'inherit', cursor: 'pointer' })
 
 /**

@@ -150,7 +150,7 @@ export function BillingPipelineInfoModal({ open, onClose }: { open: boolean; onC
           </p>
           <span style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', flexWrap: 'wrap' }}>
             <span style={actorLabel}>SUB TAPS</span>
-            <span style={{ ...chipBase, background: '#3b82f6', color: '#ffffff' }}>Collect Payment</span>
+            <span style={{ ...chipBase, background: '#2563eb', color: '#ffffff' }}>Collect Payment</span>
             <span style={actorLabel}>OFFICE TAPS</span>
             <span style={{ ...chipBase, background: '#16a34a', color: '#ffffff' }}>Approve</span>
           </span>
