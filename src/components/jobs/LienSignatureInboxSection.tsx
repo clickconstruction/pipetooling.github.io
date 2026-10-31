@@ -208,7 +208,7 @@ export default function LienSignatureInboxSection() {
                 type="button"
                 disabled={sendBusy}
                 onClick={() => void sendEmail(sendConfirm)}
-                style={{ background: 'var(--text-link)', color: '#fff', border: '1px solid var(--text-link)' }}
+                style={{ background: '#2563eb', color: '#fff', border: '1px solid #2563eb' }}
               >
                 {sendBusy ? 'Sending…' : 'Send email'}
               </button>

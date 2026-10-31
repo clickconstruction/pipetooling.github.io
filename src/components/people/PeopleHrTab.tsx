@@ -668,7 +668,7 @@ export default function PeopleHrTab() {
                         type="button"
                         onClick={() => { void addEntry() }}
                         disabled={savingEntry || draftContent.trim() === ''}
-                        style={{ padding: '0.4rem 0.9rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: savingEntry || draftContent.trim() === '' ? 'default' : 'pointer', background: 'var(--text-link)', color: 'var(--surface)', opacity: savingEntry || draftContent.trim() === '' ? 0.55 : 1 }}
+                        style={{ padding: '0.4rem 0.9rem', borderRadius: 7, fontSize: '0.82rem', fontWeight: 600, border: 'none', cursor: savingEntry || draftContent.trim() === '' ? 'default' : 'pointer', background: '#2563eb', color: '#fff', opacity: savingEntry || draftContent.trim() === '' ? 0.55 : 1 }}
                       >
                         {savingEntry ? 'Adding…' : 'Add entry'}
                       </button>

@@ -1948,8 +1948,8 @@ export default function Prospects() {
               fontWeight: 600,
               padding: '0.25rem 0.55rem',
               border: 'none',
-              background: callingOrderMode === mode ? 'var(--text-link)' : 'var(--surface)',
-              color: callingOrderMode === mode ? 'var(--surface)' : 'var(--text-700)',
+              background: callingOrderMode === mode ? '#2563eb' : 'var(--surface)',
+              color: callingOrderMode === mode ? '#fff' : 'var(--text-700)',
               cursor: 'pointer',
               whiteSpace: 'nowrap',
             }}

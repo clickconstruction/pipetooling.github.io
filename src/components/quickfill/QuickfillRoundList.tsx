@@ -67,7 +67,7 @@ export function QuickfillRoundList({
           <button
             type="button"
             onClick={() => onOpen(queue[0]!)}
-            style={{ flexShrink: 0, padding: '0.4rem 0.7rem', borderRadius: 999, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: 'var(--surface)', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }}
+            style={{ flexShrink: 0, padding: '0.4rem 0.7rem', borderRadius: 999, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }}
           >
             Round · {queue.length} ›
           </button>

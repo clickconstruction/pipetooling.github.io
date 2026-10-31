@@ -409,8 +409,8 @@ function Row({
                       padding: '0.4rem 0',
                       border: 0,
                       borderRight: i < 2 ? '1px solid var(--border-strong)' : 0,
-                      background: pressed ? PICK_COLOR[p] : 'var(--surface)',
-                      color: pressed ? 'var(--text-on-bright-solid)' : 'var(--text-muted)',
+                      background: pressed ? PICK_FILL[p] : 'var(--surface)',
+                      color: pressed ? '#fff' : 'var(--text-muted)',
                       cursor: 'pointer',
                     }}
                   >
@@ -489,6 +489,13 @@ const PICK_COLOR: Record<PunchPick, string> = {
   do: 'var(--text-green-700)',
   later: 'var(--text-amber-800)',
   drop: 'var(--text-red-700)',
+}
+
+/** A pressed pick's fill under its white word: each colour's light value, deep in both themes (v2.6190). */
+const PICK_FILL: Record<PunchPick, string> = {
+  do: '#15803d',
+  later: '#92400e',
+  drop: '#b91c1c',
 }
 
 const mono: CSSProperties = { fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }

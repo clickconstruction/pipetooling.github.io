@@ -4328,7 +4328,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 @keyframes legalDocLanded { 0%, 45% { background: var(--bg-amber-100); box-shadow: 0 0 0 2px var(--border-amber); } 100% { background: transparent; box-shadow: 0 0 0 2px transparent; } }
 @media (prefers-reduced-motion: reduce) { .legalDocLanded { animation: none; } }
 .lienPaperGap b { background: #dc2626; color: #fff; border-radius: 999px; width: 1.35em; height: 1.35em; display: inline-grid; place-items: center; font-size: 0.8em; }
-.lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: var(--text-amber-800); color: var(--surface); font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
+.lienCalDraft { border: none; border-radius: 7px; padding: 4px 11px; background: #92400e; color: #fff; font: inherit; font-size: 0.75rem; font-weight: 700; white-space: nowrap; cursor: pointer; }
 .lienCalDraft:hover { opacity: 0.9; }
 .lienCalDraftPhone { min-height: 40px; padding: 0 14px; font-size: 0.8125rem; }
 /* The picked bucket's stretch of the axis: it lies over the rows, so it tints the paper and leaves every mark its full ink. */
@@ -4408,7 +4408,7 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
 .lienRunJourneyFill { position: absolute; left: calc(1.25rem + 8.3%); top: calc(0.7rem + 13px); height: 3px; background: var(--text-green-700); max-width: calc(83.4% - 2.5rem); }
 .lienRunJourneyNode { position: relative; text-align: center; font-size: 0.7rem; color: var(--text-muted); min-width: 0; }
 .lienRunJourneyDot { width: 26px; height: 26px; border-radius: 50%; border: 3px solid var(--border); background: var(--surface); margin: 0 auto 4px; display: grid; place-items: center; font-weight: 700; font-size: 0.72rem; color: var(--text-muted); }
-.lienRunJourneyNode-done .lienRunJourneyDot { border-color: var(--text-green-700); background: var(--text-green-700); color: var(--surface); }
+.lienRunJourneyNode-done .lienRunJourneyDot { border-color: #15803d; background: #15803d; color: #fff; }
 .lienRunJourneyNode-now .lienRunJourneyDot { border-color: var(--text-link); color: var(--text-link); box-shadow: 0 0 0 4px var(--bg-blue-tint); }
 .lienRunJourneyNode-blocked .lienRunJourneyDot { border-color: var(--border-amber); color: var(--text-amber-700); background: var(--bg-amber-tint); }
 .lienRunJourneyNode b { display: block; color: var(--text-base); font-size: 0.76rem; }
@@ -5168,7 +5168,7 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
 .gcStageLink[data-complete='yes'] { background: var(--text-green-600); }
 .gcStageStop[data-idle='yes'] .gcStageCount { color: var(--text-muted); font-weight: 600; }
 .gcStageStop[data-complete='yes'] { border-color: var(--text-green-600); background: var(--bg-green-tint); }
-.gcStageStop[data-complete='yes'] .gcStageNode { background: var(--text-green-600); border-color: var(--text-green-600); color: #ffffff; }
+.gcStageStop[data-complete='yes'] .gcStageNode { background: #15803d; border-color: #15803d; color: #ffffff; }
 .gcStageStop[data-complete='yes'] .gcStageCount, .gcStageStop[data-complete='yes'] .gcStageStopHead { color: var(--text-green-800); }
 .gcStageStop[data-here='yes'] { border-color: #2563eb; box-shadow: 0 0 0 3px var(--bg-blue-tint); }
 .gcStageStop[data-here='yes'] .gcStageNode { background: #2563eb; border-color: #2563eb; color: #ffffff; }
@@ -5177,8 +5177,8 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
 .gcStagePin { position: absolute; top: -9px; left: 9px; padding: 0 0.45rem; border-radius: 999px; background: #2563eb; color: #ffffff; font-size: 0.59rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; line-height: 16px; white-space: nowrap; }
 .gcStagePin::after { content: ''; position: absolute; left: 10px; bottom: -3px; width: 7px; height: 7px; background: #2563eb; transform: rotate(45deg); z-index: -1; }
 .gcStageFinish { flex: 0 0 auto; flex-direction: row; align-items: center; gap: 0.55rem; padding-right: 0.9rem; }
-.gcStageFinish .gcStagePin { background: var(--text-green-600); }
-.gcStageFinish .gcStagePin::after { background: var(--text-green-600); }
+.gcStageFinish .gcStagePin { background: #15803d; }
+.gcStageFinish .gcStagePin::after { background: #15803d; }
 .gcStageFinish[data-here='yes'] { border-color: var(--text-green-600); box-shadow: 0 0 0 3px var(--bg-green-tint); }
 .gcStageRing { width: 38px; height: 38px; flex: none; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; }
 .gcStageRing > span { width: 29px; height: 29px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; background: var(--surface); font-size: 0.8125rem; font-weight: 800; }
@@ -5232,7 +5232,7 @@ tr.gcNoticeBandRow[data-flash='yes'] > td:first-child {
 button.gcStep { cursor: pointer; }
 .gcStep > i { width: 16px; height: 16px; display: inline-flex; align-items: center; justify-content: center; border-radius: 50%; border: 1.5px solid var(--border-strong); background: var(--surface); font-style: normal; font-size: 0.5625rem; font-weight: 800; color: #ffffff; }
 .gcStep > em { font-style: normal; font-size: 0.625rem; line-height: 1.2; color: var(--text-muted); white-space: nowrap; }
-.gcStep[data-state='done'] > i { background: var(--text-green-600); border-color: var(--text-green-600); }
+.gcStep[data-state='done'] > i { background: #15803d; border-color: #15803d; }
 .gcStep[data-state='done'] > em { color: var(--text-green-800); font-weight: 600; }
 .gcStep[data-state='next'] > i { border-color: #2563eb; background: #2563eb; box-shadow: inset 0 0 0 3px var(--surface); }
 .gcStep[data-state='next'] > em { color: var(--text-link); font-weight: 700; }
@@ -5459,7 +5459,7 @@ button.gcStep:hover > em { text-decoration: underline; }
 .rcpMark { width: 15px; height: 15px; border: 1.5px solid var(--border-strong); display: inline-block; font-size: 10px; line-height: 12px; text-align: center; color: #ffffff; }
 .rcpMark.radio { border-radius: 50%; }
 .rcpMark.check { border-radius: 3px; }
-.rcpMark.on { background: var(--text-link); border-color: var(--text-link); }
+.rcpMark.on { background: #2563eb; border-color: #2563eb; }
 .rcpNone { padding: 0.5rem 0.6rem; font-size: 0.78rem; color: var(--text-muted); }
 
 /* Bid marks (v2.4287): hold a row, or click its circle, to mark it. The mark is the person's own
@@ -6012,12 +6012,12 @@ button.aging-win-inv--door:disabled { opacity: 0.6; cursor: default; }
 .help-guide-body .help-ring-word { font-weight: 700; font-size: 1.05rem; color: var(--text-strong); margin: 0 0 0.2rem; }
 .help-guide-body .help-ring-sub { margin: 0 0 0.6rem; color: var(--text-muted); font-size: 0.9em; }
 .help-guide-body .help-ring button { font: inherit; font-weight: 700; font-size: 0.85em; padding: 0.4rem 0.85rem; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-strong); cursor: pointer; margin-right: 0.4rem; }
-.help-guide-body .help-ring button[data-help-ring="next"] { background: var(--text-violet-700); color: #fff; border-color: transparent; }
+.help-guide-body .help-ring button[data-help-ring="next"] { background: #6d28d9; color: #fff; border-color: transparent; }
 .help-guide-body .help-ring button:disabled { opacity: 0.55; cursor: default; }
 .help-guide-body .help-ring-steps { list-style: none; display: flex; flex-wrap: wrap; gap: 0.3rem; margin: 0.6rem 0 0; padding: 0; }
 .help-guide-body .help-ring-steps li { font-size: 0.68rem; padding: 0.2rem 0.45rem; border-radius: 6px; border: 1px solid var(--border); color: var(--text-muted); background: var(--bg-page); }
 .help-guide-body .help-ring-steps li.on { background: var(--bg-violet-100); color: var(--text-strong); border-color: transparent; }
-.help-guide-body .help-ring-steps li.now { background: var(--text-violet-700); color: #fff; border-color: transparent; }
+.help-guide-body .help-ring-steps li.now { background: #6d28d9; color: #fff; border-color: transparent; }
 @media (max-width: 480px) { .help-guide-body .help-ring { grid-template-columns: 1fr; } }
 @media (prefers-reduced-motion: reduce) { .help-guide-body .help-ring-seg { transition: none; } }
 /* Quickfill → Texts (v2.5816, punch list #157): the day's text ledger. A row is a person, their words and the time

@@ -50,7 +50,7 @@ const ratio = (fg: string, bg: string, theme: ThemeName) => contrastRatio(hexToR
 describe('the pairs What everyone sees found, in both themes', () => {
   const pairs: { label: string; fg: string; bg: string }[] = [
     { label: "Clock In, Complete Clock In, the Job Mode press and the Currently in head on the clock-in orange's deep shade (white since v2.6186)", fg: CLOCK_IN_ACCENT_TEXT, bg: CLOCK_IN_ACCENT_UNDER_WORDS },
-    { label: 'the picked Bids mode chip (BidsModeToggle)', fg: 'var(--surface)', bg: 'var(--text-violet-700)' },
+    { label: "the picked Bids mode chip (BidsModeToggle): white on the violet's light value since v2.6190", fg: '#ffffff', bg: '#6d28d9' },
     { label: "the Calendar's dates on the day card", fg: 'var(--text-blue-700)', bg: 'var(--surface)' },
     { label: "the Calendar's dates on the hovered day", fg: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
     { label: "the Calendar's other months' dates", fg: 'var(--text-muted)', bg: 'var(--surface)' },
@@ -59,7 +59,7 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "the open Counts, Pricing or Cover Letter tab, an orange button and the pending count on safety orange's deep shade (v2.6063, white since v2.6186)", fg: TEXT_ON_SAFETY_ORANGE, bg: SAFETY_ORANGE_UNDER_WORDS },
     { label: 'a closed Counts, Pricing or Cover Letter tab on the page (v2.6063)', fg: SAFETY_ORANGE_TEXT, bg: 'var(--bg-page)' },
     { label: "a form's orange hint on the surface (v2.6063)", fg: SAFETY_ORANGE_TEXT, bg: 'var(--surface)' },
-    { label: "a picked chip, a picked weekday, a Save or a blue press filled with --text-link (v2.6068), and the Dashboard's calendar count (v2.6130)", fg: 'var(--surface)', bg: 'var(--text-link)' },
+    { label: "a picked chip, a picked weekday, a Save or a blue press once filled with --text-link (v2.6068), and the Dashboard's calendar count (v2.6130): white on #2563eb since v2.6190", fg: '#ffffff', bg: '#2563eb' },
     { label: "People → Users' phone row, swipe to More (v2.6068)", fg: '#ffffff', bg: MORE_SWIPE_GREY },
     { label: "an amber count or press with words, on the deep orange: the follow-ups count, a follow-up's job number, the inbox's N open (v2.6070, white since v2.6186)", fg: WORDS_ON_ORANGE, bg: ORANGE_UNDER_WORDS },
     { label: "the Checklist's ✓ You on green (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#22c55e' },
@@ -344,4 +344,43 @@ describe("green-700's words on the grounds the sweep put them on, in both themes
   it("'#15803d' colours no words under src/: it read 2.93:1 on the dark surface, so it stays only as a fill or a border", () => {
     expect(wordsInLiteral('#15803d')).toEqual([])
   })
+})
+
+describe('words on a press, chip or count once filled with a text token, in both themes (v2.6190)', () => {
+  // A text token turns light in dark, so white words on one read 1.05:1 to 2.77:1 there. A coloured
+  // one now fills with its light value as a literal under white words, deep in both themes; a grey
+  // one keeps its token under var(--surface) words. npm run check:text-fill-words refuses the rest.
+  const coloured: { fill: string; token: string; where: string }[] = [
+    { fill: '#2563eb', token: 'var(--text-link)', where: "the contract, lien and billing presses, the picked chips and Saves, the statement's ✓, the calendar count, the GC flows, the ☎ (and --text-blue-500's fills)" },
+    { fill: '#1d4ed8', token: 'var(--text-blue-700)', where: "the contract forms' submit, the AR tip's two presses, Who is this? on a new lane and a GC thread" },
+    { fill: '#1e40af', token: 'var(--text-blue-800)', where: 'the ☎ while its window is open' },
+    { fill: '#6d28d9', token: 'var(--text-violet-700)', where: "the counts import's picked pair, the Workflow link, the guide ring's Next and current step" },
+    { fill: '#b91c1c', token: 'var(--text-red-700)', where: "Edit Bid's per-GC Mark lost, the contract sweep's send, the Punch list's Drop" },
+    { fill: '#dc2626', token: 'var(--text-red-600)', where: "the lien timeline's missed step and struck mark, the Bridge collect desk's press" },
+    { fill: '#166534', token: 'var(--text-green-800)', where: "the bill's owner-line press, the lien timeline's done step, the Lien desk's green press" },
+    { fill: '#15803d', token: 'var(--text-green-700)', where: "the ✓ marks, the bid flow's done step, the GC stage's done node and Week done pin, a GC's done step, the Punch list's Do (and --text-green-600's fills)" },
+    { fill: '#b45309', token: 'var(--text-amber-700)', where: "an alternate's picked answer on Edit Bid, a counts group's alternate chip, the contracts tab's queue count" },
+    { fill: '#92400e', token: 'var(--text-amber-800)', where: "the Lien desk's amber press, the lien calendar's Draft, the Punch list's Later" },
+  ]
+  for (const { fill, token, where } of coloured) {
+    it(`white on ${fill}, ${token}'s light value: ${where}: 4.5:1 or better in both themes`, () => {
+      expect(drawn(token, 'light').toLowerCase()).toBe(fill)
+      expect(ratio('#ffffff', fill, 'light')).toBeGreaterThanOrEqual(4.5)
+    })
+  }
+
+  const greys: { token: string; where: string }[] = [
+    { token: 'var(--text-strong)', where: "the Submittal Room's picked row, picked role and Send" },
+    { token: 'var(--text-700)', where: 'the owner share chip turning off' },
+    { token: 'var(--text-muted)', where: "an alternate's declined answer, a muted robot's badge" },
+    { token: 'var(--text-base)', where: "the Bridge desks' Close and tooltips, the GC Gantt's hover line" },
+    { token: 'var(--text-slate-600)', where: "the follow-ups window's picked view" },
+  ]
+  for (const { token, where } of greys) {
+    for (const theme of THEMES) {
+      it(`var(--surface) on ${token}: ${where}, ${theme}: 4.5:1 or better`, () => {
+        expect(ratio('var(--surface)', token, theme)).toBeGreaterThanOrEqual(4.5)
+      })
+    }
+  }
 })

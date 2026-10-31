@@ -577,7 +577,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
                   color: savedLine ? 'var(--text-green-800)' : 'var(--text-muted)',
                 }}
               >
-                <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', background: savedLine ? 'var(--text-green-700)' : 'var(--border-400)', color: '#fff', fontSize: '0.6875rem', fontWeight: 700, flexShrink: 0 }}>
+                <span aria-hidden style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: 18, height: 18, borderRadius: '50%', background: savedLine ? '#15803d' : 'var(--border-400)', color: '#fff', fontSize: '0.6875rem', fontWeight: 700, flexShrink: 0 }}>
                   {savedLine ? '✓' : '›'}
                 </span>
                 <span style={{ flex: '1 1 auto', minWidth: 0 }}>

@@ -378,7 +378,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
                       aria-label={`Loss note for ${p.name}`}
                       style={{ flex: 1, font: 'inherit', fontSize: '0.8rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 5 }}
                     />
-                    <button type="button" disabled={busy} onClick={() => void setPacketOutcome(p, 'lost', lostCategory, lostNote)} style={{ ...rowBtnStyle, background: 'var(--text-red-700)', border: 'none', color: '#fff', fontWeight: 700 }}>
+                    <button type="button" disabled={busy} onClick={() => void setPacketOutcome(p, 'lost', lostCategory, lostNote)} style={{ ...rowBtnStyle, background: '#b91c1c', border: 'none', color: '#fff', fontWeight: 700 }}>
                       {busy ? 'Saving…' : 'Mark lost'}
                     </button>
                     <button type="button" onClick={() => { setLostEditKey(null); setLostCategory(null); setLostNote('') }} style={rowBtnStyle}>Cancel</button>

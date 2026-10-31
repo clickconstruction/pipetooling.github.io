@@ -305,7 +305,7 @@ export function FormStudioEditor({
           <button type="button" onClick={() => void save()} disabled={!!busy} style={{ ...btn, fontWeight: 700 }}>
             Save
           </button>
-          <button type="button" onClick={() => setPublishOpen(true)} disabled={!!busy || problems.length > 0} title={problems.length > 0 ? 'Fix the problems first' : undefined} style={{ ...btn, background: 'var(--text-blue-700, #1d4ed8)', color: '#fff', borderColor: 'transparent', fontWeight: 700 }}>
+          <button type="button" onClick={() => setPublishOpen(true)} disabled={!!busy || problems.length > 0} title={problems.length > 0 ? 'Fix the problems first' : undefined} style={{ ...btn, background: '#1d4ed8', color: '#fff', borderColor: 'transparent', fontWeight: 700 }}>
             {row.status === 'published' ? 'Republish…' : 'Publish…'}
           </button>
         </span>

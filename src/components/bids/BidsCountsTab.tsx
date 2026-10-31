@@ -1397,7 +1397,7 @@ export function BidsCountsTab({
                       title={g.alternate ? 'An alternate — priced with and without. Click to fold it back into the base bid.' : 'Make this group an alternate — priced with and without.'}
                       disabled={!selectedBidForCounts}
                       onClick={() => { if (selectedBidForCounts) void saveAlternateTags(selectedBidForCounts.id, toggleAlternateTag(altTags, g.label, !g.alternate)) }}
-                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, border: '1px solid ' + (g.alternate ? 'var(--text-amber-700)' : 'var(--border-strong)'), background: g.alternate ? 'var(--text-amber-700)' : 'var(--surface)', color: g.alternate ? 'white' : 'var(--text-muted)', cursor: 'pointer' }}
+                      style={{ font: 'inherit', fontSize: '0.7rem', fontWeight: 600, padding: '0.1rem 0.55rem', borderRadius: 999, border: '1px solid ' + (g.alternate ? '#b45309' : 'var(--border-strong)'), background: g.alternate ? '#b45309' : 'var(--surface)', color: g.alternate ? 'white' : 'var(--text-muted)', cursor: 'pointer' }}
                     >
                       {g.alternate ? 'Alternate · on' : 'Alternate'}
                     </button>
