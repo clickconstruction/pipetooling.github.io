@@ -229,6 +229,16 @@
   table.crit td:first-child { font-weight: 700; color: var(--text-strong); white-space: nowrap; }
   table.crit tr.pick td { background: var(--bg-green-100); }
   .prose { color: var(--text-700); max-width: 104ch; }
+  .first { margin: 14px 0 0; padding: 12px 16px; border: 1px solid var(--border-green); background: var(--bg-green-100); border-radius: 10px; max-width: 104ch; }
+  .first .cap { color: var(--text-green-700); margin-bottom: 4px; }
+  .first p, .first li { color: var(--text-700); font-size: 14px; margin: 4px 0; }
+  .first ol { margin: 6px 0; padding-left: 22px; }
+  .chip.aside { color: var(--text-700); border-color: var(--border-strong); background: var(--bg-muted); }
+  table.fx tr.aside td, table.sheet tr.ghost td { color: var(--text-muted); background: var(--bg-subtle); }
+  table.sheet tr.ghost td:first-child { border-left: 3px dashed var(--border-strong); }
+  table.fx td.pr { color: var(--text-700); font-variant-numeric: tabular-nums; }
+  .ref { font-size: 11px; color: var(--text-muted); white-space: nowrap; }
+  .asd { font-size: 11.5px; color: var(--text-link); white-space: nowrap; cursor: pointer; }
   @media (max-width: 640px) {
     h1 { font-size: 22px; }
     .frame { padding: 10px 10px; }
@@ -253,12 +263,24 @@
   <h1>Robot fixtures: the robot pulls the fixtures off the plans, the estimator picks which to add to her count</h1>
   <p>The owner: <i>the robots' ability to mark up a set of plans and find the costs of parts has been reasonable and accurate enough that we are considering offering to our estimators the ability to load in a set of plans and have the robots pull out and bid only the fixtures to help speed up their bidding… an augment to our current flow that is not invasive… make it easy for the estimator to review all of the text in the plans related to those fixtures… these items would need to look different such as a lightly shaded row so while the estimator is bidding she knows that they were added from the robots and not her.</i></p>
   <p>Every name, tag and count is invented. One bid runs through every frame: <b>b641 · Brushy Creek Animal Hospital</b> under Ridgeway Builders, an <b>Issued set</b> of 31 sheets dated Oct 2, 9 of them plumbing. The robot took the bid Thursday at 1:52 PM, read the set, counted, found <b>23 fixtures</b> (21 sure, 2 it wants a look at), checked them against the schedule and the riser, and sealed its number at 2:41 PM. Taunya opens the bid Friday morning with 6 rows already on her count.</p>
+  <p>The owner's picks, the same day: <i>keep the assisted dollar · once the robot seals, that way we know the bid is complete and all errors have been checked · the purpose of fixtures is to both have a count and price · hide instead of delete.</i> They are drawn in below, and the build starts with PR 1.</p>
+  <div class="first" id="first"><div class="cap">Read this first · for the estimator who will judge it</div>
+    <p>This page is a drawing of what we want to build for you, not the app. Nothing on it works yet. One made-up bid runs through every picture. Read it top to bottom once, then tell us five things.</p>
+    <ol>
+      <li>Section 2. Is the list what you would have counted? Which fixtures would you not take, and why?</li>
+      <li>Section 2. Does the text under a row answer why the robot counted what it counted? What is missing?</li>
+      <li>Section 4. Do you want the robot's price beside yours on every row, or only where your book has none?</li>
+      <li>Section 3. After an hour of bidding, can you still tell the robot's rows from yours at a glance?</li>
+      <li>Section 5. Does the one line on the Counts tab say what you need to know about the robot?</li>
+    </ol>
+    <p>Say it in your words. Where a picture is wrong, say what you would do instead.</p>
+  </div>
   <div class="controls">
     <span class="lbl">Theme</span>
     <button type="button" aria-pressed="true" data-theme-pick="light">Light</button>
     <button type="button" aria-pressed="false" data-theme-pick="dark">Dark</button>
   </div>
-  <nav class="jump"><a href="#today">0 · Today</a><a href="#door">1 · The door</a><a href="#window">2 · The window</a><a href="#counts">3 · Counts after</a><a href="#takeoff">4 · Takeoff</a><a href="#stage">5 · The stage</a><a href="#assisted">6 · Assisted</a><a href="#phone">7 · On a phone</a><a href="#pick">The pick</a></nav>
+  <nav class="jump"><a href="#today">0 · Today</a><a href="#door">1 · The door</a><a href="#window">2 · The window</a><a href="#counts">3 · Counts after</a><a href="#takeoff">4 · Takeoff</a><a href="#stage">5 · The stage</a><a href="#assisted">6 · Assisted</a><a href="#phone">7 · On a phone</a><a href="#pick">The pick</a><a href="#tellus">What to tell us</a></nav>
 </header>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="robot" viewBox="0 0 640 512"><path d="M320 64c13 0 24 11 24 24v40h120c40 0 72 32 72 72v192c0 40-32 72-72 72H176c-40 0-72-32-72-72V200c0-40 32-72 72-72h120V88c0-13 11-24 24-24zM48 296c0-18 14-32 32-32v160c-18 0-32-14-32-32v-96zm544-32c18 0 32 14 32 32v96c0 18-14 32-32 32V264zM224 232a40 40 0 100 80 40 40 0 000-80zm192 0a40 40 0 100 80 40 40 0 000-80zM232 400h176c13 0 24 11 24 24s-11 24-24 24H232c-13 0-24-11-24-24s11-24 24-24z"/></symbol></svg>
@@ -362,7 +384,7 @@
 
 <!-- ============================================================ 2 -->
 <h2 id="window"><span class="num">2</span> The window: the fixtures the robot found, with the text on the plans that backs each one</h2>
-<p class="lede">The import review's shape, pointed at the robot: its rows against her sheet in buckets, a tick per row, every row opening into its evidence, and one button that names its count. The robot never removes a row of hers, so there is no Missing bucket.</p>
+<p class="lede">The import review's shape, pointed at the robot: its rows against her sheet in buckets, a tick per row, every row opening into its evidence, and one button that names its count. The robot never removes a row of hers, so there is no Missing bucket. Each row carries the robot's price, and a row she does not want is set aside, never deleted.</p>
 <div class="row">
   <div class="col full">
     <div class="cap opt">Fixtures the robot found · a wide window at a desk, full screen on a phone</div>
@@ -371,25 +393,25 @@
         <span class="ring lg green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span>
         <div>
           <h4>Fixtures the robot found on b641</h4>
-          <div class="set">From the set the robot read: <b>Issued set</b> · Oct 2 · 31 sheets, 9 plumbing · read Thu 2:08 PM. 23 fixtures, 21 sure. Your count has 6 rows.</div>
+          <div class="set">From the set the robot read: <b>Issued set</b> · Oct 2 · 31 sheets, 9 plumbing · read Thu 2:08 PM. 23 fixtures, 21 sure, $31,480 at the robot's prices. Your count has 6 rows.</div>
         </div>
         <span class="x">×</span>
       </div>
 
-      <div class="bucket"><b>New · 17</b><span class="muted small">not on your count</span><span class="seg"><span class="on">Add</span><span>Leave</span></span><span class="small muted">15 sure start ticked. 2 the robot wants a look at start unticked.</span></div>
+      <div class="bucket"><b>New · 17</b><span class="muted small">not on your count</span><span class="seg"><span class="on">Add</span><span>Set aside</span></span><span class="small muted">14 start ticked. 2 the robot wants a look at and 1 the plans give to others start unticked.</span></div>
       <table class="fx">
-        <thead><tr><th class="tk"></th><th>Tag</th><th>Fixture</th><th class="n">Count</th><th class="hide">Sheets</th><th>Robot</th><th></th></tr></thead>
+        <thead><tr><th class="tk"></th><th>Tag</th><th>Fixture</th><th class="n">Count</th><th class="hide">Sheets</th><th class="n hide">Robot's price</th><th>Robot</th><th></th></tr></thead>
         <tbody>
           <tr class="open">
             <td class="tk"><span class="tick on"></span></td>
             <td><span class="tag">WC-1</span></td>
             <td><span class="nm">Water closet, floor mount, flush valve</span><span class="mm">Kohler Highline K-96057 · 1.28 gpf · waste 4" · vent 2" · CW 1"</span></td>
             <td class="n">5<span class="u">ea</span></td>
-            <td class="hide"><span class="sh">P-201 · 3<br>P-202 · 2</span></td>
+            <td class="hide"><span class="sh">P-201 · 3<br>P-202 · 2</span></td><td class="n hide pr">$412</td>
             <td><span class="chip ok">sure</span></td>
             <td class="n"><span class="btn ghost">▾ close</span></td>
           </tr>
-          <tr class="sub"><td class="tk"></td><td colspan="6">
+          <tr class="sub"><td class="tk"></td><td colspan="7">
             <div class="back">
               <div class="chk"><b>The robot's check:</b> schedule lists WC-1 with no count · drawn 5 · riser 5 <span class="chip ok">agree</span> <span class="muted">“Five on the two plan sheets, three in the public restrooms on P-201 and two in the treatment wing on P-202. The riser shows five.”</span></div>
               <div class="ln"><span class="w">schedule<i>P-601</i></span><span class="t"><q>WC-1 · WATER CLOSET, FLOOR MOUNTED, ELONGATED, 1.28 GPF, FLUSH VALVE · KOHLER K-96057 HIGHLINE · 4" W · 2" V · 1" CW · SEAT: OPEN FRONT, NO COVER</q></span><span class="o">Open sheet</span></div>
@@ -400,35 +422,37 @@
               <div class="viewer">
                 <div class="vh"><span class="mono">P-201</span><span class="muted">First floor plumbing plan · page 14 of 31</span><span style="margin-left:auto">‹ › − +</span><span class="muted">CountTooling ↗</span><span>×</span></div>
                 <div class="pg">FIRST FLOOR PLUMBING PLAN · SCALE 1/8" = 1'-0"<div class="hl"></div><div class="pin" style="left:62px;top:52px"></div><div class="pin" style="left:118px;top:61px"></div><div class="pin" style="left:174px;top:48px"></div><div style="position:absolute;left:84px;top:50px;font-size:8px;color:#1d4ed8">WC-1 (TYP OF 3)</div><div class="tb">P-201</div></div>
-                <p class="small muted" style="margin:4px 0 0">The Plans panel's viewer, the same PdfPageCanvas. The robot's three pins for WC-1 are drawn where it counted them. Pins are the later PR; the sheet and the highlighted callout are PR 3.</p>
+                <p class="small muted" style="margin:4px 0 0">The Plans panel's viewer, the same PdfPageCanvas. The robot's three pins for WC-1 are drawn where it counted them. The pins ride on the pull from day one, and PR 3 draws them with the sheet and the highlighted callout.</p>
               </div>
             </div>
           </td></tr>
-          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">SK-1</span></td><td><span class="nm">Sink, single compartment, counter mount</span><span class="mm">Elkay LRAD2219 · waste 2" · CW ½" · HW ½"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">MS-1</span></td><td><span class="nm">Mop sink, floor</span><span class="mm">Fiat MSB-2424 · waste 3" · CW ¾" · HW ¾"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 1</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">HB-1</span></td><td><span class="nm">Hose bibb, wall, freezeless</span><span class="mm">Woodford 67 · CW ¾"</span></td><td class="n">3<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 2<br>P-202 · 1</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">EWC-1</span></td><td><span class="nm">Electric water cooler, bi-level, bottle filler</span><span class="mm">Elkay LZSTL8WSLK · waste 1½" · CW ½"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 1</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">FS-1</span></td><td><span class="nm">Floor sink, 12 x 12, half grate</span><span class="mm">Zurn Z1900 · waste 3"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">TD-1</span></td><td><span class="nm">Trench drain, 6 ft, kennel</span><span class="mm">Zurn Z886 · waste 4"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 1</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr><td class="tk"><span class="tick"></span></td><td><span class="tag">DW-1</span></td><td><span class="nm">Dog wash tub, elevated</span><span class="mm">Forever Stainless 48" · waste 2" · CW ½" · HW ½"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td><span class="chip warn">want a look</span><span class="mm">schedule 1 · drawn 2</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr><td class="tk"><span class="tick"></span></td><td><span class="tag">HB-2</span></td><td><span class="nm">Hose bibb, recessed box</span><span class="mm">Woodford B67 · CW ¾"</span></td><td class="n">0<span class="u">ea</span></td><td class="hide"><span class="sh">—</span></td><td><span class="chip warn">want a look</span><span class="mm">on the schedule, none drawn</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr><td class="tk"></td><td colspan="6" class="muted small">8 more sure rows: LAV-2, UR-1, SH-1, WH-1, ET-1, GI-1, CO-1, BFP-1 · <span style="color:var(--text-link)">show them</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">SK-1</span></td><td><span class="nm">Sink, single compartment, counter mount</span><span class="mm">Elkay LRAD2219 · waste 2" · CW ½" · HW ½"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td class="n hide pr">$286</td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">MS-1</span></td><td><span class="nm">Mop sink, floor</span><span class="mm">Fiat MSB-2424 · waste 3" · CW ¾" · HW ¾"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 1</span></td><td class="n hide pr">$386</td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">HB-1</span></td><td><span class="nm">Hose bibb, wall, freezeless</span><span class="mm">Woodford 67 · CW ¾"</span></td><td class="n">3<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 2<br>P-202 · 1</span></td><td class="n hide pr">$118</td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">EWC-1</span></td><td><span class="nm">Electric water cooler, bi-level, bottle filler</span><span class="mm">Elkay LZSTL8WSLK · waste 1½" · CW ½"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 1</span></td><td class="n hide pr">$1,120</td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">FS-1</span></td><td><span class="nm">Floor sink, 12 x 12, half grate</span><span class="mm">Zurn Z1900 · waste 3"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td class="n hide pr">$242</td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick on"></span></td><td><span class="tag">TD-1</span></td><td><span class="nm">Trench drain, 6 ft, kennel</span><span class="mm">Zurn Z886 · waste 4"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 1</span></td><td class="n hide pr">$1,860</td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick"></span></td><td><span class="tag">DW-1</span></td><td><span class="nm">Dog wash tub, elevated</span><span class="mm">Forever Stainless 48" · waste 2" · CW ½" · HW ½"</span></td><td class="n">2<span class="u">ea</span></td><td class="hide"><span class="sh">P-202 · 2</span></td><td class="n hide pr">$640</td><td><span class="chip warn">want a look</span><span class="mm">schedule 1 · drawn 2</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick"></span></td><td><span class="tag">HB-2</span></td><td><span class="nm">Hose bibb, recessed box</span><span class="mm">Woodford B67 · CW ¾"</span></td><td class="n">0<span class="u">ea</span></td><td class="hide"><span class="sh">—</span></td><td class="n hide pr">$164</td><td><span class="chip warn">want a look</span><span class="mm">on the schedule, none drawn</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"><span class="tick"></span></td><td><span class="tag">BFP-1</span></td><td><span class="nm">Backflow preventer, reduced pressure, 2"</span><span class="mm">Watts 909 · CW 2"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-101 · 1</span></td><td class="n hide pr">$1,940</td><td><span class="chip ok">sure</span> <span class="chip aside">by others</span><span class="mm">note P-001 · 4</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr><td class="tk"></td><td colspan="7" class="muted small">7 more sure rows: LAV-2, UR-1, SH-1, WH-1, ET-1, GI-1, CO-1 · <span style="color:var(--text-link)">show them</span></td></tr>
         </tbody>
       </table>
 
       <div class="bucket"><b>On your count · 2</b><span class="muted small">same name, a different count</span><span class="seg"><span>Update</span><span class="on gray">Keep mine</span></span><span class="small muted">Update keeps your parts and prices on the row. Starts on Keep mine.</span></div>
       <table class="fx">
         <tbody>
-          <tr class="hers"><td class="tk"><span class="tick"></span></td><td><span class="tag">FD-1</span></td><td><span class="nm">Floor drain</span><span class="mm">your row <b>Floor drain · 6</b> · robot 8 · 2 parts attached, stays</span></td><td class="n">6 → 8<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 5<br>P-202 · 3</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
-          <tr class="hers"><td class="tk"><span class="tick"></span></td><td><span class="tag">LAV-1</span></td><td><span class="nm">Lavatory, wall hung</span><span class="mm">your row <b>Lav · 5</b> · robot 6 · nothing attached</span></td><td class="n">5 → 6<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 4<br>P-202 · 2</span></td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr class="hers"><td class="tk"><span class="tick"></span></td><td><span class="tag">FD-1</span></td><td><span class="nm">Floor drain</span><span class="mm">your row <b>Floor drain · 6</b> · robot 8 · 2 parts attached, stays</span></td><td class="n">6 → 8<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 5<br>P-202 · 3</span></td><td class="n hide pr">$212</td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
+          <tr class="hers"><td class="tk"><span class="tick"></span></td><td><span class="tag">LAV-1</span></td><td><span class="nm">Lavatory, wall hung</span><span class="mm">your row <b>Lav · 5</b> · robot 6 · nothing attached</span></td><td class="n">5 → 6<span class="u">ea</span></td><td class="hide"><span class="sh">P-201 · 4<br>P-202 · 2</span></td><td class="n hide pr">$348</td><td><span class="chip ok">sure</span></td><td class="n"><span class="btn ghost">▸ text</span></td></tr>
         </tbody>
       </table>
 
       <div class="bucket"><b>Same · 4</b><span class="muted small">on your count with the same number</span><span class="fold">show ▸</span></div>
+      <div class="bucket"><b>Set aside · 0</b><span class="muted small">a row you set aside waits here with your reason, never deleted</span><span class="fold">show ▸</span></div>
 
       <div class="foot">
-        <span class="btn primary">Add <span class="n">15</span> fixtures</span>
-        <span class="say">15 rows land on your count, shaded. Your 6 rows stay as they are. You can undo it from the toast.</span>
+        <span class="btn primary">Add <span class="n">14</span> fixtures</span>
+        <span class="say">14 rows land on your count, shaded, $11,340 at the robot's prices. Your book prices the ones it knows. The robot's price fills the rest, marked. Your 6 rows stay as they are.</span>
         <span class="btn" style="margin-left:auto">Cancel</span>
       </div>
     </div>
@@ -449,18 +473,35 @@
     <div class="cap">The words on the button, by what is ticked · batchWords</div>
     <div class="frame">
       <div style="display:grid;gap:8px">
-        <div><span class="btn primary">Add <span class="n">15</span> fixtures</span> <span class="small muted">15 New rows ticked, nothing in On your count.</span></div>
+        <div><span class="btn primary">Add <span class="n">14</span> fixtures</span> <span class="small muted">At open: 14 New rows ticked. BFP-1 is sure, and starts unticked because a note gives it to others.</span></div>
+        <div><span class="btn primary">Add <span class="n">15</span> fixtures</span> <span class="small muted">She read DW-1's text, agreed with the robot and ticked it.</span></div>
         <div><span class="btn primary">Add <span class="n">15</span> · update <span class="n">1</span></span> <span class="small muted">FD-1 flipped to Update: her row becomes 8, the robot's share rides on it, her two parts stay.</span></div>
-        <div><span class="btn primary">Add <span class="n">1</span> fixture</span> <span class="small muted">One row, so one word.</span></div>
         <div><span class="btn primary dead">Add fixtures</span> <span class="small muted">Nothing ticked: the button is dead and names the act, never OK.</span></div>
       </div>
-      <p class="small muted" style="margin:8px 0 0">After the press the toast reads <i>15 fixtures added from the robot.</i> with <b>Undo</b>. A row that fails to land is named with its reason and the rest land, the house rule for a batch.</p>
+      <p class="small muted" style="margin:8px 0 0">After the press the toast reads <i>15 fixtures added from the robot.</i> with <b>Undo</b>. Undo returns the rows to the window as new, never to Set aside. A row that fails to land is named with its reason and the rest land, the house rule for a batch.</p>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col full">
+    <div class="cap opt">The same window the next week · the rows she set aside, kept, never deleted · the owner's case</div>
+    <div class="win" style="box-shadow:none;border:1px solid var(--border)">
+      <div class="bucket"><b>On your count from the robot · 15</b><span class="muted small">taken Fri 9:02 AM</span><span class="seg"><span class="on gray">Keep</span><span>Set aside</span></span><span class="fold">show ▸</span></div>
+      <div class="bucket"><b>Set aside · 2</b><span class="muted small">kept here with your reason, so the window never shows them as new again</span><span class="fold">hide ▾</span></div>
+      <table class="fx">
+        <tbody>
+          <tr class="aside"><td class="tk"></td><td><span class="tag">BFP-1</span></td><td><span class="nm">Backflow preventer, reduced pressure, 2"</span><span class="mm">Watts 909 · CW 2"</span></td><td class="n">1<span class="u">ea</span></td><td class="hide"><span class="sh">P-101 · 1</span></td><td class="n hide pr">$1,940</td><td><span class="chip aside">by others</span><span class="mm">you, Fri 9:02 AM</span></td><td class="n"><span class="btn ghost">Put back</span></td></tr>
+          <tr class="aside"><td class="tk"></td><td><span class="tag">HB-2</span></td><td><span class="nm">Hose bibb, recessed box</span><span class="mm">Woodford B67 · CW ¾"</span></td><td class="n">0<span class="u">ea</span></td><td class="hide"><span class="sh">—</span></td><td class="n hide pr">$164</td><td><span class="chip aside">none drawn</span><span class="mm">you, Fri 9:06 AM</span></td><td class="n"><span class="btn ghost">Put back</span></td></tr>
+        </tbody>
+      </table>
+      <div class="foot"><span class="say">Set aside is the only way a robot fixture leaves your count. The row waits here with your reason. Put back returns it. At send the robot learns from your reasons.</span></div>
+      <p class="small muted" style="margin:0;padding:0 16px 12px">The reason is one tap from a short list: by others · existing · alternate · wrong count · not sure · other. It is optional. On the Counts sheet a shaded row's trash can reads Set aside and does the same, and a row she edited keeps her number for Put back.</p>
     </div>
   </div>
 </div>
 <div class="say">
   <p class="gain">Every row carries its evidence: the schedule row as printed, the notes that name it with their flags, the callouts on each plan sheet, and the robot's own check of the three voices. <i>All of the text in the plans related to those fixtures</i>, one row at a time, with the sheet one press away.</p>
-  <p class="rule">The robot's fixture rows land on the human bid through a new verb, <code>put_fixtures</code>, called once in the round after it counts. A bid the robot read before the verb existed gets a pull derived from the substrate and the page text, and the set line says so.</p>
+  <p class="rule">The robot's fixture rows land on the human bid through a new verb, <code>put_fixtures</code>, called once in the round after it prices its shell, so each row carries the robot's price. A bid the robot read before the verb existed gets a pull derived from the substrate and the page text, with no price and no pins, and the set line says so.</p>
 </div>
 
 <!-- ============================================================ 3 -->
@@ -477,55 +518,80 @@
         <thead><tr><th class="n">Count</th><th>Fixture or tie-in</th><th class="hide">Group</th><th>Plan page</th><th>From</th><th></th></tr></thead>
         <tbody>
           <tr class="mine"><td class="n">6<span class="u">ea</span></td><td>Floor drain</td><td class="hide"></td><td>14, 15</td><td><span class="from none">typed here</span></td><td class="n">🗑</td></tr>
-          <tr class="robot"><td class="n">5<span class="u">ea</span></td><td>Water closet, floor mount, flush valve <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> WC-1</span></td><td class="hide"></td><td>14, 15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n">5<span class="u">ea</span></td><td>Water closet, floor mount, flush valve <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> WC-1</span></td><td class="hide"></td><td>14, 15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n"><span class="asd">Set aside</span></td></tr>
           <tr class="mine"><td class="n">5<span class="u">ea</span></td><td>Lav</td><td class="hide"></td><td>14, 15</td><td><span class="from none">typed here</span></td><td class="n">🗑</td></tr>
-          <tr class="robot"><td class="n"><span class="cell ed">3</span><span class="u">ea</span></td><td>Sink, single compartment, counter mount <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> SK-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot" title="The robot counted 2 on P-202. You made it 3 on Fri 9:14 AM."><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot 2 → yours 3</span></td><td class="n">🗑</td></tr>
-          <tr class="robot"><td class="n">1<span class="u">ea</span></td><td>Mop sink, floor <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> MS-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
-          <tr class="robot"><td class="n">3<span class="u">ea</span></td><td>Hose bibb, wall, freezeless <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> HB-1</span></td><td class="hide"></td><td>14, 15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n"><span class="cell ed">3</span><span class="u">ea</span></td><td>Sink, single compartment, counter mount <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> SK-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot" title="The robot counted 2 on P-202. You made it 3 on Fri 9:14 AM."><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot 2 → yours 3</span></td><td class="n"><span class="asd">Set aside</span></td></tr>
+          <tr class="robot"><td class="n">1<span class="u">ea</span></td><td>Mop sink, floor <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> MS-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n"><span class="asd">Set aside</span></td></tr>
+          <tr class="robot"><td class="n">3<span class="u">ea</span></td><td>Hose bibb, wall, freezeless <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> HB-1</span></td><td class="hide"></td><td>14, 15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n"><span class="asd">Set aside</span></td></tr>
           <tr class="mine"><td class="n">1<span class="u">ea</span></td><td>Water heater</td><td class="hide"></td><td>15</td><td><span class="from none">typed here</span></td><td class="n">🗑</td></tr>
-          <tr class="robot"><td class="n">1<span class="u">ea</span></td><td>Electric water cooler, bi-level, bottle filler <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> EWC-1</span></td><td class="hide"></td><td>14</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n">1<span class="u">ea</span></td><td>Electric water cooler, bi-level, bottle filler <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> EWC-1</span></td><td class="hide"></td><td>14</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n"><span class="asd">Set aside</span></td></tr>
           <tr class="mine"><td class="n">2<span class="u">ea</span></td><td>Grease interceptor <span class="alt">ALT</span></td><td class="hide">Kitchen alt</td><td><span style="color:var(--text-red-700)">no page</span></td><td><span class="from none">typed here</span></td><td class="n">🗑</td></tr>
-          <tr class="robot"><td class="n">2<span class="u">ea</span></td><td>Floor sink, 12 x 12, half grate <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> FS-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n">🗑</td></tr>
+          <tr class="robot"><td class="n">2<span class="u">ea</span></td><td>Floor sink, 12 x 12, half grate <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> FS-1</span></td><td class="hide"></td><td>15</td><td><span class="from robot"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n"><span class="asd">Set aside</span></td></tr>
           <tr><td colspan="6" class="muted small">10 more rows · 9 from the robot, 1 typed here</td></tr>
+          <tr><td colspan="6" class="small" style="color:var(--text-700)"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> <b>Robot · 2 set aside</b> · BFP-1 by others · HB-2 none drawn · <span style="color:var(--text-link)">hide them ▾</span></td></tr>
+          <tr class="ghost"><td class="n"><s>1</s><span class="u">ea</span></td><td>Backflow preventer, reduced pressure, 2" <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> BFP-1</span> <span class="chip aside" style="font-size:10px">set aside · by others</span></td><td class="hide"></td><td>8</td><td><span class="from robot" style="opacity:.6"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n"><span class="asd">Put back</span></td></tr>
+          <tr class="ghost"><td class="n"><s>0</s><span class="u">ea</span></td><td>Hose bibb, recessed box <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> HB-2</span> <span class="chip aside" style="font-size:10px">set aside · none drawn</span></td><td class="hide"></td><td>—</td><td><span class="from robot" style="opacity:.6"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot</span></td><td class="n"><span class="asd">Put back</span></td></tr>
         </tbody>
       </table>
       <div class="toast">15 fixtures added from the robot. <u>Undo</u></div>
-      <p class="small muted" style="margin:8px 0 0">The robot is one more count source on the bid, like a CountTooling project. So the From pill, the From tile and its filter, the share arithmetic, a copied version and the import's recopy rules all work as they do today. The tag beside the name is the robot's tag from the schedule, kept on the row so the Takeoff and the Submittals tab can find it.</p>
+      <p class="small muted" style="margin:8px 0 0">The robot is one more count source on the bid, like a CountTooling project. So the From pill, the From tile and its filter, the share arithmetic, a copied version and the import's recopy rules all work as they do today. The tag beside the name is the robot's tag from the schedule, kept on the row so the Takeoff and the Submittals tab can find it. The ghost rows under the fold line are the fixtures she set aside: out of the totals, one press from Put back, shown only when she asks.</p>
     </div>
   </div>
 </div>
 <div class="say">
-  <p class="rule">A shaded row she edits stays shaded: the share keeps the robot's number, her edit changes the count, and the pill reads <i>Robot 2 → yours 3</i>. The row is robot, then hers, which is exactly what she asked to be able to see. A row she deletes is gone as any row is.</p>
+  <p class="rule">A shaded row she edits stays shaded: the share keeps the robot's number, her edit changes the count, and the pill reads <i>Robot 2 → yours 3</i>. The row is robot, then hers, which is exactly what she asked to be able to see. A shaded row has no delete. Its trash can reads <i>Set aside</i>: the row leaves her count and the totals, and the fixture waits in the window and under the sheet's fold line with her reason, one press from Put back. The owner's case: hide, never delete.</p>
   <p class="rule">Undo on the toast removes the rows she has not touched, puts an updated row back, and drops the robot source when no row carries it. The run's <i>assisted</i> stamp stays, since she saw the fixtures.</p>
 </div>
 
 <!-- ============================================================ 4 -->
-<h2 id="takeoff"><span class="num">4</span> The Takeoff: the same shade, her books pricing the robot's fixtures</h2>
-<p class="lede">The robot's cost does not ride along. The moment a robot fixture is a count row, Fill from book expands her assemblies onto it and the Workbench prices it from her book. The shade and a Robot chip beside the fixture name say where the row came from, the way the ALT mark says a row is in an alternate.</p>
+<h2 id="takeoff"><span class="num">4</span> The price: her book first, the robot's price where her book has none, and the robot's price beside hers</h2>
+<p class="lede">The owner's pick: a fixture comes with a count and a price. The robot priced each one from its own price book, and that number rides on the row. When a row lands, her price book prices it by name as it prices any row. Where her book has no entry, the robot's price lands as the row's custom price, marked. On every robot row the robot's price shows beside hers, in grey.</p>
 <div class="row">
   <div class="col full">
-    <div class="cap opt">Bids → Takeoffs · Sheet view, after Fill from book · 14 matches</div>
+    <div class="cap opt">Bids → Pricing · the rows after Add 15 fixtures · her book Default 2026</div>
     <div class="frame pick">
+      <div class="acts" style="margin-top:0"><span class="chip">Pricing: Default 2026</span><span class="btn robot"><svg class="glyph"><use href="#robot"/></svg> Price <span class="n">2</span> robot rows at the robot's prices</span><span class="small muted">2 robot rows have no entry in your book and no price yet.</span></div>
+      <table class="sheet" style="margin-top:8px">
+        <thead><tr><th class="n">Count</th><th>Fixture</th><th>Priced by</th><th class="n">Each</th><th class="n hide">Robot's price</th><th class="n">Total</th><th></th></tr></thead>
+        <tbody>
+          <tr class="mine"><td class="n">6</td><td>Floor drain</td><td class="small">Default 2026 · Floor drain</td><td class="n">$214.00</td><td class="n hide"></td><td class="n">$1,284.00</td><td></td></tr>
+          <tr class="robot"><td class="n">5</td><td>Water closet, floor mount, flush valve <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> WC-1</span></td><td class="small">Default 2026 · Water closet</td><td class="n">$398.00</td><td class="n hide"><span class="ref">robot $412</span></td><td class="n">$1,990.00</td><td></td></tr>
+          <tr class="mine"><td class="n">5</td><td>Lav</td><td class="small">Default 2026 · Lavatory</td><td class="n">$329.00</td><td class="n hide"></td><td class="n">$1,645.00</td><td></td></tr>
+          <tr class="robot"><td class="n"><span class="cell ed">3</span></td><td>Sink, single compartment, counter mount <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot 2 → yours 3</span></td><td class="small">Default 2026 · Sink</td><td class="n">$265.00</td><td class="n hide"><span class="ref">robot $286</span></td><td class="n">$795.00</td><td></td></tr>
+          <tr class="robot"><td class="n">1</td><td>Mop sink, floor <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> MS-1</span></td><td class="small"><span class="chip robot" style="font-size:10px">robot's price</span> no entry in your book</td><td class="n">$386.00</td><td class="n hide"><span class="ref">robot $386</span></td><td class="n">$386.00</td><td><span class="asd">Use my book</span></td></tr>
+          <tr class="robot"><td class="n">3</td><td>Hose bibb, wall, freezeless <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> HB-1</span></td><td class="small">Default 2026 · Hose bibb</td><td class="n">$112.00</td><td class="n hide"><span class="ref">robot $118</span></td><td class="n">$336.00</td><td></td></tr>
+          <tr class="robot"><td class="n">1</td><td>Trench drain, 6 ft, kennel <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> TD-1</span></td><td class="small"><span class="chip robot" style="font-size:10px">robot's price</span> no entry in your book</td><td class="n">$1,860.00</td><td class="n hide"><span class="ref">robot $1,860</span></td><td class="n">$1,860.00</td><td><span class="asd">Use my book</span></td></tr>
+          <tr><td colspan="7" class="muted small">14 more rows · 11 priced by your book, 1 at the robot's price, 2 with no price yet</td></tr>
+        </tbody>
+      </table>
+      <p class="small muted" style="margin:8px 0 0">Her book prices a row by its name, as it does today. A robot row is named for the fixture type the robot priced, so her book finds it when she has an entry for that type. Where she has none, the robot's price lands as the row's custom price with a mark, and Use my book hands the row to her book the day she adds the entry. The robot's price stays beside hers on every robot row, in grey, a reference and nothing more. Two rows landed before she picked a price book, so the counted button prices them now.</p>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col full">
+    <div class="cap">Bids → Takeoffs · Sheet view, after Fill from book · the same shade, her parts</div>
+    <div class="frame">
       <div class="acts" style="margin-top:0"><span class="btn green">Fill from book · 14 matches</span><span class="chip">Book: Default</span><span class="views" style="margin-left:auto"><span>One at a time</span><span class="on">Sheet</span></span><span class="btn">Print</span></div>
       <table class="sheet" style="margin-top:8px">
         <thead><tr><th class="n">Count</th><th>Fixture or tie-in</th><th class="hide">Stage</th><th>Lines</th><th class="n">Material</th><th></th></tr></thead>
         <tbody>
           <tr class="mine"><td class="n">6</td><td>Floor drain</td><td class="hide"><span class="chip" style="font-size:10px">1 · Rough In</span></td><td class="small">FLOOR DRAIN ROUGH IN · 4 parts</td><td class="n">$1,284.00</td><td class="n small muted">yours</td></tr>
-          <tr class="robot"><td class="n">5</td><td>Water closet, floor mount, flush valve <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · WC-1</span></td><td class="hide"><span class="chip" style="font-size:10px">½ · ½</span></td><td class="small">TOILET ROUGH IN · TOILET TRIM · 11 parts · from your book</td><td class="n">$3,910.00</td><td class="n small muted">your book's price</td></tr>
+          <tr class="robot"><td class="n">5</td><td>Water closet, floor mount, flush valve <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · WC-1</span></td><td class="hide"><span class="chip" style="font-size:10px">½ · ½</span></td><td class="small">TOILET ROUGH IN · TOILET TRIM · 11 parts · from your book</td><td class="n">$3,910.00</td><td class="n small muted">your parts</td></tr>
           <tr class="mine"><td class="n">5</td><td>Lav</td><td class="hide"><span class="chip" style="font-size:10px">½ · ½</span></td><td class="small">LAV ROUGH IN · LAV TRIM · 9 parts</td><td class="n">$2,145.00</td><td class="n small muted">yours</td></tr>
-          <tr class="robot"><td class="n">3</td><td>Sink, single compartment, counter mount <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot 2 → yours 3</span></td><td class="hide"><span class="chip" style="font-size:10px">½ · ½</span></td><td class="small">SINK ROUGH IN · SINK TRIM · 8 parts · from your book</td><td class="n">$1,431.00</td><td class="n small muted">your book's price</td></tr>
-          <tr class="robot"><td class="n">1</td><td>Mop sink, floor <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · MS-1</span></td><td class="hide"><span class="chip" style="font-size:10px">3 · Trim Set</span></td><td class="small"><span style="color:var(--text-amber-700)">Needs a price</span> · no book entry for mop sink · <span style="color:var(--text-link)">Use the last bid's lines</span></td><td class="n">—</td><td class="n small muted"></td></tr>
-          <tr class="robot"><td class="n">1</td><td>Trench drain, 6 ft, kennel <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · TD-1</span></td><td class="hide"><span class="chip" style="font-size:10px">1 · Rough In</span></td><td class="small">TRENCH DRAIN ROUGH IN · 5 parts · from your book</td><td class="n">$2,260.00</td><td class="n small muted">your book's price</td></tr>
+          <tr class="robot"><td class="n">3</td><td>Sink, single compartment, counter mount <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot 2 → yours 3</span></td><td class="hide"><span class="chip" style="font-size:10px">½ · ½</span></td><td class="small">SINK ROUGH IN · SINK TRIM · 8 parts · from your book</td><td class="n">$1,431.00</td><td class="n small muted">your parts</td></tr>
+          <tr class="robot"><td class="n">1</td><td>Mop sink, floor <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · MS-1</span></td><td class="hide"><span class="chip" style="font-size:10px">3 · Trim Set</span></td><td class="small"><span style="color:var(--text-amber-700)">No parts yet</span> · no book entry for mop sink · <span style="color:var(--text-link)">Use the last bid's lines</span></td><td class="n">—</td><td class="n small muted"></td></tr>
+          <tr class="robot"><td class="n">1</td><td>Trench drain, 6 ft, kennel <span class="rob"><svg class="glyph" style="width:.9em"><use href="#robot"/></svg> Robot · TD-1</span></td><td class="hide"><span class="chip" style="font-size:10px">1 · Rough In</span></td><td class="small">TRENCH DRAIN ROUGH IN · 5 parts · from your book</td><td class="n">$2,260.00</td><td class="n small muted">your parts</td></tr>
           <tr><td colspan="6" class="muted small">15 more rows</td></tr>
         </tbody>
       </table>
-      <p class="small muted" style="margin:8px 0 0">The rail's coverage strip counts the robot's rows with hers. The robot's own cost per fixture stays where it is today: in the comparison after she sends.</p>
+      <p class="small muted" style="margin:8px 0 0">The Takeoff is her parts from her takeoff book, and the robot has no parts list for a plumbing fixture: its price is one number per fixture from its price book. So the Takeoff gains only the shade and the Robot chip, and a row her takeoff book does not know reads as it reads today. The robot's price lives on the Pricing tab beside hers.</p>
     </div>
   </div>
 </div>
 <div class="say">
-  <p class="gain">The robot finds the fixtures; her books cost them. Nothing anchors her price before send, and no map from the robot's book to hers is needed.</p>
-  <p class="lose">The owner said <i>bid only the fixtures</i>. A shaded takeoff line with the robot's cost beside her book's is the later PR, for the owner to call once the counts have run a month.</p>
+  <p class="gain">A count and a price on the same day, the owner's pick. Her book keeps the first word on every row it knows, the robot's price fills the rows it does not, and both numbers sit side by side so she can see where they part.</p>
+  <p class="rule">She sees the robot's price per fixture, never its sealed total. The envelope opens at send as it does today, and the run reads assisted.</p>
 </div>
 
 <!-- ============================================================ 5 -->
@@ -585,7 +651,7 @@
         <div class="stop done"><div class="bar"></div>Sent<span class="d">Nov 10</span></div>
         <div class="stop done"><div class="bar"></div>Scored<span class="d">assisted · +3.1%</span></div>
       </div>
-      <p class="lit">Fixtures: 19 of 23 taken, 2 changed, 2 left, 3 the robot missed. The dollar score is assisted and stays out of the gate.</p>
+      <p class="lit">Fixtures: 19 of 23 taken, 2 changed, 2 set aside, 3 the robot missed. The dollar score is assisted and stays out of the gate.</p>
     </div>
   </div>
 </div>
@@ -658,7 +724,7 @@
 
 <!-- ============================================================ 6 -->
 <h2 id="assisted"><span class="num">6</span> Assisted: what the envelope does on a bid she took fixtures on</h2>
-<p class="lede">The run keeps its sealed total and still scores at send, so the envelope still opens. It wears an assisted chip, the Scoreboard counts it beside the practice runs and never in a job type's N of 5 in a row, and the fixtures themselves are scored against her final list, which is the honest measure of the augment.</p>
+<p class="lede">The owner's pick: keep the assisted dollar. The run keeps its sealed total and still scores at send, so the envelope still opens. It wears an assisted chip, the Scoreboard counts it beside the practice runs and never in a job type's N of 5 in a row, and the fixtures themselves are scored against her final list, which is the honest measure of the augment.</p>
 <div class="row">
   <div class="col">
     <div class="cap">Bids → 🤖 Robots → Robot Board · the row after send</div>
@@ -668,11 +734,11 @@
         <div>
           <div class="nm">b641 · Brushy Creek Animal Hospital <span class="chip assist">assisted · fixtures</span></div>
           <div class="subl">robot $148,900 · ours $144,400 · <b style="color:var(--text-green-700)">+3.1%</b> · scored Nov 10 · out of the gate</div>
-          <div class="subl">Fixtures: 19 of 23 taken, 2 changed, 2 left, 3 the robot missed. <span style="color:var(--text-link)">where the delta lives ▸</span></div>
+          <div class="subl">Fixtures: 19 of 23 taken, 2 changed, 2 set aside, 3 the robot missed. <span style="color:var(--text-link)">where the delta lives ▸</span></div>
         </div>
         <div class="right"><span class="btn">Review now</span><br><span class="small muted">audit waiting</span></div>
       </div>
-      <p class="small muted" style="margin:8px 0 0">The left rows (DW-1, HB-2) and the missed rows (her grease interceptor, two cleanouts) seed the audit's questions, so the robot learns fixture reading from exactly the rows it got wrong.</p>
+      <p class="small muted" style="margin:8px 0 0">The set-aside rows (BFP-1 by others, HB-2 none drawn) and the missed rows (her grease interceptor, two cleanouts) seed the audit's questions, so the robot learns fixture reading from exactly the rows it got wrong.</p>
     </div>
   </div>
   <div class="col">
@@ -692,7 +758,7 @@
 </div>
 <div class="say">
   <p class="gain">The pure shadow stays for every bid she does not touch the tool on. Nothing in its run, score, gate or envelope changes.</p>
-  <p class="lose">The owner's alternative: drop the dollar score on an assisted bid and show the fixtures score alone. Not recommended, since the envelope at send is the part the owner said they like, and an assisted delta still says something about footage, travel and price.</p>
+  <p class="rule">The owner's pick, 2026-10-30: keep the assisted dollar score. The alternative, the fixtures score alone, is dropped. She sees the robot's price per fixture before she sends, never its sealed total.</p>
 </div>
 
 <!-- ============================================================ 7 -->
@@ -704,10 +770,10 @@
     <div class="body">
       <div class="win">
         <div class="head"><span class="ring green"><span class="in"><svg class="glyph"><use href="#robot"/></svg></span></span><div><h4 style="font-size:14px">Fixtures the robot found on b641</h4><div class="set">Issued set · Oct 2 · 31 sheets · read Thu 2:08 PM. 23 fixtures, 21 sure.</div></div><span class="x">×</span></div>
-        <div class="bucket"><b>New · 17</b><span class="seg"><span class="on">Add</span><span>Leave</span></span></div>
+        <div class="bucket"><b>New · 17</b><span class="seg"><span class="on">Add</span><span>Set aside</span></span></div>
         <table class="fx">
           <tbody>
-            <tr class="open"><td class="tk"><span class="tick on"></span></td><td><span class="tag">WC-1</span> <span class="chip ok" style="font-size:10px">sure</span><br><span class="nm">Water closet, floor mount, flush valve</span><span class="mm">Kohler K-96057 · 5 ea · P-201 3, P-202 2</span></td><td class="n"><span class="btn ghost">▾</span></td></tr>
+            <tr class="open"><td class="tk"><span class="tick on"></span></td><td><span class="tag">WC-1</span> <span class="chip ok" style="font-size:10px">sure</span><br><span class="nm">Water closet, floor mount, flush valve</span><span class="mm">Kohler K-96057 · 5 ea · $412 each · P-201 3, P-202 2</span></td><td class="n"><span class="btn ghost">▾</span></td></tr>
             <tr class="sub"><td class="tk"></td><td colspan="2">
               <div class="back">
                 <div class="chk"><b>Check:</b> schedule no count · drawn 5 · riser 5 <span class="chip ok" style="font-size:10px">agree</span></div>
@@ -724,7 +790,7 @@
         </table>
         <div class="bucket"><b>On your count · 2</b><span class="fold">show ▸</span></div>
         <div class="bucket"><b>Same · 4</b><span class="fold">show ▸</span></div>
-        <div class="foot"><span class="btn primary">Add <span class="n">15</span> fixtures</span><span class="btn" style="margin-left:auto">Cancel</span><span class="say">15 rows land on your count, shaded. Your 6 rows stay as they are.</span></div>
+        <div class="foot"><span class="btn primary">Add <span class="n">14</span> fixtures</span><span class="btn" style="margin-left:auto">Cancel</span><span class="say">14 rows land on your count, shaded, $11,340 at the robot's prices. Your 6 rows stay as they are.</span></div>
       </div>
     </div>
   </div>
@@ -761,23 +827,38 @@
 </div>
 
 <!-- ============================================================ pick -->
-<h2 id="pick"><span class="num pick">✓</span> Is this the best we can do? The pick</h2>
+<h2 id="pick"><span class="num pick">✓</span> Is this the best we can do? The pick, with the owner's answers</h2>
 <div class="row"><div class="col full"><div class="frame">
 <table class="t crit">
-  <tr><th></th><th>Recommended</th><th>The owner's alternative</th><th>Why</th></tr>
-  <tr class="pick"><td>1 · The envelope</td><td>the run reads assisted and leaves the gate; the dollar score still opens at send; the fixtures are scored against her list</td><td>drop the dollar score on an assisted bid, fixtures score alone</td><td>the envelope at send is the part the owner likes; an assisted delta still teaches footage, travel and price; the fixtures score is what the augment is for</td></tr>
+  <tr><th></th><th>Built</th><th>The alternative</th><th>Why</th></tr>
+  <tr class="pick"><td>1 · The envelope</td><td>the run reads assisted and leaves the gate; the dollar score still opens at send; the fixtures are scored against her list <span class="chip ok" style="font-size:10px">the owner's pick</span></td><td>drop the dollar score on an assisted bid, fixtures score alone</td><td>the envelope at send is the part the owner likes; an assisted delta still teaches footage, travel and price; the fixtures score is what the augment is for</td></tr>
   <tr class="pick"><td>2 · The door</td><td>a button on the Counts tab beside Import from /Tooling, and the same window from the Robot status sheet</td><td>a Fixtures lens under 🤖 Robots as well</td><td>it is where she counts and the rows land under it; the icon is the phone's door; a lens is far from the bid</td></tr>
   <tr class="pick"><td>3 · What the robot hands over</td><td>a new verb, put_fixtures, one call after it counts, with the substrate as the fallback read</td><td>a read over the substrate and the page text alone</td><td>the substrate has totals and not per-sheet counts, and schedules often carry no quantity at all; the robot has every piece in hand at STG-3</td></tr>
   <tr class="pick"><td>4 · Choosing and adding</td><td>the import review's buckets, a tick per row, Add N fixtures, the robot as a count source so the shade is the share, Undo on the toast</td><td>—</td><td>every surface that reads shares works unchanged; an edited row stays robot, then hers</td></tr>
-  <tr class="pick"><td>5 · When fixtures open</td><td>once the robot seals, usually within the hour</td><td>the moment it finishes counting</td><td>one gate with Ask the robot to look; the list never changes under her</td></tr>
-  <tr class="pick"><td>6 · Costs</td><td>counts alone; her books price the robot's fixtures</td><td>the robot's cost riding along as a shaded takeoff line</td><td>nothing anchors her price before send; the robot's cost already shows in the comparison after send</td></tr>
+  <tr class="pick"><td>5 · When fixtures open</td><td>once the robot seals, usually within the hour <span class="chip ok" style="font-size:10px">the owner's pick</span></td><td>the moment it finishes counting</td><td>one gate with Ask the robot to look; the list never changes under her</td></tr>
+  <tr class="pick"><td>6 · The price</td><td>a count and a price from day one: her book first, the robot's price where her book has none, the robot's price beside hers in grey <span class="chip ok" style="font-size:10px">the owner's pick</span></td><td>counts alone, her books pricing every robot fixture</td><td>the owner: the purpose of fixtures is to both have a count and price; her book keeps the first word, so nothing of the robot's lands on a row she can price</td></tr>
+  <tr class="pick"><td>8 · Leaving her count</td><td>set aside with a reason, kept in the window and under the sheet's fold line, Put back one press away <span class="chip ok" style="font-size:10px">the owner's case</span></td><td>delete, as any row</td><td>the record at send, her change of mind, and a fixture is not hers until she takes it</td></tr>
   <tr class="pick"><td>7 · Which plans</td><td>the pull names the set it read; a changed robot set says so, with Read the new set as a later PR</td><td>—</td><td>a sealed run cannot be re-claimed, so a re-read is its own light job in the round</td></tr>
 </table>
-<p class="prose" style="margin-top:12px"><b>The recommendation:</b> build it as a train of five small PRs in the README's order, the ground and the verb first so the rounds start handing fixtures over while the window is built. Three picks for the owner before PR 1: the envelope rule, when fixtures open, and counts alone or costs too.</p>
+<p class="prose" style="margin-top:12px"><b>Where it stands:</b> the owner's picks are in (2026-10-30) and the build is approved. It goes as a train of five PRs in the README's order, the ground and the verb first so the rounds start handing fixtures over while the window is built. The estimator's word on the five questions at the top shapes PR 3 before it is written.</p>
 </div></div></div>
 
-<div class="pass2"><div class="cap">Second pass · what the first render showed</div>
-<p>Checked in the Claude app's browser pane at 1400 px and at 375 px, in light and in dark. Three things changed. The window's table ran 435 px wide inside a 343 px window at phone width, so under 640 px the Sheets column and the open-or-close column hide, the sheets move into the name line, and the row itself is the tap. The phone frame's header stacked the ring, the title and the × on three lines, so the title now takes the room and the × stays on the first line. The Counts and Takeoff sheets scroll sideways at phone width inside their frames, as the app's own sheets do, and the pick table at the end does the same. Still open: whether the tag chip beside a shaded row's name is noise on a narrow sheet, to be read on a real count.</p>
+<div class="pass2"><div class="cap">Second pass · 2026-10-30, after the owner's picks · is this the best we can do?</div>
+<p>Asked from the estimator's seat, since she is the one who will judge it. Seven things changed. <b>Price:</b> the owner wants a count and a price, so the pull carries the robot's price per fixture, the window and its foot say it, her book keeps the first word on every row it knows, the robot's price fills the rows it does not as a marked custom price, and a grey reference sits beside hers everywhere. <b>Set aside:</b> a robot fixture never deletes; it is set aside with a reason, waits in the window and under the sheet's fold line, and comes back with Put back. <b>Scope:</b> a fixture the plans give to others, mark existing or put in an alternate starts unticked with a two-word chip, so the robot's list never adds work that is not hers. <b>Pairing:</b> her rows pair to the robot's by tag before name, because estimators type WC-1, and a pairing that misses makes every robot row New. <b>Pins:</b> the robot's pin positions ride on the pull from day one, so Open sheet shows where it counted in PR 3, not later. <b>Polling:</b> the Needs You line tells her the moment fixtures open, so she never watches the ring. <b>Her checklist:</b> the five questions at the top, written for her, not for us.</p>
+<p>Weighed and kept out: a Robot column on her own Counts sheet in place of the window (the backing text needs room a column does not have, a phone has no column to give, and her sheet would show rows she has not taken as if they were hers); the robot's parts on her Takeoff (it has none for a plumbing fixture, its price is one number from its book); and a Make it mine door on a shaded row (the shade is the record). Still to be read on a real count: whether the tag chip beside a shaded row's name is noise on a narrow sheet, and whether the set-aside reasons list has the words she would use.</p>
+</div>
+
+<h2 id="tellus"><span class="num">?</span> What to tell us</h2>
+<div class="first" style="margin-top:0">
+  <p>Five things, in your words. A yes or a no is enough on each. Where a picture is wrong, say what you would do instead.</p>
+  <ol>
+    <li>Section 2. Is the list what you would have counted? Which fixtures would you not take, and why?</li>
+    <li>Section 2. Does the text under a row answer why the robot counted what it counted? What is missing?</li>
+    <li>Section 4. Do you want the robot's price beside yours on every row, or only where your book has none?</li>
+    <li>Section 3. After an hour of bidding, can you still tell the robot's rows from yours at a glance?</li>
+    <li>Section 5. Does the one line on the Counts tab say what you need to know about the robot?</li>
+  </ol>
+  <p>One more, if you have a minute. When you set a fixture aside, what reason would you give? The list today reads by others, existing, alternate, wrong count, not sure, other.</p>
 </div>
 
 </div>
