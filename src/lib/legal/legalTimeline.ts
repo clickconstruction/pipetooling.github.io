@@ -313,7 +313,8 @@ export const LEGAL_TIMELINE_LANES: ReadonlyArray<{ lane: LegalTimelineLane; labe
  * offers All, a reader who cannot add reads the plain fact, and the office is offered the composer's
  * door while it is shut. The words used to say "Press Add to the timeline"; that is the press now.
  */
-export function timelineEmptyWords(input: { laneLabel: string | null; canAdd: boolean; composerOpen: boolean; showAll: () => void; openComposer: () => void }): EmptyStateWords {
+export function timelineEmptyWords(input: { laneLabel: string | null; canAdd: boolean; composerOpen: boolean; showAll: () => void; openComposer: () => void; /** v2.6210 (punch list #220): the Said lane's own press, when the office may swear a statement. */ swear?: () => void }): EmptyStateWords {
+  if (input.laneLabel === 'Said' && input.swear) return { main: 'Nothing under Said yet.', next: { label: 'Swear a statement…', onPress: input.swear }, tail: 'drafts one on the day it is about.', orNext: { label: 'All ›', onPress: input.showAll } }
   if (input.laneLabel) return { main: `Nothing under ${input.laneLabel} yet.`, next: { label: 'All ›', onPress: input.showAll }, tail: 'shows the whole line.' }
   if (!input.canAdd) return { main: 'Nothing on the timeline yet.' }
   if (input.composerOpen) return { main: 'Nothing on the line yet.' }
