@@ -103,6 +103,10 @@ import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { usePricedMarginStamp, type PricedMarginStampArm, type PricedMarginStampLatest } from '../../hooks/usePricedMarginStamp'
 import { pricedMarginStampOnScreen } from '../../lib/bids/pricedMargin'
 import { PricedMarginLine } from './PricedMarginLine'
+import { ShapeSwitch, SideBySide, useShapeView } from '../prototypes/SideBySide'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { workbenchBars, type WorkbenchDoor } from '../../lib/bids/workbenchBars'
+import { WorkbenchBarsView } from './WorkbenchBarsView'
 import type {
   CostEstimate,
   CostEstimateLaborRow,
@@ -1719,6 +1723,9 @@ export function BidsPricingTab({
   const [bidsLikeThisSlot, setBidsLikeThisSlot] = useState<HTMLSpanElement | null>(null)
   // v2.4395: the version's materials at today's book, one line under the sent-vs-today line.
   const materialsToday = useTakeoffPriceDrift({ bidId: selectedBidForPricing?.id, versionId: selectedBidVersionId, enabled: !!selectedBidForPricing })
+  // Punch list #217 (bids-2): the strip's margin as two bars, a prototype behind this person's switch; both shapes for a dev with ?sbs=1.
+  const barsView = useShapeView('workbench-bars')
+  const barsWide = useMatchMedia('(min-width: 1000px)')
 
   /**
    * Workbench view/★ split (v2.2013): the bid's saved `selected_price_book_version_id` is the
@@ -2761,6 +2768,76 @@ export function BidsPricingTab({
                 )
                 const concColors = ['#3b82f6', '#6366f1', '#8b5cf6', '#0ea5e9', '#14b8a6', '#f59e0b', '#84cc16', '#ec4899', '#64748b', '#eab308']
                 const mColor = (m: number | null) => (m == null ? 'var(--text-muted)' : m >= 0.42 ? 'var(--text-green-600)' : m >= 0.28 ? 'var(--text-amber-700)' : 'var(--text-red-700)')
+                // Punch list #217 (bids-2): the strip's inputs as two bars (`workbenchBars`), drawn in place of the four caveat
+                // lines when this person's switch is on, and beside them for a dev with ?sbs=1. Nothing while the open price loads.
+                const laborOutOfStep = laborCountsOutOfStep({ countRows: pricingCountRows, laborRows: pricingLaborRows })
+                const barsModel =
+                  barsView.on || barsView.sideBySide
+                    ? workbenchBars({
+                        revenue: effRevenue,
+                        sent: selectedBidForPricing?.bid_date_sent && Number(selectedBidForPricing.bid_value) > 0 ? { on: selectedBidForPricing.bid_date_sent, value: Number(selectedBidForPricing.bid_value) } : null,
+                        cost: { labor: derived.laborCost, materials: derived.totalMaterials, tax: derived.taxCost, total: totalCost },
+                        rate: { value: pricingLaborRate, source: pricingLaborRateSource },
+                        noCost: { revenue: uncostedRevenue, rows: derived.uncostedRevenueRows.length },
+                        drift: materialsToday ? { gap: materialsToday.gap, moved: materialsToday.moved.length, wrong: materialsToday.wrong.length } : null,
+                        laborOutOfStep,
+                        stamp: pricedStamp ? { pct: pricedStamp.pct, revenueUsd: pricedStamp.revenueUsd, costUsd: pricedStamp.costUsd, uncostedUsd: pricedStamp.uncostedUsd, rateSet: pricedStamp.rateSet } : null,
+                        currentYear: new Date().getFullYear(),
+                      })
+                    : null
+                const barsOn = barsView.on && !barsView.sideBySide && barsModel !== null && !pricesLoading
+                const barsBeside = barsView.sideBySide && barsModel !== null && !pricesLoading
+                const showCaveats = !barsOn && !barsBeside
+                const barsDoor = (door: WorkbenchDoor) => {
+                  if (!selectedBidForPricing) return
+                  if (door === 'noCostRows') {
+                    setWbShowNoCostOnly(true)
+                    setWbShowUnpricedOnly(false)
+                    return
+                  }
+                  onNavigateBidToTab(selectedBidForPricing, door === 'takeoffs' ? 'takeoffs' : 'labor')
+                }
+                const barsBlock = barsModel ? <WorkbenchBarsView bars={barsModel} onDoor={barsDoor} /> : null
+                const laborWarning = laborOutOfStep ? (
+                  // #137 PR 2: labor rows are bid-wide and follow whichever version last
+                  // opened Labor — when they disagree with THIS version's counts, say so
+                  // instead of quietly misreading our cost and the margin.
+                  <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.45rem', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', borderRadius: 8, padding: '0.35rem 0.7rem', fontSize: '0.78rem' }}>
+                    <span>⚠ Labor hours don't match this version's counts, so our cost and the margin may be off.</span>
+                    <button
+                      type="button"
+                      onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'labor') }}
+                      style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
+                    >
+                      Open Labor
+                    </button>
+                    <span>to refresh them.</span>
+                  </div>
+                ) : null
+                // Frozen bid prices, PR 2: on a sent bid the grid is a recomputation, not the quote —
+                // `bid_value` (stamped at send) is the honest number; say both wherever the live one is read.
+                const sentVsTodayLine = (() => {
+                  const cmp = compareSentVsToday({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidValue: selectedBidForPricing?.bid_value, today: effRevenue })
+                  // v2.5671: no comparison while the open price loads — today's number is not its own yet.
+                  if (!cmp || pricesLoading) return null
+                  const differs = cmp.kind === 'differs'
+                  return (
+                    <div
+                      data-testid="pricing-sent-vs-today"
+                      style={{ marginTop: '0.4rem', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', color: differs ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: differs ? 600 : 400 }}
+                    >
+                      {sentVsTodayText(cmp, { where: 'grid', currentYear: new Date().getFullYear() })}
+                    </div>
+                  )
+                })()
+                const materialsNote = (
+                  <PricingMaterialsTodayNote
+                    drift={materialsToday}
+                    onSeeTakeoffs={() => {
+                      if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs')
+                    }}
+                  />
+                )
                 // v2.2379: price, Revenue, Profit, and Margin share one quiet-cell
                 // look — dashed underline until focused, no lone boxed input.
                 const wbCellStyle = (width: string, extra?: React.CSSProperties): React.CSSProperties => ({
@@ -3143,8 +3220,7 @@ export function BidsPricingTab({
                                 : null}
                             </div>
                           ) : null
-                        return (
-                          <>
+                        const stripRow = (
                           <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
                             {/* v2.6003 (Wendi's hose bibs): the version these prices land on, on the one strip that stays on screen while she types. */}
                             {versionOnScreenNow ? (
@@ -3164,7 +3240,7 @@ export function BidsPricingTab({
                               </span>
                             ) : null}
                             {/* Exact to the cent, cents small (v2.5678, Wendi — amends the v2.2205 whole-dollars call): the strip must match the card and the letter, and half-up rounding named dollars no row carries. */}
-                            {priceStat('Revenue', <AmountSmallCents value={effRevenue} />, 'var(--text-strong)', `our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
+                            {barsOn ? null : priceStat('Revenue', <AmountSmallCents value={effRevenue} />, 'var(--text-strong)', `our cost $${formatCurrency(totalCost)}${pricingLaborRateSource === 'company' && pricingLaborRate != null ? ` · labor at the crew rate, $${formatCurrency(pricingLaborRate)}/h, until Labor has one of its own` : ''}`)}
                             {priceStat('Profit', <SignedAmountSmallCents value={effProfit} />, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `our cost $${formatCurrency(totalCost)}`)}
                             {priceStat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
                             {/* v2.2423 (owner): margin's other dialect — revenue as a multiple of cost. */}
@@ -3385,23 +3461,50 @@ export function BidsPricingTab({
                               </div>
                               </>
                             )}
+                            {/* Punch list #217 (bids-2): this person's switch for the bars; hidden while a dev reads both shapes. */}
+                            {barsModel || barsView.on ? <ShapeSwitch view={barsView} words={{ on: 'Show today’s look', off: 'Show the bars' }} /> : null}
                           </div>
+                        )
+                        // Punch list #217 (bids-2): with the bars on, the row keeps its chips and presses on the right and the bars take the
+                        // left; the four caveat lines under the strip become the legend under the cost bar. Both shapes, one above the other,
+                        // for a dev with ?sbs=1: today's four lines, then the bars beside the three tiles.
+                        return (
+                          <>
+                          {barsOn ? (
+                            <div data-testid="workbench-bars-strip" style={{ display: 'grid', gridTemplateColumns: barsWide && !wbSolverOpen ? 'minmax(0, 3fr) minmax(0, 2fr)' : 'minmax(0, 1fr)', gap: '0.6rem 1.4rem', alignItems: 'start' }}>
+                              {barsBlock}
+                              {stripRow}
+                            </div>
+                          ) : (
+                            stripRow
+                          )}
                           {altLine}
-                          <PricedMarginLine stamp={pricedStamp} sent={!!selectedBidForPricing?.bid_date_sent} />
-                          {laborCountsOutOfStep({ countRows: pricingCountRows, laborRows: pricingLaborRows }) ? (
-                            // #137 PR 2: labor rows are bid-wide and follow whichever version last
-                            // opened Labor — when they disagree with THIS version's counts, say so
-                            // instead of quietly misreading our cost and the margin.
-                            <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.45rem', flexWrap: 'wrap', marginTop: '0.45rem', border: '1px solid var(--border)', background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)', borderRadius: 8, padding: '0.35rem 0.7rem', fontSize: '0.78rem' }}>
-                              <span>⚠ Labor hours don't match this version's counts, so our cost and the margin may be off.</span>
-                              <button
-                                type="button"
-                                onClick={() => { if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'labor') }}
-                                style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 700, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0, textDecoration: 'underline', textUnderlineOffset: 2 }}
-                              >
-                                Open Labor
-                              </button>
-                              <span>to refresh them.</span>
+                          {showCaveats ? <PricedMarginLine stamp={pricedStamp} sent={!!selectedBidForPricing?.bid_date_sent} /> : null}
+                          {showCaveats ? laborWarning : null}
+                          {barsBeside ? (
+                            <div style={{ marginTop: '0.6rem' }}>
+                              <SideBySide
+                                label="With the bars"
+                                testId="workbench-side-by-side"
+                                today={
+                                  <>
+                                    <PricedMarginLine stamp={pricedStamp} sent={!!selectedBidForPricing?.bid_date_sent} />
+                                    {laborWarning}
+                                    {sentVsTodayLine}
+                                    {materialsNote}
+                                  </>
+                                }
+                                shape={
+                                  <div style={{ display: 'grid', gridTemplateColumns: barsWide ? 'minmax(0, 3fr) minmax(0, 2fr)' : 'minmax(0, 1fr)', gap: '0.6rem 1.4rem', alignItems: 'start' }}>
+                                    {barsBlock}
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem 0.9rem', flexWrap: 'wrap' }}>
+                                      {priceStat('Profit', <SignedAmountSmallCents value={effProfit} />, effProfit >= 0 ? 'var(--text-green-600)' : 'var(--text-red-700)', `our cost $${formatCurrency(totalCost)}`)}
+                                      {priceStat('Margin', effMargin == null ? '—' : `${Math.round(effMargin * 100)}%`, mColor(effMargin))}
+                                      {priceStat('Multiple', formatRevenueMultiple(effRevenue, totalCost) ?? '—', mColor(effMargin), `Revenue ÷ our cost — $${formatCurrency(effRevenue)} ÷ $${formatCurrency(totalCost)}`)}
+                                    </div>
+                                  </div>
+                                }
+                              />
                             </div>
                           ) : null}
                           </>
@@ -3500,28 +3603,8 @@ export function BidsPricingTab({
                         </div>
                       )
                     })()}
-                    {/* Frozen bid prices, PR 2: on a sent bid the grid is a recomputation, not the quote —
-                        `bid_value` (stamped at send) is the honest number; say both wherever the live one is read. */}
-                    {(() => {
-                      const cmp = compareSentVsToday({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidValue: selectedBidForPricing?.bid_value, today: effRevenue })
-                      // v2.5671: no comparison while the open price loads — today's number is not its own yet.
-                      if (!cmp || pricesLoading) return null
-                      const differs = cmp.kind === 'differs'
-                      return (
-                        <div
-                          data-testid="pricing-sent-vs-today"
-                          style={{ marginTop: '0.4rem', fontSize: '0.74rem', fontVariantNumeric: 'tabular-nums', color: differs ? 'var(--text-amber-700)' : 'var(--text-muted)', fontWeight: differs ? 600 : 400 }}
-                        >
-                          {sentVsTodayText(cmp, { where: 'grid', currentYear: new Date().getFullYear() })}
-                        </div>
-                      )
-                    })()}
-                    <PricingMaterialsTodayNote
-                      drift={materialsToday}
-                      onSeeTakeoffs={() => {
-                        if (selectedBidForPricing) onNavigateBidToTab(selectedBidForPricing, 'takeoffs')
-                      }}
-                    />
+                    {showCaveats ? sentVsTodayLine : null}
+                    {showCaveats ? materialsNote : null}
                     </div>
                     </div>
 
