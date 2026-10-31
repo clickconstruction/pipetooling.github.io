@@ -61,7 +61,8 @@ export interface ThreadSlots {
   /** Over the lines, under the header: residential R7's sort card, while the person waits in the New lane. */
   aboveLines?: (c: Contact, acts: AboveLinesActs) => ReactNode
   /** Rows for ⋯ after the window's own: cut 2's No reply needed, Remind me Monday, Reopen. */
-  menuRows?: (c: Contact) => ThreadMenuRow[]
+  /** The ⋯ menu's rows. Since v2.6228 the window hands the thread's lines too, for a row that reads the newest one (Send as task). */
+  menuRows?: (c: Contact, lines?: readonly ThreadMessage[]) => ThreadMenuRow[]
   /** Between the lines and the box: cut 2's owed strip, its settling note and a note's back day. */
   aboveBox?: (c: Contact) => ReactNode
   /** The reply box at the foot of the thread: cut 3's. */
@@ -121,7 +122,7 @@ export function mergeThreadSlots(...parts: readonly ThreadSlots[]): ThreadSlots 
   const side = eachNode(parts.map((p) => p.side))
   if (side) merged.side = side
   const menus = parts.flatMap((p) => (p.menuRows ? [p.menuRows] : []))
-  if (menus.length > 0) merged.menuRows = (c) => menus.flatMap((rows) => rows(c))
+  if (menus.length > 0) merged.menuRows = (c, lines) => menus.flatMap((rows) => rows(c, lines))
   const courts = parts.flatMap((p) => (p.court ? [p.court] : []))
   if (courts.length > 0)
     merged.court = (c) => {

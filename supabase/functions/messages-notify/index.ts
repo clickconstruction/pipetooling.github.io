@@ -14,13 +14,20 @@
 // Since v2.5479 (residential R5): a customer's, a lead's or a sub's reply pushes whoever has it, server to server with
 // X-Cron-Secret, as gmail-sync is called: { message_ids: [...] } for a line's writer, { sweep: true } for the cron. The
 // rule is src/lib/messages/notifyPlan.ts through the edge copy; the reads and the record are _shared/messagesReplyPush.ts.
+//
+// Since v2.6228: a conversation handed on pings the person it went to. The client calls { handed: { contact_id } }
+// as the user right after hand_to; the function refuses unless the thread was handed to someone else in the last 15
+// minutes and the caller wrote an event line on it in that time (the hand's own), builds the words itself
+// (src/lib/messages/handedPush.ts), keeps the person's push hours, and records one notification_history row.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import webpush from 'npm:web-push@3.6.7'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { clauseDecisionNote, clauseProposalNote, notifyScope, type NotifyChange, type NotifyClause } from '../_shared/clauseNotify.ts'
-import { readReplyPushBody, runReplyPushes } from '../_shared/messagesReplyPush.ts'
+import { pushHoursFor, readReplyPushBody, runReplyPushes } from '../_shared/messagesReplyPush.ts'
+import { HANDED_TEMPLATE, handedFresh, handedPush } from '../_shared/gcKernels/lib/messages/handedPush.ts'
+import { pushDecision } from '../_shared/gcKernels/lib/messages/pushHours.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -82,11 +89,17 @@ async function replyPushes(req: Request): Promise<Response> {
   const body = readReplyPushBody(await req.json().catch(() => ({})))
   if ('error' in body) return json(body, 400)
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+  return json({ success: true, ...(await runReplyPushes(admin, body, pushToPerson(admin))) })
+}
+
+/** One push's payload to every device of one person, as the reply push sends it; how many devices took it. */
+// deno-lint-ignore no-explicit-any
+function pushToPerson(admin: any): (userId: string, payload: string) => Promise<number> {
   const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
   const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
   const canPush = Boolean(vapidPublicKey && vapidPrivateKey)
   if (canPush) webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey!, vapidPrivateKey!)
-  const sendTo = async (userId: string, payload: string): Promise<number> => {
+  return async (userId: string, payload: string): Promise<number> => {
     if (!canPush) return 0
     const { data: subscriptions } = await admin.from('push_subscriptions').select('endpoint, p256dh_key, auth_key').eq('user_id', userId)
     let took = 0
@@ -95,12 +108,11 @@ async function replyPushes(req: Request): Promise<Response> {
         await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } }, payload, { TTL: 3600 })
         took++
       } catch (pushErr) {
-        console.error('messages-notify reply push error', String(sub.endpoint ?? '').substring(0, 50), pushErr)
+        console.error('messages-notify push error', String(sub.endpoint ?? '').substring(0, 50), pushErr)
       }
     }
     return took
   }
-  return json({ success: true, ...(await runReplyPushes(admin, body, sendTo)) })
 }
 
 serve(async (req) => {
@@ -117,7 +129,7 @@ serve(async (req) => {
     const { data: { user }, error: authError } = await userClient.auth.getUser(token)
     if (authError || !user) return json({ error: 'Unauthorized' }, 401)
 
-    const body = (await req.json().catch(() => ({}))) as { proposal_ids?: unknown; decided?: unknown }
+    const body = (await req.json().catch(() => ({}))) as { proposal_ids?: unknown; decided?: unknown; handed?: unknown }
     const admin = createClient(supabaseUrl, serviceRoleKey)
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
@@ -228,7 +240,42 @@ serve(async (req) => {
       return json({ success: true, email_sent: mailed, editor_name: ((editor as Person).name ?? '').trim() || null })
     }
 
-    return json({ error: 'Send proposal_ids or decided' }, 400)
+    // ---------- a conversation handed on (v2.6228): the person it went to hears ----------
+    if (body.handed && typeof body.handed === 'object') {
+      const contactId = (body.handed as { contact_id?: unknown }).contact_id
+      if (typeof contactId !== 'string' || !UUID.test(contactId)) return json({ error: 'Name the conversation by id' }, 400)
+      const now = new Date().toISOString()
+      const { data: contact } = await admin.from('contacts').select('id, has_user_id, has_how, has_since').eq('id', contactId).maybeSingle()
+      if (!contact || contact.has_how !== 'handed' || !contact.has_user_id || !handedFresh(contact.has_since, now)) return json({ success: true, pushed: false, message: 'Not a fresh hand-off' })
+      if (contact.has_user_id === user.id) return json({ success: true, pushed: false, message: 'Your own' })
+      // The caller handed it: their own event line on the thread in the last 15 minutes (hand_to writes one).
+      const { data: events } = await admin.from('messages').select('id').eq('contact_id', contactId).eq('channel', 'event').eq('who_user_id', user.id).gte('at', new Date(Date.now() - FRESH_MS).toISOString()).limit(1)
+      if (!events || events.length === 0) return json({ error: 'Not your hand-off' }, 403)
+      const [{ data: by }, { data: contactName }, { data: lines }, { data: to }] = await Promise.all([
+        admin.from('users').select('name').eq('id', user.id).maybeSingle(),
+        admin.rpc('contact_display_name', { p_contact_id: contactId }),
+        admin.from('messages').select('id, channel, subject, body').eq('contact_id', contactId).eq('direction', 'in').order('at', { ascending: false }).limit(1),
+        admin.from('users').select('id, archived_at').match(REAL_ACCOUNT).eq('id', contact.has_user_id).maybeSingle(),
+      ])
+      if (!to || (to as { archived_at?: string | null }).archived_at) return json({ success: true, pushed: false, message: 'No one to tell' })
+      const push = handedPush({
+        contactId,
+        contactName: typeof contactName === 'string' ? contactName : '',
+        byName: ((by as { name?: string | null } | null)?.name ?? '').trim(),
+        line: ((lines ?? []) as Array<{ id: string; channel: string; subject: string | null; body: string }>)[0] ?? null,
+      })
+      // Their own push hours (v2.6029) hold it like any other push; the held row lets the Dashboard list it when they are back.
+      const decision = pushDecision({ userIds: [contact.has_user_id] }, await pushHoursFor(admin), now)
+      const held = decision.send.length === 0
+      const took = held ? 0 : await pushToPerson(admin)(contact.has_user_id, JSON.stringify({ title: push.title, body: push.body, url: push.url, tag: push.tag }))
+      if (held || took > 0) {
+        const { error } = await admin.from('notification_history').insert({ recipient_user_id: contact.has_user_id, template_type: HANDED_TEMPLATE, title: push.title, body_preview: push.body.substring(0, 200), channel: held ? 'held' : 'push', message_id: push.messageId })
+        if (error) console.error('messages-notify handed record error', error.message)
+      }
+      return json({ success: true, pushed: took > 0, held, devices: took })
+    }
+
+    return json({ error: 'Send proposal_ids, decided or handed' }, 400)
   } catch (error) {
     console.error('Error in messages-notify:', error)
     return json({ error: (error as Error)?.message || 'Internal server error' }, 500)

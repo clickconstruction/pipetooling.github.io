@@ -115,6 +115,8 @@ The card lists the office team. The person the rule picks is first. Press a name
 
 The rule is [Who gets a new message](/help/choose-who-gets-a-new-message). It picks whoever answered them last, else the seat for their kind.
 
+The person you pick hears about it. A push on their phone says who handed them the conversation and what the last message said. Their own push hours still hold it until they are back.
+
 ## Sort a backlog
 
 When two or more people wait in **New**, its header has {{button:blue|Sort all}}. Press it to sort them one at a time. Needs a reply has the same kind of desk, [Answer all](/help/answer-everyone-waiting-on-us-from-one-page#answer-everyone-one-at-a-time).

@@ -1670,6 +1670,11 @@ The Submittals tables are **pricing-side data on the bid**: `bid_specified_produ
 
 `robot_agents()` (the Console's status rows, which name robot keys) and `robot_rounds_stop()` (**Stop the rounds** / **Start again** on one key) answer only a `dev` or a `master_technician`, checked inside the SECURITY DEFINER functions; everyone else gets no rows or a refusal. `robot_progress()` and `robot_run_signals()` (v2.5732, the bar on the bid and *Read the run*) answer the bid roles — dev, master, assistant, controller, estimator — and select no money column.
 
+## Development page (v2.6040+)
+
+- The page itself opens for every signed-in office role; an estimator reads it with no money (`readDoor.ts`, v2.6053).
+- **Costs on the Jobs & bids table (v2.6215)**: dev and controller only (`canSeeSiteCosts`, `src/lib/developments/siteCosts.ts`) — each job's parts buckets and sub labor as one figure, the same number the Job window's profit band shows. Masters, assistants and estimators see no Costs column.
+
 ## Bid version locks (v2.6234)
 
 - A version has an owner (`bid_versions.owner_user_id`: who made or adopted it). The owner may lock it (`locked_by`); then only the holder, a dev or a master writes its counts, takeoff, prices, CountTooling projects and plan sets, and only they may rename it or turn the lock. Enforced by database triggers (`bid_version_write_guard`, `price_book_version_write_guard`, `bid_versions_lock_guard`), so an import or a paste cannot write through it; the service role's fenced robot verbs are not kept out. Off by default; reads, sends, adopts and copies never blocked.

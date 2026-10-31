@@ -8,6 +8,7 @@ import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
 import HideHcpFieldSettingsBlock from './HideHcpFieldSettingsBlock'
 import SubPortalPaySettingsBlock from './SubPortalPaySettingsBlock'
 import LegalFirmSettingsBlock from './LegalFirmSettingsBlock'
+import OfficeCountySettingsBlock from './OfficeCountySettingsBlock'
 import UncollectibleListSettingsBlock from './UncollectibleListSettingsBlock'
 import JobAddressCityListSettingsBlock from './JobAddressCityListSettingsBlock'
 import TxCountyMapSettingsBlock from './TxCountyMapSettingsBlock'
@@ -71,6 +72,7 @@ export default function SettingsJobsTab({
       <HideHcpFieldSettingsBlock />
       <SubPortalPaySettingsBlock />
       <LegalFirmSettingsBlock />
+      <OfficeCountySettingsBlock />
       <UncollectibleListSettingsBlock />
       {/* Company owner account (one company, v2.2972) + bulk job re-assign */}
       <div style={{ marginBottom: '2rem', border: '1px solid var(--border)', borderRadius: 8 }}>

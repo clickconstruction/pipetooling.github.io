@@ -442,3 +442,16 @@ describe('statements: sworn on the Said lane (punch list #220, v2.6209)', () => 
     expect(by(office, 'entry:st-undone').stateWords).toBe('Undone: would not sign the September paragraph')
   })
 })
+
+describe('the Said lane’s empty words offer Swear a statement (punch list #220, v2.6210)', () => {
+  it('names the press when the office may swear, with All as the other way; the other lanes keep All', () => {
+    const swear = () => {}
+    const showAll = () => {}
+    const w = timelineEmptyWords({ laneLabel: 'Said', canAdd: true, composerOpen: false, showAll, openComposer: () => {}, swear })
+    expect(w.main).toBe('Nothing under Said yet.')
+    expect(w.next?.label).toBe('Swear a statement…')
+    expect(w.orNext?.label).toBe('All ›')
+    expect(timelineEmptyWords({ laneLabel: 'Said', canAdd: true, composerOpen: false, showAll, openComposer: () => {} }).next?.label).toBe('All ›')
+    expect(timelineEmptyWords({ laneLabel: 'Did', canAdd: true, composerOpen: false, showAll, openComposer: () => {}, swear }).next?.label).toBe('All ›')
+  })
+})
