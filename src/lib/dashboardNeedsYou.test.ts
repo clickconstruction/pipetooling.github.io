@@ -949,38 +949,27 @@ describe('label approvals (journey-map Tier-2 #27)', () => {
   })
 })
 
-describe('statement round (v2.2771)', () => {
-  it('lists the ready GCs with the total and opens the round; silent when empty or disabled', () => {
+describe('statement round (v2.2771; the office week since punch list #49)', () => {
+  it('speaks to whoever is at the keyboard, names broken promises, and opens the list; silent when empty or disabled', () => {
     const items = buildNeedsYouItems(
       inputs({
         statementRoundEnabled: true,
-        statementRound: { count: 2, total: 96257.27, gcNames: ['RMC- Dudley Mason', 'Knight Contracting'] },
-      }),
-    )
-    const sr = items.find((i) => i.key === 'statement-round')
-    expect(sr?.title).toBe('2 GCs are waiting on your statement')
-    expect(sr?.detail).toBe('RMC- Dudley Mason, Knight Contracting · $96,257 certified and ready — a personal email from you.')
-    expect(sr?.figure).toBe('2')
-    expect(sr?.actionLabel).toBe('Start round')
-    expect(buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: null }))).toEqual([])
-    expect(buildNeedsYouItems(inputs({ statementRoundEnabled: false, statementRound: { count: 1, total: 5, gcNames: ['x'] } }))).toEqual([])
-  })
-
-  it('the office week (punch list #49) speaks to whoever is at the keyboard, and names broken promises', () => {
-    const items = buildNeedsYouItems(
-      inputs({
-        statementRoundEnabled: true,
-        statementRound: { count: 3, total: 146000, gcNames: ['Knight Contracting', 'Structura', 'TF Harper'], office: true, late: 1 },
+        statementRound: { count: 3, total: 146000, gcNames: ['Knight Contracting', 'Structura', 'TF Harper'], late: 1 },
       }),
     )
     const sr = items.find((i) => i.key === 'statement-round')
     expect(sr?.kicker).toBe('GC statements')
     expect(sr?.title).toBe('3 GC statements are ready to send')
     expect(sr?.detail).toBe('Knight Contracting, Structura, TF Harper · $146,000 checked and ready · 1 broke a promise — grouped by the account man to ask.')
+    expect(sr?.figure).toBe('3')
     expect(sr?.actionLabel).toBe('Open the list')
-    const one = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 1, total: 26000, gcNames: ['Knight'], office: true, late: 0 } })).find((i) => i.key === 'statement-round')
+    const one = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 1, total: 26000, gcNames: ['Knight'], late: 0 } })).find((i) => i.key === 'statement-round')
     expect(one?.title).toBe('One GC statement is ready to send')
     expect(one?.detail).toBe('Knight · $26,000 checked and ready — grouped by the account man to ask.')
+    const four = buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: { count: 4, total: 96257.27, gcNames: ['RMC- Dudley Mason', 'Knight Contracting', 'Structura', 'TF Harper'] } })).find((i) => i.key === 'statement-round')
+    expect(four?.detail).toBe('RMC- Dudley Mason, Knight Contracting, Structura +1 more · $96,257 checked and ready — grouped by the account man to ask.')
+    expect(buildNeedsYouItems(inputs({ statementRoundEnabled: true, statementRound: null }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ statementRoundEnabled: false, statementRound: { count: 1, total: 5, gcNames: ['x'] } }))).toEqual([])
   })
 })
 

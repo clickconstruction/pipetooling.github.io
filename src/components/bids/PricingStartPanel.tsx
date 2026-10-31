@@ -10,7 +10,7 @@ import type { PricingStartChoices } from '../../lib/bids/pricingStartChoices'
 const frame: CSSProperties = { padding: '1rem', border: '1px dashed var(--border-strong)', borderRadius: 8, color: 'var(--text-muted)', fontSize: '0.875rem' }
 const subnote: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }
 const row: CSSProperties = { display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }
-const primaryBtn: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }
+const primaryBtn: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: 'pointer' }
 const ghostBtn: CSSProperties = { font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: 999, border: '1px dashed var(--border-strong)', background: 'var(--surface)', color: 'var(--text-link)', cursor: 'pointer' }
 const copyBtn: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
 

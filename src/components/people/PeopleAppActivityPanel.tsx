@@ -288,9 +288,9 @@ export default function PeopleAppActivityPanel({ enabled, isDev, users, authUser
                                 style={{
                                   padding: '0.25rem 0.5rem',
                                   fontSize: '0.8125rem',
-                                  border: '1px solid #3b82f6',
+                                  border: '1px solid #2563eb',
                                   borderRadius: 6,
-                                  background: '#3b82f6',
+                                  background: '#2563eb',
                                   color: '#fff',
                                   cursor: busy ? 'not-allowed' : 'pointer',
                                 }}

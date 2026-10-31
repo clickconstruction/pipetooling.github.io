@@ -646,7 +646,7 @@ export default function PaymentChaseModal({
             <button
               type="button"
               onClick={onClose}
-              style={{ ...chipBtn, marginTop: '0.9rem', background: 'var(--text-link)', borderColor: 'var(--text-link)', color: '#fff' }}
+              style={{ ...chipBtn, marginTop: '0.9rem', background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}
             >
               Done
             </button>
@@ -1000,7 +1000,7 @@ export default function PaymentChaseModal({
                             ...chipBtn,
                             fontWeight: 700,
                             ...(promisePreview
-                              ? { background: 'var(--text-green-700)', borderColor: 'var(--text-green-700)', color: 'var(--surface)' }
+                              ? { background: '#15803d', borderColor: '#15803d', color: '#fff' }
                               : { background: 'var(--bg-green-tint)', borderColor: 'var(--border-strong)', color: 'var(--text-green-700)', opacity: 0.55 }),
                           }}
                         >

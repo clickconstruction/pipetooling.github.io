@@ -11,11 +11,16 @@
  * That is all it does since v2.5088: the opted-in "Team clock in / out" push read the Team leads
  * list (team_leader_assignments + team_leader_clock_notify_prefs), dropped with it. The function
  * and its webhook stay for the try-out branch.
+ *
+ * A person's hours (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts,
+ * which pushes the leaders on and holds one outside their Push me hours, writing the row as `held`
+ * and sending nothing; the verdict card is on their Dashboard in the morning.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
+import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { trialVerdictPush } from '../_shared/trialVerdictPush.ts'
+import { vapidReady, webPushSender } from '../_shared/webPushSend.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -52,21 +57,6 @@ function verifyCaller(authHeader: string | null): boolean {
 
 type AdminClient = SupabaseClient
 
-/** Web Push one payload to every subscription a person has; returns how many were delivered. */
-async function pushToUser(adminClient: AdminClient, userId: string, payload: string): Promise<number> {
-  const { data: subscriptions } = await adminClient.from('push_subscriptions').select('endpoint, p256dh_key, auth_key').eq('user_id', userId)
-  let sent = 0
-  for (const sub of (subscriptions ?? []) as { endpoint: string; p256dh_key: string; auth_key: string }[]) {
-    try {
-      await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } }, payload, { TTL: 86400 })
-      sent++
-    } catch (e) {
-      console.error('Push send error:', sub.endpoint?.substring(0, 50), e)
-    }
-  }
-  return sent
-}
-
 /**
  * The try-out branch: a trial helper clocked out → push whoever could run their job today and has
  * not answered yet. Best-effort: a failure is logged, never thrown at the webhook.
@@ -100,21 +90,14 @@ async function notifyTrialHelperLeads(adminClient: AdminClient, record: ClockRec
     jobName = (job as { job_name?: string | null } | null)?.job_name ?? null
   }
   const words = trialVerdictPush((helper as { name?: string | null } | null)?.name ?? null, jobName)
-  const payload = JSON.stringify({ ...words, tag: `trial-verdict-${prospectId}-${record.work_date}` })
 
-  let pushed = 0
-  for (const leadId of toAsk) {
-    const sent = await pushToUser(adminClient, leadId, payload)
-    pushed += sent
-    if (sent > 0) {
-      try {
-        await adminClient.from('notification_history').insert({ recipient_user_id: leadId, template_type: 'trial_helper_verdict', title: words.title, body_preview: words.body.substring(0, 200), channel: 'push' })
-      } catch {
-        // best-effort
-      }
-    }
-  }
-  return { leads: toAsk.length, pushed }
+  // Through each leader's hours (#141 PR 5): the leaders on are pushed, one off is held with a row and no push.
+  const result = await sendPushHonouringHours(
+    adminClient,
+    { userIds: toAsk, title: words.title, body: words.body, url: words.url, tag: `trial-verdict-${prospectId}-${record.work_date}`, templateType: 'trial_helper_verdict' },
+    webPushSender(adminClient, 'notify-team-lead-clock'),
+  )
+  return { leads: toAsk.length, pushed: result.devices }
 }
 
 serve(async (req) => {
@@ -138,8 +121,6 @@ serve(async (req) => {
 
   const supabaseUrl = Deno.env.get('SUPABASE_URL')
   const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
-  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
 
   if (!supabaseUrl || !serviceRoleKey) {
     return new Response(JSON.stringify({ error: 'Server misconfigured' }), {
@@ -190,8 +171,7 @@ serve(async (req) => {
   }
 
   const adminClient = createClient(supabaseUrl, serviceRoleKey)
-  const canPush = Boolean(vapidPublicKey && vapidPrivateKey)
-  if (canPush) webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey!, vapidPrivateKey!)
+  const canPush = vapidReady()
 
   let trial = { leads: 0, pushed: 0 }
   try {

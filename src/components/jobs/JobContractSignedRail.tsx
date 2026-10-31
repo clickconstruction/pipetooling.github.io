@@ -60,7 +60,7 @@ const btn: React.CSSProperties = {
   alignItems: 'center',
   gap: '0.35rem',
 }
-const btnPrimary: React.CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+const btnPrimary: React.CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 const btnQuiet: React.CSSProperties = { ...btn, borderColor: 'transparent', color: 'var(--text-muted)' }
 const sub: React.CSSProperties = { fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.72rem' }
 const kv: React.CSSProperties = { display: 'grid', gridTemplateColumns: '78px minmax(0, 1fr)', gap: '0.2rem 0.6rem', fontSize: '0.78rem' }

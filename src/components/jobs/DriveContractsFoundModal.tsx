@@ -33,7 +33,7 @@ const btn: CSSProperties = {
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 function chip(tone: 'green' | 'amber' | 'muted' | 'blue'): CSSProperties {
   const t = {
     green: { bg: 'var(--bg-green-tint)', fg: 'var(--text-green-700)', border: 'var(--border-green)' },

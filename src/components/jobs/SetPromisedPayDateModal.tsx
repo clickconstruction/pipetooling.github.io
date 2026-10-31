@@ -210,7 +210,7 @@ export default function SetPromisedPayDateModal({
       fontSize: '0.8125rem',
       border: 'none',
       borderRight: '1px solid var(--border)',
-      background: on ? 'var(--text-link)' : 'var(--surface)',
+      background: on ? '#2563eb' : 'var(--surface)',
       color: on ? '#fff' : 'var(--text-muted)',
       fontWeight: on ? 600 : 400,
       cursor: 'pointer',

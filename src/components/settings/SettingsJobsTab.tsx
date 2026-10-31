@@ -245,7 +245,7 @@ export default function SettingsJobsTab({
                 type="button"
                 onClick={confirmReassignJobs}
                 disabled={reassignSubmitting}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reassignSubmitting ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: reassignSubmitting ? 'not-allowed' : 'pointer' }}
               >
                 {reassignSubmitting ? 'Re-assigning…' : 'Confirm'}
               </button>
@@ -297,7 +297,7 @@ export default function SettingsJobsTab({
               <button
                 type="submit"
                 disabled={defaultLaborRateSaving}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: defaultLaborRateSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
               >
                 {defaultLaborRateSaving ? 'Saving…' : 'Save'}
               </button>

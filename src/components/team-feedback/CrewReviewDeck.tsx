@@ -338,7 +338,7 @@ export default function CrewReviewDeck({ open, onClose, userId, source, skipIntr
                 </label>
               ))}
               <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', marginTop: '0.75rem' }}>
-                <button type="button" onClick={() => void finish()} disabled={busy} style={{ ...primaryButtonStyle, background: 'var(--text-green-700)' }}>
+                <button type="button" onClick={() => void finish()} disabled={busy} style={{ ...primaryButtonStyle, background: '#15803d' }}>
                   {busy ? 'Sending…' : openWordsHaveContent(words) ? `Send · done for ${settings?.cadence_days ?? 14} days` : `Done · quiet for ${settings?.cadence_days ?? 14} days`}
                 </button>
                 {cards.length > 0 && (
@@ -439,7 +439,7 @@ const primaryButtonStyle: CSSProperties = {
   padding: '0.7rem 1rem',
   borderRadius: 8,
   border: 'none',
-  background: 'var(--text-link)',
+  background: '#2563eb',
   color: 'white',
   fontWeight: 700,
   fontSize: '0.95rem',

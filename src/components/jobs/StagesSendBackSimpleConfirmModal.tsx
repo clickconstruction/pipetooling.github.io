@@ -42,7 +42,7 @@ export function StagesSendBackSimpleConfirmModal({
             onClick={() => void onConfirm()}
             style={{
               padding: '0.5rem 1rem',
-              background: !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+              background: !busy ? '#2563eb' : DEAD_PRESS_FILL,
               color: !busy ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,

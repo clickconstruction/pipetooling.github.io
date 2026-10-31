@@ -100,7 +100,7 @@ function RunGlyph({ run }: { run: RobotMirrorRun }) {
       </svg>
       {run.status === 'working' ? <span className="robot-glyph-pulse" style={{ position: 'absolute', right: -2, top: 0, width: 7, height: 7, borderRadius: '50%', background: color, boxShadow: '0 0 0 2px var(--surface)' }} /> : null}
       {badge ? (
-        <span style={{ position: 'absolute', right: -3, bottom: -3, fontSize: badge === '🔒' ? '0.5rem' : '0.5625rem', fontWeight: 800, lineHeight: 1, padding: '1px 3px', borderRadius: 3, color: 'white', background: muted ? 'var(--text-faint)' : color, fontFamily: 'ui-monospace, monospace', boxShadow: '0 0 0 1.5px var(--surface)' }}>
+        <span style={{ position: 'absolute', right: -3, bottom: -3, fontSize: badge === '🔒' ? '0.5rem' : '0.5625rem', fontWeight: 800, lineHeight: 1, padding: '1px 3px', borderRadius: 3, color: muted ? 'var(--surface)' : 'white', background: muted ? 'var(--text-muted)' : color, fontFamily: 'ui-monospace, monospace', boxShadow: '0 0 0 1.5px var(--surface)' }}>
           {badge}
         </span>
       ) : null}

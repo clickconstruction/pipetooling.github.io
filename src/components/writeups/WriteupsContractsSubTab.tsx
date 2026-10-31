@@ -403,7 +403,7 @@ export function WriteupsContractsSubTab({
           <button
             type="button"
             onClick={openNewWriteup}
-            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+            style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid #2563eb', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer' }}
           >
             New writeup
           </button>

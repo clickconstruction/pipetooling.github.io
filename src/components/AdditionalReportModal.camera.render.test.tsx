@@ -12,6 +12,8 @@ import { act, fireEvent, screen, waitFor, within } from '@testing-library/react'
 
 const inserted: Array<Record<string, unknown>> = []
 const attached: Array<{ reportId: string; photos: unknown }> = []
+/** The checklist answers Save writes (punch list #189, PR 6). */
+const answered: Array<{ writes: unknown; who: unknown }> = []
 const sent: Array<Record<string, unknown>> = []
 const discarded: unknown[] = []
 /** Resolves the send on demand, so the test can read Save while a shot is on its way. */
@@ -58,6 +60,12 @@ vi.mock('../lib/supabase', async () => {
       ], 'template_id')
     if (t === 'jobs_ledger') return table(() => [{ pct_complete: 32, status: 'working', google_drive_link: 'https://drive.google.com/drive/folders/abc', job_pictures_link: null }])
     if (t === 'reports') return table(() => [{ id: 'r1' }])
+    // The stage checklist's questions (#164): one for Rough In asks for a photo, one does not.
+    if (t === 'stage_checklist_templates')
+      return table(() => [
+        { id: 'q1', stage_kind: 'rough_in', sort_order: 1, words: 'Did the water test hold?', asks_photo: true },
+        { id: 'q2', stage_kind: 'rough_in', sort_order: 2, words: 'Is every cleanout capped?', asks_photo: false },
+      ])
     return originalFrom(t)
   }
   const originalRpc = stub.rpc.bind(stub)
@@ -94,6 +102,16 @@ vi.mock('../utils/errorHandling', async (importOriginal) => {
   return { ...actual, withSupabaseRetry: ((op: never, name: string) => actual.withSupabaseRetry(op, name, { maxRetries: 0, logRetries: false })) as typeof actual.withSupabaseRetry }
 })
 vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: () => {} }))
+vi.mock('../lib/jobs/stageChecklistSheetIo', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../lib/jobs/stageChecklistSheetIo')>()
+  return {
+    ...actual,
+    answerQuestionsWithReportPhotos: (writes: unknown[], who: unknown) => {
+      answered.push({ writes, who })
+      return Promise.resolve({ answered: writes.length, failed: [] })
+    },
+  }
+})
 // A phone: the 640 px query matches, so the form is camera-first.
 vi.mock('../hooks/useNarrowViewport640', () => ({ useNarrowViewport640: () => true }))
 vi.mock('../lib/photos/shrink', async (importOriginal) => {
@@ -163,7 +181,7 @@ describe('AdditionalReportModal, camera first on a phone', () => {
     expect(screen.getByText('New photo · 4.2 MB → 310 KB · 1600 px · goes to the job\'s Drive folder')).toBeTruthy()
     // The chip under the tile asks which stage, with the unpaid stages only.
     const ask = screen.getByTestId('report-photo-stage-ask')
-    expect(within(ask).getAllByRole('button').map((b) => b.textContent)).toEqual(['Rough In', 'Top Out'])
+    expect(within(screen.getByTestId('report-photo-stage-chips')).getAllByRole('button').map((b) => b.textContent)).toEqual(['Rough In', 'Top Out'])
     fireEvent.click(within(ask).getByRole('button', { name: 'This photo shows Rough In' }))
     expect(screen.queryByTestId('report-photo-stage-ask')).toBeNull()
     // The photo sits on its stage's row, which also carries the camera for that stage.
@@ -189,6 +207,55 @@ describe('AdditionalReportModal, camera first on a phone', () => {
     expect(fv['Stage progress']).toBe('Rough In 35% → 50% · job 32% → 38% · 1 photo on Rough In')
     await waitFor(() => expect(attached).toHaveLength(1))
     expect(attached[0]).toEqual({ reportId: 'r1', photos: [{ id: sent[0]!.id, fixtureId: 'r', stageName: 'Rough In', caption: 'Rough In' }] })
+  })
+
+  it('a checklist question that asks for a photo is a chip under the tile; the pick puts the photo on its stage, and Save writes it as the answer (PR 6)', async () => {
+    inserted.length = 0
+    attached.length = 0
+    sent.length = 0
+    answered.length = 0
+    renderWithProviders(<AdditionalReportModal {...props} />)
+    const input = (await screen.findByTestId('report-camera-input')) as HTMLInputElement
+    await waitFor(() => expect(screen.getByText('How far along is each stage?')).toBeTruthy())
+    await act(async () => {
+      fireEvent.change(input, { target: { files: [new File([new Uint8Array(4_200_000)], 'IMG_0004.jpg', { type: 'image/jpeg' })] } })
+    })
+    await waitFor(() => expect(screen.getByTestId('report-photo-tile').getAttribute('data-status')).toBe('sending'))
+    // Under the stage chips, the one Rough In question that asks for a photo; the one that does not is no chip, and
+    // Top Out has no questions.
+    const ask = screen.getByTestId('report-photo-stage-ask')
+    expect(within(ask).getByText('Or it answers a checklist question')).toBeTruthy()
+    const chips = within(screen.getByTestId('report-photo-question-chips')).getAllByRole('button')
+    expect(chips.map((b) => b.textContent)).toEqual(['Rough In · Did the water test hold?'])
+    fireEvent.click(within(ask).getByRole('button', { name: 'This photo answers Rough In: Did the water test hold?' }))
+    expect(screen.queryByTestId('report-photo-stage-ask')).toBeNull()
+    // The tile says what it answers and sits on Rough In's row.
+    expect(screen.getByTestId('report-photo-tile-answers').textContent).toBe('Answers: Did the water test hold?')
+    expect(screen.getAllByTestId('stage-row-photos').map((r) => within(r).queryAllByRole('img').length)).toEqual([1, 0])
+
+    await act(async () => {
+      releaseSend?.()
+    })
+    await waitFor(() => expect(screen.getByTestId('report-photo-tile').getAttribute('data-status')).toBe('sent'))
+    fireEvent.click(screen.getByRole('button', { name: 'Save · job 32% · 1 photo' }))
+    await waitFor(() => expect(inserted).toHaveLength(1))
+    // Stage progress counts the answer; the photo is named by the stage and the question; the answer row carries the photo.
+    expect((inserted[0]!.field_values as Record<string, string>)['Stage progress']).toBe('1 photo on Rough In, 1 answers a checklist question')
+    await waitFor(() => expect(attached).toHaveLength(1))
+    expect(attached[0]).toEqual({ reportId: 'r1', photos: [{ id: sent[0]!.id, fixtureId: 'r', stageName: 'Rough In', caption: 'Rough In · Did the water test hold' }] })
+    await waitFor(() => expect(answered).toHaveLength(1))
+    expect(answered[0]!.who).toEqual({ userId: 'u1', name: 'Luis Ortega' })
+    expect(answered[0]!.writes).toEqual([
+      {
+        jobId: 'job-1',
+        fixtureId: 'r',
+        questionId: 'q1',
+        reportPhotoId: sent[0]!.id,
+        fileName: expect.stringMatching(/^\d{4}-\d{2}-\d{2} Rough In · Did the water test hold\.jpg$/),
+        takenAt: expect.any(String),
+        bytes: 310_000,
+      },
+    ])
   })
 
   it('a report type with no percent field names no job percent on Save and files none (v2.6126)', async () => {

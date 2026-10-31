@@ -424,7 +424,7 @@ export function DashboardBillingPipelineSection({
                                   return
                                 }
                                 setSendRecordJobMeta({ id: j.id })
-                              }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
+                              }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Bill Customer'}</button>
                             )}
                             {(bundleInv?.created_at ?? j.created_at) && (
                               <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title={bundleInv != null ? 'Time since invoice created' : 'Time since job created'}>
@@ -550,7 +550,7 @@ export function DashboardBillingPipelineSection({
                             <button type="button" onClick={() => setViewReportsJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', jobAddress: j.job_address ?? '—' })} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-link)', border: '1px solid #2563eb', borderRadius: 4, cursor: 'pointer' }}>View<br />Reports</button>
                             <button type="button" onClick={() => { setSendBackChecked(false); setSendBackJob({ id: j.id, hcpNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) || '—', jobName: j.job_name ?? '—', toStatus: 'ready_to_bill', rtbDraftCount: 0 }) }} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>Send<br />back</button>
                             <div className="billingPipelineActionAgePair">
-                              <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
+                              <button type="button" onClick={() => setMarkPaidJob(j)} disabled={jobStatusUpdatingId === j.id} style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: jobStatusUpdatingId === j.id ? 'not-allowed' : 'pointer' }}>{jobStatusUpdatingId === j.id ? '…' : 'Mark Paid'}</button>
                               {j.created_at && <span style={{ fontSize: '0.875rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', textAlign: 'center' }} title="Time since job created">Open {formatTimeSince(j.created_at)}</span>}
                             </div>
                           </div>
@@ -667,7 +667,7 @@ export function DashboardBillingPipelineSection({
                     }
                   })()
                 }}
-                style={{ padding: '0.5rem 1rem', background: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? '#3b82f6' : DEAD_PRESS_FILL, color: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}
+                style={{ padding: '0.5rem 1rem', background: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? '#2563eb' : DEAD_PRESS_FILL, color: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: sendBackChecked && invoiceStatusUpdatingId !== sendBackInvoice.inv.id ? 'pointer' : 'not-allowed' }}
               >
                 {invoiceStatusUpdatingId === sendBackInvoice.inv.id ? '…' : sendBackInvoice.action === 'delete' ? DELETE_DRAFT_BILL_LABEL : 'Send back'}
               </button>
@@ -774,7 +774,7 @@ export function DashboardBillingPipelineSection({
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? '#3b82f6' : DEAD_PRESS_FILL,
+                  background: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? '#2563eb' : DEAD_PRESS_FILL,
                   color: sendBackChecked && jobStatusUpdatingId !== sendBackJob.id ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,

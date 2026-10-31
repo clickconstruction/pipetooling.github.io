@@ -146,7 +146,7 @@ const saveButtonStyle = {
   padding: '0.5rem 1rem',
   borderRadius: 6,
   border: 'none',
-  background: 'var(--text-link)',
+  background: '#2563eb',
   color: 'white',
   fontWeight: 700,
   cursor: 'pointer',

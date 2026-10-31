@@ -12,6 +12,9 @@ export type RobotLockedShadow = {
   project: string | null
   lockedAt: string
   teacher: string | null
+  /** The robot's fixtures on the bid (punch list #221, PR 4): found and taken, once the run is sealed; null before the migration. */
+  fixturesFound?: number | null
+  fixturesTaken?: number | null
 }
 
 /** How far back a sealed shadow still counts as "live" on the card. */
@@ -23,7 +26,7 @@ export const ROBOT_LOCKED_SHADOW_WINDOW_DAYS = 14
  * lock time or a bid number are dropped (nothing to name on the card).
  */
 export function selectRobotLockedShadows(
-  rows: ReadonlyArray<Pick<ShadowRunRow, 'status' | 'locked_at' | 'shadow_bid_number' | 'reference_bid_number' | 'project_name' | 'reference_sent_at' | 'teacher_name'>>,
+  rows: ReadonlyArray<Pick<ShadowRunRow, 'status' | 'locked_at' | 'shadow_bid_number' | 'reference_bid_number' | 'project_name' | 'reference_sent_at' | 'teacher_name' | 'fixtures_found' | 'fixtures_taken'>>,
   now: Date = new Date(),
 ): RobotLockedShadow[] {
   const floor = now.getTime() - ROBOT_LOCKED_SHADOW_WINDOW_DAYS * 24 * 60 * 60 * 1000
@@ -39,6 +42,8 @@ export function selectRobotLockedShadows(
       project: r.project_name ?? null,
       lockedAt: r.locked_at as string,
       teacher: r.teacher_name ?? null,
+      fixturesFound: r.fixtures_found ?? null,
+      fixturesTaken: r.fixtures_taken ?? null,
     }))
     .sort((a, b) => Date.parse(b.lockedAt) - Date.parse(a.lockedAt))
 }

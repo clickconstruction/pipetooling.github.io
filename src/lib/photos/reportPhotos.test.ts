@@ -28,6 +28,8 @@ const tile = (over: Partial<ReportPhotoTile>): ReportPhotoTile => ({
   shrunk: true,
   fixtureId: null,
   stageName: null,
+  questionId: null,
+  questionWords: null,
   storagePath: 'job-1/p1.jpg',
   takenAt: '2026-10-29T15:41:00.000Z',
   failWhy: null,
@@ -43,6 +45,9 @@ describe('reportPhotos', () => {
     expect(reportPhotoCaption({ stageName: 'Rough In', whatGotDone: 'drain lines set' })).toBe('Rough In')
     expect(reportPhotoCaption({ stageName: null, whatGotDone: 'Rough in on bath 2, drain lines set and tested today' })).toBe('Rough in on bath 2, drain')
     expect(reportPhotoCaption({ stageName: '  ', whatGotDone: '' })).toBe('Report photo')
+    // A photo that answers a checklist question (PR 6) is named by the stage and the question, the question mark dropped.
+    expect(reportPhotoCaption({ stageName: 'Rough In', whatGotDone: 'drain lines set', questionWords: 'Did the water test hold?' })).toBe('Rough In · Did the water test hold')
+    expect(reportPhotoCaption({ stageName: null, whatGotDone: '', questionWords: 'Is the vent through the roof flashed and sealed on every side of the stack?' })).toBe('Is the vent through the roof flashed and sealed on every')
   })
 
   it('counts only the sent tiles, and knows when one is still on its way', () => {
@@ -84,6 +89,9 @@ describe('reportPhotos', () => {
     expect(photosSentence([])).toBe('')
     expect(photosSentence([tile({ id: 'a' })])).toBe('1 photo')
     expect(photosSentence([tile({ id: 'a', stageName: 'Rough In' })])).toBe('1 photo on Rough In')
+    // A photo that answers a checklist question (PR 6) is counted after the stages.
+    expect(photosSentence([tile({ id: 'a', stageName: 'Rough In', questionId: 'q1' }), tile({ id: 'b', stageName: 'Rough In' })])).toBe('2 photos on Rough In, 1 answers a checklist question')
+    expect(photosSentence([tile({ id: 'a', questionId: 'q1' }), tile({ id: 'b', questionId: 'q2' })])).toBe('2 photos, 2 answer checklist questions')
     expect(photosSentence([tile({ id: 'a', stageName: 'Rough In' }), tile({ id: 'b', stageName: 'Rough In' }), tile({ id: 'c', stageName: 'Top Out' })])).toBe('3 photos on Rough In and Top Out')
     expect(photosSentence([tile({ id: 'a', stageName: 'Rough In' }), tile({ id: 'b', stageName: 'Top Out' }), tile({ id: 'c', stageName: 'Trim Set' })])).toBe('3 photos on Rough In, Top Out and Trim Set')
     expect(newPhotoId()).not.toBe(newPhotoId())

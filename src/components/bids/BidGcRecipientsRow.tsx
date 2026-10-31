@@ -414,7 +414,7 @@ export function BidGcRecipientsRow({ bidId, bidCustomerId, customers, canEdit, o
                           onClick={() => void addTickedRecipients()}
                           disabled={busy || ticked.size === 0}
                           style={{
-                            background: '#3b82f6',
+                            background: '#2563eb',
                             color: 'white',
                             border: 'none',
                             borderRadius: 4,

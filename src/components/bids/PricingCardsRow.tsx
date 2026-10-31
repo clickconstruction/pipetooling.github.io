@@ -413,7 +413,7 @@ export function PricingCardsRow(props: PricingCardsRowProps) {
               {(viewing || isCustomerFacing) ? (
                 <span style={{ position: 'absolute', top: '-0.72rem', left: '0.6rem', display: 'inline-flex', gap: '0.3rem' }}>
                   {viewing ? (
-                    <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#3b82f6', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>Viewing</span>
+                    <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#2563eb', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>Viewing</span>
                   ) : null}
                   {isCustomerFacing ? (
                     <span style={{ fontSize: '0.64rem', fontWeight: 700, whiteSpace: 'nowrap', color: '#fff', background: '#16a34a', borderRadius: 999, padding: '0.14rem 0.55rem', boxShadow: '0 1px 4px rgba(15, 23, 42, 0.18)' }}>★ Submittal</span>

@@ -91,7 +91,7 @@ export type JobsSubLaborTabProps = {
 export function SubLaborToolbar({ search, onSearchChange, onNewLaborJob }: { search: string; onSearchChange: (value: string) => void; onNewLaborJob: () => void }) {
   return (
     <>
-      <button type="button" onClick={onNewLaborJob} style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
+      <button type="button" onClick={onNewLaborJob} style={{ padding: '0.35rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
         New Sub Labor
       </button>
       <input

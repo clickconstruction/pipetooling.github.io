@@ -311,8 +311,8 @@ function Tick({ done }: { done: boolean }) {
         fontSize: '0.8rem',
         fontWeight: 700,
         flexShrink: 0,
-        background: done ? 'var(--text-green-700)' : 'var(--bg-muted)',
-        color: done ? 'var(--surface)' : 'var(--text-muted)',
+        background: done ? '#15803d' : 'var(--bg-muted)',
+        color: done ? '#fff' : 'var(--text-muted)',
         border: done ? 'none' : '1px solid var(--border-strong)',
       }}
     >

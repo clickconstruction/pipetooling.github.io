@@ -348,7 +348,7 @@ export function DashboardMyBidsSection({
                 to="/bids?new=true"
                 style={{
                   padding: '0.35rem 0.75rem',
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   borderRadius: 6,
                   textDecoration: 'none',

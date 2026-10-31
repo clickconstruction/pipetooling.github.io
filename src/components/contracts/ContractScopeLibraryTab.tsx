@@ -295,7 +295,7 @@ export function ContractScopeLibraryTab({ onQuickSend, canEdit }: { onQuickSend:
                             type="button"
                             disabled={busy || !newLabel[kind].trim()}
                             onClick={() => void addItem(kind)}
-                            style={{ padding: '0.35rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 6, background: newLabel[kind].trim() ? '#3b82f6' : DEAD_PRESS_FILL, color: newLabel[kind].trim() ? '#fff' : DEAD_PRESS_TEXT, cursor: newLabel[kind].trim() ? 'pointer' : 'not-allowed' }}
+                            style={{ padding: '0.35rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, border: 'none', borderRadius: 6, background: newLabel[kind].trim() ? '#2563eb' : DEAD_PRESS_FILL, color: newLabel[kind].trim() ? '#fff' : DEAD_PRESS_TEXT, cursor: newLabel[kind].trim() ? 'pointer' : 'not-allowed' }}
                           >
                             Add
                           </button>

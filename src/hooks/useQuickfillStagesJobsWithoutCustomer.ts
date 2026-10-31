@@ -9,7 +9,8 @@ import {
 
 const ROLES = new Set<string>(['dev', 'master_technician', 'assistant', 'controller'])
 
-export function useQuickfillStagesJobsWithoutCustomer(): {
+/** `enabled` (punch list #183 PR 4): false holds the read while the station is off screen on the Roller; `fetchEnabled` still says whether the role sees it. */
+export function useQuickfillStagesJobsWithoutCustomer(enabled = true): {
   jobsWithoutCustomer: ReturnType<typeof buildStagesJobsWithoutCustomerList>
   workingJobsWithoutPictures: ReturnType<typeof buildStagesWorkingJobsWithoutPicturesList>
   readyToBillNoEmailJobs: ReturnType<typeof buildStagesReadyToBillNoEmailList>
@@ -21,28 +22,29 @@ export function useQuickfillStagesJobsWithoutCustomer(): {
   const { jobs, jobsListLoading, jobsListRefreshing, runFetchJobs } = useJobsListCache()
 
   const fetchEnabled = Boolean(authUser?.id && role && ROLES.has(role))
+  const active = fetchEnabled && enabled
 
   useEffect(() => {
-    if (!fetchEnabled) return
+    if (!active) return
     void runFetchJobs(null)
-  }, [fetchEnabled, runFetchJobs])
+  }, [active, runFetchJobs])
 
   const jobsWithoutCustomer = useMemo(
-    () => (fetchEnabled ? buildStagesJobsWithoutCustomerList(jobs, '', null) : []),
-    [fetchEnabled, jobs],
+    () => (active ? buildStagesJobsWithoutCustomerList(jobs, '', null) : []),
+    [active, jobs],
   )
 
   const workingJobsWithoutPictures = useMemo(
-    () => (fetchEnabled ? buildStagesWorkingJobsWithoutPicturesList(jobs, '', null) : []),
-    [fetchEnabled, jobs],
+    () => (active ? buildStagesWorkingJobsWithoutPicturesList(jobs, '', null) : []),
+    [active, jobs],
   )
 
   const readyToBillNoEmailJobs = useMemo(
-    () => (fetchEnabled ? buildStagesReadyToBillNoEmailList(jobs, '', null) : []),
-    [fetchEnabled, jobs],
+    () => (active ? buildStagesReadyToBillNoEmailList(jobs, '', null) : []),
+    [active, jobs],
   )
 
-  const loading = fetchEnabled && jobsListLoading
+  const loading = active && jobsListLoading
   const jobsListBusy = jobsListLoading || jobsListRefreshing
 
   return {

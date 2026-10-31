@@ -159,7 +159,7 @@ export function BidBestEffortCard({ bid, amount, onRecorded, onOpenEnvelope }: B
         <b style={{ fontFamily: 'ui-monospace, monospace' }}>{money(mode.value)}</b>
         <span style={{ fontSize: '0.74rem', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 999, padding: '1px 8px' }}>{bestEffortStamp({ recorded_at: mode.recordedAt }, recorderName)}</span>
         {mode.envelope === 'open' ? (
-          <button type="button" onClick={() => onOpenEnvelope(bid.id)} style={{ padding: '0.35rem 0.8rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }}>
+          <button type="button" onClick={() => onOpenEnvelope(bid.id)} style={{ padding: '0.35rem 0.8rem', border: 'none', borderRadius: 6, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }}>
             Open the robot's envelope
           </button>
         ) : mode.envelope === 'waiting' ? (

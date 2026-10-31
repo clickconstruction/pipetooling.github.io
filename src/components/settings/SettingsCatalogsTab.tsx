@@ -312,7 +312,7 @@ export default function SettingsCatalogsTab({
             <button
               type="button"
               onClick={() => openEditServiceType(null)}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+              style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
             >
               + Add Service Type
             </button>
@@ -493,7 +493,7 @@ export default function SettingsCatalogsTab({
                       disabled={serviceTypeSaving}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: serviceTypeSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                        background: serviceTypeSaving ? DEAD_PRESS_FILL : '#2563eb',
                         color: serviceTypeSaving ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 4,
@@ -545,7 +545,7 @@ export default function SettingsCatalogsTab({
                 <button
                   type="button"
                   onClick={() => openEditPartType(null)}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                 >
                   + Add Material Part Type
                 </button>
@@ -637,7 +637,7 @@ export default function SettingsCatalogsTab({
                           <button
                             type="button"
                             onClick={() => openEditPartType(pt)}
-                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Edit
                           </button>
@@ -743,7 +743,7 @@ export default function SettingsCatalogsTab({
                       disabled={partTypeSaving}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: partTypeSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                        background: partTypeSaving ? DEAD_PRESS_FILL : '#2563eb',
                         color: partTypeSaving ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 4,
@@ -795,7 +795,7 @@ export default function SettingsCatalogsTab({
                 <button
                   type="button"
                   onClick={() => openEditAssemblyType(null)}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                 >
                   + Add Assembly Type
                 </button>
@@ -879,7 +879,7 @@ export default function SettingsCatalogsTab({
                           <button
                             type="button"
                             onClick={() => openEditAssemblyType(at)}
-                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Edit
                           </button>
@@ -952,7 +952,7 @@ export default function SettingsCatalogsTab({
                       disabled={assemblyTypeSaving}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: assemblyTypeSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                        background: assemblyTypeSaving ? DEAD_PRESS_FILL : '#2563eb',
                         color: assemblyTypeSaving ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 4,
@@ -999,7 +999,7 @@ export default function SettingsCatalogsTab({
                 <button
                   type="button"
                   onClick={() => openEditFixtureType(null)}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                 >
                   + Add Book Name
                 </button>
@@ -1068,7 +1068,7 @@ export default function SettingsCatalogsTab({
                           <button
                             type="button"
                             onClick={() => openEditFixtureType(ft)}
-                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Edit
                           </button>
@@ -1139,7 +1139,7 @@ export default function SettingsCatalogsTab({
                       disabled={fixtureTypeSaving}
                       style={{
                         padding: '0.5rem 1rem',
-                        background: fixtureTypeSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                        background: fixtureTypeSaving ? DEAD_PRESS_FILL : '#2563eb',
                         color: fixtureTypeSaving ? DEAD_PRESS_TEXT : 'white',
                         border: 'none',
                         borderRadius: 4,
@@ -1182,7 +1182,7 @@ export default function SettingsCatalogsTab({
                 <button
                   type="button"
                   onClick={() => openEditCountsFixtureGroup(null)}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                 >
                   + Add Group
                 </button>
@@ -1235,7 +1235,7 @@ export default function SettingsCatalogsTab({
                   <input type="text" value={countsFixtureGroupLabel} onChange={(e) => setCountsFixtureGroupLabel(e.target.value)} placeholder="Bathrooms:" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem' }} required />
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button type="button" onClick={closeEditCountsFixtureGroup} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
-                    <button type="submit" disabled={countsFixtureGroupSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{countsFixtureGroupSaving ? 'Saving...' : 'Save'}</button>
+                    <button type="submit" disabled={countsFixtureGroupSaving} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{countsFixtureGroupSaving ? 'Saving...' : 'Save'}</button>
                   </div>
                 </form>
               </div>
@@ -1252,7 +1252,7 @@ export default function SettingsCatalogsTab({
                   <input type="text" value={countsFixtureItemName} onChange={(e) => setCountsFixtureItemName(e.target.value)} placeholder="e.g. Toilets, Kitchen sinks" style={{ width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, marginBottom: '1rem' }} required />
                   <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
                     <button type="button" onClick={closeEditCountsFixtureItem} style={{ padding: '0.5rem 1rem' }}>Cancel</button>
-                    <button type="submit" disabled={countsFixtureItemSaving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{countsFixtureItemSaving ? 'Saving...' : 'Save'}</button>
+                    <button type="submit" disabled={countsFixtureItemSaving} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{countsFixtureItemSaving ? 'Saving...' : 'Save'}</button>
                   </div>
                 </form>
               </div>

@@ -141,7 +141,7 @@ export function GcCallScriptWindow({ onClose, job = null }: { onClose: () => voi
           <button type="button" onClick={() => void copy()} style={button}>
             {copied ? CALL_SCRIPT_COPIED : CALL_SCRIPT_COPY}
           </button>
-          <button type="button" onClick={onClose} style={{ ...button, background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600 }}>
+          <button type="button" onClick={onClose} style={{ ...button, background: '#2563eb', color: '#fff', border: 'none', fontWeight: 600 }}>
             Close
           </button>
         </div>

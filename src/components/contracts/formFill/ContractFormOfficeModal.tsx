@@ -267,7 +267,7 @@ export function ContractFormOfficeModal({ documentId, onClose, onCompleted }: { 
             <button type="button" onClick={onClose} disabled={submitting} style={btn}>
               Cancel
             </button>
-            <button type="button" onClick={() => void complete()} disabled={submitting || blockers.length > 0} style={{ ...btn, background: 'var(--text-blue-700, #1d4ed8)', color: '#fff', borderColor: 'transparent', fontWeight: 700 }}>
+            <button type="button" onClick={() => void complete()} disabled={submitting || blockers.length > 0} style={{ ...btn, background: '#1d4ed8', color: '#fff', borderColor: 'transparent', fontWeight: 700 }}>
               {submitting ? 'Completing…' : 'Complete and finish the PDF'}
             </button>
           </div>

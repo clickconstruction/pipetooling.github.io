@@ -5,17 +5,33 @@
  * chips narrow the stream by kind, and the amber chip by piece (*JP1098 only*, set from a Pieces
  * row). The words and rules come from `lib/developments/history.ts`.
  */
-import { useEffect, useState } from 'react'
-import { draftIsKeepable, HISTORY_BODY_MAX, HISTORY_CHIPS, HISTORY_SOURCES, localInputValue, type HistoryAbout, type HistoryChip, type HistoryDraft, type HistoryPiece, type HistorySource } from '../../lib/developments/history'
-import { capStyle, SmallButton } from './developmentPageBits'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { draftIsKeepable, HISTORY_BODY_MAX, HISTORY_CHIPS, HISTORY_SOURCES, localInputValue, type HistoryChip, type HistoryDraft, type HistoryPiece, type HistorySource } from '../../lib/developments/history'
+import { aboutRowsOf, type AboutGroup, type AboutRow } from '../../lib/developments/aboutPicker'
+import { SearchableSelect, type SearchableSelectOption } from '../SearchableSelect'
+import { capStyle, LinkButton, SmallButton } from './developmentPageBits'
 
-export type HistoryAboutOption = { key: string; label: string; about: HistoryAbout; group: 'site' | 'jobs' | 'bids' | 'customer' }
+/** One row of the About picker: the number and name, then the stage or status in muted small type. */
+function AboutRowContent({ row }: { row: AboutRow }) {
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, minWidth: 0 }}>
+      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{row.group === 'site' ? `🏠 ${row.label}` : row.label}</span>
+      {row.meta ? <span style={{ fontSize: '0.72rem', color: 'var(--text-muted)', flexShrink: 0 }}>{row.meta}</span> : null}
+    </span>
+  )
+}
 
-const GROUP_LABEL: Record<HistoryAboutOption['group'], string> = { site: 'The site', jobs: 'Jobs', bids: 'Bids', customer: 'The customer' }
-
-export function DevelopmentHistoryComposer({ options, phone, busy, onKeep }: { options: HistoryAboutOption[]; phone: boolean; busy: boolean; onKeep: (draft: HistoryDraft) => Promise<boolean> }) {
+export function DevelopmentHistoryComposer({ groups, preferKey, phone, busy, onKeep, onClose }: { groups: AboutGroup[]; preferKey: string | null; phone: boolean; busy: boolean; onKeep: (draft: HistoryDraft) => Promise<boolean>; onClose?: () => void }) {
   const [body, setBody] = useState('')
-  const [aboutKey, setAboutKey] = useState(options[0]?.key ?? 'site')
+  const rows = useMemo(() => aboutRowsOf(groups), [groups])
+  const rowsRef = useRef(rows)
+  rowsRef.current = rows
+  const [aboutKey, setAboutKey] = useState(rows[0]?.key ?? 'site')
+  // The amber *JP1098 only* chip sets About to that piece (v2.6205); clearing it goes back to the site.
+  useEffect(() => {
+    if (preferKey === null) setAboutKey('site')
+    else if (rowsRef.current.some((r) => r.key === preferKey)) setAboutKey(preferKey)
+  }, [preferKey])
   const [when, setWhen] = useState(() => localInputValue(Date.now()))
   const [source, setSource] = useState<HistorySource>('note')
   const [kept, setKept] = useState(false)
@@ -24,7 +40,7 @@ export function DevelopmentHistoryComposer({ options, phone, busy, onKeep }: { o
     const t = window.setTimeout(() => setKept(false), 3000)
     return () => window.clearTimeout(t)
   }, [kept])
-  const option = options.find((o) => o.key === aboutKey) ?? options[0]
+  const option = rows.find((r) => r.key === aboutKey) ?? rows[0]
   const keepable = !!option && draftIsKeepable({ body, happenedAt: when }, Date.now())
   const keep = async () => {
     if (!option || !keepable || busy) return
@@ -34,7 +50,16 @@ export function DevelopmentHistoryComposer({ options, phone, busy, onKeep }: { o
     setWhen(localInputValue(Date.now()))
     setKept(true)
   }
-  const groups = (['site', 'jobs', 'bids', 'customer'] as const).map((g) => ({ g, items: options.filter((o) => o.group === g) })).filter((x) => x.items.length > 0)
+  // The picker's rows: a labelled separator before each group but the site's; a piece written about last
+  // appears twice, so its recent row carries its own value and the pick strips the prefix.
+  const selectOptions = useMemo<SearchableSelectOption[]>(
+    () =>
+      groups.flatMap((g) => [
+        ...(g.group === 'site' ? [] : [{ kind: 'separator' as const, id: `about-${g.group}`, label: g.label }]),
+        ...g.rows.map((r) => ({ value: g.group === 'recent' ? `recent:${r.key}` : r.key, label: r.search, labelContent: <AboutRowContent row={r} /> })),
+      ]),
+    [groups],
+  )
   return (
     <div className="developmentHistoryBox" data-testid="history-composer" style={{ border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--bg-subtle)', padding: '8px 10px', marginBottom: 10 }}>
       <textarea
@@ -53,17 +78,22 @@ export function DevelopmentHistoryComposer({ options, phone, busy, onKeep }: { o
       />
       <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: '0.8rem' }}>
         <span style={capStyle}>About</span>
-        <select value={aboutKey} onChange={(e) => setAboutKey(e.target.value)} aria-label="About which piece" data-testid="history-about">
-          {groups.map(({ g, items }) => (
-            <optgroup key={g} label={GROUP_LABEL[g]}>
-              {items.map((o) => (
-                <option key={o.key} value={o.key}>
-                  {o.label}
-                </option>
-              ))}
-            </optgroup>
-          ))}
-        </select>
+        <span data-testid="history-about" style={{ display: 'inline-block', minWidth: phone ? '100%' : 260, maxWidth: '100%' }}>
+          <SearchableSelect
+            value={aboutKey}
+            onChange={(v) => setAboutKey(v.replace(/^recent:/, ''))}
+            options={selectOptions}
+            listAriaLabel="About which job or bid"
+            searchPlaceholder="Type a number or a name"
+            listMaxHeightPx={320}
+            fillViewportHeight
+            listMinWidthPx={300}
+            listOptionPadding="0.35rem 0.6rem"
+            listOptionFontSize="0.8rem"
+            triggerMinHeightPx={30}
+            triggerStyle={{ fontSize: '0.8rem', padding: '0 0.5rem' }}
+          />
+        </span>
         <span style={capStyle}>When</span>
         <input type="datetime-local" value={when} max={localInputValue(Date.now() + 5 * 60_000)} onChange={(e) => setWhen(e.target.value)} aria-label="When it happened" title="When it happened: now, or set back to the email's time" data-testid="history-when" />
         <span style={capStyle}>Source</span>
@@ -82,7 +112,14 @@ export function DevelopmentHistoryComposer({ options, phone, busy, onKeep }: { o
           </SmallButton>
         </span>
       </div>
-      <div style={{ marginTop: 6, fontSize: '0.72rem', color: 'var(--text-faint)' }}>Kept lines never change. To correct one, keep a second line that says so.</div>
+      <div style={{ marginTop: 6, fontSize: '0.72rem', color: 'var(--text-faint)', display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
+        <span style={{ flex: 1, minWidth: 0 }}>Kept lines never change. To correct one, keep a second line that says so.</span>
+        {onClose ? (
+          <LinkButton onClick={onClose} title="Fold the box; the lines stay" nowrap>
+            Close
+          </LinkButton>
+        ) : null}
+      </div>
     </div>
   )
 }

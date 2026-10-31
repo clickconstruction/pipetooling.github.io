@@ -4,6 +4,11 @@ import { QuickfillLastMarkedDoor } from './QuickfillLastMarkedDoor'
 import { QuickfillMarkPresses } from './QuickfillMarkPresses'
 import { QuickfillNextLine } from './QuickfillNextLine'
 import type { MarkOutcome } from '../../lib/quickfill/markOutcome'
+import { KeptReadStamp } from '../KeptReadStamp'
+import { QUICKFILL_COUNTING_AGAIN_WORDS, QUICKFILL_KEPT_LEAD, type KeptReadTimeFormat } from '../../lib/keptRead'
+
+/** The deck on screen is the device's kept read (#183 PR 4): when it was read, whether the read again failed, and the page's read again. */
+export type QuickfillKeptDeck = { readAt: number; failed: boolean; onRetry: () => void; format?: KeptReadTimeFormat }
 
 const bar: CSSProperties = {
   position: 'sticky',
@@ -36,7 +41,9 @@ const btn: CSSProperties = {
  * to do. Note-first sections keep their own mark button inside the body; the bar only moves on.
  * On a desk (punch list #147, v2.5787, `wide`) the same screen is the Roller: no ‹ (the
  * strip's Groups button is the way out), the strip under the name, ← Previous and Next → in
- * the bar beside Skip and Looked.
+ * the bar beside Skip and Looked. With `kept` (punch list #183 PR 4) the deck on screen is the
+ * device's kept read: the stamp *Counts from 7:52 AM · counting again…* draws first, the head and
+ * the bar carry `data-kept-read` so the count mutes, and Done and Worked it are held (`held`).
  */
 export function QuickfillRoundScreen({
   label,
@@ -58,6 +65,8 @@ export function QuickfillRoundScreen({
   onPrev,
   strip,
   wide = false,
+  kept = null,
+  held = false,
   children,
 }: {
   label: string
@@ -89,11 +98,17 @@ export function QuickfillRoundScreen({
   strip?: ReactNode
   /** The desk layout: no ‹, the strip, Previous and Next in the bar. */
   wide?: boolean
+  /** The deck on screen is the device's kept read (#183 PR 4); null when live. */
+  kept?: QuickfillKeptDeck | null
+  /** Done and Worked it wait on the kept count until the live read lands (#183 PR 4). */
+  held?: boolean
   children: ReactNode
 }) {
   const nextLabel = position && position.index < position.total ? 'next →' : 'done ✓'
   return (
     <div className="quickfillRoundScreen">
+      {kept ? <KeptReadStamp lead={QUICKFILL_KEPT_LEAD} again={QUICKFILL_COUNTING_AGAIN_WORDS} readAt={kept.readAt} failed={kept.failed} onRetry={kept.onRetry} format={kept.format} className="keptReadStampTight" /> : null}
+      <div data-kept-read={kept ? '' : undefined} style={kept ? { marginTop: '0.5rem' } : undefined}>
       <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem' }}>
         {wide ? null : (
           <button type="button" onClick={onBack} aria-label="Back to the list" style={{ ...btn, padding: '0.4rem 0.7rem', fontSize: '1.1rem', lineHeight: 1 }}>
@@ -118,7 +133,7 @@ export function QuickfillRoundScreen({
       {nextLine ? <QuickfillNextLine text={nextLine} /> : null}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)', marginBottom: '0.6rem' }}>
         <span>
-          {countLine}
+          <span className={kept ? 'keptCount' : undefined}>{countLine}</span>
           {lastLook ? (
             <>
               {countLine ? ' · ' : null}
@@ -132,8 +147,9 @@ export function QuickfillRoundScreen({
           </button>
         ) : null}
       </div>
+      </div>
       <div>{children}</div>
-      <div style={{ ...bar, ...(wide ? { gridTemplateColumns: 'auto auto 1fr auto' } : {}) }}>
+      <div data-kept-read={kept ? '' : undefined} style={{ ...bar, ...(wide ? { gridTemplateColumns: 'auto auto 1fr auto' } : {}) }}>
         {wide ? (
           <button type="button" onClick={onPrev ?? undefined} disabled={!onPrev} style={{ ...btn, opacity: onPrev ? 1 : 0.5 }}>
             ← Previous
@@ -147,7 +163,7 @@ export function QuickfillRoundScreen({
             {needsNote ? `Mark inside · ${nextLabel}` : nextLabel}
           </button>
         ) : (
-          <QuickfillMarkPresses count={liveCount} loading={countLoading} nextLabel={nextLabel} layout={wide ? 'bar' : 'stack'} marking={marking} stationLabel={label} onPress={onPress} />
+          <QuickfillMarkPresses count={liveCount} loading={countLoading} held={held} nextLabel={nextLabel} layout={wide ? 'bar' : 'stack'} marking={marking} stationLabel={label} onPress={onPress} />
         )}
         {wide ? (
           <button type="button" onClick={onSkip} style={btn}>
