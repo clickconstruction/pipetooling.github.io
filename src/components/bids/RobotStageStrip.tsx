@@ -30,7 +30,7 @@ const NOW = '#2563eb'
 
 function Stops({ stage, dense }: { stage: RobotStage; dense: boolean }) {
   return (
-    <ol aria-label="The robot's stops on this bid" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: dense ? `repeat(${ROBOT_STAGE_STOPS.length}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(72px, 1fr))', gap: dense ? 4 : 6 }}>
+    <ol aria-label="The robot's stops on this bid" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: dense ? `repeat(${ROBOT_STAGE_STOPS.length}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(62px, 1fr))', gap: dense ? 4 : 6 }}>
       {stage.stops.map((s) => (
         <li key={s.key} data-testid={`robot-stage-${s.key}`} data-state={s.state} title={s.detail ? `${s.label}, ${s.detail}` : s.label} style={{ minWidth: 0 }}>
           <div style={{ height: 3, borderRadius: 2, background: s.state === 'done' ? DONE : s.state === 'now' ? NOW : 'var(--border)', marginBottom: 4 }} />
