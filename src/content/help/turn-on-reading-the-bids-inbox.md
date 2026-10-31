@@ -34,7 +34,7 @@ Rosa emails Elena about Thursday and copies team@. Elena's thread shows *Rosa Di
 
 - The app never deletes, moves or archives an email.
 - The app never marks an email read.
-- Newsletters and notices stay in Gmail with no label.
+- A newsletter stays in Gmail with no label. The app knows one by its headers, or by the unsubscribe line at its foot.
 - An email the inbox sent itself, or the app sent, stays in Gmail with no label.
 
 ## A sender you marked a notice

@@ -1,0 +1,38 @@
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #217 · a mock-up, not the app · drawn 2026-10-30 from eight scans of main at 9e8f233</p>
+  <h1>Show it, don't say it: seven shapes for the places the app still tells</h1>
+  <p class="ask">"We want the user to see processes that they feel like they can understand and trust instead of wondering where text comes from." — Taunya, 2026-10-30</p>
+  <p>Eight read-only scans walked every area of the app (the Jobs hub twice, Bids, GC mode and Messages, the office's day and Settings, the phone, People and Documents, and everything a stranger reads or receives) and wrote up <b>131 places</b> where a sentence stands where a shape should. Every one of them wants one of <b>seven shapes</b>, and every shape already lives somewhere in the app since punch list #214 drew the Legal desk's four. This page teaches each shape once with its strongest before-and-after pairs, then lists every other place that takes it, so a yes can be a yes to a shape as much as to a screen.</p>
+  <div class="howto">
+    <p><b>How to read a pair.</b> The dashed frame on the left is the screen as it draws today, its words close to verbatim. The solid frame on the right is the same screen with the shape drawn. The lines under them say what the shape gains and what rule it keeps, and the blue box is the second pass: what the first render got wrong and what moved.</p>
+    <p><b>Where the prototypes are.</b> A pair that has a PR carries a bright bar at its top: the PR, its state, its door, and the one command that opens it on your own machine (<code>npm run proto -- &lt;id&gt;</code>, with Copy); the amber box under the counts lists them all and says what the command needs. A note you write is cleared once I have acted on it, and its words move into the pair's blue box, so an empty line means it is your turn again.</p>
+    <p><b>Where the picks live.</b> On the claude.ai copy every press is kept as you make it. In the repo the page opens on <code>picks.json</code> beside it, the last save. <b>Export picks</b> writes that file from what you see; put it beside the page, rebuild and commit, or hand it to a session, and the next person opens on your picks. Picks pressed in a browser stay in that browser until exported.</p>
+    <p><b>How to answer.</b> Every pair and every row has <b>Build · Later · Drop</b> and a line for a note. A dropped item leaves the page as soon as it is marked; <b>Show dropped</b> brings the dropped ones back, so a drop can be undone. On the claude.ai copy of this page the picks save as you press them and come straight to me; on the repo copy they stay in this browser, and <b>Copy my picks</b> puts them on the clipboard to paste into a message. A pick on a pair is a pick on that screen; a shape's <b>Build all</b> picks the pair and every row under it.</p>
+  </div>
+  <div class="controls">
+    <span class="lbl">Theme</span>
+    <button type="button" id="theme-light" aria-pressed="true">Light</button>
+    <button type="button" id="theme-dark" aria-pressed="false">Dark</button>
+    <span class="lbl" style="margin-left:10px">Show</span>
+    <button type="button" id="show-all" aria-pressed="true">Drawn pairs and every row</button>
+    <button type="button" id="show-drawn" aria-pressed="false">Drawn pairs only</button>
+    <button type="button" id="show-picked" aria-pressed="false">My picks</button>
+    <button type="button" id="show-dropped" aria-pressed="false">Show dropped</button>
+    <button type="button" id="copy-picks" style="margin-left:auto">Copy my picks</button>
+    <button type="button" id="export-picks">Export picks</button>
+  </div>
+  <div class="tally" id="tally"><span class="status" id="pick-status">Picks stay in this browser.</span></div>
+  <div class="protos" id="protos" hidden></div>
+  <dialog id="picks-out"><div class="cap">picks.json</div><p>Save this as <code>to-dos/show-not-tell/picks.json</code> in the repo, rebuild the page and commit; then the next person opens on these picks.</p><textarea readonly spellcheck="false"></textarea><div class="row"><button type="button" class="copy-text">Copy</button><button type="button" class="close">Close</button></div></dialog>
+  <nav class="jump" aria-label="The seven shapes">
+    <a href="#s1"><span class="n">1</span>A date against today</a>
+    <a href="#s2"><span class="n">2</span>A figure as its parts</a>
+    <a href="#s3"><span class="n">3</span>The source on the figure</a>
+    <a href="#s4"><span class="n">4</span>A process as its steps</a>
+    <a href="#s5"><span class="n">5</span>Counts that open</a>
+    <a href="#s6"><span class="n">6</span>The verdict lights its cause</a>
+    <a href="#s7"><span class="n">7</span>Say it once</a>
+    <a href="#foot">What the scan left</a>
+  </nav>
+</header>

@@ -5,6 +5,7 @@
  * Esc and a click outside close the window alone.
  */
 import { describe, expect, it, vi } from 'vitest'
+import type { ComponentProps } from 'react'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders, settle } from '../../../test/renderSmokeMocks'
 import LegalFirmWindow, { LEGAL_FIRM_SETTINGS_HREF } from './LegalFirmWindow'
@@ -52,12 +53,26 @@ const firm: LegalFirmRow = { id: 'firm-1', name: 'ZZ Test Firm', handling_name: 
 const matters = [{ id: 'm1', firm_id: 'firm-1', stage: 'referred', closed_at: null, payer_name: 'Brazos Ridge Contracting', payer_key: 'c:brazos' }] as unknown as LegalMatterRow[]
 const recipients = [{ id: 'r1', firm_id: 'firm-1', removed_at: null }, { id: 'r2', firm_id: 'firm-1', removed_at: null }] as unknown as LegalRecipientRow[]
 
-function renderWindow(extra: { canEdit: boolean; firm?: LegalFirmRow | null }) {
+type CoverageProps = Pick<ComponentProps<typeof LegalFirmWindow>, 'firms' | 'countiesByFirm' | 'cases' | 'onShowOnMap'>
+
+function renderWindow(extra: { canEdit: boolean; firm?: LegalFirmRow | null } & CoverageProps) {
   const onClose = vi.fn()
   const onSaved = vi.fn()
-  renderWithProviders(<LegalFirmWindow firm={extra.firm === undefined ? firm : extra.firm} matters={matters} recipients={recipients} canEdit={extra.canEdit} onClose={onClose} onSaved={onSaved} zIndex={800} />)
+  const { canEdit, firm: given, ...coverage } = extra
+  renderWithProviders(<LegalFirmWindow firm={given === undefined ? firm : given} matters={matters} recipients={recipients} canEdit={canEdit} onClose={onClose} onSaved={onSaved} zIndex={800} {...coverage} />)
   return { onClose, onSaved }
 }
+
+/** Punch list #222, PR 1: the desk's coverage data, as `LegalDesk` passes it. Travis holds two cases, Williamson one; one case with the firm sits in Bastrop, which it no longer covers; Gonzales has a case and no firm. */
+const COVERED = new Map<string, string[]>([['firm-1', ['Travis', 'Williamson']]])
+const CASES = [
+  { id: 'a', key: 'c:a', name: 'Brazos Ridge Contracting', balance: 15781.82, jobLabels: '701', jobCount: 1, viaGc: false, stand: 'firm', firmId: 'firm-1', note: 'with ZZ Test Firm', lat: null, lng: null, county: 'Travis', countyFrom: 'record' },
+  { id: 'b', key: 'c:b', name: 'Bryan Herber', balance: 1238.65, jobLabels: '702', jobCount: 1, viaGc: false, stand: 'gave', firmId: null, note: 'given up on', lat: null, lng: null, county: 'Travis', countyFrom: 'record' },
+  { id: 'c', key: 'c:c', name: 'Burd & Assoc.', balance: 2976.34, jobLabels: '891', jobCount: 1, viaGc: true, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: null, lng: null, county: 'Williamson', countyFrom: 'record' },
+  { id: 'd', key: 'c:d', name: 'Lost Pines Builders', balance: 500, jobLabels: '703', jobCount: 1, viaGc: false, stand: 'firm', firmId: 'firm-1', note: 'with ZZ Test Firm', lat: null, lng: null, county: 'Bastrop', countyFrom: 'record' },
+  { id: 'e', key: 'c:e', name: 'Kettle Creek Farms', balance: 3310, jobLabels: '704', jobCount: 1, viaGc: false, stand: 'eyes', firmId: null, note: 'needs a dev’s eyes', lat: null, lng: null, county: 'Gonzales', countyFrom: 'record' },
+] as unknown as NonNullable<CoverageProps['cases']>
+const FIRMS = [firm]
 
 describe('LegalFirmWindow', () => {
   it('a dev edits the firm in the Settings block itself, and a save reloads the desk', async () => {
@@ -68,6 +83,10 @@ describe('LegalFirmWindow', () => {
     expect(document.querySelector('[data-legal-firm-block="window"]')).toBeTruthy()
     expect(document.getElementById('settings-legal-firm')).toBeNull()
     expect(screen.getByRole('heading', { name: 'Who we release accounts to' })).toBeTruthy()
+    // v2.6195: the details fold to one line; Edit details opens the form in place.
+    expect((await screen.findByText('ZZ Test Firm · no handling person yet · no phone · 33% · $350 filing')).hasAttribute('data-legal-firm-details-line')).toBe(true)
+    expect(screen.queryByRole('button', { name: 'Save firm' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit details' }))
     const name = await screen.findByDisplayValue('ZZ Test Firm')
     expect(await screen.findByText('portal link on')).toBeTruthy()
     expect(screen.getByText('1 account with the firm')).toBeTruthy()
@@ -81,11 +100,99 @@ describe('LegalFirmWindow', () => {
     expect(db.writes).toContainEqual(expect.objectContaining({ table: 'legal_firms', op: 'update', payload: expect.objectContaining({ name: 'Example Law Firm, PLLC' }) }))
   })
 
+  it('opens on where the firm covers: the title, the chips, a row per county with its cases and dollars, the sum, the flag and Show on the desk map (v2.6195)', async () => {
+    const onShowOnMap = vi.fn()
+    renderWindow({ canEdit: true, firms: FIRMS, countiesByFirm: COVERED, cases: CASES, onShowOnMap })
+    await settle()
+    expect(document.querySelector('[data-legal-firm-title]')!.textContent).toContain('ZZ Test Firm')
+    expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('covers')
+    expect(document.querySelector('[data-legal-firm-coverage-counties]')!.textContent).toBe('2 counties')
+    // Two in Travis, one in Williamson, one with the firm in Bastrop; Gonzales is nobody's.
+    expect(document.querySelector('[data-legal-firm-coverage-cases]')!.textContent).toBe('4 cases · $20,496.81')
+    const rows = [...document.querySelectorAll('[data-legal-firm-coverage-row]')].map((r) => r.textContent)
+    expect(rows).toEqual(['Travis County2$17,020.47', 'Williamson County1$2,976.34'])
+    expect(document.querySelector('[data-legal-firm-coverage-sum]')!.textContent).toBe('2 counties · 1 case with the firm elsewhere4$20,496.81')
+    expect(document.querySelector('[data-legal-firm-coverage-flag]')!.textContent).toMatch(/1 case in a county no firm covers · Kettle Creek Farms \(Gonzales\)/)
+    expect(document.querySelector('[data-legal-firm-nudge]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Travis County' }))
+    expect(document.querySelector('[data-legal-firm-coverage-row="Travis"]')!.getAttribute('data-held')).toBe('1')
+    fireEvent.click(screen.getByRole('button', { name: 'Show on the desk map ›' }))
+    expect(onShowOnMap).toHaveBeenCalledWith('firm-1')
+    // The replace panel says what a replace would do to the counties.
+    expect(document.querySelector('[data-legal-firm-replace-leaves]')!.textContent).toBe('Replacing retires ZZ Test Firm everywhere. Its 2 counties, Travis County and Williamson County, would have no firm until you color them for the new firm under Firms….')
+    // v2.6221: Extend coverage… turns the map into the picker in place; Cancel with nothing changed leaves at once.
+    fireEvent.click(screen.getByRole('button', { name: 'Extend coverage…' }))
+    expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('extending')
+    expect((screen.getByRole('button', { name: 'Save counties' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await settle()
+    expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('covers')
+  })
+
+  it('while no county is colored for any firm, the nudge names the bridge, and its press opens the picker in place where an area colors a metro and Save writes it (v2.6195, v2.6221)', async () => {
+    db.writes.length = 0
+    const { onSaved } = renderWindow({ canEdit: true, firms: FIRMS, countiesByFirm: new Map([['firm-1', []]]), cases: CASES })
+    await settle()
+    const nudge = document.querySelector('[data-legal-firm-nudge]')!
+    expect(nudge.getAttribute('data-legal-firm-nudge')).toBe('nothing_colored')
+    expect(nudge.textContent).toContain('ZZ Test Firm takes every account today, by default.')
+    expect(nudge.textContent).toContain('The first county colored for any firm ends that')
+    expect(document.querySelector('[data-legal-firm-coverage-counties]')!.textContent).toBe('no counties colored')
+    expect(document.querySelector('[data-legal-firm-coverage-rows]')).toBeNull()
+    expect(document.querySelector('[data-legal-firm-replace-leaves]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Color ZZ Test Firm’s counties…' }))
+    expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('extending')
+    expect(document.querySelector('[data-legal-firm-nudge]')).toBeNull()
+    // Travis, Williamson and Gonzales hold a case with no firm; the cases already with the firm do not count.
+    expect(document.querySelector('[data-legal-firm-area="gaps"]')!.textContent).toBe('Counties with a case and no firm · 3')
+    fireEvent.click(screen.getByRole('button', { name: 'Austin area · 5' }))
+    expect(await screen.findByText('Austin area: 5 counties added for ZZ Test Firm once you save.')).toBeTruthy()
+    expect(document.querySelector('[data-legal-firm-coverage-counties]')!.textContent).toBe('5 counties')
+    expect(document.querySelector('[data-legal-firm-coverage-row="Bastrop"]')!.getAttribute('data-new')).toBe('1')
+    expect(document.querySelector('[data-legal-firm-area="gaps"]')!.textContent).toBe('Counties with a case and no firm · 1')
+    expect(document.querySelector('[data-legal-firm-extend-changes]')!.textContent).toBe('Adds Bastrop County, Caldwell County, Hays County, Travis County and Williamson County.')
+    // The first save ends the default: the words name the case it leaves with no firm.
+    expect(document.querySelector('[data-legal-firm-bridge-ends]')!.textContent).toBe('Saving ends the default. 1 case sits where no firm covers: Kettle Creek Farms in Gonzales County. Add its county too, or the desk cannot release it.')
+    fireEvent.click(screen.getByRole('button', { name: 'Save 5 counties' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    const insert = db.writes.find((w) => w.table === 'legal_firm_counties' && w.op === 'insert')!
+    expect((insert.payload as Array<{ county: string; firm_id: string }>).map((r) => `${r.firm_id}:${r.county}`).sort()).toEqual(['firm-1:Bastrop', 'firm-1:Caldwell', 'firm-1:Hays', 'firm-1:Travis', 'firm-1:Williamson'])
+    expect(await screen.findByText('5 counties saved. The Legal desk reads them now.')).toBeTruthy()
+  })
+
+  it('the office reads the coverage too, without the dev’s presses (v2.6195)', async () => {
+    renderWindow({ canEdit: false, firms: FIRMS, countiesByFirm: new Map(), cases: CASES })
+    await settle()
+    expect(document.querySelector('[data-legal-firm-nudge]')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Color ZZ Test Firm’s counties…' })).toBeNull()
+    expect(document.querySelector('[data-legal-firm-readonly]')).toBeTruthy()
+  })
+
+  it('the office sees no Extend coverage… on a firm that covers counties (v2.6221)', async () => {
+    renderWindow({ canEdit: false, firms: FIRMS, countiesByFirm: COVERED, cases: CASES, onShowOnMap: vi.fn() })
+    await settle()
+    expect(document.querySelector('[data-legal-firm-coverage-rows]')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Extend coverage…' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show on the desk map ›' })).toBeTruthy()
+  })
+
+  it('Click’s particulars fold behind Edit particulars in the window (v2.6195)', async () => {
+    renderWindow({ canEdit: true })
+    await settle()
+    expect(await screen.findByText('2 of 8 filled')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Save particulars' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Edit particulars' }))
+    expect(screen.getByRole('button', { name: 'Save particulars' })).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Hide particulars' })).toBeTruthy()
+  })
+
   it('everyone else reads the firm and is told who can change it', async () => {
     renderWindow({ canEdit: false })
     await settle()
     expect(document.querySelector('[data-legal-firm-readonly]')).toBeTruthy()
-    expect(screen.getByText('ZZ Test Firm')).toBeTruthy()
+    // The firm's name is the window's title now (v2.6195) and the read-only row under it.
+    expect(document.querySelector('[data-legal-firm-title]')!.textContent).toContain('ZZ Test Firm')
+    expect(screen.getAllByText('ZZ Test Firm').length).toBe(2)
     expect(screen.getByText('Dana Holt')).toBeTruthy()
     expect(screen.getByText('1 account with the firm')).toBeTruthy()
     expect(screen.getByText('Only a dev can change the firm. Ask a dev to update it.')).toBeTruthy()

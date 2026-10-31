@@ -31,7 +31,7 @@ export default function LegalPartiesStrip({ strip, stacked = false, onPress, doo
         }
         const inner = (
           <>
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.amber ? 'var(--text-amber-800)' : 'var(--text-muted)', marginBottom: 1 }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 6, fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.07em', textTransform: 'uppercase', color: c.amber ? 'var(--text-amber-800)' : 'var(--text-muted)', marginBottom: 1 }}>
               {c.label}
               {c.key === 'venue' && !c.amber ? <MapPin size={13} strokeWidth={2} aria-hidden="true" style={{ flex: 'none', color: 'var(--text-blue-700)' }} /> : null}
             </div>

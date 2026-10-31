@@ -54,6 +54,7 @@ import type {
 } from '../../types/laborJob'
 import { EmptyState } from '../EmptyState'
 import { subLaborPayRunEmptyWords } from '../../lib/subWorkOrders/subLaborPayRunEmptyWords'
+import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
 
 export type JobsSubLaborTabProps = {
   error: string | null
@@ -744,7 +745,7 @@ export default function JobsSubLaborTab({
                                     {balance > 0 ? <button type="button" style={btnPay} onClick={() => onOpenMakePayment(payTarget(r), String(balance))}>Payment…</button> : null}
                                     <button type="button" style={{ ...btnBlue, background: '#dc2626' }} onClick={() => onOpenBackcharge({ id: job.id, contractor: job.assigned_to_name, hcp: job.job_number ?? '—', totalCost, paid })}>Back-charge…</button>
                                     <button type="button" style={{ ...btnBlue, background: 'var(--bg-200)', color: 'var(--text-700)' }} onClick={() => onEditLaborJob(job)}>Edit</button>
-                                    <button type="button" style={{ ...btnBlue, background: '#0ea5e9' }} onClick={() => onPrintJobSubSheet(job)}>Print</button>
+                                    <button type="button" style={{ ...btnBlue, background: SKY_UNDER_WORDS }} onClick={() => onPrintJobSubSheet(job)}>Print</button>
                                     <button type="button" style={{ ...btnBlue, background: 'var(--bg-200)', color: 'var(--text-700)' }} onClick={() => setLienWaiverFor(lienWaiverTarget(r))}>Lien waiver…</button>
                                   </span>
                                 </div>
