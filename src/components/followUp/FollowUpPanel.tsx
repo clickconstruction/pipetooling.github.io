@@ -20,8 +20,10 @@ import { useFollowUpQueue } from '../../hooks/useFollowUpQueue'
 import { Card } from '../gc/gcUi'
 import { FollowUpSections, type FollowUpSectionActions, type LaneLook } from './FollowUpSections'
 import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
+import { useNavigate } from 'react-router-dom'
 import { useLeadDoors } from '../messages/useLeadDoors'
 import { SortAllDesk } from './SortAllDesk'
+import { bidHref } from './useNewLaneThreadSlots'
 import { AnswerAllDesk, type AnswerAllDeskProps, type AnswerThread } from './AnswerAllDesk'
 import type { OpenThreadMore } from '../gc/messages/useThreadWindow'
 import type { Teammate } from './WhoHasItPill'
@@ -89,6 +91,8 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
 export function FollowUpPanel<C = never, N extends { contactId: string } = never>(props: FollowUpPanelProps<C, N>) {
   const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, answerAll, leadIo, laneLook } = props
   const leadDoors = useLeadDoors(leadIo)
+  // Start a bid on the Sort all desk (v2.6222) leaves the desk for the Bid Board, open on the new bid.
+  const navigate = useNavigate()
   const todayYmd = props.todayYmd ?? todayYmdInAppTz()
   const nowIso = props.nowIso ?? new Date().toISOString()
   const userNames = useMemo(() => Object.fromEntries([...team, me].map((t) => [t.id, t.name])), [team, me])
@@ -215,6 +219,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
           reread={() => void q.reload()}
           onClose={() => setSorting(false)}
           onOpenThread={onOpenThread}
+          openBid={(bidId) => navigate(bidHref(bidId))}
           {...(props.nowIso ? { nowIso: props.nowIso } : {})}
         />
       )}

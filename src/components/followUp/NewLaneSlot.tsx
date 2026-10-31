@@ -5,14 +5,17 @@
  * window to read the thread again. *A new customer* (v2.5795) goes through `makeCustomer` with the contact's address and
  * number, the sender's name and the box's kind. *A notice, not a person* (punch list #223 PR 1, v2.6202) goes through
  * `markNotice`; once the thread is done by that press, the slot draws the undo strip in the card's place, *Marked a
- * notice · Not a notice after all*, through `unmarkNotice`.
+ * notice · Not a notice after all*, through `unmarkNotice`. *Bid it?* (PR 3, v2.6222): *Start a bid* names the sender
+ * as the customer first (or makes them, `makeCustomerRecord` then `name`), then `startBid`, then opens the Bid Board on
+ * the bid through `openBid`; *Not for us* and *Keep it* go through `answerInvitation`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
 import { pressProblem } from '../../lib/followUp/followUpIo'
-import { jobChoices, rosterChoices, whoGuesses, type WhoGuess, type WhoKnown } from '../../lib/followUp/newLane'
+import { bidCustomerChoices, jobChoices, rosterChoices, whoGuesses, type BidPick, type WhoGuess, type WhoKnown } from '../../lib/followUp/newLane'
 import type { NewLaneCardIo, NewLaneCardRows } from '../../lib/followUp/newLaneCardIo'
-import { hasTargets, laneJobs, laneRowFor, namedWords, rulePick, tiedWords } from '../../lib/followUp/newLaneRows'
+import { hasTargets, INVITATION_WORDS, laneJobs, laneRowFor, namedWords, rulePick, startedBidWords, tiedWords } from '../../lib/followUp/newLaneRows'
+import { samePerson } from '../../lib/followUp/customerLink'
 import { hasToast } from '../../lib/followUp/queue'
 import { NOTICE_LINES } from '../../lib/emailIn/leftOutSenders'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
@@ -35,6 +38,7 @@ export function NewLaneSlot({
   reread,
   me,
   nowIso,
+  openBid,
 }: {
   contact: Contact
   acts: AboveLinesActs
@@ -45,6 +49,8 @@ export function NewLaneSlot({
   me: { id: string; name: string }
   /** Now, for a smoke; the clock otherwise. */
   nowIso?: string
+  /** Where *Start a bid* lands once the bid is made (v2.6222): the Bid Board on it. Unset: the card says so and stays. */
+  openBid?: (bidId: string) => void
 }) {
   // One clock for the card's life: its words ("today at 8:41 AM") and the day the conversation is read on.
   const [now] = useState(() => nowIso ?? new Date().toISOString())
@@ -69,9 +75,9 @@ export function NewLaneSlot({
     [read, contact, now],
   )
 
-  // The records a guess may be, once a line, for *Who is this?*; the contact's channels give the address or the number
-  // behind a name (v2.5795).
-  const whoLine = row?.sort === 'who' ? row.messageId : null
+  // The records a guess may be, once a line, for *Who is this?* and for *Bid it?*'s customers (v2.6222); the contact's
+  // channels give the address or the number behind a name (v2.5795).
+  const whoLine = row?.sort === 'who' || row?.sort === 'bid' ? row.messageId : null
   const whoFrom = row?.who ?? ''
   const whoSaid = row?.body ?? ''
   const channelsKey = contact.channels.map((ch) => `${ch.kind}:${ch.value}`).join('|')
@@ -99,13 +105,19 @@ export function NewLaneSlot({
     return () => whoDrawn?.(false)
   }, [asksWho, whoDrawn])
 
+  // Bid it? (v2.6222): the contact's own customer, else the customers the sender may be, once they are read.
+  const ownId = contact.customerId ?? null
+  const ownName = contact.company.trim() || contact.name
+  const own = useMemo(() => (ownId ? { id: ownId, name: ownName } : null), [ownId, ownName])
+  const bidChoices = useMemo(() => (row?.sort !== 'bid' ? null : own ? bidCustomerChoices({ who: row.who, body: row.body, channels }, {}, own) : known ? bidCustomerChoices({ who: row.who, body: row.body, channels }, known, null) : null), [row, own, known, channels])
+
   if (!read) return null
 
-  const run = async (press: () => Promise<unknown>, words: string, after?: (out: unknown) => void) => {
+  const run = async <T,>(press: () => Promise<T>, words: string | ((out: T) => string), after?: (out: T) => void) => {
     setBusy(true)
     try {
       const out = await press()
-      say(words, 'success')
+      say(typeof words === 'string' ? words : words(out), 'success')
       reread()
       after?.(out)
       await load()
@@ -140,6 +152,32 @@ export function NewLaneSlot({
   const pick = rulePick({ kind: contact.kind, answeredLastBy: lastOut?.who_user_id ?? null, team: read.team, seats: read.seats })
   const jobs = jobChoices(row, laneJobs(row.jobIds, read.tiles, read.active))
   const nameOf = (userId: string) => read.team.find((t) => t.id === userId)?.name ?? 'Someone'
+  const email = channels.find((ch) => ch.kind === 'email')?.value ?? null
+  const phone = channels.find((ch) => ch.kind === 'phone')?.value ?? null
+
+  // Start a bid (v2.6222): the sender named as the customer first, when they are not yet, the customer made when the
+  // card's field says so; then the bid through `startBid`, and the Bid Board on it.
+  const startBid = (p: BidPick) =>
+    void run(
+      async () => {
+        const senderName = whoGuesses({ ...row, channels }, row.mailbox, known ?? {}).find((g) => g.name)?.name ?? null
+        let customerId: string
+        if ('makes' in p) {
+          customerId = await io.makeCustomerRecord(contact.id, { customerName: p.makes.customerName, personName: senderName, email, phone, customerType: 'commercial' }, { userId: me.id }, calendarYmdInAppTzFromIso(now))
+          const person = senderName && !samePerson(senderName, p.makes.customerName) ? senderName : null
+          await io.name(contact.id, { kind: 'customer', label: p.makes.customerName, words: '', record: { table: 'customers', id: customerId }, newPerson: person !== null, name: person })
+        } else {
+          customerId = p.choice.customerId
+          if (p.choice.guess && contact.kind === 'unknown') await io.name(contact.id, p.choice.guess)
+        }
+        const inv = row.invitation
+        return { ...(await io.startBid(row.messageId, { customerId, projectName: p.projectName, dueDate: inv?.due?.date ?? null, dueTime: inv?.due?.time ?? null, links: inv?.portal ? [inv.portal.url] : [] })), project: p.projectName }
+      },
+      (out) => startedBidWords({ bidNumber: out.bidNumber, project: out.project, customer: out.customer }),
+      (out) => {
+        if (out.bidId) openBid?.(out.bidId)
+      },
+    )
 
   return (
     <NewLaneCard
@@ -150,9 +188,14 @@ export function NewLaneSlot({
       roster={rosterChoices(known?.roster ?? [])}
       jobs={jobs}
       people={row.sort === 'has' ? hasTargets(row, read.team, pick) : []}
+      bidChoices={bidChoices}
+      ownCustomer={own !== null}
+      onStartBid={startBid}
+      onNotForUs={(reason) => void run(() => io.answerInvitation(row.messageId, 'not_for_us', reason), INVITATION_WORDS.notForUs)}
+      onKeep={() => void run(() => io.answerInvitation(row.messageId, 'kept', null), INVITATION_WORDS.kept)}
       busy={busy}
       onName={(g: WhoGuess) =>
-        void run(
+        void run<unknown>(
           () =>
             g.notice
               ? io.markNotice(contact.id, g.notice.scope)

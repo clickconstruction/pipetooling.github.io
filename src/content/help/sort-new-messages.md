@@ -2,7 +2,7 @@
 title: sort new messages before anyone answers them
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, notice, newsletter, not a person, unsubscribe, leave out
+keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, bid it, start a bid, not for us, addendum, solicitation, rfp, itb, due date, notice, newsletter, not a person, unsubscribe, leave out
 where: /messages
 order: 119
 ---
@@ -10,8 +10,9 @@ New messages that need sorting wait at the top of Follow up. Sort each one so th
 
 ## What waits in New
 
-**New** is the first list on [Messages](/messages) and on Follow up. A person waits there for one of three reasons.
+**New** is the first list on [Messages](/messages) and on Follow up. A person waits there for one of four reasons.
 
+- **Bid it?** means an email to bids@ is an invitation to bid, an addendum, a solicitation or a pre-bid notice.
 - **Who is this?** means a number or an address nobody has named wrote to us.
 - **Which job?** means someone on two or more active jobs wrote. Their line went to their starred job on its own.
 - **Who has it?** means someone wrote and nobody is on the conversation yet.
@@ -27,6 +28,22 @@ Press the person's row in **New**, or the blue question before their name. The a
 :::example The sort card for a number nobody has named
 {{chip:blue|Who is 512-555-0142?}} {{button:outline|A new lead on Prospects}} {{button:outline|One of our own team}} {{button:outline|Someone else}}
 :::
+
+## Bid it?
+
+A general contractor's bid platform or a public agency sends us an invitation to bid. The app reads it as one. The row's purple question is **Bid it?** and the estimator holds it. The card's heading names the job and who it is from. It reads *Bid it? Oak Hill Clinic, Boerne, from Ridgeway Builders*. The line under it says what the email read. It reads *Invitation to bid, due Thu Nov 12 at 2:00 PM, on BuildingConnected*.
+
+:::example The Bid it? card
+{{chip:purple|Bid it?}} Bid: Oak Hill Clinic, Boerne &nbsp; {{button:outline|Start a bid on Ridgeway Builders}} {{button:outline|Not for us}} {{button:outline|Keep it with Dale}}
+:::
+
+- The **Bid** box holds the bid's name. It starts with what the email said. Fix it if the subject read wrong.
+- Press **Start a bid on** a customer under **A customer we know**. The app makes the bid on them with the name, the platform's link and the due day. The thread lands on the bid. The Bid Board opens on it.
+- Is the contractor new? Type the company in the **Customer** box. Press **Make the customer and start the bid**. The company becomes the customer. The sender stays the person on the thread.
+- Type why under **Not for us, because**, then press **Not for us**. The thread keeps the reason in a grey line. The row closes. Their next invitation shows again.
+- Press **Keep it with** the sender to leave the bid for later. The row then asks who they are, or who has it.
+
+The bid is a Plumbing bid with the rule's estimator on it. Open it to add the address, the plans and the rest. An addendum to a bid we are pricing reads the same way. Press **Keep it** and tie the line to the bid with **Which job?** when it comes up.
 
 ## Who is this?
 
@@ -71,7 +88,7 @@ The thread goes to Done with a grey line, *Marked a notice*. Nothing in Gmail ch
 
 Pressed it by mistake? Open the thread. The strip at the top reads *Marked a notice*. Press **Not a notice after all**. The address comes off the list and the row is back in New.
 
-An invitation to bid from a general contractor is not a notice. The contractor is a customer. Name them with **A customer we know** or **A new customer**.
+An invitation to bid from a general contractor is not a notice. The contractor is a customer. Its row asks [Bid it?](#bid-it) instead.
 
 ## Which job?
 

@@ -3,7 +3,10 @@
  * Lifted from the customer Messages prototype (branch spike/gc-mode, `to-dos/gc-mode/messages/customer-messages-prototype.html`
  * v0.8, screen 7, mockup A: `SORT`, `needWord`, `sortCardHtml`) and `RESIDENTIAL_BUILD_PLAN.md` → R7.
  *
- * Three sorts, one row per person, the oldest waiting first:
+ * Four sorts, one row per person, the oldest waiting first:
+ * - **Bid it?** (punch list #223 PR 3, v2.6222) An email that is an invitation to bid, an addendum, an agency's
+ *   solicitation or a pre-bid notice (`emailIn/invitation.ts`, the facts kept on the line), nobody has answered and
+ *   nobody has tied to a bid. It wins over every other sort: the sender need not be named for the bid to start.
  * - **Who is this?** A number or an address nobody has named. The guesses come in the box's order, both boxes opening
  *   with the customers the sender may be and why (`customerLink.ts`, v2.5795): the team line then offers a lead on
  *   Prospects, then a new customer as one live press; bids@ the new customer, then a trade partner whose domain matches
@@ -27,15 +30,16 @@ import { HIRE_ROSTER_KINDS } from '../prospects/hireRosterKinds'
 import { snippetOf, whenWords, type MessageChannel, type ThreadMessage } from '../messages/thread'
 import { textedBackLine } from '../quo/missedReply'
 import { OPEN_MAIL_DOMAINS } from '../emailIn/leftOutSenders'
+import { invitationFacts, openInvitation, type Invitation } from '../emailIn/invitation'
 
 /** Which sort a row needs. */
-export type NewSort = 'who' | 'job' | 'has'
+export type NewSort = 'bid' | 'who' | 'job' | 'has'
 
 /** The box a line came in on: the team line and inbox, or bids@ and its number (R6's `messages.mailbox`). */
 export type Mailbox = 'team' | 'bids'
 
-/** Each sort's head: the row's press and the sort card's region. The *Who is this?* card's own title is `whoHead`. */
-export const SORT_HEADS: Readonly<Record<NewSort, string>> = { who: 'Who is this?', job: 'Which job?', has: 'Who has it?' }
+/** Each sort's head: the row's press and the sort card's region. The *Who is this?* card's own title is `whoHead`; *Bid it?*'s is `bidHead`. */
+export const SORT_HEADS: Readonly<Record<NewSort, string>> = { bid: 'Bid it?', who: 'Who is this?', job: 'Which job?', has: 'Who has it?' }
 
 /** The lane when nothing is waiting to be sorted. */
 export const NEW_LANE_EMPTY = 'Nothing to sort. Every line that came in has a person, a job and someone on it.'
@@ -58,6 +62,8 @@ export type NewLaneMessage = Pick<ThreadMessage, 'id' | 'contactId' | 'jobId' | 
     tiedByHand?: boolean
     /** The app sent it on its own (`messages.auto`, v2.6012). Missing reads false. */
     auto?: boolean
+    /** What the reader read from an invitation to bid (`messages.invitation`, v2.6222), with a person's answer once there is one. Null or missing: not one. */
+    invitation?: Invitation | null
   }
 
 /** One row of the New lane. */
@@ -99,6 +105,8 @@ export interface NewLaneRow {
   defaultJobId: string | null
   /** The app texted back after their line (v2.6012): the quiet line under the row, "The app texted back at 4:12 PM. The row still waits on you." Null when it did not. */
   autoLine: string | null
+  /** *Bid it?*'s facts (v2.6222): what the reader read from the invitation. Null on every other sort. */
+  invitation: Invitation | null
 }
 
 const PHONE_CHANNELS: ReadonlySet<MessageChannel> = new Set(['call', 'voicemail', 'missed', 'text'])
@@ -146,6 +154,69 @@ function jobWhy(c: NewLaneContact, activeJobs: number): string {
 
 const HAS_WHY = 'Nobody is on this conversation yet.'
 
+/** Why a line is asked *Bid it?*: the facts the reader read, and the rule that puts the bid on the GC. */
+export function bidWhy(inv: Pick<Invitation, 'kind' | 'due' | 'portal'>): string {
+  return `${invitationFacts(inv)}. A general contractor is a customer, so the bid goes on them.`
+}
+
+/**
+ * The *Bid it?* card's head: the job, then who it is from: *Bid it? Oak Hill Clinic, Boerne, from Ridgeway Builders*.
+ * `from` is the company under the sender's name, else the company the address's domain spells, else the sender's name.
+ */
+export function bidHead(row: Pick<NewLaneRow, 'who' | 'company' | 'body' | 'invitation'> & { channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }): string {
+  const sender = senderFacts(row)
+  const from = row.company.trim() || companyFromDomain(sender.domain) || sender.name || ''
+  const project = row.invitation?.project?.trim() ?? ''
+  if (project && from) return `${SORT_HEADS.bid} ${project}, from ${from}`
+  if (project) return `${SORT_HEADS.bid} ${project}`
+  if (from) return `${SORT_HEADS.bid} From ${from}`
+  return SORT_HEADS.bid
+}
+
+/** The words under every *Start a bid* press. */
+export const START_BID_WORDS = 'Makes the bid with the name, the link and the due day, ties this thread to it and opens it.'
+
+/** One customer the bid may go on, on the *Bid it?* card: *Start a bid on Ridgeway Builders*. */
+export interface BidCustomerChoice {
+  customerId: string
+  /** The customer's name. */
+  customer: string
+  label: string
+  words: string
+  /** The *Who is this?* guess that names the sender as them, to press first while the sender is unnamed. Null for the contact's own customer. */
+  guess: WhoGuess | null
+}
+
+/** What a *Start a bid* press carries: the bid's name from the card's field, and the customer, known or made by the press. */
+export type BidPick = { projectName: string } & ({ choice: BidCustomerChoice } | { makes: { customerName: string } })
+
+/**
+ * The customers a *Bid it?* row's bid may go on: the contact's own customer when they are one, else **A customer we
+ * know** (`customerMatches`, one choice per customer, a person's hit standing for their customer). The card offers
+ * **A new customer** beside these while the sender is unnamed.
+ */
+export function bidCustomerChoices(
+  row: Pick<NewLaneRow, 'who' | 'body'> & { channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> },
+  known: WhoKnown,
+  own: { id: string; name: string } | null,
+): BidCustomerChoice[] {
+  if (own) return [{ customerId: own.id, customer: own.name, label: `Start a bid on ${own.name}`, words: START_BID_WORDS, guess: null }]
+  const sender = senderFacts(row)
+  const seen = new Set<string>()
+  return customerMatches(sender, known).flatMap((g) => {
+    const record = g.record
+    const customerId = record?.table === 'customers' ? record.id : record?.table === 'customer_contact_persons' ? ((known.people ?? []).find((p) => p.id === record.id)?.customerId ?? null) : null
+    if (!customerId || seen.has(customerId)) return []
+    seen.add(customerId)
+    const customer =
+      (known.customers ?? []).find((c) => c.id === customerId)?.name ||
+      (known.people ?? []).find((p) => p.customerId === customerId)?.customer ||
+      (known.jobs ?? []).find((j) => j.customerId === customerId)?.customer ||
+      g.label
+    return [{ customerId, customer, label: `Start a bid on ${customer}`, words: `${g.words} ${START_BID_WORDS}`, guess: g }]
+  })
+}
+
 /** Their newest line in, whether any line of ours went to them after it, and the newest text the app sent on its own. */
 function newestLines(messages: readonly NewLaneMessage[]): Map<string, { lastIn: NewLaneMessage | null; lastOutAt: number; lastAutoAt: string | null }> {
   const by = new Map<string, { lastIn: NewLaneMessage | null; lastOutAt: number; lastAutoAt: string | null }>()
@@ -182,7 +253,11 @@ export function newLane(
     const mailbox = line.mailbox ?? null
     let sort: NewSort | null = null
     let why = ''
-    if (c.kind === 'unknown') {
+    const invite = openInvitation(line)
+    if (invite) {
+      sort = 'bid'
+      why = bidWhy(invite)
+    } else if (c.kind === 'unknown') {
       sort = 'who'
       why = whoWhy(line.channel, mailbox)
     } else if (active.length >= 2 && line.jobId === c.defaultJobId && !line.tiedByHand) {
@@ -213,6 +288,7 @@ export function newLane(
       jobIds: active,
       defaultJobId: c.defaultJobId,
       autoLine: seen.lastAutoAt && Date.parse(seen.lastAutoAt) > Date.parse(line.at) ? textedBackLine(seen.lastAutoAt) : null,
+      invitation: invite,
     })
   }
   return rows.sort((a, b) => Date.parse(a.at) - Date.parse(b.at) || a.who.localeCompare(b.who))

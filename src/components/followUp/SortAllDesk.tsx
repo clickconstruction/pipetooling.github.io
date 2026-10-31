@@ -29,6 +29,8 @@ export interface SortAllDeskProps {
   onOpenThread: (contactId: string, atMessageId?: string) => void
   /** Now, for a smoke; the clock otherwise. */
   nowIso?: string
+  /** Where *Start a bid* lands (v2.6222): the panel's door to the Bid Board. Unset, the card says so and the desk stays. */
+  openBid?: (bidId: string) => void
 }
 
 /** Parts side by side with a quiet dot between, as the mockup lays out "New · 3 to sort · 2 of 4". */
@@ -45,7 +47,7 @@ function Parts({ parts }: { parts: readonly string[] }) {
   )
 }
 
-export function SortAllDesk({ lane, contacts, io, me, say, reread, onClose, onOpenThread, nowIso }: SortAllDeskProps) {
+export function SortAllDesk({ lane, contacts, io, me, say, reread, onClose, onOpenThread, nowIso, openBid }: SortAllDeskProps) {
   // How many waited when the desk opened, so the count reads "2 of 4" as the desk goes.
   const [total] = useState(lane.length)
   const [skipped, setSkipped] = useState<ReadonlySet<string>>(() => new Set())
@@ -97,6 +99,7 @@ export function SortAllDesk({ lane, contacts, io, me, say, reread, onClose, onOp
                   say={say}
                   reread={reread}
                   me={me}
+                  {...(openBid ? { openBid } : {})}
                   {...(nowIso ? { nowIso } : {})}
                 />
               ) : (

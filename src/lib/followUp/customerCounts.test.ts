@@ -39,6 +39,7 @@ describe('customerMessageCounts', () => {
   it('counts the customers in New as to sort, from the lane the Customers pill shows, and no sender nobody named', () => {
     const lane = (contactId: string, kind: NewLaneRow['kind'], sort: NewLaneRow['sort']): NewLaneRow => ({
       contactId,
+      invitation: null,
       sort,
       head: sort,
       who: contactId,

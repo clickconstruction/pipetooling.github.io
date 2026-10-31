@@ -1,0 +1,11 @@
+# 20261031050000_messages_invitation.sql (2026-10-31, v2.6222)
+
+Punch list #223 PR 3, **Bid it?** (`to-dos/messages-notices/README.md`, piece 3; `docs/recent-features/v2.6222.md`).
+
+- **`messages.invitation` jsonb** — what the reader read from an invitation to bid (`src/lib/emailIn/invitation.ts`: `kind`, `project`, `due`, `portal`, `cue`), null on every other line; the sort card's answer lands under `answer` (`what` bid · not_for_us · kept, `by`, `at`, `reason`, `bid_id`). Additive, nullable, no index: the lane reads the open people's newest lines, never the column alone.
+- **`email_write_line`** replaced to carry `invitation` from `p_row` into the insert. `gmail-sync` deployed ahead of the push would send a column the old body ignores, so the order below holds.
+- **`start_bid_from_message(p_message_id uuid, p_customer_id uuid, p_project_name text, p_due_date date, p_due_time time, p_links jsonb)`** — `follow_up_press('start a bid')`; the line must be an email in on no bid; inserts the bid as the New Bid form does (Plumbing, the trade seat's user as estimator else the presser, the sender as GC contact, the links in `itb_links`, the subject in the notes; `set_bid_number_if_empty` numbers it), the bid's own `bid_gcs` row with the due and the links (`recompute_bid_due` sets `bids.bid_due_date` / `_time`), ties the line (`bid_id`, `tied_by`, `contact_jobs`), writes the answer and the event line *Started bid b512 · …*. Answers `{bid_id, bid_number, customer}`. `SECURITY DEFINER`, authenticated.
+- **`answer_invitation(p_message_id uuid, p_answer text, p_reason text)`** — `follow_up_press`; `not_for_us` needs a reason, writes the answer, the event line *Not for us: …* and sets the thread `done`; `kept` writes the answer alone. `SECURITY DEFINER`, authenticated.
+- No table is created, so no fence calls.
+
+Apply order: PR 1's `20261031030000` pushes first (this branch stacks on it). The client calls both functions and selects the column, so **push right after the merge**, before the Pages deploy finishes (`check:calls-ahead` labels the PR and the deploy's `--prod` check holds the build until the push). Then `supabase functions deploy gmail-sync` (it writes the column through the replaced function). Then regenerate types and the dev-mcp catalog.
