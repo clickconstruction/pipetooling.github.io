@@ -17,7 +17,7 @@ summary: >
   the robot, priced by her book first and by the robot where her book has none), how a row leaves (set aside with
   her reason, never deleted), the stage strip (Plans filed → Read → Fixtures ready → Checked → Sealed → Sent →
   Scored), and which set.
-next: The first bid a robot seals with its fixtures handed over, then the owner's look and the recorded guide for the estimator. Press Set up on this Mac on the rounds Mac to refresh its round text. Then delete this folder.
+next: The first bid a robot seals with its fixtures handed over, then the owner's look. Press Set up on this Mac on the rounds Mac to refresh its round text. The guide's recordings are #227 and the adopt fold is #226. Then delete this folder.
 size: M as a train of five, plus one later
 blocker: Nothing in the code. The window shows on the first bid a robot seals with the hand-over step.
 opinion: build — the Counts tab door with the status sheet as the second door, the run marked assisted with its dollar score kept and the fixtures scored against her list, fixtures open once the robot seals, her book first and the robot's price where her book has none, set aside and never delete
