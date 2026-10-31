@@ -75,3 +75,4 @@ supply-house-move-window
 walk-kit
 email-box-count
 lien-release-sign
+legal-firm-coverage

@@ -6,7 +6,7 @@
  *
  * The metros are the Census metropolitan areas, spelled as `public/geo/tx-counties.json` spells them. Pure.
  */
-import { countyWords, type CountyAssignments, type CountyChange } from './firmCounties'
+import { countyWords, firmsOfCover, type CountyChange, type CountyCover, type Coverage } from './firmCounties'
 
 export type AreaPreset = { key: string; label: string; counties: readonly string[] }
 
@@ -16,27 +16,27 @@ export const AREA_PRESETS: readonly AreaPreset[] = [
 ]
 
 export type AreaApplied = {
-  next: Map<string, string>
+  next: Map<string, CountyCover>
   /** Free counties colored for the firm by this press. */
   colored: string[]
-  /** Counties the firm already covered. */
+  /** Counties the firm already covered, first call or not. */
   kept: string[]
-  /** Counties another firm covers, left as they are. */
+  /** Counties only other firms cover, left as they are, with their first call. */
   held: Array<{ county: string; byFirmId: string }>
 }
 
 /** One press of an area: every free county colors for the firm; the firm's own stay; another firm's are left and named. */
-export function applyArea(draft: CountyAssignments, counties: ReadonlyArray<string>, firmId: string): AreaApplied {
+export function applyArea(draft: Coverage, counties: ReadonlyArray<string>, firmId: string): AreaApplied {
   const next = new Map(draft)
   const colored: string[] = []
   const kept: string[] = []
   const held: AreaApplied['held'] = []
   for (const county of counties) {
-    const holder = draft.get(county) ?? null
-    if (holder === firmId) kept.push(county)
-    else if (holder) held.push({ county, byFirmId: holder })
+    const cover = draft.get(county) ?? null
+    if (firmsOfCover(cover).includes(firmId)) kept.push(county)
+    else if (cover) held.push({ county, byFirmId: cover.first })
     else {
-      next.set(county, firmId)
+      next.set(county, { first: firmId, also: [] })
       colored.push(county)
     }
   }
@@ -72,15 +72,29 @@ export function gapChipWords(gapCounties: ReadonlyArray<string>): string | null 
 
 /**
  * What a save will change, from the firm's side, in sentences: `Adds Bastrop County and Hays County.`,
- * `Takes off Bell County.`, `Moves Comal County from Alamo Collections Law.` Empty when nothing changed.
+ * `Takes off Bell County.`, `Moves Comal County from Alamo Collections Law.`, and since v2.6227 `Shares Comal
+ * County with Alamo Collections Law.`, `Takes first call in Comal County from Alamo Collections Law.` and
+ * `Gives first call in Comal County to Alamo Collections Law.` Empty when nothing changed for the firm.
  */
 export function extendChangeWords(changes: ReadonlyArray<CountyChange>, firmId: string, holderName: (firmId: string) => string): string[] {
-  const adds = changes.filter((c) => c.to === firmId && c.from === null).map((c) => countyWords(c.county))
-  const offs = changes.filter((c) => c.from === firmId && c.to !== firmId).map((c) => countyWords(c.county))
-  const moves = changes.filter((c) => c.to === firmId && c.from !== null && c.from !== firmId)
+  const adds: string[] = []
+  const offs: string[] = []
+  const singles: string[] = []
+  for (const c of changes) {
+    const name = countyWords(c.county)
+    const wasIn = firmsOfCover(c.from).includes(firmId)
+    const isIn = firmsOfCover(c.to).includes(firmId)
+    if (!wasIn && isIn) {
+      if (!c.from) adds.push(name)
+      else if (c.to!.first === firmId && c.to!.also.length === 0) singles.push(`Moves ${name} from ${holderName(c.from.first)}.`)
+      else if (c.to!.first === firmId) singles.push(`Shares ${name} and takes first call from ${holderName(c.from.first)}.`)
+      else singles.push(`Shares ${name} with ${holderName(c.to!.first)}.`)
+    } else if (wasIn && !isIn) offs.push(name)
+    else if (wasIn && isIn && c.from!.first !== firmId && c.to!.first === firmId) singles.push(`Takes first call in ${name} from ${holderName(c.from!.first)}.`)
+    else if (wasIn && isIn && c.from!.first === firmId && c.to!.first !== firmId) singles.push(`Gives first call in ${name} to ${holderName(c.to!.first)}.`)
+  }
   const out: string[] = []
   if (adds.length) out.push(`Adds ${andList(adds)}.`)
   if (offs.length) out.push(`Takes off ${andList(offs)}.`)
-  for (const m of moves) out.push(`Moves ${countyWords(m.county)} from ${holderName(m.from!)}.`)
-  return out
+  return [...out, ...singles]
 }

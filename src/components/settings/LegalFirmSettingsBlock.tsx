@@ -2,7 +2,6 @@ import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
-import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import { useAuth } from '../../hooks/useAuth'
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../hooks/useReloadDraft'
@@ -10,17 +9,21 @@ import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
 import { legalFirmDetailsLine, particularsFilled } from '../../lib/legal/legalFirmFacts'
 import {
   changedWords,
-  countiesOf,
+  alsoCountiesOf,
+  alsoCovers,
+  answerHeld,
+  countiesByFirmOfCoverage,
   countyChanges,
   firmHues,
   firmLegend,
-  moveCounty,
-  moveQuestion,
-  movedWords,
+  firstCalls,
+  heldDoneWords,
   pressCounty,
   pressWords,
-  savedAssignments,
+  savedCoverage,
   savedWords,
+  type CountyCover,
+  type HeldAnswer,
   type LegalFirmCountyRow,
 } from '../../lib/legal/firmCounties'
 import type { LegalFirmRow } from '../../lib/legal/legalMatters'
@@ -30,6 +33,7 @@ import type { LegalMapCase } from '../../lib/legal/firmMap'
 import LegalFirmCard from './LegalFirmCard'
 import LegalFirmCountyMap from './LegalFirmCountyMap'
 import LegalCountyContentsCard from './LegalCountyContentsCard'
+import LegalCountyHeldSheet from './LegalCountyHeldSheet'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -57,9 +61,8 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   firmFacts?: ReactNode
   firmId?: string | null
 } = {}) {
-  const { role, user } = useAuth()
+  const { role } = useAuth()
   const { showToast } = useToastContext()
-  const confirm = useConfirmDialog()
   const [firms, setFirms] = useState<LegalFirmRow[]>([])
   const [countyRows, setCountyRows] = useState<LegalFirmCountyRow[]>([])
   const [countiesAvailable, setCountiesAvailable] = useState(true)
@@ -69,7 +72,9 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   const [pickedFirmId, setPickedFirmId] = useState<string | null>(null)
   const [cardCounty, setCardCounty] = useState<string | null>(null)
   const [heldCase, setHeldCase] = useState<LegalMapCase | null>(null)
-  const [draft, setDraft] = useState<Map<string, string>>(new Map())
+  const [draft, setDraft] = useState<Map<string, CountyCover>>(new Map())
+  /** A county only other firms cover, pressed: the three-answer sheet is open on it (v2.6227). */
+  const [heldCounty, setHeldCounty] = useState<{ county: string; holderId: string; firmId: string } | null>(null)
   const [savingCounties, setSavingCounties] = useState(false)
   const [particulars, setParticulars] = useState<Particulars>(EMPTY_PARTICULARS)
   const [pDirty, setPDirty] = useState(false)
@@ -83,13 +88,16 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   }, [pDirty, particulars, pDraft])
 
   const activeFirms = useMemo(() => firms.filter((f) => f.active), [firms])
-  const saved = useMemo(() => savedAssignments(countyRows, new Set(activeFirms.map((f) => f.id))), [countyRows, activeFirms])
+  const saved = useMemo(() => savedCoverage(countyRows, new Set(activeFirms.map((f) => f.id))), [countyRows, activeFirms])
+  const draftFirst = useMemo(() => firstCalls(draft), [draft])
+  const draftAlso = useMemo(() => alsoCovers(draft), [draft])
+  const draftByFirm = useMemo(() => countiesByFirmOfCoverage(draft), [draft])
   const changes = useMemo(() => countyChanges(saved, draft), [saved, draft])
   // The map's draft is not kept across a reload, so the gate holds while counties are unsaved (v2.3742).
   useHoldsUnsavedWork(changes.length > 0 || savingCounties || pSaving, 'Law firm counties')
   const hues = useMemo(() => firmHues(activeFirms), [activeFirms])
   const firmNames = useMemo(() => new Map(firms.map((f) => [f.id, f.name] as const)), [firms])
-  const legend = useMemo(() => firmLegend(activeFirms, draft), [activeFirms, draft])
+  const legend = useMemo(() => firmLegend(activeFirms, draftFirst), [activeFirms, draftFirst])
   const { cases } = useLegalFirmMapCases(role === 'dev' && !inWindow && loaded && available, firmNames)
 
   const load = useCallback(async () => {
@@ -106,7 +114,7 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
     setCountiesAvailable(!c.error)
     const counties = c.error ? [] : ((c.data ?? []) as LegalFirmCountyRow[])
     setCountyRows(counties)
-    setDraft(savedAssignments(counties, new Set(rows.filter((r) => r.active).map((r) => r.id))))
+    setDraft(savedCoverage(counties, new Set(rows.filter((r) => r.active).map((r) => r.id))))
     setPickedFirmId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : rows[0]?.id ?? null))
     setLoaded(true)
   }, [inWindow, firmId])
@@ -169,11 +177,14 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
       showToast(pressWords(press, county, firmName), 'success')
       return
     }
-    const holderName = firmNames.get(press.byFirmId) ?? 'another firm'
-    const yes = await confirm({ title: `${county} County`, message: moveQuestion(county, holderName, firmName), confirmLabel: `Move it to ${firmName}`, cancelLabel: 'Leave it', cancelIsSafe: true })
-    if (!yes) return
-    setDraft(moveCounty(draft, county, pickedFirmId))
-    showToast(movedWords(county, firmName), 'success')
+    // A county only other firms cover: share it, take first call, or move it (v2.6227).
+    setHeldCounty({ county, holderId: press.byFirmId, firmId: pickedFirmId })
+  }
+  const answerHeldCounty = (a: HeldAnswer) => {
+    if (!heldCounty) return
+    setDraft(answerHeld(draft, heldCounty.county, heldCounty.firmId, a))
+    showToast(heldDoneWords(a, heldCounty.county, firmNames.get(heldCounty.firmId) ?? 'the firm', firmNames.get(heldCounty.holderId) ?? 'another firm'), 'success')
+    setHeldCounty(null)
   }
 
   const saveCounties = async () => {
@@ -181,7 +192,7 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
     setSavingCounties(true)
     try {
       // One write for every door (punch list #222, PR 2): the firm window's Extend coverage saves through it too.
-      const r = await saveCountyChanges(db, changes, user?.id ?? null)
+      const r = await saveCountyChanges(db, changes)
       if (!r.ok) {
         showToast(r.message, 'error')
         await load()
@@ -256,7 +267,7 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
           <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', marginTop: '0.75rem', alignItems: 'flex-start' }}>
             <div data-legal-firm-cards style={{ flex: '1 1 260px', maxWidth: 360, display: 'grid', gap: 10 }}>
               {activeFirms.map((firm) => (
-                <LegalFirmCard key={firm.id} firm={firm} hue={hues.get(firm.id)} counties={countiesOf(draft, firm.id)} picked={pickedFirmId === firm.id} onPick={() => setPickedFirmId(firm.id)} onSaved={firmSaved} />
+                <LegalFirmCard key={firm.id} firm={firm} hue={hues.get(firm.id)} counties={draftByFirm.get(firm.id) ?? []} alsoIn={alsoCountiesOf(draft, firm.id)} picked={pickedFirmId === firm.id} onPick={() => setPickedFirmId(firm.id)} onSaved={firmSaved} />
               ))}
               {adding ? (
                 <LegalFirmCard key="new" firm={null} startOpen onSaved={firmSaved} onDiscard={() => setAdding(false)} />
@@ -275,10 +286,10 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
               </div>
               <span data-legal-counties-pending style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{countiesAvailable ? changedWords(changes.length) : 'The counties table isn’t on this database yet — push the v2.5756 migration, then save.'}</span>
               <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', margin: 0 }}>Changing a county affects new releases only. A matter stays with the firm it went to.</p>
-              <LegalCountyContentsCard county={cardCounty} cases={cases} assignments={draft} firmNames={firmNames} heldId={heldCase?.id ?? null} onHold={holdFromCard} />
+              <LegalCountyContentsCard county={cardCounty} cases={cases} assignments={draftFirst} also={draftAlso} firmNames={firmNames} heldId={heldCase?.id ?? null} onHold={holdFromCard} />
             </div>
             <div style={{ flex: '2 1 340px', minWidth: 0 }}>
-              <LegalFirmCountyMap assignments={draft} hues={hues} firmNames={firmNames} legend={legend} pickedFirmId={pickedFirmId} cases={cases} heldCaseId={heldCase?.id ?? null} onPress={(county) => void pressCountyOnMap(county)} onHoverCounty={hoverCounty} onPressCase={pressCase} />
+              <LegalFirmCountyMap assignments={draftFirst} also={draftAlso} hues={hues} firmNames={firmNames} legend={legend} pickedFirmId={pickedFirmId} cases={cases} heldCaseId={heldCase?.id ?? null} onPress={(county) => void pressCountyOnMap(county)} onHoverCounty={hoverCounty} onPressCase={pressCase} />
             </div>
           </div>
         </>
@@ -310,6 +321,9 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
             </button>
           </div>
         </div>
+      ) : null}
+      {heldCounty ? (
+        <LegalCountyHeldSheet county={heldCounty.county} holderName={firmNames.get(heldCounty.holderId) ?? 'another firm'} firmName={firmNames.get(heldCounty.firmId) ?? 'the firm'} onAnswer={answerHeldCounty} onCancel={() => setHeldCounty(null)} />
       ) : null}
     </div>
   )

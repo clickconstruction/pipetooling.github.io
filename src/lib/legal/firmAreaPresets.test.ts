@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { AREA_PRESETS, andList, applyArea, areaChipWords, areaWords, extendChangeWords, gapChipWords } from './firmAreaPresets'
-import { countyChanges } from './firmCounties'
+import { countyChanges, type CountyCover } from './firmCounties'
+
+const cov = (entries: Array<[string, string, string[]?]>): Map<string, CountyCover> => new Map(entries.map(([county, first, also]) => [county, { first, also: also ?? [] }]))
 
 const names: Record<string, string> = { snell: 'Snell', alamo: 'Alamo Collections Law' }
 const nameOf = (id: string) => names[id] ?? 'another firm'
@@ -14,14 +16,17 @@ describe('firmAreaPresets', () => {
   })
 
   it('an area colors the free counties, keeps the firm’s own and leaves another firm’s alone', () => {
-    const draft = new Map([['Travis', 'snell'], ['Hays', 'alamo']])
+    // Snell covers Travis, and covers Caldwell without being first call; Alamo alone covers Hays.
+    const draft = cov([['Travis', 'snell'], ['Hays', 'alamo'], ['Caldwell', 'alamo', ['snell']]])
     const a = applyArea(draft, AREA_PRESETS[0]!.counties, 'snell')
-    expect(a.colored).toEqual(['Bastrop', 'Caldwell', 'Williamson'])
-    expect(a.kept).toEqual(['Travis'])
+    expect(a.colored).toEqual(['Bastrop', 'Williamson'])
+    expect(a.kept).toEqual(['Caldwell', 'Travis'])
     expect(a.held).toEqual([{ county: 'Hays', byFirmId: 'alamo' }])
-    expect([...a.next.entries()].sort()).toEqual([['Bastrop', 'snell'], ['Caldwell', 'snell'], ['Hays', 'alamo'], ['Travis', 'snell'], ['Williamson', 'snell']])
+    expect([...a.next.keys()].sort()).toEqual(['Bastrop', 'Caldwell', 'Hays', 'Travis', 'Williamson'])
+    expect(a.next.get('Bastrop')).toEqual({ first: 'snell', also: [] })
+    expect(a.next.get('Caldwell')).toEqual({ first: 'alamo', also: ['snell'] })
     // The draft it was given is untouched.
-    expect(draft.size).toBe(2)
+    expect(draft.size).toBe(3)
   })
 
   it('the toast says what was added, what was already the firm’s and what another firm holds', () => {
@@ -45,13 +50,24 @@ describe('firmAreaPresets', () => {
   })
 
   it('what a save will change, from the firm’s side', () => {
-    const saved = new Map([['Bell', 'snell'], ['Comal', 'alamo'], ['Travis', 'snell']])
-    const draft = new Map([['Bastrop', 'snell'], ['Comal', 'snell'], ['Hays', 'snell'], ['Travis', 'snell']])
+    const saved = cov([['Bell', 'snell'], ['Comal', 'alamo'], ['Travis', 'snell']])
+    const draft = cov([['Bastrop', 'snell'], ['Comal', 'snell'], ['Hays', 'snell'], ['Travis', 'snell']])
     expect(extendChangeWords(countyChanges(saved, draft), 'snell', nameOf)).toEqual([
       'Adds Bastrop County and Hays County.',
       'Takes off Bell County.',
       'Moves Comal County from Alamo Collections Law.',
     ])
     expect(extendChangeWords([], 'snell', nameOf)).toEqual([])
+  })
+
+  it('sharing and first call, in sentences (v2.6227)', () => {
+    const saved = cov([['Comal', 'alamo'], ['Bexar', 'alamo'], ['Kendall', 'alamo', ['snell']], ['Medina', 'snell', ['alamo']]])
+    const draft = cov([['Comal', 'alamo', ['snell']], ['Bexar', 'snell', ['alamo']], ['Kendall', 'snell', ['alamo']], ['Medina', 'alamo', ['snell']]])
+    expect(extendChangeWords(countyChanges(saved, draft), 'snell', nameOf)).toEqual([
+      'Shares Bexar County and takes first call from Alamo Collections Law.',
+      'Shares Comal County with Alamo Collections Law.',
+      'Takes first call in Kendall County from Alamo Collections Law.',
+      'Gives first call in Medina County to Alamo Collections Law.',
+    ])
   })
 })

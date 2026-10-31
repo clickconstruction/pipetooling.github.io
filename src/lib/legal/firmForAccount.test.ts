@@ -108,3 +108,28 @@ describe('firmForAccount', () => {
     expect(r.kind === 'covered' && r.county.county).toBe('Comal')
   })
 })
+
+describe('a county two firms cover (v2.6227, punch list #222)', () => {
+  const ALSO = new Map([['Comal', ['austin']]])
+  it('the first call takes it, the chip says who also covers, and the other firm is a switch', () => {
+    const r = firmForAccount({ jobs: [job('891', 'Comal', 'record', 2976.34)], matterFirmId: null, assignments: ASSIGN, firms: FIRMS, also: ALSO })
+    expect(r.kind).toBe('covered')
+    expect(firmOf(r)?.id).toBe('snell')
+    expect(r.kind === 'covered' && r.others.map((o) => [o.firm.id, o.county.county, o.shared])).toEqual([['austin', 'Comal', true]])
+    expect(firmSegmentWords(r)).toEqual({ main: 'Snell Law Firm, PLLC', tail: '· Comal County · Austin Legal, PLLC also covers', amber: false })
+    expect(venueLineWords(r)).toBe('Venue · Comal County, from the property record · Snell Law Firm, PLLC is first call · Austin Legal, PLLC also covers it')
+    expect(r.kind === 'covered' && switchWords(r.others[0]!)).toBe('⇄ Austin Legal, PLLC instead')
+  })
+  it('switched to the firm that also covers, the words name the first call', () => {
+    const r = firmForAccount({ jobs: [job('891', 'Comal', 'record', 2976.34)], matterFirmId: null, assignments: ASSIGN, firms: FIRMS, also: ALSO, override: 'austin' })
+    expect(firmOf(r)?.id).toBe('austin')
+    expect(r.kind === 'covered' && r.switched).toBe(true)
+    expect(firmSegmentWords(r).tail).toBe('· Comal County · Snell Law Firm, PLLC is first call')
+    expect(venueLineWords(r)).toBe('Venue · Comal County, from the property record · Austin Legal, PLLC picked by hand · Snell Law Firm, PLLC is first call')
+  })
+  it('a retired firm that still has a row is no switch', () => {
+    const r = firmForAccount({ jobs: [job('891', 'Comal', 'record', 2976.34)], matterFirmId: null, assignments: ASSIGN, firms: FIRMS, also: new Map([['Comal', ['old']]]) })
+    expect(r.kind === 'covered' && r.others).toEqual([])
+    expect(firmSegmentWords(r).tail).toBe('· Comal County')
+  })
+})

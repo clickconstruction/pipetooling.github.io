@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useId, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from 'react'
 import { NO_FIRM_HUE, countyWords, type CountyAssignments, type FirmHue, type FirmLegendRow } from '../../lib/legal/firmCounties'
 import { casesInCounty, effectiveStand, STAND_COLOR, type LegalMapCase } from '../../lib/legal/firmMap'
 import { dotRadiusPx, dotRadiusView, inView, isDrag, labelFontSize, labelShows, padBox, panTo, viewBoxAttr, viewPoint, wheelFactor, zoomAt, zoomStep, type ViewBox } from '../../lib/legal/countyMapView'
@@ -26,7 +26,7 @@ const CENTRAL_TEXAS = { w: -99.3, e: -96.9, s: 28.95, n: 31.05 }
 
 type ViewName = 'central' | 'all'
 
-export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null, idleWords, litFirmId = null }: {
+export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null, idleWords, litFirmId = null, also }: {
   assignments: CountyAssignments
   hues: ReadonlyMap<string, FirmHue>
   firmNames: ReadonlyMap<string, string>
@@ -46,7 +46,10 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
   idleWords?: string
   /** One firm lit (punch list #222, PR 1, v2.6195): its counties in full color, the other firms' faint; null lights every firm. */
   litFirmId?: string | null
+  /** county → the firms that also cover it (punch list #222, PR 3, v2.6227): a shared county draws in stripes of its first call and the next firm. */
+  also?: ReadonlyMap<string, ReadonlyArray<string>>
 }) {
+  const patternPrefix = `lfc${useId().replace(/[^a-zA-Z0-9_-]/g, '')}`
   const [map, setMap] = useState<CountyMap | null>(null)
   const [failed, setFailed] = useState(false)
   const [hovered, setHovered] = useState<string | null>(null)
@@ -187,10 +190,27 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
   }
 
   const holderOf = (county: string) => assignments.get(county) ?? null
-  /** With one firm lit, another firm's county draws faint; an uncovered county and the lit firm's own draw as always. */
+  const alsoOf = (county: string): ReadonlyArray<string> => also?.get(county) ?? []
+  /** With one firm lit, a county it neither leads nor shares draws faint; an uncovered county and the lit firm's own draw as always. */
   const isFaint = (county: string) => {
     const holder = holderOf(county)
-    return Boolean(litFirmId && holder && holder !== litFirmId)
+    return Boolean(litFirmId && holder && holder !== litFirmId && !alsoOf(county).includes(litFirmId))
+  }
+  /** The stripe pattern for a shared county: its first call and the first firm that also covers it. */
+  const patternId = (a: string, b: string) => `${patternPrefix}-${a}-${b}`.replace(/[^a-zA-Z0-9_-]/g, '')
+  const sharePairs = useMemo(() => {
+    const out: Array<[string, string]> = []
+    for (const [county, firms] of also ?? []) {
+      const first = assignments.get(county)
+      const second = firms[0]
+      if (first && second && !out.some(([a, b]) => a === first && b === second)) out.push([first, second])
+    }
+    return out
+  }, [also, assignments])
+  const fillOf = (county: string, hue: FirmHue): string => {
+    const first = holderOf(county)
+    const second = alsoOf(county)[0]
+    return first && second ? `url(#${patternId(first, second)})` : hue.fill
   }
   const hueOf = (county: string): FirmHue => {
     const holder = holderOf(county)
@@ -198,7 +218,9 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
   }
   const countyLine = (county: string) => {
     const n = casesInCounty(cases, county).length
-    return `${countyWords(county)} · ${firmNames.get(holderOf(county) ?? '') ?? 'no firm yet'}${n ? ` · ${n} ${n === 1 ? 'case' : 'cases'}` : ''}`
+    const sharers = alsoOf(county).map((id) => firmNames.get(id)).filter(Boolean)
+    const who = `${firmNames.get(holderOf(county) ?? '') ?? 'no firm yet'}${sharers.length ? ` first call · ${sharers.join(', ')} also` : ''}`
+    return `${countyWords(county)} · ${who}${n ? ` · ${n} ${n === 1 ? 'case' : 'cases'}` : ''}`
   }
   const readout = hovered ? countyLine(hovered) : idleWords ?? (lens ? 'Tap a county to list its cases. Tap a dot to pick one out.' : pickedFirmId ? 'Click a county to color it for the picked firm. Click it again to clear it.' : 'Pick a firm on the left, then click counties.')
   // Longhands: the view buttons flip between `btn` and `btnOn`, and React warns on a `border` shorthand under a `borderColor` (v2.5780).
@@ -238,6 +260,22 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
               onHoverCounty(null)
             }}
           >
+            {sharePairs.length ? (
+              <defs>
+                {sharePairs.map(([a, b]) => {
+                  // The first call's fill, striped with thin lines in the other firm's ink: the firms' fills sit close in
+                  // dark mode, so fill on fill vanished; ink on fill reads in both themes. About eight page pixels a
+                  // repeat whatever the zoom: the pattern is measured in the view's own units.
+                  const w = Math.max(0.2, (vb.w / pageW) * 4)
+                  return (
+                    <pattern key={`${a}-${b}`} id={patternId(a, b)} patternUnits="userSpaceOnUse" width={w * 2} height={w * 2} patternTransform="rotate(45)">
+                      <rect width={w * 2} height={w * 2} style={{ fill: (hues.get(a) ?? NO_FIRM_HUE).fill }} />
+                      <rect width={w * 0.7} height={w * 2} style={{ fill: (hues.get(b) ?? NO_FIRM_HUE).ink, opacity: 0.8 }} />
+                    </pattern>
+                  )
+                })}
+              </defs>
+            ) : null}
             <g>
               {map.shapes.map((s) => {
                 const hue = hueOf(s.name)
@@ -252,7 +290,8 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                     data-firm={holderOf(s.name) ?? ''}
                     data-selected={isSelected ? '1' : undefined}
                     data-faint={faint ? '1' : undefined}
-                    fill={hue.fill}
+                    data-shared={alsoOf(s.name).length ? '1' : undefined}
+                    fill={fillOf(s.name, hue)}
                     fillOpacity={faint ? 0.3 : 1}
                     stroke={isHovered || isSelected ? 'var(--text-base)' : 'var(--border-strong)'}
                     strokeWidth={isSelected ? 2 : isHovered ? 1.6 : 0.6}
@@ -284,7 +323,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                 const colored = holderOf(s.name) !== null
                 if (!inView(vb, s.cx, s.cy) || !labelShows(vb, map.width, colored)) return null
                 return (
-                  <text key={`l-${s.fips}`} x={s.cx} y={s.cy} fontSize={labelFontSize(vb)} textAnchor="middle" dominantBaseline="middle" fontWeight={colored ? 600 : 500} fill={colored ? hueOf(s.name).ink : 'var(--text-base)'} opacity={isFaint(s.name) ? 0.45 : 1} data-county-label={s.name}>
+                  <text key={`l-${s.fips}`} x={s.cx} y={s.cy} fontSize={labelFontSize(vb)} textAnchor="middle" dominantBaseline="middle" fontWeight={colored ? 600 : 500} fill={colored ? hueOf(s.name).ink : 'var(--text-base)'} opacity={isFaint(s.name) ? 0.45 : 1} data-county-label={s.name} style={alsoOf(s.name).length ? { paintOrder: 'stroke', stroke: 'var(--surface)', strokeWidth: labelFontSize(vb) * 0.3, strokeLinejoin: 'round' } : undefined}>
                     {s.name}
                   </text>
                 )
@@ -348,6 +387,12 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
             {row.name}
           </span>
         ))}
+        {sharePairs.length ? (
+          <span data-legal-county-map-shared style={{ display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+            <span aria-hidden style={{ width: 12, height: 12, borderRadius: 3, border: '1px solid var(--border-strong)', display: 'inline-block', background: `repeating-linear-gradient(135deg, ${(hues.get(sharePairs[0]![1]) ?? NO_FIRM_HUE).ink} 0 1.5px, ${(hues.get(sharePairs[0]![0]) ?? NO_FIRM_HUE).fill} 1.5px 4px)` }} />
+            Shared by two firms
+          </span>
+        ) : null}
         {lens ? null : <span>· the dots are today’s cases, for reference; the desk’s Map works them</span>}
       </div>
     </div>
