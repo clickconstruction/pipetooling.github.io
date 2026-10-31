@@ -39,15 +39,21 @@ BEGIN
   PERFORM set_config('request.jwt.claims', json_build_object('sub', p_user, 'role', 'authenticated')::text, true);
   PERFORM set_config('request.jwt.claim.sub', p_user::text, true);
 END $$;
-CREATE FUNCTION lfc.refused(label text, stmt text) RETURNS void LANGUAGE plpgsql AS $$
+-- want_state is the SQLSTATE the refusal must carry, so a refusal for another reason (the training trigger) fails.
+CREATE FUNCTION lfc.refused(label text, stmt text, want_state text) RETURNS void LANGUAGE plpgsql AS $$
+DECLARE
+  v_state text;
+  v_msg text;
 BEGIN
   BEGIN
     EXECUTE stmt;
   EXCEPTION WHEN OTHERS THEN
-    RAISE NOTICE 'ok: % (refused: % %)', label, SQLSTATE, SQLERRM;
-    RETURN;
+    v_state := SQLSTATE;
+    v_msg := SQLERRM;
   END;
-  RAISE EXCEPTION '% was not refused', label;
+  IF v_state IS NULL THEN RAISE EXCEPTION '% was not refused', label; END IF;
+  IF v_state <> want_state THEN RAISE EXCEPTION '% was refused for another reason: % %', label, v_state, v_msg; END IF;
+  RAISE NOTICE 'ok: % (refused: % %)', label, v_state, v_msg;
 END $$;
 -- The live map in one line: `Comal:ZZ Alamo* Comal:ZZ Snell`, the star on the first call.
 CREATE FUNCTION lfc.live() RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
@@ -112,6 +118,8 @@ SELECT lfc.as_user('00000000-0000-0000-0000-0000000222d2');
 SELECT lfc.has('a training account is refused',
   lfc.save('[{"county": "Hays", "firms": ["00000000-0000-0000-0000-0000000222f1"], "first_call": null, "was": []}]'), 'training account');
 SELECT lfc.same('neither wrote', lfc.live(), 'Travis:ZZ Alamo*');
+-- Back to the dev before the setup writes below: the training trigger reads the request's user, not the role.
+SELECT lfc.as_user('00000000-0000-0000-0000-0000000222d1');
 RESET ROLE;
 
 -- A retired firm's leftover live row closes when its county is saved; the picker never saw it.
@@ -126,9 +134,9 @@ RESET ROLE;
 
 -- The database itself holds one first call per county and one live row per firm per county.
 SELECT lfc.refused('a second first call in Travis',
-  $q$INSERT INTO public.legal_firm_counties (firm_id, county, first_call) VALUES ('00000000-0000-0000-0000-0000000222f1', 'Travis', true)$q$);
+  $q$INSERT INTO public.legal_firm_counties (firm_id, county, first_call) VALUES ('00000000-0000-0000-0000-0000000222f1', 'Travis', true)$q$, '23505');
 SELECT lfc.refused('a second live Travis row for Alamo',
-  $q$INSERT INTO public.legal_firm_counties (firm_id, county, first_call) VALUES ('00000000-0000-0000-0000-0000000222f2', 'Travis', false)$q$);
+  $q$INSERT INTO public.legal_firm_counties (firm_id, county, first_call) VALUES ('00000000-0000-0000-0000-0000000222f2', 'Travis', false)$q$, '23505');
 
 DO $$ BEGIN RAISE NOTICE 'legal_firm_coverage shared counties PASSED'; END $$;
 ROLLBACK;
