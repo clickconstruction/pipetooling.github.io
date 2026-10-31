@@ -170,7 +170,8 @@ export function suggestedStatementTitle(affiant: Pick<StatementAffiant, 'name' |
 
 /** Why the draft cannot be saved as typed; null when it can. */
 export function statementDraftProblem(d: StatementDraft, todayYmd: string): string | null {
-  if (!d.affiant.name.trim()) return d.affiant.kind === 'team' ? 'Pick who swears it.' : 'Type the witness’s name.'
+  // v2.6238: a picked team member's roster name may be a first name only; the paper needs the name on their ID.
+  if (!d.affiant.name.trim()) return d.affiant.kind === 'witness' ? 'Type the witness’s full name.' : d.affiant.userId ? 'Type their full name, as it reads on their ID.' : 'Pick who swears it.'
   if (d.affiant.role.trim().length > STATEMENT_ROLE_MAX) return `Keep the role line under ${STATEMENT_ROLE_MAX} characters.`
   if (!d.title.trim()) return 'Give the statement a title.'
   if (d.title.trim().length > STATEMENT_TITLE_MAX) return `Keep the title under ${STATEMENT_TITLE_MAX} characters.`
@@ -356,9 +357,19 @@ export function statementPaperBlocks(input: StatementPaperInput): FilingDocBlock
   return blocks
 }
 
+/**
+ * The role as it reads under a signature (v2.6238): a witness's line is written to follow *I am …* (*the foreman for
+ * Brightline Electric*), so under the signature its leading article goes and its first letter rises (*Foreman for
+ * Brightline Electric*). A line already capitalized reads as typed; a closing full stop goes.
+ */
+export function signatureRoleLine(role: string): string {
+  const r = role.trim().replace(/\.$/, '').replace(/^(the|a|an)\s+/i, '')
+  return r ? r.charAt(0).toUpperCase() + r.slice(1) : ''
+}
+
 function signingBlocks(input: StatementPaperInput, name: string): FilingDocBlock[] {
   const { draft } = input
-  const role = draft.affiant.role.trim()
+  const role = signatureRoleLine(draft.affiant.role)
   if (draft.form === 'notary') {
     return [
       { kind: 'paragraph', text: SIGNED_ON_LINE },
