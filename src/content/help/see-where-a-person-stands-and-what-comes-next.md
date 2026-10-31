@@ -6,7 +6,7 @@ keywords: gc mode, flow, steps, trade partner, customer, architect, on now, laps
 where: /messages
 order: 98
 ---
-Every trade partner, customer and architect has a flow. The flow lists the steps we take with them, from the first ask to the end of a job. The app moves each person along it from facts it already keeps.
+Every trade partner, customer and architect has a flow. The flow lists the steps we take with them, from the first ask to the end of a job. The app moves each person along it from facts it already keeps. A residential customer has a flow too. Its steps read from their Pipeline job, from the visit to the review.
 
 Nobody marks a step done by hand. A signed paper, a quote that came in, or a paid draw finishes a step on its own.
 

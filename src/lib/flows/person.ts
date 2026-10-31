@@ -9,6 +9,8 @@ import { candidateStampsFor } from './candidateLoad'
 import { subStampsWithOnboarding } from './subOnboardingLoad'
 import { flowStampsFor, type FlowRows } from './load'
 import type { NudgeMark, PersonFlow, PortalRead, StepNote } from './nudges'
+import { residentialStampsFor } from './residentialLoad'
+import { pipelineJobNames } from './residentialRows'
 import { quietDays as quietDaysOf, readFlow, type FlowDef } from './state'
 
 /** `nudge_holds`, standing or let go. A residential customer's job is a Pipeline job, on `jobs_ledger_id` (v2.6007). */
@@ -122,13 +124,16 @@ export function courtFrom(lines: readonly ThreadLineRow[]): 'ours' | 'theirs' | 
 
 /** One person on their flow, for the panel, the card and the nudges. */
 export function personFlowFrom(i: PersonInputs): PersonFlow {
-  // A candidate's stamps come from their hiring board row (spike); everyone else's from the flow rows.
+  // A candidate's stamps come from their hiring board row (spike), a residential customer's from their Pipeline rows
+  // (`rows.residential`, v2.6232; without them their lanes read empty, as before); everyone else's from the flow rows.
   const stamps =
     i.flow.kind === 'candidate'
       ? candidateStampsFor(i.rows)
       : i.flow.kind === 'sub'
         ? subStampsWithOnboarding(flowStampsFor('sub', i.rows, i.now), i.rows, i.lines ?? [], i.now)
-        : flowStampsFor(i.flow.kind, i.rows, i.now)
+        : i.flow.kind === 'residential' && i.rows.residential
+          ? residentialStampsFor(i.rows.residential, i.now)
+          : flowStampsFor(i.flow.kind, i.rows, i.now)
   const reading = readFlow(i.flow, stamps, i.now)
   const names = i.rows.userNames ?? {}
   const lines = i.lines ?? []
@@ -139,7 +144,8 @@ export function personFlowFrom(i: PersonInputs): PersonFlow {
     text: n.body,
     at: n.at,
   }))
-  const jobs: Partial<Record<string, string>> = {}
+  // The GC projects' names, and a residential customer's Pipeline jobs' (`jobs_ledger.job_name`), for the card and `{job}`.
+  const jobs: Partial<Record<string, string>> = i.rows.residential ? pipelineJobNames(i.rows.residential.jobs) : {}
   for (const p of i.rows.projects ?? []) {
     const name = (p as { name?: string | null }).name
     if (name) jobs[p.project_id] = name
