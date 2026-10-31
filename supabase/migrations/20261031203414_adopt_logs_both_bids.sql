@@ -3,7 +3,8 @@
 -- moved row to the target while the source's `adopted_into_bid_id` is not a column it records, so the retired
 -- source's own record never said where it went (found in the ZZ Test dry run of 2026-10-31). The body is
 -- 20261031123000's, verbatim, plus a count of what each move touched and the two lines before the source
--- retires. No table, no column, no grant changes. Idempotent: CREATE OR REPLACE.
+-- retires, and the retired row's remembered price scenario cleared (it moved; the new version's ★ keeps it).
+-- No table, no column, no grant changes. Idempotent: CREATE OR REPLACE.
 SET lock_timeout = '3s';
 
 CREATE OR REPLACE FUNCTION public.adopt_bid_as_version(
@@ -146,9 +147,15 @@ BEGIN
             v_who, COALESCE(v_source.bid_number::text, '?'), COALESCE(v_source.project_name, ''), v_version_name, v_moved),
      auth.uid());
 
-  -- Retire the source row from the board (never deleted; number stays searchable).
+  -- Retire the source row from the board (never deleted; number stays searchable). Its remembered price
+  -- scenario moved above and is the new version's ★ when it was one of the moved ones, so the pointer on the
+  -- retired row is cleared (v2.6250): left in place it named a scenario of another bid's version, and the
+  -- readers that treat a version-less bid's pointer as its ★ (the package map, the share bundle, the priced
+  -- rows loader) drew it. This column is one the change ledger records, so the source's own history now
+  -- carries a row for the day it was adopted.
   UPDATE public.bids SET adopted_into_bid_id = p_target_bid_id,
-                         working_board_archived_at = COALESCE(working_board_archived_at, now())
+                         working_board_archived_at = COALESCE(working_board_archived_at, now()),
+                         selected_price_book_version_id = NULL
    WHERE id = p_source_bid_id;
 
   RETURN v_new_id;
