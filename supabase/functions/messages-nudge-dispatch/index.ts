@@ -53,6 +53,7 @@ import { FLOW_KINDS } from '../_shared/gcKernels/lib/flows/facts.ts'
 import { notSentWords, planNudgeRun, type NudgeKept, type NudgeOffer } from '../_shared/gcKernels/lib/flows/nudgeDispatch.ts'
 import { APP_SENDS_SETTING_KEY, nudgeRunReads, type NudgeRunRows, type RunBillRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
 import { runHourNow, runSummary, type RunRefused } from '../_shared/gcKernels/lib/flows/nudgeRunLog.ts'
+import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, type PipelineRows } from '../_shared/gcKernels/lib/flows/residentialRows.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
 import type { JobAt } from '../_shared/gcKernels/lib/quo/rows.ts'
 import { todayYmdInAppTz } from '../_shared/gcKernels/utils/dateUtils.ts'
@@ -98,7 +99,7 @@ const jobAtOf = (o: OfferRow): JobAt | null =>
 /** The morning's rows, read as the service role. */
 async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld: number; offers: OfferRow[] }> {
   const contacts = await all<NudgeRunRows['contacts'][number]>(
-    (a, b) => admin.from('contacts').select('id, kind, name, goes_by, snoozed_until, prefers').in('kind', RUN_KINDS).order('id').range(a, b),
+    (a, b) => admin.from('contacts').select('id, kind, name, goes_by, snoozed_until, prefers, customer_id').in('kind', RUN_KINDS).order('id').range(a, b),
     'contacts',
   )
   const { count: customersHeld, error: heldError } = await admin.from('contacts').select('id', { count: 'exact', head: true }).eq('kind', 'customer')
@@ -126,11 +127,13 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     got.channels.push(...channels)
   }
 
+  const pipeline = await readPipeline(admin, contacts.filter((c) => c.kind === 'residential'))
+
   // The residential customers' bills (punch list #124, v2.6224): their Pipeline jobs, bills and payments, the columns the
   // reply box's paper read selects (`messages/papersIo.ts`), so the kernel fills {amount}, {bill} and {number} from the
-  // job's newest open bill as the box does at a press. A customer the flow rows name no customer id for has no bills.
+  // job's newest open bill as the box does at a press. The customer id is the contact's, else the card's (`flow_rows_for` names it on the card for a customer and an architect only, v2.6232).
   const customerIds = [
-    ...new Set(contacts.flatMap((c) => (c.kind === 'residential' ? [(flowRows[c.id] as { card?: { customer_id?: string | null } } | undefined)?.card?.customer_id ?? null] : [])).filter((id): id is string => Boolean(id))),
+    ...new Set(contacts.flatMap((c) => (c.kind === 'residential' ? [c.customer_id ?? (flowRows[c.id] as { card?: { customer_id?: string | null } } | undefined)?.card?.customer_id ?? null] : [])).filter((id): id is string => Boolean(id))),
   ]
   const bills: RunBillRows = { jobs: [], invoices: [], payments: [] }
   for (const ids of chunks(customerIds, CHUNK)) {
@@ -177,9 +180,52 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     uses,
     appSends: switchRow.data?.value_text ?? null,
     offers,
+    pipeline,
     bills,
   }
   return { rows, customersHeld: customersHeld ?? 0, offers }
+}
+
+/**
+ * The residential customers' Pipeline rows (v2.6232), everyone's at once, the columns `PIPELINE_SELECTS` names: the jobs
+ * they are the customer on (`contacts.customer_id`) and the ones the office tied to them (`contact_jobs.jobs_ledger_id`),
+ * everything on those jobs, their texts out, and the two pay-day RPCs, which the service role may call. A morning with no
+ * residential contact reads nothing. `nudgeRunReads` cuts each contact's out, and their steps read from them.
+ */
+async function readPipeline(admin: any, residential: readonly { id: string; customer_id?: string | null }[]): Promise<PipelineRows> {
+  if (!residential.length) return NO_PIPELINE_ROWS
+  const contactIds = residential.map((c) => c.id)
+  const customerIds = [...new Set(residential.flatMap((c) => (c.customer_id ? [c.customer_id] : [])))]
+  const byChunks = async <T>(ids: readonly string[], read: (chunk: string[], a: number, b: number) => PromiseLike<Answer<T>>, what: string): Promise<T[]> => {
+    const out: T[] = []
+    for (const chunk of chunks(ids, CHUNK)) out.push(...(await all<T>((a, b) => read(chunk, a, b), what)))
+    return out
+  }
+  const [own, contactJobs, texts, speeds, promises] = await Promise.all([
+    byChunks<PipelineRows['jobs'][number]>(customerIds, (ids, a, b) => admin.from('jobs_ledger').select(PIPELINE_SELECTS.jobs).in('customer_id', ids).order('id').range(a, b), 'jobs_ledger'),
+    byChunks<PipelineRows['contactJobs'][number]>(contactIds, (ids, a, b) => admin.from('contact_jobs').select(PIPELINE_SELECTS.contactJobs).in('contact_id', ids).not('jobs_ledger_id', 'is', null).order('id').range(a, b), 'contact_jobs'),
+    byChunks<PipelineRows['texts'][number]>(contactIds, (ids, a, b) => admin.from('messages').select(PIPELINE_SELECTS.texts).in('contact_id', ids).eq('channel', 'text').eq('direction', 'out').order('id').range(a, b), 'texts'),
+    admin.rpc('get_billed_customer_pay_speeds'),
+    admin.rpc('list_job_promised_pay_dates'),
+  ])
+  const tiedIds = [...new Set(contactJobs.flatMap((t) => (t.jobs_ledger_id && !own.some((j) => j.id === t.jobs_ledger_id) ? [t.jobs_ledger_id] : [])))]
+  const tied = await byChunks<PipelineRows['jobs'][number]>(tiedIds, (ids, a, b) => admin.from('jobs_ledger').select(PIPELINE_SELECTS.jobs).in('id', ids).order('id').range(a, b), 'jobs_ledger')
+  const jobs = [...own, ...tied]
+  const jobIds = jobs.map((j) => j.id)
+  const on = <T>(table: string, select: string, column: string) => byChunks<T>(jobIds, (ids, a, b) => admin.from(table).select(select).in(column, ids).order('id').range(a, b), table)
+  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments] = await Promise.all([
+    on<PipelineRows['blocks'][number]>('job_schedule_blocks', PIPELINE_SELECTS.blocks, 'job_id'),
+    on<PipelineRows['clockSessions'][number]>('clock_sessions', PIPELINE_SELECTS.clockSessions, 'job_ledger_id'),
+    on<PipelineRows['reports'][number]>('reports', PIPELINE_SELECTS.reports, 'job_ledger_id'),
+    on<PipelineRows['estimates'][number]>('estimates', PIPELINE_SELECTS.estimates, 'job_ledger_id'),
+    on<PipelineRows['statusEvents'][number]>('job_status_events', PIPELINE_SELECTS.statusEvents, 'job_id'),
+    on<PipelineRows['invoices'][number]>('jobs_ledger_invoices', PIPELINE_SELECTS.invoices, 'job_id'),
+    on<PipelineRows['payments'][number]>('jobs_ledger_payments', PIPELINE_SELECTS.payments, 'job_id'),
+  ])
+  // The pace is a soft read: a refusal leaves a bill's due day unset rather than stopping the morning.
+  if (speeds.error) console.warn(`[messages-nudge-dispatch] get_billed_customer_pay_speeds: ${speeds.error.message}`)
+  if (promises.error) console.warn(`[messages-nudge-dispatch] list_job_promised_pay_dates: ${promises.error.message}`)
+  return { jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, texts, paySpeeds: speeds.error ? null : speeds.data, promisedPay: promises.error ? null : promises.data }
 }
 
 /** Who may ask for a dry run: the cron, or a signed-in dev on a real account. */

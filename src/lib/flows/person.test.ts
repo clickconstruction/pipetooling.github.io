@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { FLOW_FIXTURE_NOW as NOW } from './flowFixtures'
 import { docStamps, type FlowRows } from './load'
 import { courtFrom, marksFrom, oweFrom, personFlowFrom, portalFrom, pressJobOf, sendsFrom, type PortalPaperRow } from './person'
+import type { ResidentialRows } from './residentialLoad'
 import { SEED_FLOWS } from './seed'
 import { stepReading } from './state'
 
@@ -65,6 +66,25 @@ describe('personFlowFrom: one person for the panel, the card and the nudges', ()
     expect(marksFrom([], [{ step_key: 'ask', project_id: 'padb', sent_at: '2026-10-01T15:00:00Z', sent_by: 'person' }])).toEqual([{ stepId: 'ask', jobId: 'padb', nudgedAt: '2026-10-01T15:00:00Z' }])
     expect(marksFrom([], [{ step_key: 'ask', project_id: 'padb', sent_at: '2026-10-01T15:00:00Z', sent_by: 'app' }])).toEqual([])
     expect(sendsFrom({ contact })).toEqual({})
+  })
+
+  // v2.6232: a residential customer's steps read from their Pipeline rows, once the reader hands them in.
+  it('reads a residential customer’s steps from their Pipeline rows, and their lanes empty without them', () => {
+    const dana = { id: 'c-dana', kind: 'residential' as const, off_since: null, off_why: null, off_by: null }
+    const residential: ResidentialRows = {
+      contact: dana,
+      firstName: 'Dana',
+      userNames: { 'u-rosa': 'Rosa' },
+      jobs: [{ id: 'job-1312', created_at: '2026-09-28T13:00:00Z', status: 'waiting', revenue: 1850, customer_id: 'cust-dana', gc_customer_id: null, bill_to_party: 'customer', customer_name: 'Dana Whitfield', job_name: 'the water heater' } as ResidentialRows['jobs'][number]],
+      blocks: [{ job_id: 'job-1312', work_date: '2026-10-05', created_at: '2026-09-30T13:10:00Z', created_by: 'u-rosa' }],
+    }
+    const withRows = personFlowFrom({ id: 'c-dana', first: 'Dana', flow: SEED_FLOWS.residential, rows: { contact: dana, residential }, now: NOW })
+    // Dispatch's block alone finishes Booked and puts her on On the way, by whoever made it.
+    expect([withRows.reading.nowStepId, withRows.reading.nowJobId]).toEqual(['onway', 'job-1312'])
+    expect(stepReading(withRows.reading, 'booked', 'job-1312')?.state).toBe('done')
+    expect(withRows.jobs).toEqual({ 'job-1312': 'the water heater' })
+    const without = personFlowFrom({ id: 'c-dana', first: 'Dana', flow: SEED_FLOWS.residential, rows: { contact: dana }, now: NOW })
+    expect([without.reading.nowStepId, without.reading.lanes.filter((l) => l.jobId).length, without.jobs]).toEqual([null, 0, {}])
   })
 
   // v2.6007: a residential customer's job is a Pipeline job, so its holds and reminders sit on jobs_ledger_id.
