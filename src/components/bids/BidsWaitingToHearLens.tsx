@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { bidIsParked } from '../../lib/bids/bidNextFollowup'
+import { bidFollowupColumns, bidIsParked, resolveBidFollowup } from '../../lib/bids/bidNextFollowup'
+import { chaseClockStrip } from '../../lib/bids/chaseClockStrip'
+import { ChaseClockLegend, ChaseClockStrip } from './ChaseClockStrip'
+import { ShapeSwitch, SideBySide, useShapeView } from '../prototypes/SideBySide'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { type BidRoomStateSummary } from '../../lib/bids/bidRoomState'
 import { BidRoomStateChip } from './BidRoomStateChip'
@@ -181,6 +184,11 @@ export function BidsWaitingToHearLens({
 
   // One instant per mount keeps every memo on the same clock.
   const nowIso = useMemo(() => new Date().toISOString(), [])
+  const todayYmd = useMemo(() => todayYmdInAppTz(new Date(nowIso)), [nowIso])
+  // The chase clock as a strip of days (punch list #217, bids-7, a prototype): the Call queue's switch,
+  // one press for both doors; `?sbs=1` draws today's words and the strip together for a dev.
+  const shape = useShapeView('chase-clock')
+  const stripOn = shape.on || shape.sideBySide
 
   const lensBids = useMemo<LensBid[]>(() => {
     return bids.flatMap((b) => {
@@ -265,6 +273,15 @@ export function BidsWaitingToHearLens({
     setTabCaptureOpen(false)
     setStoryExpanded(false)
   }, [selectedBid?.id])
+
+  /** The open bid's clock: its send, every logged contact (the story's method entries and the bid's own stamp), its call-again day, its tab day. */
+  const selectedStrip = useMemo(() => {
+    if (!stripOn || !selectedBid) return null
+    const contacts = (storyByBid[selectedBid.id] ?? []).filter((e) => e.method).map((e) => e.iso)
+    if (selectedBid.lastContactIso) contacts.push(selectedBid.lastContactIso)
+    const followup = resolveBidFollowup({ sentIso: selectedBid.sentIso, lastContactIso: selectedBid.lastContactIso, bidNextYmd: bidFollowupColumns(selectedBid.raw).nextYmd }, todayYmd, nowIso)
+    return chaseClockStrip({ sentIso: selectedBid.sentIso, contactIsos: contacts, followup, hasTab: hasAnyBidTabValue(bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)), todayYmd })
+  }, [stripOn, selectedBid, storyByBid, todayYmd, nowIso])
 
   // The story panels' feed: one fetch per builder group for every bid id not
   // loaded yet (fail-soft — an error just leaves the panels quiet).
@@ -586,11 +603,18 @@ export function BidsWaitingToHearLens({
             {chasedThisSession} chased this session
           </span>
         ) : null}
+        <ShapeSwitch view={shape} words={{ off: 'Show the strip of days', on: 'Show today’s look' }} style={{ marginLeft: 'auto' }} />
       </div>
-      <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-        Every sent bid still waiting on an answer, newest first. A bid needs a chase when nobody's talked to the GC in
-        over {PENDING_CHASE_STALE_CONTACT_DAYS} days — tap what happened to log the call. Arrow keys move between bids.
-      </p>
+      {stripOn && !shape.sideBySide ? (
+        <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          Every sent bid still waiting on an answer, newest first. The strip under the open bid shows its clock. Tap what happened to log the call. Arrow keys move between bids.
+        </p>
+      ) : (
+        <p style={{ margin: '-0.35rem 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+          Every sent bid still waiting on an answer, newest first. A bid needs a chase when nobody's talked to the GC in
+          over {PENDING_CHASE_STALE_CONTACT_DAYS} days — tap what happened to log the call. Arrow keys move between bids.
+        </p>
+      )}
 
       {searchedLensBids.length === 0 ? (
         <EmptyState
@@ -797,16 +821,27 @@ export function BidsWaitingToHearLens({
                     ) : null
                   })()}
                 </div>
-                <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: bidNeedsChase(selectedBid, nowIso) ? 'var(--text-amber-800)' : 'var(--text-emerald-800)' }}>
-                  {(() => {
-                    // Same kernel as the Bid Board's Last Contact cell, so the two surfaces
-                    // always agree on the day and the count.
-                    const lc = selectedBid.lastContactIso ? bidBoardLastContactParts(selectedBid.lastContactIso, new Date(nowIso)) : null
-                    return lc
-                      ? `Last contact ${shortDate(selectedBid.lastContactIso!)} (${daysAgoLabel(Math.max(0, lc.deltaDays))})`
-                      : 'Never contacted since sending'
-                  })()}
-                </p>
+                {(() => {
+                  // Same kernel as the Bid Board's Last Contact cell, so the two surfaces
+                  // always agree on the day and the count.
+                  const lc = selectedBid.lastContactIso ? bidBoardLastContactParts(selectedBid.lastContactIso, new Date(nowIso)) : null
+                  const lastContactLine = (
+                    <p style={{ margin: '0.35rem 0 0', fontSize: '0.8125rem', color: bidNeedsChase(selectedBid, nowIso) ? 'var(--text-amber-800)' : 'var(--text-emerald-800)' }}>
+                      {lc
+                        ? `Last contact ${shortDate(selectedBid.lastContactIso!)} (${daysAgoLabel(Math.max(0, lc.deltaDays))})`
+                        : 'Never contacted since sending'}
+                    </p>
+                  )
+                  if (!selectedStrip) return lastContactLine
+                  // The chase clock (punch list #217, bids-7): the send, each contact, the call-again day and the tab day as one strip.
+                  const stripBlock = (
+                    <div data-waiting-chase-clock style={{ margin: '0.35rem 0 0' }}>
+                      <ChaseClockStrip strip={selectedStrip} />
+                      <ChaseClockLegend style={{ marginTop: '0.3rem' }} />
+                    </div>
+                  )
+                  return shape.sideBySide ? <SideBySide testId="waiting-to-hear-sbs" label="With the strip" today={lastContactLine} shape={stripBlock} /> : stripBlock
+                })()}
                 {(() => {
                   const tabValues = bidTabValuesFromRow(selectedBid.raw as Partial<BidTabRow>)
                   if (!hasAnyBidTabValue(tabValues) || tabCaptureOpen) return null
