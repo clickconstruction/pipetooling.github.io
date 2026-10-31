@@ -42,7 +42,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Who owes us money → `/accounts-receivable`
 - Schedule crews to jobs by week → `/schedule-dispatch`
 
-- See one development, a site with many bids and jobs, in five looks (History, Pieces, Money, Plans, Questions) → `/developments/:id` (from the house line on a bid or a job; guide `see-everything-on-a-development`)
+- See one development, a site with many bids and jobs, in five looks (History, Jobs & bids, Money, Plans, Questions) → `/developments/:id` (from the house line on a bid or a job; guide `see-everything-on-a-development`)
 
 **People / hours / money**
 - Who worked, approve hours, clock cards → `/people`

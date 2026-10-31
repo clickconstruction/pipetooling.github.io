@@ -83,7 +83,7 @@ export function DevelopmentHistoryComposer({ groups, preferKey, phone, busy, onK
             value={aboutKey}
             onChange={(v) => setAboutKey(v.replace(/^recent:/, ''))}
             options={selectOptions}
-            listAriaLabel="About which piece"
+            listAriaLabel="About which job or bid"
             searchPlaceholder="Type a number or a name"
             listMaxHeightPx={320}
             fillViewportHeight
