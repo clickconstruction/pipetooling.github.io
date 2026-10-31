@@ -29,6 +29,7 @@
  */
 
 import { formatKeptReadTime, type KeptReadTimeFormat } from './keptRead'
+import { classifyResultError } from '../utils/errorHandling'
 
 export type AppHealthState = 'fine' | 'slow' | 'unreachable' | 'offline'
 
@@ -304,9 +305,19 @@ export function appHealthHoldsGate(now: number = Date.now(), store: AppHealthSto
   return gateHoldsFor(store.read(now).state)
 }
 
-/** A role row that failed to read is read again when the failure is the freeze's, or while the app is slow; a plain refusal is final. */
-export function shouldRetryRoleRead(error: { code?: string | null } | null | undefined, now: number = Date.now(), store: AppHealthStore = appHealth): boolean {
+/**
+ * A role row that failed to read is read again when the failure is the freeze's, when the read never reached the
+ * server, or while the app is slow; a plain refusal is final. A lost signal is not a missing role (punch list #163's
+ * live test, v2.6198): an auth event with no signal re-read the role, and settling that failure as null dropped the
+ * clock row and the header's buttons until a reload.
+ */
+export function shouldRetryRoleRead(
+  error: { code?: string | null; message?: string | null; status?: number | null } | null | undefined,
+  now: number = Date.now(),
+  store: AppHealthStore = appHealth,
+): boolean {
   if (error && isFreezeCode(error.code)) return true
+  if (error && classifyResultError(error) === 'network') return true
   return appHealthHoldsGate(now, store)
 }
 

@@ -364,6 +364,18 @@ describe('appHealth · the auth gate', () => {
     s.requestStarted(T0)
     expect(shouldRetryRoleRead({ code: '42501' }, T0 + 4_000, s)).toBe(true)
   })
+
+  it('a role read that never reached the server is read again, offline or not: a lost signal is not a missing role (punch list #163 live test)', () => {
+    const s = createAppHealthStore({ online: false })
+    // supabase-js answers a rejected fetch with an empty code, the engine's TypeError as the message and status 0.
+    expect(shouldRetryRoleRead({ code: '', message: 'TypeError: Failed to fetch' }, T0, s)).toBe(true)
+    expect(shouldRetryRoleRead({ code: '', message: 'TypeError: Load failed' }, T0, s)).toBe(true)
+    expect(shouldRetryRoleRead({ code: '', message: 'Error: offline', status: 0 }, T0, s)).toBe(true)
+    expect(shouldRetryRoleRead({ code: '', message: 'TypeError: Failed to fetch' }, T0, createAppHealthStore())).toBe(true)
+    // An answer is still final, and an aborted read waits for the slow rule.
+    expect(shouldRetryRoleRead({ code: 'PGRST116', message: 'JSON object requested, multiple (or no) rows returned' }, T0, s)).toBe(false)
+    expect(shouldRetryRoleRead({ code: '', message: 'AbortError: signal is aborted without reason', status: 0 }, T0, s)).toBe(false)
+  })
 })
 
 /** The code rides in the body, read off a clone after the caller has its copy: wait for that read, not for a timer (a 0 ms timer lost the race on a loaded machine). */
