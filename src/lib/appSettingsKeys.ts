@@ -486,3 +486,11 @@ export const APP_SETTINGS_KEY_EMAIL_COUNT_LEAD_V1 = 'email_count_lead_v1' as con
  * migration): a whole number, '3' as it ships. Parsed by `emailIn/countCard.ts`'s `limitDaysFrom`.
  */
 export const APP_SETTINGS_KEY_EMAIL_COUNT_LIMIT_DAYS_V1 = 'email_count_limit_days_v1' as const
+
+/**
+ * `value_text` — the office's county for the venue line of a sworn statement made on the Legal desk (punch list #220,
+ * migration `20261031040000`): *Guadalupe* as seeded (the owner, 2026-10-30). The office roles change it under a
+ * key-scoped UPDATE policy; all authenticated read. `src/lib/legal/affidavitPaper.ts`'s `OFFICE_COUNTY_DEFAULT` stands
+ * in when the row is missing.
+ */
+export const APP_SETTINGS_KEY_OFFICE_COUNTY = 'office_county' as const

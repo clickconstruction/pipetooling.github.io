@@ -104,6 +104,9 @@ describe('words', () => {
   it('names entry kinds for the tables and drafts the sign-off ask', () => {
     expect(legalEntryKindWords(ask)).toBe('ask · sign off · 273')
     expect(legalEntryKindWords(q)).toBe('ask · question')
+    // v2.6209 (punch list #220): a statement's kind words on the desk.
+    expect(legalEntryKindWords({ kind: 'statement', via_portal: false, meta: { form: 'notary', state: 'draft' } })).toBe('sworn statement · draft')
+    expect(legalEntryKindWords({ kind: 'statement', via_portal: false, meta: { form: 'declaration', state: 'signed' } })).toBe('declaration')
     expect(legalEntryKindWords(firmQuestion)).toBe('question')
     expect(legalEntryKindWords(entry({ kind: 'answer', via_portal: true, meta: { askId: 'x', signedOff: true } }))).toBe('answer · signed off')
     expect(legalEntryKindWords(entry({ kind: 'payment_received', via_portal: true }))).toBe('payment received')
