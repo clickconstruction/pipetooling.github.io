@@ -966,7 +966,7 @@ export default function DevelopmentPage() {
                 <>
                   {feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null}
                   {historyOpen ? null : (
-                    <LinkButton onClick={() => setWriting(true)} title="Keep a line: what happened, when, about which piece">
+                    <LinkButton onClick={() => setWriting(true)} title="Keep a line: what happened, when, about which job or bid">
                       Write ›
                     </LinkButton>
                   )}

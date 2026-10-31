@@ -208,7 +208,7 @@ export function DevelopmentPieces(props: PiecesProps) {
         <thead style={{ background: 'var(--bg-subtle)' }}>
           <tr>
             {/* The two record columns get the room: in pair mode each gap cell carries four presses on one row. */}
-            <th style={{ ...th, width: '18%' }}>Piece</th>
+            <th style={{ ...th, width: '18%' }}>Name</th>
             <th style={{ ...th, width: '27%' }}>Bid</th>
             <th style={{ ...th, width: '33%' }}>Job</th>
             <th style={{ ...th, width: anyWaiting ? '12%' : '22%' }}>Plans</th>

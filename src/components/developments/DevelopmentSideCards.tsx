@@ -91,7 +91,7 @@ export function DevelopmentPlansCard({
             {older.length} on an older set <span aria-hidden>{openChip === 'older' ? '▾' : '▸'}</span>
           </button>
         ) : null}
-        {view.none.length === 0 && older.length === 0 && view.sets.length > 0 ? <span className="developmentCountChip">every piece on the newest set</span> : null}
+        {view.none.length === 0 && older.length === 0 && view.sets.length > 0 ? <span className="developmentCountChip">every job and bid on the newest set</span> : null}
         {view.olderOrNone.length > 0 && !(askOnRecord && askOnRecord.open) ? (
           <span style={{ marginLeft: 'auto' }}>
             <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one question to the estimators about these jobs and bids; the answer reads back here">
