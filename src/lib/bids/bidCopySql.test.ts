@@ -114,16 +114,27 @@ describe('every table that hangs off a count row is handled by every copy (v2.43
    * fixture's past, with no key to either. A copy keeps no one else's history; the trigger records
    * the copy's own new rows as the new bid's first changes. An adopt leaves the old bid's history
    * under the old bid id, where it was written.
+   *
+   * `bid_fixture_pull_rows` is the robot's record, not a row on a count row (punch list #221,
+   * v2.6180; the decision is v2.6194): one fixture the robot found on one read of one bid's plans,
+   * under its pull (the bid, the shell, the run, the set it read), and its count_row_id only
+   * remembers which row of hers the take landed as. A new version clones her rows with their
+   * plan_tag and the robot's share, so the shade and the chip survive, while the take stays
+   * recorded once, on the version she took it on (taken_version_id), the way the fixtures score
+   * reads it. A duplicate is a new bid with no run (and leaves the count sources behind, v2.5517):
+   * a pull there would describe another bid's read. An adopt leaves the pull on the adopted bid
+   * with its run, where robot_progress() reads it.
    */
-  const NOT_A_COUNT_ROW_CHILD = ['bid_changes']
+  const NOT_A_COUNT_ROW_CHILD = ['bid_changes', 'bid_fixture_pull_rows']
   const hangingOffCountRows = [...tableColumns]
     .filter(([t, cols]) => cols.includes('count_row_id') && cols.includes('bid_id') && !NOT_A_COUNT_ROW_CHILD.includes(t))
     .map(([t]) => t)
     .sort()
 
   it('knows the tables', () => {
-    // The ledger is in the types with both columns; the exemption above is what keeps it out.
+    // The ledger and the robot's pull rows are in the types with both columns; the exemption above is what keeps them out.
     expect(tableColumns.get('bid_changes')).toEqual(expect.arrayContaining(['count_row_id', 'bid_id']))
+    expect(tableColumns.get('bid_fixture_pull_rows')).toEqual(expect.arrayContaining(['count_row_id', 'bid_id', 'pull_id', 'taken_version_id']))
     expect(hangingOffCountRows).toEqual([
       'bid_count_row_custom_costs',
       'bid_count_row_custom_prices',
