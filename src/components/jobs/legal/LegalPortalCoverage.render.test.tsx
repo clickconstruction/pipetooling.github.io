@@ -31,4 +31,17 @@ describe('LegalPortalCoverage', () => {
     expect(document.querySelector('[data-legal-coverage-county]')!.textContent).toContain('Tap a county on the map for its case count.')
     expect(document.querySelector('[data-legal-coverage-count]')).toBeNull()
   })
+
+  it('a county two firms cover is named as shared on both rows, with you for the reading firm (v2.6227)', () => {
+    const shared: FirmCoverage = {
+      firms: [
+        { id: 'f-snell', name: 'Snell Law Firm', createdAt: '2026-01-01T00:00:00Z', counties: ['Bexar', 'Comal'], matterCount: 2 },
+        { id: 'f-alamo', name: 'Alamo Collections', createdAt: '2026-10-30T00:00:00Z', counties: ['Comal', 'Guadalupe'], matterCount: 1 },
+      ],
+      countyCounts: { Comal: 1 },
+    }
+    render(<LegalPortalCoverage coverage={shared} firmId="f-alamo" />)
+    expect(document.querySelector('[data-legal-coverage-firm="f-snell"]')!.textContent).toContain('2 counties · Bexar, Comal (shared with you)')
+    expect(document.querySelector('[data-legal-coverage-firm="f-alamo"]')!.textContent).toContain('2 counties · Comal (shared with Snell Law Firm), Guadalupe')
+  })
 })

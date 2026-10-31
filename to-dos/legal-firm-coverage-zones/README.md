@@ -2,7 +2,7 @@
 name: "Firms and their coverage: the firm window shows where a firm covers, extends it, hands counties off to another firm, and two firms may share a county"
 number: 222
 group: ready
-status: proposed 2026-10-30 · mock-up drawn the same day · the owner asked for the whole train on 2026-10-31, on the defaults this card names · PR 1 built as v2.6195 · PR 2 built as v2.6221 · PRs 3 and 4 next
+status: proposed 2026-10-30 · mock-up drawn the same day · the owner asked for the whole train on 2026-10-31, on the defaults this card names · PR 1 built as v2.6195 · PR 2 built as v2.6221 · PR 3 built as v2.6227 (its migration pushed right after the merge) · PR 4 next
 mockup: to-dos/legal-firm-coverage-zones/mockup.html
 summary: >
   The Legal desk's firm window holds a firm's details, Click's particulars and, at the bottom, Replace with a new
@@ -16,8 +16,8 @@ summary: >
   county with one first-call firm per county that the office can switch at release. It also names a cliff the
   live app has today: one firm, no county colored, so the first county colored for anyone ends the bridge and
   every other account loses its firm.
-next: PR 3, shared counties with one first call per county (the migration, pushed right after its merge).
-size: L as a train of four (M, M, L+migration+edge, M+migration); one migration for shared coverage, one for the hand-off RPC
+next: PR 4, Hand off counties in place of Replace (the hand-off RPC, pushed right after its merge).
+size: L as a train of four (M, M, L+migration, M+migration); one migration for shared coverage, one for the hand-off RPC; no edge function change
 blocker: Nothing. The owner asked for the build on 2026-10-31 with the defaults below; PRs 3 and 4 each need a db push right after their merge.
 ver: proposed
 opinion: build — the window answers "where does this firm cover" today with nothing, Replace orphans a territory, and the one-firm-per-county rule is ours, not the owner's; PR 1 first because the bridge cliff is live
@@ -171,4 +171,7 @@ please help me build it"), so the defaults under *Still open* stand.
 - **PR 2, v2.6221** (`docs/recent-features/v2.6221.md`): Extend coverage in the window, the area presets and the gap
   chip, one save path shared with the Settings picker, and the warning over the first save that names the accounts in
   review it would leave with no firm.
-- **PRs 3 and 4**: next.
+- **PR 3, v2.6227** (`docs/recent-features/v2.6227.md`): shared counties with one first call, the three-answer sheet, the
+  stripes, the switch and the release sheet's chooser, and `legal_save_county_coverage` as the one write. The portal needed
+  no edge change: its payload already lists each firm's counties, and the page names a shared county.
+- **PR 4**: next.

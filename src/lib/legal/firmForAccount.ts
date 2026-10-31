@@ -27,8 +27,12 @@ export type VenueCounty = { county: string; from: VenueFrom; balance: number; jo
 export type FirmForAccount<F extends FirmLike = FirmLike> =
   /** A released matter: the firm it went to (`firm` null only when its row is gone; `firmName` always reads). */
   | { kind: 'with'; firm: F | null; firmName: string; counties: VenueCounty[] }
-  /** The venue county's firm; `others` are the other firms with a claim (two-county accounts), largest first. */
-  | { kind: 'covered'; firm: F; county: VenueCounty; others: Array<{ firm: F; county: VenueCounty }>; switched: boolean; counties: VenueCounty[] }
+  /**
+   * The venue county's firm; `others` are the other firms with a claim, largest first: the first call of another
+   * venue county (two-county accounts), and since v2.6227 a firm that also covers a venue county (`shared`).
+   * `share` names the picked county's first call and the firms that also cover it, when more than one does.
+   */
+  | { kind: 'covered'; firm: F; county: VenueCounty; others: Array<{ firm: F; county: VenueCounty; shared?: boolean }>; switched: boolean; counties: VenueCounty[]; share?: { firstCall: F; also: F[] } }
   /** No county is colored yet and one firm stands: it takes every account, as before the map (the bridge). */
   | { kind: 'only_firm'; firm: F; counties: VenueCounty[] }
   /** The county is known and no firm covers it. */
@@ -47,6 +51,8 @@ export type FirmForAccountInput<F extends FirmLike = FirmLike> = {
   firms: ReadonlyArray<F>
   /** The office's switch on a two-county account: the firm id picked for this release. */
   override?: string | null
+  /** county → the firms that also cover it (v2.6227, punch list #222); `assignments` holds each county's first call. */
+  also?: ReadonlyMap<string, ReadonlyArray<string>>
 }
 
 /** The city between the street and `TX` in a one-line address, '' when the line has no such shape. */
@@ -85,11 +91,21 @@ export function firmForAccount<F extends FirmLike>(input: FirmForAccountInput<F>
   const covered = known.filter((c) => c.firmId && firmById.has(c.firmId))
   if (covered.length === 0) return { kind: 'uncovered', county: known[0]!, counties }
   // One row per firm, the firm's largest county first; the largest overall leads.
-  const perFirm: Array<{ firm: F; county: VenueCounty }> = []
+  const perFirm: Array<{ firm: F; county: VenueCounty; shared?: boolean }> = []
   for (const c of covered) if (!perFirm.some((p) => p.firm.id === c.firmId)) perFirm.push({ firm: firmById.get(c.firmId!)!, county: c })
+  // v2.6227: a firm that also covers a venue county may take the release too; it follows the first calls.
+  for (const c of covered) {
+    for (const id of input.also?.get(c.county) ?? []) {
+      const f = firmById.get(id)
+      if (f && f.active !== false && !perFirm.some((p) => p.firm.id === id)) perFirm.push({ firm: f, county: c, shared: true })
+    }
+  }
   const wanted = input.override ? perFirm.find((p) => p.firm.id === input.override) : undefined
   const pick = wanted ?? perFirm[0]!
-  return { kind: 'covered', firm: pick.firm, county: pick.county, others: perFirm.filter((p) => p !== pick), switched: Boolean(wanted && wanted !== perFirm[0]), counties }
+  const firstCall = firmById.get(pick.county.firmId!) ?? null
+  const sharers = (input.also?.get(pick.county.county) ?? []).map((id) => firmById.get(id)).filter((f): f is F => Boolean(f && f.active !== false))
+  const share = firstCall && sharers.length ? { firstCall, also: sharers } : undefined
+  return { kind: 'covered', firm: pick.firm, county: pick.county, others: perFirm.filter((p) => p !== pick), switched: Boolean(wanted && wanted !== perFirm[0]), counties, ...(share ? { share } : {}) }
 }
 
 /** The firm the release goes to and the fee model reads, or null. */
@@ -104,13 +120,44 @@ function fromWords(from: VenueFrom): string {
   return ''
 }
 
+/** `Bell and Hays`, `Bell, Hays and Travis`. */
+function namesList(names: ReadonlyArray<string>): string {
+  if (names.length <= 1) return names[0] ?? ''
+  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
+}
+
+/**
+ * The picked county's sharing in a few words (v2.6227): ` · Snell also covers` when the pick is the first call,
+ * ` · Alamo is first call` when the office switched to a firm that also covers the county; '' otherwise.
+ */
+function shareTail(r: Extract<FirmForAccount, { kind: 'covered' }>): string {
+  if (!r.share) return ''
+  if (r.share.firstCall.id === r.firm.id) {
+    const names = r.share.also.map((f) => f.name)
+    return ` · ${namesList(names)} also cover${names.length === 1 ? 's' : ''}`
+  }
+  return ` · ${r.share.firstCall.name} is first call`
+}
+
+/** The venue line's last part for a shared county, or null: `Alamo is first call · Snell also covers it`, or `Snell picked by hand · Alamo is first call`. */
+function shareLine(r: Extract<FirmForAccount, { kind: 'covered' }>): string | null {
+  if (!r.share) return null
+  if (r.share.firstCall.id === r.firm.id) {
+    const names = r.share.also.map((f) => f.name)
+    return `${r.firm.name} is first call · ${namesList(names)} also cover${names.length === 1 ? 's' : ''} it`
+  }
+  return `${r.firm.name} picked by hand · ${r.share.firstCall.name} is first call`
+}
+
 /** The header's firm segment: the main words, the quiet tail, and whether it is amber. */
 export function firmSegmentWords(r: FirmForAccount): { main: string; tail: string; amber: boolean } {
   switch (r.kind) {
     case 'with':
       return { main: r.firmName, tail: '', amber: false }
-    case 'covered':
-      return { main: r.firm.name, tail: `· ${countyWords(r.county.county)}${r.county.from === 'address' ? ', by the address' : ''}`, amber: false }
+    case 'covered': {
+      const where = `· ${countyWords(r.county.county)}${r.county.from === 'address' ? ', by the address' : ''}`
+      return { main: r.firm.name, tail: `${where}${shareTail(r)}`, amber: false }
+    }
     case 'only_firm':
       return { main: r.firm.name, tail: '· no counties colored yet', amber: false }
     case 'uncovered':
@@ -138,7 +185,7 @@ export function venueLineWords(r: FirmForAccount): string | null {
     const where = known.length ? `${known.map((c) => countyWords(c.county)).join(' and ')}, ${fromWords(known[0]!.from)}` : 'county unknown'
     return `Venue · ${where} · no counties are colored yet, so ${r.firm.name} takes every account`
   }
-  if (known.length <= 1) return `Venue · ${countyWords(r.county.county)}, ${fromWords(r.county.from)} · ${r.firm.name} covers it`
+  if (known.length <= 1) return `Venue · ${countyWords(r.county.county)}, ${fromWords(r.county.from)} · ${shareLine(r) ?? `${r.firm.name} covers it`}`
   const parts = known.map((c) => `${countyWords(c.county)} (${formatLegalMoney(c.balance)})`).join(' and ')
   const lead = known[0]!
   const picked = r.switched ? `${r.firm.name} picked by hand for ${countyWords(r.county.county)}` : `${countyWords(lead.county)} holds the largest open balance, so ${r.firm.name} takes it`

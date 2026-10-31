@@ -1,12 +1,12 @@
 import { useMemo, useState, type CSSProperties } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
-import { useAuth } from '../../../hooks/useAuth'
 import { useToastContext } from '../../../contexts/ToastContext'
 import { useConfirmDialog } from '../../../contexts/ConfirmDialogContext'
 import { useHoldsUnsavedWork } from '../../../hooks/useHoldsUnsavedWork'
 import LegalFirmCountyMap from '../../settings/LegalFirmCountyMap'
-import { assignmentsFromCountiesByFirm, changedWords, countyChanges, countyWords, firmHues, firmLegend, moveCounty, moveQuestion, movedWords, pressCounty, pressWords, savedWords, type CountyAssignments } from '../../../lib/legal/firmCounties'
+import LegalCountyHeldSheet from '../../settings/LegalCountyHeldSheet'
+import { alsoCovers, answerHeld, changedWords, countyChanges, countyWords, firmHues, firmLegend, firmsOfCover, firstCalls, heldDoneWords, makeFirstCall, pressCounty, pressWords, savedWords, type CountyCover, type Coverage, type HeldAnswer } from '../../../lib/legal/firmCounties'
 import { effectiveStand, uncoveredCounties, uncoveredWords, type LegalMapCase } from '../../../lib/legal/firmMap'
 import { bridgeEndsWords, coverageCasesChip, coverageCountyChip, coverageHintWords, coverageNudgeButton, coverageNudgeWords, coverageState, coverageSumWords, firmWindowCoverage, type FirmWindowCoverage } from '../../../lib/legal/firmWindowCoverage'
 import { AREA_PRESETS, applyArea, areaChipWords, areaWords, extendChangeWords, gapChipWords } from '../../../lib/legal/firmAreaPresets'
@@ -17,18 +17,6 @@ import { formatLegalMoney } from '../../../lib/legal/legalPacket'
 import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
 
 const db = supabase as unknown as SupabaseClient
-
-/** county → firm id, back to each firm's sorted counties (the shape `firmWindowCoverage` reads). */
-function byFirmOf(assignments: CountyAssignments): Map<string, string[]> {
-  const out = new Map<string, string[]>()
-  for (const [county, firmId] of assignments) {
-    const list = out.get(firmId) ?? []
-    list.push(county)
-    out.set(firmId, list)
-  }
-  for (const list of out.values()) list.sort((a, b) => a.localeCompare(b))
-  return out
-}
 
 /**
  * Where the firm covers, in the firm's window (punch list #222). PR 1 (v2.6195): the county map in lens mode with
@@ -41,39 +29,45 @@ function byFirmOf(assignments: CountyAssignments): Map<string, string[]> {
  * *Add by area* colors a metro in one press, and the gap chip colors every county with a case and no firm. The list
  * follows the draft, so the cases and dollars a county brings show before the save. Under it, what the save will
  * change in sentences, and **Save N counties** through `saveCountyChanges`, the Settings picker's own write.
+ *
+ * PR 3 (v2.6227): a county may have several firms and one first call. A county the firm covers without being first
+ * call reads *also* with the first call named, and while editing it offers *Make first call*. A county only other
+ * firms cover asks three ways (`LegalCountyHeldSheet`): share it, take first call, or move it.
  */
-export default function LegalFirmCoverage({ firm, firms, countiesByFirm, cases, canEdit, onShowOnMap, onSaved }: {
+export default function LegalFirmCoverage({ firm, firms, coverage: saved, cases, canEdit, onShowOnMap, onSaved }: {
   firm: LegalFirmRow
   firms: ReadonlyArray<LegalFirmRow>
-  countiesByFirm: ReadonlyMap<string, ReadonlyArray<string>>
+  /** The saved coverage: county → first call and the firms that also cover it. */
+  coverage: Coverage
   cases: ReadonlyArray<LegalMapCase>
   canEdit: boolean
   onShowOnMap?: (firmId: string) => void
   /** After a save: the desk reloads its firms and counties. */
   onSaved: () => void
 }) {
-  const { user } = useAuth()
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
   const [county, setCounty] = useState<string | null>(null)
   const [extending, setExtending] = useState(false)
-  const saved = useMemo(() => assignmentsFromCountiesByFirm(countiesByFirm), [countiesByFirm])
-  const [draft, setDraft] = useState<Map<string, string>>(() => new Map(saved))
+  const [draft, setDraft] = useState<Map<string, CountyCover>>(() => new Map(saved))
+  const [held, setHeld] = useState<{ county: string; holderId: string } | null>(null)
   const [saving, setSaving] = useState(false)
   const changes = useMemo(() => (extending ? countyChanges(saved, draft) : []), [extending, saved, draft])
   useHoldsUnsavedWork(changes.length > 0 || saving, 'Law firm counties')
 
-  const assignments = extending ? draft : saved
-  const shownByFirm = useMemo(() => (extending ? byFirmOf(draft) : countiesByFirm), [extending, draft, countiesByFirm])
+  const shown = extending ? draft : saved
+  const assignments = useMemo(() => firstCalls(shown), [shown])
+  const also = useMemo(() => alsoCovers(shown), [shown])
   const hues = useMemo(() => firmHues(firms), [firms])
   const legend = useMemo(() => firmLegend(firms, assignments), [firms, assignments])
   const firmNames = useMemo(() => new Map(firms.map((f) => [f.id, f.name] as const)), [firms])
   const nameOf = (id: string) => firmNames.get(id) ?? 'another firm'
-  const coverage = useMemo(() => firmWindowCoverage(firm.id, shownByFirm, cases), [firm.id, shownByFirm, cases])
-  const state = coverageState(firm.id, countiesByFirm, firms.filter((f) => f.active).length)
+  const coverage = useMemo(() => firmWindowCoverage(firm.id, shown, cases), [firm.id, shown, cases])
+  const state = coverageState(firm.id, saved, firms.filter((f) => f.active).length)
   const nudge = coverageNudgeWords(firm.name, state)
-  const flag = !extending && state.kind === 'covers' ? uncoveredWords(cases, saved) : null
-  const gaps = useMemo(() => (extending ? uncoveredCounties(cases, draft) : []), [extending, cases, draft])
+  const savedFirst = useMemo(() => firstCalls(saved), [saved])
+  const flag = !extending && state.kind === 'covers' ? uncoveredWords(cases, savedFirst) : null
+  const gaps = useMemo(() => (extending ? uncoveredCounties(cases, assignments) : []), [extending, cases, assignments])
   const canExtend = canEdit
 
   const startExtending = () => {
@@ -99,11 +93,20 @@ export default function LegalFirmCoverage({ firm, firms, countiesByFirm, cases, 
       showToast(pressWords(press, c, firm.name), 'success')
       return
     }
-    const holder = nameOf(press.byFirmId)
-    const yes = await confirm({ title: countyWords(c), message: moveQuestion(c, holder, firm.name), confirmLabel: `Move it to ${firm.name}`, cancelLabel: 'Leave it', cancelIsSafe: true })
-    if (!yes) return
-    setDraft(moveCounty(draft, c, firm.id))
-    showToast(movedWords(c, firm.name), 'success')
+    // A county only other firms cover: share it, take first call, or move it (v2.6227).
+    setHeld({ county: c, holderId: press.byFirmId })
+  }
+  const answer = (a: HeldAnswer) => {
+    if (!held) return
+    setDraft(answerHeld(draft, held.county, firm.id, a))
+    showToast(heldDoneWords(a, held.county, firm.name, nameOf(held.holderId)), 'success')
+    setHeld(null)
+  }
+  const takeFirstCall = (c: string) => {
+    const cover = draft.get(c)
+    if (!cover) return
+    setDraft(makeFirstCall(draft, c, firm.id))
+    showToast(heldDoneWords('first_call', c, firm.name, nameOf(cover.first)), 'success')
   }
   const pressArea = (label: string, counties: ReadonlyArray<string>) => {
     const applied = applyArea(draft, counties, firm.id)
@@ -115,12 +118,15 @@ export default function LegalFirmCoverage({ firm, firms, countiesByFirm, cases, 
     setSaving(true)
     try {
       const n = changes.length
-      const r = await saveCountyChanges(db, changes, user?.id ?? null)
+      const r = await saveCountyChanges(db, changes)
       if (!r.ok) {
         showToast(r.message, 'error')
-        // A conflict or a refusal: the desk reads what stands now, and the picker closes on it.
-        onSaved()
-        setExtending(false)
+        // Another tab changed a county: the desk reads what stands now and the picker closes on it. Any other
+        // refusal keeps the picker and its draft open, so nothing picked is lost.
+        if (r.conflict) {
+          onSaved()
+          setExtending(false)
+        }
         return
       }
       showToast(savedWords(n), 'success')
@@ -137,7 +143,7 @@ export default function LegalFirmCoverage({ firm, firms, countiesByFirm, cases, 
   // The cliff (v2.6221): while nothing is colored for any firm, the first save ends the default; name the cases it strands.
   // Only an account still in review can be released, so a given-up account or one already with a firm is not stranded.
   const bridgeEnds = extending && changes.length > 0 && state.kind === 'nothing_colored'
-    ? bridgeEndsWords(firm.name, cases.filter((c) => c.stand === 'eyes' && effectiveStand(c, draft) === 'none'))
+    ? bridgeEndsWords(firm.name, cases.filter((c) => c.stand === 'eyes' && effectiveStand(c, assignments) === 'none'))
     : null
 
   return (
@@ -186,6 +192,7 @@ export default function LegalFirmCoverage({ firm, firms, countiesByFirm, cases, 
               firmNames={firmNames}
               legend={legend}
               pickedFirmId={extending ? firm.id : null}
+              also={also}
               cases={cases}
               heldCaseId={null}
               selectedCounty={county}
@@ -197,7 +204,14 @@ export default function LegalFirmCoverage({ firm, firms, countiesByFirm, cases, 
             {flag ? <div data-legal-firm-coverage-flag style={{ background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 6, padding: '6px 10px', fontSize: '0.78rem', marginTop: 8 }}>{flag}</div> : null}
           </div>
           <div style={{ minWidth: 0 }}>
-            <CoverageTable coverage={coverage} county={county} added={new Set(changes.filter((c) => c.to === firm.id).map((c) => c.county))} onHold={setCounty} />
+            <CoverageTable
+              coverage={coverage}
+              county={county}
+              added={new Set(changes.filter((c) => !firmsOfCover(c.from).includes(firm.id) && firmsOfCover(c.to).includes(firm.id)).map((c) => c.county))}
+              nameOf={nameOf}
+              onHold={setCounty}
+              onTakeFirstCall={extending ? takeFirstCall : undefined}
+            />
             {extending ? (
               <div data-legal-firm-extend-foot style={{ marginTop: 10, display: 'grid', gap: 8 }}>
                 {changeLines.length ? (
@@ -223,12 +237,24 @@ export default function LegalFirmCoverage({ firm, firms, countiesByFirm, cases, 
           </div>
         </div>
       ) : null}
+      {held ? <LegalCountyHeldSheet county={held.county} holderName={nameOf(held.holderId)} firmName={firm.name} onAnswer={answer} onCancel={() => setHeld(null)} /> : null}
     </section>
   )
 }
 
-/** The counties list: a row per county the firm covers (in the draft while editing), its cases and open dollars, and the sum. */
-function CoverageTable({ coverage, county, added, onHold }: { coverage: FirmWindowCoverage; county: string | null; added: ReadonlySet<string>; onHold: (c: string | null) => void }) {
+/**
+ * The counties list: a row per county the firm covers (in the draft while editing), its cases and open dollars, and
+ * the sum. A county the firm shares reads *also* with its first call named (v2.6227); while editing it offers *Make
+ * first call*.
+ */
+function CoverageTable({ coverage, county, added, nameOf, onHold, onTakeFirstCall }: {
+  coverage: FirmWindowCoverage
+  county: string | null
+  added: ReadonlySet<string>
+  nameOf: (firmId: string) => string
+  onHold: (c: string | null) => void
+  onTakeFirstCall?: (c: string) => void
+}) {
   return (
     <table data-legal-firm-coverage-rows style={{ borderCollapse: 'collapse', width: '100%', fontSize: '0.84rem' }}>
       <thead>
@@ -249,6 +275,12 @@ function CoverageTable({ coverage, county, added, onHold }: { coverage: FirmWind
                   {countyWords(r.county)}
                 </button>
                 {isNew ? <span style={{ marginLeft: 6, fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', borderRadius: 999, padding: '0 6px' }}>new</span> : null}
+                {r.role === 'also' ? (
+                  <span data-legal-firm-coverage-also style={{ display: 'block', fontWeight: 400, fontSize: '0.74rem', color: 'var(--text-muted)' }}>
+                    also covers · {nameOf(r.firstCall)} first call
+                    {onTakeFirstCall ? <> · <button type="button" onClick={() => onTakeFirstCall(r.county)} data-legal-firm-take-first-call={r.county} style={{ padding: 0, background: 'none', border: 'none', color: 'var(--text-link)', font: 'inherit', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' }}>Make first call</button></> : null}
+                  </span>
+                ) : null}
               </td>
               <td style={num}>{r.cases}</td>
               <td style={{ ...num, color: r.cases ? undefined : 'var(--text-muted)' }}>{r.cases ? formatLegalMoney(r.balance) : '—'}</td>
@@ -268,7 +300,8 @@ function CoverageTable({ coverage, county, added, onHold }: { coverage: FirmWind
 const th: CSSProperties = { textAlign: 'left', fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '3px 6px', borderBottom: '1px solid var(--border-strong)', whiteSpace: 'nowrap' }
 const td: CSSProperties = { padding: '5px 6px', borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }
 const num: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
-const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }
+// Longhands: Save flips between its dead and live styles, and React drops a border shorthand under a changing borderColor.
+const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }
 const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-700)', color: 'var(--surface)', borderColor: 'var(--text-700)' }
 const chip: CSSProperties = { border: '1px solid var(--border)', borderRadius: 999, padding: '1px 9px', background: 'var(--bg-subtle)', color: 'var(--text)', fontSize: '0.8rem' }
 const chipBtn: CSSProperties = { ...chip, cursor: 'pointer', font: 'inherit', fontSize: '0.78rem', fontWeight: 600 }

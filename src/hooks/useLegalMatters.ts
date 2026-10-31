@@ -3,7 +3,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { listLegalMatterDocuments, type LegalMatterDocumentRow } from '../lib/legal/legalMatterDocumentsIo'
 import { supabase } from '../lib/supabase'
 import { indexMatters, type LegalEntryRow, type LegalFirmRow, type LegalMatterJobRow, type LegalMatterRow, type LegalRecipientRow } from '../lib/legal/legalMatters'
-import { countiesByFirm as countiesByFirmOf, type LegalFirmCountyRow } from '../lib/legal/firmCounties'
+import { countiesByFirm as countiesByFirmOf, savedCoverage, type CountyCover, type LegalFirmCountyRow } from '../lib/legal/firmCounties'
 import { classifyLegalRead, legalReadRetryDelay, type LegalReadState } from '../lib/legal/legalTablesRead'
 
 // The legal_* tables land with the v2.3313 migration; until the generated types
@@ -28,8 +28,13 @@ export type LegalMattersData = {
   firms: LegalFirmRow[]
   /** The firms that stand today (v2.5756, punch list #144); several since the one-active index went. */
   activeFirms: LegalFirmRow[]
-  /** Each active firm's counties, sorted (`legal_firm_counties`, live rows); empty until the table exists. Nothing reads it before PR 2. */
+  /** Each active firm's counties, first call or not, sorted (`legal_firm_counties`, live rows); empty until the table exists. */
   countiesByFirm: Map<string, string[]>
+  /**
+   * county → its first call and the firms that also cover it (v2.6227, punch list #222); the venue rule, the Map and the
+   * firm window read it. The hook always fills it; a caller without it (an older fixture) reads `countiesByFirm` instead.
+   */
+  coverage?: Map<string, CountyCover>
   matters: LegalMatterRow[]
   byPayerKey: Map<string, LegalMatterRow>
   byJobId: Map<string, LegalMatterRow>
@@ -123,6 +128,7 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
 
   const activeFirms = useMemo(() => firms.filter((f) => f.active), [firms])
   const countiesByFirm = useMemo(() => countiesByFirmOf(countyRows, activeFirms), [countyRows, activeFirms])
+  const coverage = useMemo(() => savedCoverage(countyRows, new Set(activeFirms.map((f) => f.id))), [countyRows, activeFirms])
 
   const documentsByMatter = useMemo(() => {
     const out = new Map<string, LegalMatterDocumentRow[]>()
@@ -138,6 +144,7 @@ export function useLegalMatters(enabled: boolean): LegalMattersData {
     firms,
     activeFirms,
     countiesByFirm,
+    coverage,
     matters,
     byPayerKey: idx.byPayerKey,
     byJobId: idx.byJobId,
