@@ -21,7 +21,7 @@ import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
 import { supabase } from '../../../lib/supabase'
-import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, listLegalMatterDocuments, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
@@ -33,7 +33,7 @@ import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocum
 import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
 import LegalAffidavitWindow from './LegalAffidavitWindow'
 import { useOfficeCounty } from '../../../hooks/useOfficeCounty'
-import type { DeclarantDetails, StatementDraft, StatementFace } from '../../../lib/legal/affidavitPaper'
+import { statementMetaOf, type DeclarantDetails, type StatementDraft, type StatementFace, type StatementFilingDraft } from '../../../lib/legal/affidavitPaper'
 import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 
 import LegalPortalLinkButton from './LegalPortalLinkButton'
@@ -202,7 +202,7 @@ export default function LegalDesk(props: LegalDeskProps) {
   /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
   const [writeDownOpen, setWriteDownOpen] = useState(false)
   /** Swear a statement (punch list #220, v2.6210): the window on a new statement (on a day) or on an existing one. */
-  const [statementWin, setStatementWin] = useState<{ entryId: string | null; on: string | null; print: StatementFace | null } | null>(null)
+  const [statementWin, setStatementWin] = useState<{ entryId: string | null; on: string | null; print: StatementFace | null; file: boolean } | null>(null)
   /** A declaration's declarant details by statement (v2.6211): typed at print time, held for the session, never saved. */
   const declarantRef = useRef<Map<string, DeclarantDetails>>(new Map())
   const [, bumpDeclarant] = useState(0)
@@ -694,11 +694,38 @@ export default function LegalDesk(props: LegalDeskProps) {
   }
   /** v2.6211: note a print on the row — which face, the text as printed; the paper prints whether or not the note lands. */
   const statementPrint = async (entryId: string, face: StatementFace, text: string): Promise<boolean> => Boolean(await run('Note the print', () => legalRpc('legal_statement_print', { p_entry_id: entryId, p_face: face, p_text: text })))
+  /**
+   * v2.6212: file the signed copy — the scan onto Evidence through the add press's own path (title = the statement's,
+   * dated the signing day, final, whose as picked), then the statement signed and pointed at it. A refused signing
+   * takes the scan back off Evidence, so a half-filed copy never sits there.
+   */
+  const statementFile = async (entryId: string, file: File, filing: StatementFilingDraft): Promise<boolean> => {
+    const ok = await run('File the signed copy', async () => {
+      if (!matter) return 'The matter could not be found'
+      const entry = (legal?.entriesByMatter.get(matter.id) ?? []).find((e) => e.id === entryId)
+      if (!entry) return 'The statement could not be found'
+      const meta = statementMetaOf(entry.meta)
+      let docId: string
+      try {
+        docId = await addLegalMatterDocument(supabase, matter.id, { title: meta.title || 'Sworn statement', shows: filing.shows, datedOn: filing.signedOn, state: 'final', whose: filing.whose }, file)
+      } catch (e) {
+        return formatErrorMessage(e, 'Could not store the signed scan.')
+      }
+      const err = await legalRpc('legal_statement_sign', { p_entry_id: entryId, p_document_id: docId, p_signed_on: filing.signedOn, p_as_printed: filing.asPrinted, p_on: filing.incidentOn, p_incident_to: filing.incidentTo || null, p_clear_incident_to: !filing.incidentTo })
+      if (err) {
+        await retireLegalMatterDocument(supabase, docId).catch(() => undefined)
+        return err
+      }
+      return null
+    })
+    if (ok) showToast(`Filed — the signed copy is on Evidence on ${filing.signedOn}. The statement reads sworn on the Timeline.`, 'success')
+    return Boolean(ok)
+  }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
   const planActs: PlanActs = {
     holds: holdOverrides,
     holdReasons: heldReasonsOf(matter),
-    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on, print: null }), editStatement: (entryId, opts) => setStatementWin({ entryId, on: null, print: opts?.print ? 'whole' : null }) } : null,
+    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on, print: null, file: false }), editStatement: (entryId, opts) => setStatementWin({ entryId, on: null, print: opts?.print ? 'whole' : null, file: Boolean(opts?.file) }) } : null,
   }
   /** #85 item 16: accept a firm step that would have moved the stage back. */
   const moveStage = async (stageTo: string, entryId: string) => {
@@ -1329,6 +1356,8 @@ export default function LegalDesk(props: LegalDeskProps) {
           declarant={statementWin.entryId ? (declarantRef.current.get(statementWin.entryId) ?? null) : null}
           onDeclarant={(id, d) => { declarantRef.current.set(id, d); bumpDeclarant((t) => t + 1) }}
           initialPrint={statementWin.print}
+          onFile={statementFile}
+          initialFile={statementWin.file}
           onClose={() => setStatementWin(null)}
           onShowTimeline={() => showTab('timeline')}
           zIndex={DESK_LAYER_Z + 12}

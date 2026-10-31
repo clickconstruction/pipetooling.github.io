@@ -27,6 +27,7 @@
  */
 import type { FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
 import type { LegalEntryRow } from './legalMatters'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /** Who wrote it: the office at the desk, or a dev's robot through dev-mcp (a later verb pair). */
 export type StatementSource = 'office' | 'mcp'
@@ -232,6 +233,13 @@ export function statementShortDay(ymd: string): string {
 export function statementLongDay(ymd: string): string {
   if (!YMD.test(ymd)) return ymd
   return `${MONTHS_LONG[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}, ${ymd.slice(0, 4)}`
+}
+
+/** *7:12 AM* in the company's zone: a clock session's edge, a print's moment. */
+export function clockWordsInAppTz(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ })
 }
 
 /** *Sep 3* · *Sep 3 to Sep 17* — the span as the desk says it. */
@@ -525,4 +533,51 @@ export function recordCheckLines(input: {
 /** The record check's heading: *What the record says about Sep 3 to Sep 17*. */
 export function recordCheckHeading(incidentOn: string, incidentTo: string | null): string {
   return YMD.test(incidentOn) ? `What the record says about ${incidentSpanWords(incidentOn, incidentTo)}` : 'What the record says about those days'
+}
+
+// ---------- filing the signed copy (PR 5, v2.6212) ----------
+
+import type { LegalDocumentWhose } from './legalMatterDocuments'
+
+/** What *File the signed copy…* asks: the scan is the file beside it. */
+export type StatementFilingDraft = {
+  /** The day it was signed, read off the jurat; the Evidence row's day. */
+  signedOn: string
+  /** The signed paper reads as the text last printed (false: changed by hand; the scan governs). */
+  asPrinted: boolean
+  /** The day it is about, confirmed or corrected, and the span's last day or ''. */
+  incidentOn: string
+  incidentTo: string
+  /** Whose paper the scan is on Evidence; null is our record. */
+  whose: LegalDocumentWhose | null
+  /** The Evidence row's one line. */
+  shows: string
+}
+
+/** The row's *shows* line as the filing form prefills it, re-derived while untouched. */
+export function statementFilingShows(meta: Pick<StatementMeta, 'form' | 'venueCounty'>, d: Pick<StatementFilingDraft, 'signedOn' | 'incidentOn' | 'incidentTo'>): string {
+  return statementShowsLine({ form: meta.form, venueCounty: meta.venueCounty, signedOn: YMD.test(d.signedOn) ? d.signedOn : null, incidentTo: d.incidentTo || null }, d.incidentOn)
+}
+
+/** *Oct 28 at 2:14 PM*, the last print the question names; '' when nothing was printed from the desk. */
+export function lastPrintWords(meta: Pick<StatementMeta, 'prints'>, dayOfIso: (iso: string) => string, clockWords: (iso: string) => string): string {
+  const last = meta.prints[meta.prints.length - 1]
+  if (!last || !last.at) return ''
+  return `${statementShortDay(dayOfIso(last.at))} at ${clockWords(last.at)}`
+}
+
+/** Why the signed copy cannot be filed as typed; null when it can. The RPC (`legal_statement_sign`) holds the same rules. */
+export function statementFilingProblem(d: StatementFilingDraft, file: { size: number; type: string; name: string } | null, todayYmd: string): string | null {
+  if (!file) return 'Choose the signed scan.'
+  if (!ymdValid(d.incidentOn)) return 'Pick the day it is about.'
+  if (d.incidentOn > todayYmd) return 'The day it is about cannot be ahead of today.'
+  if (d.incidentTo) {
+    if (!ymdValid(d.incidentTo)) return 'Pick the last day of the span, or clear it.'
+    if (d.incidentTo < d.incidentOn) return 'The last day of the span comes before the first. Swap them.'
+  }
+  if (!ymdValid(d.signedOn)) return 'Type the day it was signed, off the jurat.'
+  if (d.signedOn > todayYmd) return 'The day it was signed cannot be ahead of today.'
+  if (d.signedOn < d.incidentOn) return 'The day it was signed comes before the day it is about. Check the jurat.'
+  if (!d.shows.trim()) return 'Say in one line what it shows.'
+  return null
 }
