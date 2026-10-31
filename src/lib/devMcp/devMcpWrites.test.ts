@@ -94,8 +94,9 @@ describe('devMcpWrites — the allowlist', () => {
       expect(SERVER).toContain(`case '${verb}':`)
     }
     expect(SERVER).toContain('if (isWriteVerb(verb)) return finish(refused(')
-    // restPost is reached only from the write branch: once to declare it, and only in that branch's calls.
-    expect(SERVER.match(/restPost\(/g)?.length).toBe(4)
+    // restPost is reached only from the write branches: once to declare it, three calls in the generic branch, and
+    // the plan set verbs' own dry run and stamp (v2.6185).
+    expect(SERVER.match(/restPost\(/g)?.length).toBe(6)
     expect(planVerbFor('apply_hr_entry')).toBe('plan_hr_entry')
     expect(planVerbFor('revert_cost_batch')).toBeNull()
   })
@@ -177,7 +178,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.10.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.11.0'")
   })
 })
 
@@ -221,13 +222,13 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: '2026-10-28T15:00:00Z' })).toContain('on this matter')
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: null })).toContain('legal_matter_gap_answers')
   })
-  it('the server declares both verbs in the write branch and reports 0.10.0', () => {
+  it('the server declares both verbs in the write branch and reports 0.11.0', () => {
     expect(SERVER).toContain("name: 'plan_gap_answer'")
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.10.0'")
-    expect(SERVER).toContain('Writes are seventeen verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.11.0'")
+    expect(SERVER).toContain('Writes are nineteen verbs and nothing else')
   })
 })
 
@@ -406,5 +407,44 @@ describe('the narrative verbs (v2.4814)', () => {
   it('the plan reply points at apply_matter_narrative, and a repeat apply says it is already on the matter', () => {
     expect(String(planReply('plan_matter_narrative', { matter: { id: MATTER } }, 'a'.repeat(64)).next)).toContain('apply_matter_narrative')
     expect(alreadyApplied('apply_matter_narrative', { target: MATTER, at: '2026-10-07T18:00:00Z' })).toContain('on this matter')
+  })
+})
+
+describe('the plan set verbs (v2.6185)', () => {
+  const BID_ID = '0e4dcd2b-a524-4056-b93c-16713041a6e7'
+  const SHA = 'c'.repeat(64)
+  const PLANS = { bid: BID_ID, file_name: '231 Gun Dog Trail Bunker & Lodge - plans for the robot.pdf', size_bytes: 25274441, sha256: SHA.toUpperCase() }
+  it('are on the allowlist over the same RPC, plan before apply, and POST { p: { action: file_plans, … }, p_dry_run } with the sha lowered', () => {
+    expect(isWriteVerb('plan_file_plans')).toBe(true)
+    expect(planVerbFor('apply_file_plans')).toBe('plan_file_plans')
+    expect(WRITE_VERBS.plan_file_plans.rpc).toBe('dev_bid_write')
+    const plan = writeRpcBody('plan_file_plans', { plans: PLANS })
+    expect(plan).toMatchObject({ ok: true, step: 'plan', target: BID_ID, body: { p: { action: 'file_plans', bid_id: BID_ID, file_name: PLANS.file_name, size_bytes: 25274441, sha256: SHA }, p_dry_run: true } })
+    expect(pOf(plan)).not.toHaveProperty('replace')
+    const apply = writeRpcBody('apply_file_plans', { plans: { ...PLANS, replace: true, set_name: 'Plans for the robot', memo: 'Lodge 25 + Bunker 44, gaps filled' }, plan_hash: HASH })
+    expect(apply).toMatchObject({ ok: true, step: 'apply', body: { p: { replace: true, set_name: 'Plans for the robot', memo: 'Lodge 25 + Bunker 44, gaps filled' }, p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: HASH })
+    expect(writeRpcBody('apply_file_plans', { plans: PLANS })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+  })
+  it('refuses a non-PDF name, a path, a file over 50 MB, a bad sha and a bad bid id', () => {
+    expect(writeRpcBody('plan_file_plans', { plans: { ...PLANS, file_name: 'plans.zip' } })).toMatchObject({ ok: false, error: expect.stringContaining('.pdf') })
+    expect(writeRpcBody('plan_file_plans', { plans: { ...PLANS, file_name: 'sets/plans.pdf' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_file_plans', { plans: { ...PLANS, size_bytes: 52428801 } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_file_plans', { plans: { ...PLANS, size_bytes: 0 } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_file_plans', { plans: { ...PLANS, sha256: 'abc' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_file_plans', { plans: { ...PLANS, bid: 'b612' } })).toMatchObject({ ok: false, error: expect.stringContaining('find_bid') })
+    expect(writeRpcBody('plan_file_plans', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs plans') })
+  })
+  it('the server stages into the private bid-submittals bucket, files into the division folder with the shared Drive helpers, and probes; the plan reply points at apply_file_plans', () => {
+    expect(SERVER).toContain("name: 'plan_file_plans'")
+    expect(SERVER).toContain("case 'apply_file_plans': {")
+    expect(SERVER).toContain("const ROBOT_PLANS_BUCKET = 'bid-submittals'")
+    expect(SERVER).toContain("from '../_shared/driveUpload.ts'")
+    expect(SERVER).toContain("from '../_shared/bidPlansFolders.ts'")
+    expect(SERVER).toContain('p_link: { folder_link: folderLink, file_link: fileLink, pages }')
+    expect(SERVER).toContain('await stagedRemove(session, stagePath)')
+    expect(SERVER).toContain('await probePlans(session, plans.bid_id)')
+    expect(String(planReply('plan_file_plans', { after: { bid: 'b612' } }, 'f'.repeat(64)).next)).toContain('apply_file_plans')
+    expect(alreadyApplied('apply_file_plans', { target: 'b612', at: '2026-10-30T22:30:00Z' })).toContain('on bid b612')
+    expect(alreadyApplied('apply_file_plans', { target: 'b612', at: null })).toContain('replace: true')
   })
 })
