@@ -228,7 +228,7 @@ row with three states, and the record check beside the incident day is what woul
 ### The robot path
 
 dev-mcp's `plan_matter_document` / `apply_matter_document` (v2.6004) files the scan and is enough for the paper. The
-text is not a document: `shows` is one line, and a statement is pages. Built after the train (PR 8, v2.6244, server
+text is not a document: `shows` is one line, and a statement is pages. Built after the train (PR 9, v2.6244, server
 0.13.0): `plan_matter_statement` / `apply_matter_statement` over `dev_legal_statement_write` (migration
 `20261031190000`), the twentieth and twenty-first write verbs. A robot drafts an affidavit or an unsworn declaration
 onto the matter's Timeline — the day it is about and the span, the title, who swears it by `users.id` with their full
@@ -275,7 +275,7 @@ reads them. The blue *Second pass* box under each section says what the first re
   bucket, `app_settings` for the office county.
 - The firm: `supabase/functions/legal-portal/index.ts` ships entries by kind minus the held (`statement:<id>` joins
   `plan:` / `event:` / `offer:`), `_shared/legalMatterDocuments.ts` for the row.
-- The robot: `supabase/functions/dev-mcp/` and `_shared/devMcpWrites.ts` (the verb pair, PR 8, v2.6244).
+- The robot: `supabase/functions/dev-mcp/` and `_shared/devMcpWrites.ts` (the verb pair, PR 9, v2.6244).
 
 ## The plan
 
@@ -289,7 +289,7 @@ reads them. The blue *Second pass* box under each section says what the first re
 
 | 6 | **The business-records affidavit** as a preset on the same window (Tex. R. Evid. 902(10), the form in 902(10)(B) quoted verbatim): the office as custodian of records, the affiant picked from the roster, the records named by their Evidence rows (the invoices, the clock, the job thread) with the row count and page count the form asks for; printed and filed through PRs 4 and 5 unchanged. Wanted by the owner (2026-10-30) if it adds value: it is what lets the firm put our invoices and the clock into evidence without calling anyone to testify, and the firm asks for it on every account that reaches suit. | S |
 
-Built after the train: dev-mcp `plan_matter_statement` / `apply_matter_statement` (PR 8, v2.6244). Later: *Insert
+Built after the train: dev-mcp `plan_matter_statement` / `apply_matter_statement` (PR 9, v2.6244). Later: *Insert
 the statements* in the narrative. Not wanted: remote online notarization — the office signs everything in person (the owner, 2026-10-30).
 
 ## How to verify
@@ -330,7 +330,7 @@ one before it merges: the kernel and the shared jurat; the migration, the RPCs, 
 the window, its doors and the record check; the print sheet with the three faces and Save as PDF; filing the signed
 scan with the two links; the business-records preset (Tex. R. Evid. 902(10)(B), quoted from the Supreme Court's order
 of 2014-08-19). Left after the merges: `supabase db push`, `supabase functions deploy legal-portal`, the owner's look on a
-live account. The robot path landed after the train as PR 8 (v2.6244): dev-mcp `plan_matter_statement` /
+live account. The robot path landed after the train as PR 9 (v2.6244): dev-mcp `plan_matter_statement` /
 `apply_matter_statement` over `dev_legal_statement_write`, waiting on `supabase db push` and `supabase functions
 deploy dev-mcp` after its merge. Later: *Insert the statements* in the narrative. Question 3 (drafts to counsel) stays answered by the desk's rule until the owner says
 otherwise.
