@@ -138,7 +138,13 @@ describe('DraftPayrollModal with the bars', () => {
     expect(within(rosa).getByText('no report yet')).toBeTruthy()
     expect(screen.getAllByText('est.')).toHaveLength(1)
     expect(screen.getByText('salary 8h')).toBeTruthy()
-    expect(screen.getByText(/A green bar is money sent/)).toBeTruthy()
+    // The owner (2026-10-30): no legend under the period bar and no key paragraph under the table; the words are inside the parts and on the hover.
+    expect(screen.queryByText(/A green bar is money sent/)).toBeNull()
+    expect(within(period).getByText('owed $872.00')).toBeTruthy()
+    // The $ column draws its cents smaller.
+    const money = screen.getAllByText((_, el) => el?.hasAttribute('data-draft-payroll-money') === true && el.textContent === '$1,071.00')
+    expect(money).toHaveLength(1)
+    expect(money[0]?.querySelector('span')?.textContent).toBe('.00')
   })
 
   it('a dev with ?sbs=1 sees today over the bars, with no switch', () => {

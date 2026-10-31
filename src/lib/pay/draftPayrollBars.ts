@@ -83,8 +83,6 @@ export type DraftPayrollPeriodBar = {
   paidCount: number
   rosterCount: number
   parts: DraftPayrollBarPart[]
-  /** The legend under the bar: one entry per part kind the bar holds. */
-  legend: Array<{ kind: DraftPayrollBarPartKind; label: string; amount: number }>
 }
 
 export type DraftPayrollBars = {
@@ -102,6 +100,14 @@ export const PART_WORDS: Record<DraftPayrollBarPartKind, string> = {
   owed: 'owed on a report',
   withheld: 'withheld',
   estimate: 'no report yet',
+}
+
+/** Inside the period bar's parts, where room is short (the owner, 2026-10-30: *owed $2,309.20*, not *owed on a report $2,309.20*). */
+export const PART_SHORT_WORDS: Record<DraftPayrollBarPartKind, string> = {
+  paid: 'paid',
+  owed: 'owed',
+  withheld: 'withheld',
+  estimate: 'no report',
 }
 
 const EPS = 0.004
@@ -232,7 +238,7 @@ export function draftPayrollBars(rowsIn: ReadonlyArray<DraftPayrollRowBarInput>,
       kind: k,
       amount,
       fraction: frac(amount, scale),
-      label: `${PART_WORDS[k]} ${usd(amount)}`,
+      label: `${PART_SHORT_WORDS[k]} ${usd(amount)}`,
       title: `${usd(amount)} ${PART_WORDS[k]}`,
     }
   })
@@ -245,7 +251,6 @@ export function draftPayrollBars(rowsIn: ReadonlyArray<DraftPayrollRowBarInput>,
       paidCount,
       rosterCount,
       parts,
-      legend: parts.map((p) => ({ kind: p.kind, label: PART_WORDS[p.kind], amount: p.amount })),
     },
   }
 }

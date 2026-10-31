@@ -1,5 +1,6 @@
 import type { CSSProperties } from 'react'
 import { MONEY_BAR_TONE } from '../../lib/jobs/jobMoneyBar'
+import { formatCurrency } from '../../lib/format'
 import { SALARY_FLAT_HOURS_CHIP, SALARY_FLAT_HOURS_TITLE } from '../../lib/people/approvalsSessionChips'
 import {
   ESTIMATE_CHIP,
@@ -71,22 +72,12 @@ function Bar({ parts, height, words, labelFrom, testId }: { parts: DraftPayrollB
   )
 }
 
-/** The period's bar under the dates, with its caption and legend, in place of *Total | Left*. */
+/** The period's bar under the dates with its caption, in place of *Total | Left*; the words live inside the parts and on the hover (the owner dropped the legend, 2026-10-30). */
 export function DraftPayrollPeriodBar({ bar }: { bar: PeriodBar }) {
   return (
     <div data-draft-payroll-period-bar style={{ display: 'grid', gap: '0.25rem', marginBottom: '0.6rem' }}>
       <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-strong)', textAlign: 'center' }}>{bar.caption}</div>
       <Bar parts={bar.parts} height={20} words={bar.parts.map((p) => p.title).join(' · ') || 'Nothing due in this period'} labelFrom={0.16} testId="draft-payroll-period-bar" />
-      {bar.legend.length > 0 ? (
-        <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'center', gap: '0.2rem 0.8rem', fontSize: '0.72rem', color: 'var(--text-muted)' }}>
-          {bar.legend.map((l) => (
-            <span key={l.kind} style={{ display: 'inline-flex', alignItems: 'center', gap: 4, whiteSpace: 'nowrap' }}>
-              <span aria-hidden style={{ display: 'inline-block', width: 10, height: 10, borderRadius: 2, ...fill(l.kind), border: '1px solid var(--border-strong)' }} />
-              {l.label}
-            </span>
-          ))}
-        </div>
-      ) : null}
     </div>
   )
 }
@@ -127,6 +118,20 @@ const CHIP: CSSProperties = {
   whiteSpace: 'nowrap',
 }
 
+/** The $ column's figure with the cents drawn smaller (the owner, 2026-10-30): *$1,200* and a lighter *.00*. */
+export function DraftPayrollMoney({ amount }: { amount: number }) {
+  const whole = formatCurrency(amount)
+  const dot = whole.lastIndexOf('.')
+  const dollars = dot >= 0 ? whole.slice(0, dot) : whole
+  const cents = dot >= 0 ? whole.slice(dot) : ''
+  return (
+    <span data-draft-payroll-money style={{ fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
+      ${dollars}
+      {cents ? <span style={{ fontSize: '0.72em', color: 'var(--text-muted)' }}>{cents}</span> : null}
+    </span>
+  )
+}
+
 /** *est.* beside a figure that is a live estimate from the hours. */
 export function DraftPayrollEstChip() {
   return (
@@ -164,5 +169,3 @@ export function DraftPayrollPendingDot({ n, onPress }: { n: number; onPress?: ()
   )
 }
 
-export const DRAFT_PAYROLL_BARS_KEY_WORDS =
-  'A green bar is money sent. A blue bar is a report’s net still owed. A grey part is what the report’s deductions withheld. A hatched bar is an estimate from the hours with no report yet, and its figure wears est. A salary 8h chip says the hours are the flat rule, not a clock. An amber dot is a clock session still waiting on approval, so that cash due is short by it.'

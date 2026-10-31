@@ -27,7 +27,7 @@ import { lastPayStubPaymentPaidAt } from '../../lib/payStubPayments'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { draftPayrollBars, pendingChipTitle, pendingChipWords, type DraftPayrollRowBarInput } from '../../lib/pay/draftPayrollBars'
 import { ShapeSwitch, SideBySide, useShapeView } from '../prototypes/SideBySide'
-import { DRAFT_PAYROLL_BARS_KEY_WORDS, DraftPayrollEstChip, DraftPayrollPendingDot, DraftPayrollPeriodBar, DraftPayrollRowBarCell, DraftPayrollSalaryChip } from './DraftPayrollBars'
+import { DraftPayrollEstChip, DraftPayrollMoney, DraftPayrollPendingDot, DraftPayrollPeriodBar, DraftPayrollRowBarCell, DraftPayrollSalaryChip } from './DraftPayrollBars'
 
 /** The per-person switch's key (punch list #217, people-docs-1): `pt-shape-view:draft-payroll-bars:<userId>`. */
 export const DRAFT_PAYROLL_BARS_SHAPE_KEY = 'draft-payroll-bars'
@@ -723,12 +723,13 @@ export function DraftPayrollModal({
                             )}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
-                            ${formatCurrency(draftPayrollRowCashDue(stub?.gross_pay, estGross))}
+                            {rowBar ? <DraftPayrollMoney amount={draftPayrollRowCashDue(stub?.gross_pay, estGross)} /> : `$${formatCurrency(draftPayrollRowCashDue(stub?.gross_pay, estGross))}`}
                             {rowBar?.estimated ? <DraftPayrollEstChip /> : null}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub ? (
-                              <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
+                              // nowrap (the owner, 2026-10-30): the trash sits to the right of View, never under it, once the bars take a column.
+                              <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'nowrap', alignItems: 'center', whiteSpace: 'nowrap' }}>
                                 <button
                                   type="button"
                                   onClick={() => void onViewStub(stub)}
@@ -815,11 +816,6 @@ export function DraftPayrollModal({
                   </tbody>
                 </table>
               </div>
-              {withBars ? (
-                <p data-draft-payroll-bars-key style={{ margin: '0 0 0.75rem', fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: 1.45 }}>
-                  {DRAFT_PAYROLL_BARS_KEY_WORDS}
-                </p>
-              ) : null}
             </>
           )}
     </>
