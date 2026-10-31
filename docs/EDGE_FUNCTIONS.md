@@ -3244,6 +3244,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-notification
 
+> **v2.6240 — `deno check` passes again**: handing the service-role client to `readReportSubject` ran TypeScript past its instantiation limit (TS2589), since checking supabase-js's client against [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)'s structural chain resolves its `eq` over a plain string column. The read takes anything with a `from` now (`ReportSubjectDb`) and reads it through the chain inside. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
+
 > **v2.6217 — through each person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`). The answer gains `held`. **Redeploy** once merged.
 
 > **v2.6127 — a report on a ZZ test job reaches no phone**: right after the report is read, its job, project or bid is read by name (`readReportSubject`, [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)), and when the name — or the job's customer's name — starts with ZZ ([`_shared/zzTestJob.ts`](../supabase/functions/_shared/zzTestJob.ts), the one rule the Pipeline hides ZZ jobs by, which `src/lib/jobs/zzTestJobSweep.ts` re-exports) the function answers `{ success: true, message: 'ZZ test job: nothing sent', push_sent: 0, skipped: 'zz_test_job' }` before it reads a preference. A session's walk on a ZZ job (`AGENTS.md` → ZZ test rows need no approval) used to buzz every phone opted in for that kind of report. **Redeploy required.**
@@ -3275,6 +3277,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 ---
 
 ### send-report-email
+
+> **v2.6240 — `deno check` passes again**: handing the service-role client to `readReportSubject` ran TypeScript past its instantiation limit (TS2589), since checking supabase-js's client against [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)'s structural chain resolves its `eq` over a plain string column. The read takes anything with a `from` now (`ReportSubjectDb`) and reads it through the chain inside. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.6127 — a report on a ZZ test job reaches no inbox**: `auto` reads the report's job, project or bid by name first (`readReportSubject`, [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)) and answers `{ ok: true, sent: 0, skipped: 'zz_test_job', message: 'ZZ test job: nothing sent' }` when the name, or the job's customer's name, starts with ZZ ([`_shared/zzTestJob.ts`](../supabase/functions/_shared/zzTestJob.ts)) — before it reads a subscription, so the every-report subscription gets nothing and no dispatch row is written; `manual` leaves such reports out of **Send now** and counts them (`skippedTestJobs`), which the person's editor says. The job display on the email comes from the same read, as before. **Redeploy required.**
 
@@ -3350,6 +3354,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 ---
 
 ### notify-lien-approval
+
+> **v2.6240 — `deno check` passes again**: the `item` the function reads was annotated with the columns its branches share, and the pen-record words read `item.signed_witness_how`, which the annotation did not name (TS2339). It names it now. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.6217 — through each leader's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); a held leader is not emailed for it either, since the Needs you card carries the notice, and the email fallback is unchanged for a leader on with no device. The answer gains `held`. **Redeploy** once merged.
 
