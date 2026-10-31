@@ -1,4 +1,4 @@
-import { useMemo, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { assignmentsFromCountiesByFirm, countiesLine, countyWords, firmHues, firmLegend, NO_FIRM_HUE } from '../../../lib/legal/firmCounties'
 import { coverageCountWords, coverageMatterWords, type FirmCoverage } from '../../../lib/legal/legalFirmCoverage'
 import { CARD, COPPER, FAINT, HAIR, INK, MUTED } from '../../../lib/portal/portalTheme'
@@ -17,12 +17,15 @@ import LegalFirmCountyMap from '../../settings/LegalFirmCountyMap'
 const card: CSSProperties = { background: CARD, border: `1px solid ${HAIR}`, borderRadius: 6, padding: '14px 16px' }
 const cap: CSSProperties = { fontSize: portalSmall(11), color: FAINT, textTransform: 'uppercase', letterSpacing: '0.07em' }
 
-export default function LegalPortalCoverage({ coverage, firmId }: {
+export default function LegalPortalCoverage({ coverage, firmId, openOn = null }: {
   coverage: FirmCoverage
   /** The reading firm (`payload.firm.id`), marked "your firm" on its row. */
   firmId: string
+  /** The matter's Venue cell (PR 3, v2.6175): open on this county; a new `nonce` opens again. */
+  openOn?: { county: string | null; nonce: number } | null
 }) {
-  const [county, setCounty] = useState<string | null>(null)
+  const [county, setCounty] = useState<string | null>(openOn?.county ?? null)
+  useEffect(() => { if (openOn) setCounty(openOn.county) }, [openOn])
   const firmLikes = useMemo(() => coverage.firms.map((f) => ({ id: f.id, name: f.name, active: true, created_at: f.createdAt })), [coverage.firms])
   const assignments = useMemo(() => assignmentsFromCountiesByFirm(new Map(coverage.firms.map((f) => [f.id, f.counties]))), [coverage.firms])
   const hues = useMemo(() => firmHues(firmLikes), [firmLikes])

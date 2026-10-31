@@ -136,7 +136,7 @@ Office staff can move a job to Collections but cannot release it. {{button:outli
 
 ## The firm
 
-Each account belongs to the firm that covers its county. The firm's name at the top of the desk is this account's firm. The county that picked it sits beside the name, such as **Austin Legal, Travis County**. The county comes from the job's property record. With no record, it comes from where the job's address sits on the map. The line under the account's address says where the county came from.
+Each account belongs to the firm that covers its county. The firm's name at the top of the desk is this account's firm. The county that picked it sits beside the name, such as **Austin Legal, Travis County**. The county comes from the job's property record. With no record, it comes from where the job's address sits on the map. The Venue cell under the account's name says the county. Hover the firm's name to read where the county came from. The firm's portal shows the same three cells at the top of the matter. There, Venue opens the firm's **Who covers what** map on the county.
 
 An amber segment means the desk cannot pick a firm. **No firm covers Williamson County** means nobody covers that county yet. **County unknown** means no job names a county. **Mark attorney ready** waits until that is fixed. The desk never guesses a firm. While no county is colored yet, the one firm takes every account, and the segment says *no counties colored yet*.
 

@@ -42,6 +42,8 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 
 import { FIRM_TAB_LABELS, firmTabsFor, firmTabShown, portalBtn, portalCap, portalCard, portalH, portalNum, portalTd, portalTh, type FirmMatterLike, type FirmTab } from './legalFirmMatterViewShared'
 import { answeredGaps, gapAnswerByline } from '../../../lib/legal/legalGapAnswers'
+import { partiesStrip } from '../../../lib/legal/legalParties'
+import LegalPartiesStrip from './LegalPartiesStrip'
 
 /**
  * Every table of the firm's matter. On a narrow box (a phone, an iPad's main column) each row folds into a card,
@@ -302,9 +304,22 @@ export function FirmMatterTab({ tab, packet, matter, companyName, acts, onUndo, 
 }
 
 /** The matter card (header + tab strip + the tab) and the exhibits card, exactly as the firm's page lays them out. */
-export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, onPrint, onUndo, timelineActs }: {
+/** The portal's counties for the parties strip (PR 3, v2.6175): each property's county with the balance of its jobs, largest first; no county last. The desk reads `firmForAccount`'s grouping instead. */
+export function portalVenueCounties(account: Pick<LegalPacket['account'], 'properties' | 'jobs'>): Array<{ county: string; balance: number }> {
+  const balanceOf = new Map(account.jobs.map((j) => [j.label, j.balance] as const))
+  const by = new Map<string, number>()
+  for (const p of account.properties) {
+    const county = p.county.trim()
+    by.set(county, (by.get(county) ?? 0) + p.jobLabels.reduce((s, l) => s + (balanceOf.get(l) ?? 0), 0))
+  }
+  return [...by.entries()].map(([county, balance]) => ({ county, balance })).sort((a, b) => (a.county === '') === (b.county === '') ? b.balance - a.balance : a.county === '' ? 1 : -1)
+}
+
+export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, onPrint, onUndo, timelineActs, onOpenCoverage }: {
   packet: LegalPacket
   matter: FirmMatterLike
+  /** PR 3 (v2.6175): the Venue cell's door on the firm's portal — Who covers what, opened on the county. The desk's preview passes nothing, so its cells are words. */
+  onOpenCoverage?: (county: string | null) => void
   /** The company the firm acts for, from the payload (the desk passes its own) — never a hard-coded brand. */
   companyName: string
   tab: FirmTab
@@ -320,22 +335,33 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
   const { demand: totalDemand, feesTotal } = firmDemand(packet.account.totals.balance, matter.entries)
   // Narrative only when the office wrote one (v2.4812); a tab the matter does not show falls back to Account.
   const shownTab = firmTabShown(tab, matter)
-  // The county and owner line reads the first job's own property (#85 item 6), never the payer's first address.
-  const firstProperty = packet.account.jobs[0]?.property ?? null
+  // The parties strip (punch list #219, v2.6175): the same three cells the desk draws, from the same kernel — the firm's portal
+  // offers no office record behind them, so only the venue cell is a door, to Who covers what. Before, the line under the
+  // name read the payer's address, the first job's county and its owner of record.
+  const a0 = packet.account
+  const strip = partiesStrip({
+    payer: { name: a0.payer.name, viaGc: a0.payer.viaGc, customerId: a0.payer.customerId },
+    customerType: a0.customerType,
+    customerAddress: a0.customerAddress,
+    customerCounty: a0.customerCounty,
+    customerPrecinct: a0.customerPrecinct,
+    agreements: packet.paper.agreements,
+    properties: a0.properties,
+    jobs: a0.jobs.map((j) => ({ label: j.label, address: j.address })),
+    counties: portalVenueCounties(a0),
+    balance: a0.totals.balance,
+  })
+  const venueCounty = portalVenueCounties(a0).find((c) => c.county)?.county ?? null
   // v2.6177 (punch list #218 PR 4): what each path nets, the same cards the office reads, from the matter's own entries.
   const paths = settlementPathsOfMatter(packet.worth, matter.stage, matter.entries)
   return (
     <div>
       <div style={portalCard}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 10, flexWrap: 'wrap' }}>
-          <div>
+          <div style={{ minWidth: 0, flex: '1 1 280px' }}>
             <div style={portalCap}>Matter</div>
             <div style={{ fontSize: 18, fontWeight: 700 }}>{matter.payerName}</div>
-            <div style={{ fontSize: 12.5, color: MUTED }}>
-              {packet.account.customerAddress || packet.account.jobs[0]?.address || ''}
-              {firstProperty?.county ? ` · ${firstProperty.county} County` : ''}
-              {firstProperty?.owner ? ` · owner of record: ${firstProperty.owner}${packet.account.jobs.length > 1 ? ` (job ${packet.account.jobs[0]?.label})` : ''}` : ''}
-            </div>
+            <div style={{ fontSize: 12.5, color: MUTED }} data-legal-account-line>{strip.addressLine || packet.account.customerAddress}</div>
             {/* v2.6170 (punch list #218): the firm settles for what can be had; the office's floor is retired. */}
             <div data-legal-settling style={{ fontSize: 12.5, marginTop: 6, padding: '5px 9px', background: NOTE_BAND, borderRadius: 4, color: INK }}><b>Settling:</b> Settle as you can. Record the settlement with its amount.{paths.line ? ` Above ${formatLegalMoney(paths.line.amount)} a settlement nets the office more than a full win at trial.` : ''}</div>
             {(() => {
@@ -353,6 +379,7 @@ export function FirmMatterView({ packet, matter, companyName, tab, onTab, acts, 
             </button>
           </div>
         </div>
+        <LegalPartiesStrip strip={strip} doors={onOpenCoverage ? ['venue'] : []} onPress={(door) => { if (door === 'venue') onOpenCoverage?.(venueCounty) }} />
         <LegalSettlementPaths paths={paths} />
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: 2, borderBottom: `1px solid ${HAIR}`, margin: '14px 0 12px', fontSize: 13 }}>
           {firmTabsFor(matter).map((t) => (
