@@ -496,6 +496,11 @@ export function statementChipWords(meta: StatementMeta, dayOfIso: (iso: string) 
   return `printed ${n}×${lastDay ? ` · last ${statementShortDay(lastDay)}` : ''}`
 }
 
+/** The desk's toast once the scan is filed (v2.6246): the signing day in words, never the typed `YYYY-MM-DD`. */
+export function statementFiledWords(signedOn: string): string {
+  return `Filed. The signed copy is on Evidence on ${statementShortDay(signedOn)}. The statement reads sworn on the Timeline.`
+}
+
 /** The Evidence row's *shows* line when the scan is filed: the sworn words, then the span it is about. */
 export function statementShowsLine(meta: Pick<StatementMeta, 'form' | 'signedOn' | 'venueCounty' | 'incidentTo'>, incidentOn: string): string {
   return `${statementSignedWords(meta)} What was seen or heard on ${incidentSpanWords(incidentOn, meta.incidentTo)}.`
