@@ -1,4 +1,5 @@
 import type { UserRole } from '../hooks/useAuth'
+import { canOpenBids } from './bids/bidsTabAccess'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
 
 /** Header Task Dispatch icon (send dispatch request). */
@@ -38,4 +39,16 @@ export function showHeaderTaskChecklistButton(role: UserRole | null): boolean {
     role === 'estimator' ||
     isSubcontractorLikeRole(role)
   )
+}
+
+/**
+ * The header's **Bid** press, New Bid from any page (v2.6167). It was the estimator's alone; now
+ * every role that can make a bid has it, the way the estimator always did, and Farm Mode (the
+ * checklist-only lens) hides it with the header's other presses. The Bids page reads the same
+ * rule: below its wide header its own New Bid used to wrap onto a row of its own under the trades
+ * (the owner, 2026-10-30: *instead of new bid wrapping at this viewport … move it to the header*),
+ * so with the header's press on, the page draws none of its own there.
+ */
+export function showHeaderNewBidButton(role: UserRole | null, farmModeActive: boolean): boolean {
+  return !farmModeActive && canOpenBids(role) && role !== 'primary'
 }
