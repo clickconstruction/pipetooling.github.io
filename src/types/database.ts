@@ -3729,15 +3729,15 @@ export type Database = {
           id: string
           include_in_submission: boolean
           is_alternate: boolean
+          locked_at: string | null
+          locked_by: string | null
           loss_category: string | null
           name: string
           outcome: string | null
           outcome_at: string | null
           outcome_note: string | null
-          sort_order: number
           owner_user_id: string | null
-          locked_by: string | null
-          locked_at: string | null
+          sort_order: number
           source_bid_version_id: string | null
           starred_price_book_version_id: string | null
         }
@@ -3748,15 +3748,15 @@ export type Database = {
           id?: string
           include_in_submission?: boolean
           is_alternate?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
           loss_category?: string | null
           name: string
           outcome?: string | null
           outcome_at?: string | null
           outcome_note?: string | null
-          sort_order?: number
           owner_user_id?: string | null
-          locked_by?: string | null
-          locked_at?: string | null
+          sort_order?: number
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
         }
@@ -3767,15 +3767,15 @@ export type Database = {
           id?: string
           include_in_submission?: boolean
           is_alternate?: boolean
+          locked_at?: string | null
+          locked_by?: string | null
           loss_category?: string | null
           name?: string
           outcome?: string | null
           outcome_at?: string | null
           outcome_note?: string | null
-          sort_order?: number
           owner_user_id?: string | null
-          locked_by?: string | null
-          locked_at?: string | null
+          sort_order?: number
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
         }
@@ -3792,6 +3792,20 @@ export type Database = {
             columns: ["customer_id"]
             isOneToOne: false
             referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_versions_locked_by_fkey"
+            columns: ["locked_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_versions_owner_user_id_fkey"
+            columns: ["owner_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -20288,7 +20302,6 @@ export type Database = {
           gc_shares_stage_dates: boolean
           google_drive_link: string | null
           hcp_number: string
-          prior_numbers: string[]
           id: string
           job_address: string
           job_name: string
@@ -20316,6 +20329,7 @@ export type Database = {
           partner_person_id: string | null
           payments_made: number | null
           pct_complete: number | null
+          prior_numbers: string[]
           project_id: string | null
           revenue: number | null
           service_type_id: string
@@ -20357,7 +20371,6 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
-          prior_numbers?: string[]
           id?: string
           job_address?: string
           job_name?: string
@@ -20385,6 +20398,7 @@ export type Database = {
           partner_person_id?: string | null
           payments_made?: number | null
           pct_complete?: number | null
+          prior_numbers?: string[]
           project_id?: string | null
           revenue?: number | null
           service_type_id: string
@@ -20426,7 +20440,6 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
-          prior_numbers?: string[]
           id?: string
           job_address?: string
           job_name?: string
@@ -20454,6 +20467,7 @@ export type Database = {
           partner_person_id?: string | null
           payments_made?: number | null
           pct_complete?: number | null
+          prior_numbers?: string[]
           project_id?: string | null
           revenue?: number | null
           service_type_id?: string
@@ -35156,6 +35170,8 @@ export type Database = {
           project_name: string
         }[]
       }
+      bid_version_lock_may_override: { Args: never; Returns: boolean }
+      bid_version_lock_refusal: { Args: { p_version: string }; Returns: string }
       bio_line_say: {
         Args: { p_id: string; p_say: boolean }
         Returns: undefined
@@ -37661,6 +37677,60 @@ export type Database = {
         Args: { p_entry_id?: string; p_matter_id: string; p_stage: string }
         Returns: Json
       }
+      legal_statement_add: {
+        Args: {
+          p_affiant: Json
+          p_body: string
+          p_form?: string
+          p_incident_to?: string
+          p_matter_id: string
+          p_on: string
+          p_source?: string
+          p_title: string
+          p_venue_county?: string
+        }
+        Returns: Json
+      }
+      legal_statement_affiant_clean: {
+        Args: { p_affiant: Json }
+        Returns: Json
+      }
+      legal_statement_affiant_problem: {
+        Args: { p_affiant: Json }
+        Returns: string
+      }
+      legal_statement_print: {
+        Args: { p_entry_id: string; p_face: string; p_text?: string }
+        Returns: Json
+      }
+      legal_statement_sign: {
+        Args: {
+          p_as_printed?: boolean
+          p_clear_incident_to?: boolean
+          p_document_id: string
+          p_entry_id: string
+          p_incident_to?: string
+          p_on?: string
+          p_signed_on: string
+        }
+        Returns: Json
+      }
+      legal_statement_update: {
+        Args: {
+          p_affiant?: Json
+          p_body?: string
+          p_clear_incident_to?: boolean
+          p_clear_venue_county?: boolean
+          p_entry_id: string
+          p_form?: string
+          p_incident_to?: string
+          p_on?: string
+          p_source?: string
+          p_title?: string
+          p_venue_county?: string
+        }
+        Returns: Json
+      }
       legal_void_entry: {
         Args: { p_entry_id: string; p_reason: string }
         Returns: Json
@@ -38595,13 +38665,19 @@ export type Database = {
       list_shadow_runs: {
         Args: never
         Returns: {
+          assisted_at: string
           axis: string
           created_at: string
           delta_pct: number
+          fixtures_found: number
+          fixtures_score: Json
+          fixtures_set_aside: number
+          fixtures_taken: number
           id: string
           locked_at: string
           locked_total: number
           project_name: string
+          reference_bid_id: string
           reference_bid_number: string
           reference_kind: string
           reference_sent_at: string
@@ -39690,6 +39766,18 @@ export type Database = {
       robot_fixture_source: {
         Args: { p_bid_id: string; p_pull_id: string; p_user: string }
         Returns: string
+      }
+      robot_fixtures_follow_adopt: {
+        Args: {
+          p_new_version_id: string
+          p_source_bid_id: string
+          p_target_bid_id: string
+        }
+        Returns: number
+      }
+      robot_fixtures_follow_clone: {
+        Args: { p_bid_id: string; p_map: Json; p_target_bid_version_id: string }
+        Returns: number
       }
       robot_progress: {
         Args: { p_bid_ids: string[] }
