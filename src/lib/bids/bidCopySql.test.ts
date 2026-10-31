@@ -111,7 +111,7 @@ describe('every table that hangs off a count row is handled by every copy (v2.43
    * Left behind on purpose too (v2.6188, punch list #221): the robot's fixtures are the robot's read of ONE bid's plans
    * for its own division. A duplicate to another service type does not carry them — the robot reads the duplicate
    * itself when it shadows it. A new version re-keys the take to the cloned rows and an adopt moves the pull with the
-   * rows, both in 20261031010000_robot_fixtures_copies.sql; the duplicate's gate below is why the table sits here.
+   * rows, both in 20261031010000_robot_fixtures_copies.sql (through the owner's helpers since 20261031015000, v2.6235: the pull tables take no write from authenticated); the duplicate's gate below is why the table sits here.
    */
   const NOT_CARRIED_YET = ['bid_submittal_takeoff_choices', 'bid_fixture_pull_rows']
   /**
