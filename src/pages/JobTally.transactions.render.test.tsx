@@ -51,7 +51,7 @@ const { default: JobTally } = await import('./JobTally')
 
 /** The Tally opens on On site (v2.6229); these tests check the Transactions tab, so each opens it first. */
 async function openTransactions() {
-  fireEvent.click(await screen.findByRole('button', { name: 'Transactions', exact: true }))
+  fireEvent.click(await screen.findByRole('button', { name: 'Transactions' }))
 }
 
 describe('JobTally → my card transactions', () => {
