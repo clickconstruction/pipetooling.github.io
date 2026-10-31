@@ -264,7 +264,7 @@ export function DevelopmentPieces(props: PiecesProps) {
           {rowsOf(openShown, false)}
           {phone && open.length > PHONE_CAP && !showAll ? (
             <div style={{ marginTop: 8 }}>
-              <LinkButton onClick={() => setShowAll(true)}>Show the other {open.length - PHONE_CAP} pieces</LinkButton>
+              <LinkButton onClick={() => setShowAll(true)}>Show the other {open.length - PHONE_CAP} rows</LinkButton>
             </div>
           ) : null}
         </div>

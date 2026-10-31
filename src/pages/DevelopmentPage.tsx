@@ -522,7 +522,7 @@ export default function DevelopmentPage() {
       title: putInLabel(at, name),
       rows: rows.map((r) => ({ label: r.label, before: r.before, after: r.after, changes: r.changes })),
       preview: previewBlock(preview.lines, preview.more),
-      previewCaption: 'The pieces that go in',
+      previewCaption: 'The jobs and bids that go in',
       confirmLabel: putInLabel(at, name),
       onConfirm: () => {
         setChipConfirm(null)
@@ -823,7 +823,7 @@ export default function DevelopmentPage() {
         {dev.archived_at ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 8px', borderRadius: 9999, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>Archived</span> : null}
         <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>Development since {shortDay(dev.created_at)}</span>
         <div style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
-          {btn('Ask a question', () => openAsk(), 'Ask the estimators or Dispatch about the site or one of its pieces; the answer comes back under Questions', true)}
+          {btn('Ask a question', () => openAsk(), 'Ask the estimators or Dispatch about the site or one of its jobs or bids; the answer comes back under Questions', true)}
           {btn('Edit', () => navigate('/settings?tab=settings-jobs'), 'Rename, the default GC, archive: Settings → Jobs & dispatch → Manage developments')}
         </div>
       </div>
@@ -837,7 +837,7 @@ export default function DevelopmentPage() {
             <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{whoIsThis}</span>
           )
         ) : (
-          <span style={{ color: 'var(--text-faint)' }}>none on its pieces yet</span>
+          <span style={{ color: 'var(--text-faint)' }}>none on its jobs or bids yet</span>
         )}
         {address ? (
           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
@@ -1023,7 +1023,7 @@ export default function DevelopmentPage() {
 
         <Card
           id={DEVELOPMENT_JUMP_ANCHOR.pieces}
-          title="Pieces" fold={foldFor('pieces', `${activePieces} working or waiting · ${pieces.length - activePieces} paid${suggestions.length ? ` · ${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : ''}`)}
+          title="Jobs & bids" fold={foldFor('pieces', `${activePieces} working or waiting · ${pieces.length - activePieces} paid${suggestions.length ? ` · ${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : ''}`)}
           meta={`each bid with the job it became${plans.newest ? ` · newest set ${plans.newest.dated ? shortDay(plans.newest.dated) : shortDay(plans.newest.filedAt)}` : ''}`}
           right={
             <>

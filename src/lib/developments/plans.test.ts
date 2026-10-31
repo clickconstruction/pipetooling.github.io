@@ -102,12 +102,12 @@ describe('plansNeedWords and olderOrNoneLine', () => {
   })
   it('olderOrNoneLine: a lead and a sentence with its subject, by what the pieces lack', () => {
     expect(olderOrNoneLine(stub(0, 0, true), 'Oct 20')).toBeNull()
-    expect(olderOrNoneLine(stub(0, 2, false), null)).toEqual({ lead: '2 without plans', sentence: '2 pieces have no plans filed. No set is filed on this site.' })
-    expect(olderOrNoneLine(stub(0, 1, true), 'Oct 20')).toEqual({ lead: '1 without plans', sentence: 'One piece has no plans filed. The newest set is Oct 20.' })
-    expect(olderOrNoneLine(stub(3, 0, true), 'Oct 20')).toEqual({ lead: '3 on an older set', sentence: '3 pieces are on an older set than Oct 20.' })
-    expect(olderOrNoneLine(stub(1, 0, true), 'the one filed Oct 28')).toEqual({ lead: '1 on an older set', sentence: 'One piece is on an older set than the one filed Oct 28.' })
-    expect(olderOrNoneLine(stub(2, 1, true), 'Oct 20')).toEqual({ lead: '3 not on the newest', sentence: '2 pieces are on an older set than Oct 20, and one has no plans filed.' })
-    expect(olderOrNoneLine(stub(1, 2, true), 'Oct 20')?.sentence).toBe('One piece is on an older set than Oct 20, and 2 have no plans filed.')
+    expect(olderOrNoneLine(stub(0, 2, false), null)).toEqual({ lead: '2 without plans', sentence: '2 jobs and bids have no plans filed. No set is filed on this site.' })
+    expect(olderOrNoneLine(stub(0, 1, true), 'Oct 20')).toEqual({ lead: '1 without plans', sentence: 'One job or bid has no plans filed. The newest set is Oct 20.' })
+    expect(olderOrNoneLine(stub(3, 0, true), 'Oct 20')).toEqual({ lead: '3 on an older set', sentence: '3 jobs and bids are on an older set than Oct 20.' })
+    expect(olderOrNoneLine(stub(1, 0, true), 'the one filed Oct 28')).toEqual({ lead: '1 on an older set', sentence: 'One job or bid is on an older set than the one filed Oct 28.' })
+    expect(olderOrNoneLine(stub(2, 1, true), 'Oct 20')).toEqual({ lead: '3 not on the newest', sentence: '2 jobs and bids are on an older set than Oct 20, and one has no plans filed.' })
+    expect(olderOrNoneLine(stub(1, 2, true), 'Oct 20')?.sentence).toBe('One job or bid is on an older set than Oct 20, and 2 have no plans filed.')
   })
   it('every sentence keeps to plain words', () => {
     const lines = [olderOrNoneLine(stub(0, 2, false), null), olderOrNoneLine(stub(0, 1, true), 'Oct 20'), olderOrNoneLine(stub(3, 0, true), 'Oct 20'), olderOrNoneLine(stub(2, 1, true), 'Oct 20')]

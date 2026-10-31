@@ -94,7 +94,7 @@ export function DevelopmentPlansCard({
         {view.none.length === 0 && older.length === 0 && view.sets.length > 0 ? <span className="developmentCountChip">every piece on the newest set</span> : null}
         {view.olderOrNone.length > 0 && !(askOnRecord && askOnRecord.open) ? (
           <span style={{ marginLeft: 'auto' }}>
-            <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one question to the estimators about these pieces; the answer reads back here">
+            <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one question to the estimators about these jobs and bids; the answer reads back here">
               Ask the estimators about the {view.olderOrNone.length}
             </SmallButton>
           </span>
