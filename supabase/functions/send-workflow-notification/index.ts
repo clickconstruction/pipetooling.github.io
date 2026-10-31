@@ -1,8 +1,12 @@
+// send-workflow-notification: a workflow step's or a work order's email, with a push when the recipient is a user.
+// A person's hours (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, which holds it for
+// a person outside their Push me hours, writing the row as `held` and sending nothing; the email goes now as before.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
+import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -189,51 +193,13 @@ serve(async (req) => {
       )
     }
 
-    // Send Web Push if recipient_user_id provided and VAPID keys configured
+    // Web Push when the recipient is a user, through their hours (#141 PR 5); the record of the email, and the push
+    // beside it, is written here, and a held push has the helper's held row.
     let pushSent = 0
+    let held = 0
     const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')
     const adminClient = serviceRoleKey ? createClient(supabaseUrl, serviceRoleKey) : null
 
-    if (recipient_user_id) {
-      const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-      const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-      if (vapidPublicKey && vapidPrivateKey && adminClient) {
-        const { data: subscriptions } = await adminClient
-          .from('push_subscriptions')
-          .select('endpoint, p256dh_key, auth_key')
-          .eq('user_id', recipient_user_id)
-
-        if (subscriptions && subscriptions.length > 0) {
-          const pushPayload = JSON.stringify({
-            title: push_title || subject,
-            body: push_body || body.substring(0, 200),
-            url: push_url || variables.workflow_link || '/',
-            tag: `workflow-${step_id ?? labor_job_id ?? work_order_id}`,
-          })
-
-          webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
-
-          for (const sub of subscriptions) {
-            try {
-              await webpush.sendNotification(
-                {
-                  endpoint: sub.endpoint,
-                  keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
-                },
-                pushPayload,
-                { TTL: 86400 }
-              )
-              pushSent++
-            } catch (pushErr) {
-              console.error('Push send error for subscription:', sub.endpoint?.substring(0, 50), pushErr)
-              // If subscription is invalid (410 Gone), we could delete it - for now just log
-            }
-          }
-        }
-      }
-    }
-
-    // Log to notification_history when recipient has a user account
     if (recipient_user_id && adminClient) {
       let workflowId: string | null = null
       let projectId: string | null = null
@@ -253,6 +219,26 @@ serve(async (req) => {
           if (wfRow?.project_id) projectId = wfRow.project_id
         }
       }
+      const anchors = { step_id: step_id ?? null, workflow_id: workflowId, project_id: projectId }
+
+      const pushed = await sendPushHonouringHours(
+        adminClient,
+        {
+          userIds: [recipient_user_id],
+          title: push_title || subject,
+          body: push_body || body.substring(0, 200),
+          url: push_url || variables.workflow_link || '/',
+          tag: `workflow-${step_id ?? labor_job_id ?? work_order_id}`,
+          templateType: template_type,
+          extra: anchors,
+        },
+        webPushSender(adminClient, 'send-workflow-notification'),
+        { record: 'none' },
+      )
+      pushSent = pushed.devices
+      held = pushed.held.length
+
+      // The email went either way; the row says whether the push went beside it.
       const channel = pushSent > 0 ? 'both' : 'email'
       await adminClient.from('notification_history').insert({
         recipient_user_id,
@@ -260,9 +246,7 @@ serve(async (req) => {
         title: subject,
         body_preview: body.substring(0, 200),
         channel,
-        step_id: step_id ?? null,
-        workflow_id: workflowId,
-        project_id: projectId,
+        ...anchors,
       })
     }
 
@@ -272,6 +256,7 @@ serve(async (req) => {
         message: 'Notification sent successfully',
         email_id: result.email_id,
         push_sent: pushSent,
+        held,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

@@ -792,7 +792,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   border: 'none',
                   borderRadius: 6,
@@ -821,7 +821,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 style={{
                   padding: '0.5rem 0.75rem',
                   border: 'none',
-                  background: activeTab === 'combine' ? '#3b82f6' : 'none',
+                  background: activeTab === 'combine' ? '#2563eb' : 'none',
                   borderRadius: 6,
                   cursor: overlayBusy ? 'not-allowed' : 'pointer',
                   fontWeight: activeTab === 'combine' ? 700 : 400,
@@ -840,7 +840,7 @@ export default function JobsCombineSeparateModal({ open, onClose, onAfterSuccess
                 style={{
                   padding: '0.5rem 0.75rem',
                   border: 'none',
-                  background: activeTab === 'separate' ? '#3b82f6' : 'none',
+                  background: activeTab === 'separate' ? '#2563eb' : 'none',
                   borderRadius: 6,
                   cursor: overlayBusy ? 'not-allowed' : 'pointer',
                   fontWeight: activeTab === 'separate' ? 700 : 400,

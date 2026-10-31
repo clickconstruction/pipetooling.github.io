@@ -1033,7 +1033,7 @@ export default function CollectPaymentModal({
                                       style={{
                                         padding: '0.25rem 0.5rem',
                                         fontSize: '0.75rem',
-                                        background: '#3b82f6',
+                                        background: '#2563eb',
                                         color: 'white',
                                         border: 'none',
                                         borderRadius: 4,
@@ -1518,7 +1518,7 @@ export default function CollectPaymentModal({
               disabled={submitting || (certifyMode === 'correction_requested' && correctionNotes.trim().length < 3)}
               style={{
                 padding: '0.5rem 1rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 border: 'none',
                 borderRadius: 4,

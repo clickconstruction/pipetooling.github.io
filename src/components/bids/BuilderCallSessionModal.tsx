@@ -440,7 +440,7 @@ export function BuilderCallSessionModal({
             type="button"
             disabled={saving}
             onClick={() => void save()}
-            style={{ padding: '0.45rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', opacity: saving ? 0.6 : 1 }}
+            style={{ padding: '0.45rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 700, fontSize: '0.85rem', opacity: saving ? 0.6 : 1 }}
           >
             {saving ? 'Saving…' : 'End call & save'}
           </button>

@@ -36,6 +36,7 @@
     "check:batch-words": "node scripts/codemods/batch-label-sweep.mjs --check",
     "check:dead-press": "node scripts/codemods/dead-press-sweep.mjs --check",
     "check:text-fill-words": "node scripts/codemods/text-fill-words-sweep.mjs --check",
+    "check:press-blue": "node scripts/codemods/press-blue-sweep.mjs --check",
     "check:error-words": "node scripts/codemods/error-reason-sweep.mjs --check --changed",
     "map": "node scripts/map-surface.mjs",
     "claim": "vite-node scripts/claim-version.ts",

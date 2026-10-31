@@ -330,7 +330,7 @@ export default function PeopleOffsetsTab({ people, users, payStubs, payStubDeduc
           <button
             type="button"
             onClick={() => openOffsetForm()}
-            style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
+            style={{ padding: '0.5rem 1rem', border: '1px solid #2563eb', borderRadius: 6, background: '#2563eb', color: '#fff', fontWeight: 500, cursor: 'pointer' }}
           >
             + Add Offset
           </button>

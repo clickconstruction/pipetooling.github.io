@@ -111,7 +111,7 @@ describe('every table that hangs off a count row is handled by every copy (v2.43
    * Left behind on purpose too (v2.6188, punch list #221): the robot's fixtures are the robot's read of ONE bid's plans
    * for its own division. A duplicate to another service type does not carry them — the robot reads the duplicate
    * itself when it shadows it. A new version re-keys the take to the cloned rows and an adopt moves the pull with the
-   * rows, both in 20261031010000_robot_fixtures_copies.sql; the duplicate's gate below is why the table sits here.
+   * rows, both in 20261031010000_robot_fixtures_copies.sql (through the owner's helpers since 20261031015000, v2.6235: the pull tables take no write from authenticated); the duplicate's gate below is why the table sits here.
    */
   const NOT_CARRIED_YET = ['bid_submittal_takeoff_choices', 'bid_fixture_pull_rows']
   /**
@@ -177,3 +177,74 @@ describe('a duplicate is one version and owns its prices (v2.4413)', () => {
   })
 })
 
+
+describe('a copy that runs as the caller writes no table closed to the caller (v2.6235)', () => {
+  /**
+   * 20261031010000 re-keyed the robot's take with a plain UPDATE of bid_fixture_pull_rows inside the invoker clone,
+   * and 20261030230000 had revoked writes on that table from authenticated: Postgres checks the privilege when the
+   * statement starts, so every new version failed for everyone until 20261031015000 moved the write into a SECURITY
+   * DEFINER helper. This walks the four copies and every function they call that runs as the caller, and fails on a
+   * write to a table whose INSERT, UPDATE or DELETE the migrations have taken from authenticated.
+   */
+  const closed = (() => {
+    const shut = new Map<string, Set<string>>()
+    const grant = /\b(GRANT|REVOKE)\s+([A-Z ,]+?)\s+ON\s+(?:TABLE\s+)?"?public"?\."?(\w+)"?\s+(?:TO|FROM)\s+([^;]+);/gi
+    for (const f of migrationFiles) {
+      const sql = migrationSql.get(f)!.replace(/--[^\n]*/g, '')
+      for (const m of sql.matchAll(grant)) {
+        if (!/(^|[\s,"])authenticated([\s,"]|$)/.test(m[4]!)) continue
+        const privs = m[2]!.toUpperCase()
+        const ops = /\bALL\b/.test(privs) ? ['INSERT', 'UPDATE', 'DELETE'] : ['INSERT', 'UPDATE', 'DELETE'].filter((op) => privs.includes(op))
+        const set = shut.get(m[3]!) ?? new Set<string>()
+        const revoke = m[1]!.toUpperCase() === 'REVOKE'
+        for (const op of ops) {
+          if (revoke) set.add(op)
+          else set.delete(op)
+        }
+        shut.set(m[3]!, set)
+      }
+    }
+    return shut
+  })()
+
+  /** A function's newest body, or null when no migration defines it. */
+  function bodyOf(name: string): string | null {
+    const create = new RegExp(`CREATE (?:OR REPLACE )?FUNCTION "?public"?\\."?${name}"?\\s*\\(`)
+    const file = migrationFiles.filter((f) => create.test(migrationSql.get(f)!)).pop()
+    if (!file) return null
+    const sql = migrationSql.get(file)!
+    const start = sql.search(create)
+    return sql.slice(start, sql.indexOf('$$;', start))
+  }
+
+  function invokerWrites(name: string, seen = new Set<string>()): string[] {
+    if (seen.has(name)) return []
+    seen.add(name)
+    const body = bodyOf(name)
+    if (!body) return []
+    if (/SECURITY\s+DEFINER/i.test(body.slice(0, body.indexOf('$$')))) return []
+    const code = body.replace(/--[^\n]*/g, '')
+    const out: string[] = []
+    for (const m of code.matchAll(/\b(UPDATE|INSERT INTO|DELETE FROM)\s+(?:ONLY\s+)?public\.(\w+)/g)) {
+      const op = m[1]!.split(' ')[0]!
+      if (closed.get(m[2]!)?.has(op)) out.push(`${name} ${op} public.${m[2]}`)
+    }
+    for (const m of code.matchAll(/\bpublic\.(\w+)\s*\(/g)) {
+      if (!tableColumns.has(m[1]!)) out.push(...invokerWrites(m[1]!, seen))
+    }
+    return out
+  }
+
+  it('reads the closed tables off the migrations', () => {
+    expect(closed.get('bid_fixture_pull_rows')).toEqual(new Set(['INSERT', 'UPDATE', 'DELETE']))
+    expect(closed.get('bid_fixture_pulls')).toEqual(new Set(['INSERT', 'UPDATE', 'DELETE']))
+    expect(closed.get('bids_count_rows')?.size ?? 0).toBe(0)
+  })
+
+  it.each(['create_bid_version', 'clone_count_rows_to_bid_version', 'duplicate_bid_to_service_type', 'adopt_bid_as_version'])(
+    '%s and what it calls as the caller write no closed table',
+    (name) => {
+      expect(invokerWrites(name), 'writes that refuse every signed-in user').toEqual([])
+    },
+  )
+})

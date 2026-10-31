@@ -187,7 +187,7 @@ export async function runReplyPushes(admin: any, body: ReplyPushBody, sendTo: Pu
  * Every person's push hours (user_push_hours, one row a person who set them), by user id; a row that does not read, or
  * none, is any time. Fail-soft: a read that fails (the table not there yet) holds nobody.
  */
-async function pushHoursFor(admin: any): Promise<PushHoursByUser> {
+export async function pushHoursFor(admin: any): Promise<PushHoursByUser> {
   const out = new Map<string, ReturnType<typeof parsePushHours>>()
   const { data, error } = await admin.from('user_push_hours').select('user_id, days, opens, closes')
   if (error) {

@@ -55,7 +55,7 @@ export function PromoteBidGcModal({
     cursor: busy ? 'not-allowed' : 'pointer',
     opacity: busy ? 0.6 : 1,
     ...(kind === 'primary'
-      ? { background: '#3b82f6', color: 'white', border: '1px solid #3b82f6' }
+      ? { background: '#2563eb', color: 'white', border: '1px solid #2563eb' }
       : kind === 'plain'
         ? { background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)' }
         : { background: 'none', color: 'var(--text-muted)', border: 'none', fontWeight: 500 }),

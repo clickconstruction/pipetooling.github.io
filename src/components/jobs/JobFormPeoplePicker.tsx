@@ -149,7 +149,7 @@ export function JobFormPeoplePicker({ users, teamMemberIds, setTeamMemberIds, ba
               <button
                 type="button"
                 onClick={() => setAddOpen(false)}
-                style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', fontWeight: 600, background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
               >
                 Done
               </button>

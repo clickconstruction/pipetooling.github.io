@@ -31,8 +31,42 @@ import { fileURLToPath } from 'node:url'
 /** Where the copy goes, from the repo's root. */
 export const OUT_DIR = 'supabase/functions/_shared/gcKernels'
 
-/** The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to redeploy. */
-export const IMPORTERS = ['bridge-weekly-sheet', 'customer-portal', 'drive-link', 'gc-trade-portal', 'gmail-count', 'gmail-sync', 'messages-email', 'messages-notify', 'messages-nudge-dispatch', 'photo-save', 'quo-send', 'quo-webhook', 'send-estimate-to-customer', 'walk']
+/**
+ * The functions that import the copy: the test checks this against their bundles, and `check:edge-drift` names each to
+ * redeploy. Since v2.6217 (punch list #141 PR 5) every push sender reaches it through `_shared/pushHoursSend.ts`, which
+ * reads `lib/messages/pushHours.ts` from the copy, so a change to a kernel names them too.
+ */
+export const IMPORTERS = [
+  'ar-returned-checks',
+  'bridge-weekly-sheet',
+  'customer-portal',
+  'drive-link',
+  'gc-trade-portal',
+  'gmail-count',
+  'gmail-sync',
+  'mercury-webhook',
+  'messages-email',
+  'messages-notify',
+  'messages-nudge-dispatch',
+  'notify-bid-mark',
+  'notify-dispatch-request',
+  'notify-estimator-request',
+  'notify-help-feedback',
+  'notify-lien-approval',
+  'notify-team-lead-clock',
+  'paid-job-email',
+  'photo-save',
+  'quo-send',
+  'quo-webhook',
+  'remind-bid-followups',
+  'send-checklist-notification',
+  'send-estimate-to-customer',
+  'send-report-notification',
+  'send-scheduled-reminders',
+  'send-workflow-notification',
+  'stripe-webhook',
+  'walk',
+]
 
 /** Each entry (from `src/`) and what the copy's index exports of it. */
 export const ENTRIES = {
@@ -120,6 +154,7 @@ export const ENTRIES = {
   },
   // A person's own push hours (punch list #141 PR 3, v2.6029): messages-notify reads every row of user_push_hours and
   // holds a reply's push for whoever is off, the planner splitting each push with pushDecision.
+  'lib/messages/handedPush.ts': { values: ['handedPush', 'handedFresh', 'HANDED_TEMPLATE', 'HANDED_FRESH_MINUTES', 'HANDED_BODY_MAX'], types: ['HandedPush', 'HandedPushInput'] },
   'lib/messages/pushHours.ts': {
     values: ['NO_PUSH_HOURS', 'backAt', 'backWords', 'holderOffWords', 'parsePushHours', 'pushDecision', 'pushedNow'],
     types: ['PushDecision', 'PushHoursByUser'],

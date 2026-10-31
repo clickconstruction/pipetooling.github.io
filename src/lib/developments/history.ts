@@ -136,7 +136,7 @@ export const HISTORY_CHIPS: ReadonlyArray<{ key: HistoryChip; label: string; tit
   { key: 'wrote', label: 'What people wrote', title: 'Notes on jobs, bids, the site and the customer' },
   { key: 'happened', label: 'What happened', title: 'Emails, calls, texts, visits and letters, kept at their time' },
   { key: 'plans', label: 'Plans', title: 'Every plan set filed, newest first: the history of plans' },
-  { key: 'stages', label: 'Stages', title: 'Sends, outcomes, stage moves, new pieces' },
+  { key: 'stages', label: 'Stages', title: 'Sends, outcomes, stage moves, new jobs and bids' },
   { key: 'money', label: 'Money', title: 'Bills and payments' },
   { key: 'questions', label: 'Questions', title: 'Questions asked and answered' },
 ]

@@ -86,7 +86,7 @@ const btn = (kind: 'blue' | 'ghost'): React.CSSProperties => ({
   padding: '0.3rem 0.7rem',
   borderRadius: 5,
   border: kind === 'ghost' ? '1px solid var(--border-strong)' : 'none',
-  background: kind === 'blue' ? '#3b82f6' : 'var(--surface)',
+  background: kind === 'blue' ? '#2563eb' : 'var(--surface)',
   color: kind === 'blue' ? '#fff' : 'var(--text-700)',
   cursor: 'pointer',
 })

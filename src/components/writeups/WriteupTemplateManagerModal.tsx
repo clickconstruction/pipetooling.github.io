@@ -453,7 +453,7 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
                   disabled={saving}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: '#3b82f6',
+                    background: '#2563eb',
                     color: '#fff',
                     border: 'none',
                     borderRadius: 6,
@@ -483,9 +483,9 @@ export function WriteupTemplateManagerModal({ open, onClose, templates, authUser
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                border: '1px solid #3b82f6',
+                border: '1px solid #2563eb',
                 borderRadius: 6,
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: '#fff',
                 cursor: 'pointer',
               }}

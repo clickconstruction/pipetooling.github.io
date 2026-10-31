@@ -110,7 +110,7 @@ export function MarkJobReadyToBillPrompt({ job, onClose }: Props) {
             disabled={!canConfirm}
             style={{
               padding: '0.5rem 1rem',
-              background: canConfirm ? '#3b82f6' : DEAD_PRESS_FILL,
+              background: canConfirm ? '#2563eb' : DEAD_PRESS_FILL,
               color: canConfirm ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,

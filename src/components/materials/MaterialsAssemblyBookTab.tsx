@@ -178,7 +178,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
             <button
               type="button"
               onClick={openAddTemplate}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+              style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
             >
               + Add Assembly
             </button>
@@ -394,7 +394,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                     <button
                       type="button"
                       onClick={() => openAddItem('part')}
-                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                     >
                       Add Parts
                     </button>
@@ -537,7 +537,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                                         setPartFormOpen(true)
                                         setExpandedPartId(null)
                                       }}
-                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                                     >
                                       Edit Part
                                     </button>
@@ -614,7 +614,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                     <button
                       type="button"
                       onClick={() => openAddItem('template')}
-                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                      style={{ padding: '0.25rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                     >
                       Add Nested Assembly
                     </button>
@@ -842,7 +842,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                             openAddPartWithName(addItemModalSearchQuery.trim())
                         setAddItemModalDropdownOpen(false)
                       }}
-                      style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                      style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                     >
                       Add Part
                     </button>
@@ -985,7 +985,7 @@ export function MaterialsAssemblyBookTab(props: MaterialsAssemblyBookTabProps) {
                 disabled={addingItemFromModal || (addItemModalType === 'part' && !addItemModalPartId) || (addItemModalType === 'template' && !addItemModalTemplateId)}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? '#3b82f6' : DEAD_PRESS_FILL,
+                  background: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? '#2563eb' : DEAD_PRESS_FILL,
                   color: (addItemModalType === 'part' && addItemModalPartId) || (addItemModalType === 'template' && addItemModalTemplateId) ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,

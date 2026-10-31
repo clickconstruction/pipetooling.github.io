@@ -672,7 +672,7 @@ export default function BilledPaymentConfirmationModal({
             onClick={() => void submit()}
             style={{
               padding: '0.5rem 1rem',
-              background: submitting ? DEAD_PRESS_FILL : '#3b82f6',
+              background: submitting ? DEAD_PRESS_FILL : '#2563eb',
               color: submitting ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 4,
