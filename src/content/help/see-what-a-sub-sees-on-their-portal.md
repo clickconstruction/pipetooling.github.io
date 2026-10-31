@@ -33,8 +33,10 @@ Every sub sheet sits at one of three stages. The portal draws them as a four-dot
 | {{chip:yellow|Waiting on work}} | "Finish the work, so we can call it in for inspection." |
 | {{chip:purple|Waiting on inspection}} | *"You told us the work's done Sep 4. We've called it in for inspection — a short punch list may come first."* |
 | {{chip:blue|Waiting on customer}} | *"Passed inspection Sep 6. Draw requested from the customer — their payment is the last thing between you and this money…"* |
-| {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with a green {{chip:green|Queued for Friday}} chip: *"Queued for the pay run — the date is right below."* |
+| {{chip:blue|Waiting on customer}} + a *payable after* date | The fourth dot lights with {{chip:green|Queued for Fri Oct 30}}: *"Queued for the pay run — the date is right below."* |
 | {{chip:green|Paid}} | The card leaves *Your jobs*. Paid sets itself when the balance hits $0. |
+
+**The chip names its day.** A green chip reads {{chip:green|Queued for Fri Oct 30}} when the sheet's money is in the next pay run. The stage does not matter. A chip reads {{chip:gray|Queued for Dec 15}} when the money comes after the next run. The head's two lines count the same way. So a card and the head never disagree.
 
 Move a sheet from the **Where it stands** rail on **Jobs → Subs → Pay**. The **→** beside the rail advances one stage. Clicking the rail's current dot opens all three, so you can jump or step back. The same control sits in the sheet editor's *Shown on the sub's portal* box.
 
@@ -45,6 +47,10 @@ While a sheet is *Waiting on work*, the sub sees {{button:green|✓ My work here
 **A sheet moves itself when the facts do.** The sub may report **100%** from the portal. Or the signed work order's last day may pass. Either way, the rail shows {{chip:purple|Waiting on inspection}} on its own, with a small ***· auto*** mark. Nobody has to click. If you move it back to *Waiting on work* by hand after that, your call stays. *Waiting on customer* is still yours to set once the inspection passes.
 
 Every move, yours or the sub's, writes a **Sub labor** line on the job's Activity feed. The line says who moved the sheet, from what to what, and the note. So the history is always on the job.
+
+## See Owed to you as rows
+
+**Owed to you** can read as rows under two bands instead of two lines. You add `?shape=1` to any portal link to see it. The first band is the next pay run with its day. Each row is a job and its amount. The band ends with the sum in that run. The second band is **Later**, in payable-after order. You open [the sample sub's portal with both](/sub?t=sample&sbs=1) to see today's head over the rows. **Show me on their portal** carries the flag when your own page has it.
 
 ## What they see when an offer has a window
 
