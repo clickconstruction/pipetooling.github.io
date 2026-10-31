@@ -11,6 +11,7 @@ const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_
 const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
 const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
 const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
+const STATEMENT_MIGRATION = readFileSync('supabase/migrations/20261031190000_dev_legal_statement_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
@@ -22,7 +23,7 @@ const pOf = (built: ReturnType<typeof writeRpcBody>): Record<string, unknown> =>
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     const rpcs = new Set(Object.values(WRITE_VERBS).map((v) => v.rpc))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -84,6 +85,24 @@ describe('devMcpWrites — the allowlist', () => {
     expect(GAP_MIGRATION).not.toContain('FUNCTION public.legal_clear_gap_answer')
     expect(GAP_MIGRATION).toContain('IF v_matter.closed_at IS NOT NULL THEN') // a closed matter is refused before the dry run answers
     expect(GAP_MIGRATION).toContain("WHERE id = v_document_id AND voided_at IS NULL") // a document must be live and on this matter
+    // v2.6244: the statement wrapper — the same gates; writes through the desk's two office RPCs with source mcp and never
+    // redefines them, never prints or signs, and refuses the sworn text once the signed copy is filed.
+    expect(STATEMENT_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(STATEMENT_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_legal_statement_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(STATEMENT_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(STATEMENT_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_legal_statement_write(jsonb, boolean) FROM PUBLIC, anon;')
+    expect(STATEMENT_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_legal_statement_write(jsonb, boolean) TO authenticated;')
+    expect(STATEMENT_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    expect(STATEMENT_MIGRATION).toContain("public.legal_statement_add(v_matter.id, v_on, v_body, v_title, v_affiant, v_form, v_to, v_county, 'mcp')")
+    expect(STATEMENT_MIGRATION).toContain("public.legal_statement_update(v_entry.id, v_on, v_body, v_title, v_affiant, v_form, v_to, v_to IS NULL, v_county, v_county IS NULL, 'mcp')")
+    expect(STATEMENT_MIGRATION).not.toContain('FUNCTION public.legal_statement_add')
+    expect(STATEMENT_MIGRATION).not.toContain('FUNCTION public.legal_statement_update')
+    expect(STATEMENT_MIGRATION).not.toContain('legal_statement_print(')
+    expect(STATEMENT_MIGRATION).not.toContain('legal_statement_sign(')
+    expect(STATEMENT_MIGRATION).toContain("IF v_state = 'signed' THEN")
+    expect(STATEMENT_MIGRATION).toContain('public.legal_statement_affiant_problem(v_affiant)') // the office RPC's own affiant check, so the plan refuses in words
+    expect(STATEMENT_MIGRATION).toContain("WHERE matter_id = v_matter.id AND kind = 'statement' AND voided_at IS NULL") // the live count the hash commits to
+    expect(STATEMENT_MIGRATION).toContain("'state_words', CASE WHEN v_state = 'draft' THEN 'Draft · not signed.'")
   })
 
   it('knows its verbs, and the server declares every one as a tool and refuses them through view_as', () => {
@@ -134,6 +153,104 @@ describe('the planned-step verbs (v2.5800)', () => {
   })
 })
 
+describe('the statement verbs (v2.6244, punch list #220)', () => {
+  const MATTER = 'c4d5e6f7-1111-4222-8333-444455556666'
+  const ENTRY = 'd4d5e6f7-1111-4222-8333-444455556667'
+  const USER = 'e4d5e6f7-1111-4222-8333-444455556668'
+  const AFFIANT = { kind: 'team', user_id: USER, name: ' Malachi Smith ', role: 'the RMP, license M-12345' }
+  const ADD = { matter_id: MATTER, on: '2026-10-20', title: 'Affidavit of Malachi Smith', body: '1. I am the RMP.\n2. On October 20 I saw the GC lock the gate.', affiant: AFFIANT, incident_to: '2026-10-22', venue_county: 'Guadalupe' }
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } to the dry-run wrapper with the affiant trimmed to its four keys', () => {
+    expect(isWriteVerb('plan_matter_statement')).toBe(true)
+    expect(isWriteVerb('apply_matter_statement')).toBe(true)
+    expect(planVerbFor('apply_matter_statement')).toBe('plan_matter_statement')
+    const plan = writeRpcBody('plan_matter_statement', { statement: ADD })
+    const p = { action: 'add', matter_id: MATTER, on: '2026-10-20', title: 'Affidavit of Malachi Smith', body: ADD.body, affiant: { kind: 'team', name: 'Malachi Smith', role: 'the RMP, license M-12345', user_id: USER }, incident_to: '2026-10-22', venue_county: 'Guadalupe' }
+    expect(plan).toEqual({ ok: true, rpc: 'dev_legal_statement_write', step: 'plan', body: { p, p_dry_run: true }, dryRunBody: { p, p_dry_run: true }, target: MATTER, planHash: null })
+    // action defaults to add; form rides along only when given (the RPC's default is notary); a witness has no user_id.
+    expect(pOf(plan)).not.toHaveProperty('form')
+    const witness = writeRpcBody('plan_matter_statement', { statement: { ...ADD, form: 'declaration', affiant: { kind: 'witness', name: 'Jo Dean', role: 'the foreman for Brightline Electric' } } })
+    expect(witness).toMatchObject({ ok: true, body: { p: { form: 'declaration', affiant: { kind: 'witness', name: 'Jo Dean', role: 'the foreman for Brightline Electric' } } } })
+    expect((pOf(witness).affiant as Record<string, unknown>)).not.toHaveProperty('user_id')
+    const apply = writeRpcBody('apply_matter_statement', { statement: ADD, plan_hash: HASH })
+    expect(apply).toMatchObject({ ok: true, step: 'apply', body: { p, p_dry_run: false }, dryRunBody: { p, p_dry_run: true }, planHash: HASH })
+    expect(writeRpcBody('apply_matter_statement', { statement: ADD })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+  })
+  it('refuses in words an add without its matter, day, title, body or affiant, a bad form, kind or day, a witness with a user_id, and the caps', () => {
+    expect(writeRpcBody('plan_matter_statement', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs statement') })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, matter_id: 'burd' } })).toMatchObject({ ok: false, error: expect.stringContaining('matter_id') })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, on: undefined } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, on: 'Oct 20' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, title: ' ' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, title: 't'.repeat(201) } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, body: '' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, body: 'b'.repeat(20001) } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, affiant: undefined } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, affiant: { kind: 'notary', name: 'x' } } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, affiant: { kind: 'team', name: ' ' } } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, affiant: { kind: 'witness', name: 'Jo', user_id: USER } } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, affiant: { kind: 'team', name: 'Jo', user_id: 'malachi' } } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, affiant: { kind: 'team', name: 'Jo', role: 'r'.repeat(301) } } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, form: 'sworn' } })).toMatchObject({ ok: false, error: expect.stringContaining('notary | declaration') })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, incident_to: '22 Oct' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, venue_county: 'c'.repeat(61) } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_matter_statement', { statement: { ...ADD, action: 'sign' } })).toMatchObject({ ok: false, error: expect.stringContaining('add | update') })
+    // On an add a null span or county is the same as leaving it out.
+    const bare = writeRpcBody('plan_matter_statement', { statement: { ...ADD, incident_to: null, venue_county: null } })
+    expect(bare).toMatchObject({ ok: true })
+    expect(pOf(bare)).not.toHaveProperty('incident_to')
+    expect(pOf(bare)).not.toHaveProperty('venue_county')
+  })
+  it('update names the statement and carries only what changes; null clears the span or the county; nothing to change is refused', () => {
+    const upd = writeRpcBody('plan_matter_statement', { statement: { action: 'update', entry_id: ENTRY, title: 'Affidavit of Malachi Smith (RMP)', incident_to: null } })
+    expect(upd).toMatchObject({ ok: true, body: { p: { action: 'update', entry_id: ENTRY, title: 'Affidavit of Malachi Smith (RMP)', incident_to: null } }, target: ENTRY })
+    expect(pOf(upd)).not.toHaveProperty('body')
+    expect(pOf(upd)).not.toHaveProperty('affiant')
+    expect(pOf(upd)).not.toHaveProperty('venue_county')
+    expect(writeRpcBody('plan_matter_statement', { statement: { action: 'update', entry_id: ENTRY, venue_county: null } })).toMatchObject({ ok: true, body: { p: { venue_county: null } } })
+    expect(writeRpcBody('plan_matter_statement', { statement: { action: 'update', entry_id: ENTRY, affiant: { kind: 'witness', name: 'Jo Dean' } } })).toMatchObject({ ok: true, body: { p: { affiant: { kind: 'witness', name: 'Jo Dean', role: '' } } } })
+    expect(writeRpcBody('plan_matter_statement', { statement: { action: 'update', entry_id: ENTRY } })).toMatchObject({ ok: false, error: expect.stringContaining('at least one change') })
+    expect(writeRpcBody('plan_matter_statement', { statement: { action: 'update', entry_id: 'nope', body: 'x' } })).toMatchObject({ ok: false, error: expect.stringContaining('entry_id') })
+    expect(writeRpcBody('plan_matter_statement', { statement: { action: 'update', entry_id: ENTRY, affiant: { kind: 'team', name: '' } } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('apply_matter_statement', { statement: { action: 'update', entry_id: ENTRY, body: 'New text.' }, plan_hash: HASH })).toMatchObject({ ok: true, step: 'apply', body: { p: { action: 'update', entry_id: ENTRY, body: 'New text.' }, p_dry_run: false }, planHash: HASH })
+  })
+  it('the plan hash commits to the draft as it would be written and the live statement count, and a JSON null survives the canonical form', async () => {
+    const reply = { dry_run: true, action: 'add', matter: { id: MATTER, payer_name: 'Burd & Assoc.', stage: 'demand' }, before: null, after: { kind: 'statement', state: 'draft', state_words: 'Draft · not signed.', source: 'mcp', incident_to: null }, statements_on_matter: 0, firm_reads_it: true }
+    expect(planCommitment('plan_matter_statement', reply)).toEqual({ action: 'add', matter: reply.matter, before: null, after: reply.after, statements_on_matter: 0, firm_reads_it: true })
+    const p = pOf(writeRpcBody('plan_matter_statement', { statement: ADD }))
+    const a = await planHash('plan_matter_statement', p, reply)
+    expect(a).toBe(await planHash('apply_matter_statement', p, reply))
+    expect(a).not.toBe(await planHash('plan_matter_statement', p, { ...reply, statements_on_matter: 1 })) // a statement added since
+    expect(a).not.toBe(await planHash('plan_matter_statement', { ...p, body: 'Other words.' }, reply)) // a different payload
+    expect(canonicalJson({ action: 'update', entry_id: ENTRY, incident_to: null })).toBe(`{"action":"update","entry_id":"${ENTRY}","incident_to":null}`)
+  })
+  it('the plan reply points at apply_matter_statement, and a repeat apply says the draft is on the Said lane', () => {
+    expect(String(planReply('plan_matter_statement', { matter: { id: MATTER } }, 'e'.repeat(64)).next)).toContain('apply_matter_statement')
+    expect(alreadyApplied('apply_matter_statement', { target: MATTER, at: '2026-10-31T18:00:00Z' })).toContain('on this matter')
+    expect(alreadyApplied('apply_matter_statement', { target: MATTER, at: null })).toContain('Said lane')
+    expect(planMismatch('apply_matter_statement', 'a'.repeat(64), 'b'.repeat(64))).toContain('plan_matter_statement')
+  })
+  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports 0.13.0', () => {
+    expect(SERVER).toContain("name: 'plan_matter_statement'")
+    expect(SERVER).toContain("name: 'apply_matter_statement'")
+    expect(SERVER).toContain("case 'plan_matter_statement':")
+    expect(SERVER).toContain("case 'apply_matter_statement':")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.13.0'")
+    expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
+    // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
+    // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
+    // branch that handles it, below the mint block.
+    const mintStart = SERVER.indexOf("case 'mint_twin_setup_code': {")
+    const lineBeforeMint = SERVER.slice(SERVER.lastIndexOf('\n', SERVER.lastIndexOf('\n', mintStart) - 1) + 1, SERVER.lastIndexOf('\n', mintStart))
+    expect(lineBeforeMint.trim()).not.toMatch(/^case '(plan|apply|revert)_/)
+    const writeBranch = SERVER.indexOf('// The second path: a POST to one hard-coded RPC, as the dev.')
+    for (const verb of Object.keys(WRITE_VERBS)) {
+      const at = SERVER.indexOf(`case '${verb}':`)
+      expect(at).toBeGreaterThan(mintStart)
+      expect(at).toBeLessThan(writeBranch)
+    }
+  })
+})
+
 describe('the document verbs (v2.6004)', () => {
   const MATTER = '7a1f3c2e-5b64-4d8a-9e21-0c3f5a7b9d11'
   const SHA = 'c'.repeat(64)
@@ -179,7 +296,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.12.2'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.13.0'")
   })
 })
 
@@ -228,8 +345,8 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.12.2'")
-    expect(SERVER).toContain('Writes are nineteen verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.13.0'")
+    expect(SERVER).toContain('Writes are twenty-one verbs and nothing else')
   })
 })
 
