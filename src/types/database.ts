@@ -35873,6 +35873,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_legal_statement_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_mcp_issue_key: {
         Args: { p_label?: string; p_token: string }
         Returns: string
