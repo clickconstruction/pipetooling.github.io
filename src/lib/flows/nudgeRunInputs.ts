@@ -23,6 +23,7 @@ import type { FlowCard, FlowRows } from './load'
 import type { AppSends, NudgeOffered, NudgeRunInput, NudgeSent, TextNumber } from './nudgeDispatch'
 import type { NudgeOptions, PersonFlow } from './nudges'
 import { jobOfMark, personFlowFrom, type HoldRow, type OwedRow, type PortalReadBackRow, type SentRow, type StepNoteRow, type ThreadLineRow } from './person'
+import { residentialRowsOf, type PipelineRows } from './residentialRows'
 import { SEED_FLOWS } from './seed'
 import type { FlowDef, NudgeHow } from './state'
 
@@ -34,8 +35,8 @@ export const PERSON_LINES = 50
 
 // ---------- the rows, as the run selects them ----------
 
-/** `contacts`: who they are, their kind, and Follow up's snooze (set only while `state` is `snoozed`). */
-export type RunContactRow = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; snoozed_until: string | null; prefers?: string | null }
+/** `contacts`: who they are, their kind, Follow up's snooze (set only while `state` is `snoozed`), and a residential customer's record (v2.6232). */
+export type RunContactRow = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; snoozed_until: string | null; prefers?: string | null; customer_id?: string | null }
 /** `flow_steps` with its flow's kind (`flows(kind)`), as `readFlowDef` reads one kind. */
 export type RunStepRow = FlowStepRow & { flows: { kind: string } | null }
 export type RunHoldRow = HoldRow & { contact_id: string }
@@ -95,6 +96,11 @@ export interface NudgeRunRows {
   appSends: unknown
   /** The texts waiting on Today's sends (`nudge_offers`, open), when the run reads them. */
   offers?: readonly RunOfferRow[]
+  /**
+   * The residential customers' Pipeline rows, everyone's at once (v2.6232, `residentialRows.ts`), when the run reads
+   * them: each residential contact's are cut out by their customer id and contact id, and their steps read from them.
+   */
+  pipeline?: PipelineRows
   /** The residential customers' jobs, bills and payments, when the run reads them, for `{amount}` and `{bill}` (v2.6224). */
   bills?: RunBillRows
 }
@@ -302,13 +308,20 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
       continue
     }
     const theirLines = lines.get(contact.id) ?? []
-    const customerId = flowRows.card?.customer_id ?? null
+    // A residential contact's record is on the contact itself; `flow_rows` names a customer's and an architect's on the card.
+    const customerId = flowRows.card?.customer_id ?? contact.customer_id ?? null
+    const first = flowFirst(contact, flowRows.card)
+    // A residential customer's steps read their Pipeline rows (v2.6232), cut from everyone's as their own panel reads them.
+    const rowsOf =
+      contact.kind === 'residential' && rows.pipeline
+        ? { ...flowRows, residential: residentialRowsOf(rows.pipeline, { contact: flowRows.contact, firstName: first, customerId, userNames: flowRows.userNames, skips: flowRows.skips }) }
+        : flowRows
     people.push(
       personFlowFrom({
         id: contact.id,
-        first: flowFirst(contact, flowRows.card),
+        first,
         flow,
-        rows: flowRows,
+        rows: rowsOf,
         now,
         holds: holds.get(contact.id) ?? [],
         sent: sent.get(contact.id) ?? [],
