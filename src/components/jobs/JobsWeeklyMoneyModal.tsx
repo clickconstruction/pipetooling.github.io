@@ -317,7 +317,7 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
                 type="button"
                 onClick={() => setLens(l)}
                 aria-pressed={lens === l}
-                style={{ padding: '0.2rem 0.75rem', border: 'none', cursor: 'pointer', background: lens === l ? '#3b82f6' : 'var(--surface)', color: lens === l ? 'white' : 'var(--text-muted)' }}
+                style={{ padding: '0.2rem 0.75rem', border: 'none', cursor: 'pointer', background: lens === l ? '#2563eb' : 'var(--surface)', color: lens === l ? 'white' : 'var(--text-muted)' }}
               >
                 {l === 'earned' ? 'Earned' : 'Cash'}
               </button>
@@ -370,7 +370,7 @@ export function JobsWeeklyMoneyModal({ open, initialMondayYmd, onClose, showToas
               type="button"
               onClick={submitShare}
               disabled={shareBusy || !shareRecipientId}
-              style={{ marginLeft: 'auto', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 500, border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: shareBusy ? 'wait' : 'pointer' }}
+              style={{ marginLeft: 'auto', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 500, border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', cursor: shareBusy ? 'wait' : 'pointer' }}
             >
               {shareBusy ? 'Scheduling…' : 'Schedule'}
             </button>

@@ -37,7 +37,7 @@ export function BulkGeneratePayStubsConfirm({
           <button
             type="button"
             onClick={() => onConfirm(confirm.candidates)}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
           >
             {countedLabel('Generate', confirm.candidates.length, 'report')}
           </button>

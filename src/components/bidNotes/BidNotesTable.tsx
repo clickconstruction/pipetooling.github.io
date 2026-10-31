@@ -480,7 +480,7 @@ export function BidNotesTable({
           <button
             type="button"
             onClick={() => setAdding(true)}
-            style={{ padding: '0.25rem 0.65rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+            style={{ padding: '0.25rem 0.65rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
           >
             Add row
           </button>

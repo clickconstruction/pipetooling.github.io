@@ -2158,7 +2158,7 @@ export default function JobTally() {
                     padding: '0.75rem 1.25rem',
                     fontSize: '1rem',
                     fontWeight: 600,
-                    background: '#3b82f6',
+                    background: '#2563eb',
                     color: 'white',
                     border: 'none',
                     borderRadius: 8,

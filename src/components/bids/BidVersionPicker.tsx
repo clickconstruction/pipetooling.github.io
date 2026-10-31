@@ -612,7 +612,7 @@ export function BidVersionPicker({
         <button
           type="button"
           onClick={() => setAddGc({ gcId: '', fromVersionId: selectedBidVersionId ?? bidVersions[0]?.id ?? '', name: '' })}
-          style={{ padding: '0.25rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', lineHeight: 1.25, textAlign: 'center' }}
+          style={{ padding: '0.25rem 0.6rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', lineHeight: 1.25, textAlign: 'center' }}
           title="Send this bid to another GC — a packet that starts as a copy"
         >
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
@@ -776,7 +776,7 @@ export function BidVersionPicker({
 
 const inputStyle: React.CSSProperties = { width: '100%', padding: '0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box' }
 const btnGhost: React.CSSProperties = { padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }
-const btnPrimary: React.CSSProperties = { padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }
+const btnPrimary: React.CSSProperties = { padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }
 
 function Overlay({ children, onClose }: { children: React.ReactNode; onClose: () => void }) {
   return (

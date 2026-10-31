@@ -1560,13 +1560,13 @@ export function BidsCountsTab({
                 `}</style>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.8rem', flexWrap: 'wrap' }}>
                   <div style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden' }}>
-                    <button type="button" onClick={() => setSheetMode('list')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'list' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'list' ? '#fff' : 'var(--text-muted)' }}>
+                    <button type="button" onClick={() => setSheetMode('list')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'list' ? '#2563eb' : 'var(--surface)', color: sheetMode === 'list' ? '#fff' : 'var(--text-muted)' }}>
                       List
                     </button>
-                    <button type="button" onClick={() => setSheetMode('pages')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'pages' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'pages' ? '#fff' : 'var(--text-muted)' }}>
+                    <button type="button" onClick={() => setSheetMode('pages')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'pages' ? '#2563eb' : 'var(--surface)', color: sheetMode === 'pages' ? '#fff' : 'var(--text-muted)' }}>
                       By plan page
                     </button>
-                    <button type="button" onClick={() => setSheetMode('groups')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'groups' ? '#3b82f6' : 'var(--surface)', color: sheetMode === 'groups' ? '#fff' : 'var(--text-muted)' }}>
+                    <button type="button" onClick={() => setSheetMode('groups')} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.75rem', border: 'none', cursor: 'pointer', background: sheetMode === 'groups' ? '#2563eb' : 'var(--surface)', color: sheetMode === 'groups' ? '#fff' : 'var(--text-muted)' }}>
                       By group
                     </button>
                   </div>
@@ -1640,7 +1640,7 @@ export function BidsCountsTab({
                               role="radio"
                               aria-checked={eff === u}
                               onClick={() => setQaUnit(u === auto ? null : u)}
-                              style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '0.38rem 0.5rem', border: 'none', cursor: 'pointer', background: eff === u ? '#3b82f6' : 'var(--surface)', color: eff === u ? '#fff' : 'var(--text-muted)' }}
+                              style={{ font: 'inherit', fontSize: '0.74rem', fontWeight: 700, padding: '0.38rem 0.5rem', border: 'none', cursor: 'pointer', background: eff === u ? '#2563eb' : 'var(--surface)', color: eff === u ? '#fff' : 'var(--text-muted)' }}
                             >
                               {COUNT_UNIT_LABEL[u]}
                             </button>
@@ -1694,7 +1694,7 @@ export function BidsCountsTab({
                       type="button"
                       onClick={() => void sheetQuickAdd()}
                       disabled={qaBusy || dup != null}
-                      style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.75rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: qaBusy || dup != null ? 'not-allowed' : 'pointer', opacity: dup != null ? 0.6 : 1 }}
+                      style={{ font: 'inherit', fontSize: '0.82rem', fontWeight: 600, padding: '0.42rem 0.75rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: qaBusy || dup != null ? 'not-allowed' : 'pointer', opacity: dup != null ? 0.6 : 1 }}
                     >
                       {qaBusy ? 'Adding…' : 'Add ⏎'}
                     </button>

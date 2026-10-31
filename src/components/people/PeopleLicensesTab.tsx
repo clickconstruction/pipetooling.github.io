@@ -322,7 +322,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                       e.stopPropagation()
                                       openLicenseForm(personName)
                                     }}
-                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                    style={{ padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer', whiteSpace: 'nowrap' }}
                                   >
                                     + Add license
                                   </button>
@@ -376,7 +376,7 @@ export default function PeopleLicensesTab({ people, users }: PeopleLicensesTabPr
                                                             )}
                                                           </div>
                                                         ) : null}
-                                                        <button type="button" onClick={(e) => { e.stopPropagation(); openCostLineForm(l.id) }} style={{ padding: '0.15rem 0.35rem', fontSize: '0.7rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>+ Add Cost</button>
+                                                        <button type="button" onClick={(e) => { e.stopPropagation(); openCostLineForm(l.id) }} style={{ padding: '0.15rem 0.35rem', fontSize: '0.7rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 4, cursor: 'pointer' }}>+ Add Cost</button>
                                                       </div>
                                                       {expandedCostLinesLicenseId === l.id && costLines.length > 0 && (
                                                         <div style={{ marginTop: '0.5rem', padding: '0.5rem', background: 'var(--bg-subtle)', borderRadius: 4, borderLeft: '3px solid var(--border)' }}>

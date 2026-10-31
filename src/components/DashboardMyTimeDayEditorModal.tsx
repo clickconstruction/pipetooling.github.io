@@ -1343,9 +1343,9 @@ export function DashboardMyTimeDayEditorModal({
                     }
                     style={{
                       padding: '0.5rem 1rem',
-                      border: '1px solid #3b82f6',
+                      border: '1px solid #2563eb',
                       borderRadius: 4,
-                      background: '#3b82f6',
+                      background: '#2563eb',
                       color: 'white',
                       cursor: saving || !canSave ? 'not-allowed' : 'pointer',
                       fontWeight: 600,

@@ -356,7 +356,7 @@ export function BilledAwaitingPaymentSection({ lastMarkedAt = null }: { /** The 
       <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '0.75rem' }}>
         <Link
           to="/jobs?tab=stages&stagesSection=billed"
-          style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', textDecoration: 'none', borderRadius: 4, fontSize: '0.875rem' }}
+          style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', textDecoration: 'none', borderRadius: 4, fontSize: '0.875rem' }}
         >
           View in Jobs Pipeline
         </Link>

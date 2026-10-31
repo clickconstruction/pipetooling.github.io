@@ -196,7 +196,7 @@ export function BidPlansPanel({ bid, shellBidId, canWrite, open, onClose, userId
                 }
               })()
             }}
-            style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+            style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}
           >
             Ask the robot to look
           </button>
