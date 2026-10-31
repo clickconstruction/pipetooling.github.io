@@ -424,8 +424,10 @@ describe('LegalTimelinePanel · a statement on the Said lane (punch list #220, v
     fireEvent.change(within(item as HTMLElement).getByLabelText('Why counsel should not see it'), { target: { value: 'signed first' } })
     fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Hold back' }))
     await waitFor(() => expect(a.hold!.holdBack).toHaveBeenCalledWith(statementHoldKey('st'), 'signed first'))
-    fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Undo…' }))
+    // v2.6210: a draft's undo reads Not signed…; the form's button Drop the draft.
+    fireEvent.click(within(item as HTMLElement).getByRole('button', { name: 'Not signed…' }))
     expect(within(item as HTMLElement).getByLabelText('Why undo it')).toBeTruthy()
+    expect(within(item as HTMLElement).getByRole('button', { name: 'Drop the draft' })).toBeTruthy()
   })
   it('on the portal the statement reads in the firm’s words, with no hold and no undo', () => {
     render(<LegalTimelinePanel timeline={t('firm')} todayYmd={TODAY} reader="firm" look={PORTAL_LOOK} acts={null} />)
@@ -433,5 +435,34 @@ describe('LegalTimelinePanel · a statement on the Said lane (punch list #220, v
     expect(item.textContent).toContain("sworn statement by the office's team · draft, not signed")
     expect(screen.queryByRole('button', { name: 'Hold from counsel…' })).toBeNull()
     expect(screen.queryByRole('button', { name: 'Undo…' })).toBeNull()
+  })
+})
+
+describe('LegalTimelinePanel · swear a statement from the line (punch list #220, v2.6210)', () => {
+  const rows: LegalEntryRow[] = [entry({ id: 'st', kind: 'statement', occurred_on: '2026-09-03', body: 'x', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] } })]
+  it('the composer offers Swear a statement… on the day typed, and the Said lane’s empty words offer it too', () => {
+    const swear = vi.fn()
+    const a = acts({ swearStatement: swear, editStatement: vi.fn() })
+    render(<LegalTimelinePanel timeline={buildLegalTimeline({ entries: [], todayYmd: TODAY, reader: 'office' })} todayYmd={TODAY} reader="office" acts={a} lanes />)
+    fireEvent.click(document.querySelector('[data-legal-composer-door]')!)
+    fireEvent.change(screen.getByLabelText('Day planned for'), { target: { value: '2026-09-03' } })
+    fireEvent.click(document.querySelector('[data-legal-composer-swear]')!)
+    expect(swear).toHaveBeenCalledWith('2026-09-03')
+    expect(document.querySelector('[data-legal-composer]')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Said · 0' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Swear a statement…' }))
+    expect(swear).toHaveBeenCalledWith(TODAY)
+  })
+  it('a draft’s row offers Edit into the window and Not signed… → Drop the draft', async () => {
+    const edit = vi.fn()
+    const a = acts({ swearStatement: vi.fn(), editStatement: edit, canUndo: (i) => i.kind === 'statement' && !i.voided })
+    render(<LegalTimelinePanel timeline={buildLegalTimeline({ entries: rows, todayYmd: TODAY, reader: 'office' })} todayYmd={TODAY} reader="office" acts={a} />)
+    const item = document.querySelector('[data-legal-timeline-item="entry:st"]') as HTMLElement
+    fireEvent.click(within(item).getByRole('button', { name: 'Edit' }))
+    expect(edit).toHaveBeenCalledWith('st')
+    fireEvent.click(within(item).getByRole('button', { name: 'Not signed…' }))
+    fireEvent.change(within(item).getByLabelText('Why undo it'), { target: { value: 'would not sign the September paragraph' } })
+    fireEvent.click(within(item).getByRole('button', { name: 'Drop the draft' }))
+    await waitFor(() => expect(a.undo).toHaveBeenCalledWith('st', 'would not sign the September paragraph'))
   })
 })

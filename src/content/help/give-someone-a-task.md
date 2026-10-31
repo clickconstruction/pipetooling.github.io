@@ -2,7 +2,7 @@
 title: give someone a task
 category: Office
 roles: dev, master_technician, assistant, controller, primary, estimator, subcontractor, helpers
-keywords: task, add task, assign, checklist, crew, team, send task, todo
+keywords: task, add task, assign, checklist, crew, team, send task, todo, messages, thread, send as task, email as a task
 order: 40
 ---
 The ＋ Task button in the top bar opens the Add-task dialog from anywhere in the app. Type what needs doing, pick who does it and send it.
@@ -29,3 +29,11 @@ Reminders, notify-on-complete, and links to app pages live in the same dialog. S
 ## Send a job as a task
 
 Tap the purple arrow on a job. It sits on the Jobs pipeline row, on the phone card's **Send as task**, and on the Job Detail header. The arrow opens the same dialog with the job on a bar above the text box. The bar reads {{chip:purple|1016 PLUM · Mission faucet}} with the address and customer under it. Type only the task. On every task list the job then shows as a chip in front of it. The chip reads {{chip:purple|1016 · Mission faucet ↗}} and opens the job. **open ↗** on the bar shows the job behind the dialog without losing your draft. **×** turns it into an ordinary task with no job attached.
+
+## Send a message thread as a task
+
+Some email is a chore, not a conversation. A supply house asks for our W-9. A builder asks for a certificate of insurance. Open the thread on [Messages](/messages). Press the **⋯** in its header, then **Send as task**. The same dialog opens with the thread on the bar. The bar reads {{chip:purple|Email · Dale Ferris · W-9 needed}} with the company under it. Type only the task and pick who does it. On their list the task shows the chip in front of it. The chip opens the thread at that message.
+
+:::example A supply house asks for our W-9
+Press **⋯** on the thread, then **Send as task**. Type "Send our W-9 and COI". Tap **Rosa**. Press **Send**. Rosa's Today list reads {{chip:purple|Email · Hill Country Supply ↗}} Send our W-9 and COI.
+:::

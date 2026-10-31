@@ -156,6 +156,7 @@ export const ENTRIES = {
   },
   // A person's own push hours (punch list #141 PR 3, v2.6029): messages-notify reads every row of user_push_hours and
   // holds a reply's push for whoever is off, the planner splitting each push with pushDecision.
+  'lib/messages/handedPush.ts': { values: ['handedPush', 'handedFresh', 'HANDED_TEMPLATE', 'HANDED_FRESH_MINUTES', 'HANDED_BODY_MAX'], types: ['HandedPush', 'HandedPushInput'] },
   'lib/messages/pushHours.ts': {
     values: ['NO_PUSH_HOURS', 'backAt', 'backWords', 'holderOffWords', 'parsePushHours', 'pushDecision', 'pushedNow'],
     types: ['PushDecision', 'PushHoursByUser'],

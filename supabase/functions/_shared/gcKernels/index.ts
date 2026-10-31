@@ -148,6 +148,7 @@
 //   src/lib/mercurySplitMath.ts
 //   src/lib/messages/boxes.ts
 //   src/lib/messages/customerLang.ts
+//   src/lib/messages/handedPush.ts
 //   src/lib/messages/hasRule.ts
 //   src/lib/messages/jobKeys.ts
 //   src/lib/messages/legalRoute.ts
@@ -300,6 +301,8 @@ export { legalLines, legalSendsFromDemandLetters, legalSendsFromFilings, routeRe
 export type { LegalLine, LegalRoute, LegalSend } from './lib/messages/legalRoute.ts'
 export { OFFICE_WAIT_KEY, OFFICE_WAIT_MINUTES, PUSH_CHANNELS, answeredBefore, pushDue, pushHeldRows, pushSentRow, pushesFor } from './lib/messages/notifyRule.ts'
 export type { HeldPush, NotifySettings, Push, PushSentRow, PushTemplate, ReplyHas, ReplyLine } from './lib/messages/notifyRule.ts'
+export { handedPush, handedFresh, HANDED_TEMPLATE, HANDED_FRESH_MINUTES, HANDED_BODY_MAX } from './lib/messages/handedPush.ts'
+export type { HandedPush, HandedPushInput } from './lib/messages/handedPush.ts'
 export { NO_PUSH_HOURS, backAt, backWords, holderOffWords, parsePushHours, pushDecision, pushedNow } from './lib/messages/pushHours.ts'
 export type { PushDecision, PushHoursByUser } from './lib/messages/pushHours.ts'
 export { NOTIFY_LINES_MAX, PUSH_KINDS, REPLY_PUSH_ON_KEY, planReplyPushes, sweepSince } from './lib/messages/notifyPlan.ts'

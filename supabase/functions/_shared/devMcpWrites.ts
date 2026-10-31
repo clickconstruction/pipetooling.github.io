@@ -382,3 +382,43 @@ export function planMismatch(verb: WriteVerb, quoted: string, fresh: string): st
   const planVerb = planVerbFor(verb)
   return `Nothing written: the plan you quoted (${quoted.slice(0, 12)}…) is not what this dry run gives now (${fresh.slice(0, 12)}…) — the payload differs, or the rows it touches changed since. Call ${planVerb} again and read it.`
 }
+
+/**
+ * apply_file_plans' Drive leg failed (v2.6239): the words name Drive's reason and the one fix, so the agent can
+ * hand a person the exact share to make. Found live 2026-10-31 on ZZ bid b566: the intake service account could
+ * see the plumbing bids folder but not write in it, and the old words said only "Drive refused the filing".
+ * Storage quota is tested first because Drive answers it with a 403 too.
+ */
+export type DriveFilingFailure = {
+  /** Drive's error, as driveUpload throws it ("Folder create failed (403): …"). */
+  message: string
+  /** The service account's client_email; null when the key cannot be read. */
+  serviceAccount: string | null
+  division: { label: string; url: string }
+  /** The project folder's name, the one the bid form's Find looks for. */
+  folderName: string
+  /** The project folder when it was made before the failure; empty when the create itself failed. */
+  folderLink: string
+}
+
+export function driveFilingRefusal(f: DriveFilingFailure): string {
+  const reason = f.message.trim().replace(/[.\s]+$/, '')
+  const account = f.serviceAccount ? `The intake service account (${f.serviceAccount})` : 'The intake service account'
+  const shareWith = f.serviceAccount ?? 'the intake service account (the client_email in GOOGLE_SERVICE_ACCOUNT_JSON)'
+  const share = `Whoever owns ${f.division.url} shares it with ${shareWith} as Editor (Content manager on a Shared Drive).`
+  const byHand = `Until then a person drops the file into a folder named "${f.folderName}" in ${f.folderLink || f.division.url} and presses Find the folder on the bid form.`
+  const retry = 'The staged copy is still there: call apply_file_plans again with the same plans and plan_hash.'
+  if (/storage ?quota/i.test(reason)) {
+    return `Drive refused the upload: ${reason}. The ${f.division.label} bids folder is not on a Shared Drive, so the service account has no storage there. Move that folder onto a Shared Drive the service account is in, or set DRIVE_IMPERSONATE_USER (docs/DRIVE_INTAKE_SETUP.md). ${byHand} ${retry}`
+  }
+  if (/rate ?limit/i.test(reason)) {
+    return `Drive is rate-limiting the service account: ${reason}. Wait a minute. ${retry}`
+  }
+  if (/sufficient permissions|not have permission|forbidden/i.test(reason)) {
+    return `Drive refused the filing: ${reason}. ${account} can see the ${f.division.label} bids folder but cannot write in it. ${share} ${byHand} ${retry}`
+  }
+  if (/\(404\)|not found/i.test(reason)) {
+    return `Drive refused the filing: ${reason}. ${account} cannot see the ${f.division.label} bids folder at all. ${share} ${byHand} ${retry}`
+  }
+  return `Drive refused the filing: ${reason}. ${byHand} ${retry}`
+}

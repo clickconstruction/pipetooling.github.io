@@ -20,7 +20,7 @@ export type ReportSubject =
   | { kind: 'bid'; projectName: string | null; gcContactName: string | null }
   | { kind: 'none' }
 
-/** The one read each table takes: `.from(table).select(columns).eq('id', id).single()`. */
+/** The one read each table takes: `.from(table).select(columns).eq('id', id).single()`. A test's fake is typed against it. */
 export type ReportSubjectClient = {
   from: (table: string) => {
     select: (columns: string) => {
@@ -31,10 +31,18 @@ export type ReportSubjectClient = {
   }
 }
 
+/**
+ * What the read takes: anything with a `from` (v2.6240). Not `ReportSubjectClient` itself: checking supabase-js's
+ * client against the chain makes TypeScript resolve its `eq` over a plain string column, which runs past the
+ * instantiation limit (TS2589) and failed `deno check` on both sends. So the read takes the client as it is and reads
+ * it through the chain inside.
+ */
+export type ReportSubjectDb = { from: (table: string) => unknown }
+
 /** The report's job, project or bid by name — one read; a row that does not come back reads as a subject with no names. */
-export async function readReportSubject(db: ReportSubjectClient, report: ReportSubjectRow): Promise<ReportSubject> {
+export async function readReportSubject(db: ReportSubjectDb, report: ReportSubjectRow): Promise<ReportSubject> {
   const one = async (table: string, columns: string, id: string): Promise<Record<string, unknown> | null> => {
-    const { data } = await db.from(table).select(columns).eq('id', id).single()
+    const { data } = await (db as ReportSubjectClient).from(table).select(columns).eq('id', id).single()
     return data && typeof data === 'object' ? (data as Record<string, unknown>) : null
   }
   const text = (row: Record<string, unknown> | null, key: string): string | null => {
