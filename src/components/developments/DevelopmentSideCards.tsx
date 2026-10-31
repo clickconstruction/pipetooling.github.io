@@ -1,15 +1,11 @@
 /**
  * The Plans card and the Questions card (punch list #208, design spike). Plans: every set on the
  * site, newest first, who carries it, and the line naming the pieces on an older set or none with
- * **Ask the estimators about the N** (a stub until PR 4 writes the request). Questions: the open
- * ones first with their age, then the answered, each with the record it was asked about. `QuestionRow`
- * is the one row, shared with a record's own log (`RecordQuestions.tsx`, PR 4b).
+ * **Ask the estimators about the N**. The Questions look moved to `DevelopmentQuestionsLook.tsx`
+ * (v2.6214); `QuestionRow` stays here, the one row shared with a record's own log (`RecordQuestions.tsx`).
  */
 import { requestIsOpen, type MemberRequest } from '../../lib/developments/overview'
-import { sortQuestions } from '../../lib/developments/recordQuestions'
 import { plansNeedWords, type PlanCarrier, type PlansView, plansAskLine, type PlansAsk } from '../../lib/developments/plans'
-import type { CountCard, CountDoor, CountPress } from '../../lib/developments/countCards'
-import { CountCardBody } from './DevelopmentCounts'
 import { ageWords, Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 import { useState } from 'react'
 
@@ -138,39 +134,6 @@ export function DevelopmentPlansCard({
   )
 }
 
-export function DevelopmentQuestionsCard({
-  requests,
-  names,
-  aboutLabel,
-  openAbout,
-  waitingCard,
-  onRow,
-  onPress,
-}: {
-  requests: MemberRequest[]
-  names: ReadonlyMap<string, string>
-  aboutLabel: (r: MemberRequest) => string
-  openAbout: (r: MemberRequest) => void
-  /** With no question on the site: the Waiting card's three kinds and their presses, drawn here as well (the owner, 2026-10-28: *do all 8*, item 2). */
-  waitingCard: CountCard
-  onRow: (door: CountDoor) => void
-  onPress: (action: CountPress) => void
-}) {
-  if (requests.length === 0) {
-    return (
-      <div style={{ margin: '0 -12px' }} data-testid="questions-kinds">
-        <CountCardBody card={waitingCard} sheet={false} bare onRow={onRow} onFoot={() => undefined} onPress={onPress} onClose={() => undefined} />
-      </div>
-    )
-  }
-  return (
-    <div style={{ display: 'grid', gap: 8 }}>
-      {sortQuestions(requests).map((r) => (
-        <QuestionRow key={r.id} request={r} names={names} about={{ label: aboutLabel(r), onOpen: () => openAbout(r) }} />
-      ))}
-    </div>
-  )
-}
 
 /**
  * One question as the Questions card and a record's own log draw it (PR 4b): the day, the wait while

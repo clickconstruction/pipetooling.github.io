@@ -94,7 +94,7 @@ Money shows the site's progress as one bar, then every job by stage with what is
 
 Plans lists every plan set, newest first, with the pieces on it. A chip counts the pieces without plans. Press it to see them. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes.
 
-Questions lists the open questions on the site's pieces and how long each has waited. With none open, the card shows the kinds a site waits on.
+Questions starts with two presses, {{button:outline|Ask the estimators}} and {{button:outline|Ask Dispatch}}. Under them sits one table for each lane with questions. Open questions come first, oldest first. Each shows how long it has waited, what it is about, the words and the answer so far. The answered ones fold under a count. With no question at all, the look says nothing is waiting.
 
 ## What an estimator sees
 
