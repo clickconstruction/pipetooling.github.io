@@ -1,4 +1,4 @@
-import { useState, type CSSProperties } from 'react'
+import { useState } from 'react'
 import { ROBOT_STAGE_STOPS, ROBOT_STAGE_WORDS, type RobotStage } from '../../lib/bids/robotStage'
 import { ROBOT_ICON_PATH } from './RobotGlyph'
 
@@ -22,14 +22,6 @@ export type RobotStageStripProps = {
 const DONE = '#16a34a'
 const NOW = '#2563eb'
 
-const stopDot = (state: 'done' | 'now' | 'todo'): CSSProperties => ({
-  width: 9,
-  height: 9,
-  borderRadius: '50%',
-  flex: '0 0 auto',
-  background: state === 'done' ? DONE : state === 'now' ? NOW : 'var(--border-strong)',
-  boxShadow: state === 'now' ? `0 0 0 3px color-mix(in srgb, ${NOW} 25%, transparent)` : undefined,
-})
 
 function Stops({ stage, dense }: { stage: RobotStage; dense: boolean }) {
   return (
