@@ -32,6 +32,8 @@ export type PaperSample = {
   pdf: () => Promise<Blob>
   /** The file name the PDF would carry. */
   filename: string
+  /** Punch list #217: today's paper over a prototype's, one document, when this paper has a prototype; the tab's *Side by side* frames it. */
+  sideBySideHtml?: string
 }
 
 export const SAMPLE_JOB = {
