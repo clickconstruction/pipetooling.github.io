@@ -47,8 +47,11 @@ describe('RobotFixturesWindow', () => {
 
   it('an update tick changes the button, and the press hands back the ticks', () => {
     const { onTake } = setup()
+    // Keep mine leaves her count standing: nothing is struck until the row is ticked for Update.
+    expect(screen.getByTestId('robot-fixtures-on-count').querySelector('s')).toBeNull()
     fireEvent.click(screen.getByRole('checkbox', { name: 'Update Floor drain' }))
     expect(take().textContent).toBe('Add 1 · update 1')
+    expect(screen.getByTestId('robot-fixtures-on-count').querySelector('s')?.textContent).toBe('6')
     fireEvent.click(take())
     expect(onTake).toHaveBeenCalledTimes(1)
     const [ticks] = onTake.mock.calls[0]!

@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { envelopeRefusal, isRevisionAfterReveal, pickEnvelopeRows, robotReviewRevisionNote } from './robotEnvelope'
+import { envelopeRefusal, envelopeRunFromShadow, isRevisionAfterReveal, pickEnvelopeRows, robotReviewRevisionNote } from './robotEnvelope'
 import type { DiffEntry, TakeoffDiff } from './takeoffDiff'
 
 const entry = (key: string, robotExt: number, ourExt: number): DiffEntry => ({
@@ -86,5 +86,13 @@ describe('isRevisionAfterReveal', () => {
     expect(isRevisionAfterReveal({ wasSentBefore: true, prevValue: 100, nextValue: 120, runStatus: 'locked' })).toBe(false)
     expect(isRevisionAfterReveal({ wasSentBefore: true, prevValue: 100, nextValue: undefined, runStatus: 'scored' })).toBe(false)
     expect(isRevisionAfterReveal({ wasSentBefore: true, prevValue: 100, nextValue: 100, runStatus: 'scored' })).toBe(false)
+  })
+})
+
+describe('envelopeRunFromShadow · assisted (punch list #221, PR 5)', () => {
+  it('carries the assisted stamp and the fixtures score', () => {
+    const run = envelopeRunFromShadow({ shadow_bid_number: '652', locked_total: 148900, reference_value: 144400, delta_pct: 3.1, locked_at: '2026-10-30T19:41:00Z', teacher_name: 'Taunya', teacher_standard: true, reference_kind: 'sent', assisted_at: '2026-10-31T14:00:00Z', fixtures_score: { found: 23, taken: 19, changed: 2, set_aside: 2, left: 0, missed: 3, reasons: {} } })
+    expect(run).toMatchObject({ kind: 'shadow', practice: false, assisted: true, fixturesScore: { found: 23, taken: 19, missed: 3 } })
+    expect(envelopeRunFromShadow({ shadow_bid_number: '1', locked_total: null, reference_value: null, delta_pct: null, locked_at: null })).toMatchObject({ assisted: false, fixturesScore: null })
   })
 })
