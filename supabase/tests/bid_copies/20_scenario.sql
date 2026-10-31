@@ -88,6 +88,31 @@ BEGIN
   IF got IS DISTINCT FROM want THEN RAISE EXCEPTION E'% differs.\n--- got ---\n%\n--- want ---\n%', label, got, want; END IF;
   RAISE NOTICE 'ok: %', label;
 END $$;
+-- Each row's plan tag (v2.6235): fixture:tag, '-' for none.
+CREATE FUNCTION copt.tags(p_bid uuid, p_version uuid) RETURNS text LANGUAGE sql STABLE AS $$
+  SELECT COALESCE(string_agg(fixture || ':' || COALESCE(plan_tag, '-'), ', ' ORDER BY sequence_order, id), '(none)')
+  FROM public.bids_count_rows WHERE bid_id = p_bid AND bid_version_id IS NOT DISTINCT FROM p_version $$;
+-- The robot's read of a bid (v2.6180): one pull, one fixture taken onto the bid's unsplit WC-1, which wears its tag.
+-- The pull tables take no write from authenticated (put_fixtures writes as the service role), so this runs as the owner.
+CREATE FUNCTION copt.robot_read(p_bid uuid) RETURNS void LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE wc uuid; pull uuid;
+BEGIN
+  SELECT id INTO wc FROM public.bids_count_rows WHERE bid_id = p_bid AND fixture = 'WC-1' AND bid_version_id IS NULL;
+  UPDATE public.bids_count_rows SET plan_tag = 'WC-1' WHERE id = wc;
+  INSERT INTO public.bid_fixture_pulls (bid_id, sheet_count) VALUES (p_bid, 3) RETURNING id INTO pull;
+  INSERT INTO public.bid_fixture_pull_rows (pull_id, bid_id, tag, name, count, taken_at, taken_as, count_row_id, priced_as)
+  VALUES (pull, p_bid, 'WC-1', 'Copies WC', 3, now(), 'added', wc, 'her_book');
+END $$;
+-- The pull rows under a bid (v2.6235): the tag, the bid and version of the count row it points at, and the version it
+-- was taken on. Read as the owner, so it reads whatever the caller may see.
+CREATE FUNCTION copt.pulls(p_bid uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE(string_agg(x.tag || ' -> ' || COALESCE((
+      SELECT b.project_name || ' / ' || COALESCE(v.name, 'unsplit')
+        FROM public.bids_count_rows c JOIN public.bids b ON b.id = c.bid_id LEFT JOIN public.bid_versions v ON v.id = c.bid_version_id
+       WHERE c.id = x.count_row_id), 'no row')
+    || ', taken on ' || COALESCE((SELECT v2.name FROM public.bid_versions v2 WHERE v2.id = x.taken_version_id), '-'),
+    ', ' ORDER BY x.sequence_order, x.id), '(none)')
+  FROM public.bid_fixture_pull_rows x WHERE x.bid_id = p_bid $$;
 GRANT USAGE ON SCHEMA copt TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA copt TO authenticated;
 
@@ -101,20 +126,30 @@ SELECT copt.seed('00000000-0000-0000-0000-0000000009d3', 'Copies: adopted');
 SELECT copt.seed('00000000-0000-0000-0000-0000000009d4', 'Copies: package');
 SELECT copt.seed('00000000-0000-0000-0000-0000000009d5', 'Copies: shared book', false);
 SELECT copt.seed('00000000-0000-0000-0000-0000000009d6', 'Copies: a primary makes the version');
+-- The robot read two of them (v2.6235): the bid that gets versions and is duplicated, and the bid that is adopted.
+SELECT copt.robot_read('00000000-0000-0000-0000-0000000009d1');
+SELECT copt.robot_read('00000000-0000-0000-0000-0000000009d3');
 
 CREATE TEMP TABLE want ON COMMIT DROP AS SELECT
   'WC-1 x3, LAV-1 x2, UR-1 x1'::text AS rows,
+  'WC-1:WC-1, LAV-1:-, UR-1:-'::text AS tags,
   'WC-1=41250 Moore Supply alone, LAV-1=18000 Ferguson package 1, UR-1=22000 Ferguson package 1'::text AS costs,
   E'WC-1 entry $1500 [own]\nLAV-1 custom $640 [own]\nUR-1 hidden [own]'::text AS prices;
 SELECT copt.same('the seed: rows', copt.rows('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT rows FROM want));
 SELECT copt.same('the seed: quoted costs', copt.costs('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT costs FROM want));
 SELECT copt.same('the seed: prices', copt.prices('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT prices FROM want));
+SELECT copt.same('the seed: the robot''s tag', copt.tags('00000000-0000-0000-0000-0000000009d1', NULL), (SELECT tags FROM want));
+SELECT copt.same('the seed: the robot''s take', copt.pulls('00000000-0000-0000-0000-0000000009d1'), 'WC-1 -> Copies: versions / unsplit, taken on -');
 
 -- Gap 1 · a new version carries the quoted costs, and a package reverts on its own.
 CREATE TEMP TABLE v ON COMMIT DROP AS SELECT public.materialize_bid_version('00000000-0000-0000-0000-0000000009d1', 'To Plans') AS base, NULL::uuid AS ve;
 UPDATE v SET ve = public.create_bid_version('00000000-0000-0000-0000-0000000009d1', 'Value Engineered', base, true, NULL);
 SELECT copt.same('new version: quoted costs', copt.costs('00000000-0000-0000-0000-0000000009d1', (SELECT ve FROM v)), (SELECT costs FROM want));
 SELECT copt.same('new version: the source keeps its own', copt.costs('00000000-0000-0000-0000-0000000009d1', (SELECT base FROM v)), (SELECT costs FROM want));
+-- v2.6235 · as an estimator, through RLS: the version is made (20261031010000 refused it, permission denied for
+-- table bid_fixture_pull_rows), the plan tags come along, and the robot's take follows its row into the new version.
+SELECT copt.same('new version: plan tags', copt.tags('00000000-0000-0000-0000-0000000009d1', (SELECT ve FROM v)), (SELECT tags FROM want));
+SELECT copt.same('new version: the robot''s take follows its row', copt.pulls('00000000-0000-0000-0000-0000000009d1'), 'WC-1 -> Copies: versions / Value Engineered, taken on Value Engineered');
 DO $$ DECLARE src_lot uuid; new_lot uuid; BEGIN
   SELECT k.lot_group_id INTO src_lot FROM public.bid_count_row_custom_costs k JOIN public.bids_count_rows c ON c.id = k.count_row_id WHERE c.bid_version_id = (SELECT base FROM v) AND c.fixture = 'LAV-1';
   SELECT k.lot_group_id INTO new_lot FROM public.bid_count_row_custom_costs k JOIN public.bids_count_rows c ON c.id = k.count_row_id WHERE c.bid_version_id = (SELECT ve FROM v) AND c.fixture = 'LAV-1';
@@ -144,6 +179,9 @@ DO $$ BEGIN
 END $$;
 SELECT copt.same('duplicate of a bid with versions: that version''s prices, its own', copt.prices((SELECT split_copy FROM d), NULL), (SELECT prices FROM want));
 SELECT copt.same('duplicate of a bid with versions: that version''s quoted costs', copt.costs((SELECT split_copy FROM d), NULL), (SELECT costs FROM want));
+-- v2.6235 · the plan tags come along; the robot read the first bid, so the copy has no pull of its own.
+SELECT copt.same('duplicate: plan tags', copt.tags((SELECT split_copy FROM d), NULL), (SELECT tags FROM want));
+SELECT copt.same('duplicate: no pull of its own', copt.pulls((SELECT split_copy FROM d)), '(none)');
 
 -- Gap 3 · a duplicate has its own copy of the bid's prices.
 UPDATE d SET same_trade = public.duplicate_bid_to_service_type('00000000-0000-0000-0000-0000000009d2', '00000000-0000-0000-0000-0000000009a1');
@@ -172,6 +210,10 @@ SELECT copt.same('adopt: the quoted costs are the package''s', copt.costs('00000
 DO $$ BEGIN
   ASSERT (SELECT count(*) FROM public.bid_count_row_custom_costs WHERE bid_id = '00000000-0000-0000-0000-0000000009d3') = 0, 'none left under the retired bid';
 END $$;
+-- v2.6235 · as an estimator: the adopt is made, the plan tags move with the rows, and the robot's pull moves to the package.
+SELECT copt.same('adopt: plan tags', copt.tags('00000000-0000-0000-0000-0000000009d4', (SELECT adopted FROM a)), (SELECT tags FROM want));
+SELECT copt.same('adopt: the robot''s pull is the package''s', copt.pulls('00000000-0000-0000-0000-0000000009d4'), 'WC-1 -> Copies: package / Adopted, taken on Adopted');
+SELECT copt.same('adopt: none left under the retired bid', copt.pulls('00000000-0000-0000-0000-0000000009d3'), '(none)');
 
 -- A primary may make a version and may not write quoted costs (ACCESS_CONTROL.md): the version is
 -- made, without them, and nothing fails.
