@@ -798,6 +798,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "delete_hazmat_fee_incident": [{"args":{"p_incident_id":"string"},"returns":"Json"}],
   "delete_marked_paid_invoice_without_payment": [{"args":{"p_invoice_id":"string"},"returns":"Json"}],
   "delete_ready_to_bill_invoice": [{"args":{"p_invoice_id":"string"},"returns":"Json"}],
+  "dev_bid_write": [{"args":{"p":"Json","p_dry_run?":"boolean","p_link?":"Json"},"returns":"Json"}],
   "dev_health_connections": [{"args":{},"returns":"Json"}],
   "dev_health_locks": [{"args":{},"returns":"Json"}],
   "dev_health_sampler_gaps": [{"args":{"p_hours?":"number"},"returns":"Json"}],
