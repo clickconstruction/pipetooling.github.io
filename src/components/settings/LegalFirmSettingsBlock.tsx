@@ -12,7 +12,6 @@ import {
   changedWords,
   countiesOf,
   countyChanges,
-  countyWritePlan,
   firmHues,
   firmLegend,
   moveCounty,
@@ -25,6 +24,7 @@ import {
   type LegalFirmCountyRow,
 } from '../../lib/legal/firmCounties'
 import type { LegalFirmRow } from '../../lib/legal/legalMatters'
+import { saveCountyChanges } from '../../lib/legal/firmCountiesSave'
 import { useLegalFirmMapCases } from '../../hooks/useLegalFirmMapCases'
 import type { LegalMapCase } from '../../lib/legal/firmMap'
 import LegalFirmCard from './LegalFirmCard'
@@ -51,13 +51,11 @@ const EMPTY_PARTICULARS: Particulars = { entity: '', license: '', agent: '', cus
 const PARTICULARS_KEY = 'legal_particulars_v1'
 const FIRM_COLUMNS = 'id, name, handling_name, email, phone, contingency_pct, filing_cost, active, created_at'
 
-export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firmFacts = null, firmId = null, pickFirmId = null }: {
+export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firmFacts = null, firmId = null }: {
   onSaved?: () => void
   inWindow?: boolean
   firmFacts?: ReactNode
   firmId?: string | null
-  /** The firm picked when the block opens (punch list #222, PR 1): the firm window's *Color its counties…* names it; else the oldest firm. */
-  pickFirmId?: string | null
 } = {}) {
   const { role, user } = useAuth()
   const { showToast } = useToastContext()
@@ -109,9 +107,9 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
     const counties = c.error ? [] : ((c.data ?? []) as LegalFirmCountyRow[])
     setCountyRows(counties)
     setDraft(savedAssignments(counties, new Set(rows.filter((r) => r.active).map((r) => r.id))))
-    setPickedFirmId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : pickFirmId && rows.some((r) => r.id === pickFirmId) ? pickFirmId : rows[0]?.id ?? null))
+    setPickedFirmId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : rows[0]?.id ?? null))
     setLoaded(true)
-  }, [inWindow, firmId, pickFirmId])
+  }, [inWindow, firmId])
 
   useEffect(() => {
     if (role !== 'dev') return
@@ -180,25 +178,14 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
 
   const saveCounties = async () => {
     if (changes.length === 0) return
-    const plan = countyWritePlan(changes, user?.id ?? null)
     setSavingCounties(true)
     try {
-      const now = new Date().toISOString()
-      for (const county of plan.close) {
-        const { error } = await db.from('legal_firm_counties').update({ until: now }).eq('county', county).is('until', null)
-        if (error) {
-          showToast(`Could not save ${county}: ${error.message}`, 'error')
-          await load()
-          return
-        }
-      }
-      if (plan.insert.length > 0) {
-        const { error } = await db.from('legal_firm_counties').insert(plan.insert.map((r) => ({ ...r, since: now })))
-        if (error) {
-          showToast(error.code === '23505' ? 'Another tab saved a county first. The map shows what stands now.' : `Could not save: ${error.message}`, 'error')
-          await load()
-          return
-        }
+      // One write for every door (punch list #222, PR 2): the firm window's Extend coverage saves through it too.
+      const r = await saveCountyChanges(db, changes, user?.id ?? null)
+      if (!r.ok) {
+        showToast(r.message, 'error')
+        await load()
+        return
       }
       await load()
       showToast(savedWords(changes.length), 'success')

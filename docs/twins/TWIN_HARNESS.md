@@ -154,5 +154,11 @@ long-run scorecard, since twins are excluded from human metrics but not from the
   Code kickoff, the pricer's chat kickoff — `kickoff_for` in the reply). Devs can set up any
   twin; other roles only the pricer. Kernel `buildDesktopSetupCommandFromCode`; table
   `twin_setup_codes`; revoke the resulting key by its label ("Wendi's MacBook") as usual.
+- **Set up a Mac from the dev seat** (v2.6187): a dev's agent calls `mint_twin_setup_code` on
+  dev-mcp with a label naming the Mac (any twin; the first estimator twin when none is named) and
+  runs `python3 scripts/twin/redeem_setup_code.py <code>` — the same code and redeem as *Set up on
+  this Mac*, so the key is minted server-side, lands in `~/pt-twin-digest/twin.token` (mode 600) and
+  is never printed. The rule for agents: never print or read the key, never issue one by hand;
+  mint a code and redeem it into the file. Revoke by the label as usual.
 - **Audit**: `twin_runs` (every mint + mission, which credential), `created_by` on
   everything it wrote, the board's Estimator column.

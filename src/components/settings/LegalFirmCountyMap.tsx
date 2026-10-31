@@ -258,7 +258,8 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                     strokeWidth={isSelected ? 2 : isHovered ? 1.6 : 0.6}
                     vectorEffect="non-scaling-stroke"
                     strokeLinejoin="round"
-                    style={{ transition: 'fill 120ms' }}
+                    // No box around a pressed county (v2.6221): focus already thickens its border, as a hover does.
+                    style={{ transition: 'fill 120ms', outline: 'none' }}
                     onPointerEnter={() => {
                       setHovered(s.name)
                       onHoverCounty(s.name)

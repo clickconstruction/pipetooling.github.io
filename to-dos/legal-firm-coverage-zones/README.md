@@ -2,7 +2,7 @@
 name: "Firms and their coverage: the firm window shows where a firm covers, extends it, hands counties off to another firm, and two firms may share a county"
 number: 222
 group: ready
-status: proposed 2026-10-30 · mock-up drawn the same day · the owner's five picks not yet in · nothing built
+status: proposed 2026-10-30 · mock-up drawn the same day · the owner asked for the whole train on 2026-10-31, on the defaults this card names · PR 1 built as v2.6195 · PR 2 built as v2.6221 · PRs 3 and 4 next
 mockup: to-dos/legal-firm-coverage-zones/mockup.html
 summary: >
   The Legal desk's firm window holds a firm's details, Click's particulars and, at the bottom, Replace with a new
@@ -16,9 +16,9 @@ summary: >
   county with one first-call firm per county that the office can switch at release. It also names a cliff the
   live app has today: one firm, no county colored, so the first county colored for anyone ends the bridge and
   every other account loses its firm.
-next: The owner's five picks (the mock-up's last section), then PR 1: the window's Where this firm covers, the no-counties nudge with area presets, the folds.
+next: PR 3, shared counties with one first call per county (the migration, pushed right after its merge).
 size: L as a train of four (M, M, L+migration+edge, M+migration); one migration for shared coverage, one for the hand-off RPC
-blocker: Nothing for PR 1 and PR 2. PR 3 waits on the owner's first-call pick; PR 4 on her hand-off pick (live matters stay, or move with consent).
+blocker: Nothing. The owner asked for the build on 2026-10-31 with the defaults below; PRs 3 and 4 each need a db push right after their merge.
 ver: proposed
 opinion: build — the window answers "where does this firm cover" today with nothing, Replace orphans a territory, and the one-firm-per-county rule is ours, not the owner's; PR 1 first because the bridge cliff is live
 ---
@@ -163,5 +163,12 @@ them); showing another firm's case names in a shared county (counsel's confident
 
 ## Where it stands
 
-Proposed 2026-10-30 with the mock-up. Nothing built. PR 1 can start the moment the owner reads the mock-up; the
-bridge cliff is live today and PR 1 is where its warning goes.
+Proposed 2026-10-30 with the mock-up; on 2026-10-31 the owner asked for the whole train ("I really like this,
+please help me build it"), so the defaults under *Still open* stand.
+
+- **PR 1, v2.6195** (`docs/recent-features/v2.6195.md`): the window opens on where the firm covers, with the bridge
+  nudge, the folds and the firm lit on the Map.
+- **PR 2, v2.6221** (`docs/recent-features/v2.6221.md`): Extend coverage in the window, the area presets and the gap
+  chip, one save path shared with the Settings picker, and the warning over the first save that names the accounts in
+  review it would leave with no firm.
+- **PRs 3 and 4**: next.

@@ -747,6 +747,10 @@ export default function Bids() {
   }
 
   const [countsImportRequest, setCountsImportRequest] = useState(0)
+  // Robot fixtures (punch list #221, PR 3b): the status sheet's door opens the window on the Counts tab; Open sheet
+  // in the window opens the Plans panel at that page.
+  const [robotFixturesRequest, setRobotFixturesRequest] = useState(0)
+  const [plansPanelPage, setPlansPanelPage] = useState<{ page: number; nonce: number } | null>(null)
   // Bid flow doors (v2.3216): a step on any strip opens its destination — the Edit
   // window or one of the workflow tabs — and then LANDS on the field the step is
   // about (scroll, focus, a fading ring). One handler for the five workflow-tab
@@ -1852,6 +1856,7 @@ export default function Bids() {
         onClose={() => setPlansPanelOpen(false)}
         userId={authUser?.id ?? null}
         shadowSealed={plansBid ? (robotProgressFor(plansBid.id)?.sealed ?? (twinBidBySourceId.has(plansBid.id) ? false : null)) : null}
+        openAtPage={plansPanelPage}
       />
 
       <WorkingBoardArchiveConfirmDialog
@@ -2019,7 +2024,7 @@ export default function Bids() {
         />
       )}
 
-      <BidsRobotOverlays serviceTypes={serviceTypes} robot={robot} authUser={authUser} selectBidsTab={selectBidsTab} selectBidAndSyncUrl={selectBidAndSyncUrl} openEditBid={openEditBid} />
+      <BidsRobotOverlays serviceTypes={serviceTypes} robot={robot} authUser={authUser} selectBidsTab={selectBidsTab} selectBidAndSyncUrl={selectBidAndSyncUrl} openEditBid={openEditBid} openRobotFixtures={(bid) => { selectBidAndSyncUrl(bid, 'counts'); setRobotFixturesRequest((n) => n + 1) }} />
 
       {/* Builder Review Tab */}
       {isFollowupLens(activeTab) && (
@@ -2207,6 +2212,8 @@ export default function Bids() {
         <BidsCountsTab
           onOpenBidFlowDoor={openBidFlowDoor}
           openImportRequest={countsImportRequest}
+          openRobotFixturesRequest={robotFixturesRequest}
+          onOpenPlansAt={(page) => { setPlansPanelPage({ page, nonce: Date.now() }); setPlansPanelOpen(true) }}
           bidFlowDoorAllowed={bidFlowDoorAllowed}
           bids={bids}
           selectedBidForCounts={selectedBidForCounts}
