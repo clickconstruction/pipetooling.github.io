@@ -46,7 +46,9 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
 import { bidMoney, bidStatusWord, bidUndecided, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
-import { buildPlansView, plansAskOnRecord, plansNeedWords, type PlanCarrier } from '../lib/developments/plans'
+import { buildPlansView, planSetMemoWrite, plansAskOnRecord, plansNeedWords, type PlanCarrier, type PlanSet } from '../lib/developments/plans'
+import { useBidPlanSetsByBid } from '../hooks/useBidPlanSetsByBid'
+import { supabase } from '../lib/supabase'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
 import { siteDropWords, suggestPairs, type PairSuggestion } from '../lib/developments/pairing'
 import { markWonConfirm, markedWonBack, pairAllConfirm, pairConfirm, pairedAllBack, pairedWords, unpairConfirm, unpairedWords, type PairingConfirm } from '../lib/developments/pairingConfirm'
@@ -157,7 +159,37 @@ export default function DevelopmentPage() {
 
   const counts = useMemo(() => (shown && data ? headCounts(shown, data.requests, nowMs) : null), [shown, data, nowMs])
   const people = useMemo(() => (shown && data ? sitePeople({ members: shown, names: data.names, teamMembers: data.teamMembers, jobLabel }) : null), [shown, data, jobLabel])
-  const plans = useMemo(() => (shown && data ? buildPlansView({ members: shown, bidChanges: data.bidChanges, names: data.names, bidLabel, jobLabel }) : null), [shown, data, bidLabel, jobLabel])
+  // The sets' memo lines (v2.6207): the shown bids' `bid_plan_sets` rows, re-read after a memo is kept.
+  const [planSetGen, setPlanSetGen] = useState(0)
+  const shownBidIds = useMemo(() => (shown ? shown.bids.map((b) => b.id) : []), [shown])
+  const planSetsByBid = useBidPlanSetsByBid(shownBidIds, shownBidIds.length > 0, planSetGen)
+  const planSetRows = useMemo(() => [...planSetsByBid.values()].flat(), [planSetsByBid])
+  const plans = useMemo(() => (shown && data ? buildPlansView({ members: shown, bidChanges: data.bidChanges, names: data.names, bidLabel, jobLabel, planSetRows }) : null), [shown, data, bidLabel, jobLabel, planSetRows])
+  const canWritePlanMemo = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'estimator'
+  const planMemoWriter = useMemo(
+    () =>
+      canWritePlanMemo
+        ? async (set: PlanSet, memo: string): Promise<boolean> => {
+            const w = planSetMemoWrite(set)
+            if (!w) return false
+            try {
+              if (w.kind === 'update') {
+                const { error } = await supabase.from('bid_plan_sets').update({ memo }).eq('id', w.id)
+                if (error) throw error
+              } else {
+                const { error } = await supabase.from('bid_plan_sets').insert({ bid_id: w.bidId, name: w.name, link: w.link, memo, created_by: authUser?.id ?? null })
+                if (error) throw error
+              }
+              setPlanSetGen((n) => n + 1)
+              return true
+            } catch (e) {
+              showToast(formatErrorMessage(e, 'The memo did not keep.'), 'error')
+              return false
+            }
+          }
+        : undefined,
+    [canWritePlanMemo, authUser?.id, showToast],
+  )
   const pieces = useMemo(() => (shown && data && plans ? buildPieceRows({ members: shown, requests: data.requests, plans, customerName: data.customer?.name ?? null, nowMs }) : []), [shown, data, plans, nowMs])
   const feed = useMemo<ChangeLine[]>(
     () =>
@@ -1085,7 +1117,7 @@ export default function DevelopmentPage() {
         )}
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="every set on the site, newest first">
-          <DevelopmentPlansCard view={plans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForPlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} />
+          <DevelopmentPlansCard view={plans} memoWriter={planMemoWriter} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForPlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} />
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>
