@@ -253,12 +253,13 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
       ) : inWindow ? (
         <>
           {/* Punch list #222, PR 1: the details fold to one line; Edit details opens the form in place (hidden, not unmounted, so a half-typed edit never leaves). A new firm opens on the form. */}
-          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 6, fontSize: '0.82rem' }}>
-            <span data-legal-firm-details-line style={{ color: 'var(--text-muted)' }}>{windowFirm ? legalFirmDetailsLine(windowFirm) : 'No firm yet.'}</span>
-            {windowFirm ? (
+          {/* With no firm there is no line: the form below opens on its own, as Add firm. */}
+          {windowFirm ? (
+            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 6, fontSize: '0.82rem' }}>
+              <span data-legal-firm-details-line style={{ color: 'var(--text-muted)' }}>{legalFirmDetailsLine(windowFirm)}</span>
               <button type="button" onClick={() => setDetailsOpen((v) => !v)} aria-expanded={detailsOpen} style={foldBtn}>{detailsOpen ? 'Hide details' : 'Edit details'}</button>
-            ) : null}
-          </div>
+            </div>
+          ) : null}
           <div hidden={Boolean(windowFirm) && !detailsOpen}>
             <LegalFirmCard key={windowFirm?.id ?? 'none'} firm={windowFirm} bare firmFacts={firmFacts} onSaved={firmSaved} />
           </div>
