@@ -226,10 +226,21 @@ describe('LegalAffidavitWindow · the business-records preset (punch list #220, 
     expect(body.value).toContain('The clock is kept by the app.')
     expect(document.querySelector('[data-legal-affidavit-records]')!.textContent).toContain('The paragraphs were edited by hand.')
     expect(document.querySelector('[data-legal-affidavit-records]')!.textContent).toContain('at least 14 days before trial')
-    // Back to a plain statement: the edited paragraphs stay, the title follows the affiant again.
+    // Back to a plain statement: the edited paragraphs stay, the title follows the affiant again, and the role line
+    // goes back to the roster's (v2.6247: the preset's *an owner of …* must not stay on Grace).
     fireEvent.click(document.querySelector('[data-legal-affidavit-preset="statement"]')!)
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Grace Lee')
+    expect((screen.getByLabelText('Their role, one line') as HTMLInputElement).value).toBe('Office manager at Click Plumbing and Electrical')
     expect(document.querySelector('[data-legal-affidavit-records]')).toBeNull()
+    expect(body.value).toContain('The clock is kept by the app.')
+  })
+  it('a role typed by hand under the preset stays when the plain statement comes back (v2.6247)', () => {
+    open()
+    fireEvent.click(document.querySelector('[data-legal-affidavit-preset="records"]')!)
+    fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: 'u-g' } })
+    fireEvent.change(screen.getByLabelText('Their role, one line'), { target: { value: 'the bookkeeper who keeps the invoices' } })
+    fireEvent.click(document.querySelector('[data-legal-affidavit-preset="statement"]')!)
+    expect((screen.getByLabelText('Their role, one line') as HTMLInputElement).value).toBe('the bookkeeper who keeps the invoices')
   })
   it('a statement being changed offers no Start from', () => {
     const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'x', occurred_on: '2026-09-03', meta: { title: 'T', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }

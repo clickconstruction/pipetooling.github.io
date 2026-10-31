@@ -150,7 +150,12 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
   }
   const startStatement = () => {
     setPreset(null)
-    setDraft((d) => ({ ...d, title: titleTouched ? d.title : suggestedStatementTitle(d.affiant, d.form), body: bodyTouched ? d.body : '' }))
+    // v2.6247: the records role (*the custodian of records for …*) was written by the preset, so an unedited role line goes back to the roster's.
+    const rosterRole = (a: StatementAffiant): string => {
+      const u = a.kind === 'team' && a.userId ? picks.find((p) => p.id === a.userId) : undefined
+      return u ? rosterRoleLine(u) : ''
+    }
+    setDraft((d) => ({ ...d, title: titleTouched ? d.title : suggestedStatementTitle(d.affiant, d.form), affiant: roleTouched ? d.affiant : { ...d.affiant, role: rosterRole(d.affiant) }, body: bodyTouched ? d.body : '' }))
   }
   const trimmed = (): StatementDraft => ({ ...draft, title: draft.title.trim(), body: draft.body.trim(), affiant: { ...draft.affiant, name: draft.affiant.name.trim(), role: draft.affiant.role.trim() } })
   const save = async () => {
@@ -286,7 +291,8 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
             </div>
             <label style={label}>
               Their role, one line
-              <input aria-label="Their role, one line" value={draft.affiant.role} onChange={(e) => { setRoleTouched(true); setAffiant({ ...draft.affiant, role: e.target.value }) }} placeholder={kindOf === 'witness' ? 'the foreman for Brightline Electric, the electrical subcontractor on the job' : 'Responsible Master Plumber of record for Click Plumbing and Electrical, License No. …'} disabled={signed} style={input} />
+              {/* v2.6247: the role goes straight onto the draft. Through setAffiant the records preset read roleTouched before it was set and wrote its own role over every keystroke. */}
+              <input aria-label="Their role, one line" value={draft.affiant.role} onChange={(e) => { setRoleTouched(true); setDraft({ ...draft, affiant: { ...draft.affiant, role: e.target.value } }) }} placeholder={kindOf === 'witness' ? 'the foreman for Brightline Electric, the electrical subcontractor on the job' : 'Responsible Master Plumber of record for Click Plumbing and Electrical, License No. …'} disabled={signed} style={input} />
               <span style={help}>{kindOf === 'witness' ? 'Who they are and why they were there. The paper adds that they have no stake.' : roleTouched ? 'Edited. The paper reads it as typed.' : picks.find((u) => u.id === draft.affiant.userId)?.role === 'master_technician' ? 'Prefilled from the roster. Add the license number, then edit as you like.' : 'Prefilled from the roster. Edit it.'}</span>
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'auto auto minmax(0, 1fr)', gap: 10, alignItems: 'end', minWidth: 0 }}>
