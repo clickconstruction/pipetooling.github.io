@@ -15,6 +15,8 @@ const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const PERSON = '11111111-2222-4333-8444-555555555555'
 const BATCH = { label: 'ZZ test', reason: 'a test', ops: [{ op: 'thread_note', job_id: '0e4dcd2b-a524-4056-b93c-16713041a6e7', body: 'hello' }] }
 const HASH = 'a'.repeat(64)
+/** The `p` a built write POSTs, for the keys a plan carries or leaves out. */
+const pOf = (built: ReturnType<typeof writeRpcBody>): Record<string, unknown> => (built.ok ? (built.body.p as Record<string, unknown>) : {})
 
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
@@ -240,7 +242,7 @@ describe('the bid verbs (v2.6183)', () => {
     expect(planVerbFor('apply_bid')).toBe('plan_bid')
     const plan = writeRpcBody('plan_bid', { bid: BID })
     expect(plan).toMatchObject({ ok: true, rpc: 'dev_bid_write', step: 'plan', target: '231 Gun Dog Trail Bunker & Lodge', body: { p: { action: 'create', project_name: '231 Gun Dog Trail Bunker & Lodge', customer_id: CUSTOMER, service_type_id: SERVICE, development_id: SITE, distance_from_office: '1158.5', bid_due_date: '2026-11-13', robot_opt_out: false }, p_dry_run: true } })
-    expect((plan as { body: { p: Record<string, unknown> } }).body.p).not.toHaveProperty('estimator_id')
+    expect(pOf(plan)).not.toHaveProperty('estimator_id')
     const apply = writeRpcBody('apply_bid', { bid: BID, plan_hash: HASH })
     expect(apply).toMatchObject({ ok: true, step: 'apply', body: { p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: HASH })
     expect(writeRpcBody('apply_bid', { bid: BID })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
@@ -254,7 +256,7 @@ describe('the bid verbs (v2.6183)', () => {
     expect(writeRpcBody('plan_bid', { bid: { ...BID, distance_from_office: -3 } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_bid', { bid: { ...BID, distance_from_office: '12 miles' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_bid', { bid: { ...BID, bid_due_time: '14:00', allow_duplicate_name: true } })).toMatchObject({ ok: true, body: { p: { bid_due_time: '14:00', allow_duplicate_name: true } } })
-    expect((writeRpcBody('plan_bid', { bid: { ...BID, allow_duplicate_name: false } }) as { body: { p: Record<string, unknown> } }).body.p).not.toHaveProperty('allow_duplicate_name')
+    expect(pOf(writeRpcBody('plan_bid', { bid: { ...BID, allow_duplicate_name: false } }))).not.toHaveProperty('allow_duplicate_name')
     expect(writeRpcBody('plan_bid', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs bid') })
   })
   it('the migration creates dev_bid_write gated is_dev(), closed to anon, with the create and file_plans actions; the plan reply points at apply_bid and a repeat apply names the bid', () => {
