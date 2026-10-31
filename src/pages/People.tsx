@@ -470,8 +470,17 @@ export default function People() {
     periodStart: '',
     periodEnd: '',
   })
-  const { draftPayrollPendingApprovalCount, draftPayrollPendingApprovalLoading, draftPayrollPendingApprovalError, loadDraftPayrollPendingApprovals } =
+  const { draftPayrollPendingApprovalCount, draftPayrollPendingApprovalLoading, draftPayrollPendingApprovalError, draftPayrollPendingByUserId, loadDraftPayrollPendingApprovals } =
     useDraftPayrollPendingApprovals({ draftOpen: draftPayrollModalOpen, canAccessPay, periodStart: payStubPeriodStart, periodEnd: payStubPeriodEnd })
+  /** Punch list #217 (people-docs-1): the pending sessions by pay name, so Draft Payroll's bars can dot the rows they belong to. */
+  const draftPayrollPendingByPerson = useMemo(() => {
+    const out: Record<string, number> = {}
+    for (const u of users) {
+      const n = draftPayrollPendingByUserId[u.id]
+      if (n && u.name) out[u.name.trim()] = (out[u.name.trim()] ?? 0) + n
+    }
+    return out
+  }, [users, draftPayrollPendingByUserId])
   /** The clock-session realtime feed re-counts through this, so it always calls the newest loader. */
   const loadDraftPayrollPendingApprovalsRef = useRef(loadDraftPayrollPendingApprovals)
   loadDraftPayrollPendingApprovalsRef.current = loadDraftPayrollPendingApprovals
@@ -2153,6 +2162,8 @@ export default function People() {
           onOpenHoursBreakdown={(name) => setDraftPayrollHoursBreakdownPerson(name)}
           catchUpCount={catchUpUnreportedCount}
           onOpenCatchUp={() => setCatchUpModalOpen(true)}
+          pendingByPerson={draftPayrollPendingByPerson}
+          isSalaryPerson={(person) => payConfig[person]?.is_salary ?? false}
         />
       )}
 

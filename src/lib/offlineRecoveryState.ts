@@ -46,6 +46,11 @@ export type OfflineRecoveryInput = {
   reconnected?: boolean
   /** Re-running the action is safe (a read). Writes must leave `false` (the default). */
   idempotent?: boolean
+  /**
+   * What a lost signal reads in place of the write sentence's *nothing was saved*: a read's own words (the clock's,
+   * v2.6198, where the write sentence under a press kept on the phone read as the press failing).
+   */
+  offlineMessage?: string
 }
 
 export type OfflineRecoveryState = {
@@ -79,9 +84,10 @@ export function offlineRecoveryState(input: OfflineRecoveryInput): OfflineRecove
   // flag said "online" (dead wifi, unreachable server) is still offline until
   // an `online` event says the signal came back.
   if (!online || !reconnected) {
+    const offline = input.offlineMessage ?? OFFLINE_ERROR_MESSAGE
     return {
       phase: 'offline',
-      message: attempts > 0 ? `${OFFLINE_ERROR_MESSAGE}${STILL_OFFLINE_SUFFIX}` : OFFLINE_ERROR_MESSAGE,
+      message: attempts > 0 ? `${offline}${STILL_OFFLINE_SUFFIX}` : offline,
       showRetry: true,
       retryLabel: 'Retry',
       autoRetry: false,

@@ -1,7 +1,10 @@
 import { describe, expect, it } from 'vitest'
+import { payLinkUrl } from '../billing/payLink'
+import { billPapers, type PaperInvoiceRow, type PaperPaymentRow } from '../messages/papers'
 import { plainWordsFailures } from '../plainWords'
 import type { QuickReply } from '../quickReplies/kernel'
 import { at, day, demoPeople, demoPerson, type Seed } from './demoPeople.fixture'
+import type { FactId } from './facts'
 import {
   appSendMode,
   blanksLeftWords,
@@ -19,7 +22,7 @@ import {
 } from './nudgeDispatch'
 import type { PersonFlow } from './nudges'
 import { SEED_FLOWS } from './seed'
-import { stepById } from './state'
+import { readFlow, stepById, type FactStamp, type FlowStamps, type RoundStamp } from './state'
 
 /** The run's morning: Fri Oct 2, 9 AM Central. */
 const MORNING = new Date(at(10, 2, 9))
@@ -321,5 +324,123 @@ describe('a line with a blank the run cannot fill (punch list #124, v2.6079)', (
     expect(blanksLeftWords(['amount', 'job', 'bill'])).toBe('the line still has {amount}, {job} and {bill}')
     expect(blanksLeftWords([])).toBe('the line still has a blank')
     for (const w of [offerHeldBlanks(['amount', 'bill']), offerHeldBlanks([]), notSentWords('blanks left', null, ['bill'])]) expect(plainWordsFailures(w), w).toEqual([])
+  })
+})
+
+describe('the Paid reminder’s bill: {amount}, {bill} and {number} filled from the job’s newest open bill (punch list #124, v2.6224)', () => {
+  const RESIDENTIAL = SEED_FLOWS.residential
+  /** Wed Oct 14, 9 AM Central: the morning after Dana’s pay-by day. */
+  const BILL_MORNING = new Date('2026-10-14T14:00:00Z')
+  const INV = '0f4b6a1e-2c3d-4e5f-8a9b-0c1d2e3f4a5b'
+  const mark = (fact: FactId, m: 'ok' | 'wait', when: string): FactStamp => ({ fact, mark: m, at: when, by: null, until: null })
+  const round = (stamps: FactStamp[], due: string | null): RoundStamp => ({ key: INV, name: 'Bill 1', opened: '2026-10-08', due, stamps })
+
+  /** Dana on job 1312, every step done through Billed, her bill out Oct 8 and past its pay-by day, Oct 13. */
+  function dana(): PersonFlow {
+    const stamps: FlowStamps = {
+      kind: 'residential',
+      jobIds: ['1312'],
+      defaultJobId: '1312',
+      person: { stamps: [], rounds: {}, dues: {} },
+      jobs: {
+        '1312': {
+          jobId: '1312',
+          stamps: (['booked', 'on_way', 'arrived', 'found', 'estimate_sent', 'estimate_approved', 'working', 'done'] as FactId[]).map((f) => mark(f, 'ok', '2026-10-05')),
+          rounds: { billed: [round([mark('billed', 'ok', '2026-10-08')], null)], paid: [round([mark('paid', 'wait', '2026-10-08')], '2026-10-13')] },
+          dues: {},
+        },
+      },
+      skips: [],
+      waits: [],
+      off: null,
+    }
+    return {
+      id: 'dana',
+      first: 'Dana',
+      flow: RESIDENTIAL,
+      reading: readFlow(RESIDENTIAL, stamps, BILL_MORNING),
+      quietDays: 6,
+      lastOutAt: '2026-10-08T16:00:00Z',
+      court: 'theirs',
+      owe: false,
+      marks: [],
+      notes: [],
+      sends: {},
+      portal: null,
+      jobs: { '1312': 'the water heater' },
+    }
+  }
+
+  /** The starter Paid line (`20261029200000_quick_replies_starter.sql`). */
+  const PAID_LINE: QuickReply = {
+    id: 'qr-remind',
+    text: '{first}, a reminder that {amount} for {job} is still open. You can pay it here: {bill}',
+    for: 'customer',
+    stepId: 'paid',
+    scope: 'team',
+    addedBy: 'robert',
+    addedAt: Date.parse('2026-10-29T14:00:00Z'),
+    removed: false,
+    uses: {},
+    lastUsed: null,
+  }
+  const JOB = { id: '1312', status: 'billed', revenue: 1200, payments_made: 0, collections_at: null, uncollectible_at: null, job_name: 'the water heater', hcp_number: '1312', click_number: null, billing_only: false }
+  const invoice = (p: Partial<PaperInvoiceRow> = {}): PaperInvoiceRow => ({ id: INV, job_id: '1312', status: 'billed', amount: 1200, sequence_order: 1, billed_at: '2026-10-08T15:00:00Z', stripe_invoice_id: 'in_1Q2w3e', ...p })
+  const paid = (amount: number): PaperPaymentRow => ({ invoice_id: INV, job_id: '1312', amount, paid_on: '2026-10-10', sequence_order: null })
+  const papersOf = (invoices: PaperInvoiceRow[], payments: PaperPaymentRow[] = []) => ({ dana: billPapers({ jobs: [JOB], invoices, payments }) })
+
+  const runDana = (input: Partial<NudgeRunInput> = {}) =>
+    planNudgeRun({
+      people: [dana()],
+      now: BILL_MORNING,
+      appSends: { residential: { paid: true } },
+      sent: [],
+      numbers: { dana: { number: '(210) 555-0101', optedOut: false } },
+      quickReplies: [PAID_LINE],
+      ...input,
+    })
+  const danasPaid = { contactId: 'dana', stepId: 'paid', jobId: '1312' }
+
+  it('fills what is left on the bill, as the box formats it, and the bill’s own pay page, so the Paid line goes on Sends', () => {
+    const r = runDana({ papers: papersOf([invoice()], [paid(559.5)]) })
+    expect(r.notSent).toEqual([])
+    expect(r.texts.map((t) => [t.contactId, t.stepId, t.jobId, t.body])).toEqual([
+      ['dana', 'paid', '1312', `Dana, a reminder that $640.50 for the water heater is still open. You can pay it here: ${payLinkUrl(INV)}`],
+    ])
+    expect(payLinkUrl(INV)).toBe(`https://clicktooling.com/pay/${INV}`)
+  })
+
+  it('writes whole dollars with no cents, and the job’s number for {number}', () => {
+    const line = { ...PAID_LINE, text: '{first}, bill {number} for {job} has {amount} open: {bill}' }
+    expect(runDana({ papers: papersOf([invoice()]), quickReplies: [line] }).texts[0]?.body).toBe(`Dana, bill 1312 for the water heater has $1,200 open: ${payLinkUrl(INV)}`)
+  })
+
+  it('keeps the v2.6079 hold, naming the blanks, for a customer with no open bill: none read, or the bill paid', () => {
+    expect(runDana()).toEqual({ texts: [], offers: [], notSent: [{ ...danasPaid, why: 'blanks left', words: 'the line still has {amount} and {bill}' }] })
+    expect(runDana({ papers: papersOf([invoice()], [paid(1200)]) }).notSent).toEqual([{ ...danasPaid, why: 'blanks left', words: 'the line still has {amount} and {bill}' }])
+    const offers = runDana({ appSends: { residential: { paid: 'offer' } } })
+    expect(offers.notSent).toEqual([])
+    expect(offers.offers).toEqual([expect.objectContaining({ ...danasPaid, body: 'Dana, a reminder that {amount} for the water heater is still open. You can pay it here: {bill}', held: offerHeldBlanks(['amount', 'bill']) })])
+  })
+
+  it('fills the amount but leaves {bill} for a bill billed outside Stripe, which has no pay page, so the text waits', () => {
+    const r = runDana({ papers: papersOf([invoice({ stripe_invoice_id: null })], [paid(559.5)]) })
+    expect(r.texts).toEqual([])
+    expect(r.notSent).toEqual([{ ...danasPaid, why: 'blanks left', words: 'the line still has {bill}' }])
+    const offer = runDana({ appSends: { residential: { paid: 'offer' } }, papers: papersOf([invoice({ stripe_invoice_id: null })], [paid(559.5)]) }).offers[0]
+    expect(offer?.body).toBe('Dana, a reminder that $640.50 for the water heater is still open. You can pay it here: {bill}')
+    expect(offer?.held).toBe(offerHeldBlanks(['bill']))
+  })
+
+  it('speaks of the step’s job’s bill and no other job’s, as a job’s box does', () => {
+    const other = invoice({ id: '7a1c2d3e-4f50-4617-8899-aabbccddeeff', job_id: '2000', amount: 300 })
+    const otherJob = { ...JOB, id: '2000', revenue: 300, job_name: 'the kitchen sink' }
+    const papers = { dana: billPapers({ jobs: [JOB, otherJob], invoices: [other], payments: [] }) }
+    expect(runDana({ papers }).notSent).toEqual([{ ...danasPaid, why: 'blanks left', words: 'the line still has {amount} and {bill}' }])
+  })
+
+  it('fills the app’s own Paid words untouched, which carry no blank, and the person’s reason still comes first', () => {
+    expect(runDana({ quickReplies: [], papers: papersOf([invoice()]) }).texts[0]?.body).toBe('Dana, checking on the bill. Need the pay page sent again?')
+    expect(runDana({ numbers: { dana: { number: null, optedOut: false } } }).notSent).toEqual([{ ...danasPaid, why: 'no number', words: notSentWords('no number') }])
   })
 })

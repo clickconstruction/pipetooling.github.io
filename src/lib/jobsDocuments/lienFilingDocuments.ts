@@ -1,6 +1,7 @@
 import { WINDOW_QR_MM, WINDOW_ZONE_MM } from '../mail/windowEnvelope'
 import { loadJsPDF } from '../loadJsPDF'
 import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
+import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_SEAL_WORDS, JURAT_SIGNATURE_RULE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from '../legal/juratWords'
 
 /**
  * The three statutory lien instruments (v2.2645, Lien Instruments phase 3):
@@ -69,7 +70,8 @@ export type FilingDocBlock =
   | { kind: 'numbered'; n: number; text: string }
   /** `signed` (v2.5077): the leader's signature; without it the block is the rule and the names. */
   | { kind: 'signature'; lines: string[]; signed?: FilingSignature | null }
-  | { kind: 'notarial'; who: string }
+  /** The jurat (`src/lib/legal/juratWords.ts`, punch list #220): `county` names the venue (blank for the notary's hand when absent); `courtesy` adds the seal's place and the printed-name and commission lines a Legal desk affidavit carries. */
+  | { kind: 'notarial'; who: string; county?: string; courtesy?: boolean }
   | { kind: 'deliveryRecord'; lines: string[] }
   /** A boxed line the reader must not miss (v2.3758): the pay page's direct-payment rule on the owner's copy. */
   | { kind: 'callout'; text: string }
@@ -288,9 +290,11 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
         break
       case 'notarial':
         parts.push(
-          `<p style="margin:2.2em 0 0">STATE OF TEXAS<br/>COUNTY OF ___________</p>` +
-            `<p style="margin:0.8em 0 0">SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by ${esc(b.who || '_______________')}.</p>` +
-            `<p style="margin:1.6em 0 0">________________________________<br/>Notary Public, State of Texas</p>`,
+          `<p style="margin:2.2em 0 0">${JURAT_STATE_LINE}<br/>${esc(juratCountyLine(b.county ?? ''))}</p>` +
+            `<p style="margin:0.8em 0 0">${esc(juratSentence(b.who))}</p>` +
+            (b.courtesy ? `<p data-jurat-seal style="margin:1.2em 0 0;${HTML_LABEL_FONT};font-size:0.72em;color:${HTML_MUTED}">${esc(JURAT_SEAL_WORDS)}</p>` : '') +
+            `<p style="margin:1.6em 0 0">${JURAT_SIGNATURE_RULE}<br/>${esc(JURAT_NOTARY_TITLE)}</p>` +
+            (b.courtesy ? `<p style="margin:0.8em 0 0">${JURAT_COURTESY_LINES.map(esc).join('<br/>')}</p>` : ''),
         )
         break
       case 'deliveryRecord':
@@ -353,7 +357,7 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
         break
       case 'notarial':
         out.push(
-          `STATE OF TEXAS\nCOUNTY OF ___________\n\nSWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by ${b.who || '_______________'}.\n\n________________________________\nNotary Public, State of Texas`,
+          [`${JURAT_STATE_LINE}\n${juratCountyLine(b.county ?? '')}`, juratSentence(b.who), ...(b.courtesy ? [JURAT_SEAL_WORDS] : []), `${JURAT_SIGNATURE_RULE}\n${JURAT_NOTARY_TITLE}`, ...(b.courtesy ? [JURAT_COURTESY_LINES.join('\n')] : [])].join('\n\n'),
         )
         break
       case 'deliveryRecord':
@@ -699,16 +703,24 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
       }
       case 'notarial':
         y += 8
-        write('STATE OF TEXAS', 5.6)
-        write('COUNTY OF ___________', 5.6)
+        write(JURAT_STATE_LINE, 5.6)
+        write(juratCountyLine(b.county ?? ''), 5.6)
         y += 3
-        write(`SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by ${b.who || '_______________'}.`, 6)
-        y += 10
+        write(juratSentence(b.who), 6)
+        if (b.courtesy) {
+          y += 4
+          write(JURAT_SEAL_WORDS, 5.6, { sans: true, size: 8.5, muted: true })
+          y += 14
+        } else y += 10
         ensureRoom(14)
         doc.setDrawColor(...INK)
         doc.line(PAGE_MARGIN, y, PAGE_MARGIN + 75, y)
         y += 5
-        write('Notary Public, State of Texas', 5.6)
+        write(JURAT_NOTARY_TITLE, 5.6)
+        if (b.courtesy) {
+          y += 3
+          for (const l of JURAT_COURTESY_LINES) write(l, 6)
+        }
         break
       case 'deliveryRecord': {
         const lineH = 4.3

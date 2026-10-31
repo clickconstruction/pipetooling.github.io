@@ -107,6 +107,16 @@ API controls → Domain-wide delegation → SA's Unique ID + scope
 `https://www.googleapis.com/auth/drive`, then set `DRIVE_IMPERSONATE_USER` and redeploy),
 but the Shared Drive is the chosen path — tighter blast radius than impersonating a user.
 
+## The division bid folders (v2.6185)
+
+The dev seat's `apply_file_plans` files a plan set as the service account into one of the three
+division bid folders (`supabase/functions/_shared/bidPlansFolders.ts`: plumbing, electrical, HVAC — the
+folders the bid form's Find looks in), in a folder named for the project. The same quota rule as the
+upload leg applies: the folders must sit on a Shared Drive the service account is in (or
+`DRIVE_IMPERSONATE_USER` must be set). When they do not, the verb answers with Drive's *storage quota*
+words, keeps the staged copy for a retry, and tells the agent to drop the file in by hand and press
+Find the folder on the bid form.
+
 ## Rotation / kill
 
 Delete the key in console (or `supabase secrets unset GOOGLE_SERVICE_ACCOUNT_JSON`);

@@ -17,6 +17,7 @@ import {
 import { openContractBookEntryPreview } from '../../lib/contractBookPreview'
 import { ContractBodyDisplay } from './ContractBodyDisplay'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 
 export type ContractBookTemplate = { id: string; name: string; sequence_order: number }
 
@@ -731,8 +732,8 @@ export function ContractBookModal({
                               fontWeight: 600,
                               border: 'none',
                               borderRadius: 6,
-                              background: '#0ea5e9',
-                              color: '#fff',
+                              background: SKY_UNDER_WORDS,
+                              color: WORDS_ON_SKY,
                               cursor: 'pointer',
                             }}
                           >

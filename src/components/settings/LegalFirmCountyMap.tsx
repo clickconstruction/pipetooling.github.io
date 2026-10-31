@@ -26,7 +26,7 @@ const CENTRAL_TEXAS = { w: -99.3, e: -96.9, s: 28.95, n: 31.05 }
 
 type ViewName = 'central' | 'all'
 
-export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null, idleWords }: {
+export default function LegalFirmCountyMap({ assignments, hues, firmNames, legend, pickedFirmId, cases, heldCaseId, onPress, onHoverCounty, onPressCase, lens = false, selectedCounty = null, idleWords, litFirmId = null }: {
   assignments: CountyAssignments
   hues: ReadonlyMap<string, FirmHue>
   firmNames: ReadonlyMap<string, string>
@@ -44,6 +44,8 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
   selectedCounty?: string | null
   /** The readout while nothing is hovered (#144 PR 4: the portal shows no dots, so the lens words would mislead). */
   idleWords?: string
+  /** One firm lit (punch list #222, PR 1, v2.6195): its counties in full color, the other firms' faint; null lights every firm. */
+  litFirmId?: string | null
 }) {
   const [map, setMap] = useState<CountyMap | null>(null)
   const [failed, setFailed] = useState(false)
@@ -185,6 +187,11 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
   }
 
   const holderOf = (county: string) => assignments.get(county) ?? null
+  /** With one firm lit, another firm's county draws faint; an uncovered county and the lit firm's own draw as always. */
+  const isFaint = (county: string) => {
+    const holder = holderOf(county)
+    return Boolean(litFirmId && holder && holder !== litFirmId)
+  }
   const hueOf = (county: string): FirmHue => {
     const holder = holderOf(county)
     return (holder && hues.get(holder)) || NO_FIRM_HUE
@@ -236,6 +243,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                 const hue = hueOf(s.name)
                 const isHovered = hovered === s.name
                 const isSelected = lens && selectedCounty === s.name
+                const faint = isFaint(s.name)
                 return (
                   <path
                     key={s.fips}
@@ -243,12 +251,15 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                     data-county={s.name}
                     data-firm={holderOf(s.name) ?? ''}
                     data-selected={isSelected ? '1' : undefined}
+                    data-faint={faint ? '1' : undefined}
                     fill={hue.fill}
+                    fillOpacity={faint ? 0.3 : 1}
                     stroke={isHovered || isSelected ? 'var(--text-base)' : 'var(--border-strong)'}
                     strokeWidth={isSelected ? 2 : isHovered ? 1.6 : 0.6}
                     vectorEffect="non-scaling-stroke"
                     strokeLinejoin="round"
-                    style={{ transition: 'fill 120ms' }}
+                    // No box around a pressed county (v2.6221): focus already thickens its border, as a hover does.
+                    style={{ transition: 'fill 120ms', outline: 'none' }}
                     onPointerEnter={() => {
                       setHovered(s.name)
                       onHoverCounty(s.name)
@@ -273,7 +284,7 @@ export default function LegalFirmCountyMap({ assignments, hues, firmNames, legen
                 const colored = holderOf(s.name) !== null
                 if (!inView(vb, s.cx, s.cy) || !labelShows(vb, map.width, colored)) return null
                 return (
-                  <text key={`l-${s.fips}`} x={s.cx} y={s.cy} fontSize={labelFontSize(vb)} textAnchor="middle" dominantBaseline="middle" fontWeight={colored ? 600 : 500} fill={colored ? hueOf(s.name).ink : 'var(--text-base)'} data-county-label={s.name}>
+                  <text key={`l-${s.fips}`} x={s.cx} y={s.cy} fontSize={labelFontSize(vb)} textAnchor="middle" dominantBaseline="middle" fontWeight={colored ? 600 : 500} fill={colored ? hueOf(s.name).ink : 'var(--text-base)'} opacity={isFaint(s.name) ? 0.45 : 1} data-county-label={s.name}>
                     {s.name}
                   </text>
                 )
