@@ -5,7 +5,7 @@ import {
   DECLARANT_BLANK, DECLARATION_PERJURY_SENTENCE, DECLARATION_STATUTE_FORM, FORM_HELP_WORDS, OFFICE_COUNTY_DEFAULT, SIGNED_ON_LINE, STATEMENT_DRAFT_AMBER_DAYS,
   attachedToLine, declarantProblem, lastPrintWords, statementFilingProblem, statementFilingShows, declarationJurat, defaultStatementForm, defaultVenueCounty, incidentSpanWords, isStatementEntry, printCountWords, recordCheckHeading, recordCheckLines,
   statementByWords, statementChipWords, statementDraftProblem, statementFirmKindWords, statementHoldKey, statementKindWords, statementMetaOf, statementOpener, statementPaperBlocks, statementParagraphs,
-  statementPrintTitle, statementPrintedText, statementShowsLine, statementSignedWords, statementStateWords, suggestedStatementTitle, venueChoices,
+  signatureRoleLine, statementPrintTitle, statementPrintedText, statementShowsLine, statementSignedWords, statementStateWords, suggestedStatementTitle, venueChoices,
   type StatementDraft, type StatementMeta,
 } from './affidavitPaper'
 import { plainWordsFailures } from '../plainWords'
@@ -146,8 +146,10 @@ describe('the three faces under each form', () => {
 describe('the draft’s rules', () => {
   it('refuses what the RPC refuses, in the window’s words', () => {
     expect(statementDraftProblem(draft, TODAY)).toBeNull()
-    expect(statementDraftProblem({ ...draft, affiant: { ...alvarez, name: '' } }, TODAY)).toBe('Pick who swears it.')
-    expect(statementDraftProblem({ ...draft, affiant: { ...nguyen, name: '' } }, TODAY)).toBe('Type the witness’s name.')
+    // v2.6238: a picked team member with no name asks for the name on their ID; nobody picked asks for the pick.
+    expect(statementDraftProblem({ ...draft, affiant: { ...alvarez, name: '' } }, TODAY)).toBe('Type their full name, as it reads on their ID.')
+    expect(statementDraftProblem({ ...draft, affiant: { ...alvarez, userId: null, name: '' } }, TODAY)).toBe('Pick who swears it.')
+    expect(statementDraftProblem({ ...draft, affiant: { ...nguyen, name: '' } }, TODAY)).toBe('Type the witness’s full name.')
     expect(statementDraftProblem({ ...draft, title: ' ' }, TODAY)).toBe('Give the statement a title.')
     expect(statementDraftProblem({ ...draft, incidentOn: '2026-02-30' }, TODAY)).toBe('Pick the day it is about.')
     expect(statementDraftProblem({ ...draft, incidentOn: '2026-11-01', incidentTo: '' }, TODAY)).toBe('The day it is about cannot be ahead of today.')
@@ -267,5 +269,23 @@ describe('filing the signed copy (punch list #220, v2.6212)', () => {
     expect(statementFilingShows({ form: 'declaration', venueCounty: null }, { ...filing, signedOn: '', incidentTo: '' })).toBe('Signed under penalty of perjury. What was seen or heard on Sep 3.')
     expect(lastPrintWords({ prints: [{ at: '2026-10-28T19:14:00Z', by: null, face: 'whole', text: '' }] }, (iso) => iso.slice(0, 10), (iso) => iso.slice(11, 16))).toBe('Oct 28 at 19:14')
     expect(lastPrintWords({ prints: [] }, (iso) => iso, (iso) => iso)).toBe('')
+  })
+})
+
+describe('the role under a signature (v2.6238)', () => {
+  it('drops a leading article, raises the first letter and drops a closing full stop; a capitalized line reads as typed', () => {
+    expect(signatureRoleLine('the foreman for Brightline Electric, the electrical subcontractor on the job')).toBe('Foreman for Brightline Electric, the electrical subcontractor on the job')
+    expect(signatureRoleLine('a neighbour on Elm Street.')).toBe('Neighbour on Elm Street')
+    expect(signatureRoleLine('an owner of Click Plumbing and Electrical')).toBe('Owner of Click Plumbing and Electrical')
+    expect(signatureRoleLine('custodian of records for Click Plumbing and Electrical')).toBe('Custodian of records for Click Plumbing and Electrical')
+    expect(signatureRoleLine('Responsible Master Plumber of record for Click Plumbing and Electrical, License No. M-00000')).toBe('Responsible Master Plumber of record for Click Plumbing and Electrical, License No. M-00000')
+    expect(signatureRoleLine('A-1 Plumbing’s foreman')).toBe('A-1 Plumbing’s foreman')
+    expect(signatureRoleLine('  ')).toBe('')
+  })
+  it('the paper prints it under the signature while the opener keeps the words as typed', () => {
+    const d: StatementDraft = { ...draft, affiant: nguyen, form: 'declaration', venueCounty: 'Williamson' }
+    const t = filingDocText(statementPaperBlocks({ draft: d, face: 'whole', declarant: null }))
+    expect(t).toContain('Thanh Nguyen, Declarant\nForeman for Brightline Electric, the electrical subcontractor on the job')
+    expect(t).toContain('I am the foreman for Brightline Electric, the electrical subcontractor on the job.')
   })
 })

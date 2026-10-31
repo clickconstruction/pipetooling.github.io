@@ -51,7 +51,7 @@ describe('LegalAffidavitWindow (punch list #220, v2.6210)', () => {
   it('a witness is typed; No notary flips the opener, the title and the county to the property’s; the blank is one press', () => {
     open()
     fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: '__witness' } })
-    fireEvent.change(screen.getByLabelText('The witness’s name'), { target: { value: 'Thanh Nguyen' } })
+    fireEvent.change(screen.getByLabelText('Their full name'), { target: { value: 'Thanh Nguyen' } })
     fireEvent.change(screen.getByLabelText('Their role, one line'), { target: { value: 'the foreman for Brightline Electric' } })
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Thanh Nguyen')
     fireEvent.click(document.querySelector('[data-legal-affidavit-form="declaration"]')!)
@@ -235,5 +235,27 @@ describe('LegalAffidavitWindow · the business-records preset (punch list #220, 
     const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'x', occurred_on: '2026-09-03', meta: { title: 'T', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }
     open({ entry })
     expect(document.querySelector('[data-legal-affidavit-preset="records"]')).toBeNull()
+  })
+})
+
+describe('LegalAffidavitWindow · the affiant’s full name (v2.6238)', () => {
+  it('a picked team member’s roster name is prefilled and editable, and the paper, the title and the problem words follow it', () => {
+    open()
+    expect(screen.queryByLabelText('Their full name')).toBeNull()
+    fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: 'u-da' } })
+    const name = screen.getByLabelText('Their full name') as HTMLInputElement
+    expect(name.value).toBe('Daniel Alvarez')
+    expect(document.querySelector('[data-legal-affidavit-window]')!.textContent).toContain('Prefilled from the roster. Type it as it reads on their ID. The notary checks it.')
+    // The RMP's role line asks for the license number until it is edited.
+    expect(document.querySelector('[data-legal-affidavit-window]')!.textContent).toContain('Add the license number, then edit as you like.')
+    fireEvent.change(name, { target: { value: 'Daniel Ruiz Alvarez' } })
+    expect(document.querySelector('[data-legal-affidavit-opener]')!.textContent).toContain('My name is Daniel Ruiz Alvarez.')
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Daniel Ruiz Alvarez')
+    fireEvent.change(name, { target: { value: ' ' } })
+    fireEvent.change(screen.getByLabelText('The statement'), { target: { value: 'x' } })
+    expect((document.querySelector('[data-legal-affidavit-save]') as HTMLButtonElement).title).toBe('Type their full name, as it reads on their ID.')
+    // With no notary, the help drops the notary.
+    fireEvent.click(document.querySelector('[data-legal-affidavit-form="declaration"]')!)
+    expect(document.querySelector('[data-legal-affidavit-window]')!.textContent).not.toContain('The notary checks it.')
   })
 })
