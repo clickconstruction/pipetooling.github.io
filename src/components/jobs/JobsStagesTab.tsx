@@ -171,6 +171,7 @@ import AiaG702G703Modal from './AiaG702G703Modal'
 import { HazmatFeeModal, type HazmatFeeModalJob } from './HazmatFeeModal'
 import { ScheduleJobModal } from './ScheduleJobModal'
 import { jobWithDetailsToQuickAssignHubRow } from '../../lib/jobs/quickAssignFromPipeline'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 /** Dispatch "Assign work" sheet, loaded on first use — keeps dispatch-mode code out of the Jobs bundle. */
 const QuickAssignSheet = lazy(() => import('../dispatchMode/QuickAssignSheet'))
@@ -3870,8 +3871,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                           alignItems: 'center',
                           justifyContent: 'center',
                           borderRadius: 9999,
-                          background: '#f59e0b',
-                          color: '#1c1917',
+                          background: ORANGE_UNDER_WORDS,
+                          color: WORDS_ON_ORANGE,
                           fontSize: 10,
                           fontWeight: 700,
                           fontVariantNumeric: 'tabular-nums',
@@ -3945,8 +3946,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       padding: '0.45rem 1rem',
                       width: '100%',
                       textAlign: 'center',
-                      background: '#f59e0b',
-                      color: 'var(--text-on-amber-solid)',
+                      background: ORANGE_UNDER_WORDS,
+                      color: WORDS_ON_ORANGE,
                       borderRadius: 8,
                       fontSize: '0.875rem',
                       fontWeight: 600,

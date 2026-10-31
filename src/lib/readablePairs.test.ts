@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { SAFETY_ORANGE, SAFETY_ORANGE_TEXT, TEXT_ON_SAFETY_ORANGE } from './bids/bidStyles'
-import { CLOCK_IN_ACCENT_ORANGE, CLOCK_IN_ACCENT_TEXT } from './clock/clockColors'
+import { SAFETY_ORANGE_TEXT, SAFETY_ORANGE_UNDER_WORDS, TEXT_ON_SAFETY_ORANGE } from './bids/bidStyles'
+import { CLOCK_IN_ACCENT_TEXT, CLOCK_IN_ACCENT_UNDER_WORDS } from './clock/clockColors'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from './orangeUnderWords'
 import { MORE_SWIPE_GREY } from './people/usersTabPhone'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from './deadPress'
 import { JOB_ACTIVITY_EVENT_RENDER } from './jobActivityEvent'
@@ -46,21 +47,22 @@ const ratio = (fg: string, bg: string, theme: ThemeName) => contrastRatio(hexToR
 
 describe('the pairs What everyone sees found, in both themes', () => {
   const pairs: { label: string; fg: string; bg: string }[] = [
-    { label: 'Clock In on the clock-in orange', fg: CLOCK_IN_ACCENT_TEXT, bg: CLOCK_IN_ACCENT_ORANGE },
+    { label: "Clock In, Complete Clock In, the Job Mode press and the Currently in head on the clock-in orange's deep shade (white since v2.6186)", fg: CLOCK_IN_ACCENT_TEXT, bg: CLOCK_IN_ACCENT_UNDER_WORDS },
     { label: 'the picked Bids mode chip (BidsModeToggle)', fg: 'var(--surface)', bg: 'var(--text-violet-700)' },
     { label: "the Calendar's dates on the day card", fg: 'var(--text-blue-700)', bg: 'var(--surface)' },
     { label: "the Calendar's dates on the hovered day", fg: 'var(--text-blue-700)', bg: 'var(--bg-blue-tint)' },
     { label: "the Calendar's other months' dates", fg: 'var(--text-muted)', bg: 'var(--surface)' },
     { label: "the Pipeline's good-through-passed chip", fg: GOOD_THROUGH_PASSED_CHIP_COLORS.fg, bg: GOOD_THROUGH_PASSED_CHIP_COLORS.bg },
     { label: 'a dead press: Print, Generate PO, Send feedback, Post note, the Job Mode bar (v2.6062)', fg: DEAD_PRESS_TEXT, bg: DEAD_PRESS_FILL },
-    { label: 'the open Counts, Pricing or Cover Letter tab, an orange button and the pending count (v2.6063)', fg: TEXT_ON_SAFETY_ORANGE, bg: SAFETY_ORANGE },
+    { label: "the open Counts, Pricing or Cover Letter tab, an orange button and the pending count on safety orange's deep shade (v2.6063, white since v2.6186)", fg: TEXT_ON_SAFETY_ORANGE, bg: SAFETY_ORANGE_UNDER_WORDS },
     { label: 'a closed Counts, Pricing or Cover Letter tab on the page (v2.6063)', fg: SAFETY_ORANGE_TEXT, bg: 'var(--bg-page)' },
     { label: "a form's orange hint on the surface (v2.6063)", fg: SAFETY_ORANGE_TEXT, bg: 'var(--surface)' },
     { label: "a picked chip, a picked weekday, a Save or a blue press filled with --text-link (v2.6068), and the Dashboard's calendar count (v2.6130)", fg: 'var(--surface)', bg: 'var(--text-link)' },
     { label: "People → Users' phone row, swipe to More (v2.6068)", fg: '#ffffff', bg: MORE_SWIPE_GREY },
-    { label: "the follow-ups count and a follow-up's job number on amber (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#f59e0b' },
+    { label: "an amber count or press with words, on the deep orange: the follow-ups count, a follow-up's job number, the inbox's N open (v2.6070, white since v2.6186)", fg: WORDS_ON_ORANGE, bg: ORANGE_UNDER_WORDS },
     { label: "the Checklist's ✓ You on green (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#22c55e' },
-    { label: "the header's dispatch press on sky (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#0ea5e9' },
+    { label: "the header's dispatch press and the dispatch mode ticks on the deep sky (v2.6070, white since v2.6186)", fg: '#ffffff', bg: '#0369a1' },
+    { label: "a blue press with white words on #2563eb in both themes: the cost move's Move, Apply and Done, and the payroll sort chips (v2.6186)", fg: '#ffffff', bg: '#2563eb' },
     { label: 'Next, ✓ All clear and the discount in green-700 on the surface (v2.6075)', fg: 'var(--text-green-700)', bg: 'var(--surface)' },
     { label: 'the Bid Costs unsent chip (v2.6081)', fg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.fg, bg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.bg },
     { label: "People → Overhead's method A on the page (v2.6082)", fg: OVERHEAD_METHOD_INKS.A, bg: 'var(--bg-page)' },

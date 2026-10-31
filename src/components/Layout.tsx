@@ -1081,8 +1081,9 @@ export default function Layout() {
               style={{
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.75rem',
-                background: '#0ea5e9',
-                color: 'var(--text-on-bright-solid)',
+                // White on the deep sky (v2.6186), 5.93:1: white on #0ea5e9 read 2.77:1, and the owner likes white on blue.
+                background: '#0369a1',
+                color: '#ffffff',
                 fontWeight: 600,
                 fontSize: '0.875rem',
               }}
@@ -1135,8 +1136,8 @@ export default function Layout() {
               style={{
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.5rem',
-                background: '#0ea5e9',
-                color: 'var(--text-on-bright-solid)',
+                background: '#0369a1',
+                color: '#ffffff',
               }}
             >
               <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1.25em" height="1.25em" fill="currentColor" aria-hidden="true">
@@ -1417,7 +1418,7 @@ export default function Layout() {
                         justifyContent: 'center',
                         borderRadius: 3,
                         border: '1px solid var(--border-400)',
-                        background: dispatchModeEnabled ? '#0ea5e9' : 'var(--surface)',
+                        background: dispatchModeEnabled ? '#0369a1' : 'var(--surface)',
                         color: 'white',
                         fontSize: '0.75rem',
                         lineHeight: 1,
@@ -1466,7 +1467,7 @@ export default function Layout() {
                         justifyContent: 'center',
                         borderRadius: 3,
                         border: '1px solid var(--border-400)',
-                        background: dispatchModePoEnabled ? '#0ea5e9' : 'var(--surface)',
+                        background: dispatchModePoEnabled ? '#0369a1' : 'var(--surface)',
                         color: 'white',
                         fontSize: '0.75rem',
                         lineHeight: 1,

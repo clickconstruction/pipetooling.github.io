@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import { gcReviewGcsToDo, gcReviewNudgeState, gcReviewWeekdayIndex } from '../lib/jobs/gcReviewCertification'
 import type { GcReviewWeekStatus } from '../lib/gcReviewCertifications'
 import { useGcReviewWeekNudge } from '../hooks/useGcReviewWeekNudge'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../lib/orangeUnderWords'
 
 /**
  * Attention card for the Wednesday GC certification ritual (v2.1984): amber
@@ -114,8 +115,8 @@ export default function DashboardGcReviewWeeklyBanner({
           alignItems: 'center',
           justifyContent: 'center',
           borderRadius: 999,
-          background: '#f59e0b',
-          color: 'var(--text-on-amber-solid)',
+          background: ORANGE_UNDER_WORDS,
+          color: WORDS_ON_ORANGE,
           fontSize: '0.9375rem',
           fontWeight: 700,
         }}

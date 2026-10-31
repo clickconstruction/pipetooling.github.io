@@ -15,6 +15,7 @@ import type { UserRole } from '../../hooks/useAuth'
 import { filterPinsToShow, getPinnedChipDisplay, getTallyLinkAccessibleName } from '../../lib/dashboardPinnedRow'
 import { useNeedsYouInputs } from '../../hooks/useNeedsYouInputs'
 import { useNeedsYouPress } from '../needsYou/useNeedsYouPress'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 export interface DashboardPinnedQuickRowProps {
   authUserId: string | undefined
@@ -172,8 +173,8 @@ function TallySquareLink({ accessibleName, unlinkedCount }: { accessibleName: st
             alignItems: 'center',
             justifyContent: 'center',
             borderRadius: 9999,
-            background: '#f59e0b',
-            color: '#1c1917',
+            background: ORANGE_UNDER_WORDS,
+            color: WORDS_ON_ORANGE,
             fontSize: 10,
             fontWeight: 700,
             fontVariantNumeric: 'tabular-nums',
