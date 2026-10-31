@@ -5,7 +5,8 @@
 // cost_batch_revert (docs/COST_BATCHES.md) and dev_hr_entry_write, the dry-run wrapper over
 // hr_agent_write (docs/HR_FILES.md); since v2.6004 dev_legal_document_write, whose apply stores the
 // file in the legal-matter-documents bucket before the row; since v2.6005 dev_legal_gap_answer_write, the
-// one line the attorney reads instead of a packet gap. The verb grammar is plan_ (a dry run, its own call) →
+// one line the attorney reads instead of a packet gap; since v2.6183 dev_bid_write, a new bid as the New Bid form
+// makes it (action create). The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
 // hash uses the platform's crypto.subtle, which Deno and Node both have.
 
@@ -33,6 +34,10 @@ export const WRITE_VERBS = {
   // (dev_history_entry_write inserts development_history_entries with via = mcp).
   plan_history_entry: { rpc: 'dev_history_entry_write', step: 'plan' },
   apply_history_entry: { rpc: 'dev_history_entry_write', step: 'apply' },
+  // v2.6183: a new bid as the New Bid form makes it (dev_bid_write, action create), numbered by the
+  // database at apply — the first press of setting a bid up for the robots from a dev's agent.
+  plan_bid: { rpc: 'dev_bid_write', step: 'plan' },
+  apply_bid: { rpc: 'dev_bid_write', step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -44,7 +49,7 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : verb === 'apply_history_entry' ? 'plan_history_entry' : null
+  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : verb === 'apply_history_entry' ? 'plan_history_entry' : verb === 'apply_bid' ? 'plan_bid' : null
 }
 
 const PLAN_ITEM_ACTIONS = ['add', 'update', 'mark_done'] as const
@@ -224,6 +229,49 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: developmentId, planHash }
   }
+  if (verb === 'plan_bid' || verb === 'apply_bid') {
+    const bid = obj(input.bid)
+    const shape = `${verb} needs bid — { project_name (the plans folder's name too, under 120 characters), customer_id (a customers.id — find_customer), service_type_id (a service_types.id — read_rows on service_types; plumbing is the division the robots bid), address?, development_id? (a developments.id), distance_from_office? (miles, a number), bid_due_date? (YYYY-MM-DD), bid_due_time? (HH:MM), estimator_id? (you when left out), notes?, robot_opt_out? (false when left out), allow_duplicate_name? (a live bid already wearing the name refuses the plan unless true) }.`
+    if (!bid) return { ok: false, error: shape }
+    const str = (k: string) => (typeof bid[k] === 'string' ? (bid[k] as string).trim() : '')
+    const projectName = str('project_name')
+    const customerId = str('customer_id')
+    const serviceTypeId = str('service_type_id')
+    if (!projectName || projectName.length > 120 || !UUID_RE.test(customerId) || !UUID_RE.test(serviceTypeId)) return { ok: false, error: shape }
+    const p: Json = { action: 'create', project_name: projectName, customer_id: customerId, service_type_id: serviceTypeId }
+    for (const k of ['address', 'notes'] as const) {
+      const v = str(k)
+      if (v) p[k] = v
+    }
+    for (const k of ['development_id', 'estimator_id'] as const) {
+      const v = str(k)
+      if (v) {
+        if (!UUID_RE.test(v)) return { ok: false, error: shape }
+        p[k] = v
+      }
+    }
+    const dueDate = str('bid_due_date')
+    if (dueDate) {
+      if (!YMD_RE.test(dueDate)) return { ok: false, error: shape }
+      p.bid_due_date = dueDate
+    }
+    const dueTime = str('bid_due_time')
+    if (dueTime) {
+      if (!/^\d{2}:\d{2}(:\d{2})?$/.test(dueTime)) return { ok: false, error: shape }
+      p.bid_due_time = dueTime
+    }
+    const distance = bid.distance_from_office
+    if (typeof distance === 'number') {
+      if (!Number.isFinite(distance) || distance < 0) return { ok: false, error: shape }
+      p.distance_from_office = String(distance)
+    } else if (typeof distance === 'string' && distance.trim()) {
+      if (!/^\d+(\.\d+)?$/.test(distance.trim())) return { ok: false, error: shape }
+      p.distance_from_office = distance.trim()
+    }
+    if (typeof bid.robot_opt_out === 'boolean') p.robot_opt_out = bid.robot_opt_out
+    if (bid.allow_duplicate_name === true) p.allow_duplicate_name = true
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: projectName, planHash }
+  }
   // plan_hr_entry / apply_hr_entry
   const entry = obj(input.entry)
   const personId = entry && typeof entry.person_id === 'string' ? entry.person_id.trim() : ''
@@ -274,7 +322,7 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : verb === 'plan_history_entry' ? 'apply_history_entry' : 'apply_hr_entry'
+  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : verb === 'plan_history_entry' ? 'apply_history_entry' : verb === 'plan_bid' ? 'apply_bid' : 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
@@ -295,8 +343,9 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const document = verb === 'apply_matter_document'
   const gapAnswer = verb === 'apply_gap_answer'
   const history = verb === 'apply_history_entry'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const bid = verb === 'apply_bid'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 

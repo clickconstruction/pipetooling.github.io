@@ -206,6 +206,7 @@ door reaches them instead of re-writing them.
 | `get_job_cost_trace` · `get_needs_you` · `get_whos_where` | later | Composites over client logic not yet in a kernel. Built when `dev_mcp_calls` shows the question being asked the long way. |
 | `check_locks` · `check_sampler` · `check_connections` · `check_migration_ledger` · `check_edge_boot` | 5 — shipped | Dev-gated definer RPCs read through the same door as the dev — no service role after all (brief above). |
 | `plan_*` / `apply_*` / `revert_*` | 6 — shipped | Over `cost_batch_apply` / `cost_batch_revert`; HR through `dev_hr_entry_write`, the dry-run wrapper (brief above). Apply re-runs the dry run and matches the plan's hash. |
+| `plan_bid` / `apply_bid` | v2.6183 — shipped | A new bid as the New Bid form makes it, through `dev_bid_write` (action `create`), numbered by the database. PR 1 of the owner's 2026-10-30 ask (a dev's agent sets a bid up for the robots); `plan_file_plans` / `apply_file_plans` (the plan set into Drive and onto the bid) and `mint_twin_setup_code` follow. |
 
 **Where the numbers come from** (mapped 2026-09-20): job header, stage, strip, hours and
 activity are RPCs or plain rows; **job money, customer LCV and open balance are client

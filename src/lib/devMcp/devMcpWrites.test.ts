@@ -9,16 +9,19 @@ const PLAN_MIGRATION = readFileSync('supabase/migrations/20261023195135_legal_pl
 const DOCUMENT_MIGRATION = readFileSync('supabase/migrations/20261028010000_dev_legal_document_write.sql', 'utf8')
 const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal_gap_answer_write.sql', 'utf8')
 const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
+const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
 const BATCH = { label: 'ZZ test', reason: 'a test', ops: [{ op: 'thread_note', job_id: '0e4dcd2b-a524-4056-b93c-16713041a6e7', body: 'hello' }] }
 const HASH = 'a'.repeat(64)
+/** The `p` a built write POSTs, for the keys a plan carries or leaves out. */
+const pOf = (built: ReturnType<typeof writeRpcBody>): Record<string, unknown> => (built.ok ? (built.body.p as Record<string, unknown>) : {})
 
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
     const rpcs = new Set(Object.values(WRITE_VERBS).map((v) => v.rpc))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -174,7 +177,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.9.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.10.0'")
   })
 })
 
@@ -218,13 +221,55 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: '2026-10-28T15:00:00Z' })).toContain('on this matter')
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: null })).toContain('legal_matter_gap_answers')
   })
-  it('the server declares both verbs in the write branch and reports 0.9.0', () => {
+  it('the server declares both verbs in the write branch and reports 0.10.0', () => {
     expect(SERVER).toContain("name: 'plan_gap_answer'")
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.9.0'")
-    expect(SERVER).toContain('Writes are fifteen verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.10.0'")
+    expect(SERVER).toContain('Writes are seventeen verbs and nothing else')
+  })
+})
+
+describe('the bid verbs (v2.6183)', () => {
+  const CUSTOMER = '9d16a3ce-2d4a-45ca-8cd7-0df73357fcc5'
+  const SERVICE = 'd53845ab-79ed-498b-88d1-d3a069cf2e73'
+  const SITE = '7d7b2580-3301-42bd-af10-85d75b941918'
+  const BID = { project_name: ' 231 Gun Dog Trail Bunker & Lodge ', customer_id: CUSTOMER, service_type_id: SERVICE, address: '231 Gun Dog Trail, Neeses, SC 29107', development_id: SITE, distance_from_office: 1158.5, bid_due_date: '2026-11-13', robot_opt_out: false }
+  it('are on the allowlist, plan before apply, and POST { p: { action: create, … }, p_dry_run } with the name trimmed and the distance as text', () => {
+    expect(isWriteVerb('plan_bid')).toBe(true)
+    expect(isWriteVerb('apply_bid')).toBe(true)
+    expect(planVerbFor('apply_bid')).toBe('plan_bid')
+    const plan = writeRpcBody('plan_bid', { bid: BID })
+    expect(plan).toMatchObject({ ok: true, rpc: 'dev_bid_write', step: 'plan', target: '231 Gun Dog Trail Bunker & Lodge', body: { p: { action: 'create', project_name: '231 Gun Dog Trail Bunker & Lodge', customer_id: CUSTOMER, service_type_id: SERVICE, development_id: SITE, distance_from_office: '1158.5', bid_due_date: '2026-11-13', robot_opt_out: false }, p_dry_run: true } })
+    expect(pOf(plan)).not.toHaveProperty('estimator_id')
+    const apply = writeRpcBody('apply_bid', { bid: BID, plan_hash: HASH })
+    expect(apply).toMatchObject({ ok: true, step: 'apply', body: { p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: HASH })
+    expect(writeRpcBody('apply_bid', { bid: BID })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+  })
+  it('refuses a missing name, a bad id, a wrong date or time, a negative distance — and carries allow_duplicate_name only when true', () => {
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, project_name: ' ' } })).toMatchObject({ ok: false, error: expect.stringContaining('project_name') })
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, customer_id: 'DSI' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, development_id: 'gun dog' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, bid_due_date: 'Nov 13' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, bid_due_time: '2pm' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, distance_from_office: -3 } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, distance_from_office: '12 miles' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_bid', { bid: { ...BID, bid_due_time: '14:00', allow_duplicate_name: true } })).toMatchObject({ ok: true, body: { p: { bid_due_time: '14:00', allow_duplicate_name: true } } })
+    expect(pOf(writeRpcBody('plan_bid', { bid: { ...BID, allow_duplicate_name: false } }))).not.toHaveProperty('allow_duplicate_name')
+    expect(writeRpcBody('plan_bid', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs bid') })
+  })
+  it('the migration creates dev_bid_write gated is_dev(), closed to anon, with the create and file_plans actions; the plan reply points at apply_bid and a repeat apply names the bid', () => {
+    expect(BID_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(BID_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_bid_write(p jsonb, p_dry_run boolean DEFAULT true, p_link jsonb DEFAULT NULL)')
+    expect(BID_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(BID_MIGRATION).toContain('REVOKE ALL ON FUNCTION public.dev_bid_write(jsonb, boolean, jsonb) FROM anon;')
+    expect(BID_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_bid_write(jsonb, boolean, jsonb) TO authenticated;')
+    expect(BID_MIGRATION).toContain("v_action NOT IN ('create', 'file_plans')")
+    expect(BID_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    expect(String(planReply('plan_bid', { after: { project_name: 'x' } }, 'e'.repeat(64)).next)).toContain('apply_bid')
+    expect(alreadyApplied('apply_bid', { target: 'b612', at: '2026-10-30T22:00:00Z' })).toContain('as bid b612')
+    expect(alreadyApplied('apply_bid', { target: 'b612', at: null })).toContain('allow_duplicate_name')
   })
 })
 
