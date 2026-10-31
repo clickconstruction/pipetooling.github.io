@@ -119,6 +119,8 @@ function stateColor(item: LegalTimelineItem, look: TimelineLook): string {
     case 'done': return look.ok
     case 'planned': return look.accent
     case 'undone': return look.faint
+    // v2.6209: a statement printed a fortnight ago with no signed copy.
+    case 'stale': return look.warn
     default: return look.muted
   }
 }
@@ -398,11 +400,12 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
   const input = inputStyle(look)
   const canEdit = Boolean(acts?.update) && item.isLivePlan
   const canDone = Boolean(acts?.markDone) && item.isLivePlan
-  const canHold = Boolean(acts?.hold) && (item.kind === 'plan' || item.kind === 'event' || item.kind === 'said' || (item.kind === 'entry' && item.entryKind === 'offer')) && !item.voided
+  const canHold = Boolean(acts?.hold) && (item.kind === 'plan' || item.kind === 'event' || item.kind === 'said' || item.kind === 'statement' || (item.kind === 'entry' && item.entryKind === 'offer')) && !item.voided
   const holdKey = timelineHoldKey(item)
   const canUndo = Boolean(acts?.undo) && (acts?.canUndo ? acts.canUndo(item) : item.isLivePlan)
   const dayWords = timelineDayWords(item.ymd, todayYmd)
-  const kindChip = item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip(item.documentChip ? `document · ${item.documentChip}` : 'document', look, item.documentChip === 'draft' ? look.warn : item.documentChip.startsWith('sent') ? look.ok : item.documentChip === 'received' ? look.accent : undefined, item.documentChip ? item.stateWords : undefined) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kind === 'deadline' ? chip(item.kindWords || 'deadline', look, color) : item.kind === 'said' || item.kind === 'did' ? chip(item.kindWords, look, item.entryKind === 'note' ? look.stop : item.entryKind === 'promise' ? look.warn : undefined) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
+  // v2.6209 (punch list #220): a statement's chip reads its form and whether it is sworn — green once signed, amber while stale, blue as a draft.
+  const kindChip = item.kind === 'statement' ? chip(item.kindWords, look, item.state === 'happened' ? look.ok : item.state === 'stale' ? look.warn : look.accent, item.stateWords) : item.kind === 'plan' ? chip(item.state === 'done' ? 'planned step · done' : 'planned step', look, color) : item.kind === 'document' ? chip(item.documentChip ? `document · ${item.documentChip}` : 'document', look, item.documentChip === 'draft' ? look.warn : item.documentChip.startsWith('sent') ? look.ok : item.documentChip === 'received' ? look.accent : undefined, item.documentChip ? item.stateWords : undefined) : item.kind === 'event' ? chip(item.kindWords || 'happened', look) : item.kind === 'deadline' ? chip(item.kindWords || 'deadline', look, color) : item.kind === 'said' || item.kind === 'did' ? chip(item.kindWords, look, item.entryKind === 'note' ? look.stop : item.entryKind === 'promise' ? look.warn : undefined) : item.kindWords ? chip(item.kindWords, look, item.viaPortal ? look.accent : undefined) : null
   const canRecord = item.kind === 'deadline' && reader === 'office' && Boolean(onOpenLienWindow) && Boolean(item.deadlineJobId) && item.state !== 'done'
   const close = () => { setMode(null); setReason('') }
   return (
@@ -463,7 +466,7 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
             {canRecord ? <button type="button" data-legal-timeline-record onClick={() => onOpenLienWindow!(item.deadlineJobId!)} style={btn} title="Opens the job’s Lien window, where the paper is recorded">Record it…</button> : null}
             {canEdit ? <button type="button" onClick={() => setMode('edit')} style={btn}>Edit</button> : null}
             {canDone && item.state !== 'overdue' ? <button type="button" onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={btn}>Mark done</button> : null}
-            {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title={item.kind === 'event' ? 'Keep this event from the firm, with a reason only the office reads' : 'Keep this planned step from the firm, with a reason only the office reads'}>Hold from counsel…</button> : null}
+            {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title={item.kind === 'event' ? 'Keep this event from the firm, with a reason only the office reads' : item.kind === 'statement' ? 'Keep this statement from the firm, with a reason only the office reads' : 'Keep this planned step from the firm, with a reason only the office reads'}>Hold from counsel…</button> : null}
             {item.held && acts?.hold && holdKey ? <button type="button" onClick={() => void acts.hold!.shareAgain(holdKey)} disabled={acts.busy} style={btn}>Share with counsel</button> : null}
             {canUndo ? <button type="button" onClick={() => setMode('undo')} style={btn}>Undo…</button> : null}
             {canOpenPaper ? <button type="button" data-legal-timeline-open-paper aria-busy={opening || undefined} onClick={() => void openPaper()} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the file itself in a new browser tab; the Timeline stays">Open the paper</button> : null}

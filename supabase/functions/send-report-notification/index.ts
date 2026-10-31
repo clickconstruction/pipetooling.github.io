@@ -1,7 +1,11 @@
+// send-report-notification: the push to the people opted in to a report kind when one is filed. A person's hours
+// (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, which pushes the people on and holds
+// a person outside their Push me hours, writing the row as `held` and sending nothing.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
+import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { readReportSubject, reportSendSkip } from '../_shared/reportSubject.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 
 /** Matches client `reportTemplateDisplayName` legacy alias for notification copy. */
 const LEGACY_SUPERINTENDENT_REPORT_TEMPLATE_NAME = 'Superintendent Report'
@@ -157,63 +161,19 @@ serve(async (req) => {
       )
     }
 
-    const pushPayload = JSON.stringify({
-      title: pushTitle,
-      body: pushBody,
-      url: pushUrl,
-      tag,
-    } as { title: string; body: string; url: string; tag: string })
-
-    webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
-
-    let totalPushSent = 0
-
-    for (const recipientUserId of recipientIds) {
-      const { data: subscriptions } = await adminClient
-        .from('push_subscriptions')
-        .select('endpoint, p256dh_key, auth_key')
-        .eq('user_id', recipientUserId)
-
-      if (!subscriptions || subscriptions.length === 0) continue
-
-      let sentForUser = 0
-      for (const sub of subscriptions) {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
-            },
-            pushPayload,
-            { TTL: 86400 }
-          )
-          sentForUser++
-          totalPushSent++
-        } catch (pushErr) {
-          console.error('Push send error for subscription:', sub.endpoint?.substring(0, 50), pushErr)
-        }
-      }
-
-      if (sentForUser > 0) {
-        try {
-          await adminClient.from('notification_history').insert({
-            recipient_user_id: recipientUserId,
-            template_type: 'report_submitted',
-            title: pushTitle,
-            body_preview: pushBody.substring(0, 200),
-            channel: 'push',
-          })
-        } catch {
-          // best-effort
-        }
-      }
-    }
+    // Through each person's hours (#141 PR 5): the people on are pushed, a person off is held with a row and no push.
+    const result = await sendPushHonouringHours(
+      adminClient,
+      { userIds: recipientIds, title: pushTitle, body: pushBody, url: pushUrl, tag, templateType: 'report_submitted' },
+      webPushSender(adminClient, 'send-report-notification'),
+    )
 
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Report notification sent',
-        push_sent: totalPushSent,
+        push_sent: result.devices,
+        held: result.held.length,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

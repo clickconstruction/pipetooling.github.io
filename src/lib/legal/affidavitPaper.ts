@@ -410,8 +410,8 @@ export function statementSignedWords(meta: Pick<StatementMeta, 'form' | 'signedO
   return meta.form === 'notary' ? `Sworn${day} before a notary${where}.` : `Signed${day} under penalty of perjury${where}.`
 }
 
-/** The amber state the Timeline draws a stale draft in; `happened` for a signed one, `planned` for a fresh draft. */
-export type StatementLineState = 'planned' | 'overdue' | 'happened' | 'undone'
+/** How the line draws it: `planned` a fresh draft (a ring), `stale` a print a fortnight old with no signed copy (amber), `happened` once signed, `undone` when dropped. */
+export type StatementLineState = 'planned' | 'stale' | 'happened' | 'undone'
 
 /**
  * The words under a statement on the line, and the state they draw in:
@@ -432,7 +432,7 @@ export function statementStateWords(meta: StatementMeta, args: { todayYmd: strin
   const last = meta.prints[n - 1]!
   const lastDay = last.at ? args.dayOfIso(last.at) : ''
   const ago = lastDay && YMD.test(lastDay) ? daysBetween(lastDay, args.todayYmd) : 0
-  if (ago >= STATEMENT_DRAFT_AMBER_DAYS) return { state: 'overdue', words: `Printed ${ago} days ago · no signed copy.` }
+  if (ago >= STATEMENT_DRAFT_AMBER_DAYS) return { state: 'stale', words: `Printed ${ago} days ago · no signed copy.` }
   const which = n === 1 && last.face !== 'whole' ? `, ${FACE_WORDS[last.face]}` : ''
   return { state: 'planned', words: `${printCountWords(n)}${lastDay ? ` · last ${statementShortDay(lastDay)}` : ''}${which} · not signed.` }
 }

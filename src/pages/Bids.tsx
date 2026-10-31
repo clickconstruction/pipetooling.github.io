@@ -127,6 +127,7 @@ import { extractContactInfo } from '../lib/bids/bidContactInfo'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useBidEditForm } from '../lib/bids/useBidEditForm'
 import { rememberSharedBidId } from '../lib/bids/sharedBidPointer'
+import { buildRobotStage } from '../lib/bids/robotStage'
 
 type GcBuilder = Database['public']['Tables']['bids_gc_builders']['Row']
 type Customer = Database['public']['Tables']['customers']['Row']
@@ -389,6 +390,8 @@ export default function Bids() {
     robotQuestionsWaiting,
     robotRowStateFor,
     robotProgressFor,
+
+    robotProgressRowFor,
     setRobotComparePair,
     setRobotLeftBid,
     focusAuditId,
@@ -1857,6 +1860,7 @@ export default function Bids() {
         userId={authUser?.id ?? null}
         shadowSealed={plansBid ? (robotProgressFor(plansBid.id)?.sealed ?? (twinBidBySourceId.has(plansBid.id) ? false : null)) : null}
         openAtPage={plansPanelPage}
+        fixturesReady={plansBid ? (() => { const row = robotProgressRowFor(plansBid.id); return row ? buildRobotStage(row, plansBid, Date.now()).fixturesOpen : false })() : false}
       />
 
       <WorkingBoardArchiveConfirmDialog

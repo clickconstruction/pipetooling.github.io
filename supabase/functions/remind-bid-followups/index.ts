@@ -10,12 +10,17 @@
  *
  * Kill switch: app_settings key `bid_followup_reminders_disabled_v1` = '1'.
  * Body: `{}`; `dry_run: true` reports what would be sent and writes nothing.
+ *
+ * A person's hours (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, the hours read
+ * once per run; a person outside their Push me hours is held, the row written as `held` and nothing sent. The ledger
+ * row is written either way, so the day is reminded once; the Needs you line names what waited.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { formatBidLedgerNumberLabel } from '../_shared/ledgerDisplayPrefixes.ts'
+import { loadPushHours, sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 import {
   BID_FOLLOWUP_REMINDER_HOUR,
   bidDueForReminder,
@@ -109,13 +114,12 @@ serve(async (req) => {
     const personName = new Map(((personRows ?? []) as Array<{ id: string; name: string }>).map((p) => [p.id, p.name]))
     const setBy = new Map(((entryRows ?? []) as Array<{ id: string; created_by: string | null }>).map((e) => [e.id, e.created_by]))
 
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-    const canPush = Boolean(vapidPublicKey && vapidPrivateKey)
-    if (canPush) webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey!, vapidPrivateKey!)
+    const sendTo = webPushSender(admin, 'remind-bid-followups')
+    const hours = dryRun ? new Map() : await loadPushHours(admin)
 
     let sent = 0
     let reminded = 0
+    let held = 0
     const preview: Array<{ bid: string; to: string | null; title: string; body: string }> = []
     for (const b of due) {
       const dueOn = b.next_followup_on as string
@@ -137,32 +141,21 @@ serve(async (req) => {
       if (claimErr) continue
       reminded++
 
-      let pushSent = 0
-      if (recipient && canPush) {
-        const { data: subs } = await admin.from('push_subscriptions').select('endpoint, p256dh_key, auth_key').eq('user_id', recipient)
-        const payload = JSON.stringify({ title, body: text, url: '/bids?tab=call-queue', tag: `bid-followup-${b.id}-${dueOn}` })
-        for (const sub of (subs ?? []) as Array<{ endpoint: string; p256dh_key: string; auth_key: string }>) {
-          try {
-            await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } }, payload, { TTL: 86400 })
-            pushSent++
-          } catch (pushErr) {
-            console.error('remind-bid-followups push error', sub.endpoint?.substring(0, 50), pushErr)
-          }
-        }
-      }
-      if (pushSent > 0 && recipient) {
-        sent += pushSent
-        await admin.from('bid_followup_reminders').update({ push_sent: pushSent }).eq('bid_id', b.id).eq('due_on', dueOn)
-        await admin.from('notification_history').insert({
-          recipient_user_id: recipient,
-          template_type: 'bid_followup',
-          title,
-          body_preview: text.substring(0, 200),
-          channel: 'push',
-        })
+      if (!recipient) continue
+      // Through the person's hours (#141 PR 5): pushed now with a push row, or held with a held row and no push.
+      const result = await sendPushHonouringHours(
+        admin,
+        { userIds: [recipient], title, body: text, url: '/bids?tab=call-queue', tag: `bid-followup-${b.id}-${dueOn}`, templateType: 'bid_followup' },
+        sendTo,
+        { hours },
+      )
+      held += result.held.length
+      if (result.devices > 0) {
+        sent += result.devices
+        await admin.from('bid_followup_reminders').update({ push_sent: result.devices }).eq('bid_id', b.id).eq('due_on', dueOn)
       }
     }
-    return json({ ok: true, due: due.length, reminded, sent, ...(dryRun ? { dry_run: true, preview } : {}) })
+    return json({ ok: true, due: due.length, reminded, sent, held, ...(dryRun ? { dry_run: true, preview } : {}) })
   } catch (e) {
     console.error(e)
     return json({ error: 'Internal error' }, 500)

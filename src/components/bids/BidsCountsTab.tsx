@@ -55,6 +55,7 @@ import { buildRobotStage, type RobotStageRow } from '../../lib/bids/robotStage'
 import { fixturesAddedToast, SET_ASIDE_REASON_WORDS, type FixtureReview, type FixtureTicks, type HerCountRow, type SetAsideReason } from '../../lib/bids/robotFixtures'
 import { isRobotRow, robotRowPill, robotSourceIds, setAsideFoldWords, SET_ASIDE_WORDS } from '../../lib/bids/robotFixtureShade'
 import { RobotFixturesWindow } from './RobotFixturesWindow'
+import { RobotStageStrip } from './RobotStageStrip'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /** v2.4720: rows per insert statement on an import (PostgREST takes the whole array; chunked only so a huge paste stays well under the request limit). */
@@ -290,6 +291,10 @@ export function BidsCountsTab({
       setRobotWindowOpen(true)
     }
   }, [openRobotFixturesRequest, robotStage?.fixturesOpen, robotPull])
+  // The stage (PR 4): one line beside the bid flow's pill, unfolding to the seven stops; folds with the flow's fold.
+  const robotStagePill = robotStage && !robotStage.void ? (
+    <RobotStageStrip stage={robotStage} variant="inline" onOpenFixtures={robotStage.fixturesOpen && robotPull ? () => setRobotWindowOpen(true) : null} />
+  ) : null
   const robotFixturesButton = robotStage?.fixturesOpen && robotPull ? (
     <button
       type="button"
@@ -1191,6 +1196,7 @@ export function BidsCountsTab({
                   reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
                 />
               </div>
+              {robotStagePill}
               {gradeChipEl}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                 {robotFixturesButton}
@@ -1230,6 +1236,7 @@ export function BidsCountsTab({
                   }}
                   reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
                 />
+                {robotStagePill}
                 {gradeChipEl}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto' }}>

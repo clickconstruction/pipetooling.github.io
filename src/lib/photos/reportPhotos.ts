@@ -27,6 +27,9 @@ export type ReportPhotoTile = {
   /** The stage it shows: the line's fixture id and name, or null until picked (a one-stage job never asks). */
   fixtureId: string | null
   stageName: string | null
+  /** The checklist question it answers (punch list #189, PR 6): the question's id and words, or null for a plain photo. */
+  questionId: string | null
+  questionWords: string | null
   /** Where it waits in the bucket once sent. */
   storagePath: string | null
   takenAt: string
@@ -79,12 +82,25 @@ export function reportPhotoPath(jobId: string, photoId: string): string {
   return `${jobId}/${photoId}.jpg`
 }
 
+/** The longest piece of a question that goes into a photo's caption, cut on a word (the sheet's `PHOTO_QUESTION_MAX`). */
+const CAPTION_QUESTION_MAX = 60
+
 /**
- * What the file is named by, after the day and the sender: the stage it shows, else the first words of What got
- * done, else *Report photo*.
+ * What the file is named by, after the day and the sender: the stage and the checklist question it answers (PR 6:
+ * *Rough In · Did the water test hold*), else the stage it shows, else the first words of What got done, else
+ * *Report photo*.
  */
-export function reportPhotoCaption(input: { stageName: string | null; whatGotDone: string }): string {
+export function reportPhotoCaption(input: { stageName: string | null; whatGotDone: string; questionWords?: string | null }): string {
   const stage = (input.stageName ?? '').trim()
+  const question = (input.questionWords ?? '').trim().replace(/[?!.]+$/, '')
+  if (question) {
+    const cut = question.length <= CAPTION_QUESTION_MAX ? question : (() => {
+      const head = question.slice(0, CAPTION_QUESTION_MAX + 1)
+      const space = head.lastIndexOf(' ')
+      return (space > 0 ? head.slice(0, space) : question.slice(0, CAPTION_QUESTION_MAX)).replace(/[.\s?!,]+$/, '')
+    })()
+    return stage ? `${stage} · ${cut}` : cut
+  }
   if (stage) return stage
   const words = input.whatGotDone.trim().split(/\s+/).filter(Boolean).slice(0, 6).join(' ')
   return words || 'Report photo'
@@ -147,9 +163,10 @@ export function newPhotoId(): string {
 
 /**
  * The photos' clause on the report's Stage progress line, so the office reads them beside the moves: *2 photos on
- * Rough In and Top Out*, *1 photo on Rough In*, *1 photo* with no stage. Empty with none.
+ * Rough In and Top Out*, *1 photo on Rough In*, *1 photo* with no stage, and after it how many answer a checklist
+ * question (PR 6: *2 photos on Rough In, 1 answers a checklist question*). Empty with none.
  */
-export function photosSentence(tiles: ReadonlyArray<Pick<ReportPhotoTile, 'stageName'>>): string {
+export function photosSentence(tiles: ReadonlyArray<Pick<ReportPhotoTile, 'stageName'> & { questionId?: string | null }>): string {
   if (tiles.length === 0) return ''
   const count = tiles.length === 1 ? '1 photo' : `${tiles.length} photos`
   const stages: string[] = []
@@ -157,9 +174,11 @@ export function photosSentence(tiles: ReadonlyArray<Pick<ReportPhotoTile, 'stage
     const name = (t.stageName ?? '').trim()
     if (name && !stages.includes(name)) stages.push(name)
   }
-  if (stages.length === 0) return count
-  const names = stages.length === 1 ? stages[0]! : `${stages.slice(0, -1).join(', ')} and ${stages[stages.length - 1]!}`
-  return `${count} on ${names}`
+  const answers = tiles.filter((t) => Boolean(t.questionId)).length
+  const answersWords = answers === 0 ? '' : answers === 1 ? '1 answers a checklist question' : `${answers} answer checklist questions`
+  const names = stages.length === 0 ? '' : stages.length === 1 ? stages[0]! : `${stages.slice(0, -1).join(', ')} and ${stages[stages.length - 1]!}`
+  const head = names ? `${count} on ${names}` : count
+  return answersWords ? `${head}, ${answersWords}` : head
 }
 
 /** "1 photo", "3 photos", "" for none. */

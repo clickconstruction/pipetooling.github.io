@@ -3735,6 +3735,9 @@ export type Database = {
           outcome_at: string | null
           outcome_note: string | null
           sort_order: number
+          owner_user_id: string | null
+          locked_by: string | null
+          locked_at: string | null
           source_bid_version_id: string | null
           starred_price_book_version_id: string | null
         }
@@ -3751,6 +3754,9 @@ export type Database = {
           outcome_at?: string | null
           outcome_note?: string | null
           sort_order?: number
+          owner_user_id?: string | null
+          locked_by?: string | null
+          locked_at?: string | null
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
         }
@@ -3767,6 +3773,9 @@ export type Database = {
           outcome_at?: string | null
           outcome_note?: string | null
           sort_order?: number
+          owner_user_id?: string | null
+          locked_by?: string | null
+          locked_at?: string | null
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
         }
@@ -20279,6 +20288,7 @@ export type Database = {
           gc_shares_stage_dates: boolean
           google_drive_link: string | null
           hcp_number: string
+          prior_numbers: string[]
           id: string
           job_address: string
           job_name: string
@@ -20347,6 +20357,7 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
+          prior_numbers?: string[]
           id?: string
           job_address?: string
           job_name?: string
@@ -20415,6 +20426,7 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
+          prior_numbers?: string[]
           id?: string
           job_address?: string
           job_name?: string

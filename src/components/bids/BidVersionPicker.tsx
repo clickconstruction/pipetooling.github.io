@@ -1,6 +1,10 @@
 import { useEffect, useState } from 'react'
 import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
+import { useAuth } from '../../hooks/useAuth'
+import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { lockBadgeWords, lockTitleWords, LOCK_PRESS_TITLE, mayLock, mayUnlock, UNLOCK_PRESS_TITLE } from '../../lib/bids/versionLock'
 import { useConfirmDialog } from '../../contexts/ConfirmDialogContext'
 import type { BidVersion } from '../../lib/bids/bidPricingEngineTypes'
 import { formatSendBadge, latestSendByVersion, type VersionSendRow } from '../../lib/bids/versionSends'
@@ -70,6 +74,25 @@ export function BidVersionPicker({
   onOpenMap,
 }: BidVersionPickerProps) {
   const { showToast } = useToastContext()
+  // The lock (v2.6234): the owner, a dev or a master presses it; the database holds the rule for every write.
+  const { user: authUser, role: authRole } = useAuth()
+  const lockNames = useUserDisplayNames(bidVersions.map((v) => v.locked_by))
+  const [lockBusy, setLockBusy] = useState<string | null>(null)
+  const toggleLock = async (v: BidVersion) => {
+    if (!authUser) return
+    setLockBusy(v.id)
+    try {
+      const locking = !v.locked_by
+      const { error } = await supabase.from('bid_versions').update({ locked_by: locking ? authUser.id : null, locked_at: locking ? new Date().toISOString() : null }).eq('id', v.id)
+      if (error) throw error
+      showToast(locking ? `Locked ${v.name}: only you edit it now.` : `Unlocked ${v.name}.`, 'success')
+      await reloadVersions()
+    } catch (e) {
+      showToast(formatErrorMessage(e, 'The lock did not change.'), 'error')
+    } finally {
+      setLockBusy(null)
+    }
+  }
   const confirmDialog = useConfirmDialog()
   const isUnsplit = bidVersions.length === 0
 
@@ -555,8 +578,23 @@ export function BidVersionPicker({
                         {v.include_in_submission ? `in letter ✓ · ${v.is_alternate ? 'alternate' : 'base'}` : 'not in letter'}
                       </span>
                       {(() => { const b = formatSendBadge(latestSends[v.id]); return b ? <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{b}</span> : null })()}
+                      {/* The lock (v2.6234): who holds it, and whom to ask; the database refuses the others' writes. */}
+                      {v.locked_by ? (
+                        <span data-testid="bid-version-lock-badge" title={lockTitleWords(v, authUser?.id, (id) => lockNames[id])} style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-amber-800)', fontWeight: 700, whiteSpace: 'nowrap' }}>
+                          🔒 {lockBadgeWords(v, authUser?.id, (id) => lockNames[id])}
+                        </span>
+                      ) : null}
                     </button>
                     <button type="button" onClick={() => { setRenaming(v); setRenameValue(v.name); setRenameGcCustomerId(v.customer_id ?? '') }} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.875rem' }} title="Rename / delete version">✎</button>
+                    {mayLock(v, authUser?.id, authRole) ? (
+                      <button type="button" onClick={() => void toggleLock(v)} disabled={lockBusy === v.id} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }} title={LOCK_PRESS_TITLE} aria-label={`Lock ${v.name}`} data-testid="bid-version-lock">
+                        🔓
+                      </button>
+                    ) : mayUnlock(v, authUser?.id, authRole) ? (
+                      <button type="button" onClick={() => void toggleLock(v)} disabled={lockBusy === v.id} style={{ padding: '0.15rem', background: 'none', border: 'none', cursor: 'pointer', fontSize: '0.8rem' }} title={UNLOCK_PRESS_TITLE} aria-label={`Unlock ${v.name}`} data-testid="bid-version-unlock">
+                        🔒
+                      </button>
+                    ) : null}
                   </span>
                 )
               })}

@@ -187,7 +187,7 @@ describe('the meta and the state words', () => {
     const words = (m: StatementMeta) => statementStateWords(m, { todayYmd: TODAY, voided: false, voidReason: '', dayOfIso: dayOf })
     expect(words(meta())).toEqual({ state: 'planned', words: 'Draft · not signed.' })
     const once = meta({ state: 'printed', prints: [{ at: '2026-10-16T15:00:00Z', by: 'u-g', face: 'signing', text: '' }] })
-    expect(words(once)).toEqual({ state: 'overdue', words: 'Printed 14 days ago · no signed copy.' })
+    expect(words(once)).toEqual({ state: 'stale', words: 'Printed 14 days ago · no signed copy.' })
     const twice = meta({ state: 'printed', prints: [{ at: '2026-10-27T15:00:00Z', by: 'u-g', face: 'whole', text: '' }, { at: '2026-10-28T19:14:00Z', by: 'u-g', face: 'whole', text: '' }] })
     expect(words(twice)).toEqual({ state: 'planned', words: 'Printed twice · last Oct 28 · not signed.' })
     const onceFresh = meta({ state: 'printed', prints: [{ at: '2026-10-29T15:00:00Z', by: 'u-g', face: 'signing', text: '' }] })
