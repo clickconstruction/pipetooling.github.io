@@ -181,7 +181,8 @@ export function draftPayrollRowBar(input: DraftPayrollRowBarInput): DraftPayroll
         kind: 'owed',
         amount: owed,
         fraction: frac(owed, scale),
-        label: paid > EPS ? `owed ${usd(owed)}` : 'owed on the report',
+        // *report due* (the owner, 2026-10-30), not *owed on the report*.
+        label: paid > EPS ? `owed ${usd(owed)}` : 'report due',
         title: `${usd(owed)} still owed on the report (its net less what is paid)`,
       })
     }

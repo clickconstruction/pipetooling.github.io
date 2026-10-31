@@ -62,7 +62,7 @@ describe('draftPayrollRowBar', () => {
 
     const withheld = draftPayrollRowBar({ ...base, report: { gross: 1245, net: 1045, paidSum: 0, paidYmd: null } })
     expect(withheld.parts.map((p) => [p.kind, p.amount, p.label])).toEqual([
-      ['owed', 1045, 'owed on the report'],
+      ['owed', 1045, 'report due'],
       ['withheld', 200, '$200.00'],
     ])
     expect(withheld.scale).toBe(1245)
