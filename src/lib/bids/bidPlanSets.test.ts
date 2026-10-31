@@ -6,6 +6,7 @@ import {
   planSetDateWords,
   planSetDraftProblem,
   planSetFileFromProbe,
+  versionChipWords,
   planSetFileWords,
   planSetsForBid,
   planSetsIconCount,
@@ -126,5 +127,13 @@ describe('the words', () => {
     expect(planSetDraftProblem({ name: ' ', link: 'https://x' })).toBe('Give the set a name.')
     expect(planSetDraftProblem({ name: 'Addendum 1', link: 'drive.google.com/x' })).toBe('Paste the set’s link, starting with https://')
     expect(planSetDraftProblem({ name: 'Addendum 1', link: 'https://drive.google.com/x' })).toBeNull()
+  })
+})
+
+describe('versionChipWords (v2.6230)', () => {
+  it('names the version an adopted bid became, and stays off with no name', () => {
+    expect(versionChipWords('William · April set')).toBe('version · William · April set')
+    expect(versionChipWords('  ')).toBe('')
+    expect(versionChipWords(null)).toBe('')
   })
 })
