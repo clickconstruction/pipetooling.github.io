@@ -7,6 +7,7 @@
  * marks the line asked and emails the architect, through the page's GC writes (`planQuestions`, `followUp/askArchitect.ts`).
  * **Sort all** on New's header opens the desk (`SortAllDesk`, residential R7's mockup C) over the New this panel draws.
  */
+import { PUT_BACK_WORDS } from '../../lib/followUp/setAsideFold'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import { useMessagesLive } from '../gc/messages/useMessagesLive'
 import { askArchitectToast, planQuestionOf, type AskArchitectEnd, type PlanQuestionInput } from '../../lib/followUp/askArchitect'
@@ -163,6 +164,8 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
     ...(planQuestions ? { askArchitect: (messageId: string) => void askArchitect(planQuestions, messageId) } : {}),
     ...(seeTheirPage ? { seeTheirPage } : {}),
     sortAll: () => setSorting(true),
+    // Put back (v2.6231): the notice is marked for the next read; the queue re-reads without it.
+    putBack: (id) => void run(`putBack ${id}`, (x) => x.putBack(id), PUT_BACK_WORDS),
     ...(answerAll ? { answerAll: () => answerAll.onChange(true) } : {}),
   }
 
@@ -183,6 +186,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
           todayYmd={todayYmd}
           nowIso={nowIso}
           actions={actions}
+          setAside={q.setAside}
           pressing={q.pressing}
           laneLook={laneLook}
           {...(clauses ? { renderClauses: clauses.render } : {})}
