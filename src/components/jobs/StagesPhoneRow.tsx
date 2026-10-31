@@ -4,6 +4,8 @@ import { useLongPress } from '../../hooks/useLongPress'
 import { classifySwipe } from '../../lib/people/usersTabPhone'
 import type { JobNextChip, JobNextLine, JobNextTone } from '../../lib/jobs/jobNextLine'
 import { renderStagesJobHcpChip } from './jobsStagesRowShared'
+import { Link } from 'react-router-dom'
+import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
 /** The green strip a right-swipe uncovers; past this fraction of it the release advances. */
 export const PHONE_ROW_REVEAL_PX = 96
@@ -99,6 +101,8 @@ export function StagesPhoneRow({
   const number = renderStagesJobHcpChip(job, { fontSize: '0.6875rem', padding: '0 0.3rem', flexShrink: 0 })
   const customer = (job.customer_name ?? '').trim()
   const title = `${(job.job_name ?? '').trim() || 'Job'}${customer ? ` · ${customer}` : ''}`
+  const developmentName = (job.development?.name ?? '').trim()
+  const developmentId = job.development?.id ?? null
 
   return (
     <>
@@ -182,7 +186,26 @@ export function StagesPhoneRow({
               {number}
               <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
             </div>
-            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{next.line}</div>
+            <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
+              {developmentName && developmentId ? (
+                // The development's house line (v2.6204): a door to its page, as the desk row's is. It is marked
+                // as a chip so the row's tap stays the job's; the name gives way to the next line when both are long.
+                <Link
+                  to={`/developments/${developmentId}`}
+                  data-phone-row-chip
+                  data-nav="development-page"
+                  title="Open the development's page"
+                  aria-label="Open the development's page"
+                  onClick={(e) => e.stopPropagation()}
+                  style={{ display: 'inline-flex', alignItems: 'center', gap: '0.25rem', color: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: 2, minWidth: 0, maxWidth: '55%', flexShrink: 1 }}
+                >
+                  <DevelopmentHouseIcon size={12} style={{ flexShrink: 0 }} />
+                  <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{developmentName}</span>
+                </Link>
+              ) : null}
+              {developmentName && developmentId ? <span aria-hidden="true">·</span> : null}
+              <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>{next.line}</span>
+            </div>
           </div>
           {busy ? (
             <span style={{ color: 'var(--text-muted)', fontSize: '0.8125rem' }}>…</span>
