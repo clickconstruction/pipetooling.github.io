@@ -4,6 +4,7 @@ import { useReloadDraft } from '../../../hooks/useReloadDraft'
 import { legalRpcData } from '../../../hooks/useLegalMatters'
 import { draftStorageKey } from '../../../lib/reloadDraft'
 import { legalFirmInputProblem, legalFirmReplaceWords, legalReplaceErrorWords, type LegalFirmFacts } from '../../../lib/legal/legalFirmFacts'
+import { replaceLeavesUncoveredWords } from '../../../lib/legal/firmWindowCoverage'
 import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
 
 type NewFirm = { name: string; handling_name: string; email: string; phone: string; contingency_pct: string; filing_cost: string }
@@ -15,12 +16,15 @@ type NewFirm = { name: string; handling_name: string; email: string; phone: stri
  * is still with the old firm the call is refused, so the panel lists those accounts with a way
  * back to each on the desk, where *Pull back* lives.
  */
-export default function LegalFirmReplacePanel({ firm, facts, onReplaced, onShowAccount }: {
+export default function LegalFirmReplacePanel({ firm, facts, onReplaced, onShowAccount, counties = [] }: {
   firm: LegalFirmRow
   facts: LegalFirmFacts
   onReplaced: () => void
   onShowAccount?: (payerKey: string) => void
+  /** The counties the firm covers (punch list #222, PR 1): a replace leaves them with no firm, and the panel says so. */
+  counties?: ReadonlyArray<string>
 }) {
+  const leaves = replaceLeavesUncoveredWords(firm.name, counties)
   const { showToast } = useToastContext()
   // The Settings block's draft of the old firm must not come back onto the new one.
   const oldFirmDraft = useReloadDraft<unknown>(draftStorageKey('legal-firm', 'form'))
@@ -67,6 +71,7 @@ export default function LegalFirmReplacePanel({ firm, facts, onReplaced, onShowA
       <section data-legal-firm-replace="closed" style={section}>
         <h4 style={h4}>Replace this firm</h4>
         <p style={hint}>For a stand-in, or a change of firm. You add the new firm, and this one is retired: its link stops working, its people stop getting emails, and its history stays.</p>
+        {leaves ? <p data-legal-firm-replace-leaves style={leavesLine}>{leaves}</p> : null}
         <button type="button" onClick={() => setOpen(true)} style={btn}>Replace with a new firm…</button>
       </section>
     )
@@ -75,6 +80,7 @@ export default function LegalFirmReplacePanel({ firm, facts, onReplaced, onShowA
   return (
     <section data-legal-firm-replace={blocked ? 'blocked' : 'open'} style={section}>
       <h4 style={h4}>Replace {firm.name}</h4>
+      {leaves ? <p data-legal-firm-replace-leaves style={leavesLine}>{leaves}</p> : null}
       {blocked ? (
         <div style={warn}>
           <b>{facts.withFirm.length === 1 ? '1 account is' : `${facts.withFirm.length} accounts are`} with {firm.name}.</b> Pull {facts.withFirm.length === 1 ? 'it' : 'them'} back first, so no account is left with a firm that is gone.
@@ -118,6 +124,7 @@ export default function LegalFirmReplacePanel({ firm, facts, onReplaced, onShowA
 const section: CSSProperties = { marginTop: '1.25rem', paddingTop: '1rem', borderTop: '1px solid var(--border)' }
 const h4: CSSProperties = { margin: 0, fontSize: '0.92rem' }
 const hint: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-muted)', margin: '4px 0 10px' }
+const leavesLine: CSSProperties = { fontSize: '0.8rem', color: 'var(--text-amber-800)', margin: '0 0 10px' }
 const label: CSSProperties = { display: 'grid', gap: 4, fontSize: '0.8rem', color: 'var(--text-muted)' }
 const input: CSSProperties = { width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', fontSize: '0.9rem' }
 const btn: CSSProperties = { padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.86rem', cursor: 'pointer' }

@@ -7,7 +7,7 @@ import { useAuth } from '../../hooks/useAuth'
 import { useHoldsUnsavedWork } from '../../hooks/useHoldsUnsavedWork'
 import { useReloadDraft } from '../../hooks/useReloadDraft'
 import { DRAFT_RESTORED_TOAST, draftStorageKey } from '../../lib/reloadDraft'
-import { particularsFilled } from '../../lib/legal/legalFirmFacts'
+import { legalFirmDetailsLine, particularsFilled } from '../../lib/legal/legalFirmFacts'
 import {
   changedWords,
   countiesOf,
@@ -51,7 +51,14 @@ const EMPTY_PARTICULARS: Particulars = { entity: '', license: '', agent: '', cus
 const PARTICULARS_KEY = 'legal_particulars_v1'
 const FIRM_COLUMNS = 'id, name, handling_name, email, phone, contingency_pct, filing_cost, active, created_at'
 
-export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firmFacts = null, firmId = null }: { onSaved?: () => void; inWindow?: boolean; firmFacts?: ReactNode; firmId?: string | null } = {}) {
+export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firmFacts = null, firmId = null, pickFirmId = null }: {
+  onSaved?: () => void
+  inWindow?: boolean
+  firmFacts?: ReactNode
+  firmId?: string | null
+  /** The firm picked when the block opens (punch list #222, PR 1): the firm window's *Color its counties…* names it; else the oldest firm. */
+  pickFirmId?: string | null
+} = {}) {
   const { role, user } = useAuth()
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
@@ -68,6 +75,9 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
   const [savingCounties, setSavingCounties] = useState(false)
   const [particulars, setParticulars] = useState<Particulars>(EMPTY_PARTICULARS)
   const [pDirty, setPDirty] = useState(false)
+  // The window's two folds (punch list #222, PR 1); on Settings both sections sit open as before.
+  const [detailsOpen, setDetailsOpen] = useState(false)
+  const [particularsOpen, setParticularsOpen] = useState(false)
   const [pSaving, setPSaving] = useState(false)
   const pDraft = useReloadDraft<Particulars>(draftStorageKey('legal-firm', 'particulars'))
   useEffect(() => {
@@ -99,9 +109,9 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
     const counties = c.error ? [] : ((c.data ?? []) as LegalFirmCountyRow[])
     setCountyRows(counties)
     setDraft(savedAssignments(counties, new Set(rows.filter((r) => r.active).map((r) => r.id))))
-    setPickedFirmId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : rows[0]?.id ?? null))
+    setPickedFirmId((cur) => (cur && rows.some((r) => r.id === cur) ? cur : pickFirmId && rows.some((r) => r.id === pickFirmId) ? pickFirmId : rows[0]?.id ?? null))
     setLoaded(true)
-  }, [inWindow, firmId])
+  }, [inWindow, firmId, pickFirmId])
 
   useEffect(() => {
     if (role !== 'dev') return
@@ -228,7 +238,7 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
       {inWindow ? (
         <div>
           <h4 style={{ margin: 0, fontSize: '0.95rem' }}>Who we release accounts to</h4>
-          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>This firm’s name and handling person print on every release and on the firm’s portal. Its counties are set on Settings → Jobs & billing.</span>
+          <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>This firm’s name and handling person print on every release and on the firm’s portal. Its counties are colored under Firms… and read above.</span>
         </div>
       ) : (
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
@@ -242,7 +252,16 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
         <p style={{ fontSize: '0.84rem', color: 'var(--text-muted)', margin: '0.75rem 0 0' }}>Loading…</p>
       ) : inWindow ? (
         <>
-          <LegalFirmCard key={windowFirm?.id ?? 'none'} firm={windowFirm} bare firmFacts={firmFacts} onSaved={firmSaved} />
+          {/* Punch list #222, PR 1: the details fold to one line; Edit details opens the form in place (hidden, not unmounted, so a half-typed edit never leaves). A new firm opens on the form. */}
+          <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 6, fontSize: '0.82rem' }}>
+            <span data-legal-firm-details-line style={{ color: 'var(--text-muted)' }}>{windowFirm ? legalFirmDetailsLine(windowFirm) : 'No firm yet.'}</span>
+            {windowFirm ? (
+              <button type="button" onClick={() => setDetailsOpen((v) => !v)} aria-expanded={detailsOpen} style={foldBtn}>{detailsOpen ? 'Hide details' : 'Edit details'}</button>
+            ) : null}
+          </div>
+          <div hidden={Boolean(windowFirm) && !detailsOpen}>
+            <LegalFirmCard key={windowFirm?.id ?? 'none'} firm={windowFirm} bare firmFacts={firmFacts} onSaved={firmSaved} />
+          </div>
         </>
       ) : (
         <>
@@ -282,8 +301,12 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
             <h4 style={{ margin: 0, fontSize: '0.92rem' }}>Click’s particulars for filing</h4>
             <ParticularsCount particulars={particulars} />
             <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>What a petition or lien affidavit needs from the claimant — shown on every firm’s portal.</span>
+            {/* In the window the eight fields fold (punch list #222, PR 1): they are Click's, the same on every firm's portal, and read as the firm's when they sit open. A half-typed edit keeps them open. */}
+            {inWindow ? (
+              <button type="button" onClick={() => setParticularsOpen((v) => !v)} aria-expanded={particularsOpen || pDirty} style={foldBtn}>{particularsOpen || pDirty ? 'Hide particulars' : 'Edit particulars'}</button>
+            ) : null}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginTop: '0.75rem' }}>
+          <div hidden={inWindow && !particularsOpen && !pDirty} style={{ display: inWindow && !particularsOpen && !pDirty ? undefined : 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: 10, marginTop: '0.75rem' }}>
             <label style={label}>Legal entity<input style={input} value={particulars.entity} onChange={setP('entity')} placeholder="Click Plumbing and Electrical, LLC" /></label>
             <label style={label}>License<input style={input} value={particulars.license} onChange={setP('license')} placeholder="TX RMP M-…" /></label>
             <label style={label}>Registered agent<input style={input} value={particulars.agent} onChange={setP('agent')} /></label>
@@ -293,7 +316,7 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
             <label style={label}>Office email<input style={input} value={particulars.email} onChange={setP('email')} /></label>
             <label style={label}>W-9 / EIN note<input style={input} value={particulars.w9} onChange={setP('w9')} placeholder="on request from the office" /></label>
           </div>
-          <div style={{ marginTop: 10 }}>
+          <div hidden={inWindow && !particularsOpen && !pDirty} style={{ marginTop: 10 }}>
             <button type="button" onClick={() => void saveParticulars()} disabled={!pDirty || pSaving} style={{ padding: '0.4rem 0.9rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: pDirty ? 'var(--text-700)' : 'var(--bg-muted)', color: pDirty ? 'var(--surface)' : 'var(--text-muted)', fontSize: '0.86rem', cursor: pDirty ? 'pointer' : 'default' }}>
               {pSaving ? 'Saving…' : 'Save particulars'}
             </button>
@@ -303,6 +326,9 @@ export default function LegalFirmSettingsBlock({ onSaved, inWindow = false, firm
     </div>
   )
 }
+
+/** The fold's door in the window: a link-styled press, `Edit details` · `Hide details`. */
+const foldBtn = { padding: 0, background: 'none', border: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer', textDecoration: 'underline' } as const
 
 /** `3 of 8 filled`: how much of the company's filing details the firm can read today (v2.4711). */
 function ParticularsCount({ particulars }: { particulars: Particulars }) {
