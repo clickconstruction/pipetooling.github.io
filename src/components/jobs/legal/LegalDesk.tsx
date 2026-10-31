@@ -761,7 +761,8 @@ export default function LegalDesk(props: LegalDeskProps) {
   ) : (
     <>
       {matter?.pulled_at ? pill(`Pulled back ${calendarYmdInAppTzFromIso(matter.pulled_at)}${matter.pulled_reason ? ` · ${matter.pulled_reason}` : ''}`, 'neutral') : null}
-      {inHouse ? <span data-legal-in-house>{pill(inHouseWords(matter?.in_house_at ? calendarYmdInAppTzFromIso(matter.in_house_at) : '', matter?.in_house_why ?? ''), 'legal')}</span> : null}
+      {/* v2.6193: the pill says the day alone; the reason typed at the door sits under the account's name with the other quiet lines. */}
+      {inHouse ? <span data-legal-in-house>{pill(inHouseWords(matter?.in_house_at ? calendarYmdInAppTzFromIso(matter.in_house_at) : '', ''), 'legal')}</span> : null}
       {matter?.review_requested_at ? pill(`${requesterName} asked for a dev${requestedDays != null ? ` · ${requestedDays}d ago` : ''}`, 'blue') : null}
       {canMarkReady ? (
         releaseHold ? (
@@ -986,6 +987,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                       {parties ? parties.addressLine : selected.jobs.map((j) => j.hcp_number || j.click_number).filter(Boolean).join(' · ')}
                       {matter?.review_requested_at && !withFirm && !closed ? <><br /><span style={{ color: 'var(--text-blue-700)' }}>{requesterName} asked for a dev’s eyes{requestedDays != null ? ` ${requestedDays}d ago` : ''}{matter.review_request_note ? `: “${matter.review_request_note}”` : ''}</span></> : null}
                       {withFirm && matter?.note_to_firm ? <><br /><span style={MUTED}>Note to the firm: “{matter.note_to_firm}”</span></> : null}
+                      {inHouse && matter?.in_house_why ? <><br /><span style={MUTED} data-legal-in-house-why>Why in house: “{matter.in_house_why}”</span></> : null}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
