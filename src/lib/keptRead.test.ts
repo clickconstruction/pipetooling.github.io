@@ -3,6 +3,8 @@ import {
   COULD_NOT_READ_AGAIN_WORDS,
   KEPT_READ_MAX_AGE_MS,
   KEPT_READ_SCHEMA,
+  QUICKFILL_COUNTING_AGAIN_WORDS,
+  QUICKFILL_KEPT_LEAD,
   READING_AGAIN_WORDS,
   buildKeptRead,
   buildKeptReadKey,
@@ -146,6 +148,10 @@ describe('keptReadStampWords', () => {
   it('takes the page’s own lead', () => {
     expect(keptReadStampWords({ readAt: t, lead: 'Counts from', failed: false, format }).text).toBe('Counts from 7:52 AM · counting again…'.replace('counting again…', READING_AGAIN_WORDS))
     expect(keptReadStampWords({ readAt: t, lead: 'Your day as read at', failed: false, format }).stamp).toBe('Your day as read at 7:52 AM')
+  })
+  it('takes the page’s own word for the read in flight, and keeps could not read again on a failure (Quickfill, PR 4)', () => {
+    expect(keptReadStampWords({ readAt: t, lead: QUICKFILL_KEPT_LEAD, again: QUICKFILL_COUNTING_AGAIN_WORDS, failed: false, format }).text).toBe('Counts from 7:52 AM · counting again…')
+    expect(keptReadStampWords({ readAt: t, lead: QUICKFILL_KEPT_LEAD, again: QUICKFILL_COUNTING_AGAIN_WORDS, failed: true, format }).text).toBe('Counts from 7:52 AM · could not read again · Retry')
   })
 })
 

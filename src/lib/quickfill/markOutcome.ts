@@ -7,6 +7,8 @@
  * press writes its outcome on the mark event. Pure: counts in, presses and words out.
  */
 
+import { READING_AGAIN_WORDS } from '../keptRead'
+
 export type MarkOutcome = 'done' | 'worked' | 'question'
 
 export const MARK_OUTCOMES: readonly MarkOutcome[] = ['done', 'worked', 'question']
@@ -33,9 +35,19 @@ export type MarkPress = {
 /**
  * The three presses for a count. Done is lit at zero or when the station has no count (a look);
  * Worked it is lit above zero; Not sure is always lit. `noun` is the count's word (*open*, *due*,
- * *waiting*), *open* by default.
+ * *waiting*), *open* by default. `held` (punch list #183 PR 4): the station's count on screen is
+ * the device's kept read, so Done and Worked it wait with the words they would have and the hint
+ * *reading again…*, and a press never records yesterday's count; Not sure stays lit.
  */
-export function markPresses(count: number | null | undefined, noun = 'open', loading = false): MarkPress[] {
+export function markPresses(count: number | null | undefined, noun = 'open', loading = false, held = false): MarkPress[] {
+  if (held && !loading) {
+    const [done, worked, question] = markPresses(count, noun, false)
+    return [
+      { ...done!, enabled: false, hint: READING_AGAIN_WORDS },
+      { ...worked!, enabled: false, hint: READING_AGAIN_WORDS },
+      question!,
+    ]
+  }
   // Still counting (v2.5868): Done and Worked it wait, so a press never saves a mark with no count; Not sure stays lit.
   if (loading) {
     return [

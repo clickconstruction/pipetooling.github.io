@@ -67,6 +67,10 @@ import { QuickfillPercentCompleteSection } from '../components/quickfill/Quickfi
 import { useQuickfillPercentComplete } from '../hooks/useQuickfillPercentComplete'
 import { useQuickfillMessages } from '../hooks/useQuickfillMessages'
 import { useQuickfillFieldPhotos } from '../hooks/useQuickfillFieldPhotos'
+import { useKeptRead } from '../hooks/useKeptRead'
+import { QUICKFILL_KEPT_SCOPES, buildQuickfillKeptRows, keptMarkedAtsBySection, quickfillDeckLoading, quickfillKeptCountLine, quickfillKeptDeckRows, quickfillKeptKey, quickfillKeptRowIsValid, quickfillStationReadsOn, type QuickfillKeptRow } from '../lib/quickfill/keptDeck'
+import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
+import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { fieldPhotoAgeRows, fieldPhotosAgedNextLine, fieldPhotosMarkNote, fieldPhotosSince } from '../lib/quickfill/fieldPhotosAge'
 import { formatDayLabel, formatMarkTime } from '../lib/quickfill/markHistory'
 import { messagesMarkNoteFor, messagesNextLine } from '../lib/quickfill/messagesStation'
@@ -138,6 +142,8 @@ const APP_SETTINGS_KEY_QUICKFILL_HIDDEN = 'quickfill_hidden_section_ids'
 const APP_SETTINGS_KEY_QUICKFILL_MIN_HCP = 'quickfill_jobs_billing_min_hcp'
 const APP_SETTINGS_KEY_QUICKFILL_SECTION_ORDER = 'quickfill_section_order'
 const APP_SETTINGS_KEY_QUICKFILL_SECTION_BANNERS = 'quickfill_section_banners'
+/** The fallback sentence when the deck's marks or history read fails with nothing the kernel can name (#183 PR 4). */
+const DECK_READ_FAILED_WORDS = 'Could not read the round.'
 const QUICKFILL_SECTION_BANNER_MAX_CHARS = 800
 const DEFAULT_JOBS_BILLING_MIN_HCP = 406
 
@@ -478,8 +484,31 @@ function QuickfillPage() {
   } = useDispatchInbox()
   const jobFormModal = useJobFormModal()
   const { getOutstandingCount, getMarkNote, metrics: sectionMetrics } = useQuickfillSectionMetricsContext()
+  const location = useLocation()
+  const narrowViewport = useNarrowViewport640()
+  // The view (punch list #147, v2.5778): `?view=` on the URL for the visit, else the one this
+  // person chose last, else the Roller (v2.5813, the owner's ask; the whole page before).
+  // Remembered per person on the device, the Needs you card's Cards / Walk precedent; the
+  // table comes with the Roller. The phone never reads it: under 640 px the page is the round.
+  const [view, setView] = useState<QuickfillView>(() => quickfillOpeningView(location.search, authUser?.id))
+  const viewRequested = parseQuickfillViewRequest(location.search)
+  useEffect(() => {
+    if (viewRequested) setView(viewRequested)
+    else {
+      const stored = readStoredQuickfillView(authUser?.id)
+      if (stored) setView(stored)
+    }
+  }, [authUser?.id, viewRequested])
+  // Which stations' page-level reads run (punch list #183 PR 4, the Roller's read diet): on the Page and in Focus
+  // every station is on screen, so every read runs; on the Roller and the phone's round only the station on
+  // screen reads, and the deck draws the others' counts from the mark history, at last look. The station on
+  // screen is the URL's, read before the layout lands so its read starts with the page.
+  const roundStationRaw = parseQuickfillStationRequest(location.hash, location.search)
+  const everyStationOnScreen = !narrowViewport && view !== 'roller'
+  const stationOnScreen = everyStationOnScreen ? null : roundStationRaw
+  const stationReadsOn = (sectionId: string): boolean => quickfillStationReadsOn({ everyStationOnScreen, stationOnScreen, sectionId })
   const unpricedFixturesCount = useUnpricedFixturesCount()
-  const quickfillNoCustomerStages = useQuickfillStagesJobsWithoutCustomer()
+  const quickfillNoCustomerStages = useQuickfillStagesJobsWithoutCustomer(stationReadsOn('no-customer-stages'))
   // Needs You (journey-map #40): open dispatch requests past the min age, from the inbox rows this page already holds.
   const dispatchAged = useMemo(
     () =>
@@ -504,7 +533,7 @@ function QuickfillPage() {
   useReportQuickfillSectionMetric(
     'no-customer-stages',
     quickfillStagesAlertsUnionCount,
-    quickfillNoCustomerStages.fetchEnabled && quickfillNoCustomerStages.loading,
+    quickfillNoCustomerStages.fetchEnabled && (!stationReadsOn('no-customer-stages') || quickfillNoCustomerStages.loading),
     null,
     null,
     !quickfillNoCustomerStages.fetchEnabled || quickfillNoCustomerStages.loading
@@ -516,21 +545,21 @@ function QuickfillPage() {
         }),
   )
   // Property kinds (v2.4727): one row per unset property across the unpaid jobs; the count is properties, reported from here so it stays live while the strip is collapsed.
-  const quickfillPropertyKinds = useQuickfillPropertyKinds()
+  const quickfillPropertyKinds = useQuickfillPropertyKinds(stationReadsOn('property-kinds'))
   useReportQuickfillSectionMetric(
     'property-kinds',
     quickfillPropertyKinds.fetchEnabled ? (quickfillPropertyKinds.loading ? null : quickfillPropertyKinds.rows.length) : null,
-    quickfillPropertyKinds.fetchEnabled && quickfillPropertyKinds.loading,
+    quickfillPropertyKinds.fetchEnabled && (!stationReadsOn('property-kinds') || quickfillPropertyKinds.loading),
     null,
     null,
     quickfillPropertyKinds.fetchEnabled && !quickfillPropertyKinds.loading ? propertyKindsNextLine(quickfillPropertyKinds.rows.map((r) => ({ address: r.address, customerName: r.customerName, openBalance: r.jobs.reduce((n, j) => n + j.openBalance, 0), lienClock: r.lienClock }))) : null,
   )
   // Percent complete (v2.5764): the open jobs whose ticked stages or paid money disagree with the % done; the count is jobs, reported from here so it stays live while the strip is collapsed.
-  const quickfillPercentComplete = useQuickfillPercentComplete()
+  const quickfillPercentComplete = useQuickfillPercentComplete(stationReadsOn('percent-complete'))
   useReportQuickfillSectionMetric(
     'percent-complete',
     quickfillPercentComplete.fetchEnabled ? (quickfillPercentComplete.loading ? null : quickfillPercentComplete.list.count) : null,
-    quickfillPercentComplete.fetchEnabled && quickfillPercentComplete.loading,
+    quickfillPercentComplete.fetchEnabled && (!stationReadsOn('percent-complete') || quickfillPercentComplete.loading),
     null,
     null,
     quickfillPercentComplete.fetchEnabled && !quickfillPercentComplete.loading ? percentCompleteNextLine(quickfillPercentComplete.list.cards) : null,
@@ -539,11 +568,11 @@ function QuickfillPage() {
   // ledger from one read of Messages' own queue; the count is the badge's number, reported from here so it stays live
   // while the strip is collapsed. The office team alone reads Messages.
   const quickfillMessagesEnabled = canOpenMessages(role)
-  const quickfillMessages = useQuickfillMessages(quickfillMessagesEnabled)
+  const quickfillMessages = useQuickfillMessages(quickfillMessagesEnabled && stationReadsOn('messages'))
   useReportQuickfillSectionMetric(
     'messages',
     quickfillMessagesEnabled && quickfillMessages.station ? quickfillMessages.station.count : null,
-    quickfillMessagesEnabled && quickfillMessages.loading,
+    quickfillMessagesEnabled && (!stationReadsOn('messages') || quickfillMessages.loading),
     null,
     null,
     quickfillMessagesEnabled ? messagesNextLine(quickfillMessages.station) : null,
@@ -566,7 +595,7 @@ function QuickfillPage() {
   const [sectionMarks, setSectionMarks] = useState<Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }>>({})
   // Field photos → Drive (v2.5888, punch list #180, PR 5): the estimates still holding field photos, read here so the count
   // reaches a mark on a collapsed strip; the body signs the photo URLs when it is on screen.
-  const quickfillFieldPhotos = useQuickfillFieldPhotos(!!authUser?.id)
+  const quickfillFieldPhotos = useQuickfillFieldPhotos(!!authUser?.id && stationReadsOn('field-photos'))
   const quickfillFieldPhotoRows = useMemo(
     () => (quickfillFieldPhotos.groups ? fieldPhotoAgeRows(quickfillFieldPhotos.groups, new Date().toISOString()) : null),
     [quickfillFieldPhotos.groups],
@@ -581,7 +610,7 @@ function QuickfillPage() {
   useReportQuickfillSectionMetric(
     'field-photos',
     quickfillFieldPhotoRows && !quickfillFieldPhotos.loading ? quickfillFieldPhotoRows.length : null,
-    quickfillFieldPhotos.loading,
+    !stationReadsOn('field-photos') || quickfillFieldPhotos.loading,
     null,
     quickfillFieldPhotoRows && !quickfillFieldPhotos.loading ? fieldPhotosMarkNote(quickfillFieldPhotoRows, 7, quickfillFieldPhotosSince) : null,
     quickfillFieldPhotoRows && !quickfillFieldPhotos.loading ? fieldPhotosAgedNextLine(quickfillFieldPhotoRows) : null,
@@ -624,11 +653,11 @@ function QuickfillPage() {
   const [hiddenSectionIds, setHiddenSectionIds] = useState<Set<string>>(() => new Set())
   const [activeSectionsPanelOpen, setActiveSectionsPanelOpen] = useState(false)
   const [jobsBillingMinHcp, setJobsBillingMinHcp] = useState<number>(DEFAULT_JOBS_BILLING_MIN_HCP)
-  const quickfillCompleteNoBill = useQuickfillCompleteNoBillJobs(jobsBillingMinHcp)
+  const quickfillCompleteNoBill = useQuickfillCompleteNoBillJobs(jobsBillingMinHcp, stationReadsOn('complete-no-bill'))
   useReportQuickfillSectionMetric(
     'complete-no-bill',
     quickfillCompleteNoBill.fetchEnabled ? quickfillCompleteNoBill.completeNoBillJobs.length : null,
-    quickfillCompleteNoBill.fetchEnabled && quickfillCompleteNoBill.loading,
+    quickfillCompleteNoBill.fetchEnabled && (!stationReadsOn('complete-no-bill') || quickfillCompleteNoBill.loading),
     null,
     null,
     quickfillCompleteNoBill.fetchEnabled && !quickfillCompleteNoBill.loading ? completeNoBillNextLine(quickfillCompleteNoBill.completeNoBillJobs) : null,
@@ -957,10 +986,26 @@ function QuickfillPage() {
     [role, persistSectionOrder],
   )
 
+  // The deck's two reads, said when they land or fail (punch list #183 PR 4): the kept deck's `loading` turns
+  // false only once both have, and a failure keeps the kept deck up with *could not read again · Retry*.
+  const [sectionMarksLoaded, setSectionMarksLoaded] = useState(false)
+  const [marksReadError, setMarksReadError] = useState<OfflineRecoveryLastError | null>(null)
+  const [eventsReadError, setEventsReadError] = useState<OfflineRecoveryLastError | null>(null)
+  const [deckReloadNonce, setDeckReloadNonce] = useState(0)
+  const retryDeckRead = useCallback(() => setDeckReloadNonce((n) => n + 1), [])
+
   async function loadSectionMarks() {
-    const { data } = await supabase
+    // Out again: the kept deck's `loading` flips, so a read again (the stamp's Retry, a mark's reload) lands as a new read.
+    setSectionMarksLoaded(false)
+    const { data, error } = await supabase
       .from('quickfill_section_marks')
       .select('section_id, marked_at, marked_by, users!quickfill_section_marks_marked_by_fkey(name)')
+    if (error) {
+      setMarksReadError(recoveryFailureFromError(error, DECK_READ_FAILED_WORDS))
+      setSectionMarksLoaded(true)
+      return
+    }
+    setMarksReadError(null)
     const map: Record<string, { marked_at: string; marked_by?: string; marked_by_name?: string | null }> = {}
     for (const row of data ?? []) {
       const r = row as { section_id: string; marked_at: string; marked_by?: string; users?: { name: string | null } | null }
@@ -974,11 +1019,13 @@ function QuickfillPage() {
       }
     }
     setSectionMarks(map)
+    setSectionMarksLoaded(true)
   }
 
   useEffect(() => {
+    // The nonce is the stamp's Retry (#183 PR 4): the marks and the history read again.
     loadSectionMarks()
-  }, [])
+  }, [deckReloadNonce])
 
   async function markSectionUpToDate(sectionId: string, options?: { noteText?: string | null; outcome?: MarkOutcome | null; questionWords?: string }) {
     const markedAt = new Date().toISOString()
@@ -1069,21 +1116,6 @@ function QuickfillPage() {
   // layout read so an org-hidden section fails soft as "hidden" rather than
   // racing the settings fetch, applies once per URL, and polls briefly for the
   // element because section bodies mount after their eligibility hooks settle.
-  const location = useLocation()
-
-  // The view (punch list #147, v2.5778): `?view=` on the URL for the visit, else the one this
-  // person chose last, else the Roller (v2.5813, the owner's ask; the whole page before).
-  // Remembered per person on the device, the Needs you card's Cards / Walk precedent; the
-  // table comes with the Roller. The phone never reads it: under 640 px the page is the round.
-  const [view, setView] = useState<QuickfillView>(() => quickfillOpeningView(location.search, authUser?.id))
-  const viewRequested = parseQuickfillViewRequest(location.search)
-  useEffect(() => {
-    if (viewRequested) setView(viewRequested)
-    else {
-      const stored = readStoredQuickfillView(authUser?.id)
-      if (stored) setView(stored)
-    }
-  }, [authUser?.id, viewRequested])
   const chooseView = useCallback(
     (next: QuickfillView) => {
       setView(next)
@@ -1933,7 +1965,6 @@ function QuickfillPage() {
     }
   }
 
-  const narrowViewport = useNarrowViewport640()
   const freshnessLine = useMemo(
     () =>
       quickfillFreshnessSummary(
@@ -1951,23 +1982,30 @@ function QuickfillPage() {
   const [roundEventsLoaded, setRoundEventsLoaded] = useState(false)
   useEffect(() => {
     let cancelled = false
+    setRoundEventsLoaded(false)
     void (async () => {
       const since = new Date(Date.now() - 60 * 86_400_000).toISOString()
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from('quickfill_section_mark_events')
         .select('section_id, marked_at, outstanding_count, outcome, users!quickfill_section_mark_events_marked_by_fkey(name)')
         .gte('marked_at', since)
         .order('marked_at', { ascending: false })
         .limit(2000)
-      if (!cancelled) {
-        setRoundEvents((data ?? []).map((r) => ({ section_id: foldRetiredSectionId(r.section_id), marked_at: r.marked_at, outstanding_count: r.outstanding_count, outcome: r.outcome ?? null, marked_by_name: r.users?.name ?? null })))
+      if (cancelled) return
+      if (error) {
+        // Said, never drawn as an empty deck (#183 PR 4): the kept deck stays up, or the Roller names the reason.
+        setEventsReadError(recoveryFailureFromError(error, DECK_READ_FAILED_WORDS))
         setRoundEventsLoaded(true)
+        return
       }
+      setEventsReadError(null)
+      setRoundEvents((data ?? []).map((r) => ({ section_id: foldRetiredSectionId(r.section_id), marked_at: r.marked_at, outstanding_count: r.outstanding_count, outcome: r.outcome ?? null, marked_by_name: r.users?.name ?? null })))
+      setRoundEventsLoaded(true)
     })()
     return () => {
       cancelled = true
     }
-  }, [sectionMarks])
+  }, [sectionMarks, deckReloadNonce])
   const roundNow = useMemo(() => new Date(), [sectionMarks, roundEvents]) // eslint-disable-line react-hooks/exhaustive-deps
   const roundRowsValue = useMemo(
     () =>
@@ -1982,26 +2020,69 @@ function QuickfillPage() {
       ),
     [orderedSections, sectionWouldRenderOnPage, sectionMarks, roundEvents, getOutstandingCount, roundNow],
   )
+  // The kept deck (punch list #183 PR 4, `lib/quickfill/keptDeck.ts`): on the Roller and the phone's round the deck
+  // with each station's count and Next line is kept on the device through `useKeptRead`, keyed by the person. While
+  // the marks, the history, the layout or the on-screen station's count are still out, the deck the device kept
+  // draws under the stamp *Counts from 7:52 AM · counting again…* with Done and Worked it held; once every one
+  // landed the live deck replaces it and is written back. On the Page and in Focus nothing is kept: every station
+  // draws its own body. A failed read keeps the kept deck up with the stamp's Retry; with nothing kept the Roller
+  // names the reason.
+  const deckReadError = marksReadError ?? eventsReadError
+  // Both reads landed clean at least once this visit: a later failure (a mark's reload) keeps the deck on screen as it
+  // was; a failure before any landing, with nothing kept, is a broken deck, named rather than drawn as never marked.
+  const [deckEverLanded, setDeckEverLanded] = useState(false)
+  useEffect(() => {
+    if (sectionMarksLoaded && roundEventsLoaded && !marksReadError && !eventsReadError) setDeckEverLanded(true)
+  }, [sectionMarksLoaded, roundEventsLoaded, marksReadError, eventsReadError])
+  const deckKey = authUser?.id && !everyStationOnScreen ? quickfillKeptKey(authUser.id) : null
+  const deckRowsToKeep = useMemo(
+    () =>
+      buildQuickfillKeptRows({
+        rows: roundRowsValue,
+        nextLineOf: (id) => (sectionMetrics[id]?.loading ? null : (sectionMetrics[id]?.nextLine ?? null)),
+        markedAtsOf: keptMarkedAtsBySection(roundEvents),
+      }),
+    [roundRowsValue, sectionMetrics, roundEvents],
+  )
+  const deckLoading = quickfillDeckLoading({
+    marksLoaded: sectionMarksLoaded,
+    eventsLoaded: roundEventsLoaded,
+    layoutLoaded: layoutSettingsLoaded,
+    stationOnScreen,
+    personal: (id) => QUICKFILL_PERSONAL_SECTIONS.has(id),
+    metricOf: (id) => sectionMetrics[id],
+  })
+  const keptDeck = useKeptRead<QuickfillKeptRow>(deckKey, deckRowsToKeep, { loading: deckLoading, scopes: QUICKFILL_KEPT_SCOPES, failed: deckReadError != null, rowIsValid: quickfillKeptRowIsValid })
+  const deckKept = keptDeck.readAt != null
+  const keptDeckRows = keptDeck.rows
+  /** The deck the Roller and the round draw: the kept one re-read against the clock while the live read runs, else the live one. */
+  const deckRows = useMemo(() => (deckKept && keptDeckRows ? quickfillKeptDeckRows(keptDeckRows, roundNow) : roundRowsValue), [deckKept, keptDeckRows, roundNow, roundRowsValue])
+  const deckHas = (sectionId: string) => deckRows.some((r) => r.sectionId === sectionId)
+  const deckReadBroken = deckReadError != null && !deckKept && !deckEverLanded
+  const keptDeckProps = deckKept && keptDeck.readAt != null ? { readAt: keptDeck.readAt, failed: keptDeck.failed, onRetry: retryDeckRead } : null
   // A round screen's count line (punch list #156, v2.5826): the live count, and the *last look*
-  // words apart, which QuickfillRoundScreen draws as a door to the station's Mark history.
+  // words apart, which QuickfillRoundScreen draws as a door to the station's Mark history. On a
+  // kept deck (#183 PR 4) the count and the Next line are the kept row's, *3 open at 7:52 AM*.
   const roundCountParts = (sectionId: string): { countLine: string; lastLook: string | null; nextLine: string | null } => {
-    const row = roundRowsValue.find((r) => r.sectionId === sectionId)
+    const row = deckRows.find((r) => r.sectionId === sectionId)
+    const keptRow = deckKept ? keptDeckRows?.find((r) => r.sectionId === sectionId) : null
     const live = getOutstandingCount(sectionId)
     return {
-      nextLine: sectionMetrics[sectionId]?.loading ? null : (sectionMetrics[sectionId]?.nextLine ?? null),
-      countLine: typeof live === 'number' ? `${live} open` : '',
+      nextLine: deckKept ? (keptRow?.nextLine ?? null) : sectionMetrics[sectionId]?.loading ? null : (sectionMetrics[sectionId]?.nextLine ?? null),
+      countLine: deckKept && keptDeck.readAt != null ? quickfillKeptCountLine(keptRow, keptDeck.readAt) : typeof live === 'number' ? `${live} open` : '',
       lastLook: row && !row.personal ? (row.lastMarkedAt ? `last look ${formatRelativeTime(row.lastMarkedAt)}${row.lastMarkedByName ? ` · ${row.lastMarkedByName}` : ''}` : 'never marked') : null,
     }
   }
-  const roundStationRaw = parseQuickfillStationRequest(location.hash, location.search)
-  const roundMeta = narrowViewport && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && sectionWouldRenderOnPage(sec.sectionId)) ?? null : null
-  const roundActive = narrowViewport && layoutSettingsLoaded
+  /** The station the URL names, on the deck: a kept deck's own rows while kept, else the page's eligibility. */
+  const stationOnDeck = (sectionId: string): boolean => (deckKept ? deckHas(sectionId) : sectionWouldRenderOnPage(sectionId))
+  const roundMeta = narrowViewport && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && stationOnDeck(sec.sectionId)) ?? null : null
+  const roundActive = narrowViewport && (layoutSettingsLoaded || deckKept)
   // The company-time hour: Office Leaving joins the round after 3 p.m. (v2.5841, punch list #176, change 4).
   const companyHour = markHistoryHour(roundNow.toISOString()) ?? roundNow.getHours()
-  const roundQueueIds = roundQueue(roundRowsValue, companyHour)
+  const roundQueueIds = roundQueue(deckRows, companyHour)
   const roundPosition = roundMeta && roundQueueIds.includes(roundMeta.sectionId) ? { index: roundQueueIds.indexOf(roundMeta.sectionId) + 1, total: roundQueueIds.length } : null
   const goRound = (sectionId: string | null) => navigate(sectionId ? quickfillStationHref(sectionId) : '/quickfill')
-  const roundSkip = () => goRound(roundMeta ? nextInRound(roundRowsValue, roundMeta.sectionId) : null)
+  const roundSkip = () => goRound(roundMeta ? nextInRound(deckRows, roundMeta.sectionId) : null)
   const roundLooked = async (outcome: MarkOutcome, words: string) => {
     if (!roundMeta || roundMarking) return
     setRoundMarking(true)
@@ -2010,24 +2091,25 @@ function QuickfillPage() {
     } finally {
       setRoundMarking(false)
     }
-    goRound(nextInRound(roundRowsValue, roundMeta.sectionId))
+    goRound(nextInRound(deckRows, roundMeta.sectionId))
   }
   // The Roller (punch list #147, v2.5787): the round's screens on a desk. The deck is every
   // station not marked today (the doors last), the station is the URL's, Previous and Next
   // walk the deck, Looked marks and moves on, the Board is the index.
-  const rollerActive = !narrowViewport && view === 'roller' && layoutSettingsLoaded
-  const rollerDeckRows = useMemo(() => rollerDeck(roundRowsValue, rollerShowDone, companyHour), [roundRowsValue, rollerShowDone, companyHour])
+  const rollerActive = !narrowViewport && view === 'roller' && (layoutSettingsLoaded || deckKept)
+  const rollerDeckRows = useMemo(() => rollerDeck(deckRows, rollerShowDone, companyHour), [deckRows, rollerShowDone, companyHour])
   // The round's close sheet (v2.5845, punch list #176, change 5): today's marks with their outcomes, drawn where Round done ✓ was.
   const roundCloseToday = useMemo(() => roundCloseSheet(roundEvents, todayYmdInAppTz(), (id) => SECTION_LABEL_BY_SECTION_ID.get(id) ?? id), [roundEvents])
-  const rollerMeta = rollerActive && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && sectionWouldRenderOnPage(sec.sectionId)) ?? null : null
+  const rollerMeta = rollerActive && roundStationRaw ? SECTIONS.find((sec) => sec.sectionId === roundStationRaw && stationOnDeck(sec.sectionId)) ?? null : null
   const rollerIndex = rollerMeta ? rollerDeckRows.findIndex((r) => r.sectionId === rollerMeta.sectionId) : -1
-  const rollerDoneCount = roundRowsValue.filter((r) => !r.personal && r.state === 'fresh').length
+  const rollerDoneCount = deckRows.filter((r) => !r.personal && r.state === 'fresh').length
   const rollerFirstId = rollerDeckRows[0]?.sectionId ?? null
   useEffect(() => {
     // No station on the URL: start at the top of the deck once the marks' history is in (the
-    // rhythm rule sorts the deck). Replace, so Back leaves the page.
-    if (rollerActive && roundEventsLoaded && !roundStationRaw && rollerFirstId) navigate(quickfillStationHref(rollerFirstId), { replace: true })
-  }, [rollerActive, roundEventsLoaded, roundStationRaw, rollerFirstId, navigate])
+    // rhythm rule sorts the deck), or at the top of the kept deck while it is out (#183 PR 4).
+    // Replace, so Back leaves the page.
+    if (rollerActive && (roundEventsLoaded || deckKept) && !deckReadBroken && !roundStationRaw && rollerFirstId) navigate(quickfillStationHref(rollerFirstId), { replace: true })
+  }, [rollerActive, roundEventsLoaded, deckKept, deckReadBroken, roundStationRaw, rollerFirstId, navigate])
   const rollerGo = (sectionId: string | null) => navigate(sectionId ? quickfillStationHref(sectionId) : '/quickfill')
   const rollerPrevId = rollerMeta ? rollerPrev(rollerDeckRows, rollerMeta.sectionId) : null
   const rollerSkip = () => rollerGo(rollerMeta ? rollerNext(rollerDeckRows, rollerMeta.sectionId) : rollerFirstId)
@@ -2069,16 +2151,18 @@ function QuickfillPage() {
     // phones (caught by the viewport e2e spec).
     <div style={{ padding: '1.5rem', paddingBottom: dockSections.length > 1 ? '4.5rem' : '1.5rem', maxWidth: 1200, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       {roundActive ? (
-        <QuickfillRoundScreenContext.Provider value={roundMeta != null}>
-          {roundMeta ? (
+        <QuickfillRoundScreenContext.Provider value={roundMeta != null && !deckReadBroken}>
+          {roundMeta && !deckReadBroken ? (
             <QuickfillRoundScreen
               label={roundMeta.label}
               position={roundPosition}
               question={effectiveQuickfillSectionBanner(roundMeta.sectionId, sectionBanners)}
               sectionId={roundMeta.sectionId}
               {...roundCountParts(roundMeta.sectionId)}
-              liveCount={getOutstandingCount(roundMeta.sectionId)}
-              countLoading={!(roundMeta.sectionId in sectionMetrics) || (sectionMetrics[roundMeta.sectionId]?.loading ?? false)}
+              liveCount={deckKept ? (keptDeckRows?.find((r) => r.sectionId === roundMeta.sectionId)?.count ?? null) : getOutstandingCount(roundMeta.sectionId)}
+              countLoading={!deckKept && (!(roundMeta.sectionId in sectionMetrics) || (sectionMetrics[roundMeta.sectionId]?.loading ?? false))}
+              kept={keptDeckProps}
+              held={deckKept}
               needsNote={QUICKFILL_NOTE_FIRST_SECTIONS.has(roundMeta.sectionId)}
               personal={QUICKFILL_PERSONAL_SECTIONS.has(roundMeta.sectionId)}
               marking={roundMarking}
@@ -2092,7 +2176,12 @@ function QuickfillPage() {
           ) : (
             <>
               <h1 style={{ fontSize: '1.25rem', fontWeight: 600, margin: '0 0 0.6rem' }}>Quickfill</h1>
-              <QuickfillRoundList rows={roundRowsValue} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} hourNow={companyHour} closeSheet={roundCloseToday} />
+              {deckReadBroken && deckReadError ? (
+                // The round's read failed with nothing kept (#183 PR 4): the reason, and Retry when the signal was the trouble; never a list of never-marked stations.
+                <OfflineRetryPanel failure={deckReadError} onRetry={retryDeckRead} surface="quickfill-deck" idempotent style={{ marginBottom: '0.6rem' }} />
+              ) : (
+                <QuickfillRoundList rows={deckRows} kept={keptDeckProps} search={roundSearch} onSearch={setRoundSearch} onOpen={(id) => goRound(id)} now={roundNow} hourNow={companyHour} closeSheet={roundCloseToday} />
+              )}
             </>
           )}
         </QuickfillRoundScreenContext.Provider>
@@ -2107,8 +2196,8 @@ function QuickfillPage() {
         </span>
       </div>
       {rollerActive ? (
-        <QuickfillRoundScreenContext.Provider value={rollerMeta != null}>
-          {rollerMeta ? (
+        <QuickfillRoundScreenContext.Provider value={rollerMeta != null && !deckReadBroken}>
+          {rollerMeta && !deckReadBroken ? (
             <QuickfillRoundScreen
               wide
               label={rollerMeta.label}
@@ -2116,8 +2205,10 @@ function QuickfillPage() {
               question={effectiveQuickfillSectionBanner(rollerMeta.sectionId, sectionBanners)}
               sectionId={rollerMeta.sectionId}
               {...roundCountParts(rollerMeta.sectionId)}
-              liveCount={getOutstandingCount(rollerMeta.sectionId)}
-              countLoading={!(rollerMeta.sectionId in sectionMetrics) || (sectionMetrics[rollerMeta.sectionId]?.loading ?? false)}
+              liveCount={deckKept ? (keptDeckRows?.find((r) => r.sectionId === rollerMeta.sectionId)?.count ?? null) : getOutstandingCount(rollerMeta.sectionId)}
+              countLoading={!deckKept && (!(rollerMeta.sectionId in sectionMetrics) || (sectionMetrics[rollerMeta.sectionId]?.loading ?? false))}
+              kept={keptDeckProps}
+              held={deckKept}
               needsNote={QUICKFILL_NOTE_FIRST_SECTIONS.has(rollerMeta.sectionId)}
               personal={QUICKFILL_PERSONAL_SECTIONS.has(rollerMeta.sectionId)}
               marking={roundMarking}
@@ -2140,7 +2231,10 @@ function QuickfillPage() {
             >
               {quickfillSectionBlock(rollerMeta)}
             </QuickfillRoundScreen>
-          ) : rollerDeckRows.length === 0 ? (
+          ) : deckReadBroken && deckReadError ? (
+            // The deck's read failed with nothing kept (#183 PR 4): the reason, and Retry when the signal was the trouble; never a deck of never-marked stations.
+            <OfflineRetryPanel failure={deckReadError} onRetry={retryDeckRead} surface="quickfill-deck" idempotent style={{ justifyContent: 'center' }} messageStyle={{ textAlign: 'center' }} />
+          ) : rollerDeckRows.length === 0 && roundEventsLoaded && sectionMarksLoaded ? (
             <QuickfillRoundCloseSheet
               sheet={roundCloseToday}
               onOpenStation={(id) => {
@@ -2422,6 +2516,7 @@ function QuickfillPage() {
       {rollerActive && rollerBoardOpen ? (
         <QuickfillBoard
           rows={rollerDeckRows}
+          kept={deckKept}
           currentId={rollerMeta?.sectionId ?? null}
           questionOf={(id) => effectiveQuickfillSectionBanner(id, sectionBanners)}
           now={roundNow}
