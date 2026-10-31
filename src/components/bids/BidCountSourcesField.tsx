@@ -4,6 +4,8 @@ import { supabase } from '../../lib/supabase'
 import { useAuth } from '../../hooks/useAuth'
 import { useUserDisplayNames } from '../../hooks/useUserDisplayNames'
 import { BID_COUNT_SOURCE_SELECT, type BidCountSourceRow } from '../../hooks/useBidCountSourcesByBid'
+import { versionChipWords } from '../../lib/bids/bidPlanSets'
+import { fetchBidVersionNames } from '../../lib/bids/bidVersionNames'
 import { countSourceLabel, parseSourceShares, rowsCarryingKey, sharesWithoutKey } from '../../lib/bids/countSources'
 import { countSourceTokenOf } from '../../lib/bids/parseCountsImportText'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -41,6 +43,7 @@ export function BidCountSourcesField({ bidId, onFirstLinkChange }: BidCountSourc
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [versionNames, setVersionNames] = useState<ReadonlyMap<string, string>>(new Map())
   const names = useUserDisplayNames(sources.map((s) => s.imported_by))
 
   useEffect(() => {
@@ -54,6 +57,7 @@ export function BidCountSourcesField({ bidId, onFirstLinkChange }: BidCountSourc
         if (src.error) throw src.error
         if (cancelled) return
         setSources((src.data ?? []) as BidCountSourceRow[])
+        if ((src.data ?? []).some((r) => (r as BidCountSourceRow).bid_version_id)) setVersionNames(await fetchBidVersionNames(bidId))
         setRows((cr.data ?? []) as Array<{ id: string; source_shares: unknown }>)
       } catch (e) {
         if (!cancelled) setError(formatErrorMessage(e, 'Could not read the CountTooling projects'))
@@ -154,6 +158,11 @@ export function BidCountSourcesField({ bidId, onFirstLinkChange }: BidCountSourc
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
                     <span style={{ fontWeight: 600 }}>{countSourceLabel(src, who)}</span>
+                    {src.bid_version_id && versionChipWords(versionNames.get(src.bid_version_id)) ? (
+                      <span data-testid="bid-count-source-version" style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', color: 'var(--text-amber-800)' }} title="This project came with the bid adopted as this version">
+                        {versionChipWords(versionNames.get(src.bid_version_id))}
+                      </span>
+                    ) : null}
                     {i === 0 ? <span style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, border: '1px solid var(--border-strong)', color: 'var(--text-muted)' }}>first</span> : null}
                     {c.shared > 0 ? <span style={{ fontSize: '0.66rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-green-100)', color: 'var(--text-green-700)' }}>combined</span> : null}
                   </div>
