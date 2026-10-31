@@ -218,6 +218,8 @@ export function BidsCountsTab({
   }, [robotProgress.rows, robotBidId, selectedBidForCounts])
   const robotFixtures = useRobotFixtures(robotBidId, !!robotStage?.fixturesOpen)
   const [robotWindowOpen, setRobotWindowOpen] = useState(false)
+  // The stage's seven stops unfold on a row of their own above the title, as the bid flow's do (v2.6237).
+  const [robotStageOpen, setRobotStageOpen] = useState(false)
   const [robotBusy, setRobotBusy] = useState(false)
   const [robotError, setRobotError] = useState<string | null>(null)
   const [robotAsideShown, setRobotAsideShown] = useState(false)
@@ -293,7 +295,7 @@ export function BidsCountsTab({
   }, [openRobotFixturesRequest, robotStage?.fixturesOpen, robotPull])
   // The stage (PR 4): one line beside the bid flow's pill, unfolding to the seven stops; folds with the flow's fold.
   const robotStagePill = robotStage && !robotStage.void ? (
-    <RobotStageStrip stage={robotStage} variant="inline" onOpenFixtures={robotStage.fixturesOpen && robotPull ? () => setRobotWindowOpen(true) : null} />
+    <RobotStageStrip stage={robotStage} variant="inline" detached expanded={robotStageOpen} onToggleExpanded={() => setRobotStageOpen((v) => !v)} />
   ) : null
   const robotFixturesButton = robotStage?.fixturesOpen && robotPull ? (
     <button
@@ -1156,6 +1158,10 @@ export function BidsCountsTab({
             >
               ×
             </button>
+          ) : null}
+          {/* Robot fixtures (punch list #221): the stage's seven stops, unfolded above the title like the bid flow's. */}
+          {robotStageOpen && robotStage && !robotStage.void ? (
+            <RobotStageStrip stage={robotStage} variant="full" onOpenFixtures={robotStage.fixturesOpen && robotPull ? () => setRobotWindowOpen(true) : null} />
           ) : null}
           {/* v2.3200: the bid flow strip above the bid title (Review is its one door here). */}
           {flowFold.expanded ? (
