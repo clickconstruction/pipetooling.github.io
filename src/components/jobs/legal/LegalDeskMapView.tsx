@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { VenueBlock } from '../../../lib/legal/legalParties'
 import { alsoCountiesOf, alsoCovers, countiesByFirmOfCoverage, countiesLine, firmHues, firmLegend, firstCalls, NO_FIRM_HUE, type Coverage } from '../../../lib/legal/firmCounties'
-import { legendCounts, lensSummaryWords, STAND_COLOR, STAND_WORDS, uncoveredCounties, uncoveredWords, type LegalMapCase, type LegalMapStandOrNone } from '../../../lib/legal/firmMap'
+import { bridgeFirmOf, bridgeMapWords, legendCounts, lensSummaryWords, STAND_COLOR, STAND_WORDS, uncoveredCounties, uncoveredWords, type LegalMapCase, type LegalMapStandOrNone } from '../../../lib/legal/firmMap'
 import type { LegalFirmRow } from '../../../lib/legal/legalMatters'
 import LegalFirmCountyMap from '../../settings/LegalFirmCountyMap'
 import LegalCountyContentsCard from '../../settings/LegalCountyContentsCard'
@@ -61,9 +61,12 @@ export default function LegalDeskMapView({ cases, loading, firms, coverage, onOp
   const countiesByFirm = useMemo(() => countiesByFirmOfCoverage(coverage, firms.map((f) => f.id)), [coverage, firms])
   const hues = useMemo(() => firmHues(firms), [firms])
   const legend = useMemo(() => firmLegend(firms, assignments), [firms, assignments])
-  const counts = useMemo(() => legendCounts(cases, assignments, firms), [cases, assignments, firms])
-  const offCounties = useMemo(() => uncoveredCounties(cases, assignments), [cases, assignments])
-  const flag = uncoveredWords(cases, assignments)
+  // v2.6233: while no county is colored and one firm stands, that firm takes every account (the bridge); no case is red.
+  const bridgeFirmId = useMemo(() => bridgeFirmOf(assignments, firms), [assignments, firms])
+  const counts = useMemo(() => legendCounts(cases, assignments, firms, bridgeFirmId), [cases, assignments, firms, bridgeFirmId])
+  const offCounties = useMemo(() => uncoveredCounties(cases, assignments, bridgeFirmId), [cases, assignments, bridgeFirmId])
+  const flag = uncoveredWords(cases, assignments, bridgeFirmId)
+  const bridgeLine = bridgeFirmId ? bridgeMapWords(firmNames.get(bridgeFirmId) ?? 'The one firm') : null
 
   const pressCase = (c: LegalMapCase) => {
     setHeldId(c.id)
@@ -74,6 +77,7 @@ export default function LegalDeskMapView({ cases, loading, firms, coverage, onOp
   return (
     <div data-legal-map-view style={{ padding: stacked ? '12px 12px 24px' : '14px 18px 24px', overflowY: 'auto', minWidth: 0 }}>
       {flag ? <div data-legal-map-flag style={{ background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', marginBottom: 10 }}>{flag}</div> : null}
+      {bridgeLine ? <div data-legal-map-bridge style={{ background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', marginBottom: 10 }}>{bridgeLine}</div> : null}
       <div data-legal-map-grid style={{ display: 'grid', gridTemplateColumns: stacked ? 'minmax(0, 1fr)' : 'minmax(0, 1fr) 280px', gap: 14, alignItems: 'start' }}>
         <div style={{ minWidth: 0 }}>
           <div data-legal-map-summary style={{ ...MUTED, fontSize: '0.78rem', marginBottom: 4 }}>{loading && cases.length === 0 ? 'Placing the cases…' : lensSummaryWords(cases)}</div>
@@ -86,6 +90,7 @@ export default function LegalDeskMapView({ cases, loading, firms, coverage, onOp
             pickedFirmId={null}
             litFirmId={litFirmId}
             also={also}
+            bridgeFirmId={bridgeFirmId}
             cases={cases}
             heldCaseId={heldId}
             selectedCounty={county}
@@ -137,7 +142,7 @@ export default function LegalDeskMapView({ cases, loading, firms, coverage, onOp
             })}
             {firms.length === 0 ? <div style={{ ...MUTED, fontSize: '0.74rem' }}>No firm yet. Add one and color its counties under Firms.</div> : null}
           </div>
-          <LegalCountyContentsCard lens county={county} cases={cases} assignments={assignments} also={also} firmNames={firmNames} heldId={heldId} onHold={pressCase} onOpen={(c) => onOpenCase(c.key)} venue={venue} />
+          <LegalCountyContentsCard lens county={county} cases={cases} assignments={assignments} also={also} bridgeFirmId={bridgeFirmId} firmNames={firmNames} heldId={heldId} onHold={pressCase} onOpen={(c) => onOpenCase(c.key)} venue={venue} />
         </div>
       </div>
     </div>

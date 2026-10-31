@@ -118,8 +118,11 @@ describe('LegalFirmWindow', () => {
     expect(document.querySelector('[data-legal-firm-coverage-row="Travis"]')!.getAttribute('data-held')).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: 'Show on the desk map ›' }))
     expect(onShowOnMap).toHaveBeenCalledWith('firm-1')
-    // The replace panel says what a replace would do to the counties.
-    expect(document.querySelector('[data-legal-firm-replace-leaves]')!.textContent).toBe('Replacing retires ZZ Test Firm everywhere. Its 2 counties, Travis County and Williamson County, would have no firm until you color them for the new firm under Firms….')
+    // v2.6233: a firm that covers counties hands them off; Replace is gone, and Retire says why it waits.
+    expect(screen.queryByRole('button', { name: 'Replace with a new firm…' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Hand off counties…' })).toBeTruthy()
+    expect(document.querySelector('[data-legal-firm-retire]')!.getAttribute('data-legal-firm-retire')).toBe('held')
+    expect(document.querySelector('[data-legal-firm-retire-why]')!.textContent).toBe('Hand off its 2 counties first. Brazos Ridge Contracting is still with ZZ Test Firm.')
     // v2.6221: Extend coverage… turns the map into the picker in place; Cancel with nothing changed leaves at once.
     fireEvent.click(screen.getByRole('button', { name: 'Extend coverage…' }))
     expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('extending')
@@ -139,7 +142,9 @@ describe('LegalFirmWindow', () => {
     expect(nudge.textContent).toContain('The first county colored for any firm ends that')
     expect(document.querySelector('[data-legal-firm-coverage-counties]')!.textContent).toBe('no counties colored')
     expect(document.querySelector('[data-legal-firm-coverage-rows]')).toBeNull()
-    expect(document.querySelector('[data-legal-firm-replace-leaves]')).toBeNull()
+    // A firm that covers no county keeps Replace, the bridge's stand-in, and is the only firm, so it is never retired.
+    expect(screen.getByRole('button', { name: 'Replace with a new firm…' })).toBeTruthy()
+    expect(document.querySelector('[data-legal-firm-retire-why]')!.textContent).toBe('Brazos Ridge Contracting is still with ZZ Test Firm.')
     fireEvent.click(screen.getByRole('button', { name: 'Color ZZ Test Firm’s counties…' }))
     expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('extending')
     expect(document.querySelector('[data-legal-firm-nudge]')).toBeNull()
@@ -195,6 +200,59 @@ describe('LegalFirmWindow', () => {
     await waitFor(() => expect(onSaved).toHaveBeenCalled())
     const save = db.rpcs.find((r) => r.name === 'legal_save_county_coverage')!
     expect((save.args as { p_counties: unknown }).p_counties).toEqual([{ county: 'Comal', firms: ['firm-1', 'firm-2'], first_call: 'firm-1', was: ['firm-1', 'firm-2'] }])
+  })
+
+  it('Hand off counties: tick a county, pick the firm, read what happens, and one call moves it (v2.6233)', async () => {
+    db.rpcs.length = 0
+    const ALAMO = { ...firm, id: 'firm-2', name: 'ZZ Alamo', contingency_pct: 33, filing_cost: 400 } as LegalFirmRow
+    const { onSaved } = renderWindow({ canEdit: true, firms: [firm, ALAMO], coverage: COVERED, cases: CASES })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Hand off counties…' }))
+    const sheet = screen.getByRole('dialog', { name: 'Hand off ZZ Test Firm’s counties' })
+    expect(sheet).toBeTruthy()
+    const submit = () => document.querySelector('[data-legal-hand-off-submit]') as HTMLButtonElement
+    expect(submit().disabled).toBe(true)
+    expect(submit().textContent).toBe('Hand off counties')
+    expect(sheet.textContent).toContain('Pick the counties that move.')
+    fireEvent.click(document.querySelector('[data-legal-hand-off-county="Williamson"] input')!)
+    expect(sheet.textContent).toContain('Pick the firm that takes them.')
+    fireEvent.click(document.querySelector('[data-legal-hand-off-to="firm-2"] input')!)
+    expect(submit().disabled).toBe(false)
+    expect(submit().textContent).toBe('Hand off 1 county to ZZ Alamo')
+    expect([...document.querySelectorAll('[data-legal-hand-off-words] li')].map((li) => li.textContent)).toEqual([
+      'New releases in Williamson County go to ZZ Alamo. ZZ Alamo is first call there.',
+      'ZZ Test Firm keeps Travis County.',
+      'Brazos Ridge Contracting stays with ZZ Test Firm until it closes.',
+      'Burd & Assoc., in review there, reads ZZ Alamo as its firm from now on. This sends no email.',
+    ])
+    // Retire with it waits until every county is ticked, then for the account still with the firm.
+    expect((document.querySelector('[data-legal-hand-off-retire] input') as HTMLInputElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'All 2' }))
+    expect(document.querySelector('[data-legal-hand-off-retire]')!.textContent).toContain('Brazos Ridge Contracting is still with ZZ Test Firm.')
+    fireEvent.click(screen.getByRole('button', { name: 'None' }))
+    fireEvent.click(document.querySelector('[data-legal-hand-off-county="Williamson"] input')!)
+    fireEvent.click(submit())
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    expect(db.rpcs.find((r) => r.name === 'legal_hand_off_counties')!.args).toEqual({ p_from_firm: 'firm-1', p_counties: ['Williamson'], p_to_firm: 'firm-2', p_new_firm: null, p_retire: false })
+    expect(await screen.findByText('Williamson County went to ZZ Alamo.')).toBeTruthy()
+    expect(screen.queryByRole('dialog', { name: 'Hand off ZZ Test Firm’s counties' })).toBeNull()
+  })
+
+  it('Hand off to a new firm sends its details in the same call (v2.6233)', async () => {
+    db.rpcs.length = 0
+    renderWindow({ canEdit: true, firms: [firm], coverage: COVERED, cases: CASES })
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'Hand off counties…' }))
+    fireEvent.click(document.querySelector('[data-legal-hand-off-county="Travis"] input')!)
+    fireEvent.click(document.querySelector('[data-legal-hand-off-to="new"] input')!)
+    expect(document.querySelector('[data-legal-hand-off-submit]')!.textContent).toBe('Hand off 1 county to the new firm')
+    expect((document.querySelector('[data-legal-hand-off-submit]') as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.change(document.querySelector('[data-legal-hand-off-new] input')!, { target: { value: 'ZZ Hill Country Recovery' } })
+    fireEvent.click(document.querySelector('[data-legal-hand-off-submit]')!)
+    await waitFor(() => expect(db.rpcs.some((r) => r.name === 'legal_hand_off_counties')).toBe(true))
+    const args = db.rpcs.find((r) => r.name === 'legal_hand_off_counties')!.args as { p_to_firm: unknown; p_new_firm: { name: string; contingency_pct: number; filing_cost: number } }
+    expect(args.p_to_firm).toBeNull()
+    expect(args.p_new_firm).toMatchObject({ name: 'ZZ Hill Country Recovery', contingency_pct: 33, filing_cost: 350 })
   })
 
   it('Click’s particulars fold behind Edit particulars in the window (v2.6195)', async () => {

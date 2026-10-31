@@ -1,13 +1,13 @@
 ---
 name: "Firms and their coverage: the firm window shows where a firm covers, extends it, hands counties off to another firm, and two firms may share a county"
 number: 222
-group: ready
-status: proposed 2026-10-30 · mock-up drawn the same day · the owner asked for the whole train on 2026-10-31, on the defaults this card names · PR 1 built as v2.6195 · PR 2 built as v2.6221 · PR 3 built as v2.6227 (its migration pushed right after the merge) · PR 4 next
+group: close
+status: proposed 2026-10-30 · mock-up drawn the same day · Taunya asked for the whole train on 2026-10-31, on the defaults this card names · PR 1 built as v2.6195 · PR 2 built as v2.6221 · PR 3 built as v2.6227 · PR 4 built as v2.6233 · all four built; the PR 3 and PR 4 migrations are pushed right after their merges
 mockup: to-dos/legal-firm-coverage-zones/mockup.html
 summary: >
   The Legal desk's firm window holds a firm's details, Click's particulars and, at the bottom, Replace with a new
   firm…, which retires the firm everywhere and adds a successor with no counties; coverage lives on a separate
-  county picker under Firms…, one firm per county. The owner (2026-10-30) did not understand Replace and asked for
+  county picker under Firms…, one firm per county. Taunya (2026-10-30) did not understand Replace and asked for
   three things: show where a firm appears on the map, replace a firm for a coverage zone rather than everywhere,
   and let a firm's zone be extended, with two firms allowed to share a zone. This card reshapes the window around
   coverage (the real county map with the firm's counties lit, a list with each county's cases and dollars, Extend
@@ -16,18 +16,18 @@ summary: >
   county with one first-call firm per county that the office can switch at release. It also names a cliff the
   live app has today: one firm, no county colored, so the first county colored for anyone ends the bridge and
   every other account loses its firm.
-next: PR 4, Hand off counties in place of Replace (the hand-off RPC, pushed right after its merge).
+next: The two migration pushes right after their merges, then Taunya colors Snell's counties (the bridge nudge) and the card closes.
 size: L as a train of four (M, M, L+migration, M+migration); one migration for shared coverage, one for the hand-off RPC; no edge function change
-blocker: Nothing. The owner asked for the build on 2026-10-31 with the defaults below; PRs 3 and 4 each need a db push right after their merge.
+blocker: The db pushes for PRs 3 and 4, right after each merge, by the person who pushes.
 ver: proposed
-opinion: build — the window answers "where does this firm cover" today with nothing, Replace orphans a territory, and the one-firm-per-county rule is ours, not the owner's; PR 1 first because the bridge cliff is live
+opinion: build — the window answers "where does this firm cover" today with nothing, Replace orphans a territory, and the one-firm-per-county rule is ours, not Taunya's; PR 1 first because the bridge cliff is live
 ---
 
 # Firms and their coverage (#222)
 
 ## The ask
 
-The owner, 2026-10-30, with the firm window open on Snell Law Firm: *"I don't totally understand the 'replace with a
+Taunya, 2026-10-30, with the firm window open on Snell Law Firm: *"I don't totally understand the 'replace with a
 new firm' as in this part of the app I was thinking we should do a better job showing where a firm appears on the map
 and if we're going to replace someone replace them for that coverage zone. I think we should be able to extend coverage
 zones for firms and it is okay if multiple firms have the same coverage zones. Help me mock up how this could look,
@@ -74,7 +74,7 @@ several firms with one first call.** Drawn in `mockup.html`, one made-up pair of
    list: a free county colors, the firm's own county clears, a county another firm covers asks three ways (*Share it*
    — both cover, the other stays first call; *Make this firm first call*; *Move it*, today's only answer). Nothing
    writes until **Save N counties**. **Add by area** chips color a metro's counties in one press (Austin area, San
-   Antonio area, the others the owner names) plus *every county with a case and no firm*, the Map view's gap list.
+   Antonio area, the others Taunya names) plus *every county with a case and no firm*, the Map view's gap list.
    The Settings picker gains the same three-way question so the two doors agree.
 4. **Hand off counties replaces Replace.** A sheet in three steps: which of this firm's counties (ticks, with each
    county's cases and dollars; All / None), to whom (an active firm, or a new firm typed in the sheet), and what
@@ -156,14 +156,14 @@ them); showing another firm's case names in a shared county (counsel's confident
    release.
 2. **Live matters on a hand-off:** stay with the old firm (default), or move with the receiving firm's consent.
 3. **The window's order:** coverage, details folded, particulars folded, retire last (default).
-4. **Area presets:** Austin and San Antonio drawn; the owner names the rest, or none.
-5. **The live database:** PR 1 colors Snell's counties for the owner the day it ships, or she clicks them herself
+4. **Area presets:** Austin and San Antonio drawn; Taunya names the rest, or none.
+5. **The live database:** PR 1 colors Snell's counties for Taunya the day it ships, or she clicks them herself
    (default: the nudge and the presets, no data change in the PR).
 6. **Who may extend and hand off:** a dev only, as every firm write today (default), or the controller too.
 
 ## Where it stands
 
-Proposed 2026-10-30 with the mock-up; on 2026-10-31 the owner asked for the whole train ("I really like this,
+Proposed 2026-10-30 with the mock-up; on 2026-10-31 Taunya asked for the whole train ("I really like this,
 please help me build it"), so the defaults under *Still open* stand.
 
 - **PR 1, v2.6195** (`docs/recent-features/v2.6195.md`): the window opens on where the firm covers, with the bridge
@@ -174,4 +174,6 @@ please help me build it"), so the defaults under *Still open* stand.
 - **PR 3, v2.6227** (`docs/recent-features/v2.6227.md`): shared counties with one first call, the three-answer sheet, the
   stripes, the switch and the release sheet's chooser, and `legal_save_county_coverage` as the one write. The portal needed
   no edge change: its payload already lists each firm's counties, and the page names a shared county.
-- **PR 4**: next.
+- **PR 4, v2.6233** (`docs/recent-features/v2.6233.md`): Hand off counties (`legal_hand_off_counties`) in place of Replace for a
+  firm that covers counties, Retire as its own step (`legal_retire_firm`, never the only firm), Replace kept for a firm that
+  covers no county, the bridge's stand-in.

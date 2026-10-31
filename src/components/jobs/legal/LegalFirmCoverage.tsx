@@ -34,7 +34,7 @@ const db = supabase as unknown as SupabaseClient
  * call reads *also* with the first call named, and while editing it offers *Make first call*. A county only other
  * firms cover asks three ways (`LegalCountyHeldSheet`): share it, take first call, or move it.
  */
-export default function LegalFirmCoverage({ firm, firms, coverage: saved, cases, canEdit, onShowOnMap, onSaved }: {
+export default function LegalFirmCoverage({ firm, firms, coverage: saved, cases, canEdit, onShowOnMap, onSaved, onHandOff }: {
   firm: LegalFirmRow
   firms: ReadonlyArray<LegalFirmRow>
   /** The saved coverage: county → first call and the firms that also cover it. */
@@ -44,6 +44,8 @@ export default function LegalFirmCoverage({ firm, firms, coverage: saved, cases,
   onShowOnMap?: (firmId: string) => void
   /** After a save: the desk reloads its firms and counties. */
   onSaved: () => void
+  /** *Hand off counties…* (PR 4, v2.6233): the window opens the hand-off sheet. A dev's door, on a firm that covers counties. */
+  onHandOff?: () => void
 }) {
   const { showToast } = useToastContext()
   const confirm = useConfirmDialog()
@@ -231,6 +233,7 @@ export default function LegalFirmCoverage({ firm, firms, coverage: saved, cases,
             ) : (
               <div style={{ marginTop: 10, display: 'flex', gap: 8, flexWrap: 'wrap' }}>
                 {canExtend ? <button type="button" onClick={startExtending} style={btnPrimary} data-legal-firm-extend>Extend coverage…</button> : null}
+                {canExtend && onHandOff ? <button type="button" onClick={onHandOff} style={btn} data-legal-firm-hand-off-open>Hand off counties…</button> : null}
                 {onShowOnMap ? <button type="button" onClick={() => onShowOnMap(firm.id)} style={btn} data-legal-firm-show-on-map title="The desk’s Map view with this firm lit: its counties in color, the other firms’ faint">Show on the desk map ›</button> : null}
               </div>
             )}
