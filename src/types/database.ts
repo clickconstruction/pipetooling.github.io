@@ -20279,6 +20279,7 @@ export type Database = {
           gc_shares_stage_dates: boolean
           google_drive_link: string | null
           hcp_number: string
+          prior_numbers: string[]
           id: string
           job_address: string
           job_name: string
@@ -20347,6 +20348,7 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
+          prior_numbers?: string[]
           id?: string
           job_address?: string
           job_name?: string
@@ -20415,6 +20417,7 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
+          prior_numbers?: string[]
           id?: string
           job_address?: string
           job_name?: string

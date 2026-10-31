@@ -8,6 +8,7 @@ import { useState, type ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { BID_STATUS_COLOR, bidMoney, bidStatusWord, jobOpenOnBill, type MemberBid, type MemberJob } from '../../lib/developments/overview'
 import { doneFoldWords, type PieceRow } from '../../lib/developments/pieces'
+import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import type { HistoryPiece } from '../../lib/developments/history'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../../lib/jobsLedgerStatusPipeline'
 import { Chip, LinkButton, money, PressChip, shortDay } from './developmentPageBits'
@@ -80,6 +81,8 @@ function JobCell({ job, label, crew, open, moneyShown }: { job: MemberJob; label
     moneyShown ? (openOnBill > 0 ? `${money(openOnBill)} open` : revenue > 0 ? money(revenue) : '$0') : null,
     crew.length ? `${crew[0]}${crew.length > 1 ? `, +${crew.length - 1}` : ''}` : (job.status ?? '').toLowerCase() === 'waiting' ? 'not scheduled' : null,
     job.last_work_date ? `last work ${shortDay(job.last_work_date)}` : null,
+    // The numbers the job answered to before a combine (v2.6226): the HCP numbers from the old system stay readable.
+    priorNumbersBare(job.prior_numbers) || null,
   ]
     .filter((x): x is string => !!x)
     .join(' · ')

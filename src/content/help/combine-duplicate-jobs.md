@@ -19,6 +19,8 @@ It may be a second Job # for the same address. Or it may be a job re-entered und
 
 Everything real moves to the target: costs, labor, schedule, reports, notes, and the job total. The source card is then deleted.
 
+The source's HCP number and C# are not lost. They stay on the target as prior numbers. The job window and the Pipeline row read them as *also JP550*. Search the Pipeline by an old number and the combined job comes up.
+
 A job made from an estimate carries that estimate with it. The exception is when the target was made from an estimate of its own. A job can hold one estimate. In that case the source's estimate stays on the **Estimates** page on its own, no longer linked to a job. The success message says so.
 
 :::example The combined job keeps the target's status
