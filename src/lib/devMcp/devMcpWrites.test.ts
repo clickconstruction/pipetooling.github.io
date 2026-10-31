@@ -1,5 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { ROBOT_PLANS_SHARED_DRIVE, robotPlansDivisionFolderName, robotPlansPathWords } from '../../../supabase/functions/_shared/bidPlansFolders'
 import { WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
@@ -178,7 +179,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.12.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.12.2'")
   })
 })
 
@@ -227,7 +228,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.12.1'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.12.2'")
     expect(SERVER).toContain('Writes are nineteen verbs and nothing else')
   })
 })
@@ -462,19 +463,22 @@ describe('mint_twin_setup_code (v2.6187)', () => {
   })
 })
 
-describe('driveFilingRefusal (v2.6239)', () => {
+describe('driveFilingRefusal (v2.6239, target since v2.6241)', () => {
   const SA = 'drive-intake@pipetooling-drive.iam.gserviceaccount.com'
   const PLUMBING = { label: 'plumbing', url: 'https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB' }
-  const base = { serviceAccount: SA, division: PLUMBING, folderName: 'ZZ Dev Seat Check 2026-10-31', folderLink: '' }
+  const TARGET = { name: 'PipeTooling Jobs › Bid plans › Plumbing', url: 'https://drive.google.com/drive/folders/divisionFolderId0000000' }
+  const base = { serviceAccount: SA, target: TARGET, division: PLUMBING, folderName: 'ZZ Dev Seat Check 2026-10-31' }
+  const BY_HAND = `Until then a person drops the file into a folder named "ZZ Dev Seat Check 2026-10-31" in the plumbing bids folder (${PLUMBING.url}) and presses Find the folder on the bid form.`
+  const RETRY = 'The staged copy is still there: call apply_file_plans again with the same plans and plan_hash.'
 
-  it('names the account, the folder and the share for the refusal found live on b566', () => {
+  it('names the account, where it stopped and the grant for a permission refusal', () => {
     const words = driveFilingRefusal({ ...base, message: 'Folder create failed (403): Insufficient permissions for the specified parent.' })
     expect(words).toContain('Insufficient permissions for the specified parent.')
     expect(words).not.toContain('parent..')
-    expect(words).toContain(`The intake service account (${SA}) can see the plumbing bids folder but cannot write in it.`)
-    expect(words).toContain(`Whoever owns ${PLUMBING.url} shares it with ${SA} as Editor (Content manager on a Shared Drive).`)
-    expect(words).toContain(`a folder named "ZZ Dev Seat Check 2026-10-31" in ${PLUMBING.url}`)
-    expect(words).toContain('call apply_file_plans again with the same plans and plan_hash')
+    expect(words).toContain(`The intake service account (${SA}) can see PipeTooling Jobs › Bid plans › Plumbing but cannot write in it.`)
+    expect(words).toContain(`A manager of ${TARGET.url} gives ${SA} write access there: Contributor on a Shared Drive, Editor on a My Drive folder.`)
+    expect(words).toContain(BY_HAND)
+    expect(words).toContain(RETRY)
     expect(words).not.toMatch(/[—–]/)
   })
 
@@ -482,28 +486,27 @@ describe('driveFilingRefusal (v2.6239)', () => {
     expect(driveFilingRefusal({ ...base, message: 'Upload failed (403): The user does not have sufficient permissions for this file.' })).toContain('cannot write in it')
   })
 
-  it('tests storage quota before permission, since Drive answers it with a 403 too', () => {
-    const words = driveFilingRefusal({ ...base, folderLink: 'https://drive.google.com/drive/folders/abc', message: 'Upload failed (403): Service Accounts do not have storage quota.' })
+  it('tests storage quota before permission, the refusal found live on b566 after the share', () => {
+    const words = driveFilingRefusal({ ...base, message: 'Upload failed (403): Service Accounts do not have storage quota. Leverage shared drives.' })
     expect(words).toMatch(/^Drive refused the upload: /)
-    expect(words).toContain('not on a Shared Drive')
+    expect(words).toContain('PipeTooling Jobs › Bid plans › Plumbing is not on a Shared Drive the service account is in')
     expect(words).toContain('DRIVE_IMPERSONATE_USER')
-    expect(words).toContain('in https://drive.google.com/drive/folders/abc and presses Find the folder')
+    expect(words).toContain(BY_HAND)
     expect(words).not.toContain('cannot write in it')
   })
 
   it('says when the account cannot see the folder at all', () => {
-    expect(driveFilingRefusal({ ...base, message: 'Folder lookup failed (404): File not found: 1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB.' })).toContain('cannot see the plumbing bids folder at all')
+    expect(driveFilingRefusal({ ...base, message: 'Folder lookup failed (404): File not found: 0AI1sqwYSeegpUk9PVA.' })).toContain('cannot see PipeTooling Jobs › Bid plans › Plumbing at all')
   })
 
-  it('asks for a wait on a rate limit, with no share to make', () => {
+  it('asks for a wait on a rate limit, with no grant to make', () => {
     const words = driveFilingRefusal({ ...base, message: 'Upload failed (403): User rate limit exceeded.' })
     expect(words).toContain('Wait a minute.')
-    expect(words).not.toContain('as Editor')
+    expect(words).not.toContain('write access there')
   })
 
   it('still names the by-hand door and the retry for an error it does not know', () => {
-    const words = driveFilingRefusal({ ...base, message: 'Upload failed (500): Backend Error' })
-    expect(words).toBe(`Drive refused the filing: Upload failed (500): Backend Error. Until then a person drops the file into a folder named "ZZ Dev Seat Check 2026-10-31" in ${PLUMBING.url} and presses Find the folder on the bid form. The staged copy is still there: call apply_file_plans again with the same plans and plan_hash.`)
+    expect(driveFilingRefusal({ ...base, message: 'Upload failed (500): Backend Error' })).toBe(`Drive refused the filing: Upload failed (500): Backend Error. ${BY_HAND} ${RETRY}`)
   })
 
   it('points at the key when the account email cannot be read', () => {
@@ -511,7 +514,27 @@ describe('driveFilingRefusal (v2.6239)', () => {
   })
 
   it('is what apply_file_plans answers when Drive refuses', () => {
-    expect(SERVER).toContain('return errored(driveFilingRefusal({ message: e instanceof Error ? e.message : String(e), serviceAccount, division, folderName, folderLink }))')
+    expect(SERVER).toContain('return errored(driveFilingRefusal({ message: e instanceof Error ? e.message : String(e), serviceAccount, target: { name: targetName, url: targetUrl }, division, folderName }))')
     expect(SERVER).not.toContain('The staged copy is still there for a retry.')
+  })
+})
+
+describe('the plan set goes into the Shared Drive (v2.6241)', () => {
+  it('names the path in words, the project folder last', () => {
+    expect(robotPlansPathWords('plumbing')).toBe('PipeTooling Jobs › Bid plans › Plumbing')
+    expect(robotPlansPathWords('hvac', ' ZZ Dev Seat Check ')).toBe('PipeTooling Jobs › Bid plans › HVAC › ZZ Dev Seat Check')
+    expect(robotPlansDivisionFolderName('electrical')).toBe('Electrical')
+  })
+
+  it('files into the drive the intake account is a member of, at its root beside Jobs', () => {
+    expect(ROBOT_PLANS_SHARED_DRIVE).toEqual({ id: '0AI1sqwYSeegpUk9PVA', name: 'PipeTooling Jobs', folderName: 'Bid plans' })
+  })
+
+  it('walks Bid plans › division › project and never writes in the office’s division folder', () => {
+    expect(SERVER).toContain('findOrCreateFolder(token, ROBOT_PLANS_SHARED_DRIVE.id, ROBOT_PLANS_SHARED_DRIVE.folderName)')
+    expect(SERVER).toContain('findOrCreateFolder(token, bidPlans.id, robotPlansDivisionFolderName(division.key))')
+    expect(SERVER).toContain('findOrCreateFolder(token, divisionFolder.id, folderName)')
+    expect(SERVER).not.toContain('findOrCreateFolder(token, division.folderId')
+    expect(SERVER).toContain('path: robotPlansPathWords(division.key, folderName)')
   })
 })
