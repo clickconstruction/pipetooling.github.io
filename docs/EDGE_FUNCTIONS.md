@@ -585,6 +585,8 @@ interface MergeUsersRequest {
 
 ### notify-help-feedback
 
+> **v2.6217 — through each dev's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the inbox is on Help. The answer gains `held`. **Redeploy** once merged.
+
 **Purpose**: Push + inbox notification to devs when a user submits feedback on a /help guide (`help_feedback` table, migration `20260709150000`).
 
 **Endpoint**: `POST /functions/v1/notify-help-feedback` (invoked by the help feedback form). See `RECENT_FEATURES.md` v2.643.
@@ -1649,6 +1651,8 @@ The words (`_shared/gcOfficeNotices.ts`): the architect's reminder wears `buildG
 
 ### send-workflow-notification
 
+> **v2.6217 — the push through the recipient's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the email goes now as before, and the function's own row reads `email` when the push was held, the helper's `held` row beside it, both carrying the step, workflow and project ids. The answer gains `held`. **Redeploy** once merged.
+
 > **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON, VAPID keys web-push refuses, or a `fetch` to Resend that fails (`TypeError`) or answers with something other than JSON. Each push send catches its own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Send workflow stage email notifications via Resend; optionally send Web Push when **`recipient_user_id`** and VAPID keys are set.
@@ -2280,6 +2284,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **v2.3510 (What customers see PR 2):** the reminder's subject, text and HTML come from `_shared/jobContractEmail.ts` → `buildJobContractReminderEmail`; the cron path is otherwise unchanged.
 
 ### remind-bid-followups
+
+> **v2.6217 — through the person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the hours are read once per run, and the `bid_followup_reminders` row is written either way, so the day reminds once. The answer gains `held`. **Redeploy** once merged.
 
 **Purpose**: The phone reminder for a bid's call-again day (punch list #80, v2.4427): one push on the morning of the day to the person who owns the bid.
 
@@ -3144,6 +3150,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-checklist-notification
 
+> **v2.6217 — through the person's hours, the test push excepted** (punch list #141 PR 5): a checklist push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`), the `checklist_instance_id` on the row. The Settings test push (tag `test-notification`) skips the hours: the person pressed it to see a push. The answer gains `held`. **Redeploy** once merged.
+
 > **v2.5401 — `deno check` passes again**: the outer `catch` read `error.message` off an `unknown` (TS18046). It reads `(error as Error).message` now, as `invite-user` does. What its `try` can throw is an `Error`: a body that is not JSON, or VAPID keys web-push refuses. Each push send catches its own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: Send Web Push notifications for checklist events (completion, test)
@@ -3228,6 +3236,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-notification
 
+> **v2.6217 — through each person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`). The answer gains `held`. **Redeploy** once merged.
+
 > **v2.6127 — a report on a ZZ test job reaches no phone**: right after the report is read, its job, project or bid is read by name (`readReportSubject`, [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)), and when the name — or the job's customer's name — starts with ZZ ([`_shared/zzTestJob.ts`](../supabase/functions/_shared/zzTestJob.ts), the one rule the Pipeline hides ZZ jobs by, which `src/lib/jobs/zzTestJobSweep.ts` re-exports) the function answers `{ success: true, message: 'ZZ test job: nothing sent', push_sent: 0, skipped: 'zz_test_job' }` before it reads a preference. A session's walk on a ZZ job (`AGENTS.md` → ZZ test rows need no approval) used to buzz every phone opted in for that kind of report. **Redeploy required.**
 
 **Purpose**: Web-push notification when a report is submitted: loads the report, reads its job, project or bid by name (`jobs_ledger.job_name, customer_name` → `projects.name` → bid project/contact name) and stops on a ZZ test record; otherwise loads the template + creator, takes the job display name from the same read, and pushes "New *{template}* — *{creator}* submitted a *{template}* for *{job}*" to every user who opted in for that template in **`user_report_notification_preferences`** (submitter excluded). Legacy template name "Superintendent Report" is displayed as "Status Report". Deep link `/jobs?tab=reports`; per-recipient sends recorded in `notification_history` (`template_type: report_submitted`, best-effort).
@@ -3301,6 +3311,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### notify-bid-mark
 
+> **v2.6217 — through the person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the mark is on the Bid Board. The answer gains `held`. **Redeploy** once merged.
+
 **Purpose** (v2.4297): the one phone notification for a bid marked for a teammate. "Mark this bid for someone" (the **For someone…** button in an open bid's title) calls it only when the sender ticks **Also send it to <name>'s phone**, right after `mark_bid_for()` returns the request id.
 
 **Endpoint**: `POST /functions/v1/notify-bid-mark`
@@ -3330,6 +3342,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 ---
 
 ### notify-lien-approval
+
+> **v2.6217 — through each leader's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); a held leader is not emailed for it either, since the Needs you card carries the notice, and the email fallback is unchanged for a leader on with no device. The answer gains `held`. **Redeploy** once merged.
 
 **Purpose** (v2.4872): the leader's phone buzzes when the office sends a lien notice for his approval. The Lien desk's **Send for approval** calls it right after `submitLienDeskItem` lands the item in *Awaiting approval* (never after a standing rule approved or held it). Before this the pile count went up and nobody was told.
 
@@ -3441,6 +3455,8 @@ Both send nothing, and answer `{ "success": true, "off": true, … }`, while the
 
 ### notify-dispatch-request
 
+> **v2.6217 — through each person's hours** (punch list #141 PR 5): both modes' pushes go through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the dispatchers on are pushed through `_shared/webPushSend.ts`, a member outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, and a held requester has that row in place of the `push` row the answer always wrote. The answers gain `held`. **Redeploy** once merged.
+
 > **v2.5376 — `deno check` passes again**: `notifyRequester` typed its client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so its `notification_history` insert took `never` and the service-role client could not be handed in (2 errors). It takes `SupabaseClient` now. The outer `catch` read `error.message` off an `unknown` (1 error) and reads `(error as Error).message` now, as `invite-user` does: what the `try` can throw is an `Error`. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 **Purpose**: After a user creates a `dispatch_requests` row (Task Dispatch), notify every member of `dispatch_group_members` via Web Push without exposing the member list to the client (service role reads the group). Since **v2.2880** the same function also carries the answer back: `mode: 'closed' | 'reopened'` pushes the **requester** (`from_user_id`) with the office's closing note and always logs them a `notification_history` row (journey-map Tier-2 #25 — "closing a field request tells the tech nothing").
@@ -3499,6 +3515,8 @@ Close / reopen: `{ success, mode, message, push_sent, recipients: 1, notified: p
 
 ### notify-estimator-request
 
+> **v2.6217 — through each member's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the members on still hear. The answer gains `held`. **Redeploy** once merged.
+
 **Purpose**: After a user creates an `estimator_requests` row (Estimator Inbox), notify every member of `estimator_group_members` via Web Push without exposing the member list to the client (service role reads the group).
 
 **Endpoint**: `POST /functions/v1/notify-estimator-request`
@@ -3544,6 +3562,8 @@ When the Estimator Inbox group is empty: `push_sent: 0`, `recipients: 0`, friend
 ---
 
 ### notify-team-lead-clock
+
+> **v2.6217 — through each leader's hours** (punch list #141 PR 5): the try-out push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the verdict card is on their Dashboard in the morning. **Redeploy** once merged.
 
 > **v2.5376 — `deno check` passes again**: `AdminClient` was `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so the `trial_helper_supervisors` arguments and the `notification_history` insert were refused, and the service-role client could not be handed to `notifyTrialHelperLeads` (3 errors). It is `SupabaseClient` now. The RPC takes `p_helper_user_id` and `p_work_date` as written. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
@@ -3593,6 +3613,8 @@ Skipped events return 200 with `skipped: true` (anything but a clock-out).
 ---
 
 ### send-scheduled-reminders
+
+> **v2.6217 — through each person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`), the hours read once per run; a held person gets no email fallback for it either, since the person set the time but hours set later win. The answer gains `users_held`. **Redeploy** once merged.
 
 > **v2.5401 — `deno check` passes again**: the outer `catch` read `error?.message` off an `unknown`, which the optional chain narrows to `{}` (TS2339). It reads `(error as Error)?.message` now, as `merge-users` does. What its `try` can throw is an `Error`: VAPID keys web-push refuses. The body read, each push and each email catch their own. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
@@ -3791,6 +3813,8 @@ Per-recipient **`activity_scope`** + **`crew_filter`** + **`include_costs`** (fr
 ---
 
 ### paid-job-email
+
+> **v2.6217 — the Ready to Bill push through each person's hours** (punch list #141 PR 5): `sendReadyToBillPush` goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the held row's `template_type` is `ready_to_bill` with the summary body, so no dollars sit in the history for a summary-tier role, and still no `push` row is written for the people reached. The gear's `test_push` skips the hours: the person pressed it to see a push. The email pick is unchanged. **Redeploy** once merged.
 
 > **v2.4173 — the renderers are kernels**: `render.ts` and `readyToBillRender.ts` re-export [`_shared/paidJobEmail.ts`](../supabase/functions/_shared/paidJobEmail.ts) and [`_shared/readyToBillEmail.ts`](../supabase/functions/_shared/readyToBillEmail.ts) (moved verbatim), so Settings → What the team sees renders both emails on sample data (punch list #60, lift 7 of 14). Redeploy after merge.
 
@@ -5160,6 +5184,8 @@ interface Body {
 
 ### stripe-webhook
 
+> **v2.6217 — the dispute notice's push through each person's hours** (punch list #141 PR 5): [`_shared/arReturnCaseNotify.ts`](../supabase/functions/_shared/arReturnCaseNotify.ts)'s push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the email goes now as before. **Redeploy** once merged (the shared file is in this bundle).
+
 > **v2.5360 — `deno check` passes again**: the arguments built for `mark_invoice_paid_from_stripe` were typed without `p_recorded_by`, which the code has set since v2.4289 and the RPC has taken since `20261001153000` (`p_recorded_by uuid default null`, applied on prod). So setting it failed the check (TS2339). The type declares it now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4950 — a card dispute or a failed bank debit is a case** (punch list #76 piece 1, migration `20261009080000`). Each event goes to `record_ar_stripe_case` (`_shared/stripeArCase.ts` builds the arguments). `charge.dispute.created` / `updated` / `closed` / `funds_withdrawn` / `funds_reinstated` retrieve the charge in the event's mode to find its invoice. `payment_intent.payment_failed` counts only a bank debit (`us_bank_account`) on an invoice; a card fails on the pay page in front of the customer. A dispute opens a case on the bill. `won` / `warning_closed` closes it, and `lost` leaves it open for Accounts Receivable's **Put the bill back** (`put_back_lost_dispute_bill`). The office is told once when it opens and once more when a dispute is lost, through the same `sendReturnCaseNotice` as the checks; the hourly **ar-returned-checks** catches a miss. Responses add `{ case_id, opened, lost_now, closed }` or `{ skipped }` (`unknown_invoice`, `mode_mismatch`, `already_paid`, `already_won`, *not a bank debit on a bill*). New secrets: none (it reuses `RESEND_API_KEY`, `VAPID_*` and `APP_ORIGIN`). **Subscribe the endpoint** (test and live) to `charge.dispute.created`, `charge.dispute.updated`, `charge.dispute.closed` and `payment_intent.payment_failed`. Redeploy required.
@@ -5270,6 +5296,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 ### mercury-webhook
 
+> **v2.6217 — the returned-check notice's push through each person's hours** (punch list #141 PR 5): [`_shared/arReturnCaseNotify.ts`](../supabase/functions/_shared/arReturnCaseNotify.ts)'s push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the email goes now as before. **Redeploy** once merged (the shared file is in this bundle).
+
 > **v2.5359 — `deno check` passes again**: `generateSuggestion` and `autoApproveIfSwitchedOn` typed their client as `ReturnType<typeof createClient>`, which supabase-js 2.117 resolves to a client with no schema, so both RPC calls' arguments were refused (`p_rows` and `p_tx_ids`, each the RPC's real argument) and the service-role client could not be handed in (3 errors). Both take `SupabaseClient` now. The emitted JavaScript is byte-identical, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.4181 — rendered in What the team sees**: the check-returned notice was already a kernel (`_shared/bankReturnedDeposits.ts` — `buildBankReturnNoticeEmail`); Settings → What the team sees now renders it over a sample returned draw (punch list #60, lift 12 of 14). No function change, nothing to redeploy.
@@ -5311,6 +5339,8 @@ Migration **`20270605150000_sync_mercury_transactions_pg_cron.sql`** schedules t
 
 
 ### ar-returned-checks
+
+> **v2.6217 — the notice's push through each person's hours** (punch list #141 PR 5): [`_shared/arReturnCaseNotify.ts`](../supabase/functions/_shared/arReturnCaseNotify.ts)'s push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`); the email goes now as before, and the case's log line gains `held`. **Redeploy** once merged (the shared file is in this bundle).
 
 **Purpose**: The hourly sweep for checks that came back (**v2.4320**, punch list #76 PR 2). pg_cron (`ar-returned-checks-hourly`, minute 17 — migration `20261001230000`) calls it with `X-Cron-Secret`. First it runs **`open_ar_rejected_check_cases()`** (service role only): a check deposit Mercury could not take in (`failed`, never posted, not a bank reason — *"There was an issue with this transaction"*) becomes a case only when a payment recorded by hand matches it to the cent (paid within 3 days before to 10 days after) and no deposit from the same payer for the same amount followed within 30 days; it was refused more than 5 days ago and less than 90. The same call closes a rejected case as *replaced* once the check goes in again. Next it runs **`open_ar_unbanked_check_cases(AR_UNBANKED_CHECK_DAYS)`** (**v2.4902**, migration `20261008100000`): a payment typed in as a check with no deposit linked after ten days opens an *unbanked* case, unless an unused check deposit of at least its amount came in since three days before. The same call closes one once its payment gets a deposit or comes off the job. Then it tells the office once about every open case not yet told — a bank return the Banking page's Sync stored (`sync-mercury-transactions` sends nothing itself), the new rejected and unbanked cases, a card dispute or failed bank debit `stripe-webhook` could not tell (**v2.4950**; a lost dispute is told a second time), anything a webhook missed — through the same `sendReturnCaseNotice` the webhooks use. The ledger is `mercury_bank_return_notices`; an unbanked case has no deposit to key it on, so it claims its own `notified_at` (*A check was never deposited · DRF · $250*), and a Stripe case claims `ar_stripe_cases.notified_at`, then `lost_notified_at` (*A card dispute was lost · Heron · $500*). Which notice is due is `arCaseNoticeDue`, and where its claim goes is `arCaseNoticeClaim`.
 
