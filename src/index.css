@@ -5957,6 +5957,10 @@ button.aging-win-state { font: inherit; font-size: 0.75rem; font-weight: 650; cu
 .aging-win-row { display: grid; grid-template-columns: 9.5rem minmax(0, 1fr) 5rem 6.5rem 8.5rem 1.5rem; gap: 0.2rem 0.6rem; align-items: center; padding: 0.4rem 0; border-top: 1px dashed var(--border); font-size: 0.875rem; }
 .aging-win-row:first-child { border-top: none; }
 .aging-win-inv { font-family: ui-monospace, 'SF Mono', Menlo, Consolas, monospace; font-size: 0.82rem; overflow-wrap: anywhere; }
+/* PR 4 of #132: the number is the row's door into the invoice form. */
+button.aging-win-inv--door { padding: 0; margin: 0; text-align: left; background: none; border: none; color: var(--text-link); cursor: pointer; }
+button.aging-win-inv--door:hover { text-decoration: underline; }
+button.aging-win-inv--door:disabled { opacity: 0.6; cursor: default; }
 .aging-win-po { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-muted); }
 .aging-win-age { justify-self: start; white-space: nowrap; font-size: 0.75rem; font-variant-numeric: tabular-nums; color: var(--text-muted); }
 .aging-win-age--late { padding: 1px 7px; border-radius: 999px; font-weight: 650; background: var(--bg-orange-100); color: var(--text-orange-800); }
