@@ -26,11 +26,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { lastPayStubPaymentPaidAt } from '../../lib/payStubPayments'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { ESTIMATE_CHIP_TITLE, draftPayrollBars, pendingChipTitle, pendingChipWords, type DraftPayrollRowBarInput } from '../../lib/pay/draftPayrollBars'
-import { ShapeSwitch, SideBySide, useShapeView } from '../prototypes/SideBySide'
 import { DraftPayrollMoney, DraftPayrollPendingDot, DraftPayrollPeriodBar, DraftPayrollRowBarCell, DraftPayrollSalaryChip } from './DraftPayrollBars'
-
-/** The per-person switch's key (punch list #217, people-docs-1): `pt-shape-view:draft-payroll-bars:<userId>`. */
-export const DRAFT_PAYROLL_BARS_SHAPE_KEY = 'draft-payroll-bars'
 
 /** Matches People Pay History `PayStubRow` so callbacks can pass stubs through to `viewPayStub` / `openPayStubMarkPaidModal`. */
 export type DraftPayrollPayStub = {
@@ -222,8 +218,6 @@ export function DraftPayrollModal({
     items: RunPayrollReviewDayItem[]
   } | null>(null)
   const [showZeroHours, setShowZeroHours] = useState(false)
-  // Punch list #217 (people-docs-1): the bars behind a per-person switch, off by default; a dev with `?sbs=1` sees both.
-  const view = useShapeView(DRAFT_PAYROLL_BARS_SHAPE_KEY)
 
   useEffect(() => {
     if (!open) setReviewDaysDetail(null)
@@ -327,9 +321,8 @@ export function DraftPayrollModal({
 
   const reviewZ = zIndex + 1
 
-  const withBarsAnywhere = view.on || view.sideBySide
-  const bars = withBarsAnywhere
-    ? draftPayrollBars(
+  // Punch list #217 (people-docs-1), built in on the owner's say-so (2026-10-30): the bars are the window's one look.
+  const bars = draftPayrollBars(
         peopleNames.map((person): DraftPayrollRowBarInput => {
           const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
           const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
@@ -357,13 +350,12 @@ export function DraftPayrollModal({
           }
         }),
       )
-    : null
-  const barsByPerson = new Map((bars?.rows ?? []).map((r) => [r.person, r] as const))
+  const barsByPerson = new Map(bars.rows.map((r) => [r.person, r] as const))
   const pendingPress = canAccessHours ? () => onOpenHoursForPeriod(start, end) : undefined
 
-  // T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists. Today it sits over the
-  // table; with the bars it sits under it (the owner, 2026-10-30: "perhaps we should move this to the bottom").
-  const allGeneratedNote = (withBars: boolean) =>
+  // T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists; under the table (the
+  // owner, 2026-10-30: "perhaps we should move this to the bottom").
+  const allGeneratedNote = () =>
     draftPayrollAllGenerated({
       peopleCount: peopleNames.length,
       missingCount: bulkMissingCount,
@@ -377,8 +369,8 @@ export function DraftPayrollModal({
           alignItems: 'center',
           gap: '0.5rem 0.75rem',
           padding: '0.5rem 0.75rem',
-          marginBottom: withBars ? 0 : '0.75rem',
-          marginTop: withBars ? '0.25rem' : 0,
+          marginBottom: 0,
+          marginTop: '0.25rem',
           border: '1px solid #22c55e',
           background: 'var(--bg-green-tint)',
           color: 'var(--text-green-800)',
@@ -393,7 +385,7 @@ export function DraftPayrollModal({
       </div>
     ) : null
 
-  const renderBody = (withBars: boolean) => (
+  const body = (
     <>
           {pendingLoading ? (
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.75rem', textAlign: 'center' }}>Checking pending approvals…</p>
@@ -401,56 +393,13 @@ export function DraftPayrollModal({
           {pendingError ? (
             <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: '0 0 0.75rem', textAlign: 'center' }}>{pendingError}</p>
           ) : null}
-          {!withBars && !pendingLoading && pendingCount != null && pendingCount > 0 ? (
-            <div
-              role="status"
-              style={{
-                marginBottom: '0.75rem',
-                padding: '0.6rem 0.75rem',
-                borderRadius: 6,
-                border: '1px solid #f59e0b',
-                background: 'var(--bg-amber-100)',
-                color: 'var(--text-amber-800)',
-                fontSize: '0.8125rem',
-                lineHeight: 1.4,
-              }}
-            >
-              <strong>{pendingCount}</strong> clock session{pendingCount === 1 ? '' : 's'} in this period still need approval (Hours → Pending sessions).
-              {canAccessHours ? (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => onOpenHoursForPeriod(start, end)}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      fontSize: '0.8125rem',
-                      background: '#b45309',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Open Hours tab
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
           {peopleNames.length === 0 ? (
             <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
               {EMPTY_HOURS_ROSTER_MESSAGE}
             </p>
           ) : (
             <>
-              {withBars && bars ? (
-                <DraftPayrollPeriodBar bar={bars.period} />
-              ) : (
-                <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textAlign: 'center' }}>
-                  {paidCount} of {peopleNames.length} paid · Total: ${formatCurrency(totalAmount)} | Left: ${formatCurrency(leftUnpaid)}
-                </div>
-              )}
+              <DraftPayrollPeriodBar bar={bars.period} />
               <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
                 <button
                   type="button"
@@ -509,7 +458,7 @@ export function DraftPayrollModal({
                     {catchUpCount > 0 ? `⏳ Earlier unreported: ${catchUpCount}` : 'Earlier weeks ✓'}
                   </button>
                 ) : null}
-                {withBars && !pendingLoading && pendingCount != null && pendingCount > 0 ? (
+                {!pendingLoading && pendingCount != null && pendingCount > 0 ? (
                   pendingPress ? (
                     <button
                       type="button"
@@ -526,12 +475,6 @@ export function DraftPayrollModal({
                     </span>
                   )
                 ) : null}
-                {/* With the bars (the owner, 2026-10-30) the count sentence goes: Generate N reports carries the count, and a row that still needs Review says its own. */}
-                {withBars ? null : (
-                  <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                    {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with pay due and no report yet`}
-                  </span>
-                )}
               </div>
               {bulkFailures.length > 0 ? (
                 // Generate N reports went on past these (punch list #184): each stays here with the reason and a Try again door.
@@ -578,29 +521,22 @@ export function DraftPayrollModal({
                   </ul>
                 </div>
               ) : null}
-              {!withBars ? allGeneratedNote(withBars) : null}
               <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
                     <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                      {/* The owner (2026-10-30): with the bars the Paid column goes; the green bar and Record payment say it. */}
-                      {!withBars ? <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: 36 }}>Paid</th> : null}
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
-                      {withBars ? (
-                        // width 1% + nowrap (the owner, 2026-10-30): the column is as wide as its widest press or bar, no wider.
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', width: '1%', whiteSpace: 'nowrap' }}>Cash due</th>
-                      ) : (
-                        <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
-                      )}
+                      {/* width 1% + nowrap (the owner, 2026-10-30): the column is as wide as its widest press or bar, no wider. */}
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', width: '1%', whiteSpace: 'nowrap' }}>Cash due</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: withBars ? 'center' : 'right' }}>{withBars ? '$' : 'Cash Due'}</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>$</th>
                       <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
                     </tr>
                   </thead>
                   <tbody>
                     {filteredPeople.length === 0 && peopleNames.length > 0 ? (
                       <tr>
-                        <td colSpan={withBars ? 5 : 6} style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                        <td colSpan={5} style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
                           Everyone has 0 hours for this period. Enable <strong>Show 0 hours</strong> to list them.
                         </td>
                       </tr>
@@ -632,37 +568,18 @@ export function DraftPayrollModal({
                             : 'Ready'
                           : 'No hours'
                       const isGenerating = generatingPayStubPerson === person
-                      const rowBar = withBars ? barsByPerson.get(person) : undefined
+                      const rowBar = barsByPerson.get(person)
+                      if (!rowBar) return null
                       const needsReview = !stub && estGross > 0 && reviewItems.length > 0
                       // The owner (2026-10-30): a report with nothing paid on it shows Record payment, blue, in Cash due instead of a bar reading *report due*.
-                      const recordInCashDue = rowBar != null && stub != null && status === 'Report only'
+                      const recordInCashDue = stub != null && status === 'Report only'
                       return (
                         <tr key={person} style={{ borderBottom: '1px solid var(--border)' }}>
-                          {withBars ? null : (
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {stub && !stubFullyPaid ? (
-                              <input
-                                type="checkbox"
-                                checked={false}
-                                onChange={() => onRecordPayment(stub)}
-                                disabled={markingPayStubId === stub.id}
-                                title="Record payment"
-                              />
-                            ) : stub && stubFullyPaid ? (
-                              <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }} title="Fully paid">
-                                {'\u2713'}
-                              </span>
-                            ) : (
-                              <span style={{ color: 'var(--text-faint-300)' }}>—</span>
-                            )}
-                          </td>
-                          )}
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {person}
-                            {rowBar && rowBar.pendingSessions > 0 ? <DraftPayrollPendingDot n={rowBar.pendingSessions} onPress={pendingPress} /> : null}
+                            {rowBar.pendingSessions > 0 ? <DraftPayrollPendingDot n={rowBar.pendingSessions} onPress={pendingPress} /> : null}
                           </td>
-                          {rowBar ? (
-                            <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
                               {recordInCashDue && stub ? (
                                 <button
                                   type="button"
@@ -687,49 +604,6 @@ export function DraftPayrollModal({
                                 <DraftPayrollRowBarCell bar={rowBar} onReview={needsReview ? () => setReviewDaysDetail({ personName: person, items: reviewItems }) : undefined} />
                               )}
                             </td>
-                          ) : (
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {needsReview ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setReviewDaysDetail({ personName: person, items: reviewItems })
-                                }}
-                                title="Show dates needing attention for this period (Correct checkbox or job assignment)"
-                                style={{
-                                  padding: 0,
-                                  border: 'none',
-                                  background: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '0.8125rem',
-                                  color: '#ea580c',
-                                  textDecoration: 'underline',
-                                }}
-                              >
-                                Review
-                              </button>
-                            ) : (
-                              <span
-                                style={{
-                                  fontSize: '0.8125rem',
-                                  color:
-                                    status === 'Paid'
-                                      ? '#059669'
-                                      : status === 'Partial'
-                                        ? '#ca8a04'
-                                        : status === 'Review'
-                                          ? '#ea580c'
-                                          : status === 'No hours' || status === 'Report only'
-                                            ? '#6b7280'
-                                            : undefined,
-                                }}
-                              >
-                                {status}
-                              </span>
-                            )}
-                          </td>
-                          )}
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
                             {hours > 0 ? (
                               <button
@@ -758,8 +632,8 @@ export function DraftPayrollModal({
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {/* No est. chip (the owner, 2026-10-30: "drop it"): the no-report-yet pill says it; the hover keeps the words. */}
-                            {rowBar ? <DraftPayrollMoney amount={draftPayrollRowCashDue(stub?.gross_pay, estGross)} title={rowBar.estimated ? ESTIMATE_CHIP_TITLE : undefined} /> : `$${formatCurrency(draftPayrollRowCashDue(stub?.gross_pay, estGross))}`}
-                            {rowBar?.salaryFlat ? <DraftPayrollSalaryChip /> : null}
+                            <DraftPayrollMoney amount={draftPayrollRowCashDue(stub?.gross_pay, estGross)} title={rowBar.estimated ? ESTIMATE_CHIP_TITLE : undefined} />
+                            {rowBar.salaryFlat ? <DraftPayrollSalaryChip /> : null}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub ? (
@@ -851,7 +725,7 @@ export function DraftPayrollModal({
                   </tbody>
                 </table>
               </div>
-              {withBars ? allGeneratedNote(withBars) : null}
+              {allGeneratedNote()}
             </>
           )}
     </>
@@ -885,7 +759,6 @@ export function DraftPayrollModal({
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '0.5rem', gap: '0.75rem' }}>
               <h2 style={{ margin: 0, fontSize: '1.25rem' }}>Draft Payroll</h2>
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                <ShapeSwitch view={view} words={{ off: 'Show the bars', on: 'Show today’s look' }} />
                 <label
                   style={{
                     display: 'inline-flex',
@@ -1000,11 +873,7 @@ export function DraftPayrollModal({
               </button>
             </div>
           </div>
-          {view.sideBySide && bars ? (
-            <SideBySide today={renderBody(false)} shape={renderBody(true)} label="With the bars" testId="draft-payroll-side-by-side" />
-          ) : (
-            renderBody(view.on && bars != null)
-          )}
+          {body}
         </div>
       </div>
 

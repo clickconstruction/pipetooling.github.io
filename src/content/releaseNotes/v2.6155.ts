@@ -3,13 +3,13 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.6155',
   date: '2026-10-30',
-  title: 'Draft Payroll’s Cash Due as bars, a prototype behind a switch (punch list #217)',
+  title: 'Draft Payroll’s Cash Due as bars (punch list #217)',
   kind: 'feature',
   highlights: [
-    'Draft Payroll has a Show the bars switch at the top of the window. With it on, each row’s Cash Due is a thin bar: green for money sent, blue for a report’s net still owed, hatched for an estimate from the hours with no report yet.',
-    'The Total | Left sentence becomes the period’s bar under the dates, the same parts added up, each named inside the bar: paid, owed, no report. The $ column draws its cents smaller.',
-    'An est. chip marks an estimated figure, a salary 8h chip marks flat salaried hours, and an amber dot sits on each row whose clock sessions still wait on approval. The amber banner becomes one chip in the button row.',
-    'The switch is off by default and yours alone, remembered on this device. Nothing changes for anyone who leaves it off.',
+    'Draft Payroll’s Total | Left sentence is a bar under the dates: paid, owed and no report, each with its figure and its share of the period, and the caption counts paid against the people with pay due this period.',
+    'The Status and Paid columns are one Cash due column: a bar per row reading paid on its day, paid and owed, or no report yet, and a blue Record payment for a report with nothing paid on it yet. The Review link stays beside the bar.',
+    'The $ column draws its cents smaller, with salary 8h as a small line under a salaried person’s figure. An amber dot sits on each row whose clock sessions still wait, and the banner is one chip in the button row.',
+    'The Every report is generated note sits under the table. The printable summary keeps its words.',
   ],
   roles: ['dev', 'master_technician', 'controller'],
 }
