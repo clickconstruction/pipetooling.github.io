@@ -2,7 +2,7 @@
 title: run the office day with Quickfill
 category: Office
 roles: dev, master_technician, assistant
-keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked, focus, view, page, switch, groups with work, roller, one at a time, board, groups
+keywords: quickfill, daily, mark up to date, office routine, sections, phone, round, due, rhythm, looked, focus, view, page, switch, groups with work, roller, one at a time, board, groups, strip, two weeks, show the strips
 where: /quickfill
 order: 10
 ---
@@ -90,11 +90,15 @@ A strip of dots sits under the name. There is one dot for every section in the r
 
 {{button:outline|Groups ▾}} opens the Board. The Board shows every section in the round as a card. Each card has the count, the question and when it was last looked at. You tap a card to go there.
 
+The Board has a small press, {{button:outline|Show the strips}}. Press it and every section becomes a row with a strip of the last two weeks. A dot marks each day someone looked. A dashed red line marks the day the next look is due. The days past that line are red. Today has a blue outline. A chip beside the name says where the section stands, like {{chip:red|2 d over}} or {{chip:gray|due Tue}}. The press is remembered for you on this device. {{button:outline|Show today's look}} puts the cards back.
+
 The lit press marks the section for everyone and opens the next one. It is the same mark as the small press in a station's header, with the count it saw. When every section has been looked at the page shows the **close sheet**. It says what is clean, what was worked and is still open, and what you asked about. Each station on it is a door back in. The Dashboard shows the same sheet in two lines, under Needs you, as **The office's round**.
 
 ## On a phone: the round
 
 On a phone Quickfill is a **list of its sections**, not the sections themselves. Each row is the section's name, its count, and when it was last looked at and by whom. The dot says where it stands: {{chip:red|due}}, {{chip:yellow|due today}}, {{chip:gray|not yet}} or {{chip:green|fresh}}. **Due is measured against that section's own rhythm**, how often it actually gets marked. A section you mark weekly is due a week after its last mark, not 30 hours after. The headline says how many are due. {{button:blue|Round · 6 ›}} opens the first.
+
+The list has the same press, {{button:outline|Show the strips}}. Then each row carries its two-week strip under the name. The headline's counts become chips. Press {{chip:red|due 4}} to see only the due sections. Press it again to see every section.
 
 You tap a row and the section opens as its own screen. The question it answers is on top, then its count and last look, then the section as you know it. At the bottom, {{button:outline|Skip}} moves on without marking. Under it the three presses sit one above the other. The lit one marks it for everyone and opens the next due section. It is the same mark as the small press in a station's header, with the count it saw. When nothing is due the round is done. Email counts its own mail, so its Looked saves the list it saw. **My Inbox**, **Schedule** and **Tomorrow's schedule** sit at the bottom as doors. **Office Leaving** joins the round from 3 p.m. Before that its row reads *after 3 p.m.* and the Roller skips it.
 
