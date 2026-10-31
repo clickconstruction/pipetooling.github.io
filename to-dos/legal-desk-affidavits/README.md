@@ -1,8 +1,8 @@
 ---
 name: "Legal desk: affidavits from the desk — the thinking, the window and the print faces"
 number: 220
-group: waiting
-status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 · PR 4 the print faces v2.6211 · PR 5 filing the scan v2.6212 (claude/220-affidavit-file-scan) · PR 6 claimed on claude/220-affidavit-records-preset
+group: close
+status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 · PR 4 the print faces v2.6211 · PR 5 filing the scan v2.6212 · PR 6 the business-records preset v2.6213 (claude/220-affidavit-records-preset) · all six built 2026-10-31
 mockup: to-dos/legal-desk-affidavits/mockup.html
 summary: >
   The office made one affidavit by hand this month: drafted in a chat, exported, printed, driven to a
@@ -13,7 +13,7 @@ summary: >
   how it is signed, before a notary or under penalty of perjury with no notary; print the paper, the
   statement alone, or the signing page alone to staple on a handwritten statement; file the signed scan
   and confirm the two days. The text lands on the Timeline's Said lane, the scan on Evidence, linked.
-next: PR 6, the business-records affidavit preset; after PR 2 merges, `supabase db push` and `supabase functions deploy legal-portal` (PR 3's client calls the RPCs, so the push comes before its deploy). Question 3 (drafts to counsel) is still open and the default follows the everything-goes rule until the owner says otherwise.
+next: the merges in order, then the push and the portal deploy, then the owner's look at a live account; after PR 2 merges, `supabase db push` and `supabase functions deploy legal-portal` (PR 3's client calls the RPCs, so the push comes before its deploy). Question 3 (drafts to counsel) is still open and the default follows the everything-goes rule until the owner says otherwise.
 size: M as a train of six (S · S · M · S · M · S)
 blocker: None. The owner answered 2026-10-30; the one open question (drafts to counsel) changes no PR before 5.
 opinion: build as recommended with the owner's defaults — before a notary for everyone, Guadalupe County on the venue line, blank one tap away; the one design call still open is whether the firm reads a draft before the witness signs
@@ -319,7 +319,11 @@ browser's print sheet with the app hidden. `npx vitest run src/lib/legal src/com
 
 ## Where it stands
 
-Card and mock-up 2026-10-30; the owner's answers the same day; the owner's go-ahead for the whole train the same evening.
-PR 1 (v2.6208) is the kernel: `src/lib/legal/juratWords.ts`, `affidavitPaper.ts` and their tests, the lien print reading the
-shared jurat. PRs 2–6 follow in order on their own branches; the one open question (drafts to counsel) touches PR 2's
-portal line only.
+Built in six PRs on 2026-10-31 (v2.6208–v2.6213), each on its own `claude/220-affidavit-*` branch and stacked until the
+one before it merges: the kernel and the shared jurat; the migration, the RPCs, the Said lane and the office county;
+the window, its doors and the record check; the print sheet with the three faces and Save as PDF; filing the signed
+scan with the two links; the business-records preset (Tex. R. Evid. 902(10)(B), quoted from the Supreme Court's order
+of 2014-08-19). Left after the merges: `supabase db push`, `supabase functions deploy legal-portal`, the owner's look on a
+live account. Later, not in the train: dev-mcp `plan_matter_statement` / `apply_matter_statement`; *Insert the
+statements* in the narrative. Question 3 (drafts to counsel) stays answered by the desk's rule until the owner says
+otherwise.
