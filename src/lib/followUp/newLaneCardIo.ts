@@ -4,7 +4,9 @@
  * jobs' tiles and whether each is still under way, *Who gets a new message*'s seats and the office team. The guesses'
  * records load only for *Who is this?*: since v2.5795 the customers and the people at them, the bids and the jobs that
  * name the sender (`customerLink.ts`), each read failing soft. The presses are the spine's `name_contact` and
- * `tie_message`, cut 2's `take_it` and `hand_to`, and *A new customer*'s `makeCustomer`. One interface, so a smoke fakes it.
+ * `tie_message`, cut 2's `take_it` and `hand_to`, *A new customer*'s `makeCustomer`, and since v2.6202 (punch list #223
+ * PR 1) *A notice, not a person*'s `mark_notice` and its undo `unmark_notice`, the card reading the thread's row on
+ * `email_left_out_senders` so the undo can show. One interface, so a smoke fakes it.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1 } from '../appSettingsKeys'
@@ -43,6 +45,14 @@ export interface NewLaneCardRows {
   /** *Who gets a new message*'s seats (Settings → Phone and texts). */
   seats: AssignSeats
   team: Teammate[]
+  /** The sender was marked a notice from this thread (v2.6202): the rows the press made, the domain's first. Empty when not. */
+  notice?: NoticeRow[]
+}
+
+/** One row of `email_left_out_senders` this thread made. */
+export interface NoticeRow {
+  value: string
+  kind: 'address' | 'domain'
 }
 
 export interface NewLaneCardIo {
@@ -70,6 +80,10 @@ export interface NewLaneCardIo {
   tie(messageId: string, jobKey: string): Promise<void>
   takeIt(contactId: string): Promise<void>
   handTo(contactId: string, userId: string | null): Promise<void>
+  /** *A notice, not a person* (v2.6202): marks the sender's address, or the company's domain, and closes the thread. */
+  markNotice(contactId: string, scope: 'address' | 'domain'): Promise<void>
+  /** *Not a notice after all*: takes the thread's rows off the list and puts the thread back in New. */
+  unmarkNotice(contactId: string): Promise<void>
 }
 
 /** What *A new customer* is made from: the field's name, the sender's own, their address and number, the box's kind. */
@@ -119,13 +133,15 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
     async loadCard(contactId, jobKeys, nowIso) {
       const newest = (direction: 'in' | 'out') =>
         db.from('messages').select(MESSAGE_COLUMNS).eq('contact_id', contactId).eq('direction', direction).order('at', { ascending: false }).limit(1)
-      const [contact, lastIn, lastOut, seats, team, jobs] = await Promise.all([
+      const [contact, lastIn, lastOut, seats, team, jobs, notice] = await Promise.all([
         db.from('contacts').select('state, snoozed_until, has_user_id').eq('id', contactId).maybeSingle(),
         newest('in'),
         newest('out'),
         db.from('app_settings').select('value_text').eq('key', APP_SETTINGS_KEY_MESSAGES_ASSIGN_RULE_V1).maybeSingle(),
         db.from('users').select('id, name, role').in('role', [...GC_OFFICE_TEAM]).is('archived_at', null).eq('is_digital_twin', false).eq('is_sample', false).eq('is_walk_tester', false),
         loadJobTilesAndActive(jobKeys, calendarYmdInAppTzFromIso(nowIso)),
+        // The thread's rows on the notice list (v2.6202), soft: a role the table refuses still gets its card.
+        soft<NoticeRow>(db.from('email_left_out_senders').select('value, kind').eq('contact_id', contactId).order('kind')),
       ])
       checkSupabaseError(contact, 'load who has the conversation')
       checkSupabaseError(lastIn, 'load their newest line')
@@ -140,6 +156,7 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
         active: jobs.active,
         seats: parseAssignSeats((seats.data as { value_text: string | null } | null)?.value_text),
         team: followUpTeamOf(people.map((p) => ({ id: p.id, name: p.name ?? '', role: p.role ?? '' }))),
+        notice,
       }
     },
     async loadKnown(row) {
@@ -320,5 +337,13 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
     },
     takeIt: presses.takeIt,
     handTo: presses.handTo,
+    async markNotice(contactId, scope) {
+      const result = await db.rpc('mark_notice', { p_contact_id: contactId, p_scope: scope })
+      checkSupabaseError(result, 'mark a notice')
+    },
+    async unmarkNotice(contactId) {
+      const result = await db.rpc('unmark_notice', { p_contact_id: contactId })
+      checkSupabaseError(result, 'put a notice back')
+    },
   }
 }

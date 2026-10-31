@@ -3,7 +3,9 @@
  * it in the window's `aboveLines` slot. It reads that person once (`newLaneCardIo.ts`), asks the lane's own rule
  * whether they need sorting (`laneRowFor`), and runs each press: says what it did, reads the card again and asks the
  * window to read the thread again. *A new customer* (v2.5795) goes through `makeCustomer` with the contact's address and
- * number, the sender's name and the box's kind.
+ * number, the sender's name and the box's kind. *A notice, not a person* (punch list #223 PR 1, v2.6202) goes through
+ * `markNotice`; once the thread is done by that press, the slot draws the undo strip in the card's place, *Marked a
+ * notice · Not a notice after all*, through `unmarkNotice`.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { Contact } from '../../lib/contacts/kernel'
@@ -12,9 +14,14 @@ import { jobChoices, rosterChoices, whoGuesses, type WhoGuess, type WhoKnown } f
 import type { NewLaneCardIo, NewLaneCardRows } from '../../lib/followUp/newLaneCardIo'
 import { hasTargets, laneJobs, laneRowFor, namedWords, rulePick, tiedWords } from '../../lib/followUp/newLaneRows'
 import { hasToast } from '../../lib/followUp/queue'
+import { NOTICE_LINES } from '../../lib/emailIn/leftOutSenders'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { AboveLinesActs } from '../gc/messages/threadSlots'
+import { Btn } from '../gc/gcUi'
 import { NewLaneCard } from './NewLaneCard'
+
+/** What the undo strip says once the sender is back in New. */
+export const NOTICE_UNDONE = 'The sender is back in New. Their next mail lands again.'
 
 /** What a press says: its words, and whether it landed. */
 export type Say = (words: string, tone: 'success' | 'error') => void
@@ -92,7 +99,7 @@ export function NewLaneSlot({
     return () => whoDrawn?.(false)
   }, [asksWho, whoDrawn])
 
-  if (!row || !read) return null
+  if (!read) return null
 
   const run = async (press: () => Promise<unknown>, words: string, after?: (out: unknown) => void) => {
     setBusy(true)
@@ -107,6 +114,26 @@ export function NewLaneSlot({
     } finally {
       setBusy(false)
     }
+  }
+
+  // Marked a notice from this thread (v2.6202): no sort card, the undo strip in its place while the thread is done.
+  if (!row) {
+    const marked = read.notice ?? []
+    if (marked.length === 0 || read.contact?.state !== 'done') return null
+    const domain = marked.find((n) => n.kind === 'domain')
+    const line = domain ? NOTICE_LINES.marked(domain.value, 'domain') : NOTICE_LINES.marked(marked[0]!.value, 'address')
+    return (
+      <section
+        aria-label="Marked a notice"
+        data-new-lane-notice
+        style={{ margin: '0.5rem 0.9rem 0', border: '1px solid var(--border)', borderRadius: 10, background: 'var(--bg-subtle)', padding: '0.5rem 0.75rem', display: 'flex', gap: '0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-600)' }}
+      >
+        <span style={{ flex: 1, minWidth: 180, overflowWrap: 'anywhere' }}>{line.replace(/\.$/, '')} · their next mail stays in Gmail.</span>
+        <Btn kind="quiet" onClick={() => void run(() => io.unmarkNotice(contact.id), NOTICE_UNDONE)} disabled={busy}>
+          Not a notice after all
+        </Btn>
+      </section>
+    )
   }
 
   const lastOut = read.lines.find((l) => l.direction === 'out')
@@ -127,7 +154,9 @@ export function NewLaneSlot({
       onName={(g: WhoGuess) =>
         void run(
           () =>
-            g.makesRecord
+            g.notice
+              ? io.markNotice(contact.id, g.notice.scope)
+              : g.makesRecord
               ? io.makeRecord(
                   contact.id,
                   {
