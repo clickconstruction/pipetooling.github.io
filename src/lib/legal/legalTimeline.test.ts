@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { LegalEntryRow } from './legalMatters'
 import type { LienTimelineStep } from '../jobs/lienTimeline'
 import { plainWordsFailures } from '../plainWords'
+import { statementHoldKey } from './affidavitPaper'
 import { buildLegalTimeline, composerDeadlineSuggestion, composerKind, deadlineStateWords, documentStateWords, eventDraftProblem, eventHoldKey, eventMetaOf, eventsNarrativeMarkdown, insertEventsIntoNarrative, offerExpiryStateWords, planDraftProblem, planHoldKey, planMetaOf, planStateWords, timelineCountsWords, timelineDayWords, timelineDeadlinesFromPaper, timelineDocumentsFromPortal, timelineDocumentsFromRows, timelineEmptyWords, timelineHoldKey, timelineInLane, timelineLaneCounts, timelineRelativeWords } from './legalTimeline'
 
 const TODAY = '2026-10-23'
@@ -387,5 +388,57 @@ describe('the empty line (punch list #184, sweep C)', () => {
     if (office.next && 'onPress' in office.next) office.next.onPress()
     expect(open).toBe(1)
     for (const w of [lane, office]) expect(plainWordsFailures(said(w))).toEqual([])
+  })
+})
+
+describe('statements: sworn on the Said lane (punch list #220, v2.6209)', () => {
+  const TODAY = '2026-10-30'
+  const row = (over: Partial<LegalEntryRow>): LegalEntryRow => ({ id: 'e', matter_id: 'm', kind: 'statement', amount: null, body: '', occurred_on: '2026-09-03', meta: {}, via_portal: false, created_by: 'u1', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z', ...over })
+  const affiant = { kind: 'team', user_id: 'u-da', name: 'Daniel Alvarez', role: 'RMP' }
+  const entries = [
+    row({ id: 'st-draft', body: 'Northline never called us back.\nI drove past the site.', meta: { title: 'Affidavit of Daniel Alvarez', affiant, form: 'notary', incident_to: '2026-09-17', venue_county: 'Guadalupe', state: 'draft', prints: [], source: 'office' } }),
+    row({ id: 'st-signed', occurred_on: '2026-09-09', body: 'I saw two of their men carrying PVC.', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen', role: 'the foreman' }, form: 'declaration', venue_county: 'Williamson', state: 'signed', prints: [{ at: '2026-10-16T15:00:00Z', by: 'u1', face: 'signing', text: '' }], signed_on: '2026-10-29', document_id: 'd-scan', source: 'mcp' } }),
+    row({ id: 'st-stale', occurred_on: '2026-09-10', body: 'x', meta: { title: 'Statement of R. Ortiz', affiant: { kind: 'team', name: 'R. Ortiz' }, form: 'notary', state: 'printed', prints: [{ at: '2026-10-10T15:00:00Z', by: 'u1', face: 'whole', text: '1. x' }] } }),
+    row({ id: 'st-undone', occurred_on: '2026-09-11', body: 'x', meta: { title: 'Dropped', affiant, form: 'notary' }, voided_at: '2026-10-29T10:00:00Z', void_reason: 'would not sign the September paragraph' }),
+  ]
+  const office = buildLegalTimeline({ entries, todayYmd: TODAY, holds: { [statementHoldKey('st-draft')]: true }, holdReasons: { [statementHoldKey('st-draft')]: 'counsel reads it signed' }, userNameOf: () => 'Grace', reader: 'office', dayOfIso: (iso) => iso.slice(0, 10) })
+  const firm = buildLegalTimeline({ entries, todayYmd: TODAY, reader: 'firm' })
+  const by = (t: ReturnType<typeof buildLegalTimeline>, k: string) => [...t.past, ...t.today, ...t.upcoming].find((i) => i.key === k)!
+
+  it('sits on the Said lane on the day it is about, titled, with the paragraphs as its notes and the affiant as its by-line', () => {
+    const d = by(office, 'entry:st-draft')
+    expect(d.lane).toBe('said')
+    expect(d.kind).toBe('statement')
+    expect(d.ymd).toBe('2026-09-03')
+    expect(d.what).toBe('Affidavit of Daniel Alvarez')
+    expect(d.notes).toBe('Northline never called us back.\nI drove past the site.')
+    expect(d.byName).toBe('Daniel Alvarez · team')
+    expect(d.kindWords).toBe('sworn statement · draft')
+    expect(d.state).toBe('planned')
+    expect(d.stateWords).toBe('Draft · not signed.')
+    expect(d.held).toBe(true)
+    expect(d.heldReason).toBe('counsel reads it signed')
+    expect(timelineHoldKey(d)).toBe('statement:st-draft')
+    expect(timelineLaneCounts(office).said).toBe(4)
+    // A statement is never a planned step: the counts leave it out, the hold counts.
+    expect(office.counts.planned).toBe(0)
+    expect(office.counts.held).toBe(1)
+  })
+  it('a signed one names the scan, reads sworn or signed, and tags the dev MCP for the office alone', () => {
+    const s = by(office, 'entry:st-signed')
+    expect(s.state).toBe('happened')
+    expect(s.stateWords).toBe('Signed Oct 29 under penalty of perjury in Williamson County. The signed copy is on Evidence. Printed once before the signing.')
+    expect(s.documentId).toBe('d-scan')
+    expect(s.kindWords).toBe('declaration')
+    expect(s.byName).toBe('Thanh Nguyen · witness · dev MCP')
+    expect(by(firm, 'entry:st-signed').byName).toBe('Thanh Nguyen · witness')
+    expect(by(firm, 'entry:st-signed').kindWords).toBe('unsworn declaration by a witness')
+    expect(by(firm, 'entry:st-draft').kindWords).toBe("sworn statement by the office's team · draft, not signed")
+  })
+  it('a print a fortnight old with no signed copy is stale, and a dropped one reads undone with its reason', () => {
+    expect(by(office, 'entry:st-stale').state).toBe('stale')
+    expect(by(office, 'entry:st-stale').stateWords).toBe('Printed 20 days ago · no signed copy.')
+    expect(by(office, 'entry:st-undone').state).toBe('undone')
+    expect(by(office, 'entry:st-undone').stateWords).toBe('Undone: would not sign the September paragraph')
   })
 })
