@@ -6,6 +6,7 @@ import { envelopeAnswersWords, type LegalEnvelope } from '../../../lib/legal/leg
 
 import { formatLegalMoney, type LegalGap, type LegalPacket } from '../../../lib/legal/legalPacket'
 import { type LegalMatterRow } from '../../../lib/legal/legalMatters'
+import { splitFormattedAmountCents } from '../../../lib/jobs/jobFormatting'
 
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
@@ -145,3 +146,18 @@ export function daysAgo(iso: string | null | undefined, todayYmd: string): numbe
 
 /** An entry as the tabs read it: the matter's stream row. */
 export type EntryLike = LegalEntryRow
+
+/**
+ * The desk's money with the cents drawn smaller (v2.6192, the headline balance): `formatLegalMoney`'s words split
+ * at the point, the cents at 0.7em the way `AmountSmallCents` draws them elsewhere, so the dollars read at a glance
+ * and a copy still yields the whole figure.
+ */
+export function LegalMoneySmallCents({ value }: { value: number }) {
+  const { main, cents } = splitFormattedAmountCents(formatLegalMoney(value))
+  return (
+    <>
+      {main}
+      {cents ? <span data-legal-cents style={{ fontSize: '0.7em' }}>{cents}</span> : null}
+    </>
+  )
+}

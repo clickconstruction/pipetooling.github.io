@@ -66,7 +66,7 @@ import LegalPartiesStrip from './LegalPartiesStrip'
 import { partiesStrip, venueBlock, type PartyDoor, type VenueBlock } from '../../../lib/legal/legalParties'
 import type { LegalMapOpenOn } from './LegalDeskMapView'
 
-import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
+import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo, LegalMoneySmallCents } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
 import { ErrorDoorButton, ErrorDoorCard } from '../../help/ErrorDoor'
 import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
@@ -989,7 +989,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ ...NUM, fontSize: '1.3rem', fontWeight: 700 }}>{formatLegalMoney(selected.balance)}</div>
+                    <div style={{ ...NUM, fontSize: '1.3rem', fontWeight: 700 }}><LegalMoneySmallCents value={selected.balance} /></div>
                     <div style={{ ...MUTED, fontSize: '0.76rem' }}>balance{selected.oldestDays == null ? '' : ` · oldest ${selected.oldestDays}d`}</div>
                   </div>
                   {parties ? (
@@ -1019,7 +1019,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '12px 0 0' }}>
                     {deskQuestions(packet, counselRead).map((c) => (
                       <div key={c.label} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
-                        <div style={{ ...MUTED, fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>{c.label}</div>
+                        <div style={{ ...MUTED, fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 2 }}>{c.label}</div>
                         <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.answer}{c.chip ? pill(c.chip.text, c.chip.tone) : null}</div>
                         {c.why ? <div style={{ ...MUTED, fontSize: '0.72rem' }}>{c.why}</div> : null}
                       </div>
