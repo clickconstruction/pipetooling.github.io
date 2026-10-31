@@ -64,7 +64,7 @@ serve(async (req) => {
     if (waiverCodeUsed ? !release_id : !item_id) return json({ error: waiverCodeUsed ? 'Missing release_id' : 'Missing item_id' }, 400)
 
     const admin = createClient(supabaseUrl, serviceRoleKey)
-    let item: { job_id: string | null; fields?: unknown; signed_by?: string | null; signed_at?: string | null }
+    let item: { job_id: string | null; fields?: unknown; signed_by?: string | null; signed_at?: string | null; signed_witness_how?: string | null }
     let waiverAmount: number | null = null
     let waiverFormType = ''
     // v2.5958: a waiver made on a bid (Bids → Lien Release) has no job; the words name the bid instead.
