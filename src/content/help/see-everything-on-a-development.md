@@ -15,6 +15,8 @@ You put bids and jobs into a development first. The guide [group bids and jobs i
 2. Find the house line near the top. It names the development with a small house.
 3. Press the development's name.
 
+A Pipeline row has the same door. Press the development name under the job's customer, marked with the house.
+
 The page opens with the site's name, its customer and its GC at the top. Under them you see who is on site and five counts.
 
 ## Read the five counts
@@ -92,7 +94,7 @@ Money shows the site's progress as one bar, then every job by stage with what is
 
 ## Check the plans and the questions
 
-Plans lists every plan set, newest first, with the pieces on it. A chip counts the pieces without plans. Press it to see them. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes.
+Plans lists every plan set, newest first, with its memo and the jobs and bids on it. Press the memo to change it, or press {{button:outline|Add a memo}} to write what changed on the plans. A robot that reads the plans can write the memo too. A chip counts the pieces without plans. Press it to see them. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes.
 
 Questions lists the open questions on the site's pieces and how long each has waited. With none open, the card shows the kinds a site waits on.
 

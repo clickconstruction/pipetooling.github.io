@@ -13,6 +13,7 @@
  */
 import { todayYmdInAppTz } from '../../utils/dateUtils.ts'
 import { weekdayDate } from '../gc/words.ts'
+import { defaultPaperFills, type Paper } from '../messages/papers.ts'
 import { blankNames, fillLine } from '../quickReplies/blanks.ts'
 import { stepLine, type QuickReply } from '../quickReplies/kernel.ts'
 import { FLOW_PAPERS, factForPaper, flowContactKind, type FlowKind, type PaperId } from './facts.ts'
@@ -83,6 +84,13 @@ export interface NudgeRunInput {
   offered?: readonly NudgeOffered[]
   /** How each person wants to hear from us (`contacts.prefers`, v2.5597), by contact: an email-only person gets no text from the run. */
   prefers?: Partial<Record<string, 'text' | 'email' | 'either' | null>>
+  /**
+   * Each residential customer's bills as the reply box offers them (`messages/papers.ts`'s `billPapers`), by contact
+   * (punch list #124, v2.6224): the run fills `{amount}`, `{bill}` and `{number}` from the step's job's newest open bill,
+   * the bill the box picks at a press (`defaultPaperFills`). A person left out, or one with no open bill on the job,
+   * keeps the blanks, and the text waits as `blanks left`.
+   */
+  papers?: Partial<Record<string, readonly Paper[]>>
 }
 
 /** One text the run sends. */
@@ -115,8 +123,8 @@ export const OFFER_HELD = {
 
 /**
  * The words for a line that still holds a blank the app cannot fill (punch list #124, v2.6079): the run fills `{first}`,
- * `{job}` and `{link}` itself, and the box fills the rest at a press, so the text waits for a person. Tell the customer
- * (`stageSends.ts`) says the same words.
+ * `{job}`, `{link}` and, since v2.6224, the bill's `{amount}`, `{bill}` and `{number}` itself, and the box fills the rest
+ * at a press, so the text waits for a person. Tell the customer (`stageSends.ts`) says the same words.
  */
 export function blanksLeftWords(left: readonly string[]): string {
   return left.length ? `the line still has ${blankNames(left)}` : 'the line still has a blank'
@@ -270,9 +278,19 @@ export function planNudgeRun(input: NudgeRunInput): NudgeRun {
       const emailOnly = input.prefers?.[person.id] === 'email'
       const mode = appSendMode(input.appSends, person.reading.kind, step.stepId)
       const link = input.links?.[person.id] ?? null
-      // The blanks the run can fill itself: their first name and the job's name (v2.5943), and their page's link (v2.6079).
-      // {rate} waits for the edge's mint. Any other blank is the box's to fill at a press, so the text waits (punch list #124).
-      const filled = fillLine(nudgeLine(person, def, input.quickReplies, link), { first: person.first, job: step.jobId ? (person.jobs?.[step.jobId] ?? null) : null, link })
+      // The blanks the run can fill itself: their first name and the job's name (v2.5943), their page's link (v2.6079), and
+      // the bill's amount, pay page and number (v2.6224) from the step's job's newest open bill, as the box picks it at a
+      // press; with no job on the step, their newest open bill anywhere, as a thread's box does. {rate} waits for the
+      // edge's mint. Any other blank is the box's to fill at a press, so the text waits (punch list #124).
+      const bill = defaultPaperFills(input.papers?.[person.id] ?? [], step.jobId, step.jobId !== null)
+      const filled = fillLine(nudgeLine(person, def, input.quickReplies, link), {
+        first: person.first,
+        job: step.jobId ? (person.jobs?.[step.jobId] ?? null) : null,
+        link,
+        amount: bill.amount ?? null,
+        bill: bill.bill ?? null,
+        number: bill.number ?? null,
+      })
       const left = filled.left.filter((k) => k !== 'rate')
       const text = (event: string): NudgeText => ({
         contactId: person.id,

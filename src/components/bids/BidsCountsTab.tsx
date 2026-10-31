@@ -49,6 +49,13 @@ import { GRADE_COLORS } from './RobotReferenceGradeModal'
 import { usePendingRowFlash } from '../../hooks/usePendingRowFlash'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { useRobotProgress } from '../../hooks/useRobotProgress'
+import { useRobotFixtures } from '../../hooks/useRobotFixtures'
+import { buildRobotStage, type RobotStageRow } from '../../lib/bids/robotStage'
+import { fixturesAddedToast, SET_ASIDE_REASON_WORDS, type FixtureReview, type FixtureTicks, type HerCountRow, type SetAsideReason } from '../../lib/bids/robotFixtures'
+import { isRobotRow, robotRowPill, robotSourceIds, setAsideFoldWords, SET_ASIDE_WORDS } from '../../lib/bids/robotFixtureShade'
+import { RobotFixturesWindow } from './RobotFixturesWindow'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /** v2.4720: rows per insert statement on an import (PostgREST takes the whole array; chunked only so a huge paste stays well under the request limit). */
 const COUNTS_IMPORT_INSERT_CHUNK = 500
@@ -62,6 +69,10 @@ type BidsCountsTabProps = {
    * bid is selected, so the landing rings the box instead of the button.
    */
   openImportRequest?: number
+  /** Robot fixtures (punch list #221, PR 3b): bumps when the robot status sheet's door asks for the window. */
+  openRobotFixturesRequest?: number
+  /** Robot fixtures (PR 3b): Open sheet in the window opens the Plans panel at that page. */
+  onOpenPlansAt?: (page: number) => void
   /** Role gating for those doors (superintendents never reach Pricing / Cover Letter). */
   bidFlowDoorAllowed?: (door: BidFlowDoor) => boolean
   bids: BidWithBuilder[]
@@ -87,14 +98,14 @@ type BidsCountsTabProps = {
 }
 
 /** Sortable Count Sheet row (List mode): drag-handle cell + the sheet's editable cells. */
-function SheetSortableRow({ id, flash, children }: { id: string; flash?: boolean; children: React.ReactNode }) {
+function SheetSortableRow({ id, flash, robot, children }: { id: string; flash?: boolean; /** v2.6180: the robot's row, shaded. */ robot?: boolean; children: React.ReactNode }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   return (
     <tr
       ref={setNodeRef}
       id={countsRowDomId(id)}
       className="count-sheet-row"
-      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : undefined, position: 'relative', zIndex: isDragging ? 2 : undefined, background: flash ? 'var(--bg-green-100)' : undefined }}
+      style={{ transform: CSS.Transform.toString(transform), transition, opacity: isDragging ? 0.6 : undefined, position: 'relative', zIndex: isDragging ? 2 : undefined, background: flash ? 'var(--bg-green-100)' : robot ? 'var(--bg-blue-tint)' : undefined }}
     >
       <td style={{ padding: '0.28rem 0 0.28rem 0.4rem', borderBottom: '1px solid var(--border)', width: '1.8rem' }}>
         <span
@@ -117,6 +128,8 @@ function SheetSortableRow({ id, flash, children }: { id: string; flash?: boolean
 export function BidsCountsTab({
   onOpenBidFlowDoor,
   openImportRequest,
+  openRobotFixturesRequest = 0,
+  onOpenPlansAt,
   bidFlowDoorAllowed,
   bids,
   selectedBidForCounts,
@@ -167,7 +180,7 @@ export function BidsCountsTab({
   const [countsReview, setCountsReview] = useState<{ review: CountsImportReview; parsed: ReturnType<typeof parseCountsImportText>; attached: Map<string, CountRowAttachedWork>; existingCount: number; decision: CountsImportModeDecision } | null>(null)
   // v2.5519: the CountTooling projects behind the bid's counts (`bid_count_sources`), read with the bid; the review's
   // mode comes from the copy's token against them, and Apply registers the copy's project and writes the shares.
-  type CountSourceRow = { id: string; bid_id: string; link: string; token: string | null; project_name: string | null; scope: string; imported_by: string | null; first_imported_at: string; last_imported_at: string }
+  type CountSourceRow = { id: string; bid_id: string; link: string; token: string | null; project_name: string | null; scope: string; imported_by: string | null; first_imported_at: string; last_imported_at: string; source_kind?: string | null }
   const [countSources, setCountSources] = useState<CountSourceRow[]>([])
   const [countSourcesRefresh, setCountSourcesRefresh] = useState(0)
   const countSourcesBidId = selectedBidForCounts?.id ?? null
@@ -179,7 +192,7 @@ export function BidsCountsTab({
     let cancelled = false
     void (async () => {
       try {
-        const { data, error } = await supabase.from('bid_count_sources').select('id, bid_id, link, token, project_name, scope, imported_by, first_imported_at, last_imported_at').eq('bid_id', countSourcesBidId).order('first_imported_at', { ascending: true })
+        const { data, error } = await supabase.from('bid_count_sources').select('id, bid_id, link, token, project_name, scope, imported_by, first_imported_at, last_imported_at, source_kind').eq('bid_id', countSourcesBidId).order('first_imported_at', { ascending: true })
         if (error) throw error
         if (!cancelled) setCountSources((data ?? []) as CountSourceRow[])
       } catch {
@@ -192,6 +205,103 @@ export function BidsCountsTab({
     }
   }, [countSourcesBidId, countSourcesRefresh])
   const countSourceImporterNames = useUserDisplayNames(countSources.map((s) => s.imported_by))
+
+  // Robot fixtures (punch list #221, PR 3): the robot's pull on the selected bid, open once its run is sealed
+  // (`buildRobotStage`), the window, and the five doors. The shade is the share: a row whose shares name the
+  // bid's robot source is the robot's, on every view, for the life of the bid.
+  const robotBidId = selectedBidForCounts?.id ?? null
+  const robotProgress = useRobotProgress(robotBidId ? [robotBidId] : [], { enabled: !!robotBidId })
+  const robotStage = useMemo(() => {
+    const row = robotProgress.rows.find((r) => r.bid_id === robotBidId) as RobotStageRow | undefined
+    return row && selectedBidForCounts ? buildRobotStage(row, selectedBidForCounts, Date.now()) : null
+  }, [robotProgress.rows, robotBidId, selectedBidForCounts])
+  const robotFixtures = useRobotFixtures(robotBidId, !!robotStage?.fixturesOpen)
+  const [robotWindowOpen, setRobotWindowOpen] = useState(false)
+  const [robotBusy, setRobotBusy] = useState(false)
+  const [robotError, setRobotError] = useState<string | null>(null)
+  const [robotAsideShown, setRobotAsideShown] = useState(false)
+  const robotPull = robotFixtures.state.kind === 'ready' ? robotFixtures.state.pull : null
+  const robotPullRows = useMemo(() => (robotFixtures.state.kind === 'ready' ? robotFixtures.state.rows : []), [robotFixtures.state])
+  const robotIds = useMemo(() => robotSourceIds(countSources), [countSources])
+  const robotPullRowByCountRowId = useMemo(() => new Map(robotPullRows.filter((x) => x.count_row_id).map((x) => [x.count_row_id as string, x])), [robotPullRows])
+  const herRowsForRobot = useMemo<HerCountRow[]>(() => countRows.map((r) => ({ id: r.id, fixture: r.fixture, count: r.count, plan_tag: r.plan_tag ?? null, group_tag: r.group_tag, page: r.page })), [countRows])
+  const robotWaiting = robotPullRows.filter((x) => !(x.taken_at && x.count_row_id) && !x.set_aside_at).length
+  const robotRefresh = () => {
+    refreshAfterCountsChange()
+    robotFixtures.reload()
+  }
+  const robotWhen = (iso: string): string => {
+    const t = Date.parse(iso)
+    return Number.isFinite(t) ? new Date(t).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ }) : ''
+  }
+  async function robotUntake(pullId: string) {
+    try {
+      await robotFixtures.untake(pullId)
+      showToast('The robot\u2019s rows are off your count again.', 'success')
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    }
+    robotRefresh()
+  }
+  async function robotTake(ticks: FixtureTicks, review: FixtureReview) {
+    setRobotBusy(true)
+    setRobotError(null)
+    try {
+      const updates = [...ticks.update].map((id) => ({ row_id: id, count_row_id: review.rows.find((r) => r.row.id === id)?.hers?.id ?? '' })).filter((u) => u.count_row_id)
+      const res = await robotFixtures.take([...ticks.add], activeBidVersionId, updates)
+      setRobotWindowOpen(false)
+      showActionToast(fixturesAddedToast(res.added, res.updated), { label: 'Undo', onClick: () => void robotUntake(res.pull_id) }, { durationMs: 10000 })
+      robotRefresh()
+    } catch (e) {
+      setRobotError(formatErrorMessage(e))
+    } finally {
+      setRobotBusy(false)
+    }
+  }
+  async function robotSetAside(rowIds: string[], reason: SetAsideReason | null) {
+    setRobotBusy(true)
+    try {
+      const res = await robotFixtures.setAside(rowIds, reason)
+      showToast(`${countedLabel('Set aside', res.set_aside, 'fixture')}. ${SET_ASIDE_WORDS.why}`, 'success')
+      robotRefresh()
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setRobotBusy(false)
+    }
+  }
+  async function robotPutBack(rowIds: string[]) {
+    setRobotBusy(true)
+    try {
+      const res = await robotFixtures.putBack(rowIds)
+      showToast(`${countedLabel('Put back', res.put_back, 'fixture')}.`, 'success')
+      robotRefresh()
+    } catch (e) {
+      showToast(formatErrorMessage(e), 'error')
+    } finally {
+      setRobotBusy(false)
+    }
+  }
+  // The status sheet's door (PR 3b): the window opens once the bid is selected and its pull is read; each press once.
+  const robotRequestHandled = useRef(0)
+  useEffect(() => {
+    if (openRobotFixturesRequest > robotRequestHandled.current && robotStage?.fixturesOpen && robotPull) {
+      robotRequestHandled.current = openRobotFixturesRequest
+      setRobotWindowOpen(true)
+    }
+  }, [openRobotFixturesRequest, robotStage?.fixturesOpen, robotPull])
+  const robotFixturesButton = robotStage?.fixturesOpen && robotPull ? (
+    <button
+      type="button"
+      id="counts-robot-fixtures"
+      data-testid="counts-robot-fixtures"
+      onClick={() => setRobotWindowOpen(true)}
+      title="The fixtures the robot found on this bid's plans, with the text that backs each one"
+      style={{ padding: '0.5rem 1rem', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', border: '1px solid var(--border-blue)', borderRadius: 4, cursor: 'pointer', font: 'inherit', fontWeight: 600 }}
+    >
+      {robotWaiting > 0 ? `Robot fixtures · ${robotWaiting}` : 'Robot fixtures'}
+    </button>
+  ) : null
   /** v2.5519: the review's words and its Combine ↔ Replace switch; null on a hand paste onto a bid with no project. */
   const countsReviewSourceContext = useMemo<CountsImportSourceContext | null>(() => {
     if (!countsReview) return null
@@ -1083,6 +1193,7 @@ export function BidsCountsTab({
               </div>
               {gradeChipEl}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
+                {robotFixturesButton}
                 <button
                   type="button"
                   id="counts-import-tooling"
@@ -1122,6 +1233,7 @@ export function BidsCountsTab({
                 {gradeChipEl}
               </div>
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto' }}>
+                {robotFixturesButton}
                 <button
                   type="button"
                   id="counts-import-tooling"
@@ -1191,7 +1303,7 @@ export function BidsCountsTab({
             )
             const sheetRowCells = (r: BidCountRow) => (
               <>
-                <td style={{ ...sheetCell, width: '6.4rem' }}>
+                <td style={{ ...sheetCell, width: '6.4rem', ...(isRobotRow(r.source_shares, robotIds) ? { boxShadow: 'inset 3px 0 0 #2563eb' } : {}) }}>
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.2rem' }}>
                     {sheetEditCell(r, 'count', String(r.count), { numeric: true, ariaLabel: `Count for ${r.fixture}` })}
                     <select
@@ -1222,7 +1334,8 @@ export function BidsCountsTab({
                   {sheetEditCell(r, 'page', r.page ?? '', { nopage: parsePlanPageTokens(r.page).length === 0, ariaLabel: `Plan page for ${r.fixture}` })}
                 </td>
                 {countSources.length > 0 ? (() => {
-                  const from = countRowFrom(r.source_shares, sourceLabelById, (n) => formatUnitTotal(n, effectiveCountUnit(r)))
+                  const robotPill = robotRowPill(r.source_shares, robotIds, r.count, (n) => formatUnitTotal(n, effectiveCountUnit(r)))
+                  const from = robotPill ? { kind: 'one' as const, words: robotPill.words, title: robotPill.title, keys: [] as string[] } : countRowFrom(r.source_shares, sourceLabelById, (n) => formatUnitTotal(n, effectiveCountUnit(r)))
                   return (
                     <td style={{ ...sheetCell, width: '6.5rem', whiteSpace: 'nowrap' }} data-testid="count-row-from" title={from.title}>
                       <span style={{ fontSize: '0.7rem', fontWeight: 600, padding: '0.05rem 0.45rem', borderRadius: 999, border: '1px solid var(--border)', background: from.kind === 'both' ? 'var(--bg-green-100)' : 'var(--bg-subtle)', color: from.kind === 'none' ? 'var(--text-muted)' : from.kind === 'both' ? 'var(--text-green-700)' : 'var(--text-700)' }}>{from.words}</span>
@@ -1230,7 +1343,22 @@ export function BidsCountsTab({
                   )
                 })() : null}
                 <td style={{ ...sheetCell, textAlign: 'right', width: '7rem', whiteSpace: 'nowrap' }}>
-                  {sheetPendingDeleteId === r.id ? (
+                  {robotPullRowByCountRowId.has(r.id) ? (
+                    sheetPendingDeleteId === r.id ? (
+                      <>
+                        <button type="button" onClick={() => { setSheetPendingDeleteId(null); void robotSetAside([robotPullRowByCountRowId.get(r.id)!.id], null) }} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.5rem', border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', borderRadius: 4, cursor: 'pointer', marginRight: '0.3rem' }}>
+                          {SET_ASIDE_WORDS.button}
+                        </button>
+                        <button type="button" onClick={() => setSheetPendingDeleteId(null)} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.45rem', border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-700)', borderRadius: 4, cursor: 'pointer' }}>
+                          Keep
+                        </button>
+                      </>
+                    ) : (
+                      <button type="button" className="count-sheet-trash" onClick={() => setSheetPendingDeleteId(r.id)} title={SET_ASIDE_WORDS.why} aria-label={`${SET_ASIDE_WORDS.button} ${r.fixture}`} data-testid="count-row-set-aside" style={{ font: 'inherit', fontSize: '0.72rem', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--text-blue-800)' }}>
+                        {SET_ASIDE_WORDS.button}
+                      </button>
+                    )
+                  ) : sheetPendingDeleteId === r.id ? (
                     <>
                       <button type="button" onClick={() => void sheetDeleteRow(r.id)} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.5rem', border: '1px solid var(--border-red)', background: 'var(--surface)', color: 'var(--text-red-700)', borderRadius: 5, cursor: 'pointer' }}>
                         Delete
@@ -1248,7 +1376,7 @@ export function BidsCountsTab({
               </>
             )
             const sheetRow = (r: BidCountRow) => (
-              <tr key={r.id} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : undefined}>
+              <tr key={r.id} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : isRobotRow(r.source_shares, robotIds) ? { background: 'var(--bg-blue-tint)' } : undefined}>
                 {sheetRowCells(r)}
               </tr>
             )
@@ -1322,7 +1450,7 @@ export function BidsCountsTab({
                 </td>
               </tr>,
               ...g.rows.map((r) => (
-                <tr key={`g-${g.label}-${r.id}`} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : undefined}>{sheetRowCells(r)}</tr>
+                <tr key={`g-${g.label}-${r.id}`} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : isRobotRow(r.source_shares, robotIds) ? { background: 'var(--bg-blue-tint)' } : undefined}>{sheetRowCells(r)}</tr>
               )),
             ]
             return (
@@ -1594,7 +1722,7 @@ export function BidsCountsTab({
                         ? (
                           <SortableContext items={visibleRows.map((r) => r.id)} strategy={verticalListSortingStrategy}>
                             {visibleRows.map((r) => (
-                              <SheetSortableRow key={r.id} id={r.id} flash={rowJumpFlashDomId === countsRowDomId(r.id)}>{sheetRowCells(r)}</SheetSortableRow>
+                              <SheetSortableRow key={r.id} id={r.id} flash={rowJumpFlashDomId === countsRowDomId(r.id)} robot={isRobotRow(r.source_shares, robotIds)}>{sheetRowCells(r)}</SheetSortableRow>
                             ))}
                           </SortableContext>
                         )
@@ -1622,7 +1750,7 @@ export function BidsCountsTab({
                                 </td>
                               </tr>,
                               ...g.rows.map((r) => (
-                                <tr key={`${g.label}-${r.id}`} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : undefined}>{sheetRowCells(r)}</tr>
+                                <tr key={`${g.label}-${r.id}`} id={countsRowDomId(r.id)} className="count-sheet-row" style={rowJumpFlashDomId === countsRowDomId(r.id) ? { background: 'var(--bg-green-100)' } : isRobotRow(r.source_shares, robotIds) ? { background: 'var(--bg-blue-tint)' } : undefined}>{sheetRowCells(r)}</tr>
                               )),
                             ])}
                             {buildCountSheetPageGroups(visibleRows).noPage.length > 0 ? (
@@ -1637,6 +1765,34 @@ export function BidsCountsTab({
                             ) : null}
                           </>
                         )}
+                      {(() => {
+                        const aside = robotPullRows.filter((x) => x.set_aside_at)
+                        const fold = setAsideFoldWords(aside.map((x) => ({ tag: x.tag, reason: x.set_aside_reason })))
+                        if (!fold) return null
+                        return (
+                          <>
+                            <tr key="robot-aside-head">
+                              <td colSpan={12} data-testid="counts-robot-set-aside" style={{ padding: '0.4rem 0.75rem', borderTop: '1px solid var(--border)', fontSize: '0.78rem', color: 'var(--text-700)' }}>
+                                <b>{fold.head}</b> <span style={{ color: 'var(--text-muted)' }}>{fold.list}</span>{' '}
+                                <button type="button" onClick={() => setRobotAsideShown((v) => !v)} style={{ font: 'inherit', fontSize: '0.78rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0 }}>{robotAsideShown ? 'Hide them' : 'Show them'}</button>
+                              </td>
+                            </tr>
+                            {robotAsideShown
+                              ? aside.map((x) => (
+                                  <tr key={`robot-aside-${x.id}`} style={{ color: 'var(--text-muted)', background: 'var(--bg-subtle)' }}>
+                                    <td colSpan={11} style={{ padding: '0.28rem 0.75rem', borderTop: '1px solid var(--border)', fontSize: '0.8rem', boxShadow: 'inset 3px 0 0 var(--border-strong)' }}>
+                                      <s>{formatUnitTotal(Number(x.count), isCountUnit(x.unit) ? x.unit : 'ea')}</s> {x.name} <span style={{ fontFamily: 'ui-monospace, Menlo, monospace', fontSize: '0.72rem', fontWeight: 700 }}>{x.tag}</span>
+                                      {' · set aside'}{x.set_aside_reason && x.set_aside_reason in SET_ASIDE_REASON_WORDS ? `, ${SET_ASIDE_REASON_WORDS[x.set_aside_reason as SetAsideReason]}` : ''}
+                                    </td>
+                                    <td style={{ textAlign: 'right', padding: '0.28rem 0.5rem', borderTop: '1px solid var(--border)', whiteSpace: 'nowrap' }}>
+                                      <button type="button" disabled={robotBusy} onClick={() => void robotPutBack([x.id])} style={{ font: 'inherit', fontSize: '0.72rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0 }}>{SET_ASIDE_WORDS.putBack}</button>
+                                    </td>
+                                  </tr>
+                                ))
+                              : null}
+                          </>
+                        )
+                      })()}
                     </tbody>
                   </table>
                   </DndContext>
@@ -1684,6 +1840,25 @@ export function BidsCountsTab({
             )
           })()}
         </div>
+      )}
+      {robotWindowOpen && selectedBidForCounts && (
+        <RobotFixturesWindow
+          bidLabel={`b${selectedBidForCounts.bid_number ?? '?'} · ${selectedBidForCounts.project_name ?? 'bid'}`}
+          pull={robotPull}
+          rows={robotPullRows}
+          herRows={herRowsForRobot}
+          setName={null}
+          readWhen={robotPull ? robotWhen(robotPull.read_at) : null}
+          busy={robotBusy}
+          error={robotError}
+          phone={narrowViewport640}
+          onTake={(ticks, review) => void robotTake(ticks, review)}
+          onSetAside={(ids, reason) => void robotSetAside(ids, reason)}
+          onPutBack={(ids) => void robotPutBack(ids)}
+          onOpenSheet={onOpenPlansAt ? (page) => onOpenPlansAt(page) : null}
+          onOpenPlans={onOpenPlansAt ? () => onOpenPlansAt(1) : null}
+          onClose={() => setRobotWindowOpen(false)}
+        />
       )}
       <ClearAllCountsModal
         open={clearAllCountsOpen && !!selectedBidForCounts}

@@ -1265,7 +1265,21 @@ export default function LegalDesk(props: LegalDeskProps) {
       ) : null}
 
       {firmOpen && stored ? (
-        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={firmRecipients} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); showTab('account') }} zIndex={DESK_LAYER_Z + 14} />
+        <LegalFirmWindow
+          firm={firm}
+          matters={legal?.matters ?? []}
+          recipients={firmRecipients}
+          canEdit={canEditFirm}
+          onClose={() => setFirmOpen(false)}
+          onSaved={() => { void legal?.reload() }}
+          onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); showTab('account') }}
+          firms={legal?.activeFirms ?? []}
+          countiesByFirm={legal?.countiesByFirm ?? EMPTY_COUNTIES}
+          cases={mapCases.cases}
+          // Punch list #222: the Map opens with this firm lit (PR 1); a dev extends the firm's counties inside the window (PR 2).
+          onShowOnMap={(id) => { setFirmOpen(false); setMapOpenOn({ county: null, heldId: null, firmId: id, nonce: Date.now() }); pressView('map') }}
+          zIndex={DESK_LAYER_Z + 14}
+        />
       ) : null}
       {firmsOpen && stored ? <LegalFirmsWindow onClose={() => setFirmsOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={DESK_LAYER_Z + 14} /> : null}
       {emailsOpen && firm ? (

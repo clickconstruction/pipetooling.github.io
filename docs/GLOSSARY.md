@@ -739,6 +739,15 @@ A dev's map: the card **Only devs and the controller see these** lists every doo
 
 ## Workflow Concepts
 
+### Robot fixtures (Counts tab)
+The fixtures a robot found on a bid's plans, handed over once its run is sealed (twin-mcp `put_fixtures`, v2.6188 / v2.6180, punch list #221): each with its tag, the schedule row, the count per sheet, the plan text that backs it, the robot's check and its price. The estimator opens them from **Robot fixtures · N** on the Counts tab, ticks the ones she wants, and **Add N fixtures** lands them on her count, shaded for the life of the bid (the *From* pill reads **Robot**). A row she changes reads *Robot 2 → yours 3*. See [Set aside](#set-aside-robot-fixtures).
+
+### Set aside (robot fixtures)
+The only way a robot fixture leaves her count: **Set aside** on the row's trash can or in the window, with an optional reason (by others · existing · alternate · wrong count · not sure · other). The row leaves the count and the totals and waits in the window's *Set aside* bucket and under the sheet's fold line, one press from **Put back**, which lands it again at her number. Never deleted: the fixtures score at send reads the reasons. Not the same as a row *hidden from the customer's list* (`bid_count_row_submission_hides`), which stays in the totals.
+
+### Assisted (robot run)
+A shadow run on a bid the estimator took robot fixtures on (`twin_shadow_runs.assisted_at`). The run keeps its sealed total and its dollar score at send (the owner's pick, 2026-10-30) but leaves the gate, sitting beside the practice-teacher runs on the Scoreboard; the fixtures themselves are scored against her final list (`fixtures_score`: taken, changed, set aside, left, missed).
+
 ### Cash App reconcile (People → Pay → Payroll → Pay run → Cash App…)
 The tool (v2.3321–v2.3327) that reads the owner's Cash App activity export and matches every send to staff against payments recorded on pay reports. Tables `cashapp_transactions` (the export, keyed by Cash App's Transaction ID) and `cashapp_aliases` (Cash App name → person, not-staff, proxy note rule). Lanes: **recorded** (matched by id in memo / person + amount ±7d / split-sum, or recorded from the list — one report, or since v2.3693 *Split oldest first*: one payment per open week the send reaches, via the shared `PaymentSplitEditor` and `splitSend`), **review**, **advance** (a pending `person_offsets` row of type `advance`), **expense** (not pay), **before_records** (sent before that person's first pay report), **not_staff**, **ignored**. Kernels in `src/lib/cashapp/`. Guide: `reconcile-cash-app-payments.md`.
 
