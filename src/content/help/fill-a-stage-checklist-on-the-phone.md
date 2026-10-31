@@ -24,6 +24,8 @@ Some questions ask for a photo. Press {{button:outline|Take the photo}} under th
 
 If the phone has no signal, the photo is not taken. Press again when there is one.
 
+A photo from a field report can answer the question too. Under a new photo on the report, tap the chip with the question's words. The sheet then shows that photo with *Taken on a field report.* The guide [take photos for a report](/help/take-photos-for-a-report#answer-a-checklist-question-with-the-photo) has the steps.
+
 ## When the stage reads ready
 
 The bottom of the sheet counts the answers. A stage reads **not ready** on the Pipeline until every question is answered. A question that asks for a photo needs its photo too. Once every question is answered, press {{button:green|Done}}.
