@@ -22,6 +22,8 @@ command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
+. scripts/pgtest-pull.sh
+pgtest_pull_supabase "$IMAGE"
 docker run -d --name "$NAME" -e POSTGRES_PASSWORD=pg -p "$PORT:5432" "$IMAGE" >/dev/null
 # psql's errors go to this run's own file: a fixed /tmp name may belong to another user on a shared Mac.
 ERR="$(mktemp "${TMPDIR:-/tmp}/$NAME.XXXXXX")"
