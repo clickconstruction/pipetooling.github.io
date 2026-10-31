@@ -11,13 +11,19 @@ key comes from `.env.local`.
 | `twinrest.py [--as twin\|dev] get\|patch\|post\|rpc …` | Signed-in PostgREST / RPC calls (`rpc list_shadow_runs`) | twin or dev seat |
 | `probe_plans.py [--force] [--bid bNNN]` | "Plans readable by robots" sweep or single check (plan-fetch probe) | twin |
 | `set_plans.py bNNN <url> [--apply]` | Repoint a **ZZ robot shell's** plans link, then probe it | twin |
+| `redeem_setup_code.py <code> [--rounds]` | Turn a twin setup code (the dev seat's `mint_twin_setup_code`, or Set up on this Mac) into this Mac's key file; prints nothing secret | — |
 | `twinenv.py` | Shared settings: URL/anon key from `.env.local`, key file, dev secret | — |
 
 ## One-time setup on a machine
 
-1. Issue a twin key: **Settings → Digital twins → Issue key** (shown once).
-2. Save it: `mkdir -p ~/pt-twin-digest && pbpaste > ~/pt-twin-digest/twin.token && chmod 600 ~/pt-twin-digest/twin.token`
-   (or set `TWIN_TOKEN_FILE`). Revoke it in the same Settings card to cut the machine off.
+1. Get a setup code: a dev's agent calls `mint_twin_setup_code` on the dev seat (dev-mcp) with a label
+   naming this Mac, or a person presses **Settings → Digital twins → Set up on this Mac**. The code is
+   single-use and lasts ten minutes; the key itself never passes through a chat.
+2. Redeem it: `python3 scripts/twin/redeem_setup_code.py <code>` writes the key to
+   `~/pt-twin-digest/twin.token` (mode 600; or `TWIN_TOKEN_FILE`) and saves the kickoff beside it.
+   A key issued by hand (**Issue key**, shown once) goes in the same file:
+   `mkdir -p ~/pt-twin-digest && pbpaste > ~/pt-twin-digest/twin.token && chmod 600 ~/pt-twin-digest/twin.token`.
+   Revoke it by its label in the same Settings card to cut the machine off.
 3. Launch sessions with `bash scripts/twin-session.sh` so the MCP connector is live too.
 4. For Claude Code to run these without a prompt each time, add to the **main
    checkout's** `.claude/settings.local.json` (gitignored; only you can edit it):
