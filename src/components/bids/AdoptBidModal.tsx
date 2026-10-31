@@ -3,7 +3,9 @@
  * selected bid's package as versions. Same-customer bids are offered first; each row previews what
  * moves (count rows, price scenarios, its send) and the version name it will get. Confirm calls the
  * `adopt_bid_as_version` RPC per bid, in order. Nothing is deleted: the adopted bid's row retires
- * from the board (adopted_into_bid_id) and its send becomes that version's history.
+ * from the board (adopted_into_bid_id) and its send becomes that version's history. The version's
+ * name is a field on both steps (v2.6251 follow-on, v2.6252): the pick row's field was easy to miss,
+ * and the preview is where a person reads what is about to happen.
  */
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../../lib/supabase'
@@ -147,7 +149,7 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
         {picked[c.id] ? (
           <span style={{ display: 'flex', alignItems: 'center', gap: '0.35rem', marginTop: '0.3rem', fontSize: '0.78rem' }}>
             <span style={{ color: 'var(--text-muted)' }}>→ version</span>
-            <input type="text" value={nameFor(c)} onChange={(e) => setNames((n) => ({ ...n, [c.id]: e.target.value }))} onClick={(e) => e.preventDefault()} style={{ flex: 1, padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', color: 'var(--text-base)', font: 'inherit', fontSize: '0.8rem' }} />
+            <input type="text" aria-label={`Name of the version from B${c.bid_number ?? '?'}`} value={nameFor(c)} onChange={(e) => setNames((n) => ({ ...n, [c.id]: e.target.value }))} onClick={(e) => e.preventDefault()} style={{ flex: 1, padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', color: 'var(--text-base)', font: 'inherit', fontSize: '0.8rem' }} />
           </span>
         ) : null}
       </span>
@@ -208,7 +210,11 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
                 <div key={c.id} style={{ display: 'grid', gridTemplateColumns: '1em 1fr', gap: '0.5rem', padding: '0.45rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.85rem' }}>
                   <span>→</span>
                   <span>
-                    <span style={{ fontWeight: 600 }}>B{c.bid_number ?? '?'} {c.project_name ?? '—'}</span> becomes <span style={{ fontWeight: 600 }}>{nameFor(c)}</span>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600 }}>B{c.bid_number ?? '?'} {c.project_name ?? '—'}</span>
+                      <span style={{ color: 'var(--text-muted)' }}>becomes</span>
+                      <input type="text" aria-label={`Name of the version from B${c.bid_number ?? '?'}`} value={nameFor(c)} onChange={(e) => setNames((n) => ({ ...n, [c.id]: e.target.value }))} disabled={busy} style={{ flex: 1, minWidth: '12rem', padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', color: 'var(--text-base)', font: 'inherit', fontSize: '0.85rem', fontWeight: 600 }} />
+                    </span>
                     <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>moves {adoptPreviewLine(c)} · B{c.bid_number ?? '?'} leaves the board, stays searchable</span>
                     {failedWhy[c.id] ? (
                       <span data-adopt-failed={c.bid_number ?? c.id} style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-red-700)', fontWeight: 600 }}>
@@ -221,7 +227,7 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
             </div>
             {Object.keys(failedWhy).some((id) => picked[id]) ? (
               <div role="status" style={{ fontSize: '0.78rem', color: 'var(--text-red-700)', marginTop: '0.5rem', fontWeight: 600 }}>
-                {adoptOutcomeWords(0, chosen.filter((c) => failedWhy[c.id]).length).head} Press Adopt to try again, or go back to change the name.
+                {adoptOutcomeWords(0, chosen.filter((c) => failedWhy[c.id]).length).head} Press Adopt to try again, or change the name here first.
               </div>
             ) : null}
             <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.5rem' }}>

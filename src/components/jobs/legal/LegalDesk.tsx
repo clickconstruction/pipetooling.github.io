@@ -33,7 +33,7 @@ import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocum
 import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
 import LegalAffidavitWindow from './LegalAffidavitWindow'
 import { useOfficeCounty } from '../../../hooks/useOfficeCounty'
-import { statementMetaOf, type DeclarantDetails, type StatementDraft, type StatementFace, type StatementFilingDraft } from '../../../lib/legal/affidavitPaper'
+import { statementFiledWords, statementMetaOf, type DeclarantDetails, type StatementDraft, type StatementFace, type StatementFilingDraft } from '../../../lib/legal/affidavitPaper'
 import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 
 import LegalPortalLinkButton from './LegalPortalLinkButton'
@@ -722,7 +722,7 @@ export default function LegalDesk(props: LegalDeskProps) {
       }
       return null
     })
-    if (ok) showToast(`Filed — the signed copy is on Evidence on ${filing.signedOn}. The statement reads sworn on the Timeline.`, 'success')
+    if (ok) showToast(statementFiledWords(filing.signedOn), 'success')
     return Boolean(ok)
   }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []

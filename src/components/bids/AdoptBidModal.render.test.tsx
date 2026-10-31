@@ -16,6 +16,7 @@ const BIDS = [
   { id: 'b3', bid_number: '503', project_name: 'Cedar Bend Phase 3', customer_id: 'c1', bid_date_sent: null, bid_value: null, outcome: null },
 ]
 const adoptCalls: string[] = []
+const adoptNames: Record<string, string> = {}
 
 vi.mock('../../lib/supabase', () => {
   function reads(data: unknown) {
@@ -27,8 +28,9 @@ vi.mock('../../lib/supabase', () => {
   return {
     supabase: {
       from: (table: string) => reads(table === 'bids' ? BIDS : []),
-      rpc: async (_fn: string, args: { p_source_bid_id: string }) => {
+      rpc: async (_fn: string, args: { p_source_bid_id: string; p_name: string }) => {
         adoptCalls.push(args.p_source_bid_id)
+        adoptNames[args.p_source_bid_id] = args.p_name
         return args.p_source_bid_id === 'b2' ? { error: { message: 'source bid already has versions', code: 'P0001' } } : { error: null }
       },
     },
@@ -40,6 +42,7 @@ vi.mock('../../lib/bids/countRowTallies', () => ({ loadCountRowTalliesByBid: asy
 afterEach(() => {
   cleanup()
   adoptCalls.length = 0
+  for (const k of Object.keys(adoptNames)) delete adoptNames[k]
 })
 
 const TARGET = { id: 'bt', bid_number: '500', project_name: 'Cedar Bend', customer_id: 'c1' } as unknown as BidWithBuilder
@@ -58,5 +61,22 @@ describe('Adopt bids as versions', () => {
     expect(screen.getByText(/1 bid did not adopt\. It stays here with the reason\./)).toBeTruthy()
     // Only the one that did not adopt is still picked: one more press tries it.
     expect(screen.getByRole('button', { name: 'Adopt 1 bid' })).toBeTruthy()
+  })
+
+  it('the preview names each version in a field, and the typed name is what the function gets (v2.6252)', async () => {
+    const onAdopted = vi.fn()
+    renderWithProviders(<AdoptBidModal targetBid={TARGET} onClose={() => {}} onAdopted={onAdopted} />)
+    fireEvent.click(await screen.findByText(/^B501 /))
+    // The pick row already has the field, prefilled with the suggestion.
+    const pickField = screen.getByRole('textbox', { name: 'Name of the version from B501' }) as HTMLInputElement
+    expect(pickField.value).not.toBe('')
+    fireEvent.click(screen.getByRole('button', { name: /Preview 1 move/ }))
+    // The preview shows the same name as a field; a change here is what adopts.
+    const previewField = screen.getByRole('textbox', { name: 'Name of the version from B501' }) as HTMLInputElement
+    expect(previewField.value).toBe(pickField.value)
+    fireEvent.change(previewField, { target: { value: 'William · Initial, Apr 7 set' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Adopt 1 bid' }))
+    await waitFor(() => expect(onAdopted).toHaveBeenCalled())
+    expect(adoptNames.b1).toBe('William · Initial, Apr 7 set')
   })
 })
