@@ -60,7 +60,9 @@ describe('LegalAffidavitWindow (punch list #220, v2.6210)', () => {
     expect(document.querySelector('[data-legal-affidavit-county="Williamson"]')!.getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(document.querySelector('[data-legal-affidavit-county="blank"]')!)
     expect(document.querySelector('[data-legal-affidavit-county="blank"]')!.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByText('The notary writes the county in by hand where the paper is signed.')).toBeTruthy()
+    // v2.6245: a declaration's picks name the signer, never a notary.
+    expect(document.querySelector('[data-legal-affidavit-county="blank"]')!.textContent).toBe('Leave it blank for the signer')
+    expect(screen.getByText('They write the county in by hand where they sign.')).toBeTruthy()
     // A title typed by hand stops following the picks.
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'What Thanh saw' } })
     fireEvent.click(document.querySelector('[data-legal-affidavit-form="notary"]')!)
@@ -209,6 +211,8 @@ describe('LegalAffidavitWindow · the business-records preset (punch list #220, 
     fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: 'u-g' } })
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Business Records Affidavit of Grace Lee')
     expect((screen.getByLabelText('Their role, one line') as HTMLInputElement).value).toBe('custodian of records for Click Plumbing and Electrical')
+    // v2.6243: the help says where the role line came from, never the RMP's license note.
+    expect(document.querySelector('[data-legal-affidavit-role-help]')!.textContent).toBe('The business-records form wrote it from the pick above. It reads under the signature. Edit it as you like.')
     const body = screen.getByLabelText('The statement') as HTMLTextAreaElement
     expect(body.value.split('\n')[0]).toBe('I am the custodian of records of Click Plumbing and Electrical and am familiar with the manner in which its records are created and maintained by virtue of my duties and responsibilities.')
     expect(body.value).toContain('Attached are ____ pages of records.')
@@ -226,10 +230,22 @@ describe('LegalAffidavitWindow · the business-records preset (punch list #220, 
     expect(body.value).toContain('The clock is kept by the app.')
     expect(document.querySelector('[data-legal-affidavit-records]')!.textContent).toContain('The paragraphs were edited by hand.')
     expect(document.querySelector('[data-legal-affidavit-records]')!.textContent).toContain('at least 14 days before trial')
-    // Back to a plain statement: the edited paragraphs stay, the title follows the affiant again.
+    // Back to a plain statement: the edited paragraphs stay, the title and the role line follow the affiant again.
     fireEvent.click(document.querySelector('[data-legal-affidavit-preset="statement"]')!)
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Grace Lee')
+    expect((screen.getByLabelText('Their role, one line') as HTMLInputElement).value).toBe('Office manager at Click Plumbing and Electrical')
+    expect(document.querySelector('[data-legal-affidavit-role-help]')!.textContent).toBe('Prefilled from the roster. Edit it.')
     expect(document.querySelector('[data-legal-affidavit-records]')).toBeNull()
+  })
+  it('under the preset, a new pick takes the preset’s role line even after the role was typed (v2.6243)', () => {
+    open()
+    fireEvent.click(document.querySelector('[data-legal-affidavit-preset="records"]')!)
+    fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: 'u-g' } })
+    fireEvent.change(screen.getByLabelText('Their role, one line'), { target: { value: 'bookkeeper' } })
+    expect(document.querySelector('[data-legal-affidavit-role-help]')!.textContent).toBe('Edited. The paper reads it as typed.')
+    fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: 'u-da' } })
+    expect((screen.getByLabelText('Their role, one line') as HTMLInputElement).value).toBe('custodian of records for Click Plumbing and Electrical')
+    expect(document.querySelector('[data-legal-affidavit-role-help]')!.textContent).not.toContain('license number')
   })
   it('a statement being changed offers no Start from', () => {
     const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'x', occurred_on: '2026-09-03', meta: { title: 'T', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }
@@ -248,6 +264,12 @@ describe('LegalAffidavitWindow · the affiant’s full name (v2.6238)', () => {
     expect(document.querySelector('[data-legal-affidavit-window]')!.textContent).toContain('Prefilled from the roster. Type it as it reads on their ID. The notary checks it.')
     // The RMP's role line asks for the license number until it is edited.
     expect(document.querySelector('[data-legal-affidavit-window]')!.textContent).toContain('Add the license number, then edit as you like.')
+    // v2.6243: one word gets a nudge, and under the declaration the statute's reason.
+    fireEvent.change(name, { target: { value: 'Daniel' } })
+    expect(document.querySelector('[data-legal-affidavit-name-help]')!.textContent).toBe('One word so far. Type the whole name as it reads on their ID. The notary checks it.')
+    fireEvent.click(document.querySelector('[data-legal-affidavit-form="declaration"]')!)
+    expect(document.querySelector('[data-legal-affidavit-name-help]')!.textContent).toBe('One word so far. Type the whole name as it reads on their ID. Texas asks for a first and a last name.')
+    fireEvent.click(document.querySelector('[data-legal-affidavit-form="notary"]')!)
     fireEvent.change(name, { target: { value: 'Daniel Ruiz Alvarez' } })
     expect(document.querySelector('[data-legal-affidavit-opener]')!.textContent).toContain('My name is Daniel Ruiz Alvarez.')
     expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Daniel Ruiz Alvarez')
