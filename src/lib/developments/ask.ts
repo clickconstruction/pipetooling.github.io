@@ -47,7 +47,7 @@ export function askRow(draft: AskDraft, developmentId: string | null, siteName: 
 
 /** The Plans card's ask, pre-written: which set the pieces on an older set or none build from. */
 export function askTitleForPlans(n: number): string {
-  return `${n} ${n === 1 ? 'piece is' : 'pieces are'} on an older plan set or none: which set do we build from?`
+  return `${n} ${n === 1 ? 'job or bid is' : 'jobs and bids are'} on an older plan set or none: which set do we build from?`
 }
 
 /** The sheet's foot: where the question lands and where the answer reads. `named` is *the site*, *this bid* or *this job*. */

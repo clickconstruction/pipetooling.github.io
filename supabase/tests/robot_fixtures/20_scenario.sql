@@ -125,6 +125,10 @@ SELECT rft.same('robot_progress reads the fixtures',
   (SELECT fixtures_found::text || ' ' || fixtures_sure || ' ' || fixtures_taken || ' ' || fixtures_set_aside || ' ' || (assisted_at IS NOT NULL)::text || ' ' || (fixtures_at IS NOT NULL)::text
      FROM public.robot_progress(ARRAY['00000000-0000-0000-0000-00000000b1d1']::uuid[])),
   '5 3 3 0 true true');
+SELECT rft.same('list_shadow_runs carries the fixtures and the assisted stamp',
+  (SELECT fixtures_found::text || ' ' || fixtures_taken || ' ' || fixtures_set_aside || ' ' || (assisted_at IS NOT NULL)::text || ' ' || (reference_bid_id = '00000000-0000-0000-0000-00000000b1d1')::text
+     FROM public.list_shadow_runs() WHERE id = '00000000-0000-0000-0000-00000000e001'),
+  '5 3 0 true true');
 SELECT rft.refused('a second take of a taken row changes nothing and a row from another bid is refused',
   $q$SELECT public.take_robot_fixtures(ARRAY['00000000-0000-0000-0000-00000000ff01']::uuid[], '00000000-0000-0000-0000-00000000ae02', '[]'::jsonb)$q$);
 

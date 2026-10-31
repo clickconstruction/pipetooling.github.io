@@ -1627,7 +1627,7 @@ export function JobsGcReviewModal({
                     fontWeight: 500,
                     border: 'none',
                     borderRadius: 4,
-                    background: '#3b82f6',
+                    background: '#2563eb',
                     cursor: 'pointer',
                     color: 'white',
                   }}
@@ -2189,7 +2189,7 @@ export function JobsGcReviewModal({
                   padding: '0.4rem 0.9rem',
                   border: 'none',
                   borderRadius: 4,
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   cursor: emailSending ? 'wait' : emailSendGuard?.canSend ? 'pointer' : 'not-allowed',
                   opacity: emailSendGuard?.canSend || emailSending ? 1 : 0.55,
@@ -2372,7 +2372,7 @@ export function JobsGcReviewModal({
                     padding: '0.4rem 0.9rem',
                     border: 'none',
                     borderRadius: 4,
-                    background: '#3b82f6',
+                    background: '#2563eb',
                     color: 'white',
                     cursor: shareAllSending ? 'wait' : 'pointer',
                     fontWeight: 500,
@@ -2504,7 +2504,7 @@ export function JobsGcReviewModal({
                       type="button"
                       onClick={submitStanding}
                       disabled={standingBusy || (!standingEditingEmail && !standingUserId && !standingOutsideEmail.trim())}
-                      style={{ marginLeft: 'auto', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 500, border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: standingBusy ? 'wait' : 'pointer' }}
+                      style={{ marginLeft: 'auto', padding: '0.25rem 0.7rem', fontSize: '0.8125rem', fontWeight: 500, border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', cursor: standingBusy ? 'wait' : 'pointer' }}
                     >
                       {standingBusy ? 'Saving…' : standingEditingEmail ? 'Save' : 'Add'}
                     </button>

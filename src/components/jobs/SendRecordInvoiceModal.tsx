@@ -178,7 +178,7 @@ function billCustomerTopTabButtonStyle(active: boolean): CSSProperties {
   return {
     padding: '0.5rem 0.75rem',
     border: 'none',
-    background: active ? '#3b82f6' : 'none',
+    background: active ? '#2563eb' : 'none',
     borderRadius: 6,
     cursor: 'pointer',
     fontWeight: active ? 700 : 400,
@@ -2733,7 +2733,7 @@ export default function SendRecordInvoiceModal({
                 onClick={() => void confirmOutsideBill()}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: outsideReady && !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+                  background: outsideReady && !busy ? '#2563eb' : DEAD_PRESS_FILL,
                   color: outsideReady && !busy ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
@@ -3206,7 +3206,7 @@ export default function SendRecordInvoiceModal({
                 onClick={() => void submitPhysicalInvoiceEmail()}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: physicalSendReady && !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+                  background: physicalSendReady && !busy ? '#2563eb' : DEAD_PRESS_FILL,
                   color: physicalSendReady && !busy ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,
@@ -3353,7 +3353,7 @@ export default function SendRecordInvoiceModal({
                   <button
                     type="button"
                     onClick={onClose}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                   >
                     Done
                   </button>
@@ -3853,7 +3853,7 @@ export default function SendRecordInvoiceModal({
                     onClick={() => void submitStripeInvoice()}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: outsideReady && !busy ? '#3b82f6' : DEAD_PRESS_FILL,
+                      background: outsideReady && !busy ? '#2563eb' : DEAD_PRESS_FILL,
                       color: outsideReady && !busy ? 'white' : DEAD_PRESS_TEXT,
                       border: 'none',
                       borderRadius: 4,

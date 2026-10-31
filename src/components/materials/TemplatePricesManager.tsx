@@ -171,7 +171,7 @@ export function TemplatePricesManager({
                   style={{ padding: '0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, width: '8rem' }}
                 />
               </div>
-              <button type="submit" disabled={saving} style={{ padding: '0.45rem 1rem', background: saving ? DEAD_PRESS_FILL : '#3b82f6', color: saving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: saving ? 'wait' : 'pointer' }}>
+              <button type="submit" disabled={saving} style={{ padding: '0.45rem 1rem', background: saving ? DEAD_PRESS_FILL : '#2563eb', color: saving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: saving ? 'wait' : 'pointer' }}>
                 {saving ? 'Saving…' : editingPrice ? 'Save' : 'Add'}
               </button>
               {editingPrice ? (

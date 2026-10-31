@@ -35,8 +35,8 @@ const bigBtn = (filled: boolean): CSSProperties => ({
   font: 'inherit',
   fontSize: '1rem',
   lineHeight: 1.3,
-  border: `1px solid ${filled ? '#3b82f6' : 'var(--border-strong)'}`,
-  background: filled ? '#3b82f6' : 'var(--surface)',
+  border: `1px solid ${filled ? '#2563eb' : 'var(--border-strong)'}`,
+  background: filled ? '#2563eb' : 'var(--surface)',
   color: filled ? 'white' : 'var(--text-strong)',
   fontWeight: filled ? 600 : 400,
 })
@@ -192,7 +192,7 @@ export function RulingRunThroughSheet({ items, startIndex = 0, bidIdByNumber, bi
               </ul>
             ) : null}
             {skipped > 0 ? <p style={{ margin: '0 0 1.25rem', color: 'var(--text-muted)', fontSize: '0.875rem' }}>{skipped} skipped — still on the list.</p> : null}
-            <button type="button" onClick={onClose} style={{ padding: '0.6rem 1.2rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontWeight: 600 }}>Back to the queue</button>
+            <button type="button" onClick={onClose} style={{ padding: '0.6rem 1.2rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontWeight: 600 }}>Back to the queue</button>
           </div>
         ) : (
           <div>
@@ -235,7 +235,7 @@ export function RulingRunThroughSheet({ items, startIndex = 0, bidIdByNumber, bi
                   placeholder={item.askCount > 1 ? 'Your ruling — answers every copy at once…' : 'Your answer — the robot pulls it next run…'}
                   style={{ flex: 1, padding: '0.6rem 0.75rem', border: '1px solid var(--border-strong)', borderRadius: 6, fontSize: '1rem', boxSizing: 'border-box' }}
                 />
-                <button type="button" disabled={busy || !draft.trim()} onClick={() => void answer(draft)} style={{ padding: '0.6rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontWeight: 600 }}>
+                <button type="button" disabled={busy || !draft.trim()} onClick={() => void answer(draft)} style={{ padding: '0.6rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontWeight: 600 }}>
                   {item.askCount > 1 ? `Answer all ${item.askCount}` : 'Answer'}
                 </button>
                 {choices ? (

@@ -153,7 +153,7 @@ export function olderOrNoneLine(view: PlansView, newestDay: string | null): { le
   if (n === 0) return null
   const none = view.none.length
   const older = n - none
-  const pieces = (k: number) => (k === 1 ? 'One piece' : `${k} pieces`)
+  const pieces = (k: number) => (k === 1 ? 'One job or bid' : `${k} jobs and bids`)
   const have = (k: number) => (k === 1 ? 'has' : 'have')
   const are = (k: number) => (k === 1 ? 'is' : 'are')
   if (!view.newest || !newestDay) return { lead: `${n} without plans`, sentence: `${pieces(n)} ${have(n)} no plans filed. No set is filed on this site.` }

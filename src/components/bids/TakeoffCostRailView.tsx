@@ -162,7 +162,7 @@ export function TakeoffCostRailView({
   return (
     <div data-testid="takeoff-cost-rail-view">
       <TakeoffCoverageStrip coverage={coverage} onClickUncosted={() => setFilter('uncosted')} onClickZeroPrice={() => setFilter('zero')}>
-        <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? DEAD_PRESS_FILL : '#3b82f6', color: fillButton.disabled ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
+        <button type="button" onClick={onFillAll} disabled={fillButton.disabled} title={fillButton.title || undefined} style={{ padding: '0.4rem 0.8rem', background: fillButton.disabled ? DEAD_PRESS_FILL : '#2563eb', color: fillButton.disabled ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: fillButton.disabled ? 'default' : 'pointer', fontSize: '0.875rem', fontWeight: 600 }}>
           {fillButton.label}
         </button>
         <button type="button" onClick={onFocusView} style={{ padding: '0.4rem 0.8rem', background: 'var(--surface)', color: 'var(--text-strong)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem', fontWeight: 600 }} title="Walk the fixtures one at a time, with the book and your last bids">

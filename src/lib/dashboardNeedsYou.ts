@@ -1462,14 +1462,26 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   if (inputs.robotAuditsEnabled && inputs.robotLockedShadows != null && inputs.robotLockedShadows.length > 0) {
     const sealed = inputs.robotLockedShadows
     const n = sealed.length
-    const one = sealed[0] as RobotLockedShadow
+    // Robot fixtures (punch list #221, PR 4): a sealed run whose fixtures wait on the Counts tab leads the card.
+    const ready = sealed.filter((s) => (s.fixturesFound ?? 0) > 0 && (s.fixturesTaken ?? 0) === 0)
+    const one = (ready[0] ?? sealed[0]) as RobotLockedShadow
     const where = one.project ? ` (${one.project})` : ''
     items.push({
       key: 'robot-locked',
       severity: 'blue',
       kicker: 'Robot bid',
-      title: n === 1 ? `The robot has a sealed number on b${one.referenceBid}${where}` : `The robot has sealed numbers on ${n} live bids`,
-      detail: 'Locked before ours went out — the score lands the moment we send, and the envelope opens for you right then. Nothing to do; this is the head start.',
+      title:
+        ready.length === 1
+          ? `The robot's fixtures are ready on b${one.referenceBid}${where}`
+          : ready.length > 1
+            ? `The robot's fixtures are ready on ${ready.length} live bids`
+            : n === 1
+              ? `The robot has a sealed number on b${one.referenceBid}${where}`
+              : `The robot has sealed numbers on ${n} live bids`,
+      detail:
+        ready.length > 0
+          ? 'Open the bid on the Counts tab and press Robot fixtures. Take the ones you want; the rest wait, and its number stays sealed until you send.'
+          : 'Locked before ours went out — the score lands the moment we send, and the envelope opens for you right then. Nothing to do; this is the head start.',
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Open Robot Board',
     })

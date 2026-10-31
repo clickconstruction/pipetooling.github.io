@@ -1887,7 +1887,7 @@ export function SupplyHousesTab({
                                         <button
                                           type="button"
                                           onClick={(e) => { e.stopPropagation(); openAddInvoice() }}
-                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                          style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                         >
                                           Add Invoice
                                         </button>
@@ -2069,7 +2069,7 @@ export function SupplyHousesTab({
                                         type="button"
                                         onClick={(e) => { e.stopPropagation(); createBlankPOForSupplyHouse(selectedSupplyHouseForDetail.id) }}
                                         disabled={creatingPOForSupplyHouse || !serviceTypeId}
-                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: creatingPOForSupplyHouse || !serviceTypeId ? 'not-allowed' : 'pointer' }}
+                                        style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: creatingPOForSupplyHouse || !serviceTypeId ? 'not-allowed' : 'pointer' }}
                                       >
                                         {creatingPOForSupplyHouse ? 'Creating…' : 'Create PO'}
                                       </button>
@@ -2511,7 +2511,7 @@ export function SupplyHousesTab({
                         setAgingCellModal(null)
                         openHouseFromAging(houseId)
                       }}
-                      style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                      style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                     >
                       Open {houseName} ›
                     </button>
@@ -3257,7 +3257,7 @@ export function SupplyHousesTab({
                 ) : null}
                 <div style={{ display: 'flex', gap: '0.5rem', marginLeft: 'auto' }}>
                   <button type="button" onClick={closeInvoiceForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                  <button type="submit" disabled={savingInvoice} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{invoiceWords.saveLabel(editingInvoice != null, savingInvoice)}</button>
+                  <button type="submit" disabled={savingInvoice} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{invoiceWords.saveLabel(editingInvoice != null, savingInvoice)}</button>
                 </div>
               </div>
             </form>

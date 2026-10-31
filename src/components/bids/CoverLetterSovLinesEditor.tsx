@@ -303,7 +303,7 @@ export function CoverLetterSovLinesEditor({ bidId, lines, contractAmount, splitO
             style={{ width: '100%', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, boxSizing: 'border-box', fontSize: '0.8125rem', fontFamily: 'inherit' }}
           />
           <div style={{ display: 'flex', gap: '0.6rem', marginTop: '0.3rem', fontSize: '0.75rem' }}>
-            <button type="button" onClick={() => void pasteNames()} disabled={busy} style={{ padding: '0.2rem 0.6rem', background: '#3b82f6', border: '1px solid #3b82f6', borderRadius: 4, color: '#fff', cursor: 'pointer', fontSize: '0.8125rem' }}>Add these lines (values blank)</button>
+            <button type="button" onClick={() => void pasteNames()} disabled={busy} style={{ padding: '0.2rem 0.6rem', background: '#2563eb', border: '1px solid #2563eb', borderRadius: 4, color: '#fff', cursor: 'pointer', fontSize: '0.8125rem' }}>Add these lines (values blank)</button>
             <button type="button" onClick={() => { setPasteOpen(false); setPasteText('') }} style={linkStyle}>Cancel</button>
           </div>
         </div>

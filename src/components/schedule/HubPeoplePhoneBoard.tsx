@@ -719,7 +719,7 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
                         }
                         style={{ width: '100%', fontFamily: 'inherit', textAlign: 'left', display: 'grid', gridTemplateColumns: '1.6rem 1fr auto', gap: '0.5rem', alignItems: 'center', padding: '0.5rem 0.3rem', border: 'none', borderTop: '1px solid var(--border)', background: 'transparent', color: 'inherit', cursor: 'pointer' }}
                       >
-                        <span aria-hidden style={{ width: '1.3rem', height: '1.3rem', border: on ? 'none' : '2px solid var(--border-strong)', borderRadius: 5, background: on ? '#3b82f6' : 'transparent', color: '#fff', display: 'grid', placeItems: 'center', fontSize: '0.85rem' }}>
+                        <span aria-hidden style={{ width: '1.3rem', height: '1.3rem', border: on ? 'none' : '2px solid var(--border-strong)', borderRadius: 5, background: on ? '#2563eb' : 'transparent', color: '#fff', display: 'grid', placeItems: 'center', fontSize: '0.85rem' }}>
                           {on ? '✓' : ''}
                         </span>
                         <span style={{ minWidth: 0 }}>
@@ -748,7 +748,7 @@ export function HubPeoplePhoneBoard(props: HubPeoplePhoneBoardProps) {
               type="button"
               disabled={copySelected.size === 0 || copyBusy}
               onClick={() => void submitCopy()}
-              style={{ fontFamily: 'inherit', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 7, padding: '0.55rem 0.9rem', fontSize: '0.9rem', fontWeight: 600, cursor: copySelected.size === 0 ? 'not-allowed' : 'pointer', opacity: copySelected.size === 0 ? 0.6 : 1 }}
+              style={{ fontFamily: 'inherit', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 7, padding: '0.55rem 0.9rem', fontSize: '0.9rem', fontWeight: 600, cursor: copySelected.size === 0 ? 'not-allowed' : 'pointer', opacity: copySelected.size === 0 ? 0.6 : 1 }}
             >
               {copyBusy ? 'Adding…' : `Add to ${copySelected.size} tech${copySelected.size === 1 ? '' : 's'}`}
             </button>

@@ -184,7 +184,7 @@ export function SignatureCard({ role, userId: userIdProp, io: ioProp }: { role: 
               disabled={!changed || !!bad || busy}
               style={{
                 padding: '0.5rem 1rem',
-                background: changed && !bad ? '#3b82f6' : 'var(--surface)',
+                background: changed && !bad ? '#2563eb' : 'var(--surface)',
                 color: changed && !bad ? 'white' : 'var(--text-muted)',
                 border: changed && !bad ? 'none' : '1px solid var(--border-strong)',
                 borderRadius: 4,

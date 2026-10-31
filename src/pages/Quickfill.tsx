@@ -2323,7 +2323,7 @@ function QuickfillPage() {
                       width: 14,
                       height: 14,
                       borderRadius: '50%',
-                      background: '#3b82f6',
+                      background: '#2563eb',
                       color: '#ffffff',
                       display: 'inline-flex',
                       alignItems: 'center',

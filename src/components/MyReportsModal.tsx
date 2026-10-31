@@ -222,7 +222,7 @@ export default function MyReportsModal({
                                       e.stopPropagation()
                                       onEditReport(r)
                                     }}
-                                    style={{ flexShrink: 0, padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                    style={{ flexShrink: 0, padding: '0.25rem 0.5rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                   >
                                     Edit
                                   </button>

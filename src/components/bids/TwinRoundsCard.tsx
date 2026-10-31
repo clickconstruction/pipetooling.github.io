@@ -54,7 +54,7 @@ export function TwinRoundsCard({ canStop = true, onCopyRoundsKickoff }: { canSto
       {agents.length === 0 ? (
         <div style={{ border: '1px dashed var(--border-strong)', borderRadius: 8, padding: '0.6rem 0.7rem', background: 'var(--bg-subtle)', fontSize: '0.84rem', display: 'flex', gap: '0.7rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="twin-rounds-empty">
           <span style={{ flex: '1 1 18rem' }}>No robot has checked in yet. On the Run the robots card below, press Set up on this Mac with This Mac makes the rounds ticked, and paste the command into Terminal on the Mac that stays on. Copy the round makes one round by hand in a Code session.</span>
-          {onCopyRoundsKickoff ? <button type="button" style={{ ...BTN, background: '#3b82f6', color: '#fff', border: 'none' }} onClick={onCopyRoundsKickoff}>Copy the round</button> : null}
+          {onCopyRoundsKickoff ? <button type="button" style={{ ...BTN, background: '#2563eb', color: '#fff', border: 'none' }} onClick={onCopyRoundsKickoff}>Copy the round</button> : null}
         </div>
       ) : (
         agents.map((a, i) => {

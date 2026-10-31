@@ -431,7 +431,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                                 e.stopPropagation()
                                 if (canQuickAddToPO && editingPO) addTemplateToPO(editingPO.id, template.id)
                               }}
-                              style={{ padding: '0.25rem 0.6rem', background: canQuickAddToPO ? '#3b82f6' : 'var(--bg-muted)', color: canQuickAddToPO ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canQuickAddToPO ? 'pointer' : 'not-allowed', fontWeight: 600 }}
+                              style={{ padding: '0.25rem 0.6rem', background: canQuickAddToPO ? '#2563eb' : 'var(--bg-muted)', color: canQuickAddToPO ? 'white' : 'var(--text-faint)', border: 'none', borderRadius: 4, cursor: canQuickAddToPO ? 'pointer' : 'not-allowed', fontWeight: 600 }}
                             >
                               → Add to PO
                             </button>
@@ -625,7 +625,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                                   openAddPartWithName(templatePartSearchQuery.trim())
                                   setTemplatePartDropdownOpen(false)
                                 }}
-                                style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                                style={{ marginLeft: '0.25rem', padding: '0.25rem 0.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
                               >
                                 Add Part
                               </button>
@@ -766,7 +766,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                     type="button"
                     onClick={addItemToTemplate}
                     disabled={addingItemToTemplate}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                   >
                     {addingItemToTemplate ? 'Adding...' : 'Add Item'}
                   </button>
@@ -796,7 +796,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                   type="button"
                   onClick={() => createPOFromTemplate(selectedTemplate.id)}
                   disabled={creatingPOFromTemplate}
-                  style={{ width: '100%', padding: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                  style={{ width: '100%', padding: '0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
                 >
                   {creatingPOFromTemplate ? 'Creating PO...' : `Create Purchase Order from "${selectedTemplate.name}"`}
                 </button>
@@ -810,7 +810,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                   type="button"
                   onClick={() => addTemplateToPO(editingPO.id, selectedTemplate.id)}
                   disabled={addingTemplateToPO}
-                  style={{ width: '100%', padding: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                  style={{ width: '100%', padding: '0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
                 >
                   {addingTemplateToPO ? 'Adding Assembly...' : `Add "${selectedTemplate.name}" Assembly to PO`}
                 </button>
@@ -823,7 +823,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
               <button
                 type="button"
                 onClick={createEmptyPO}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
                 Create PO
               </button>
@@ -922,7 +922,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                         <button
                           type="button"
                           onClick={() => updatePOName(editingPO.id, editingPONameValue)}
-                          style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                         >
                           Save
                         </button>
@@ -1036,7 +1036,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                                             price_at_time: price,
                                           })
                                         }}
-                                        style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                        style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                       >
                                         Update
                                       </button>
@@ -1125,7 +1125,7 @@ export function MaterialsPoBuilderTab(props: MaterialsPoBuilderTabProps) {
                                           setEditingPOItemNotesId(null)
                                           setEditingPOItemNotesValue('')
                                         }}
-                                        style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                                        style={{ padding: '0.25rem 0.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                                       >
                                         Save
                                       </button>

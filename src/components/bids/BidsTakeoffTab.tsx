@@ -1680,7 +1680,7 @@ export function BidsTakeoffTab({
                     type="button"
                     onClick={() => void printTakeoffBreakdown()}
                     disabled={takeoffPrinting}
-                    style={{ padding: '0.5rem 1rem', background: takeoffPrinting ? DEAD_PRESS_FILL : '#3b82f6', color: takeoffPrinting ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: takeoffPrinting ? 'wait' : 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: takeoffPrinting ? DEAD_PRESS_FILL : '#2563eb', color: takeoffPrinting ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: takeoffPrinting ? 'wait' : 'pointer' }}
                   >
                     {takeoffPrinting ? 'Preparing…' : 'Print'}
                   </button>

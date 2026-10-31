@@ -473,7 +473,7 @@ export default function ChecklistAddModal({
                 aria-label="Send"
                 style={{
                   padding: '0.3rem 0.85rem',
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   border: 'none',
                   borderRadius: 999,
@@ -1397,7 +1397,7 @@ export default function ChecklistAddModal({
               if (e.shiftKey) document.getElementById(ASSIGN_SEARCH_ID)?.focus()
               else cancelButtonRef.current?.focus()
             }}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
+            style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: submitting ? 'not-allowed' : 'pointer', opacity: submitting ? 0.7 : 1 }}
           >
             {submitting ? 'Sending…' : 'Send'}
           </button>

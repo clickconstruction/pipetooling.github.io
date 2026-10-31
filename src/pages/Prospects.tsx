@@ -3039,7 +3039,7 @@ export default function Prospects() {
     const exits = filtered.filter((p) => p.prospect_fit_status === 'cant_reach' || p.prospect_fit_status === 'not_a_fit')
     const { groups, noTrade } = groupSubsByTrade(live, needsForList, plansPick?.trades ?? null)
     const chip: CSSProperties = { padding: '0.05rem 0.5rem', borderRadius: 999, fontSize: '0.72rem', fontWeight: 600, whiteSpace: 'nowrap' }
-    const smallBtn = (primary: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 6, border: `1px solid ${primary ? '#3b82f6' : 'var(--border-strong)'}`, background: primary ? '#3b82f6' : 'var(--surface)', color: primary ? 'white' : 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' })
+    const smallBtn = (primary: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.2rem 0.6rem', borderRadius: 6, border: `1px solid ${primary ? '#2563eb' : 'var(--border-strong)'}`, background: primary ? '#2563eb' : 'var(--surface)', color: primary ? 'white' : 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap', textDecoration: 'none' })
     const isOpen = (key: string, fallback: boolean) => subsSectionOpen[key] ?? fallback
     const toggle = (key: string, fallback: boolean) => setSubsSectionOpen((prev) => ({ ...prev, [key]: !(prev[key] ?? fallback) }))
     const row = (p: Prospect) => {
@@ -3246,7 +3246,7 @@ export default function Prospects() {
           <button
             type="button"
             onClick={openNewProspect}
-            style={{ marginLeft: 'auto', marginBottom: '0.35rem', padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+            style={{ marginLeft: 'auto', marginBottom: '0.35rem', padding: '0.4rem 0.9rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
           >
             New Prospect
           </button>
@@ -3287,8 +3287,8 @@ export default function Prospects() {
                   font: 'inherit',
                   fontSize: '0.75rem',
                   fontWeight: 600,
-                  border: `1px solid ${primary ? '#3b82f6' : 'var(--border)'}`,
-                  background: primary ? '#3b82f6' : 'var(--surface)',
+                  border: `1px solid ${primary ? '#2563eb' : 'var(--border)'}`,
+                  background: primary ? '#2563eb' : 'var(--surface)',
                   color: primary ? 'white' : 'var(--text-700)',
                   borderRadius: 6,
                   padding: '0.2rem 0.55rem',
@@ -3436,7 +3436,7 @@ export default function Prospects() {
                   <li key={line}>{line}</li>
                 ))}
               </ul>
-              <Link to={boardHref(plansFor)} style={{ display: 'inline-block', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', borderRadius: 8, fontWeight: 600, textDecoration: 'none' }}>
+              <Link to={boardHref(plansFor)} style={{ display: 'inline-block', padding: '0.5rem 1rem', background: '#2563eb', color: 'white', borderRadius: 8, fontWeight: 600, textDecoration: 'none' }}>
                 {BACK_TO_BOARD}
               </Link>
             </div>
@@ -3464,7 +3464,7 @@ export default function Prospects() {
                   transition: 'background 0.15s, opacity 0.15s',
                 } as const
                 const btnSecondary = { ...btnBase, background: 'var(--surface)', color: 'var(--text-700)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)', border: '1px solid var(--border)' }
-                const btnPrimary = { ...btnBase, background: '#3b82f6', color: 'white', boxShadow: '0 1px 2px rgba(59,130,246,0.3)' }
+                const btnPrimary = { ...btnBase, background: '#2563eb', color: 'white', boxShadow: '0 1px 2px rgba(59,130,246,0.3)' }
                 const btnConverted = { ...btnBase, background: 'var(--bg-violet-100)', color: 'var(--text-violet-700)', border: '1px solid #8b5cf6', boxShadow: '0 1px 2px rgba(139,92,246,0.2)' }
                 const btnDisabled = (s: object) => ({ ...s, opacity: 0.6, cursor: 'not-allowed' as const })
                 const btnAmber = { ...btnBase, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', border: '1px solid var(--border-amber-soft)', boxShadow: '0 1px 2px rgba(0,0,0,0.05)' }
@@ -3958,7 +3958,7 @@ export default function Prospects() {
                       type="button"
                       onClick={saveFollowUpNotes}
                       disabled={followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '')}
-                      style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', opacity: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 0.6 : 1 }}
+                      style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 'not-allowed' : 'pointer', opacity: followUpNotesSaving || followUpNotes === (currentProspect.notes ?? '') ? 0.6 : 1 }}
                     >
                       {followUpNotesSaving ? 'Saving…' : 'Save'}
                     </button>
@@ -4044,7 +4044,7 @@ export default function Prospects() {
                   fontWeight: 600,
                   borderRadius: 10,
                   border: 'none',
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   boxShadow: '0 1px 2px rgba(59,130,246,0.3)',
                   cursor: followUpProspects.length <= 1 && !run ? 'not-allowed' : 'pointer',
@@ -4962,7 +4962,7 @@ export default function Prospects() {
                 type="button"
                 onClick={saveEdit}
                 disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
               >
                 Save
               </button>
@@ -5040,7 +5040,7 @@ export default function Prospects() {
                 type="button"
                 onClick={saveCallback}
                 disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
               >
                 Save
               </button>
@@ -5176,7 +5176,7 @@ export default function Prospects() {
                 <button
                   type="submit"
                   disabled={copyTemplateSaving}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: copyTemplateSaving ? 'not-allowed' : 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: copyTemplateSaving ? 'not-allowed' : 'pointer' }}
                 >
                   {copyTemplateSaving ? 'Saving…' : 'Save'}
                 </button>
@@ -5231,7 +5231,7 @@ export default function Prospects() {
             <button
               type="button"
               onClick={() => setCopyBlankFieldsModalOpen(false)}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+              style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
             >
               OK
             </button>
@@ -5526,7 +5526,7 @@ export default function Prospects() {
                 type="button"
                 onClick={saveNewProspect}
                 disabled={saving}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}
               >
                 {newProspectTwin ? 'Save anyway' : 'Save'}
               </button>

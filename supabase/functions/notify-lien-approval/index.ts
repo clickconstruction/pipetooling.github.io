@@ -7,10 +7,15 @@
 // writes the words itself (_shared/lienApprovalPush.ts), so a caller can never push arbitrary text
 // to the leader. One push per device of the job's master (else every leader); with no device
 // registered the same words go by email. Logged to notification_history.
+//
+// A person's hours (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, which pushes the
+// leaders on and holds one outside their Push me hours, writing the row as `held` and sending nothing; the Needs you
+// card carries the notice. The email fallback is unchanged: a leader on with no device gets the words by email.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
+import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { lienApprovalPush, lienCodeUsedPush, lienPenRecordedPush, lienWaiverCodeUsedPush, signedYmdOf } from '../_shared/lienApprovalPush.ts'
@@ -165,29 +170,25 @@ serve(async (req) => {
           senderName: sender?.name ?? null,
         })
 
-    const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-    const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-    const canPush = Boolean(vapidPublicKey && vapidPrivateKey)
-    if (canPush) webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey!, vapidPrivateKey!)
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
     const appOrigin = (Deno.env.get('APP_ORIGIN') ?? 'https://clicktooling.com').replace(/\/$/, '')
+    const templateType = waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask'
 
-    let pushSent = 0
+    // Through each leader's hours (#141 PR 5): the leaders on are pushed, one off is held with a row and no push, and
+    // never emailed for it. The record of the push or the email is written here, so the helper keeps none.
+    const pushed = await sendPushHonouringHours(
+      admin,
+      { userIds: leaders.map((l) => l.id), title: words.title, body: words.body, url: words.url, tag: words.tag, templateType },
+      webPushSender(admin, 'notify-lien-approval'),
+      { record: 'none' },
+    )
+    const heldIds = new Set(pushed.held.map((h) => h.userId))
+
+    const pushSent = pushed.devices
     let emailSent = 0
-    const payload = JSON.stringify({ title: words.title, body: words.body, url: words.url, tag: words.tag })
     for (const leader of leaders) {
-      let sentToThisOne = 0
-      if (canPush) {
-        const { data: subscriptions } = await admin.from('push_subscriptions').select('endpoint, p256dh_key, auth_key').eq('user_id', leader.id)
-        for (const sub of subscriptions ?? []) {
-          try {
-            await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } }, payload, { TTL: 86400 })
-            sentToThisOne++
-          } catch (pushErr) {
-            console.error('notify-lien-approval push error', String(sub.endpoint ?? '').substring(0, 50), pushErr)
-          }
-        }
-      }
+      if (heldIds.has(leader.id)) continue
+      const sentToThisOne = pushed.sent.includes(leader.id) ? 1 : 0
       let channel: 'push' | 'email' | null = sentToThisOne > 0 ? 'push' : null
       // No device registered: the same words by email, to our own leader (no sent copy — not a paper, not outside).
       if (sentToThisOne === 0 && resendApiKey && (leader.email ?? '').trim()) {
@@ -199,11 +200,10 @@ serve(async (req) => {
           channel = 'email'
         } else console.error('notify-lien-approval email error', mail.error)
       }
-      pushSent += sentToThisOne
       if (channel) {
         await admin.from('notification_history').insert({
           recipient_user_id: leader.id,
-          template_type: waiverCodeUsed ? 'lien_waiver_code_used' : codeUsed ? 'lien_code_used' : penRecorded ? 'lien_pen_recorded' : 'lien_approval_ask',
+          template_type: templateType,
           title: words.title,
           body_preview: words.body.substring(0, 200),
           channel,
@@ -211,7 +211,7 @@ serve(async (req) => {
       }
     }
 
-    return json({ success: true, push_sent: pushSent, email_sent: emailSent > 0, leader_name: leaders.length === 1 ? leaders[0]!.name : null })
+    return json({ success: true, push_sent: pushSent, email_sent: emailSent > 0, held: heldIds.size, leader_name: leaders.length === 1 ? leaders[0]!.name : null })
   } catch (error) {
     console.error('Error in notify-lien-approval:', error)
     return json({ error: (error as Error)?.message || 'Internal server error' }, 500)
