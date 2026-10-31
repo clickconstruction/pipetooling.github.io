@@ -3369,6 +3369,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 
 ### messages-notify
 
+> **v2.6228 — a hand-off pings the person it went to**: a fourth body, `{ "handed": { "contact_id": "<contacts.id>" } }`, as the user, right after `hand_to` (`followUpIo.handTo`). The function refuses unless the thread's `has_how` is `handed` to someone other than the caller within the last 15 minutes (`handedFresh`) and the caller wrote an event line on it in that time (the hand's own); it builds the words itself ([`src/lib/messages/handedPush.ts`](../src/lib/messages/handedPush.ts), mirrored: *Rosa handed you Dale Ferris*, the newest line in, the thread at it), keeps the person's push hours (`pushDecision` over `pushHoursFor`, a held row with no push), sends through the same `pushToPerson` as a reply's push and records one `notification_history` row as `message_handed`. Answers `{ pushed, held, devices }`. **Redeploy required.**
+
 > **v2.6029 — a push outside a person's hours waits for them, and the office hears at once when the holder is off** (punch list #141 PR 3): a reply's push reads every row of `user_push_hours` once per run (fail-soft: no table yet, or a row that does not read, is any time) and the planner holds whoever is off (`pushDecision` in `messages/pushHours.ts`, now in the copy): a held person gets a `notification_history` row with `channel = 'held'` (migration `20261028210000`) and no push, and the line is never pushed to them later. When whoever has the reply is off at the line's time, the office hears at once as `message_reply_off`, *Dana wrote to Luis, who is off until 6 AM.* then her words. A push to the office that is the Customers seat alone, the seat off, widens to the office roles who are on. The answer gains `held`. **Redeploy** once merged, after `20261028200000` and `20261028210000` are pushed, in that order.
 
 > **v2.5728 — the walk kit's thread pushes the devs alone** (punch list #142 PR 6): a reply's push reads `walk_kit_v1` once per run (`_shared/walkKit.ts`) and a line on the kit's contact pushes the real dev accounts at once, as one `message_reply`, never the holder, the office's wait push or the after-hours push (`notifyPlan.ts`'s kit branch, `kit` and `devs` on its input). Nothing changes while no kit is set up. **Redeploy** once merged.
@@ -3389,6 +3391,10 @@ One of:
 
 ```json
 { "proposal_ids": ["<contract_clause_proposals.id>", "…"] }
+```
+
+```json
+{ "handed": { "contact_id": "<contacts.id>" } }
 ```
 
 ```json
