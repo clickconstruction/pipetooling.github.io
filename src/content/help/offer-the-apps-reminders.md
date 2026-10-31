@@ -31,6 +31,8 @@ Each step has one control called **The app and this reminder**. Press one of its
 
 The control saves the moment you press it. A short message says what changed. Either way the text waits for the step's quiet days to pass. A customer with no number, or one who sent STOP, gets no text. A step's line with a blank the app cannot fill waits too. On Offers the row on Today's sends says why.
 
+The app fills the Paid reminder's {amount} and {bill} from the job's newest open bill. So the office may move Paid from Offers to Sends. A customer with no open bill on the job gets no text until a person sends it from the thread.
+
 ## The same control in Flows
 
 Each step in [Flows](/settings?tab=settings-flows) carries the same control. The two read one setting, so a change on either shows on both. Flows is also where a step is first set to send its reminder from the app. See [let the app send a reminder](/help/set-up-the-steps-a-person-goes-through#let-the-app-send-a-reminder).

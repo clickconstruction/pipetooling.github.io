@@ -8,6 +8,9 @@ import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
+import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
+import { findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { divisionBidFolderByKey } from '../_shared/bidPlansFolders.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -23,15 +26,17 @@ import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentM
 //
 // Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
 // on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0;
-// a new bid v2.6183 / 0.10.0) are a SECOND path, not a
-// loosening of the first: seventeen verbs (_shared/devMcpWrites.ts) POST one of eight hard-coded, dev-gated definer RPCs as the dev —
+// a new bid v2.6183 / 0.10.0; its plan set into Drive and onto the bid v2.6185 / 0.11.0) are a SECOND path, not a
+// loosening of the first: nineteen verbs (_shared/devMcpWrites.ts) POST one of eight hard-coded, dev-gated definer RPCs as the dev —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
-// plan's hash. Never a generic POST, never a table write, never through view_as.
+// plan's hash. Never a generic POST, never a table write, never through view_as. One more
+// (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
+// dev — the key it leads to never crosses this door.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.10.0'
+const SERVER_VERSION = '0.12.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -238,6 +243,21 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { bid: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['bid', 'plan_hash'] },
   },
   {
+    name: 'plan_file_plans',
+    description: "Dry-run filing a plan set for the robots (v2.6185): the PDF you hold goes into Drive under the bid's division folder (a folder named for the project, the one the bid form's Find looks in) and becomes the set the robot reads — bids.plans_link, the folder link — with a named row on the Bid Board. The bytes never ride in a tool call: the reply carries a one-shot upload_url (two hours) into the bid's folder of the private bid-submittals bucket and the curl line to PUT the file there; the plan commits to the file's size and sha256, the bid's plans link before, its division and folder name, under a plan_hash. A live bid in plumbing, electrical or HVAC only; a bid that already has plans is refused unless replace. Nothing is written.",
+    inputSchema: { type: 'object', properties: { plans: { type: 'object', description: "{ bid (bids.id — find_bid), file_name (ending .pdf), size_bytes, sha256, replace?, set_name?, memo? }" } }, required: ['plans'] },
+  },
+  {
+    name: 'apply_file_plans',
+    description: 'File the set you planned, once the PUT is done: the same plans plus the plan_hash from plan_file_plans. Runs the dry run again first and files only when it still matches; then reads the staged copy back, refuses it when its size or sha256 differ from the plan, when it is not a PDF or runs past 200 pages (CountTooling’s cap), copies it into Drive under the division folder as the intake service account, stamps the bid through dev_bid_write (plans_link = the folder link, a bid_plan_sets row named for the set), removes the staged copy, and runs plan-fetch’s readiness probe. Replies with the Drive links, the page count, the probe and what happens next. Drive is the only place the plans stay.',
+    inputSchema: { type: 'object', properties: { plans: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['plans', 'plan_hash'] },
+  },
+  {
+    name: 'mint_twin_setup_code',
+    description: "Mint a ten-minute, single-use setup code for a twin (v2.6187) — the code Settings → Digital twins → Set up on this Mac makes — so the Mac your agent runs on can hold a twin key and run /bid itself. The key never comes back through this door: the reply is the code and the command that redeems it (python3 scripts/twin/redeem_setup_code.py <code>), which mints the key server-side, writes it to ~/pt-twin-digest/twin.token (mode 600), saves the kickoff beside it and prints nothing secret. Devs only (a dev may set up any twin); ten codes per ten minutes; twin_setup_codes keeps who minted it and the Mac that redeemed it, and the key is revoked by its label at Settings → Digital twins.",
+    inputSchema: { type: 'object', properties: { label: { type: 'string', description: "The key's label as the fleet lists it, e.g. \"Todd's agent on todd-mbp\" — the name it is revoked by" }, twin: { type: 'string', description: "The twin's users.id or email (twin-estimator-N@twins.pipetooling.local); the first estimator twin when left out" }, rounds: { type: 'boolean', description: 'true: the redeemer gets the rounds kickoff (a Mac that stays on and makes a round every five minutes)' } }, required: ['label'] },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -254,7 +274,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are seventeen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) and plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are nineteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) and plan_file_plans → apply_file_plans (a plan set into Drive under the bid's division folder and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -424,6 +444,56 @@ function loggableArgs(args: Record<string, unknown>): Record<string, unknown> {
 
 function rowCountOf(body: unknown): number | null {
   return Array.isArray(body) ? body.length : body == null ? 0 : 1
+}
+
+// v2.6185: the plan set a dev's agent files for the robots. The bytes never ride in a tool call:
+// plan_file_plans hands back a one-shot upload URL into the bid's folder of the private
+// bid-submittals bucket (as the dev — the bucket's own policy applies), apply_file_plans reads the
+// staged copy back, checks it against the plan, copies it into Drive under the division folder and
+// removes the staged copy. Drive is the only place the plans stay (the owner, 2026-09-29).
+const ROBOT_PLANS_BUCKET = 'bid-submittals'
+const ROBOT_PLANS_MAX_PAGES = 200
+const robotPlansStagePath = (bidId: string, sha256: string) => `${bidId}/robot-plans/${sha256.slice(0, 16)}.pdf`
+const stagedObjectUrl = (prefix: string, path: string) => `${env('SUPABASE_URL')}/storage/v1/object/${prefix}${ROBOT_PLANS_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`
+const stagedHeaders = (jwt: string): Record<string, string> => ({ apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}` })
+
+async function stagedUploadUrl(jwt: string, path: string): Promise<{ url: string } | { error: string }> {
+  const res = await fetch(stagedObjectUrl('upload/sign/', path), { method: 'POST', headers: { ...stagedHeaders(jwt), 'x-upsert': 'true' } })
+  const body = (await res.json().catch(() => ({}))) as { url?: string }
+  if (!res.ok || typeof body.url !== 'string') return { error: `Could not make the upload URL: ${res.status} ${JSON.stringify(body).slice(0, 200)}` }
+  return { url: `${env('SUPABASE_URL')}/storage/v1${body.url}` }
+}
+
+async function stagedDownload(jwt: string, path: string): Promise<{ bytes: Uint8Array } | { error: string }> {
+  const res = await fetch(stagedObjectUrl('authenticated/', path), { headers: stagedHeaders(jwt) })
+  if (res.status === 400 || res.status === 404) return { error: 'Nothing is staged for this plan: PUT the file to the upload_url plan_file_plans gave you (the curl line in its reply), then apply. An upload URL lasts two hours; plan again for a fresh one.' }
+  if (!res.ok) return { error: `Could not read the staged file: ${res.status} ${(await res.text()).slice(0, 200)}` }
+  return { bytes: new Uint8Array(await res.arrayBuffer()) }
+}
+
+async function stagedRemove(jwt: string, path: string): Promise<boolean> {
+  try {
+    const res = await fetch(stagedObjectUrl('', path), { method: 'DELETE', headers: stagedHeaders(jwt) })
+    return res.ok
+  } catch {
+    return false
+  }
+}
+
+async function sha256HexOf(bytes: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest('SHA-256', bytes)
+  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, '0')).join('')
+}
+
+/** plan-fetch's readiness probe, as the dev: recorded on the bid, and a staff session reads the file's name and size. */
+async function probePlans(jwt: string, bidId: string): Promise<Record<string, unknown>> {
+  try {
+    const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/plan-fetch?bid=${encodeURIComponent(bidId)}&probe=1`, { headers: stagedHeaders(jwt) })
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
+    return res.ok ? body : { readable: false, note: `plan-fetch answered ${res.status}: ${JSON.stringify(body).slice(0, 200)}` }
+  } catch (e) {
+    return { readable: false, note: `plan-fetch could not be reached: ${e instanceof Error ? e.message : String(e)}` }
+  }
 }
 
 function restError(status: number, body: unknown): string {
@@ -614,6 +684,140 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'apply_gap_answer':
     case 'plan_history_entry':
     case 'apply_history_entry':
+    case 'mint_twin_setup_code': {
+      // v2.6187: a setup code for a twin, through twin-setup as the dev (it enforces dev-for-any-twin
+      // and ten per ten minutes). The key itself never crosses this door — a tool result is
+      // transcript — only the code, single-use and ten minutes, which the Mac redeems into a file.
+      if (who.role !== 'dev') return refused("mint_twin_setup_code runs only as you, with a dev's own key.")
+      const label = typeof args.label === 'string' ? args.label.trim().slice(0, 80) : ''
+      if (!label) return refused("mint_twin_setup_code needs label — the key's name as the fleet lists it (e.g. \"Todd's agent on todd-mbp\"), so it can be revoked by name.")
+      const twinRef = typeof args.twin === 'string' ? args.twin.trim() : ''
+      let twinUserId: string | null = null
+      if (twinRef) {
+        if (UUID_SHAPE.test(twinRef)) twinUserId = twinRef
+        else if (/^twin-[a-z_]+-\d+@twins\.pipetooling\.local$/i.test(twinRef)) {
+          const res = await restGet(await jwt(), 'users', `select=id&email=eq.${encodeURIComponent(twinRef.toLowerCase())}&is_digital_twin=eq.true&limit=1`)
+          const row = Array.isArray(res.body) ? (res.body[0] as { id?: string } | undefined) : undefined
+          if (!res.ok || typeof row?.id !== 'string') return refused(`No twin reads as ${twinRef}.`)
+          twinUserId = row.id
+        } else return refused("twin must be the twin's users.id or its email (twin-estimator-N@twins.pipetooling.local).")
+      }
+      const body: Record<string, unknown> = { action: 'mint', label, ...(twinUserId ? { twin_user_id: twinUserId } : { kind: 'estimator' }) }
+      const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/twin-setup`, {
+        method: 'POST',
+        headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${await jwt()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const reply = (await res.json().catch(() => ({}))) as Record<string, unknown>
+      if (!res.ok || typeof reply.code !== 'string') {
+        const message = `twin-setup refused the code (${res.status}): ${typeof reply.error === 'string' ? reply.error : 'no reason given'}`
+        return { log: { status: 'error', target: twinUserId, error: message }, text: message, isError: true }
+      }
+      const rounds = args.rounds === true
+      const twinEmail = typeof reply.twin_email === 'string' ? reply.twin_email : null
+      return ok({
+        code: reply.code,
+        expires_at: reply.expires_at ?? null,
+        twin_email: twinEmail,
+        twin_kind: reply.twin_kind ?? null,
+        label: reply.label ?? label,
+        redeem: `python3 scripts/twin/redeem_setup_code.py ${reply.code}${rounds ? ' --rounds' : ''}`,
+        then: 'The script mints the key server-side, writes it to ~/pt-twin-digest/twin.token (mode 600) and saves the kickoff beside it; it prints the twin, the label and the connector, never the key. After it, python3 scripts/twin/twin.py get_brief answers, /bid bNNN runs, and bash scripts/twin-session.sh starts a Code session with the twin-mcp connector live. The code is single-use and lasts ten minutes. Revoke the key by its label at Settings → Digital twins.',
+      }, { target: twinEmail ?? twinUserId })
+    }
+    case 'plan_file_plans':
+    case 'apply_file_plans': {
+      // v2.6185: the plan set into Drive and onto the bid — the same grammar as every write
+      // (dev_bid_write, action file_plans) with the file's leg around it: plan hands back the
+      // staging URL; apply reads the staged copy, checks it against the plan, copies it into Drive
+      // under the division folder, stamps the bid through the RPC with p_link, removes the staged
+      // copy and probes. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const rpcPath = `rpc/${built.rpc}`
+      const session = await jwt()
+      const fail = (status: number, body: unknown): Outcome => {
+        const message = restError(status, body)
+        return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
+      }
+      const errored = (text: string): Outcome => ({ log: { status: 'error', target: built.target, error: text }, text, isError: true })
+      const plans = built.body.p as { bid_id: string; file_name: string; size_bytes: number; sha256: string }
+      const stagePath = robotPlansStagePath(plans.bid_id, plans.sha256)
+      const dry = await restPost(session, rpcPath, built.dryRunBody ?? built.body)
+      if (!dry.ok) return fail(dry.status, dry.body)
+      const fresh = await planHash(name, built.body.p, dry.body)
+      if (built.step === 'plan') {
+        const upload = await stagedUploadUrl(session, stagePath)
+        if ('error' in upload) return errored(upload.error)
+        return ok({
+          ...planReply(name, redactSecrets(dry.body), fresh),
+          upload_url: upload.url,
+          staged_path: `${ROBOT_PLANS_BUCKET}/${stagePath}`,
+          upload_expires_in: '2 hours',
+          how: `curl -sS -X PUT "<upload_url>" -H "Content-Type: application/pdf" -H "x-upsert: true" --data-binary @"<the file>" — then apply_file_plans with the same plans and this plan_hash. The staged copy is read back and checked against size_bytes and sha256, copied into Drive, and removed.`,
+        }, { target: built.target })
+      }
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const after = ((dry.body as { after?: Record<string, unknown> } | null)?.after ?? {}) as Record<string, unknown>
+      const division = divisionBidFolderByKey(typeof after.division === 'string' ? after.division : null)
+      const folderName = typeof after.plans_folder_name === 'string' ? after.plans_folder_name.trim() : ''
+      if (!division || !folderName) return refused(`The plan names no division folder for this bid (${JSON.stringify(after.division ?? null)}) — the robots file plumbing, electrical and HVAC bids only.`, { target: built.target })
+      const staged = await stagedDownload(session, stagePath)
+      if ('error' in staged) return refused(staged.error, { target: built.target })
+      const bytes = staged.bytes
+      if (bytes.length !== plans.size_bytes) return refused(`The staged file is ${bytes.length} bytes; the plan says ${plans.size_bytes}. Plan again with the file's real size and sha256.`, { target: built.target })
+      const sha = await sha256HexOf(bytes)
+      if (sha !== plans.sha256) return refused(`The staged file's sha256 (${sha.slice(0, 12)}…) is not the plan's (${plans.sha256.slice(0, 12)}…). PUT the file you planned, or plan again for this one.`, { target: built.target })
+      if (!(bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46)) return refused('The staged file is not a PDF (no %PDF header). The robots take PDF plan sets.', { target: built.target })
+      let pages = 0
+      try {
+        pages = (await PDFDocument.load(bytes, { ignoreEncryption: true, updateMetadata: false })).getPageCount()
+      } catch (e) {
+        return refused(`The staged file is not a PDF pdf-lib can open: ${e instanceof Error ? e.message : String(e)}`, { target: built.target })
+      }
+      if (pages < 1 || pages > ROBOT_PLANS_MAX_PAGES) return refused(`The set has ${pages} pages; CountTooling takes 1 to ${ROBOT_PLANS_MAX_PAGES}. Trim it to the sheets the robots need and plan again.`, { target: built.target })
+      const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+      if (!saJson) return refused('Drive intake is not configured on this project (GOOGLE_SERVICE_ACCOUNT_JSON, docs/DRIVE_INTAKE_SETUP.md): a person drops the file into the division folder by hand and presses Find the folder on the bid form.', { target: built.target })
+      let folderLink = ''
+      let fileLink = ''
+      let reused = false
+      try {
+        const token = await googleAccessToken(saJson)
+        const folder = await findOrCreateFolder(token, division.folderId, folderName)
+        folderLink = `https://drive.google.com/drive/folders/${folder.id}`
+        const impersonate = Deno.env.get('DRIVE_IMPERSONATE_USER')?.trim()
+        const upToken = impersonate ? await googleAccessToken(saJson, impersonate) : token
+        const existing = await findExistingFile(upToken, folder.id, plans.file_name)
+        const fileId = existing ?? (await uploadBytes(upToken, folder.id, bytes, plans.file_name, 'application/pdf')).id
+        reused = existing !== null
+        fileLink = `https://drive.google.com/file/d/${fileId}/view`
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e)
+        return errored(/storage quota/i.test(msg)
+          ? `Drive refused the upload: ${msg}. The division folder is not on a Shared Drive, so the intake service account has no quota there — set DRIVE_IMPERSONATE_USER (docs/DRIVE_INTAKE_SETUP.md), or drop the file into ${folderLink || 'the division folder'} by hand and press Find the folder on the bid form. The staged copy is still there for a retry.`
+          : `Drive refused the filing: ${msg}. The staged copy is still there for a retry.`)
+      }
+      const res = await restPost(session, rpcPath, { ...built.body, p_link: { folder_link: folderLink, file_link: fileLink, pages } })
+      if (!res.ok) return errored(`${restError(res.status, res.body)} — the set IS in Drive at ${fileLink} (folder ${folderLink}): paste the folder link on the bid form, or plan again with replace: true.`)
+      const stagedRemoved = await stagedRemove(session, stagePath)
+      const probe = await probePlans(session, plans.bid_id)
+      const reply = (redactSecrets(res.body) ?? {}) as Record<string, unknown>
+      const bidTag = typeof reply.bid_number === 'string' ? `b${reply.bid_number}` : null
+      return ok({
+        ...reply,
+        drive: { folder_link: folderLink, file_link: fileLink, folder_name: folderName, division: division.key, file_reused: reused },
+        pages,
+        bytes: bytes.length,
+        staged_removed: stagedRemoved,
+        probe,
+        next: probe.readable === true
+          ? `Readable by the robots. A live plumbing bid with readable plans is claimed by the rounds within minutes; from a Mac with a twin key, /bid ${bidTag ?? ''} runs it now. The Bid Board's plans icon opens the folder, and the Plans button beside the bid's name reads it page by page.`
+          : `The probe could not read the set yet: ${String(probe.note ?? 'no reason given')}. Open the folder link and check the file is there, then press Check the link on the bid form (or GET plan-fetch?bid=…&probe=1 again).`,
+      }, { target: bidTag ?? built.target })
+    }
     case 'plan_bid':
     case 'apply_bid':
     case 'plan_matter_document':
@@ -740,7 +944,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     if (name === 'view_as') {
       const verb = String(args.verb ?? '')
       if (!verb || verb === 'view_as') return finish(refused('view_as needs a `verb` — any read verb of this server except view_as.'))
-      if (isWriteVerb(verb)) return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
+      if (isWriteVerb(verb) || verb === 'mint_twin_setup_code') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
       const target = await resolveViewAsTarget(admin, args)
       if ('error' in target) return finish(refused(target.error))
       const inner = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>

@@ -1,0 +1,540 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Firms and their coverage: where a firm covers, extend it, hand it off, share it</title>
+<style>
+  /* Snell Law Firm is the firm the desk knows today; everything else is made up: Alamo Collections Law, PLLC as the
+     second firm, the counties each covers, and every case, name and dollar. The county map here is a schematic grid
+     of twenty central-Texas counties, not the real county drawing (LegalFirmCountyMap draws public/geo/tx-counties.json);
+     the shapes of the window, the sheet, the header chip and the legend are the real ones. Today is Fri, Oct 30, 2026.
+     Tokens are src/index.css's (light values and the [data-theme="dark"] block); the firm hues are FIRM_HUES' first two. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --text-blue-700: #1d4ed8; --text-blue-800: #1e40af; --bg-blue-tint: #eff6ff; --bg-blue-200: #dbeafe; --border-blue: #bfdbfe; --text-indigo-800: #3730a3; --bg-indigo-200: #e0e7ff; --text-green-700: #15803d; --text-green-800: #166534; --bg-green-100: #dcfce7; --bg-green-tint: #f0fdf4; --border-green: #bbf7d0; --text-amber-700: #b45309; --text-amber-800: #92400e; --bg-amber-tint: #fffbeb; --bg-amber-100: #fef3c7; --border-amber: #fcd34d; --text-red-700: #b91c1c; --bg-red-100: #fee2e2; --bg-red-tint: #fef2f2; --border-red: #fca5a5; --shadow: 0 1px 2px rgba(17,24,39,.06), 0 4px 14px rgba(17,24,39,.06); --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --mono: ui-monospace, SFMono-Regular, Menlo, monospace; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --text-blue-700: #93c5fd; --text-blue-800: #93c5fd; --bg-blue-tint: #1e3358; --bg-blue-200: #24407a; --border-blue: #1e40af; --text-indigo-800: #a5b4fc; --bg-indigo-200: #312e81; --text-green-700: #4ade80; --text-green-800: #86efac; --bg-green-100: #14532d; --bg-green-tint: #12301f; --border-green: #166534; --text-amber-700: #fbbf24; --text-amber-800: #fcd34d; --bg-amber-tint: #3a2f11; --bg-amber-100: #45390f; --border-amber: #92400e; --text-red-700: #f87171; --bg-red-100: #4c1d1d; --bg-red-tint: #3b1a1a; --border-red: #991b1b; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 42ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 100ch; }
+  b { color: var(--text-strong); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button, nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; text-decoration: none; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.pick { background: var(--text-green-700); }
+  h3 { font-size: 15px; margin: 22px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .pass2 { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--text-blue-700); background: var(--bg-blue-tint); border-radius: 10px; max-width: 104ch; }
+  .pass2 .cap { color: var(--text-blue-700); margin-bottom: 4px; }
+  .pass2 p { margin: 4px 0; color: var(--text-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 460px; max-width: 100%; }
+  .col.full { flex-basis: 100%; }
+  .col.narrow { flex: 0 1 400px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap.opt { color: var(--text-green-700); }
+  .cap.alt { color: var(--text-amber-800); }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 14px 16px; overflow-x: auto; font-size: 13.5px; min-width: 0; }
+  .frame.now { border-style: dashed; background: var(--bg-subtle); }
+  .frame.pick { border-color: var(--text-green-700); }
+  .k { font-size: 10.5px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--text-muted); margin: 10px 0 4px; }
+  .k:first-child { margin-top: 0; }
+  .muted { color: var(--text-muted); }
+  .small { font-size: 12px; }
+  .chip { display: inline-flex; align-items: center; gap: 5px; border-radius: 999px; padding: 1px 8px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); white-space: nowrap; }
+  .chip.ok { color: var(--text-green-700); border-color: var(--border-green); background: var(--bg-green-100); }
+  .chip.warn { color: var(--text-amber-800); border-color: var(--border-amber); background: var(--bg-amber-100); }
+  .chip.red { color: var(--text-red-700); border-color: var(--border-red); background: var(--bg-red-100); }
+  .chip.snell { color: var(--text-blue-800); border-color: var(--border-blue); background: var(--bg-blue-200); }
+  .chip.alamo { color: var(--text-indigo-800); border-color: var(--bg-indigo-200); background: var(--bg-indigo-200); }
+  .chip.legal { color: #7a2e2e; background: rgba(122,46,46,.12); border-color: transparent; }
+  .btn { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--bg-subtle); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 11px; white-space: nowrap; }
+  .btn.primary { background: var(--text-700); color: var(--surface); border-color: var(--text-700); }
+  .btn.blue { background: #2563eb; color: #fff; border-color: #2563eb; }
+  .btn.ghost { border-color: transparent; background: transparent; color: var(--text-link); }
+  .btn.dead { opacity: .5; }
+  .why { font-size: 12px; color: var(--text-muted); }
+  .toast { display: inline-flex; gap: 12px; align-items: center; background: var(--text-strong); color: var(--bg-page); border-radius: 8px; padding: 8px 12px; font-size: 12.5px; margin-top: 10px; }
+  /* the window */
+  .win { border: 1px solid var(--border-strong); border-radius: 12px; background: var(--surface); box-shadow: 0 10px 40px rgba(0,0,0,.15); overflow: hidden; max-width: 760px; }
+  .win .head { display: flex; gap: 10px; align-items: center; padding: 12px 16px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .win .head h4 { margin: 0; font-size: 15px; color: var(--text-strong); flex: 1; }
+  .win .body { padding: 14px 16px 16px; }
+  .win .x { color: var(--text-muted); font-size: 18px; line-height: 1; }
+  .sec { border-top: 1px solid var(--border); margin-top: 16px; padding-top: 14px; }
+  .sec h5 { margin: 0 0 4px; font-size: 14px; color: var(--text-strong); display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+  .sec p.hint { margin: 2px 0 10px; font-size: 12.5px; color: var(--text-muted); }
+  .facts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12.5px; margin: 6px 0 0; }
+  .facts .muted { margin-right: 2px; }
+  .fold { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; font-size: 13px; }
+  .fold .l { color: var(--text-muted); }
+  /* the schematic county grid */
+  .cov { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 14px; align-items: start; }
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 3px; background: var(--border-strong); border: 1px solid var(--border-strong); border-radius: 8px; padding: 3px; }
+  .cty { position: relative; aspect-ratio: 1.25; background: var(--bg-muted); border-radius: 3px; padding: 5px 6px; font-size: 11px; line-height: 1.15; color: var(--text-muted); overflow: hidden; }
+  .cty.snell { background: var(--bg-blue-200); color: var(--text-blue-800); font-weight: 600; }
+  .cty.alamo { background: var(--bg-indigo-200); color: var(--text-indigo-800); font-weight: 600; }
+  .cty.shared { background: repeating-linear-gradient(135deg, var(--bg-indigo-200) 0 7px, var(--bg-blue-200) 7px 14px); color: var(--text-indigo-800); font-weight: 600; }
+  .cty.shared.snellfirst { color: var(--text-blue-800); }
+  .cty.dim { opacity: .35; }
+  .cty.free { color: var(--text-faint); }
+  .cty.flag { outline: 2px solid var(--text-red-700); outline-offset: -2px; }
+  .cty.hover { outline: 2px solid var(--text-strong); outline-offset: -2px; }
+  .cty .n { position: absolute; left: 5px; bottom: 4px; font-size: 9.5px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; opacity: .8; }
+  .cty .dots { position: absolute; right: 5px; bottom: 5px; display: flex; gap: 3px; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; border: 1px solid rgba(0,0,0,.25); }
+  .dot.eyes { background: #2563eb; } .dot.firm { background: #16a34a; } .dot.gave { background: #9ca3af; } .dot.none { background: #dc2626; } .dot.big { width: 11px; height: 11px; }
+  .legend { display: flex; gap: 12px; flex-wrap: wrap; font-size: 11.5px; color: var(--text-muted); margin-top: 6px; align-items: center; }
+  .legend .sw { display: inline-block; width: 11px; height: 11px; border-radius: 2px; border: 1px solid var(--border-strong); vertical-align: -1px; margin-right: 4px; }
+  .legend .sw.snell { background: var(--bg-blue-200); } .legend .sw.alamo { background: var(--bg-indigo-200); } .legend .sw.shared { background: repeating-linear-gradient(135deg, var(--bg-indigo-200) 0 3px, var(--bg-blue-200) 3px 6px); } .legend .sw.none { background: var(--bg-muted); }
+  /* the counties list */
+  table.ct { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  table.ct th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); padding: 3px 6px; border-bottom: 1px solid var(--border-strong); white-space: nowrap; }
+  table.ct td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.ct td.n, table.ct th.n { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.ct td.c { font-weight: 600; color: var(--text-strong); white-space: nowrap; }
+  table.ct tr.sum td { border-bottom: 0; color: var(--text-700); font-weight: 600; }
+  .acts { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; margin-top: 10px; }
+  .tick { display: inline-block; width: 15px; height: 15px; border-radius: 3px; border: 1.5px solid var(--border-strong); vertical-align: middle; position: relative; background: var(--surface); margin-right: 6px; }
+  .tick.on { background: #2563eb; border-color: #2563eb; }
+  .tick.on::after { content: ""; position: absolute; left: 4px; top: 1px; width: 4px; height: 8px; border: solid #fff; border-width: 0 2px 2px 0; transform: rotate(45deg); }
+  .radio { display: inline-block; width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--border-strong); vertical-align: middle; position: relative; background: var(--surface); margin-right: 6px; }
+  .radio.on { border-color: #2563eb; } .radio.on::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: #2563eb; }
+  /* the sheet */
+  .sheet { border: 1px solid var(--border); border-radius: 10px; background: var(--surface); padding: 16px 18px; box-shadow: 0 10px 40px rgba(0,0,0,.15); max-width: 560px; }
+  .sheet h4 { margin: 0 0 4px; font-size: 16px; color: var(--text-strong); }
+  .sheet .sub { font-size: 12.5px; color: var(--text-muted); margin: 0 0 10px; }
+  .step { margin-top: 12px; }
+  .step .k { margin-top: 0; }
+  .opt { display: grid; gap: 6px; margin-top: 4px; }
+  .opt label { display: flex; gap: 2px; align-items: baseline; font-size: 13px; flex-wrap: wrap; }
+  .opt label .q { color: var(--text-muted); font-size: 12px; margin-left: 4px; }
+  .info { background: var(--bg-blue-tint); border: 1px solid var(--border-blue); color: var(--text-blue-800); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; margin-top: 10px; }
+  .info ul, .warn ul { margin: 4px 0 0; padding-left: 18px; }
+  .info li, .warn li { margin: 2px 0; }
+  .warn { background: var(--bg-amber-tint); border: 1px solid var(--border-amber); color: var(--text-amber-800); border-radius: 8px; padding: 10px 12px; font-size: 12.5px; margin-top: 10px; }
+  .nudge { background: var(--bg-amber-tint); border: 1px solid var(--border-amber); color: var(--text-amber-800); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .nudge b { color: var(--text-amber-800); }
+  input.f { width: 100%; font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--border); border-radius: 4px; background: var(--surface); color: var(--text-base); }
+  .fields { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 8px; margin-top: 8px; }
+  .fields label { display: grid; gap: 3px; font-size: 11.5px; color: var(--text-muted); }
+  /* the desk header chip and segments */
+  .segs { display: inline-flex; border: 1px solid var(--border-strong); border-radius: 6px; overflow: hidden; font-size: 12.5px; }
+  .segs span { padding: 4px 10px; border-right: 1px solid var(--border); white-space: nowrap; }
+  .segs span:last-child { border-right: 0; }
+  .segs span.main { font-weight: 600; color: var(--text-strong); }
+  .segs span .tail { color: var(--text-muted); font-weight: 400; margin-left: 6px; }
+  .segs span.sw { color: var(--text-link); font-weight: 600; }
+  .segs span.amber { background: var(--bg-amber-tint); color: var(--text-amber-800); font-weight: 600; }
+  /* the legend card and the portal row */
+  .card { border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; background: var(--surface); font-size: 12.5px; max-width: 320px; }
+  .card h6 { margin: 0 0 4px; font-size: 13px; color: var(--text-strong); }
+  .lrow { display: flex; justify-content: space-between; gap: 8px; padding: 5px 0; border-top: 1px solid var(--border); }
+  .lrow .l { min-width: 0; } .lrow .r { text-align: right; flex-shrink: 0; }
+  .lrow .q { display: block; font-size: 11px; color: var(--text-muted); }
+  /* the critique table */
+  table.t { border-collapse: collapse; width: 100%; font-size: 12.5px; }
+  table.t th { text-align: left; font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); border-bottom: 1px solid var(--border-strong); padding: 4px 6px; }
+  table.t td { padding: 5px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.crit td:first-child { font-weight: 700; color: var(--text-strong); white-space: nowrap; }
+  table.crit tr.pick td { background: var(--bg-green-100); }
+  .prose { color: var(--text-700); max-width: 104ch; }
+  .first { margin: 14px 0 0; padding: 12px 16px; border: 1px solid var(--border-green); background: var(--bg-green-100); border-radius: 10px; max-width: 104ch; }
+  .first .cap { color: var(--text-green-700); margin-bottom: 4px; }
+  .first p, .first li { color: var(--text-700); font-size: 14px; margin: 4px 0; }
+  .first ol { margin: 6px 0; padding-left: 22px; }
+  @media (max-width: 720px) {
+    h1 { font-size: 22px; }
+    .frame { padding: 10px 10px; }
+    .cov { grid-template-columns: 1fr; }
+    .cty { font-size: 10px; }
+    table.ct th.hide, table.ct td.hide { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Legal desk · the firm window · a mock-up, not the app · 2026-10-30 · punch list #222</p>
+  <h1>Firms and their coverage: see where a firm covers, extend it, hand it off county by county, and let two firms share a county</h1>
+  <p>The owner, 2026-10-30, on the firm window's <i>Replace with a new firm…</i>: <i>I don't totally understand "replace with a new firm". We should do a better job showing where a firm appears on the map, and if we're going to replace someone, replace them for that coverage zone. We should be able to extend coverage zones for firms, and it is okay if multiple firms have the same coverage zones.</i></p>
+  <p>Snell Law Firm is the firm the desk knows today. Everything else is invented: <b>Alamo Collections Law, PLLC</b> as the San Antonio firm, the counties each covers, every case and every dollar. The county map on this page is a <b>schematic grid of twenty central-Texas counties</b>, so the pictures stay small; the app draws the real Texas county map it already has. Every other shape is the real one: the firm window, the desk's header chip, the release sheet, the Map view's legend, the firm portal's Who covers what.</p>
+  <div class="first" id="first"><div class="cap">Read this first · for the owner who will judge it</div>
+    <p>This page is a drawing of what we want to build, not the app. One made-up pair of firms runs through every picture. Read it top to bottom once, then answer the five questions at the end. Section 6 is the second pass, where the design argues with itself.</p>
+  </div>
+  <div class="controls">
+    <span class="lbl">Theme</span>
+    <button type="button" aria-pressed="true" data-theme-pick="light">Light</button>
+    <button type="button" aria-pressed="false" data-theme-pick="dark">Dark</button>
+  </div>
+  <nav class="jump"><a href="#today">0 · Today</a><a href="#window">1 · The window</a><a href="#extend">2 · Extend coverage</a><a href="#handoff">3 · Hand off counties</a><a href="#shared">4 · Shared counties on the desk</a><a href="#retire">5 · Retire</a><a href="#pass2">6 · Is this the best we can do?</a><a href="#tellus">? · What to tell us</a></nav>
+</header>
+
+<!-- ============================================================ 0 -->
+<h2 id="today"><span class="num">0</span> Today: the window never shows the map, and Replace retires the firm everywhere</h2>
+<p class="lede">The firm window (the firm's name in the desk's header) holds the firm's details, Click's particulars for filing, and at the bottom <b>Replace this firm</b>. Coverage lives somewhere else entirely: the county picker under <b>Firms…</b>, where a dev picks a firm card and clicks counties, one firm per county. The two never meet, so the window cannot say where the firm covers, and Replace cannot say what happens to its counties.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">The firm window's foot, as it is</div>
+    <div class="frame now">
+      <div class="sec" style="border-top:0;margin-top:0;padding-top:0">
+        <h5>Replace this firm</h5>
+        <p class="hint">For a stand-in, or a change of firm. You add the new firm, and this one is retired: its link stops working, its people stop getting emails, and its history stays.</p>
+        <span class="btn">Replace with a new firm…</span>
+      </div>
+      <p class="small muted" style="margin:12px 0 0">Nothing on the window says which counties Snell covers, how many cases sit in each, or who else covers them.</p>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap alt">What Replace does to the map today</div>
+    <div class="frame now">
+      <div class="cov">
+        <div>
+          <div class="k">Before · Snell covers four counties</div>
+          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+            <div class="cty free">Llano</div><div class="cty free">Burnet</div><div class="cty snell">Williamson<span class="dots"><span class="dot eyes"></span><span class="dot eyes"></span></span></div><div class="cty snell">Bell<span class="dots"><span class="dot gave"></span></span></div>
+            <div class="cty free">Gillespie</div><div class="cty free">Blanco</div><div class="cty snell">Travis<span class="dots"><span class="dot firm big"></span><span class="dot gave"></span></span></div><div class="cty free">Bastrop</div>
+            <div class="cty free">Kerr</div><div class="cty free">Kendall</div><div class="cty snell">Hays</div><div class="cty free">Caldwell</div>
+          </div>
+        </div>
+        <div>
+          <div class="k">After Replace · the new firm starts with none</div>
+          <div class="grid" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+            <div class="cty free">Llano</div><div class="cty free">Burnet</div><div class="cty free flag">Williamson<span class="dots"><span class="dot none"></span><span class="dot none"></span></span></div><div class="cty free flag">Bell<span class="dots"><span class="dot gave"></span></span></div>
+            <div class="cty free">Gillespie</div><div class="cty free">Blanco</div><div class="cty free flag">Travis<span class="dots"><span class="dot firm big"></span><span class="dot gave"></span></span></div><div class="cty free">Bastrop</div>
+            <div class="cty free">Kerr</div><div class="cty free">Kendall</div><div class="cty free flag">Hays</div><div class="cty free">Caldwell</div>
+          </div>
+        </div>
+      </div>
+      <p class="small" style="margin:10px 0 0;color:var(--text-red-700)">A retired firm's counties count as uncovered. Every account in Bell, Hays, Travis and Williamson reads <b style="color:inherit">No firm covers Williamson County</b> and its release is held, until a dev opens Firms… and colors them again for the new firm. The matter already with Snell stays with Snell, as it should.</p>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col full">
+    <div class="cap">The desk's header today, on the live database</div>
+    <div class="frame now">
+      <span class="segs"><span class="main">Snell Law Firm, PLLC<span class="tail">· no counties colored yet</span></span></span>
+      <p class="small muted" style="margin:8px 0 0">One firm, and no county colored for it, so the desk runs on the bridge: <i>no counties are colored yet, so Snell Law Firm, PLLC takes every account</i>. The moment any county is colored for any firm, the bridge ends, and an account outside a colored county has no firm. Section 1b is what the window should say about that before a second firm is added.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="rule">The rule that stays from punch list #144: territories are counties, a county nobody covers gets no firm, and a matter stays with the firm it was released to whatever the map says later.</p>
+  <p class="lose">What is wrong today: coverage and the firm are two screens; Replace is a global act dressed as a local one; one firm per county is a rule the office did not ask for.</p>
+</div>
+
+<!-- ============================================================ 1 -->
+<h2 id="window"><span class="num pick">1</span> The window, reshaped: where the firm covers comes first</h2>
+<p class="lede">The window takes the firm's name as its title (there are several firms now). Under the facts, <b>Where Snell covers</b>: the real county map with Snell's counties in Snell's hue, the other firm's counties faint, a shared county striped, the cases as dots; beside it, the counties as a list with each county's cases and dollars and who else covers it. Three doors under it. The details form and Click's particulars fold, because the first question anyone asks about a firm is <i>where</i>, and the particulars are Click's, not the firm's.</p>
+<div class="row">
+  <div class="col full">
+    <div class="cap opt">The firm window · Snell Law Firm, PLLC</div>
+    <div class="frame pick">
+      <div class="win">
+        <div class="head"><span aria-hidden>⚖</span><h4>Snell Law Firm, PLLC</h4><span class="btn">Open in Settings ↗</span><span class="x">✕</span></div>
+        <div class="body">
+          <div class="facts"><span class="muted">On this firm now:</span><span class="chip">1 account with the firm</span><span class="chip">0 people on its email list</span><span class="chip">portal link on</span><span class="chip">33% · $350 filing</span></div>
+          <div class="sec">
+            <h5>Where Snell covers <span class="chip snell">5 counties</span> <span class="chip">7 cases · $26,068.47</span></h5>
+            <p class="hint">Snell is first call in four counties and also covers Comal, where Alamo is first call. New releases in a county go to its first-call firm; the office can switch to another firm that covers it.</p>
+            <div class="cov">
+              <div>
+                <div class="grid">
+                  <div class="cty free">Llano</div><div class="cty free">Burnet</div><div class="cty snell">Williamson<span class="dots"><span class="dot eyes"></span><span class="dot eyes"></span></span></div><div class="cty snell">Bell<span class="dots"><span class="dot gave"></span></span></div>
+                  <div class="cty free">Gillespie</div><div class="cty free">Blanco</div><div class="cty snell">Travis<span class="dots"><span class="dot firm big"></span><span class="dot gave"></span></span></div><div class="cty free">Bastrop</div>
+                  <div class="cty free">Kerr</div><div class="cty alamo dim">Kendall</div><div class="cty snell">Hays</div><div class="cty free">Caldwell</div>
+                  <div class="cty alamo dim">Bandera</div><div class="cty alamo dim">Bexar<span class="dots"><span class="dot firm"></span><span class="dot eyes"></span></span></div><div class="cty shared">Comal<span class="n">also</span><span class="dots"><span class="dot eyes"></span></span></div><div class="cty alamo dim">Guadalupe<span class="dots"><span class="dot eyes"></span></span></div>
+                  <div class="cty alamo dim">Medina</div><div class="cty alamo dim">Atascosa</div><div class="cty alamo dim">Wilson</div><div class="cty free flag">Gonzales<span class="dots"><span class="dot none"></span></span></div>
+                </div>
+                <div class="legend"><span><span class="sw snell"></span>Snell</span><span><span class="sw alamo"></span>Alamo, faint here</span><span><span class="sw shared"></span>shared</span><span><span class="sw none"></span>no firm</span><span style="margin-left:auto">● a case, sized by its balance</span></div>
+                <p class="small muted" style="margin:6px 0 0">The real map, zoom and pan as on the desk. Press a county to hold it in the list. The one red county, Gonzales, has a case and no firm; that flag is the desk Map's, drawn here too.</p>
+              </div>
+              <div>
+                <table class="ct">
+                  <tr><th>County</th><th>Snell is</th><th class="n">Cases</th><th class="n hide">Open</th></tr>
+                  <tr><td class="c">Travis</td><td>first call</td><td class="n">3</td><td class="n hide">$17,020.47</td></tr>
+                  <tr><td class="c">Williamson</td><td>first call</td><td class="n">2</td><td class="n hide">$4,688.84</td></tr>
+                  <tr><td class="c">Bell</td><td>first call</td><td class="n">1</td><td class="n hide">$4,050.00</td></tr>
+                  <tr><td class="c">Hays</td><td>first call</td><td class="n">0</td><td class="n hide">—</td></tr>
+                  <tr><td class="c">Comal</td><td>also covers <span class="q muted small">· Alamo first call</span></td><td class="n">1</td><td class="n hide">$309.16</td></tr>
+                  <tr class="sum"><td colspan="2">5 counties</td><td class="n">7</td><td class="n hide">$26,068.47</td></tr>
+                </table>
+                <div class="acts"><span class="btn primary">Extend coverage…</span><span class="btn">Hand off counties…</span><span class="btn ghost">Show on the desk map ↗</span></div>
+                <p class="small muted" style="margin:6px 0 0">Show on the desk map opens the Map view with Snell held: its counties lit, the rest faint, the legend row pressed.</p>
+              </div>
+            </div>
+          </div>
+          <div class="sec"><div class="fold"><b>Details</b><span class="l">Snell Law Firm, PLLC · no handling person yet · (512) 477-5291 · 33% · $350 filing</span><span class="btn ghost" style="margin-left:auto">Edit details</span></div></div>
+          <div class="sec"><div class="fold"><b>Click's particulars for filing</b><span class="chip ok">8 of 8 filled</span><span class="l">Shared by every firm's portal</span><span class="btn ghost" style="margin-left:auto">Edit particulars</span></div></div>
+          <div class="sec"><div class="fold"><b>Retire this firm</b><span class="btn dead">Retire Snell</span><span class="why">Hand off its 5 counties first. It also holds 1 live matter.</span></div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col">
+    <div class="cap alt">1b · The window today, on the live database: one firm, no county colored</div>
+    <div class="frame pick">
+      <div class="win">
+        <div class="head"><span aria-hidden>⚖</span><h4>Snell Law Firm, PLLC</h4><span class="x">✕</span></div>
+        <div class="body">
+          <div class="facts"><span class="muted">On this firm now:</span><span class="chip">1 account with the firm</span><span class="chip">0 people on its email list</span><span class="chip">portal link on</span></div>
+          <div class="sec">
+            <h5>Where Snell covers <span class="chip warn">no counties colored</span></h5>
+            <div class="nudge"><b>Snell takes every account today, by default.</b> No county is colored for any firm, so the desk sends everything to the one firm. The first county colored for any firm ends that: an account outside a colored county has no firm. Color Snell's counties now, before a second firm is added.</div>
+            <div class="acts"><span class="btn primary">Color Snell's counties…</span><span class="muted small">Add by area: </span><span class="chip">Austin area · 5</span><span class="chip">San Antonio area · 8</span><span class="chip">every county with a case · 6</span></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col narrow">
+    <div class="cap">Why the particulars fold</div>
+    <div class="frame">
+      <p class="prose" style="margin:0">The eight particulars are Click's legal entity, license, registered agent and the rest. They are the same on every firm's portal. In a window about one firm they read as that firm's, and they push the firm's own facts below the fold. Folded with their <span class="chip ok">8 of 8 filled</span> chip and one door, they are still one press away and the window is half as tall.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">A firm's coverage and a firm are one screen. The question <i>where does Snell appear on the map</i> is answered the moment the window opens.</p>
+  <p class="gain">The list says what the map cannot at a glance: how many cases and dollars ride on each county, and where Snell is first call or only also covers.</p>
+  <p class="rule">Everything here reads from what the desk already has: the county map component in lens mode, <code>countiesByFirm</code>, the cases the Map view places. Nothing new is stored for this picture.</p>
+</div>
+
+<!-- ============================================================ 2 -->
+<h2 id="extend"><span class="num pick">2</span> Extend coverage: the same map, in pick mode, for this firm alone</h2>
+<p class="lede"><b>Extend coverage…</b> turns the window's map into the picker the Settings page has, with Snell already picked and no card list to pick from. A free county colors for Snell. Snell's own county clears. A county another firm covers asks what you mean, because now there are two answers. Nothing writes until <b>Save</b>, and the button says how many.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">Pick mode · Bastrop and Caldwell added, Comal pressed</div>
+    <div class="frame pick">
+      <div class="grid">
+        <div class="cty free">Llano</div><div class="cty free">Burnet</div><div class="cty snell">Williamson</div><div class="cty snell">Bell</div>
+        <div class="cty free">Gillespie</div><div class="cty free">Blanco</div><div class="cty snell">Travis</div><div class="cty snell">Bastrop<span class="n">new</span></div>
+        <div class="cty free">Kerr</div><div class="cty alamo dim">Kendall</div><div class="cty snell">Hays</div><div class="cty snell">Caldwell<span class="n">new</span></div>
+        <div class="cty alamo dim">Bandera</div><div class="cty alamo dim">Bexar</div><div class="cty alamo hover">Comal<span class="n">Alamo's</span></div><div class="cty alamo dim">Guadalupe</div>
+        <div class="cty alamo dim">Medina</div><div class="cty alamo dim">Atascosa</div><div class="cty alamo dim">Wilson</div><div class="cty free">Gonzales</div>
+      </div>
+      <div class="legend"><span>Click a free county: Snell's once you save</span><span>· Click Snell's: cleared</span><span>· Click Alamo's: it asks</span></div>
+      <div class="toast">Bastrop is Snell's once you save.</div>
+      <div class="acts" style="margin-top:12px"><span class="btn blue">Save 2 counties</span><span class="btn">Cancel</span><span class="why">2 counties changed. Save to make it so.</span></div>
+    </div>
+  </div>
+  <div class="col narrow">
+    <div class="cap opt">A county another firm covers · the question</div>
+    <div class="frame pick">
+      <div class="sheet" style="box-shadow:none;padding:12px 14px">
+        <h4 style="font-size:15px">Comal County</h4>
+        <p class="sub">Comal is Alamo Collections Law's. Two ways Snell can cover it too. Matters already with Alamo stay there either way.</p>
+        <div class="opt">
+          <label><span class="radio on"></span><b>Share it.</b><span class="q">Both cover Comal. Alamo stays first call; the office can switch a release to Snell.</span></label>
+          <label><span class="radio"></span><b>Make Snell first call.</b><span class="q">Both cover Comal. New releases there go to Snell unless switched.</span></label>
+          <label><span class="radio"></span><b>Move it to Snell.</b><span class="q">Alamo stops covering Comal. Today's only choice.</span></label>
+        </div>
+        <div class="acts"><span class="btn primary">Share Comal</span><span class="btn">Leave it</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="row">
+  <div class="col full">
+    <div class="cap opt">Add by area · one press colors a metro's counties</div>
+    <div class="frame pick">
+      <div class="acts" style="margin-top:0"><span class="muted small">Add by area:</span><span class="chip">Austin area · Bastrop, Caldwell, Hays, Travis, Williamson</span><span class="chip">San Antonio area · Atascosa, Bandera, Bexar, Comal, Guadalupe, Kendall, Medina, Wilson</span><span class="chip">Waco area · 3</span><span class="chip red">every county with a case and no firm · Gonzales</span></div>
+      <p class="small muted" style="margin:8px 0 0">Texas has 254 counties. A firm in Austin covers the metro, not a county at a time. A preset is one press of the same clicks: counties already Snell's stay, free ones color, another firm's ask one at a time as above. The last chip is the gap list the desk Map already flags, so no case sits with no firm because nobody clicked its county.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">Extending a firm's zone is done from the firm, in the window the owner already has open, with the firm already picked.</p>
+  <p class="rule">Same kernel as the Settings picker (<code>pressCounty</code>, <code>countyChanges</code>, <code>countyWritePlan</code>), one more answer on a held county: share, first call, or move. The Settings picker gains the same question, so the two doors never disagree.</p>
+  <p class="lose">Two places edit one map. The save plan closes the live row and inserts the new one, so two tabs saving the same county still lose cleanly, as today: <i>Another tab saved a county first.</i></p>
+</div>
+
+<!-- ============================================================ 3 -->
+<h2 id="handoff"><span class="num pick">3</span> Hand off counties: replace a firm for a zone, not everywhere</h2>
+<p class="lede"><b>Hand off counties…</b> is what <i>Replace</i> should have been. Pick which of Snell's counties move, pick the firm that takes them (one that exists, or a new one typed here), read what happens, press a button that says the count and the firm. The matters already with Snell stay with Snell until they close. When Snell is left with nothing and holds nothing, the same sheet offers to retire it. One database call does all of it in one transaction, so the map is never half moved.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">The sheet · Snell hands Bell and Williamson to Alamo</div>
+    <div class="frame pick">
+      <div class="sheet" style="box-shadow:none;max-width:none">
+        <h4>Hand off Snell's counties</h4>
+        <p class="sub">New releases in the counties you pick go to the firm you pick. Matters already with Snell stay with Snell.</p>
+        <div class="step"><div class="k">1 · Which counties</div>
+          <div class="opt">
+            <label><span class="tick"></span>Travis <span class="q">· 3 cases · $17,020.47 · first call</span></label>
+            <label><span class="tick on"></span>Williamson <span class="q">· 2 cases · $4,688.84 · first call</span></label>
+            <label><span class="tick on"></span>Bell <span class="q">· 1 case · $4,050.00 · first call</span></label>
+            <label><span class="tick"></span>Hays <span class="q">· no cases · first call</span></label>
+            <label><span class="tick"></span>Comal <span class="q">· 1 case · also covers, Alamo first call</span></label>
+          </div>
+          <div class="acts" style="margin-top:6px"><span class="btn ghost">All 5</span><span class="btn ghost">None</span></div>
+        </div>
+        <div class="step"><div class="k">2 · To</div>
+          <div class="opt">
+            <label><span class="radio on"></span><b>Alamo Collections Law, PLLC</b><span class="q">· 8 counties · 33% · $400 filing</span></label>
+            <label><span class="radio"></span><b>A new firm…</b><span class="q">· typed here, added with the hand-off, starts with no link and no people</span></label>
+          </div>
+        </div>
+        <div class="step"><div class="k">3 · What happens when you press it</div>
+          <div class="info"><ul>
+            <li>New releases in <b>Bell</b> and <b>Williamson</b> go to Alamo Collections Law. Alamo is first call there.</li>
+            <li>Snell keeps <b>Travis</b>, <b>Hays</b> and <b>Comal</b>.</li>
+            <li><b>The Learning Experience</b>, with Snell, stays with Snell until it closes.</li>
+            <li>Burd &amp; Assoc. and RMC-Dudley Mason, under review in Williamson, read Alamo as their firm from now on. Nothing is sent to anyone.</li>
+          </ul></div>
+        </div>
+        <div class="acts" style="margin-top:14px"><span class="btn primary">Hand off 2 counties to Alamo</span><span class="btn">Cancel</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="col narrow">
+    <div class="cap opt">3b · The stand-in: all of it to a new firm, then retire</div>
+    <div class="frame pick">
+      <div class="sheet" style="box-shadow:none;padding:12px 14px">
+        <h4 style="font-size:15px">Hand off Snell's counties</h4>
+        <div class="step" style="margin-top:6px"><div class="k">1 · Which counties</div><div class="fold"><span class="chip snell">All 5</span><span class="l">Travis, Williamson, Bell, Hays, Comal</span></div></div>
+        <div class="step"><div class="k">2 · To</div>
+          <div class="opt"><label><span class="radio"></span>Alamo Collections Law, PLLC</label><label><span class="radio on"></span><b>A new firm…</b></label></div>
+          <div class="fields"><label>Firm<input class="f" value="Hill Country Recovery, PLLC"></label><label>Handling person<input class="f" value="M. Reyes"></label><label>Email<input class="f" value="mreyes@hcr.example"></label><label>Phone<input class="f" value="(512) 555-0142"></label><label>Contingency %<input class="f" value="33"></label><label>Filing cost ($)<input class="f" value="350"></label></div>
+        </div>
+        <div class="step"><div class="k">3 · What happens</div>
+          <div class="info"><ul><li>New releases in all five counties go to Hill Country Recovery.</li><li>Snell keeps no county.</li><li>The Learning Experience stays with Snell until it closes.</li></ul></div>
+          <div class="warn"><label style="display:flex;gap:2px;align-items:baseline"><span class="tick"></span><b style="color:inherit">Retire Snell too.</b></label> Not yet: Snell still holds 1 live matter. Retire it from the window once The Learning Experience closes or is pulled back.</div>
+        </div>
+        <div class="acts" style="margin-top:12px"><span class="btn primary">Hand off 5 counties to Hill Country Recovery</span><span class="btn">Cancel</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">Replacing a firm becomes a local act with a visible scope: these counties, to that firm. The old global Replace is this sheet with All and a new firm, and it no longer leaves the counties grey.</p>
+  <p class="rule">A matter never moves with a hand-off. Moving a live matter is the firm's consent and its own card, as punch list #144 decided; this sheet names the matters that stay so nobody is surprised.</p>
+  <p class="rule">The button is dead with its reason until a county and a receiving firm are picked: <i>Pick the counties that move</i>, <i>Pick the firm that takes them</i>. It never reads Replace or OK.</p>
+</div>
+
+<!-- ============================================================ 4 -->
+<h2 id="shared"><span class="num pick">4</span> Shared counties on the desk: first call, and a switch</h2>
+<p class="lede">Two firms covering one county is fine once the desk knows which one to pick by default. That is <b>first call</b>: one firm per county wears it, the one that has covered the county longest unless a dev says otherwise. The header chip names the first-call firm and says who else covers; the switch segment the two-county accounts already have offers the other firm; the release sheet asks the same question in full. The Map view and the firm portal draw a shared county striped.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap opt">The desk's header on a Comal account</div>
+    <div class="frame pick">
+      <span class="segs"><span class="main">Alamo Collections Law, PLLC<span class="tail">· Comal County · Snell also covers</span></span><span class="sw">⇄ Snell instead</span></span>
+      <p class="small muted" style="margin:8px 0 0">The line under the address: <i>Venue · Comal County, from the property record · Alamo Collections Law is first call; Snell Law Firm also covers it.</i></p>
+      <div class="k" style="margin-top:14px">The release sheet · Mark attorney ready</div>
+      <div class="sheet" style="box-shadow:none;padding:12px 14px">
+        <h4 style="font-size:15px">Release Cibolo Creek Homes</h4>
+        <p class="sub">This is the release. The matter goes to the firm you pick the moment you confirm: 1 job, $2,140.00, theory signed contract, exhibits A–D.</p>
+        <div class="opt">
+          <label><span class="radio on"></span><b>Alamo Collections Law, PLLC</b><span class="q">· first call for Comal County · 33% · $400 filing · keeps ~$1,033.80</span></label>
+          <label><span class="radio"></span><b>Snell Law Firm, PLLC</b><span class="q">· also covers Comal County · 33% · $350 filing · keeps ~$1,083.80</span></label>
+        </div>
+        <div class="acts"><span class="btn primary">Release to Alamo</span><span class="btn">Not yet</span></div>
+        <p class="small muted" style="margin:8px 0 0">The fee model differs by firm, so what Click keeps differs; the sheet says so beside each. The pick is kept on the matter (<code>firm_id</code>), as every release is today.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col narrow">
+    <div class="cap opt">The Map view's legend · Who covers what</div>
+    <div class="frame pick">
+      <div class="card">
+        <h6>Who covers what</h6>
+        <div class="lrow"><span class="l"><span class="legend" style="margin:0;display:inline"><span class="sw snell"></span></span>Snell Law Firm, PLLC<span class="q">5 counties · Bell, Comal (also), Hays, Travis, Williamson</span></span><span class="r"><b>7 cases</b><span class="q">$26,068.47</span></span></div>
+        <div class="lrow"><span class="l"><span class="legend" style="margin:0;display:inline"><span class="sw alamo"></span></span>Alamo Collections Law, PLLC<span class="q">8 counties · Atascosa, Bandera, Bexar, Comal (first call), Guadalupe, Kendall, Medina, Wilson</span></span><span class="r"><b>4 cases</b><span class="q">$11,059.16</span></span></div>
+        <div class="lrow"><span class="l"><span class="legend" style="margin:0;display:inline"><span class="sw none"></span></span>No firm yet<span class="q">Gonzales</span></span><span class="r"><b>1 case</b><span class="q">$3,310.00</span></span></div>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">Press a firm's row: its counties lit, the rest faint. That is the press <i>Show on the desk map</i> lands on. A shared county counts once per case, for the firm it is with, or for its first-call firm while under review.</p>
+      <div class="k" style="margin-top:14px">The firm portal · Who covers what</div>
+      <div class="card" style="max-width:none">
+        <div class="lrow" style="border-top:0"><span class="l">Snell Law Firm, PLLC <span class="chip" style="font-size:10px">your firm</span><span class="q">Bell, Comal (shared with Alamo Collections Law), Hays, Travis, Williamson</span></span><span class="r"><b>1 open matter</b></span></div>
+        <div class="lrow"><span class="l">Alamo Collections Law, PLLC<span class="q">Atascosa, Bandera, Bexar, Comal (shared with you), Guadalupe, Kendall, Medina, Wilson</span></span><span class="r"><b>1 open matter</b></span></div>
+      </div>
+      <p class="small muted" style="margin:8px 0 0">Counts only, as counsel's confidentiality call still holds. A shared county is named as shared; nothing else widens.</p>
+    </div>
+  </div>
+</div>
+<div class="say">
+  <p class="gain">The owner's words, kept whole: two firms may hold the same zone. The desk never guesses between them; first call is a fact a dev set, and the office can override it one press at a time.</p>
+  <p class="rule">Where the chip, the line and the release sheet get their words: <code>firmForAccount</code> already returns <code>others</code> for two-county accounts and marks a switch; a shared county feeds the same shape, so the switch segment, the venue line and the release sheet change their words and nothing else.</p>
+  <p class="lose">A shared county costs a decision at every release there. The default and the fee comparison beside each firm keep it to one press, and a county with one firm asks nothing, as today.</p>
+</div>
+
+<!-- ============================================================ 5 -->
+<h2 id="retire"><span class="num pick">5</span> Retire: the last thing in the window, dead until there is nothing left</h2>
+<p class="lede">Retiring stays what it is: the link stops working, the people stop getting emails, the history stays. It just stops being the way counties change hands. It is dead, with its reason and its door, while the firm covers a county or holds a live matter.</p>
+<div class="row">
+  <div class="col">
+    <div class="cap">Held</div>
+    <div class="frame pick"><div class="fold"><b>Retire this firm</b><span class="btn dead">Retire Snell</span><span class="why">Hand off its 5 counties first. It also holds 1 live matter: The Learning Experience.</span></div></div>
+  </div>
+  <div class="col">
+    <div class="cap opt">Ready</div>
+    <div class="frame pick"><div class="fold"><b>Retire this firm</b><span class="btn">Retire Snell</span><span class="why">Covers no county and holds no live matter. Its link stops working, its 2 people stop getting emails, its history stays.</span></div></div>
+  </div>
+</div>
+
+<!-- ============================================================ 6 -->
+<h2 id="pass2"><span class="num">6</span> Is this the best we can do? The second pass</h2>
+<p class="lede">Asked from the owner's seat, then from the office's, then from the firm's. What the design argues with itself about, and where it landed.</p>
+<table class="t crit">
+  <tr><th>Question</th><th>The pick</th><th>The other way</th><th>Why not</th></tr>
+  <tr class="pick"><td>Where coverage lives</td><td>in the firm's own window, first, over the real map, with Settings' picker kept as the all-firms view</td><td>only on Settings and under Firms…, as today</td><td>the owner opened the firm window and asked <i>where does this firm appear</i>; the answer belongs where the question was asked</td></tr>
+  <tr class="pick"><td>Replace</td><td>Hand off counties: a scope, a receiver, what happens, then retire as its own last step</td><td>keep Replace and have it move every county to the successor</td><td>that is one case of the hand-off (All, a new firm); the owner's case is a zone, and a global act with a local name is what confused her</td></tr>
+  <tr class="pick"><td>Two firms, one county</td><td>allowed, with one first call per county and a switch at release</td><td>keep one firm per county and make the office move counties back and forth</td><td>the owner asked for overlap in so many words; what she needs from us is a default, not a prohibition</td></tr>
+  <tr class="pick"><td>Who is first call</td><td>the firm that has covered the county longest, unless a dev sets another on the held-county question</td><td>always ask at release, no default</td><td>a question at every release in a shared county is a tax on the office; a default that is a fact a dev set is one press to override</td></tr>
+  <tr class="pick"><td>Live matters on a hand-off</td><td>stay with their firm; the sheet names them</td><td>offer to move them too</td><td>a matter moves only with the receiving firm's consent, a decision #144 made and this card keeps; it is its own card</td></tr>
+  <tr class="pick"><td>The window's length</td><td>coverage open, details and particulars folded, retire last</td><td>tabs: Details · Coverage · Particulars</td><td>tabs hide the facts behind a press; folds show the facts and hide the forms; the particulars are Click's and only look like the firm's when they sit open</td></tr>
+  <tr class="pick"><td>254 counties</td><td>Add by area presets and the gap list, on top of the clicks</td><td>clicks alone</td><td>a firm covers a metro; eight clicks and a save for San Antonio is how a map stops getting colored, which is where the live database sits today</td></tr>
+  <tr><td>Freehand zones</td><td>—</td><td>draw a line on the map</td><td>rejected in #144 and still right: venue is the county, and a line through a county cannot say which firm gets the suit</td></tr>
+  <tr><td>Firm-side editing</td><td>—</td><td>let a firm claim counties on its portal</td><td>coverage is the office's engagement decision; the portal reads it</td></tr>
+</table>
+<div class="pass2"><div class="cap">The trap the second pass found · the bridge ends on the first click</div>
+<p>On the live database today there is one firm and <b>no county colored</b>, so the desk runs on the bridge: the one firm takes everything. The first county anyone colors, for Snell or for a second firm, ends the bridge, and every account outside a colored county suddenly has no firm and a held release. Nothing on the screen says this before it happens. Section 1b puts the warning in the window before a second firm exists, with the press that fixes it and the area presets so it is three presses, not fifteen. This is PR 1, before anything else here, because it is a cliff the current app already has.</p>
+<p><b>Weighed and kept out:</b> a per-county percentage split between two firms (nobody asked, and the desk cannot explain it); letting a firm be first call in some counties and absent in its neighbor's by rule (that is just coloring); a Replace that moves live matters (consent); showing the other firm's case names on the portal's shared county (counsel's call still open).</p>
+</div>
+
+<!-- ============================================================ ? -->
+<h2 id="tellus"><span class="num">?</span> What to tell us</h2>
+<div class="first" style="margin-top:0">
+  <p>Five things, in your words. A yes or a no is enough on each. Where a picture is wrong, say what you would do instead.</p>
+  <ol>
+    <li>Section 4. In a county two firms cover, is <b>first call by whoever covered it longest, with a dev able to change it</b> the right default? Or do you want to pick at every release there?</li>
+    <li>Section 3. When counties are handed off, the live matters stay with the old firm. Right? Or should the sheet offer to move them, with the new firm's consent?</li>
+    <li>Section 1. Coverage first, details and particulars folded, retire last. Does the window read in the order you think?</li>
+    <li>Section 2. Which areas should the presets name? Austin and San Antonio are drawn; say the others, or say none.</li>
+    <li>Section 1b. Today Snell covers everything by default. Should PR 1 color Snell's counties for you on the live database the day it ships, or do you want to click them yourself?</li>
+  </ol>
+  <p>One more, if you have a minute. Who may extend coverage and hand off counties: a dev only, as every firm write is today, or the controller too?</p>
+</div>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var picks = document.querySelectorAll('[data-theme-pick]');
+    picks.forEach(function (b) {
+      b.addEventListener('click', function () {
+        root.setAttribute('data-theme', b.getAttribute('data-theme-pick'));
+        picks.forEach(function (x) { x.setAttribute('aria-pressed', x === b ? 'true' : 'false'); });
+      });
+    });
+  })();
+</script>
+</body>
+</html>

@@ -23,6 +23,10 @@ import { EMPTY_HOURS_ROSTER_MESSAGE } from '../../lib/people/hoursGridRoster'
 import { PayStubDeleteIcon } from './PayStubDeleteIcon'
 import { isoWeekNumberFromGregorianYmd, localCalendarDayKey, ymdAddDays } from '../../utils/dateUtils'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { lastPayStubPaymentPaidAt } from '../../lib/payStubPayments'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { ESTIMATE_CHIP_TITLE, draftPayrollBars, pendingChipTitle, pendingChipWords, type DraftPayrollRowBarInput } from '../../lib/pay/draftPayrollBars'
+import { DraftPayrollMoney, DraftPayrollPendingDot, DraftPayrollPeriodBar, DraftPayrollRowBarCell, DraftPayrollSalaryChip } from './DraftPayrollBars'
 
 /** Matches People Pay History `PayStubRow` so callbacks can pass stubs through to `viewPayStub` / `openPayStubMarkPaidModal`. */
 export type DraftPayrollPayStub = {
@@ -160,6 +164,10 @@ export type DraftPayrollModalProps = {
   /** Catch-up scan (v2.2034): unreported earlier person-weeks. Null = scan not done. */
   catchUpCount?: number | null
   onOpenCatchUp?: () => void
+  /** Punch list #217: the pending sessions by pay name, for the amber dots on the rows they belong to. */
+  pendingByPerson?: Readonly<Record<string, number>>
+  /** Punch list #217: who is salaried, for the *salary 8h* chip. */
+  isSalaryPerson?: (person: string) => boolean
 }
 
 export function DraftPayrollModal({
@@ -202,6 +210,8 @@ export function DraftPayrollModal({
   onOpenHoursBreakdown,
   catchUpCount,
   onOpenCatchUp,
+  pendingByPerson,
+  isSalaryPerson,
 }: DraftPayrollModalProps) {
   const [reviewDaysDetail, setReviewDaysDetail] = useState<{
     personName: string
@@ -310,6 +320,416 @@ export function DraftPayrollModal({
   }
 
   const reviewZ = zIndex + 1
+
+  // Punch list #217 (people-docs-1), built in on the owner's say-so (2026-10-30): the bars are the window's one look.
+  const bars = draftPayrollBars(
+        peopleNames.map((person): DraftPayrollRowBarInput => {
+          const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
+          const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
+          const hours = days.reduce((s, d) => s + getEffectiveHours(person, d), 0)
+          const paidAt = stub ? lastPayStubPaymentPaidAt(payStubPaymentsByStubId[stub.id]) : null
+          return {
+            person,
+            hours,
+            estGross,
+            report: stub
+              ? {
+                  gross: stub.gross_pay,
+                  net: stubNetPay(
+                    stub.gross_pay,
+                    sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
+                    sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
+                  ),
+                  paidSum: sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id]),
+                  paidYmd: paidAt ? calendarYmdInAppTzFromIso(paidAt) : null,
+                }
+              : null,
+            isSalary: isSalaryPerson?.(person) ?? false,
+            reviewCount: stub ? 0 : getRunPayrollReviewDayItems(person, days).length,
+            pendingSessions: pendingByPerson?.[person] ?? 0,
+          }
+        }),
+      )
+  const barsByPerson = new Map(bars.rows.map((r) => [r.person, r] as const))
+  const pendingPress = canAccessHours ? () => onOpenHoursForPeriod(start, end) : undefined
+
+  // T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists; under the table (the
+  // owner, 2026-10-30: "perhaps we should move this to the bottom").
+  const allGeneratedNote = () =>
+    draftPayrollAllGenerated({
+      peopleCount: peopleNames.length,
+      missingCount: bulkMissingCount,
+      stubsInPeriod: payStubs.filter((s) => s.period_start <= end && s.period_end >= start).length,
+    }) ? (
+      <div
+        role="status"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '0.5rem 0.75rem',
+          padding: '0.5rem 0.75rem',
+          marginBottom: 0,
+          marginTop: '0.25rem',
+          border: '1px solid #22c55e',
+          background: 'var(--bg-green-tint)',
+          color: 'var(--text-green-800)',
+          borderRadius: 8,
+          fontSize: '0.8125rem',
+        }}
+      >
+        <span style={{ flex: '1 1 260px' }}>{DRAFT_PAYROLL_NEXT_TALLY_COPY}</span>
+        <Link to={TALLY_PAYROLL_HREF} style={{ fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
+          Open Tally →
+        </Link>
+      </div>
+    ) : null
+
+  const body = (
+    <>
+          {pendingLoading ? (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.75rem', textAlign: 'center' }}>Checking pending approvals…</p>
+          ) : null}
+          {pendingError ? (
+            <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: '0 0 0.75rem', textAlign: 'center' }}>{pendingError}</p>
+          ) : null}
+          {peopleNames.length === 0 ? (
+            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
+              {EMPTY_HOURS_ROSTER_MESSAGE}
+            </p>
+          ) : (
+            <>
+              <DraftPayrollPeriodBar bar={bars.period} />
+              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
+                <button
+                  type="button"
+                  onClick={() => void onBulkGenerateRemaining()}
+                  disabled={bulkGenerating || bulkMissingCount === 0 || start > end}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    background: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_FILL : '#3b82f6',
+                    color: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_TEXT : 'white',
+                    border: 'none',
+                    borderRadius: 6,
+                    cursor: bulkGenerating || bulkMissingCount === 0 || start > end ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  {bulkGenerating ? 'Generating…' : countedLabel('Generate', bulkMissingCount, 'report')}
+                </button>
+                <button
+                  type="button"
+                  onClick={() => openDraftPayrollPrintTab()}
+                  disabled={printDisabled}
+                  title={printDisabledTitle}
+                  aria-label={printDisabledTitle ?? 'Print draft payroll summary in a new tab'}
+                  style={{
+                    padding: '0.35rem 0.75rem',
+                    fontSize: '0.8125rem',
+                    fontWeight: 500,
+                    background: printDisabled ? 'var(--bg-muted)' : 'var(--surface)',
+                    color: printDisabled ? 'var(--text-faint)' : 'var(--text-700)',
+                    border: '1px solid var(--border-strong)',
+                    borderRadius: 6,
+                    cursor: printDisabled ? 'not-allowed' : 'pointer',
+                  }}
+                >
+                  Print
+                </button>
+                {onOpenCatchUp && catchUpCount != null ? (
+                  // Always reachable once the scan resolves — a clean first 8
+                  // weeks must not hide the door to "Scan 8 more weeks".
+                  <button
+                    type="button"
+                    onClick={onOpenCatchUp}
+                    title="Earlier weeks with hours but no pay report"
+                    style={{
+                      padding: '0.35rem 0.75rem',
+                      fontSize: '0.8125rem',
+                      fontWeight: catchUpCount > 0 ? 600 : 500,
+                      background: catchUpCount > 0 ? 'var(--bg-amber-tint)' : 'var(--surface)',
+                      color: catchUpCount > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)',
+                      border: catchUpCount > 0 ? '1.5px solid #d97706' : '1px solid var(--border-strong)',
+                      borderRadius: 6,
+                      cursor: 'pointer',
+                    }}
+                  >
+                    {catchUpCount > 0 ? `⏳ Earlier unreported: ${catchUpCount}` : 'Earlier weeks ✓'}
+                  </button>
+                ) : null}
+                {!pendingLoading && pendingCount != null && pendingCount > 0 ? (
+                  pendingPress ? (
+                    <button
+                      type="button"
+                      data-draft-payroll-pending-chip
+                      onClick={pendingPress}
+                      title={pendingChipTitle(pendingCount)}
+                      style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #f59e0b', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                    >
+                      {pendingChipWords(pendingCount)}
+                    </button>
+                  ) : (
+                    <span data-draft-payroll-pending-chip title={pendingChipTitle(pendingCount)} style={{ padding: '0.25rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, border: '1px solid #f59e0b', borderRadius: 999, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }}>
+                      {pendingChipWords(pendingCount)}
+                    </span>
+                  )
+                ) : null}
+              </div>
+              {bulkFailures.length > 0 ? (
+                // Generate N reports went on past these (punch list #184): each stays here with the reason and a Try again door.
+                <div
+                  role="status"
+                  data-draft-payroll-failed
+                  style={{
+                    padding: '0.5rem 0.75rem',
+                    marginBottom: '0.75rem',
+                    border: '1px solid var(--border-red)',
+                    background: 'var(--bg-red-tint)',
+                    color: 'var(--text-red-700)',
+                    borderRadius: 8,
+                    fontSize: '0.8125rem',
+                  }}
+                >
+                  <strong>{bulkPayReportWords(0, bulkFailures.length).head}</strong>
+                  <ul style={{ margin: '0.35rem 0 0', paddingLeft: 0, listStyle: 'none', display: 'grid', gap: '0.3rem' }}>
+                    {bulkFailures.map((f) => (
+                      <li key={f.person} data-draft-payroll-failed-person={f.person} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.25rem 0.6rem' }}>
+                        <span style={{ fontWeight: 600 }}>{f.person}</span>
+                        <span style={{ flex: '1 1 14rem', minWidth: 0, overflowWrap: 'anywhere' }}>{f.why}</span>
+                        {onRetryBulkFailure ? (
+                          <button
+                            type="button"
+                            disabled={bulkGenerating || retryingBulkPerson != null}
+                            onClick={() => onRetryBulkFailure(f.person)}
+                            style={{
+                              padding: '0.2rem 0.55rem',
+                              fontSize: '0.75rem',
+                              fontWeight: 600,
+                              border: '1px solid var(--border-red)',
+                              borderRadius: 6,
+                              background: 'var(--surface)',
+                              color: 'var(--text-red-700)',
+                              cursor: bulkGenerating || retryingBulkPerson != null ? 'not-allowed' : 'pointer',
+                            }}
+                          >
+                            {retryingBulkPerson === f.person ? 'Trying…' : 'Try again ▸'}
+                          </button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              ) : null}
+              <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
+                  <thead>
+                    <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
+                      {/* width 1% + nowrap (the owner, 2026-10-30): the column is as wide as its widest press or bar, no wider. */}
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center', width: '1%', whiteSpace: 'nowrap' }}>Cash due</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'center' }}>$</th>
+                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredPeople.length === 0 && peopleNames.length > 0 ? (
+                      <tr>
+                        <td colSpan={5} style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
+                          Everyone has 0 hours for this period. Enable <strong>Show 0 hours</strong> to list them.
+                        </td>
+                      </tr>
+                    ) : null}
+                    {filteredPeople.map((person) => {
+                      const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
+                      const hours = days.reduce((s, d) => s + getEffectiveHours(person, d), 0)
+                      const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
+                      const reviewItems = getRunPayrollReviewDayItems(person, days)
+                      const paidSum = stub ? sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id]) : 0
+                      const stubNet = stub
+                        ? stubNetPay(
+                            stub.gross_pay,
+                            sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
+                            sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
+                          )
+                        : 0
+                      const stubFullyPaid = stub ? isPayStubFullyPaid(stubNet, paidSum) : false
+                      const stubPartial = stub ? paidSum > 0 && !stubFullyPaid : false
+                      const status = stub
+                        ? stubFullyPaid
+                          ? 'Paid'
+                          : stubPartial
+                            ? 'Partial'
+                            : 'Report only'
+                        : estGross > 0
+                          ? reviewItems.length > 0
+                            ? 'Review'
+                            : 'Ready'
+                          : 'No hours'
+                      const isGenerating = generatingPayStubPerson === person
+                      const rowBar = barsByPerson.get(person)
+                      if (!rowBar) return null
+                      const needsReview = !stub && estGross > 0 && reviewItems.length > 0
+                      // The owner (2026-10-30): a report with nothing paid on it shows Record payment, blue, in Cash due instead of a bar reading *report due*.
+                      const recordInCashDue = stub != null && status === 'Report only'
+                      return (
+                        <tr key={person} style={{ borderBottom: '1px solid var(--border)' }}>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            {person}
+                            {rowBar.pendingSessions > 0 ? <DraftPayrollPendingDot n={rowBar.pendingSessions} onPress={pendingPress} /> : null}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
+                              {recordInCashDue && stub ? (
+                                <button
+                                  type="button"
+                                  data-draft-payroll-record-in-cash-due
+                                  onClick={() => onRecordPayment(stub)}
+                                  disabled={markingPayStubId === stub.id}
+                                  title={rowBar.words}
+                                  style={{
+                                    padding: '2px 8px',
+                                    fontSize: '0.8125rem',
+                                    background: markingPayStubId === stub.id ? DEAD_PRESS_FILL : '#3b82f6',
+                                    color: markingPayStubId === stub.id ? DEAD_PRESS_TEXT : 'white',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer',
+                                    whiteSpace: 'nowrap',
+                                  }}
+                                >
+                                  {markingPayStubId === stub.id ? '...' : 'Record payment'}
+                                </button>
+                              ) : (
+                                <DraftPayrollRowBarCell bar={rowBar} onReview={needsReview ? () => setReviewDaysDetail({ personName: person, items: reviewItems }) : undefined} />
+                              )}
+                            </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
+                            {hours > 0 ? (
+                              <button
+                                type="button"
+                                onClick={() => onOpenHoursBreakdown(person)}
+                                title="Day and job breakdown"
+                                aria-label={`Day and job breakdown for ${person}: ${hours.toFixed(2)} hours`}
+                                style={{
+                                  padding: 0,
+                                  margin: 0,
+                                  border: 'none',
+                                  background: 'none',
+                                  cursor: 'pointer',
+                                  color: 'var(--text-link)',
+                                  textDecoration: 'underline',
+                                  fontSize: 'inherit',
+                                  fontVariantNumeric: 'tabular-nums',
+                                  fontFamily: 'inherit',
+                                }}
+                              >
+                                {hours.toFixed(2)}
+                              </button>
+                            ) : (
+                              <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{hours.toFixed(2)}</span>
+                            )}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                            {/* No est. chip (the owner, 2026-10-30: "drop it"): the no-report-yet pill says it; the hover keeps the words. */}
+                            <DraftPayrollMoney amount={draftPayrollRowCashDue(stub?.gross_pay, estGross)} title={rowBar.estimated ? ESTIMATE_CHIP_TITLE : undefined} />
+                            {rowBar.salaryFlat ? <DraftPayrollSalaryChip /> : null}
+                          </td>
+                          <td style={{ padding: '0.5rem 0.75rem' }}>
+                            {stub ? (
+                              // nowrap (the owner, 2026-10-30): the trash sits to the right of View, never under it, once the bars take a column.
+                              <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'nowrap', alignItems: 'center', whiteSpace: 'nowrap' }}>
+                                <button
+                                  type="button"
+                                  onClick={() => void onViewStub(stub)}
+                                  style={{
+                                    padding: '2px 6px',
+                                    fontSize: '0.8125rem',
+                                    background: '#6b7280',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: 4,
+                                    cursor: 'pointer',
+                                  }}
+                                >
+                                  View
+                                </button>
+                                {canDeletePayReports ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onRequestDeleteStub(stub)}
+                                    disabled={deletingPayStubId === stub.id}
+                                    title="Delete pay report"
+                                    aria-label="Delete pay report"
+                                    style={{
+                                      display: 'inline-flex',
+                                      alignItems: 'center',
+                                      justifyContent: 'center',
+                                      padding: 2,
+                                      background: 'none',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      color: deletingPayStubId === stub.id ? 'var(--text-faint)' : 'var(--text-red-600)',
+                                      cursor: deletingPayStubId === stub.id ? 'not-allowed' : 'pointer',
+                                      verticalAlign: 'middle',
+                                    }}
+                                  >
+                                    {deletingPayStubId === stub.id ? (
+                                      <span style={{ fontSize: '0.75rem', lineHeight: 1, color: 'var(--text-faint)' }}>…</span>
+                                    ) : (
+                                      <PayStubDeleteIcon color="currentColor" size={16} />
+                                    )}
+                                  </button>
+                                ) : null}
+                                {!stubFullyPaid && !recordInCashDue ? (
+                                  <button
+                                    type="button"
+                                    onClick={() => onRecordPayment(stub)}
+                                    disabled={markingPayStubId === stub.id}
+                                    style={{
+                                      padding: '2px 6px',
+                                      fontSize: '0.8125rem',
+                                      background: markingPayStubId === stub.id ? DEAD_PRESS_FILL : '#059669',
+                                      color: markingPayStubId === stub.id ? DEAD_PRESS_TEXT : 'white',
+                                      border: 'none',
+                                      borderRadius: 4,
+                                      cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer',
+                                    }}
+                                  >
+                                    {markingPayStubId === stub.id ? '...' : 'Record payment'}
+                                  </button>
+                                ) : null}
+                              </span>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => void onGenerateReport(person)}
+                                disabled={isGenerating || estGross <= 0 || bulkGenerating}
+                                style={{
+                                  padding: '2px 6px',
+                                  fontSize: '0.8125rem',
+                                  background: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_FILL : '#3b82f6',
+                                  color: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_TEXT : 'white',
+                                  border: 'none',
+                                  borderRadius: 4,
+                                  cursor: isGenerating || estGross <= 0 || bulkGenerating ? 'not-allowed' : 'pointer',
+                                }}
+                              >
+                                {isGenerating ? '...' : 'Report'}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {allGeneratedNote()}
+            </>
+          )}
+    </>
+  )
 
   return (
     <>
@@ -453,421 +873,7 @@ export function DraftPayrollModal({
               </button>
             </div>
           </div>
-          {pendingLoading ? (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', margin: '0 0 0.75rem', textAlign: 'center' }}>Checking pending approvals…</p>
-          ) : null}
-          {pendingError ? (
-            <p style={{ fontSize: '0.8125rem', color: 'var(--text-red-700)', margin: '0 0 0.75rem', textAlign: 'center' }}>{pendingError}</p>
-          ) : null}
-          {!pendingLoading && pendingCount != null && pendingCount > 0 ? (
-            <div
-              role="status"
-              style={{
-                marginBottom: '0.75rem',
-                padding: '0.6rem 0.75rem',
-                borderRadius: 6,
-                border: '1px solid #f59e0b',
-                background: 'var(--bg-amber-100)',
-                color: 'var(--text-amber-800)',
-                fontSize: '0.8125rem',
-                lineHeight: 1.4,
-              }}
-            >
-              <strong>{pendingCount}</strong> clock session{pendingCount === 1 ? '' : 's'} in this period still need approval (Hours → Pending sessions).
-              {canAccessHours ? (
-                <div style={{ marginTop: '0.5rem' }}>
-                  <button
-                    type="button"
-                    onClick={() => onOpenHoursForPeriod(start, end)}
-                    style={{
-                      padding: '0.25rem 0.5rem',
-                      fontSize: '0.8125rem',
-                      background: '#b45309',
-                      color: 'white',
-                      border: 'none',
-                      borderRadius: 4,
-                      cursor: 'pointer',
-                      fontWeight: 500,
-                    }}
-                  >
-                    Open Hours tab
-                  </button>
-                </div>
-              ) : null}
-            </div>
-          ) : null}
-          {peopleNames.length === 0 ? (
-            <p style={{ color: 'var(--text-muted)', fontSize: '0.875rem', margin: 0 }}>
-              {EMPTY_HOURS_ROSTER_MESSAGE}
-            </p>
-          ) : (
-            <>
-              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)', marginBottom: '0.5rem', textAlign: 'center' }}>
-                {paidCount} of {peopleNames.length} paid · Total: ${formatCurrency(totalAmount)} | Left: ${formatCurrency(leftUnpaid)}
-              </div>
-              <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'center', gap: '0.5rem', marginBottom: '0.75rem' }}>
-                <button
-                  type="button"
-                  onClick={() => void onBulkGenerateRemaining()}
-                  disabled={bulkGenerating || bulkMissingCount === 0 || start > end}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.8125rem',
-                    fontWeight: 500,
-                    background: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_FILL : '#3b82f6',
-                    color: bulkGenerating || bulkMissingCount === 0 || start > end ? DEAD_PRESS_TEXT : 'white',
-                    border: 'none',
-                    borderRadius: 6,
-                    cursor: bulkGenerating || bulkMissingCount === 0 || start > end ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  {bulkGenerating ? 'Generating…' : countedLabel('Generate', bulkMissingCount, 'report')}
-                </button>
-                <button
-                  type="button"
-                  onClick={() => openDraftPayrollPrintTab()}
-                  disabled={printDisabled}
-                  title={printDisabledTitle}
-                  aria-label={printDisabledTitle ?? 'Print draft payroll summary in a new tab'}
-                  style={{
-                    padding: '0.35rem 0.75rem',
-                    fontSize: '0.8125rem',
-                    fontWeight: 500,
-                    background: printDisabled ? 'var(--bg-muted)' : 'var(--surface)',
-                    color: printDisabled ? 'var(--text-faint)' : 'var(--text-700)',
-                    border: '1px solid var(--border-strong)',
-                    borderRadius: 6,
-                    cursor: printDisabled ? 'not-allowed' : 'pointer',
-                  }}
-                >
-                  Print
-                </button>
-                {onOpenCatchUp && catchUpCount != null ? (
-                  // Always reachable once the scan resolves — a clean first 8
-                  // weeks must not hide the door to "Scan 8 more weeks".
-                  <button
-                    type="button"
-                    onClick={onOpenCatchUp}
-                    title="Earlier weeks with hours but no pay report"
-                    style={{
-                      padding: '0.35rem 0.75rem',
-                      fontSize: '0.8125rem',
-                      fontWeight: catchUpCount > 0 ? 600 : 500,
-                      background: catchUpCount > 0 ? 'var(--bg-amber-tint)' : 'var(--surface)',
-                      color: catchUpCount > 0 ? 'var(--text-amber-800)' : 'var(--text-muted)',
-                      border: catchUpCount > 0 ? '1.5px solid #d97706' : '1px solid var(--border-strong)',
-                      borderRadius: 6,
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {catchUpCount > 0 ? `⏳ Earlier unreported: ${catchUpCount}` : 'Earlier weeks ✓'}
-                  </button>
-                ) : null}
-                <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                  {bulkMissingCount === 0 ? 'No one needs a report for this period.' : `${bulkMissingCount} with pay due and no report yet`}
-                </span>
-              </div>
-              {bulkFailures.length > 0 ? (
-                // Generate N reports went on past these (punch list #184): each stays here with the reason and a Try again door.
-                <div
-                  role="status"
-                  data-draft-payroll-failed
-                  style={{
-                    padding: '0.5rem 0.75rem',
-                    marginBottom: '0.75rem',
-                    border: '1px solid var(--border-red)',
-                    background: 'var(--bg-red-tint)',
-                    color: 'var(--text-red-700)',
-                    borderRadius: 8,
-                    fontSize: '0.8125rem',
-                  }}
-                >
-                  <strong>{bulkPayReportWords(0, bulkFailures.length).head}</strong>
-                  <ul style={{ margin: '0.35rem 0 0', paddingLeft: 0, listStyle: 'none', display: 'grid', gap: '0.3rem' }}>
-                    {bulkFailures.map((f) => (
-                      <li key={f.person} data-draft-payroll-failed-person={f.person} style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.25rem 0.6rem' }}>
-                        <span style={{ fontWeight: 600 }}>{f.person}</span>
-                        <span style={{ flex: '1 1 14rem', minWidth: 0, overflowWrap: 'anywhere' }}>{f.why}</span>
-                        {onRetryBulkFailure ? (
-                          <button
-                            type="button"
-                            disabled={bulkGenerating || retryingBulkPerson != null}
-                            onClick={() => onRetryBulkFailure(f.person)}
-                            style={{
-                              padding: '0.2rem 0.55rem',
-                              fontSize: '0.75rem',
-                              fontWeight: 600,
-                              border: '1px solid var(--border-red)',
-                              borderRadius: 6,
-                              background: 'var(--surface)',
-                              color: 'var(--text-red-700)',
-                              cursor: bulkGenerating || retryingBulkPerson != null ? 'not-allowed' : 'pointer',
-                            }}
-                          >
-                            {retryingBulkPerson === f.person ? 'Trying…' : 'Try again ▸'}
-                          </button>
-                        ) : null}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ) : null}
-              {/* T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists. */}
-              {draftPayrollAllGenerated({
-                peopleCount: peopleNames.length,
-                missingCount: bulkMissingCount,
-                stubsInPeriod: payStubs.filter((s) => s.period_start <= end && s.period_end >= start).length,
-              }) ? (
-                <div
-                  role="status"
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '0.5rem 0.75rem',
-                    padding: '0.5rem 0.75rem',
-                    marginBottom: '0.75rem',
-                    border: '1px solid #22c55e',
-                    background: 'var(--bg-green-tint)',
-                    color: 'var(--text-green-800)',
-                    borderRadius: 8,
-                    fontSize: '0.8125rem',
-                  }}
-                >
-                  <span style={{ flex: '1 1 260px' }}>{DRAFT_PAYROLL_NEXT_TALLY_COPY}</span>
-                  <Link to={TALLY_PAYROLL_HREF} style={{ fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
-                    Open Tally →
-                  </Link>
-                </div>
-              ) : null}
-              <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
-                <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
-                  <thead>
-                    <tr style={{ background: 'var(--bg-subtle)', borderBottom: '1px solid var(--border)' }}>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left', width: 36 }}>Paid</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Person</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Status</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Hours</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>Cash Due</th>
-                      <th style={{ padding: '0.5rem 0.75rem', textAlign: 'left' }}>Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filteredPeople.length === 0 && peopleNames.length > 0 ? (
-                      <tr>
-                        <td colSpan={6} style={{ padding: '0.75rem', fontSize: '0.875rem', color: 'var(--text-muted)', textAlign: 'center' }}>
-                          Everyone has 0 hours for this period. Enable <strong>Show 0 hours</strong> to list them.
-                        </td>
-                      </tr>
-                    ) : null}
-                    {filteredPeople.map((person) => {
-                      const stub = payStubs.find((s) => s.person_name === person && s.period_start <= end && s.period_end >= start)
-                      const hours = days.reduce((s, d) => s + getEffectiveHours(person, d), 0)
-                      const estGross = days.reduce((s, d) => s + getCostForPersonDate(person, d), 0)
-                      const reviewItems = getRunPayrollReviewDayItems(person, days)
-                      const paidSum = stub ? sumPayStubPaymentAmounts(payStubPaymentsByStubId[stub.id]) : 0
-                      const stubNet = stub
-                        ? stubNetPay(
-                            stub.gross_pay,
-                            sumPayStubDeductionAmounts(payStubDeductionsByStubId[stub.id] ?? []),
-                            sumPayStubAdditionalAmounts(payStubAdditionalByStubId[stub.id] ?? []),
-                          )
-                        : 0
-                      const stubFullyPaid = stub ? isPayStubFullyPaid(stubNet, paidSum) : false
-                      const stubPartial = stub ? paidSum > 0 && !stubFullyPaid : false
-                      const status = stub
-                        ? stubFullyPaid
-                          ? 'Paid'
-                          : stubPartial
-                            ? 'Partial'
-                            : 'Report only'
-                        : estGross > 0
-                          ? reviewItems.length > 0
-                            ? 'Review'
-                            : 'Ready'
-                          : 'No hours'
-                      const isGenerating = generatingPayStubPerson === person
-                      return (
-                        <tr key={person} style={{ borderBottom: '1px solid var(--border)' }}>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {stub && !stubFullyPaid ? (
-                              <input
-                                type="checkbox"
-                                checked={false}
-                                onChange={() => onRecordPayment(stub)}
-                                disabled={markingPayStubId === stub.id}
-                                title="Record payment"
-                              />
-                            ) : stub && stubFullyPaid ? (
-                              <span style={{ color: 'var(--text-green-600)', fontSize: '0.875rem' }} title="Fully paid">
-                                {'\u2713'}
-                              </span>
-                            ) : (
-                              <span style={{ color: 'var(--text-faint-300)' }}>—</span>
-                            )}
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>{person}</td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {!stub && estGross > 0 && reviewItems.length > 0 ? (
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  setReviewDaysDetail({ personName: person, items: reviewItems })
-                                }}
-                                title="Show dates needing attention for this period (Correct checkbox or job assignment)"
-                                style={{
-                                  padding: 0,
-                                  border: 'none',
-                                  background: 'none',
-                                  cursor: 'pointer',
-                                  fontSize: '0.8125rem',
-                                  color: '#ea580c',
-                                  textDecoration: 'underline',
-                                }}
-                              >
-                                Review
-                              </button>
-                            ) : (
-                              <span
-                                style={{
-                                  fontSize: '0.8125rem',
-                                  color:
-                                    status === 'Paid'
-                                      ? '#059669'
-                                      : status === 'Partial'
-                                        ? '#ca8a04'
-                                        : status === 'Review'
-                                          ? '#ea580c'
-                                          : status === 'No hours' || status === 'Report only'
-                                            ? '#6b7280'
-                                            : undefined,
-                                }}
-                              >
-                                {status}
-                              </span>
-                            )}
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                            {hours > 0 ? (
-                              <button
-                                type="button"
-                                onClick={() => onOpenHoursBreakdown(person)}
-                                title="Day and job breakdown"
-                                aria-label={`Day and job breakdown for ${person}: ${hours.toFixed(2)} hours`}
-                                style={{
-                                  padding: 0,
-                                  margin: 0,
-                                  border: 'none',
-                                  background: 'none',
-                                  cursor: 'pointer',
-                                  color: 'var(--text-link)',
-                                  textDecoration: 'underline',
-                                  fontSize: 'inherit',
-                                  fontVariantNumeric: 'tabular-nums',
-                                  fontFamily: 'inherit',
-                                }}
-                              >
-                                {hours.toFixed(2)}
-                              </button>
-                            ) : (
-                              <span style={{ fontVariantNumeric: 'tabular-nums', color: 'var(--text-muted)' }}>{hours.toFixed(2)}</span>
-                            )}
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right' }}>
-                            ${formatCurrency(draftPayrollRowCashDue(stub?.gross_pay, estGross))}
-                          </td>
-                          <td style={{ padding: '0.5rem 0.75rem' }}>
-                            {stub ? (
-                              <span style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap' }}>
-                                <button
-                                  type="button"
-                                  onClick={() => void onViewStub(stub)}
-                                  style={{
-                                    padding: '2px 6px',
-                                    fontSize: '0.8125rem',
-                                    background: '#6b7280',
-                                    color: 'white',
-                                    border: 'none',
-                                    borderRadius: 4,
-                                    cursor: 'pointer',
-                                  }}
-                                >
-                                  View
-                                </button>
-                                {canDeletePayReports ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => onRequestDeleteStub(stub)}
-                                    disabled={deletingPayStubId === stub.id}
-                                    title="Delete pay report"
-                                    aria-label="Delete pay report"
-                                    style={{
-                                      display: 'inline-flex',
-                                      alignItems: 'center',
-                                      justifyContent: 'center',
-                                      padding: 2,
-                                      background: 'none',
-                                      border: 'none',
-                                      borderRadius: 4,
-                                      color: deletingPayStubId === stub.id ? 'var(--text-faint)' : 'var(--text-red-600)',
-                                      cursor: deletingPayStubId === stub.id ? 'not-allowed' : 'pointer',
-                                      verticalAlign: 'middle',
-                                    }}
-                                  >
-                                    {deletingPayStubId === stub.id ? (
-                                      <span style={{ fontSize: '0.75rem', lineHeight: 1, color: 'var(--text-faint)' }}>…</span>
-                                    ) : (
-                                      <PayStubDeleteIcon color="currentColor" size={16} />
-                                    )}
-                                  </button>
-                                ) : null}
-                                {!stubFullyPaid ? (
-                                  <button
-                                    type="button"
-                                    onClick={() => onRecordPayment(stub)}
-                                    disabled={markingPayStubId === stub.id}
-                                    style={{
-                                      padding: '2px 6px',
-                                      fontSize: '0.8125rem',
-                                      background: markingPayStubId === stub.id ? DEAD_PRESS_FILL : '#059669',
-                                      color: markingPayStubId === stub.id ? DEAD_PRESS_TEXT : 'white',
-                                      border: 'none',
-                                      borderRadius: 4,
-                                      cursor: markingPayStubId === stub.id ? 'not-allowed' : 'pointer',
-                                    }}
-                                  >
-                                    {markingPayStubId === stub.id ? '...' : 'Record payment'}
-                                  </button>
-                                ) : null}
-                              </span>
-                            ) : (
-                              <button
-                                type="button"
-                                onClick={() => void onGenerateReport(person)}
-                                disabled={isGenerating || estGross <= 0 || bulkGenerating}
-                                style={{
-                                  padding: '2px 6px',
-                                  fontSize: '0.8125rem',
-                                  background: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_FILL : '#3b82f6',
-                                  color: isGenerating || estGross <= 0 || bulkGenerating ? DEAD_PRESS_TEXT : 'white',
-                                  border: 'none',
-                                  borderRadius: 4,
-                                  cursor: isGenerating || estGross <= 0 || bulkGenerating ? 'not-allowed' : 'pointer',
-                                }}
-                              >
-                                {isGenerating ? '...' : 'Report'}
-                              </button>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </>
-          )}
+          {body}
         </div>
       </div>
 

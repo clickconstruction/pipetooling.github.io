@@ -53,6 +53,7 @@ describe('customerMessageCounts', () => {
       when: 'today',
       mailbox: 'team',
       via: 'Text on the team number',
+      reach: '',
       why: '',
       jobIds: [],
       defaultJobId: null,

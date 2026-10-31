@@ -33,7 +33,7 @@ import { robotRowState, type RobotRowInput } from '../lib/bids/robotRowState'
 import type { ShadowRunRow } from '../lib/bids/shadowStory'
 import { BID_UPDATE_NOT_APPLIED_MESSAGE, bidUpdateRefused } from '../lib/bids/updateGuard'
 import { useRobotProgress } from './useRobotProgress'
-import { progressBidIds as progressBidIdsFor, type RobotProgress } from '../lib/bids/robotProgress'
+import { progressBidIds as progressBidIdsFor, type RobotProgress, type RobotProgressRow } from '../lib/bids/robotProgress'
 import { LET_ROBOT_BACK_IN_TOAST } from '../lib/bids/robotLeftToYou'
 
 export function useBidRobotLayer(input: {
@@ -215,8 +215,10 @@ export function useBidRobotLayer(input: {
     () => progressBidIdsFor(bids, (b) => twinBidBySourceId.has(b.id) || shadowRunByBidNumber.has((b.bid_number ?? '').trim())),
     [bids, twinBidBySourceId, shadowRunByBidNumber],
   )
-  const { byBid: robotProgressByBidId, reload: reloadRobotProgress } = useRobotProgress(progressBidIds, { enabled: !!authUserId && canAnswerRobotQuestions })
+  const { byBid: robotProgressByBidId, rows: robotProgressRows, reload: reloadRobotProgress } = useRobotProgress(progressBidIds, { enabled: !!authUserId && canAnswerRobotQuestions })
   const robotProgressFor = useCallback((bidId: string): RobotProgress | null => robotProgressByBidId.get(bidId) ?? null, [robotProgressByBidId])
+  /** Robot fixtures (punch list #221, PR 3b): the raw `robot_progress()` row, for the stage (`buildRobotStage`) on the status sheet. */
+  const robotProgressRowFor = useCallback((bidId: string): RobotProgressRow | null => robotProgressRows.find((r) => r.bid_id === bidId) ?? null, [robotProgressRows])
   /** Leave this one to me (v2.5732): the bid's robot opt-out, the tick the form has; the robot reads `leave` on its next heartbeat. */
   const leaveToMe = useCallback(async (bid: BidWithBuilder) => {
     const before = bid.robot_opt_out ?? false
@@ -387,6 +389,7 @@ export function useBidRobotLayer(input: {
     noteRobotReviewRevision,
     toggleRobotRequest,
     robotProgressFor,
+    robotProgressRowFor,
     reloadRobotProgress,
     leaveToMe,
     letRobotBackIn,

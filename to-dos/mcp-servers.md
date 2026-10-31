@@ -207,6 +207,8 @@ door reaches them instead of re-writing them.
 | `check_locks` · `check_sampler` · `check_connections` · `check_migration_ledger` · `check_edge_boot` | 5 — shipped | Dev-gated definer RPCs read through the same door as the dev — no service role after all (brief above). |
 | `plan_*` / `apply_*` / `revert_*` | 6 — shipped | Over `cost_batch_apply` / `cost_batch_revert`; HR through `dev_hr_entry_write`, the dry-run wrapper (brief above). Apply re-runs the dry run and matches the plan's hash. |
 | `plan_bid` / `apply_bid` | v2.6183 — shipped | A new bid as the New Bid form makes it, through `dev_bid_write` (action `create`), numbered by the database. PR 1 of the owner's 2026-10-30 ask (a dev's agent sets a bid up for the robots); `plan_file_plans` / `apply_file_plans` (the plan set into Drive and onto the bid) and `mint_twin_setup_code` follow. |
+| `plan_file_plans` / `apply_file_plans` | v2.6185 — shipped | The plan set into Drive under the bid's division folder and onto the bid as the set the robot reads (`dev_bid_write`, action `file_plans`), from a one-shot upload URL the plan hands back; the apply checks size, sha256, PDF and 200 pages, probes at the end. Drive is the only place the plans stay. |
+| `mint_twin_setup_code` | v2.6187 — shipped | A ten-minute, single-use twin setup code through `twin-setup` as the dev; `scripts/twin/redeem_setup_code.py` redeems it into the Mac's key file. The key never comes back through the seat. |
 
 **Where the numbers come from** (mapped 2026-09-20): job header, stage, strip, hours and
 activity are RPCs or plain rows; **job money, customer LCV and open balance are client

@@ -13,6 +13,7 @@ import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtil
 import { supabaseOfficeInboxIo, useOfficeInboxPapers, type OfficeInboxIo, type PressExtra } from '../../hooks/useOfficeInboxPapers'
 import { ErrorDoorButton, ErrorDoorCard } from '../help/ErrorDoor'
 import { errorFamilyOf } from '../../lib/help/errorGuides'
+import { SKY_UNDER_WORDS } from '../../lib/skyUnderWords'
 import { OFFLINE_ERROR_MESSAGE, isNetworkFetchErrorMessage } from '../../lib/networkErrorMessage'
 import {
   decidedCounts,
@@ -66,8 +67,8 @@ const pressStyle = (busy: boolean, tone: 'plain' | 'blue' | 'sky' | 'violet' = '
   fontWeight: 600,
   padding: '4px 10px',
   borderRadius: 6,
-  border: `1px solid ${tone === 'plain' ? 'var(--border-strong)' : tone === 'blue' ? '#3b82f6' : tone === 'sky' ? '#0ea5e9' : '#7c3aed'}`,
-  background: tone === 'plain' ? 'var(--surface)' : tone === 'blue' ? '#3b82f6' : tone === 'sky' ? '#0ea5e9' : '#7c3aed',
+  border: `1px solid ${tone === 'plain' ? 'var(--border-strong)' : tone === 'blue' ? '#3b82f6' : tone === 'sky' ? SKY_UNDER_WORDS : '#7c3aed'}`,
+  background: tone === 'plain' ? 'var(--surface)' : tone === 'blue' ? '#3b82f6' : tone === 'sky' ? SKY_UNDER_WORDS : '#7c3aed',
   color: tone === 'plain' ? 'var(--text-700)' : '#fff',
   cursor: busy ? 'not-allowed' : 'pointer',
   opacity: busy ? 0.6 : 1,

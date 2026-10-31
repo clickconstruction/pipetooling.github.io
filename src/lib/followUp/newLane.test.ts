@@ -23,6 +23,7 @@ import {
   type NewLaneRow,
   type WhoKnown,
   rosterChoices,
+  rowReach,
   teamGuess,
 } from './newLane'
 import { guessWait, namedWords } from './newLaneRows'
@@ -34,10 +35,22 @@ import { bidCustomerChoices, bidHead, bidWhy, START_BID_WORDS } from './newLane'
 const NOW = '2026-10-13T15:00:00Z'
 
 const CONTACTS: NewLaneContact[] = [
-  { id: 'kevin', kind: 'unknown', name: '(210) 555-0188', company: '', jobIds: [], defaultJobId: null, has: null },
-  { id: 'bexar', kind: 'unknown', name: 'estimating@bexarsteel.example', company: '', jobIds: [], defaultJobId: null, has: null },
-  { id: 'dana', kind: 'customer', name: 'Dana Whitfield', company: '', jobIds: ['j1312', 'j1298'], defaultJobId: 'j1312', has: 'Luis' },
-  { id: 'greg', kind: 'trade', name: 'Greg Paulk', company: 'Hillside Excavation', jobIds: ['boerne'], defaultJobId: 'boerne', has: null },
+  { id: 'kevin', kind: 'unknown', name: '(210) 555-0188', company: '', jobIds: [], defaultJobId: null, has: null, channels: [{ kind: 'phone', value: '(210) 555-0188' }] },
+  { id: 'bexar', kind: 'unknown', name: 'estimating@bexarsteel.example', company: '', jobIds: [], defaultJobId: null, has: null, channels: [{ kind: 'email', value: 'estimating@bexarsteel.example' }] },
+  {
+    id: 'dana',
+    kind: 'customer',
+    name: 'Dana Whitfield',
+    company: '',
+    jobIds: ['j1312', 'j1298'],
+    defaultJobId: 'j1312',
+    has: 'Luis',
+    channels: [
+      { kind: 'phone', value: '(210) 555-0142' },
+      { kind: 'email', value: 'dana@whitfield.example' },
+    ],
+  },
+  { id: 'greg', kind: 'trade', name: 'Greg Paulk', company: 'Hillside Excavation', jobIds: ['boerne'], defaultJobId: 'boerne', has: null, channels: [{ kind: 'email', value: 'greg@hillside.example' }] },
   // Tied by hand, and Rosa has it.
   { id: 'elena', kind: 'customer', name: 'Elena Ortiz', company: '', jobIds: ['j1301', 'j1310'], defaultJobId: 'j1301', has: 'Rosa' },
   // Nobody has her, but we answered after her line.
@@ -168,6 +181,19 @@ describe('newLane', () => {
       via: 'Email to bids@',
       why: 'Nobody is on this conversation yet.',
     })
+  })
+
+  it('carries the address or the number the line came from, for the words after the name (v2.6191); a row named by it carries none', () => {
+    // A text from Dana: her number, with dashes, before her address; Greg's email: his address.
+    expect(row('dana').reach).toBe('210-555-0142')
+    expect(row('greg').reach).toBe('greg@hillside.example')
+    // The number and the address nobody has named are the names already.
+    expect(row('kevin').reach).toBe('')
+    expect(row('bexar').reach).toBe('')
+    expect(rowReach({ who: 'Dale Ferris', channel: 'email', channels: [{ kind: 'email', value: 'dale@ridgeway.example' }] })).toBe('dale@ridgeway.example')
+    expect(rowReach({ who: 'Dale Ferris', channel: 'email', channels: [{ kind: 'phone', value: '(512) 555-0142' }] })).toBe('512-555-0142')
+    expect(rowReach({ who: 'Dale Ferris', channel: 'email' })).toBe('')
+    expect(rowReach({ who: '512-555-0142', channel: 'text', channels: [{ kind: 'phone', value: '5125550142' }] })).toBe('')
   })
 
   it('leaves off a line tied by hand, one we answered, a closed job, and someone who never wrote', () => {

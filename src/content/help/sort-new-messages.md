@@ -23,7 +23,7 @@ The count on **Messages** in the header is everyone waiting on us. A person in *
 
 ## Sort one
 
-Press the person's row in **New**, or the blue question beside their name. Their thread opens with the sort card at the top. The card's heading says who it asks about. An email reads *Who is Dale Ferris, dale@ridgeway.example?*. A text with no name reads *Who is 512-555-0142?*.
+Press the person's row in **New**, or the blue question before their name. The address or the number they wrote from sits after the name. Their thread opens with the sort card at the top. The card's heading says who it asks about. An email reads *Who is Dale Ferris, dale@ridgeway.example?*. A text with no name reads *Who is 512-555-0142?*.
 
 :::example The sort card for a number nobody has named
 {{chip:blue|Who is 512-555-0142?}} {{button:outline|A new lead on Prospects}} {{button:outline|One of our own team}} {{button:outline|Someone else}}

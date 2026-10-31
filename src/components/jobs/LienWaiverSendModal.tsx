@@ -13,6 +13,7 @@ import { supabase } from '../../lib/supabase'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 import {
   LIEN_WAIVER_DOCUMENT_NAMES,
   LIEN_WAIVER_FORMS,
@@ -56,7 +57,7 @@ const chip = (tone: 'green' | 'grey' | 'blue'): CSSProperties => ({
   ...(tone === 'green' ? { color: 'var(--text-green-700)', background: 'var(--bg-green-tint, #e8f3ea)' } : tone === 'blue' ? { color: 'var(--text-blue-700)', background: 'var(--bg-blue-tint, #e6f5fd)' } : { color: 'var(--text-muted)', background: 'var(--bg-subtle)', border: '1px solid var(--border)' }),
 })
 const btn: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.4rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer' }
-const btnPrimary: CSSProperties = { ...btn, background: '#0ea5e9', borderColor: '#0ea5e9', color: '#fff', fontWeight: 600 }
+const btnPrimary: CSSProperties = { ...btn, background: SKY_UNDER_WORDS, borderColor: SKY_UNDER_WORDS, color: WORDS_ON_SKY, fontWeight: 600 }
 const toggleLabel: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: '0.8125rem', cursor: 'pointer' }
 const inp: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.4rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', width: '100%' }
 
@@ -211,7 +212,7 @@ export function LienWaiverSendModal({ target, onClose, onSent }: { target: LienW
               const done = i < stepIndex
               return (
                 <div key={f.kind} style={{ display: 'grid', justifyItems: 'center', textAlign: 'center', gap: 4, padding: '0 4px' }}>
-                  <div aria-hidden="true" style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${now ? '#0ea5e9' : done ? 'var(--text-green-700)' : 'var(--border-strong)'}`, background: now ? '#0ea5e9' : done ? 'var(--bg-green-tint, #e8f3ea)' : 'var(--surface)', color: now ? '#fff' : done ? 'var(--text-green-700)' : 'var(--text-muted)', fontSize: 10, fontWeight: 700, display: 'grid', placeItems: 'center', boxShadow: now ? '0 0 0 4px var(--bg-blue-tint, #e6f5fd)' : 'none' }}>{i + 1}</div>
+                  <div aria-hidden="true" style={{ width: 18, height: 18, borderRadius: '50%', border: `2px solid ${now ? SKY_UNDER_WORDS : done ? 'var(--text-green-700)' : 'var(--border-strong)'}`, background: now ? SKY_UNDER_WORDS : done ? 'var(--bg-green-tint, #e8f3ea)' : 'var(--surface)', color: now ? '#fff' : done ? 'var(--text-green-700)' : 'var(--text-muted)', fontSize: 10, fontWeight: 700, display: 'grid', placeItems: 'center', boxShadow: now ? '0 0 0 4px var(--bg-blue-tint, #e6f5fd)' : 'none' }}>{i + 1}</div>
                   <div style={{ fontSize: '0.6875rem', letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)', fontWeight: 600 }}>{i === 0 ? 'With each check' : i === 1 ? 'After it settles' : i === 2 ? 'With the last check' : 'After it settles'}</div>
                   <div style={{ fontSize: '0.78rem', color: now ? 'var(--text-base)' : 'var(--text-700)', fontWeight: now ? 650 : 400, lineHeight: 1.25 }}>{f.short.replace(' · ', '\n')}</div>
                 </div>

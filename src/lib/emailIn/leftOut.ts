@@ -3,8 +3,11 @@
  * in Gmail with no label. The rules, in order: spam and trash; anything not in the Inbox (the lead's answer to Q2:
  * Inbox only for now); the box's own address or the app's sender (the thread already shows what the app sent, as a
  * sent copy); mail marked as a list, as bulk or as sent by a machine (an unsubscribe line, `Precedence`,
- * `Auto-Submitted`, which also catches an out-of-office reply); a no-reply sender; and Gmail's Promotions, Social,
- * Updates and Forums. A teammate's mail is taken since v2.5722 (the owner's call of 2026-10-21, the field writing to
+ * `Auto-Submitted`, which also catches an out-of-office reply); a no-reply sender; Gmail's Promotions, Social,
+ * Updates and Forums; and since v2.6200 (punch list #223 PR 2) a body whose foot carries a list's own line, an
+ * unsubscribe line, *view this email in your browser*, *you are receiving this because* or *manage your preferences*,
+ * since a newsletter sent person-to-person carries none of the headers. A bid platform's footer, which names the
+ * reader's own choice about a contractor's invitations, is never one. A teammate's mail is taken since v2.5722 (the owner's call of 2026-10-21, the field writing to
  * the office): `emailLine.ts`'s `emailParty` puts it on their Our team thread, or, copied to the box on a mail to a
  * customer, on the customer's thread as ours. Before that every staff address was left out with the box's.
  */
@@ -17,6 +20,42 @@ export const LEFT_OUT_CATEGORIES: readonly string[] = ['CATEGORY_PROMOTIONS', 'C
 
 const NO_REPLY = /^(?:no[-_.]?reply|do[-_.]?not[-_.]?reply|mailer[-_.]?daemon|postmaster|bounces?|notifications?)(?:[-+_.][^@]*)?@/i
 
+/** How many of the body's last lines with words on them are its foot, where a list signs off. */
+export const BODY_FOOT_LINES = 15
+
+/**
+ * A list's own lines, each named exactly (the owner's look of 2026-10-30: the one newsletter in New had no list header
+ * and its unsubscribe line in the body). Any one of them at the body's foot reads as bulk.
+ */
+const BODY_BULK_CUES: readonly RegExp[] = [
+  /\bunsubscribe\b/i,
+  /\bview (?:this|the|it)(?: email| message| newsletter)? (?:online|in (?:your|a|the) (?:web )?browser)\b/i,
+  /\bview in (?:your )?browser\b/i,
+  /\byou(?:'|’| a)re receiving this\b/i,
+  /\byou (?:received|got) this (?:email|message|newsletter)\b/i,
+  /\b(?:manage|update|change) (?:your )?(?:email |subscription |communication |contact )?preferences\b/i,
+]
+
+/**
+ * A bid platform's footer names the reader's own choice about one contractor's invitations, a person's, not a list's:
+ * *to stop receiving invitations from this contractor*. A foot line that names an invitation, a bid or a contractor is
+ * that choice and never a cue.
+ */
+const PLATFORM_CHOICE = /\b(?:invitations?|invited|bids?|bidding|contractors?|plan ?room|solicitations?)\b/i
+
+/**
+ * Whether a body's foot reads as a list's (v2.6200). The last `BODY_FOOT_LINES` lines with words on them; a line that
+ * names an invitation, a bid or a contractor is a platform's footer and never counts. A body with no foot is not bulk.
+ */
+export function bulkByBody(text: string): boolean {
+  const foot = text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l !== '')
+    .slice(-BODY_FOOT_LINES)
+  return foot.some((line) => !PLATFORM_CHOICE.test(line) && BODY_BULK_CUES.some((cue) => cue.test(line)))
+}
+
 /** Spam, trash, or not in the Inbox: the reader takes nothing else, a forwarded copy included. */
 export function outsideInbox(email: Pick<EmailIn, 'labels'>): 'spamOrTrash' | 'notInbox' | null {
   const labels = new Set(email.labels)
@@ -27,9 +66,10 @@ export function outsideInbox(email: Pick<EmailIn, 'labels'>): 'spamOrTrash' | 'n
 /**
  * Why the reader leaves an email out, or null when it takes it. `isTheBox` says whether an address is the box's own or
  * the app's sender: mail from either is a copy of ours. A teammate writing to the box is taken (v2.5722); a forwarded
- * copy, which `forwarded.ts` reads first, never comes here.
+ * copy, which `forwarded.ts` reads first, never comes here. The body's foot is read after the headers (v2.6200), so a
+ * newsletter with no list header is bulk too; a caller with no body passes none and the headers alone decide.
  */
-export function leftOut(email: Pick<EmailIn, 'labels' | 'from' | 'headers'>, isTheBox: (address: string) => boolean): LeftOut | null {
+export function leftOut(email: Pick<EmailIn, 'labels' | 'from' | 'headers'> & Partial<Pick<EmailIn, 'text'>>, isTheBox: (address: string) => boolean): LeftOut | null {
   const outside = outsideInbox(email)
   if (outside) return outside
   const labels = new Set(email.labels)
@@ -39,6 +79,7 @@ export function leftOut(email: Pick<EmailIn, 'labels' | 'from' | 'headers'>, isT
   const precedence = (h['precedence'] ?? '').trim().toLowerCase()
   const auto = (h['auto-submitted'] ?? '').trim().toLowerCase()
   if (h['list-unsubscribe'] || h['list-id'] || ['bulk', 'list', 'junk'].includes(precedence) || (auto !== '' && auto !== 'no')) return 'bulk'
+  if (email.text && bulkByBody(email.text)) return 'bulk'
   if (from && NO_REPLY.test(from)) return 'noReply'
   if (LEFT_OUT_CATEGORIES.some((c) => labels.has(c))) return 'category'
   return null
