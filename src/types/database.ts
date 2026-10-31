@@ -35726,6 +35726,10 @@ export type Database = {
         Args: { p_invoice_id: string }
         Returns: Json
       }
+      dev_bid_write: {
+        Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
+        Returns: Json
+      }
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
       dev_health_sampler_gaps: { Args: { p_hours?: number }; Returns: Json }
