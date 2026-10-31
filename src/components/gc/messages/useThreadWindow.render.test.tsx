@@ -23,6 +23,8 @@ vi.mock('../../estimates/useEstimateLineThreadSlots', () => ({ useEstimateLineTh
 vi.mock('../../estimates/useEstimateDoorThreadSlots', () => ({ useEstimateDoorThreadSlots: () => ({}) }))
 // #140 PR 8's lead doors navigate and open Add Job, and this hook runs outside a Router here: its own smoke covers it.
 vi.mock('../../messages/useLeadDoorThreadSlots', () => ({ useLeadDoorThreadSlots: () => ({}) }))
+// #223 PR 3's Start a bid navigates to the Bid Board (useNavigate), and this hook runs outside a Router here: its own smoke covers it.
+vi.mock('../../followUp/useNewLaneThreadSlots', () => ({ useNewLaneThreadSlots: () => ({}) }))
 
 const at = (url: string) =>
   function Wrapper({ children }: { children: ReactNode }) {
