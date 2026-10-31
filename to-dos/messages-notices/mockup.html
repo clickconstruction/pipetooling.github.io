@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Messages: a notice is not a person, an invitation is a bid lead</title>
+<style>
+  /* Punch list #223. Every person, company, address, project and date here is made up: Dale Ferris at Ridgeway Builders, Bexar County Purchasing, Alamo Surety Partners, the BuildLink platform, Kevin Alvarez. Nothing is a live row. */
+  [data-theme='light'] { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --shadow: 0 1px 2px rgba(0,0,0,.06); }
+  [data-theme='dark'] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-600: #c7cdd6; --text-muted: #9ca3af; --bg-blue-tint: #1e293b; --text-blue-700: #2563eb; --shadow: 0 1px 2px rgba(0,0,0,.4); }
+  :root { --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; --lane-new: #3b82f6; --blue: #2563eb; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; gap: 16px; align-items: flex-start; flex-wrap: wrap; }
+  header.top > div { flex: 1 1 520px; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 92ch; }
+  .ghost { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 6px 14px; cursor: pointer; margin-top: 6px; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  .lede { margin: 0 0 12px; color: var(--text-700); max-width: 110ch; }
+  .pair { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 560px; max-width: 760px; }
+  .col.card { flex: 1 1 420px; max-width: 560px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .frame { background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); padding: 12px; display: grid; gap: .5rem; }
+  /* the lane as FollowUpSections draws it */
+  .band { display: flex; align-items: center; gap: .6rem; padding: .5rem .8rem; border-left: 4px solid var(--lane-new); background: var(--bg-subtle); border-radius: 8px; font-weight: 700; color: var(--text-strong); }
+  .band .count { background: var(--bg-muted); border-radius: 999px; padding: 0 .55rem; font-size: .8rem; }
+  .band .sort { margin-left: auto; background: var(--blue); color: #fff; border-radius: 8px; padding: .3rem .8rem; font-size: .85rem; font-weight: 600; }
+  .row { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: .6rem .8rem; display: grid; gap: .35rem; }
+  .row .head { display: flex; gap: .6rem; align-items: center; flex-wrap: wrap; }
+  .av { display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 999px; background: var(--bg-muted); font-weight: 700; font-size: .8rem; flex: none; }
+  .who { display: grid; flex: 1; min-width: 180px; }
+  .who .l1 { display: flex; gap: .4rem; align-items: center; flex-wrap: wrap; }
+  .press { display: inline-block; padding: .1rem .6rem; border-radius: 999px; background: var(--blue); color: #fff; font-size: .75rem; font-weight: 600; line-height: 1.5; white-space: nowrap; }
+  .press.bid { background: #7c3aed; }
+  .who b { color: var(--text-strong); }
+  .reach { font-size: .85rem; color: var(--text-muted); overflow-wrap: anywhere; }
+  .sub { font-size: .8rem; color: var(--text-muted); }
+  .has { margin-left: auto; border: 1px solid var(--border-strong); border-radius: 999px; padding: .2rem .7rem; font-size: .8rem; color: var(--text-600); white-space: nowrap; }
+  .words { font-size: .875rem; }
+  .quiet { font-size: .8rem; color: var(--text-muted); }
+  .fold { border: 1px dashed var(--border-strong); border-radius: 10px; padding: .5rem .8rem; display: grid; gap: .3rem; background: var(--bg-subtle); }
+  .fold .t { font-weight: 600; color: var(--text-strong); font-size: .875rem; }
+  .fold .r { display: flex; gap: .6rem; align-items: baseline; font-size: .85rem; color: var(--text-600); flex-wrap: wrap; }
+  .fold .r .put { margin-left: auto; color: var(--text-blue-700); font-weight: 600; white-space: nowrap; }
+  /* the sort card as NewLaneCard draws it */
+  .sortcard { border: 1px solid var(--border); border-radius: 10px; background: var(--bg-blue-tint); padding: .6rem .75rem; display: grid; gap: .45rem; }
+  .sortcard h3 { margin: 0; font-size: .95rem; color: var(--text-strong); overflow-wrap: anywhere; display: flex; gap: .6rem; align-items: flex-start; }
+  .sortcard h3 .blue { margin-left: auto; background: var(--text-blue-700); color: #fff; border-radius: 6px; padding: .35rem .75rem; font-size: .85rem; font-weight: 600; white-space: nowrap; flex: none; }
+  .why { font-size: .85rem; color: var(--text-600); }
+  .blockhead { font-size: .72rem; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); margin-top: .2rem; }
+  .opt { display: grid; gap: .1rem; text-align: left; border: 1px solid var(--border); border-radius: 8px; background: var(--surface); color: var(--text-base); font-size: .875rem; padding: .4rem .65rem; }
+  .opt b { font-weight: 600; }
+  .opt small { color: var(--text-muted); font-size: .78rem; }
+  .opt.primary { border-color: var(--blue); }
+  .opt.primary b { color: var(--text-blue-700); }
+  .opt.new { border-color: #16a34a; }
+  .field { display: grid; gap: .2rem; font-size: .85rem; }
+  .field span { color: var(--text-600); }
+  .field .in { border: 1px solid var(--border-strong); border-radius: 6px; padding: .35rem .5rem; background: var(--surface); color: var(--text-muted); }
+  .line { font-size: .8rem; color: var(--text-muted); border-top: 1px dashed var(--border); padding-top: .4rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <p class="eyebrow">Punch list #223 · Messages</p>
+      <h1>A notice is not a person, and an invitation is a bid lead</h1>
+      <p>New on Messages holds what came in and still needs sorting. Today an invitation to bid and a newsletter both land as <i>Who is this?</i>, with nothing to press but a person's name. Three screens: the lane with the two new answers, the <i>Bid it?</i> card, and the notice block on the <i>Who is this?</i> card. Every name here is made up.</p>
+      <button class="ghost" type="button" onclick="document.documentElement.dataset.theme = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'">Light / dark</button>
+    </div>
+  </header>
+
+  <h2><span class="num">1</span> New, once the pieces are in</h2>
+  <p class="lede">The question before the name says the sort. <b>Bid it?</b> is the estimator's; <b>Who is this?</b> is the office's. The notices the robot set aside sit in a fold at the foot with a count and <b>Put back</b> on each, never a delete.</p>
+  <div class="pair">
+    <div class="col">
+      <div class="cap">Messages → New</div>
+      <div class="frame">
+        <div class="band">New <span class="count">3</span> <span class="sort">Sort all</span></div>
+        <div class="row">
+          <div class="head">
+            <span class="av">?</span>
+            <span class="who">
+              <span class="l1"><span class="press bid">Bid it? ›</span><b>Dale Ferris</b><span class="reach">dale@ridgeway.example</span></span>
+              <span class="sub">Email to bids@ · yesterday</span>
+            </span>
+            <span class="has">? Nobody has it · Take it</span>
+          </div>
+          <div class="words">Invitation to Bid: Oak Hill Clinic, Boerne · plumbing · bids due Thu Nov 12</div>
+        </div>
+        <div class="row">
+          <div class="head">
+            <span class="av">?</span>
+            <span class="who">
+              <span class="l1"><span class="press bid">Bid it? ›</span><b>Bexar County Purchasing</b><span class="reach">purchasing@bexar.example</span></span>
+              <span class="sub">Email to bids@ · on Monday</span>
+            </span>
+            <span class="has">? Nobody has it · Take it</span>
+          </div>
+          <div class="words">Addendum 2 · IFB 27-14 Fire Station 9 Make Ready</div>
+        </div>
+        <div class="row">
+          <div class="head">
+            <span class="av">?</span>
+            <span class="who">
+              <span class="l1"><span class="press">Who is this? ›</span><b>210-555-0188</b></span>
+              <span class="sub">Missed call on the team number · today at 8:41 AM</span>
+            </span>
+            <span class="has">? Nobody has it · Take it</span>
+          </div>
+          <div class="words">no voicemail</div>
+          <div class="quiet">The app texted back at 8:42 AM. The row still waits on you.</div>
+        </div>
+        <div class="fold">
+          <div class="t">3 notices set aside this week</div>
+          <div class="r"><span>Alamo Surety Partners · <i>Five surety trends for Texas contractors</i></span><span class="put">Put back</span></div>
+          <div class="r"><span>BuildLink · <i>Site visit added: Oak Hill Clinic</i></span><span class="put">Put back</span></div>
+          <div class="r"><span>Hill Country Supply · <i>November specials on water heaters</i></span><span class="put">Put back</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">2</span> The Bid it? card above the thread</h2>
+  <p class="lede">The head asks about the job, not the sender. The first line gives what the reader read from the mail. Three presses, the way the lead's row offers <i>Start an estimate</i>.</p>
+  <div class="pair">
+    <div class="col card">
+      <div class="cap">Dale Ferris's thread · the sort card</div>
+      <div class="frame">
+        <div class="sortcard">
+          <h3><span>Bid it? Oak Hill Clinic, Boerne, from Ridgeway Builders</span></h3>
+          <div class="why">Invitation to bid · due Thu Nov 12 at 2:00 PM · BuildLink page. A general contractor is a customer, so the bid goes on Ridgeway Builders.</div>
+          <div class="blockhead">A customer we know</div>
+          <div class="opt primary"><b>Start a bid on Ridgeway Builders</b><small>Makes the bid with the name, the BuildLink link and the due date, ties this thread to it, and opens it.</small></div>
+          <div class="blockhead">Or</div>
+          <div class="field"><span>Not for us, because</span><div class="in">too far, out of our range, no plans yet…</div></div>
+          <div class="opt"><b>Not for us</b><small>Writes the reason in the thread and closes the row. Ridgeway stays a customer; their next invitation still shows.</small></div>
+          <div class="opt"><b>Keep it with Dale</b><small>Names the sender only. The bid waits for the estimator.</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col card">
+      <div class="cap">After Not for us · the thread</div>
+      <div class="frame">
+        <div class="row">
+          <div class="line">Not for us · too far · Wendi · 9:40 AM</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <h2><span class="num">3</span> A notice, not a person, on the Who is this? card</h2>
+  <p class="lede">A fourth block under the people. The press names the address it marks; the second press, drawn only for a company's own domain, marks the whole domain. The thread goes done with a grey line and the reader leaves the sender out from then on. Gmail is untouched.</p>
+  <div class="pair">
+    <div class="col card">
+      <div class="cap">news@alamosurety.example's thread · the sort card</div>
+      <div class="frame">
+        <div class="sortcard">
+          <h3><span>Who is news@alamosurety.example?</span><span class="blue">Who is this?</span></h3>
+          <div class="why">An address nobody has named came in on bids@. A general contractor is a customer, so the customers we know come first.</div>
+          <div class="blockhead">A new customer</div>
+          <div class="field"><span>Customer</span><div class="in">Alamo Surety Partners</div></div>
+          <div class="opt new"><b>Make the customer</b><small>Makes them, and names this address as them.</small></div>
+          <div class="blockhead">Or</div>
+          <div class="opt"><b>A new trade partner</b><small>Alamo Surety Partners, this address its contact.</small></div>
+          <div class="opt"><b>Someone else</b><small>Find them yourself.</small></div>
+          <div class="blockhead">A notice, not a person</div>
+          <div class="opt primary"><b>Mark news@alamosurety.example a notice</b><small>Closes the row and leaves this address out from now on. Search still finds the thread.</small></div>
+          <div class="opt"><b>And everything from alamosurety.example</b><small>Every address on the domain. Never offered for an open mail service.</small></div>
+        </div>
+      </div>
+    </div>
+    <div class="col card">
+      <div class="cap">After the press · the thread</div>
+      <div class="frame">
+        <div class="row">
+          <div class="line">Marked a notice · Rosa · 2:14 PM · <span style="color: var(--text-blue-700); font-weight: 600">Not a notice after all</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+</body>
+</html>
