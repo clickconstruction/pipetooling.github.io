@@ -2,7 +2,7 @@
 name: "Messages: an invitation is a bid lead and a notice is not a person — New stops asking Who is this? of mail nobody wrote to us"
 number: 223
 group: gated
-status: proposed 2026-10-30 from the owner's look at New on the Messages page · read against the reader, the sort card and the lane · four pieces, the owner's six calls at the foot · nothing built
+status: proposed 2026-10-30 from Taunya's look at New on the Messages page · read against the reader, the sort card and the lane · four pieces, six calls at the foot · nothing built
 summary: >
   On 2026-10-30 New held thirteen rows and eleven of them were mail nobody wrote to us: nine
   invitations to bid and agency procurement notices, one newsletter, one bid platform's own
@@ -17,17 +17,17 @@ summary: >
   its card offers Start a bid with the GC, the link and the due date, Not for us, or Keep it
   with the GC; an addendum lands on the bid it names); and the robot's first pass (the obvious
   notices folded with a count and Put back).
-next: The owner's six calls at the foot. PR 1 needs calls 1 and 2 only and can go first; PR 2 needs none.
+next: The six calls at the foot. PR 1 needs calls 1 and 2 only and can go first; PR 2 needs none.
 size: M+S+L+M (PR 1 a notice, with one small migration and a gmail-sync redeploy; PR 2 the reader's body cue; PR 3 Bid it?; PR 4 the addendum tie and the robot's fold)
-blocker: The owner's calls. Call 3 wants the estimator's word on what a bid made from an email should carry.
-ver: v2.5354 · 5494 · 5546 · 5559 · 5711 · 5716 · 5722 · 5793 · 5795 · 5798 · 5811 · 5814 · 5982 · 6179
+blocker: The six calls. Call 3 wants the estimator's word on what a bid made from an email should carry.
+ver: v2.5354 · 5494 · 5546 · 5559 · 5711 · 5716 · 5722 · 5793 · 5795 · 5798 · 5811 · 5814 · 5982 · 6179 · 6191 (PR #6595, the row these pieces build on; this card is PR #6601)
 opinion: build — every door exists (the reader's left-out rule, the sort card's record-making presses, the bid's ITB links, the line-to-job tie by subject, the Sort all desk); what is missing is two more answers to the sort's question and a list the reader remembers
 mockup: to-dos/messages-notices/mockup.html
 ---
 
 # Messages: an invitation is a bid lead and a notice is not a person (#223)
 
-## For the owner
+## For Taunya
 
 New on the Messages page is meant to hold what came in and still needs sorting, one row per
 person. On 2026-10-30 it held thirteen rows, and eleven were not people writing to us. This card
@@ -36,7 +36,7 @@ would make New hold only what needs a person. **Six calls sit at the foot.** Cal
 the small first PR; call 3 wants Wendi's word, since it is about what a bid made from an email
 should carry.
 
-## The ask, in the owner's words
+## The ask, in Taunya's words
 
 Taunya, 2026-10-30, looking at New on `/messages` with thirteen rows:
 
@@ -174,11 +174,11 @@ to price a job, which is the start of a bid, not a stranger. So the row's questi
 What this does not do: it never deletes or moves a mail in Gmail, never answers a sender, and never
 decides go or no-go on its own. Not for us is a person's press with a reason.
 
-## The owner's calls
+## The calls
 
-Each row holds the recommendation the mock-up draws. The owner answers in one line each.
+Each row holds the recommendation the mock-up draws. Each is answered in one line.
 
-| # | The call | Options | Recommended | Owner's answer |
+| # | The call | Options | Recommended | Answer |
 |---|---|---|---|---|
 | 1 | What the notice press remembers | This address. The whole domain. Ask each time. | The address, with the domain offered as a second press when it is a company's own, never an open mail service. | |
 | 2 | Where a notice's thread goes | Done and off Follow up, search still finds it. Gone from every list on Messages. A Notices kind pill. | Done and off Follow up; search and the *Who is this?* pill still find it. A Notices pill only if the fold's count asks for one. | |
@@ -243,5 +243,10 @@ PR 3 waits on neither. PR 4 waits on PR 1 and PR 3.
 
 ## Where it stands
 
-- 2026-10-30: written from the owner's look at New and the code. Nothing built. Waiting on the six
-  calls, 3 with Wendi's word.
+- 2026-10-30: written from Taunya's look at New and the code, as PR #6601. Nothing of the four
+  pieces is built. Waiting on the six calls, 3 with Wendi's word.
+- 2026-10-30: the row these pieces build on went into the merge queue the same evening as v2.6191
+  (PR #6595). On New the sort's question sits before the name, and the address or the number the
+  line came from sits after it. The mock-up's *Bid it?* rows draw that shape. At Taunya's ask the
+  card carries both PRs on the punch list: the version chip names PR #6595 and PR #6601, and the
+  card's history link lists PR #6601 once it merges.
