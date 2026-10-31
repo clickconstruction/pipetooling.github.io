@@ -2,7 +2,7 @@
  * Where a firm covers, as its window reads it (punch list #222, PR 1, v2.6195). One row per county the
  * firm covers with the cases and the open dollars in it, the cases with the firm that sit outside its
  * counties (released before the map changed), the chips' words, the nudge while no county is colored for
- * any firm, and the line the Replace panel reads when retiring would leave counties with no firm.
+ * any firm.
  *
  * The counts follow the Map view's legend (`legendCounts` in `firmMap.ts`): a case with a firm counts for
  * that firm wherever it sits; a case with no firm counts for the first call of its county. So the window's total
@@ -125,23 +125,4 @@ export function bridgeEndsWords(firmName: string, off: ReadonlyArray<{ name: str
   const more = off.length > 3 ? ` and ${off.length - 3} more` : ''
   const n = off.length
   return `Saving ends the default. ${n} ${n === 1 ? 'case sits' : 'cases sit'} where no firm covers: ${named.join(', ')}${more}. Add ${n === 1 ? 'its county' : 'their counties'} too, or the desk cannot release ${n === 1 ? 'it' : 'them'}.`
-}
-
-/** `Bell, Hays and Travis` · `Bell and Hays` · `Bell`. */
-function countyList(counties: ReadonlyArray<string>): string {
-  const names = counties.map((c) => countyWords(c))
-  if (names.length <= 1) return names[0] ?? ''
-  if (names.length === 2) return `${names[0]} and ${names[1]}`
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-}
-
-/**
- * Over the Replace panel (v2.4712) while the firm covers counties: today's replace retires the firm everywhere
- * and its counties count as uncovered until a dev colors them again. Null when the firm covers none.
- */
-export function replaceLeavesUncoveredWords(firmName: string, counties: ReadonlyArray<string>): string | null {
-  if (counties.length === 0) return null
-  const sorted = [...counties].sort((a, b) => a.localeCompare(b))
-  const n = sorted.length
-  return `Replacing retires ${firmName} everywhere. ${n === 1 ? countyList(sorted) : `Its ${n} counties, ${countyList(sorted)},`} would have no firm until you color ${n === 1 ? 'it' : 'them'} for the new firm under Firms….`
 }

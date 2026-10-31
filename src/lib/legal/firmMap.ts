@@ -127,10 +127,25 @@ export function shapeMapCases(input: ShapeMapCasesInput): LegalMapCase[] {
   return out.sort((a, b) => b.balance - a.balance || a.name.localeCompare(b.name))
 }
 
-/** A case not with the firm, in a county no firm covers, is `none`: the desk cannot release it. */
-export function effectiveStand(c: Pick<LegalMapCase, 'stand' | 'county'>, assignments: CountyAssignments): LegalMapStandOrNone {
+/**
+ * A case not with the firm, in a county no firm covers, is `none`: the desk cannot release it. While no county is
+ * colored and one firm stands (the bridge, `bridgeFirmId`), that firm takes every account, so no case is `none`
+ * (v2.6233, punch list #222: the Map's red flag said the desk could not release accounts it could).
+ */
+export function effectiveStand(c: Pick<LegalMapCase, 'stand' | 'county'>, assignments: CountyAssignments, bridgeFirmId: string | null = null): LegalMapStandOrNone {
   if (c.stand === 'firm') return 'firm'
+  if (bridgeFirmId) return c.stand
   return c.county && assignments.has(c.county) ? c.stand : 'none'
+}
+
+/** The bridge's firm: the one firm that stands while no county is colored for any firm, else null (`firmForAccount`'s `only_firm`). */
+export function bridgeFirmOf(assignments: CountyAssignments, activeFirms: ReadonlyArray<{ id: string }>): string | null {
+  return assignments.size === 0 && activeFirms.length === 1 ? activeFirms[0]!.id : null
+}
+
+/** Over the Map while the bridge stands, in place of the red flag. */
+export function bridgeMapWords(firmName: string): string {
+  return `${firmName} takes every account today, by default. No county is colored yet. The first county colored for any firm ends that.`
 }
 
 /** Theme tokens for each stand's dot. Saturated status colors, as the status dots elsewhere. */
@@ -165,16 +180,16 @@ export type CountyCardFacts = {
 }
 
 /** The contents card for one county: its firm, its cases and their dollars. */
-export function countyCardFacts(county: string, cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments, firmNames: ReadonlyMap<string, string>): CountyCardFacts {
+export function countyCardFacts(county: string, cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments, firmNames: ReadonlyMap<string, string>, bridgeFirmId: string | null = null): CountyCardFacts {
   const here = casesInCounty(cases, county)
-  const firmId = assignments.get(county) ?? null
+  const firmId = assignments.get(county) ?? bridgeFirmId
   const total = here.reduce((s, c) => s + c.balance, 0)
   return {
     title: countyWords(county),
     firmName: firmId ? firmNames.get(firmId) ?? null : null,
     countLine: `${here.length} ${here.length === 1 ? 'case' : 'cases'}${here.length ? ` · ${money(total)} open` : ''}`,
     rows: here.map((c) => {
-      const stand = effectiveStand(c, assignments)
+      const stand = effectiveStand(c, assignments, bridgeFirmId)
       return { case: c, stand, color: STAND_COLOR[stand], money: money(c.balance) }
     }),
     emptyLine: here.length ? null : `No case in ${countyWords(county)}.`,
@@ -188,12 +203,12 @@ export type LegendCount = { firmId: string | null; name: string; count: number; 
  * with a firm counts for that firm whatever the counties say today (v2.5784); the rest count for the firm of
  * their county; a firm no longer active counts as none.
  */
-export function legendCounts(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments, firms: ReadonlyArray<{ id: string; name: string }>): LegendCount[] {
+export function legendCounts(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments, firms: ReadonlyArray<{ id: string; name: string }>, bridgeFirmId: string | null = null): LegendCount[] {
   const by = new Map<string | null, { count: number; dollars: number }>()
   for (const f of firms) by.set(f.id, { count: 0, dollars: 0 })
   by.set(null, { count: 0, dollars: 0 })
   for (const c of cases) {
-    const firmId = c.firmId ?? (c.county ? assignments.get(c.county) ?? null : null)
+    const firmId = c.firmId ?? (c.county ? assignments.get(c.county) ?? bridgeFirmId : bridgeFirmId)
     const slot = by.get(firmId) ?? by.get(null)!
     slot.count += 1
     slot.dollars += c.balance
@@ -205,9 +220,9 @@ export function legendCounts(cases: ReadonlyArray<LegalMapCase>, assignments: Co
 }
 
 /** The counties of the cases no firm covers, sorted, once each (the legend's last row, v2.5784). */
-export function uncoveredCounties(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments): string[] {
+export function uncoveredCounties(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments, bridgeFirmId: string | null = null): string[] {
   const out = new Set<string>()
-  for (const c of cases) if (effectiveStand(c, assignments) === 'none' && c.county) out.add(c.county)
+  for (const c of cases) if (effectiveStand(c, assignments, bridgeFirmId) === 'none' && c.county) out.add(c.county)
   return [...out].sort()
 }
 
@@ -223,8 +238,8 @@ export function lensSummaryWords(cases: ReadonlyArray<LegalMapCase>): string {
 }
 
 /** The flag above the lens: `2 cases in a county no firm covers · Burd & Assoc. (Williamson) · …`, or null. */
-export function uncoveredWords(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments): string | null {
-  const off = cases.filter((c) => effectiveStand(c, assignments) === 'none')
+export function uncoveredWords(cases: ReadonlyArray<LegalMapCase>, assignments: CountyAssignments, bridgeFirmId: string | null = null): string | null {
+  const off = cases.filter((c) => effectiveStand(c, assignments, bridgeFirmId) === 'none')
   if (off.length === 0) return null
   const names = off.map((c) => `${c.name} (${c.county ?? 'off the map'})`).join(' · ')
   return `${off.length} ${off.length === 1 ? 'case' : 'cases'} in a county no firm covers · ${names}. Color the county for a firm, or the desk cannot release ${off.length === 1 ? 'it' : 'them'}.`
