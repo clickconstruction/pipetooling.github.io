@@ -356,7 +356,6 @@ export function DraftPayrollModal({
             pendingSessions: pendingByPerson?.[person] ?? 0,
           }
         }),
-        peopleNames.length,
       )
     : null
   const barsByPerson = new Map((bars?.rows ?? []).map((r) => [r.person, r] as const))

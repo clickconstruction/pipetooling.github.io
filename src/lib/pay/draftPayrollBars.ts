@@ -76,11 +76,15 @@ export type DraftPayrollRowBar = {
 }
 
 export type DraftPayrollPeriodBar = {
-  /** *This period · $11,482.50 · 4 of 9 paid* */
+  /** *This period · $11,482.50 · 4 of 9 paid* — paid against the people with pay due this period, not the roster. */
   caption: string
+  /** The hover: the roster's size and how many of them have pay due this period. */
+  captionTitle: string
   /** Σ cash due, the figure *Total* printed. */
   total: number
   paidCount: number
+  /** People with pay due this period: a report, or hours, or an estimate; the roster's zero-hour people are not here. */
+  dueCount: number
   rosterCount: number
   parts: DraftPayrollBarPart[]
 }
@@ -242,9 +246,20 @@ export function wholeShares(fractions: ReadonlyArray<number>): number[] {
   return floors
 }
 
-/** Every row's bar and the period's bar summed from them. `rosterCount` is everyone on the roster, shown or not. */
-export function draftPayrollBars(rowsIn: ReadonlyArray<DraftPayrollRowBarInput>, rosterCount: number): DraftPayrollBars {
+/** A row with pay due this period: a report, or hours, or an estimate. The roster's zero-hour people are not counted. */
+export function rowHasPayDue(input: Pick<DraftPayrollRowBarInput, 'report' | 'hours' | 'estGross'>): boolean {
+  return input.report != null || input.hours > EPS || input.estGross > EPS
+}
+
+/**
+ * Every row's bar and the period's bar summed from them. The caption counts paid against the people with pay
+ * due this period (the owner, 2026-10-30: *8 of 27 paid* read as if 19 were owed when the roster's other 18 had
+ * no hours this week; the honest count is *8 of 9*). `rowsIn` is the whole roster, shown or not.
+ */
+export function draftPayrollBars(rowsIn: ReadonlyArray<DraftPayrollRowBarInput>): DraftPayrollBars {
   const rows = rowsIn.map(draftPayrollRowBar)
+  const rosterCount = rowsIn.length
+  const dueCount = rowsIn.filter(rowHasPayDue).length
   const sums = new Map<DraftPayrollBarPartKind, number>()
   for (const row of rows) for (const p of row.parts) sums.set(p.kind, round2((sums.get(p.kind) ?? 0) + p.amount))
   const total = round2(rows.reduce((s, r) => s + r.cashDue, 0))
@@ -267,9 +282,11 @@ export function draftPayrollBars(rowsIn: ReadonlyArray<DraftPayrollRowBarInput>,
   return {
     rows,
     period: {
-      caption: `This period · ${usd(total)} · ${paidCount} of ${rosterCount} paid`,
+      caption: `This period · ${usd(total)} · ${paidCount} of ${dueCount} paid`,
+      captionTitle: `${dueCount} of the ${rosterCount} on the roster have pay due this period (a report, hours or an estimate); ${paidCount} of them ${paidCount === 1 ? 'is' : 'are'} paid in full.`,
       total,
       paidCount,
+      dueCount,
       rosterCount,
       parts,
     },

@@ -79,7 +79,7 @@ function Bar({ parts, height, words, labelFrom, testId, fit = false }: { parts: 
 export function DraftPayrollPeriodBar({ bar }: { bar: PeriodBar }) {
   return (
     <div data-draft-payroll-period-bar style={{ display: 'grid', gap: '0.25rem', marginBottom: '0.6rem' }}>
-      <div style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-strong)', textAlign: 'center' }}>{bar.caption}</div>
+      <div title={bar.captionTitle} style={{ fontSize: '0.8125rem', fontWeight: 700, color: 'var(--text-strong)', textAlign: 'center' }}>{bar.caption}</div>
       <Bar parts={bar.parts} height={20} words={bar.parts.map((p) => p.title).join(' · ') || 'Nothing due in this period'} labelFrom={0.16} testId="draft-payroll-period-bar" />
     </div>
   )

@@ -7,6 +7,7 @@ import {
   pendingChipWords,
   pendingDotTitle,
   pendingDotWords,
+  rowHasPayDue,
   wholeShares,
   type DraftPayrollRowBarInput,
 } from './draftPayrollBars'
@@ -109,11 +110,14 @@ describe('draftPayrollBars', () => {
         { ...base, person: 'Paco', report: { gross: 1245, net: 1245, paidSum: 373, paidYmd: '2026-10-24' }, pendingSessions: 2 },
         { ...base, person: 'Rosa', estGross: 1120, hours: 40, isSalary: true },
         { ...base, person: 'Sid', report: { gross: 1062, net: 962, paidSum: 0, paidYmd: null } },
+        // On the roster with no hours this week: not counted as having pay due.
+        { ...base, person: 'Eli', hours: 0, estGross: 0 },
       ],
-      9,
     )
     expect(bars.period.total).toBe(1071 + 1245 + 1120 + 1062)
-    expect(bars.period.caption).toBe('This period · $4,498.00 · 1 of 9 paid')
+    expect(bars.period.caption).toBe('This period · $4,498.00 · 1 of 4 paid')
+    expect([bars.period.paidCount, bars.period.dueCount, bars.period.rosterCount]).toEqual([1, 4, 5])
+    expect(bars.period.captionTitle).toBe('4 of the 5 on the roster have pay due this period (a report, hours or an estimate); 1 of them is paid in full.')
     expect(bars.period.parts.map((p) => [p.kind, p.amount, p.label])).toEqual([
       ['paid', 1071 + 373, 'paid $1,444.00 (32%)'],
       ['owed', 872 + 962, 'owed $1,834.00 (41%)'],
@@ -128,13 +132,16 @@ describe('draftPayrollBars', () => {
     ])
     const fractions = bars.period.parts.reduce((s, p) => s + p.fraction, 0)
     expect(fractions).toBeCloseTo(1, 5)
-    expect(bars.rows.map((r) => r.person)).toEqual(['Hal', 'Paco', 'Rosa', 'Sid'])
+    expect(bars.rows.map((r) => r.person)).toEqual(['Hal', 'Paco', 'Rosa', 'Sid', 'Eli'])
   })
 
   it('an empty roster is an empty bar and a zero caption', () => {
-    const bars = draftPayrollBars([], 0)
+    const bars = draftPayrollBars([])
     expect(bars.period.parts).toEqual([])
     expect(bars.period.caption).toBe('This period · $0.00 · 0 of 0 paid')
+    expect(rowHasPayDue({ report: null, hours: 0, estGross: 0 })).toBe(false)
+    expect(rowHasPayDue({ report: { gross: 1, net: 1, paidSum: 0, paidYmd: null }, hours: 0, estGross: 0 })).toBe(true)
+    expect(rowHasPayDue({ report: null, hours: 2, estGross: 0 })).toBe(true)
   })
 })
 

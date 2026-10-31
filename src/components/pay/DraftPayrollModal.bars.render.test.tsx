@@ -117,7 +117,8 @@ describe('DraftPayrollModal with the bars', () => {
     // The period bar in place of the sentence, with the same three kinds of money.
     const period = screen.getByTestId('draft-payroll-period-bar')
     expect(screen.queryByText(/Total: \$4,498\.00/)).toBeNull()
-    expect(screen.getByText('This period · $4,498.00 · 1 of 5 paid')).toBeTruthy()
+    // 1 of 4, not 1 of 5: Eli is on the roster with no hours this week (the owner, 2026-10-30: the honest count).
+    expect(screen.getByText('This period · $4,498.00 · 1 of 4 paid')).toBeTruthy()
     expect(within(period).getByTitle('$1,444.00 paid · 32% of the period')).toBeTruthy()
     expect(within(period).getByTitle('$1,934.00 owed on a report · 43% of the period')).toBeTruthy()
     expect(within(period).getByTitle('$1,120.00 no report yet · 25% of the period')).toBeTruthy()
