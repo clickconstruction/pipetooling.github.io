@@ -305,9 +305,10 @@ export function reviewRobotFixtures(
   for (const row of [...rows].sort((a, b) => a.sequence_order - b.sequence_order)) {
     const count = numberOf(row.count) ?? 0
     const paired = pairs.get(row.id) ?? null
+    // A taken row whose count row is gone (History's Undo, a delete outside the window) is offered again.
     const bucket: FixtureBucket = row.set_aside_at
       ? 'set_aside'
-      : row.taken_at
+      : row.taken_at && row.count_row_id
         ? 'taken'
         : paired
           ? countsEqual(numberOf(paired.count) ?? 0, count) ? 'same' : 'on_count'

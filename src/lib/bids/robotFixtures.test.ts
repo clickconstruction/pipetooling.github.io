@@ -93,6 +93,12 @@ describe('the review', () => {
     expect(review.byBucket.taken.map((r) => r.row.tag)).toEqual(['SK-1'])
     expect(review.byBucket.set_aside.map((r) => r.row.tag)).toEqual(['EWC-1'])
   })
+  it('offers a taken row again once its count row is gone', () => {
+    const gone = row({ id: 'gone', tag: 'UR-1', name: 'Urinal', count: 2, sequence_order: 11, taken_at: '2026-10-31T14:00:00Z', taken_as: 'added', count_row_id: null })
+    const r = reviewRobotFixtures([gone], [])
+    expect(r.rows[0]!.bucket).toBe('new')
+    expect(r.rows[0]!.startTicked).toBe(true)
+  })
   it('starts a sure new row ticked and a flagged or doubtful one unticked', () => {
     const by = Object.fromEntries(review.rows.map((r) => [r.row.tag, r]))
     expect(by['WC-1']!.startTicked).toBe(true)
