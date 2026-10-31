@@ -18,6 +18,7 @@ import { STAGES_SORT_MODE_ACTIVE_CHIP_LABELS } from '../../lib/jobsStagesSortMod
 import { STAGES_ACCOUNT_MAN_FILTER_NONE, STAGES_DEVELOPMENT_FILTER_NONE, STAGES_GC_FILTER_NO_GC } from '../../lib/jobsStagesBoard'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
 import type { StagesToolsFilters } from './JobsStagesToolsMenu'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 export type JobsStagesCommandBarProps = {
   onNewJob: () => void
@@ -157,8 +158,8 @@ export function JobsStagesCommandBar({
               right: '-0.5rem',
               fontSize: '0.68rem',
               fontWeight: 800,
-              background: '#f59e0b',
-              color: '#241a05',
+              background: ORANGE_UNDER_WORDS,
+              color: WORDS_ON_ORANGE,
               borderRadius: 999,
               padding: '0.1rem 0.4rem',
               minWidth: '1.4em',

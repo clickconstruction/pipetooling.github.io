@@ -285,7 +285,7 @@ export function bidUndoPlan(
 // (supabase/tests/bid_changes, case 21) holds this list to every such key in the schema.
 // ---------------------------------------------------------------------------
 
-export type BidUndoUnseen = { ticks: number; hides: number; items: number; mappings: number }
+export type BidUndoUnseen = { ticks: number; hides: number; items: number; mappings: number; fixtures: number }
 
 /**
  * `ticked`: a choice row counts only while it is ticked. An untick, and the chooser's save of every
@@ -296,10 +296,12 @@ export const BID_UNDO_UNSEEN_TABLES: ReadonlyArray<{ table: string; column: stri
   { table: 'bid_submittal_items', column: 'source_count_row_id', key: 'items' },
   { table: 'bid_submittal_takeoff_choices', column: 'count_row_id', key: 'ticks', ticked: true },
   { table: 'bids_takeoff_template_mappings', column: 'count_row_id', key: 'mappings' },
+  /** v2.6180: a robot fixture the window landed on the row (punch list #221); Set aside on the Counts tab is its door. */
+  { table: 'bid_fixture_pull_rows', column: 'count_row_id', key: 'fixtures' },
 ]
 
 /** Nothing hangs there. */
-export const BID_UNDO_UNSEEN_NONE: BidUndoUnseen = { ticks: 0, hides: 0, items: 0, mappings: 0 }
+export const BID_UNDO_UNSEEN_NONE: BidUndoUnseen = { ticks: 0, hides: 0, items: 0, mappings: 0, fixtures: 0 }
 
 /** The count rows a ready plan removes, whose unseen hangers are read first. */
 export function bidUndoRemovedCountRows(plan: BidUndoPlan): string[] {
@@ -313,6 +315,7 @@ export function bidUndoUnseenReason(u: BidUndoUnseen): string | null {
     u.items > 0 ? `${u.items} submittal ${u.items === 1 ? 'item' : 'items'}` : null,
     u.hides > 0 ? `${u.hides} ${u.hides === 1 ? 'row' : 'rows'} hidden from the pricing page` : null,
     u.mappings > 0 ? `${u.mappings} By Stage ${u.mappings === 1 ? 'pick' : 'picks'}` : null,
+    u.fixtures > 0 ? `${u.fixtures} robot ${u.fixtures === 1 ? 'fixture' : 'fixtures'} the robot fixtures window landed` : null,
   ].filter((x): x is string => x != null)
   if (parts.length === 0) return null
   return `Undo is off. Rows it added carry work History cannot see: ${nameList(parts)}.`

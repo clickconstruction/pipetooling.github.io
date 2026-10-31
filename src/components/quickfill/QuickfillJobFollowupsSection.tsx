@@ -6,6 +6,7 @@ import { JOB_FOLLOWUP_IDLE_DAYS, jobFollowupBreakdownPhrase } from '../../lib/jo
 import { jobFollowupsIdleNextLine, jobFollowupsNextLine } from '../../lib/quickfill/nextLine'
 import { JobsFollowupModal } from '../jobs/JobsFollowupModal'
 import { EmptyState } from '../EmptyState'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 /**
  * Quickfill's Job follow-ups station (v2.6093, punch list #178, D's PR 4): two lanes over one
@@ -44,9 +45,9 @@ const badgeStyle = (tone: 'amber' | 'red'): CSSProperties => ({
   alignItems: 'center',
   justifyContent: 'center',
   borderRadius: 999,
-  background: tone === 'red' ? '#dc2626' : '#f59e0b',
-  // Words on a bright fill (v2.6070): dark on the amber, 8.26:1; white stays on the red, 4.83:1, where dark would read 3.67:1.
-  color: tone === 'red' ? '#fff' : 'var(--text-on-bright-solid)',
+  background: tone === 'red' ? '#dc2626' : ORANGE_UNDER_WORDS,
+  // White words on both (v2.6186): 4.59:1 on the deep orange, where v2.6070 had dark words on amber; 4.83:1 on the red.
+  color: tone === 'red' ? '#fff' : WORDS_ON_ORANGE,
   fontSize: '0.9375rem',
   fontWeight: 700,
 })

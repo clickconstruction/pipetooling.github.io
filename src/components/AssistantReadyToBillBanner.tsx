@@ -7,6 +7,7 @@ import {
   canRoleSeeReadyToBillBanner,
   readyToBillBannerLabel,
 } from '../lib/readyToBillBanner'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../lib/orangeUnderWords'
 
 const REFRESH_MS = 5 * 60 * 1000
 
@@ -82,8 +83,8 @@ export default function AssistantReadyToBillBanner() {
       <span
         aria-hidden
         style={{
-          background: '#f59e0b',
-          color: '#201a05',
+          background: ORANGE_UNDER_WORDS,
+          color: WORDS_ON_ORANGE,
           borderRadius: 9999,
           minWidth: '1.35rem',
           height: '1.35rem',

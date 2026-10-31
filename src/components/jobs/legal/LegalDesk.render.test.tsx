@@ -414,7 +414,9 @@ describe('LegalDesk · in house (v2.5847)', () => {
     const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
     await settle()
-    expect(document.querySelector('[data-legal-in-house]')!.textContent).toContain('In house since 2026-10-25 · counsel away until Nov 3')
+    // v2.6193: the pill says the day alone; the reason sits under the account's name.
+    expect(document.querySelector('[data-legal-in-house]')!.textContent).toBe('In house since 2026-10-25')
+    expect(document.querySelector('[data-legal-in-house-why]')!.textContent).toBe('Why in house: “counsel away until Nov 3”')
     expect(screen.getByRole('button', { name: 'Back to review' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Run it in house…' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))

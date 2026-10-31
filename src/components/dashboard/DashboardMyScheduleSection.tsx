@@ -33,6 +33,7 @@ import { KeptReadStamp } from '../KeptReadStamp'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { PHONE_DAY_KEPT_LEAD, READING_AGAIN_WORDS } from '../../lib/keptRead'
 import type { OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 import {
   JOB_ROW_MOBILE_ICON_BUTTON_STYLE,
   JOB_ROW_REPORT_CHIP_STYLE,
@@ -315,9 +316,9 @@ export function DashboardMyScheduleSection({
                 height: 30,
                 borderRadius: 999,
                 border: 'none',
-                // Matches the header's dispatch task button (v2.1557).
-                background: '#0ea5e9',
-                color: 'white',
+                // Matches the header's dispatch task button (v2.1557): the deep sky under white (v2.6196).
+                background: SKY_UNDER_WORDS,
+                color: WORDS_ON_SKY,
                 textDecoration: 'none',
                 flexShrink: 0,
               }}
