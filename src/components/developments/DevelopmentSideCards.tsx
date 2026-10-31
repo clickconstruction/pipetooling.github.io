@@ -154,7 +154,7 @@ export function DevelopmentPlansCard({
         </table>
       ) : null}
       {/* The pieces without the newest set, as chips that open their lists; the ask beside them. No sentence. */}
-      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} data-testid="plans-chips" aria-label={plansNeedWords(view) ?? 'every piece on the newest set'}>
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} data-testid="plans-chips" aria-label={plansNeedWords(view) ?? 'every job and bid on the newest set'}>
         <span style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>{view.sets.length ? `${view.sets.length} ${view.sets.length === 1 ? 'set' : 'sets'}` : 'no set filed'}</span>
         {view.none.length > 0 ? (
           <button type="button" className={`developmentChipPress${openChip === 'none' ? ' isOn' : ''}`} aria-expanded={openChip === 'none'} onClick={() => setOpenChip((v) => (v === 'none' ? null : 'none'))} data-testid="plans-chip-none">
@@ -166,10 +166,10 @@ export function DevelopmentPlansCard({
             {older.length} on an older set <span aria-hidden>{openChip === 'older' ? '▾' : '▸'}</span>
           </button>
         ) : null}
-        {view.none.length === 0 && older.length === 0 && view.sets.length > 0 ? <span className="developmentCountChip">every piece on the newest set</span> : null}
+        {view.none.length === 0 && older.length === 0 && view.sets.length > 0 ? <span className="developmentCountChip">every job and bid on the newest set</span> : null}
         {view.olderOrNone.length > 0 && !(askOnRecord && askOnRecord.open) ? (
           <span style={{ marginLeft: 'auto' }}>
-            <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one question to the estimators about these pieces; the answer reads back here">
+            <SmallButton onClick={() => askAbout(view.olderOrNone.length)} title="Writes one question to the estimators about these jobs and bids; the answer reads back here">
               Ask the estimators about the {view.olderOrNone.length}
             </SmallButton>
           </span>

@@ -201,10 +201,10 @@ const smallBtn = (kind: 'primary' | 'plain' | 'bench'): CSSProperties => ({
   fontWeight: 600,
   padding: '0.2rem 0.55rem',
   borderRadius: 6,
-  border: `1px solid ${kind === 'primary' ? '#3b82f6' : kind === 'bench' ? '#8b5cf6' : 'var(--border-strong)'}`,
+  border: `1px solid ${kind === 'primary' ? '#2563eb' : kind === 'bench' ? '#8b5cf6' : 'var(--border-strong)'}`,
   background:
     kind === 'primary'
-      ? '#3b82f6'
+      ? '#2563eb'
       : kind === 'bench'
         ? 'var(--bg-violet-100)'
         : 'var(--surface)',

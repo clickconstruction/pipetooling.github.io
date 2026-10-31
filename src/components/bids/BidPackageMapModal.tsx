@@ -177,7 +177,7 @@ export function BidPackageMapModal({
       {p.status === 'base' ? <span aria-hidden style={{ color: 'var(--text-green-700)', fontWeight: 700 }}>★</span> : null}
       <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-strong)', flex: '1 1 auto', minWidth: '6rem' }}>{p.name}</span>
       {p.viewing ? (
-        <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#fff', background: '#3b82f6', borderRadius: 999, padding: '0.08rem 0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>viewing</span>
+        <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#fff', background: '#2563eb', borderRadius: 999, padding: '0.08rem 0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>viewing</span>
       ) : null}
       {p.unpriced ? (
         <span style={{ fontSize: '0.68rem', fontWeight: 700, color: 'var(--text-amber-700)', background: 'var(--bg-amber-tint)', borderRadius: 999, padding: '0.06rem 0.5rem', whiteSpace: 'nowrap' }}>No prices yet</span>
@@ -240,7 +240,7 @@ export function BidPackageMapModal({
                         <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', flexWrap: 'wrap' }}>
                           <span style={{ fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-strong)' }}>{v.name}</span>
                           <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)' }}>version</span>
-                          {v.viewing ? <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#fff', background: '#3b82f6', borderRadius: 999, padding: '0.08rem 0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>viewing</span> : null}
+                          {v.viewing ? <span style={{ fontSize: '0.6rem', fontWeight: 700, color: '#fff', background: '#2563eb', borderRadius: 999, padding: '0.08rem 0.5rem', textTransform: 'uppercase', letterSpacing: '0.05em' }}>viewing</span> : null}
                         </div>
                         <div style={{ marginLeft: '0.55rem', borderLeft: '2px solid var(--border)', paddingLeft: '0.9rem', marginTop: '0.25rem', display: 'grid', gap: '0.3rem' }}>
                           {v.prices.length > 0 ? v.prices.map((p) => priceRow(p, v.id)) : (

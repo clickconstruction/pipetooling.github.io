@@ -372,7 +372,7 @@ export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobN
                               type="button"
                               disabled={savingEdit}
                               onClick={() => void saveEdit()}
-                              style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingEdit ? 'wait' : 'pointer' }}
+                              style={{ padding: '0.3rem 0.7rem', fontSize: '0.78rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: savingEdit ? 'wait' : 'pointer' }}
                             >
                               {savingEdit ? '…' : 'Save'}
                             </button>
@@ -404,7 +404,7 @@ export default function JobHoursStoryModal({ jobId, hcpNumber, clickNumber, jobN
             type="button"
             onClick={() => void copySummary()}
             disabled={loading}
-            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+            style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
           >
             {copied ? 'Copied' : 'Copy work summary'}
           </button>

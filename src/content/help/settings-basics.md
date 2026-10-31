@@ -73,7 +73,7 @@ Pushed Mon to Fri, 6:00 AM to 8:00 PM.
 3. Set **From** and **To**. To must come after From.
 4. Tap {{button:blue|Save my hours}}. The line under the days reads your hours back.
 
-Tap **Push me any time** to clear your hours. A push outside your hours waits for you. A customer's reply still goes to the office at once. When a customer writes to you while you are off, the office hears at once and who is off. The reply stays yours on Messages, and the office can take it with Who has it.
+Tap **Push me any time** to clear your hours. A push outside your hours waits for you. Every kind of push waits the same way, from a dispatch request to a checklist reminder. The test push on this card goes at once. A customer's reply still goes to the office at once. When a customer writes to you while you are off, the office hears at once and who is off. The reply stays yours on Messages, and the office can take it with Who has it.
 
 ### What waited while you were off
 
@@ -86,7 +86,7 @@ Since 8 PM. Evan answered Dana at 11:50 PM.
 :::
 
 1. Open the Dashboard.
-2. Read the line. The line counts each customer's message once, however many pushes it would have been.
+2. Read the line. The line counts each customer's message once, however many pushes it would have been. It names the other pushes by kind, a work order or a report.
 3. Tap {{button:blue|See them}} to open the first one still waiting.
 
 A reply a teammate answered while you were off is not counted. The line says who answered. Nothing is pushed when your hours open, so your phone never buzzes nine times at 6 AM.

@@ -364,7 +364,7 @@ export function SupplyHouseDirectory({ supplyHouses, audience, onAddHouse, onEdi
 
   const toolbar = (
     <div style={{ display: 'flex', gap: '0.75rem', alignItems: 'center', flexWrap: 'wrap' }}>
-      <button type="button" onClick={onAddHouse} style={{ padding: '0.5rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
+      <button type="button" onClick={onAddHouse} style={{ padding: '0.5rem 0.9rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontSize: '0.9rem', whiteSpace: 'nowrap' }}>
         {audience === 'office' ? 'Add vendor' : 'Add supply house'}
       </button>
       <input

@@ -51,7 +51,7 @@ describe('pairConfirm — one pair', () => {
       ['Development', 'Harlow Ranch', null],
     ])
     expect(changed(w.rows)).toEqual(['JP956 came from', 'BP161 became'])
-    expect(w.previewCaption).toBe('As the row will read in Pieces')
+    expect(w.previewCaption).toBe('As the row will read in Jobs & bids')
     expect(w.previewLines).toEqual(['BP161 Lot 12 Lodge · sent · $12,000 ↔ JP956 Lot 12 Lodge · Working · $12,000', 'likely match · shares lot, 12 · same value · bid first'])
     expect(w.previewMore).toBe(0)
   })
@@ -114,7 +114,7 @@ describe('unpairConfirm — one pair taken apart', () => {
       ['Development', 'Harlow Ranch', null],
     ])
     expect(changed(w.rows)).toEqual(['JP956 came from', 'BP161 became'])
-    expect(w.previewCaption).toBe('As the rows will read in Pieces')
+    expect(w.previewCaption).toBe('As the rows will read in Jobs & bids')
     expect(w.previewLines).toEqual(['BP161 Lot 12 Lodge · won · $12,500 ↔ no job yet', 'no bid here ↔ JP956 Lot 12 Lodge · Working · $12,000'])
   })
   it('a bid with two jobs keeps the other one', () => {

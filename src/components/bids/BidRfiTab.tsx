@@ -315,7 +315,7 @@ export function BidRfiTab({ bids, onlyMyBids, setOnlyMyBids, isMyBid, authUser, 
                 <button
                   type="button"
                   onClick={copyToClipboard}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                 >
                   {rfiCopySuccess ? 'Copied!' : 'Copy to clipboard'}
                 </button>

@@ -66,8 +66,8 @@ const primaryBtn: CSSProperties = {
   display: 'inline-flex',
   alignItems: 'center',
   gap: '0.4rem',
-  background: '#3b82f6',
-  border: '1px solid #3b82f6',
+  background: '#2563eb',
+  border: '1px solid #2563eb',
   color: '#fff',
   borderRadius: 6,
   padding: '0.45rem 0.85rem',
@@ -335,7 +335,7 @@ type BidBasisExportModalProps = {
 /** The waiting dialog shown after the CountTooling tab opens. */
 export function BidBasisExportModal({ bidRef, projectName, expectedFilename, grantState = 'idle', onOpenAgain, onMarkByHand, onClose }: BidBasisExportModalProps) {
   const step = (n: number) => (
-    <span style={{ width: '1.35rem', height: '1.35rem', borderRadius: 999, background: '#3b82f6', color: '#fff', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
+    <span style={{ width: '1.35rem', height: '1.35rem', borderRadius: 999, background: '#2563eb', color: '#fff', fontSize: '0.75rem', fontWeight: 700, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>{n}</span>
   )
   return (
     <div style={dialogBackdrop} onClick={onClose} role="presentation">

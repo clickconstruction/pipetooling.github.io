@@ -65,7 +65,7 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "the Checklist's ✓ You on green (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#22c55e' },
     { label: "a sky press on the deep sky: the header's dispatch press and the dispatch mode ticks (v2.6070, white since v2.6186), and every other sky press since v2.6196", fg: WORDS_ON_SKY, bg: SKY_UNDER_WORDS },
     { label: "a workflow's Set Start or Approve hovered, on the darker sky (v2.6196)", fg: WORDS_ON_SKY, bg: SKY_UNDER_WORDS_HOVER },
-    { label: "a blue press with white words on #2563eb in both themes: the cost move's Move, Apply and Done, and the payroll sort chips (v2.6186)", fg: '#ffffff', bg: '#2563eb' },
+    { label: "a blue press with white words on #2563eb in both themes: the cost move's Move, Apply and Done, and the payroll sort chips (v2.6186), and every press, chip and count that filled with #3b82f6 at 3.68:1, the header's Task and New Bid among them (v2.6218)", fg: '#ffffff', bg: '#2563eb' },
     { label: 'Next, ✓ All clear and the discount in green-700 on the surface (v2.6075)', fg: 'var(--text-green-700)', bg: 'var(--surface)' },
     { label: 'the Bid Costs unsent chip (v2.6081)', fg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.fg, bg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.bg },
     { label: "People → Overhead's method A on the page (v2.6082)", fg: OVERHEAD_METHOD_INKS.A, bg: 'var(--bg-page)' },

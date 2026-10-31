@@ -12,9 +12,12 @@ export type BidCountSourceRow = {
   imported_by: string | null
   first_imported_at: string
   last_imported_at: string
+  /** The bid version this project counts for (v2.6230): set when an adopted bid brought it; absent or null = the bid as a whole. */
+  bid_version_id?: string | null
 }
 
-export const BID_COUNT_SOURCE_SELECT = 'id, bid_id, link, token, project_name, scope, imported_by, first_imported_at, last_imported_at'
+/** Every column: `*`, so a read stands before the version column's migration is pushed and after. */
+export const BID_COUNT_SOURCE_SELECT = '*'
 
 /**
  * The CountTooling projects behind the board's bids (v2.5520): one chunked read of `bid_count_sources` for every

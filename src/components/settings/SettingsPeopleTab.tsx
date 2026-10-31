@@ -729,7 +729,7 @@ export default function SettingsPeopleTab({
                       type="button"
                       onClick={() => handleMergeDuplicate(dup)}
                       disabled={mergingPersonName === dup.personName}
-                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4 }}
+                      style={{ padding: '0.25rem 0.5rem', fontSize: '0.875rem', cursor: mergingPersonName === dup.personName ? 'not-allowed' : 'pointer', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4 }}
                     >
                       {mergingPersonName === dup.personName ? 'Merging…' : 'Merge'}
                     </button>

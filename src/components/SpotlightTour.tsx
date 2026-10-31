@@ -277,11 +277,11 @@ export function SpotlightTour({ steps, onClose, guideHref, guideLabel, startInde
               </button>
             ) : null}
             {last ? (
-              <button type="button" onClick={onClose} style={{ ...navBtn, background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600 }}>
+              <button type="button" onClick={onClose} style={{ ...navBtn, background: '#2563eb', color: '#fff', border: 'none', fontWeight: 600 }}>
                 Done
               </button>
             ) : (
-              <button type="button" onClick={() => setIndex(index + 1)} style={{ ...navBtn, background: '#3b82f6', color: '#fff', border: 'none', fontWeight: 600 }}>
+              <button type="button" onClick={() => setIndex(index + 1)} style={{ ...navBtn, background: '#2563eb', color: '#fff', border: 'none', fontWeight: 600 }}>
                 Next →
               </button>
             )}

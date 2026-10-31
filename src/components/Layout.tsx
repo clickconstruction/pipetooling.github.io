@@ -1121,7 +1121,7 @@ export default function Layout() {
               style={{
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.75rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 fontWeight: 600,
                 fontSize: '0.875rem',
@@ -1175,7 +1175,7 @@ export default function Layout() {
               style={{
                 ...headerActionButtonBase,
                 padding: '0.5rem 0.5rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 fontWeight: 500,
               }}
@@ -1194,7 +1194,7 @@ export default function Layout() {
               style={{
                 ...headerActionButtonBase,
                 padding: '0.5rem 1rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 fontWeight: 500,
               }}

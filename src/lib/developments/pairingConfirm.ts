@@ -111,7 +111,7 @@ export function pairConfirm(args: {
       { label: 'Customer', before: (job.customer_name ?? '').trim() || args.customerName?.trim() || '—', after: null, changes: false },
       { label: 'Development', before: args.developmentName, after: null, changes: false },
     ],
-    previewCaption: 'As the row will read in Pieces',
+    previewCaption: 'As the row will read in Jobs & bids',
     ...capped([`${bidSide(bid, labels)} ↔ ${jobSide(job, labels)}`, ...(why ? [why] : [])]),
     confirmLabel: `Pair ${b} with ${j}`,
   }
@@ -185,7 +185,7 @@ export function unpairConfirm(args: {
       { label: 'Address', before: (job.job_address ?? '').trim() || '—', after: null, changes: false },
       { label: 'Development', before: args.developmentName, after: null, changes: false },
     ],
-    previewCaption: 'As the rows will read in Pieces',
+    previewCaption: 'As the rows will read in Jobs & bids',
     ...capped([`${bidSide(bid, labels)} ↔ ${others.length ? becameWords(others, labels) : 'no job yet'}`, `no bid here ↔ ${jobSide(job, labels)}`]),
     confirmLabel: `Unpair ${b} from ${j}`,
   }

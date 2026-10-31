@@ -474,7 +474,7 @@ export function PayStubAdditionalModal({
             style={{
               padding: '0.35rem 0.75rem',
               fontSize: '0.8125rem',
-              background: locked || adding ? DEAD_PRESS_FILL : '#3b82f6',
+              background: locked || adding ? DEAD_PRESS_FILL : '#2563eb',
               color: locked || adding ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 6,

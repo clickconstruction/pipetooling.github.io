@@ -386,7 +386,7 @@ export function SortableRoughPartLineRow({
                     style={{
                       marginLeft: '0.25rem',
                       padding: '0.25rem 0.5rem',
-                      background: '#3b82f6',
+                      background: '#2563eb',
                       color: 'white',
                       border: 'none',
                       borderRadius: 4,

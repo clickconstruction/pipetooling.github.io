@@ -358,7 +358,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
               ) : editing ? (
                 <span style={{ marginLeft: 'auto', display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                   <input type="date" value={dateDraft} onChange={(e) => setDateDraft(e.target.value)} style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.12rem 0.3rem', border: '1px solid var(--border-strong)', borderRadius: 5 }} aria-label={`Sent date for ${p.name}`} />
-                  <button type="button" disabled={busy || !dateDraft} onClick={() => void editGcDate(p, dateDraft)} style={{ ...rowBtnStyle, background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 700 }}>
+                  <button type="button" disabled={busy || !dateDraft} onClick={() => void editGcDate(p, dateDraft)} style={{ ...rowBtnStyle, background: '#2563eb', border: 'none', color: '#fff', fontWeight: 700 }}>
                     {busy ? 'Saving…' : 'Save'}
                   </button>
                   <button type="button" onClick={() => setDateEditKey(null)} style={rowBtnStyle}>Cancel</button>
@@ -392,7 +392,7 @@ export function BidGcSentPanel({ bidId, ownGcName, ownGcCustomerId, bidOutcome, 
                       disabled={busy}
                       onClick={() => void markGcSent(p, today())}
                       title={`Record that ${p.name}'s letter went out today`}
-                      style={{ ...rowBtnStyle, background: '#3b82f6', border: 'none', color: '#fff', fontWeight: 700 }}
+                      style={{ ...rowBtnStyle, background: '#2563eb', border: 'none', color: '#fff', fontWeight: 700 }}
                     >
                       {busy ? 'Marking…' : 'Mark sent'}
                     </button>

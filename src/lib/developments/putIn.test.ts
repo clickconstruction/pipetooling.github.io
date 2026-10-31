@@ -49,6 +49,6 @@ describe('putInOutcomeWords — what moved, and what the rules held', () => {
   })
   it('names what stayed when fewer moved than were asked, and when nothing did', () => {
     expect(putInOutcomeWords({ bids: 1, jobs: 0 }, { bids: 2, jobs: 1 }, 'H')).toBe("Put 1 bid in H. 2 stayed as they were, which the bid's and job's own rules decide.")
-    expect(putInOutcomeWords({ bids: 0, jobs: 0 }, { bids: 0, jobs: 1 }, 'H')).toBe("Nothing moved: the piece stayed as it was, which the bid's and job's own rules decide.")
+    expect(putInOutcomeWords({ bids: 0, jobs: 0 }, { bids: 0, jobs: 1 }, 'H')).toBe("Nothing moved: the job or bid stayed as it was, which the bid's and job's own rules decide.")
   })
 })

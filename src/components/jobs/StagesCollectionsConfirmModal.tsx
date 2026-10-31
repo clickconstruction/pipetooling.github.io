@@ -71,7 +71,7 @@ export function StagesCollectionsConfirmModal({
             onClick={() => void onConfirm()}
             style={{
               padding: '0.5rem 1rem',
-              background: !saving ? '#3b82f6' : DEAD_PRESS_FILL,
+              background: !saving ? '#2563eb' : DEAD_PRESS_FILL,
               color: !saving ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,

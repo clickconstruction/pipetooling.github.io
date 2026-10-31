@@ -168,7 +168,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
         { key: 'record', label: 'Open their record', disabled: !contact.record || !onOpenRecord, onPress: () => onOpenRecord?.(contact) },
       ]
     : []
-  const menuRows = contact ? [...ownRows, ...(slots.menuRows?.(contact) ?? [])] : []
+  const menuRows = contact ? [...ownRows, ...(slots.menuRows?.(contact, lines) ?? [])] : []
   const phones = contact?.channels.filter((ch) => ch.kind === 'phone') ?? []
   const emails = contact?.channels.filter((ch) => ch.kind === 'email') ?? []
   // Whose move it is: the lines, and what cut 2 knows (what we owe, a written promise's day; punch list #140 PR 7).

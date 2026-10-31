@@ -1,7 +1,7 @@
 ---
 title: see everything on a development in one place
 category: Office
-roles: dev, master_technician, assistant, estimator
+roles: dev, master_technician, assistant, controller, estimator
 keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
 order: 75
 ---
@@ -33,7 +33,7 @@ On a phone, tap the count. The card opens as a sheet under the counts.
 
 ## Jump between the five looks
 
-A strip under the counts names five looks: History, Pieces, Money, Plans and Questions. Each look shows its count and what in it waits on you.
+A strip under the counts names five looks: History, Jobs & bids, Money, Plans and Questions. Each look shows its count and what in it waits on you.
 
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
@@ -53,7 +53,7 @@ A long line shows its first words and a **more** press. Press it and the whole l
 An email came in, a call was made, someone walked the site. History keeps those too, at the time they happened.
 
 1. Press {{button:outline|Write a line}} at the top of History. Type what happened in the box.
-2. Pick what it is about under About. The site is picked by default. Press the box and type a number or a name to find a job, a bid or the customer. The pieces written about last sit near the top.
+2. Pick what it is about under About. The site is picked by default. Press the box and type a number or a name to find a job, a bid or the customer. The jobs and bids written about last sit near the top.
 3. Set when it happened. The box starts at now. Set it back to the email's own time.
 4. Pick the source, like {{chip:blue|Email}} or {{chip:blue|Call}}.
 5. Press {{button:blue|Keep it}}.
@@ -65,7 +65,7 @@ Notes a record carries with no date sit under the chips in a block called On rec
 
 ## Pair each bid with the job it became
 
-Pieces lists each bid beside the job it became. A gap in the row means the pair is not on record yet.
+Jobs & bids lists each bid beside the job it became. A gap in the row means the pair is not on record yet. A dev or a controller also sees a Costs column: each job's parts and sub labor as one figure. Rest on it to see the buckets.
 
 1. Press {{button:outline|Pair bids with jobs}} above the table.
 2. In a gap, press the likely pair the page names, or press {{button:outline|Pick the job}} to choose one.
@@ -84,9 +84,9 @@ The paid jobs fold under the table with their sum. Press **Show them** to see th
 
 A line above the looks counts the bids and jobs at the site's address that are not in it yet. Rest on a chip in that line to see them.
 
-Press {{button:blue|Put the N in}} to put them all in at once. A window shows the counts now and after, and the pieces that go in. Press the same words in the window to confirm.
+Press {{button:blue|Put the N in}} to put them all in at once. A window shows the counts now and after, and the jobs and bids that go in. Press the same words in the window to confirm.
 
-Press {{button:outline|Show the N here}} to draw them in the Pieces table first. Edit Bid and Edit Job still put one record in at a time.
+Press {{button:outline|Show the N here}} to draw them in the Jobs & bids table first. Edit Bid and Edit Job still put one record in at a time.
 
 ## Read the money
 
@@ -94,13 +94,13 @@ Money shows the site's progress as one bar, then every job by stage with what is
 
 ## Check the plans and the questions
 
-Plans lists every plan set, newest first, with its memo and the jobs and bids on it. Press the memo to change it, or press {{button:outline|Add a memo}} to write what changed on the plans. A robot that reads the plans can write the memo too. A chip counts the pieces without plans. Press it to see them. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes.
+Plans lists every plan set, newest first, with its memo and the jobs and bids on it. Press the memo to change it, or press {{button:outline|Add a memo}} to write what changed on the plans. A robot that reads the plans can write the memo too. A chip counts the jobs and bids without plans. Press it to see them. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes.
 
 Questions starts with two presses, {{button:outline|Ask the estimators}} and {{button:outline|Ask Dispatch}}. Under them sits one table for each lane with questions. Open questions come first, oldest first. Each shows how long it has waited, what it is about, the words and the answer so far. The answered ones fold under a count. With no question at all, the look says nothing is waiting.
 
 ## What an estimator sees
 
-An estimator opens the same page. It shows the pieces, the history, the plans and the questions. It shows no money. The Money look is one line that says the office reads it.
+An estimator opens the same page. It shows the jobs and bids, the history, the plans and the questions. It shows no money. The Money look is one line that says the office reads it.
 
 A job's number opens nothing for an estimator. The job's stage, crew, plans and history are on this page.
 
