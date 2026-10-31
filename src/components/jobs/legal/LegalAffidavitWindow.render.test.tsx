@@ -60,7 +60,9 @@ describe('LegalAffidavitWindow (punch list #220, v2.6210)', () => {
     expect(document.querySelector('[data-legal-affidavit-county="Williamson"]')!.getAttribute('aria-pressed')).toBe('true')
     fireEvent.click(document.querySelector('[data-legal-affidavit-county="blank"]')!)
     expect(document.querySelector('[data-legal-affidavit-county="blank"]')!.getAttribute('aria-pressed')).toBe('true')
-    expect(screen.getByText('The notary writes the county in by hand where the paper is signed.')).toBeTruthy()
+    // v2.6245: a declaration's picks name the signer, never a notary.
+    expect(document.querySelector('[data-legal-affidavit-county="blank"]')!.textContent).toBe('Leave it blank for the signer')
+    expect(screen.getByText('They write the county in by hand where they sign.')).toBeTruthy()
     // A title typed by hand stops following the picks.
     fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'What Thanh saw' } })
     fireEvent.click(document.querySelector('[data-legal-affidavit-form="notary"]')!)

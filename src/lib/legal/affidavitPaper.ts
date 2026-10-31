@@ -203,10 +203,14 @@ export type VenueChoice = { value: string; words: string; /** What the line unde
 export function venueChoices(input: { officeCounty: string; propertyCounty: string | null; form: AffidavitForm }): VenueChoice[] {
   const office = input.officeCounty.trim()
   const property = (input.propertyCounty ?? '').trim()
+  const declaration = input.form === 'declaration'
+  const same = Boolean(property) && property.toLowerCase() === office.toLowerCase()
   const out: VenueChoice[] = []
-  if (office) out.push({ value: office, words: `${office} County · the office’s`, note: 'Where the notary watches the signing. Not where the job is.' })
-  if (property && property.toLowerCase() !== office.toLowerCase()) out.push({ value: property, words: `${property} County · the property’s`, note: input.form === 'declaration' ? 'Where they sign. The declaration says Executed in this county.' : 'For a signing on site.' })
-  out.push({ value: '', words: 'Leave it blank for the notary', note: 'The notary writes the county in by hand where the paper is signed.' })
+  // v2.6245: a declaration has no notary, so its lines name the signer. The property's county is the declaration's
+  // default; when it is the office's county too, the one pick says so, or it reads as a trip to the office.
+  if (office) out.push({ value: office, words: `${office} County · the office’s${same ? ' and the property’s' : ''}`, note: declaration ? 'Where they sign. The declaration says Executed in this county.' : 'Where the notary watches the signing. Not where the job is.' })
+  if (property && !same) out.push({ value: property, words: `${property} County · the property’s`, note: declaration ? 'Where they sign. The declaration says Executed in this county.' : 'For a signing on site.' })
+  out.push(declaration ? { value: '', words: 'Leave it blank for the signer', note: 'They write the county in by hand where they sign.' } : { value: '', words: 'Leave it blank for the notary', note: 'The notary writes the county in by hand where the paper is signed.' })
   return out
 }
 
