@@ -16,7 +16,9 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55437}"
 NAME="pgtest-bid-copies"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-MIGRATION="supabase/migrations/20261002130000_bid_copies_carry_costs_prices_one_version.sql"
+# The newest migration that defines a copy function: re-running it must change nothing, and it leaves every copy on
+# its newest body (re-running an older one put the copies back to that day's bodies, so the bed tested old code).
+MIGRATION="$(grep -lE 'FUNCTION "?public"?\."?(create_bid_version|clone_count_rows_to_bid_version|duplicate_bid_to_service_type|adopt_bid_as_version)"?' supabase/migrations/*.sql | sort | tail -1)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
