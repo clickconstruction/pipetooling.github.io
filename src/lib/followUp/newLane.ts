@@ -42,6 +42,8 @@ export type NewLaneContact = Pick<Contact, 'id' | 'kind' | 'name' | 'company' | 
   Partial<Pick<Contact, 'goesBy'>> & {
     /** Who has it, by name. Null: nobody does. */
     has?: string | null
+    /** Their numbers and addresses as given, for the row's words after the name (`reach`, v2.6191). Missing: the row shows none. */
+    channels?: ReadonlyArray<{ kind: ChannelKind; value: string }>
   }
 
 /** A line as the New lane reads it: the spine's message, the box it came in on and whether a person tied it. */
@@ -81,6 +83,11 @@ export interface NewLaneRow {
   mailbox: Mailbox | null
   /** How it came in, for the row's meta line: "Text on the team number", "Email to bids@". */
   via: string
+  /**
+   * The address or the number the line came from, for the row's words after the name (v2.6191): "dale@ridgeway.example",
+   * "512-555-0142", the line's channel first (`rowReach`). '' when the name is that number or address already, or none is known.
+   */
+  reach: string
   /** Why it is in the lane, the sort card's first line. */
   why: string
   /** Their active jobs, in the rail's order. */
@@ -198,6 +205,7 @@ export function newLane(
       when: whenWords(line.at, nowIso),
       mailbox,
       via: viaWords(line.channel, mailbox),
+      reach: rowReach({ who: c.name, channel: line.channel, channels: c.channels }),
       why,
       jobIds: active,
       defaultJobId: c.defaultJobId,
@@ -390,13 +398,32 @@ export interface WhoHead {
  */
 export function whoHead(row: { who: string; body: string; channel?: MessageChannel; channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }): WhoHead {
   const name = senderFacts(row).name ?? ''
+  const reach = reachWords(row)
+  const words = name && reach ? `Who is ${name}, ${reach}?` : name || reach ? `Who is ${name || reach}?` : SORT_HEADS.who
+  return { name, reach, words }
+}
+
+/**
+ * The address, or the number as 512-555-0142, to reach the sender, as a sentence shows it: the channel of the line's
+ * kind first, since a text's number is the one that wrote (the card's rule, v2.5798). The contact's channels, else the
+ * row's `who` when it is one. '' when neither is known.
+ */
+export function reachWords(row: { who: string; channel?: MessageChannel; channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }): string {
   const email = row.channels?.find((ch) => ch.kind === 'email')?.value ?? row.who
   const phone = row.channels?.find((ch) => ch.kind === 'phone')?.value ?? row.who
   const address = normalizeChannel('email', email) ? email.trim() : ''
   const number = normalizeChannel('phone', phone) ? numberWords(phone) : ''
-  const reach = row.channel && PHONE_CHANNELS.has(row.channel) ? number || address : address || number
-  const words = name && reach ? `Who is ${name}, ${reach}?` : name || reach ? `Who is ${name || reach}?` : SORT_HEADS.who
-  return { name, reach, words }
+  return row.channel && PHONE_CHANNELS.has(row.channel) ? number || address : address || number
+}
+
+/**
+ * The row's words after the name (v2.6191): the address or the number the line came from, `reachWords`' rule, for a
+ * sender the row names. '' for a row named by its number or address, which would say it twice, and when none is known.
+ */
+export function rowReach(row: { who: string; channel: MessageChannel; channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }): string {
+  const who = row.who.trim()
+  if (who === '' || who.includes('@') || normalizeChannel('phone', who) !== '') return ''
+  return reachWords(row)
 }
 
 const NOT_NAMES = new Set([
