@@ -1,6 +1,11 @@
+// send-checklist-notification: one person's push for a checklist event, and the Settings test push. A person's hours
+// (punch list #141 PR 5, v2.6217): a checklist push goes through _shared/pushHoursSend.ts, which holds it for a person
+// outside their Push me hours, writing the row as `held` and sending nothing. The test push (tag `test-notification`)
+// never does: the person pressed it to see a push.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
+import { pushPayload, sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -108,63 +113,40 @@ serve(async (req) => {
       }
     }
 
-    const { data: subscriptions } = await adminClient
-      .from('push_subscriptions')
-      .select('endpoint, p256dh_key, auth_key')
-      .eq('user_id', recipient_user_id)
+    const isTest = tag === 'test-notification'
+    const templateType = isTest ? 'test_notification' : tag?.startsWith('checklist-') ? 'checklist_completed' : tag || 'checklist'
+    const checklistInstanceId = tag?.startsWith('checklist-') ? tag.slice('checklist-'.length) : null
+    const push = { userIds: [recipient_user_id], title: push_title, body: push_body, url: push_url || '/checklist', tag: tag || 'checklist', templateType, extra: { checklist_instance_id: checklistInstanceId || null } }
+    const sendTo = webPushSender(adminClient, 'send-checklist-notification')!
 
     let pushSent = 0
-    if (subscriptions && subscriptions.length > 0) {
-      const pushPayload = JSON.stringify({
-        title: push_title,
-        body: push_body,
-        url: push_url || '/checklist',
-        tag: tag || 'checklist',
-      })
-
-      webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
-
-      for (const sub of subscriptions) {
-        try {
-          await webpush.sendNotification(
-            {
-              endpoint: sub.endpoint,
-              keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
-            },
-            pushPayload,
-            { TTL: 86400 }
-          )
-          pushSent++
-        } catch (pushErr) {
-          console.error('Push send error for subscription:', sub.endpoint?.substring(0, 50), pushErr)
-        }
+    let held = 0
+    if (isTest) {
+      // The Settings test push skips the hours: the person pressed it to see a push.
+      pushSent = await sendTo(recipient_user_id, pushPayload(push))
+      if (pushSent > 0) {
+        await adminClient.from('notification_history').insert({
+          recipient_user_id,
+          template_type: templateType,
+          title: push_title,
+          body_preview: push_body.substring(0, 200),
+          channel: 'push',
+          checklist_instance_id: null,
+        })
       }
-    }
-
-    // Log to notification_history when push was sent
-    if (pushSent > 0) {
-      const templateType =
-        tag === 'test-notification'
-          ? 'test_notification'
-          : tag?.startsWith('checklist-')
-            ? 'checklist_completed'
-            : tag || 'checklist'
-      const checklistInstanceId = tag?.startsWith('checklist-') ? tag.slice('checklist-'.length) : null
-      await adminClient.from('notification_history').insert({
-        recipient_user_id,
-        template_type: templateType,
-        title: push_title,
-        body_preview: push_body.substring(0, 200),
-        channel: 'push',
-        checklist_instance_id: checklistInstanceId || null,
-      })
+    } else {
+      // Through the person's hours (#141 PR 5): pushed now with a push row, or held with a held row and no push.
+      const result = await sendPushHonouringHours(adminClient, push, sendTo)
+      pushSent = result.devices
+      held = result.held.length
     }
 
     return new Response(
       JSON.stringify({
         success: true,
-        message: 'Checklist notification sent',
+        message: held > 0 ? 'Checklist notification held for the person’s hours' : 'Checklist notification sent',
         push_sent: pushSent,
+        held,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

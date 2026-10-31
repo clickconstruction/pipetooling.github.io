@@ -29,14 +29,20 @@
  *   person (push bodies follow the same detailed/summary split; dead
  *   subscriptions are pruned).
  *
+ * A person's hours (punch list #141 PR 5, v2.6217): the Ready to Bill push goes through
+ * _shared/pushHoursSend.ts, which pushes the people on and holds one outside their Push me
+ * hours, writing a notification_history row as `held` and sending nothing; the email pick is
+ * unchanged. The gear's test_push skips the hours: the person pressed it to see a push.
+ *
  * Secrets used: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY,
  * RESEND_API_KEY, CRON_SECRET, VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
 
+import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import {
   paidJobEmailSubject,
@@ -185,59 +191,44 @@ async function loadRtbRecipients(admin: Admin): Promise<RtbRecipient[]> {
   })
 }
 
-type PushSubRow = { id: string; user_id: string; endpoint: string; p256dh_key: string; auth_key: string }
-
 /**
- * Web-push one Ready to Bill notification to each user's subscribed devices.
- * Bodies follow the detailed/summary role split (dollars for detailed only).
- * Dead subscriptions (404/410) are pruned; other push failures are reported
- * but never retried — a retry would re-email everyone on the row.
+ * Web-push one Ready to Bill notification to each user's subscribed devices, through each
+ * person's hours (#141 PR 5; `honourHours: false` for the gear's test push). Bodies follow the
+ * detailed/summary role split (dollars for detailed only); the held row carries the summary
+ * body, so no dollars sit in notification_history for a summary-tier role. Dead subscriptions
+ * (404/410) are pruned by the sender; other push failures are logged, never retried — a retry
+ * would re-email everyone on the row. No `push` row is written, as before; the held rows are.
  */
 async function sendReadyToBillPush(
   admin: Admin,
   recipients: RecipientRow[],
   payload: ReadyToBillPayload,
   titlePrefix = '',
-): Promise<{ sent: number; errors: string[] }> {
-  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-  if (!vapidPublicKey || !vapidPrivateKey) {
-    return { sent: 0, errors: ['VAPID keys not configured'] }
-  }
+  honourHours = true,
+): Promise<{ sent: number; held: number; errors: string[] }> {
+  const sendTo = webPushSender(admin, 'paid-job-email')
+  if (!sendTo) return { sent: 0, held: 0, errors: ['VAPID keys not configured'] }
   const ids = recipients.map((r) => r.id)
-  if (ids.length === 0) return { sent: 0, errors: [] }
-  const { data: subs, error: subErr } = await admin
-    .from('push_subscriptions')
-    .select('id, user_id, endpoint, p256dh_key, auth_key')
-    .in('user_id', ids)
-  if (subErr) return { sent: 0, errors: [`push_subscriptions: ${subErr.message}`] }
+  if (ids.length === 0) return { sent: 0, held: 0, errors: [] }
 
-  webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
   const detailedById = new Map(recipients.map((r) => [r.id, DETAILED_ROLES.has(String(r.role))]))
   const title = `${titlePrefix}${readyToBillPushTitle(payload)}`
-
-  let sent = 0
-  const errors: string[] = []
-  for (const sub of (subs ?? []) as PushSubRow[]) {
-    const body = readyToBillPushBody(payload, detailedById.get(sub.user_id) ?? false)
-    try {
-      await webpush.sendNotification(
-        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
-        JSON.stringify({ title, body, url: '/jobs', tag: `ready-to-bill-${payload.job.id}` }),
-        { TTL: 86400 },
-      )
-      sent += 1
-    } catch (e) {
-      const status = (e as { statusCode?: number }).statusCode
-      if (status === 404 || status === 410) {
-        // Subscription is gone — prune it so we stop trying.
-        await admin.from('push_subscriptions').delete().eq('id', sub.id)
-      } else {
-        errors.push(`push ${sub.user_id}: ${e instanceof Error ? e.message : String(e)}`)
-      }
-    }
-  }
-  return { sent, errors }
+  const tag = `ready-to-bill-${payload.job.id}`
+  const result = await sendPushHonouringHours(
+    admin,
+    {
+      userIds: ids,
+      title,
+      body: readyToBillPushBody(payload, false),
+      url: '/jobs',
+      tag,
+      templateType: 'ready_to_bill',
+      payloadFor: (userId) => JSON.stringify({ title, body: readyToBillPushBody(payload, detailedById.get(userId) ?? false), url: '/jobs', tag }),
+    },
+    sendTo,
+    { record: 'none', ...(honourHours ? {} : { hours: new Map() }) },
+  )
+  return { sent: result.devices, held: result.held.length, errors: [] }
 }
 
 /** Caller JWT → users row; null response means an error Response was returned. */
@@ -552,7 +543,8 @@ serve(async (req) => {
 
       if (mode === 'test_push') {
         const rtbPayload = await fetchReadyToBillPayload(admin, jobId)
-        const result = await sendReadyToBillPush(admin, [testTarget], rtbPayload, '[TEST] ')
+        // The gear's test push skips the person's hours: they pressed it to see a push.
+        const result = await sendReadyToBillPush(admin, [testTarget], rtbPayload, '[TEST] ', false)
         if (result.errors.length > 0 && result.sent === 0) {
           return jsonResponse({ error: result.errors.join('; ') }, 502)
         }

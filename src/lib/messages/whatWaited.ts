@@ -58,9 +58,41 @@ export interface WhatWaited {
 /** The reply push's templates (`PushTemplate` in `notifyRule.ts`): each is a customer's line. */
 const REPLY_TEMPLATES: ReadonlySet<string> = new Set(['message_reply', 'message_reply_wait', 'message_reply_breach', 'message_reply_off'])
 
-/** What a held push was for, in a word: a reply, or a push until the other senders name theirs (PR 5). */
-export function heldKind(templateType: string): 'reply' | 'push' {
-  return REPLY_TEMPLATES.has(templateType) ? 'reply' : 'push'
+/**
+ * What each of the other senders' pushes is, in the line's words (PR 5, v2.6217): the `template_type` its held row
+ * carries, as `_shared/pushHoursSend.ts` writes it. A work order's template is the step's own (`work_order_offered`,
+ * the stage templates), so it is read by its head.
+ */
+const HELD_KINDS: Readonly<Record<string, string>> = {
+  dispatch_request: 'dispatch request',
+  dispatch_request_closed: 'dispatch answer',
+  dispatch_request_reopened: 'dispatch answer',
+  estimator_request: 'estimator request',
+  bid_mark: 'marked bid',
+  help_feedback: 'help note',
+  lien_approval_ask: 'lien notice',
+  lien_pen_recorded: 'lien signature',
+  lien_code_used: 'lien signature',
+  lien_waiver_code_used: 'lien waiver',
+  trial_helper_verdict: 'try-out question',
+  bid_followup: 'call-again day',
+  ready_to_bill: 'Ready to Bill',
+  bank_return: 'returned check',
+  checklist_completed: 'checklist item',
+  checklist: 'checklist item',
+  scheduled_reminder: 'task reminder',
+  report_submitted: 'report',
+  clause_proposal: 'clause change',
+}
+
+/** What a held push was for, in a word or two: a reply, one of the other senders' kinds, or a push for one not named. */
+export function heldKind(templateType: string): string {
+  if (REPLY_TEMPLATES.has(templateType)) return 'reply'
+  const named = HELD_KINDS[templateType]
+  if (named) return named
+  if (templateType.startsWith('work_order') || templateType.startsWith('stage_')) return 'work order'
+  if (templateType.startsWith('checklist')) return 'checklist item'
+  return 'push'
 }
 
 /**
@@ -84,14 +116,19 @@ export function waitedCountWords(kinds: ReadonlyMap<string, number>): string {
   const parts: string[] = []
   for (const [kind, n] of kinds) {
     if (n <= 0) continue
-    parts.push(n === 1 ? `a ${kind}` : `${n} ${plural(kind)}`)
+    parts.push(n === 1 ? `${article(kind)} ${kind}` : `${n} ${plural(kind)}`)
   }
   if (parts.length <= 1) return parts[0] ?? ''
   return `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}`
 }
 
+/** "an estimator request", "a reply". */
+function article(kind: string): string {
+  return /^[aeiou]/i.test(kind) ? 'an' : 'a'
+}
+
 function plural(kind: string): string {
-  if (kind.endsWith('y')) return `${kind.slice(0, -1)}ies`
+  if (/[^aeiou]y$/.test(kind)) return `${kind.slice(0, -1)}ies`
   if (/(s|sh|ch|x)$/.test(kind)) return `${kind}es`
   return `${kind}s`
 }
