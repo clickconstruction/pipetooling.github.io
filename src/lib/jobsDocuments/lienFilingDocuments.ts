@@ -1,7 +1,7 @@
 import { WINDOW_QR_MM, WINDOW_ZONE_MM } from '../mail/windowEnvelope'
 import { loadJsPDF } from '../loadJsPDF'
 import { demandDate, demandMoney, letterheadContactLines } from './demandLetter'
-import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_SEAL_WORDS, JURAT_SIGNATURE_RULE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from '../legal/juratWords'
+import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_SIGNATURE_RULE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from '../legal/juratWords'
 
 /**
  * The three statutory lien instruments (v2.2645, Lien Instruments phase 3):
@@ -292,8 +292,8 @@ export function filingDocHtml(blocks: FilingDocBlock[], opts?: FilingDocHtmlOpti
         parts.push(
           `<p style="margin:2.2em 0 0">${JURAT_STATE_LINE}<br/>${esc(juratCountyLine(b.county ?? ''))}</p>` +
             `<p style="margin:0.8em 0 0">${esc(juratSentence(b.who))}</p>` +
-            (b.courtesy ? `<p data-jurat-seal style="margin:1.2em 0 0;${HTML_LABEL_FONT};font-size:0.72em;color:${HTML_MUTED}">${esc(JURAT_SEAL_WORDS)}</p>` : '') +
-            `<p style="margin:1.6em 0 0">${JURAT_SIGNATURE_RULE}<br/>${esc(JURAT_NOTARY_TITLE)}</p>` +
+            // The desk's affidavit leaves blank room for the seal above the signature (v2.6249: no caption, a notary knows where it goes).
+            `<p style="margin:${b.courtesy ? '3.6em' : '1.6em'} 0 0">${JURAT_SIGNATURE_RULE}<br/>${esc(JURAT_NOTARY_TITLE)}</p>` +
             (b.courtesy ? `<p style="margin:0.8em 0 0">${JURAT_COURTESY_LINES.map(esc).join('<br/>')}</p>` : ''),
         )
         break
@@ -357,7 +357,7 @@ export function filingDocText(blocks: FilingDocBlock[]): string {
         break
       case 'notarial':
         out.push(
-          [`${JURAT_STATE_LINE}\n${juratCountyLine(b.county ?? '')}`, juratSentence(b.who), ...(b.courtesy ? [JURAT_SEAL_WORDS] : []), `${JURAT_SIGNATURE_RULE}\n${JURAT_NOTARY_TITLE}`, ...(b.courtesy ? [JURAT_COURTESY_LINES.join('\n')] : [])].join('\n\n'),
+          [`${JURAT_STATE_LINE}\n${juratCountyLine(b.county ?? '')}`, juratSentence(b.who), `${JURAT_SIGNATURE_RULE}\n${JURAT_NOTARY_TITLE}`, ...(b.courtesy ? [JURAT_COURTESY_LINES.join('\n')] : [])].join('\n\n'),
         )
         break
       case 'deliveryRecord':
@@ -707,11 +707,8 @@ export async function filingDocPdfBlob(blocks: FilingDocBlock[], opts?: { footer
         write(juratCountyLine(b.county ?? ''), 5.6)
         y += 3
         write(juratSentence(b.who), 6)
-        if (b.courtesy) {
-          y += 4
-          write(JURAT_SEAL_WORDS, 5.6, { sans: true, size: 8.5, muted: true })
-          y += 14
-        } else y += 10
+        // The desk's affidavit keeps blank room for the seal (v2.6249: the caption is gone, the room stays).
+        y += b.courtesy ? 24 : 10
         ensureRoom(14)
         doc.setDrawColor(...INK)
         doc.line(PAGE_MARGIN, y, PAGE_MARGIN + 75, y)
