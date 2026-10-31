@@ -22,6 +22,7 @@ import { TRADE_COLORS } from './tradeColors'
 import { BID_SERVICE_TYPE_TAGS } from '../utils/unifiedJobBidSearch'
 import { RIGHT, WRONG } from '../components/training/figures/plumbingTokens'
 import { SALES_BAR_INKS } from './bridge/sales/salesBarInks'
+import { LINKED_GROUP_ACCENT_PALETTE } from './scheduleDispatchLinkedGroupPalette'
 
 /**
  * The four pairs What everyone sees measured under 3:1 on 2026-10-27, held at 4.5:1 since v2.5981:
@@ -253,6 +254,25 @@ describe("the portal's trade colours and copper (v2.6067, punch list #199)", () 
     expect(PORTAL_TRADE_COLORS).toEqual(TRADE_COLORS)
     expect(Object.values(BID_SERVICE_TYPE_TAGS).map((t) => [t.tag, t.color])).toEqual(Object.entries(TRADE_COLORS))
   })
+})
+
+describe("a linked crew's card on every highlight tint, in both themes (v2.6203)", () => {
+  // Schedule & Dispatch → People with Highlight linked on: a job card's title, address and time, a bid card's
+  // title, and the block's − and + presses, as HubPeopleDayCell draws them.
+  const inks = { title: 'var(--text-blue-900)', address: 'var(--text-600)', time: 'var(--text-blue-800)', 'bid title': 'var(--text-violet-800)', '−': 'var(--text-red-700)', '+': 'var(--text-blue-700)' }
+  const grounds = [...new Set(LINKED_GROUP_ACCENT_PALETTE.map((a) => a.background))]
+  it('every tint is a theme token, so the card turns dark in dark mode under words that turn light', () => {
+    for (const g of grounds) expect(g).toMatch(/^var\(--[a-z0-9-]+\)$/)
+  })
+  for (const bg of grounds) {
+    for (const [what, fg] of Object.entries(inks)) {
+      for (const theme of THEMES) {
+        it(`the ${what} on ${bg}, ${theme}: 4.5:1 or better`, () => {
+          expect(ratio(fg, bg, theme)).toBeGreaterThanOrEqual(4.5)
+        })
+      }
+    }
+  }
 })
 
 /** Each line under src/, tests aside, that colours words with the hex: one that must stay a fill or a border. */
