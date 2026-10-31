@@ -234,7 +234,7 @@ AS $$
     SELECT p.read_at,
       (SELECT count(*) FROM public.bid_fixture_pull_rows x WHERE x.pull_id = p.id)::integer AS found,
       (SELECT count(*) FROM public.bid_fixture_pull_rows x WHERE x.pull_id = p.id AND COALESCE(x.confidence, 1) >= 0.7 AND COALESCE(x.agreement, 'agree') = 'agree' AND x.scope_flag IS NULL)::integer AS sure,
-      (SELECT count(*) FROM public.bid_fixture_pull_rows x WHERE x.pull_id = p.id AND x.taken_at IS NOT NULL)::integer AS taken,
+      (SELECT count(*) FROM public.bid_fixture_pull_rows x WHERE x.pull_id = p.id AND x.taken_at IS NOT NULL AND x.count_row_id IS NOT NULL)::integer AS taken,
       (SELECT count(*) FROM public.bid_fixture_pull_rows x WHERE x.pull_id = p.id AND x.set_aside_at IS NOT NULL)::integer AS set_aside
     FROM public.bid_fixture_pulls p
     WHERE p.bid_id = r.reference_bid_id
@@ -349,7 +349,8 @@ END;
 $$;
 REVOKE ALL ON FUNCTION public.robot_fixture_gate(uuid, text) FROM public, anon, authenticated;
 
--- Add N fixtures: p_row_ids land as rows of their own on the version; p_updates ([{row_id, count_row_id}]) put
+-- Add N fixtures: p_row_ids land as rows of their own on the version (a row whose count row is gone, through
+-- History's Undo or a delete outside the window, may be taken again); p_updates ([{row_id, count_row_id}]) put
 -- the robot's count on a row of hers that the window paired, keeping her parts, prices and prior count. Stamps
 -- the run assisted and leaves a ledger line.
 CREATE OR REPLACE FUNCTION public.take_robot_fixtures(p_row_ids uuid[], p_bid_version_id uuid DEFAULT NULL, p_updates jsonb DEFAULT '[]'::jsonb)
@@ -396,7 +397,7 @@ BEGIN
 
   FOR v_row IN
     SELECT pr.* FROM public.bid_fixture_pull_rows pr
-     WHERE pr.id = ANY (COALESCE(p_row_ids, ARRAY[]::uuid[])) AND pr.taken_at IS NULL
+     WHERE pr.id = ANY (COALESCE(p_row_ids, ARRAY[]::uuid[])) AND (pr.taken_at IS NULL OR pr.count_row_id IS NULL)
      ORDER BY pr.sequence_order
   LOOP
     v_as := public.robot_fixture_land_row(v_row.id, p_bid_version_id, v_source_id, v_price_version, v_row.count, v_user);
@@ -408,7 +409,7 @@ BEGIN
   END LOOP;
 
   FOR v_upd IN SELECT u FROM jsonb_array_elements(COALESCE(p_updates, '[]'::jsonb)) u LOOP
-    SELECT pr.* INTO v_row FROM public.bid_fixture_pull_rows pr WHERE pr.id = (v_upd->>'row_id')::uuid AND pr.taken_at IS NULL;
+    SELECT pr.* INTO v_row FROM public.bid_fixture_pull_rows pr WHERE pr.id = (v_upd->>'row_id')::uuid AND (pr.taken_at IS NULL OR pr.count_row_id IS NULL);
     IF v_row.id IS NULL THEN CONTINUE; END IF;
     v_her := (v_upd->>'count_row_id')::uuid;
     SELECT c.count, c.bid_version_id INTO v_prior, v_her_version FROM public.bids_count_rows c WHERE c.id = v_her AND c.bid_id = v_bid_id;
