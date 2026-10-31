@@ -18,7 +18,8 @@ COMMENT ON COLUMN public.bid_plan_sets.bid_version_id IS
   'The bid version this set of plans was bid from (2026-10-31): set when an adopted bid brought it; NULL = the bid as a whole.';
 CREATE INDEX IF NOT EXISTS bid_plan_sets_version ON public.bid_plan_sets (bid_version_id) WHERE bid_version_id IS NOT NULL;
 
--- adopt_bid_as_version: 20261031010000's body with the two carries before the source retires.
+-- adopt_bid_as_version: 20261031015000's body (the pull tables move through robot_fixtures_follow_adopt, a SECURITY DEFINER
+-- helper, since 20261030230000 closed them to authenticated) with the two carries before the source retires.
 CREATE OR REPLACE FUNCTION public.adopt_bid_as_version(
   p_target_bid_id uuid,
   p_source_bid_id uuid,
@@ -78,8 +79,8 @@ BEGIN
   -- The quoted fixture costs move with their rows too (v2.4413).
   UPDATE public.bid_count_row_custom_costs SET bid_id = p_target_bid_id WHERE bid_id = p_source_bid_id;
   -- Robot fixtures (v2.6188, punch list #221): the robot's pull and its rows move with the count rows they landed on.
-  UPDATE public.bid_fixture_pulls SET bid_id = p_target_bid_id WHERE bid_id = p_source_bid_id;
-  UPDATE public.bid_fixture_pull_rows SET bid_id = p_target_bid_id, taken_version_id = v_new_id WHERE bid_id = p_source_bid_id;
+  -- v2.6235: through the owner's helper, since the pull tables take no write from authenticated.
+  PERFORM public.robot_fixtures_follow_adopt(p_source_bid_id, p_target_bid_id, v_new_id);
 
   -- ★ = what the source's customer saw, when it is one of the moved scenarios.
   UPDATE public.bid_versions bv SET starred_price_book_version_id = v_source.selected_price_book_version_id
