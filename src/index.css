@@ -275,6 +275,12 @@ button:focus-visible {
   --bg-violet-200: #ddd6fe;
   --bg-indigo-100: #e0e7ff;
   --bg-indigo-200: #c7d2fe;
+  /* Schedule & Dispatch's linked-crew cards (v2.6203): the grounds that were light literals in dark mode */
+  --bg-indigo-tint: #eef2ff;
+  --bg-violet-tint: #f5f3ff;
+  --bg-cyan-tint: #ecfeff;
+  --bg-fuchsia-tint: #fdf4ff;
+  --bg-lime-tint: #f7fee7;
 
   /* borders (border-* / outline) — darkened 2026-08-23 (twice: v2.2192, v2.2203) (owner: light-mode lines were
      too faint to separate sections; dark mode already reads). Old values: #e5e7eb / #d1d5db.
@@ -406,6 +412,11 @@ button:focus-visible {
   --bg-violet-200: #3f2d6e;
   --bg-indigo-100: #312e81;
   --bg-indigo-200: #34348c;
+  --bg-indigo-tint: #232a52;
+  --bg-violet-tint: #2c2350;
+  --bg-cyan-tint: #0f3139;
+  --bg-fuchsia-tint: #3a1a40;
+  --bg-lime-tint: #232f10;
 
   --border: #374151;
   --border-strong: #4b5563;

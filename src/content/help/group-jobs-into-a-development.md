@@ -37,7 +37,7 @@ The match reads the address alone. Spelling, capitals and a zip code do not matt
 
 ## Where the development shows up
 
-- **Jobs → Pipeline**: under the customer name in the Job column, marked with a house icon. When the GC, the general contractor, is also set, the house sits next to the GC's hard hat. Click the development name on any row to filter the whole board to it.
+- **Jobs → Pipeline**: under the customer name in the Job column, marked with a house icon. When the GC, the general contractor, is also set, the house sits next to the GC's hard hat. Press the development name on any row to open the development's page. To see only one development's jobs, use the house dropdown by the search.
 - **Job Detail**: under the customer name in the Customer block.
 - **Pipeline search**: typing a development's name surfaces every job in it.
 - **Pipeline development filter**: once any job has a development, a house-icon dropdown appears next to the search. Pick a development to see only its jobs. Every section and total follows. Pick **No development set** to see the jobs still needing one.

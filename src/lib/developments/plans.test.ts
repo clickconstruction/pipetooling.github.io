@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import type { MemberBid, MemberJob, Members, MemberRequest } from './overview'
-import { buildPlansView, olderOrNoneLine, planCellFor, plansNeedWords, type PlansLinkChange, type PlansView, plansAskLine, plansAskOnRecord } from './plans'
+import { buildPlansView, olderOrNoneLine, planCellFor, planSetMemoWrite, plansNeedWords, type PlansLinkChange, type PlansView, plansAskLine, plansAskOnRecord } from './plans'
 
 function bid(over: Partial<MemberBid> & { id: string }): MemberBid {
   return {
@@ -55,8 +55,9 @@ describe('buildPlansView', () => {
     expect(a).toEqual({
       key: 'https://p/A', link: 'https://p/A', dated: '2026-10-20', filedAt: '2026-10-07T00:00:00Z', filedBy: 'Mel',
       carriers: [{ kind: 'bid', id: 'BP401', label: 'BP401' }, { kind: 'bid', id: 'BP402', label: 'BP402' }, { kind: 'job', id: 'JP1102', label: 'JP1102' }],
+      memo: '', memoRow: null,
     })
-    expect(b).toEqual({ key: 'https://p/B', link: 'https://p/B', dated: null, filedAt: '2026-10-26T00:00:00Z', filedBy: null, carriers: [{ kind: 'job', id: 'JP1103', label: 'JP1103' }] })
+    expect(b).toEqual({ key: 'https://p/B', link: 'https://p/B', dated: null, filedAt: '2026-10-26T00:00:00Z', filedBy: null, carriers: [{ kind: 'job', id: 'JP1103', label: 'JP1103' }], memo: '', memoRow: null })
     expect(v.newest).toBe(a)
     expect(v.none.map((c) => c.id)).toEqual(['BP403', 'JP1104'])
     expect(v.olderOrNone.map((c) => c.id)).toEqual(['BP403', 'JP1104', 'JP1103'])
@@ -91,7 +92,7 @@ describe('plansNeedWords and olderOrNoneLine', () => {
     const c = (i: number) => ({ kind: 'bid' as const, id: `b${i}`, label: `b${i}` })
     const noneList = Array.from({ length: none }, (_, i) => c(i))
     const olderList = Array.from({ length: older }, (_, i) => c(100 + i))
-    const set: PlansView['sets'][number] = { key: 'A', link: 'A', dated: '2026-10-20', filedAt: null, filedBy: null, carriers: [c(900)] }
+    const set: PlansView['sets'][number] = { key: 'A', link: 'A', dated: '2026-10-20', filedAt: null, filedBy: null, carriers: [c(900)], memo: '', memoRow: null }
     return { sets: newest ? [set] : [], newest: newest ? set : null, none: noneList, olderOrNone: [...noneList, ...olderList] }
   }
   it('plansNeedWords: null when every piece is on the newest, else the count and what it lacks', () => {
@@ -138,5 +139,38 @@ describe('plansAskOnRecord and plansAskLine — the Plans question read back', (
     expect(plansAskOnRecord([answered, req({ id: 'new' })], NOW)?.id).toBe('new')
     expect(plansAskOnRecord([req({ title: 'Price?' })], NOW)).toBeNull()
     expect(plansAskOnRecord([req({ development_id: null, bid_id: 'b1' })], NOW)).toBeNull()
+  })
+})
+
+describe('the memo line on a set (v2.6207)', () => {
+  const members: Members = {
+    bids: [bid({ id: 'b1', plans_link: 'https://drive.google.com/drive/folders/A?usp=sharing' }), bid({ id: 'b2', plans_link: 'https://drive.google.com/drive/folders/A' }), bid({ id: 'b3', plans_link: 'https://drive.google.com/drive/folders/B' })],
+    jobs: [job({ id: 'j1', job_plans_link: 'https://drive.google.com/drive/folders/C' })],
+  }
+  const rows = [
+    { id: 'r-old', bid_id: 'b1', link: 'https://drive.google.com/drive/folders/A/', memo: 'first issue', updated_at: '2026-10-01T10:00:00Z' },
+    { id: 'r-new', bid_id: 'b2', link: 'https://drive.google.com/drive/folders/A', memo: 'P-201 redrawn, two more floor drains', updated_at: '2026-10-20T10:00:00Z' },
+  ]
+  it('reads the newest-touched row whose link is the set, across the usp tail and a trailing slash', () => {
+    const v = buildPlansView({ members, bidChanges: [], names, bidLabel: (b) => b.id, jobLabel: (j) => j.id, planSetRows: rows })
+    const a = v.sets.find((s) => s.link.endsWith('folders/A?usp=sharing') || s.link.endsWith('folders/A'))!
+    expect(a.memo).toBe('P-201 redrawn, two more floor drains')
+    expect(a.memoRow).toEqual({ id: 'r-new', bidId: 'b2' })
+    const b = v.sets.find((s) => s.link.endsWith('folders/B'))!
+    expect(b.memo).toBe('')
+    expect(b.memoRow).toBeNull()
+  })
+  it('without rows every memo reads empty', () => {
+    const v = buildPlansView({ members, bidChanges: [], names, bidLabel: (b) => b.id, jobLabel: (j) => j.id })
+    expect(v.sets.every((s) => s.memo === '' && s.memoRow === null)).toBe(true)
+  })
+  it('a typed memo updates the row that carries the link, starts a row on the first bid otherwise, and has nowhere to go on a jobs-only set', () => {
+    const v = buildPlansView({ members, bidChanges: [], names, bidLabel: (b) => b.id, jobLabel: (j) => j.id, planSetRows: rows })
+    const a = v.sets.find((s) => s.memoRow)!
+    expect(planSetMemoWrite(a)).toEqual({ kind: 'update', id: 'r-new' })
+    const b = v.sets.find((s) => s.link.endsWith('folders/B'))!
+    expect(planSetMemoWrite(b)).toEqual({ kind: 'insert', bidId: 'b3', link: 'https://drive.google.com/drive/folders/B', name: 'Plans' })
+    const c = v.sets.find((s) => s.link.endsWith('folders/C'))!
+    expect(planSetMemoWrite(c)).toBeNull()
   })
 })

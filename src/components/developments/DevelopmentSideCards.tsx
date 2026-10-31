@@ -5,9 +5,81 @@
  * (v2.6214); `QuestionRow` stays here, the one row shared with a record's own log (`RecordQuestions.tsx`).
  */
 import { requestIsOpen, type MemberRequest } from '../../lib/developments/overview'
-import { plansNeedWords, type PlanCarrier, type PlansView, plansAskLine, type PlansAsk } from '../../lib/developments/plans'
+import { planSetMemoWrite, plansNeedWords, type PlanCarrier, type PlanSet, type PlansView, plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { ageWords, Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 import { useState } from 'react'
+
+/**
+ * A set's memo line (v2.6207, the owner: *a memo line … an agent could use to record what they think has
+ * changed on the plans*): the words read in place; with a writer, a press opens a one-line box, Enter or
+ * Save keeps it, Escape or Cancel leaves it. A set that hangs on jobs alone has no row to hold a memo.
+ */
+function PlanSetMemo({ set, write }: { set: PlanSet; write?: (set: PlanSet, memo: string) => Promise<boolean> }) {
+  const [editing, setEditing] = useState(false)
+  const [draft, setDraft] = useState(set.memo)
+  const [busy, setBusy] = useState(false)
+  const canWrite = !!write && planSetMemoWrite(set) !== null
+  const keep = async () => {
+    if (!write || busy) return
+    setBusy(true)
+    const ok = await write(set, draft.trim())
+    setBusy(false)
+    if (ok) setEditing(false)
+  }
+  if (editing && canWrite) {
+    return (
+      <span style={{ display: 'inline-flex', gap: 6, alignItems: 'center', width: '100%', minWidth: 0 }} data-testid="plan-set-memo-edit">
+        <input
+          value={draft}
+          autoFocus
+          maxLength={2000}
+          disabled={busy}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') {
+              e.preventDefault()
+              void keep()
+            } else if (e.key === 'Escape') {
+              setDraft(set.memo)
+              setEditing(false)
+            }
+          }}
+          placeholder="What changed on the plans"
+          aria-label="The set's memo"
+          style={{ flex: 1, minWidth: 0, font: 'inherit', fontSize: '0.8rem', padding: '2px 6px', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'inherit' }}
+        />
+        <SmallButton onClick={() => void keep()} primary disabled={busy} title="Keep the memo on this set">
+          {busy ? 'Keeping…' : 'Save'}
+        </SmallButton>
+        <LinkButton
+          onClick={() => {
+            setDraft(set.memo)
+            setEditing(false)
+          }}
+          nowrap
+        >
+          Cancel
+        </LinkButton>
+      </span>
+    )
+  }
+  if (set.memo) {
+    return canWrite ? (
+      <button type="button" onClick={() => setEditing(true)} title="Change the memo" data-testid="plan-set-memo" style={{ font: 'inherit', fontSize: '0.82rem', color: 'inherit', background: 'none', border: 'none', padding: 0, textAlign: 'left', cursor: 'text', borderBottom: '1px dotted var(--border-strong)' }}>
+        {set.memo}
+      </button>
+    ) : (
+      <span data-testid="plan-set-memo">{set.memo}</span>
+    )
+  }
+  return canWrite ? (
+    <LinkButton onClick={() => setEditing(true)} title="Write what changed on the plans in this set" nowrap>
+      Add a memo
+    </LinkButton>
+  ) : (
+    <span style={{ color: 'var(--text-faint)' }}>—</span>
+  )
+}
 
 export function DevelopmentPlansCard({
   view,
@@ -15,9 +87,12 @@ export function DevelopmentPlansCard({
   askAbout,
   askOnRecord,
   openQuestions,
+  memoWriter,
 }: {
   view: PlansView
   openCarrier: (c: PlanCarrier) => void
+  /** Keeps a set's memo (v2.6207); absent for a reader who cannot write one. */
+  memoWriter?: (set: PlanSet, memo: string) => Promise<boolean>
   /** The Plans question read back (PR 5): while it waits the line stands where the press was; answered, the words read under the chips. */
   askOnRecord?: PlansAsk | null
   openQuestions?: () => void
@@ -46,6 +121,7 @@ export function DevelopmentPlansCard({
               <th style={th}>Set</th>
               <th style={th}>Dated</th>
               <th style={th}>Filed</th>
+              <th style={th}>Memo</th>
               <th style={th}>On</th>
             </tr>
           </thead>
@@ -67,6 +143,9 @@ export function DevelopmentPlansCard({
                 <td style={td}>
                   {s.filedAt ? shortDay(s.filedAt) : '—'}
                   {s.filedBy ? ` · ${s.filedBy}` : ''}
+                </td>
+                <td style={{ ...td, minWidth: 160 }}>
+                  <PlanSetMemo set={s} write={memoWriter} />
                 </td>
                 <td style={td}>{carriers(s.carriers)}</td>
               </tr>
