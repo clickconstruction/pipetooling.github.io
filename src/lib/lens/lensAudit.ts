@@ -316,7 +316,9 @@ export function auditFrame(win: Window, opts: { floor?: number; measure?: boolea
     const bg = effectiveBg(win, el)
     if (!bg) continue
     const fgRaw = parseRgb(cs.color)
-    if (!fgRaw) continue
+    // Words in a transparent ink are a spacer nobody sees, a sort arrow holding its width or a future day's
+    // number: not text to read, as a drawing's word in a faint fill is not.
+    if (!fgRaw || fgRaw.a < 0.15) continue
     const fg = over(fgRaw, bg)
     const ratio = contrastRatio(fg, bg)
     const text = own.map((n) => (n.textContent ?? '').trim()).join(' ').slice(0, 60)
