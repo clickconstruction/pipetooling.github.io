@@ -195,7 +195,7 @@ export function NewLaneSlot({
       onKeep={() => void run(() => io.answerInvitation(row.messageId, 'kept', null), INVITATION_WORDS.kept)}
       busy={busy}
       onName={(g: WhoGuess) =>
-        void run(
+        void run<unknown>(
           () =>
             g.notice
               ? io.markNotice(contact.id, g.notice.scope)
