@@ -537,8 +537,8 @@ export default function PeopleReviewTab({
                         padding: '0.3rem 0.75rem',
                         border: 0,
                         cursor: 'pointer',
-                        background: on ? 'var(--text-link)' : 'var(--surface)',
-                        color: on ? 'var(--surface)' : 'var(--text-700)',
+                        background: on ? '#2563eb' : 'var(--surface)',
+                        color: on ? '#fff' : 'var(--text-700)',
                       }}
                     >
                       {v === 'ranked' ? 'Ranked' : 'Table'}

@@ -48,9 +48,9 @@ type Step = 'upload' | 'names' | 'summary'
 type AliasDraft = { personName: string; notStaff: boolean; proxy: boolean; noteContains: string; notePersonName: string }
 
 const btn: CSSProperties = { font: 'inherit', fontSize: '0.875rem', fontWeight: 600, padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'var(--surface)' }
+const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
 const btnSm: CSSProperties = { ...btn, fontSize: '0.75rem', padding: '0.2rem 0.55rem', whiteSpace: 'nowrap' }
-const btnSmGreen: CSSProperties = { ...btnSm, background: 'var(--text-green-700)', borderColor: 'var(--text-green-700)', color: 'var(--surface)' }
+const btnSmGreen: CSSProperties = { ...btnSm, background: '#15803d', borderColor: '#15803d', color: '#fff' }
 const cellRight: CSSProperties = { padding: '0.4rem 0.6rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 const cell: CSSProperties = { padding: '0.4rem 0.6rem' }
 const inputStyle: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.25rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }
@@ -406,7 +406,7 @@ export function CashAppReconcileModal({ stubs, openReports, paymentsByStubId, us
   }, [existing === null])
 
   const stepPill = (s: Step, label: string) => (
-    <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, background: step === s ? 'var(--text-link)' : 'var(--bg-subtle)', color: step === s ? 'var(--surface)' : 'var(--text-muted)' }}>{label}</span>
+    <span style={{ fontSize: '0.75rem', fontWeight: 600, padding: '0.15rem 0.6rem', borderRadius: 999, background: step === s ? '#2563eb' : 'var(--bg-subtle)', color: step === s ? '#fff' : 'var(--text-muted)' }}>{label}</span>
   )
 
   const openRecordEditor = (t: TxRow) => {

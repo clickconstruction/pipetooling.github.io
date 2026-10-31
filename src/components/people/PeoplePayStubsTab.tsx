@@ -590,8 +590,8 @@ export default function PeoplePayStubsTab({
                             fontWeight: 600,
                             padding: '0.5rem 0.8rem',
                             border: 'none',
-                            background: paidSegment === v ? 'var(--text-link)' : 'var(--surface)',
-                            color: paidSegment === v ? 'var(--surface)' : 'var(--text-700)',
+                            background: paidSegment === v ? '#2563eb' : 'var(--surface)',
+                            color: paidSegment === v ? '#fff' : 'var(--text-700)',
                             cursor: 'pointer',
                             whiteSpace: 'nowrap',
                           }}

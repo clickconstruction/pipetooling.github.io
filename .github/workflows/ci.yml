@@ -111,6 +111,9 @@ jobs:
       - name: A button that cannot be pressed draws the dead-press pair
         run: npm run check:dead-press
 
+      - name: Words on a text-token fill draw in var(--surface)
+        run: npm run check:text-fill-words
+
       - name: An error names its reason (fails on added lines only)
         run: npm run check:error-words
 

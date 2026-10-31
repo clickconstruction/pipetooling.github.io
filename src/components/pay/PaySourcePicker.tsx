@@ -24,10 +24,10 @@ const pill = (on: boolean, disabled: boolean): CSSProperties => ({
   fontSize: '0.8rem',
   fontWeight: 600,
   padding: '0.3rem 0.7rem',
-  border: `1px solid ${on ? 'var(--text-link)' : 'var(--border-strong)'}`,
+  border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`,
   borderRadius: 999,
-  background: on ? 'var(--text-link)' : 'var(--surface)',
-  color: on ? 'var(--surface)' : 'var(--text-700)',
+  background: on ? '#2563eb' : 'var(--surface)',
+  color: on ? '#fff' : 'var(--text-700)',
   cursor: disabled ? 'not-allowed' : 'pointer',
   opacity: disabled ? 0.6 : 1,
 })

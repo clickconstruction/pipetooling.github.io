@@ -122,7 +122,7 @@ export default function JobContractStrip({
         </button>
       ) : null}
       {coverage.kind === 'none' || coverage.kind === 'draft' ? (
-        <button type="button" style={quiet ? btn : { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }} onClick={() => setModalOpen(true)}>
+        <button type="button" style={quiet ? btn : { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }} onClick={() => setModalOpen(true)}>
           {variant === 'inline' ? 'Send contract' : 'Send one to sign'}
         </button>
       ) : coverage.kind === 'sent' ? (

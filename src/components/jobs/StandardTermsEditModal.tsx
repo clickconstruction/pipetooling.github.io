@@ -13,7 +13,7 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { standardTermsLabel, standardTermsReachLine, standardTermsSaveBlocker, type StandardTermsDoc } from '../../lib/jobs/standardTerms'
 
 const btn: CSSProperties = { padding: '0.35rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 const field: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: '0.45rem 0.55rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.85rem' }
 
 export type StandardTermsEditModalProps = {

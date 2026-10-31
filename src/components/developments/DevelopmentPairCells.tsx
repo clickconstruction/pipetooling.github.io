@@ -134,9 +134,9 @@ function GapButton({ onClick, children, primary, disabled, title, testId }: { on
         // Small, as the owner asked (2026-10-28): four of these fit a cell's row.
         height: 20,
         padding: '0 6px',
-        border: `1px solid ${primary ? 'var(--text-link)' : 'var(--border-strong)'}`,
+        border: `1px solid ${primary ? '#2563eb' : 'var(--border-strong)'}`,
         borderRadius: 4,
-        background: primary ? 'var(--text-link)' : 'var(--bg-subtle)',
+        background: primary ? '#2563eb' : 'var(--bg-subtle)',
         color: primary ? '#fff' : 'var(--text-700)',
         font: 'inherit',
         fontSize: '0.66rem',

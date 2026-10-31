@@ -120,7 +120,7 @@ export function RecordSplitPaymentModal({ personName, rows, weekLabel, defaultAm
           <button type="button" onClick={onClose} disabled={saving} style={btn}>
             Cancel
           </button>
-          <button type="button" onClick={() => void save()} disabled={saving || parts.length === 0} style={{ ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: '#fff', opacity: saving || parts.length === 0 ? 0.6 : 1 }}>
+          <button type="button" onClick={() => void save()} disabled={saving || parts.length === 0} style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#fff', opacity: saving || parts.length === 0 ? 0.6 : 1 }}>
             {saving ? 'Saving…' : parts.length <= 1 ? <>Record <AmountSmallCents value={total} /></> : <>Record {parts.length} payments · <AmountSmallCents value={total} /></>}
           </button>
         </div>
