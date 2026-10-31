@@ -16,6 +16,8 @@ export type StatementsStripActs = {
   swear: () => void
   /** Open the window on this statement. */
   open: (entryId: string) => void
+  /** Open the window on its print sheet (v2.6211). */
+  print?: (entryId: string) => void
   /** Open the signed copy (PR 5), when filed. */
   openDocument?: (documentId: string) => Promise<void>
 }
@@ -53,6 +55,7 @@ export default function LegalStatementsStrip({ entries, todayYmd, canEdit, acts 
             </span>
             <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
               {acts ? <button type="button" onClick={() => acts.open(e.id)} style={btn}>{meta.state === 'signed' ? 'Open' : 'Open the draft'}</button> : null}
+              {acts?.print ? <button type="button" data-legal-statement-print onClick={() => acts.print!(e.id)} style={btn} title="The paper as it prints">Print</button> : null}
               {acts?.openDocument && meta.documentId ? <button type="button" onClick={() => void acts.openDocument!(meta.documentId!)} style={btn} title="Opens the signed scan in a new browser tab">Open the signed copy</button> : null}
             </span>
           </div>
