@@ -5,15 +5,17 @@ import { printNeedsDeclarant, statementPdfFilename, statementPrintFooter, statem
 const alvarez = { kind: 'team' as const, userId: 'u-da', name: 'Daniel Alvarez', role: 'RMP of record' }
 const draft: StatementDraft = { title: 'Affidavit of Daniel Alvarez', affiant: alvarez, incidentOn: '2026-09-03', incidentTo: '', form: 'notary', venueCounty: 'Guadalupe', body: 'Northline never called us back.\nI drove past the site.' }
 const declaration: StatementDraft = { ...draft, title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', userId: null, name: 'Thanh Nguyen', role: 'the foreman' }, form: 'declaration', venueCounty: 'Williamson' }
-const details = { ...DECLARANT_BLANK, firstName: 'Thanh', lastName: 'Nguyen', dateOfBirth: '1988-03-14', street: '1400 Example Rd', city: 'Round Rock', zip: '78664' }
+const details = { ...DECLARANT_BLANK, dateOfBirth: '1988-03-14', street: '1400 Example Rd', city: 'Round Rock', zip: '78664' }
 
 describe('the printed statement (punch list #220, v2.6211)', () => {
   it('a declaration waits on the declarant for the whole paper and the signing page, never for the statement alone or a notary', () => {
-    expect(printNeedsDeclarant('declaration', 'whole', null)).toBe(true)
-    expect(printNeedsDeclarant('declaration', 'signing', { ...DECLARANT_BLANK, firstName: 'T' })).toBe(true)
-    expect(printNeedsDeclarant('declaration', 'whole', details)).toBe(false)
-    expect(printNeedsDeclarant('declaration', 'statement', null)).toBe(false)
-    expect(printNeedsDeclarant('notary', 'whole', null)).toBe(false)
+    expect(printNeedsDeclarant(declaration, 'whole', null)).toBe(true)
+    expect(printNeedsDeclarant(declaration, 'signing', { ...DECLARANT_BLANK, dateOfBirth: '1988-03-14' })).toBe(true)
+    expect(printNeedsDeclarant(declaration, 'whole', details)).toBe(false)
+    // v2.6243: a one-word name waits even with the details held; the statute asks for a first and a last name.
+    expect(printNeedsDeclarant({ ...declaration, affiant: { ...declaration.affiant, name: 'Thanh' } }, 'whole', details)).toBe(true)
+    expect(printNeedsDeclarant(declaration, 'statement', null)).toBe(false)
+    expect(printNeedsDeclarant(draft, 'whole', null)).toBe(false)
   })
   it('the page is a light document with the title, the paragraphs, the jurat and the footer', () => {
     const html = statementPrintHtml({ draft, face: 'whole', declarant: null, accountWords: 'Northline Builders · job 742' })
