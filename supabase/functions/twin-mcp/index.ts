@@ -560,6 +560,37 @@ const TOOLS = [
     },
   },
   {
+    name: 'put_fixtures',
+    description:
+      "STG-5b (v1.9.0, punch list #221, Robot fixtures PR 1): the fixtures you found, written down once after paste_counts and before lock_shadow so the estimator's window can offer them row by row — one entry per fixture tag: tag, the name you priced it as (book_entry, a 🤖 Robot Default entry; unit_price fills from the book when you leave it out), the schedule row (description, manufacturer, model, connections), count and unit, per_sheet [{sheet, page, count, pins: [{x, y}] 0..1 of the page}], backing [{kind: schedule|note|legend|callout, sheet, page, text, flags: []}] — every line of plan text that names the tag, with its flag (exclusion, scope, by_others, existing, coordination) — scope_flag ('by_others' | 'existing' | 'alternate' when the plans give the fixture away), confidence 0..1, agreement ('agree' | 'conflict' | 'unverifiable': schedule vs drawn vs riser), remark (one sentence in your words), ct_pin_ids. Lands under the HUMAN bid your shell is paired to; replaces your earlier write unless a person has taken or set aside a row of it (then this is a later read). At most 400 fixtures. Never a total on the ledger line.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "YOUR shell (e.g. 'b2041' or uuid)" },
+        sheet_count: { type: 'integer', description: 'Pages in the set you read (defaults to the page text count)' },
+        fixtures: {
+          type: 'array',
+          description: 'One per fixture tag, in schedule order',
+          items: {
+            type: 'object',
+            properties: {
+              tag: { type: 'string' }, name: { type: 'string' }, book_entry: { type: 'string' }, unit_price: { type: 'number' },
+              description: { type: 'string' }, manufacturer: { type: 'string' }, model: { type: 'string' }, connections: { type: 'object' },
+              count: { type: 'number' }, unit: { type: 'string', enum: ['ea', 'ft', 'px', 'sqft'] },
+              per_sheet: { type: 'array', items: { type: 'object', properties: { sheet: { type: 'string' }, page: { type: 'integer' }, count: { type: 'number' }, pins: { type: 'array', items: { type: 'object', properties: { x: { type: 'number' }, y: { type: 'number' } } } } } } },
+              backing: { type: 'array', items: { type: 'object', properties: { kind: { type: 'string', enum: ['schedule', 'note', 'legend', 'callout'] }, sheet: { type: 'string' }, page: { type: 'integer' }, text: { type: 'string' }, flags: { type: 'array', items: { type: 'string' } } } } },
+              scope_flag: { type: 'string', enum: ['by_others', 'existing', 'alternate'] },
+              confidence: { type: 'number' }, agreement: { type: 'string', enum: ['agree', 'conflict', 'unverifiable'] }, remark: { type: 'string' },
+              ct_pin_ids: { type: 'array', items: { type: 'string' } },
+            },
+            required: ['tag', 'name', 'count'],
+          },
+        },
+      },
+      required: ['bid', 'fixtures'],
+    },
+  },
+  {
     name: 'next_plan_question',
     description:
       "Ask the robot to look (v1.7.0, punch list #142): claim the oldest open question a person asked about a bid's plans from the Plans panel — ONLY on a bid whose shadow you have sealed (locked or scored) or that has no shadow at all, so a question never reaches you before your own number exists (blind both ways). Returns the question, the human bid, YOUR shell on it (read its pages with get_plan_pages and its substrate with get_plan_brief), and the page text already on the human bid. Answer with put_plan_answer. Say what the plans SAY and WHERE, citing sheets; before the bid is sent never give a count or a price of your own — when asked how many, name the sheets and say you do not give counts before they send. done: true when nothing waits.",
@@ -3240,6 +3271,130 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
       }).then(() => {}, () => {})
       return textContent(JSON.stringify({ ok: true, bid: `b${shell.bid_number}`, pages: rows.length, with_text: withText, landed_on: targetBidId === shell.id ? 'this shell' : 'the human bid this shell shadows' }))
     }
+    case 'put_fixtures': {
+      // Robot fixtures (punch list #221, PR 1 / v1.9.0): the fixtures the robot found, each with the plan
+      // text that backs it, its pins, its check and its price, written once after paste_counts so the
+      // estimator's window (PR 3) can offer them. Lands on the HUMAN bid the shell is paired to, the way
+      // put_plan_text does; the window's RPCs (take, set aside, put back) own every later change.
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      const fixturesIn = Array.isArray(args.fixtures) ? (args.fixtures as Array<Record<string, unknown>>) : null
+      if (!ref || !fixturesIn || fixturesIn.length === 0) return textContent('put_fixtures needs bid + fixtures (one per fixture tag: tag, name, count, book_entry, per_sheet, backing, …)', true)
+      if (fixturesIn.length > 400) return textContent(`put_fixtures takes at most 400 fixtures (got ${fixturesIn.length})`, true)
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let bq = admin.from('bids').select('id, bid_number, created_by, estimator_id, twin_source_bid_id, service_type_id, plans_link, count_tooling_plans_link')
+      bq = uuidRe.test(ref) ? bq.eq('id', ref) : bq.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: shell } = await bq.maybeSingle()
+      if (!shell) return textContent(`No bid found for "${ref}"`, true)
+      if (shell.created_by !== twin.twinUserId && shell.estimator_id !== twin.twinUserId) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — fixtures land only through your own shell.`, true)
+      }
+      const targetBidId = (shell as { twin_source_bid_id?: string | null }).twin_source_bid_id ?? shell.id
+      // The live run on this shell; a voided run never carries a pull.
+      const { data: run } = await admin.from('twin_shadow_runs').select('id').eq('shadow_bid_id', shell.id).neq('status', 'void').order('created_at', { ascending: false }).limit(1).maybeSingle()
+      // The 🤖 Robot Default book prices a row the robot did not price itself (paste_counts' lookup).
+      const entryPrice = new Map<string, number>()
+      const { data: robotVer } = await admin.from('price_book_versions').select('id').eq('is_robot', true).is('bid_id', null).eq('service_type_id', shell.service_type_id).maybeSingle()
+      if (robotVer) {
+        const { data: entries } = await admin.from('price_book_entries').select('total_price, fixture_types(name)').eq('version_id', robotVer.id).limit(1000)
+        for (const e of entries ?? []) {
+          const nm = (e.fixture_types as { name?: string } | null)?.name
+          if (nm) entryPrice.set(nm.trim().toLowerCase(), Number(e.total_price))
+        }
+      }
+      const str = (v: unknown, max: number): string | null => (typeof v === 'string' ? v.trim().slice(0, max) || null : null)
+      const num = (v: unknown): number | null => (v == null || v === '' ? null : Number.isFinite(Number(v)) ? Number(v) : null)
+      const SCOPE = ['by_others', 'existing', 'alternate']
+      const AGREE = ['agree', 'conflict', 'unverifiable']
+      const UNITS = ['ea', 'ft', 'px', 'sqft']
+      const seen = new Set<string>()
+      const rows = fixturesIn.map((f, i) => {
+        const bookEntry = str(f.book_entry ?? f.robot_book_entry, 300)
+        const own = num(f.unit_price ?? f.robot_unit_price)
+        const price = own != null && own >= 0 ? Math.round(own * 100) / 100 : bookEntry ? (entryPrice.get(bookEntry.toLowerCase()) ?? null) : null
+        const unit = (str(f.unit, 8) ?? 'ea').toLowerCase()
+        const count = num(f.count) ?? 0
+        const conf = num(f.confidence)
+        const scope = str(f.scope_flag, 20)
+        const agreement = str(f.agreement, 20)
+        return {
+          bid_id: targetBidId,
+          tag: str(f.tag, 40),
+          name: str(f.name, 300),
+          description: str(f.description, 1000),
+          manufacturer: str(f.manufacturer, 200),
+          model: str(f.model, 200),
+          connections: f.connections && typeof f.connections === 'object' && !Array.isArray(f.connections) ? f.connections : null,
+          count: count < 0 ? 0 : Math.round(count * 100) / 100,
+          unit: UNITS.includes(unit) ? unit : 'ea',
+          per_sheet: Array.isArray(f.per_sheet) ? f.per_sheet.slice(0, 200) : [],
+          backing: Array.isArray(f.backing) ? f.backing.slice(0, 200) : [],
+          scope_flag: scope && SCOPE.includes(scope) ? scope : null,
+          confidence: conf == null ? null : Math.min(1, Math.max(0, conf)),
+          agreement: agreement && AGREE.includes(agreement) ? agreement : null,
+          remark: str(f.remark, 1000),
+          ct_pin_ids: Array.isArray(f.ct_pin_ids) ? f.ct_pin_ids.slice(0, 500) : null,
+          robot_book_entry: bookEntry,
+          robot_unit_price: price,
+          sequence_order: i + 1,
+        }
+      })
+      const bad = rows.map((r, i) => (!r.tag || !r.name ? i + 1 : 0)).filter(Boolean)
+      if (bad.length) return textContent(`put_fixtures: every fixture needs tag + name (rows ${bad.join(', ')})`, true)
+      const dupes = rows.filter((r) => { const k = r.tag!.toLowerCase(); if (seen.has(k)) return true; seen.add(k); return false }).map((r) => r.tag)
+      if (dupes.length) return textContent(`put_fixtures: one entry per tag — repeated: ${dupes.join(', ')}`, true)
+      // The shell's earlier write is replaced unless a person touched it; then this is a later read.
+      const { data: earlier } = await admin.from('bid_fixture_pulls').select('id').eq('shell_bid_id', shell.id)
+      let replaced = 0
+      for (const p of (earlier ?? []) as Array<{ id: string }>) {
+        const { count: touched } = await admin.from('bid_fixture_pull_rows').select('id', { count: 'exact', head: true }).eq('pull_id', p.id).or('taken_at.not.is.null,set_aside_at.not.is.null')
+        if ((touched ?? 0) === 0) {
+          await admin.from('bid_fixture_pulls').delete().eq('id', p.id)
+          replaced++
+        }
+      }
+      const sheetCount = Number.isInteger(args.sheet_count) && Number(args.sheet_count) > 0
+        ? Number(args.sheet_count)
+        : ((await admin.from('bids_plan_pages').select('page', { count: 'exact', head: true }).eq('bid_id', targetBidId)).count ?? null)
+      const checkSummary = {
+        agree: rows.filter((r) => r.agreement === 'agree').length,
+        conflict: rows.filter((r) => r.agreement === 'conflict').length,
+        unverifiable: rows.filter((r) => r.agreement === 'unverifiable').length,
+      }
+      const robotTotal = Math.round(rows.reduce((s, r) => s + (r.robot_unit_price != null ? r.count * r.robot_unit_price : 0), 0) * 100) / 100
+      const { data: pull, error: pullErr } = await admin.from('bid_fixture_pulls').insert({
+        bid_id: targetBidId,
+        shell_bid_id: shell.id,
+        shadow_run_id: (run as { id: string } | null)?.id ?? null,
+        plan_link: (shell as { plans_link?: string | null }).plans_link ?? null,
+        ct_link: (shell as { count_tooling_plans_link?: string | null }).count_tooling_plans_link ?? null,
+        sheet_count: sheetCount,
+        source: 'robot',
+        check_summary: checkSummary,
+        robot_total: robotTotal,
+        created_by: twin.twinUserId,
+      }).select('id').single()
+      if (pullErr || !pull) return textContent(`Fixtures not saved: ${pullErr?.message ?? 'no row'}`, true)
+      const { error: rowsErr } = await admin.from('bid_fixture_pull_rows').insert(rows.map((r) => ({ ...r, pull_id: pull.id })))
+      if (rowsErr) {
+        await admin.from('bid_fixture_pulls').delete().eq('id', pull.id)
+        return textContent(`Fixture rows not saved: ${rowsErr.message}`, true)
+      }
+      const sure = rows.filter((r) => (r.confidence ?? 1) >= 0.7 && (r.agreement ?? 'agree') === 'agree' && !r.scope_flag).length
+      const priced = rows.filter((r) => r.robot_unit_price != null).length
+      await admin.from('bids_submission_entries').insert({
+        bid_id: shell.id,
+        notes: `[pipeline STG-5b] ${rows.length} fixture${rows.length === 1 ? '' : 's'} handed to the estimator (${sure} sure, ${rows.length - sure} to look at, ${priced} priced${replaced ? '; an earlier read replaced' : ''}) via twin-mcp put_fixtures — the window offers them once this shell seals.`,
+      }).then(() => {}, () => {})
+      return textContent(JSON.stringify({
+        ok: true, bid: `b${shell.bid_number}`, pull_id: pull.id, fixtures: rows.length, sure, priced, sheet_count: sheetCount,
+        landed_on: targetBidId === shell.id ? 'this shell' : 'the human bid this shell shadows',
+        replaced_earlier_read: replaced > 0,
+        next: 'add_bid_note [STG-3..5 + LOCK], then lock_shadow',
+      }))
+    }
     case 'next_plan_question': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -3718,7 +3873,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.8.1' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.9.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })
