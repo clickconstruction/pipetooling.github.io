@@ -59,6 +59,7 @@ import { nobodyMatchesWords, nobodyUnderFilterWords } from '../../lib/people/peo
 import { useToastContext } from '../../contexts/ToastContext'
 import { NO_ARCHIVED_ROSTER, splitNamesByArchived, type ArchivedRoster } from '../../lib/people/rosterPeople'
 import { isCompanyPaperName } from '../../../supabase/functions/_shared/companyPaper'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 
 /** Small tinted pill for a document signing state; anything unknown renders as unsent. */
 function ContractStatusChip({ status, label }: { status: string; label: string }) {
@@ -910,8 +911,8 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                                                       style={{
                                                         padding: '0.2rem 0.4rem',
                                                         fontSize: '0.75rem',
-                                                        background: '#0ea5e9',
-                                                        color: '#fff',
+                                                        background: SKY_UNDER_WORDS,
+                                                        color: WORDS_ON_SKY,
                                                         border: 'none',
                                                         borderRadius: 4,
                                                         cursor: 'pointer',
@@ -3348,8 +3349,8 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                     }
                     style={{
                       padding: '0.5rem 1rem',
-                      background: '#0ea5e9',
-                      color: '#fff',
+                      background: SKY_UNDER_WORDS,
+                      color: WORDS_ON_SKY,
                       border: 'none',
                       borderRadius: 6,
                       cursor: contractDocumentFormSaving ? 'not-allowed' : 'pointer',
@@ -3648,8 +3649,8 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                 disabled={contractSendSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#0ea5e9',
-                  color: '#fff',
+                  background: SKY_UNDER_WORDS,
+                  color: WORDS_ON_SKY,
                   border: 'none',
                   borderRadius: 6,
                   cursor: contractSendSaving ? 'not-allowed' : 'pointer',

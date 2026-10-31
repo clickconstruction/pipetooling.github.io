@@ -108,9 +108,10 @@ const ROWS: FollowUpRows = {
     person('greg', 'trade', { gc_company_id: 'hillside', has_user_id: 'u-rosa', has_since: '2026-10-01T15:00:00.000Z', has_how: 'handed' }),
     person('priya', 'customer', { customer_contact_person_id: 'helotes-priya', has_user_id: 'u-rosa', has_since: '2026-09-26T19:30:00.000Z', has_how: 'took' }),
     person('elena', 'customer', { customer_contact_person_id: 'cibolo-elena' }),
-    person('unk1', 'unknown'),
+    // An email from an address nobody has named, whose From line gave a name.
+    person('unk1', 'unknown', { name: 'Glenn Geling' }),
   ],
-  channels: [],
+  channels: [{ id: 'ch-unk', contact_id: 'unk1', kind: 'email', value: 'glenn@ridgeway.example', opted_out_at: null, created_at: '2026-10-02T15:00:00.000Z' }],
   records: {
     gcCompanies: [{ id: 'hillside', name: 'Hillside Excavation', contact_name: 'Greg Paulk', trades: ['Sitework'] }],
     customers: [
@@ -127,7 +128,7 @@ const ROWS: FollowUpRows = {
     line('m-priya', 'priya', 'voicemail', 'in', '2026-10-01T20:00:00.000Z', 'Calling about when you start.'),
     line('n-elena', 'elena', 'note', 'team', '2026-09-28T15:00:00.000Z', 'Call Elena about the gate code.', { who_user_id: 'u-rosa', back_on: TODAY, back_by: 'u-rosa' }),
     line('m-elena', 'elena', 'portal', 'in', '2026-10-02T13:00:00.000Z', 'Can the sink in exam 3 move left?'),
-    line('m-unk', 'unk1', 'text', 'in', '2026-10-02T15:00:00.000Z', 'Is this the plumbing office?'),
+    line('m-unk', 'unk1', 'email', 'in', '2026-10-02T15:00:00.000Z', 'Is this the plumbing office?', { subject: 'Invitation to bid' }),
   ],
   heard: [question('q-greg', 'm-greg', 'greg', '2026-10-01T14:00:00.000Z')],
   owed: [owed('o-priya', 'priya', 'the start date', '2026-10-05')],
@@ -217,11 +218,14 @@ describe('FollowUpPanel', () => {
     expect(rowIn('Needs a reply', 'greg').getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
     expect(rowIn('Needs a reply', 'priya').getByRole('button', { name: 'Rosa has this' })).toBeTruthy()
     expect((rowIn('Needs a reply', 'priya').getByRole('button', { name: 'Call back' }) as HTMLButtonElement).disabled).toBe(true)
-    // The number nobody has named waits in New, first, and not in Needs a reply.
+    // The address nobody has named waits in New, first, and not in Needs a reply.
     expect(screen.getByRole('heading', { name: 'New (1)' })).toBeTruthy()
-    // One control on the row (v2.5793): the question beside the name, nothing repeating it under the words.
+    // One control on the row (v2.5793): the question, nothing repeating it under the words.
     expect(rowIn('New', 'unk1').getAllByRole('button', { name: 'Who is this?' })).toHaveLength(1)
     expect(rowIn('New', 'unk1').getByRole('button', { name: 'Who is this?' }).getAttribute('data-new-lane-press')).toBe('who')
+    // The question sits before the name (v2.6191), and the address the line came from after it.
+    const head = rowIn('New', 'unk1').getByRole('button', { name: 'Who is this?' }).parentElement!
+    expect([...head.children].map((el) => el.textContent)).toEqual(['Who is this? ›', 'Glenn Geling', 'glenn@ridgeway.example'])
 
     const needsYou = within(screen.getByRole('region', { name: 'Needs you' }))
     expect(needsYou.getByText('Call Elena about the gate code.')).toBeTruthy()

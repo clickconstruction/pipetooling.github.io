@@ -2522,7 +2522,6 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     openQuickAssignForJob,
     authRole,
     loadJobs,
-    onDevelopmentFilter: setStagesDevelopmentFilter,
     jobContractCoverageByJobId: canSeeJobContracts ? jobContractCoverageByJobId : undefined,
     onOpenJobContract: openContractChip,
     legalMatterByJobId: legalMatters.byJobId,

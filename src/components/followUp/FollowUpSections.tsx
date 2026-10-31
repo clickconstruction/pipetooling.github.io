@@ -198,10 +198,12 @@ function Section({ id, name, count, note, look, color, action, children }: { id:
   )
 }
 
-/** One person's row: a press anywhere off its buttons opens the thread at its line. */
+/** One person's row: a press anywhere off its buttons opens the thread at its line. `lead` draws before the name, `beside` and `pill` after it. */
 function Row<C, N extends { contactId: string }>({
   contact,
   landOn,
+  lead,
+  beside,
   pill,
   sub,
   snippet,
@@ -210,6 +212,8 @@ function Row<C, N extends { contactId: string }>({
 }: {
   contact: FollowUpContact
   landOn?: string | null
+  lead?: ReactNode
+  beside?: ReactNode
   pill?: ReactNode
   sub: string
   snippet?: ReactNode
@@ -242,7 +246,9 @@ function Row<C, N extends { contactId: string }>({
           </span>
           <span style={{ display: 'grid', flex: 1, minWidth: 180 }}>
             <span style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', flexWrap: 'wrap' }}>
+              {lead}
               <strong>{contact.name}</strong>
+              {beside}
               {pill}
             </span>
             <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{sub}</span>
@@ -324,7 +330,7 @@ function PortalRowView<C, N extends { contactId: string }>({ row, contact, ...pr
   )
 }
 
-/** The one press on a New row (v2.5793): the sort's question as a small blue pill beside the name, the same words as the card it opens. */
+/** The one press on a New row (v2.5793): the sort's question as a small blue pill before the name (v2.6191), the same words as the card it opens. */
 const SORT_PRESS: CSSProperties = {
   display: 'inline-block',
   padding: '0.1rem 0.6rem',
@@ -341,9 +347,10 @@ const SORT_PRESS: CSSProperties = {
 }
 
 /**
- * A person who still needs sorting. One control, the sort's question beside the name (*Who is this? ›*), opens the
- * thread at the sort card, as the row itself does; since v2.5793 nothing repeats it under the subject. When the app
- * texted back after their missed call (v2.6012) a quiet line says so, and that the row still waits.
+ * A person who still needs sorting. One control, the sort's question before the name (*Who is this? ›*, since v2.6191;
+ * beside it from v2.5793), opens the thread at the sort card, as the row itself does; nothing repeats it under the
+ * subject. After the name, the address or the number the line came from (`row.reach`), quiet, unless the name is it
+ * already. When the app texted back after their missed call (v2.6012) a quiet line says so, and that the row still waits.
  */
 function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: NewLaneRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
   const { actions } = props
@@ -351,11 +358,18 @@ function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props
     <Row
       contact={contact}
       landOn={row.messageId}
-      pill={
+      lead={
         <button type="button" onClick={() => actions.openThread(contact.id, row.messageId)} title={row.why} style={SORT_PRESS} data-new-lane-press={row.sort}>
           {row.head}
           <span aria-hidden> ›</span>
         </button>
+      }
+      beside={
+        row.reach ? (
+          <span data-new-lane-reach style={{ fontSize: '0.85rem', color: 'var(--text-muted)', overflowWrap: 'anywhere', minWidth: 0 }}>
+            {row.reach}
+          </span>
+        ) : undefined
       }
       sub={[contact.kind === 'unknown' ? '' : companyOf(contact), row.via, row.when].filter(Boolean).join(' · ')}
       snippet={clip(row.words)}

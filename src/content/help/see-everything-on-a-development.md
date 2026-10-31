@@ -15,6 +15,8 @@ You put bids and jobs into a development first. The guide [group bids and jobs i
 2. Find the house line near the top. It names the development with a small house.
 3. Press the development's name.
 
+A Pipeline row has the same door. Press the development name under the job's customer, marked with the house.
+
 The page opens with the site's name, its customer and its GC at the top. Under them you see who is on site and five counts.
 
 ## Read the five counts
@@ -40,7 +42,7 @@ A strip under the counts names five looks: History, Pieces, Money, Plans and Que
 
 History is one dated list, newest first. It holds what the records did and what people wrote. A send, a stage move, a bill or a payment draws a line. So does a note on a job or a bid, a plan set filed, and the customer's contact log.
 
-1. Press a chip under the search box to narrow the list. Press {{chip:blue|Plans}} to see every plan set filed, newest first.
+1. Press a chip under the search box to narrow the list. Press {{chip:blue|Plans}} to see every plan set filed, newest first. On a phone the chips sit in one row. Slide the row sideways to reach the rest.
 2. Type a name, a number or a word into the search box to find a line.
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
 
