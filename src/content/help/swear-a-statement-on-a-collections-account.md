@@ -49,7 +49,7 @@ Press {{button:outline|Print}} in the window. A new or changed draft saves first
 
 Press the ▾ beside Print to pick a face. **The whole paper** is the statement, the signature line and the jurat. **The statement alone** has no signing block. Read it over together before anyone signs. **The signing page alone** is the jurat with a line naming the handwritten statement it is stapled to. Print it when a witness writes their own words. The signer initials each page.
 
-A declaration with no notary asks for the declarant's full name, date of birth and address. Texas puts them on the paper. Type them when you print. The desk keeps them for this session only and never saves them. Each print is noted on the row: when, by whom and which face.
+A declaration with no notary asks for the declarant's date of birth and address when you print. Texas puts them on the paper beside the full name. The name comes from **Their full name** in the window, so the paper names them one way. A name of one word holds the print. Press {{button:outline|Change the name}} and type it as it reads on their ID. The desk keeps the date of birth and the address for this session only. It never saves them. Each print is noted on the row: when, by whom and which face.
 
 :::example The witness dislikes a sentence
 Open the draft from the Timeline. Change the sentence. Press Print. The print sheet opens on the new page. Four presses, on a phone or at the desk.

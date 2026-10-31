@@ -18,7 +18,8 @@
  *   - NO NOTARY, UNDER PENALTY OF PERJURY: an unsworn declaration under Tex. Civ. Prac. & Rem. Code
  *     § 132.001, the jurat of subsection (d) quoted whole (`DECLARATION_STATUTE_FORM`). § 132.001(b)
  *     keeps it off any paper the county clerk files, so the § 53.054 lien affidavit never takes it.
- *     The declarant's date of birth and address are typed at print time and never saved.
+ *     The declarant's date of birth and address are typed at print time and never saved. The block names the
+ *     declarant by *Their full name* from the draft, so the paper names them one way (v2.6243).
  *
  * Three print faces under each form: the whole paper, the statement alone (to read over together),
  * and the signing page alone, which names the handwritten statement it is stapled to. The signing
@@ -254,9 +255,20 @@ export function incidentSpanWords(incidentOn: string, incidentTo: string | null)
  * and sound mind, and that the facts are their own. A witness also says their role and that they have no
  * stake. The noun follows the form: an affidavit before a notary, a declaration without one.
  */
+/** A name as the paper prints it: trimmed, one space between words (v2.6243). */
+export function fullNameWords(name: string): string {
+  return name.trim().split(/\s+/).filter(Boolean).join(' ')
+}
+
+/** A single word: the roster may hold a first name only, and § 132.001(d) asks for a first and a last name. */
+export function isOneWordName(name: string): boolean {
+  const n = fullNameWords(name)
+  return n !== '' && !n.includes(' ')
+}
+
 export function statementOpener(affiant: StatementAffiant, form: AffidavitForm): string {
   const noun = form === 'notary' ? 'affidavit' : 'declaration'
-  const name = affiant.name.trim() || '_______________'
+  const name = fullNameWords(affiant.name) || '_______________'
   const base = `My name is ${name}. I am over eighteen years of age, of sound mind, and capable of making this ${noun}.`
   if (affiant.kind === 'witness') {
     const role = affiant.role.trim()
@@ -283,42 +295,42 @@ export const DECLARATION_STATUTE_FORM =
 /** The sentence every declaration carries, word for word from § 132.001(d). */
 export const DECLARATION_PERJURY_SENTENCE = 'I declare under penalty of perjury that the foregoing is true and correct.'
 
-/** What the declarant types when the office presses Print on a declaration: held for the session, never saved. */
-export type DeclarantDetails = { firstName: string; middleName: string; lastName: string; dateOfBirth: string; street: string; city: string; state: string; zip: string; country: string }
+/**
+ * What the declarant types when the office presses Print on a declaration: held for the session, never saved. The
+ * name is not asked again here (v2.6243): the block reads *Their full name* from the draft, so the title, ¶1, the
+ * block and the signature name the declarant one way.
+ */
+export type DeclarantDetails = { dateOfBirth: string; street: string; city: string; state: string; zip: string; country: string }
 
-export const DECLARANT_BLANK: DeclarantDetails = { firstName: '', middleName: '', lastName: '', dateOfBirth: '', street: '', city: '', state: 'Texas', zip: '', country: 'United States of America' }
+export const DECLARANT_BLANK: DeclarantDetails = { dateOfBirth: '', street: '', city: '', state: 'Texas', zip: '', country: 'United States of America' }
 
-/** Why the declarant's details cannot print yet; null when the block is whole. */
-export function declarantProblem(d: DeclarantDetails): string | null {
-  if (!d.firstName.trim() || !d.lastName.trim()) return 'Type the declarant’s first and last name as the statute asks.'
+/** Why the declaration's block cannot print yet; null when it is whole. A one-word name waits too, for the statute's first and last. */
+export function declarantProblem(d: DeclarantDetails, name: string): string | null {
+  if (!fullNameWords(name)) return 'Type their full name on the statement first.'
+  if (isOneWordName(name)) return 'Their full name is one word. Texas asks for a first and a last name. Go back and type it as it reads on their ID.'
   if (!d.dateOfBirth.trim()) return 'Type the declarant’s date of birth.'
   if (!d.street.trim() || !d.city.trim() || !d.state.trim() || !d.zip.trim() || !d.country.trim()) return 'Type the declarant’s street, city, state, zip code and country.'
   return null
 }
 
 /**
- * The § 132.001(d) block as the paper prints it: the two sentences with the declarant's details, then the
- * *Executed in* line with the county named (or the blank) and the day left blank for the declarant's hand.
- * With no details, the statute's own blanks print, so a paper can still be handed over to fill by hand.
+ * The § 132.001(d) block as the paper prints it: the two sentences with the draft's full name and the declarant's
+ * details, then the *Executed in* line with the county named (or the blank) and the day left blank for the
+ * declarant's hand. With no details, the statute's own blanks print, so a paper can still be filled by hand.
  */
-export function declarationJurat(details: DeclarantDetails | null, venueCounty: string): { statement: string; executed: string } {
+export function declarationJurat(details: DeclarantDetails | null, venueCounty: string, name: string): { statement: string; executed: string } {
   const county = venueCounty.trim() || '__________'
-  if (!details) {
-    return { statement: DECLARATION_STATUTE_FORM.slice(0, DECLARATION_STATUTE_FORM.indexOf(' Executed in')), executed: `Executed in ${county} County, State of Texas, on the ______ day of __________, __________.` }
-  }
-  const name = [details.firstName, details.middleName, details.lastName].map((s) => s.trim()).filter(Boolean).join(' ')
+  const executed = `Executed in ${county} County, State of Texas, on the ______ day of __________, __________.`
+  if (!details) return { statement: DECLARATION_STATUTE_FORM.slice(0, DECLARATION_STATUTE_FORM.indexOf(' Executed in')), executed }
   const dob = details.dateOfBirth.trim()
   const address = `${details.street.trim()}, ${details.city.trim()}, ${details.state.trim()} ${details.zip.trim()}, and ${details.country.trim()}`
-  return {
-    statement: `My name is ${name}, my date of birth is ${YMD.test(dob) ? statementLongDay(dob) : dob}, and my address is ${address}. ${DECLARATION_PERJURY_SENTENCE}`,
-    executed: `Executed in ${county} County, State of Texas, on the ______ day of __________, __________.`,
-  }
+  return { statement: `My name is ${fullNameWords(name) || '__________'}, my date of birth is ${YMD.test(dob) ? statementLongDay(dob) : dob}, and my address is ${address}. ${DECLARATION_PERJURY_SENTENCE}`, executed }
 }
 
 /** The signing page alone names what it is stapled to, so no notary or court calls it a loose jurat. */
 export function attachedToLine(form: AffidavitForm, affiantName: string): string {
   const noun = form === 'notary' ? 'This jurat' : 'This declaration'
-  return `${noun} is attached to the handwritten statement of ${affiantName.trim() || '_______________'}, _____ pages, each initialed by the signer.`
+  return `${noun} is attached to the handwritten statement of ${fullNameWords(affiantName) || '_______________'}, _____ pages, each initialed by the signer.`
 }
 
 /** The line over the affiant's signature on a sworn paper: the day is the notary's to fill. */
@@ -339,7 +351,7 @@ export type StatementPaperInput = {
  */
 export function statementPaperBlocks(input: StatementPaperInput): FilingDocBlock[] {
   const { draft, face } = input
-  const name = draft.affiant.name.trim() || '_______________'
+  const name = fullNameWords(draft.affiant.name) || '_______________'
   const title = draft.title.trim() || (draft.form === 'notary' ? 'Affidavit' : 'Declaration')
   const blocks: FilingDocBlock[] = []
   if (face === 'signing') {
@@ -377,7 +389,7 @@ function signingBlocks(input: StatementPaperInput, name: string): FilingDocBlock
       { kind: 'notarial', who: name, county: draft.venueCounty, courtesy: true },
     ]
   }
-  const j = declarationJurat(input.declarant ?? null, draft.venueCounty)
+  const j = declarationJurat(input.declarant ?? null, draft.venueCounty, draft.affiant.name)
   return [
     { kind: 'paragraph', text: j.statement },
     { kind: 'paragraph', text: j.executed },
