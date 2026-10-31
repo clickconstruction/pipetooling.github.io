@@ -107,7 +107,13 @@ describe('every table that hangs off a count row is handled by every copy (v2.43
    * picks belong to the bid the submittal was built on. A submittal is built after the award, and
    * a bid is copied or adopted before it is sent. A new table goes here only with a decision.
    */
-  const NOT_CARRIED_YET = ['bid_submittal_takeoff_choices']
+  /**
+   * Left behind on purpose too (v2.6188, punch list #221): the robot's fixtures are the robot's read of ONE bid's plans
+   * for its own division. A duplicate to another service type does not carry them — the robot reads the duplicate
+   * itself when it shadows it. A new version re-keys the take to the cloned rows and an adopt moves the pull with the
+   * rows, both in 20261031010000_robot_fixtures_copies.sql; the duplicate's gate below is why the table sits here.
+   */
+  const NOT_CARRIED_YET = ['bid_submittal_takeoff_choices', 'bid_fixture_pull_rows']
   /**
    * Not a row on a count row at all, so never copied, re-keyed or moved: `bid_changes` is the bid
    * history ledger (punch list #73, v2.4598). It carries count_row_id and bid_id to find a
@@ -128,6 +134,7 @@ describe('every table that hangs off a count row is handled by every copy (v2.43
       'bid_count_row_custom_costs',
       'bid_count_row_custom_prices',
       'bid_count_row_submission_hides',
+      'bid_fixture_pull_rows',
       'bid_pricing_assignments',
       'bid_submittal_takeoff_choices',
       'bid_takeoff_stage_splits',
