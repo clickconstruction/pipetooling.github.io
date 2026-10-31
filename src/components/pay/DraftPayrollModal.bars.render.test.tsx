@@ -137,7 +137,9 @@ describe('DraftPayrollModal with the bars', () => {
     const rosa = screen.getByTestId('draft-payroll-row-bar-Rosa Sample')
     expect(within(rosa).getByText('no report yet')).toBeTruthy()
     expect(screen.getAllByText('est.')).toHaveLength(1)
-    expect(screen.getByText('salary 8h')).toBeTruthy()
+    // salary 8h sits under the $ figure, not beside the name (the owner, 2026-10-30).
+    const salary = screen.getByText('salary 8h')
+    expect(salary.closest('td')?.querySelector('[data-draft-payroll-money]')).toBeTruthy()
     // The owner (2026-10-30): no legend under the period bar and no key paragraph under the table; the words are inside the parts and on the hover.
     expect(screen.queryByText(/A green bar is money sent/)).toBeNull()
     expect(within(period).getByText('owed $872.00')).toBeTruthy()

@@ -646,7 +646,6 @@ export function DraftPayrollModal({
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {person}
-                            {rowBar?.salaryFlat ? <DraftPayrollSalaryChip /> : null}
                             {rowBar && rowBar.pendingSessions > 0 ? <DraftPayrollPendingDot n={rowBar.pendingSessions} onPress={pendingPress} /> : null}
                           </td>
                           {rowBar ? (
@@ -725,6 +724,7 @@ export function DraftPayrollModal({
                           <td style={{ padding: '0.5rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }}>
                             {rowBar ? <DraftPayrollMoney amount={draftPayrollRowCashDue(stub?.gross_pay, estGross)} /> : `$${formatCurrency(draftPayrollRowCashDue(stub?.gross_pay, estGross))}`}
                             {rowBar?.estimated ? <DraftPayrollEstChip /> : null}
+                            {rowBar?.salaryFlat ? <DraftPayrollSalaryChip /> : null}
                           </td>
                           <td style={{ padding: '0.5rem 0.75rem' }}>
                             {stub ? (

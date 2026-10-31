@@ -141,12 +141,12 @@ export function DraftPayrollEstChip() {
   )
 }
 
-/** *salary 8h* beside a salaried person: the hours are the flat rule, not a clock. */
+/** *salary 8h* as a small line under a salaried person's figure (the owner, 2026-10-30: not beside the name): the hours are the flat rule, not a clock. */
 export function DraftPayrollSalaryChip() {
   return (
-    <span data-draft-payroll-salary title={`${SALARY_FLAT_HOURS_CHIP}. ${SALARY_FLAT_HOURS_TITLE}`} style={{ ...CHIP, background: 'var(--bg-subtle)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>
+    <div data-draft-payroll-salary title={`${SALARY_FLAT_HOURS_CHIP}. ${SALARY_FLAT_HOURS_TITLE}`} style={{ fontSize: '0.66rem', lineHeight: 1.3, color: 'var(--text-muted)', textAlign: 'right' }}>
       {SALARY_FLAT_HOURS_SHORT_CHIP}
-    </span>
+    </div>
   )
 }
 
