@@ -66,7 +66,7 @@ import LegalPartiesStrip from './LegalPartiesStrip'
 import { partiesStrip, venueBlock, type PartyDoor, type VenueBlock } from '../../../lib/legal/legalParties'
 import type { LegalMapOpenOn } from './LegalDeskMapView'
 
-import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo } from './legalDeskShared'
+import { TABS, type Tab, TAB_LABELS, MUTED, NUM, TH, TD, btn, btnPrimary, FIRM_GROUP, SEG, FIRM_SEG, FIRM_SEG_NONE, VIEW_SEG, VIEW_SEG_ON, type DeskView, EMPTY_COUNTIES, EMPTY_MATTERS, SEG_RED, SEG_AMBER, sheetInput, pill, FIX_LABEL, type Sheet, daysAgo, LegalMoneySmallCents } from './legalDeskShared'
 import { type PlanActs, PacketTab } from './LegalDeskPacketTab'
 import { ErrorDoorButton, ErrorDoorCard } from '../../help/ErrorDoor'
 import { LEGAL_DESK_DEFAULT_TAB } from '../../../lib/legal/legalDeskRoute'
@@ -211,6 +211,8 @@ export default function LegalDesk(props: LegalDeskProps) {
   const [firmOpen, setFirmOpen] = useState(false)
   /** Firms… (v2.5792): the Settings block over the desk — add a firm, color its counties. A dev's door. */
   const [firmsOpen, setFirmsOpen] = useState(false)
+  /** The firm the Firms… window opens picked (punch list #222, PR 1): the firm window's *Color its counties…* names it. */
+  const [firmsPick, setFirmsPick] = useState<string | null>(null)
   // The ? and its card (punch list #187 PR 4): what each part of the desk holds, beside the full screen button.
   const [legendOpen, setLegendOpen] = useState(false)
   // The door on the read failure (punch list #187 PR 6).
@@ -761,7 +763,8 @@ export default function LegalDesk(props: LegalDeskProps) {
   ) : (
     <>
       {matter?.pulled_at ? pill(`Pulled back ${calendarYmdInAppTzFromIso(matter.pulled_at)}${matter.pulled_reason ? ` · ${matter.pulled_reason}` : ''}`, 'neutral') : null}
-      {inHouse ? <span data-legal-in-house>{pill(inHouseWords(matter?.in_house_at ? calendarYmdInAppTzFromIso(matter.in_house_at) : '', matter?.in_house_why ?? ''), 'legal')}</span> : null}
+      {/* v2.6193: the pill says the day alone; the reason typed at the door sits under the account's name with the other quiet lines. */}
+      {inHouse ? <span data-legal-in-house>{pill(inHouseWords(matter?.in_house_at ? calendarYmdInAppTzFromIso(matter.in_house_at) : '', ''), 'legal')}</span> : null}
       {matter?.review_requested_at ? pill(`${requesterName} asked for a dev${requestedDays != null ? ` · ${requestedDays}d ago` : ''}`, 'blue') : null}
       {canMarkReady ? (
         releaseHold ? (
@@ -986,10 +989,11 @@ export default function LegalDesk(props: LegalDeskProps) {
                       {parties ? parties.addressLine : selected.jobs.map((j) => j.hcp_number || j.click_number).filter(Boolean).join(' · ')}
                       {matter?.review_requested_at && !withFirm && !closed ? <><br /><span style={{ color: 'var(--text-blue-700)' }}>{requesterName} asked for a dev’s eyes{requestedDays != null ? ` ${requestedDays}d ago` : ''}{matter.review_request_note ? `: “${matter.review_request_note}”` : ''}</span></> : null}
                       {withFirm && matter?.note_to_firm ? <><br /><span style={MUTED}>Note to the firm: “{matter.note_to_firm}”</span></> : null}
+                      {inHouse && matter?.in_house_why ? <><br /><span style={MUTED} data-legal-in-house-why>Why in house: “{matter.in_house_why}”</span></> : null}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ ...NUM, fontSize: '1.3rem', fontWeight: 700 }}>{formatLegalMoney(selected.balance)}</div>
+                    <div style={{ ...NUM, fontSize: '1.3rem', fontWeight: 700 }}><LegalMoneySmallCents value={selected.balance} /></div>
                     <div style={{ ...MUTED, fontSize: '0.76rem' }}>balance{selected.oldestDays == null ? '' : ` · oldest ${selected.oldestDays}d`}</div>
                   </div>
                   {parties ? (
@@ -1019,7 +1023,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                   <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(160px, 1fr))', gap: 8, margin: '12px 0 0' }}>
                     {deskQuestions(packet, counselRead).map((c) => (
                       <div key={c.label} style={{ border: '1px solid var(--border)', borderRadius: 6, padding: '8px 10px', background: 'var(--surface)' }}>
-                        <div style={{ ...MUTED, fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: 2 }}>{c.label}</div>
+                        <div style={{ ...MUTED, fontSize: '0.66rem', letterSpacing: '0.06em', textTransform: 'uppercase', textAlign: 'center', marginBottom: 2 }}>{c.label}</div>
                         <div style={{ fontSize: '0.92rem', fontWeight: 600, display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>{c.answer}{c.chip ? pill(c.chip.text, c.chip.tone) : null}</div>
                         {c.why ? <div style={{ ...MUTED, fontSize: '0.72rem' }}>{c.why}</div> : null}
                       </div>
@@ -1263,9 +1267,24 @@ export default function LegalDesk(props: LegalDeskProps) {
       ) : null}
 
       {firmOpen && stored ? (
-        <LegalFirmWindow firm={firm} matters={legal?.matters ?? []} recipients={firmRecipients} canEdit={canEditFirm} onClose={() => setFirmOpen(false)} onSaved={() => { void legal?.reload() }} onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); showTab('account') }} zIndex={DESK_LAYER_Z + 14} />
+        <LegalFirmWindow
+          firm={firm}
+          matters={legal?.matters ?? []}
+          recipients={firmRecipients}
+          canEdit={canEditFirm}
+          onClose={() => setFirmOpen(false)}
+          onSaved={() => { void legal?.reload() }}
+          onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); showTab('account') }}
+          firms={legal?.activeFirms ?? []}
+          countiesByFirm={legal?.countiesByFirm ?? EMPTY_COUNTIES}
+          cases={mapCases.cases}
+          // Punch list #222, PR 1: the Map opens with this firm lit; Color its counties… opens Firms… on this firm.
+          onShowOnMap={(id) => { setFirmOpen(false); setMapOpenOn({ county: null, heldId: null, firmId: id, nonce: Date.now() }); pressView('map') }}
+          onColorCounties={canEditFirm ? (id) => { setFirmOpen(false); setFirmsPick(id); setFirmsOpen(true) } : undefined}
+          zIndex={DESK_LAYER_Z + 14}
+        />
       ) : null}
-      {firmsOpen && stored ? <LegalFirmsWindow onClose={() => setFirmsOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={DESK_LAYER_Z + 14} /> : null}
+      {firmsOpen && stored ? <LegalFirmsWindow pickFirmId={firmsPick} onClose={() => { setFirmsOpen(false); setFirmsPick(null) }} onSaved={() => { void legal?.reload() }} zIndex={DESK_LAYER_Z + 14} /> : null}
       {emailsOpen && firm ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setEmailsOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>

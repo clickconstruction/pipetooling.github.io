@@ -5,6 +5,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { EmptyState } from '../EmptyState'
 import { generalConditionsCoverage, type SubScopeItem, type SubScopeItemKind } from '../../lib/subWorkOrders/subWorkOrder'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { SKY_UNDER_WORDS, WORDS_ON_SKY } from '../../lib/skyUnderWords'
 
 /**
  * Scope tab of the Contract library (Sub Work Orders train, PR 3 — v2.2787).
@@ -333,7 +334,7 @@ export function ContractScopeLibraryTab({ onQuickSend, canEdit }: { onQuickSend:
                         <button
                           type="button"
                           onClick={() => onQuickSend(d.document_name)}
-                          style={{ padding: '0.25rem 0.55rem', fontSize: '0.78rem', fontWeight: 600, border: 'none', borderRadius: 6, background: '#0ea5e9', color: '#fff', cursor: 'pointer' }}
+                          style={{ padding: '0.25rem 0.55rem', fontSize: '0.78rem', fontWeight: 600, border: 'none', borderRadius: 6, background: SKY_UNDER_WORDS, color: WORDS_ON_SKY, cursor: 'pointer' }}
                         >
                           Send to…
                         </button>

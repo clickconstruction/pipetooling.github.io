@@ -292,6 +292,30 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     expect(desk()).toBeTruthy()
   })
 
+  it('the firm’s window opens on where it covers, and Show on the desk map opens the Map with the firm lit (v2.6195, punch list #222 PR 1)', async () => {
+    // The smoke's account names no county; a matter already with the firm keeps its firm in the header whatever the counties say.
+    const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: firm.id, stage: 'referred', handling_name: '', note_to_firm: '', released_at: '2026-10-20T15:00:00Z', ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-20T00:00:00Z', updated_at: '2026-10-20T00:00:00Z' }
+    renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]), countiesByFirm: new Map([[firm.id, ['Bexar', 'Comal']]]) } as never} canMarkReady canEditReview />)
+    await settle()
+    fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
+    expect(document.querySelector('[data-legal-firm-title]')!.textContent).toContain('Barnes & Holt')
+    expect(document.querySelector('[data-legal-firm-coverage-counties]')!.textContent).toBe('2 counties')
+    fireEvent.click(screen.getByRole('button', { name: 'Show on the desk map ›' }))
+    await settle()
+    expect(screen.queryByRole('dialog', { name: 'The collections law firm' })).toBeNull()
+    expect(document.querySelector('[data-legal-map-view]')).toBeTruthy()
+    expect(document.querySelector('[data-legal-map-legend-row="firm-1"]')!.getAttribute('aria-pressed')).toBe('true')
+  })
+
+  it('while no county is colored, the window’s Color its counties… opens Firms… (v2.6195)', async () => {
+    await renderDesk({ canMarkReady: true, canEditReview: true })
+    fireEvent.click(screen.getByRole('button', { name: 'The collections law firm: Barnes & Holt' }))
+    expect(document.querySelector('[data-legal-firm-nudge]')!.getAttribute('data-legal-firm-nudge')).toBe('nothing_colored')
+    fireEvent.click(screen.getByRole('button', { name: 'Color Barnes & Holt’s counties…' }))
+    expect(screen.queryByRole('dialog', { name: 'The collections law firm' })).toBeNull()
+    expect(screen.getByRole('dialog', { name: 'Collections law firms' })).toBeTruthy()
+  })
+
   it('with no firm, the header and the release sheet both open the firm’s window (v2.4711)', async () => {
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...legal, firm: null, firms: [] }} canMarkReady canEditReview />)
     await settle()
@@ -360,6 +384,12 @@ describe('LegalDesk · a window inside the desk (v2.4352)', () => {
     expect(document.querySelector('[data-legal-map-flag]')!.textContent).toMatch(/1 case in a county no firm covers · The Learning Experience \(off the map\)/)
     expect(document.querySelector('[data-legal-map-summary]')!.textContent).toBe('1 account · 2 jobs · $8,982.00 open')
     expect(document.querySelector('[data-legal-county-card]')!.textContent).toContain('Tap a county to see the cases in it.')
+    // v2.6195 (punch list #222, PR 1): a firm's row is a press that lights it alone, and again lights every firm.
+    expect(legendRow.getAttribute('aria-pressed')).toBe('false')
+    fireEvent.click(legendRow)
+    expect(document.querySelector('[data-legal-map-legend-row="firm-1"]')!.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(document.querySelector('[data-legal-map-legend-row="firm-1"]')!)
+    expect(document.querySelector('[data-legal-map-legend-row="firm-1"]')!.getAttribute('aria-pressed')).toBe('false')
     fireEvent.click(screen.getByRole('button', { name: 'Accounts' }))
     await settle()
     expect(screen.getByRole('tab', { name: 'Account' })).toBeTruthy()
@@ -414,7 +444,9 @@ describe('LegalDesk · in house (v2.5847)', () => {
     const matter = { id: 'm-1', payer_key: 'c:tle', customer_id: 'tle', payer_name: 'The Learning Experience', firm_id: null, stage: 'in_house', handling_name: '', note_to_firm: '', released_at: null, ready_marked_by: null, ready_marked_at: null, review_requested_by: null, review_requested_at: null, review_request_note: '', held_overrides: {}, closed_at: null, closed_reason: '', settlement_floor_amount: null, settlement_floor_pct: null, created_at: '2026-10-25T00:00:00Z', updated_at: '2026-10-25T00:00:00Z', in_house_at: '2026-10-25T15:00:00Z', in_house_why: 'counsel away until Nov 3' }
     renderWithProviders(<LegalDesk collectionsJobs={[collectionsJob('job-a', '717', 7502)]} {...baseProps} legal={{ ...base, matters: [matter], byPayerKey: new Map([['c:tle', matter]]), jobIdsByMatter: new Map([['m-1', ['job-a']]]) } as never} canEditReview />)
     await settle()
-    expect(document.querySelector('[data-legal-in-house]')!.textContent).toContain('In house since 2026-10-25 · counsel away until Nov 3')
+    // v2.6193: the pill says the day alone; the reason sits under the account's name.
+    expect(document.querySelector('[data-legal-in-house]')!.textContent).toBe('In house since 2026-10-25')
+    expect(document.querySelector('[data-legal-in-house-why]')!.textContent).toBe('Why in house: “counsel away until Nov 3”')
     expect(screen.getByRole('button', { name: 'Back to review' })).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Run it in house…' })).toBeNull()
     fireEvent.click(screen.getByRole('tab', { name: 'With the firm' }))

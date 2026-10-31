@@ -1,0 +1,453 @@
+<script>
+(function () {
+  'use strict';
+  // Every finding, by id. d: drawn as a pair above; with: findings the pair also covers. The rest are rows.
+  const F = [
+    // shape 1 · a date against today
+    { id: 'jobs-pipeline-1', s: 1, d: true, a: 'Pipeline', t: "The Billed row's three dates" },
+    { id: 'jobs-pipeline-2', s: 1, d: true, a: 'Pipeline · Follow-ups', t: "The Follow-ups card's idle and quiet days" },
+    { id: 'gc-messages-2', s: 1, d: true, a: 'GC mode · Follow up', t: 'Nudges from the flow' },
+    { id: 'office-5', s: 1, d: true, a: 'Dashboard', t: "The office's round" },
+    { id: 'jobs-money-4', s: 1, d: true, a: 'Estimates', t: "An estimate's opens" },
+    { id: 'people-docs-3', s: 1, d: true, a: 'People · Write-ups', t: 'The attendance card' },
+    { id: 'jobs-pipeline-6', s: 1, d: true, a: 'Job window · Job tab', t: 'The two date bands', now: 'Last work date — · Last bill date Oct 9th (t-21) · Job Start — · Last Work —: last work said twice from two sources that can disagree, none marked', sh: "One strip of the job's days: start marked, approved field days filled, pending ones rings, bills as blue ticks, one last work label with its source", w: 'M', z: 'S' },
+    { id: 'jobs-pipeline-8', s: 1, d: true, a: 'Lien window', t: 'The strip still opens on Steps', now: 'Next on the path · Draft the Aug notice — 18 days · Waiting on · us — the notice to be drafted and mailed. #214 moved only the Legal desk to the calendar', sh: "Open the window scope on Windows too, the next step's door on the band, the deadline as a chip (§ 53.056 notice · due Nov 16 · 18 days); Steps a press away", w: 'M', z: 'XS' },
+    { id: 'jobs-money-3', s: 1, d: true, a: 'Tally · Team queue', t: "A holder's day card", now: 'Clocked on JP101 Hill Street from 7:02 AM to 3:40 PM. Nothing else that day. [JP101 LIKELY · only job clocked that day]; a 6:52 PM charge three hours after clock-out, unmarked; likely agrees with the sorter 53% of the time', sh: 'A strip of the day, 6 AM to 6 PM: each clock session a bar in its job, schedule blocks hollow, each charge a tick at its swipe time; inside a bar the chip reads in JP101’s hours, in a gap the strip shows it', w: 'H', z: 'M' },
+    { id: 'bids-7', s: 1, d: true, a: 'Bids · Call queue · Waiting to hear', t: 'The chase clock', now: 'CHASE 1 pending — quiet 5d · 0 of 1 fresh; a paragraph on when a bid needs a chase; sent Oct 25 (5d ago) · Last contact Oct 27 (3d ago); two silent defaults (7 days, 21 days)', sh: 'Per pending bid a strip of days: the send, each contact, the call-again day as a tick (solid when promised, dashed and marked default · 7 days when the rule made it), the tab-gettable day, today; the chips that filter stay', w: 'H', z: 'M' },
+    { id: 'bids-9', s: 1, d: true, a: 'Bids · Price requests · RFQ Desk', t: 'The request rows', now: 'Sent → Delivered → Viewed → Quoted with no days · nudged ×2 · needed-by in 2 days — still silent · a toast for a partial send', sh: 'Each row a strip of days: dots for sent, viewed, quoted, a tick per nudge, a pin on the needed-by day, the 24 h rest hatched, today; counts as chips that filter; a failed house’s row red with its reason', w: 'M', z: 'M' },
+    { id: 'bids-10', s: 1, d: true, a: 'Bid Room · staff side', t: 'The state chip and Manage', now: 'rev 3 · opened 7× · 10/24 · CO×2 awaiting; nothing lists when each revision went up, when the link was sent or when each open came', sh: 'Manage opens a strip of days: rev marks, the send, each open as a tick, the change orders and the answer, today; Why we lost becomes a link to the packet', w: 'H', z: 'M' },
+    { id: 'bids-19', s: 1, d: true, a: 'Bids · Submittals', t: "The journey's Waiting line", now: 'Waiting: Rev 2 is with the GC. The link was opened 3 times. Sam Sample is on it… Later: Sam Sample approved 14. 6 rows still waiting', sh: 'A small strip on the line: the shared day, each open as a tick, today, the earliest approve-by as the log’s diamond; 14 approved · 6 open as chips that filter the rows', w: 'M', z: 'S' },
+    { id: 'office-6', s: 1, d: true, a: 'Dashboard · Needs you', t: 'The Lien deadlines line', now: 'Next lien deadline: Nov 16 · in 18 days · 3 notices to 2 GCs — … 1 on the desk to draft, 1 waiting on the owner of record. 2 approved and waiting to go out. 2 sent notices at day 10+…', sh: 'A 30-day track on the line: today, each notice’s deadline a dot coloured by its state, the nearest labelled; the counts as chips that open the Lien desk on that pile', w: 'M', z: 'S' },
+    { id: 'office-8', s: 1, d: true, a: 'Quickfill · Board · the round list', t: "Each station's rhythm line", now: 'every 3 d · 2 d over · Rosa: a median and a subtraction over five marks the row never draws; the phone head’s 4 due · 2 due today · 3 not yet · 9 fresh as a sentence', sh: 'A two-week strip per row: ticks at the last five looks, a dashed line where the next falls due, today, red past it; the head’s counts as four chips that filter', w: 'M', z: 'S' },
+    { id: 'office-11', s: 1, d: true, a: 'Settings · Office hours', t: 'The coverage line', now: 'Nobody hears a reply from 11 PM to 6 AM. Rosa, Cora and Max are all off then: computed from each person’s hours the card never draws', sh: 'A week grid, one row per office person with their Push me hours as bars; the stretch no row covers a red column with its times; a press opens that person’s hours', w: 'M', z: 'S' },
+    { id: 'office-13', s: 1, d: true, a: 'Checklist · New task', t: 'The schedule sentence', now: 'Every Mon & Wed on Hal’s list, starting Tue, Nov 3, until Dec 18 — a missed day doesn’t carry over', sh: 'Under the weekday buttons, the next three weeks as a small calendar with every landing day filled, start and end marked, today ringed; the sentence stays as its caption', w: 'M', z: 'S' },
+    { id: 'field-8', s: 1, d: true, a: 'Dashboard · Your record', t: 'The hours and the day under each item', now: 'You worked it Thursday (8.5h this week); no field report from you yet: sums over sessions the card does not draw, today’s open session left out', sh: 'Each item a Sun–Sat strip: a bar per day clocked on that job with its hours, today’s open session hatched, a dot on any day a report landed; the press at the end', w: 'M', z: 'S' },
+    { id: 'field-11', s: 1, d: true, a: 'Training', t: 'The due date, to take again and lapsed', now: 'Done Nov 3, 2025 · due again Nov 3, in 4 days [Take it again]; People reads training lapsed for someone still current; 12 current · 3 lapsed · 5 not done do not filter', sh: 'A thin strip per course from the pass day to the due day, today’s tick, the amber window shaded; amber splits into due soon and lapsed; the counts filter See who', w: 'M', z: 'S' },
+    { id: 'people-docs-6', s: 1, d: true, a: 'People · Person desk', t: 'Hours & approvals', now: 'Waiting 1 session · 8.5h oldest Thu 10/29 · This week 8.5h closed · Reviewed through never; the Hours tab’s Review Hours ✓ always green', sh: 'One strip of the last 14 days: a filled dot per approved day, an amber ring per waiting day, a grey rule at reviewed through, today outlined, hours under each; the ✓ reads reviewed through Oct 18 or goes', w: 'M', z: 'S' },
+    { id: 'people-docs-8', s: 1, d: true, a: 'Materials · Held for suppliers', t: "A house's own notice date", now: 'Bluebonnet Supply $6,104.10 owed · its own notice by Nov 15 (the app’s estimate) beside its notice goes out Nov 20 (said by Marisol): one verb apart', sh: 'Under each owed house a mini window strip: unpaid invoices as ticks by month, the notice window as a bar ending on the date, today; a guessed mark on the estimate, they said with who on a told day', w: 'M', z: 'S' },
+    { id: 'people-docs-15', s: 1, d: true, a: 'People · Hours', t: 'The pending banner', now: '⚠ Pending: 3 people · 12.50 h not yet in payroll across 4 days. +7 sessions in earlier weeks', sh: 'The clock strip above the grid gains an amber ring on each day with a pending session and a stub at its left edge, 7 earlier ›, that opens the queue', w: 'L', z: 'XS' },
+    { id: 'outside-12', s: 1, d: true, a: "The customer's portal", t: 'Tell us when to expect it', now: 'You told us to expect payment by Nov 6, 2026. Changed? … We’ll hold off on reminders until then: a promise about a process the customer cannot see', sh: 'After Tell us, the bill’s row shows the day on a small strip: billed Oct 27 · your day Nov 6 · we call Nov 9 if it has not come, from the office’s own rule', w: 'M', z: 'S' },
+    { id: 'outside-13', s: 1, d: true, a: "The trade partner's portal", t: 'Your dates moved', now: 'The schedule on Sample Dental Office moved… Trim and fixtures: Wed Nov 11 to Tue Nov 17, not Sun Nov 8 to Sat Nov 14. Why: weather… reprinted in an email’s voice under the bars that could draw it', sh: 'On the trade’s own row in the schedule, the moved bar with a ghost of its old days and the reason as a chip; These dates work and I need another day on that row', w: 'M', z: 'S' },
+    // shape 2 · a figure as its parts
+    { id: 'bids-2', s: 2, d: true, a: 'Bids · Pricing', t: "The Workbench's margin" },
+    { id: 'gc-messages-5', s: 2, d: true, a: 'GC mode · Project Board', t: "The Project Board's price" },
+    { id: 'jobs-pipeline-4', s: 2, d: true, a: 'Pipeline · Bill Customer', t: 'RTB as a remainder' },
+    { id: 'outside-1', s: 2, d: true, a: "The customer's invoice", t: "A progress bill's lines" },
+    { id: 'outside-2', s: 2, d: true, a: "The customer's portal", t: "The GC customer's Money tab" },
+    { id: 'field-2', s: 2, d: true, a: "The sub's portal", t: 'Owed to you' },
+    { id: 'outside-5', s: 2, d: true, a: "The customer's emails", t: 'The interest bill' },
+    { id: 'jobs-pipeline-5', s: 2, d: true, a: 'Pipeline · overview', t: 'Ready to ask for, and the Capable list', now: 'READY TO ASK FOR $1,250 · $0 capable in Working · $1,250 in Ready to Bill; the list opens on a paragraph explaining two rules', sh: 'The tile as a two-part bar (capable in Working, Ready to Bill) pressing through to its rows; each Capable row its own bar: value created as the frame, paid · billed · queued inside, the capable piece the rest; plan rows marked by stage plan', w: 'M', z: 'S' },
+    { id: 'jobs-pipeline-7', s: 2, d: true, a: 'Pipeline · Money opportunities', t: 'Get contracts signed', now: '$319,325 of work on 4 live jobs without an agreement · 0 of 4 live jobs have an agreement on file (accepted estimates and bid-room signatures count)', sh: 'One bar of the live jobs’ dollars, covered green and uncovered amber, split by stage; the stage chips that filter stay; the rule and the floor become the legend’s hover and a chip', w: 'M', z: 'XS' },
+    { id: 'jobs-money-7', s: 2, d: true, a: 'Job Summary · Overhead', t: 'The overhead pool, told as four chips', now: '$6,210 of overhead had nobody to charge on 9 days · $2,940 in flight · $1,105 landed on 3 jobs this list leaves out · ⚠ overhead does not reconcile to the pool', sh: 'One bar for the window’s pool: charged to these jobs · to jobs off the list · nobody to charge · in flight, with dollars; a gap or overrun at the end red; each segment a door', w: 'M', z: 'S' },
+    { id: 'jobs-money-9', s: 2, d: true, a: 'Crew P&L', t: 'Billed (gross) and the $50 sub rate', now: 'Bo Plumber ≈ $24,300 billed … $7,420 on J1318, then ten sentences of footnote on how billing credit is hours-weighted and sub hours are cost ÷ $50', sh: 'Under each per-job line, the job’s bill as a bar split by everyone’s hours, this person’s slice lit, the sub’s hatched as ≈ $3,000 ÷ $50; the rate box reads a default, never calibrated', w: 'M', z: 'S' },
+    { id: 'jobs-money-11', s: 2, d: true, a: 'Moneyfill', t: 'The close-week header', now: '5 of 8 queues at zero · $9,415 still unattributed (money in added to money out and wages); chips with numbers that are spans; a bar that counts queues', sh: 'Chips that scroll to their section; unattributed as two bars, out (card charges · time · supply invoices) and in (deposits), by queue; the progress bar as dollars attributed of the week’s', w: 'M', z: 'XS' },
+    { id: 'jobs-money-15', s: 2, d: true, a: 'Dashboard · Money in', t: "The closed line's Still expected", now: 'Still expected $42K · 9: a promise, a check in the drawer and a pace guess added into one figure on the line people see without opening the bar', sh: 'Still expected as a thin stacked bar of its kinds: drawer · sent claim · their word · pace hatched as a guess; a press opens the bar on that kind', w: 'L', z: 'XS' },
+    { id: 'gc-messages-8', s: 2, d: true, a: 'Messages · The last 7 days', t: 'Answered within an hour, and Estimates', now: '64% · 9 of 14 · ↑ from 50% last week, made of 14 turns the screen never draws, opening today’s Needs a reply instead; 6 sent · 4 opened · 1 accepted as a sentence', sh: 'The tile opens its 14 turns as rows, each a bar from their line to our answer against an hour mark, red past it, hatched when unanswered; the funnel as one stacked bar whose parts open those estimates', w: 'M', z: 'S' },
+    { id: 'office-9', s: 2, d: true, a: 'Dashboard · Needs you', t: 'Field capacity', now: '58% · 63% · 61% for the weeks of Oct 11, Oct 18 and Oct 25 — 1,020 of 1,680 available field hours, against a field roster of 7…', sh: 'Three short bars on the line, one per week, against a dashed line at 70%, hours on hover; the basis a chip (roster of 7, or who clocked in marked as the fallback)', w: 'M', z: 'XS' },
+    { id: 'field-6', s: 2, d: true, a: "The sub's portal", t: "What you've been paid, and each card's Agreed · Paid · Open", now: 'Earned $48,200 · Paid $44,700 · Balance $3,500 from rows the page never shows; a $300 back-charge counted as Paid; an Agreed made from the payments, unmarked', sh: 'Each card one bar in three parts: paid green, taken back red, open copper, summing to Agreed; the totals scoped to the jobs drawn, with a Settled jobs fold; a fallback Agreed reads from payments · no price on file', w: 'M', z: 'S–M' },
+    { id: 'people-docs-10', s: 2, d: true, a: 'People · Payroll · Payments', t: 'A send split across reports', now: 'Apple Pay "Nico" · 1 of 2 from $1,06… / 2 of 2 from $1,06… / Advance $176.77 of $1,250.00 ahead: a split said in memo text, cut at 40 characters', sh: 'A 1 of 2 chip on each part that opens the send as one bar of its parts (each report’s week, the advance hatched); a By send band mode beside By week paid', w: 'M', z: 'S' },
+    { id: 'people-docs-11', s: 2, d: true, a: 'Partnerships', t: 'The balance bridge', now: 'posted we owe Dale $967.60 · −$1,975.73 not yet on a statement (2) → Dale owes us $1,008.13: a balance crossing zero said in a sentence, the sign convention in a tooltip', sh: 'One horizontal bar on a scale with zero marked: posted as a solid bar, the two pending charges as a hatched step from it to the ledger balance, each step a door; the same bar on both tabs', w: 'M', z: 'S' },
+    { id: 'people-docs-16', s: 2, d: true, a: 'Projects · Job History', t: "A day's Costs on this day", now: 'Team labor $612.40 · Card charges $148.22 · Supply invoices $0.00 · Total $760.62, leaving out sub labor, tally parts and materials without a word', sh: 'The total as a bar of its parts, with the uncounted kinds as empty labelled stubs (sub labor · not counted here) and a today’s wage mark on the labor row', w: 'L', z: 'XS' },
+    { id: 'outside-3', s: 2, d: true, a: "The trade partner's portal", t: 'Report your work and get paid', now: 'You can ask for $2,624 now (60% − 50% of the rough-in line less 10% held, made where the sub cannot see it) · Paid so far $13,122 · held $1,458 · left to bill $34,020', sh: 'The statement of work as one bar: paid, held hatched, ask now in the accent with its held tenth, left to bill; under it a strip of the month: their cut-off, our bill day, the day the customer’s pay is due, the day it reaches them', w: 'H', z: 'M' },
+    { id: 'outside-6', s: 2, d: true, a: 'Bid room', t: 'The total with an add-on taken', now: 'To Plans PROPOSED $56,343 · + Alternate 2 $4,850 [ticked] · Total — To Plans $61,193 · [Approve "To Plans" — $61,193]: every label names one part', sh: 'The total as its rows (To Plans $56,343 · Alternate 2 $4,850 · Total $61,193) and the button names both: Approve To Plans + Alternate 2 — $61,193, as the estimate page already does', w: 'M', z: 'XS' },
+    { id: 'outside-8', s: 2, d: true, a: "The GC customer's portal · Schedule, the Friday report", t: 'Work done and we finish', now: 'WORK DONE 38% over rows of 100 · 100 · 40 · 0 · 0 · 0 (the dollar weights hidden); the finish said twice; a move told in two boxes with two day counts and drawn on neither bar', sh: 'The stage rows as one bar where each stage’s width is its share of the work (shares, never dollars), filled to its done percent, a tick at the planned 36%; a moved bar keeps a ghost of its planned days; the emails draw the same bar as a table', w: 'M', z: 'M' },
+    { id: 'outside-10', s: 2, d: true, a: "The GC customer's emails", t: 'Our pay application, and the certified bill', now: 'Pay application 3 asks for $48,600. It bills the work done through Oct 25, less the 10% you hold and the bills before it · certified at $45,000. That is $3,600 less than we asked', sh: 'The G702’s four rows in the email (work done through Oct 25 · less 10% held · less billed before · this application) and, on a cut, the lines certified lower with asked → certified', w: 'M', z: 'S' },
+    // shape 3 · the source on the figure
+    { id: 'field-1', s: 3, d: true, a: 'My Schedule · the report · Job Summary', t: 'A job with no percent', with: ['jobs-money-5'] },
+    { id: 'bids-3', s: 3, d: true, a: 'Bids · Compare quotes', t: 'No price says where it came from' },
+    { id: 'people-docs-2', s: 3, d: true, a: 'Materials · the report', t: "A robot's read after Save", with: ['field-5'] },
+    { id: 'bids-5', s: 3, d: true, a: 'Bids · Procure', t: "A house's usual lead time" },
+    { id: 'gc-messages-4', s: 3, d: true, a: 'Customers', t: 'Pays in' },
+    { id: 'jobs-pipeline-9', s: 3, a: 'Lien desk', t: "A notice a GC's standing rule approved", now: '[Approved · Hillcrest Builders’s standing rule]: a legal paper goes to the mail on an automatic approval; the chip names the rule but not who set it, when or why', sh: 'A by rule mark on the chip; hover: Always send · set by the leader Sep 14 · "pays only on paper"; its press opens the GC’s rule; the Ready pile gathers rule-approved notices under one heading', w: 'M', z: 'XS' },
+    { id: 'jobs-money-8', s: 3, a: 'Job window · Costs', t: 'The % done line the tiles stand on', now: '$86,400 · 45% done per the Oct 3 report (27 days old) · the job says 40%: every tile divides by one number whose source is small type', sh: 'The % in a chip with its source (crew report Oct 3 · 27d) and a door to the report; a ghost chip the job says 40% that redraws the tiles at 40%; a thin bar of the price with spent filled and earned marked', w: 'M', z: 'S' },
+    { id: 'jobs-money-10', s: 3, a: 'Weekly money movement', t: 'Value created, from a % nobody marked', now: 'J1318 40% → 55% · Value created $27,560: the Δ% is a % someone typed or a crew reported, and the row does not say which or when', sh: 'The % cell wears the source chip (crew report Thu · set by office Mon) with a door; a % typed by the office in the same week as the money it explains gets a mark; the confidence line becomes Moneyfill’s chips', w: 'M', z: 'S' },
+    { id: 'jobs-money-14', s: 3, a: 'Banking · Accounting', t: "A bank line's label, with no who or rule", now: 'Oct 24 · −$86.12 · Fuel Stop #12 · J1318 · Vehicle fuel · Ann · [Rule]: a drag, a rule someone approved and Quick Sort all draw alike; the Rule column is a press to make a new rule', sh: 'The label chip carries a source mark: rule: Fuel stations (a door), by Ann · Oct 25, approved with 40 others; the column’s press renamed New rule…', w: 'M', z: 'S' },
+    { id: 'jobs-money-17', s: 3, a: 'Legal desk', t: 'The venue line, and the Map’s uncovered flag', now: 'Venue · Caldwell County, by the job address, a guess from its city · no firm covers it: the source buried in a clause, the rule (largest open balance) in a sentence; the Map’s flag names accounts with no door', sh: 'One chip per county with its balance as a small bar, the firm’s colour and a source mark (record ✓ · pin · guessed from the city, a door to link the property record); the Map’s flag as chips that open each account', w: 'M', z: 'S' },
+    { id: 'bids-6', s: 3, a: 'Bids · Plans', t: 'The plans say', now: 'Floor drain is on 3 sheets… The fixture schedule on P-601 lists FD-1, 4", nickel top: the robot’s extracted row spoken in the plans’ voice, no Open door; No sheet mentions… covers only the sheets with text', sh: 'One row per clause with a source chip (page text · robot’s read) and Open P-601; the set line reads 20 of 31 searchable · 11 scanned, and the negative names its reach', w: 'M', z: 'S' },
+    { id: 'bids-14', s: 3, a: 'Bids · Takeoffs', t: 'Fill from book · 5 matches, and the toast', now: 'Filled 5 fixtures from the book (23 lines) · 2 without a catalog price · 1 empty assembly skipped: the book’s guess lands as part lines with no mark of which entry matched, loose matches like exact ones', sh: 'Before the press each matched fixture wears a book · wc chip, dashed when the match was loose, so 5 matches is five chips to read and untick; after the fill the chip stays as the source and the tally joins the coverage strip', w: 'M', z: 'S' },
+    { id: 'bids-15', s: 3, a: 'Bid Board · Cover Letter', t: "The bid's value, with no mark of where it came from", now: 'The board reads 48k; the Cover Letter reads $0.00 · from Pricing above Mark sent today; a won bid shows the agreed value with the sent one in a hover: three figures, none saying which was typed, stamped or live', sh: 'The value cell wears a source mark, typed (dashed), sent Oct 21 ★ or agreed, its hover the long form and its press the cell’s past in History; the letter names the same source when it differs', w: 'M', z: 'S' },
+    { id: 'gc-messages-14', s: 3, a: 'GC mode · the plans window · a new set', t: 'Scope guessed from a line’s words, trades from the sheets', now: 'Some of these are guessed from the line’s words. Set them when you write the scope. · The trades are a guess from the sheet letters and titles. Tick or untick to fix it', sh: 'A guessed line draws as a dashed chip with guessed on hover; each trade tick carries its source (from A-201, P-101); the sentences go', w: 'M', z: 'S' },
+    { id: 'gc-messages-15', s: 3, a: 'Development page · Money', t: 'promised under a guessed date', now: '● Expected Oct 12 · 5d past · promised: the GC’s pace and the segment’s median both print promised, and past due is measured from the guess', sh: 'The source as its own mark in the Pipeline’s words (guessed · the GC pace ~35d over 3 payers · promised by Pat Oct 12); the Expected dot hollow for a guess, solid for a promise', w: 'M', z: 'XS' },
+    { id: 'office-16', s: 3, a: 'Schedule Dispatch hub', t: "Expected Manpower's Est. $", now: '1318 · rough-in [17 h • 3] · Est. $612: wages matched to pay rows by the person’s name exactly as written, a miss counts $0, the rule only in a tooltip', sh: 'Est. as a chip marked guess; the expanded row draws the sum as its rows (Hal · 8 h × $28 = $224); a person with no wage a grey chip with a door to People → Pay; the total says 2 of 3 people priced', w: 'L', z: 'XS' },
+    { id: 'people-docs-13', s: 3, a: 'Projects · Forecast · Subs', t: "Where a bar's dates came from", now: 'A bar’s dates are the sub’s own pick, else the step’s expected dates, else the offer’s window, all drawn alike', sh: 'The bar’s fill says its source: solid for the sub’s pick, outlined for the step’s dates, dashed for the offer’s window, with a three-swatch legend; undated work orders as a chip that lists them', w: 'M', z: 'XS' },
+    { id: 'outside-15', s: 3, a: "The collections firm's portal · Paper", t: 'The lien dates and where they come from', now: 'no work date on file: dated from the job’s creation month, 2026-06, in a grey clause, and a paragraph at the foot on how dates are read; a creation-month guess drawn with the same weight as a clock day', sh: 'The strip’s anchor day carries a mark (clock · work date · guessed from the month), the guess hatched and its deadlines dashed, a door to the approved sessions; the paragraph goes', w: 'M', z: 'S' },
+    { id: 'outside-17', s: 3, a: "The team's money digests", t: 'late against a guessed day', now: 'Payment forecast: 1054 · 46d late · $4,380, where late is past a median the reader never sees; the Monday sheet explains its figures in a paragraph', sh: 'late only past a due or promised day; past a pace reads past their usual with the basis on the row (~Sep 14 · from 6 paid bills) and a door to Pay speeds; the Monday sheet marks assumed figures guessed inline', w: 'M', z: 'S' },
+    { id: 'outside-19', s: 3, a: 'Estimate accept page', t: 'The Recommended badge', now: '50-gal gas tank, like for like · RECOMMENDED · $4,380.00, pre-selected: the first option, or the first starred one, reads to the customer as advice', sh: 'The badge only on an option a person starred, with whose it is (Dana recommends); an unstarred estimate pre-selects nothing or the first option with no badge', w: 'L', z: 'XS' },
+    // shape 4 · a process as its steps
+    { id: 'gc-messages-3', s: 4, d: true, a: 'Settings · Flows', t: 'The morning run', with: ['office-3'] },
+    { id: 'office-4', s: 4, d: true, a: 'Settings · Phone and texts', t: "A reply's path" },
+    { id: 'field-3', s: 4, d: true, a: 'Dashboard · My Time', t: 'N pending, punch to pay' },
+    { id: 'field-4', s: 4, d: true, a: 'Job Mode · photos', t: 'Photos on their way to Drive' },
+    { id: 'people-docs-4', s: 4, d: true, a: 'Workflow', t: 'A step tells the next person' },
+    { id: 'jobs-money-13', s: 4, a: 'Banking', t: 'The bank feed nobody sees', now: 'Nothing on the page says when the bank last spoke; the webhook and the 30-minute sweep leave no mark; Refresh reloads with no result line', sh: 'A small Bank feed strip in the header: the last webhook (2 min ago), the last sweep and what it repaired (12:30 · 0 new), the next sweep; amber past an hour of weekday silence, a door to Reconciliation', w: 'M', z: 'S · a small migration for the sweep’s run row' },
+    { id: 'bids-8', s: 4, a: 'Bid Board · the robot icon · Scoreboard', t: 'queued — next batch, for a bid the robots pass over', now: 'Robot queued — it picks up Kyle library restrooms in the next batch, while the dispatcher holds it as not plumbing, stale or too old; three rules answer will a robot take this bid?', sh: 'The icon, the sheet, the Edit Bid line and the Scoreboard read the dispatcher’s own queue: 3rd in line · after B1298, B1300, or Held · made over 30 days ago, nobody asked, with Front of the line as the door', w: 'H', z: 'S' },
+    { id: 'bids-11', s: 4, a: 'Bid Board · the plans band · every robot promise', t: 'tonight, within the hour, next weekday batch', now: '3 bids are waiting on plans. Put the PDF in each one’s folder and a robot prices each one tonight: six fixed promises none read from the rounds, as sure when the robots have slept a week', sh: 'One rounds chip beside each promise, last round 2:35 PM · next ≈ 2:40, amber as no round since Fri 5:12 PM; the band names its bids as chips (B1301 · due Mon) opening each folder’s steps', w: 'M', z: 'S' },
+    { id: 'bids-16', s: 4, a: 'Bids · Price it with the robot', t: 'The status window', now: 'Queued 2h ago by Rosa Sample — a robot picks it up in the next batch · blocked: it could not read a source, while the three sources above draw alike', sh: 'A strip Asked · Picked up · Reading · Ready (or Blocked), each step stamped with the row’s own time, the current lit; the unreadable source’s row red with its reason and a door to fix the link', w: 'M', z: 'S' },
+    { id: 'gc-messages-10', s: 4, a: 'Messages · New', t: "A missed call's The app texted back", now: 'The app texted back at 3:36 PM. The row still waits on you; when the app held the text (texts off, our text inside 3 hours, STOP) the row says nothing', sh: 'The app’s line inside the row as the thread draws it, a the app bubble with its words clipped and its delivery mark; when held, a grey chip no text back · we texted at 1:10 PM with the hold on hover', w: 'M', z: 'S' },
+    { id: 'office-7', s: 4, a: 'Dashboard · Needs you', t: 'While you were off', now: 'While you were off: 3 replies and a work order waited · Since Fri 8 PM. Rosa answered Dana at 9 AM. 2 more were answered: the held pushes are rows with names and times, folded into a count', sh: 'The line opens to the waits as rows in the order they came, name · their line’s time · waiting, or answered by Rosa 9:02 struck through, still-waiting first, each pressing into its thread', w: 'M', z: 'S' },
+    { id: 'office-10', s: 4, a: 'Dashboard · Needs you', t: 'The Wednesday GC review', now: 'GC review is still due this week · 4 · 3 of 7 GCs certified · 2 statements sent — certify each group and send it off', sh: 'Seven GC dots on the line, half-filled when certified, filled when sent, the name on hover; a press opens GC Review on that group', w: 'M', z: 'S' },
+    { id: 'office-12', s: 4, a: 'Settings · the Bridge', t: 'The switches that run on a clock', now: 'Read bids@ · Every minute the app reads… Last read today at 7:12 PM · Weekly email · Every Monday at 6 AM… Last sent Mon, Oct 26 to 2 people. 1 address failed', sh: 'Each clocked card draws its clock as a short strip: the last runs as ticks, a red tick where one stopped (its error on hover), the next run marked; the last run’s rows behind a press', w: 'M', z: 'S · past runs need a kept list' },
+    { id: 'field-7', s: 4, a: "The sub's portal", t: 'The sentence under the four-dot rail', now: 'We’ve called it in for inspection — a short punch list may come first, drawn the moment the sub presses done; with your documents current names a rule with no door', sh: 'The rail’s current dot carries its own fact from a row (inspection: not called yet · called Oct 29 · draw requested Oct 30); a papers chip on the card (papers current ✓ · W-9 expired › Send it)', w: 'M', z: 'M' },
+    { id: 'field-12', s: 4, a: 'Training', t: "A lesson's tick and the final check's recorded", now: 'All four right. Lesson done. before the save; a failed save only toasts; Passed. 18 of 20 right. Not recorded yet. Try again in a moment, with no press', sh: 'The tick shows its save: a ring while saving, ✓ once on record, an amber ! with Retry if not; the final line carries Record it again while unrecorded; the success toast goes', w: 'L', z: 'XS' },
+    { id: 'field-14', s: 4, a: 'Push', t: 'A new report and a new work order land on a list', now: 'New Daily Report — Hal Sample submitted… opens /jobs?tab=reports, the whole list; New work order opens the portal’s top or /dashboard', sh: 'Each push opens on its row: the report in its own window, the sub’s push on the portal focused on the offer', w: 'M', z: 'S' },
+    { id: 'people-docs-7', s: 4, a: 'People · Payroll', t: 'Earlier weeks without a report', now: '[Earlier weeks ✓] or [⏳ Earlier unreported: 3] · 5 person-weeks · est. $3,210.00 unreported · scanned back to Aug 30: a scan reported as a sentence', sh: 'A grid of the scanned weeks by people: a filled cell where a report exists, amber with its estimate where hours have no report, blank where nothing was due; the scan’s edge a rule with Scan 8 more weeks past it', w: 'M', z: 'S' },
+    { id: 'people-docs-9', s: 4, a: 'People · Contracts · Agreements', t: 'never opened', now: 'Hal Sample · Jul 21 · — · [never opened] in red, for a paper sent before views were kept; "Last viewed" records from Aug 5, 2026 onward as a footnote', sh: 'Per row a three-dot stepper, sent → viewed → signed, each with its day; a paper sent before Aug 5 draws its middle dot hollow and grey with no view kept then on hover; only a later send with no view goes red', w: 'M', z: 'XS' },
+    { id: 'outside-9', s: 4, a: "The GC customer's portal · Money", t: 'How paying works, and each pay application’s checks', now: 'Once a month we send a pay application… Your architect certifies it. Then it is due in 30 days… then on each card: With your architect… · Due 30 days after it. · Nothing to do yet', sh: 'One stepper per pay application: Sent · With the architect · Certified · Due Nov 29 · Paid · Waivers, the current step filled and dated; month zero draws it empty under Pay application 1, about Nov 25', w: 'M', z: 'S' },
+    { id: 'outside-14', s: 4, a: "The trade partner's portal", t: 'Changes to your work', now: 'Click sent it to the customer as change order 2 on Oct 24. Your part: $3,400 … The customer signed change order 2 on Nov 2. Click sends you the change to sign next: five steps one sentence at a time', sh: 'A stepper on the change: You asked Oct 20 · Sent to the customer Oct 24 · Customer signs · You sign · On your statement of work, the current step marked, the amount on the last', w: 'L–M', z: 'XS–S' },
+    // shape 5 · counts that open
+    { id: 'office-2', s: 5, d: true, a: 'Dashboard · Needs you', t: 'The people waiting on us' },
+    { id: 'people-docs-5', s: 5, d: true, a: 'Documents · Search', t: 'No jobs match, over the newest 200' },
+    { id: 'jobs-pipeline-10', s: 5, a: 'Lien desk', t: 'Do now when it is empty', now: 'Nothing needs you right now. Every lien paper is sent, filed or waiting on its day, while a job with its kind not set sits one tab over', sh: 'Keep the good empty state and add what it looked at as chips: 1 job watched · next date Dec 15 › and 1 kind not set ›, each opening Deadlines on its row', w: 'L', z: 'XS' },
+    { id: 'jobs-pipeline-11', s: 5, a: 'Pipeline on a phone', t: "A card's one Next chip", now: '1321 Cedar Bend Apartments [set % done]: the winner of a ranked list; a returned check, no contract and a lien inside 21 days stay hidden behind the first match', sh: 'Keep the one chip and add a quiet +2 beside it; pressing it unfolds the other readings as chips in their order, each with the door it already has', w: 'L', z: 'S' },
+    { id: 'jobs-money-6', s: 5, a: 'Job Summary', t: 'The chip row under the tiles', now: '≈ 4 open jobs burn against an assumption · ▾ 6 jobs under the 35% target · ⚠ 4 jobs have no % complete · ⏳ 2 sessions await approval … reject in People → Hours to remove: counts in sentences, none filtering', sh: 'Each chip a filter: press no % complete 4 and the table shows those four, Show all to return; the pending-sessions chip opens People → Hours on them; the prior-hours chip sets the window', w: 'M', z: 'S' },
+    { id: 'jobs-money-12', s: 5, a: 'Tally · the pay bar', t: 'Mark 4 payroll', now: '4 Cash App pay sends on Bo’s card · $1,350.00 · To Isaac W., Tomas R. and 2 more… 2 more sends have a note like gas or Home Depot. Sort them by hand: the press marks sends the bar does not list', sh: 'The bar opens to its sends as rows (payee · day · amount · note), the button’s count matching them; the held sends under Held · note reads like an expense with the matched word marked and a door to sort each', w: 'M', z: 'XS' },
+    { id: 'jobs-money-18', s: 5, a: 'Legal desk', t: 'Before this goes to an attorney, in the kernel’s order', now: '3 to fix · 5 to know about, interleaving the account’s gaps with three jobs’ gaps, each a label, a dash and a sentence of rule', sh: 'Grouped under The account and then each job, a job’s gaps as chips in one row (sworn · note · property · field) with the fix press on the chip; the header’s counts filter to fix or to know about; one drawing with jobs-money-1’s marks', w: 'M', z: 'S' },
+    { id: 'bids-12', s: 5, a: 'Dashboard · Needs you', t: 'The robot is blocked on 3 bids', now: 'It cannot open the plans. Share the folder with the robots’ account, or attach the PDF… First: B1301, with one button to the first bid, though the robot may have said the set is wrong or has no plumbing sheets', sh: 'The count as chips (B1301 · B1303 · B1302), each opening its needs sheet with the robot’s ask quoted on hover; the fix sentence follows the ask’s kind', w: 'M', z: 'S' },
+    { id: 'gc-messages-6', s: 5, a: 'GC project card', t: 'The red gaps line under the trades table', now: '4 gaps: Plumbing leaves out Gas piping for HVAC. Plumbing leaves out Utilities past 5 ft… HVAC leaves out Power wiring… : a matrix said as a paragraph, the trade that should pick a gap up showing nothing on its row', sh: 'Each gap lands on the row it falls to as a red chip (Gas piping · from Plumbing on HVAC’s row), a ghost row for a trade not on the job; leaves out 2 becomes two chips, green when listed by the other trade; the line a count chip that lights them', w: 'M', z: 'S' },
+    { id: 'gc-messages-7', s: 5, a: 'GC mode · Trade partners · By step', t: 'The today line and over usual', now: '3 need a hand today: Acme Concrete is 4 days late on Papers in, and 2 more. 1 waiting on someone else. 2 over usual: and 2 more names nobody; usually 6 d compares against a median never counted', sh: 'The counts as chips that filter the bands (Needs a hand 3 · Waiting on someone 1 · Over usual 2); usually 6 d carries its sample (from 7 done) and the used-vs-usual bar with a door to How it is going', w: 'M', z: 'S' },
+    { id: 'gc-messages-9', s: 5, a: 'Trade partners · Prospects · the Subs board', t: 'The bench, said as counts', now: 'Plumbing has 2. Find 1 more. · 2 on the bench, 1 answer · 1 not asked yet · 6 to call here · [answers] (a text back counts as an answered call)', sh: 'Each trade’s bench a row of company chips with a record dot (green answers, amber hit or miss, red often silent, grey new) and its state on the soonest ask; three slots with the empty ones dashed; the hover names its measure and counts', w: 'M', z: 'S–M' },
+    { id: 'gc-messages-11', s: 5, a: 'Prospects · Subs', t: 'The strip and the sentence under it', now: 'To call 100 → Called 4 → Talked 0 → On the bench 0 → Quoted 0, counting but not filtering, with a paragraph explaining the moves', sh: 'Each box a filter over the list (Called 4 narrows to those rows, still by trade); each arrow’s hover names the press that moves a company; the exits two chips that unfold their rows', w: 'M', z: 'S' },
+    { id: 'gc-messages-12', s: 5, a: 'GC mode · Get started', t: 'Not ready yet. N things are missing', now: 'Not ready yet. 4 things are missing. [██████░░░░] 11 of 26 steps done, then bullets saying again the ticks drawn below; two counts of one list disagree', sh: 'One count: the open ticks as chips by owner, schedule and each trade (Owner 1 · Schedule 1 · Concrete 3 · Electrical 2), each jumping to its rows; the bar split by the same groups; the bullets go', w: 'M', z: 'S' },
+    { id: 'gc-messages-13', s: 5, a: 'GC mode · Bill day', t: 'The seven gates', now: '✗ The conditional waivers for this period are in. They come with each draw. 3 of 5 are in so far: names no trade, has no press', sh: 'Each gate draws one dot per trade, in or not in, the missing trade’s name on hover, a press that jumps to its row in the groups below', w: 'M', z: 'S' },
+    { id: 'gc-messages-16', s: 5, a: 'Development page · Pieces', t: 'N likely pairs, and Pair the N', now: 'Pieces 12 · 4 likely pairs · Pair the 4 likely pairs?, while the preview tells likely from possible match', sh: 'Two counts, 2 likely · 2 possible, as chips that filter the pairing rows; Pair the 2 likely pairs only the sure ones', w: 'L–M', z: 'XS' },
+    { id: 'field-9', s: 5, a: 'Job Mode · Stage checklists', t: 'Not ready, said twice', now: '[Rough In (not ready)] [2 of 3 answered, not ready] · the sheet foot: Rough In reads not ready on the Pipeline until every question is answered · a toast on Done', sh: 'Each stage row a row of dots, one per question (filled, a camera ring when one waits on its photo, hollow when open), not ready once as the chip; a press on a dot opens the sheet at that question; the strip flipping to ready replaces the toast', w: 'L–M', z: 'XS–S' },
+    { id: 'field-13', s: 5, a: 'Push', t: 'The daily Task reminder', now: 'You have 4 outstanding tasks: Order the water heater… · Due tomorrow: Return the rental · Still not done by the crew: Clean the job box (pushed ×2, +5d), landing on the checklist’s default tab', sh: 'One push per bucket, each landing on its rows (due on today’s view, tomorrow on that day, an escalated item on its row with its holder named); on the page the three buckets as count chips that filter', w: 'M', z: 'S' },
+    { id: 'field-16', s: 5, a: "Superintendent's Dashboard · Crew Day", t: 'The count chips', now: '(4 people) (3 jobs) (9.3 h) (0 reports) (1 flag): spans that look like filters and do nothing; the flag does not say its kind', sh: 'The flag chip names its kind (1 never clocked in) and filters the people to that row; Reports filters to the people who left one', w: 'L', z: 'XS' },
+    { id: 'people-docs-12', s: 5, a: 'Projects', t: "The list's order", now: 'Cards in an order the screen never explains: a hidden score (rejected 4, waiting 2, unassigned 1), waiting from day 3', sh: 'Headings by what each needs (Sent back · Waiting on someone · No one on the step · No dates · Moving) with a count chip per heading that filters; inside a heading, oldest first', w: 'M', z: 'S' },
+    { id: 'people-docs-14', s: 5, a: 'People · Vehicles', t: 'The attention list', now: '2 oil overdue · 1 open problem · 3 need a reading › · 1 not on insurance · 2 unassigned · 4 maintenance tasks ›: most with no door; Oil due in 600 mi as prose', sh: 'Every attention count a chip that filters the cards to its trucks; on each card a short gauge from the last oil change to the next due, the latest reading a tick, the due-soon stretch amber', w: 'M', z: 'S' },
+    { id: 'outside-11', s: 5, a: "The builder's portal · Your papers", t: 'Lien waivers', now: 'One pair per bill. The conditional comes with the bill. The unconditional comes once your check clears, then rows split into halves by date', sh: 'One row per bill under its address: the bill, then two cells, Conditional ✓ Oct 28 and Unconditional · waits on your check, each opening its PDF; the sentence goes', w: 'M', z: 'S' },
+    { id: 'outside-16', s: 5, a: "The collections firm's portal · Evidence", t: 'Documents from the office · 39', now: 'One flat table in the order added, each row a title, a kind · size line, a sentence and a state sentence; the desk groups the same papers by whose since v2.6108', sh: 'The desk’s groups (the payer’s · ours · the public record · the supplier’s · our record) with the state as a chip and the send record on hover, the same kernel; a legal-portal deploy', w: 'M', z: 'S' },
+    { id: 'outside-18', s: 5, a: 'Settings · What customers see', t: 'Where people are, all at once', now: 'AGREEMENTS 8 signed · 1 sent, unopened 3+ days · 91 live jobs with none → Start the sweep: counts with one door per step, so the one unopened agreement cannot be opened', sh: 'Each count a chip that opens its own list (the unopened agreement, the five never-visited portals), the stuck counts in the warning tone', w: 'L', z: 'S' },
+    // shape 6 · the verdict lights its cause
+    { id: 'gc-messages-1', s: 6, d: true, a: 'GC project card', t: 'The verdict pill' },
+    { id: 'jobs-money-1', s: 6, d: true, a: 'Legal desk', t: 'Can we sue? and What could go wrong?', with: ['jobs-money-2'] },
+    { id: 'office-1', s: 6, d: true, a: 'The Bridge', t: 'The weakest link' },
+    { id: 'bids-1', s: 6, d: true, a: 'Bids · the robots', t: 'One run, two deltas' },
+    { id: 'jobs-pipeline-3', s: 6, d: true, a: 'GC Review', t: 'Changed since certified' },
+    { id: 'bids-4', s: 6, d: true, a: 'Bids · the flow strip', t: 'The Price tick' },
+    { id: 'bids-13', s: 6, a: 'Bids · Pricing', t: "Labor hours don't match this version's counts", now: '⚠ Labor hours don’t match this version’s counts, so our cost and the margin may be off. Open Labor to refresh them: the kernel knows which fixtures and how, the screen names the rule', sh: 'The warning lists its rows (fixture, this version’s count, Labor’s count, the hours that change), each a door that opens Labor flashed on that row; Open Labor names its count', w: 'M', z: 'S' },
+    { id: 'bids-17', s: 6, a: "Bid Room · the GC's page", t: 'The revision line and the stale-revision refusal', now: 'Rev 3 · published Oct 24, 2026 — "per addendum 2"; on an old tab: The proposal was just revised — here is the current version, reloading with a new total and no sign of what moved', sh: 'Revision chips along the top; on a revised reload a since Rev 2 band lists the lines whose amount or scope moved, the old total struck beside the new', w: 'M', z: 'M · a function change' },
+    { id: 'bids-18', s: 6, a: 'Bids · Audits · Scoreboard', t: 'needs a fix first', now: '2 questions · 1 note · Vet clinic, 1 of 5 in a row · needs a fix first: one phrase for two rules, neither opening the row that tripped it', sh: 'The Audits row carries a plans ask · B1301 chip that opens the needs sheet; on the Scoreboard the red out-of-band box is the door, Last run b9041 −17% · audit waiting →', w: 'M', z: 'XS' },
+    { id: 'office-15', s: 6, a: 'Every page · the app-health strip', t: 'The app is slow right now', now: 'The app is slow right now. · Could not reach the app. [Retry]: a verdict whose making (how many reads wait, how long, a freeze code) stays in the store', sh: 'The lead keeps its words and a live readout follows: 4 reads waiting · oldest 12 s · last answer 10:41:52; a freeze code adds the database said: timeout (57014); a dev gets a 30-second pulse line', w: 'M', z: 'S' },
+    { id: 'field-15', s: 6, a: 'Every phone screen · the strip', t: 'slow, with no since', now: 'The app is slow right now. with nothing about how long it has been, so a five-second hiccup and a three-minute freeze read alike', sh: 'The lead adds the clock: slow since 7:52 AM · 40 s, ticking like the outbox bar’s countdown', w: 'L', z: 'XS' },
+    { id: 'outside-7', s: 6, a: 'The revised proposal email · the bid room', t: 'What changed in a revision', now: 'We’ve revised our plumbing proposal… What changed in revision 2: Per addendum 2 — roof drains added at grid C: a typed note; the old figure and the moved counts are gone from the GC’s view', sh: 'The email and the room carry the change as rows: each option’s total Rev 1 → Rev 2 with the difference, each fixture count that moved (Roof drain 6 → 8), the note as the reason; a Rev 1 fold', w: 'M', z: 'M · a function change' },
+    // shape 7 · say it once
+    { id: 'outside-4', s: 7, d: true, a: "The customer's portal", t: 'One payment, three times' },
+    { id: 'jobs-money-16', s: 7, a: 'Legal desk', t: 'The why under How much? and What’s left for us?', now: 'Open bills $52,180 inside it, plus retainage $9,060 that no bill asks for yet. The oldest bill is 92 days old, said on the card and drawn in the bar right under it', sh: 'Each card keeps its answer and chip; the why becomes one short line that points into the bar, the figures live only in the bars; the oldest bill’s age moves onto its segment', w: 'M', z: 'XS' },
+    { id: 'office-14', s: 7, a: 'The Bridge', t: 'Each reading said two or three times', now: 'The Bill reading on the card, the desk’s Today’s reading, the dial’s THE LINK and the Monday sheet, four times; the headline’s verdict beside its own bars', sh: 'Say each reading once where its shape is: the card keeps the numbers, the desk draws in → pile → out with the dial, THE LINK becomes office-1’s ruler, the headline’s verdict becomes labels on its bars, the net position light a three-part bar', w: 'M', z: 'S' },
+    { id: 'field-10', s: 7, a: 'Any phone screen with no signal', t: 'The same two facts said in five places', now: 'No signal. The page you see was read at 7:52 AM. 1 waiting to send › · Clock in pressed at 7:58 AM · waiting to send · Your day as read at 7:52 AM · Clocked in · kept on the phone · a toast', sh: 'One line owns the state: the strip draws a short track from read 7:52 to now with each waiting press a dot at its time and the door to the list; the presses wear their state (a hollow NOW dot, a dashed button); the toast goes', w: 'M', z: 'S' },
+  ];
+  const PR_URL = 'https://github.com/clickconstruction/pipetooling.github.io/pull/';
+  // The PRs each pair has: to-dos/show-not-tell/prototypes.json, injected here by build.sh (the same file npm run proto reads).
+  const MANIFEST = /*MANIFEST*/null;
+  const SHAPE_NAMES = { 1: 'A date against today', 2: 'A figure as its parts', 3: 'The source on the figure', 4: 'A process as its steps', 5: 'Counts that open', 6: 'The verdict lights its cause', 7: 'Say it once' };
+  const byId = Object.fromEntries(F.map((f) => [f.id, f]));
+  const PICKS = ['build', 'later', 'drop'];
+  const WORDS = { build: 'Build', later: 'Later', drop: 'Drop' };
+  // The owner's picks and notes as pasted on 2026-10-30 (the first pass); the browser's and the page's own store sit on top.
+  // The picks: to-dos/show-not-tell/picks.json, injected here by build.sh; Export picks writes a new one.
+  const SAVED = /*PICKS*/null;
+  const SEED = SAVED && SAVED.picks ? SAVED.picks : {};
+  const picks = Object.fromEntries(Object.entries(SEED).map(([k, v]) => [k, Object.assign({}, v)]));
+  let db = null;
+  let storeState = 'local';
+  let show = 'all';
+  let showDropped = false;
+  const TOTAL = 130;
+  const $ = (s, r) => (r || document).querySelector(s);
+  const $$ = (s, r) => Array.from((r || document).querySelectorAll(s));
+
+  // --- a strip of days, from its data- attributes
+  function renderDays(el) {
+    if (el.dataset.rendered) return;
+    el.dataset.rendered = '1';
+    const n = +el.dataset.n || 0;
+    const dow0 = el.dataset.dow0 != null ? +el.dataset.dow0 : null;
+    const today = el.dataset.today != null ? +el.dataset.today : -1;
+    const limit = el.dataset.limit != null ? +el.dataset.limit : -1;
+    const from = el.dataset.from != null ? +el.dataset.from : -1;
+    const rule = el.dataset.rule != null ? +el.dataset.rule : -1;
+    const shade = el.dataset.shade ? el.dataset.shade.split('-').map(Number) : null;
+    const sched = el.dataset.sched ? new Set(el.dataset.sched.split(',').map(Number)) : null;
+    const marks = {};
+    (el.dataset.marks || '').split(',').filter(Boolean).forEach((m) => { const i = m.indexOf(':'); const k = +m.slice(0, i); (marks[k] = marks[k] || []).push(m.slice(i + 1).trim()); });
+    const cols = {};
+    (el.dataset.cols || '').split(',').filter(Boolean).forEach((c) => { const p = c.split(':'); cols[+p[0]] = { v: p[1], flag: p[2] || '' }; });
+    const pops = {};
+    (el.dataset.pop || '').split('|').filter(Boolean).forEach((p) => { const i = p.indexOf(':'); pops[+p.slice(0, i)] = p.slice(i + 1); });
+    const useCols = !!el.dataset.cols;
+    for (let i = 0; i < n; i++) {
+      const d = document.createElement('div');
+      d.className = 'd';
+      const dow = dow0 == null ? -1 : (dow0 + i) % 7;
+      if (i === today) d.classList.add('today');
+      if (dow === 0 || dow === 6) d.classList.add('wk');
+      if (i === limit) d.classList.add('limit');
+      if (i === from) d.classList.add('from');
+      if (i === rule) d.classList.add('rule');
+      if (shade && i >= shade[0] && i <= shade[1]) d.classList.add('shade');
+      if (pops[i] != null) { d.classList.add('pop'); d.dataset.pop = pops[i]; if (i < n / 3) d.classList.add('pop-l'); else if (i > (2 * n) / 3) d.classList.add('pop-r'); el.classList.add('haspop'); }
+      if (useCols) {
+        const c = cols[i];
+        d.style.display = 'flex'; d.style.alignItems = 'flex-end'; d.style.justifyContent = 'center';
+        if (c) {
+          if (c.v === 'miss') { const dot = document.createElement('i'); dot.className = 'dot miss'; dot.style.marginBottom = '2px'; d.appendChild(dot); }
+          else { const col = document.createElement('i'); col.className = 'col' + (c.flag === 'today' ? ' today' : c.flag === 'part' ? ' part' : ''); col.style.height = c.v + '%'; d.appendChild(col); }
+        }
+      } else {
+        const ms = marks[i] || [];
+        if (!ms.length && sched && sched.has(dow)) ms.push('ring');
+        ms.forEach((cls) => { const dot = document.createElement('i'); dot.className = 'dot ' + cls; d.appendChild(dot); });
+      }
+      el.appendChild(d);
+    }
+  }
+  function renderDaysLab(el) {
+    if (el.dataset.rendered) return;
+    el.dataset.rendered = '1';
+    const n = +el.dataset.n || 1;
+    (el.dataset.labels || '').split('|').filter(Boolean).forEach((l) => {
+      const parts = l.split(':');
+      const idx = +parts[0];
+      const text = parts[1];
+      const mods = parts.slice(2);
+      const s = document.createElement('span');
+      s.textContent = text;
+      s.style.left = ((idx + 0.5) / n * 100) + '%';
+      mods.forEach((m) => s.classList.add(m));
+      if (idx === 0 && !mods.includes('l') && !mods.includes('r')) { s.classList.add('l'); s.style.left = '0'; }
+      if (mods.includes('l')) s.style.left = (idx / n * 100) + '%';
+      if (mods.includes('r')) s.style.left = ((idx + 1) / n * 100) + '%';
+      el.appendChild(s);
+    });
+  }
+  $$('.days[data-n]').forEach(renderDays);
+  $$('.dayslab[data-n]').forEach(renderDaysLab);
+
+  // --- the backlog rows under each shape
+  function rowHtml(f) {
+    return '<tr data-id="' + f.id + '"><td class="id">' + f.id + '</td><td><div class="t">' + f.a + ' · ' + f.t + '</div><div class="s">' + f.now + '</div></td><td><div class="s">' + f.sh + '</div></td><td class="w">' + f.w + ' · ' + f.z + '</td><td><div class="pick sm" data-for="' + f.id + '"></div></td></tr>';
+  }
+  $$('.also[data-shape]').forEach((also) => {
+    const s = +also.dataset.shape;
+    const rows = F.filter((f) => f.s === s && !f.d);
+    $('tbody', also).innerHTML = rows.map(rowHtml).join('');
+    $('.cap', also).textContent = 'Also takes this shape · ' + rows.length + ' more place' + (rows.length === 1 ? '' : 's');
+    if (!rows.length) also.hidden = true;
+  });
+  // a Build all · Later all · Clear row per shape, after the "lives" line
+  $$('.shape').forEach((sec) => {
+    const s = +sec.id.slice(1);
+    const all = F.filter((f) => f.s === s);
+    const div = document.createElement('div');
+    div.className = 'pick';
+    div.innerHTML = '<span class="lbl">Everything in this shape · ' + all.length + '</span>' + PICKS.map((p) => '<button type="button" data-all="' + p + '">' + WORDS[p] + ' all</button>').join('') + '<button type="button" data-all="">Clear</button>';
+    div.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-all]'); if (!b) return;
+      const p = b.dataset.all;
+      all.forEach((f) => { setPick(f.id, p || null, undefined, true); });
+      flushAll();
+    });
+    $('.lives', sec).insertAdjacentElement('afterend', div);
+  });
+
+  // --- the prototype and build bars
+  const PROTOS = Object.fromEntries((MANIFEST ? MANIFEST.prototypes : []).map((p) => [p.id, p]));
+  const TAGS = { proto: 'Prototype ready', build: 'Built, on its way', shipped: 'Shipped' };
+  const esc = (v) => String(v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const protoUrl = (p) => 'http://localhost:' + p.port + (p.as === 'dev' ? '/dev-login?as=1&to=' + encodeURIComponent(p.door) : p.door);
+  const protoCmd = (p) => 'npm run proto -- ' + p.id;
+  function barHtml(p) {
+    const state = p.kind === 'shipped' ? p.ver + ' · on main' : p.kind === 'build' ? p.ver + ' · auto-merge armed' : p.ver + ' · on its branch behind a switch, off by default';
+    const where = (p.kind === 'shipped' ? 'see it at ' : 'door ') + '<code>' + esc(p.door) + '</code>' + (p.note ? ' · ' + esc(p.note) : '');
+    const jump = '<span class="jump"><code class="cmd">' + esc(protoCmd(p)) + '</code><button type="button" class="copy" data-cmd="' + esc(protoCmd(p)) + '">Copy</button><span class="then">then</span><a href="' + esc(protoUrl(p)) + '" target="_blank" rel="noreferrer">open it on localhost:' + p.port + ' ↗</a>' + (p.as === 'dev' ? '<span class="then">signed in as the dev</span>' : '') + '</span>';
+    return '<span class="tag">' + TAGS[p.kind] + '</span><a href="' + PR_URL + p.pr + '" target="_blank" rel="noreferrer">PR #' + p.pr + ' ↗</a><span class="how">' + state + ' · ' + where + '</span>' + jump;
+  }
+  Object.values(PROTOS).forEach((p) => {
+    $$('.pair[data-id="' + p.id + '"]').forEach((sec) => {
+      if ($('.protobar', sec)) return;
+      const bar = document.createElement('div');
+      bar.className = 'protobar ' + p.kind;
+      bar.innerHTML = barHtml(p);
+      const meta = $('.meta', sec);
+      (meta || $('h3', sec)).insertAdjacentElement('afterend', bar);
+    });
+  });
+  (function drawProtos() {
+    const box = $('#protos'); if (!box) return;
+    const list = Object.values(PROTOS).sort((x, y) => x.pr - y.pr || x.id.localeCompare(y.id));
+    if (!list.length) return;
+    const byPr = {}; list.forEach((p) => { (byPr[p.pr] = byPr[p.pr] || []).push(p); });
+    const word = (k) => (k === 'shipped' ? ' · shipped' : k === 'build' ? ' · built' : '');
+    box.innerHTML = '<div class="cap">Prototypes and builds so far · ' + Object.keys(byPr).length + ' PRs · ' + list.length + ' places · press one to jump to its pair</div><div class="list">'
+      + Object.entries(byPr).map(([pr, ps]) => '<a class="' + ps[0].kind + '" href="#' + ps[0].id + '">#' + pr + ' · ' + ps.map((p) => esc(p.title)).join(' + ') + word(ps[0].kind) + '</a>').join('') + '</div>'
+      + "<p><b>To jump into one on your own machine.</b> Once: clone the repo and <code>npm install</code>; for the doors that sign in as the dev, put the main checkout's <code>.env.local</code> beside <code>package.json</code> (it holds the dev login's secret; the portal and sample pages need none). Then run the command on the pair's bar: it fetches the PR's branch into its own worktree under <code>.claude/worktrees</code>, starts it on its own port and opens the door with today's look above the shape. <code>npm run proto</code> alone lists them all, and a bar's <i>open it</i> link works once its server is up. The list is <code>to-dos/show-not-tell/prototypes.json</code>; a shipped one is on main, so <code>npm run dev</code> and its door are enough.</p>";
+    box.hidden = false;
+  })();
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('button.copy'); if (!b) return;
+    const done = () => { b.textContent = 'Copied'; setTimeout(() => { b.textContent = 'Copy'; }, 1400); };
+    if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(b.dataset.cmd).then(done, done); else done();
+  });
+
+  // --- picks
+  function pickHtml(id, small) {
+    return '<span class="lbl">Pick</span>' + PICKS.map((p) => '<button type="button" data-pick="' + p + '" aria-pressed="false">' + WORDS[p] + '</button>').join('') + (small ? '' : '<input type="text" id="note-' + id + '" placeholder="a note (what you want different, or why)" maxlength="400">');
+  }
+  $$('.pick[data-for]').forEach((el) => {
+    const id = el.dataset.for;
+    el.innerHTML = pickHtml(id, el.classList.contains('sm'));
+    el.addEventListener('click', (e) => {
+      const b = e.target.closest('button[data-pick]'); if (!b) return;
+      const cur = picks[id] && picks[id].pick;
+      setPick(id, cur === b.dataset.pick ? null : b.dataset.pick);
+      flush(id);
+    });
+    const inp = $('input', el);
+    if (inp) {
+      let t = null;
+      inp.addEventListener('input', () => { setPick(id, undefined, inp.value, true); clearTimeout(t); t = setTimeout(() => flush(id), 700); });
+      inp.addEventListener('blur', () => { clearTimeout(t); flush(id); });
+    }
+  });
+  function setPick(id, pick, note, quiet) {
+    const p = picks[id] || (picks[id] = {});
+    if (pick !== undefined) p.pick = pick || null;
+    if (note !== undefined) p.note = note;
+    p.at = new Date().toISOString();
+    if (!quiet) render();
+  }
+  // A note Claude has acted on is cleared (its words live in the pair's blue box), so an empty line means it is the owner's turn again.
+  const HANDLED = Object.fromEntries(Object.entries(SEED).filter(([, v]) => v.handledAt).map(([k, v]) => [k, v.handledAt]));
+  function applyHandled() {
+    Object.entries(HANDLED).forEach(([id, h]) => { const p = picks[id]; if (p && p.note && (!p.at || p.at <= h)) { p.note = ''; p.handled = true; } });
+  }
+  function render() {
+    applyHandled();
+    $$('.pick[data-for]').forEach((el) => {
+      const p = picks[el.dataset.for] || {};
+      $$('button[data-pick]', el).forEach((b) => b.setAttribute('aria-pressed', String(p.pick === b.dataset.pick)));
+      const inp = $('input', el);
+      if (inp && document.activeElement !== inp && (p.note || '') !== inp.value) inp.value = p.note || '';
+      const h = HANDLED[el.dataset.for]; let hs = $('.handled', el);
+      if (h && inp && !(p.note)) { if (!hs) { hs = document.createElement('span'); hs.className = 'handled'; el.appendChild(hs); } hs.textContent = 'Your note of Oct 30 was acted on; its words are in the blue box above. The line is yours again.'; } else if (hs) hs.remove();
+    });
+    const counts = { build: 0, later: 0, drop: 0 };
+    let answered = 0;
+    F.forEach((f) => { const p = picks[f.id]; if (p && p.pick) { counts[p.pick]++; answered++; } });
+    const tally = $('#tally');
+    tally.innerHTML = '<span class="chip ok">build <b class="n">' + counts.build + '</b></span><span class="chip">later <b class="n">' + counts.later + '</b></span><span class="chip stop">drop <b class="n">' + counts.drop + '</b></span><span>' + answered + ' of ' + TOTAL + ' answered</span><span class="status ' + (storeState === 'live' ? 'live' : '') + '" id="pick-status">' + (storeState === 'live' ? 'Picks save to this page as you press them.' : storeState === 'refused' ? 'This page is read-only for you; picks stay in this browser.' : 'Picks stay in this browser; Copy my picks to send them. Her picks on shapes 1 and 2, pasted 2026-10-30, are in the page already.') + '</span>';
+    applyShow();
+  }
+  // storage: the page's db when it is served with one, this browser otherwise
+  const LS = 'snt217-picks';
+  function saveLocal() { try { localStorage.setItem(LS, JSON.stringify(picks)); } catch (e) { /* no storage */ } }
+  function loadLocal() { try { const s = localStorage.getItem(LS); if (s) Object.assign(picks, JSON.parse(s)); } catch (e) { /* no storage */ } }
+  const inflight = {};
+  async function flush(id) {
+    saveLocal();
+    if (!db) return;
+    if (inflight[id]) { inflight[id] = 'again'; return; }
+    inflight[id] = true;
+    try {
+      const p = picks[id] || {};
+      if (p.pick || p.note) await db.doc('picks/' + id).set({ pick: p.pick || null, note: p.note || '', at: p.at || new Date().toISOString() });
+      else await db.doc('picks/' + id).delete();
+    } catch (e) {
+      if (e && e.code === 'invalid_argument') { storeState = 'refused'; render(); }
+    }
+    const again = inflight[id] === 'again';
+    delete inflight[id];
+    if (again) flush(id);
+  }
+  function flushAll() { render(); Object.keys(picks).forEach((id) => flush(id)); }
+  async function initDb() {
+    if (!window.claude || typeof window.claude.use !== 'function') return;
+    try { db = await window.claude.use('db'); } catch (e) { db = null; }
+    if (!db) return;
+    db.collection('picks').onSnapshot((snap) => {
+      snap.docs.forEach((d) => { if (d.exists) picks[d.id] = Object.assign({}, d.data()); });
+      snap.docChanges().forEach((c) => { if (c.type === 'removed') delete picks[c.doc.id]; });
+      if (storeState !== 'refused') storeState = 'live';
+      render();
+    }, () => { if (storeState === 'live') storeState = 'local'; render(); });
+  }
+  loadLocal();
+  render();
+  initDb();
+
+  // --- copy my picks
+  $('#copy-picks').addEventListener('click', async () => {
+    const lines = ['Show-not-tell picks · punch list #217 · ' + new Date().toISOString().slice(0, 10)];
+    PICKS.forEach((p) => { const ids = F.filter((f) => picks[f.id] && picks[f.id].pick === p).map((f) => f.id + (f.with ? ' (+ ' + f.with.join(', ') + ')' : '')); lines.push(WORDS[p].toUpperCase() + ' (' + ids.length + '): ' + (ids.join(', ') || '—')); });
+    const notes = F.filter((f) => picks[f.id] && picks[f.id].note).map((f) => '- ' + f.id + ': ' + picks[f.id].note);
+    if (notes.length) lines.push('NOTES:', ...notes);
+    const text = lines.join('\n');
+    const b = $('#copy-picks');
+    try { await navigator.clipboard.writeText(text); b.textContent = 'Copied'; }
+    catch (e) { const ta = document.createElement('textarea'); ta.value = text; ta.style.cssText = 'position:fixed;left:0;top:0;width:90vw;height:40vh;z-index:9'; document.body.appendChild(ta); ta.select(); b.textContent = 'Select and copy'; }
+    setTimeout(() => { b.textContent = 'Copy my picks'; }, 2000);
+  });
+
+  // --- theme and show
+  const root = document.documentElement;
+  function setTheme(t) { root.setAttribute('data-theme', t); $('#theme-light').setAttribute('aria-pressed', String(t === 'light')); $('#theme-dark').setAttribute('aria-pressed', String(t === 'dark')); }
+  $('#theme-light').addEventListener('click', () => setTheme('light'));
+  $('#theme-dark').addEventListener('click', () => setTheme('dark'));
+  try { const q = new URLSearchParams(location.search).get('theme'); if (q === 'dark' || q === 'light') setTheme(q); else if (root.getAttribute('data-theme') === 'dark') setTheme('dark'); } catch (e) { /* none */ }
+  function applyShow() {
+    const dropped = (id) => { const p = picks[id]; return !!(p && p.pick === 'drop'); };
+    $$('.pair').forEach((sec) => { const p = picks[sec.dataset.id]; sec.hidden = (show === 'picked' && !(p && p.pick)) || (!showDropped && dropped(sec.dataset.id)); });
+    $$('.also').forEach((a) => {
+      if (!$$('tr[data-id]', a).length || show === 'drawn') { a.hidden = true; return; }
+      let any = false;
+      $$('tr[data-id]', a).forEach((tr) => { const p = picks[tr.dataset.id]; const h = (show === 'picked' && !(p && p.pick)) || (!showDropped && dropped(tr.dataset.id)); tr.hidden = h; if (!h) any = true; });
+      a.hidden = show === 'picked' && !any;
+    });
+    ['all', 'drawn', 'picked'].forEach((k) => $('#show-' + k).setAttribute('aria-pressed', String(show === k)));
+    const sd = $('#show-dropped'); const nd = F.filter((f) => dropped(f.id)).length; sd.setAttribute('aria-pressed', String(showDropped)); sd.textContent = showDropped ? 'Hide dropped' + (nd ? ' · ' + nd : '') : 'Show dropped' + (nd ? ' · ' + nd : '');
+  }
+  ['all', 'drawn', 'picked'].forEach((k) => $('#show-' + k).addEventListener('click', () => { show = k; applyShow(); }));
+  $('#show-dropped').addEventListener('click', () => { showDropped = !showDropped; applyShow(); });
+  applyShow();
+  // --- export: the picks as picks.json, to save beside the page and commit
+  function picksFile() {
+    const out = { about: SAVED && SAVED.about ? SAVED.about : 'Punch list #217, the saved picks.', saved: new Date().toISOString(), picks: {} };
+    Object.keys(picks).sort().forEach((id) => {
+      const p = picks[id] || {};
+      const row = { pick: p.pick || null, note: p.note || '', at: p.at || null };
+      if (HANDLED[id]) row.handledAt = HANDLED[id];
+      if (row.pick || row.note || row.handledAt) out.picks[id] = row;
+    });
+    return JSON.stringify(out, null, 2) + '\n';
+  }
+  function showPicksText(text) {
+    const dlg = $('#picks-out'); if (!dlg) return;
+    $('textarea', dlg).value = text; if (typeof dlg.showModal === 'function') dlg.showModal(); else dlg.setAttribute('open', '');
+  }
+  async function exportPicks() {
+    const b = $('#export-picks'); const text = picksFile();
+    const said = (w) => { b.textContent = w; setTimeout(() => { b.textContent = 'Export picks'; }, 1600); };
+    if (window.claude && typeof window.claude.use === 'function') {
+      let dl = null; try { dl = await window.claude.use('downloads'); } catch (e) { dl = null; }
+      if (dl) {
+        try { await dl.save({ filename: 'picks.json', data: text }); said('Saved'); }
+        catch (e) { if (e && e.code === 'declined') said('Not saved'); else showPicksText(text); }
+        return;
+      }
+    }
+    try {
+      const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([text], { type: 'application/json' })); a.download = 'picks.json';
+      document.body.appendChild(a); a.click(); a.remove(); said('Downloaded');
+    } catch (e) { showPicksText(text); }
+  }
+  $('#export-picks').addEventListener('click', () => { exportPicks(); });
+  $('#picks-out .copy-text').addEventListener('click', async () => {
+    const ta = $('#picks-out textarea'); const b = $('#picks-out .copy-text');
+    try { await navigator.clipboard.writeText(ta.value); b.textContent = 'Copied'; } catch (e) { ta.select(); b.textContent = 'Select all and copy'; }
+    setTimeout(() => { b.textContent = 'Copy'; }, 1600);
+  });
+  $('#picks-out .close').addEventListener('click', () => { const d = $('#picks-out'); if (d.close) d.close(); else d.removeAttribute('open'); });
+  window.__snt = { F, picks, SHAPE_NAMES, picksFile };
+})();
+</script>

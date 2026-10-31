@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest'
 import { SAFETY_ORANGE_TEXT, SAFETY_ORANGE_UNDER_WORDS, TEXT_ON_SAFETY_ORANGE } from './bids/bidStyles'
 import { CLOCK_IN_ACCENT_TEXT, CLOCK_IN_ACCENT_UNDER_WORDS } from './clock/clockColors'
 import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from './orangeUnderWords'
+import { SKY_UNDER_WORDS, SKY_UNDER_WORDS_HOVER, WORDS_ON_SKY } from './skyUnderWords'
 import { MORE_SWIPE_GREY } from './people/usersTabPhone'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from './deadPress'
 import { JOB_ACTIVITY_EVENT_RENDER } from './jobActivityEvent'
@@ -61,7 +62,8 @@ describe('the pairs What everyone sees found, in both themes', () => {
     { label: "People → Users' phone row, swipe to More (v2.6068)", fg: '#ffffff', bg: MORE_SWIPE_GREY },
     { label: "an amber count or press with words, on the deep orange: the follow-ups count, a follow-up's job number, the inbox's N open (v2.6070, white since v2.6186)", fg: WORDS_ON_ORANGE, bg: ORANGE_UNDER_WORDS },
     { label: "the Checklist's ✓ You on green (v2.6070)", fg: 'var(--text-on-bright-solid)', bg: '#22c55e' },
-    { label: "the header's dispatch press and the dispatch mode ticks on the deep sky (v2.6070, white since v2.6186)", fg: '#ffffff', bg: '#0369a1' },
+    { label: "a sky press on the deep sky: the header's dispatch press and the dispatch mode ticks (v2.6070, white since v2.6186), and every other sky press since v2.6196", fg: WORDS_ON_SKY, bg: SKY_UNDER_WORDS },
+    { label: "a workflow's Set Start or Approve hovered, on the darker sky (v2.6196)", fg: WORDS_ON_SKY, bg: SKY_UNDER_WORDS_HOVER },
     { label: "a blue press with white words on #2563eb in both themes: the cost move's Move, Apply and Done, and the payroll sort chips (v2.6186)", fg: '#ffffff', bg: '#2563eb' },
     { label: 'Next, ✓ All clear and the discount in green-700 on the surface (v2.6075)', fg: 'var(--text-green-700)', bg: 'var(--surface)' },
     { label: 'the Bid Costs unsent chip (v2.6081)', fg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.fg, bg: PURSUIT_OUTCOME_CHIP_COLORS.unsent.bg },
@@ -111,6 +113,28 @@ describe("a map pin's count in the ink its fill takes, in both themes (v2.6130)"
   it("on the estimates' violet: 3:1 or better (the lens's floor; white reads 4.23:1 and the dark ink 4.19:1, so neither reaches 4.5:1)", () => {
     for (const theme of THEMES) expect(ratio(pinLabelInk(MAP_PAGE_ESTIMATE_COLOR), MAP_PAGE_ESTIMATE_COLOR, theme)).toBeGreaterThanOrEqual(3)
   })
+})
+
+describe("an empty cell's dash in --text-faint, as the app's other empty dashes draw it: Supply Houses and the customer review (v2.6197)", () => {
+  for (const bg of ['var(--bg-page)', 'var(--surface)']) {
+    for (const theme of THEMES) {
+      it(`on ${bg}, ${theme}: 3:1 or better (the lens's floor; a dash says nothing is there, the quiet it keeps is the point)`, () => {
+        expect(ratio('var(--text-faint)', bg, theme)).toBeGreaterThanOrEqual(3)
+      })
+    }
+  }
+})
+
+describe("a schedule block's − and + presses on the block's tint, in both themes (v2.6197)", () => {
+  for (const fg of ['var(--text-red-700)', 'var(--text-blue-700)']) {
+    for (const bg of ['var(--bg-violet-100)', 'var(--bg-blue-tint)']) {
+      for (const theme of THEMES) {
+        it(`${fg} on ${bg}, ${theme}: 4.5:1 or better`, () => {
+          expect(ratio(fg, bg, theme)).toBeGreaterThanOrEqual(4.5)
+        })
+      }
+    }
+  }
 })
 
 describe('words on a wash over a fill', () => {
