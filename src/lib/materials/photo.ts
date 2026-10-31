@@ -43,7 +43,7 @@ export function photoStatusWords(status: PhotoStatus): string {
   }
 }
 
-/** For this long after a press, the Photo button reads "Photo after Put in" and the file says so. */
+/** For this long after a press, the Photo chip is blue and the file is named "A1 after Put in". */
 export const FRESH_ACT_MS = 10 * 60_000
 
 export function actIsFresh(at: number, now: number): boolean {

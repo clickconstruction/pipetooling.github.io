@@ -29,7 +29,7 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
   jobId: string
   containerId: string
   containerLabel: string
-  /** What just happened to the box, when it was minutes ago: "Put in", "Add a part", "Count". Null otherwise. */
+  /** What just happened to the box, when it was minutes ago: "Put in", "Add a part", "Count". Null otherwise. Names the file and turns the chip blue; the chip itself reads Photo. */
   after: string | null
   byUserId: string | null
   byName: string
@@ -38,7 +38,9 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
 }) {
   const input = useRef<HTMLInputElement>(null)
   const [busy, setBusy] = useState<string | null>(null)
-  const label = busy ?? (after ? `Photo after ${after}` : `Photo of ${containerLabel}`)
+  // One word on the chip so three fit one line at 375 (v2.6229); what the shot follows is said by the blue outline, the aria-label and the file's name.
+  const label = busy ?? 'Photo'
+  const ofWhat = after ? `Photo after ${after}` : `Photo of ${containerLabel}`
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
     e.target.value = ''
@@ -68,7 +70,7 @@ export function PhotoPress({ jobId, containerId, containerLabel, after, byUserId
   }
   return (
     <>
-      <button type="button" style={style} disabled={busy != null} aria-label={`${label}: open the camera; the picture goes to the job's Drive folder by itself`} title="Opens the camera. The picture is shrunk on the phone and filed in the job's Drive folder, named for this box." onClick={() => input.current?.click()}>
+      <button type="button" style={style} disabled={busy != null} aria-label={`${busy ?? ofWhat}: open the camera; the picture goes to the job's Drive folder by itself`} title="Opens the camera. The picture is shrunk on the phone and filed in the job's Drive folder, named for this box." onClick={() => input.current?.click()}>
         <CameraGlyph />
         {label}
       </button>
