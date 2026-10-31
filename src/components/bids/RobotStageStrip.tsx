@@ -17,6 +17,11 @@ export type RobotStageStripProps = {
   onToggleExpanded?: () => void
   /** The door on the lit stop when fixtures are ready: the window. */
   onOpenFixtures?: (() => void) | null
+  /**
+   * inline only: the pill toggles and the parent draws the stops (the `full` face) on a row of their own, so an
+   * unfolded panel never hangs off a pill that sits at the right end of a head (v2.6237: it ran off the window).
+   */
+  detached?: boolean
 }
 
 const DONE = '#16a34a'
@@ -25,19 +30,19 @@ const NOW = '#2563eb'
 
 function Stops({ stage, dense }: { stage: RobotStage; dense: boolean }) {
   return (
-    <ol aria-label="The robot's stops on this bid" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: `repeat(${ROBOT_STAGE_STOPS.length}, minmax(0, 1fr))`, gap: dense ? 4 : 6 }}>
+    <ol aria-label="The robot's stops on this bid" style={{ listStyle: 'none', margin: 0, padding: 0, display: 'grid', gridTemplateColumns: dense ? `repeat(${ROBOT_STAGE_STOPS.length}, minmax(0, 1fr))` : 'repeat(auto-fit, minmax(62px, 1fr))', gap: dense ? 4 : 6 }}>
       {stage.stops.map((s) => (
-        <li key={s.key} data-testid={`robot-stage-${s.key}`} data-state={s.state} style={{ minWidth: 0 }}>
+        <li key={s.key} data-testid={`robot-stage-${s.key}`} data-state={s.state} title={s.detail ? `${s.label}, ${s.detail}` : s.label} style={{ minWidth: 0 }}>
           <div style={{ height: 3, borderRadius: 2, background: s.state === 'done' ? DONE : s.state === 'now' ? NOW : 'var(--border)', marginBottom: 4 }} />
-          <div style={{ fontSize: dense ? '0.66rem' : '0.72rem', fontWeight: s.state === 'now' ? 700 : 600, color: s.state === 'todo' ? 'var(--text-muted)' : 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.label}</div>
-          {s.detail && !dense ? <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{s.detail}</div> : null}
+          <div style={{ fontSize: dense ? '0.66rem' : '0.72rem', fontWeight: s.state === 'now' ? 700 : 600, color: s.state === 'todo' ? 'var(--text-muted)' : 'var(--text-strong)', lineHeight: 1.2, ...(dense ? { whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' } : {}) }}>{s.label}</div>
+          {s.detail && !dense ? <div style={{ fontSize: '0.66rem', color: 'var(--text-muted)', lineHeight: 1.2 }}>{s.detail}</div> : null}
         </li>
       ))}
     </ol>
   )
 }
 
-export function RobotStageStrip({ stage, variant, expanded = false, onToggleExpanded, onOpenFixtures = null }: RobotStageStripProps) {
+export function RobotStageStrip({ stage, variant, expanded = false, onToggleExpanded, onOpenFixtures = null, detached = false }: RobotStageStripProps) {
   const [localOpen, setLocalOpen] = useState(false)
   const open = onToggleExpanded ? expanded : localOpen
   const toggle = onToggleExpanded ?? (() => setLocalOpen((v) => !v))
@@ -55,6 +60,11 @@ export function RobotStageStrip({ stage, variant, expanded = false, onToggleExpa
         <p data-testid="robot-stage-sentence" style={{ margin: 0, fontSize: '0.84rem', color: 'var(--text-700)', display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
           <span>{stage.sentence}</span>
           {chip}
+          {lit?.key === 'sent' && stage.fixturesOpen && onOpenFixtures ? (
+            <button type="button" onClick={onOpenFixtures} style={{ font: 'inherit', fontSize: '0.84rem', background: 'none', border: 'none', color: 'var(--text-link)', cursor: 'pointer', padding: 0 }}>
+              {stage.fixturesTaken > 0 ? 'Open the list' : 'Review them'}
+            </button>
+          ) : null}
         </p>
       </div>
     )
@@ -74,7 +84,7 @@ export function RobotStageStrip({ stage, variant, expanded = false, onToggleExpa
         {chip}
         <span aria-hidden style={{ color: 'var(--text-muted)' }}>{open ? '▾' : '▸'}</span>
       </button>
-      {open ? (
+      {open && !detached ? (
         <div style={{ padding: '0.5rem 0.6rem 0.4rem', border: '1px solid var(--border)', borderRadius: 8, background: 'var(--surface)', minWidth: 'min(520px, 90vw)' }}>
           <Stops stage={stage} dense />
           <p data-testid="robot-stage-sentence" style={{ margin: '0.5rem 0 0', fontSize: '0.78rem', color: 'var(--text-700)' }}>

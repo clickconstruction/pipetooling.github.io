@@ -127,6 +127,9 @@ describe('whoGuesses with the customers first (v2.5795)', () => {
       ['candidate', 'A candidate, to the hiring board'],
       ['team', 'One of our own team'],
       ['someone_else', 'Someone else'],
+      // A notice, not a person (v2.6202): an email's card ends with the address's press, then the domain's.
+      ['notice', 'Mark dale@ridgewaybuilders.example a notice'],
+      ['notice', 'And everything from ridgewaybuilders.example'],
     ])
   })
   it('on the team line: the customers we know, the lead, the new customer, the rest', () => {

@@ -2,7 +2,7 @@
 title: sort new messages before anyone answers them
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid
+keywords: messages, follow up, new, sort, who is this, which job, who has it, lead, unknown number, default job, star, take it, hand it on, badge, count, teammate, our team, roster, customer we know, new customer, link to a customer, invitation to bid, notice, newsletter, not a person, unsubscribe, leave out
 where: /messages
 order: 119
 ---
@@ -55,6 +55,23 @@ The blue **Who is this?** sits at the top right of the card. It opens the search
 A teammate's number goes on their People record. Next time the app knows them without asking. Their thread sits under **Our team** on Messages.
 
 A trade partner made here waits for approval under Trade partners, like any company added there. A supply house's lines stay off Follow up. A candidate's do too.
+
+## A notice, not a person
+
+Some mail to bids@ is not a person writing to us. A newsletter, a supply house's specials or a platform's own notice lands as **Who is this?** when its headers do not mark it. The card's last block is **A notice, not a person**. It has one press, or two.
+
+- Press **Mark** and the address **a notice** to close the row. The app leaves that address out from now on.
+- Press **And everything from** the company's domain to leave out every address there. The app offers this only for a company's own domain, never for a shared mail service like gmail.com.
+
+:::example The block under the people, for a newsletter
+{{button:outline|Mark news@alamosurety.example a notice}} {{button:outline|And everything from alamosurety.example}}
+:::
+
+The thread goes to Done with a grey line, *Marked a notice*. Nothing in Gmail changes. Search still finds the thread, and the **Who is this?** pill on Messages still lists it. Their next email stays in Gmail with no label.
+
+Pressed it by mistake? Open the thread. The strip at the top reads *Marked a notice*. Press **Not a notice after all**. The address comes off the list and the row is back in New.
+
+An invitation to bid from a general contractor is not a notice. The contractor is a customer. Name them with **A customer we know** or **A new customer**.
 
 ## Which job?
 

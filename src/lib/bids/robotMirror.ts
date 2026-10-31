@@ -27,6 +27,7 @@ import type { ShadowRunRow } from './shadowStory'
 import type { RobotGap, RobotRowState } from './robotRowState'
 import { bestEffortGap, summarizeBestEffortMoves } from './bestEffort'
 import { referenceWholeValue } from '../../../supabase/functions/_shared/referenceWhole'
+import { fixturesScoreOf, type FixturesScore } from './robotFixtures'
 
 export type MirrorSection = SubmissionSectionKey
 
@@ -90,6 +91,9 @@ export interface RobotMirrorRun {
   /** Scored against a practice teacher — shown, never gated. */
   practice: boolean
   teacherName: string | null
+  /** v2.6237 (punch list #221): she took robot fixtures on this bid, so the run is shown and never gated; the fixtures score at send. */
+  assisted?: boolean
+  fixturesScore?: FixturesScore | null
   /** Sort key: scored → locked → created. */
   at: string
   audit: { id: string; status: string } | null
@@ -259,6 +263,8 @@ export function buildRobotMirror<B extends MirrorBid>(input: RobotMirrorInput<B>
       deltaPct: scored ? num(r.delta_pct) : null,
       practice: r.teacher_standard === false,
       teacherName: r.teacher_name ?? null,
+      assisted: !!r.assisted_at,
+      fixturesScore: fixturesScoreOf(r.fixtures_score),
       at: r.scored_at ?? r.locked_at ?? r.created_at ?? '',
       audit: auditFor(shell?.id ?? null),
       scoredAgainst: scored ? (r.reference_kind === 'best_effort' || r.reference_kind === 'sent' ? r.reference_kind : null) : null,
