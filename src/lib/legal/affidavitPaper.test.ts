@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { filingDocHtml, filingDocText } from '../jobsDocuments/lienFilingDocuments'
-import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_SEAL_WORDS, JURAT_STATE_LINE, juratCountyLine, juratSentence } from './juratWords'
+import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_STATE_LINE, juratCountyLine, juratSentence } from './juratWords'
 import {
   DECLARANT_BLANK, DECLARATION_PERJURY_SENTENCE, DECLARATION_STATUTE_FORM, FORM_HELP_WORDS, OFFICE_COUNTY_DEFAULT, SIGNED_ON_LINE, STATEMENT_DRAFT_AMBER_DAYS,
   attachedToLine, declarantProblem, lastPrintWords, statementFilingProblem, statementFilingShows, declarationJurat, defaultStatementForm, defaultVenueCounty, incidentSpanWords, isStatementEntry, printCountWords, recordCheckHeading, recordCheckLines,
@@ -28,7 +28,6 @@ describe('the statute words, character for character', () => {
     expect(juratSentence('Daniel Alvarez')).toBe('SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by Daniel Alvarez.')
     expect(juratSentence('')).toBe('SWORN TO AND SUBSCRIBED BEFORE ME on this _____ day of _____________, ______, by _______________.')
     expect(JURAT_NOTARY_TITLE).toBe('Notary Public, State of Texas')
-    expect(JURAT_SEAL_WORDS).toBe('(Personalized Seal)')
     expect(JURAT_COURTESY_LINES).toEqual(['Printed name: ______________________________', 'My commission expires: ______________________'])
   })
   it('the declaration’s jurat is § 132.001(d) whole', () => {
@@ -42,10 +41,12 @@ describe('the statute words, character for character', () => {
     const lien = filingDocText([{ kind: 'notarial', who: 'Malachi Click' }])
     expect(lien).toBe(`STATE OF TEXAS\nCOUNTY OF ___________\n\n${juratSentence('Malachi Click')}\n\n________________________________\nNotary Public, State of Texas`)
     const desk = filingDocText([{ kind: 'notarial', who: 'Daniel Alvarez', county: 'Guadalupe', courtesy: true }])
-    expect(desk).toBe(`STATE OF TEXAS\nCOUNTY OF GUADALUPE\n\n${juratSentence('Daniel Alvarez')}\n\n(Personalized Seal)\n\n________________________________\nNotary Public, State of Texas\n\nPrinted name: ______________________________\nMy commission expires: ______________________`)
+    expect(desk).toBe(`STATE OF TEXAS\nCOUNTY OF GUADALUPE\n\n${juratSentence('Daniel Alvarez')}\n\n________________________________\nNotary Public, State of Texas\n\nPrinted name: ______________________________\nMy commission expires: ______________________`)
     const html = filingDocHtml([{ kind: 'notarial', who: 'Daniel Alvarez', county: '', courtesy: true }])
     expect(html).toContain('COUNTY OF ___________')
-    expect(html).toContain('data-jurat-seal')
+    // v2.6249: no seal caption; the room above the signature stays blank for the notary's seal.
+    expect(html).not.toContain('Seal')
+    expect(html).toContain('margin:3.6em 0 0')
     expect(html).toContain('by Daniel Alvarez.')
     // The lien's block never grew the courtesy lines or a county.
     expect(filingDocHtml([{ kind: 'notarial', who: 'Malachi Click' }])).not.toContain('Printed name')
@@ -86,7 +87,7 @@ describe('the three faces under each form', () => {
     expect(t).toContain(SIGNED_ON_LINE)
     expect(t).toContain('Daniel Alvarez, Affiant\nResponsible Master Plumber of record for Click Plumbing and Electrical, License No. M-00000')
     expect(t).toContain(juratSentence('Daniel Alvarez'))
-    expect(t).toContain('(Personalized Seal)')
+    expect(t).not.toContain('Seal')
     expect(t).toContain('My commission expires')
     // The jurat carries the county twice: the caption at the top and the certificate at the end.
     expect(t.match(/COUNTY OF GUADALUPE/g)).toHaveLength(2)
