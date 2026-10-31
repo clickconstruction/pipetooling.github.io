@@ -60,6 +60,28 @@ describe('clockReadWithKeptPresses · the clock as the phone knows it', () => {
     expect(view.today[1]).toMatchObject({ id: pressSessionId('i1'), clocked_in_at: new Date(AT).toISOString(), clocked_out_at: new Date(AT + 30 * MIN).toISOString() })
   })
 
+  it('laid over the clock as drawn, when no read landed, it changes nothing that is already there', () => {
+    for (const presses of [[clockIn('i1', 1, AT)], [clockOut('o1', 1, AT, { sessionId: 's1' }), clockIn('i2', 2, AT + 1)], [clockIn('i1', 1, AT), clockOut('o1', 2, AT + MIN, { pressId: 'i1' })]]) {
+      const once = clockReadWithKeptPresses({ open, today: [earlier, open] }, presses)
+      expect(clockReadWithKeptPresses(once, presses)).toEqual(once)
+    }
+  })
+
+  it('a Dashboard opened with no signal draws a kept clock-in over an empty clock', () => {
+    const view = clockReadWithKeptPresses({ open: null, today: [] }, [clockIn('i1', 1, AT)])
+    expect(view.open?.id).toBe(pressSessionId('i1'))
+    expect(view.today.map((s) => s.id)).toEqual([pressSessionId('i1')])
+  })
+
+  it('a row drawn for a press goes once the press is dropped or refused, and stays once it landed', () => {
+    const drawn = clockReadWithKeptPresses({ open: null, today: [earlier] }, [clockIn('i1', 1, AT)])
+    expect(clockReadWithKeptPresses(drawn, [])).toEqual({ open: null, today: [earlier] })
+    expect(clockReadWithKeptPresses(drawn, [clockIn('i1', 1, AT, 'refused')])).toEqual({ open: null, today: [earlier] })
+    const landed = clockReadWithKeptPresses(drawn, [clockIn('i1', 1, AT, 'sent')])
+    expect(landed.open?.id).toBe(pressSessionId('i1'))
+    expect(landed.today.map((s) => s.id)).toEqual(['s0', pressSessionId('i1')])
+  })
+
   it('the hourly switch on the phone: the old session closed at the press, the new one open from it', () => {
     const view = clockReadWithKeptPresses({ open, today: [open] }, [clockOut('o1', 1, AT, { sessionId: 's1' }), clockIn('i1', 2, AT + 1)])
     expect(view.open?.id).toBe(pressSessionId('i1'))

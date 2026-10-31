@@ -365,6 +365,41 @@ export default function ClockInOutButton({
     setLastSelectedJobBid(parseLastJobBidFromStorage(stored))
   }, [userId])
 
+  // The clock as drawn (v2.6198): what the presses still on the phone are laid over when no read lands.
+  const drawnClockRef = useRef<{ open: OpenSession | null; today: TodaySession[] }>({ open: null, today: [] })
+  drawnClockRef.current = { open: openSession, today: todaySessions }
+
+  /**
+   * The presses still on the phone laid over a read, or over the clock as drawn for a part no read brought (punch
+   * list #163, v2.6198): a clock-in waiting is the open session until it lands, and a clock-out waiting closes its
+   * session, whether the read landed before the press, failed with no signal, or never ran.
+   */
+  const showClock = useCallback((read: { open?: TodaySession | null; today?: TodaySession[] }) => {
+    const drawn = drawnClockRef.current
+    const view = clockReadWithKeptPresses(
+      {
+        open: read.open !== undefined ? read.open : drawn.open ? { ...drawn.open, clocked_out_at: null } : null,
+        today: read.today ?? drawn.today,
+      },
+      outbox.presses(),
+    )
+    const o = view.open
+    setOpenSession(
+      o
+        ? {
+            id: o.id,
+            clocked_in_at: o.clocked_in_at,
+            work_date: o.work_date?.trim() || denverCalendarDayKey(new Date(o.clocked_in_at).getTime()),
+            notes: o.notes ?? '',
+            job_ledger_id: o.job_ledger_id,
+            bid_id: o.bid_id,
+          }
+        : null,
+    )
+    setTodaySessions(view.today)
+    setTotalSecondsToday(view.today.length > 0 ? computeTotalSecondsToday(view.today) : 0)
+  }, [])
+
   const fetchSessions = useCallback(async () => {
     if (!userId) return
     const today = denverCalendarDayKey(Date.now())
@@ -432,46 +467,28 @@ export default function ClockInOutButton({
     setError(errParts.length > 0 ? [...new Set(errParts)].join(' ') : null)
     setLoadFailed(failures.length > 0)
 
-    // The presses still on the phone laid over the read (punch list #163): a clock-in waiting is the open session
-    // until it lands, and a clock-out waiting closes its session, though the read landed before the press did.
-    const open = openResult.ok && openResult.row && !openResult.row.clocked_out_at ? openResult.row : null
-    const view = clockReadWithKeptPresses({ open, today: todayResult.ok ? todayResult.sessions : [] }, outbox.presses())
-    if (openResult.ok) {
-      const o = view.open
-      setOpenSession(
-        o
-          ? {
-              id: o.id,
-              clocked_in_at: o.clocked_in_at,
-              work_date: o.work_date?.trim() || denverCalendarDayKey(new Date(o.clocked_in_at).getTime()),
-              notes: o.notes ?? '',
-              job_ledger_id: o.job_ledger_id,
-              bid_id: o.bid_id,
-            }
-          : null,
-      )
-    }
-
-    if (todayResult.ok) {
-      setTodaySessions(view.today)
-      setTotalSecondsToday(view.today.length > 0 ? computeTotalSecondsToday(view.today) : 0)
-    }
-  }, [userId])
+    showClock({
+      open: openResult.ok ? (openResult.row && !openResult.row.clocked_out_at ? openResult.row : null) : undefined,
+      today: todayResult.ok ? todayResult.sessions : undefined,
+    })
+  }, [userId, showClock])
 
   // A queued clock press landed, was refused or was dropped (punch list #163 PR 2): read the clock again.
-  // A try that failed changes nothing here, so a lost signal never has the button re-reading every 30 s;
-  // nor does a press kept with no signal, which its handler drew and whose read could only fail under it (v2.6198).
+  // A try that failed changes nothing here, so a lost signal never has the button re-reading every 30 s.
+  // A press kept with no signal sets off no read either, which could only fail under it: it is laid over
+  // the clock as drawn, which also draws one read back from the device after a read that failed (v2.6198).
   const outboxStatesRef = useRef<ReadonlyMap<string, string>>(new Map())
   useEffect(() => {
     if (!userId) return
     outboxStatesRef.current = clockPressStates(outbox.presses())
     return outbox.subscribe(() => {
+      const before = outboxStatesRef.current
       const next = clockPressStates(outbox.presses())
-      const again = clockReadsAgain(outboxStatesRef.current, next, typeof navigator === 'undefined' || navigator.onLine !== false)
       outboxStatesRef.current = next
-      if (again) void fetchSessions()
+      if (clockReadsAgain(before, next, typeof navigator === 'undefined' || navigator.onLine !== false)) void fetchSessions()
+      else if (next.size !== before.size) showClock({})
     })
-  }, [userId, fetchSessions])
+  }, [userId, fetchSessions, showClock])
 
   useEffect(() => {
     if (!userId) {
@@ -1054,7 +1071,8 @@ export default function ClockInOutButton({
       if (outcome.kind === 'queued') {
         const pending = pendingOpenSession(outcome.press as Parameters<typeof pendingOpenSession>[0])
         setOpenSession(pending)
-        setTodaySessions((prev) => [...prev, pending])
+        // The queue's own notice may have drawn it already (v2.6198).
+        setTodaySessions((prev) => (prev.some((s) => s.id === pending.id) ? prev : [...prev, pending]))
         showToast(KEPT_ON_PHONE_WORDS, 'success')
         onClockInSuccess?.()
         return
@@ -1302,7 +1320,7 @@ export default function ClockInOutButton({
           if (outcome.kind === 'queued') {
             const pending = pendingOpenSession(outcome.press as Parameters<typeof pendingOpenSession>[0])
             setOpenSession(pending)
-            setTodaySessions((prev) => [...prev, pending])
+            setTodaySessions((prev) => (prev.some((s) => s.id === pending.id) ? prev : [...prev, pending]))
             onClockInSuccess?.()
             return { ok: true, error: null }
           }
@@ -1365,7 +1383,10 @@ export default function ClockInOutButton({
           if (inn.kind === 'queued') {
             const pending = pendingOpenSession(inn.press as Parameters<typeof pendingOpenSession>[0])
             setOpenSession(pending)
-            setTodaySessions((prev) => [...prev.map((s) => (s.id === closedId ? { ...s, clocked_out_at: outAt } : s)), pending])
+            setTodaySessions((prev) => {
+              const closed = prev.map((s) => (s.id === closedId ? { ...s, clocked_out_at: outAt } : s))
+              return closed.some((s) => s.id === pending.id) ? closed : [...closed, pending]
+            })
           } else {
             await fetchSessions()
           }

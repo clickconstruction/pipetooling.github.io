@@ -5,7 +5,8 @@
  * so nothing was saved* with Try again: the write sentence, drawn for the clock's own read, which the new press had
  * set off and which failed with no signal. A crew member reading it would press again. Nothing may contradict a kept
  * press: the press reads nothing, a read that never reached the server says so in read words on the Retry panel and
- * reads again when the signal is back, and a read that lands while the clock-out still waits keeps the clock out.
+ * reads again when the signal is back, and a read that lands while the clock-out still waits keeps the clock out. A
+ * Dashboard opened with no signal draws a clock-in kept from before as the open session, as PR 2 promised.
  */
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { act, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -78,7 +79,7 @@ afterEach(async () => {
   await outbox.clear()
 })
 
-describe('ClockInOutButton, a clock-out kept on the phone', () => {
+describe('ClockInOutButton with presses kept on the phone', () => {
   it('draws the amber line and nothing under it says the press failed', async () => {
     renderWithProviders(<ClockInOutButton userId="user-1" userName="Robert" />)
     fireEvent.click(await screen.findByRole('button', { name: /Clock Out/i }))
@@ -102,6 +103,18 @@ describe('ClockInOutButton, a clock-out kept on the phone', () => {
     expect(screen.queryByRole('button', { name: 'Try again' })).toBeNull()
     // The press drew itself, so it set off no read of the clock to fail under it.
     expect(net.clockReads).toBe(readsBefore)
+  })
+
+  it('a Dashboard opened with no signal draws a clock-in kept on the phone as the open session, with its timer and Clock Out', async () => {
+    // Back from the job window, or the app opened again, before the signal returns: no read lands.
+    outbox.put(newPress({ id: 'press-in', seq: 1, kind: 'clock-in', userId: 'user-1', pressedAt: Date.now() - 5 * 60 * 1000, payload: { jobLedgerId: 'job-1', bidId: null, notes: 'Rough-in at ZZ Test', travel: null } }))
+    signal(false)
+    renderWithProviders(<ClockInOutButton userId="user-1" userName="Robert" />)
+
+    await waitFor(() => expect(document.body.textContent).toContain(CLOCK_READ_OFFLINE_WORDS))
+    expect((await screen.findByRole('button', { name: /^\d{2}:\d{2}:\d{2} Clock Out$/ })).textContent).toMatch(/^00:0[45]:\d{2} Clock Out$/)
+    expect(screen.queryByRole('button', { name: 'Clock In' })).toBeNull()
+    expect(screen.getByTestId('clock-press-line').textContent).toMatch(/^Clock in pressed at \d{1,2}:\d{2} [AP]M · waiting to send$/)
   })
 
   it('a read with no signal says so in the clock’s read words and reads again when the signal is back; a clock-out still waiting keeps the clock out', async () => {

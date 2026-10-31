@@ -73,16 +73,26 @@ function isWaiting(p: OutboxPress): boolean {
 }
 
 /**
- * The clock as the phone knows it (punch list #163's live test, v2.6198): the server's read with the clock presses
- * still on the phone laid over it, so a read that lands before a press does never contradicts the press. A clock-out
- * waiting closes its session at the moment it was pressed, a real one or one still on the phone; a clock-in waiting
- * is a stretch of today, and the open session when nothing else is open. A refused or a landed press lays nothing
+ * The clock as the phone knows it (punch list #163's live test, v2.6198): a read with the clock presses still on the
+ * phone laid over it, so a read that lands before a press does never contradicts the press. The read is the server's
+ * when one landed, or the clock as drawn when none did, so a Dashboard opened with no signal still shows a kept
+ * clock-in: laying the presses over a view that already has them changes nothing. A clock-out waiting closes its
+ * session at the moment it was pressed, a real one or one still on the phone; a clock-in waiting is a stretch of
+ * today, and the open session when nothing else is open. A row drawn for a press goes once its press is dropped or
+ * refused, and stays once it landed, until a read brings the real session. A refused or a landed press lays nothing
  * over the read: the server's word stands.
  */
 export function clockReadWithKeptPresses<T extends ClockReadRow>(
   read: { open: T | null; today: readonly T[] },
   presses: readonly OutboxPress[],
 ): { open: T | PendingSessionRow | null; today: Array<T | PendingSessionRow> } {
+  const byId = new Map(presses.map((p) => [p.id, p]))
+  const stands = (row: ClockReadRow) => {
+    const pressId = pressIdOfSession(row.id)
+    if (!pressId) return true
+    const press = byId.get(pressId)
+    return press != null && press.state !== 'refused'
+  }
   const closedAt = new Map<string, string>()
   for (const p of presses) {
     if (p.kind !== 'clock-out' || !isWaiting(p)) continue
@@ -95,16 +105,18 @@ export function clockReadWithKeptPresses<T extends ClockReadRow>(
     const at = closedAt.get(row.id)
     return at && !row.clocked_out_at ? { ...row, clocked_out_at: at } : row
   }
-  let open: T | PendingSessionRow | null = read.open && !closedAt.has(read.open.id) ? read.open : null
-  const today: Array<T | PendingSessionRow> = read.today.map(close)
+  let open: T | PendingSessionRow | null = read.open && stands(read.open) && !closedAt.has(read.open.id) ? read.open : null
+  const today: Array<T | PendingSessionRow> = read.today.filter(stands).map(close)
   const pending = pendingClockIn(presses)
   for (const p of presses) {
     if (p.kind !== 'clock-in' || !isWaiting(p)) continue
     const row = close<PendingSessionRow>(pendingOpenSession(p as OutboxPress<'clock-in'>))
-    if (row.clocked_out_at) today.push(row)
-    else if (!open && p.id === pending?.id) {
+    const drawn = today.some((s) => s.id === row.id)
+    if (row.clocked_out_at) {
+      if (!drawn) today.push(row)
+    } else if (!open && p.id === pending?.id) {
       open = row
-      today.push(row)
+      if (!drawn) today.push(row)
     }
   }
   return { open, today }
