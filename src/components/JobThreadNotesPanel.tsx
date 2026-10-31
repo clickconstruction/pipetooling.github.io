@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { activityPillStyle } from '../lib/phonePress'
 import { getDispatchNoteDisplayMeta, formatDispatchNoteTimeChicago } from '../utils/dispatchNoteDisplay'
@@ -25,6 +25,7 @@ import { pctNoteRequired, validatePctCommit } from '../lib/jobs/stagesPctNote'
 import { recordedPercentProvenance } from '../lib/jobPercentProvenance'
 import { PercentProvenanceChip } from './jobs/PercentProvenanceChip'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
+import { chicagoActivityDayKey, jobActivityItemTimeIso } from '../lib/jobs/jobActivityBoxFeed'
 
 export type JobThreadNoteRow = {
   id: string
@@ -103,6 +104,12 @@ type JobThreadNotesPanelProps = {
    * office's surfaces, and anyone who reads no lines.
    */
   customerLines?: readonly JobActivityMessage[] | null
+  /**
+   * A day to scroll the feed to (v2.6139, punch list #217): the Job tab's days strip presses a day and the feed lands
+   * on its first entry, or the nearest one after it, and lights it for a moment. `nonce` changes on every press so the
+   * same day can be pressed twice.
+   */
+  focusDay?: { ymd: string; nonce: number } | null
 }
 
 const ACTIVITY_LIST_MAX_HEIGHT = 'min(280px, 45vh)'
@@ -176,6 +183,7 @@ export function JobThreadNotesPanel({
   teamMembers,
   customerBox,
   customerLines,
+  focusDay = null,
 }: JobThreadNotesPanelProps) {
   const [boxKind, setBoxKind] = useState<JobBoxKind>('note')
   const [pctEditorOpen, setPctEditorOpen] = useState(false)
@@ -234,6 +242,23 @@ export function JobThreadNotesPanel({
   }, [pctDraft, draft, onCommitPct])
   const noteBodyRef = useRef<HTMLTextAreaElement>(null)
   const activityScrollRef = useRef<HTMLDivElement>(null)
+  // A pressed day on the Job tab's strip (v2.6139): land on its first entry, or the nearest after it, and light it.
+  const [litEntry, setLitEntry] = useState<string | null>(null)
+  useEffect(() => {
+    if (!focusDay) return
+    const box = activityScrollRef.current
+    if (!box) return
+    const items = Array.from(box.querySelectorAll<HTMLElement>('[data-feed-ymd]'))
+    const onDay = items.find((el) => (el.dataset.feedYmd ?? '') >= focusDay.ymd) ?? items[items.length - 1] ?? null
+    if (!onDay) return
+    // The feed box scrolls, and so does the window around it: scrollIntoView climbs both.
+    if (typeof onDay.scrollIntoView === 'function') onDay.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    else box.scrollTop = onDay.offsetTop - box.offsetTop
+    setLitEntry(onDay.dataset.feedKey ?? null)
+    const t = setTimeout(() => setLitEntry(null), 1600)
+    return () => clearTimeout(t)
+  }, [focusDay])
+  const litStyle = (key: string): CSSProperties => (litEntry === key ? { outline: '2px solid var(--text-link)', outlineOffset: 2, borderRadius: 4 } : {})
 
   const syncNoteTextareaHeight = useCallback(() => {
     const el = noteBodyRef.current
@@ -461,6 +486,7 @@ export function JobThreadNotesPanel({
               visibleEntries.map((entry) => {
                 if (entry.kind === 'customer') return <JobUpdatesCustomerLine key={`m-${entry.line.id}`} line={entry.line} />
                 const item = entry.item
+                const entryYmd = chicagoActivityDayKey(jobActivityItemTimeIso(item))
                 if (item.kind === 'schedule_block') {
                   const s = item.schedule
                   const { weekdayTimeChicago, daysAgoLabel } = getDispatchNoteDisplayMeta(s.sortAt)
@@ -469,7 +495,10 @@ export function JobThreadNotesPanel({
                   return (
                     <li
                       key={s.dedupeKey}
+                      data-feed-ymd={entryYmd}
+                      data-feed-key={s.dedupeKey}
                       style={{
+                        ...litStyle(s.dedupeKey),
                         padding: '0.5rem 0',
                         borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
@@ -514,7 +543,10 @@ export function JobThreadNotesPanel({
                   return (
                     <li
                       key={c.dedupeKey}
+                      data-feed-ymd={entryYmd}
+                      data-feed-key={c.dedupeKey}
                       style={{
+                        ...litStyle(c.dedupeKey),
                         padding: '0.5rem 0',
                         borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
@@ -577,7 +609,10 @@ export function JobThreadNotesPanel({
                   return (
                     <li
                       key={ev.dedupeKey}
+                      data-feed-ymd={entryYmd}
+                      data-feed-key={ev.dedupeKey}
                       style={{
+                        ...litStyle(ev.dedupeKey),
                         padding: '0.5rem 0',
                         borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
@@ -615,7 +650,10 @@ export function JobThreadNotesPanel({
                   return (
                     <li
                       key={`n-${n.id}`}
+                      data-feed-ymd={entryYmd}
+                      data-feed-key={`n-${n.id}`}
                       style={{
+                        ...litStyle(`n-${n.id}`),
                         padding: '0.5rem 0',
                         borderBottom: '1px solid var(--border)',
                         fontSize: '0.8125rem',
@@ -637,7 +675,10 @@ export function JobThreadNotesPanel({
                 return (
                   <li
                     key={`r-${r.id}`}
+                    data-feed-ymd={entryYmd}
+                    data-feed-key={`r-${r.id}`}
                     style={{
+                      ...litStyle(`r-${r.id}`),
                       padding: '0.5rem 0',
                       borderBottom: '1px solid var(--border)',
                       fontSize: '0.8125rem',

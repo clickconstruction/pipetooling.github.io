@@ -11,14 +11,14 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: 58caa94ee
 audience: Developers, AI Agents
-last_updated: 2026-10-29
+last_updated: 2026-10-30
 ---
 
 > **Line numbers are as of `58caa94ee`** (v2.4706, from the `npm run map` fact sheets). This is the hottest surface in the repo (253 commits in 90 days on the tab, 82 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
 
 ## What this surface is
 
-> **v2.5491 (after `mapped_at`) — the notice's state under the ledger's lien row:** `lienStateFor`, one memo after the desk's hook (`useLienDeskData`, light while the desk is closed), runs Do now's rows once (`buildLienNextUp`, the leader by `lienDeskLeaderFor`) and the AR chip kernel (`lib/jobs/lienArChip.ts`) per job, cached; `billedLienRunwayRenderer` sits earlier in the body, so it reads the function through `lienStateRef` and re-renders on `lienStateTick`, and hands `buildBilledDatesLedger` a `lienState` (the words, a tone, the sentence) that `BilledDatesLedger` draws as the toned sub-line. The same words the Accounts Receivable window's chips show (v2.5488).
+> **v2.5491 (after `mapped_at`) — the notice's state under the ledger's lien row:** `lienStateFor`, one memo after the desk's hook (`useLienDeskData`, light while the desk is closed), runs Do now's rows once (`buildLienNextUp`, the leader by `lienDeskLeaderFor`) and the AR chip kernel (`lib/jobs/lienArChip.ts`) per job, cached; `billedLienRunwayRenderer` sits earlier in the body, so it reads the function through `lienStateRef` and re-renders on `lienStateTick`, and hands `buildBilledDatesLedger` a `lienState` (the words, a tone, the sentence) that `BilledDatesLedger` draws as the toned sub-line. The same words the Accounts Receivable window's chips show (v2.5488). **v2.6139 (punch list #217, a prototype):** the renderer returns `BilledDatesBlock`, the *Dates · Words | Track* switch (`useJobDatesView`, per browser, default Words) over the ledger or `BilledDatesTrack` (`lib/jobs/billedDatesTrack.ts`, the same ledger on one axis against today); the track's *guessed* tag opens the forecast on its pay-speeds breakdown (`forecastOpensOnBreakdown`).
 
 > **v2.5626 / v2.5627 / v2.5632 (after `mapped_at`) — the customer's door on a row:** the speech bubble beside the customer's name on a row or card (`MessagesButton` in `jobsStagesRowShared.tsx`, the row context's `onOpenCustomerDoor` through `onPressInstead`) opens [`JobCustomerSheet.tsx`](../src/components/jobs/JobCustomerSheet.tsx) over the board (Call · Text · Email · Open their thread · Their record, whose word came last, the thread's last three lines since v2.5632), and the bubble carries the orange **waiting dot** from `hooks/useBoardDots.ts` (one read per load of the board's jobs, again when a line lands since v2.5635). Since v2.5627 a forward move to Working, Ready to Bill or Billed by the office asks first through **Tell the customer** over the board while the Residential customer flow's step is set to Asks (`tellCustomer/moveOffer.ts` over the felt moves; My way has no say). The page map's §22 and `MESSAGES_ARCHITECTURE.md` hold the detail.
 
