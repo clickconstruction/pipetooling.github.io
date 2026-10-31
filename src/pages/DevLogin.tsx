@@ -186,7 +186,7 @@ export default function DevLogin() {
           disabled={loading || autoFiring}
           style={{
             padding: '0.5rem 1rem',
-            background: '#3b82f6',
+            background: '#2563eb',
             color: 'white',
             border: 'none',
             borderRadius: 4,

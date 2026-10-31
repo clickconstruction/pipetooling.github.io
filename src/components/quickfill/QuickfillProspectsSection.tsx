@@ -320,7 +320,7 @@ export function QuickfillProspectsSection({ lastMarkedAt = null }: { /** The sta
       )}
       <Link
         to="/prospects?tab=prospect-list"
-        style={{ display: 'block', textAlign: 'center', padding: '0.7rem 1.25rem', marginTop: '0.9rem', background: '#3b82f6', color: 'white', fontWeight: 600, fontSize: '1rem', borderRadius: 8, textDecoration: 'none' }}
+        style={{ display: 'block', textAlign: 'center', padding: '0.7rem 1.25rem', marginTop: '0.9rem', background: '#2563eb', color: 'white', fontWeight: 600, fontSize: '1rem', borderRadius: 8, textDecoration: 'none' }}
       >
         Open Prospects
       </Link>

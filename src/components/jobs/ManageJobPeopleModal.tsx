@@ -186,7 +186,7 @@ export function ManageJobPeopleModal({
             type="button"
             onClick={handleSave}
             disabled={saving || loading}
-            style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', fontWeight: 600, background: saving ? 'var(--bg-200)' : '#3b82f6', color: saving ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: 6, cursor: saving || loading ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', fontWeight: 600, background: saving ? 'var(--bg-200)' : '#2563eb', color: saving ? 'var(--text-muted)' : 'white', border: 'none', borderRadius: 6, cursor: saving || loading ? 'not-allowed' : 'pointer' }}
           >
             {saving ? 'Saving…' : 'Save'}
           </button>

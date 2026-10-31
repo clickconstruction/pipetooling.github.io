@@ -197,7 +197,7 @@ export default function ReorderDayBlocksModal({
             disabled={unchanged || saving}
             style={{
               padding: '0.45rem 0.9rem',
-              background: unchanged || saving ? DEAD_PRESS_FILL : '#3b82f6',
+              background: unchanged || saving ? DEAD_PRESS_FILL : '#2563eb',
               color: unchanged || saving ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 6,

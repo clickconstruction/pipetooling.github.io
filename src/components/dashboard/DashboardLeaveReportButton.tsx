@@ -32,7 +32,7 @@ export function DashboardLeaveReportButton(props: {
           style={{
             padding: grow ? '0.4rem 0.5rem' : '0.35rem 0.75rem',
             fontSize: grow ? '0.9375rem' : '0.875rem',
-            background: showReminder ? '#f2c230' : '#3b82f6',
+            background: showReminder ? '#f2c230' : '#2563eb',
             color: showReminder ? '#4a3800' : 'white',
             fontWeight: showReminder || grow ? 600 : undefined,
             border: 'none',

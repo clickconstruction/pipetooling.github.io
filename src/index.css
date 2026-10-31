@@ -916,19 +916,19 @@ button:focus-visible {
 
 .prospectsConvert .convertSubmit {
   padding: 0.75rem 1.75rem;
-  background: #3b82f6;
+  background: #2563eb;
   color: white;
   border: none;
   border-radius: 10px;
   font-weight: 600;
   font-size: 1rem;
   cursor: pointer;
-  box-shadow: 0 1px 3px rgba(59, 130, 246, 0.35);
+  box-shadow: 0 1px 3px rgba(37, 99, 235, 0.35);
   transition: background 0.15s, transform 0.1s;
 }
 
 .prospectsConvert .convertSubmit:hover:not(:disabled) {
-  background: #2563eb;
+  background: #1d4ed8;
 }
 
 .prospectsConvert .convertSubmit:active:not(:disabled) {
@@ -6211,8 +6211,8 @@ button.aging-win-inv--door:disabled { opacity: 0.6; cursor: default; }
   transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
 }
 .reviewOrd.isOn {
-  background: #3b82f6;
-  border-color: #3b82f6;
+  background: #2563eb;
+  border-color: #2563eb;
   color: #fff;
 }
 .developmentReviewStrip .reviewNeed {

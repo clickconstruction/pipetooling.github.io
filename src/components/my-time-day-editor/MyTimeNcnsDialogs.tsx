@@ -330,9 +330,9 @@ export function MyTimeNcnsDialog({ flow, personLabel, dateLabel, zIndex }: MyTim
                 onClick={flow.continueToConfirm}
                 style={{
                   padding: '0.5rem 0.85rem',
-                  border: '1px solid #3b82f6',
+                  border: '1px solid #2563eb',
                   borderRadius: 4,
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   fontWeight: 600,
                   cursor: flow.busy ? 'not-allowed' : 'pointer',

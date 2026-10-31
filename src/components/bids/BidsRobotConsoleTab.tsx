@@ -180,7 +180,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTy
                 Start a batch
                 <span style={stepSub}>In the Claude app open the Code tab, start a new session and paste. The robot works up to three shells, one at a time, and pulls each plan set through the connector — nothing to attach. A second session can run beside it.</span>
               </span>
-              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(codeKickoff, 'the Claude Code kickoff')} title="Copies the robot's instructions for a Claude Code session, with this project's connector filled in">
+              <button type="button" style={{ ...BTN_PRIMARY, background: '#2563eb' }} onClick={() => void copy(codeKickoff, 'the Claude Code kickoff')} title="Copies the robot's instructions for a Claude Code session, with this project's connector filled in">
                 Copy Code kickoff
               </button>
             </div>
@@ -190,7 +190,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTy
                 Make this Mac the rounds
                 <span style={stepSub}>Press Set up on this Mac above with This Mac makes the rounds ticked. One Terminal paste installs a round every five minutes, with no Claude session open and no question asked. Copy the round to make one round by hand in a Code session.</span>
               </span>
-              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(roundsKickoff, 'the round')} title="Copies one round for a Claude Code session by hand, with this project's connector filled in. The rounds themselves are installed by Set up on this Mac.">
+              <button type="button" style={{ ...BTN_PRIMARY, background: '#2563eb' }} onClick={() => void copy(roundsKickoff, 'the round')} title="Copies one round for a Claude Code session by hand, with this project's connector filled in. The rounds themselves are installed by Set up on this Mac.">
                 Copy the round
               </button>
             </div>
@@ -253,7 +253,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTy
                 Start a pricing batch
                 <span style={stepSub}>Paste into a new incognito chat. Works every queued price-matrix request, oldest ask first, up to three per chat; asks the estimator where the plans decide.</span>
               </span>
-              <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6' }} onClick={() => void copy(pricingKickoff, 'the pricing kickoff')} title="Copies the whole pricing kickoff: the setup steps for the person and the robot's instructions, with this project's connector filled in">
+              <button type="button" style={{ ...BTN_PRIMARY, background: '#2563eb' }} onClick={() => void copy(pricingKickoff, 'the pricing kickoff')} title="Copies the whole pricing kickoff: the setup steps for the person and the robot's instructions, with this project's connector filled in">
                 Copy pricing kickoff
               </button>
             </div>
@@ -286,7 +286,7 @@ export function BidsRobotConsoleTab({ bids, twinBidBySourceId, plumbingServiceTy
           <span style={{ ...CHIP, background: 'var(--bg-violet-100)', color: TWIN_VIOLET }} title="Price-matrix requests waiting for the pricing robot (Bids → Pricing → Price it with the robot)">
             Price matrices · {matrixQueued.length}
           </span>
-          <button type="button" style={{ ...BTN_PRIMARY, background: '#3b82f6', marginLeft: 'auto' }} onClick={onOpenQueue} title="Every robot-able bid, requested ones first, plus the backtest candidates grouped by the axis whose gate they would feed">
+          <button type="button" style={{ ...BTN_PRIMARY, background: '#2563eb', marginLeft: 'auto' }} onClick={onOpenQueue} title="Every robot-able bid, requested ones first, plus the backtest candidates grouped by the axis whose gate they would feed">
             Open the queue
           </button>
         </div>

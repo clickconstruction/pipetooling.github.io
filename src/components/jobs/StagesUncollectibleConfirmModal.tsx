@@ -83,7 +83,7 @@ export function StagesUncollectibleConfirmModal({
             onClick={() => void onConfirm()}
             style={{
               padding: '0.5rem 1rem',
-              background: disabled ? DEAD_PRESS_FILL : marking ? '#b91c1c' : '#3b82f6',
+              background: disabled ? DEAD_PRESS_FILL : marking ? '#b91c1c' : '#2563eb',
               color: disabled ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 4,

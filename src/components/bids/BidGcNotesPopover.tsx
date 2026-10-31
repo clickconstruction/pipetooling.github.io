@@ -203,7 +203,7 @@ export function BidGcNotesPopover({
               type="button"
               onClick={() => void save()}
               disabled={saving || !text.trim()}
-              style={{ font: 'inherit', fontSize: '0.88rem', fontWeight: 600, padding: '0.5rem 0.95rem', borderRadius: 8, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: saving || !text.trim() ? 'not-allowed' : 'pointer', opacity: !text.trim() ? 0.6 : 1 }}
+              style={{ font: 'inherit', fontSize: '0.88rem', fontWeight: 600, padding: '0.5rem 0.95rem', borderRadius: 8, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: saving || !text.trim() ? 'not-allowed' : 'pointer', opacity: !text.trim() ? 0.6 : 1 }}
             >
               {saving ? 'Saving…' : 'Save'}
             </button>

@@ -1853,7 +1853,7 @@ export default function ClockInOutButton({
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#3b82f6',
+        background: '#2563eb',
         color: 'white',
         border: 'none',
         borderRadius: 8,
@@ -1893,7 +1893,7 @@ export default function ClockInOutButton({
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        background: '#3b82f6',
+        background: '#2563eb',
         color: 'white',
         border: 'none',
         borderRadius: 8,
@@ -1988,9 +1988,9 @@ export default function ClockInOutButton({
           fontSize: '1rem',
           fontWeight: 600,
           whiteSpace: 'nowrap',
-          border: '2px solid #3b82f6',
+          border: '2px solid #2563eb',
           borderRadius: 8,
-          background: '#3b82f6',
+          background: '#2563eb',
           color: 'white',
           cursor: (actionLoading || updateFocusLoading || clockOutSaving || clockOutTallyGateLoading) ? 'not-allowed' : 'pointer',
         }}
@@ -2379,9 +2379,9 @@ export default function ClockInOutButton({
                 disabled={(!salaryUiActive && !updateFocusNotes.trim()) || updateFocusLoading}
                 style={{
                   padding: '0.5rem 1rem',
-                  border: '1px solid #3b82f6',
+                  border: '1px solid #2563eb',
                   borderRadius: 4,
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   cursor: (salaryUiActive || updateFocusNotes.trim()) && !updateFocusLoading ? 'pointer' : 'not-allowed',
                 }}

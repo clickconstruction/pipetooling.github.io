@@ -1367,7 +1367,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
             <button
               type="button"
               onClick={() => openVehicleForm()}
-              style={{ padding: '0.5rem 1rem', border: '1px solid #3b82f6', borderRadius: 6, background: '#3b82f6', color: '#fff', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
+              style={{ padding: '0.5rem 1rem', border: '1px solid #2563eb', borderRadius: 6, background: '#2563eb', color: '#fff', fontWeight: 500, cursor: 'pointer', whiteSpace: 'nowrap' }}
             >
               + Add Vehicle
             </button>
@@ -1547,7 +1547,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                   disabled={savingReading}
                   style={{
                     padding: '0.45rem 0.9rem',
-                    background: savingReading ? DEAD_PRESS_FILL : '#3b82f6',
+                    background: savingReading ? DEAD_PRESS_FILL : '#2563eb',
                     color: savingReading ? DEAD_PRESS_TEXT : '#fff',
                     border: 'none',
                     borderRadius: 6,
@@ -1645,7 +1645,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       disabled={insCostSaving || preview == null}
                       style={{
                         padding: '0.45rem 0.9rem',
-                        background: insCostSaving || preview == null ? DEAD_PRESS_FILL : '#3b82f6',
+                        background: insCostSaving || preview == null ? DEAD_PRESS_FILL : '#2563eb',
                         color: insCostSaving || preview == null ? DEAD_PRESS_TEXT : '#fff',
                         border: 'none',
                         borderRadius: 6,
@@ -1834,7 +1834,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                         disabled={taskSaving || !newTaskTitle.trim()}
                         style={{
                           padding: '0.45rem 0.9rem',
-                          background: taskSaving || !newTaskTitle.trim() ? DEAD_PRESS_FILL : '#3b82f6',
+                          background: taskSaving || !newTaskTitle.trim() ? DEAD_PRESS_FILL : '#2563eb',
                           color: taskSaving || !newTaskTitle.trim() ? DEAD_PRESS_TEXT : '#fff',
                           border: 'none',
                           borderRadius: 6,
@@ -1863,8 +1863,8 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                         borderRadius: 999,
                         fontSize: '0.75rem',
                         cursor: 'pointer',
-                        border: ledgerFilter === f.key ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-                        background: ledgerFilter === f.key ? '#3b82f6' : 'var(--surface)',
+                        border: ledgerFilter === f.key ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+                        background: ledgerFilter === f.key ? '#2563eb' : 'var(--surface)',
                         color: ledgerFilter === f.key ? '#fff' : 'var(--text-muted)',
                       }}
                     >
@@ -2171,7 +2171,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
               <button
                 type="button"
                 onClick={upsertVehicle}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 500, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, fontWeight: 500, cursor: 'pointer' }}
               >
                 Save
               </button>
@@ -2240,7 +2240,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={handOffSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: handOffSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  background: handOffSaving ? DEAD_PRESS_FILL : '#2563eb',
                   color: handOffSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
@@ -2300,7 +2300,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={serviceSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: serviceSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  background: serviceSaving ? DEAD_PRESS_FILL : '#2563eb',
                   color: serviceSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
@@ -2359,7 +2359,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={problemSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: problemSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  background: problemSaving ? DEAD_PRESS_FILL : '#2563eb',
                   color: problemSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
@@ -2620,7 +2620,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 type="button"
                 onClick={() => void saveCheckinSettings()}
                 disabled={checkinSettingsSaving}
-                style={{ padding: '0.5rem 1rem', background: checkinSettingsSaving ? DEAD_PRESS_FILL : '#3b82f6', color: checkinSettingsSaving ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 6, cursor: checkinSettingsSaving ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: checkinSettingsSaving ? DEAD_PRESS_FILL : '#2563eb', color: checkinSettingsSaving ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 6, cursor: checkinSettingsSaving ? 'not-allowed' : 'pointer' }}
               >
                 {checkinSettingsSaving ? 'Saving…' : 'Save'}
               </button>
@@ -2661,7 +2661,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={planSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: planSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  background: planSaving ? DEAD_PRESS_FILL : '#2563eb',
                   color: planSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
@@ -2704,7 +2704,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                       setPlansOpen(true)
                       openPlanForm()
                     }}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+                    style={{ padding: '0.5rem 1rem', background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, cursor: 'pointer' }}
                   >
                     Add a plan
                   </button>
@@ -2755,7 +2755,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                     disabled={insSaving}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: insSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                      background: insSaving ? DEAD_PRESS_FILL : '#2563eb',
                       color: insSaving ? DEAD_PRESS_TEXT : '#fff',
                       border: 'none',
                       borderRadius: 6,
@@ -2846,7 +2846,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 type="button"
                 onClick={() => void saveTaskEdit()}
                 disabled={editTaskSaving || !editTaskTitle.trim()}
-                style={{ padding: '0.5rem 1rem', background: editTaskSaving || !editTaskTitle.trim() ? DEAD_PRESS_FILL : '#3b82f6', color: editTaskSaving || !editTaskTitle.trim() ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: editTaskSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                style={{ padding: '0.5rem 1rem', background: editTaskSaving || !editTaskTitle.trim() ? DEAD_PRESS_FILL : '#2563eb', color: editTaskSaving || !editTaskTitle.trim() ? DEAD_PRESS_TEXT : '#fff', border: 'none', borderRadius: 4, cursor: editTaskSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
               >
                 {editTaskSaving ? 'Saving…' : 'Save'}
               </button>
@@ -2893,7 +2893,7 @@ export default function PeopleVehiclesTab({ users }: PeopleVehiclesTabProps) {
                 disabled={assignSaving}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: assignSaving ? DEAD_PRESS_FILL : '#3b82f6',
+                  background: assignSaving ? DEAD_PRESS_FILL : '#2563eb',
                   color: assignSaving ? DEAD_PRESS_TEXT : '#fff',
                   border: 'none',
                   borderRadius: 6,
