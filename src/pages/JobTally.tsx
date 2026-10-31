@@ -244,7 +244,8 @@ export default function JobTally() {
   const { user: authUser, profileName } = useAuth()
   const { showToast } = useToastContext()
   const [searchParams, setSearchParams] = useSearchParams()
-  const [activeTab, setActiveTab] = useState<JobTallyTab>('transactions')
+  // On site is the tab the tally opens on (v2.6229, the owner's word): the crew's side of Materials on site, first in the row.
+  const [activeTab, setActiveTab] = useState<JobTallyTab>('on-site')
   const [role, setRole] = useState<string | null>(null)
   const isDevTally = role === 'dev'
   // #72 PR 2a: office roles land on the team's queue (Team); My card is their own card's table.
@@ -656,11 +657,11 @@ export default function JobTally() {
       setActiveTab('on-site')
       return
     }
-    setActiveTab('transactions')
+    setActiveTab('on-site')
     setSearchParams(
       (p) => {
         const next = new URLSearchParams(p)
-        next.set('tab', 'transactions')
+        next.set('tab', 'on-site')
         return next
       },
       { replace: true }
@@ -978,6 +979,20 @@ export default function JobTally() {
         <button
           type="button"
           onClick={() => {
+            setActiveTab('on-site')
+            setSearchParams((p) => {
+              const next = new URLSearchParams(p)
+              next.set('tab', 'on-site')
+              return next
+            })
+          }}
+          style={tabStyle(activeTab === 'on-site')}
+        >
+          On site
+        </button>
+        <button
+          type="button"
+          onClick={() => {
             setActiveTab('transactions')
             setSearchParams((p) => {
               const next = new URLSearchParams(p)
@@ -1002,20 +1017,6 @@ export default function JobTally() {
           style={tabStyle(activeTab === 'materials-estimate')}
         >
           Materials Estimate
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            setActiveTab('on-site')
-            setSearchParams((p) => {
-              const next = new URLSearchParams(p)
-              next.set('tab', 'on-site')
-              return next
-            })
-          }}
-          style={tabStyle(activeTab === 'on-site')}
-        >
-          On site
         </button>
       </div>
 

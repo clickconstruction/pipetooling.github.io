@@ -22,8 +22,8 @@ export function QuickfillViewSwitch({ view, onChange }: { view: QuickfillView; o
               fontSize: '0.8125rem',
               fontWeight: 600,
               cursor: 'pointer',
-              background: on ? 'var(--text-link)' : 'transparent',
-              color: on ? 'var(--surface)' : 'var(--text-700)',
+              background: on ? '#2563eb' : 'transparent',
+              color: on ? '#fff' : 'var(--text-700)',
             }}
           >
             {v.label}

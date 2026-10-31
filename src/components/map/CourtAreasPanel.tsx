@@ -71,7 +71,7 @@ export function CourtAreasPanel({ areas, coverage, pending, busy, error, onSave,
             <input aria-label="Drawn from" placeholder="Drawn from · county PDF map, 2024" value={draft.sourceNote} onChange={set('sourceNote')} style={input} />
           </div>
           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-            <button type="submit" disabled={busy || !!problem} style={{ ...btn, background: 'var(--text-link)', color: '#fff', borderColor: 'var(--text-link)', opacity: busy || problem ? 0.6 : 1 }}>Save the area</button>
+            <button type="submit" disabled={busy || !!problem} style={{ ...btn, background: '#2563eb', color: '#fff', borderColor: '#2563eb', opacity: busy || problem ? 0.6 : 1 }}>Save the area</button>
             <button type="button" onClick={onCancelPending} style={btn}>Discard the shape</button>
             {problem ? <span style={{ color: 'var(--text-muted)' }}>{problem}</span> : null}
           </div>

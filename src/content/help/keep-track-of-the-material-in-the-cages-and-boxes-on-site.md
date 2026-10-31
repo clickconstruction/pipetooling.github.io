@@ -9,7 +9,7 @@ On a big job the material lives in stencilled cages and boxes left on the site. 
 
 ## Open the tab
 
-Open **Tally** and tap **On site**. Pick the job at the top. On your Dashboard, the Job Mode card has **Materials on site**. Tap it and the tab opens on the job you are clocked into.
+Open **Tally**. It opens on **On site**, the first tab. Pick the job at the top. On your Dashboard, the Job Mode card has **Materials on site**. Tap it and the tab opens on the job you are clocked into.
 
 ## Find the job
 
@@ -49,13 +49,13 @@ Tap {{button:outline|Add a container}} to add a cage or box with its stencil and
 
 ## Take a photo
 
-On a box, tap {{button:outline|Photo}}. For ten minutes after a count or a put away it reads **Photo after Count**. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
+On a box, tap {{button:outline|Photo}}. For ten minutes after a count or a put away the button is blue. The picture is named for what it followed. Shoot and tap Use Photo. The phone shrinks the picture and files it in the job's Drive folder by itself.
 
 With no signal the photo stays on the phone. Tap **Send now** when you have signal again, or **Share instead** to send it another way.
 
 ## Find a box on the site
 
-Tap **Map** to see the pinned boxes on the site. On a box, tap **Mark on the map** and stand where it is. Tap **Move this box** when it moves to another place.
+Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** and stand where it is. Tap **Move box** when it moves to another place.
 
 ## Scan a label
 

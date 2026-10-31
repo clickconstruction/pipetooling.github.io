@@ -43,13 +43,13 @@ type Tone = { ring: string; fill: string; ink: string; mark: string }
 function toneFor(s: LienTimelineStep): Tone {
   switch (s.state) {
     case 'done':
-      return { ring: 'var(--text-green-800)', fill: 'var(--text-green-800)', ink: '#fff', mark: '✓' }
+      return { ring: 'var(--text-green-800)', fill: '#166534', ink: '#fff', mark: '✓' }
     case 'due':
       return (s.daysLeft ?? 99) <= 7
         ? { ring: 'var(--text-red-600)', fill: 'var(--bg-red-tint)', ink: 'var(--text-red-600)', mark: '!' }
         : { ring: 'var(--text-amber-800)', fill: 'var(--bg-amber-tint)', ink: 'var(--text-amber-800)', mark: '!' }
     case 'missed':
-      return { ring: 'var(--text-red-600)', fill: 'var(--text-red-600)', ink: '#fff', mark: '✗' }
+      return { ring: 'var(--text-red-600)', fill: '#dc2626', ink: '#fff', mark: '✗' }
     case 'blocked':
       return { ring: 'var(--border-strong)', fill: 'var(--bg-subtle)', ink: 'var(--text-muted)', mark: '–' }
     case 'undated':
@@ -452,7 +452,7 @@ function ViewSwitch({ view, scope }: { view: LienTimelineView; scope: LienTimeli
       data-lien-timeline-view={v}
       onClick={() => setLienTimelineView(v, scope)}
       title={title}
-      style={{ padding: '1px 9px', border: 'none', background: view === v ? 'var(--text-link)' : 'var(--surface)', color: view === v ? '#fff' : 'var(--text-700)', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', lineHeight: '18px' }}
+      style={{ padding: '1px 9px', border: 'none', background: view === v ? '#2563eb' : 'var(--surface)', color: view === v ? '#fff' : 'var(--text-700)', fontSize: '0.7rem', fontWeight: 600, cursor: 'pointer', lineHeight: '18px' }}
     >
       {label}
     </button>
@@ -696,7 +696,7 @@ function WindowsChart({ timeline, onDoor, voice }: { timeline: LienTimeline; onD
                 ) : null}
               </span>
               {r.tone === 'closed' ? (
-                <span aria-hidden data-lien-timeline-struck style={{ position: 'absolute', top: 6, left: `${pct(r.end)}%`, marginLeft: -8, width: 16, height: 16, borderRadius: '50%', background: 'var(--text-red-600)', color: '#fff', fontSize: 10, fontWeight: 800, lineHeight: '16px', textAlign: 'center', border: '2px solid var(--surface)', boxSizing: 'border-box', zIndex: 3 }}>
+                <span aria-hidden data-lien-timeline-struck style={{ position: 'absolute', top: 6, left: `${pct(r.end)}%`, marginLeft: -8, width: 16, height: 16, borderRadius: '50%', background: '#dc2626', color: '#fff', fontSize: 10, fontWeight: 800, lineHeight: '16px', textAlign: 'center', border: '2px solid var(--surface)', boxSizing: 'border-box', zIndex: 3 }}>
                   ✗
                 </span>
               ) : null}

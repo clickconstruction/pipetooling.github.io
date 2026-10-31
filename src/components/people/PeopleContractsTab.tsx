@@ -1990,7 +1990,7 @@ export default function PeopleContractsTab({ people, users, archived = NO_ARCHIV
                   <section aria-label="Office sections to complete" style={{ border: '1px solid var(--border)', borderLeft: '3px solid var(--border-amber, #d97706)', borderRadius: 6, background: 'var(--bg-amber-tint, #fdf1e3)', padding: '0.6rem 0.8rem', marginBottom: '0.75rem' }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.35rem', fontSize: '0.875rem', fontWeight: 600, color: 'var(--text-strong)' }}>
                       Office sections to complete
-                      <span style={{ fontSize: '0.6875rem', fontWeight: 700, background: 'var(--text-amber-700, #9a5b12)', color: '#fff', borderRadius: 999, padding: '0 0.45rem' }}>{queue.length}</span>
+                      <span style={{ fontSize: '0.6875rem', fontWeight: 700, background: '#b45309', color: '#fff', borderRadius: 999, padding: '0 0.45rem' }}>{queue.length}</span>
                       <span style={{ fontSize: '0.75rem', fontWeight: 400, color: 'var(--text-muted)' }}>signed by the person; the PDF is not final until the office finishes its part</span>
                     </div>
                     <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.25rem' }}>

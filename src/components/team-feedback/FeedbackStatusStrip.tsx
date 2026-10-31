@@ -71,5 +71,5 @@ function Stat({ n, label, title }: { n: string; label: string; title?: string })
 
 const knobTrack: CSSProperties = { position: 'relative', display: 'inline-block', width: 40, height: 22, borderRadius: 999, transition: 'background 120ms' }
 const knob: CSSProperties = { position: 'absolute', top: 3, width: 16, height: 16, borderRadius: 999, transition: 'left 120ms' }
-const primary: CSSProperties = { padding: '0.45rem 0.85rem', borderRadius: 7, border: 'none', background: 'var(--text-link)', color: 'var(--surface)', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }
+const primary: CSSProperties = { padding: '0.45rem 0.85rem', borderRadius: 7, border: 'none', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }
 const gear: CSSProperties = { background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.1rem', cursor: 'pointer', padding: '0 0.25rem' }

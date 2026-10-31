@@ -65,6 +65,10 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
 import { resolvePricingEntry } from '../../lib/bids/resolvePricingEntry'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { countedLabel } from '../../lib/batchWords'
+import { useRobotFixtures } from '../../hooks/useRobotFixtures'
+import { moneyWords, numberOf } from '../../lib/bids/robotFixtures'
 import { decoratePricingRows } from '../../lib/bids/decoratePricingRows'
 import { BidsPriceBookDrawer } from './BidsPriceBookDrawer'
 import { PricingVersionFormModal } from './PricingVersionFormModal'
@@ -300,6 +304,13 @@ export function BidsPricingTab({
   // Lock pricing after send (v2.3591): a sent bid refuses every pricing write until this session
   // presses Revise; the choice lives in sessionStorage, never on the bid.
   const [revisedBidIds, setRevisedBidIds] = useState<ReadonlySet<string>>(() => readRevisedBids(typeof window !== 'undefined' ? window.sessionStorage : null))
+  // Robot fixtures (punch list #221, PR 3b): the robot's price beside hers on every row it landed, the chip on a row
+  // priced at the robot's price, and the door that prices the rows that landed before a book was picked.
+  const robotFixtures = useRobotFixtures(selectedBidForPricing?.id ?? null, true)
+  const robotPullRows = useMemo(() => (robotFixtures.state.kind === 'ready' ? robotFixtures.state.rows : []), [robotFixtures.state])
+  const robotByCountRow = useMemo(() => new Map(robotPullRows.filter((x) => x.taken_at && x.count_row_id).map((x) => [x.count_row_id as string, x])), [robotPullRows])
+  const robotUnpriced = robotPullRows.filter((x) => x.taken_at && x.count_row_id && x.taken_as === 'added' && (x.priced_as ?? 'unpriced') === 'unpriced' && numberOf(x.robot_unit_price) != null).length
+  const [robotPricing, setRobotPricing] = useState(false)
   const pricingLock = pricingLockState({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidId: selectedBidForPricing?.id, revised: revisedBidIds })
   /** False (with the toast) when the selected bid is sent and not being revised — every pricing write asks first. */
   function guardPricingWrite(): boolean {
@@ -2715,6 +2726,25 @@ export function BidsPricingTab({
                 const altCost = sumByAlternate(effScoped, altTags, (r) => r.cost)
                 const altRowIds = new Set(pricingCountRows.filter((cr) => isAlternateRow(cr, altTags)).map((cr) => cr.id))
                 const declinedIds = new Set(selectedBidForPricing ? pricingCountRows.filter((cr) => isDeclinedRow(cr, selectedBidForPricing)).map((cr) => cr.id) : [])
+                const robotChip = (id: string) => {
+                  const x = robotByCountRow.get(id)
+                  if (!x) return null
+                  const price = numberOf(x.robot_unit_price)
+                  return (
+                    <>
+                      {x.priced_as === 'robot' ? (
+                        <span data-testid="pricing-robot-price-chip" title="Your book has no entry for this fixture, so the robot's price is on the row as its custom price. Pick an entry or type a price to make it yours." style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--border-blue)', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', marginLeft: '0.3rem', verticalAlign: 'middle' }}>
+                          robot's price
+                        </span>
+                      ) : null}
+                      {price != null ? (
+                        <span data-testid="pricing-robot-reference" title={`The robot priced this fixture at ${moneyWords(price)} each on its own book. A reference, nothing more.`} style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', whiteSpace: 'nowrap' }}>
+                          robot {moneyWords(price)}
+                        </span>
+                      ) : null}
+                    </>
+                  )
+                }
                 const altChip = (id: string) =>
                   declinedIds.has(id) ? (
                     <span title="The customer did not take this alternate — priced as sent, out of the job" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--border-strong)', color: 'var(--text-muted)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT · declined</span>
@@ -3411,6 +3441,32 @@ export function BidsPricingTab({
                           </button>
                         </div>
                       ) : null}
+                    {robotUnpriced > 0 && selectedPricingVersionId && selectedBidForPricing && !selectedBidForPricing.bid_date_sent ? (
+                      <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                        <button
+                          type="button"
+                          data-testid="pricing-robot-price-door"
+                          disabled={robotPricing}
+                          onClick={async () => {
+                            const bidId = selectedBidForPricing.id
+                            setRobotPricing(true)
+                            try {
+                              await robotFixtures.price(bidId, selectedPricingVersionId)
+                              await reloadPricingForBid(bidId)
+                              robotFixtures.reload()
+                            } catch (e) {
+                              setError(formatErrorMessage(e))
+                            } finally {
+                              setRobotPricing(false)
+                            }
+                          }}
+                          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', cursor: robotPricing ? 'wait' : 'pointer' }}
+                        >
+                          {robotPricing ? 'Pricing…' : `${countedLabel('Price', robotUnpriced, 'robot row')} at the robot's prices`}
+                        </button>
+                        <span style={{ color: 'var(--text-muted)' }}>{robotUnpriced === 1 ? '1 robot row landed before a book was picked and has no price.' : `${robotUnpriced} robot rows landed before a book was picked and have no price.`}</span>
+                      </div>
+                    ) : null}
                     {/* Frozen bid prices, PR 3 (v2.3591): a sent bid is locked — the chip says so and Revise unlocks it for this session. */}
                     {(() => {
                       const chip = pricingLockChipText(pricingLock, selectedBidForPricing?.bid_date_sent, new Date().getFullYear())
@@ -3664,7 +3720,7 @@ export function BidsPricingTab({
                                   >
                                     ▶
                                   </button>
-                                  {r.countRow.fixture ?? '—'}{altChip(r.countRow.id)}
+                                  {r.countRow.fixture ?? '—'}{altChip(r.countRow.id)}{robotChip(r.countRow.id)}
                                   {/* #128: the row's kind (dashed while it is the app's guess) and the estimator's tags. */}
                                   {(() => {
                                     const marks = rowMarks[r.countRow.id] ?? {}

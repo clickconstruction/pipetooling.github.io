@@ -99,6 +99,20 @@ export function coverageNudgeButton(firmName: string): string {
   return `Color ${firmName}’s counties…`
 }
 
+/**
+ * Over the Save while no county is colored for any firm (punch list #222, PR 2, v2.6221): the first save ends the
+ * default, and a case whose county no firm covers can no longer be released. Names up to three such cases from the
+ * draft, plainly, so the dev adds their counties or saves knowing. `off` is the draft's accounts still in review
+ * whose county no firm covers (`stand` is `eyes` and `effectiveStand` reads `none`); a given-up account is never released.
+ */
+export function bridgeEndsWords(firmName: string, off: ReadonlyArray<{ name: string; county: string | null }>): string {
+  if (off.length === 0) return `Saving ends the default. Every case sits in a county ${firmName} covers.`
+  const named = off.slice(0, 3).map((c) => (c.county ? `${c.name} in ${countyWords(c.county)}` : `${c.name}, whose county is unknown`))
+  const more = off.length > 3 ? ` and ${off.length - 3} more` : ''
+  const n = off.length
+  return `Saving ends the default. ${n} ${n === 1 ? 'case sits' : 'cases sit'} where no firm covers: ${named.join(', ')}${more}. Add ${n === 1 ? 'its county' : 'their counties'} too, or the desk cannot release ${n === 1 ? 'it' : 'them'}.`
+}
+
 /** `Bell, Hays and Travis` · `Bell and Hays` · `Bell`. */
 function countyList(counties: ReadonlyArray<string>): string {
   const names = counties.map((c) => countyWords(c))

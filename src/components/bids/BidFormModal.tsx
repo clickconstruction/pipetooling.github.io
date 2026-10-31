@@ -1141,7 +1141,7 @@ export function BidFormModal(props: BidFormModalProps) {
                               type="button"
                               aria-pressed={answer === value}
                               onClick={() => choose(value)}
-                              style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.55rem', border: 'none', borderLeft: value === 'taken' ? 'none' : '1px solid var(--border-strong)', background: answer === value ? (value === 'taken' ? '#16a34a' : value === 'declined' ? 'var(--text-muted)' : 'var(--text-amber-700)') : 'var(--surface)', color: answer === value ? '#fff' : 'var(--text-muted)', cursor: 'pointer' }}
+                              style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.55rem', border: 'none', borderLeft: value === 'taken' ? 'none' : '1px solid var(--border-strong)', background: answer === value ? (value === 'taken' ? '#16a34a' : value === 'declined' ? 'var(--text-muted)' : '#b45309') : 'var(--surface)', color: answer === value ? (value === 'taken' ? '#fff' : (value === 'declined' ? 'var(--surface)' : '#fff')) : 'var(--text-muted)', cursor: 'pointer' }}
                             >
                               {label}
                             </button>

@@ -211,8 +211,6 @@ export default function LegalDesk(props: LegalDeskProps) {
   const [firmOpen, setFirmOpen] = useState(false)
   /** Firms… (v2.5792): the Settings block over the desk — add a firm, color its counties. A dev's door. */
   const [firmsOpen, setFirmsOpen] = useState(false)
-  /** The firm the Firms… window opens picked (punch list #222, PR 1): the firm window's *Color its counties…* names it. */
-  const [firmsPick, setFirmsPick] = useState<string | null>(null)
   // The ? and its card (punch list #187 PR 4): what each part of the desk holds, beside the full screen button.
   const [legendOpen, setLegendOpen] = useState(false)
   // The door on the read failure (punch list #187 PR 6).
@@ -1278,13 +1276,12 @@ export default function LegalDesk(props: LegalDeskProps) {
           firms={legal?.activeFirms ?? []}
           countiesByFirm={legal?.countiesByFirm ?? EMPTY_COUNTIES}
           cases={mapCases.cases}
-          // Punch list #222, PR 1: the Map opens with this firm lit; Color its counties… opens Firms… on this firm.
+          // Punch list #222: the Map opens with this firm lit (PR 1); a dev extends the firm's counties inside the window (PR 2).
           onShowOnMap={(id) => { setFirmOpen(false); setMapOpenOn({ county: null, heldId: null, firmId: id, nonce: Date.now() }); pressView('map') }}
-          onColorCounties={canEditFirm ? (id) => { setFirmOpen(false); setFirmsPick(id); setFirmsOpen(true) } : undefined}
           zIndex={DESK_LAYER_Z + 14}
         />
       ) : null}
-      {firmsOpen && stored ? <LegalFirmsWindow pickFirmId={firmsPick} onClose={() => { setFirmsOpen(false); setFirmsPick(null) }} onSaved={() => { void legal?.reload() }} zIndex={DESK_LAYER_Z + 14} /> : null}
+      {firmsOpen && stored ? <LegalFirmsWindow onClose={() => setFirmsOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={DESK_LAYER_Z + 14} /> : null}
       {emailsOpen && firm ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setEmailsOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>

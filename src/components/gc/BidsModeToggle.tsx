@@ -38,9 +38,9 @@ export function BidsModeToggle({ mode }: { mode: 'trades' | 'gc' }) {
             style={{
               padding: '0.4rem 0.9rem',
               border: 'none',
-              background: active ? 'var(--text-violet-700)' : 'var(--surface)',
-              // The surface's color, not white: in dark the violet turns light (v2.5981).
-              color: active ? 'var(--surface)' : 'var(--text-violet-700)',
+              background: active ? '#6d28d9' : 'var(--surface)',
+              // White on the violet's light value, deep in both themes: the token turns light in dark (v2.5981, v2.6190).
+              color: active ? '#fff' : 'var(--text-violet-700)',
               fontWeight: 600,
               cursor: active ? 'default' : 'pointer',
             }}

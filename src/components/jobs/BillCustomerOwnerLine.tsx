@@ -41,7 +41,7 @@ type Facts = {
 }
 
 const line: CSSProperties = { fontSize: '0.78rem', lineHeight: 1.45, marginTop: '0.4rem', display: 'flex', gap: '0.4rem', alignItems: 'flex-start', flexWrap: 'wrap' }
-const useBtn: CSSProperties = { padding: '1px 9px', fontSize: '0.72rem', borderRadius: 6, border: '1px solid transparent', background: 'var(--text-green-800)', color: '#fff', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
+const useBtn: CSSProperties = { padding: '1px 9px', fontSize: '0.72rem', borderRadius: 6, border: '1px solid transparent', background: '#166534', color: '#fff', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }
 const linkBtn: CSSProperties = { background: 'none', border: 'none', cursor: 'pointer', padding: 0, fontSize: '0.75rem', color: 'var(--text-link)', fontWeight: 600 }
 const smallBtn: CSSProperties = { padding: '0.25rem 0.7rem', fontSize: '0.75rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', fontWeight: 600 }
 
@@ -226,7 +226,7 @@ export default function BillCustomerOwnerLine({ jobId, userId }: { jobId: string
             </button>
             <button
               type="button"
-              style={{ ...smallBtn, background: 'var(--text-link)', color: '#fff', border: '1px solid transparent' }}
+              style={{ ...smallBtn, background: '#2563eb', color: '#fff', border: '1px solid transparent' }}
               onClick={() => void save({ kind: 'record', record: pasteDraft }, titleCaseUpperWords(pasteDraft.owner_company.trim() || pasteDraft.owner_name.trim()))}
               disabled={busy || !draftHasOwner(pasteDraft)}
               title={draftHasOwner(pasteDraft) ? undefined : 'Needs an owner of record and a mailing address'}

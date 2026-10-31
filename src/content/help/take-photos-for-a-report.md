@@ -2,7 +2,7 @@
 title: take photos for a report
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician, primary
-keywords: photo, camera, picture, report, leave report, stage, drive, google drive, folder, shrink, size, take a photo, job mode
+keywords: photo, camera, picture, report, leave report, stage, drive, google drive, folder, shrink, size, take a photo, job mode, checklist, stage checklist, question
 where: /dashboard
 order: 67
 ---
@@ -24,6 +24,16 @@ On a job with stages, a row of chips opens under a new tile. The row reads **Thi
 
 Every stage row has a camera press. Tap it to take a photo of that stage. The photo lands on that row already.
 
+## Answer a checklist question with the photo
+
+Some stage checklist questions ask for a photo. Under a new tile, below the stage chips, a line reads **Or it answers a checklist question**. One chip sits there for each such question. A chip reads *Rough In · Did the water test hold?*
+
+Tap the chip. The photo sits on that stage's row. The tile reads *Answers: Did the water test hold?* under it. When you save, the photo becomes that question's answer. The checklist shows it with *Taken on a field report.*
+
+The question still needs your pick. Open the checklist and press {{chip:green|Yes}} or {{chip:red|No}}. Then the question counts as answered. The guide [fill a stage checklist on the phone](/help/fill-a-stage-checklist-on-the-phone) has the rest.
+
+Tap a stage chip instead to let the question go. The photo then shows the stage only.
+
 ## Take more, or take one back
 
 - {{button:outline|Take another}} opens the camera again.
@@ -36,7 +46,7 @@ Save sits at the bottom and names what it writes. It reads {{button:blue|Save ·
 
 ## Where the photos go
 
-Within a few minutes the office's sweep copies each photo into the job's Photos folder under the customer's Drive folder. The file is named by the day, by you and by the stage. It reads *2026-10-29 Luis Ortega · Rough In.jpg*. The copy in the app is then deleted.
+Within a few minutes the office's sweep copies each photo into the job's Photos folder under the customer's Drive folder. The file is named by the day, by you and by the stage. It reads *2026-10-29 Luis Ortega · Rough In.jpg*. A photo that answers a checklist question adds the question, as in *2026-10-31 Luis Ortega · Rough In · Did the water test hold.jpg*. The copy in the app is then deleted.
 
 The report card shows the photos. One in Drive reads *in Drive* with a link. One still waiting reads *not in Drive yet*.
 

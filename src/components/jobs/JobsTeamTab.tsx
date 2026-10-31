@@ -19,7 +19,7 @@ type View = 'board' | 'ledger'
 type Lens = 'job' | 'person'
 
 const btn: React.CSSProperties = { padding: '0.4rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', fontFamily: 'inherit', fontSize: 'inherit' }
-const segBtn = (on: boolean): React.CSSProperties => ({ padding: '0.4rem 0.75rem', border: 0, background: on ? 'var(--text-link)' : 'var(--surface)', color: on ? 'var(--surface)' : 'var(--text-700)', cursor: 'pointer', fontWeight: on ? 600 : 400, fontFamily: 'inherit', fontSize: 'inherit' })
+const segBtn = (on: boolean): React.CSSProperties => ({ padding: '0.4rem 0.75rem', border: 0, background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', cursor: 'pointer', fontWeight: on ? 600 : 400, fontFamily: 'inherit', fontSize: 'inherit' })
 
 function Swatch({ tone, dashed }: { tone: keyof typeof TONE; dashed?: boolean }) {
   const t = TONE[tone]

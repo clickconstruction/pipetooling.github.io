@@ -4,7 +4,7 @@
  * a set of repeat_weekly rows in statement_round_email_requests, one chain per
  * Central weekday per recipient (the v2.1430 standing-copies shape). This
  * kernel groups pending chains per recipient, diffs an edit into inserts +
- * cancels, and shapes the Dashboard nudge from the round RPC payload. Pure —
+ * cancels, and shapes the Dashboard nudge from the office week payload. Pure —
  * IO lives in statementRoundEmailClient.ts.
  */
 import type { OfficeWeekPayload } from './statementWeekEmail'
@@ -86,50 +86,12 @@ export function planStatementRoundChainEdit(
   return { ok: true, inserts, cancelIds }
 }
 
-/** What get_my_statement_round / get_statement_round_for_user return. */
-export type StatementRoundPayload = {
-  week_start: string
-  user_id: string
-  ready: Array<{ gc_id: string; gc_name: string; amount: number; job_count: number; oldest_age_days: number | null; certified_by_name: string | null }>
-  held: { count: number; total: number }
-  assigned_to_me: number
-  sent_by_me: number
-  /** v2.2812+ (optional — older payloads lack them): the week's Friday, the sender's book, contacted marks. */
-  deadline?: string
-  book_total?: number
-  contacted_by_me?: number
-}
-
-export function parseStatementRoundPayload(v: unknown): StatementRoundPayload | null {
-  if (!v || typeof v !== 'object') return null
-  const p = v as Partial<StatementRoundPayload>
-  if (!Array.isArray(p.ready) || typeof p.week_start !== 'string') return null
-  return {
-    week_start: p.week_start,
-    user_id: typeof p.user_id === 'string' ? p.user_id : '',
-    ready: p.ready.map((r) => ({
-      gc_id: String(r.gc_id ?? ''),
-      gc_name: String(r.gc_name ?? '—'),
-      amount: Number(r.amount ?? 0),
-      job_count: Number(r.job_count ?? 0),
-      oldest_age_days: r.oldest_age_days == null ? null : Number(r.oldest_age_days),
-      certified_by_name: r.certified_by_name == null ? null : String(r.certified_by_name),
-    })),
-    held: { count: Number(p.held?.count ?? 0), total: Number(p.held?.total ?? 0) },
-    assigned_to_me: Number(p.assigned_to_me ?? 0),
-    sent_by_me: Number(p.sent_by_me ?? 0),
-    ...(typeof p.deadline === 'string' ? { deadline: p.deadline } : {}),
-    ...(typeof p.book_total === 'number' ? { book_total: p.book_total } : {}),
-    ...(typeof p.contacted_by_me === 'number' ? { contacted_by_me: p.contacted_by_me } : {}),
-  }
-}
-
 /**
- * The Needs You row's inputs: null when nothing is waiting. `office` = the
- * count is the whole office's (get_my_statement_week, punch list #49); absent
- * = one sender's round, from a database that has no office week yet.
+ * The Needs You row's inputs: null when nothing is waiting. The count is the
+ * whole office's (get_my_statement_week, punch list #49); the per-sender round
+ * it once stood beside retired in v2.6220.
  */
-export type StatementRoundNudge = { count: number; total: number; gcNames: string[]; office?: boolean; late?: number; toCheck?: number; wordsDue?: number }
+export type StatementRoundNudge = { count: number; total: number; gcNames: string[]; late?: number; toCheck?: number; wordsDue?: number }
 
 /** The office's week as the Needs You row reads it: statements checked and waiting, broken promises first. */
 export function statementWeekNudgeFromPayload(p: OfficeWeekPayload | null): StatementRoundNudge | null {
@@ -140,18 +102,8 @@ export function statementWeekNudgeFromPayload(p: OfficeWeekPayload | null): Stat
     count: ready.length,
     total: Math.round(ready.reduce((t, r) => t + Number(r.amount || 0), 0) * 100) / 100,
     gcNames: ready.map((r) => r.gc_name),
-    office: true,
     late: ready.filter((r) => r.promise_late).length,
     toCheck: p.counts.to_check,
     wordsDue: p.counts.words_due,
-  }
-}
-
-export function statementRoundNudgeFromPayload(p: StatementRoundPayload | null): StatementRoundNudge | null {
-  if (!p || p.ready.length === 0) return null
-  return {
-    count: p.ready.length,
-    total: Math.round(p.ready.reduce((t, r) => t + r.amount, 0) * 100) / 100,
-    gcNames: p.ready.map((r) => r.gc_name),
   }
 }

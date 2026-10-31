@@ -48,7 +48,7 @@ const chip = (on: boolean, tone: 'blue' | 'teal' = 'blue'): React.CSSProperties 
   cursor: 'pointer',
 })
 const quiet: React.CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline dotted' }
-const primary: React.CSSProperties = { padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: 'var(--text-link)', color: 'white', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }
+const primary: React.CSSProperties = { padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }
 
 function promptEligibleRole(role: string | null | undefined): boolean {
   return role === 'dev' || role === 'master_technician' || isAssistantLike(role) || role === 'estimator'

@@ -52,7 +52,7 @@ Already have invoices sitting on job accounts? Press the aging cell that holds t
 
 The house may already carry a bill on an account you never recorded. Press **Flag anyway…** on the job's heading. Each of its past due bills then offers **Mark it on**. Press **Done** to fold it away.
 
-Press **On it ✓** to take a flag off again. The **Edit** pencil still works too. A bill on two jobs sits under **Split across jobs**. A job account belongs to one property, so that bill cannot go on one. A bill with no job sits under **No job yet**.
+Press **On it ✓** to take a flag off again. The **Edit** pencil still works too. A bill on two jobs sits under **Split across jobs**. A job account belongs to one property, so that bill cannot go on one. A bill with no job sits under **No job yet**. The row offers {{button:outline|Pick a job ›}}. Press it and the bill opens in its Edit window with the job search ready. Choose the job and save. The bill then sits under that job. Any bill's number opens it the same way. See [fix a bill from the cell](/help/mark-supply-house-bills-paid#fix-a-bill-from-the-cell).
 
 ## The move window
 

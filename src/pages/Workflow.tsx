@@ -645,7 +645,7 @@ export default function Workflow() {
           <p style={{ margin: '0 0 0.85rem', color: 'var(--text-muted)' }}>{GC_PROJECT_WORDS.workflowBody}</p>
           <Link
             to={gcProjectHref(gcProjectId)}
-            style={{ display: 'inline-block', padding: '0.45rem 0.9rem', borderRadius: 6, background: 'var(--text-violet-700)', color: 'white', fontWeight: 600, textDecoration: 'none' }}
+            style={{ display: 'inline-block', padding: '0.45rem 0.9rem', borderRadius: 6, background: '#6d28d9', color: 'white', fontWeight: 600, textDecoration: 'none' }}
           >
             {GC_PROJECT_WORDS.workflowButton}
           </Link>

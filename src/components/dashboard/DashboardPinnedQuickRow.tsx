@@ -127,7 +127,7 @@ function TallySquareLink({ accessibleName, unlinkedCount }: { accessibleName: st
   return (
     <div ref={ref} style={{ position: 'relative', width: 48, minHeight: 48, alignSelf: 'stretch', flexShrink: 0 }}>
       <Link
-        to="/tally"
+        to="/tally?tab=transactions"
         title={accessibleName}
         aria-label={accessibleName}
         style={{
@@ -380,7 +380,7 @@ export function DashboardPinnedQuickRow({
           <button type="button" onClick={() => setNewReportModalOpen(true)} style={{ minHeight: 36, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
             Job report
           </button>
-          <Link to="/tally" aria-label={tallyLinkAccessibleName} style={{ minHeight: 36, display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)' }}>
+          <Link to="/tally?tab=transactions" aria-label={tallyLinkAccessibleName} style={{ minHeight: 36, display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)' }}>
             Tally{(tallyUnlinkedCount ?? 0) > 0 ? ` · ${tallyUnlinkedCount}` : ''}
           </Link>
         </div>

@@ -170,7 +170,7 @@ export function ReplyPushSettingsCard({ io = DEFAULT_IO }: { io?: ReplyPushSwitc
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 cursor: waitChanged && !savingWait ? 'pointer' : 'default',
-                background: waitChanged ? 'var(--text-blue-500)' : 'var(--surface)',
+                background: waitChanged ? '#2563eb' : 'var(--surface)',
                 color: waitChanged ? 'white' : 'var(--text-muted)',
               }}
             >
