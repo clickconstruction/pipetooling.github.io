@@ -2,7 +2,7 @@
 name: "Legal desk: affidavits from the desk — the thinking, the window and the print faces"
 number: 220
 group: close
-status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 · PR 4 the print faces v2.6211 · PR 5 filing the scan v2.6212 · PR 6 the business-records preset v2.6213 · all six built 2026-10-31 · PR 7 the affiant's full name v2.6238 (claude/220-affidavit-full-name), from the live walk · PR 8 the robot path v2.6244 (claude/220-mcp-statement-verbs-ce4096): dev-mcp `plan_matter_statement` / `apply_matter_statement`
+status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 · PR 4 the print faces v2.6211 · PR 5 filing the scan v2.6212 · PR 6 the business-records preset v2.6213 · all six built 2026-10-31 · PR 7 the affiant's full name v2.6238 (claude/220-affidavit-full-name), from the live walk · PR 8 a declaration names its signer one way v2.6243 (claude/220-affidavit-one-name), from the live screenshots · PR 9 the robot path v2.6244 (claude/220-mcp-statement-verbs-ce4096): dev-mcp `plan_matter_statement` / `apply_matter_statement`
 mockup: to-dos/legal-desk-affidavits/mockup.html
 summary: >
   The office made one affidavit by hand this month: drafted in a chat, exported, printed, driven to a
