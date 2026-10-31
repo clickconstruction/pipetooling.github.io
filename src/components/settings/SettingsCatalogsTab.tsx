@@ -19,6 +19,7 @@ import type {
   ServiceType,
 } from '../../types/settingsRows'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 type SettingsCatalogsTabProps = {
   assemblyTypeAssemblyCounts: Record<string, number>
@@ -296,7 +297,7 @@ export default function SettingsCatalogsTab({
           </p>
           <Link
             to="/duplicates"
-            style={{ padding: '0.5rem 1rem', background: '#f59e0b', color: 'white', border: 'none', borderRadius: 4, textDecoration: 'none', fontWeight: 500, display: 'inline-block' }}
+            style={{ padding: '0.5rem 1rem', background: ORANGE_UNDER_WORDS, color: WORDS_ON_ORANGE, border: 'none', borderRadius: 4, textDecoration: 'none', fontWeight: 500, display: 'inline-block' }}
           >
             View Duplicate Materials
           </Link>

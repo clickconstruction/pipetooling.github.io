@@ -2,8 +2,8 @@ import { readdirSync, readFileSync } from 'node:fs'
 import { resolve } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { pageTabStyle } from '../pageTabStyle'
-import { CLOCK_IN_ACCENT_TEXT } from '../clock/clockColors'
-import { BID_DETAIL_CLOSE_FLOAT_WIDTH, HIGHLIGHTED_TABS, SAFETY_ORANGE, SAFETY_ORANGE_TEXT, TEXT_ON_SAFETY_ORANGE, bidDetailCloseFloatMobileStyle, bidsTabStyle, tabStyle } from './bidStyles'
+import { CLOCK_IN_ACCENT_TEXT, CLOCK_IN_ACCENT_UNDER_WORDS } from '../clock/clockColors'
+import { BID_DETAIL_CLOSE_FLOAT_WIDTH, HIGHLIGHTED_TABS, SAFETY_ORANGE_TEXT, SAFETY_ORANGE_UNDER_WORDS, TEXT_ON_SAFETY_ORANGE, bidDetailCloseFloatMobileStyle, bidsTabStyle, tabStyle } from './bidStyles'
 
 const SRC = resolve(__dirname, '../..')
 const BIDS_COMPONENTS = resolve(SRC, 'components/bids')
@@ -40,11 +40,11 @@ describe('Bids tab styles', () => {
     expect('background' in (tabStyle(true) as Record<string, unknown>)).toBe(false)
   })
 
-  it('the three highlighted tabs fill orange with near-black words when open and read orange words when closed (v2.6063)', () => {
+  it("the three highlighted tabs fill safety orange's deep shade with white words when open (v2.6186) and read orange words when closed (v2.6063)", () => {
     expect([...HIGHLIGHTED_TABS]).toEqual(['counts', 'pricing', 'cover-letter'])
     for (const tab of HIGHLIGHTED_TABS) {
       const open = bidsTabStyle(true, tab) as Record<string, unknown>
-      expect(open.backgroundColor).toBe(SAFETY_ORANGE)
+      expect(open.backgroundColor).toBe(SAFETY_ORANGE_UNDER_WORDS)
       expect(open.color).toBe(TEXT_ON_SAFETY_ORANGE)
       const closed = bidsTabStyle(false, tab) as Record<string, unknown>
       expect(closed.backgroundColor).toBe('transparent')
@@ -53,7 +53,8 @@ describe('Bids tab styles', () => {
     }
   })
 
-  it('the words on the orange are the Clock In bar\x27s pair, so the two cannot drift', () => {
+  it('the orange under words and the words on it are the Clock In bar\x27s pair, so the two cannot drift', () => {
+    expect(SAFETY_ORANGE_UNDER_WORDS).toBe(CLOCK_IN_ACCENT_UNDER_WORDS)
     expect(TEXT_ON_SAFETY_ORANGE).toBe(CLOCK_IN_ACCENT_TEXT)
     expect(SAFETY_ORANGE_TEXT).toBe('var(--text-orange-700)')
   })
@@ -81,17 +82,21 @@ describe('Bids tab styles', () => {
 
 describe('safety orange carries no words as a literal (v2.6063)', () => {
   /** Every file under src/ holding the literal; the four that may: the two constants and the three orange icons. */
-  function filesWithSafetyOrange(dir: string, out: string[] = []): string[] {
+  function filesWith(hex: RegExp, dir: string = SRC, out: string[] = []): string[] {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {
       const p = resolve(dir, entry.name)
-      if (entry.isDirectory()) filesWithSafetyOrange(p, out)
-      else if (/\.(tsx?|css)$/.test(entry.name) && !entry.name.includes('.test.') && /#ff6600/i.test(readFileSync(p, 'utf8'))) out.push(p.slice(SRC.length + 1))
+      if (entry.isDirectory()) filesWith(hex, p, out)
+      else if (/\.(tsx?|css)$/.test(entry.name) && !entry.name.includes('.test.') && hex.test(readFileSync(p, 'utf8'))) out.push(p.slice(SRC.length + 1))
     }
     return out
   }
 
+  it('its deep shade under words lives in lib/orangeUnderWords and the stage bar badge\x27s rule alone (v2.6186)', () => {
+    expect(filesWith(/#c75000/i).sort()).toEqual(['index.css', 'lib/orangeUnderWords.ts'])
+  })
+
   it('the fill lives in two constants and the orange icons; every word on or in it reads a token', () => {
-    expect(filesWithSafetyOrange(SRC).sort()).toEqual([
+    expect(filesWith(/#ff6600/i).sort()).toEqual([
       'components/jobs/StagesRowActionButtons.tsx',
       'components/jobs/StagesToolsMenuGlyph.tsx',
       'index.css',
