@@ -71,6 +71,9 @@ describe('the share arithmetic', () => {
   it('labels a source by its name and importer, falling back to the link’s host', () => {
     expect(countSourceLabel({ project_name: 'SpaceX BA', link: 'https://counttooling.com/app/?t=x' }, 'Robert')).toBe('SpaceX BA · Robert')
     expect(countSourceLabel({ project_name: null, link: 'https://counttooling.com/app/?t=x' }, null)).toBe('counttooling.com')
+    // v2.6237: the robot's source is plain Robot, whoever pressed Add; its short label is Robot too.
+    expect(countSourceLabel({ project_name: 'Robot', link: 'https://counttooling.com/app/?t=x', source_kind: 'robot' }, 'Robert')).toBe('Robot')
+    expect(countSourceShortLabel(countSourceLabel({ project_name: 'Robot', link: 'https://counttooling.com/', source_kind: 'robot' }, 'Robert'))).toBe('Robot')
     expect(countSourceLabel({ project_name: '', link: 'not a url' }, 'Taunya')).toBe('CountTooling · Taunya')
   })
 })

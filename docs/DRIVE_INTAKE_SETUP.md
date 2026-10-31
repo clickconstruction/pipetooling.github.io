@@ -107,18 +107,21 @@ API controls → Domain-wide delegation → SA's Unique ID + scope
 `https://www.googleapis.com/auth/drive`, then set `DRIVE_IMPERSONATE_USER` and redeploy),
 but the Shared Drive is the chosen path — tighter blast radius than impersonating a user.
 
-## The division bid folders (v2.6185)
+## Where the dev seat files a plan set (v2.6185, v2.6241)
 
-The dev seat's `apply_file_plans` files a plan set as the service account into one of the three
-division bid folders (`supabase/functions/_shared/bidPlansFolders.ts`: plumbing, electrical, HVAC — the
-folders the bid form's Find looks in), in a folder named for the project. Two things must hold. The
-service account needs **Editor** on each division folder (Content manager on a Shared Drive): reading is
-not enough, and on 2026-10-31 the first live run (ZZ bid b566) found it could see the plumbing folder but
-not create in it. And the same quota rule as the upload leg applies: the folders must sit on a Shared
-Drive the service account is in (or `DRIVE_IMPERSONATE_USER` must be set). When either fails, the verb
-(`driveFilingRefusal`, v2.6239) names Drive's reason, the service account, the folder and the share or
-move that fixes it, keeps the staged copy so the same plan applies again, and tells the agent to drop the
-file in by hand and press Find the folder on the bid form until then.
+The dev seat's `apply_file_plans` files a plan set as the service account into the **"PipeTooling Jobs" Shared
+Drive**, in **Bid plans › Plumbing / Electrical / HVAC › <project>** (`ROBOT_PLANS_SHARED_DRIVE` in
+`supabase/functions/_shared/bidPlansFolders.ts`). It makes each level the first time. Bid plans sits at the drive's root
+beside Jobs, so the job-folder sweeps never read it as a job. Apply stamps the bid's plans link with the project folder,
+so no Find is needed, and the Bid Board opens it in one tap.
+
+The office's three division bid folders (the same file: the folders the bid form's Find looks in) stay **View** for
+the service account. They sit in a My Drive, where a service account can make a folder but cannot own a file: on
+2026-10-31 the first live run (ZZ bid b566) was refused for permission while they were View, and for storage quota once
+the owner made them Edit. That is why v2.6241 moved the filing to the Shared Drive; Edit on the division folders buys
+nothing and can go back to View. When Drive refuses, the verb (`driveFilingRefusal`) names the reason, the service
+account, where it stopped and the grant that fixes it, keeps the staged copy so the same plan applies again, and tells
+the agent that a person can drop the file into the division folder and press Find the folder on the bid form.
 
 ## Rotation / kill
 

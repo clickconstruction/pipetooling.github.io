@@ -466,3 +466,28 @@ describe('LegalTimelinePanel · swear a statement from the line (punch list #220
     await waitFor(() => expect(a.undo).toHaveBeenCalledWith('st', 'would not sign the September paragraph'))
   })
 })
+
+describe('LegalTimelinePanel · a signed statement’s doors (punch list #220, v2.6212)', () => {
+  it('a signed row opens its scan and lands on Evidence; a draft offers File the signed copy… into the window', async () => {
+    const rows: LegalEntryRow[] = [
+      entry({ id: 'st-signed', kind: 'statement', occurred_on: '2026-09-09', body: 'x', meta: { title: 'Declaration of Thanh Nguyen', affiant: { kind: 'witness', name: 'Thanh Nguyen' }, form: 'declaration', state: 'signed', prints: [], signed_on: '2026-10-20', document_id: 'd-scan' } }),
+      entry({ id: 'st-draft', kind: 'statement', occurred_on: '2026-09-03', body: 'x', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', name: 'Daniel Alvarez' }, form: 'notary', state: 'draft', prints: [] } }),
+    ]
+    const openDoc = vi.fn(async () => {})
+    const openEvidence = vi.fn()
+    const edit = vi.fn()
+    render(<LegalTimelinePanel timeline={buildLegalTimeline({ entries: rows, todayYmd: TODAY, reader: 'office' })} todayYmd={TODAY} reader="office" acts={acts({ editStatement: edit })} onOpenDocument={openDoc} onOpenEvidence={openEvidence} />)
+    const signed = document.querySelector('[data-legal-timeline-item="entry:st-signed"]') as HTMLElement
+    fireEvent.click(within(signed).getByRole('button', { name: 'Open the signed copy' }))
+    await waitFor(() => expect(openDoc).toHaveBeenCalledWith('d-scan'))
+    fireEvent.click(within(signed).getByRole('button', { name: 'Show on Evidence ↗' }))
+    expect(openEvidence).toHaveBeenCalledWith('d-scan')
+    expect(within(signed).queryByRole('button', { name: 'File the signed copy…' })).toBeNull()
+    const draft = document.querySelector('[data-legal-timeline-item="entry:st-draft"]') as HTMLElement
+    expect(within(draft).queryByRole('button', { name: 'Open the signed copy' })).toBeNull()
+    fireEvent.click(within(draft).getByRole('button', { name: 'File the signed copy…' }))
+    expect(edit).toHaveBeenCalledWith('st-draft', { file: true })
+    fireEvent.click(within(draft).getByRole('button', { name: 'Print' }))
+    expect(edit).toHaveBeenCalledWith('st-draft', { print: true })
+  })
+})

@@ -8,6 +8,8 @@ export type BidCountSourceRow = {
   link: string
   token: string | null
   project_name: string | null
+  /** v2.6180: 'counttooling' for a project a person imported, 'robot' for the robot's fixtures; the label reads Robot. */
+  source_kind?: string | null
   scope: string
   imported_by: string | null
   first_imported_at: string

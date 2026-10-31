@@ -256,3 +256,21 @@ describe('buildAxisCards · teacher attribution', () => {
     expect(cards[0]!.streak).toBe(2)
   })
 })
+
+// Robot fixtures (punch list #221, PR 5): a run whose estimator took robot fixtures is shown, never gated.
+describe('buildAxisCards · assisted runs', () => {
+  it('sets an assisted run aside from the gate, says so on the card, and marks it practice on the ledger', () => {
+    const runs = [
+      shadow({ shadow_bid_number: '641', status: 'scored', delta_pct: 3.1, scored_at: '2026-11-04T00:00:00Z', teacher_name: 'Taunya', teacher_standard: true, assisted_at: '2026-10-31T14:00:00Z' }),
+      shadow({ shadow_bid_number: '612', status: 'scored', delta_pct: 5.9, scored_at: '2026-11-01T00:00:00Z', teacher_name: 'Taunya', teacher_standard: true }),
+    ]
+    const card = buildAxisCards([], runs)[0]!
+    expect(card.scoredCount).toBe(1)
+    expect(card.streak).toBe(1)
+    expect(card.assistedRuns).toBe(1)
+    expect(card.nextLine).toContain('1 assisted run set aside')
+    const byLabel = Object.fromEntries(buildLedger([], runs).map((r) => [r.label, r]))
+    expect(byLabel['SH b641']).toMatchObject({ gate: 'practice', countsNote: 'assisted' })
+    expect(byLabel['SH b612']).toMatchObject({ gate: 'eligible', countsNote: '—' })
+  })
+})

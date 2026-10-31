@@ -12,6 +12,7 @@ import { TwinQuestionChoiceButtons } from './TwinQuestionChoiceButtons'
 import type { TwinQuestionRow } from '../../lib/bids/standingRulings'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { fixturesScoreWords } from '../../lib/bids/robotFixtures'
 
 // bid_audits / twin_questions predate the generated types (BidsAuditsTab pattern).
 const db = supabase as unknown as SupabaseClient
@@ -257,6 +258,8 @@ export function RobotEnvelopeModal({ bid, run, authUser, onClose, onOpenAudits }
                 {deltaPct == null ? '—' : `${deltaPct > 0 ? '+' : ''}${deltaPct.toFixed(1)}%`}
               </b>
               {run.practice ? <span style={{ display: 'block', fontSize: '0.66rem', color: 'var(--text-amber-800)' }}>practice teacher — shown, not gated</span> : null}
+              {run.assisted ? <span data-testid="robot-envelope-assisted" style={{ display: 'block', fontSize: '0.66rem', color: 'var(--text-violet-800)' }}>Assisted. You took robot fixtures on this bid, so it is shown and not gated.</span> : null}
+              {run.fixturesScore ? <span data-testid="robot-envelope-fixtures" style={{ display: 'block', fontSize: '0.66rem', color: 'var(--text-muted)' }}>{fixturesScoreWords(run.fixturesScore)}</span> : null}
             </span>
           </div>
 

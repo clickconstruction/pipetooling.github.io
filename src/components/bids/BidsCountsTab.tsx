@@ -218,6 +218,8 @@ export function BidsCountsTab({
   }, [robotProgress.rows, robotBidId, selectedBidForCounts])
   const robotFixtures = useRobotFixtures(robotBidId, !!robotStage?.fixturesOpen)
   const [robotWindowOpen, setRobotWindowOpen] = useState(false)
+  // The stage's seven stops unfold on a row of their own above the title, as the bid flow's do (v2.6237).
+  const [robotStageOpen, setRobotStageOpen] = useState(false)
   const [robotBusy, setRobotBusy] = useState(false)
   const [robotError, setRobotError] = useState<string | null>(null)
   const [robotAsideShown, setRobotAsideShown] = useState(false)
@@ -230,14 +232,19 @@ export function BidsCountsTab({
   const robotRefresh = () => {
     refreshAfterCountsChange()
     robotFixtures.reload()
+    // The take registers the robot as a count source server-side; re-read the sources so the rows shade at once (v2.6237).
+    setCountSourcesRefresh((n) => n + 1)
+    // And the stage's counts (taken, set aside), so its line says the new number now, not at the next minute's read.
+    robotProgress.reload()
   }
   const robotWhen = (iso: string): string => {
     const t = Date.parse(iso)
     return Number.isFinite(t) ? new Date(t).toLocaleString(undefined, { weekday: 'short', hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ }) : ''
   }
-  async function robotUntake(pullId: string) {
+  async function robotUntake(pullId: string, rowIds?: string[]) {
     try {
-      await robotFixtures.untake(pullId)
+      // v2.6237: Undo takes back the rows of the press it belongs to, never an earlier press's.
+      await (rowIds ? robotFixtures.untakeRows(pullId, rowIds) : robotFixtures.untake(pullId))
       showToast('The robot\u2019s rows are off your count again.', 'success')
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
@@ -251,7 +258,8 @@ export function BidsCountsTab({
       const updates = [...ticks.update].map((id) => ({ row_id: id, count_row_id: review.rows.find((r) => r.row.id === id)?.hers?.id ?? '' })).filter((u) => u.count_row_id)
       const res = await robotFixtures.take([...ticks.add], activeBidVersionId, updates)
       setRobotWindowOpen(false)
-      showActionToast(fixturesAddedToast(res.added, res.updated), { label: 'Undo', onClick: () => void robotUntake(res.pull_id) }, { durationMs: 10000 })
+      const tookIds = [...ticks.add, ...updates.map((u) => u.row_id)]
+      showActionToast(fixturesAddedToast(res.added, res.updated), { label: 'Undo', onClick: () => void robotUntake(res.pull_id, tookIds) }, { durationMs: 10000 })
       robotRefresh()
     } catch (e) {
       setRobotError(formatErrorMessage(e))
@@ -293,7 +301,7 @@ export function BidsCountsTab({
   }, [openRobotFixturesRequest, robotStage?.fixturesOpen, robotPull])
   // The stage (PR 4): one line beside the bid flow's pill, unfolding to the seven stops; folds with the flow's fold.
   const robotStagePill = robotStage && !robotStage.void ? (
-    <RobotStageStrip stage={robotStage} variant="inline" onOpenFixtures={robotStage.fixturesOpen && robotPull ? () => setRobotWindowOpen(true) : null} />
+    <RobotStageStrip stage={robotStage} variant="inline" detached expanded={robotStageOpen} onToggleExpanded={() => setRobotStageOpen((v) => !v)} />
   ) : null
   const robotFixturesButton = robotStage?.fixturesOpen && robotPull ? (
     <button
@@ -1157,6 +1165,10 @@ export function BidsCountsTab({
               ×
             </button>
           ) : null}
+          {/* Robot fixtures (punch list #221): the stage's seven stops, unfolded above the title like the bid flow's. */}
+          {robotStageOpen && robotStage && !robotStage.void ? (
+            <RobotStageStrip stage={robotStage} variant="full" onOpenFixtures={robotStage.fixturesOpen && robotPull ? () => setRobotWindowOpen(true) : null} />
+          ) : null}
           {/* v2.3200: the bid flow strip above the bid title (Review is its one door here). */}
           {flowFold.expanded ? (
           <BidFlowStrip
@@ -1196,7 +1208,7 @@ export function BidsCountsTab({
                   reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
                 />
               </div>
-              {robotStagePill}
+              {robotStagePill ? <div style={{ flex: '0 1 auto', minWidth: 0, maxWidth: '100%' }}>{robotStagePill}</div> : null}
               {gradeChipEl}
               <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end' }}>
                 {robotFixturesButton}
@@ -1236,9 +1248,10 @@ export function BidsCountsTab({
                   }}
                   reviewStamp={bidFlowReview.stampFor(selectedBidForCounts)}
                 />
-                {robotStagePill}
                 {gradeChipEl}
               </div>
+              {/* Its own item so the line can shrink or wrap; inside the title group it ran off the card (v2.6237). */}
+              {robotStagePill ? <div style={{ flex: '0 1 auto', minWidth: 0, maxWidth: '100%' }}>{robotStagePill}</div> : null}
               <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', justifyContent: 'flex-end', flex: '0 0 auto' }}>
                 {robotFixturesButton}
                 <button

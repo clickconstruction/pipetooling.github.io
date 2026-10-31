@@ -84,8 +84,9 @@ estimator's hours and her corpus, and every planned item optimizes one of the tw
   robot's price — landing in `bid_fixture_pulls` / `bid_fixture_pull_rows` under the human bid.
   Five RPCs (`take_robot_fixtures`, `untake_…`, `set_aside_…`, `put_back_…`, `price_…`) are the
   estimator's doors; `score_locked_shadows` writes `twin_shadow_runs.fixtures_score` at send and
-  a run she took fixtures on reads `assisted_at`. No surface yet: the window, the shade, the stage
-  strip and the assisted chip are PRs 2–5 (`to-dos/robot-fixtures/README.md`).
+  a run she took fixtures on reads `assisted_at` and leaves the gate (v2.6237). The window, the shade,
+  the stage strip and the assisted chip shipped as v2.6188–v2.6237 (`to-dos/robot-fixtures/README.md`). The
+  rounds Mac's `round.md` is written once by *Set up on this Mac*: press it again there to carry STG-5b.
 
 ## The fleet roadmap & gates
 
