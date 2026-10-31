@@ -21569,6 +21569,7 @@ export type Database = {
         Row: {
           county: string
           firm_id: string
+          first_call: boolean
           id: string
           set_by: string | null
           since: string
@@ -21577,6 +21578,7 @@ export type Database = {
         Insert: {
           county: string
           firm_id: string
+          first_call?: boolean
           id?: string
           set_by?: string | null
           since?: string
@@ -21585,6 +21587,7 @@ export type Database = {
         Update: {
           county?: string
           firm_id?: string
+          first_call?: boolean
           id?: string
           set_by?: string | null
           since?: string
@@ -37711,6 +37714,7 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_save_county_coverage: { Args: { p_counties: Json }; Returns: Json }
       legal_set_counsel_read: {
         Args: {
           p_cost_to_try?: number
