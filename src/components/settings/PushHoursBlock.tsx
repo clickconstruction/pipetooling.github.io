@@ -37,8 +37,8 @@ function dayStyle(on: boolean, busy: boolean): CSSProperties {
     fontSize: '0.85rem',
     fontWeight: 600,
     cursor: busy ? 'default' : 'pointer',
-    background: on ? 'var(--text-link)' : 'var(--surface)',
-    color: on ? 'var(--surface)' : 'var(--text-base)',
+    background: on ? '#2563eb' : 'var(--surface)',
+    color: on ? '#fff' : 'var(--text-base)',
     opacity: busy ? 0.6 : 1,
   }
 }
@@ -184,7 +184,7 @@ export function PushHoursBlock({ userId: userIdProp, io: ioProp }: { userId?: st
                     fontSize: '0.85rem',
                     fontWeight: 600,
                     cursor: changed && !bad && !busy ? 'pointer' : 'default',
-                    background: changed && !bad ? 'var(--text-blue-500)' : 'var(--surface)',
+                    background: changed && !bad ? '#2563eb' : 'var(--surface)',
                     color: changed && !bad ? 'white' : 'var(--text-muted)',
                   }}
                 >

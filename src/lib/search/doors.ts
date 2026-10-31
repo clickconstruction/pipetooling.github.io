@@ -268,7 +268,7 @@ const PAGE_DOORS: readonly Door[] = [
   p({ label: 'People', where: 'People', words: ['people', 'who worked', 'clock cards', 'users', 'accounts', 'roster', 'team'], to: '/people', gate: (v) => office(v) && v.role !== 'estimator' }),
   p({ label: 'Users', where: 'People · Users', words: ['users', 'accounts', 'roles', 'invite', 'archive user'], to: '/people?tab=users', gate: office }),
   p({ label: 'Day book', where: 'People · Day book', words: ['day book', 'estimator day'], to: '/people?tab=day_book', gate: (v) => canOpenDayBook(v.role) }),
-  p({ label: 'Tally', where: 'Tally', words: ['job parts tally', 'purchases', 'card purchases', 'transactions', 'payroll marks', 'spending', 'tally', 'sort purchases'], to: '/tally', gate: notFarm(notField) }),
+  p({ label: 'Tally', where: 'Tally', words: ['job parts tally', 'purchases', 'card purchases', 'transactions', 'payroll marks', 'spending', 'tally', 'sort purchases'], to: '/tally?tab=transactions', gate: notFarm(notField) }),
   p({ label: 'On site', where: 'Tally · On site', words: ['on site', 'materials on site', 'my boxes', 'cage', 'box', 'put away', 'unsorted', 'count this box', 'count a box', "can't find"], to: '/tally?tab=on-site', gate: notFarm(notField) }),
   p({ label: 'Banking', where: 'Banking', words: ['bank ledger', 'card sorting', 'accounting review', 'bank', 'mercury', 'banking'], to: '/banking', gate: (v) => canAccessBanking(v.role) }),
   p({ label: 'Accounts receivable', where: 'AR', words: ['who owes us', 'owed', 'ar', 'receivables', 'accounts receivable', 'money owed'], to: '/accounts-receivable', gate: office }),

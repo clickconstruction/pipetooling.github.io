@@ -1,8 +1,8 @@
 ---
 name: "Robot fixtures: the robot pulls the fixtures off the plans, the estimator picks which to add to her count"
 number: 221
-group: ready
-status: proposed 2026-10-30 · the owner's picks the same day (keep the dollar score, fixtures open at the seal, a count and a price from day one, set aside and never delete) · build approved · PR 1 next · nothing built
+group: close
+status: proposed 2026-10-30 · the owner's picks the same day · built 2026-10-31 as v2.6180, v2.6181, v2.6188, v2.6225, v2.6236 and v2.6237 · migrations pushed, twin-mcp deployed · waiting on the first real pull
 mockup: to-dos/robot-fixtures/mockup.html
 summary: >
   The robots already read every plumbing bid's plans, count the fixtures, price them on their own book and seal a
@@ -17,9 +17,9 @@ summary: >
   the robot, priced by her book first and by the robot where her book has none), how a row leaves (set aside with
   her reason, never deleted), the stage strip (Plans filed → Read → Fixtures ready → Checked → Sealed → Sent →
   Scored), and which set.
-next: PR 1 of five, the ground: the migration, put_fixtures, the take and set-aside RPCs, the fixtures score at send.
+next: The first bid a robot seals with its fixtures handed over, then the owner's look. Press Set up on this Mac on the rounds Mac to refresh its round text. The guide's recordings are #227 and the adopt fold is #226. Then delete this folder.
 size: M as a train of five, plus one later
-blocker: Nothing. The owner's picks are in (2026-10-30); the plan-sets PRs (#6557, #6560) are on main.
+blocker: Nothing in the code. The window shows on the first bid a robot seals with the hand-over step.
 opinion: build — the Counts tab door with the status sheet as the second door, the run marked assisted with its dollar score kept and the fixtures scored against her list, fixtures open once the robot seals, her book first and the robot's price where her book has none, set aside and never delete
 ---
 
@@ -351,7 +351,7 @@ New, all in PR 1's migration (`SET lock_timeout = '3s';`, idempotent, the three 
 - `robot_progress()` gains `fixtures_at`, `fixtures_found`, `fixtures_sure`, `fixtures_taken`, `fixtures_set_aside`,
   `assisted_at`; the shell's `[pipeline STG-5b]` stamp is the fact.
 - RPCs, SECURITY DEFINER for the bid roles, all refusing on a sent bid (*the bid is sent, the count is the record*):
-  `take_robot_fixtures(p_row_ids uuid[], p_bid_version_id uuid)`, `untake_robot_fixtures(p_pull_id uuid)`,
+  `take_robot_fixtures(p_row_ids uuid[], p_bid_version_id uuid)`, `untake_robot_fixtures(p_pull_id uuid)`, `untake_robot_fixture_rows(p_pull_id uuid, p_row_ids uuid[])` (the toast's Undo, only that press's rows),
   `set_aside_robot_fixtures(p_row_ids uuid[], p_reason text)`, `put_back_robot_fixtures(p_row_ids uuid[])`,
   `price_robot_fixtures(p_bid_id uuid, p_price_book_version_id uuid)`.
 - twin-mcp 1.9.0: `put_fixtures(bid, fixtures)` (fenced to the twin's shell, lands on the paired human bid, 400 rows,

@@ -271,7 +271,7 @@ export function PricingMarginBreakdownModal({
         <button
           type="button"
           onClick={() => onClose()}
-          style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', width: '100%' }}
+          style={{ marginTop: '1rem', padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', width: '100%' }}
         >
           Close
         </button>

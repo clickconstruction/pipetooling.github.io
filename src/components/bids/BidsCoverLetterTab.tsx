@@ -990,7 +990,7 @@ export function BidsCoverLetterTab({
           aria-label="New name"
           style={{ font: 'inherit', fontSize: '0.8rem', padding: '0.15rem 0.4rem', border: '1px solid #3b82f6', borderRadius: 4, width: '13rem' }}
         />
-        <button type="button" onClick={onCommit} disabled={renameBusy} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.55rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>{renameBusy ? '…' : 'Save'}</button>
+        <button type="button" onClick={onCommit} disabled={renameBusy} style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.15rem 0.55rem', border: 'none', borderRadius: 4, background: '#2563eb', color: '#fff', cursor: 'pointer' }}>{renameBusy ? '…' : 'Save'}</button>
         <button type="button" onClick={() => setRenameKey(null)} disabled={renameBusy} style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.15rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'transparent', color: 'var(--text-muted)', cursor: 'pointer' }}>Cancel</button>
       </span>
     )
@@ -1121,7 +1121,7 @@ export function BidsCoverLetterTab({
     height: '1.35rem',
     borderRadius: 999,
     flexShrink: 0,
-    background: '#3b82f6',
+    background: '#2563eb',
     color: '#fff',
     fontSize: '0.75rem',
     fontWeight: 700,
@@ -1134,8 +1134,8 @@ export function BidsCoverLetterTab({
     padding: '0.3rem 0.6rem',
     borderRadius: 999,
     cursor: 'pointer',
-    border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-    background: on ? '#3b82f6' : 'var(--surface)',
+    border: on ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+    background: on ? '#2563eb' : 'var(--surface)',
     color: on ? '#fff' : 'var(--text-muted)',
   })
   const studioSegBtnStyle = (on: boolean, enabled: boolean): React.CSSProperties => ({
@@ -1540,7 +1540,7 @@ export function BidsCoverLetterTab({
                   disabled={!totalsResolved}
                   aria-busy={!totalsResolved || undefined}
                   title={totalsResolved ? (addressedCustomer ? `Print — addressed to ${addressedCustomer.name}` : 'Print combined document') : totalsPendingTitle}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
+                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
                 >
                   Print
                   {addressedCustomer ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400 }}>to {addressedCustomer.name}</span> : null}
@@ -1741,7 +1741,7 @@ export function BidsCoverLetterTab({
                                           type="button"
                                           onClick={() => void addSameLetterGcs()}
                                           disabled={addresseeBusy || addresseeTicked.size === 0}
-                                          style={{ background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, padding: '0.28rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, cursor: addresseeBusy || addresseeTicked.size === 0 ? 'default' : 'pointer', opacity: addresseeBusy || addresseeTicked.size === 0 ? 0.5 : 1 }}
+                                          style={{ background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, padding: '0.28rem 0.7rem', fontSize: '0.8125rem', fontWeight: 600, cursor: addresseeBusy || addresseeTicked.size === 0 ? 'default' : 'pointer', opacity: addresseeBusy || addresseeTicked.size === 0 ? 0.5 : 1 }}
                                         >
                                           {addresseeBusy ? 'Adding…' : addGcsButtonLabel(addresseeTicked.size)}
                                         </button>
@@ -1855,7 +1855,7 @@ export function BidsCoverLetterTab({
                                   disabled={markingSent || headlineAmount <= 0}
                                   title={headlineAmount <= 0 ? 'Nothing to send until this bid has a priced letter amount' : undefined}
                                   onClick={() => void markSentTodaySimple(bid.id, headlineAmount, 'hand', bid.bid_date_sent ?? null)}
-                                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: markingSent ? 'wait' : headlineAmount <= 0 ? 'not-allowed' : 'pointer', opacity: headlineAmount <= 0 ? 0.5 : 1 }}
+                                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#2563eb', color: '#fff', cursor: markingSent ? 'wait' : headlineAmount <= 0 ? 'not-allowed' : 'pointer', opacity: headlineAmount <= 0 ? 0.5 : 1 }}
                                 >
                                   {/* Tier-2 #20: on a bid that already has a sent day this is the explicit re-stamp — it asks first. */}
                                   {markingSent ? 'Marking…' : bid.bid_date_sent ? 'Move sent date to today' : 'Mark sent today'}
@@ -1998,7 +1998,7 @@ export function BidsCoverLetterTab({
                                   disabled={markingSent || gcSections.filter((s) => s.bidVersionId && !s.offeredPricingId && s.revenueSum > 0).length === 0}
                                   title={gcSections.filter((s) => s.bidVersionId && !s.offeredPricingId && s.revenueSum > 0).length === 0 ? 'Nothing to send until this GC has a ★ base price' : undefined}
                                   onClick={() => void markSentToday(bid.id, gcSections.filter((s) => !s.offeredPricingId), headlineAmount > 0 ? headlineAmount : null, { isOwnGc: !multi || selectedKey === 'bid-default', currentDateSent: bid.bid_date_sent ?? null })}
-                                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: markingSent ? 'wait' : 'pointer', opacity: bundlePricings.filter((s) => s.bidVersionId).length === 0 ? 0.5 : 1 }}
+                                  style={{ fontSize: '0.78rem', padding: '0.3rem 0.7rem', border: 'none', borderRadius: 5, background: '#2563eb', color: '#fff', cursor: markingSent ? 'wait' : 'pointer', opacity: bundlePricings.filter((s) => s.bidVersionId).length === 0 ? 0.5 : 1 }}
                                 >
                                   {markingSent ? 'Marking…' : multi ? `Mark sent to ${gcShort}` : 'Mark sent today'}
                                 </button>
@@ -2169,7 +2169,7 @@ export function BidsCoverLetterTab({
                                   aria-checked={sovShape === shape}
                                   onClick={() => void setSovShapeOnBid(bid, shape, sovSeeds)}
                                   title={shape === 'stage' ? 'The takeoff writes the three lines and keeps them current' : 'Your own lines, seeded from the stages the first time; kept while you are back on By stage'}
-                                  style={{ padding: '0.2rem 0.6rem', border: 'none', cursor: 'pointer', fontSize: '0.78rem', background: sovShape === shape ? '#3b82f6' : 'var(--surface)', color: sovShape === shape ? '#fff' : 'var(--text-muted)' }}
+                                  style={{ padding: '0.2rem 0.6rem', border: 'none', cursor: 'pointer', fontSize: '0.78rem', background: sovShape === shape ? '#2563eb' : 'var(--surface)', color: sovShape === shape ? '#fff' : 'var(--text-muted)' }}
                                 >
                                   {shape === 'stage' ? 'By stage' : 'My lines'}
                                 </button>
@@ -2556,7 +2556,7 @@ export function BidsCoverLetterTab({
                             />
                           ) : null}
                           <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }}>
-                            <button type="button" onClick={commit} style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', fontWeight: 600, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}>Save</button>
+                            <button type="button" onClick={commit} style={{ padding: '0.3rem 0.8rem', fontSize: '0.8rem', fontWeight: 600, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 5, cursor: 'pointer' }}>Save</button>
                             <button type="button" onClick={() => setAltTextEditor(null)} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 5, cursor: 'pointer' }}>Cancel</button>
                             {takeOff ? (
                               <button type="button" onClick={() => { takeOff.run(); setAltTextEditor(null) }} title={takeOff.what} style={{ padding: '0.3rem 0.7rem', fontSize: '0.8rem', fontWeight: 600, background: 'var(--surface)', color: 'var(--text-red-700)', border: '1px solid var(--border-red)', borderRadius: 5, cursor: 'pointer' }}>Take off this letter</button>
@@ -2617,7 +2617,7 @@ export function BidsCoverLetterTab({
                           setCoverLetterBidSubmissionQuickAddBidId(bid.id)
                           setCoverLetterBidSubmissionQuickAddValue(bid.bid_submission_link ?? '')
                         }}
-                        style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
+                        style={{ padding: '0.5rem 0.9rem', fontSize: '0.85rem', fontWeight: 600, background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: totalsResolved ? 'pointer' : 'wait', opacity: totalsResolved ? 1 : 0.5 }}
                       >
                         Copy &amp; open in Google Docs
                         {addressedCustomer ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 400 }}>to {addressedCustomer.name}</span> : null}

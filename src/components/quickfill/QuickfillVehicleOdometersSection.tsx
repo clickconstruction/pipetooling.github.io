@@ -513,7 +513,7 @@ export function QuickfillVehicleOdometersSection({ lastMarkedAt = null }: { /** 
                     disabled={saving}
                     style={{
                       padding: '0.4rem 0.8rem',
-                      background: saving ? DEAD_PRESS_FILL : '#3b82f6',
+                      background: saving ? DEAD_PRESS_FILL : '#2563eb',
                       color: saving ? DEAD_PRESS_TEXT : '#fff',
                       border: 'none',
                       borderRadius: 6,

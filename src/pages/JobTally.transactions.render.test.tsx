@@ -49,11 +49,17 @@ vi.mock('../components/tally/TallyTeamQueue', () => ({ TallyTeamQueue: () => nul
 
 const { default: JobTally } = await import('./JobTally')
 
+/** The Tally opens on On site (v2.6229); these tests check the Transactions tab, so each opens it first. */
+async function openTransactions() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Transactions' }))
+}
+
 describe('JobTally → my card transactions', () => {
   it('a lost signal reads the offline sentence with Retry and no empty line; Retry reads the list again', async () => {
     H.listError = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
     H.reads = 0
     renderWithProviders(<JobTally />)
+    await openTransactions()
     await screen.findByText(OFFLINE_ERROR_MESSAGE)
     expect(screen.queryByText(/No card transactions to show yet/)).toBeNull()
     H.listError = null

@@ -1141,7 +1141,7 @@ export function BidFormModal(props: BidFormModalProps) {
                               type="button"
                               aria-pressed={answer === value}
                               onClick={() => choose(value)}
-                              style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.55rem', border: 'none', borderLeft: value === 'taken' ? 'none' : '1px solid var(--border-strong)', background: answer === value ? (value === 'taken' ? '#16a34a' : value === 'declined' ? 'var(--text-muted)' : 'var(--text-amber-700)') : 'var(--surface)', color: answer === value ? '#fff' : 'var(--text-muted)', cursor: 'pointer' }}
+                              style={{ font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '0.1rem 0.55rem', border: 'none', borderLeft: value === 'taken' ? 'none' : '1px solid var(--border-strong)', background: answer === value ? (value === 'taken' ? '#16a34a' : value === 'declined' ? 'var(--text-muted)' : '#b45309') : 'var(--surface)', color: answer === value ? (value === 'taken' ? '#fff' : (value === 'declined' ? 'var(--surface)' : '#fff')) : 'var(--text-muted)', cursor: 'pointer' }}
                             >
                               {label}
                             </button>
@@ -1775,7 +1775,7 @@ export function BidFormModal(props: BidFormModalProps) {
                   {footerLabels.openCounts}
                 </button>
                 {footerLabels.primary ? (
-                  <button type="submit" disabled={!bidFormCanSubmit || savingBid || loggingContact} title={loggingContact ? 'Finish or cancel the contact you’re logging first' : !bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
+                  <button type="submit" disabled={!bidFormCanSubmit || savingBid || loggingContact} title={loggingContact ? 'Finish or cancel the contact you’re logging first' : !bidFormCanSubmit ? `Required: ${bidFormMissingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>
                     {savingBid ? 'Saving…' : footerLabels.primary}
                   </button>
                 ) : null}
@@ -1805,7 +1805,7 @@ export function BidFormModal(props: BidFormModalProps) {
                   ) : (
                     <>
                       <span style={{ flex: 1 }}>Couldn’t save your latest changes — the window stays open so nothing is lost.</span>
-                      <button type="button" onClick={autosave.retryClose} style={{ padding: '0.3rem 0.7rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>
+                      <button type="button" onClick={autosave.retryClose} style={{ padding: '0.3rem 0.7rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>
                         Retry
                       </button>
                       <button type="button" onClick={autosave.keepEditing} style={{ padding: '0.3rem 0.7rem', background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8rem', fontFamily: 'inherit' }}>
@@ -1925,7 +1925,7 @@ export function BidFormModal(props: BidFormModalProps) {
                         padding: '0.4rem 0.75rem',
                         fontSize: '0.8125rem',
                         alignSelf: 'flex-start',
-                        background: !editingBid || !onDuplicateBidToServiceType ? 'var(--bg-200)' : '#3b82f6',
+                        background: !editingBid || !onDuplicateBidToServiceType ? 'var(--bg-200)' : '#2563eb',
                         color: !editingBid || !onDuplicateBidToServiceType ? 'var(--text-muted)' : 'white',
                         border: 'none',
                         borderRadius: 4,
@@ -2020,7 +2020,7 @@ export function BidFormModal(props: BidFormModalProps) {
                               padding: '0.4rem 0.75rem',
                               fontSize: '0.8125rem',
                               alignSelf: 'flex-start',
-                              background: !editingBid || !onDuplicateBidToServiceType ? 'var(--bg-200)' : '#3b82f6',
+                              background: !editingBid || !onDuplicateBidToServiceType ? 'var(--bg-200)' : '#2563eb',
                               color: !editingBid || !onDuplicateBidToServiceType ? 'var(--text-muted)' : 'white',
                               border: 'none',
                               borderRadius: 4,

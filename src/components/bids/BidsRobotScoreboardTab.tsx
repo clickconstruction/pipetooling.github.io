@@ -120,7 +120,7 @@ const btn: React.CSSProperties = {
   color: 'var(--text-strong)',
   whiteSpace: 'nowrap',
 }
-const primaryBtn: React.CSSProperties = { ...btn, background: '#3b82f6', borderColor: '#3b82f6', color: 'white', fontWeight: 600 }
+const primaryBtn: React.CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 }
 const sectionHead: React.CSSProperties = {
   fontSize: '0.72rem',
   letterSpacing: '0.06em',

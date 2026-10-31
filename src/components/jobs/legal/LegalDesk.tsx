@@ -21,7 +21,7 @@ import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
 import { supabase } from '../../../lib/supabase'
-import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, listLegalMatterDocuments, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
@@ -31,6 +31,9 @@ import { type NarrativeDesk } from './LegalNarrativeEditor'
 import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocumentsFromRows, type LegalEventDraft, type LegalPlanDraft } from '../../../lib/legal/legalTimeline'
 
 import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
+import LegalAffidavitWindow from './LegalAffidavitWindow'
+import { useOfficeCounty } from '../../../hooks/useOfficeCounty'
+import { statementMetaOf, type DeclarantDetails, type StatementDraft, type StatementFace, type StatementFilingDraft } from '../../../lib/legal/affidavitPaper'
 import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 
 import LegalPortalLinkButton from './LegalPortalLinkButton'
@@ -108,7 +111,8 @@ export type LegalDeskProps = {
   /** The board still fetching the billed/Collections scope — show a wait, not an empty rail. */
   jobsLoading?: boolean
   contractCoverage: ReadonlyMap<string, JobContractCoverage>
-  users: ReadonlyArray<{ id: string; name: string | null }>
+  /** The roster; `role` and `title` (v2.6210) fill a statement's affiant pick and role line. */
+  users: ReadonlyArray<{ id: string; name: string | null; role?: string | null; title?: string | null }>
   companyName: string
   /** `?account=<payer key>` — which account to open on. */
   initialPayerKey?: LegalPayerKey | null
@@ -201,6 +205,11 @@ export default function LegalDesk(props: LegalDeskProps) {
   const [gapsOpen, setGapsOpen] = useState(true)
   /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
   const [writeDownOpen, setWriteDownOpen] = useState(false)
+  /** Swear a statement (punch list #220, v2.6210): the window on a new statement (on a day) or on an existing one. */
+  const [statementWin, setStatementWin] = useState<{ entryId: string | null; on: string | null; print: StatementFace | null; file: boolean } | null>(null)
+  /** A declaration's declarant details by statement (v2.6211): typed at print time, held for the session, never saved. */
+  const declarantRef = useRef<Map<string, DeclarantDetails>>(new Map())
+  const [, bumpDeclarant] = useState(0)
   const [sheet, setSheet] = useState<Sheet>(null)
   /** Gap answers (v2.5920): the open Answer… sheet, and the matter's documents for its picker. */
   const [gapAnswerSheet, setGapAnswerSheet] = useState<{ key: string; label: string; text: string; documentId: string } | null>(null)
@@ -340,6 +349,8 @@ export default function LegalDesk(props: LegalDeskProps) {
     return { key: e.id, direction: meta.direction, amount: Number(e.amount ?? 0), status: meta.status, ymd: e.occurred_on, expiresOn: meta.expiresOn }
   })
   const stored = Boolean(legal?.available)
+  /** The office's county for a statement's venue line (punch list #220, v2.6210). */
+  const officeCounty = useOfficeCounty(stored)
   const groups: Array<{ cap: string; list: LegalAccountSummary[] }> = [
     // v2.5849: *Under review* — the office reads this rail more than a dev does.
     { cap: 'Under review', list: accounts.filter((a) => { const m = legal?.byPayerKey.get(a.key); return !m || (!matterIsWithFirm(m) && !matterIsClosed(m) && !matterIsInHouse(m)) }).sort((x, y) => Number(Boolean(legal?.byPayerKey.get(y.key)?.review_requested_at)) - Number(Boolean(legal?.byPayerKey.get(x.key)?.review_requested_at))) },
@@ -666,11 +677,59 @@ export default function LegalDesk(props: LegalDeskProps) {
     if (ok) showToast('Recorded — it is on the timeline, on the day it happened.', 'success')
     return Boolean(ok)
   }
+  /** Punch list #220 (v2.6210): save a statement's draft — a new one on the matter (made first when the account has none), or a change to one. */
+  const statementSave = async (draft: StatementDraft, entryId: string | null): Promise<string | null> => {
+    const affiant = { kind: draft.affiant.kind, user_id: draft.affiant.userId, name: draft.affiant.name, role: draft.affiant.role }
+    let id: string | null = entryId
+    const ok = await run(entryId ? 'Save the statement' : 'Save the draft', async () => {
+      if (entryId) return legalRpc('legal_statement_update', { p_entry_id: entryId, p_on: draft.incidentOn, p_body: draft.body, p_title: draft.title, p_affiant: affiant, p_form: draft.form, p_incident_to: draft.incidentTo || null, p_clear_incident_to: !draft.incidentTo, p_venue_county: draft.venueCounty || null, p_clear_venue_county: !draft.venueCounty })
+      const m = await ensureMatterId()
+      if (m.error || !m.id) return m.error ?? 'The matter could not be made'
+      const made = await legalRpcData('legal_statement_add', { p_matter_id: m.id, p_on: draft.incidentOn, p_body: draft.body, p_title: draft.title, p_affiant: affiant, p_form: draft.form, p_incident_to: draft.incidentTo || null, p_venue_county: draft.venueCounty || null })
+      if (made.error) return made.error
+      id = typeof made.data?.entry_id === 'string' ? made.data.entry_id : null
+      return id ? null : 'The statement was not saved'
+    })
+    if (!ok) return null
+    // A new statement's window now holds its row, so a print or an edit that follows lands on it.
+    if (!entryId && id) setStatementWin((w) => (w && !w.entryId ? { ...w, entryId: id } : w))
+    showToast(entryId ? 'Saved — the statement reads the new words on the Timeline.' : 'Saved — the draft is on the Timeline’s Said lane, on the day it is about.', 'success')
+    return id
+  }
+  /** v2.6211: note a print on the row — which face, the text as printed; the paper prints whether or not the note lands. */
+  const statementPrint = async (entryId: string, face: StatementFace, text: string): Promise<boolean> => Boolean(await run('Note the print', () => legalRpc('legal_statement_print', { p_entry_id: entryId, p_face: face, p_text: text })))
+  /**
+   * v2.6212: file the signed copy — the scan onto Evidence through the add press's own path (title = the statement's,
+   * dated the signing day, final, whose as picked), then the statement signed and pointed at it. A refused signing
+   * takes the scan back off Evidence, so a half-filed copy never sits there.
+   */
+  const statementFile = async (entryId: string, file: File, filing: StatementFilingDraft): Promise<boolean> => {
+    const ok = await run('File the signed copy', async () => {
+      if (!matter) return 'The matter could not be found'
+      const entry = (legal?.entriesByMatter.get(matter.id) ?? []).find((e) => e.id === entryId)
+      if (!entry) return 'The statement could not be found'
+      const meta = statementMetaOf(entry.meta)
+      let docId: string
+      try {
+        docId = await addLegalMatterDocument(supabase, matter.id, { title: meta.title || 'Sworn statement', shows: filing.shows, datedOn: filing.signedOn, state: 'final', whose: filing.whose }, file)
+      } catch (e) {
+        return formatErrorMessage(e, 'Could not store the signed scan.')
+      }
+      const err = await legalRpc('legal_statement_sign', { p_entry_id: entryId, p_document_id: docId, p_signed_on: filing.signedOn, p_as_printed: filing.asPrinted, p_on: filing.incidentOn, p_incident_to: filing.incidentTo || null, p_clear_incident_to: !filing.incidentTo })
+      if (err) {
+        await retireLegalMatterDocument(supabase, docId).catch(() => undefined)
+        return err
+      }
+      return null
+    })
+    if (ok) showToast(`Filed — the signed copy is on Evidence on ${filing.signedOn}. The statement reads sworn on the Timeline.`, 'success')
+    return Boolean(ok)
+  }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
   const planActs: PlanActs = {
     holds: holdOverrides,
     holdReasons: heldReasonsOf(matter),
-    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined } : null,
+    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on, print: null, file: false }), editStatement: (entryId, opts) => setStatementWin({ entryId, on: null, print: opts?.print ? 'whole' : null, file: Boolean(opts?.file) }) } : null,
   }
   /** #85 item 16: accept a firm step that would have moved the stage back. */
   const moveStage = async (stageTo: string, entryId: string) => {
@@ -1288,6 +1347,29 @@ export default function LegalDesk(props: LegalDeskProps) {
         />
       ) : null}
       {firmsOpen && stored ? <LegalFirmsWindow onClose={() => setFirmsOpen(false)} onSaved={() => { void legal?.reload() }} zIndex={DESK_LAYER_Z + 14} /> : null}
+      {statementWin && selected && packet ? (
+        // Punch list #220 (v2.6210): the affidavit window — a new statement on the composer's day, or the row's own.
+        <LegalAffidavitWindow
+          entry={statementWin.entryId ? ((matter ? legal?.entriesByMatter.get(matter.id) : undefined)?.find((e) => e.id === statementWin.entryId) ?? null) : null}
+          initialOn={statementWin.on}
+          account={{ payerName: selected.name, jobs: selected.jobs.map((j) => ({ id: j.id, label: j.hcp_number || j.click_number || '' })), propertyCounty: packet.account.properties.find((p) => p.county.trim())?.county.trim() ?? null }}
+          roster={users}
+          officeCounty={officeCounty}
+          todayYmd={todayYmd}
+          busy={busy}
+          onSave={statementSave}
+          onPrint={statementPrint}
+          declarant={statementWin.entryId ? (declarantRef.current.get(statementWin.entryId) ?? null) : null}
+          onDeclarant={(id, d) => { declarantRef.current.set(id, d); bumpDeclarant((t) => t + 1) }}
+          initialPrint={statementWin.print}
+          onFile={statementFile}
+          initialFile={statementWin.file}
+          documents={matterDocuments.map((d) => ({ id: d.id, title: d.title }))}
+          onClose={() => setStatementWin(null)}
+          onShowTimeline={() => showTab('timeline')}
+          zIndex={DESK_LAYER_Z + 12}
+        />
+      ) : null}
       {emailsOpen && firm ? (
         <div role="presentation" onClick={(e) => { e.stopPropagation(); setEmailsOpen(false) }} style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.35)', zIndex: DESK_LAYER_Z + 12, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(14px + var(--app-top-chrome, 0px)) 14px 14px' }}>
           <div role="dialog" aria-modal="true" aria-label="Who at the firm hears from us" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, padding: 18, maxWidth: 640, width: '100%', boxShadow: '0 12px 40px rgba(0,0,0,0.28)' }}>

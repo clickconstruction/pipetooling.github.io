@@ -7,7 +7,9 @@
  * - **Who is this?** A number or an address nobody has named. The guesses come in the box's order, both boxes opening
  *   with the customers the sender may be and why (`customerLink.ts`, v2.5795): the team line then offers a lead on
  *   Prospects, then a new customer as one live press; bids@ the new customer, then a trade partner whose domain matches
- *   one on an open ask, then a new trade partner, then a supply house. A candidate and someone else close both.
+ *   one on an open ask, then a new trade partner, then a supply house. A candidate and someone else close both, and an
+ *   email's card ends with **A notice, not a person** (punch list #223 PR 1, v2.6202): the address, and the company's
+ *   whole domain when it is its own, marked so the thread goes done and the reader leaves the sender out from then on.
  * - **Which job?** Two or more active jobs, and their newest line sits on the default job because the default took it,
  *   not a person. A check, since the line is already on a job.
  * - **Who has it?** A new line from them that nobody has answered, and nobody on the conversation. The has rule's pick
@@ -24,6 +26,7 @@ import { customerMatches, newCustomerGuess, type KnownCustomer, type KnownPerson
 import { HIRE_ROSTER_KINDS } from '../prospects/hireRosterKinds'
 import { snippetOf, whenWords, type MessageChannel, type ThreadMessage } from '../messages/thread'
 import { textedBackLine } from '../quo/missedReply'
+import { OPEN_MAIL_DOMAINS } from '../emailIn/leftOutSenders'
 
 /** Which sort a row needs. */
 export type NewSort = 'who' | 'job' | 'has'
@@ -222,8 +225,8 @@ export function newLaneCount(rows: readonly NewLaneRow[]): number {
 
 // ---------- Who is this? ----------
 
-/** What a guess names the sender as. Supply house and candidate are R0's kinds; team (one of our own) is v2.5546's. */
-export type GuessKind = 'customer' | 'lead' | 'trade' | 'supply_house' | 'candidate' | 'team' | 'someone_else'
+/** What a guess names the sender as. Supply house and candidate are R0's kinds; team (one of our own) is v2.5546's; notice (not a person) is v2.6202's. */
+export type GuessKind = 'customer' | 'lead' | 'trade' | 'supply_house' | 'candidate' | 'team' | 'someone_else' | 'notice'
 
 /** A record a guess points at. */
 export type GuessRecord = { table: 'customers'; id: string } | { table: 'customer_contact_persons'; id: string } | { table: 'gc_companies'; id: string } | { table: 'people'; id: string }
@@ -247,6 +250,15 @@ export interface WhoGuess {
   makes?: NewCustomerMake
   /** A new trade partner, a supply house or a candidate (spike): the press makes the record from this, then names the contact as it. */
   makesRecord?: NewRecordMake
+  /** A notice, not a person (v2.6202): the press marks this address, or everything from this domain, and closes the thread. */
+  notice?: NoticeMark
+}
+
+/** What *A notice, not a person* marks: the address alone, or the company's whole domain. */
+export interface NoticeMark {
+  scope: 'address' | 'domain'
+  /** The address, or the domain, as the button names it. */
+  value: string
 }
 
 /** What a press that makes its own record is made from, carried on the guess and finished by the card's field. */
@@ -321,24 +333,8 @@ export function teamGuess(person: Pick<RosterChoice, 'id' | 'name'>): WhoGuess {
   return { kind: 'team', label: person.name, words: 'One of our own team. The number goes on their People record.', record: { table: 'people', id: person.id }, newPerson: false, name: person.name }
 }
 
-/** Mail services anyone can sign up for: a shared domain there says nothing about the company. */
-const OPEN_MAIL = new Set([
-  'gmail.com',
-  'googlemail.com',
-  'yahoo.com',
-  'hotmail.com',
-  'outlook.com',
-  'live.com',
-  'msn.com',
-  'icloud.com',
-  'me.com',
-  'aol.com',
-  'att.net',
-  'sbcglobal.net',
-  'comcast.net',
-  'proton.me',
-  'protonmail.com',
-])
+/** Mail services anyone can sign up for: a shared domain there says nothing about the company (`leftOutSenders.ts`, the one list). */
+const OPEN_MAIL = OPEN_MAIL_DOMAINS
 
 /** A company's own domain from an address: "bexarsteel.example". '' for an open mail service or no address. */
 export function companyDomain(address: string): string {
@@ -549,6 +545,28 @@ const SOMEONE_ELSE: Omit<WhoGuess, 'name'> = {
   newPerson: false,
 }
 
+/** The block's head on the card, and the words under the two presses. */
+export const NOTICE_BLOCK = 'A notice, not a person'
+
+/**
+ * *A notice, not a person* (punch list #223 PR 1, v2.6202), for a sender who wrote from an address: one press that marks
+ * the address, *Mark news@alamosurety.example a notice*, and under it, when the address is on a company's own domain
+ * and never an open mail service, *And everything from alamosurety.example*. Either closes the thread and leaves the
+ * sender out from then on; search still finds the thread. Nothing for a number: a text is a person until Texts has its
+ * own rule.
+ */
+export function noticeGuesses(sender: Pick<SenderFacts, 'address' | 'domain' | 'name'>): WhoGuess[] {
+  if (!sender.address) return []
+  const base = { kind: 'notice' as const, record: null, newPerson: false, name: sender.name }
+  const out: WhoGuess[] = [
+    { ...base, label: `Mark ${sender.address} a notice`, words: 'Closes the row and leaves this address out from now on. Search still finds the thread.', notice: { scope: 'address', value: sender.address } },
+  ]
+  if (sender.domain) {
+    out.push({ ...base, label: `And everything from ${sender.domain}`, words: 'Every address at the company. Their next mail stays in Gmail with no label.', notice: { scope: 'domain', value: sender.domain } })
+  }
+  return out
+}
+
 /** Trade partners whose own domain matches the sender's, those on an open ask first, each with a new person after it. */
 function tradeGuesses(sender: SenderFacts, known: WhoKnown): WhoGuess[] {
   const { domain, name } = sender
@@ -586,7 +604,7 @@ function tradeGuesses(sender: SenderFacts, known: WhoKnown): WhoGuess[] {
  * too. The team line then: a new lead on Prospects, since someone texting for service is a lead until they book, then
  * **A new customer** as one live press. bids@: the new customer, then a trade partner whose domain matches, those on an
  * open ask first, then a new trade partner, then a supply house. Both end with a candidate, one of our own team and
- * someone else. No box reads as the team line. The contact's channels, when passed, give the address or the number
+ * someone else, and for an address the two notice presses (v2.6202). No box reads as the team line. The contact's channels, when passed, give the address or the number
  * behind a name.
  */
 export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'> & { channels?: ReadonlyArray<{ kind: ChannelKind; value: string }> }, box: Mailbox | null, known: WhoKnown = {}): WhoGuess[] {
@@ -596,6 +614,7 @@ export function whoGuesses(row: Pick<NewLaneRow, 'who' | 'body'> & { channels?: 
     candidateGuess(sender),
     { ...TEAM, name },
     { ...SOMEONE_ELSE, name },
+    ...noticeGuesses(sender),
   ]
   const customers = customerMatches(sender, known)
   if (box === 'bids') {

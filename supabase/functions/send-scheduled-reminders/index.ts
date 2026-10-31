@@ -1,9 +1,14 @@
+// send-scheduled-reminders: the checklist reminders at each item's quarter-hour, a push first and an email when the
+// person has no device (v2.2096). A person's hours (punch list #141 PR 5, v2.6217): the push goes through
+// _shared/pushHoursSend.ts, the hours read once per run; a person outside their Push me hours is held, the row written
+// as `held`, nothing sent and no email for it: the person set the time, but hours set later win.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { logEmailSendBestEffort } from '../_shared/logEmailSend.ts'
+import { loadPushHours, sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -302,7 +307,9 @@ serve(async (req) => {
     let totalSent = 0
     let emailFallbacks = 0
     let usersNotified = 0
-    webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
+    let usersHeld = 0
+    const sendTo = webPushSender(adminClient, 'send-scheduled-reminders')
+    const hours = await loadPushHours(adminClient)
     const resendApiKey = Deno.env.get('RESEND_API_KEY')
 
     const listCap = (titles: string[]) =>
@@ -319,36 +326,19 @@ serve(async (req) => {
       if (parts.length === 0) continue
       const body = parts.join(' · ')
 
-      const { data: subscriptions } = await adminClient
-        .from('push_subscriptions')
-        .select('endpoint, p256dh_key, auth_key')
-        .eq('user_id', userId)
-
-      let sentForUser = 0
-      if (subscriptions && subscriptions.length > 0) {
-        const pushPayload = JSON.stringify({
-          title: 'Task reminder',
-          body,
-          url: '/checklist',
-          tag: 'scheduled-reminder',
-        })
-        for (const sub of subscriptions) {
-          try {
-            await webpush.sendNotification(
-              {
-                endpoint: sub.endpoint,
-                keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
-              },
-              pushPayload,
-              { TTL: 86400 }
-            )
-            sentForUser++
-            totalSent++
-          } catch (pushErr) {
-            console.error('Push send error:', sub.endpoint?.substring(0, 50), pushErr)
-          }
-        }
+      // Through the person's hours (#141 PR 5): held, the helper writes the held row and nothing else goes.
+      const result = await sendPushHonouringHours(
+        adminClient,
+        { userIds: [userId], title: 'Task reminder', body, url: '/checklist', tag: 'scheduled-reminder', templateType: 'scheduled_reminder', extra: { checklist_instance_id: null } },
+        sendTo,
+        { hours, record: 'none' },
+      )
+      if (result.held.length > 0) {
+        usersHeld++
+        continue
       }
+      let sentForUser = result.devices
+      totalSent += result.devices
 
       // v2.2096: no push device (or every push failed) → email so the
       // reminder never silently vanishes.
@@ -414,6 +404,7 @@ serve(async (req) => {
         sent: totalSent,
         email_fallbacks: emailFallbacks,
         users_notified: usersNotified,
+        users_held: usersHeld,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )

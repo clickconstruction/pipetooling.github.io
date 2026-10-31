@@ -71,7 +71,7 @@ export default function InlineBillDateEditor({
           padding: '0.22rem 0.55rem',
           borderRadius: 6,
           border: 'none',
-          background: 'var(--text-link)',
+          background: '#2563eb',
           color: '#fff',
           cursor: 'pointer',
           opacity: !valid || saving ? 0.5 : 1,

@@ -28,7 +28,7 @@ export function estInputBlock(extra?: CSSProperties): CSSProperties {
 export function estPrimaryButton(disabled: boolean): CSSProperties {
   return {
     padding: '0.5rem 1rem',
-    background: disabled ? DEAD_PRESS_FILL : '#3b82f6',
+    background: disabled ? DEAD_PRESS_FILL : '#2563eb',
     color: disabled ? DEAD_PRESS_TEXT : 'white',
     border: 'none',
     borderRadius: 4,
@@ -93,7 +93,7 @@ export function estSmallPrimaryButton(disabled: boolean): CSSProperties {
     fontWeight: 500,
     border: 'none',
     borderRadius: 4,
-    background: disabled ? DEAD_PRESS_FILL : '#3b82f6',
+    background: disabled ? DEAD_PRESS_FILL : '#2563eb',
     color: disabled ? DEAD_PRESS_TEXT : 'white',
     cursor: disabled ? 'not-allowed' : 'pointer',
   }

@@ -973,7 +973,7 @@ export function BidSubmissionFollowupTab({
             disabled={!selectedAccountManagerForPrint}
             style={{
               padding: '0.5rem 1rem',
-              background: selectedAccountManagerForPrint ? '#3b82f6' : DEAD_PRESS_FILL,
+              background: selectedAccountManagerForPrint ? '#2563eb' : DEAD_PRESS_FILL,
               color: selectedAccountManagerForPrint ? 'white' : DEAD_PRESS_TEXT,
               border: 'none',
               borderRadius: 4,
@@ -1157,7 +1157,7 @@ export function BidSubmissionFollowupTab({
               <button
                 type="button"
                 onClick={() => void downloadSubmissionSummaryPdf()}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
                 PDF
               </button>
@@ -1394,7 +1394,7 @@ export function BidSubmissionFollowupTab({
               <button
                 type="button"
                 onClick={() => onDownloadApprovalPdf()}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 500 }}
               >
                 Approval PDF
               </button>
@@ -1499,7 +1499,7 @@ export function BidSubmissionFollowupTab({
                   padding: '0.5rem 1rem',
                   border: 'none',
                   borderRight: '1px solid var(--border-strong)',
-                  background: submissionFollowupNotesTab === 'all' ? '#3b82f6' : 'var(--surface)',
+                  background: submissionFollowupNotesTab === 'all' ? '#2563eb' : 'var(--surface)',
                   color: submissionFollowupNotesTab === 'all' ? '#ffffff' : 'var(--text-700)',
                   cursor: 'pointer',
                   fontWeight: submissionFollowupNotesTab === 'all' ? 600 : 400,
@@ -1519,7 +1519,7 @@ export function BidSubmissionFollowupTab({
                   padding: '0.5rem 1rem',
                   border: 'none',
                   borderRight: '1px solid var(--border-strong)',
-                  background: submissionFollowupNotesTab === 'bid' ? '#3b82f6' : 'var(--surface)',
+                  background: submissionFollowupNotesTab === 'bid' ? '#2563eb' : 'var(--surface)',
                   color: submissionFollowupNotesTab === 'bid' ? '#ffffff' : 'var(--text-700)',
                   cursor: 'pointer',
                   fontWeight: submissionFollowupNotesTab === 'bid' ? 600 : 400,

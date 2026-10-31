@@ -28,6 +28,7 @@ import {
   type StageChecklistQuestion,
 } from '../../lib/jobs/stageChecklist'
 import type { AnswerWho, JobAnswer, StageChecklistSheetIo } from '../../lib/jobs/stageChecklistSheetIo'
+import { CHECKLIST_PHOTO_WORDS } from '../../lib/photos/reportPhotoChecklist'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { CameraGlyph } from '../materials/PhotoPress'
 import * as S from '../jobMode/sheetStyles'
@@ -172,15 +173,17 @@ function PhotoRow({ stage, question, answer, jobId, who, io, onAnswer }: { stage
   const [url, setUrl] = useState<string | null>(null)
   const photo = answer?.photo ?? null
   const storagePath = answer?.storagePath ?? null
+  // A photo taken on a field report (punch list #189, PR 6) waits in the report's bucket, not the checklist's.
+  const reportPhotoId = answer?.reportPhotoId ?? null
   useEffect(() => {
     let live = true
     setUrl(null)
     if (!photo || photo.state === 'filed') return
-    io.photoUrl(storagePath).then((u) => live && setUrl(u), () => live && setUrl(null))
+    io.photoUrl({ storagePath, reportPhotoId, jobId }).then((u) => live && setUrl(u), () => live && setUrl(null))
     return () => {
       live = false
     }
-  }, [io, photo, storagePath])
+  }, [io, photo, storagePath, reportPhotoId, jobId])
 
   const onFile = async (e: ChangeEvent<HTMLInputElement>) => {
     const f = e.target.files?.[0]
@@ -201,7 +204,8 @@ function PhotoRow({ stage, question, answer, jobId, who, io, onAnswer }: { stage
       setBusy(null)
     }
   }
-  const words = !photo ? null : photo.state === 'filed' ? 'In the customer’s Drive folder.' : photo.state === 'failed' ? photo.failWhy || 'Not filed yet.' : 'On its way to the customer’s Drive folder.'
+  const standing = !photo ? null : photo.state === 'filed' ? 'In the customer’s Drive folder.' : photo.state === 'failed' ? photo.failWhy || 'Not filed yet.' : 'On its way to the customer’s Drive folder.'
+  const words = standing && reportPhotoId ? `${CHECKLIST_PHOTO_WORDS.onReport} ${standing}` : standing
   return (
     <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center', marginTop: '0.45rem', flexWrap: 'wrap' }} data-checklist-photo>
       {url ? <img src={url} alt={photo?.fileName ?? 'The photo'} width={56} height={56} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} /> : null}

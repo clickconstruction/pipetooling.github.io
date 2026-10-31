@@ -288,3 +288,14 @@ describe('runs', () => {
     expect(rows[1]).toMatchObject({ voided: false, deltaText: '1% low', robot: '$277,273', ours: '$280,611', counts: true })
   })
 })
+
+describe('runs · assisted (punch list #221, PR 5)', () => {
+  it('shows an assisted run and never counts it toward the five in a row', () => {
+    const rows = buildLiveRuns(
+      [shadow({ id: 'a', status: 'scored', shadow_bid_number: '652', reference_bid_number: '641', locked_total: 148900, reference_value: 144400, delta_pct: 3.1, scored_at: '2026-11-04T00:00:00Z', teacher_name: 'Taunya', teacher_standard: true, assisted_at: '2026-10-31T14:00:00Z' })],
+      [],
+      null,
+    )
+    expect(rows[0]).toMatchObject({ line: 'robot $148,900, ours $144,400 · against Taunya’s number · assisted, shown and not counted', counts: false })
+  })
+})

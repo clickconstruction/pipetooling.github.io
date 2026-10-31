@@ -21,9 +21,18 @@ export type BidPlanSetRow = {
   created_by: string | null
   created_at: string
   updated_at: string
+  /** The bid version this set was bid from (v2.6230): set when an adopted bid brought it; absent or null = the bid as a whole. */
+  bid_version_id?: string | null
 }
 
-export const BID_PLAN_SET_SELECT = 'id, bid_id, name, memo, plan_date, link, file_name, file_size, file_count, checked_at, check_note, created_by, created_at, updated_at'
+/** Every column: `*`, so a read stands before the version column's migration is pushed and after. */
+export const BID_PLAN_SET_SELECT = '*'
+
+/** The chip beside a set or a CountTooling project that came with an adopted bid: *version · William · April set*. */
+export function versionChipWords(name: string | null | undefined): string {
+  const n = (name ?? '').trim()
+  return n ? `version · ${n}` : ''
+}
 
 /** One set as the board and the form draw it: a row, or the bid's own plans link standing in for one. */
 export type PlanSetItem = {

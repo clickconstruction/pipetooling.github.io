@@ -18,7 +18,7 @@ export function pageTabStyle(active: boolean): CSSProperties {
     // properties that changed on re-render, and setting the shorthand resets background-clip
     // to border-box — so the first tab click flooded the fill under the transparent borders
     // (full-height box) while the initially-rendered tab stayed a slim pill.
-    backgroundColor: active ? '#3b82f6' : 'transparent',
+    backgroundColor: active ? '#2563eb' : 'transparent',
     backgroundClip: 'padding-box',
     borderRadius: 6,
     color: active ? 'white' : 'var(--text-muted)',

@@ -105,7 +105,7 @@ export function JobFormCreateCustomerModal({
                 fontSize: '0.875rem',
                 border: '1px solid var(--border-strong)',
                 borderRadius: '4px 0 0 4px',
-                background: createCustomerFromJobType === 'residential' ? '#3b82f6' : 'var(--surface)',
+                background: createCustomerFromJobType === 'residential' ? '#2563eb' : 'var(--surface)',
                 color: createCustomerFromJobType === 'residential' ? 'white' : 'var(--text-700)',
                 cursor: 'pointer',
               }}
@@ -121,7 +121,7 @@ export function JobFormCreateCustomerModal({
                 fontSize: '0.875rem',
                 border: '1px solid var(--border-strong)',
                 borderRadius: '0 4px 4px 0',
-                background: createCustomerFromJobType === 'commercial' ? '#3b82f6' : 'var(--surface)',
+                background: createCustomerFromJobType === 'commercial' ? '#2563eb' : 'var(--surface)',
                 color: createCustomerFromJobType === 'commercial' ? 'white' : 'var(--text-700)',
                 cursor: 'pointer',
               }}
@@ -165,7 +165,7 @@ export function JobFormCreateCustomerModal({
             type="button"
             disabled={!customerName.trim() || creatingCustomerFromJob}
             onClick={() => onCreate(createCustomerFromJobType)}
-            style={{ padding: '0.5rem 1rem', background: !customerName.trim() || creatingCustomerFromJob ? DEAD_PRESS_FILL : '#3b82f6', color: !customerName.trim() || creatingCustomerFromJob ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: !customerName.trim() || creatingCustomerFromJob ? 'not-allowed' : 'pointer' }}
+            style={{ padding: '0.5rem 1rem', background: !customerName.trim() || creatingCustomerFromJob ? DEAD_PRESS_FILL : '#2563eb', color: !customerName.trim() || creatingCustomerFromJob ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: !customerName.trim() || creatingCustomerFromJob ? 'not-allowed' : 'pointer' }}
           >
             {creatingCustomerFromJob ? 'Creating…' : 'Create new customer'}
           </button>

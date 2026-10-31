@@ -91,7 +91,7 @@ const btn: CSSProperties = {
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 const btnGhost: CSSProperties = { ...btn, borderColor: 'transparent', background: 'transparent', color: 'var(--text-link)', fontWeight: 500, padding: '0.3rem 0.3rem' }
 const input: CSSProperties = {
   width: '100%',
@@ -841,7 +841,7 @@ export default function JobsContractSweepModal({
         <button type="button" style={btn} disabled={sendingAll} onClick={() => setSendAllArmed(false)}>
           Cancel
         </button>
-        <button type="button" style={{ ...btnPrimary, background: 'var(--text-red-700)', borderColor: 'var(--text-red-700)' }} disabled={busy} onClick={() => void sendAll()}>
+        <button type="button" style={{ ...btnPrimary, background: '#b91c1c', borderColor: '#b91c1c' }} disabled={busy} onClick={() => void sendAll()}>
           {sendingAll ? 'Sending…' : `Confirm — send ${summary.toSend} now`}
         </button>
       </span>
@@ -1287,7 +1287,7 @@ export default function JobsContractSweepModal({
                             aria-pressed={on}
                             disabled={Boolean(draftRow && draftRow.status === 'sent')}
                             onClick={() => setPaneEdit((prev) => (prev ? { ...prev, paymentKey: preset.key, dirty: true } : prev))}
-                            style={{ ...btn, padding: '0.22rem 0.6rem', fontSize: '0.74rem', fontWeight: on ? 700 : 500, ...(on ? { background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' } : {}) }}
+                            style={{ ...btn, padding: '0.22rem 0.6rem', fontSize: '0.74rem', fontWeight: on ? 700 : 500, ...(on ? { background: '#2563eb', borderColor: '#2563eb', color: 'white' } : {}) }}
                           >
                             {preset.label}
                           </button>

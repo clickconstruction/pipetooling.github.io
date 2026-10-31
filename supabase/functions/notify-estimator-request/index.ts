@@ -1,7 +1,11 @@
+// notify-estimator-request: the Estimator inbox group's push when a request is filed. A person's hours (punch list
+// #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, which pushes the members on and holds a member
+// outside their Push me hours, writing the row as `held` and sending nothing.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from '../_shared/ledgerDisplayPrefixes.ts'
+import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -211,60 +215,22 @@ serve(async (req) => {
 
     const pushTitle = 'Estimator Inbox'
 
-    webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
-
-    let pushSent = 0
     const tag = `estimator-${estimatorRow.id}`
 
-    for (const recipient_user_id of recipientIds) {
-      const { data: subscriptions } = await adminClient
-        .from('push_subscriptions')
-        .select('endpoint, p256dh_key, auth_key')
-        .eq('user_id', recipient_user_id)
-
-      let sentForRecipient = 0
-      if (subscriptions && subscriptions.length > 0) {
-        const pushPayload = JSON.stringify({
-          title: pushTitle,
-          body: pushBody,
-          url: '/dashboard',
-          tag,
-        })
-        for (const sub of subscriptions) {
-          try {
-            await webpush.sendNotification(
-              {
-                endpoint: sub.endpoint,
-                keys: { p256dh: sub.p256dh_key, auth: sub.auth_key },
-              },
-              pushPayload,
-              { TTL: 86400 },
-            )
-            sentForRecipient++
-            pushSent++
-          } catch (pushErr) {
-            console.error('Push send error:', sub.endpoint?.substring(0, 50), pushErr)
-          }
-        }
-      }
-
-      if (sentForRecipient > 0) {
-        await adminClient.from('notification_history').insert({
-          recipient_user_id,
-          template_type: 'estimator_request',
-          title: pushTitle,
-          body_preview: pushBody.substring(0, 200),
-          channel: 'push',
-        })
-      }
-    }
+    // Through each member's hours (#141 PR 5): the members on are pushed, a member off is held with a row and no push.
+    const result = await sendPushHonouringHours(
+      adminClient,
+      { userIds: recipientIds, title: pushTitle, body: pushBody, url: '/dashboard', tag, templateType: 'estimator_request' },
+      webPushSender(adminClient, 'notify-estimator-request'),
+    )
 
     return new Response(
       JSON.stringify({
         success: true,
         message: 'Estimator inbox notifications processed',
-        push_sent: pushSent,
+        push_sent: result.devices,
         recipients: recipientIds.length,
+        held: result.held.length,
       }),
       { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
     )

@@ -601,7 +601,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                   padding: '0.3rem 0.85rem',
                   borderRadius: 999,
                   border: filter === chip.key ? '1px solid transparent' : '1px solid var(--border-strong)',
-                  backgroundColor: filter === chip.key ? '#3b82f6' : 'var(--surface)',
+                  backgroundColor: filter === chip.key ? '#2563eb' : 'var(--surface)',
                   color: filter === chip.key ? 'white' : 'var(--text-700)',
                   fontWeight: filter === chip.key ? 600 : 400,
                   fontSize: '0.875rem',

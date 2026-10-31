@@ -22,6 +22,19 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
+import LegalStatementsStrip from './LegalStatementsStrip'
+import { isStatementEntry, statementMetaOf } from '../../../lib/legal/affidavitPaper'
+
+/** v2.6212 (punch list #220): each signed scan's statement, by document id, for the Evidence row's door back. */
+function linkedStatementsOf(entries: ReadonlyArray<EntryLike>): Record<string, string> {
+  const out: Record<string, string> = {}
+  for (const e of entries) {
+    if (!isStatementEntry(e) || e.voided_at) continue
+    const id = statementMetaOf(e.meta).documentId
+    if (id) out[id] = e.id
+  }
+  return out
+}
 import { openLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { supabase } from '../../../lib/supabase'
 import { EVIDENCE_LANDING_GONE_WORDS } from '../../../lib/legal/evidenceLanding'
@@ -91,7 +104,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
     // v2.5800: the stream (every kind) and the documents on one line around today; the kernel splits and words them.
     const nameOf = (id: string | null) => (id ? (props.users.find((u) => u.id === id)?.name ?? null) : null)
     // v2.5842 (punch list #170): the lien clock's deadlines from the Paper tab's own timelines, read only, with Record it… to the job's Lien window.
-    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines), said: packet.theirWord.timeline, did: packet.feesAndSteps.steps })
+    const timeline = buildLegalTimeline({ entries, documents: documents ? timelineDocumentsFromRows(documents.list, calendarYmdInAppTzFromIso, nameOf) : [], todayYmd: packet.todayYmd, holds: planActs?.holds ?? {}, holdReasons: planActs?.holdReasons ?? {}, userNameOf: nameOf, reader: 'office', deadlines: timelineDeadlinesFromPaper(packet.paper.timelines), said: packet.theirWord.timeline, did: packet.feesAndSteps.steps, dayOfIso: calendarYmdInAppTzFromIso })
     // v2.5851: the one line — what was said (the Record of contact) and what we did (the packet's steps) fold in as lanes.
     // v2.6166: a document line's two doors — the paper itself, the way the Evidence row opens it; and the Evidence tab landed on its row.
     const openDocument = documents ? async (id: string) => {
@@ -227,7 +240,9 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
   if (tab === 'evidence') {
     return (
       <div>
-        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} payerName={selected.name} landOn={evidenceDoc} onLandingDone={onEvidenceLanded} /> : null}
+        {/* v2.6210 (punch list #220): sworn statements, above the documents the scans land in. */}
+        {planActs?.acts?.swearStatement || entries.some((e) => e.kind === 'statement') ? <LegalStatementsStrip entries={entries} todayYmd={packet.todayYmd} canEdit={Boolean(planActs?.acts?.swearStatement)} acts={planActs?.acts?.editStatement && planActs.acts.swearStatement ? { swear: () => planActs.acts!.swearStatement!(packet.todayYmd), open: planActs.acts.editStatement, print: (id: string) => planActs.acts!.editStatement!(id, { print: true }), file: (id: string) => planActs.acts!.editStatement!(id, { file: true }), openDocument: documents ? async (id: string) => { const row = documents.list.find((d) => d.id === id); if (!row) throw new Error(EVIDENCE_LANDING_GONE_WORDS); await openLegalMatterDocument(supabase, row) } : undefined } : null} /> : null}
+        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} payerName={selected.name} landOn={evidenceDoc} onLandingDone={onEvidenceLanded} linkedStatements={linkedStatementsOf(entries)} onOpenStatement={planActs?.acts?.editStatement} /> : null}
         <SectionTitle doors={first ? <><Door label="Reports" onClick={() => props.onOpenReports(first)} /><Door label="Sessions" onClick={() => props.onOpenSessionNotes(first)} /><Door label="Job thread" onClick={() => props.onOpenJobThread(first.id)} /></> : null}>Proof the work happened</SectionTitle>
         <Table head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes', 'Links']} numCols={[3]}
           rows={packet.evidence.map((e) => [
@@ -254,7 +269,8 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
   const feeTotal = firmFeeEntries(entries).reduce((s, e) => s + Number(e.amount ?? 0), 0)
   // #85 item 17: questions and answers leave the steps table for the conversation, each answer under its question.
   // Planned steps (v2.5800) live on the Timeline tab, so On the matter stays as it was.
-  const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && e.kind !== 'plan' && !isConversationEntry(e))
+  // v2.6209: a statement lives on the Timeline's Said lane, as a planned step lives on the Timeline.
+  const firmSteps = entries.filter((e) => e.kind !== 'fee' && e.kind !== 'cost' && e.kind !== 'plan' && e.kind !== 'statement' && !isConversationEntry(e))
   const talk = conversationRows(entries)
   const waitingOn = (list: ReadonlyArray<LegalEntryRow>) => list.filter((e) => e.via_portal && !e.acknowledged_at).length
   const askInput: CSSProperties = { font: 'inherit', fontSize: '0.8rem', padding: '3px 6px', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)' }

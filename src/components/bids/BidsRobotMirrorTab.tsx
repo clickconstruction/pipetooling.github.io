@@ -30,6 +30,7 @@ import { RobotRing } from './RobotRing'
 import { ringProgressFor, type RobotProgress } from '../../lib/bids/robotProgress'
 import { relativeTimeFrom } from '../../lib/twinConsoleDisplay'
 import { formatErrorMessage } from '../../utils/errorHandling'
+import { fixturesScoreWords } from '../../lib/bids/robotFixtures'
 
 // twin_run_scores / bid_audits predate the generated types (BidsAuditsTab pattern).
 const db = supabase as unknown as SupabaseClient
@@ -100,7 +101,7 @@ function RunGlyph({ run }: { run: RobotMirrorRun }) {
       </svg>
       {run.status === 'working' ? <span className="robot-glyph-pulse" style={{ position: 'absolute', right: -2, top: 0, width: 7, height: 7, borderRadius: '50%', background: color, boxShadow: '0 0 0 2px var(--surface)' }} /> : null}
       {badge ? (
-        <span style={{ position: 'absolute', right: -3, bottom: -3, fontSize: badge === '🔒' ? '0.5rem' : '0.5625rem', fontWeight: 800, lineHeight: 1, padding: '1px 3px', borderRadius: 3, color: 'white', background: muted ? 'var(--text-faint)' : color, fontFamily: 'ui-monospace, monospace', boxShadow: '0 0 0 1.5px var(--surface)' }}>
+        <span style={{ position: 'absolute', right: -3, bottom: -3, fontSize: badge === '🔒' ? '0.5rem' : '0.5625rem', fontWeight: 800, lineHeight: 1, padding: '1px 3px', borderRadius: 3, color: muted ? 'var(--surface)' : 'white', background: muted ? 'var(--text-muted)' : color, fontFamily: 'ui-monospace, monospace', boxShadow: '0 0 0 1.5px var(--surface)' }}>
           {badge}
         </span>
       ) : null}
@@ -323,6 +324,9 @@ export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, hi
     const live = !row.bid.bid_date_sent && !row.bid.outcome
     const sentWithoutValue = lead && row.note === 'no bid value on record'
     const teacherBit = run.teacherName && (scored || run.status === 'sealed') ? ` · vs ${run.teacherName}${run.practice ? ' · practice teacher' : ''}` : ''
+    // Robot fixtures (punch list #221, PR 5): a run she took fixtures on is shown, never gated, with the fixtures score.
+    const assistedBit = run.assisted ? ' · assisted, not gated' : ''
+    const fixturesBit = run.fixturesScore ? ` · ${fixturesScoreWords(run.fixturesScore)}` : ''
     return (
       <>
         <td style={td}>
@@ -342,7 +346,7 @@ export function BidsRobotMirrorTab({ bids, robotBids, loading, isDev = false, hi
                   ? ` · ${progress.words}${progress.lastWordAt ? ` · ${relativeTimeFrom(progress.lastWordAt, Date.now())}` : ''}`
                   : status.sub ? ` · ${status.sub}` : ''}
                 {row.note && lead ? ` · ${row.note}` : ''}
-                {teacherBit}
+                {teacherBit}{assistedBit}{fixturesBit}
               </>
             )}
           </span>

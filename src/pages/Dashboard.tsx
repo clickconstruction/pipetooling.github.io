@@ -1066,7 +1066,7 @@ export default function Dashboard() {
   const showDashboardQuickButtons = role === 'dev' || role === 'master_technician' || isAssistantLike(role)
   const quickActionLinkStyle: CSSProperties = {
     padding: '0.75rem 1.25rem',
-    background: '#3b82f6',
+    background: '#2563eb',
     color: 'white',
     borderRadius: 8,
     textDecoration: 'none',
@@ -1918,7 +1918,7 @@ export default function Dashboard() {
                 }}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? '#3b82f6' : DEAD_PRESS_FILL,
+                  background: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? '#2563eb' : DEAD_PRESS_FILL,
                   color: readyForBillingChecked1 && readyForBillingChecked2 && jobStatusUpdatingId !== readyForBillingJob.id ? 'white' : DEAD_PRESS_TEXT,
                   border: 'none',
                   borderRadius: 4,

@@ -4,6 +4,9 @@ import type { RoundCloseSheet } from '../../lib/quickfill/roundClose'
 import { QuickfillRoundCloseSheet } from './QuickfillRoundCloseSheet'
 import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
+import { KeptReadStamp } from '../KeptReadStamp'
+import { QUICKFILL_COUNTING_AGAIN_WORDS, QUICKFILL_KEPT_LEAD } from '../../lib/keptRead'
+import type { QuickfillKeptDeck } from './QuickfillRoundScreen'
 
 const dotColor: Record<RoundState, string> = {
   due: '#dc2626',
@@ -32,11 +35,14 @@ const rowStyle: CSSProperties = {
 
 /**
  * The phone Quickfill (punch list #30, PR 3): the sections' marks as rows measured against
- * each section's own rhythm — due first, fresh last, the personal doors at the bottom.
+ * each section's own rhythm — due first, fresh last, the personal doors at the bottom. With `kept`
+ * (punch list #183 PR 4) the rows are the device's kept read: the stamp draws over the head and
+ * the counts mute under `data-kept-read`.
  */
 export function QuickfillRoundList({
   hourNow = null,
   closeSheet = null,
+  kept = null,
   rows,
   search,
   onSearch,
@@ -47,6 +53,8 @@ export function QuickfillRoundList({
   hourNow?: number | null
   /** The day's close sheet (v2.5845): drawn under the head once the queue is empty. */
   closeSheet?: RoundCloseSheet | null
+  /** The rows are the device's kept read (#183 PR 4); null when live. */
+  kept?: QuickfillKeptDeck | null
   rows: RoundRow[]
   search: string
   onSearch: (q: string) => void
@@ -57,8 +65,9 @@ export function QuickfillRoundList({
   const q = search.trim().toLowerCase()
   const shown = q ? rows.filter((r) => r.label.toLowerCase().includes(q)) : rows
   return (
-    <div>
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', marginBottom: '0.6rem' }}>
+    <div data-kept-read={kept ? '' : undefined}>
+      {kept ? <KeptReadStamp lead={QUICKFILL_KEPT_LEAD} again={QUICKFILL_COUNTING_AGAIN_WORDS} readAt={kept.readAt} failed={kept.failed} onRetry={kept.onRetry} format={kept.format} className="keptReadStampTight" /> : null}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.5rem', margin: kept ? '0.5rem 0 0.6rem' : '0 0 0.6rem' }}>
         <div style={{ fontSize: '0.8125rem', color: 'var(--text-700)' }}>
           <b>{roundHeadline(rows).split(' · ')[0]}</b>
           {roundHeadline(rows).includes(' · ') ? ` · ${roundHeadline(rows).split(' · ').slice(1).join(' · ')}` : ''}
@@ -67,7 +76,7 @@ export function QuickfillRoundList({
           <button
             type="button"
             onClick={() => onOpen(queue[0]!)}
-            style={{ flexShrink: 0, padding: '0.4rem 0.7rem', borderRadius: 999, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: 'var(--surface)', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }}
+            style={{ flexShrink: 0, padding: '0.4rem 0.7rem', borderRadius: 999, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', fontWeight: 700, fontSize: '0.8125rem', cursor: 'pointer' }}
           >
             Round · {queue.length} ›
           </button>
@@ -109,7 +118,7 @@ export function QuickfillRoundList({
               ) : r.countSource === 'none' ? (
                 <span style={{ color: 'var(--text-muted)', fontWeight: 700 }}>—</span>
               ) : (
-                <span style={{ textAlign: 'right', flexShrink: 0, minWidth: 40 }}>
+                <span className={kept ? 'keptCount' : undefined} style={{ textAlign: 'right', flexShrink: 0, minWidth: 40 }}>
                   <span style={{ display: 'block', fontWeight: 800, fontSize: '1rem', color: 'var(--text-strong)' }}>{r.count}</span>
                   <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)' }}>{r.countSource === 'open' ? 'open' : 'at last look'}</span>
                 </span>

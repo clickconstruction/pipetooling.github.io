@@ -3652,7 +3652,7 @@ export default function BankPaymentsModal({
                           padding: '0.35rem 0.9rem',
                           borderRadius: 4,
                           border: 'none',
-                          background: stripeCloseRetrying ? DEAD_PRESS_FILL : '#3b82f6',
+                          background: stripeCloseRetrying ? DEAD_PRESS_FILL : '#2563eb',
                           color: stripeCloseRetrying ? DEAD_PRESS_TEXT : 'white',
                           cursor: stripeCloseRetrying ? 'not-allowed' : 'pointer',
                           fontSize: '0.8125rem',

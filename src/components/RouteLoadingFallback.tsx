@@ -32,7 +32,7 @@ export function RouteLoadingFallback() {
             padding: '0.5rem 1.1rem',
             fontSize: '0.9375rem',
             fontWeight: 600,
-            background: '#3b82f6',
+            background: '#2563eb',
             color: 'white',
             border: 'none',
             borderRadius: 7,

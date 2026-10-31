@@ -48,7 +48,7 @@ const input: CSSProperties = { width: '100%', boxSizing: 'border-box', padding: 
 const row: CSSProperties = { display: 'grid', gridTemplateColumns: '78px minmax(0, 1fr)', gap: '0.3rem 0.6rem', alignItems: 'start' }
 const sectionHead: CSSProperties = { font: '600 0.68rem/1.2 inherit', letterSpacing: '0.12em', textTransform: 'uppercase', color: 'var(--text-muted)', margin: 0 }
 const btn: CSSProperties = { padding: '0.45rem 0.8rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.82rem', fontWeight: 600, cursor: 'pointer' }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white', width: '100%' }
+const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white', width: '100%' }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.78rem', color: 'var(--text-link)', textDecoration: 'underline', cursor: 'pointer' }
 const chip = (on: boolean): CSSProperties => ({ ...btn, padding: '0.22rem 0.6rem', fontSize: '0.75rem', borderRadius: 999, background: on ? 'var(--bg-blue-tint)' : 'var(--surface)', color: on ? 'var(--text-blue-700)' : 'var(--text-700)', borderColor: on ? 'var(--border-blue)' : 'var(--border-strong)' })
 

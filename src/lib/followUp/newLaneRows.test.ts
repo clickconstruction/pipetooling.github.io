@@ -139,7 +139,10 @@ describe('a guess that needs its record first', () => {
       ['Someone else', null],
     ])
     const bids = whoGuesses(bexar, 'bids', { trades: [{ id: 'bexar', company: 'Bexar Steel Erectors', contactName: 'Tom Riddle', emails: ['tom@bexarsteel.example'], openAsk: null }] })
-    expect(bids.map((g) => guessWait(g))).toEqual([null, null, null, null, null, null, null, null])
+    // Eight presses, then the two notice presses (v2.6202), each one press too.
+    expect(bids.map((g) => guessWait(g))).toEqual([null, null, null, null, null, null, null, null, null, null])
+    expect(namedWords(bids[8]!)).toBe('estimating@bexarsteel.example is a notice now. Their next mail stays in Gmail.')
+    expect(namedWords(bids[9]!)).toBe('Everything from bexarsteel.example is a notice now. Their next mail stays in Gmail.')
     // A guess that makes nothing and has no record still waits, with where to make it.
     expect(['trade', 'supply_house', 'candidate'].map((kind) => guessWait({ kind: kind as never, record: null }))).toEqual([
       'Add the company under Trade partners in GC mode first. Then name the number here.',

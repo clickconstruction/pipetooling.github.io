@@ -493,6 +493,8 @@ export function filterJobsByStagesSearch(
     (j) =>
       (j.hcp_number ?? '').toLowerCase().includes(q) ||
       (j.click_number ?? '').toLowerCase().includes(q) ||
+      // The numbers the job answered to before a combine (v2.6226): 'HCP 550' matches 550.
+      (j.prior_numbers ?? []).some((n) => n.toLowerCase().includes(q)) ||
       (j.job_name ?? '').toLowerCase().includes(q) ||
       (j.job_address ?? '').toLowerCase().includes(q) ||
       (j.gcCustomer?.name ?? '').toLowerCase().includes(q) ||

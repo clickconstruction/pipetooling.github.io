@@ -125,6 +125,10 @@ SELECT rft.same('robot_progress reads the fixtures',
   (SELECT fixtures_found::text || ' ' || fixtures_sure || ' ' || fixtures_taken || ' ' || fixtures_set_aside || ' ' || (assisted_at IS NOT NULL)::text || ' ' || (fixtures_at IS NOT NULL)::text
      FROM public.robot_progress(ARRAY['00000000-0000-0000-0000-00000000b1d1']::uuid[])),
   '5 3 3 0 true true');
+SELECT rft.same('list_shadow_runs carries the fixtures and the assisted stamp',
+  (SELECT fixtures_found::text || ' ' || fixtures_taken || ' ' || fixtures_set_aside || ' ' || (assisted_at IS NOT NULL)::text || ' ' || (reference_bid_id = '00000000-0000-0000-0000-00000000b1d1')::text
+     FROM public.list_shadow_runs() WHERE id = '00000000-0000-0000-0000-00000000e001'),
+  '5 3 0 true true');
 SELECT rft.refused('a second take of a taken row changes nothing and a row from another bid is refused',
   $q$SELECT public.take_robot_fixtures(ARRAY['00000000-0000-0000-0000-00000000ff01']::uuid[], '00000000-0000-0000-0000-00000000ae02', '[]'::jsonb)$q$);
 
@@ -158,6 +162,10 @@ SELECT rft.same('the run stays assisted: she saw them', rft.run_words(), 'true f
 SELECT rft.same('take again', (SELECT (r->>'added') || ' ' || (r->>'updated') FROM (SELECT public.take_robot_fixtures(ARRAY['00000000-0000-0000-0000-00000000ff01']::uuid[], '00000000-0000-0000-0000-00000000ae01',
   '[{"row_id": "00000000-0000-0000-0000-00000000ff03", "count_row_id": "00000000-0000-0000-0000-00000000c001"}]'::jsonb) AS r) t), '1 1');
 UPDATE public.bids_count_rows SET count = 6 WHERE bid_id = '00000000-0000-0000-0000-00000000b1d1' AND fixture = 'Water closet';
+-- v2.6237: Undo on the toast takes back only what that press took.
+SELECT rft.same('a second press takes the mop sink', (SELECT (r->>'added') FROM (SELECT public.take_robot_fixtures(ARRAY['00000000-0000-0000-0000-00000000ff02']::uuid[], '00000000-0000-0000-0000-00000000ae01', '[]'::jsonb) AS r) t), '1');
+SELECT rft.same('its Undo takes back the mop sink alone', (SELECT (r->>'removed') || ' ' || (r->>'restored') || ' ' || (r->>'kept') FROM (SELECT public.untake_robot_fixture_rows('00000000-0000-0000-0000-00000000dd01', ARRAY['00000000-0000-0000-0000-00000000ff02']::uuid[]) AS r) t), '1 0 0');
+SELECT rft.same('the first press stays on her count', (SELECT string_agg(fixture || ':' || count::text, ' ' ORDER BY sequence_order) FROM public.bids_count_rows WHERE bid_id = '00000000-0000-0000-0000-00000000b1d1'), 'Floor drain:8.00 Lav:5.00 Water closet:6.00');
 RESET ROLE;
 UPDATE public.bids SET bid_date_sent = current_date, bid_value = 110000 WHERE id = '00000000-0000-0000-0000-00000000b1d1';
 SELECT public.score_locked_shadows('00000000-0000-0000-0000-00000000b1d1');

@@ -132,7 +132,7 @@ const PILL: CSSProperties = { display: 'inline-block', fontSize: '0.6rem', fontW
 const TH: CSSProperties = { fontSize: '0.62rem', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '0.3rem 0.4rem', borderBottom: '2px solid var(--border)', whiteSpace: 'nowrap', textAlign: 'left' }
 const TD: CSSProperties = { padding: '0.36rem 0.4rem', borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }
 const BTN: CSSProperties = { font: 'inherit', fontSize: '0.72rem', fontWeight: 650, padding: '0.22rem 0.6rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer', whiteSpace: 'nowrap' }
-const BTN_PRIMARY: CSSProperties = { ...BTN, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: '#fff' }
+const BTN_PRIMARY: CSSProperties = { ...BTN, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
 const BTN_LINK: CSSProperties = { font: 'inherit', fontSize: '0.72rem', fontWeight: 650, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', cursor: 'pointer' }
 const CHIP = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.68rem', fontWeight: 700, padding: '0.15rem 0.55rem', borderRadius: 999, border: `1px solid ${on ? 'var(--text-link)' : 'var(--border)'}`, boxShadow: on ? 'inset 0 0 0 1px var(--text-link)' : 'none', background: on ? 'var(--bg-muted)' : 'transparent', color: on ? 'var(--text-strong)' : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' })
 

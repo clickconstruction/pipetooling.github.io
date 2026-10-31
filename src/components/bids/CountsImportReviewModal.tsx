@@ -308,7 +308,7 @@ export function CountsImportReviewModal({ review, existingCount, attached, busy,
                         </span>
                       </td>
                       <td style={{ ...CELL, textAlign: 'right', paddingRight: '1.1rem' }} colSpan={2}>
-                        <button type="button" aria-pressed={on} disabled={busy} onClick={() => set((c) => { if (on) c.pair.delete(i); else c.pair.add(i) })} style={{ fontSize: '0.78rem', padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-violet)', background: on ? 'var(--text-violet-700)' : 'var(--surface)', color: on ? '#fff' : 'var(--text-violet-800)', cursor: 'pointer', fontWeight: 600 }}>
+                        <button type="button" aria-pressed={on} disabled={busy} onClick={() => set((c) => { if (on) c.pair.delete(i); else c.pair.add(i) })} style={{ fontSize: '0.78rem', padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border-violet)', background: on ? '#6d28d9' : 'var(--surface)', color: on ? '#fff' : 'var(--text-violet-800)', cursor: 'pointer', fontWeight: 600 }}>
                           {on ? '✓ Same row' : p.kind === 'renamed' ? 'Same row, renamed' : 'Same row, moved'}
                         </button>
                         {on && <button type="button" disabled={busy} onClick={() => set((c) => { c.pair.delete(i) })} style={{ ...SEG_BTN, marginLeft: 6, color: 'var(--text-violet-800)' }}>Not the same</button>}

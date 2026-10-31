@@ -812,7 +812,7 @@ export function UnifiedBidCustomerNotesActionButtons({
         onClick={() => onAddingKindChange(addingKind === 'bid' ? null : 'bid')}
         style={{
           padding: '0.25rem 0.65rem',
-          background: addingKind === 'bid' ? '#1d4ed8' : '#3b82f6',
+          background: addingKind === 'bid' ? '#1d4ed8' : '#2563eb',
           color: 'white',
           border: 'none',
           borderRadius: 4,

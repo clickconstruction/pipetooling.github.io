@@ -11,7 +11,7 @@ Punch list #49, step 6b. Two functions, no table:
 
 **Depends on** migration `20260928032427` (the `word_*` columns) — it sorts before this one.
 
-**Left in place:** `get_statement_round_for_user` / `get_my_statement_round`. The client and the dispatcher fall back to them while this migration is unpushed; drop them once both have run on the new pair for a while.
+**Left in place:** `get_statement_round_for_user` / `get_my_statement_round`. The client and the dispatcher fall back to them while this migration is unpushed; drop them once both have run on the new pair for a while. Dropped in `20261031060000` (v2.6220) after four Wednesdays with no call to either.
 
 **Tested** against a throwaway local Postgres 15 with the real `gc_statement_round_marks` migrations applied over stub tables: a GC with the account man's word in and no statement reads `ready` with `last_word.by` = his name and `promise_late`; an app-sent GC with no mark reads `needs_word`; a sent mark with a temperature reads `done`; an uncertified GC reads `needs_certify`; a GC under the line is left out; the gate returns `NULL` for a helper.
 

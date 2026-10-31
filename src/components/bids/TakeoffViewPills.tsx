@@ -6,8 +6,8 @@ function pillStyle(on: boolean): CSSProperties {
   return {
     padding: '0.2rem 0.6rem',
     borderRadius: 999,
-    border: on ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
-    background: on ? '#3b82f6' : 'var(--surface)',
+    border: on ? '1px solid #2563eb' : '1px solid var(--border-strong)',
+    background: on ? '#2563eb' : 'var(--surface)',
     color: on ? '#fff' : 'var(--text-muted)',
     fontSize: '0.78rem',
     fontWeight: 600,

@@ -64,6 +64,7 @@ messages-tech-send
 salary-sync-open-punch
 count-sources
 robot-fixtures
+bid-copies
 helper-on-job
 people-phone
 training

@@ -11,6 +11,7 @@ import type { BidFormFocus } from '../../lib/bids/bidFormFocus'
 import type { BidsTabKey } from '../../lib/bids/bidsTabAccess'
 import type { BidWithBuilder } from '../../types/bidWithBuilder'
 import { ringProgressFor } from '../../lib/bids/robotProgress'
+import { buildRobotStage } from '../../lib/bids/robotStage'
 import { RobotBidComparisonModal } from './RobotBidComparisonModal'
 import { RobotEnvelopeModal } from './RobotEnvelopeModal'
 import { RobotLeftToYouSheet } from './RobotLeftToYouSheet'
@@ -25,6 +26,7 @@ export function BidsRobotOverlays({
   selectBidAndSyncUrl,
   openEditBid,
   serviceTypes,
+  openRobotFixtures,
 }: {
   robot: BidRobotLayer
   authUser: User | null
@@ -33,6 +35,8 @@ export function BidsRobotOverlays({
   openEditBid: (bid: BidWithBuilder, opts?: { focus?: BidFormFocus; tab?: 'bid' | 'edit' }) => void
   /** v2.4165: the plans card on the needs sheet opens the bid's division folder. */
   serviceTypes?: ReadonlyArray<{ id: string; name: string }>
+  /** Robot fixtures (punch list #221, PR 3b): the status sheet's door to the fixtures window on the Counts tab. */
+  openRobotFixtures?: (bid: BidWithBuilder) => void
 }) {
   const {
     robotEnvelope,
@@ -54,6 +58,7 @@ export function BidsRobotOverlays({
     referencePresence,
     robotComparePair,
     robotProgressFor,
+    robotProgressRowFor,
     leaveToMe,
     robotLeftBid,
     setRobotLeftBid,
@@ -85,6 +90,8 @@ export function BidsRobotOverlays({
         progress={robotStatusBid ? ringProgressFor(robotProgressFor(robotStatusBid.id), robotStatusBid) : null}
         onLeaveToMe={(bid) => { void leaveToMe(bid as BidWithBuilder); setRobotStatusBid(null) }}
         runOpenAtStart={robotStatusReadRun}
+        stage={robotStatusBid ? (() => { const row = robotProgressRowFor(robotStatusBid.id); return row ? buildRobotStage(row, robotStatusBid, Date.now()) : null })() : null}
+        onOpenFixtures={openRobotFixtures ? (bid) => { setRobotStatusBid(null); openRobotFixtures(bid as BidWithBuilder) } : undefined}
       />
 
       {/* v2.5751: the mark's sheet — what left to you means, and Let the robot back in. */}

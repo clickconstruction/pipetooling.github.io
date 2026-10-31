@@ -6,6 +6,7 @@
  * history ledger `bid_changes`, or the job's update). Pure.
  */
 import type { MemberBid, MemberJob, Members } from './overview'
+import { samePlanLink } from '../bids/bidPlanSets'
 
 export type PlanCarrier = { kind: 'bid' | 'job'; id: string; label: string }
 
@@ -19,6 +20,22 @@ export type PlanSet = {
   filedAt: string | null
   filedBy: string | null
   carriers: PlanCarrier[]
+  /** The set's memo line (v2.6207): what changed on the plans, from the `bid_plan_sets` row whose link is this set's; '' with none. */
+  memo: string
+  /** The row that holds the memo, or null when no set row carries this link yet. */
+  memoRow: { id: string; bidId: string } | null
+}
+
+/** What `buildPlansView` reads of a `bid_plan_sets` row to put the memo on its set. */
+export type PlanSetMemoRow = { id: string; bid_id: string; link: string; memo: string; updated_at: string }
+
+/** Where a memo typed on a set lands: the row that carries the link, or a new row on the set's first bid; null when the set hangs on jobs alone. */
+export type PlanSetMemoWrite = { kind: 'update'; id: string } | { kind: 'insert'; bidId: string; link: string; name: string }
+
+export function planSetMemoWrite(set: Pick<PlanSet, 'link' | 'memoRow' | 'carriers'>): PlanSetMemoWrite | null {
+  if (set.memoRow) return { kind: 'update', id: set.memoRow.id }
+  const bid = set.carriers.find((c) => c.kind === 'bid')
+  return bid ? { kind: 'insert', bidId: bid.id, link: set.link, name: 'Plans' } : null
 }
 
 export type PlansView = {
@@ -40,6 +57,8 @@ export function buildPlansView(args: {
   names: ReadonlyMap<string, string>
   bidLabel: (bid: MemberBid) => string
   jobLabel: (job: MemberJob) => string
+  /** The bids' plan set rows, for each set's memo; left out, every memo reads ''. */
+  planSetRows?: readonly PlanSetMemoRow[]
 }): PlansView {
   const sets = new Map<string, PlanSet>()
   const none: PlanCarrier[] = []
@@ -58,7 +77,7 @@ export function buildPlansView(args: {
       none.push(carrier)
       continue
     }
-    const set = sets.get(link) ?? { key: link, link, dated: null, filedAt: null, filedBy: null, carriers: [] }
+    const set = sets.get(link) ?? { key: link, link, dated: null, filedAt: null, filedBy: null, carriers: [], memo: '', memoRow: null }
     if (b.design_drawing_plan_date && (!set.dated || b.design_drawing_plan_date > set.dated)) set.dated = b.design_drawing_plan_date
     const filed = filedFor(b.id)
     if (filed && (!set.filedAt || filed.at > set.filedAt)) {
@@ -75,11 +94,23 @@ export function buildPlansView(args: {
       none.push(carrier)
       continue
     }
-    const set = sets.get(link) ?? { key: link, link, dated: null, filedAt: null, filedBy: null, carriers: [] }
+    const set = sets.get(link) ?? { key: link, link, dated: null, filedAt: null, filedBy: null, carriers: [], memo: '', memoRow: null }
     // A job records no plans-link change; the row's update is the nearest thing to the day it was filed.
     if (!set.filedAt && j.updated_at) set.filedAt = j.updated_at
     set.carriers.push(carrier)
     sets.set(link, set)
+  }
+  // The memo: the newest-touched set row whose link is this set's (two bids may each hold a row for the same folder).
+  for (const set of sets.values()) {
+    let best: PlanSetMemoRow | null = null
+    for (const r of args.planSetRows ?? []) {
+      if (!samePlanLink(r.link, set.link)) continue
+      if (!best || r.updated_at > best.updated_at) best = r
+    }
+    if (best) {
+      set.memo = best.memo ?? ''
+      set.memoRow = { id: best.id, bidId: best.bid_id }
+    }
   }
   const ordered = [...sets.values()].sort((a, b) => {
     if (a.dated && b.dated) return b.dated.localeCompare(a.dated)
@@ -122,7 +153,7 @@ export function olderOrNoneLine(view: PlansView, newestDay: string | null): { le
   if (n === 0) return null
   const none = view.none.length
   const older = n - none
-  const pieces = (k: number) => (k === 1 ? 'One piece' : `${k} pieces`)
+  const pieces = (k: number) => (k === 1 ? 'One job or bid' : `${k} jobs and bids`)
   const have = (k: number) => (k === 1 ? 'has' : 'have')
   const are = (k: number) => (k === 1 ? 'is' : 'are')
   if (!view.newest || !newestDay) return { lead: `${n} without plans`, sentence: `${pieces(n)} ${have(n)} no plans filed. No set is filed on this site.` }
