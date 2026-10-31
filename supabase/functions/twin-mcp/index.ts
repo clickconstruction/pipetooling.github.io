@@ -413,6 +413,20 @@ const TOOLS = [
     },
   },
   {
+    name: 'put_plan_memo',
+    description:
+      "Write the memo line on one of your bid's plan sets (v2.6207): what you think changed on the plans, in one line a person reads on Edit Bid and on the Development page's Plans look. Lands on the set whose link is the bid's plans_link (the set you read), or on the set named by `set`; a bid with a plans link and no set row gets one. Only on bids you created or are assigned.",
+    inputSchema: {
+      type: 'object',
+      properties: {
+        bid: { type: 'string', description: "Bid (e.g. 'b406' or uuid) — must be yours (assigned/created)" },
+        memo: { type: 'string', description: 'The memo line (max 2000 chars): what changed, in plain words. An empty string clears it.' },
+        set: { type: 'string', description: "Optional: the set's name (e.g. 'Addendum 2') or its Drive link. Left out, the set the robot reads (the bid's plans_link)." },
+      },
+      required: ['bid', 'memo'],
+    },
+  },
+  {
     name: 'add_bid_note',
     description:
       "Write one entry to a bid's audit ledger — the pipeline's flight recorder ('[pipeline STG-N] …' stamps, scorecards, run logs). Only on bids you created or are the assigned estimator for. Notes never move the follow-up clock.",
@@ -2739,6 +2753,41 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
         score_id: score.id,
       }, null, 2))
     }
+    case 'put_plan_memo': {
+      const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      })
+      const ref = String(args.bid ?? '').trim()
+      if (!ref || typeof args.memo !== 'string') return textContent('put_plan_memo needs bid + memo', true)
+      const memo = String(args.memo).trim().slice(0, 2000)
+      const which = String(args.set ?? '').trim()
+      const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+      let q = admin.from('bids').select('id, bid_number, estimator_id, created_by, plans_link')
+      q = uuidRe.test(ref) ? q.eq('id', ref) : q.eq('bid_number', ref.replace(/^(bp|b)/i, ''))
+      const { data: bid, error } = await q.maybeSingle()
+      if (error) return textContent(`Bid lookup failed: ${error.message}`, true)
+      if (!bid) return textContent(`No bid found for "${ref}"`, true)
+      if (bid.estimator_id !== twin.twinUserId && bid.created_by !== twin.twinUserId && !(await pricerMayTouchBid(admin, twin, bid.id))) {
+        return textContent(`Bid ${ref} is not yours (assigned/created) — a memo lands only on your own bids.`, true)
+      }
+      const { data: sets, error: setsErr } = await admin.from('bid_plan_sets').select('id, name, link, memo').eq('bid_id', bid.id)
+      if (setsErr) return textContent(`Plan sets read failed: ${setsErr.message}`, true)
+      const norm = (l: string | null | undefined) => (l ?? '').trim().replace(/[?&]usp=[^&#]*/g, '').replace(/\?$/, '').replace(/\/+$/, '')
+      const robotLink = String(bid.plans_link ?? '').trim()
+      const target = which
+        ? (sets ?? []).find((r) => r.name.trim().toLowerCase() === which.toLowerCase() || (norm(r.link).length > 0 && norm(r.link) === norm(which)))
+        : (sets ?? []).find((r) => norm(r.link).length > 0 && norm(r.link) === norm(robotLink))
+      if (target) {
+        const { error: upErr } = await admin.from('bid_plan_sets').update({ memo }).eq('id', target.id)
+        if (upErr) return textContent(`Memo not saved: ${upErr.message}`, true)
+        return textContent(`Memo kept on b${bid.bid_number} · ${target.name}: ${memo || '(cleared)'}`)
+      }
+      if (which) return textContent(`b${bid.bid_number} has no set named or linked "${which}" — its sets: ${(sets ?? []).map((r) => r.name).join(', ') || 'none'}.`, true)
+      if (!robotLink) return textContent(`b${bid.bid_number} has no plans link — file_plans first, then the memo has a set to land on.`, true)
+      const { error: insErr } = await admin.from('bid_plan_sets').insert({ bid_id: bid.id, name: 'Plans', link: robotLink, memo, created_by: twin.twinUserId })
+      if (insErr) return textContent(`Memo not saved: ${insErr.message}`, true)
+      return textContent(`Memo kept on b${bid.bid_number} · Plans (a set row now holds the bid's plans link): ${memo || '(cleared)'}`)
+    }
     case 'add_bid_note': {
       const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, {
         auth: { autoRefreshToken: false, persistSession: false },
@@ -3873,7 +3922,7 @@ async function handleRpc(req: Request, msg: { jsonrpc?: string; id?: unknown; me
       return rpcResult(id, {
         protocolVersion: version,
         capabilities: { tools: {} },
-        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.9.0' },
+        serverInfo: { name: 'pipetooling-twin-mcp', version: '1.10.0' },
         instructions:
           "PipeTooling digital-twin seat (estimator-only). Call get_brief first, then get_directory; mint_session gives you a signed-in browser link to the real apps — PipeTooling by default, CountTooling (the PDF-takeoff tool) with app: 'counttooling'. The work happens there. Every call needs your per-twin token (X-Twin-Token or Bearer).",
       })

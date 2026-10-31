@@ -93,7 +93,7 @@ describe('devMcpWrites — the allowlist', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain('if (isWriteVerb(verb)) return finish(refused(')
+    expect(SERVER).toContain("if (isWriteVerb(verb) || verb === 'mint_twin_setup_code') return finish(refused(")
     // restPost is reached only from the write branches: once to declare it, three calls in the generic branch, and
     // the plan set verbs' own dry run and stamp (v2.6185).
     expect(SERVER.match(/restPost\(/g)?.length).toBe(6)
@@ -178,7 +178,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.11.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.12.0'")
   })
 })
 
@@ -222,12 +222,12 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: '2026-10-28T15:00:00Z' })).toContain('on this matter')
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: null })).toContain('legal_matter_gap_answers')
   })
-  it('the server declares both verbs in the write branch and reports 0.11.0', () => {
+  it('the server declares both verbs in the write branch and reports 0.12.0', () => {
     expect(SERVER).toContain("name: 'plan_gap_answer'")
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.11.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.12.0'")
     expect(SERVER).toContain('Writes are nineteen verbs and nothing else')
   })
 })
@@ -446,5 +446,18 @@ describe('the plan set verbs (v2.6185)', () => {
     expect(String(planReply('plan_file_plans', { after: { bid: 'b612' } }, 'f'.repeat(64)).next)).toContain('apply_file_plans')
     expect(alreadyApplied('apply_file_plans', { target: 'b612', at: '2026-10-30T22:30:00Z' })).toContain('on bid b612')
     expect(alreadyApplied('apply_file_plans', { target: 'b612', at: null })).toContain('replace: true')
+  })
+})
+
+describe('mint_twin_setup_code (v2.6187)', () => {
+  it('is not a plan/apply write, is refused through view_as, asks twin-setup as the dev, and never hands the key back', () => {
+    expect(isWriteVerb('mint_twin_setup_code')).toBe(false)
+    expect(SERVER).toContain("name: 'mint_twin_setup_code'")
+    expect(SERVER).toContain("case 'mint_twin_setup_code': {")
+    expect(SERVER).toContain("if (isWriteVerb(verb) || verb === 'mint_twin_setup_code') return finish(refused(")
+    expect(SERVER).toContain("/functions/v1/twin-setup`")
+    expect(SERVER).toContain("{ action: 'mint', label, ...(twinUserId ? { twin_user_id: twinUserId } : { kind: 'estimator' }) }")
+    expect(SERVER).toContain('redeem: `python3 scripts/twin/redeem_setup_code.py ${reply.code}')
+    expect(SERVER).not.toContain('reply.token')
   })
 })

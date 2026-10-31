@@ -2,7 +2,7 @@
 name: "Robot fixtures: the robot pulls the fixtures off the plans, the estimator picks which to add to her count"
 number: 221
 group: ready
-status: proposed 2026-10-30 · the owner's picks the same day (keep the dollar score, fixtures open at the seal, a count and a price from day one, set aside and never delete) · build approved · PR 1 next · nothing built
+status: proposed 2026-10-30 · the owner's picks the same day (keep the dollar score, fixtures open at the seal, a count and a price from day one, set aside and never delete) · PR 1 (v2.6180, the ground) and PR 2 (v2.6181, the kernels) on main 2026-10-31, migration pushed, twin-mcp 1.9.0 deployed · PR 3 (v2.6188, the window) and PR 3b (v2.6225, the Pricing tab and the status sheet's door) on main 2026-10-31 · PR 4 (the stage) in flight
 mockup: to-dos/robot-fixtures/mockup.html
 summary: >
   The robots already read every plumbing bid's plans, count the fixtures, price them on their own book and seal a
@@ -17,7 +17,7 @@ summary: >
   the robot, priced by her book first and by the robot where her book has none), how a row leaves (set aside with
   her reason, never deleted), the stage strip (Plans filed → Read → Fixtures ready → Checked → Sealed → Sent →
   Scored), and which set.
-next: PR 1 of five, the ground: the migration, put_fixtures, the take and set-aside RPCs, the fixtures score at send.
+next: PR 4 the stage strip, then PR 5 assisted; then the recorded guide for the estimator on a bid with a real pull.
 size: M as a train of five, plus one later
 blocker: Nothing. The owner's picks are in (2026-10-30); the plan-sets PRs (#6557, #6560) are on main.
 opinion: build — the Counts tab door with the status sheet as the second door, the run marked assisted with its dollar score kept and the fixtures scored against her list, fixtures open once the robot seals, her book first and the robot's price where her book has none, set aside and never delete

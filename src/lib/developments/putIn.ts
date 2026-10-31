@@ -47,7 +47,7 @@ export function putInOutcomeWords(moved: { bids: number; jobs: number }, asked: 
   const parts = [moved.bids ? plural(moved.bids, 'bid') : null, moved.jobs ? plural(moved.jobs, 'job') : null].filter((x): x is string => !!x)
   const askedN = asked.bids + asked.jobs
   const movedN = moved.bids + moved.jobs
-  if (movedN === 0) return `Nothing moved: the ${askedN === 1 ? 'piece' : `${askedN} pieces`} stayed as ${askedN === 1 ? 'it was' : 'they were'}, which the bid's and job's own rules decide.`
+  if (movedN === 0) return `Nothing moved: the ${askedN === 1 ? 'job or bid' : `${askedN} jobs and bids`} stayed as ${askedN === 1 ? 'it was' : 'they were'}, which the bid's and job's own rules decide.`
   const head = `Put ${parts.join(' and ')} in ${name}.`
   return movedN < askedN ? `${head} ${askedN - movedN} stayed as ${askedN - movedN === 1 ? 'it was' : 'they were'}, which the bid's and job's own rules decide.` : head
 }

@@ -113,7 +113,7 @@ export function SupplyHousePhoneScreen(props: SupplyHousePhoneScreenProps) {
           <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{['open with this house', money?.payDayWords].filter(Boolean).join(' · ')}</span>
         </span>
         {(house.phone ?? '').trim() ? (
-          <a href={telHrefFor(house.phone)} style={{ ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'var(--surface)' }}>
+          <a href={telHrefFor(house.phone)} style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }}>
             ☎ Call counter
           </a>
         ) : null}

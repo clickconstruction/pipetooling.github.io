@@ -26,9 +26,11 @@ import { fetchQuickfillSnoozes, saveJobPercentFromQuickfill, snoozeQuickfillItem
  *
  * A save writes the Pipeline box's path and lays the new percent over the cache row, so
  * the card leaves at once; a dismissal lands in `quickfill_item_snoozes` and is remembered
- * here the same way. Both can be taken back from the line the card leaves behind.
+ * here the same way. Both can be taken back from the line the card leaves behind. `enabled`
+ * (punch list #183 PR 4): false holds every read while the station is off screen on the Roller;
+ * `fetchEnabled` still says whether the role sees the station.
  */
-export function useQuickfillPercentComplete(): {
+export function useQuickfillPercentComplete(enabled = true): {
   list: PercentCompleteList
   loading: boolean
   fetchEnabled: boolean
@@ -44,16 +46,17 @@ export function useQuickfillPercentComplete(): {
   const { user: authUser, role } = useAuth()
   const { jobs, jobsListLoading, jobsListEnriching, runFetchJobs } = useJobsListCache()
   const fetchEnabled = Boolean(authUser?.id && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)))
+  const active = fetchEnabled && enabled
 
   useEffect(() => {
-    if (!fetchEnabled) return
+    if (!active) return
     void runFetchJobs(null)
-  }, [fetchEnabled, runFetchJobs])
+  }, [active, runFetchJobs])
 
   const [nowIso, setNowIso] = useState(() => new Date().toISOString())
   const [snoozes, setSnoozes] = useState<{ byKey: Map<string, string>; available: boolean } | null>(null)
   useEffect(() => {
-    if (!fetchEnabled) return
+    if (!active) return
     let cancelled = false
     void fetchQuickfillSnoozes(PERCENT_COMPLETE_SNOOZE_KIND, nowIso).then((s) => {
       if (!cancelled) setSnoozes(s)
@@ -63,13 +66,13 @@ export function useQuickfillPercentComplete(): {
     }
     // One read per mount: dismissals made here are remembered below.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [fetchEnabled])
+  }, [active])
 
   // The percents set here this visit, laid over the cache rows until the next fetch.
   const [pctOverlay, setPctOverlay] = useState<Map<string, number | null>>(() => new Map())
 
   const inputs = useMemo<PercentCompleteJobInput[]>(() => {
-    if (!fetchEnabled) return []
+    if (!active) return []
     const out: PercentCompleteJobInput[] = []
     for (const j of jobs) {
       if (!isOpenJobStatus(j.status)) continue
@@ -80,7 +83,7 @@ export function useQuickfillPercentComplete(): {
       out.push({ id: j.id, jobNumber: effectiveJobLedgerNumber(j.hcp_number, j.click_number) ?? '', jobName: j.job_name ?? null, status: j.status, pct, money: model, view, newestPaidOn })
     }
     return out
-  }, [fetchEnabled, jobs, pctOverlay])
+  }, [active, jobs, pctOverlay])
 
   const list = useMemo(() => percentCompleteList(inputs, snoozes?.byKey ?? new Map(), nowIso), [inputs, snoozes, nowIso])
 
@@ -123,7 +126,7 @@ export function useQuickfillPercentComplete(): {
 
   return {
     list,
-    loading: fetchEnabled && (jobsListLoading || jobsListEnriching || snoozes == null),
+    loading: active && (jobsListLoading || jobsListEnriching || snoozes == null),
     fetchEnabled,
     snoozeAvailable: snoozes?.available ?? true,
     save,

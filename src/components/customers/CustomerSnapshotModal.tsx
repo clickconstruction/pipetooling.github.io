@@ -295,7 +295,7 @@ export function CustomerSnapshotModal({ open, onClose, customerId, gcBuilder }: 
                   }
                   style={{
                     padding: '0.35rem 0.65rem',
-                    background: '#3b82f6',
+                    background: '#2563eb',
                     color: 'white',
                     border: 'none',
                     borderRadius: 4,

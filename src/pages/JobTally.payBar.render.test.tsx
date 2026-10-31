@@ -53,10 +53,16 @@ vi.mock('../components/tally/TallyTeamQueue', () => ({
 
 const { default: JobTally } = await import('./JobTally')
 
+/** The Tally opens on On site (v2.6229); these tests check the Transactions tab, so each opens it first. */
+async function openTransactions() {
+  fireEvent.click(await screen.findByRole('button', { name: 'Transactions' }))
+}
+
 async function probeFor(role: string, canAccessPay: boolean): Promise<string | null> {
   mockRole = role
   mockCanAccessPay = canAccessPay
   const view = renderWithProviders(<JobTally />)
+  await openTransactions()
   const probe = await screen.findByTestId('team-queue-probe')
   const value = probe.getAttribute('data-can-mark-payroll')
   view.unmount()
@@ -110,6 +116,7 @@ describe('JobTally → My card’s empty states name their press', () => {
     ]
     mockTxRows = [linkedCharge('t1', 'c1')]
     const view = renderWithProviders(<JobTally />)
+    await openTransactions()
     const empty = () => document.querySelector('[data-empty-state]') as HTMLElement | null
     // Every charge has a job, so the unlinked scope (the default) is empty.
     await waitFor(() => expect(empty()?.textContent).toBe('No unlinked transactions. Show all'), { timeout: 20000 })

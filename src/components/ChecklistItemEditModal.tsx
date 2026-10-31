@@ -891,7 +891,7 @@ export function ChecklistItemEditModal({
           <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>
             Cancel
           </button>
-          <button type="button" onClick={handleSave} disabled={saving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}>
+          <button type="button" onClick={handleSave} disabled={saving} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}>
             {saving ? 'Saving…' : 'Save'}
           </button>
         </div>

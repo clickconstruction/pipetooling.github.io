@@ -14,11 +14,13 @@ const RAIL: Record<RollerDot, string> = {
  * The Board (punch list #147, v2.5787): every group as a card on one screen — a colour rail
  * in the group's state, the name, the count large, the group's question, when it was last
  * looked at. The Roller's index: a tap opens that group. Drawn in a dialog over the Roller;
- * Escape or the backdrop closes it.
+ * Escape or the backdrop closes it. With `kept` (punch list #183 PR 4) the rows are the device's
+ * kept read and the counts mute under `data-kept-read`.
  */
 export function QuickfillBoard({
   rows,
   currentId,
+  kept = false,
   questionOf,
   now,
   onPick,
@@ -26,6 +28,8 @@ export function QuickfillBoard({
 }: {
   rows: ReadonlyArray<RoundRow>
   currentId: string | null
+  /** The rows are the device's kept read (#183 PR 4). */
+  kept?: boolean
   questionOf: (sectionId: string) => string | null
   now: Date
   onPick: (sectionId: string) => void
@@ -59,6 +63,7 @@ export function QuickfillBoard({
       }}
     >
       <div
+        data-kept-read={kept ? '' : undefined}
         style={{
           background: 'var(--surface)',
           borderRadius: 10,
@@ -112,7 +117,7 @@ export function QuickfillBoard({
                 <span style={{ display: 'flex', alignItems: 'flex-start', gap: 8 }}>
                   <b style={{ flex: 1, minWidth: 0, fontSize: '0.9375rem', color: 'var(--text-strong)', lineHeight: 1.25 }}>{r.label}</b>
                   {r.personal ? null : (
-                    <span style={{ textAlign: 'right', flexShrink: 0 }}>
+                    <span className={kept ? 'keptCount' : undefined} style={{ textAlign: 'right', flexShrink: 0 }}>
                       <span style={{ display: 'block', fontSize: '1.375rem', fontWeight: 800, lineHeight: 1, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{r.countSource === 'none' ? '—' : r.count}</span>
                       <span style={{ display: 'block', fontSize: '0.625rem', color: 'var(--text-muted)' }}>{r.countSource === 'open' ? 'open' : r.countSource === 'last_look' ? 'at last look' : ''}</span>
                     </span>

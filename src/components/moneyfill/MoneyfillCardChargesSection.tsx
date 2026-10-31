@@ -99,7 +99,7 @@ export function MoneyfillCardChargesSection({ weekMonday }: { weekMonday: string
                       type="button"
                       onClick={() => openInUserSort(r)}
                       title={`Opens Banking → User Sort${r.counterparty ? ` searched for “${r.counterparty}”` : ''}; press Link… on the row to split it to jobs`}
-                      style={{ padding: '0.2rem 0.65rem', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: 5, background: '#3b82f6', color: 'white', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                      style={{ padding: '0.2rem 0.65rem', fontSize: '0.75rem', fontWeight: 600, border: 'none', borderRadius: 5, background: '#2563eb', color: 'white', cursor: 'pointer', whiteSpace: 'nowrap' }}
                     >
                       Sort in Banking → User Sort
                     </button>

@@ -123,7 +123,7 @@ export function BidBoardMissingAddressesModal({ open, rows, isMobile, onClose, o
                     type="button"
                     onClick={() => void save(r)}
                     disabled={!ready || busy}
-                    style={{ padding: '0.45rem 0.85rem', border: 'none', borderRadius: 6, background: ready && !busy ? '#3b82f6' : 'var(--bg-muted)', color: ready && !busy ? '#fff' : 'var(--text-muted)', fontWeight: 600, cursor: ready && !busy ? 'pointer' : 'default', font: 'inherit', fontSize: '0.85rem', whiteSpace: 'nowrap', minHeight: isMobile ? 44 : undefined }}
+                    style={{ padding: '0.45rem 0.85rem', border: 'none', borderRadius: 6, background: ready && !busy ? '#2563eb' : 'var(--bg-muted)', color: ready && !busy ? '#fff' : 'var(--text-muted)', fontWeight: 600, cursor: ready && !busy ? 'pointer' : 'default', font: 'inherit', fontSize: '0.85rem', whiteSpace: 'nowrap', minHeight: isMobile ? 44 : undefined }}
                   >
                     {busy ? 'Saving…' : 'Save'}
                   </button>

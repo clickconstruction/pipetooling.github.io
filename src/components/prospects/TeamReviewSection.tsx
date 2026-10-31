@@ -634,7 +634,7 @@ export default function TeamReviewSection({
                       type="button"
                       onClick={allRated ? finishToReflect : saveAndAdvance}
                       disabled={busy}
-                      style={{ padding: '0.5rem 1rem', background: allRated ? '#16a34a' : '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
+                      style={{ padding: '0.5rem 1rem', background: allRated ? '#16a34a' : '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'not-allowed' : 'pointer', fontWeight: 600 }}
                     >
                       {busy
                         ? 'Saving…'
@@ -930,7 +930,7 @@ export default function TeamReviewSection({
                       <input type="checkbox" checked={includeCrew} disabled={includeCrewSaving} onChange={(e) => void saveIncludeCrew(e.target.checked)} />
                       Crew lane counts as a reviewer
                     </label>
-                    <button type="button" onClick={saveWeights} disabled={weightsSaving} style={{ padding: '0.35rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: weightsSaving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}>
+                    <button type="button" onClick={saveWeights} disabled={weightsSaving} style={{ padding: '0.35rem 0.8rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: weightsSaving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}>
                       {weightsSaving ? 'Saving…' : 'Save weights'}
                     </button>
                     <button type="button" onClick={() => setWeightsEditorOpen(false)} disabled={weightsSaving} style={{ padding: '0.35rem 0.8rem', background: 'none', color: 'var(--text-muted)', border: '1px solid var(--border)', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}>

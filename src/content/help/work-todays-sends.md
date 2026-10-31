@@ -54,7 +54,7 @@ A held row says why under the text and has no Send button.
 - The number sent STOP. Call instead.
 - The customer asked to hear from us by email. Email them, or call.
 - The customer answered the review already. Press **Not this one** to put it away.
-- The step's line still has a blank the app cannot fill, like {amount}. Send it from the customer's thread, where the box fills it, or change the step's line.
+- The step's line still has a blank the app cannot fill. The app fills {amount} and {bill} from the job's newest open bill. The hold shows when the customer has no open bill on the job. It also shows when that bill has no pay page. Send it from the customer's thread, or change the step's line.
 - Quo turned the text away. The row holds Quo's words.
 
 Fix the cause, then send the text from the customer's thread. Press **Not this one** to clear the row.

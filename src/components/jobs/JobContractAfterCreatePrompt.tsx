@@ -51,7 +51,7 @@ const btn: React.CSSProperties = {
   cursor: 'pointer',
   textAlign: 'left',
 }
-const btnPrimary: React.CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+const btnPrimary: React.CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 const sub: React.CSSProperties = { fontWeight: 400, fontSize: '0.74rem', opacity: 0.85 }
 
 function contractPromptEligibleRole(role: string | null | undefined): boolean {

@@ -104,7 +104,7 @@ export default function QuickAddSettingsBlock() {
           <button
             type="submit"
             disabled={loading || saving}
-            style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}
+            style={{ padding: '0.4rem 0.9rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 600, fontSize: '0.8125rem' }}
           >
             {saving ? 'Saving…' : 'Save'}
           </button>

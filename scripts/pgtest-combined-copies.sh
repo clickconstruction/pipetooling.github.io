@@ -17,12 +17,16 @@ PORT="${PGTEST_PORT:-55435}"
 NAME="pgtest-combined-copies"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
 BED="supabase/tests/combined_copies"
-MIGRATION="supabase/migrations/20261002100000_combined_copies_keep_stages.sql"
+# The newest migration that defines a copy function: re-running it must change nothing, and it leaves every copy on
+# its newest body (re-running an older one put the copies back to that day's bodies, so the bed tested old code).
+MIGRATION="$(grep -lE 'FUNCTION "?public"?\."?(create_bid_version|clone_count_rows_to_bid_version|duplicate_bid_to_service_type|adopt_bid_as_version)"?' supabase/migrations/*.sql | sort | tail -1)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
 
 docker rm -f "$NAME" >/dev/null 2>&1 || true
+. scripts/pgtest-pull.sh
+pgtest_pull_supabase "$IMAGE"
 docker run -d --name "$NAME" -e POSTGRES_PASSWORD=pg -p "$PORT:5432" "$IMAGE" >/dev/null
 # psql's errors go to this run's own file: a fixed /tmp name may belong to another user on a shared Mac.
 ERR="$(mktemp "${TMPDIR:-/tmp}/$NAME.XXXXXX")"

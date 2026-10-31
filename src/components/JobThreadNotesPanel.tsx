@@ -805,7 +805,7 @@ export function JobThreadNotesPanel({
                   type="button"
                   onClick={commitPctEditor}
                   disabled={pctSaving}
-                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? DEAD_PRESS_FILL : '#3b82f6', color: pctSaving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                  style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? DEAD_PRESS_FILL : '#2563eb', color: pctSaving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
                 >
                   {pctSaving ? 'Setting…' : `Set to ${pctDraft}%`}
                 </button>
@@ -888,7 +888,7 @@ export function JobThreadNotesPanel({
                   style={{
                     padding: '0.35rem 0.75rem',
                     fontSize: '0.8125rem',
-                    background: submitting || draft.trim().length === 0 ? DEAD_PRESS_FILL : '#3b82f6',
+                    background: submitting || draft.trim().length === 0 ? DEAD_PRESS_FILL : '#2563eb',
                     color: submitting || draft.trim().length === 0 ? DEAD_PRESS_TEXT : 'white',
                     border: 'none',
                     borderRadius: 4,

@@ -112,6 +112,9 @@ export function formatKeptReadTime(readAt: number, fmt: KeptReadTimeFormat = {})
 export const KEPT_READ_DEFAULT_LEAD = 'Read at'
 /** The phone's day (My Schedule and Job Mode, #183 PR 3): *Your day as read at 7:52 AM · reading again…*. */
 export const PHONE_DAY_KEPT_LEAD = 'Your day as read at'
+/** Quickfill's deck (#183 PR 4): *Counts from 7:52 AM · counting again…*, the page's own word for its read. */
+export const QUICKFILL_KEPT_LEAD = 'Counts from'
+export const QUICKFILL_COUNTING_AGAIN_WORDS = 'counting again…'
 export const READING_AGAIN_WORDS = 'reading again…'
 export const COULD_NOT_READ_AGAIN_WORDS = 'could not read again'
 export const KEPT_READ_RETRY_LABEL = 'Retry'
@@ -127,9 +130,10 @@ export interface KeptReadStampWords {
   text: string
 }
 
-export function keptReadStampWords(args: { readAt: number; lead?: string; failed: boolean; format?: KeptReadTimeFormat }): KeptReadStampWords {
+/** `again` is the page's own word for the read in flight (Quickfill's *counting again…*); *reading again…* when unset. */
+export function keptReadStampWords(args: { readAt: number; lead?: string; again?: string; failed: boolean; format?: KeptReadTimeFormat }): KeptReadStampWords {
   const stamp = `${args.lead ?? KEPT_READ_DEFAULT_LEAD} ${formatKeptReadTime(args.readAt, args.format)}`
-  const state = args.failed ? COULD_NOT_READ_AGAIN_WORDS : READING_AGAIN_WORDS
+  const state = args.failed ? COULD_NOT_READ_AGAIN_WORDS : (args.again ?? READING_AGAIN_WORDS)
   const text = args.failed ? `${stamp} · ${state} · ${KEPT_READ_RETRY_LABEL}` : `${stamp} · ${state}`
   return { stamp, state, retry: args.failed, text }
 }

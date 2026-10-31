@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import { CameraGlyph } from '../materials/PhotoPress'
-import { REPORT_PHOTO_WORDS, tileNeedsStage, type ReportPhotoTile } from '../../lib/photos/reportPhotos'
+import { REPORT_PHOTO_WORDS, type ReportPhotoTile } from '../../lib/photos/reportPhotos'
+import { CHECKLIST_PHOTO_WORDS, tileAsk, type ChecklistPhotoChip } from '../../lib/photos/reportPhotoChecklist'
 import { shrinkWords } from '../../lib/photos/shrink'
 import { STAGE_QUICK_PICK_MIN_HEIGHT } from '../../lib/reports/stagePct'
 
@@ -47,32 +48,51 @@ const quiet: CSSProperties = {
 /** A stage to put a photo on: the job's priced lines, as the report's rows name them. */
 export type ReportPhotoStage = { fixtureId: string; name: string }
 
+const chipStyle: CSSProperties = { minHeight: STAGE_QUICK_PICK_MIN_HEIGHT, padding: '0 0.9rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer', fontFamily: 'inherit' }
+/** A question chip carries a sentence: it wraps inside the row rather than running off a phone. */
+const questionChipStyle: CSSProperties = { ...chipStyle, padding: '0.5rem 0.9rem', fontWeight: 600, fontSize: '0.9rem', textAlign: 'left', whiteSpace: 'normal', maxWidth: '100%', lineHeight: 1.3, color: 'var(--text-blue-700)', borderColor: 'var(--border-blue)' }
+
 /**
  * The tiles at the top of a camera-first report (punch list #189, PR 5b; the mock-up's section 6, frames 2 and 4):
  * each shot with its thumbnail and what the shrink did (*4.2 MB → 310 KB · 1600 px*, *Shrinking…*, *Sending…*, or
  * why it did not send with Retry), Remove under each, and a Take another tile that opens the camera. Under a new
- * tile on a job with stages, a row of 48 px chips asks which stage it shows; a one-stage job never asks. The host
- * owns the tiles and the camera; this component only draws.
+ * tile on a job with stages, a row of 48 px chips asks which stage it shows; a one-stage job never asks. Where the
+ * job's stage checklist has a question that asks for a photo (punch list #189, PR 6), that question is a chip under
+ * the stage chips: pressing it puts the photo on the question's stage and makes it the answer. The host owns the
+ * tiles and the camera; this component only draws.
  */
 export function ReportPhotoTiles({
   tiles,
   stages,
+  chips = [],
   onTake,
   onStage,
+  onAnswer,
   onRemove,
   onRetry,
   captureWords,
 }: {
   tiles: ReadonlyArray<ReportPhotoTile>
   stages: ReadonlyArray<ReportPhotoStage>
+  /** The checklist questions that ask for a photo, on the job's stages. */
+  chips?: ReadonlyArray<ChecklistPhotoChip>
   onTake: () => void
   onStage: (tileId: string, stage: ReportPhotoStage) => void
+  onAnswer?: (tileId: string, chip: ChecklistPhotoChip) => void
   onRemove: (tileId: string) => void
   onRetry: (tileId: string) => void
   /** The camera tile's words: Take a photo with no tile yet, else Take another; Add a photo at a desk. */
   captureWords: string
 }) {
-  const asking = tiles.find((t) => t.status !== 'failed' && tileNeedsStage(t, stages.length)) ?? null
+  let asking: ReportPhotoTile | null = null
+  let ask: ReturnType<typeof tileAsk> = null
+  for (const t of tiles) {
+    ask = tileAsk(t, stages, chips)
+    if (ask) {
+      asking = t
+      break
+    }
+  }
   return (
     <div data-testid="report-photo-tiles">
       <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'flex-start' }}>
@@ -90,6 +110,11 @@ export function ReportPhotoTiles({
               <img src={t.previewUrl} alt={t.stageName ? `Photo of ${t.stageName}` : 'Photo for the report'} style={img} />
               <span style={{ ...small, color: t.status === 'failed' ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: t.status === 'failed' ? 600 : 500, whiteSpace: 'normal' }}>{words}</span>
               {t.stageName ? <span style={{ ...small, color: 'var(--text-blue-700)', fontWeight: 600 }}>{t.stageName}</span> : null}
+              {t.questionWords ? (
+                <span style={{ ...small, whiteSpace: 'normal' }} data-testid="report-photo-tile-answers">
+                  {CHECKLIST_PHOTO_WORDS.answers}: {t.questionWords}
+                </span>
+              ) : null}
               <div style={{ display: 'flex', gap: '0.6rem' }}>
                 {t.status === 'failed' ? (
                   <button type="button" style={quiet} onClick={() => onRetry(t.id)}>
@@ -113,22 +138,28 @@ export function ReportPhotoTiles({
           {captureWords}
         </button>
       </div>
-      {asking ? (
+      {asking && ask ? (
         <div data-testid="report-photo-stage-ask" style={{ marginTop: '0.6rem', padding: '0.6rem 0.7rem', borderRadius: 10, background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)' }}>
           <div style={{ fontSize: '0.8125rem', fontWeight: 600, marginBottom: 6 }}>{REPORT_PHOTO_WORDS.shows}</div>
-          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }}>
-            {stages.map((s) => (
-              <button
-                key={s.fixtureId}
-                type="button"
-                onClick={() => onStage(asking.id, s)}
-                aria-label={`This photo shows ${s.name}`}
-                style={{ minHeight: STAGE_QUICK_PICK_MIN_HEIGHT, padding: '0 0.9rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 700, fontSize: '0.9375rem', cursor: 'pointer', fontFamily: 'inherit' }}
-              >
+          <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }} data-testid="report-photo-stage-chips">
+            {ask.stages.map((s) => (
+              <button key={s.fixtureId} type="button" onClick={() => onStage(asking.id, s)} aria-label={`This photo shows ${s.name}`} style={chipStyle}>
                 {s.name}
               </button>
             ))}
           </div>
+          {ask.chips.length > 0 ? (
+            <>
+              <div style={{ fontSize: '0.8125rem', fontWeight: 600, margin: '0.6rem 0 6px' }}>{CHECKLIST_PHOTO_WORDS.orAnswers}</div>
+              <div style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap' }} data-testid="report-photo-question-chips">
+                {ask.chips.map((c) => (
+                  <button key={`${c.fixtureId}|${c.questionId}`} type="button" onClick={() => onAnswer?.(asking.id, c)} aria-label={`This photo answers ${c.stageName}: ${c.words}`} style={questionChipStyle}>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </>
+          ) : null}
         </div>
       ) : null}
     </div>

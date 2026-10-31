@@ -40,7 +40,7 @@ const card: CSSProperties = { background: 'var(--surface)', border: '1px solid v
 const rollupPill: CSSProperties = { fontSize: '0.75rem', fontWeight: 600, padding: '0.2rem 0.65rem', borderRadius: 999, background: 'var(--bg-muted)', color: 'var(--text-700)' }
 const muted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 const smallBtn: CSSProperties = { padding: '0.25rem 0.65rem', fontSize: '0.78rem', fontWeight: 600, borderRadius: 6, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-700)', fontFamily: 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' }
-const primaryBtn: CSSProperties = { ...smallBtn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'var(--surface)' }
+const primaryBtn: CSSProperties = { ...smallBtn, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
 const ghostBtn: CSSProperties = { ...smallBtn, border: 'none', color: 'var(--text-muted)' }
 const band: CSSProperties = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: '0.6rem', padding: '0.5rem 0.65rem', background: 'var(--bg-subtle)', border: '1px solid var(--border)', borderRadius: 6, flexWrap: 'wrap' }
 const jobPill: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: '0.25rem', padding: '0.1rem 0.45rem', borderRadius: 9999, border: '1px solid var(--border-green)', background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.72rem', fontWeight: 700, whiteSpace: 'nowrap' }
@@ -356,7 +356,7 @@ export function BidsJobAccountsLens({ bids, strips, ledgerPrefixMap, authUserId,
                         <div style={{ fontSize: '0.8125rem' }}>The app can't see your inbox — send it there, then tell it here so each job reads <b>requested</b> at {composeGroup.houseName}.</div>
                         <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end', flexWrap: 'wrap' }}>
                           <button type="button" disabled={busy} onClick={() => setCompose((c) => (c ? { ...c, stage: 'compose' } : c))} style={ghostBtn}>Didn't send it</button>
-                          <button type="button" disabled={busy} onClick={() => void logAll()} style={{ ...primaryBtn, background: '#16a34a', borderColor: '#16a34a' }} data-testid="lens-log-all">
+                          <button type="button" disabled={busy} onClick={() => void logAll()} style={{ ...primaryBtn, background: '#16a34a', borderColor: '#16a34a', color: 'var(--surface)' }} data-testid="lens-log-all">
                             {busy ? 'Logging…' : tickedRows.length === 2 ? 'Sent — log both' : tickedRows.length === 1 ? 'Sent — log it' : `Sent — log all ${tickedRows.length}`}
                           </button>
                         </div>

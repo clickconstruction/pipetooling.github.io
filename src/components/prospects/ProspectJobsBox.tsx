@@ -120,7 +120,7 @@ export function ProspectJobsBox({
           type="button"
           onClick={() => void save(editing)}
           disabled={saving}
-          style={{ padding: '0.35rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+          style={{ padding: '0.35rem 0.8rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 8, cursor: saving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
         >
           {saving ? 'Saving…' : editing ? 'Save changes' : 'Save the job'}
         </button>

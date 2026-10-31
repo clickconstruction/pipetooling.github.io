@@ -151,7 +151,7 @@ export default function LienPenSignaturePane({
       {problems.length ? <div style={{ color: 'var(--text-red-600)', fontSize: '0.75rem' }} data-testid="lien-pen-problems">{problems[0]}</div> : null}
       {error ? <div role="alert" style={{ color: 'var(--text-red-600)', fontSize: '0.78rem' }}>{error}</div> : null}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" onClick={() => void record()} disabled={busy || problems.length > 0} data-testid="lien-pen-record" style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--text-link)', background: 'var(--text-link)', color: '#fff', font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, cursor: busy || problems.length ? 'not-allowed' : 'pointer' }}>
+        <button type="button" onClick={() => void record()} disabled={busy || problems.length > 0} data-testid="lien-pen-record" style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, cursor: busy || problems.length ? 'not-allowed' : 'pointer' }}>
           {busy ? 'Recording…' : `Record ${count} pen signature${count === 1 ? '' : 's'} ▸`}
         </button>
         <button type="button" onClick={onClose} disabled={busy} style={{ padding: '5px 12px', borderRadius: 7, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, cursor: 'pointer' }}>

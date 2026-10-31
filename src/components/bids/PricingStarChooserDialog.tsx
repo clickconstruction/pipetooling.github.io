@@ -57,7 +57,7 @@ export function PricingStarChooserDialog({
         ) : null}
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
           <button type="button" onClick={onCancel} disabled={busy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-          <button type="button" onClick={onConfirm} disabled={busy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: busy ? 'wait' : 'pointer' }}>
+          <button type="button" onClick={onConfirm} disabled={busy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: busy ? 'wait' : 'pointer' }}>
             {starChooserConfirmLabel({ action, choice, starName, viewedName, busy })}
           </button>
         </div>

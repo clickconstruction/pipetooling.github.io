@@ -3,7 +3,9 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import LegalFirmSettingsBlock from '../../settings/LegalFirmSettingsBlock'
 import LegalFirmReplacePanel from './LegalFirmReplacePanel'
+import LegalFirmCoverage from './LegalFirmCoverage'
 import { legalFirmFacts, legalFirmFactsWords } from '../../../lib/legal/legalFirmFacts'
+import type { LegalMapCase } from '../../../lib/legal/firmMap'
 import { legalIntakeAnswerRows, legalIntakeSentWords, legalIntakeUnseen, shapeLegalFirmIntake } from '../../../lib/legal/legalFirmIntake'
 import { companyShortName } from '../../../lib/legal/legalPortalStart'
 import { PORTAL_COMPANY } from '../../../../supabase/functions/_shared/portalCompany'
@@ -24,8 +26,15 @@ export const LEGAL_FIRM_SETTINGS_HREF = '/settings?tab=settings-jobs#settings-le
  * here: the database lets only a dev change it. Above the save, what hangs on the firm
  * now — its open accounts, its email list, its link — because a rename keeps all of it.
  * Under it, a dev's *Replace with a new firm…* (v2.4712, `LegalFirmReplacePanel`).
+ *
+ * Since v2.6195 (punch list #222, PR 1) the window is titled with the firm's name and opens on
+ * **Where <firm> covers** (`LegalFirmCoverage`): the county map with this firm's counties in color and
+ * the other firms' faint, a row per county with its cases and open dollars (the Map view's own
+ * numbers), *Show on the desk map ›*, and, while no county is colored for any firm, the nudge that
+ * names the bridge. Since v2.6221 (PR 2) a dev extends the firm's counties there, in place. The
+ * details and Click's particulars fold to one line each inside the Settings block.
  */
-export default function LegalFirmWindow({ firm, matters, recipients, canEdit, onClose, onSaved, onShowAccount, zIndex }: {
+export default function LegalFirmWindow({ firm, matters, recipients, canEdit, onClose, onSaved, onShowAccount, zIndex, firms = [], countiesByFirm = null, cases = [], onShowOnMap }: {
   firm: LegalFirmRow | null
   matters: ReadonlyArray<LegalMatterRow>
   recipients: ReadonlyArray<LegalRecipientRow>
@@ -35,6 +44,14 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
   /** Close the window and select an account on the desk (the replace panel's way to *Pull back*). */
   onShowAccount?: (payerKey: string) => void
   zIndex: number
+  /** The active firms, as `useLegalMatters.activeFirms`, for the map's hues (punch list #222, PR 1). */
+  firms?: ReadonlyArray<LegalFirmRow>
+  /** Each firm's counties; null draws no coverage section (a mount without the desk's data). */
+  countiesByFirm?: ReadonlyMap<string, ReadonlyArray<string>> | null
+  /** The desk's cases on the map (`useLegalMapCases`), for the rows' counts and the dots. */
+  cases?: ReadonlyArray<LegalMapCase>
+  /** *Show on the desk map ›*: the desk opens its Map view with this firm lit. */
+  onShowOnMap?: (firmId: string) => void
 }) {
   const [linkLive, setLinkLive] = useState<boolean | null>(null)
   const firmId = firm?.id ?? null
@@ -99,7 +116,10 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
       <div role="dialog" aria-modal="true" aria-label="The collections law firm" onClick={(e) => e.stopPropagation()} style={{ background: 'var(--surface)', color: 'var(--text)', borderRadius: 10, width: '100%', maxWidth: 760, maxHeight: '100%', overflowY: 'auto', boxShadow: '0 16px 48px rgba(0,0,0,0.3)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '12px 16px', borderBottom: '1px solid var(--border)', flexWrap: 'wrap', position: 'sticky', top: 0, background: 'var(--surface)', zIndex: 1 }}>
           <span aria-hidden>⚖</span>
-          <div style={{ flex: 1, fontWeight: 600 }}>The collections law firm</div>
+          <div style={{ flex: 1, fontWeight: 600, minWidth: 0 }} data-legal-firm-title>
+            {firm ? firm.name : 'The collections law firm'}
+            {firm ? <span style={{ fontWeight: 400, fontSize: '0.78rem', color: 'var(--text-muted)', marginLeft: 8 }}>the collections law firm</span> : null}
+          </div>
           {canEdit ? (
             <a href={LEGAL_FIRM_SETTINGS_HREF} target="_blank" rel="noreferrer" style={{ ...btn, textDecoration: 'none' }} title="The same block on its Settings page, in a new tab">Open in Settings ↗</a>
           ) : null}
@@ -107,14 +127,21 @@ export default function LegalFirmWindow({ firm, matters, recipients, canEdit, on
         </div>
         <div style={{ padding: '14px 16px 16px' }}>
           {firm ? <FirmIntakeAnswers key={firm.id} firm={firm} onSeen={onSaved} /> : null}
+          {/* The facts first for a dev (the block's details fold now, and the facts must not fold with them); the read-only view keeps them under its rows. */}
+          {canEdit && factsLine ? <div style={{ marginBottom: 12 }}>{factsLine}</div> : null}
+          {firm && countiesByFirm ? (
+            <LegalFirmCoverage key={`coverage-${firm.id}`} firm={firm} firms={firms} countiesByFirm={countiesByFirm} cases={cases} canEdit={canEdit} onShowOnMap={onShowOnMap} onSaved={onSaved} />
+          ) : null}
           {canEdit ? (
-            <>
+            <div style={{ marginTop: countiesByFirm ? 16 : 0, paddingTop: countiesByFirm ? 14 : 0, borderTop: countiesByFirm ? '1px solid var(--border)' : undefined }}>
               {/* Keyed on the firm, so a replace remounts the block on the new one. */}
-              <LegalFirmSettingsBlock key={firm?.id ?? 'none'} inWindow firmId={firm?.id ?? null} onSaved={onSaved} firmFacts={factsLine} />
-              {firm && facts ? <LegalFirmReplacePanel key={`replace-${firm.id}`} firm={firm} facts={facts} onReplaced={onSaved} onShowAccount={onShowAccount} /> : null}
-            </>
+              <LegalFirmSettingsBlock key={firm?.id ?? 'none'} inWindow firmId={firm?.id ?? null} onSaved={onSaved} />
+              {firm && facts ? <LegalFirmReplacePanel key={`replace-${firm.id}`} firm={firm} facts={facts} onReplaced={onSaved} onShowAccount={onShowAccount} counties={countiesByFirm?.get(firm.id) ?? []} /> : null}
+            </div>
           ) : (
-            <ReadOnlyFirm firm={firm} factsLine={factsLine} />
+            <div style={{ marginTop: countiesByFirm ? 16 : 0 }}>
+              <ReadOnlyFirm firm={firm} factsLine={factsLine} />
+            </div>
           )}
         </div>
       </div>
@@ -199,4 +226,4 @@ function ReadOnlyFirm({ firm, factsLine }: { firm: LegalFirmRow | null; factsLin
 }
 
 const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 5, padding: '4px 10px', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text)', font: 'inherit', fontSize: '0.82rem', cursor: 'pointer', whiteSpace: 'nowrap' }
-const chip: CSSProperties = { border: '1px solid var(--border)', borderRadius: 999, padding: '1px 9px', background: 'var(--bg-subtle)', color: 'var(--text)' }
+const chip: CSSProperties = { border: '1px solid var(--border)', borderRadius: 999, padding: '1px 9px', background: 'var(--bg-subtle)', color: 'var(--text)', fontSize: '0.8rem' }

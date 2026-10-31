@@ -4,6 +4,7 @@ import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
 import type { MarkFixture } from '../../lib/jobs/stageChecklistMarks'
 import { customerListImpliesLinkedRow } from '../../lib/jobs/customerLinkHeuristics'
 import { Link, type NavigateFunction } from 'react-router-dom'
+import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
 import { type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
@@ -101,8 +102,6 @@ export type StagesRowRenderContext = {
   dispatchTaskModal: ReturnType<typeof useDispatchTaskModal>
   checklistAddModal: ReturnType<typeof useChecklistAddModal>
   loadJobs: () => Promise<unknown>
-  /** When set, the row's development label becomes a button that filters the board to that development. */
-  onDevelopmentFilter?: (developmentId: string) => void
   /** Contract Desk: per-job contract coverage — the chip under the job (office roles only; undefined hides it). */
   jobContractCoverageByJobId?: ReadonlyMap<string, JobContractCoverage>
   /** Each job's property kind ('' | residential | non_residential) for the address badge (v2.4160); null/absent while unread → no badge. */
@@ -301,14 +300,17 @@ export function renderStagesJobHcpChip(job: JobWithDetails, extraStyle?: CSSProp
       color: tagInfo ? '#fff' : 'var(--text-700)',
       ...extraStyle,
     }
+    // The numbers the job answered to before a combine (v2.6226) ride in the chip's title, so a search by an old HCP number finds a row that explains itself.
+    const prior = priorNumbersBare(job.prior_numbers)
     return (
-      <span style={mergedChipStyle} title={stName}>
+      <span style={mergedChipStyle} title={prior ? `${stName} · ${prior}` : stName} data-prior-numbers={prior ? '1' : undefined}>
         <StagesSearchMark text={t} onColor={!!tagInfo} /> {serviceLabel}
       </span>
     )
   }
+  const prior = priorNumbersBare(job.prior_numbers)
   return (
-    <span style={{ ...stagesJobHcpBadgeStyle, ...extraStyle }}>
+    <span style={{ ...stagesJobHcpBadgeStyle, ...extraStyle }} title={prior || undefined} data-prior-numbers={prior ? '1' : undefined}>
       Job: <StagesSearchMark text={t} />
     </span>
   )
@@ -725,35 +727,20 @@ export function renderJobCustomerLine(ctx: StagesRowRenderContext, job: JobWithD
             </span>
           ) : null}
           {developmentName ? (
-            ctx.onDevelopmentFilter && job.development?.id ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  ctx.onDevelopmentFilter?.(job.development?.id ?? '')
-                }}
-                title={`Show only ${developmentName} jobs`}
-                aria-label={`Filter the board to the ${developmentName} development`}
-                data-nav="development-filter"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: 'inherit',
-                  fontSize: 'inherit',
-                  fontFamily: 'inherit',
-                  textDecoration: 'underline dotted',
-                  textUnderlineOffset: '2px',
-                  textAlign: 'left',
-                }}
+            job.development?.id ? (
+              // The name is a door to the development's page (v2.6201, the owner's ask after his walk of
+              // the Gun Dog page); the board's filter by development lives in the house dropdown by the search.
+              <Link
+                to={`/developments/${job.development.id}`}
+                onClick={(e) => e.stopPropagation()}
+                title="Open the development's page"
+                aria-label="Open the development's page"
+                data-nav="development-page"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}
               >
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
                 <span><StagesSearchMark text={developmentName} /></span>
-              </button>
+              </Link>
             ) : (
               <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
@@ -885,35 +872,20 @@ export function renderJobCustomerAndAddressLine(ctx: StagesRowRenderContext, job
             </span>
           ) : null}
           {developmentName ? (
-            ctx.onDevelopmentFilter && job.development?.id ? (
-              <button
-                type="button"
-                onClick={(e) => {
-                  e.stopPropagation()
-                  ctx.onDevelopmentFilter?.(job.development?.id ?? '')
-                }}
-                title={`Show only ${developmentName} jobs`}
-                aria-label={`Filter the board to the ${developmentName} development`}
-                data-nav="development-filter"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '0.3rem',
-                  padding: 0,
-                  border: 'none',
-                  background: 'none',
-                  cursor: 'pointer',
-                  color: 'inherit',
-                  fontSize: 'inherit',
-                  fontFamily: 'inherit',
-                  textDecoration: 'underline dotted',
-                  textUnderlineOffset: '2px',
-                  textAlign: 'left',
-                }}
+            job.development?.id ? (
+              // The name is a door to the development's page (v2.6201, the owner's ask after his walk of
+              // the Gun Dog page); the board's filter by development lives in the house dropdown by the search.
+              <Link
+                to={`/developments/${job.development.id}`}
+                onClick={(e) => e.stopPropagation()}
+                title="Open the development's page"
+                aria-label="Open the development's page"
+                data-nav="development-page"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', color: 'inherit', textDecoration: 'underline dotted', textUnderlineOffset: '2px' }}
               >
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />
                 <span><StagesSearchMark text={developmentName} /></span>
-              </button>
+              </Link>
             ) : (
               <span title="Development for this job" style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem' }}>
                 <DevelopmentHouseIcon size={13} style={{ flexShrink: 0 }} />

@@ -5,9 +5,13 @@
 // role, refuses unless the caller is its sender and it is still open, and writes the words
 // itself ("Wendi marked a bid for you" / "B494 SPACEX…: Reprice the trim.") so a caller can
 // never push arbitrary text to someone. One push per device, logged to notification_history.
+//
+// A person's hours (punch list #141 PR 5, v2.6217): the push goes through _shared/pushHoursSend.ts, which holds it
+// for a person outside their Push me hours, writing the row as `held` and sending nothing; the mark is on the Bid Board.
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
+import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
+import { webPushSender } from '../_shared/webPushSend.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -56,10 +60,9 @@ serve(async (req) => {
     const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
     if (!vapidPublicKey || !vapidPrivateKey) return json({ success: true, push_sent: 0, message: 'VAPID keys not configured' })
 
-    const [{ data: sender }, { data: bid }, { data: subscriptions }] = await Promise.all([
+    const [{ data: sender }, { data: bid }] = await Promise.all([
       admin.from('users').select('name').eq('id', user.id).maybeSingle(),
       admin.from('bids').select('bid_number, project_name').eq('id', request.bid_id).maybeSingle(),
-      admin.from('push_subscriptions').select('endpoint, p256dh_key, auth_key').eq('user_id', request.for_user_id),
     ])
 
     const title = `${firstName(sender?.name)} marked a bid for you`
@@ -68,31 +71,14 @@ serve(async (req) => {
     const body = note ? `${bidLabel || 'A bid'}: ${note}` : bidLabel || 'Open Bids to see it.'
     const url = `/bids?tab=counts&bidId=${request.bid_id}`
 
-    let pushSent = 0
-    if (subscriptions && subscriptions.length > 0) {
-      webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
-      const payload = JSON.stringify({ title, body, url, tag: `bid-mark-${request.id}` })
-      for (const sub of subscriptions) {
-        try {
-          await webpush.sendNotification({ endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } }, payload, { TTL: 86400 })
-          pushSent++
-        } catch (pushErr) {
-          console.error('notify-bid-mark push error', sub.endpoint?.substring(0, 50), pushErr)
-        }
-      }
-    }
+    // Through the person's hours (#141 PR 5): pushed now, or held with a row and no push.
+    const result = await sendPushHonouringHours(
+      admin,
+      { userIds: [request.for_user_id], title, body, url, tag: `bid-mark-${request.id}`, templateType: 'bid_mark' },
+      webPushSender(admin, 'notify-bid-mark'),
+    )
 
-    if (pushSent > 0) {
-      await admin.from('notification_history').insert({
-        recipient_user_id: request.for_user_id,
-        template_type: 'bid_mark',
-        title,
-        body_preview: body.substring(0, 200),
-        channel: 'push',
-      })
-    }
-
-    return json({ success: true, push_sent: pushSent })
+    return json({ success: true, push_sent: result.devices, held: result.held.length })
   } catch (error) {
     console.error('Error in notify-bid-mark:', error)
     return json({ error: (error as Error)?.message || 'Internal server error' }, 500)

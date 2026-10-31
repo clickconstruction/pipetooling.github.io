@@ -19,7 +19,13 @@ import LegalCountyContentsCard from '../../settings/LegalCountyContentsCard'
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
 const STANDS: LegalMapStandOrNone[] = ['eyes', 'firm', 'gave', 'none']
 
-export type LegalMapOpenOn = { county: string | null; heldId: string | null; nonce: number }
+export type LegalMapOpenOn = {
+  county: string | null
+  heldId: string | null
+  /** A firm to light (punch list #222, PR 1): its legend row pressed, its counties in color, the other firms' faint. */
+  firmId?: string | null
+  nonce: number
+}
 
 export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm, onOpenCase, stacked = false, openOn = null, venueFor }: {
   cases: ReadonlyArray<LegalMapCase>
@@ -38,10 +44,13 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
 }) {
   const [county, setCounty] = useState<string | null>(openOn?.county ?? null)
   const [heldId, setHeldId] = useState<string | null>(openOn?.heldId ?? null)
+  /** The lit firm (v2.6195): pressed on its legend row, or sent by the firm window's *Show on the desk map*. */
+  const [litFirmId, setLitFirmId] = useState<string | null>(openOn?.firmId ?? null)
   useEffect(() => {
     if (!openOn) return
     setCounty(openOn.county)
     setHeldId(openOn.heldId)
+    setLitFirmId(openOn.firmId ?? null)
   }, [openOn])
   const heldCase = useMemo(() => (heldId ? cases.find((c) => c.id === heldId) ?? null : null), [cases, heldId])
   const venue = heldCase && venueFor ? venueFor(heldCase) : null
@@ -72,6 +81,7 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
             firmNames={firmNames}
             legend={legend}
             pickedFirmId={null}
+            litFirmId={litFirmId}
             cases={cases}
             heldCaseId={heldId}
             selectedCounty={county}
@@ -95,17 +105,29 @@ export default function LegalDeskMapView({ cases, loading, firms, countiesByFirm
               const hue = row.firmId ? hues.get(row.firmId) ?? NO_FIRM_HUE : NO_FIRM_HUE
               const counties = row.firmId ? countiesByFirm.get(row.firmId) ?? [] : offCounties
               if (!row.firmId && row.count === 0) return null
-              return (
-                <div key={row.firmId ?? 'none'} data-legal-map-legend-row={row.firmId ?? 'none'} style={{ display: 'flex', justifyContent: 'space-between', gap: 8, padding: '5px 0', borderTop: '1px solid var(--border)' }}>
+              const lit = row.firmId != null && litFirmId === row.firmId
+              const inner = (
+                <>
                   <span style={{ minWidth: 0 }}>
                     <span aria-hidden style={{ width: 10, height: 10, borderRadius: 2, background: hue.fill, border: `1px solid ${hue.border}`, display: 'inline-block', verticalAlign: -1, marginRight: 6 }} />
                     {row.name}
-                    <div style={{ ...MUTED, fontSize: '0.72rem' }}>{row.firmId ? countiesLine(counties) : counties.join(', ') || 'off the map'}</div>
+                    <span style={{ ...MUTED, fontSize: '0.72rem', display: 'block' }}>{row.firmId ? countiesLine(counties) : counties.join(', ') || 'off the map'}</span>
                   </span>
                   <span style={{ textAlign: 'right', flexShrink: 0 }}>
                     <b>{row.count} {row.count === 1 ? 'case' : 'cases'}</b>
-                    <div style={{ ...MUTED, fontSize: '0.72rem' }}>{row.moneyWords}</div>
+                    <span style={{ ...MUTED, fontSize: '0.72rem', display: 'block' }}>{row.moneyWords}</span>
                   </span>
+                </>
+              )
+              const rowStyle: CSSProperties = { display: 'flex', justifyContent: 'space-between', gap: 8, padding: '5px 4px', borderTop: '1px solid var(--border)', width: '100%', textAlign: 'left', font: 'inherit', color: 'inherit', background: lit ? 'var(--bg-subtle)' : 'transparent', borderLeft: 0, borderRight: 0, borderBottom: 0, borderRadius: 0 }
+              // A firm's row is a press (v2.6195): lit, its counties keep their color and the other firms' go faint; press again to light every firm.
+              return row.firmId ? (
+                <button key={row.firmId} type="button" data-legal-map-legend-row={row.firmId} aria-pressed={lit} title={lit ? 'Light every firm again' : `Light ${row.name}’s counties alone`} onClick={() => setLitFirmId((cur) => (cur === row.firmId ? null : row.firmId))} style={{ ...rowStyle, cursor: 'pointer' }}>
+                  {inner}
+                </button>
+              ) : (
+                <div key="none" data-legal-map-legend-row="none" style={rowStyle}>
+                  {inner}
                 </div>
               )
             })}

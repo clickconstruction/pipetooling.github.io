@@ -231,5 +231,5 @@ const dialogStyle: CSSProperties = {
   overflow: 'hidden',
 }
 const closeButtonStyle: CSSProperties = { marginLeft: 'auto', background: 'none', border: 'none', color: 'var(--text-muted)', fontSize: '1.5rem', lineHeight: 1, cursor: 'pointer', padding: '0 0.25rem' }
-const primaryButtonStyle: CSSProperties = { padding: '0.7rem 1rem', borderRadius: 8, border: 'none', background: 'var(--text-link)', color: 'white', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }
+const primaryButtonStyle: CSSProperties = { padding: '0.7rem 1rem', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', fontWeight: 700, fontSize: '0.95rem', cursor: 'pointer' }
 const secondaryButtonStyle: CSSProperties = { padding: '0.55rem 1rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 500, fontSize: '0.9rem', cursor: 'pointer' }

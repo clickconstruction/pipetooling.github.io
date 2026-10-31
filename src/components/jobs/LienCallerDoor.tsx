@@ -17,7 +17,7 @@ export function LienCallerDoor({ onOpen, open = false, style, buttonStyle }: { o
         aria-haspopup="dialog"
         aria-label="An owner is calling"
         title="An owner is calling — what to say, filled with the job under you; find the job with the box on the list"
-        style={{ padding: '2px 10px', borderRadius: 7, border: '1px solid transparent', background: open ? 'var(--text-blue-800)' : 'var(--text-link)', color: '#fff', font: 'inherit', fontSize: '0.85rem', lineHeight: '1.25rem', cursor: 'pointer', ...buttonStyle }}
+        style={{ padding: '2px 10px', borderRadius: 7, border: '1px solid transparent', background: open ? '#1e40af' : '#2563eb', color: '#fff', font: 'inherit', fontSize: '0.85rem', lineHeight: '1.25rem', cursor: 'pointer', ...buttonStyle }}
       >
         ☎
       </button>

@@ -226,7 +226,7 @@ export function PayrollCatchUpModal({
                               style={{
                                 padding: '2px 6px',
                                 fontSize: '0.8125rem',
-                                background: isGenerating || generatingKey != null ? DEAD_PRESS_FILL : '#3b82f6',
+                                background: isGenerating || generatingKey != null ? DEAD_PRESS_FILL : '#2563eb',
                                 color: isGenerating || generatingKey != null ? DEAD_PRESS_TEXT : 'white',
                                 border: 'none',
                                 borderRadius: 4,

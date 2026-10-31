@@ -142,7 +142,7 @@ export function VehicleOdometerHistoryModal({
               type="button"
               onClick={() => void addReading()}
               disabled={adding || !addRaw.trim()}
-              style={{ font: 'inherit', fontSize: '0.88rem', fontWeight: 650, padding: '0.5rem 0.95rem', borderRadius: 8, border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: adding || !addRaw.trim() ? 'not-allowed' : 'pointer', opacity: !addRaw.trim() ? 0.6 : 1, whiteSpace: 'nowrap' }}
+              style={{ font: 'inherit', fontSize: '0.88rem', fontWeight: 650, padding: '0.5rem 0.95rem', borderRadius: 8, border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: adding || !addRaw.trim() ? 'not-allowed' : 'pointer', opacity: !addRaw.trim() ? 0.6 : 1, whiteSpace: 'nowrap' }}
             >
               {adding ? 'Saving…' : 'Add reading'}
             </button>

@@ -13,7 +13,7 @@ function pillStyle(active: boolean): CSSProperties {
     padding: '0.45rem 1rem',
     border: 'none',
     cursor: 'pointer',
-    background: active ? '#3b82f6' : 'transparent',
+    background: active ? '#2563eb' : 'transparent',
     color: active ? 'white' : 'var(--text-700)',
     fontWeight: active ? 700 : 400,
   }

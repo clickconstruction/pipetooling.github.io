@@ -211,7 +211,7 @@ function paidWords(paid: readonly MemberJob[], inp: CountCardInputs): string | n
 }
 
 /** The Jobs card's foot: the Pipeline for the office; the overview reader, who cannot open it, is sent to the Pieces table on this page. */
-const jobsFoot = (inp: CountCardInputs): CountCard['foot'] => (noMoney(inp) ? { door: 'jobs', label: 'See them in Pieces ›', note: 'each job with the bid it came from' } : { door: 'jobs', label: 'Open on the Pipeline ›', note: null })
+const jobsFoot = (inp: CountCardInputs): CountCard['foot'] => (noMoney(inp) ? { door: 'jobs', label: 'See them in Jobs & bids ›', note: 'each job with the bid it came from' } : { door: 'jobs', label: 'Open on the Pipeline ›', note: null })
 
 /** The bids by status in the board's order. */
 const bidGroups = (bids: readonly MemberBid[], inp: CountCardInputs): CountGroup[] => BID_STATUS_ORDER.map((s) => ({ label: BID_STATUS_LABEL[s], rows: bids.filter((b) => bidStatusWord(b) === s).map((b) => bidRow(b, inp, bidMeta(b, inp))) }))
@@ -274,7 +274,7 @@ export function buildCountCard(key: CountKey, inp: CountCardInputs): CountCard {
         headMeta: 'by stage',
         groups: c.groups,
         more: c.more,
-        folded: paidLine ? `${paidLine} · folded in Pieces` : null,
+        folded: paidLine ? `${paidLine} · folded in Jobs & bids` : null,
         foot: jobsFoot(inp),
         empty: null,
       }
@@ -359,7 +359,7 @@ export type AtAddressKind = 'jobs' | 'bids'
 export function buildAtAddressCard(kind: AtAddressKind, inp: CountCardInputs, street: string | null, shownInPieces: boolean): CountCard {
   const { siteName } = inp
   const where = `at 📍 ${street ?? 'this address'}`
-  const foot = (n: number): CountCard['foot'] => ({ door: 'pieces', label: shownInPieces ? 'See them in Pieces ›' : `Show all ${n} in Pieces ›`, note: `drawn there as not in ${siteName}` })
+  const foot = (n: number): CountCard['foot'] => ({ door: 'pieces', label: shownInPieces ? 'See them in Jobs & bids ›' : `Show all ${n} in Jobs & bids ›`, note: `drawn there as not in ${siteName}` })
   if (kind === 'jobs') {
     const jobs = inp.atAddress.jobs
     const g = jobGroups(jobs, inp)

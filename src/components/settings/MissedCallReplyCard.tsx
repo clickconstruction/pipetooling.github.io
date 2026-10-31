@@ -200,8 +200,8 @@ export function MissedCallReplyCard({
                 fontSize: '0.85rem',
                 fontWeight: 600,
                 cursor: changed && !bad && !saving ? 'pointer' : 'default',
-                background: changed && !bad ? 'var(--text-link)' : 'var(--surface)',
-                color: changed && !bad ? 'var(--surface)' : 'var(--text-muted)',
+                background: changed && !bad ? '#2563eb' : 'var(--surface)',
+                color: changed && !bad ? '#fff' : 'var(--text-muted)',
               }}
             >
               {saving ? 'Saving…' : W.save}

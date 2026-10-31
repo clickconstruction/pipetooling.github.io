@@ -121,9 +121,9 @@ function Press({ step, press, lines, onPress }: { step: FlowStep; press: RowPres
       onClick={() => onPress(step, press, lines)}
       title={press.kind === 'nudge' ? "The step's line to each, one send window at a time. Nothing sends until you press Send." : press.label}
       style={{
-        border: `1px solid ${urgent ? 'var(--text-blue-500)' : 'var(--border-strong)'}`,
-        background: urgent ? 'var(--text-blue-500)' : 'var(--surface)',
-        color: urgent ? 'var(--surface)' : 'var(--text-700)',
+        border: `1px solid ${urgent ? '#2563eb' : 'var(--border-strong)'}`,
+        background: urgent ? '#2563eb' : 'var(--surface)',
+        color: urgent ? '#fff' : 'var(--text-700)',
         borderRadius: 8,
         padding: '0.3rem 0.75rem',
         fontSize: '0.85rem',

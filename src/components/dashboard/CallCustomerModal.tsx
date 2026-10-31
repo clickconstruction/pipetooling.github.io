@@ -133,7 +133,7 @@ export default function CallCustomerModal({
             style={{
               padding: '0.45rem 0.9rem',
               fontSize: '0.875rem',
-              background: !notes.trim() || saving ? 'var(--bg-muted)' : '#3b82f6',
+              background: !notes.trim() || saving ? 'var(--bg-muted)' : '#2563eb',
               color: !notes.trim() || saving ? 'var(--text-muted)' : '#fff',
               border: 'none',
               borderRadius: 6,

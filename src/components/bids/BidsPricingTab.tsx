@@ -65,6 +65,10 @@ import { BidPickerStandardList } from './BidPickerStandardList'
 import { bidPickerEmptyWords } from '../../lib/bids/bidPickerEmptyWords'
 import { filterBidsForPicker } from '../../lib/bids/filterBidsForPicker'
 import { resolvePricingEntry } from '../../lib/bids/resolvePricingEntry'
+import { formatErrorMessage } from '../../utils/errorHandling'
+import { countedLabel } from '../../lib/batchWords'
+import { useRobotFixtures } from '../../hooks/useRobotFixtures'
+import { moneyWords, numberOf } from '../../lib/bids/robotFixtures'
 import { decoratePricingRows } from '../../lib/bids/decoratePricingRows'
 import { BidsPriceBookDrawer } from './BidsPriceBookDrawer'
 import { PricingVersionFormModal } from './PricingVersionFormModal'
@@ -300,6 +304,13 @@ export function BidsPricingTab({
   // Lock pricing after send (v2.3591): a sent bid refuses every pricing write until this session
   // presses Revise; the choice lives in sessionStorage, never on the bid.
   const [revisedBidIds, setRevisedBidIds] = useState<ReadonlySet<string>>(() => readRevisedBids(typeof window !== 'undefined' ? window.sessionStorage : null))
+  // Robot fixtures (punch list #221, PR 3b): the robot's price beside hers on every row it landed, the chip on a row
+  // priced at the robot's price, and the door that prices the rows that landed before a book was picked.
+  const robotFixtures = useRobotFixtures(selectedBidForPricing?.id ?? null, true)
+  const robotPullRows = useMemo(() => (robotFixtures.state.kind === 'ready' ? robotFixtures.state.rows : []), [robotFixtures.state])
+  const robotByCountRow = useMemo(() => new Map(robotPullRows.filter((x) => x.taken_at && x.count_row_id).map((x) => [x.count_row_id as string, x])), [robotPullRows])
+  const robotUnpriced = robotPullRows.filter((x) => x.taken_at && x.count_row_id && x.taken_as === 'added' && (x.priced_as ?? 'unpriced') === 'unpriced' && numberOf(x.robot_unit_price) != null).length
+  const [robotPricing, setRobotPricing] = useState(false)
   const pricingLock = pricingLockState({ bidDateSent: selectedBidForPricing?.bid_date_sent, bidId: selectedBidForPricing?.id, revised: revisedBidIds })
   /** False (with the toast) when the selected bid is sent and not being revised — every pricing write asks first. */
   function guardPricingWrite(): boolean {
@@ -2715,6 +2726,25 @@ export function BidsPricingTab({
                 const altCost = sumByAlternate(effScoped, altTags, (r) => r.cost)
                 const altRowIds = new Set(pricingCountRows.filter((cr) => isAlternateRow(cr, altTags)).map((cr) => cr.id))
                 const declinedIds = new Set(selectedBidForPricing ? pricingCountRows.filter((cr) => isDeclinedRow(cr, selectedBidForPricing)).map((cr) => cr.id) : [])
+                const robotChip = (id: string) => {
+                  const x = robotByCountRow.get(id)
+                  if (!x) return null
+                  const price = numberOf(x.robot_unit_price)
+                  return (
+                    <>
+                      {x.priced_as === 'robot' ? (
+                        <span data-testid="pricing-robot-price-chip" title="Your book has no entry for this fixture, so the robot's price is on the row as its custom price. Pick an entry or type a price to make it yours." style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--border-blue)', color: 'var(--text-blue-800)', background: 'var(--bg-blue-tint)', marginLeft: '0.3rem', verticalAlign: 'middle' }}>
+                          robot's price
+                        </span>
+                      ) : null}
+                      {price != null ? (
+                        <span data-testid="pricing-robot-reference" title={`The robot priced this fixture at ${moneyWords(price)} each on its own book. A reference, nothing more.`} style={{ fontSize: '0.7rem', color: 'var(--text-muted)', marginLeft: '0.35rem', whiteSpace: 'nowrap' }}>
+                          robot {moneyWords(price)}
+                        </span>
+                      ) : null}
+                    </>
+                  )
+                }
                 const altChip = (id: string) =>
                   declinedIds.has(id) ? (
                     <span title="The customer did not take this alternate — priced as sent, out of the job" style={{ fontSize: '0.6rem', fontWeight: 700, letterSpacing: '0.06em', padding: '0 0.3rem', borderRadius: 3, border: '1px solid var(--border-strong)', color: 'var(--text-muted)', marginLeft: '0.35rem', verticalAlign: '1px' }}>ALT · declined</span>
@@ -2938,7 +2968,7 @@ export function BidsPricingTab({
                                 type="button"
                                 onClick={() => void applyWorkbenchPreview()}
                                 disabled={wbApplying || previewCount === 0}
-                                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.85rem', border: 'none', borderLeft: '1px solid var(--border-strong)', background: '#3b82f6', color: '#fff', cursor: wbApplying ? 'wait' : previewCount === 0 ? 'not-allowed' : 'pointer', opacity: previewCount === 0 ? 0.55 : 1 }}
+                                style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.3rem 0.85rem', border: 'none', borderLeft: '1px solid var(--border-strong)', background: '#2563eb', color: '#fff', cursor: wbApplying ? 'wait' : previewCount === 0 ? 'not-allowed' : 'pointer', opacity: previewCount === 0 ? 0.55 : 1 }}
                               >
                                 {wbApplying ? 'Applying…' : 'Apply'}
                               </button>
@@ -3179,7 +3209,7 @@ export function BidsPricingTab({
                                     onClick={() => setAndRememberWbSolverOpen(true)}
                                     aria-expanded={false}
                                     title="Open the solver — margin, target total, Solve"
-                                    style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.32rem 0.75rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1 }}
+                                    style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 700, padding: '0.32rem 0.75rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap', lineHeight: 1 }}
                                   >
                                     Solver ›
                                   </button>
@@ -3201,7 +3231,7 @@ export function BidsPricingTab({
                                   aria-expanded={true}
                                   title="Fold the solver away"
                                   aria-label="Fold the solver away"
-                                  style={{ font: 'inherit', fontSize: '0.85rem', fontWeight: 800, padding: '0.3rem 0.55rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: 'pointer', lineHeight: 1, flex: '0 0 auto' }}
+                                  style={{ font: 'inherit', fontSize: '0.85rem', fontWeight: 800, padding: '0.3rem 0.55rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: 'pointer', lineHeight: 1, flex: '0 0 auto' }}
                                 >
                                   ‹
                                 </button>
@@ -3218,7 +3248,7 @@ export function BidsPricingTab({
                                         onClick={() => { setWbSolveScope(sc); setWbSolveLanding(null) }}
                                         aria-pressed={on}
                                         title={sc === 'whole' ? 'Price every row' : sc === 'base' ? 'Price the rows outside the alternate — its rows keep their prices' : 'Price only this alternate\'s rows'}
-                                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.16rem 0.55rem', borderRadius: 999, border: `1px solid ${on ? '#3b82f6' : 'var(--border-strong)'}`, background: on ? '#3b82f6' : 'var(--surface)', color: on ? '#fff' : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
+                                        style={{ font: 'inherit', fontSize: '0.72rem', fontWeight: 700, padding: '0.16rem 0.55rem', borderRadius: 999, border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`, background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'var(--text-muted)', cursor: 'pointer', whiteSpace: 'nowrap' }}
                                       >
                                         {solveScopeLabel(sc, labels)}
                                       </button>
@@ -3314,7 +3344,7 @@ export function BidsPricingTab({
                                   {/* Solve belongs to "or total" (v2.2388, Wendi) — inside the unit it sits tight
                                       to the field and the whole "or total $___ Solve ▾" wraps as one piece. */}
                                   <span ref={solveMenuRef} style={{ position: 'relative', display: 'inline-flex', flex: '0 0 auto' }}>
-                                  <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: '6px 0 0 6px', border: '1px solid #3b82f6', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>
+                                  <button type="button" onClick={solveToTarget} style={{ font: 'inherit', fontSize: '0.8rem', fontWeight: 600, padding: '0.35rem 0.8rem', borderRadius: '6px 0 0 6px', border: '1px solid #2563eb', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>
                                     Solve
                                   </button>
                                   <button
@@ -3324,7 +3354,7 @@ export function BidsPricingTab({
                                     aria-expanded={solveMenuOpen}
                                     aria-label="More ways to solve"
                                     title="More ways to solve"
-                                    style={{ font: 'inherit', fontSize: '0.7rem', padding: '0.35rem 0.45rem', borderRadius: '0 6px 6px 0', border: '1px solid #3b82f6', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}
+                                    style={{ font: 'inherit', fontSize: '0.7rem', padding: '0.35rem 0.45rem', borderRadius: '0 6px 6px 0', border: '1px solid #2563eb', borderLeft: '1px solid rgba(255, 255, 255, 0.35)', background: '#2563eb', color: '#fff', cursor: 'pointer' }}
                                   >
                                     ▾
                                   </button>
@@ -3405,12 +3435,38 @@ export function BidsPricingTab({
                           <button
                             type="button"
                             onClick={() => { setWbShowNoCostOnly((v) => !v); setWbShowUnpricedOnly(false) }}
-                            style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.2rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', whiteSpace: 'nowrap', background: wbShowNoCostOnly ? '#3b82f6' : 'var(--surface)', color: wbShowNoCostOnly ? '#fff' : 'var(--text-700)' }}
+                            style={{ font: 'inherit', fontSize: '0.72rem', padding: '0.2rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', whiteSpace: 'nowrap', background: wbShowNoCostOnly ? '#2563eb' : 'var(--surface)', color: wbShowNoCostOnly ? '#fff' : 'var(--text-700)' }}
                           >
                             {wbShowNoCostOnly ? 'Showing no-cost rows — show all' : `Show these ${eff.length - costed.length} rows`}
                           </button>
                         </div>
                       ) : null}
+                    {robotUnpriced > 0 && selectedPricingVersionId && selectedBidForPricing && !selectedBidForPricing.bid_date_sent ? (
+                      <div style={{ marginTop: '0.45rem', display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', fontSize: '0.78rem' }}>
+                        <button
+                          type="button"
+                          data-testid="pricing-robot-price-door"
+                          disabled={robotPricing}
+                          onClick={async () => {
+                            const bidId = selectedBidForPricing.id
+                            setRobotPricing(true)
+                            try {
+                              await robotFixtures.price(bidId, selectedPricingVersionId)
+                              await reloadPricingForBid(bidId)
+                              robotFixtures.reload()
+                            } catch (e) {
+                              setError(formatErrorMessage(e))
+                            } finally {
+                              setRobotPricing(false)
+                            }
+                          }}
+                          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.3rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-blue-800)', cursor: robotPricing ? 'wait' : 'pointer' }}
+                        >
+                          {robotPricing ? 'Pricing…' : `${countedLabel('Price', robotUnpriced, 'robot row')} at the robot's prices`}
+                        </button>
+                        <span style={{ color: 'var(--text-muted)' }}>{robotUnpriced === 1 ? '1 robot row landed before a book was picked and has no price.' : `${robotUnpriced} robot rows landed before a book was picked and have no price.`}</span>
+                      </div>
+                    ) : null}
                     {/* Frozen bid prices, PR 3 (v2.3591): a sent bid is locked — the chip says so and Revise unlocks it for this session. */}
                     {(() => {
                       const chip = pricingLockChipText(pricingLock, selectedBidForPricing?.bid_date_sent, new Date().getFullYear())
@@ -3495,7 +3551,7 @@ export function BidsPricingTab({
                       <button
                         type="button"
                         onClick={() => { setWbShowUnpricedOnly((v) => !v); setWbShowNoCostOnly(false) }}
-                        style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.26rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', background: wbShowUnpricedOnly ? '#3b82f6' : 'var(--surface)', color: wbShowUnpricedOnly ? '#fff' : 'var(--text-700)' }}
+                        style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.26rem 0.6rem', borderRadius: 999, border: '1px solid var(--border-strong)', cursor: 'pointer', background: wbShowUnpricedOnly ? '#2563eb' : 'var(--surface)', color: wbShowUnpricedOnly ? '#fff' : 'var(--text-700)' }}
                       >
                         {wbShowUnpricedOnly ? 'Showing unpriced — show all' : 'Show unpriced only'}
                       </button>
@@ -3532,7 +3588,7 @@ export function BidsPricingTab({
                             disabled={wbFillingBook || bookMatches.length === 0}
                             onClick={() => void fillMatchingBookEntries(bookMatches)}
                             title={bookMatches.length === 0 ? 'No unassigned rows exactly match a book entry name' : 'Assign each matching row its book entry — prices fill from the book'}
-                            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.7rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: bookMatches.length === 0 ? 'not-allowed' : 'pointer', opacity: wbFillingBook || bookMatches.length === 0 ? 0.55 : 1 }}
+                            style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.7rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: bookMatches.length === 0 ? 'not-allowed' : 'pointer', opacity: wbFillingBook || bookMatches.length === 0 ? 0.55 : 1 }}
                           >
                             {wbFillingBook ? 'Filling…' : bookMatches.length === 0 ? '0 unassigned rows match the book' : `Fill ${bookMatches.length} matching from book`}
                           </button>
@@ -3664,7 +3720,7 @@ export function BidsPricingTab({
                                   >
                                     ▶
                                   </button>
-                                  {r.countRow.fixture ?? '—'}{altChip(r.countRow.id)}
+                                  {r.countRow.fixture ?? '—'}{altChip(r.countRow.id)}{robotChip(r.countRow.id)}
                                   {/* #128: the row's kind (dashed while it is the app's guess) and the estimator's tags. */}
                                   {(() => {
                                     const marks = rowMarks[r.countRow.id] ?? {}
@@ -4281,7 +4337,7 @@ export function BidsPricingTab({
                   </button>
                   <span style={{ flex: 1 }} />
                   <button type="button" onClick={close} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-                  <button type="button" onClick={() => void savePricingEdit()} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 1.1rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: 'pointer' }}>Save</button>
+                  <button type="button" onClick={() => void savePricingEdit()} style={{ font: 'inherit', fontSize: '0.9rem', padding: '0.45rem 1.1rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: 'pointer' }}>Save</button>
                 </div>
               </div>
             </div>
@@ -4350,7 +4406,7 @@ export function BidsPricingTab({
               </label>
               <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
                 <button type="button" onClick={() => setAddPriceOpen(null)} disabled={wbCloning} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-                <button type="button" onClick={() => void createPriceOption(addPriceOpen.name.trim() || defaultName, addPriceOpen.fromId, addPriceOpen.offer)} disabled={wbCloning || mine.length === 0} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: wbCloning ? 'wait' : 'pointer' }}>{wbCloning ? 'Creating…' : 'Create'}</button>
+                <button type="button" onClick={() => void createPriceOption(addPriceOpen.name.trim() || defaultName, addPriceOpen.fromId, addPriceOpen.offer)} disabled={wbCloning || mine.length === 0} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: wbCloning ? 'wait' : 'pointer' }}>{wbCloning ? 'Creating…' : 'Create'}</button>
               </div>
             </div>
           </div>

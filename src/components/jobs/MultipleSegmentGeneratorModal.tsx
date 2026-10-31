@@ -308,7 +308,7 @@ export function MultipleSegmentGeneratorModal({
           <button
             type="button"
             onClick={() => setRows((prev) => [...prev, newRow()])}
-            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
+            style={{ padding: '0.3rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer' }}
           >
             + Add segment
           </button>

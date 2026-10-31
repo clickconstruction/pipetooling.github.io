@@ -287,7 +287,7 @@ export default function OwnerShareChip({
                   <button type="button" onClick={() => setOpen(false)} style={{ padding: '3px 10px', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)', fontWeight: 600, fontSize: '0.75rem', cursor: 'pointer' }}>
                     Cancel
                   </button>
-                  <button type="button" data-owner-share-apply disabled={busy} onClick={() => void apply()} style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: turningOn ? 'var(--text-link)' : 'var(--text-700)', color: '#fff', fontWeight: 700, fontSize: '0.75rem', cursor: busy ? 'wait' : 'pointer' }}>
+                  <button type="button" data-owner-share-apply disabled={busy} onClick={() => void apply()} style={{ padding: '3px 10px', borderRadius: 6, border: 'none', background: turningOn ? '#2563eb' : 'var(--text-700)', color: turningOn ? '#fff' : 'var(--surface)', fontWeight: 700, fontSize: '0.75rem', cursor: busy ? 'wait' : 'pointer' }}>
                     {busy ? 'Saving…' : turningOn ? 'Show them' : 'Stop showing'}
                   </button>
                 </span>
