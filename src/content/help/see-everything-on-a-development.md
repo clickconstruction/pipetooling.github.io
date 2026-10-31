@@ -43,7 +43,7 @@ A strip under the counts names five looks: History, Pieces, Money, Plans and Que
 History is one dated list, newest first. It holds what the records did and what people wrote. A send, a stage move, a bill or a payment draws a line. So does a note on a job or a bid, a plan set filed, and the customer's contact log.
 
 1. Press a chip under the search box to narrow the list. Press {{chip:blue|Plans}} to see every plan set filed, newest first. On a phone the chips sit in one row. Slide the row sideways to reach the rest.
-2. Type a name, a number or a word into the search box to find a line.
+2. Type a name, a number or a word into the search box, marked with a spyglass, to find a line.
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
 
 A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
@@ -52,8 +52,8 @@ A long line shows its first words and a **more** press. Press it and the whole l
 
 An email came in, a call was made, someone walked the site. History keeps those too, at the time they happened.
 
-1. Type what happened in the box at the top of History.
-2. Pick what it is about. The site is picked by default. You can pick a job, a bid or the customer.
+1. Press {{button:outline|Write a line}} at the top of History. Type what happened in the box.
+2. Pick what it is about under About. The site is picked by default. Press the box and type a number or a name to find a job, a bid or the customer. The pieces written about last sit near the top.
 3. Set when it happened. The box starts at now. Set it back to the email's own time.
 4. Pick the source, like {{chip:blue|Email}} or {{chip:blue|Call}}.
 5. Press {{button:blue|Keep it}}.
