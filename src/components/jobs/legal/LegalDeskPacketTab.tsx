@@ -22,6 +22,7 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 
 import LegalMatterDocumentsPanel from './LegalMatterDocumentsPanel'
+import LegalStatementsStrip from './LegalStatementsStrip'
 import { openLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
 import { supabase } from '../../../lib/supabase'
 import { EVIDENCE_LANDING_GONE_WORDS } from '../../../lib/legal/evidenceLanding'
@@ -227,6 +228,8 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
   if (tab === 'evidence') {
     return (
       <div>
+        {/* v2.6210 (punch list #220): sworn statements, above the documents the scans land in. */}
+        {planActs?.acts?.swearStatement || entries.some((e) => e.kind === 'statement') ? <LegalStatementsStrip entries={entries} todayYmd={packet.todayYmd} canEdit={Boolean(planActs?.acts?.swearStatement)} acts={planActs?.acts?.editStatement && planActs.acts.swearStatement ? { swear: () => planActs.acts!.swearStatement!(packet.todayYmd), open: planActs.acts.editStatement, openDocument: documents ? async (id: string) => { const row = documents.list.find((d) => d.id === id); if (!row) throw new Error(EVIDENCE_LANDING_GONE_WORDS); await openLegalMatterDocument(supabase, row) } : undefined } : null} /> : null}
         {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} payerName={selected.name} landOn={evidenceDoc} onLandingDone={onEvidenceLanded} /> : null}
         <SectionTitle doors={first ? <><Door label="Reports" onClick={() => props.onOpenReports(first)} /><Door label="Sessions" onClick={() => props.onOpenSessionNotes(first)} /><Door label="Job thread" onClick={() => props.onOpenJobThread(first.id)} /></> : null}>Proof the work happened</SectionTitle>
         <Table head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes', 'Links']} numCols={[3]}

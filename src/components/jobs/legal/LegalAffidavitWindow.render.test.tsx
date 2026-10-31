@@ -1,0 +1,141 @@
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vitest'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import LegalAffidavitWindow from './LegalAffidavitWindow'
+import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
+import type { RecordCheckLine, StatementDraft } from '../../../lib/legal/affidavitPaper'
+
+const check = vi.hoisted(() => ({ lines: [] as RecordCheckLine[], loading: false, failed: [] as string[], calls: [] as unknown[] }))
+vi.mock('./useStatementRecordCheck', () => ({ useStatementRecordCheck: (input: unknown) => { check.calls.push(input); return { lines: check.lines, loading: check.loading, failed: check.failed } } }))
+vi.mock('../../../hooks/useIsMobile', () => ({ useIsMobile: () => false }))
+vi.mock('../../../lib/supabase', () => ({ supabase: {} }))
+
+afterEach(() => { cleanup(); check.lines = []; check.failed = []; check.calls = [] })
+
+const TODAY = '2026-10-31'
+const roster = [
+  { id: 'u-g', name: 'Grace Lee', role: 'assistant', title: 'Office manager' },
+  { id: 'u-da', name: 'Daniel Alvarez', role: 'master_technician', title: null },
+]
+const account = { payerName: 'Northline Builders', jobs: [{ id: 'j1', label: '742' }], propertyCounty: 'Williamson' }
+function open(over: Partial<Parameters<typeof LegalAffidavitWindow>[0]> = {}) {
+  // Typed parameters, so a test may read a call's arguments by index.
+  const onSave = vi.fn(async (_draft: StatementDraft, _entryId: string | null): Promise<boolean> => true)
+  const onClose = vi.fn()
+  render(<LegalAffidavitWindow entry={null} initialOn="2026-09-03" account={account} roster={roster} officeCounty="Guadalupe" todayYmd={TODAY} busy={false} onSave={onSave} onClose={onClose} zIndex={800} {...over} />)
+  return { onSave, onClose }
+}
+
+describe('LegalAffidavitWindow (punch list #220, v2.6210)', () => {
+  it('opens on the composer’s day, before a notary, on the office’s county; the roster pick fills the role line and the title', () => {
+    open()
+    expect(screen.getByRole('dialog', { name: 'Swear a statement' })).toBeTruthy()
+    expect(document.querySelector('[data-legal-affidavit-account]')!.textContent).toBe('Northline Builders · job 742')
+    expect((screen.getByLabelText('The day it is about') as HTMLInputElement).value).toBe('2026-09-03')
+    expect(document.querySelector('[data-legal-affidavit-form="notary"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(document.querySelector('[data-legal-affidavit-county="Guadalupe"]')!.getAttribute('aria-pressed')).toBe('true')
+    // The RMP leads the pick.
+    const pick = screen.getByLabelText('Who swears it') as HTMLSelectElement
+    expect([...pick.options].map((o) => o.textContent)).toEqual(['Pick one of our team', 'Daniel Alvarez · RMP', 'Grace Lee', 'Someone else, a witness…'])
+    fireEvent.change(pick, { target: { value: 'u-da' } })
+    expect((screen.getByLabelText('Their role, one line') as HTMLInputElement).value).toBe('Responsible Master Plumber of record for Click Plumbing and Electrical')
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Daniel Alvarez')
+    expect(document.querySelector('[data-legal-affidavit-opener]')!.textContent).toContain('My name is Daniel Alvarez. I am over eighteen years of age, of sound mind, and capable of making this affidavit.')
+    // The record check reads the affiant and the span.
+    const last = check.calls[check.calls.length - 1] as { affiant: { userId: string | null }; incidentOn: string; enabled: boolean }
+    expect(last.affiant.userId).toBe('u-da')
+    expect(last.incidentOn).toBe('2026-09-03')
+    expect(last.enabled).toBe(true)
+  })
+
+  it('a witness is typed; No notary flips the opener, the title and the county to the property’s; the blank is one press', () => {
+    open()
+    fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: '__witness' } })
+    fireEvent.change(screen.getByLabelText('The witness’s name'), { target: { value: 'Thanh Nguyen' } })
+    fireEvent.change(screen.getByLabelText('Their role, one line'), { target: { value: 'the foreman for Brightline Electric' } })
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Affidavit of Thanh Nguyen')
+    fireEvent.click(document.querySelector('[data-legal-affidavit-form="declaration"]')!)
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('Declaration of Thanh Nguyen')
+    expect(document.querySelector('[data-legal-affidavit-opener]')!.textContent).toContain('capable of making this declaration. I am the foreman for Brightline Electric. I have no interest in the outcome of this dispute.')
+    expect(document.querySelector('[data-legal-affidavit-county="Williamson"]')!.getAttribute('aria-pressed')).toBe('true')
+    fireEvent.click(document.querySelector('[data-legal-affidavit-county="blank"]')!)
+    expect(document.querySelector('[data-legal-affidavit-county="blank"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(screen.getByText('The notary writes the county in by hand where the paper is signed.')).toBeTruthy()
+    // A title typed by hand stops following the picks.
+    fireEvent.change(screen.getByLabelText('Title'), { target: { value: 'What Thanh saw' } })
+    fireEvent.click(document.querySelector('[data-legal-affidavit-form="notary"]')!)
+    expect((screen.getByLabelText('Title') as HTMLInputElement).value).toBe('What Thanh saw')
+  })
+
+  it('Save sleeps with the reason until the draft is sound, then sends the draft trimmed and closes', async () => {
+    const { onSave, onClose } = open()
+    const save = document.querySelector('[data-legal-affidavit-save]') as HTMLButtonElement
+    expect(save.disabled).toBe(true)
+    expect(save.title).toBe('Pick who swears it.')
+    fireEvent.change(screen.getByLabelText('Who swears it'), { target: { value: 'u-da' } })
+    expect(save.title).toBe('Type the statement.')
+    fireEvent.change(screen.getByLabelText('The last day of the span'), { target: { value: '2026-09-17' } })
+    fireEvent.change(screen.getByLabelText('The statement'), { target: { value: '  Northline never called us back.\nI drove past the site.  ' } })
+    expect(save.disabled).toBe(false)
+    expect(screen.getByText('Saves to the Timeline’s Said lane on Sep 3 to Sep 17 as a draft. The firm reads it as a draft.')).toBeTruthy()
+    fireEvent.click(save)
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(onSave.mock.calls[0]).toEqual([
+      { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', userId: 'u-da', name: 'Daniel Alvarez', role: 'Responsible Master Plumber of record for Click Plumbing and Electrical' }, incidentOn: '2026-09-03', incidentTo: '2026-09-17', form: 'notary', venueCounty: 'Guadalupe', body: 'Northline never called us back.\nI drove past the site.' },
+      null,
+    ])
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+  })
+
+  it('the dim closes an empty window; once typed, ✕ asks first and the dim does nothing', () => {
+    const { onClose } = open()
+    fireEvent.click(document.querySelector('[data-legal-affidavit-backdrop]')!)
+    expect(onClose).toHaveBeenCalledTimes(1)
+    cleanup()
+    const second = open()
+    fireEvent.change(screen.getByLabelText('The statement'), { target: { value: 'x' } })
+    fireEvent.click(document.querySelector('[data-legal-affidavit-backdrop]')!)
+    expect(second.onClose).not.toHaveBeenCalled()
+    fireEvent.click(screen.getByRole('button', { name: 'Close' }))
+    expect(second.onClose).not.toHaveBeenCalled()
+    expect(screen.getByText('Leave without saving?')).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Leave it' }))
+    expect(second.onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('draws the record check with the affiant’s lines bold and an empty day amber, and names a source that could not be read', () => {
+    check.lines = [
+      { ymd: '2026-09-03', kind: 'clock', text: 'Clock session · Daniel Alvarez · 7:12 AM to 8:05 AM · job 742', theirs: true },
+      { ymd: '2026-09-04', kind: 'note', text: 'Nothing recorded on this day. No clock session, report or note. The paragraph that names it rests on the affiant’s word alone.', theirs: false },
+    ]
+    check.failed = ['the field reports (timed out)']
+    open()
+    const lines = document.querySelectorAll('[data-legal-record-line]')
+    expect(lines).toHaveLength(2)
+    expect(lines[0]!.getAttribute('data-theirs')).toBe('yes')
+    expect(lines[0]!.textContent).toContain('Sep 3')
+    expect(screen.getByText(/Could not read the field reports \(timed out\)/)).toBeTruthy()
+    expect(screen.getByText('What the record says about Sep 3')).toBeTruthy()
+  })
+
+  it('a statement being changed opens on its words; a signed one is read only with its door to the Timeline', async () => {
+    const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'Northline never called us back.', occurred_on: '2026-09-03', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', user_id: 'u-da', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', incident_to: '2026-09-17', venue_county: 'Guadalupe', state: 'printed', prints: [{ at: '2026-10-28T19:14:00Z', by: 'u-g', face: 'whole', text: '' }] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }
+    const { onSave } = open({ entry })
+    expect(screen.getByRole('dialog', { name: 'Change the statement' })).toBeTruthy()
+    expect(document.querySelector('[data-legal-affidavit-chip]')!.textContent).toBe('printed 1× · last Oct 28')
+    expect((screen.getByLabelText('The statement') as HTMLTextAreaElement).value).toBe('Northline never called us back.')
+    expect(document.querySelector('[data-legal-affidavit-prints]')!.textContent).toContain('the whole paper · Grace Lee')
+    fireEvent.change(screen.getByLabelText('The statement'), { target: { value: 'Northline never called us back. On September 17 the room was empty.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save the statement' }))
+    await waitFor(() => expect(onSave).toHaveBeenCalledTimes(1))
+    expect(onSave.mock.calls[0]![1]).toBe('st')
+    cleanup()
+    const onShowTimeline = vi.fn()
+    open({ entry: { ...entry, meta: { ...(entry.meta as object), state: 'signed', signed_on: '2026-10-29', document_id: 'd1' } }, onShowTimeline })
+    expect(document.querySelector('[data-legal-affidavit-save]')).toBeNull()
+    expect((screen.getByLabelText('The statement') as HTMLTextAreaElement).disabled).toBe(true)
+    expect(screen.getByText(/The signed copy is filed/)).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'The statement on the Timeline ↗' }))
+    expect(onShowTimeline).toHaveBeenCalled()
+  })
+})
