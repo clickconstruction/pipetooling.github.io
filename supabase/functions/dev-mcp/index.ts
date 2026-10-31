@@ -5,7 +5,7 @@ import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRow
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
+import { WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
@@ -36,7 +36,7 @@ import { divisionBidFolderByKey } from '../_shared/bidPlansFolders.ts'
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.12.0'
+const SERVER_VERSION = '0.12.1'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -795,10 +795,15 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         reused = existing !== null
         fileLink = `https://drive.google.com/file/d/${fileId}/view`
       } catch (e) {
-        const msg = e instanceof Error ? e.message : String(e)
-        return errored(/storage quota/i.test(msg)
-          ? `Drive refused the upload: ${msg}. The division folder is not on a Shared Drive, so the intake service account has no quota there — set DRIVE_IMPERSONATE_USER (docs/DRIVE_INTAKE_SETUP.md), or drop the file into ${folderLink || 'the division folder'} by hand and press Find the folder on the bid form. The staged copy is still there for a retry.`
-          : `Drive refused the filing: ${msg}. The staged copy is still there for a retry.`)
+        // v2.6239: the words name the service account, the folder and the share that fixes it (driveFilingRefusal).
+        let serviceAccount: string | null = null
+        try {
+          const email = (JSON.parse(saJson) as { client_email?: unknown }).client_email
+          serviceAccount = typeof email === 'string' && email ? email : null
+        } catch {
+          serviceAccount = null
+        }
+        return errored(driveFilingRefusal({ message: e instanceof Error ? e.message : String(e), serviceAccount, division, folderName, folderLink }))
       }
       const res = await restPost(session, rpcPath, { ...built.body, p_link: { folder_link: folderLink, file_link: fileLink, pages } })
       if (!res.ok) return errored(`${restError(res.status, res.body)} — the set IS in Drive at ${fileLink} (folder ${folderLink}): paste the folder link on the bid form, or plan again with replace: true.`)
