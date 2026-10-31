@@ -264,3 +264,16 @@ describe('LegalMatterDocumentsPanel · Show on Evidence lands here (v2.6166)', (
     expect(landed()).toBeNull()
   })
 })
+
+describe('LegalMatterDocumentsPanel · a signed scan’s door back to its statement (punch list #220, v2.6212)', () => {
+  it('the ⋯ names the scan as a statement’s signed copy and opens the statement', () => {
+    const openStatement = vi.fn()
+    render(<LegalMatterDocumentsPanel matterId="m-1" documents={[row('d-scan', 'Affidavit of Daniel Alvarez'), row('d-2', 'Final invoice')]} canEdit onChanged={() => {}} linkedStatements={{ 'd-scan': 'st' }} onOpenStatement={openStatement} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for Affidavit of Daniel Alvarez' }))
+    expect(document.querySelector('[data-legal-document-statement]')!.textContent).toBe('The signed copy of a sworn statement on the Timeline.')
+    fireEvent.click(screen.getByRole('menuitem', { name: 'The statement on the Timeline' }))
+    expect(openStatement).toHaveBeenCalledWith('st')
+    fireEvent.click(screen.getByRole('button', { name: 'Actions for Final invoice' }))
+    expect(screen.queryByRole('menuitem', { name: 'The statement on the Timeline' })).toBeNull()
+  })
+})

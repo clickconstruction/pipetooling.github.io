@@ -2,8 +2,8 @@ import { useEffect, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { formatErrorMessage } from '../../../utils/errorHandling'
-import { APP_CALENDAR_TZ, calendarYmdInAppTzFromIso, endOfYmdInAppTzMs, startOfYmdInAppTzMs } from '../../../utils/dateUtils'
-import { recordCheckLines, type RecordCheckLine, type StatementAffiant } from '../../../lib/legal/affidavitPaper'
+import { calendarYmdInAppTzFromIso, endOfYmdInAppTzMs, startOfYmdInAppTzMs } from '../../../utils/dateUtils'
+import { clockWordsInAppTz, recordCheckLines, type RecordCheckLine, type StatementAffiant } from '../../../lib/legal/affidavitPaper'
 
 /**
  * What the record says about the days a statement is about (punch list #220, v2.6210): the account's clock
@@ -20,13 +20,6 @@ const db = supabase as unknown as SupabaseClient
 type SessionRow = { user_id: string | null; job_ledger_id: string | null; work_date: string; clocked_in_at: string; clocked_out_at: string | null; rejected_at: string | null; revoked_at: string | null }
 type ReportRow = { created_at: string; created_by_name: string | null; template_name: string | null }
 type NoteRow = { job_id: string; body: string; created_at: string; author: { name: string | null } | Array<{ name: string | null }> | null }
-
-/** *7:12 AM* in the company's zone. */
-export function clockWordsInAppTz(iso: string): string {
-  const d = new Date(iso)
-  if (Number.isNaN(d.getTime())) return ''
-  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ })
-}
 
 export function useStatementRecordCheck(input: {
   jobs: ReadonlyArray<{ id: string; label: string }>

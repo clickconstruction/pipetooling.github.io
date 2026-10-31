@@ -2,7 +2,7 @@
 title: swear a statement on a collections account
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: affidavit, sworn statement, declaration, notary, jurat, witness, legal desk, collections, timeline, evidence, penalty of perjury, venue, county, print, pdf, signing page, declarant
+keywords: affidavit, sworn statement, declaration, notary, jurat, witness, legal desk, collections, timeline, evidence, penalty of perjury, venue, county, print, pdf, signing page, declarant, signed copy, scan, file
 where: /legal-desk
 ---
 A sworn statement puts what someone saw or heard on paper, under oath, for the attorney. The Legal desk drafts it, prints it and keeps the signed copy. The office never types the same story twice.
@@ -54,6 +54,14 @@ A declaration with no notary asks for the declarant's full name, date of birth a
 Open the draft from the Timeline. Change the sentence. Press Print. The print sheet opens on the new page. Four presses, on a phone or at the desk.
 :::
 
-## What comes next
+## File the signed copy
 
-Filing the signed scan comes in the next release. Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney) for the desk as a whole.
+The signed paper comes back as a scan or a phone photo. Press {{button:outline|File the signed copy…}} in the window or on the row. Drop the scan on the panel, or press {{button:outline|Choose the scan}}. Confirm **The day it is about**. Type **Signed on** as the jurat reads it. The notary wrote it by hand. Answer whether the paper reads as last printed. Pick **Whose paper** it is. Read the **Shows** line and change it if you like. Press {{button:dark|File the signed copy}}.
+
+The scan lands under **Documents for the firm** on the signing day. The Timeline's line turns signed, with the chip {{chip:green|sworn statement}}. Its words read *Sworn Oct 29 before a notary in Guadalupe County*. Press **Open the signed copy** on the row to see the scan. The scan's {{button:outline|⋯}} menu offers **The statement on the Timeline**. The firm reads both on its portal.
+
+:::example They changed it by hand
+The witness crossed out a sentence and initialed the change before signing. Pick **They changed it by hand** when you file. The Timeline keeps the printed text and says the scan governs. Nobody is quoted on a sentence they did not swear to.
+:::
+
+Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney) for the desk as a whole.

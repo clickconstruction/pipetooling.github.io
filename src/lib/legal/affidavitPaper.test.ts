@@ -3,7 +3,7 @@ import { filingDocHtml, filingDocText } from '../jobsDocuments/lienFilingDocumen
 import { JURAT_COURTESY_LINES, JURAT_NOTARY_TITLE, JURAT_SEAL_WORDS, JURAT_STATE_LINE, juratCountyLine, juratSentence } from './juratWords'
 import {
   DECLARANT_BLANK, DECLARATION_PERJURY_SENTENCE, DECLARATION_STATUTE_FORM, FORM_HELP_WORDS, OFFICE_COUNTY_DEFAULT, SIGNED_ON_LINE, STATEMENT_DRAFT_AMBER_DAYS,
-  attachedToLine, declarantProblem, declarationJurat, defaultStatementForm, defaultVenueCounty, incidentSpanWords, isStatementEntry, printCountWords, recordCheckHeading, recordCheckLines,
+  attachedToLine, declarantProblem, lastPrintWords, statementFilingProblem, statementFilingShows, declarationJurat, defaultStatementForm, defaultVenueCounty, incidentSpanWords, isStatementEntry, printCountWords, recordCheckHeading, recordCheckLines,
   statementByWords, statementChipWords, statementDraftProblem, statementFirmKindWords, statementHoldKey, statementKindWords, statementMetaOf, statementOpener, statementPaperBlocks, statementParagraphs,
   statementPrintTitle, statementPrintedText, statementShowsLine, statementSignedWords, statementStateWords, suggestedStatementTitle, venueChoices,
   type StatementDraft, type StatementMeta,
@@ -246,5 +246,26 @@ describe('the record check beside the day', () => {
     const lines = recordCheckLines({ incidentOn: '2026-09-01', incidentTo: '2026-09-30', affiant: { userId: null, name: 'Thanh Nguyen' }, sessions: [], reports: [{ authorName: 'thanh nguyen', templateName: '', createdOn: '2026-09-09', jobLabel: '742' }], notes: [], clockWords })
     expect(lines).toEqual([{ ymd: '2026-09-09', kind: 'report', text: 'Field report · thanh nguyen · job 742', theirs: true }])
     expect(recordCheckLines({ incidentOn: 'soon', incidentTo: null, affiant: { userId: null, name: '' }, sessions: [], reports: [], notes: [], clockWords })).toEqual([])
+  })
+})
+
+describe('filing the signed copy (punch list #220, v2.6212)', () => {
+  const file = { size: 1024, type: 'application/pdf', name: 'signed.pdf' }
+  const filing = { signedOn: '2026-10-29', asPrinted: true, incidentOn: '2026-09-03', incidentTo: '2026-09-17', whose: null, shows: 'Sworn Oct 29 before a notary in Guadalupe County. What was seen or heard on Sep 3 to Sep 17.' }
+  it('refuses what the RPC refuses, in the panel’s words', () => {
+    expect(statementFilingProblem(filing, file, TODAY)).toBeNull()
+    expect(statementFilingProblem(filing, null, TODAY)).toBe('Choose the signed scan.')
+    expect(statementFilingProblem({ ...filing, incidentOn: '' }, file, TODAY)).toBe('Pick the day it is about.')
+    expect(statementFilingProblem({ ...filing, signedOn: '' }, file, TODAY)).toBe('Type the day it was signed, off the jurat.')
+    expect(statementFilingProblem({ ...filing, signedOn: '2026-11-02' }, file, TODAY)).toBe('The day it was signed cannot be ahead of today.')
+    expect(statementFilingProblem({ ...filing, signedOn: '2026-09-01' }, file, TODAY)).toBe('The day it was signed comes before the day it is about. Check the jurat.')
+    expect(statementFilingProblem({ ...filing, incidentTo: '2026-09-01' }, file, TODAY)).toBe('The last day of the span comes before the first. Swap them.')
+    expect(statementFilingProblem({ ...filing, shows: ' ' }, file, TODAY)).toBe('Say in one line what it shows.')
+  })
+  it('the shows line follows the form, the county and the days; the last print reads day and clock', () => {
+    expect(statementFilingShows({ form: 'notary', venueCounty: 'Guadalupe' }, filing)).toBe('Sworn Oct 29 before a notary in Guadalupe County. What was seen or heard on Sep 3 to Sep 17.')
+    expect(statementFilingShows({ form: 'declaration', venueCounty: null }, { ...filing, signedOn: '', incidentTo: '' })).toBe('Signed under penalty of perjury. What was seen or heard on Sep 3.')
+    expect(lastPrintWords({ prints: [{ at: '2026-10-28T19:14:00Z', by: null, face: 'whole', text: '' }] }, (iso) => iso.slice(0, 10), (iso) => iso.slice(11, 16))).toBe('Oct 28 at 19:14')
+    expect(lastPrintWords({ prints: [] }, (iso) => iso, (iso) => iso)).toBe('')
   })
 })

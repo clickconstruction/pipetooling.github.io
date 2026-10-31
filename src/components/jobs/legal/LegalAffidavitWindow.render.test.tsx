@@ -3,7 +3,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import LegalAffidavitWindow from './LegalAffidavitWindow'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
-import type { RecordCheckLine, StatementDraft, StatementFace } from '../../../lib/legal/affidavitPaper'
+import type { RecordCheckLine, StatementDraft, StatementFace, StatementFilingDraft } from '../../../lib/legal/affidavitPaper'
 
 const check = vi.hoisted(() => ({ lines: [] as RecordCheckLine[], loading: false, failed: [] as string[], calls: [] as unknown[] }))
 vi.mock('./useStatementRecordCheck', () => ({ useStatementRecordCheck: (input: unknown) => { check.calls.push(input); return { lines: check.lines, loading: check.loading, failed: check.failed } } }))
@@ -174,5 +174,30 @@ describe('LegalAffidavitWindow · Print ▾ (punch list #220, v2.6211)', () => {
     cleanup()
     open({ entry, initialPrint: 'whole' })
     expect(document.querySelector('[data-legal-print-frame]')).toBeTruthy()
+  })
+})
+
+describe('LegalAffidavitWindow · File the signed copy… (punch list #220, v2.6212)', () => {
+  const entry: LegalEntryRow = { id: 'st', matter_id: 'm', kind: 'statement', amount: null, body: 'Northline never called us back.', occurred_on: '2026-09-03', meta: { title: 'Affidavit of Daniel Alvarez', affiant: { kind: 'team', user_id: 'u-da', name: 'Daniel Alvarez', role: 'RMP' }, form: 'notary', venue_county: 'Guadalupe', state: 'printed', prints: [{ at: '2026-10-28T19:14:00Z', by: 'u-g', face: 'whole', text: '' }] }, via_portal: false, created_by: 'u-g', acknowledged_at: null, created_at: '2026-10-28T15:00:00Z' }
+  it('opens the filing panel from the footer and from a row, files through the desk, and closes', async () => {
+    const onFile = vi.fn(async (_id: string, _file: File, _filing: StatementFilingDraft): Promise<boolean> => true)
+    const { onClose } = open({ entry, onFile })
+    fireEvent.click(document.querySelector('[data-legal-affidavit-file]')!)
+    await waitFor(() => expect(document.querySelector('[data-legal-statement-file]')).toBeTruthy())
+    fireEvent.drop(document.querySelector('[data-legal-statement-drop]')!, { dataTransfer: { files: [new File(['%PDF-1.4'], 'signed.pdf', { type: 'application/pdf' })] } })
+    fireEvent.change(screen.getByLabelText('The day it was signed'), { target: { value: '2026-10-29' } })
+    fireEvent.click(document.querySelector('[data-legal-statement-file-press]')!)
+    await waitFor(() => expect(onFile).toHaveBeenCalledTimes(1))
+    expect(onFile.mock.calls[0]![0]).toBe('st')
+    expect(onFile.mock.calls[0]![2]).toMatchObject({ signedOn: '2026-10-29', asPrinted: true, incidentOn: '2026-09-03' })
+    await waitFor(() => expect(onClose).toHaveBeenCalled())
+    cleanup()
+    open({ entry, onFile, initialFile: true })
+    expect(document.querySelector('[data-legal-statement-file]')).toBeTruthy()
+    cleanup()
+    // A signed statement offers no filing.
+    open({ entry: { ...entry, meta: { ...(entry.meta as object), state: 'signed', signed_on: '2026-10-29', document_id: 'd1' } }, onFile, initialFile: true })
+    expect(document.querySelector('[data-legal-statement-file]')).toBeNull()
+    expect(document.querySelector('[data-legal-affidavit-file]')).toBeNull()
   })
 })

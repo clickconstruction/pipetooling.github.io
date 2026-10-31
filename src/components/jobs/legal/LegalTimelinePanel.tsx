@@ -61,8 +61,8 @@ export type TimelinePlanActs = {
   hold?: TimelineHold
   /** Swear a statement (punch list #220, v2.6210): opens the window on a new statement, on the day the composer holds. */
   swearStatement?: (on: string) => void
-  /** Open the window on a statement's row; `print` opens it on the print sheet (v2.6211). */
-  editStatement?: (entryId: string, opts?: { print?: boolean }) => void
+  /** Open the window on a statement's row; `print` opens it on the print sheet (v2.6211), `file` on the filing panel (v2.6212). */
+  editStatement?: (entryId: string, opts?: { print?: boolean; file?: boolean }) => void
 }
 
 export type LegalTimelinePanelProps = {
@@ -387,7 +387,8 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
   // v2.6166: Open the paper, in place; a refusal or a lost file reads its reason under the line.
   const [opening, setOpening] = useState(false)
   const [openError, setOpenError] = useState<string | null>(null)
-  const canOpenPaper = item.kind === 'document' && Boolean(item.documentId) && Boolean(onOpenDocument)
+  // v2.6212: a signed statement's row opens its scan and lands on its Evidence row, as a document's row does.
+  const canOpenPaper = (item.kind === 'document' || item.kind === 'statement') && Boolean(item.documentId) && Boolean(onOpenDocument)
   const openPaper = async () => {
     if (!onOpenDocument || !item.documentId) return
     setOpening(true)
@@ -475,12 +476,13 @@ function TimelineRow({ item, look, todayYmd, reader, acts, onOpenEvidence, onOpe
             {canEdit ? <button type="button" onClick={() => setMode('edit')} style={btn}>Edit</button> : null}
             {canOpenStatement ? <button type="button" data-legal-statement-open onClick={() => acts!.editStatement!(item.entryId ?? '')} style={btn}>{item.state === 'happened' ? 'Open' : 'Edit'}</button> : null}
             {canOpenStatement ? <button type="button" data-legal-statement-print onClick={() => acts!.editStatement!(item.entryId ?? '', { print: true })} style={btn} title="The paper as it prints, in the statement’s window">Print</button> : null}
+            {canOpenStatement && item.state !== 'happened' ? <button type="button" data-legal-statement-file onClick={() => acts!.editStatement!(item.entryId ?? '', { file: true })} style={btn} title="The signed scan onto Evidence; the statement reads sworn">File the signed copy…</button> : null}
             {canDone && item.state !== 'overdue' ? <button type="button" onClick={() => { setDoneOn(todayYmd); setMode('done') }} style={btn}>Mark done</button> : null}
             {canHold && !item.held ? <button type="button" onClick={() => setMode('hold')} style={btn} title={item.kind === 'event' ? 'Keep this event from the firm, with a reason only the office reads' : item.kind === 'statement' ? 'Keep this statement from the firm, with a reason only the office reads' : 'Keep this planned step from the firm, with a reason only the office reads'}>Hold from counsel…</button> : null}
             {item.held && acts?.hold && holdKey ? <button type="button" onClick={() => void acts.hold!.shareAgain(holdKey)} disabled={acts.busy} style={btn}>Share with counsel</button> : null}
             {canUndo ? <button type="button" onClick={() => setMode('undo')} style={btn}>{isStatement && item.state !== 'happened' ? 'Not signed…' : 'Undo…'}</button> : null}
-            {canOpenPaper ? <button type="button" data-legal-timeline-open-paper aria-busy={opening || undefined} onClick={() => void openPaper()} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the file itself in a new browser tab; the Timeline stays">Open the paper</button> : null}
-            {item.kind === 'document' && onOpenEvidence ? <button type="button" data-legal-timeline-show-evidence onClick={() => onOpenEvidence(item.documentId)} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the Evidence tab on this paper’s row, lit">Show on Evidence ↗</button> : null}
+            {canOpenPaper ? <button type="button" data-legal-timeline-open-paper aria-busy={opening || undefined} onClick={() => void openPaper()} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the file itself in a new browser tab; the Timeline stays">{item.kind === 'statement' ? 'Open the signed copy' : 'Open the paper'}</button> : null}
+            {(item.kind === 'document' || (item.kind === 'statement' && item.documentId)) && onOpenEvidence ? <button type="button" data-legal-timeline-show-evidence onClick={() => onOpenEvidence(item.documentId)} style={{ ...btn, height: 24, fontSize: '0.72rem' }} title="Opens the Evidence tab on this paper’s row, lit">Show on Evidence ↗</button> : null}
           </div>
         ) : null}
         {openError ? <div role="alert" data-legal-timeline-open-error style={{ fontSize: '0.76rem', color: look.stop, marginTop: 4 }}>{openError}</div> : null}
