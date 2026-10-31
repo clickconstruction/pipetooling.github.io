@@ -2,7 +2,7 @@
 title: turn on reading the bids inbox
 category: Office
 roles: dev, master_technician
-keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages, teammate, our team, copy the box, cc
+keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages, teammate, our team, copy the box, cc, notice, newsletter, left out
 where: /settings?tab=settings-phone-texts#settings-phone-texts-read-bids
 order: 117
 ---
@@ -36,6 +36,12 @@ Rosa emails Elena about Thursday and copies team@. Elena's thread shows *Rosa Di
 - The app never marks an email read.
 - Newsletters and notices stay in Gmail with no label.
 - An email the inbox sent itself, or the app sent, stays in Gmail with no label.
+
+## A sender you marked a notice
+
+The office can mark a sender **A notice, not a person** on the sort card in New. The guide [sort new messages before anyone answers them](/help/sort-new-messages#a-notice-not-a-person) shows the press. From then on the app leaves that address out. Its email stays in Gmail with no label, like a newsletter. Marking the company's domain leaves out every address there.
+
+Press **Not a notice after all** on the thread to take them off the list. Their next email lands again.
 
 ## See how it is doing
 

@@ -7,11 +7,13 @@
  * the default picked, or *Who has it?*'s people with the rule's pick first. A guess that needs a record made first
  * waits, and says where to make it.
  * *One of our own team* (v2.5546) turns the card into *Which of ours?*: the roster, subs left out, a name filter and a
- * press per person that names the number as them. This draws; `useNewLaneThreadSlots.tsx` reads and writes.
+ * press per person that names the number as them. An email's card ends with **A notice, not a person** (punch list
+ * #223 PR 1, v2.6202): the address's press, and the domain's when it is a company's own. This draws;
+ * `useNewLaneThreadSlots.tsx` reads and writes.
  */
 import { useState, type ReactNode } from 'react'
 import type { ChannelKind } from '../../lib/contacts/kernel'
-import { teamGuess, whoHead, type HasChoice, type JobChoice, type NewLaneRow, type RosterChoice, type WhoGuess } from '../../lib/followUp/newLane'
+import { NOTICE_BLOCK, teamGuess, whoHead, type HasChoice, type JobChoice, type NewLaneRow, type RosterChoice, type WhoGuess } from '../../lib/followUp/newLane'
 import { guessWait } from '../../lib/followUp/newLaneRows'
 import { TRADE_TEMPLATES } from '../../lib/gc/plans'
 import { Btn, input } from '../gc/gcUi'
@@ -88,9 +90,20 @@ function WhoBody({ guesses, busy, onName, onSomeoneElse, onTeam }: { guesses: re
   const [recordTyped, setRecordTyped] = useState<string | null>(null)
   const [recordTrade, setRecordTrade] = useState('')
   const firstKnown = guesses.findIndex((g) => g.kind === 'customer' && g.record)
+  const firstNotice = guesses.findIndex((g) => g.notice)
   const nodes: ReactNode[] = []
   guesses.forEach((g, i) => {
     if (i === firstKnown) nodes.push(<BlockHead key="known">A customer we know</BlockHead>)
+    // A notice, not a person (v2.6202): the fourth block, under the people, the address's press then the domain's.
+    if (i === firstNotice) nodes.push(<BlockHead key="notice">{NOTICE_BLOCK}</BlockHead>)
+    if (g.notice) {
+      nodes.push(
+        <div key={i} data-notice={g.notice.scope}>
+          <Option label={g.label} words={g.words} onPress={() => onName(g)} disabled={busy} />
+        </div>,
+      )
+      return
+    }
     if (g.makesRecord) {
       const make = g.makesRecord
       if (making !== i) {

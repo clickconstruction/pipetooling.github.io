@@ -187,7 +187,7 @@ service account's delegation, every minute (v2.5719) while **Read bids@** is on 
 each email lands in its sender's thread with its files as `message_attachments`, and a file that reads as a trade
 partner's paper is offered under its line (`PaperOffers.tsx`) until someone answers it. A teammate's mail lands too
 since v2.5722: on their Our team thread, or, copied to the box on a mail to a customer, on the customer's thread as
-ours (`emailIn/emailLine.ts`'s `emailParty`); only the boxes' own addresses and the app's sender are left out as ours,
+ours (`emailIn/emailLine.ts`'s `emailParty`); a sender the office marked **A notice, not a person** on the sort card (v2.6202, punch list #223 PR 1: `email_left_out_senders` through `mark_notice`, read once per run with `emailIn/leftOutSenders.ts`) is left out before the address is placed; only the boxes' own addresses and the app's sender are left out as ours,
 and one of those is a person only while the walk kit's contact carries it (punch list #142, v2.5726: `walk/kit.ts`,
 `messages/ownChannels.ts`), so the kit's reply from bids@ lands on the kit's thread and real mail never moves. **Email counted** (v2.5814, punch list #159): beside the taker, `gmail-count` (PR 2 of the train) sweeps the boxes and labels on `email_box_watch` under the same delegation with Gmail's metadata-only scope for Quickfill's Email station, keeping each thread's sender, subject and dates in `email_box_threads` and the day's trend in `email_box_days`, never a body; it writes nothing to Gmail. The kernels are `emailIn/countedBoxes.ts` (the list, not `readerBoxes.ts`), `labelSweep.ts` and `labelFacts.ts`.
 

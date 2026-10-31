@@ -27,6 +27,8 @@ vi.mock('../../../hooks/useAuth', async () => {
 const fakeCardIo = vi.hoisted(() => ({
   loadCard: vi.fn(async () => ({ contact: null, lines: [], tiles: {}, active: new Set<string>(), seats: { customer: null, trade: null, arch: null }, team: [] })),
   loadKnown: vi.fn(async () => ({})),
+  markNotice: vi.fn(async () => undefined),
+  unmarkNotice: vi.fn(async () => undefined),
   name: vi.fn(async (contactId: string) => contactId),
   makeCustomer: vi.fn(async (contactId: string) => contactId),
   tie: vi.fn(async () => undefined),

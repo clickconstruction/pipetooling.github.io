@@ -61,6 +61,8 @@ const fakeCardIo = vi.hoisted(() => {
   return {
     loadCard: vi.fn(async () => card),
     loadKnown: vi.fn(async () => ({})),
+    markNotice: vi.fn(async () => undefined),
+    unmarkNotice: vi.fn(async () => undefined),
     name: vi.fn(async (contactId: string) => contactId),
     tie: vi.fn(async () => undefined),
     takeIt: vi.fn(async () => undefined),
