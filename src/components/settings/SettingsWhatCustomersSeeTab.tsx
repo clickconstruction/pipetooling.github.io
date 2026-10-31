@@ -21,6 +21,7 @@ import { paperSample, type PaperSample } from '../../lib/journeys/paperSamples'
 import { stepFrameProps, type SampleEmails } from '../../lib/journeys/stepFrame'
 import { sampleText, type SampleText } from '../../lib/journeys/sampleTexts'
 import { contractEntriesForStep, parseStepParam } from '../../lib/contracts/customerContractCatalog'
+import { withSideBySide } from '../../lib/portal/portalShape'
 
 /**
  * Settings → What customers see (dev-only, v2.2758; owner pick B "Journeys" from the
@@ -52,6 +53,8 @@ const THUMB_SCALE = 0.4
 const THUMB_W = Math.round(PHONE_WIDTH * THUMB_SCALE)
 const THUMB_H = 220
 const FRAME_H = 760
+/** Punch list #217: the sample pages with a prototype behind `?shape=1`; each gets a *Side by side* press that opens today's look above it (`?sbs=1`). */
+const SIDE_BY_SIDE_STEPS: ReadonlySet<string> = new Set(['customer-portal'])
 
 const CARD: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, background: 'var(--surface)', padding: '0.85rem 1rem', marginBottom: '0.9rem' }
 const MUTED: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)' }
@@ -335,6 +338,7 @@ function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: 
   const email = step.render.kind === 'email' ? props.emails?.[step.render.email] ?? null : null
   const paper = step.render.kind === 'paper' ? props.papers[step.render.paper] ?? null : null
   const openUrl = step.render.kind === 'page' ? (step.render.absolute ? step.render.path : `${props.origin}${step.render.path}`) : null
+  const sideBySideUrl = step.render.kind === 'page' && !step.render.absolute && SIDE_BY_SIDE_STEPS.has(step.id) ? `${props.origin}${withSideBySide(step.render.path)}` : null
   return (
     <div id="wcs-expanded-step" style={{ marginTop: '0.75rem', border: '1px solid var(--border-blue)', borderRadius: 10, padding: '0.75rem 0.9rem', background: 'var(--surface)', scrollMarginTop: '0.75rem' }}>
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.9rem', alignItems: 'center', marginBottom: '0.6rem', fontSize: '0.8rem' }}>
@@ -347,6 +351,11 @@ function ExpandedStep(props: { step: JourneyStep; journeyId: JourneyId; device: 
         {openUrl ? (
           <a href={openUrl} target="_blank" rel="noopener noreferrer" style={{ ...PILL, textDecoration: 'none' }}>
             Open in new tab
+          </a>
+        ) : null}
+        {sideBySideUrl ? (
+          <a href={sideBySideUrl} target="_blank" rel="noopener noreferrer" style={{ ...PILL, textDecoration: 'none' }} title="Today's look above the prototype, on the sample (punch list #217)" data-testid="wcs-side-by-side">
+            Side by side
           </a>
         ) : null}
         <Link to={`/help?g=${encodeURIComponent(step.guide)}`} style={{ ...PILL, textDecoration: 'none' }} title="The help guide for sending this">
