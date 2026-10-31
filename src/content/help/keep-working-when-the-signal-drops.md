@@ -16,7 +16,9 @@ Four presses can wait on the phone. Each one is kept with the moment you pressed
 - A job note from Job Mode.
 - A field report from {{button:green|Leave Report}}.
 
-When you press one with no signal, the window closes as it always does. A small message reads *Kept on the phone. It goes out when the signal is back.* The clock shows you clocked in from the moment you pressed. You can go to work.
+When you press one with no signal, the window closes as it always does. A small message reads *Kept on the phone. It goes out when the signal is back.* The clock shows you clocked in from the moment you pressed. You can go to work. After Clock Out, the clock shows you clocked out the same way.
+
+With no signal the clock may not load your day. A red line under it then reads *No connection, so the clock could not load today's time.* Nothing you pressed is lost. The clock loads your day again by itself when the signal is back.
 
 ## What needs a signal
 

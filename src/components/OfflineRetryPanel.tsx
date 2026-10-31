@@ -17,6 +17,8 @@ type Props = {
   idempotent?: boolean
   /** The action is in flight — hides the button and holds auto-retry. */
   busy?: boolean
+  /** A read's own words for a lost signal, in place of the write sentence's *nothing was saved* (v2.6198). */
+  offlineMessage?: string
   style?: CSSProperties
   messageStyle?: CSSProperties
 }
@@ -40,6 +42,7 @@ export default function OfflineRetryPanel({
   surface,
   idempotent = false,
   busy = false,
+  offlineMessage,
   style,
   messageStyle,
 }: Props) {
@@ -76,6 +79,7 @@ export default function OfflineRetryPanel({
     attempts,
     idempotent,
     reconnected: onlineEvents > 0,
+    offlineMessage,
   })
 
   const retry = (auto: boolean) => {

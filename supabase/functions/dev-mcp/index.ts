@@ -29,12 +29,14 @@ import { divisionBidFolderByKey } from '../_shared/bidPlansFolders.ts'
 // a new bid v2.6183 / 0.10.0; its plan set into Drive and onto the bid v2.6185 / 0.11.0) are a SECOND path, not a
 // loosening of the first: nineteen verbs (_shared/devMcpWrites.ts) POST one of eight hard-coded, dev-gated definer RPCs as the dev —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
-// plan's hash. Never a generic POST, never a table write, never through view_as.
+// plan's hash. Never a generic POST, never a table write, never through view_as. One more
+// (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
+// dev — the key it leads to never crosses this door.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.11.0'
+const SERVER_VERSION = '0.12.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -251,6 +253,11 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { plans: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['plans', 'plan_hash'] },
   },
   {
+    name: 'mint_twin_setup_code',
+    description: "Mint a ten-minute, single-use setup code for a twin (v2.6187) — the code Settings → Digital twins → Set up on this Mac makes — so the Mac your agent runs on can hold a twin key and run /bid itself. The key never comes back through this door: the reply is the code and the command that redeems it (python3 scripts/twin/redeem_setup_code.py <code>), which mints the key server-side, writes it to ~/pt-twin-digest/twin.token (mode 600), saves the kickoff beside it and prints nothing secret. Devs only (a dev may set up any twin); ten codes per ten minutes; twin_setup_codes keeps who minted it and the Mac that redeemed it, and the key is revoked by its label at Settings → Digital twins.",
+    inputSchema: { type: 'object', properties: { label: { type: 'string', description: "The key's label as the fleet lists it, e.g. \"Todd's agent on todd-mbp\" — the name it is revoked by" }, twin: { type: 'string', description: "The twin's users.id or email (twin-estimator-N@twins.pipetooling.local); the first estimator twin when left out" }, rounds: { type: 'boolean', description: 'true: the redeemer gets the rounds kickoff (a Mac that stays on and makes a round every five minutes)' } }, required: ['label'] },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -267,7 +274,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are nineteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) and plan_file_plans → apply_file_plans (a plan set into Drive under the bid's division folder and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are nineteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) and plan_file_plans → apply_file_plans (a plan set into Drive under the bid's division folder and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -677,6 +684,47 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'apply_gap_answer':
     case 'plan_history_entry':
     case 'apply_history_entry':
+    case 'mint_twin_setup_code': {
+      // v2.6187: a setup code for a twin, through twin-setup as the dev (it enforces dev-for-any-twin
+      // and ten per ten minutes). The key itself never crosses this door — a tool result is
+      // transcript — only the code, single-use and ten minutes, which the Mac redeems into a file.
+      if (who.role !== 'dev') return refused("mint_twin_setup_code runs only as you, with a dev's own key.")
+      const label = typeof args.label === 'string' ? args.label.trim().slice(0, 80) : ''
+      if (!label) return refused("mint_twin_setup_code needs label — the key's name as the fleet lists it (e.g. \"Todd's agent on todd-mbp\"), so it can be revoked by name.")
+      const twinRef = typeof args.twin === 'string' ? args.twin.trim() : ''
+      let twinUserId: string | null = null
+      if (twinRef) {
+        if (UUID_SHAPE.test(twinRef)) twinUserId = twinRef
+        else if (/^twin-[a-z_]+-\d+@twins\.pipetooling\.local$/i.test(twinRef)) {
+          const res = await restGet(await jwt(), 'users', `select=id&email=eq.${encodeURIComponent(twinRef.toLowerCase())}&is_digital_twin=eq.true&limit=1`)
+          const row = Array.isArray(res.body) ? (res.body[0] as { id?: string } | undefined) : undefined
+          if (!res.ok || typeof row?.id !== 'string') return refused(`No twin reads as ${twinRef}.`)
+          twinUserId = row.id
+        } else return refused("twin must be the twin's users.id or its email (twin-estimator-N@twins.pipetooling.local).")
+      }
+      const body: Record<string, unknown> = { action: 'mint', label, ...(twinUserId ? { twin_user_id: twinUserId } : { kind: 'estimator' }) }
+      const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/twin-setup`, {
+        method: 'POST',
+        headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${await jwt()}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const reply = (await res.json().catch(() => ({}))) as Record<string, unknown>
+      if (!res.ok || typeof reply.code !== 'string') {
+        const message = `twin-setup refused the code (${res.status}): ${typeof reply.error === 'string' ? reply.error : 'no reason given'}`
+        return { log: { status: 'error', target: twinUserId, error: message }, text: message, isError: true }
+      }
+      const rounds = args.rounds === true
+      const twinEmail = typeof reply.twin_email === 'string' ? reply.twin_email : null
+      return ok({
+        code: reply.code,
+        expires_at: reply.expires_at ?? null,
+        twin_email: twinEmail,
+        twin_kind: reply.twin_kind ?? null,
+        label: reply.label ?? label,
+        redeem: `python3 scripts/twin/redeem_setup_code.py ${reply.code}${rounds ? ' --rounds' : ''}`,
+        then: 'The script mints the key server-side, writes it to ~/pt-twin-digest/twin.token (mode 600) and saves the kickoff beside it; it prints the twin, the label and the connector, never the key. After it, python3 scripts/twin/twin.py get_brief answers, /bid bNNN runs, and bash scripts/twin-session.sh starts a Code session with the twin-mcp connector live. The code is single-use and lasts ten minutes. Revoke the key by its label at Settings → Digital twins.',
+      }, { target: twinEmail ?? twinUserId })
+    }
     case 'plan_file_plans':
     case 'apply_file_plans': {
       // v2.6185: the plan set into Drive and onto the bid — the same grammar as every write
@@ -896,7 +944,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     if (name === 'view_as') {
       const verb = String(args.verb ?? '')
       if (!verb || verb === 'view_as') return finish(refused('view_as needs a `verb` — any read verb of this server except view_as.'))
-      if (isWriteVerb(verb)) return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
+      if (isWriteVerb(verb) || verb === 'mint_twin_setup_code') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
       const target = await resolveViewAsTarget(admin, args)
       if ('error' in target) return finish(refused(target.error))
       const inner = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>
