@@ -12,9 +12,11 @@ export type BidCountSourceRow = {
   imported_by: string | null
   first_imported_at: string
   last_imported_at: string
+  /** v2.6180: 'counttooling' for a project a person imported, 'robot' for the robot's fixtures; the label reads Robot. */
+  source_kind?: string | null
 }
 
-export const BID_COUNT_SOURCE_SELECT = 'id, bid_id, link, token, project_name, scope, imported_by, first_imported_at, last_imported_at'
+export const BID_COUNT_SOURCE_SELECT = 'id, bid_id, link, token, project_name, scope, imported_by, first_imported_at, last_imported_at, source_kind'
 
 /**
  * The CountTooling projects behind the board's bids (v2.5520): one chunked read of `bid_count_sources` for every

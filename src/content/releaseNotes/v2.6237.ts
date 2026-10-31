@@ -9,6 +9,7 @@ const note: ReleaseNote = {
     'When you take robot fixtures on a bid, its run keeps its sealed number and still scores at send. The Robot Board, the envelope and the Scoreboard mark it assisted. It sits beside the practice runs and never counts toward a job type\u2019s streak.',
     'At send the fixtures themselves are scored against your final list: how many you took, changed or set aside, and how many the robot missed. The line reads on the Robot Board row and in the envelope.',
     'The robots are now reminded to hand their fixtures over as they price each shadow, so the list shows up on the next bid they seal.',
+    'Undo on the robot fixtures toast now takes back only what that press added. Before, it also took back fixtures you had added earlier.',
   ],
   roles: ['dev', 'master_technician', 'assistant', 'controller', 'estimator'],
 }

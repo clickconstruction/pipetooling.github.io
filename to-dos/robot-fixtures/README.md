@@ -351,7 +351,7 @@ New, all in PR 1's migration (`SET lock_timeout = '3s';`, idempotent, the three 
 - `robot_progress()` gains `fixtures_at`, `fixtures_found`, `fixtures_sure`, `fixtures_taken`, `fixtures_set_aside`,
   `assisted_at`; the shell's `[pipeline STG-5b]` stamp is the fact.
 - RPCs, SECURITY DEFINER for the bid roles, all refusing on a sent bid (*the bid is sent, the count is the record*):
-  `take_robot_fixtures(p_row_ids uuid[], p_bid_version_id uuid)`, `untake_robot_fixtures(p_pull_id uuid)`,
+  `take_robot_fixtures(p_row_ids uuid[], p_bid_version_id uuid)`, `untake_robot_fixtures(p_pull_id uuid)`, `untake_robot_fixture_rows(p_pull_id uuid, p_row_ids uuid[])` (the toast's Undo, only that press's rows),
   `set_aside_robot_fixtures(p_row_ids uuid[], p_reason text)`, `put_back_robot_fixtures(p_row_ids uuid[])`,
   `price_robot_fixtures(p_bid_id uuid, p_price_book_version_id uuid)`.
 - twin-mcp 1.9.0: `put_fixtures(bid, fixtures)` (fenced to the twin's shell, lands on the paired human bid, 400 rows,

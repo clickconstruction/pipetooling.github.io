@@ -149,7 +149,7 @@ describe('the button and the foot', () => {
   it('names the count, the price and what stays', () => {
     const b = fixtureButtonWords({ add: new Set(['wc', 'ms']), update: new Set() }, review, 2)
     expect(b.button).toBe('Add 2 fixtures')
-    expect(b.foot).toBe('2 rows land on your count, shaded, $2,446 at the robot’s prices. Your book prices the ones it knows. The robot’s price fills the rest, marked. Your 2 other rows stay as they are.')
+    expect(b.foot).toBe('2 rows land on your count, shaded, $2,446 at the robot’s prices. Your book prices the ones it knows. The robot’s price fills the rest, marked. Your 2 rows stay as they are.')
     expect(plainWordsFailures(b.foot)).toEqual([])
   })
   it('says the update too', () => {

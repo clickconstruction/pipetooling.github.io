@@ -134,8 +134,12 @@ export function sharesForNewRow(row: Pick<ParsedCountImportRow, 'count'>, incomi
   return row.count > 0 ? { [incomingKey]: roundCount(row.count) } : null
 }
 
-/** "SpaceX BA · Robert" — a source's label from its name and its importer; the link's host when it has no name. */
-export function countSourceLabel(source: { project_name: string | null; link: string }, importerName: string | null | undefined): string {
+/**
+ * "SpaceX BA · Robert" — a source's label from its name and its importer; the link's host when it has no name. The
+ * robot's source (`source_kind = 'robot'`, v2.6180) is plain "Robot": its importer is only whoever pressed Add.
+ */
+export function countSourceLabel(source: { project_name: string | null; link: string; source_kind?: string | null }, importerName: string | null | undefined): string {
+  if (source.source_kind === 'robot') return 'Robot'
   let name = (source.project_name ?? '').trim()
   if (!name) {
     try {

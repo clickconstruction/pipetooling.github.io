@@ -401,7 +401,10 @@ export function fixtureButtonWords(ticks: FixtureTicks, review: FixtureReview, h
     sentences.push(updates === 1 ? '1 of your rows takes the robot’s count and keeps its parts and prices.' : `${updates} of your rows take the robot’s count and keep their parts and prices.`)
   }
   const stay = Math.max(0, herRowCount - updates)
-  sentences.push(stay === 1 ? 'Your other row stays as it is.' : `Your ${stay} other rows stay as they are.`)
+  if (stay > 0) {
+    const other = updates > 0 ? ' other' : ''
+    sentences.push(stay === 1 ? `Your${other} row stays as it is.` : `Your ${stay}${other} rows stay as they are.`)
+  }
   return { button, dead: false, foot: sentences.join(' '), adds, updates, total }
 }
 

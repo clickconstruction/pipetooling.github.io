@@ -26,6 +26,8 @@ export function useRobotFixtures(bidId: string | null, enabled: boolean): {
   reload: () => void
   take: (rowIds: string[], bidVersionId: string | null, updates: Array<{ row_id: string; count_row_id: string }>) => Promise<{ added: number; updated: number; pull_id: string }>
   untake: (pullId: string) => Promise<{ removed: number; restored: number; kept: number }>
+  /** v2.6237: the toast's Undo, only the rows that press took. */
+  untakeRows: (pullId: string, rowIds: string[]) => Promise<{ removed: number; restored: number; kept: number }>
   setAside: (rowIds: string[], reason: SetAsideReason | null) => Promise<{ set_aside: number }>
   putBack: (rowIds: string[]) => Promise<{ put_back: number; landed: number }>
   price: (bidId: string, priceBookVersionId: string) => Promise<{ priced_by_book: number; priced_by_robot: number }>
@@ -74,6 +76,7 @@ export function useRobotFixtures(bidId: string | null, enabled: boolean): {
     reload,
     take: (rowIds, bidVersionId, updates) => call('take_robot_fixtures', { p_row_ids: rowIds, p_bid_version_id: bidVersionId, p_updates: updates }),
     untake: (pullId) => call('untake_robot_fixtures', { p_pull_id: pullId }),
+    untakeRows: (pullId, rowIds) => call('untake_robot_fixture_rows', { p_pull_id: pullId, p_row_ids: rowIds }),
     setAside: (rowIds, reason) => call('set_aside_robot_fixtures', { p_row_ids: rowIds, p_reason: reason }),
     putBack: (rowIds) => call('put_back_robot_fixtures', { p_row_ids: rowIds }),
     price: (bid, version) => call('price_robot_fixtures', { p_bid_id: bid, p_price_book_version_id: version }),
