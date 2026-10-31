@@ -5,7 +5,7 @@ file: docs/DRIVE_INTAKE_SETUP.md
 type: Runbook / Setup
 purpose: One-time Google setup for the drive-intake edge function (estimator-twin pipeline Wave 4.4) — a SERVICE ACCOUNT, never a user password. Five minutes in console.cloud.google.com, two supabase secrets, one deploy.
 audience: Owner, Developers
-last_updated: 2026-10-29
+last_updated: 2026-10-31
 ---
 
 Why a service account: the function needs a robot identity that can write ONE shared
@@ -111,11 +111,14 @@ but the Shared Drive is the chosen path — tighter blast radius than impersonat
 
 The dev seat's `apply_file_plans` files a plan set as the service account into one of the three
 division bid folders (`supabase/functions/_shared/bidPlansFolders.ts`: plumbing, electrical, HVAC — the
-folders the bid form's Find looks in), in a folder named for the project. The same quota rule as the
-upload leg applies: the folders must sit on a Shared Drive the service account is in (or
-`DRIVE_IMPERSONATE_USER` must be set). When they do not, the verb answers with Drive's *storage quota*
-words, keeps the staged copy for a retry, and tells the agent to drop the file in by hand and press
-Find the folder on the bid form.
+folders the bid form's Find looks in), in a folder named for the project. Two things must hold. The
+service account needs **Editor** on each division folder (Content manager on a Shared Drive): reading is
+not enough, and on 2026-10-31 the first live run (ZZ bid b566) found it could see the plumbing folder but
+not create in it. And the same quota rule as the upload leg applies: the folders must sit on a Shared
+Drive the service account is in (or `DRIVE_IMPERSONATE_USER` must be set). When either fails, the verb
+(`driveFilingRefusal`, v2.6239) names Drive's reason, the service account, the folder and the share or
+move that fixes it, keeps the staged copy so the same plan applies again, and tells the agent to drop the
+file in by hand and press Find the folder on the bid form until then.
 
 ## Rotation / kill
 

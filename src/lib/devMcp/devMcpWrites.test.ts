@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { WRITE_VERBS, alreadyApplied, canonicalJson, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
@@ -178,7 +178,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.12.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.12.1'")
   })
 })
 
@@ -227,7 +227,7 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.12.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.12.1'")
     expect(SERVER).toContain('Writes are nineteen verbs and nothing else')
   })
 })
@@ -459,5 +459,59 @@ describe('mint_twin_setup_code (v2.6187)', () => {
     expect(SERVER).toContain("{ action: 'mint', label, ...(twinUserId ? { twin_user_id: twinUserId } : { kind: 'estimator' }) }")
     expect(SERVER).toContain('redeem: `python3 scripts/twin/redeem_setup_code.py ${reply.code}')
     expect(SERVER).not.toContain('reply.token')
+  })
+})
+
+describe('driveFilingRefusal (v2.6239)', () => {
+  const SA = 'drive-intake@pipetooling-drive.iam.gserviceaccount.com'
+  const PLUMBING = { label: 'plumbing', url: 'https://drive.google.com/drive/folders/1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB' }
+  const base = { serviceAccount: SA, division: PLUMBING, folderName: 'ZZ Dev Seat Check 2026-10-31', folderLink: '' }
+
+  it('names the account, the folder and the share for the refusal found live on b566', () => {
+    const words = driveFilingRefusal({ ...base, message: 'Folder create failed (403): Insufficient permissions for the specified parent.' })
+    expect(words).toContain('Insufficient permissions for the specified parent.')
+    expect(words).not.toContain('parent..')
+    expect(words).toContain(`The intake service account (${SA}) can see the plumbing bids folder but cannot write in it.`)
+    expect(words).toContain(`Whoever owns ${PLUMBING.url} shares it with ${SA} as Editor (Content manager on a Shared Drive).`)
+    expect(words).toContain(`a folder named "ZZ Dev Seat Check 2026-10-31" in ${PLUMBING.url}`)
+    expect(words).toContain('call apply_file_plans again with the same plans and plan_hash')
+    expect(words).not.toMatch(/[—–]/)
+  })
+
+  it('reads a file-level permission refusal the same way', () => {
+    expect(driveFilingRefusal({ ...base, message: 'Upload failed (403): The user does not have sufficient permissions for this file.' })).toContain('cannot write in it')
+  })
+
+  it('tests storage quota before permission, since Drive answers it with a 403 too', () => {
+    const words = driveFilingRefusal({ ...base, folderLink: 'https://drive.google.com/drive/folders/abc', message: 'Upload failed (403): Service Accounts do not have storage quota.' })
+    expect(words).toMatch(/^Drive refused the upload: /)
+    expect(words).toContain('not on a Shared Drive')
+    expect(words).toContain('DRIVE_IMPERSONATE_USER')
+    expect(words).toContain('in https://drive.google.com/drive/folders/abc and presses Find the folder')
+    expect(words).not.toContain('cannot write in it')
+  })
+
+  it('says when the account cannot see the folder at all', () => {
+    expect(driveFilingRefusal({ ...base, message: 'Folder lookup failed (404): File not found: 1HRAnLDgQ-0__1o4umf59w6zpfW3rFvtB.' })).toContain('cannot see the plumbing bids folder at all')
+  })
+
+  it('asks for a wait on a rate limit, with no share to make', () => {
+    const words = driveFilingRefusal({ ...base, message: 'Upload failed (403): User rate limit exceeded.' })
+    expect(words).toContain('Wait a minute.')
+    expect(words).not.toContain('as Editor')
+  })
+
+  it('still names the by-hand door and the retry for an error it does not know', () => {
+    const words = driveFilingRefusal({ ...base, message: 'Upload failed (500): Backend Error' })
+    expect(words).toBe(`Drive refused the filing: Upload failed (500): Backend Error. Until then a person drops the file into a folder named "ZZ Dev Seat Check 2026-10-31" in ${PLUMBING.url} and presses Find the folder on the bid form. The staged copy is still there: call apply_file_plans again with the same plans and plan_hash.`)
+  })
+
+  it('points at the key when the account email cannot be read', () => {
+    expect(driveFilingRefusal({ ...base, serviceAccount: null, message: 'Folder create failed (403): Insufficient permissions for the specified parent.' })).toContain('the client_email in GOOGLE_SERVICE_ACCOUNT_JSON')
+  })
+
+  it('is what apply_file_plans answers when Drive refuses', () => {
+    expect(SERVER).toContain('return errored(driveFilingRefusal({ message: e instanceof Error ? e.message : String(e), serviceAccount, division, folderName, folderLink }))')
+    expect(SERVER).not.toContain('The staged copy is still there for a retry.')
   })
 })
