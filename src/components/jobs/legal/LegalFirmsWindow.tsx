@@ -11,7 +11,13 @@ const btn: CSSProperties = { display: 'inline-flex', alignItems: 'center', gap: 
  * (`onSaved`) and the account's firm segment follows. A dev's door only: the block itself is dev-only.
  * A line in the title bar opens the same block on its Settings page.
  */
-export default function LegalFirmsWindow({ onClose, onSaved, zIndex }: { onClose: () => void; onSaved: () => void; zIndex: number }) {
+export default function LegalFirmsWindow({ onClose, onSaved, zIndex, pickFirmId = null }: {
+  onClose: () => void
+  onSaved: () => void
+  zIndex: number
+  /** The firm the block opens picked (punch list #222, PR 1): the firm window's *Color its counties…* names it. */
+  pickFirmId?: string | null
+}) {
   // Esc closes this window and nothing under it.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -35,7 +41,7 @@ export default function LegalFirmsWindow({ onClose, onSaved, zIndex }: { onClose
           <button type="button" onClick={onClose} aria-label="Close the firms window" style={{ ...btn, width: 30, height: 30, padding: 0, justifyContent: 'center' }}>✕</button>
         </div>
         <div style={{ padding: '14px 16px 16px' }}>
-          <LegalFirmSettingsBlock onSaved={onSaved} />
+          <LegalFirmSettingsBlock onSaved={onSaved} pickFirmId={pickFirmId} />
         </div>
       </div>
     </div>
