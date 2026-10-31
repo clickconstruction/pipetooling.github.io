@@ -91,13 +91,13 @@ const TD_NUM: CSSProperties = {
 const TD_NAME: CSSProperties = { padding: '0.4rem 0.55rem', borderBottom: '1px solid var(--border)', textAlign: 'left', fontWeight: 500 }
 
 function CountCell({ value, style }: { value: number; style?: CSSProperties }) {
-  return <td style={{ ...TD_NUM, ...style }}>{value > 0 ? value : <span style={{ color: 'var(--text-faint-300)' }}>—</span>}</td>
+  return <td style={{ ...TD_NUM, ...style }}>{value > 0 ? value : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
 }
 
 function HoursCell({ hours, style }: { hours: number; style?: CSSProperties }) {
   return (
     <td style={{ ...TD_NUM, ...style }}>
-      {hours > 0 ? formatCustomerReviewHours(hours) : <span style={{ color: 'var(--text-faint-300)' }}>—</span>}
+      {hours > 0 ? formatCustomerReviewHours(hours) : <span style={{ color: 'var(--text-faint)' }}>—</span>}
     </td>
   )
 }

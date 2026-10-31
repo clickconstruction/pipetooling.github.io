@@ -115,6 +115,28 @@ describe("a map pin's count in the ink its fill takes, in both themes (v2.6130)"
   })
 })
 
+describe("an empty cell's dash in --text-faint, as the app's other empty dashes draw it: Supply Houses and the customer review (v2.6197)", () => {
+  for (const bg of ['var(--bg-page)', 'var(--surface)']) {
+    for (const theme of THEMES) {
+      it(`on ${bg}, ${theme}: 3:1 or better (the lens's floor; a dash says nothing is there, the quiet it keeps is the point)`, () => {
+        expect(ratio('var(--text-faint)', bg, theme)).toBeGreaterThanOrEqual(3)
+      })
+    }
+  }
+})
+
+describe("a schedule block's − and + presses on the block's tint, in both themes (v2.6197)", () => {
+  for (const fg of ['var(--text-red-700)', 'var(--text-blue-700)']) {
+    for (const bg of ['var(--bg-violet-100)', 'var(--bg-blue-tint)']) {
+      for (const theme of THEMES) {
+        it(`${fg} on ${bg}, ${theme}: 4.5:1 or better`, () => {
+          expect(ratio(fg, bg, theme)).toBeGreaterThanOrEqual(4.5)
+        })
+      }
+    }
+  }
+})
+
 describe('words on a wash over a fill', () => {
   /** A chip's rgba wash laid over a ground token, as the theme draws it. */
   const washed = (wash: string, ground: string, theme: ThemeName) => {

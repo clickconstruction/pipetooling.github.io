@@ -1619,7 +1619,7 @@ export function SupplyHousesTab({
                                   textAlign: 'right',
                                   fontVariantNumeric: 'tabular-nums',
                                   whiteSpace: 'nowrap',
-                                  ...(has ? { ...AGING_CELL_STYLES[b.key], cursor: 'pointer' } : { color: 'var(--text-faint-300)' }),
+                                  ...(has ? { ...AGING_CELL_STYLES[b.key], cursor: 'pointer' } : { color: 'var(--text-faint)' }),
                                 }}
                               >
                                 {has ? `$${formatCurrency(amount)}` : '—'}
@@ -1632,7 +1632,7 @@ export function SupplyHousesTab({
                           {agingHasCredits ? (
                             <td
                               {...(row.creditsOpen < -0.005 ? agingCellDoorProps(row.supplyHouseId, 'credits', `${row.name} — open credits: see the memos`) : {})}
-                              style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(row.creditsOpen < -0.005 ? { color: 'var(--text-green-700)', cursor: 'pointer' } : { color: 'var(--text-faint-300)' }) }}
+                              style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', ...(row.creditsOpen < -0.005 ? { color: 'var(--text-green-700)', cursor: 'pointer' } : { color: 'var(--text-faint)' }) }}
                             >
                               {row.creditsOpen < -0.005 ? `−$${formatCurrency(Math.abs(row.creditsOpen))}` : '—'}
                             </td>
@@ -1660,7 +1660,7 @@ export function SupplyHousesTab({
                           <td
                             key={b.key}
                             {...(has ? agingCellDoorProps(null, b.key, `Every house — ${agingCellTitle(b.key)}: see the invoices`) : {})}
-                            style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: has ? undefined : 'var(--text-faint-300)', ...(has ? { cursor: 'pointer' } : {}) }}
+                            style={{ padding: '0.6rem 0.75rem', textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', color: has ? undefined : 'var(--text-faint)', ...(has ? { cursor: 'pointer' } : {}) }}
                           >
                             {has ? `$${formatCurrency(amount)}` : '—'}
                           </td>

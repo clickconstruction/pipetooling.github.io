@@ -58,6 +58,18 @@ describe('the lens audit · a frame\'s document', () => {
     const a = auditFrame(window, { measure: false })
     expect(a.lowContrast.map((c) => c.text)).toEqual(['0'])
   })
+
+  it('skips words in a transparent ink, a spacer nobody sees, and still reads a translucent one', () => {
+    ;(window as Window & { __lens?: unknown }).__lens = undefined
+    document.body.innerHTML = `
+      <div style="background-color: rgb(249, 250, 251)">
+        <span style="color: transparent"> ▾</span>
+        <span style="color: rgba(0, 0, 0, 0.1)">12</span>
+        <span style="color: rgba(0, 0, 0, 0.3)">Due</span>
+      </div>`
+    const a = auditFrame(window, { measure: false })
+    expect(a.lowContrast.map((c) => c.text)).toEqual(['Due'])
+  })
 })
 
 describe('the lens audit · a drawing\'s words, the arithmetic', () => {
