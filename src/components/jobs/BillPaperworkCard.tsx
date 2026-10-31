@@ -38,7 +38,7 @@ const btn: CSSProperties = {
   cursor: 'pointer',
   whiteSpace: 'nowrap',
 }
-const btnPrimary: CSSProperties = { ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }
+const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 
 const ROW_TONE: Record<WaiverRowTone, string | undefined> = {
   amber: 'var(--bg-amber-tint)',

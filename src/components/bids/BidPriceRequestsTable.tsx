@@ -59,7 +59,7 @@ const tagApp: CSSProperties = { ...tag, background: 'var(--bg-blue-tint)', borde
 const tagOut: CSSProperties = { ...tag, background: 'var(--bg-amber-tint)', borderColor: 'var(--border-amber)', color: 'var(--text-amber-800)' }
 const mini: CSSProperties = { height: 30, border: '1px solid var(--border-strong)', borderRadius: 5, padding: '0 0.5rem', font: 'inherit', fontSize: '0.8125rem', background: 'var(--surface)', color: 'var(--text-base)', width: '100%' }
 const ghost: CSSProperties = { padding: '0.3rem 0.7rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-700)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }
-const blue: CSSProperties = { padding: '0.3rem 0.8rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: 'white', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }
+const blue: CSSProperties = { padding: '0.3rem 0.8rem', border: 'none', borderRadius: 6, background: '#2563eb', color: 'white', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }
 const textBtn: CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.78rem', color: 'var(--text-link)', cursor: 'pointer' }
 /** v2.3495: one card per house in the add block — its own day, its own quote link. */
 const entryCard: CSSProperties = { border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-subtle)', padding: '0.5rem 0.6rem', display: 'flex', flexDirection: 'column', gap: '0.45rem' }

@@ -25,8 +25,8 @@ export default function CustomerViewSwitch({ view, onChange }: { view: CustomerP
               fontSize: '0.75rem',
               fontWeight: 600,
               cursor: on ? 'default' : 'pointer',
-              background: on ? 'var(--text-link)' : 'transparent',
-              color: on ? 'var(--surface)' : 'var(--text-muted)',
+              background: on ? '#2563eb' : 'transparent',
+              color: on ? '#fff' : 'var(--text-muted)',
             }}
           >
             {o.label}

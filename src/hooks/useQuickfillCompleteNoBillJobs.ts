@@ -16,8 +16,10 @@ const ROLES = new Set<string>(['dev', 'master_technician', 'assistant', 'control
 
 /** Quickfill "Complete, no Total Bill": non-paid jobs resolved 100% complete with no
  * `revenue` set. Jobs come from the shared list cache; the latest report % per candidate
- * comes from `list_latest_report_completion_pct` (same RPC as the Job Summary % column). */
-export function useQuickfillCompleteNoBillJobs(minHcpNumber: number): {
+ * comes from `list_latest_report_completion_pct` (same RPC as the Job Summary % column). `enabled`
+ * (punch list #183 PR 4): false holds every read while the station is off screen on the Roller;
+ * `fetchEnabled` still says whether the role sees the station. */
+export function useQuickfillCompleteNoBillJobs(minHcpNumber: number, enabled = true): {
   completeNoBillJobs: JobWithDetails[]
   clockSummaryByJobId: Map<string, QuickfillJobClockSummary>
   loading: boolean
@@ -35,19 +37,20 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number): {
   const clockRequestedIdsRef = useRef<Set<string>>(new Set())
 
   const fetchEnabled = Boolean(authUser?.id && role && ROLES.has(role))
+  const active = fetchEnabled && enabled
 
   useEffect(() => {
-    if (!fetchEnabled) return
+    if (!active) return
     void runFetchJobs(null)
-  }, [fetchEnabled, runFetchJobs])
+  }, [active, runFetchJobs])
 
   const candidates = useMemo(
-    () => (fetchEnabled ? quickfillCompleteNoBillCandidates(jobs, minHcpNumber) : []),
-    [fetchEnabled, jobs, minHcpNumber],
+    () => (active ? quickfillCompleteNoBillCandidates(jobs, minHcpNumber) : []),
+    [active, jobs, minHcpNumber],
   )
 
   useEffect(() => {
-    if (!fetchEnabled) return
+    if (!active) return
     const missing = candidates.map((j) => j.id).filter((id) => !requestedIdsRef.current.has(id))
     if (missing.length === 0) return
     for (const id of missing) requestedIdsRef.current.add(id)
@@ -70,17 +73,17 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number): {
         setPctFetchesInFlight((n) => n - 1)
       }
     })()
-  }, [fetchEnabled, candidates])
+  }, [active, candidates])
 
   const completeNoBillJobs = useMemo(
     () =>
-      fetchEnabled ? buildQuickfillCompleteNoBillList(jobs, reportPctByJobId, minHcpNumber) : [],
-    [fetchEnabled, jobs, reportPctByJobId, minHcpNumber],
+      active ? buildQuickfillCompleteNoBillList(jobs, reportPctByJobId, minHcpNumber) : [],
+    [active, jobs, reportPctByJobId, minHcpNumber],
   )
 
   // Clock rollups for the listed jobs only (Started date · session count · hours).
   useEffect(() => {
-    if (!fetchEnabled) return
+    if (!active) return
     const missing = completeNoBillJobs
       .map((j) => j.id)
       .filter((id) => !clockRequestedIdsRef.current.has(id))
@@ -118,9 +121,9 @@ export function useQuickfillCompleteNoBillJobs(minHcpNumber: number): {
         for (const id of missing) clockRequestedIdsRef.current.delete(id)
       }
     })()
-  }, [fetchEnabled, completeNoBillJobs])
+  }, [active, completeNoBillJobs])
 
-  const loading = fetchEnabled && (jobsListLoading || pctFetchesInFlight > 0)
+  const loading = active && (jobsListLoading || pctFetchesInFlight > 0)
   const jobsListBusy = jobsListLoading || jobsListRefreshing
 
   return { completeNoBillJobs, clockSummaryByJobId, loading, jobsListBusy, fetchEnabled }

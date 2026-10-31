@@ -25,7 +25,7 @@ const btn: CSSProperties = {
 }
 const tone: Record<JobWindowBarTone, CSSProperties> = {
   outline: {},
-  blue: { background: 'var(--text-link)', borderColor: 'var(--text-link)', color: '#fff' },
+  blue: { background: '#2563eb', borderColor: '#2563eb', color: '#fff' },
   green: { background: '#16a34a', borderColor: '#16a34a', color: '#fff' },
   red: { background: '#dc2626', borderColor: '#dc2626', color: '#fff' },
   // Leaving wears the composer chip's amber (v2.1640), so the stamp reads the same on the bar.

@@ -47,6 +47,8 @@ export type MemberJob = {
   collections_note?: string | null
   hcp_number: string | null
   click_number: string | null
+  /** The numbers the job answered to before a combine (v2.6226): 'HCP 550', 'C# 543'; absent on an older read. */
+  prior_numbers?: string[] | null
   job_name: string | null
   job_address: string | null
   customer_id: string | null

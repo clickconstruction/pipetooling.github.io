@@ -1960,7 +1960,7 @@ function JobsSubLaborFormModalInner(
                               disabled={laborInvoiceLinkSaving}
                               style={{
                                 padding: '0.35rem 0.75rem',
-                                background: '#3b82f6',
+                                background: '#2563eb',
                                 color: 'white',
                                 border: 'none',
                                 borderRadius: 4,
@@ -2205,7 +2205,7 @@ function JobsSubLaborFormModalInner(
                             !selectedLaborBookVersionId ||
                             !laborFixtureRows.some((r) => (r.fixture ?? '').trim())
                               ? DEAD_PRESS_FILL
-                              : '#3b82f6',
+                              : '#2563eb',
                           color: applyingLaborBookHours || laborFixtureEntryMode === 'simple' || !selectedLaborBookVersionId || !laborFixtureRows.some((r) => (r.fixture ?? '').trim()) ? DEAD_PRESS_TEXT : 'white',
                           border: 'none',
                           borderRadius: 4,
@@ -2287,7 +2287,7 @@ function JobsSubLaborFormModalInner(
                         <button
                           type="button"
                           onClick={openNewLaborEntry}
-                          style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                          style={{ marginTop: '0.5rem', padding: '0.35rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                         >
                           Add entry
                         </button>
@@ -2550,7 +2550,7 @@ function JobsSubLaborFormModalInner(
                 />
               </div>
               <div style={{ display: 'flex', gap: 8 }}>
-                <button type="submit" disabled={savingAddSubcontractor} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingAddSubcontractor ? 'not-allowed' : 'pointer' }}>
+                <button type="submit" disabled={savingAddSubcontractor} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: savingAddSubcontractor ? 'not-allowed' : 'pointer' }}>
                   {savingAddSubcontractor ? 'Saving…' : 'Save'}
                 </button>
                 <button
@@ -2626,7 +2626,7 @@ function JobsSubLaborFormModalInner(
                   </button>
                 )}
                 <button type="button" onClick={closeLaborEntryForm} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-                <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
+                <button type="submit" disabled={savingLaborEntry} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{savingLaborEntry ? 'Saving…' : 'Save'}</button>
               </div>
             </form>
           </div>

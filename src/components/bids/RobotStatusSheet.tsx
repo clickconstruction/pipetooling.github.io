@@ -3,6 +3,7 @@ import type { Bid } from '../../types/bids'
 import { robotRowState, robotStatusTimeline, type RobotRowInput } from '../../lib/bids/robotRowState'
 import type { RobotProgress } from '../../lib/bids/robotProgress'
 import type { RobotStage } from '../../lib/bids/robotStage'
+import { RobotStageStrip } from './RobotStageStrip'
 import { useRobotRunSignals } from '../../hooks/useRobotProgress'
 import { heartbeatDetailWords, heartbeatWords } from '../../../supabase/functions/_shared/twinHeartbeat'
 import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
@@ -121,6 +122,8 @@ function RobotStatusSheetBody({ input, twin, progress = null, onClose, onOpenRob
           </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ marginLeft: 'auto', background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.1rem', lineHeight: 1, color: 'var(--text-muted)' }}>×</button>
         </div>
+
+        {stage && !stage.void ? <RobotStageStrip stage={stage} variant="full" /> : null}
 
         <ol style={{ listStyle: 'none', margin: '0 0 1rem', padding: '0 0 0 0.6rem', borderLeft: '2px solid var(--border)', display: 'flex', flexDirection: 'column', gap: '0.6rem' }}>
           {steps.map((s, i) => {
@@ -258,6 +261,6 @@ function ProgressBar({ progress }: { progress: RobotProgress }) {
 
 function btn(primary: boolean): React.CSSProperties {
   return primary
-    ? { padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }
+    ? { padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }
     : { padding: '0.45rem 0.85rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--bg-subtle)', color: 'inherit', cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }
 }

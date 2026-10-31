@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import {
   AGING_BUCKETS,
+  agingCellModalDoors,
+  agingCellRowDoors,
   agingCellTitle,
   countSupplyHousesPastDue60,
   supplyHouseAgingPhoneNote,
@@ -335,5 +337,44 @@ describe('the move window (punch list #132 PR 3)', () => {
     expect(s.askedCount).toBe(1)
     expect(s.soonestDueYmd).toBe('2026-07-09')
     expect(moveStripSummary([], new Set())).toEqual({ count: 0, dollars: 0, askedCount: 0, soonestDueYmd: null })
+  })
+})
+
+describe('agingCellRowDoors (punch list #132 PR 4)', () => {
+  const charge = { amount: 120, due_date: '2026-07-10' }
+  it('a dated charge on one job offers neither door; the row still opens its invoice', () => {
+    expect(agingCellRowDoors(charge, 1)).toEqual({ addDueDate: false, pickJob: false })
+  })
+  it('a charge with no due date offers Add a due date', () => {
+    expect(agingCellRowDoors({ amount: 120, due_date: null }, 1)).toEqual({ addDueDate: true, pickJob: false })
+  })
+  it('a charge on no job offers Pick a job', () => {
+    expect(agingCellRowDoors(charge, 0)).toEqual({ addDueDate: false, pickJob: true })
+  })
+  it('a charge with neither a date nor a job offers both', () => {
+    expect(agingCellRowDoors({ amount: 120, due_date: null }, 0)).toEqual({ addDueDate: true, pickJob: true })
+  })
+  it('a credit offers neither, whatever it lacks', () => {
+    expect(agingCellRowDoors({ amount: -40, due_date: null }, 0)).toEqual({ addDueDate: false, pickJob: false })
+  })
+  it('until the jobs are read, no Pick a job', () => {
+    expect(agingCellRowDoors(charge, null)).toEqual({ addDueDate: false, pickJob: false })
+    expect(agingCellRowDoors({ amount: 120, due_date: null }, null).addDueDate).toBe(true)
+  })
+})
+
+describe('agingCellModalDoors (punch list #132 PR 4)', () => {
+  it('a house-scoped bucket, the Owed cell and the no-due-date cell open the house and make a payment', () => {
+    for (const cell of ['current', 'past1_30', 'past60_90', 'owed', 'noDueDate'] as const) {
+      expect(agingCellModalDoors('h1', cell)).toEqual({ openHouse: true, makePayment: true })
+    }
+  })
+  it('the credits cell opens the house but offers no payment', () => {
+    expect(agingCellModalDoors('h1', 'credits')).toEqual({ openHouse: true, makePayment: false })
+  })
+  it('the footer row and the worked list span every house: neither door', () => {
+    expect(agingCellModalDoors(null, 'past30_60')).toEqual({ openHouse: false, makePayment: false })
+    expect(agingCellModalDoors(null, 'owed')).toEqual({ openHouse: false, makePayment: false })
+    expect(agingCellModalDoors(null, 'movable')).toEqual({ openHouse: false, makePayment: false })
   })
 })

@@ -78,7 +78,7 @@ export function BidsLaborUnmatchedBand({
                     if (ok) setTarget((prev) => ({ ...prev, [r.id]: '' }))
                     return ok
                   })}
-                  style={{ padding: '0.35rem 0.75rem', minHeight: 36, background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                  style={{ padding: '0.35rem 0.75rem', minHeight: 36, background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                 >
                   Use for {pick.fixture || 'No name'}
                 </button>

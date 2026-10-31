@@ -128,7 +128,7 @@ describe('the wording', () => {
 
 describe('statementWeekNudgeFromPayload', () => {
   it('counts the statements checked and waiting, office-wide', () => {
-    expect(statementWeekNudgeFromPayload(sample)).toEqual({ count: 1, total: 26000, gcNames: ['Knight <& Sons>'], office: true, late: 1, toCheck: 1, wordsDue: 3 })
+    expect(statementWeekNudgeFromPayload(sample)).toEqual({ count: 1, total: 26000, gcNames: ['Knight <& Sons>'], late: 1, toCheck: 1, wordsDue: 3 })
   })
 
   it('is quiet when nothing is ready to send', () => {

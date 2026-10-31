@@ -50,7 +50,7 @@ export function RobotLeftToYouSheet({ bid, onClose, onLetBackIn }: RobotLeftToYo
           <button
             type="button"
             onClick={() => onLetBackIn(bid)}
-            style={{ padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}
+            style={{ padding: '0.45rem 0.85rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer', font: 'inherit', fontSize: '0.85rem' }}
           >
             {LET_ROBOT_BACK_IN_LABEL}
           </button>

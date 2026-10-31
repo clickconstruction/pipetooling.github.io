@@ -22,7 +22,7 @@ function fill(s: MoneyBarSegment, i: number): CSSProperties {
       return { background: bg, color: i % BILL_BLUES.length >= 2 ? '#fff' : 'var(--text-on-bright-solid)' }
     }
     case 'bills':
-      return { background: '#3b82f6', color: '#fff' }
+      return { background: '#2563eb', color: '#fff' }
     case 'retainage':
       return { background: '#bfdbfe', color: 'var(--text-on-bright-solid)' }
     case 'beyond':

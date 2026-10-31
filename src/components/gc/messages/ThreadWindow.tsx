@@ -390,7 +390,7 @@ export function ThreadWindow({ contactId, at = null, onClose, slots: slotsGiven,
                       <button
                         type="button"
                         onClick={() => setNaming(true)}
-                        style={{ background: 'var(--text-blue-700)', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
+                        style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem' }}
                       >
                         Who is this?
                       </button>

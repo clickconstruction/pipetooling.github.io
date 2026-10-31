@@ -148,7 +148,7 @@ export function PricingEntryFormModal(props: PricingEntryFormProps) {
             </div>
             <div style={{ display: 'flex', gap: '0.5rem' }}>
               <button type="button" onClick={props.onClose} style={{ padding: '0.5rem 1rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-              <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{saving ? 'Saving…' : 'Save'}</button>
+              <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}>{saving ? 'Saving…' : 'Save'}</button>
             </div>
           </div>
         </form>

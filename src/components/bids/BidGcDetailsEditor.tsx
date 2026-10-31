@@ -213,7 +213,7 @@ export function BidGcDetailsEditor({
         <button type="button" onClick={() => setOpen(false)} disabled={busy} style={{ font: 'inherit', fontSize: '0.78rem', padding: '0.28rem 0.7rem', background: 'none', border: '1px solid var(--border)', borderRadius: 4, color: 'var(--text-muted)', cursor: 'pointer' }}>
           Cancel
         </button>
-        <button type="button" onClick={() => void save()} disabled={busy} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
+        <button type="button" onClick={() => void save()} disabled={busy} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.8rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: busy ? 'default' : 'pointer', opacity: busy ? 0.6 : 1 }}>
           {busy ? 'Saving…' : 'Save'}
         </button>
       </div>

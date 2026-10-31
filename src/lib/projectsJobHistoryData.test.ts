@@ -104,8 +104,8 @@ describe('peopleCountColor', () => {
   it('switches to white fg at 4 and clamps at >= 5', () => {
     expect(peopleCountColor(4).background).toBe('#60a5fa')
     expect(peopleCountColor(4).foreground).toBe('#ffffff')
-    expect(peopleCountColor(5).background).toBe('#3b82f6')
-    expect(peopleCountColor(99).background).toBe('#3b82f6')
+    expect(peopleCountColor(5).background).toBe('#2563eb')
+    expect(peopleCountColor(99).background).toBe('#2563eb')
     expect(peopleCountColor(99).foreground).toBe('#ffffff')
   })
 })

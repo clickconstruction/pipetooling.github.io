@@ -232,7 +232,7 @@ export default function CustomerPropertyRecordPanel({ address, fields, onChange,
                       setPasteText('')
                       setPasteResult(null)
                     }}
-                    style={{ padding: '0.25rem 0.7rem', fontSize: '0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
+                    style={{ padding: '0.25rem 0.7rem', fontSize: '0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontWeight: 600 }}
                   >
                     Use these
                   </button>

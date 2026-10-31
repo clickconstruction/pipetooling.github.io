@@ -605,8 +605,8 @@ export default function BilledPaymentConfirmationModal({
                       padding: '0.2rem 0.65rem',
                       borderRadius: 9999,
                       fontSize: '0.78rem',
-                      border: `1px solid ${on ? 'var(--text-link)' : 'var(--border-strong)'}`,
-                      background: on ? 'var(--text-link)' : 'var(--surface)',
+                      border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`,
+                      background: on ? '#2563eb' : 'var(--surface)',
                       color: on ? '#fff' : 'var(--text-base)',
                       fontWeight: on ? 600 : 400,
                       cursor: 'pointer',
@@ -627,8 +627,8 @@ export default function BilledPaymentConfirmationModal({
                   padding: '0.2rem 0.65rem',
                   borderRadius: 9999,
                   fontSize: '0.78rem',
-                  border: `1px solid ${backfillCustom ? 'var(--text-link)' : 'var(--border-strong)'}`,
-                  background: backfillCustom ? 'var(--text-link)' : 'var(--surface)',
+                  border: `1px solid ${backfillCustom ? '#2563eb' : 'var(--border-strong)'}`,
+                  background: backfillCustom ? '#2563eb' : 'var(--surface)',
                   color: backfillCustom ? '#fff' : 'var(--text-base)',
                   cursor: 'pointer',
                 }}
@@ -672,7 +672,7 @@ export default function BilledPaymentConfirmationModal({
             onClick={() => void submit()}
             style={{
               padding: '0.5rem 1rem',
-              background: submitting ? DEAD_PRESS_FILL : '#3b82f6',
+              background: submitting ? DEAD_PRESS_FILL : '#2563eb',
               color: submitting ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 4,

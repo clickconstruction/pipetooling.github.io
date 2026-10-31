@@ -32,6 +32,7 @@ import {
   showJobDetailProfitSection,
 } from '../../lib/jobDetailModalRole'
 import { buildJobProfitSummary } from '../../lib/jobs/jobProfitSummary'
+import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import { jobCardChargesCountedFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import {
   scheduleFormatDateLongNoWeekday,
@@ -881,6 +882,8 @@ export default function DetailJobModal({
     if (hcp) return hcp
     return (fullJob?.click_number ?? '').trim()
   }, [fullJob, limitedJob])
+  // The numbers the job answered to before a combine (v2.6226): *also 550 · 543* beside the name, so an old HCP number is never lost.
+  const priorWords = priorNumbersBare(fullJob?.prior_numbers)
 
   const mapsAddressLine = useMemo(() => {
     const fromJob = (fullJob ?? limitedJob)?.job_address?.trim()
@@ -1610,6 +1613,11 @@ export default function DetailJobModal({
               </span>
             ) : null}
             {modalTitleParts.name}
+            {priorWords ? (
+              <span style={{ marginLeft: '0.45rem', fontSize: '0.8rem', fontWeight: 400, color: 'var(--text-muted)', whiteSpace: 'nowrap' }} title="Numbers this job answered to before a combine" data-testid="job-prior-numbers">
+                {priorWords}
+              </span>
+            ) : null}
             {phonePane && fullJob?.status ? (
               <span
                 style={{

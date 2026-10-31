@@ -476,7 +476,7 @@ export default function SubmittalRoom() {
                   {rev.rows.filter((r) => r.kind !== 'matches').slice(0, 24).map((r) => {
                     const on = askTags.includes(r.tag)
                     return (
-                      <button key={r.id} type="button" aria-pressed={on} onClick={() => setAskTags((t) => (on ? t.filter((x) => x !== r.tag) : [...t, r.tag]))} style={{ padding: '0.15rem 0.55rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', cursor: 'pointer' }}>
+                      <button key={r.id} type="button" aria-pressed={on} onClick={() => setAskTags((t) => (on ? t.filter((x) => x !== r.tag) : [...t, r.tag]))} style={{ padding: '0.15rem 0.55rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: on ? 'var(--text-strong)' : 'var(--surface)', color: on ? 'var(--surface)' : 'var(--text-muted)', font: 'inherit', fontSize: '0.75rem', cursor: 'pointer' }}>
                         {r.tag || 'Accessory'}
                       </button>
                     )
@@ -514,7 +514,7 @@ export default function SubmittalRoom() {
               <SendErrorLine error={sendError} onTryAgain={() => void sendReview()} phone={payload?.company.phone} />
               {sent ? <div style={{ fontSize: '0.85rem', color: '#1f7a3a' }} role="status">{sent}</div> : null}
               <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                <button type="button" disabled={sending || Object.keys(pending).length === 0 || me?.mayDecide === false} onClick={() => (me ? void sendReview() : setIdentifyOpen(true))} style={{ padding: '0.6rem 1.1rem', borderRadius: 6, border: 'none', background: Object.keys(pending).length === 0 || me?.mayDecide === false ? 'var(--bg-200)' : 'var(--text-strong)', color: Object.keys(pending).length === 0 || me?.mayDecide === false ? 'var(--text-faint)' : 'white', font: 'inherit', fontWeight: 700, cursor: Object.keys(pending).length === 0 ? 'not-allowed' : 'pointer' }}>
+                <button type="button" disabled={sending || Object.keys(pending).length === 0 || me?.mayDecide === false} onClick={() => (me ? void sendReview() : setIdentifyOpen(true))} style={{ padding: '0.6rem 1.1rem', borderRadius: 6, border: 'none', background: Object.keys(pending).length === 0 || me?.mayDecide === false ? 'var(--bg-200)' : 'var(--text-strong)', color: Object.keys(pending).length === 0 || me?.mayDecide === false ? 'var(--text-faint)' : 'var(--surface)', font: 'inherit', fontWeight: 700, cursor: Object.keys(pending).length === 0 ? 'not-allowed' : 'pointer' }}>
                   {sending ? 'Sending…' : me?.mayDecide === false ? 'Watching only' : 'Send my review'}
                 </button>
               </div>
@@ -535,7 +535,7 @@ export default function SubmittalRoom() {
             <input aria-hidden="true" tabIndex={-1} name="website" autoComplete="off" style={{ position: 'absolute', left: -9999, width: 1, height: 1, opacity: 0 }} />
             <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }} role="group" aria-label="I am">
               {ROOM_ROLES.map((r) => (
-                <button key={r} type="button" aria-pressed={idRole === r} onClick={() => setIdRole(r)} style={{ padding: '0.35rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: idRole === r ? 'var(--text-strong)' : 'var(--surface)', color: idRole === r ? 'white' : 'var(--text-muted)', font: 'inherit', fontSize: '0.8rem', fontWeight: idRole === r ? 700 : 500, cursor: 'pointer' }}>
+                <button key={r} type="button" aria-pressed={idRole === r} onClick={() => setIdRole(r)} style={{ padding: '0.35rem 0.7rem', borderRadius: 999, border: '1px solid var(--border-strong)', background: idRole === r ? 'var(--text-strong)' : 'var(--surface)', color: idRole === r ? 'var(--surface)' : 'var(--text-muted)', font: 'inherit', fontSize: '0.8rem', fontWeight: idRole === r ? 700 : 500, cursor: 'pointer' }}>
                   {ROOM_ROLE_LABELS[r]}
                 </button>
               ))}
@@ -543,7 +543,7 @@ export default function SubmittalRoom() {
             <SendErrorLine error={idError} onTryAgain={() => void identify()} phone={payload?.company.phone} />
             <div style={{ display: 'flex', justifyContent: 'space-between', gap: 8, marginTop: 4 }}>
               <button type="button" onClick={() => { setIdentifyOpen(false); setPending({}); setIdentifyFor('decide') }} style={{ padding: '0.5rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', font: 'inherit', cursor: 'pointer' }}>Just looking</button>
-              <button type="submit" style={{ padding: '0.5rem 1.1rem', borderRadius: 6, border: 'none', background: 'var(--text-strong)', color: 'white', font: 'inherit', fontWeight: 700, cursor: 'pointer' }}>That&apos;s me</button>
+              <button type="submit" style={{ padding: '0.5rem 1.1rem', borderRadius: 6, border: 'none', background: 'var(--text-strong)', color: 'var(--surface)', font: 'inherit', fontWeight: 700, cursor: 'pointer' }}>That&apos;s me</button>
             </div>
           </form>
         </div>

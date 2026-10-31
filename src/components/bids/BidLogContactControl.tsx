@@ -246,7 +246,7 @@ export function BidLogContactControl({
           <button
             type="button"
             onClick={() => void openEditor()}
-            style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.4rem 0.8rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
+            style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 600, padding: '0.4rem 0.8rem', border: 'none', borderRadius: 5, background: '#2563eb', color: '#fff', cursor: 'pointer', whiteSpace: 'nowrap' }}
           >
             Log contact…
           </button>
@@ -285,7 +285,7 @@ export function BidLogContactControl({
             <button type="button" onClick={() => setOpen(false)} disabled={saving} style={{ font: 'inherit', fontSize: '0.8125rem', padding: '0.35rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 5, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer' }}>
               Cancel
             </button>
-            <button type="button" onClick={() => void save()} disabled={saving || !method} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, padding: '0.35rem 0.9rem', border: 'none', borderRadius: 5, background: '#3b82f6', color: '#fff', cursor: saving ? 'wait' : 'pointer', opacity: !method ? 0.6 : 1 }}>
+            <button type="button" onClick={() => void save()} disabled={saving || !method} style={{ font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, padding: '0.35rem 0.9rem', border: 'none', borderRadius: 5, background: '#2563eb', color: '#fff', cursor: saving ? 'wait' : 'pointer', opacity: !method ? 0.6 : 1 }}>
               {saving ? 'Logging…' : 'Log contact'}
             </button>
           </div>

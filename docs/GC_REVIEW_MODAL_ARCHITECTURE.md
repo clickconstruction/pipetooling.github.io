@@ -200,7 +200,7 @@ Render regions in JSX order (all ranges @ `a05cef4c4`). Status: `extracted` mean
 - **Handlers:** `userNameById`, `assignSender`, `markWhenLabel`, `undoRoundMark`, `openRoundEmailForm`, `saveRoundEmail`, `describeRoundMark`/`sendChannelLabel` (kernel).
 - **Data:** `customers.statement_sender_user_id` update (`setGcStatementSender`), then a senders re-read; `gc_statement_round_marks` delete (undo); `statement_round_email_requests` (`applyStatementRoundChainPlan`: **inserts, then deletes** unsent); edge `statement-round-email-dispatch` (preview / `test_send`).
 - **Tests:** `buildStatementRound` / `summarizeStatementRound` / `describeRoundMark` (14), `groupStatementRoundChains` / `planStatementRoundChainEdit` (6), `emailScheduleWeek` (20). `buildGcWorklist` / `worklistNextStep` / `mergeRoundMarkWrite` (18), `GcWorklistPanel.render` (4). **Untested:** `statementRoundEmailClient`, `gcStatementRoundIo`.
-- **Approach:** `useStatementRoundEmail` (#5) → `GcRoundEmailSection`; the round email, the overlay and the per-sender prompts are re-aimed at the office by punch list #49 (`to-dos/gc-review-one-operator/`), which changes this region again.
+- **Approach:** `useStatementRoundEmail` (#5) → `GcRoundEmailSection`; the round email, the overlay and the per-sender prompts were re-aimed at the office by punch list #49 (v2.3950–v2.3985; closed 2026-10-31 with v2.6220, which retired the per-sender round's fallbacks and functions — the record is in `docs/recent-features/`).
 
 ### 5. Temperature board (extracted)
 

@@ -1,22 +1,19 @@
 /**
  * statement-round-email-dispatch — the "Your statement round" email
  * (v2.2771, `statement_round` REPORT_SUBSCRIPTIONS stream). Skeleton mirrors
- * crew-day-email-dispatch: the payload is PER-RECIPIENT
- * (get_statement_round_for_user computes that sender's round — certified GCs
- * assigned to them, not yet marked sent) and is rebuilt fresh at send time.
- * v2.2812: the email reads as the account man's own account — standard,
- * aging, AP contact, last word / temperature, deadline, held GCs, scoreboard.
- * Office roles only on both sides. An empty round still sends a one-liner
- * (a silent skip reads as a broken subscription).
+ * crew-day-email-dispatch; the payload is rebuilt fresh at send time. Office
+ * roles only on both sides. An empty week still sends a one-liner (a silent
+ * skip reads as a broken subscription).
  *
- * Punch list #49 (step 6b): the email is the OFFICE's week, not one sender's
- * round — get_statement_week_for_office(), every GC over the line grouped by
- * the account man to ask (renderOfficeWeek.ts). The same email goes to every
- * recipient; one who is an account man sees his own GCs first. Until that
- * function is pushed the dispatcher falls back to the per-sender round.
+ * Punch list #49 (step 6b, v2.3976): the email is the OFFICE's week, not one
+ * sender's round — get_statement_week_for_office(), every GC over the line
+ * grouped by the account man to ask (renderOfficeWeek.ts). The same email goes
+ * to every recipient; one who is an account man sees his own GCs first. The
+ * per-sender round it fell back to while that function was unpushed
+ * (get_statement_round_for_user, render.ts) was retired in v2.6220.
  *
  * Modes on POST JSON body:
- * - { mode: 'preview', recipient_user_id? } — caller JWT, office role; returns { html } for the caller's own round, or a colleague's (v2.2781).
+ * - { mode: 'preview', recipient_user_id? } — caller JWT, office role; returns { html } for the caller, or as a colleague would read it (v2.2781).
  * - { mode: 'test_send' } — same gate; [TEST]-prefixed send to the caller.
  * - cron (no mode)        — X-Cron-Secret; drains statement_round_email_requests,
  *                           repeat_weekly re-enqueues +7d.
@@ -29,7 +26,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { resolveServerEmailWording } from '../_shared/emailWordingServer.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
-import { renderStatementRoundHtml, roundTotal, statementRoundSubject, statementRoundText, type StatementRoundPayload } from './render.ts'
 import { isOfficeWeekPayload, officeWeekSubject, officeWeekText, renderOfficeWeekHtml, type OfficeWeekPayload } from './renderOfficeWeek.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 
@@ -39,7 +35,7 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-cron-secret',
 }
 
-/** Keep in sync with the statement_round_email_requests INSERT policy and get_my_statement_round's gate. */
+/** Keep in sync with the statement_round_email_requests INSERT policy and get_my_statement_week's gate. */
 const OFFICE_ROLES = new Set(['dev', 'master_technician', 'assistant', 'controller'])
 const MAX_QUEUE_BATCH = 10
 const MAX_ATTEMPTS = 5
@@ -56,28 +52,12 @@ type Admin = any
 const dateFmt = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short', month: 'short', day: 'numeric' })
 const dateLabel = (): string => dateFmt.format(new Date())
 
-async function fetchRoundForUser(admin: Admin, userId: string): Promise<StatementRoundPayload> {
-  const { data, error } = await admin.rpc('get_statement_round_for_user', { p_user_id: userId })
-  if (error) throw new Error(`get_statement_round_for_user: ${error.message}`)
-  if (!data || typeof data !== 'object' || !Array.isArray((data as StatementRoundPayload).ready)) throw new Error('Empty payload')
-  const body = data as StatementRoundPayload
-  // Pre-v2.2812 payload shape (RPC not yet pushed): fill the new fields so the renderer never throws.
-  if (!body.held || !Array.isArray(body.held.items)) body.held = { count: body.held?.count ?? 0, total: body.held?.total ?? 0, items: [] }
-  if (typeof body.book_total !== 'number') body.book_total = roundTotal(body)
-  if (typeof body.contacted_by_me !== 'number') body.contacted_by_me = 0
-  if (typeof body.deadline !== 'string') body.deadline = ''
-  return body
-}
-
-/** The office's week; null when the function is not in the database yet (the per-sender round stands in). */
-async function fetchOfficeWeek(admin: Admin): Promise<OfficeWeekPayload | null> {
+/** The office's week. A missing function is a real failure now: the migration (20260928040549) has been on prod since 2026-09-28. */
+async function fetchOfficeWeek(admin: Admin): Promise<OfficeWeekPayload> {
   const { data, error } = await admin.rpc('get_statement_week_for_office')
-  if (error) {
-    // PGRST202 / 42883: no such function — the migration has not been pushed. Anything else is a real failure.
-    if (error.code === 'PGRST202' || error.code === '42883' || /could not find the function|does not exist/i.test(error.message ?? '')) return null
-    throw new Error(`get_statement_week_for_office: ${error.message}`)
-  }
-  return isOfficeWeekPayload(data) ? data : null
+  if (error) throw new Error(`get_statement_week_for_office: ${error.message}`)
+  if (!isOfficeWeekPayload(data)) throw new Error('get_statement_week_for_office: empty payload')
+  return data
 }
 
 type UserRow = { id: string; email: string | null; name: string | null; role: string | null; archived_at: string | null }
@@ -108,27 +88,17 @@ async function requireOffice(req: Request, admin: Admin): Promise<UserRow | Resp
 async function buildEmail(admin: Admin, recipient: UserRow): Promise<{ subject: string; html: string; text: string }> {
   const label = dateLabel()
   const week = await fetchOfficeWeek(admin)
-  if (week) {
-    const opts = { dateLabel: label, roundUrl: ROUND_URL, recipientName: recipient.name?.trim() || null, recipientUserId: recipient.id, timeZone: APP_CALENDAR_TZ }
-    const weekWording = await resolveServerEmailWording('statement_round', { date: label }, officeWeekSubject(week, opts.recipientName))
-    return {
-      subject: weekWording.subject,
-      html: (weekWording.introHtml ?? '') + renderOfficeWeekHtml(week, opts),
-      text: (weekWording.introText ? weekWording.introText + '\n\n' : '') + officeWeekText(week, opts),
-    }
-  }
-  const payload = await fetchRoundForUser(admin, recipient.id)
+  const opts = { dateLabel: label, roundUrl: ROUND_URL, recipientName: recipient.name?.trim() || null, recipientUserId: recipient.id, timeZone: APP_CALENDAR_TZ }
   // Dev-saved wording (Settings → Email templates): subject template + optional intro paragraph.
-  const wording = await resolveServerEmailWording('statement_round', { date: label }, statementRoundSubject(payload, recipient.name))
-  const name = recipient.name?.trim() || null
+  const wording = await resolveServerEmailWording('statement_round', { date: label }, officeWeekSubject(week, opts.recipientName))
   return {
     subject: wording.subject,
-    html: (wording.introHtml ?? '') + renderStatementRoundHtml(payload, label, ROUND_URL, name),
-    text: (wording.introText ? wording.introText + '\n\n' : '') + statementRoundText(payload, label, ROUND_URL, name),
+    html: (wording.introHtml ?? '') + renderOfficeWeekHtml(week, opts),
+    text: (wording.introText ? wording.introText + '\n\n' : '') + officeWeekText(week, opts),
   }
 }
 
-/** Cron path: drain due rows; each recipient's round is rebuilt for THEM. */
+/** Cron path: drain due rows; the week is rebuilt at send time, once per row. */
 async function runDispatch(admin: Admin, resendApiKey: string): Promise<Response> {
   const { data: pending, error: qErr } = await admin
     .from('statement_round_email_requests')
@@ -210,14 +180,14 @@ serve(async (req) => {
     if (mode === 'preview' || mode === 'test_send') {
       const me = await requireOffice(req, admin)
       if (me instanceof Response) return me
-      // Preview another sender's round (v2.2781, the sender card): any office
-      // caller may READ a colleague's round — it is the same data the GC
-      // Review panel shows them — but test sends stay to the caller only.
+      // Preview as a colleague would read it (v2.2781, the sender card): the
+      // week is the office's, so only the name and the own-GCs-first order
+      // differ — but test sends stay to the caller only.
       let subject: UserRow = me
       const previewFor = typeof body.recipient_user_id === 'string' ? body.recipient_user_id.trim() : ''
       if (mode === 'preview' && previewFor && previewFor !== me.id) {
         const other = await loadUser(admin, previewFor)
-        if (!other || other.archived_at || !OFFICE_ROLES.has(String(other.role))) return jsonResponse({ error: 'That user cannot hold a round' }, 400)
+        if (!other || other.archived_at || !OFFICE_ROLES.has(String(other.role))) return jsonResponse({ error: 'That user cannot read the week' }, 400)
         subject = other
       }
       const mail = await buildEmail(admin, subject)

@@ -16,9 +16,11 @@ import type { PropertyKind } from '../lib/jobs/propertyKind'
  * (the same list Missing job info reads), each job's property kind from the
  * Pipeline's own hook (`usePropertyKinds`, one chunked read), the customers'
  * own type for the hint (one chunked read), folded into property rows by the
- * kernel. Office roles only — the same roles the Pipeline's badge lets pick.
+ * kernel. Office roles only — the same roles the Pipeline's badge lets pick. `enabled` (punch list
+ * #183 PR 4): false holds every read while the station is off screen on the Roller; `fetchEnabled`
+ * still says whether the role sees the station.
  */
-export function useQuickfillPropertyKinds(): {
+export function useQuickfillPropertyKinds(enabled = true): {
   rows: PropertyKindRow[]
   noCustomerCount: number
   loading: boolean
@@ -33,16 +35,17 @@ export function useQuickfillPropertyKinds(): {
   const { jobs, jobsListLoading, jobsListRefreshing, runFetchJobs } = useJobsListCache()
 
   const fetchEnabled = Boolean(authUser?.id && (role === 'dev' || role === 'master_technician' || isAssistantLike(role)))
+  const active = fetchEnabled && enabled
 
   useEffect(() => {
-    if (!fetchEnabled) return
+    if (!active) return
     void runFetchJobs(null)
-  }, [fetchEnabled, runFetchJobs])
+  }, [active, runFetchJobs])
 
   // The property's home is the customer, else the GC (v2.4222), as the Pipeline badge has it.
   const propertyKindJobs = useMemo(
-    () => (fetchEnabled ? jobs.map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, customer_id: j.customer_id ?? j.gc_customer_id ?? null })) : []),
-    [fetchEnabled, jobs],
+    () => (active ? jobs.map((j) => ({ id: j.id, customer_address_id: j.customer_address_id ?? null, customer_id: j.customer_id ?? j.gc_customer_id ?? null })) : []),
+    [active, jobs],
   )
   const propertyKinds = usePropertyKinds(propertyKindJobs)
 
@@ -78,7 +81,7 @@ export function useQuickfillPropertyKinds(): {
 
   const queueJobs = useMemo<PropertyKindQueueJob[]>(
     () =>
-      fetchEnabled
+      active
         ? jobs.map((j) => ({
             id: j.id,
             status: j.status,
@@ -94,15 +97,15 @@ export function useQuickfillPropertyKinds(): {
             open_balance: jobBilledUnpaidDollars(j),
           }))
         : [],
-    [fetchEnabled, jobs],
+    [active, jobs],
   )
 
-  const built = useMemo(() => propertyKindRows(queueJobs, fetchEnabled ? propertyKinds.byJobId : new Map(), customerTypeById), [queueJobs, fetchEnabled, propertyKinds.byJobId, customerTypeById])
+  const built = useMemo(() => propertyKindRows(queueJobs, active ? propertyKinds.byJobId : new Map(), customerTypeById), [queueJobs, active, propertyKinds.byJobId, customerTypeById])
 
   return {
     rows: built.rows,
     noCustomerCount: built.noCustomerCount,
-    loading: fetchEnabled && (jobsListLoading || built.loading),
+    loading: active && (jobsListLoading || built.loading),
     jobsListBusy: jobsListLoading || jobsListRefreshing,
     fetchEnabled,
     setKind: propertyKinds.setKind,

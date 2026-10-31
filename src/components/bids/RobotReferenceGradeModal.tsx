@@ -119,7 +119,7 @@ export function RobotReferenceGradeModal({ bid, presence, onClose, onEditBid }: 
           <button
             type="button"
             onClick={() => { onClose(); onEditBid(bid) }}
-            style={{ padding: '0.5rem 0.85rem', border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', fontWeight: 600, cursor: 'pointer' }}
+            style={{ padding: '0.5rem 0.85rem', border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', fontWeight: 600, cursor: 'pointer' }}
           >
             Edit bid to fix
           </button>

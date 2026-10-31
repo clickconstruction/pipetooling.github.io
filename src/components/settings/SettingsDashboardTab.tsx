@@ -605,7 +605,7 @@ export default function SettingsDashboardTab({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 border: 'none',
                 borderRadius: 6,
@@ -712,7 +712,7 @@ export default function SettingsDashboardTab({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 border: 'none',
                 borderRadius: 6,
@@ -819,7 +819,7 @@ export default function SettingsDashboardTab({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 border: 'none',
                 borderRadius: 6,
@@ -927,7 +927,7 @@ export default function SettingsDashboardTab({
               style={{
                 padding: '0.35rem 0.75rem',
                 fontSize: '0.875rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 border: 'none',
                 borderRadius: 6,
@@ -1141,7 +1141,7 @@ export default function SettingsDashboardTab({
                 <button
                   type="submit"
                   disabled={reportNotificationSaving}
-                  style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: reportNotificationSaving ? 'not-allowed' : 'pointer' }}
+                  style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: reportNotificationSaving ? 'not-allowed' : 'pointer' }}
                 >
                   {reportNotificationSaving ? 'Saving…' : 'Save report notification preferences'}
                 </button>
@@ -1240,7 +1240,7 @@ export default function SettingsDashboardTab({
                             setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
                             setEditReportModalOpen(true)
                           }}
-                          style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                          style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                         >
                           Edit
             </button>
@@ -1418,7 +1418,7 @@ export default function SettingsDashboardTab({
                   <button
                             type="button"
                             onClick={() => { setMuteModalItemId(m.checklist_item_id); setMuteModalTitle(m.task_title) }}
-                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                            style={{ padding: '0.35rem 0.6rem', fontSize: '0.8125rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
                           >
                             Change
                   </button>

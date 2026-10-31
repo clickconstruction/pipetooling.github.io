@@ -793,7 +793,7 @@ export function BidsLaborTab({
               <button
                 type="button"
                 onClick={() => void printCostEstimatePage()}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}
               >
                 Print
               </button>
@@ -905,21 +905,21 @@ export function BidsLaborTab({
                     <button
                       type="button"
                       onClick={printRoughInSubSheet}
-                      style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      style={{ padding: '0.35rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                     >
                       Rough In sub sheet
                     </button>
                     <button
                       type="button"
                       onClick={printTopOutSubSheet}
-                      style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      style={{ padding: '0.35rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                     >
                       Top Out sub sheet
                     </button>
                     <button
                       type="button"
                       onClick={printTrimSetSubSheet}
-                      style={{ padding: '0.35rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                      style={{ padding: '0.35rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                     >
                       Trim Set sub sheet
                     </button>
@@ -967,7 +967,7 @@ export function BidsLaborTab({
                         <button
                           type="button"
                           onClick={() => onEditBid(selectedBidForCostEstimate)}
-                          style={{ padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
+                          style={{ padding: '0.25rem 0.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.75rem', fontWeight: 500 }}
                         >
                           Edit bid
                         </button>

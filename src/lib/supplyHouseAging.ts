@@ -298,3 +298,34 @@ export function moveStripSummary<T extends { id: string; amount: number | null; 
   }
   return { count: movable.length, dollars, askedCount, soonestDueYmd: soonest }
 }
+
+/**
+ * The doors out of a cell's row (punch list #132 PR 4). Every row opens its invoice through
+ * the house's own form, so that door is not a decision. These two are: a charge with no due
+ * date offers **Add a due date ›** and a charge on no job offers **Pick a job ›** — both land
+ * on the same form, on that field, never on a form of the modal's own. A credit offers
+ * neither: it has a size, not an age (v2.3500), and its pairing line is its job. A null
+ * allocation count means the jobs are not read yet, so no Pick a job until they are.
+ */
+export type AgingCellRowDoors = { addDueDate: boolean; pickJob: boolean }
+
+export function agingCellRowDoors(inv: { amount: number | null; due_date: string | null }, allocationCount: number | null): AgingCellRowDoors {
+  const credit = Number(inv.amount ?? 0) < 0
+  return {
+    addDueDate: !credit && inv.due_date == null,
+    pickJob: !credit && allocationCount === 0,
+  }
+}
+
+/**
+ * The modal's own footer doors. A house-scoped modal opens the house and makes a payment
+ * through the house's existing Apply Payment door; the footer row's modal and the worked
+ * list span every house, so there is no one house to open or pay. The credits cell holds
+ * credit memos, which are applied against invoices, not paid, so it offers no payment.
+ */
+export type AgingCellModalDoors = { openHouse: boolean; makePayment: boolean }
+
+export function agingCellModalDoors(houseId: string | null, cell: AgingCellKey | 'movable'): AgingCellModalDoors {
+  const oneHouse = houseId != null && cell !== 'movable'
+  return { openHouse: oneHouse, makePayment: oneHouse && cell !== 'credits' }
+}

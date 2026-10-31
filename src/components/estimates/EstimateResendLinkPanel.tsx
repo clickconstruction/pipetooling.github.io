@@ -29,7 +29,7 @@ const buttonStyle = (disabled: boolean): CSSProperties => ({
   fontWeight: 500,
   border: 'none',
   borderRadius: 4,
-  background: disabled ? DEAD_PRESS_FILL : '#3b82f6',
+  background: disabled ? DEAD_PRESS_FILL : '#2563eb',
   color: disabled ? DEAD_PRESS_TEXT : 'white',
   cursor: disabled ? 'not-allowed' : 'pointer',
 })
