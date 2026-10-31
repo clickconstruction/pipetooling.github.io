@@ -182,8 +182,8 @@ Cross-checked against [`src/lib/canLeaveJobFieldReport.ts`](../src/lib/canLeaveJ
 ### 3b. Your record (v2.3368)
 
 - **Render location:** `DashboardYourRecordCard` in `afterJobReportRow` 1403 and in the Job Mode return 1181 (props `userId`, `role`, `displayName={clockDisplayName}`, `isSalary={dashboardSelfIsSalary}`).
-- **What it is:** up to three things only this person can put right (a past-day clock left running, an open job worked with no % complete, a worked job with no report from them); no money; renders nothing when clean. Owns its own doors (field % modal, leave-report modal, My Time day editor). Reads `clock_sessions`, `jobs_ledger`, `reports`.
-- **Tests:** `dashboardYourRecord` 4. **Status:** done (born external).
+- **What it is:** up to three things only this person can put right (a past-day clock left running, an open job worked with no % complete, a worked job with no report from them); no money; renders nothing when clean. Owns its own doors (field % modal, leave-report modal, My Time day editor). Reads `clock_sessions`, `jobs_ledger`, `reports`. Since v2.6146 (punch list #217, field-8, a prototype) the head carries a per-user **Week strip** switch (`useShapeView('your-record-week-strip')`, off by default) that draws each item's pay week as seven columns (`YourRecordWeekStrip` over `lib/yourRecordWeekStrip.ts`: a bar with its hours per day worked, today's open session hatched, a report day's dot, the week rule as the line) in place of the summed sentence; a dev with `?sbs=1` sees both looks (`prototypes/SideBySide`).
+- **Tests:** `dashboardYourRecord` 4, `yourRecordWeekStrip` 7, `DashboardYourRecordCard.render` 4. **Status:** done (born external).
 
 ### 4. Clock-in button + contract-signing prompt + Rate your crew
 

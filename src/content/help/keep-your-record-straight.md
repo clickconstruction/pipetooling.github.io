@@ -2,7 +2,7 @@
 title: keep my record straight
 category: Field Work
 roles: all
-keywords: your record, clock left running, fix day, set percent, no % complete, field report, no report, dashboard, job mode
+keywords: your record, clock left running, fix day, set percent, no % complete, field report, no report, dashboard, job mode, week strip
 order: 21
 ---
 Your record is a small card on your Dashboard. It lists up to three things this week that only you can put right.
@@ -20,6 +20,10 @@ The card is on the Job Mode view too. When your record is clean, the **Your reco
 You're still on the clock from Thursday — Clocked in at 878 Take 5 Seguin, never clocked out. {{button:blue|Fix day}}
 1007 SpaceX has no % complete — You clocked 24h there this week. {{button:blue|Set %}}
 :::
+
+## See the week as a strip
+
+Press {{button:outline|Week strip}} at the top of the card. Each item then draws your pay week, Sunday to Saturday. A bar sits on each day you worked that job. The hours sit under the bar. Today's open session is a striped bar. Hold on a day to read its hours. A dot sits over a day a report of yours landed. The line under the strip says what is still missing. The switch stays on for you on this phone or desk. Press it again to go back to the words.
 
 ## What it isn't
 
