@@ -53,7 +53,7 @@ const firm: LegalFirmRow = { id: 'firm-1', name: 'ZZ Test Firm', handling_name: 
 const matters = [{ id: 'm1', firm_id: 'firm-1', stage: 'referred', closed_at: null, payer_name: 'Brazos Ridge Contracting', payer_key: 'c:brazos' }] as unknown as LegalMatterRow[]
 const recipients = [{ id: 'r1', firm_id: 'firm-1', removed_at: null }, { id: 'r2', firm_id: 'firm-1', removed_at: null }] as unknown as LegalRecipientRow[]
 
-type CoverageProps = Pick<ComponentProps<typeof LegalFirmWindow>, 'firms' | 'countiesByFirm' | 'cases' | 'onShowOnMap' | 'onColorCounties'>
+type CoverageProps = Pick<ComponentProps<typeof LegalFirmWindow>, 'firms' | 'countiesByFirm' | 'cases' | 'onShowOnMap'>
 
 function renderWindow(extra: { canEdit: boolean; firm?: LegalFirmRow | null } & CoverageProps) {
   const onClose = vi.fn()
@@ -120,11 +120,18 @@ describe('LegalFirmWindow', () => {
     expect(onShowOnMap).toHaveBeenCalledWith('firm-1')
     // The replace panel says what a replace would do to the counties.
     expect(document.querySelector('[data-legal-firm-replace-leaves]')!.textContent).toBe('Replacing retires ZZ Test Firm everywhere. Its 2 counties, Travis County and Williamson County, would have no firm until you color them for the new firm under Firms….')
+    // v2.6221: Extend coverage… turns the map into the picker in place; Cancel with nothing changed leaves at once.
+    fireEvent.click(screen.getByRole('button', { name: 'Extend coverage…' }))
+    expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('extending')
+    expect((screen.getByRole('button', { name: 'Save counties' }) as HTMLButtonElement).disabled).toBe(true)
+    fireEvent.click(screen.getByRole('button', { name: 'Cancel' }))
+    await settle()
+    expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('covers')
   })
 
-  it('while no county is colored for any firm, the nudge names the bridge and Color its counties… opens Firms… on the firm (v2.6195)', async () => {
-    const onColorCounties = vi.fn()
-    renderWindow({ canEdit: true, firms: FIRMS, countiesByFirm: new Map([['firm-1', []]]), cases: CASES, onColorCounties })
+  it('while no county is colored for any firm, the nudge names the bridge, and its press opens the picker in place where an area colors a metro and Save writes it (v2.6195, v2.6221)', async () => {
+    db.writes.length = 0
+    const { onSaved } = renderWindow({ canEdit: true, firms: FIRMS, countiesByFirm: new Map([['firm-1', []]]), cases: CASES })
     await settle()
     const nudge = document.querySelector('[data-legal-firm-nudge]')!
     expect(nudge.getAttribute('data-legal-firm-nudge')).toBe('nothing_colored')
@@ -134,15 +141,39 @@ describe('LegalFirmWindow', () => {
     expect(document.querySelector('[data-legal-firm-coverage-rows]')).toBeNull()
     expect(document.querySelector('[data-legal-firm-replace-leaves]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Color ZZ Test Firm’s counties…' }))
-    expect(onColorCounties).toHaveBeenCalledWith('firm-1')
+    expect(document.querySelector('[data-legal-firm-coverage]')!.getAttribute('data-legal-firm-coverage')).toBe('extending')
+    expect(document.querySelector('[data-legal-firm-nudge]')).toBeNull()
+    // Travis, Williamson and Gonzales hold a case with no firm; the cases already with the firm do not count.
+    expect(document.querySelector('[data-legal-firm-area="gaps"]')!.textContent).toBe('Counties with a case and no firm · 3')
+    fireEvent.click(screen.getByRole('button', { name: 'Austin area · 5' }))
+    expect(await screen.findByText('Austin area: 5 counties added for ZZ Test Firm once you save.')).toBeTruthy()
+    expect(document.querySelector('[data-legal-firm-coverage-counties]')!.textContent).toBe('5 counties')
+    expect(document.querySelector('[data-legal-firm-coverage-row="Bastrop"]')!.getAttribute('data-new')).toBe('1')
+    expect(document.querySelector('[data-legal-firm-area="gaps"]')!.textContent).toBe('Counties with a case and no firm · 1')
+    expect(document.querySelector('[data-legal-firm-extend-changes]')!.textContent).toBe('Adds Bastrop County, Caldwell County, Hays County, Travis County and Williamson County.')
+    // The first save ends the default: the words name the case it leaves with no firm.
+    expect(document.querySelector('[data-legal-firm-bridge-ends]')!.textContent).toBe('Saving ends the default. 1 case sits where no firm covers: Kettle Creek Farms in Gonzales County. Add its county too, or the desk cannot release it.')
+    fireEvent.click(screen.getByRole('button', { name: 'Save 5 counties' }))
+    await waitFor(() => expect(onSaved).toHaveBeenCalled())
+    const insert = db.writes.find((w) => w.table === 'legal_firm_counties' && w.op === 'insert')!
+    expect((insert.payload as Array<{ county: string; firm_id: string }>).map((r) => `${r.firm_id}:${r.county}`).sort()).toEqual(['firm-1:Bastrop', 'firm-1:Caldwell', 'firm-1:Hays', 'firm-1:Travis', 'firm-1:Williamson'])
+    expect(await screen.findByText('5 counties saved. The Legal desk reads them now.')).toBeTruthy()
   })
 
-  it('the office reads the coverage too, without the dev’s press (v2.6195)', async () => {
-    renderWindow({ canEdit: false, firms: FIRMS, countiesByFirm: new Map(), cases: CASES, onColorCounties: vi.fn() })
+  it('the office reads the coverage too, without the dev’s presses (v2.6195)', async () => {
+    renderWindow({ canEdit: false, firms: FIRMS, countiesByFirm: new Map(), cases: CASES })
     await settle()
     expect(document.querySelector('[data-legal-firm-nudge]')).toBeTruthy()
     expect(screen.queryByRole('button', { name: 'Color ZZ Test Firm’s counties…' })).toBeNull()
     expect(document.querySelector('[data-legal-firm-readonly]')).toBeTruthy()
+  })
+
+  it('the office sees no Extend coverage… on a firm that covers counties (v2.6221)', async () => {
+    renderWindow({ canEdit: false, firms: FIRMS, countiesByFirm: COVERED, cases: CASES, onShowOnMap: vi.fn() })
+    await settle()
+    expect(document.querySelector('[data-legal-firm-coverage-rows]')).toBeTruthy()
+    expect(screen.queryByRole('button', { name: 'Extend coverage…' })).toBeNull()
+    expect(screen.getByRole('button', { name: 'Show on the desk map ›' })).toBeTruthy()
   })
 
   it('Click’s particulars fold behind Edit particulars in the window (v2.6195)', async () => {

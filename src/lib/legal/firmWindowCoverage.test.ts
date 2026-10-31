@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { coverageCasesChip, coverageCountyChip, coverageNudgeButton, coverageNudgeWords, coverageState, coverageSumWords, firmWindowCoverage, replaceLeavesUncoveredWords } from './firmWindowCoverage'
+import { bridgeEndsWords, coverageCasesChip, coverageCountyChip, coverageNudgeButton, coverageNudgeWords, coverageState, coverageSumWords, firmWindowCoverage, replaceLeavesUncoveredWords } from './firmWindowCoverage'
 
 const byFirm = new Map<string, string[]>([
   ['snell', ['Williamson', 'Travis', 'Bell', 'Hays']],
@@ -67,6 +67,20 @@ describe('firmWindowCoverage', () => {
     expect(coverageNudgeWords('Snell', { kind: 'nothing_colored', firms: 2 })).toBe('No county is colored for any firm. With 2 firms and no counties, the desk cannot pick a firm for any account. Color each firm’s counties under Firms….')
     expect(coverageNudgeWords('Alamo', { kind: 'none_here' })).toBe('Alamo covers no county. The desk never picks it for a release until a county is colored for it.')
     expect(coverageNudgeButton('Snell')).toBe('Color Snell’s counties…')
+  })
+
+  it('over the first save, the words say the default ends and name the cases left with no firm (v2.6221)', () => {
+    expect(bridgeEndsWords('Snell', [])).toBe('Saving ends the default. Every case sits in a county Snell covers.')
+    expect(bridgeEndsWords('Snell', [{ name: 'Kettle Creek Farms', county: 'Gonzales' }])).toBe(
+      'Saving ends the default. 1 case sits where no firm covers: Kettle Creek Farms in Gonzales County. Add its county too, or the desk cannot release it.',
+    )
+    expect(bridgeEndsWords('Snell', [
+      { name: 'A', county: 'Bexar' },
+      { name: 'B', county: null },
+      { name: 'C', county: 'Comal' },
+      { name: 'D', county: 'Hays' },
+      { name: 'E', county: 'Hays' },
+    ])).toBe('Saving ends the default. 5 cases sit where no firm covers: A in Bexar County, B, whose county is unknown, C in Comal County and 2 more. Add their counties too, or the desk cannot release them.')
   })
 
   it('the replace warning names the counties that would go uncovered, and is silent when there are none', () => {
