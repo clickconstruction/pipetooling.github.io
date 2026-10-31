@@ -55,7 +55,8 @@ export function useStatementRecordCheck(input: {
         return fallback
       }
     }
-    setState((s) => ({ ...s, loading: true }))
+    // v2.6248: the lines are the span's, so a new span or affiant starts from none; the old day's line under the new heading read as that day's.
+    setState({ lines: [], loading: true, failed: [] })
     void (async () => {
       const [sessions, reports, notes] = await Promise.all([
         soft<SessionRow[]>('the clock', async () => {

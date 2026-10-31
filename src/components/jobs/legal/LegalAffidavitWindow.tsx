@@ -280,7 +280,7 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
                 <label style={label}>
                   Their full name
                   <input aria-label="Their full name" value={draft.affiant.name} onChange={(e) => setAffiant({ ...draft.affiant, name: e.target.value })} placeholder={kindOf === 'witness' ? 'Thanh Van Nguyen' : 'First, middle and last name'} disabled={signed} style={input} />
-                  <span style={help}>{kindOf === 'witness' ? 'As it reads on their ID.' : 'Prefilled from the roster. Type it as it reads on their ID.'}{draft.form === 'notary' ? ' The notary checks it.' : ''}</span>
+                  <span style={help}>{signed ? 'As it reads on the signed paper.' : `${kindOf === 'witness' ? 'As it reads on their ID.' : 'Prefilled from the roster. Type it as it reads on their ID.'}${draft.form === 'notary' ? ' The notary checks it.' : ''}`}</span>
                 </label>
               ) : null}
             </div>
@@ -327,7 +327,8 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
             <div data-legal-affidavit-record-check style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 6, minWidth: 0 }}>
               <b style={{ fontSize: '0.8rem' }}>{recordCheckHeading(draft.incidentOn, draft.incidentTo || null)}</b>
               {check.loading ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>Reading the clock, the reports and the job thread…</span> : null}
-              {!check.loading && check.lines.length === 0 ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>Pick the day it is about and the record for those days lists here.</span> : null}
+              {/* v2.6248: once signed the check is off, so its empty words say so instead of asking for a day that is picked. */}
+              {!check.loading && check.lines.length === 0 ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>{signed ? 'Not read again once the signed copy is filed.' : 'Pick the day it is about and the record for those days lists here.'}</span> : null}
               {check.lines.map((l, i) => (
                 <div key={`${l.ymd}-${i}`} data-legal-record-line={l.kind} data-theirs={l.theirs ? 'yes' : 'no'} style={{ display: 'grid', gridTemplateColumns: '3.2rem minmax(0, 1fr)', gap: 8, fontSize: '0.78rem', lineHeight: 1.4, color: l.text.startsWith('Nothing recorded') ? 'var(--text-amber-700)' : 'var(--text)', fontWeight: l.theirs ? 600 : 400 }}>
                   <span style={{ ...MUTED, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{statementShortDay(l.ymd)}</span>
