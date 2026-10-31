@@ -164,6 +164,20 @@ describe('DraftPayrollModal with the bars', () => {
     expect(money[0]?.querySelector('span')?.textContent).toBe('.00')
   })
 
+  it('once every report exists, the Open Tally note sits over the table today and under it with the bars', () => {
+    // Only the three with reports: nobody with pay due and no report, so the note draws.
+    const withReports = props({ peopleNames: ['Hal Sample', 'Paco Sample', 'Sid Sample'] })
+    mount(<DraftPayrollModal {...withReports} />)
+    const todayNote = screen.getByText(/Every report for this period is generated/).closest('[role="status"]') as HTMLElement
+    const table = document.querySelector('table') as HTMLElement
+    expect(todayNote.compareDocumentPosition(table) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
+    fireEvent.click(screen.getByRole('button', { name: 'Show the bars' }))
+    const barsNote = screen.getByText(/Every report for this period is generated/).closest('[role="status"]') as HTMLElement
+    const barsTable = document.querySelector('table') as HTMLElement
+    expect(barsNote.compareDocumentPosition(barsTable) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    expect(screen.getByText('Open Tally →')).toBeTruthy()
+  })
+
   it('a dev with ?sbs=1 sees today over the bars, with no switch', () => {
     auth.role = 'dev'
     mount(<DraftPayrollModal {...props()} />, '/people?tab=pay_stubs&sbs=1')
