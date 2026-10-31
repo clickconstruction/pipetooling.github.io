@@ -97,7 +97,7 @@ export default function LegalPortalCoverage({ coverage, firmId, openOn = null }:
           {county ? (
             <>
               <div style={{ fontSize: 13.5, fontWeight: 600, color: INK, marginTop: 4 }}>{countyWords(county)}</div>
-              <div style={{ fontSize: 12.5, color: MUTED }}>{holders.length ? `Covered by ${holders.map((id) => firmNames.get(id) ?? 'a firm').join(' and ')}` : 'No firm covers it yet'}</div>
+              <div style={{ fontSize: 12.5, color: MUTED }}>{holders.length ? `Covered by ${holders.map((id) => firmNames.get(id) ?? 'a firm').join(' and ')}` : 'Uncovered: no firm covers it yet'}</div>
               <div data-legal-coverage-count style={{ fontSize: 12.5, color: INK, marginTop: 2 }}>{coverageCountWords(countyCount)}</div>
             </>
           ) : (
