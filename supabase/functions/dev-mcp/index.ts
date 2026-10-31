@@ -22,15 +22,16 @@ import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentM
 // only: resolving the key, minting the session, writing the call log.
 //
 // Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
-// on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0) are a SECOND path, not a
-// loosening of the first: thirteen verbs (_shared/devMcpWrites.ts) POST one of seven hard-coded, dev-gated definer RPCs as the dev —
+// on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0;
+// a new bid v2.6183 / 0.10.0) are a SECOND path, not a
+// loosening of the first: seventeen verbs (_shared/devMcpWrites.ts) POST one of eight hard-coded, dev-gated definer RPCs as the dev —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table write, never through view_as.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.9.0'
+const SERVER_VERSION = '0.10.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -227,6 +228,16 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { line: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['line', 'plan_hash'] },
   },
   {
+    name: 'plan_bid',
+    description: "Dry-run a new bid (v2.6183): the row the New Bid form would make — project name (the plans folder's name too), customer, service type (plumbing is the division the robots bid), address, development, distance from the office, due date and time, estimator (you when left out), robots allowed — as you, numbered by the database at apply. The dry run replies with the bid as it will read, the division its plans folder goes in, the live bids already wearing the name (the plan is refused unless allow_duplicate_name) and what the readiness line still needs, under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { bid: { type: 'object', description: "{ project_name, customer_id (find_customer), service_type_id (read_rows on service_types), address?, development_id? (read_rows on developments), distance_from_office? (miles), bid_due_date? (YYYY-MM-DD), bid_due_time? (HH:MM), estimator_id?, notes?, robot_opt_out?, allow_duplicate_name? }" } }, required: ['bid'] },
+  },
+  {
+    name: 'apply_bid',
+    description: 'Make the bid you planned: the same bid plus the plan_hash from plan_bid. Runs the dry run again first and writes only when it still matches. Inserted as you through dev_bid_write and numbered by the database; replies with the bid number and id. The Bid Board shows it at once, with no plans yet.',
+    inputSchema: { type: 'object', properties: { bid: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['bid', 'plan_hash'] },
+  },
+  {
     name: 'view_as',
     description: "Run one read verb as someone else, to see what THEY see: `role` reads as that role's sample account (e.g. 'helpers', 'estimator', 'subcontractor'), `user` as a named person (id). The app's Imitate rule applies — a dev account is never a target. Both identities are logged. `verb` is any read verb of this server except view_as.",
     inputSchema: {
@@ -243,7 +254,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are fifteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk) and plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are seventeen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) and plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -603,6 +614,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'apply_gap_answer':
     case 'plan_history_entry':
     case 'apply_history_entry':
+    case 'plan_bid':
+    case 'apply_bid':
     case 'plan_matter_document':
     case 'apply_matter_document': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as
@@ -653,7 +666,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       }
       const reply = redactSecrets(res.body)
       const batchId = reply && typeof reply === 'object' && typeof (reply as { batch_id?: unknown }).batch_id === 'string' ? (reply as { batch_id: string }).batch_id : null
-      return ok(reply, { target: batchId ?? built.target })
+      // v2.6183: a made bid is logged by its number, the way find_bid names it.
+      const bidNumber = name === 'apply_bid' && reply && typeof reply === 'object' && typeof (reply as { bid_number?: unknown }).bid_number === 'string' ? `b${(reply as { bid_number: string }).bid_number}` : null
+      return ok(reply, { target: batchId ?? bidNumber ?? built.target })
     }
 
     default: {
