@@ -5,7 +5,7 @@ import {
   DECLARANT_BLANK, DECLARATION_PERJURY_SENTENCE, DECLARATION_STATUTE_FORM, FORM_HELP_WORDS, OFFICE_COUNTY_DEFAULT, SIGNED_ON_LINE, STATEMENT_DRAFT_AMBER_DAYS,
   attachedToLine, declarantProblem, lastPrintWords, statementFilingProblem, statementFilingShows, declarationJurat, defaultStatementForm, defaultVenueCounty, incidentSpanWords, isStatementEntry, printCountWords, recordCheckHeading, recordCheckLines,
   statementByWords, statementChipWords, statementDraftProblem, statementFirmKindWords, statementHoldKey, statementKindWords, statementMetaOf, statementOpener, statementPaperBlocks, statementParagraphs,
-  signatureRoleLine, statementPrintTitle, statementPrintedText, statementShowsLine, statementSignedWords, statementStateWords, suggestedStatementTitle, venueChoices,
+  signatureRoleLine, statementFiledWords, statementPrintTitle, statementPrintedText, statementShowsLine, statementSignedWords, statementStateWords, suggestedStatementTitle, venueChoices,
   type StatementDraft, type StatementMeta,
 } from './affidavitPaper'
 import { plainWordsFailures } from '../plainWords'
@@ -287,5 +287,13 @@ describe('the role under a signature (v2.6238)', () => {
     const t = filingDocText(statementPaperBlocks({ draft: d, face: 'whole', declarant: null }))
     expect(t).toContain('Thanh Nguyen, Declarant\nForeman for Brightline Electric, the electrical subcontractor on the job')
     expect(t).toContain('I am the foreman for Brightline Electric, the electrical subcontractor on the job.')
+  })
+})
+
+describe('statementFiledWords (v2.6246)', () => {
+  it('names the signing day in words, never the typed day', () => {
+    expect(statementFiledWords('2026-10-30')).toBe('Filed. The signed copy is on Evidence on Oct 30. The statement reads sworn on the Timeline.')
+    expect(statementFiledWords('2026-10-30')).not.toMatch(/\d{4}-\d{2}-\d{2}/)
+    expect(plainWordsFailures(statementFiledWords('2026-10-30'))).toEqual([])
   })
 })
