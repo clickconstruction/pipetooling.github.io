@@ -1,0 +1,188 @@
+{
+  "about": "Punch list #217, Show it, don't say it: the saved picks. One row per finding id: pick (build | later | drop | null), note (the owner's words, cleared once a session acts on them), at (when the pick was pressed), handledAt (when the note was acted on). The page loads this file when built (build.sh); Export picks on the page writes a new one. Save it here and commit.",
+  "saved": "2026-10-30T23:59:00.000Z",
+  "picks": {
+    "bids-10": {
+      "pick": null,
+      "note": "This has some potential, but I think we need to do a better job tying links sent and revisions to people opening them. Maybe with dashed lines.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "bids-19": {
+      "pick": null,
+      "note": "There's no index for the contents of these dots and what they mean. I'm worried if they get very close it'll be hard to understand what they're supposed to be. Is there a different way we can present this?",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "bids-2": {
+      "pick": null,
+      "note": "I would like to see the before and after on this.",
+      "at": "2026-10-30T20:40:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "bids-7": {
+      "pick": null,
+      "note": "Can you show me what this would look like live side by side?",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "bids-9": {
+      "pick": null,
+      "note": "This has some potential, but I don't like how it's visually represented. Could you help me think through why a user will be looking at this section? And then while the user is looking at this section what they need to see. And then based on what they need to see, can you show me those moving parts in as simple yet effective as they could.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "field-11": {
+      "pick": null,
+      "note": "This has pretty good potential. It's just that people don't take the same training over and over and over again. They take different versions of training. So I'm not sure how well it applies. I would like to still see it side by side, as a prototype, on what it could look like if it was live.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "field-2": {
+      "pick": null,
+      "note": "I really like the idea of this. Could I please see this side-by-side of the before and after as a live prototype? You may need to use test data.",
+      "at": "2026-10-30T20:40:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "field-8": {
+      "pick": null,
+      "note": "This has potential but I am unsure of it. Could I see what it looks like side by side? Will you be able to help me build a prototype where I can see it side by side?",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "gc-messages-2": {
+      "pick": "drop",
+      "note": "This also has potential, but it suffers the same issues as above. In this particular case, it's much easier to just have the text.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "gc-messages-5": {
+      "pick": "build",
+      "note": "I think this has potential, but I would need to see it based on data from bids we've been sending out and how it could look. Otherwise I'm worried that it's not going to be as informative as we make it look to be here. Would you be able to help me see what real data would look like on here?",
+      "at": "2026-10-30T20:40:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "jobs-money-3": {
+      "pick": null,
+      "note": "This has great potential, but I'm uncertain of what it's going to disrupt. I would like to see this as a prototype.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "jobs-money-4": {
+      "pick": "drop",
+      "note": "We need to communicate very little information here, what we have currently works.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "jobs-pipeline-1": {
+      "pick": null,
+      "note": "This has some potential, but only as an alternative view that a user can choose to engage in. How could I offer this as an alternative view? Can you help me build a prototype?",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "jobs-pipeline-2": {
+      "pick": null,
+      "note": "This has some potential, but the dots are too small and it takes too much cognitive time to align those dots with the index of approved field day, a note, status move, Looks fine. Perhaps you want to give it a refresh?",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "jobs-pipeline-4": {
+      "pick": null,
+      "note": "I really like the idea of this. Could I see this as a live prototype where you show me the before and after.",
+      "at": "2026-10-30T20:40:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "jobs-pipeline-6": {
+      "pick": null,
+      "note": "This can work very well as an alternative view. Could you help me build a prototype where we can see it as an alternative view where the user can choose how they want to view it.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "jobs-pipeline-8": {
+      "pick": "drop",
+      "note": "",
+      "at": "2026-10-30T19:10:00.000Z"
+    },
+    "office-11": {
+      "pick": "build",
+      "note": "",
+      "at": "2026-10-30T19:10:00.000Z"
+    },
+    "office-13": {
+      "pick": "build",
+      "note": "",
+      "at": "2026-10-30T19:10:00.000Z"
+    },
+    "office-5": {
+      "pick": null,
+      "note": "This could potentially work, I would like to see it as a prototype.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "office-6": {
+      "pick": "drop",
+      "note": "This all has potential, but if this is on the knee",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "office-8": {
+      "pick": null,
+      "note": "This has pretty good potential. Could you show me your prototype of what this could look like live, side by side with what it looks like now.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "outside-1": {
+      "pick": null,
+      "note": "I really like the idea of this. Could I please see this side-by-side of the before and after as a live prototype?",
+      "at": "2026-10-30T20:40:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "outside-12": {
+      "pick": null,
+      "note": "This has some potential. Could you show me how it could look in the form of a prototype side by side with before and after.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "outside-13": {
+      "pick": null,
+      "note": "I really like the idea of this. I just want to see it side by side in a prototype before I approve it.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "outside-2": {
+      "pick": null,
+      "note": "I really like the idea of this. Could I please see this side-by-side of the before and after as a live prototype? You may need to use test data.",
+      "at": "2026-10-30T20:40:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "outside-5": {
+      "pick": "build",
+      "note": "",
+      "at": "2026-10-30T20:40:00.000Z"
+    },
+    "people-docs-15": {
+      "pick": null,
+      "note": "This has great potential, I would like to see it side by side in the form of a prototype.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "people-docs-3": {
+      "pick": "build",
+      "note": "I really like this view. Let's build it.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "people-docs-6": {
+      "pick": null,
+      "note": "This has pretty good potential. Could you show it to me as a prototype so I can see it side by side with how it would look live?",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    },
+    "people-docs-8": {
+      "pick": null,
+      "note": "This has great potential. I would like to see it side by side in the form of a prototype.",
+      "at": "2026-10-30T19:10:00.000Z",
+      "handledAt": "2026-10-30T23:30:00.000Z"
+    }
+  }
+}
