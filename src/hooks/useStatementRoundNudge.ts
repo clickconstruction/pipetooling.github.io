@@ -1,14 +1,13 @@
 import { useCallback, useEffect, useState } from 'react'
-import { fetchMyStatementRound, fetchMyStatementWeek } from '../lib/statementRoundEmailClient'
-import { statementRoundNudgeFromPayload, statementWeekNudgeFromPayload, type StatementRoundNudge } from '../lib/statementRoundEmail'
+import { fetchMyStatementWeek } from '../lib/statementRoundEmailClient'
+import { statementWeekNudgeFromPayload, type StatementRoundNudge } from '../lib/statementRoundEmail'
 
 /**
- * The Dashboard Needs You row for GC statements. The office's week (punch
- * list #49): every GC checked this week whose statement is not out, whoever
- * its account man is — get_my_statement_week. A database without that
- * function yet answers with the signed-in sender's own round instead
- * (get_my_statement_round, v2.2771). Null while loading, disabled, empty, or
- * on error so the card stays quiet.
+ * The Dashboard Needs You row for GC statements: the office's week (punch
+ * list #49) — every GC checked this week whose statement is not out, whoever
+ * its account man is — from get_my_statement_week. Null while loading,
+ * disabled, empty, or on error so the card stays quiet. The per-sender round
+ * it once fell back to (get_my_statement_round, v2.2771) is gone (v2.6220).
  */
 export function useStatementRoundNudge(enabled: boolean): { nudge: StatementRoundNudge | null; reload: () => void } {
   const [nudge, setNudge] = useState<StatementRoundNudge | null>(null)
@@ -21,14 +20,8 @@ export function useStatementRoundNudge(enabled: boolean): { nudge: StatementRoun
       return
     }
     let cancelled = false
-    void fetchMyStatementWeek().then(async ({ week, missing }) => {
-      if (cancelled) return
-      if (!missing) {
-        setNudge(statementWeekNudgeFromPayload(week))
-        return
-      }
-      const round = await fetchMyStatementRound()
-      if (!cancelled) setNudge(statementRoundNudgeFromPayload(round))
+    void fetchMyStatementWeek().then((week) => {
+      if (!cancelled) setNudge(statementWeekNudgeFromPayload(week))
     })
     return () => {
       cancelled = true

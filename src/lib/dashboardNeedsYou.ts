@@ -442,7 +442,7 @@ export type NeedsYouInputs = {
    */
   statementRoundEnabled?: boolean
   /** `office` = the whole office's week (punch list #49); absent = the signed-in sender's own round. */
-  statementRound?: { count: number; total: number; gcNames: string[]; office?: boolean; late?: number } | null
+  statementRound?: { count: number; total: number; gcNames: string[]; late?: number } | null
   gcReviewStatus: GcReviewWeekStatus | null
   /** Parent computes both from the clock (gcReviewNudgeState/gcReviewWeekdayIndex) — the builder stays pure. */
   gcReviewNudge: GcReviewNudgeState | null
@@ -1356,28 +1356,16 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     const preview = r.gcNames.slice(0, 3).join(', ')
     const more = r.gcNames.length > 3 ? ` +${r.gcNames.length - 3} more` : ''
     const total = `$${Math.round(r.total).toLocaleString('en-US')}`
-    items.push(
-      r.office
-        ? {
-            // The office's week: every checked GC, whoever its account man is.
-            key: 'statement-round',
-            severity: 'blue',
-            kicker: 'GC statements',
-            title: r.count === 1 ? 'One GC statement is ready to send' : `${r.count} GC statements are ready to send`,
-            detail: `${preview}${more} · ${total} checked and ready${r.late ? ` · ${r.late} broke a promise` : ''} — grouped by the account man to ask.`,
-            figure: r.count > 99 ? '99+' : String(r.count),
-            actionLabel: 'Open the list',
-          }
-        : {
-            key: 'statement-round',
-            severity: 'blue',
-            kicker: 'Statement round',
-            title: r.count === 1 ? 'One GC is waiting on your statement' : `${r.count} GCs are waiting on your statement`,
-            detail: `${preview}${more} · ${total} certified and ready — a personal email from you.`,
-            figure: r.count > 99 ? '99+' : String(r.count),
-            actionLabel: 'Start round',
-          },
-    )
+    // The office's week (punch list #49): every checked GC, whoever its account man is.
+    items.push({
+      key: 'statement-round',
+      severity: 'blue',
+      kicker: 'GC statements',
+      title: r.count === 1 ? 'One GC statement is ready to send' : `${r.count} GC statements are ready to send`,
+      detail: `${preview}${more} · ${total} checked and ready${r.late ? ` · ${r.late} broke a promise` : ''} — grouped by the account man to ask.`,
+      figure: r.count > 99 ? '99+' : String(r.count),
+      actionLabel: 'Open the list',
+    })
   }
 
   if (inputs.gcReviewEnabled && inputs.gcReviewStatus != null && inputs.gcReviewNudge === 'due') {
