@@ -270,7 +270,7 @@ export function RobotFixturesWindow({ bidLabel, pull, rows, herRows, setName, re
                 </div>
                 <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                   <tbody>
-                    {review.byBucket.on_count.flatMap((r) => fixtureRow(r, <Tick on={update.has(r.row.id)} disabled={busy} label={`Update ${r.hers?.fixture ?? r.row.tag}`} onChange={(next) => setUpdate((s) => toggle(s, r.row.id, next))} />, <td style={NUM}><s style={{ color: 'var(--text-muted)' }}>{formatUnitTotal(Number(r.hers?.count ?? 0), unitOf(r))}</s> → <b>{countOf(r)}</b></td>))}
+                    {review.byBucket.on_count.flatMap((r) => fixtureRow(r, <Tick on={update.has(r.row.id)} disabled={busy} label={`Update ${r.hers?.fixture ?? r.row.tag}`} onChange={(next) => setUpdate((s) => toggle(s, r.row.id, next))} />, <td style={NUM}>{update.has(r.row.id) ? <s style={{ color: 'var(--text-muted)' }}>{formatUnitTotal(Number(r.hers?.count ?? 0), unitOf(r))}</s> : formatUnitTotal(Number(r.hers?.count ?? 0), unitOf(r))} → {update.has(r.row.id) ? <b>{countOf(r)}</b> : countOf(r)}</td>))}
                   </tbody>
                 </table>
               </section>

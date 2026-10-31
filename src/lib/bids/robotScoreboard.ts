@@ -528,6 +528,7 @@ export function buildLiveRuns(
       const ours = money(r.reference_value)
       line = robot && ours ? `robot ${robot}, ours ${ours}` : 'scored'
       if (r.teacher_name) line += ` · against ${r.teacher_name}’s number`
+      if (r.assisted_at) line += ' · assisted, shown and not counted'
     } else line = 'didn’t count — voided by the operator'
     const at = r.scored_at ?? r.locked_at ?? r.created_at ?? ''
     return {
@@ -540,7 +541,7 @@ export function buildLiveRuns(
       line,
       deltaPct: r.delta_pct == null ? null : Number(r.delta_pct),
       deltaText: phase === 'scored' ? deltaPhrase(r.delta_pct) : phase === 'void' ? 'voided' : phase === 'sealed' ? '🔒 sealed' : 'working',
-      counts: phase === 'scored' && r.teacher_standard === true,
+      counts: phase === 'scored' && r.teacher_standard === true && !r.assisted_at,
       steps: shadowStorySteps(r),
       at,
     }
