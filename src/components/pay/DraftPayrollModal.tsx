@@ -362,6 +362,38 @@ export function DraftPayrollModal({
   const barsByPerson = new Map((bars?.rows ?? []).map((r) => [r.person, r] as const))
   const pendingPress = canAccessHours ? () => onOpenHoursForPeriod(start, end) : undefined
 
+  // T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists. Today it sits over the
+  // table; with the bars it sits under it (the owner, 2026-10-30: "perhaps we should move this to the bottom").
+  const allGeneratedNote = (withBars: boolean) =>
+    draftPayrollAllGenerated({
+      peopleCount: peopleNames.length,
+      missingCount: bulkMissingCount,
+      stubsInPeriod: payStubs.filter((s) => s.period_start <= end && s.period_end >= start).length,
+    }) ? (
+      <div
+        role="status"
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          alignItems: 'center',
+          gap: '0.5rem 0.75rem',
+          padding: '0.5rem 0.75rem',
+          marginBottom: withBars ? 0 : '0.75rem',
+          marginTop: withBars ? '0.25rem' : 0,
+          border: '1px solid #22c55e',
+          background: 'var(--bg-green-tint)',
+          color: 'var(--text-green-800)',
+          borderRadius: 8,
+          fontSize: '0.8125rem',
+        }}
+      >
+        <span style={{ flex: '1 1 260px' }}>{DRAFT_PAYROLL_NEXT_TALLY_COPY}</span>
+        <Link to={TALLY_PAYROLL_HREF} style={{ fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
+          Open Tally →
+        </Link>
+      </div>
+    ) : null
+
   const renderBody = (withBars: boolean) => (
     <>
           {pendingLoading ? (
@@ -544,34 +576,7 @@ export function DraftPayrollModal({
                   </ul>
                 </div>
               ) : null}
-              {/* T5-03 (J7-9): the pointer across the Draft Payroll → Tally seam, once every report exists. */}
-              {draftPayrollAllGenerated({
-                peopleCount: peopleNames.length,
-                missingCount: bulkMissingCount,
-                stubsInPeriod: payStubs.filter((s) => s.period_start <= end && s.period_end >= start).length,
-              }) ? (
-                <div
-                  role="status"
-                  style={{
-                    display: 'flex',
-                    flexWrap: 'wrap',
-                    alignItems: 'center',
-                    gap: '0.5rem 0.75rem',
-                    padding: '0.5rem 0.75rem',
-                    marginBottom: '0.75rem',
-                    border: '1px solid #22c55e',
-                    background: 'var(--bg-green-tint)',
-                    color: 'var(--text-green-800)',
-                    borderRadius: 8,
-                    fontSize: '0.8125rem',
-                  }}
-                >
-                  <span style={{ flex: '1 1 260px' }}>{DRAFT_PAYROLL_NEXT_TALLY_COPY}</span>
-                  <Link to={TALLY_PAYROLL_HREF} style={{ fontWeight: 600, color: 'var(--text-link)', whiteSpace: 'nowrap' }}>
-                    Open Tally →
-                  </Link>
-                </div>
-              ) : null}
+              {!withBars ? allGeneratedNote(withBars) : null}
               <div style={{ overflowX: 'auto', marginBottom: '1rem' }}>
                 <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.875rem' }}>
                   <thead>
@@ -655,7 +660,7 @@ export function DraftPayrollModal({
                             {rowBar && rowBar.pendingSessions > 0 ? <DraftPayrollPendingDot n={rowBar.pendingSessions} onPress={pendingPress} /> : null}
                           </td>
                           {rowBar ? (
-                            <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap' }}>
+                            <td style={{ padding: '0.5rem 0.75rem', whiteSpace: 'nowrap', textAlign: 'center' }}>
                               {recordInCashDue && stub ? (
                                 <button
                                   type="button"
@@ -844,6 +849,7 @@ export function DraftPayrollModal({
                   </tbody>
                 </table>
               </div>
+              {withBars ? allGeneratedNote(withBars) : null}
             </>
           )}
     </>
