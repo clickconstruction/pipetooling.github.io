@@ -5,8 +5,11 @@ import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import {
   AFFIDAVIT_FORMS, FORM_HELP_WORDS, STATEMENT_BODY_MAX,
   defaultStatementForm, defaultVenueCounty, incidentSpanWords, recordCheckHeading, statementChipWords, statementDraftProblem, statementFaceWords, statementMetaOf, statementOpener, statementShortDay, suggestedStatementTitle, venueChoices,
-  type AffiantKind, type AffidavitForm, type StatementAffiant, type StatementDraft, type StatementMeta,
+  STATEMENT_FACES,
+  type AffiantKind, type AffidavitForm, type DeclarantDetails, type StatementAffiant, type StatementDraft, type StatementFace, type StatementMeta,
 } from '../../../lib/legal/affidavitPaper'
+import { statementPrintRecordText } from '../../../lib/legal/statementPrint'
+import LegalStatementPrintSheet from './LegalStatementPrintSheet'
 import { rosterForPick, rosterRoleLine, type RosterUser } from '../../../lib/legal/statementRoster'
 import { useStatementRecordCheck } from './useStatementRecordCheck'
 import { btn, btnPrimary, MUTED, pill } from './legalDeskShared'
@@ -35,8 +38,15 @@ export type LegalAffidavitWindowProps = {
   officeCounty: string
   todayYmd: string
   busy: boolean
-  /** Save the draft; true when it saved (the desk toasts and reloads). */
-  onSave: (draft: StatementDraft, entryId: string | null) => Promise<boolean>
+  /** Save the draft; the entry's id when it saved (a new one's from the database), null when it did not (the desk toasts and reloads). */
+  onSave: (draft: StatementDraft, entryId: string | null) => Promise<string | null>
+  /** Note a print on the row (v2.6211, `legal_statement_print`): which face, and the text as printed. */
+  onPrint?: (entryId: string, face: StatementFace, text: string) => Promise<boolean>
+  /** The declarant's details for this statement, held by the desk for the session, never saved (v2.6211). */
+  declarant?: DeclarantDetails | null
+  onDeclarant?: (entryId: string, details: DeclarantDetails) => void
+  /** Open on the print sheet, on this face (a row's Print). */
+  initialPrint?: StatementFace | null
   onClose: () => void
   zIndex: number
   /** Opens the Timeline's row (an edit window's door back). */
@@ -53,7 +63,7 @@ function draftFromEntry(e: LegalEntryRow, meta: StatementMeta): StatementDraft {
   return { title: meta.title, affiant: meta.affiant, incidentOn: e.occurred_on, incidentTo: meta.incidentTo ?? '', form: meta.form, venueCounty: meta.venueCounty ?? '', body: e.body }
 }
 
-export default function LegalAffidavitWindow({ entry, initialOn = null, account, roster, officeCounty, todayYmd, busy, onSave, onClose, zIndex, onShowTimeline }: LegalAffidavitWindowProps) {
+export default function LegalAffidavitWindow({ entry, initialOn = null, account, roster, officeCounty, todayYmd, busy, onSave, onPrint, declarant = null, onDeclarant, initialPrint = null, onClose, zIndex, onShowTimeline }: LegalAffidavitWindowProps) {
   const isMobile = useIsMobile()
   const meta = useMemo(() => (entry ? statementMetaOf(entry.meta) : null), [entry])
   const picks = useMemo(() => rosterForPick(roster), [roster])
@@ -68,6 +78,10 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
   const [roleTouched, setRoleTouched] = useState(Boolean(entry))
   const [touched, setTouched] = useState(false)
   const [confirmClose, setConfirmClose] = useState(false)
+  // v2.6211: the print sheet, open on a face; the id a new statement got when Print saved it first.
+  const [sheet, setSheet] = useState<StatementFace | null>(entry && initialPrint ? initialPrint : null)
+  const [facesOpen, setFacesOpen] = useState(false)
+  const [savedId, setSavedId] = useState<string | null>(entry?.id ?? null)
   useEffect(() => {
     if (entry && meta) setDraft(draftFromEntry(entry, meta))
     // A new entry opens on its own words; the fresh draft is built once on mount.
@@ -108,11 +122,29 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
     if (!titleTouched) next.title = suggestedStatementTitle(d.affiant, form)
     return next
   })
+  const trimmed = (): StatementDraft => ({ ...draft, title: draft.title.trim(), body: draft.body.trim(), affiant: { ...draft.affiant, name: draft.affiant.name.trim(), role: draft.affiant.role.trim() } })
   const save = async () => {
     setTouched(true)
     if (problem) return
-    const ok = await onSave({ ...draft, title: draft.title.trim(), body: draft.body.trim(), affiant: { ...draft.affiant, name: draft.affiant.name.trim(), role: draft.affiant.role.trim() } }, entry?.id ?? null)
-    if (ok) onClose()
+    const id = await onSave(trimmed(), entry?.id ?? savedId)
+    if (id) onClose()
+  }
+  /** Print ▾ (v2.6211): a new or changed draft is saved first, so the paper and the row agree; then the sheet opens on the face. */
+  const openPrint = async (face: StatementFace) => {
+    setFacesOpen(false)
+    let id = entry?.id ?? savedId
+    if (!id || dirty) {
+      setTouched(true)
+      if (problem) return
+      id = await onSave(trimmed(), id)
+      if (!id) return
+      setSavedId(id)
+    }
+    setSheet(face)
+  }
+  const printed = async (face: StatementFace) => {
+    const id = entry?.id ?? savedId
+    if (id && onPrint) await onPrint(id, face, statementPrintRecordText(trimmed(), face))
   }
   const close = () => {
     if (dirty && !confirmClose) {
@@ -137,6 +169,11 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
           <span data-legal-affidavit-chip>{pill(chip, signed ? 'ok' : meta && meta.prints.length ? 'warn' : 'neutral')}</span>
           <button type="button" aria-label="Close" onClick={close} style={{ ...btn, minWidth: 30, justifyContent: 'center' }}>✕</button>
         </div>
+        {sheet ? (
+          <div style={{ padding: '12px 16px', minWidth: 0 }}>
+            <LegalStatementPrintSheet draft={trimmed()} face={sheet} onFace={setSheet} accountWords={accountWords} declarant={declarant} onDeclarant={(d) => { const id = entry?.id ?? savedId; if (id) onDeclarant?.(id, d) }} onPrinted={printed} onBack={() => setSheet(null)} busy={busy} />
+          </div>
+        ) : (
         <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'minmax(0, 1.5fr) minmax(0, 1fr)', gap: 18, padding: '12px 16px', minWidth: 0, alignContent: 'start' }}>
           <div style={{ display: 'grid', gap: 12, minWidth: 0, alignContent: 'start' }}>
             <label style={label}>
@@ -227,9 +264,22 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
             {signed ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>The signed copy is filed. The sworn text cannot change. Swear a new statement for anything more.</span> : null}
           </div>
         </div>
+        )}
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', padding: '10px 16px 14px', borderTop: '1px solid var(--border)' }}>
-          {!signed ? <button type="button" data-legal-affidavit-save disabled={busy || Boolean(problem)} title={problem ?? undefined} onClick={() => void save()} style={{ ...btnPrimary, opacity: busy || problem ? 0.6 : 1 }}>{entry ? 'Save the statement' : 'Save the draft'}</button> : null}
-          <button type="button" onClick={close} style={btn}>{signed ? 'Close' : 'Cancel'}</button>
+          {!signed && !sheet ? <button type="button" data-legal-affidavit-save disabled={busy || Boolean(problem)} title={problem ?? undefined} onClick={() => void save()} style={{ ...btnPrimary, opacity: busy || problem ? 0.6 : 1 }}>{entry ? 'Save the statement' : 'Save the draft'}</button> : null}
+          {!sheet ? (
+            // v2.6211: Print prints the whole paper as the draft is set; ▾ offers the three faces. A new or changed draft saves first.
+            <span style={{ display: 'inline-flex', position: 'relative' }}>
+              <button type="button" data-legal-affidavit-print disabled={busy || (!signed && Boolean(problem))} title={!signed && problem ? problem : 'The whole paper, as the draft is set'} onClick={() => void openPrint('whole')} style={{ ...btn, borderTopRightRadius: 0, borderBottomRightRadius: 0, opacity: !signed && problem ? 0.6 : 1 }}>Print</button>
+              <button type="button" aria-label="Which face to print" aria-haspopup="menu" aria-expanded={facesOpen} data-legal-affidavit-print-faces disabled={busy || (!signed && Boolean(problem))} onClick={() => setFacesOpen((o) => !o)} style={{ ...btn, borderTopLeftRadius: 0, borderBottomLeftRadius: 0, borderLeftWidth: 0, minWidth: 26, justifyContent: 'center', opacity: !signed && problem ? 0.6 : 1 }}>▾</button>
+              {facesOpen ? (
+                <div role="menu" data-legal-affidavit-faces-menu style={{ position: 'absolute', left: 0, bottom: '100%', zIndex: 5, marginBottom: 4, minWidth: 240, background: 'var(--surface)', border: '1px solid var(--border-strong)', borderRadius: 8, boxShadow: '0 8px 24px rgba(0,0,0,0.18)', padding: 4, display: 'grid' }}>
+                  {STATEMENT_FACES.map((f) => <button key={f.face} type="button" role="menuitem" onClick={() => void openPrint(f.face)} style={{ ...btn, border: 'none', justifyContent: 'flex-start', height: 28, borderRadius: 6 }}>{f.label}</button>)}
+                </div>
+              ) : null}
+            </span>
+          ) : null}
+          {!sheet ? <button type="button" onClick={close} style={btn}>{signed ? 'Close' : 'Cancel'}</button> : <button type="button" onClick={onClose} style={btn}>Close</button>}
           {entry && onShowTimeline ? <button type="button" onClick={() => { onShowTimeline(); onClose() }} style={btn}>The statement on the Timeline ↗</button> : null}
           {confirmClose ? (
             <span role="alert" style={{ display: 'inline-flex', gap: 6, alignItems: 'center', fontSize: '0.8rem' }}>
@@ -237,7 +287,7 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
               <button type="button" onClick={onClose} style={{ ...btn, color: 'var(--text-red-700)' }}>Leave it</button>
               <button type="button" onClick={() => setConfirmClose(false)} style={btn}>Keep typing</button>
             </span>
-          ) : touched && problem ? <span role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{problem}</span> : !signed ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>{entry ? 'Saves the change. Each print after this keeps the new text.' : `Saves to the Timeline’s Said lane on ${spanWords} as a draft. The firm reads it as a draft.`}</span> : null}
+          ) : touched && problem ? <span role="alert" style={{ fontSize: '0.8rem', color: 'var(--text-red-700)' }}>{problem}</span> : !signed && !sheet ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>{entry ? 'Saves the change. Each print after this keeps the new text.' : `Saves to the Timeline’s Said lane on ${spanWords} as a draft. The firm reads it as a draft.`}</span> : null}
         </div>
       </div>
     </div>

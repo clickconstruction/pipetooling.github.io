@@ -2,7 +2,7 @@
 title: swear a statement on a collections account
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: affidavit, sworn statement, declaration, notary, jurat, witness, legal desk, collections, timeline, evidence, penalty of perjury, venue, county, print
+keywords: affidavit, sworn statement, declaration, notary, jurat, witness, legal desk, collections, timeline, evidence, penalty of perjury, venue, county, print, pdf, signing page, declarant
 where: /legal-desk
 ---
 A sworn statement puts what someone saw or heard on paper, under oath, for the attorney. The Legal desk drafts it, prints it and keeps the signed copy. The office never types the same story twice.
@@ -42,6 +42,18 @@ Press **Edit** on the row to change the words. Press **Not signed…** when nobo
 
 The office sets the county under **Settings**, then **Jobs & billing**. The block is **The office's county for sworn statements**. The window starts its venue line there. It is where the notary watches the signing, not where the job is.
 
+## Print the paper
+
+Press {{button:outline|Print}} in the window. A new or changed draft saves first. The paper draws as it prints. Press {{button:dark|Print}} above it for the print sheet. Press {{button:outline|Save as PDF}} for a file to text or AirDrop. A row's {{button:outline|Print}} on the Timeline or the Evidence tab opens the same sheet.
+
+Press the ▾ beside Print to pick a face. **The whole paper** is the statement, the signature line and the jurat. **The statement alone** has no signing block. Read it over together before anyone signs. **The signing page alone** is the jurat with a line naming the handwritten statement it is stapled to. Print it when a witness writes their own words. The signer initials each page.
+
+A declaration with no notary asks for the declarant's full name, date of birth and address. Texas puts them on the paper. Type them when you print. The desk keeps them for this session only and never saves them. Each print is noted on the row: when, by whom and which face.
+
+:::example The witness dislikes a sentence
+Open the draft from the Timeline. Change the sentence. Press Print. The print sheet opens on the new page. Four presses, on a phone or at the desk.
+:::
+
 ## What comes next
 
-Printing the paper and filing the signed scan come in the next releases. Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney) for the desk as a whole.
+Filing the signed scan comes in the next release. Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney) for the desk as a whole.

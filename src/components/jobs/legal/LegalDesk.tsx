@@ -33,7 +33,7 @@ import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocum
 import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
 import LegalAffidavitWindow from './LegalAffidavitWindow'
 import { useOfficeCounty } from '../../../hooks/useOfficeCounty'
-import type { StatementDraft } from '../../../lib/legal/affidavitPaper'
+import type { DeclarantDetails, StatementDraft, StatementFace } from '../../../lib/legal/affidavitPaper'
 import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 
 import LegalPortalLinkButton from './LegalPortalLinkButton'
@@ -202,7 +202,10 @@ export default function LegalDesk(props: LegalDeskProps) {
   /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
   const [writeDownOpen, setWriteDownOpen] = useState(false)
   /** Swear a statement (punch list #220, v2.6210): the window on a new statement (on a day) or on an existing one. */
-  const [statementWin, setStatementWin] = useState<{ entryId: string | null; on: string | null } | null>(null)
+  const [statementWin, setStatementWin] = useState<{ entryId: string | null; on: string | null; print: StatementFace | null } | null>(null)
+  /** A declaration's declarant details by statement (v2.6211): typed at print time, held for the session, never saved. */
+  const declarantRef = useRef<Map<string, DeclarantDetails>>(new Map())
+  const [, bumpDeclarant] = useState(0)
   const [sheet, setSheet] = useState<Sheet>(null)
   /** Gap answers (v2.5920): the open Answer… sheet, and the matter's documents for its picker. */
   const [gapAnswerSheet, setGapAnswerSheet] = useState<{ key: string; label: string; text: string; documentId: string } | null>(null)
@@ -671,22 +674,31 @@ export default function LegalDesk(props: LegalDeskProps) {
     return Boolean(ok)
   }
   /** Punch list #220 (v2.6210): save a statement's draft — a new one on the matter (made first when the account has none), or a change to one. */
-  const statementSave = async (draft: StatementDraft, entryId: string | null): Promise<boolean> => {
+  const statementSave = async (draft: StatementDraft, entryId: string | null): Promise<string | null> => {
     const affiant = { kind: draft.affiant.kind, user_id: draft.affiant.userId, name: draft.affiant.name, role: draft.affiant.role }
+    let id: string | null = entryId
     const ok = await run(entryId ? 'Save the statement' : 'Save the draft', async () => {
       if (entryId) return legalRpc('legal_statement_update', { p_entry_id: entryId, p_on: draft.incidentOn, p_body: draft.body, p_title: draft.title, p_affiant: affiant, p_form: draft.form, p_incident_to: draft.incidentTo || null, p_clear_incident_to: !draft.incidentTo, p_venue_county: draft.venueCounty || null, p_clear_venue_county: !draft.venueCounty })
       const m = await ensureMatterId()
       if (m.error || !m.id) return m.error ?? 'The matter could not be made'
-      return legalRpc('legal_statement_add', { p_matter_id: m.id, p_on: draft.incidentOn, p_body: draft.body, p_title: draft.title, p_affiant: affiant, p_form: draft.form, p_incident_to: draft.incidentTo || null, p_venue_county: draft.venueCounty || null })
+      const made = await legalRpcData('legal_statement_add', { p_matter_id: m.id, p_on: draft.incidentOn, p_body: draft.body, p_title: draft.title, p_affiant: affiant, p_form: draft.form, p_incident_to: draft.incidentTo || null, p_venue_county: draft.venueCounty || null })
+      if (made.error) return made.error
+      id = typeof made.data?.entry_id === 'string' ? made.data.entry_id : null
+      return id ? null : 'The statement was not saved'
     })
-    if (ok) showToast(entryId ? 'Saved — the statement reads the new words on the Timeline.' : 'Saved — the draft is on the Timeline’s Said lane, on the day it is about.', 'success')
-    return Boolean(ok)
+    if (!ok) return null
+    // A new statement's window now holds its row, so a print or an edit that follows lands on it.
+    if (!entryId && id) setStatementWin((w) => (w && !w.entryId ? { ...w, entryId: id } : w))
+    showToast(entryId ? 'Saved — the statement reads the new words on the Timeline.' : 'Saved — the draft is on the Timeline’s Said lane, on the day it is about.', 'success')
+    return id
   }
+  /** v2.6211: note a print on the row — which face, the text as printed; the paper prints whether or not the note lands. */
+  const statementPrint = async (entryId: string, face: StatementFace, text: string): Promise<boolean> => Boolean(await run('Note the print', () => legalRpc('legal_statement_print', { p_entry_id: entryId, p_face: face, p_text: text })))
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
   const planActs: PlanActs = {
     holds: holdOverrides,
     holdReasons: heldReasonsOf(matter),
-    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on }), editStatement: (entryId) => setStatementWin({ entryId, on: null }) } : null,
+    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on, print: null }), editStatement: (entryId, opts) => setStatementWin({ entryId, on: null, print: opts?.print ? 'whole' : null }) } : null,
   }
   /** #85 item 16: accept a firm step that would have moved the stage back. */
   const moveStage = async (stageTo: string, entryId: string) => {
@@ -1313,6 +1325,10 @@ export default function LegalDesk(props: LegalDeskProps) {
           todayYmd={todayYmd}
           busy={busy}
           onSave={statementSave}
+          onPrint={statementPrint}
+          declarant={statementWin.entryId ? (declarantRef.current.get(statementWin.entryId) ?? null) : null}
+          onDeclarant={(id, d) => { declarantRef.current.set(id, d); bumpDeclarant((t) => t + 1) }}
+          initialPrint={statementWin.print}
           onClose={() => setStatementWin(null)}
           onShowTimeline={() => showTab('timeline')}
           zIndex={DESK_LAYER_Z + 12}
