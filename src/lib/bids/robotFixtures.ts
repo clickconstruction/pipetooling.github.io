@@ -476,6 +476,19 @@ export function fixturesAddedToast(adds: number, updates: number): string {
   return parts.length ? `${parts.join(', ')}.` : 'Nothing changed.'
 }
 
+/**
+ * The toast after Undo (v2.6242), from `untake_robot_fixture_rows`' own counts. Undo takes back one press
+ * (v2.6237), so the words say what that press's Undo did and never that the robot's rows are all off her
+ * count: *1 fixture taken back.*, *1 row back to your number.*, and a row she changed since stays hers.
+ */
+export function fixturesUndoneToast(r: { removed: number; restored: number; kept: number }): string {
+  const parts: string[] = []
+  if (r.removed > 0) parts.push(`${r.removed} ${r.removed === 1 ? 'fixture' : 'fixtures'} taken back`)
+  if (r.restored > 0) parts.push(`${r.restored} ${r.restored === 1 ? 'row' : 'rows'} back to your number`)
+  const head = parts.length ? `${parts.join(', ')}.` : 'Nothing to undo.'
+  return r.kept > 0 ? `${head} ${r.kept} ${r.kept === 1 ? 'stays because you changed it' : 'stay because you changed them'}.` : head
+}
+
 /** The schedule row's one line: *Kohler Highline K-96057 · 1.28 gpf · waste 4"*. */
 export function scheduleLineWords(row: Pick<FixturePullRow, 'manufacturer' | 'model' | 'description' | 'connections'>): string | null {
   const parts: string[] = []

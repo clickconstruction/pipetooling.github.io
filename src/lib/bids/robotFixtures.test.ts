@@ -9,6 +9,7 @@ import {
   fixtureButtonWords,
   fixtureSetLineWords,
   fixturesAddedToast,
+  fixturesUndoneToast,
   fixturesScoreOf,
   fixturesScoreWords,
   isSure,
@@ -164,6 +165,13 @@ describe('the button and the foot', () => {
   it('the toast', () => {
     expect(fixturesAddedToast(15, 0)).toBe('15 fixtures added from the robot.')
     expect(fixturesAddedToast(1, 1)).toBe('1 fixture added from the robot, 1 row updated.')
+    // v2.6242: Undo says what its one press did, never that every robot row is gone.
+    expect(fixturesUndoneToast({ removed: 1, restored: 0, kept: 0 })).toBe('1 fixture taken back.')
+    expect(fixturesUndoneToast({ removed: 0, restored: 1, kept: 0 })).toBe('1 row back to your number.')
+    expect(fixturesUndoneToast({ removed: 4, restored: 1, kept: 0 })).toBe('4 fixtures taken back, 1 row back to your number.')
+    expect(fixturesUndoneToast({ removed: 2, restored: 0, kept: 1 })).toBe('2 fixtures taken back. 1 stays because you changed it.')
+    expect(fixturesUndoneToast({ removed: 0, restored: 0, kept: 2 })).toBe('Nothing to undo. 2 stay because you changed them.')
+    expect(fixturesUndoneToast({ removed: 0, restored: 0, kept: 0 })).toBe('Nothing to undo.')
   })
 })
 

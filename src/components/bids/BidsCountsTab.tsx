@@ -52,7 +52,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { useRobotProgress } from '../../hooks/useRobotProgress'
 import { useRobotFixtures } from '../../hooks/useRobotFixtures'
 import { buildRobotStage, type RobotStageRow } from '../../lib/bids/robotStage'
-import { fixturesAddedToast, SET_ASIDE_REASON_WORDS, type FixtureReview, type FixtureTicks, type HerCountRow, type SetAsideReason } from '../../lib/bids/robotFixtures'
+import { fixturesAddedToast, fixturesUndoneToast, SET_ASIDE_REASON_WORDS, type FixtureReview, type FixtureTicks, type HerCountRow, type SetAsideReason } from '../../lib/bids/robotFixtures'
 import { isRobotRow, robotRowPill, robotSourceIds, setAsideFoldWords, SET_ASIDE_WORDS } from '../../lib/bids/robotFixtureShade'
 import { RobotFixturesWindow } from './RobotFixturesWindow'
 import { RobotStageStrip } from './RobotStageStrip'
@@ -244,8 +244,9 @@ export function BidsCountsTab({
   async function robotUntake(pullId: string, rowIds?: string[]) {
     try {
       // v2.6237: Undo takes back the rows of the press it belongs to, never an earlier press's.
-      await (rowIds ? robotFixtures.untakeRows(pullId, rowIds) : robotFixtures.untake(pullId))
-      showToast('The robot\u2019s rows are off your count again.', 'success')
+      const undone = await (rowIds ? robotFixtures.untakeRows(pullId, rowIds) : robotFixtures.untake(pullId))
+      // v2.6242: the words come from what this Undo did, so they never say every robot row is gone.
+      showToast(fixturesUndoneToast(undone), 'success')
     } catch (e) {
       showToast(formatErrorMessage(e), 'error')
     }
