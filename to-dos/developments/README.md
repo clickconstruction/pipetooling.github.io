@@ -2,7 +2,7 @@
 name: "Developments on bids, one page for a development, and questions kept on the record"
 number: 208
 group: close
-status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · the mock-up's second pass drawn the same day (draft 3, the owner liked the idea and not the thing): one Pieces table instead of two boards, the Ask as a kind in the record's own box, the house line carrying the site's pulse, the since line inside the feed · its three calls answered the same day, each as recommended · PR 2 the page cut as v2.6040 (#6405), PR 2h the entries v2.6042 (#6408), PR 2m the MCP verbs v2.6044 (#6410), PR 3 Put the N in v2.6046, PR 4a the asks v2.6047, PR 5 the Plans question read back v2.6048 (2026-10-29) · PR 4b the records' own boxes, PR 6 the estimator's read and the pairing's windows follow as SPIKE_HANDOFF.md orders them · PR 4b the records' own boxes v2.6052 (#6421), the pairing's windows v2.6051 (#6418) and PR 6 the estimator's read v2.6053 (#6420, migration 20261029170000 applied, types #6427) shipped 2026-10-29 · every PR of the plan is on main
+status: building 2026-10-28 · PR 1 shipped as v2.6019 (#6376, the migration applied): the column, the picker, the Bid window and Bid Board lines, the house filter, New Job from a bid, the suggestion by address · the mock-up's second pass drawn the same day (draft 3, the owner liked the idea and not the thing): one Pieces table instead of two boards, the Ask as a kind in the record's own box, the house line carrying the site's pulse, the since line inside the feed · its three calls answered the same day, each as recommended · PR 2 the page cut as v2.6040 (#6405), PR 2h the entries v2.6042 (#6408), PR 2m the MCP verbs v2.6044 (#6410), PR 3 Put the N in v2.6046, PR 4a the asks v2.6047, PR 5 the Plans question read back v2.6048 (2026-10-29) · PR 4b the records' own boxes, PR 6 the estimator's read and the pairing's windows follow as SPIKE_HANDOFF.md orders them · PR 4b the records' own boxes v2.6052 (#6421), the pairing's windows v2.6051 (#6418) and PR 6 the estimator's read v2.6053 (#6420, migration 20261029170000 applied, types #6427) shipped 2026-10-29 · every PR of the plan is on main · the owner's live look 2026-10-30, two fixes from it: v2.6178 (#6570) the state in capitals on the address line, v2.6179 (#6579) archived bids sit apart from the undecided · the mailbox backfill landed the same day, 188 lines kept on the site's History as the inbox robot through the MCP verbs
 summary: >
   A development is already a record on jobs: a named row, the house icon on the Pipeline, a filter,
   GC Review's By development. The owner wants it on bids too, so that a site with many moving pieces
@@ -13,11 +13,11 @@ summary: >
   on that record as its history. The plan: one column on bids, a page at /developments/<id> with the
   Customer Hub as its precedent, and the questions riding the two request lanes the app already has
   (the Estimator inbox and the Dispatch inbox) with a development as a third kind of reference.
-next: The owner's look at the real site's page live, opened from one of its bids or jobs: the Pieces table and its doors, a question asked from the page and answered in the inbox, the Plans card's question read back, the pairing step on one bid, and the page as an estimator with no money on it; then delete the folder, the fragments carry the record.
+next: Left from the owner's walk of 2026-10-30: his Put the 34 in press for the pieces at the address not in the development, the phone's Note chip wrapping onto its own line and the blank sixth tile cell; then delete the folder, the fragments carry the record.
 size: S (PR 1 the column and picker) + M (PR 2 the page) + S (PR 3 not in it yet) + M (PR 4 questions) + M (PR 5 what changed, plans) + S (PR 6 the estimator's door, types)
-blocker: None. The owner's look.
-ver: v2.6019 · 6040 · 6042 · 6044 · 6046 · 6047 · 6048 · 6051 · 6052 · 6053
-opinion: your call — every PR of the plan is built and on main; the live look at the real site's page is the owner's
+blocker: None. The owner's one press and two phone wrinkles.
+ver: v2.6019 · 6040 · 6042 · 6044 · 6046 · 6047 · 6048 · 6051 · 6052 · 6053 · 6178 · 6179
+opinion: your call — every PR of the plan is on main and the walk's two fixes with it; what is left is the owner's one press and two phone wrinkles, then the folder goes
 ---
 
 # Developments on bids, one page for a development, and questions kept on the record (#208)
@@ -458,7 +458,9 @@ love the rest. Asked again whether it was the best we could do:
 
 ## Where it stands
 
-**All of it is on main as of 2026-10-29.** PR 2 the page (v2.6040), 2h the entries (v2.6042), 2m the MCP verbs (v2.6044), PR 3 Put the N in (v2.6046), PR 4a the asks (v2.6047), PR 5 the Plans question read back (v2.6048), the pairing's windows (v2.6051), PR 4b the records' own boxes (v2.6052) and PR 6 the estimator's read (v2.6053); the four migrations of the day (`20261029130000` to `20261029170000`) are applied and the types regenerated (#6416, #6427). What is left is the owner's look at the real site's page, then the folder goes.
+**All of it is on main as of 2026-10-29.** PR 2 the page (v2.6040), 2h the entries (v2.6042), 2m the MCP verbs (v2.6044), PR 3 Put the N in (v2.6046), PR 4a the asks (v2.6047), PR 5 the Plans question read back (v2.6048), the pairing's windows (v2.6051), PR 4b the records' own boxes (v2.6052) and PR 6 the estimator's read (v2.6053); the four migrations of the day (`20261029130000` to `20261029170000`) are applied and the types regenerated (#6416, #6427). 
+
+**The owner's live look happened 2026-10-30.** Two fixes came out of it: v2.6178 (#6570, the head's address line reads the state in capitals whichever spelling the rows typed) and v2.6179 (#6579, an archived unsent bid sits apart from the undecided, the Bid Board's own rule for *Not yet won or lost*, so the *Bid, undecided* tile no longer counts the real site's thirteen). The mailbox backfill landed the same day: 188 lines, one per thread of the site lead's mailbox export, kept on the site's History as *the inbox robot* through `plan_history_entry` / `apply_history_entry` (the export and the shaping script stay outside the repo). Left: the owner's *Put the 34 in* press, and on a phone the Note chip wrapping onto its own line and the blank sixth tile cell; then the folder goes.
 
 Planned 2026-10-28 in one sitting: the code and the live example surveyed, the three pieces weighed
 against the nine question shapes, the mock-up drawn, critiqued once on the rendered page and

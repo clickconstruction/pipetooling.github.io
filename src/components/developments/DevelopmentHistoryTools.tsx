@@ -67,9 +67,10 @@ export function DevelopmentHistoryComposer({ options, phone, busy, onKeep }: { o
         <span style={capStyle}>When</span>
         <input type="datetime-local" value={when} max={localInputValue(Date.now() + 5 * 60_000)} onChange={(e) => setWhen(e.target.value)} aria-label="When it happened" title="When it happened: now, or set back to the email's time" data-testid="history-when" />
         <span style={capStyle}>Source</span>
-        <span style={{ display: 'inline-flex', gap: 4, flexWrap: 'wrap' }} role="radiogroup" aria-label="Source">
+        {/* A phone lays the six sources three a row, two rows, so the last never wraps alone. */}
+        <span style={phone ? { display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 4, width: '100%' } : { display: 'inline-flex', gap: 4, flexWrap: 'wrap' }} role="radiogroup" aria-label="Source">
           {HISTORY_SOURCES.map((s) => (
-            <button key={s.key} type="button" role="radio" aria-checked={source === s.key} className="developmentHistoryChip" data-on={source === s.key ? '1' : undefined} title={s.hint} onClick={() => setSource(s.key)} data-testid={`history-source-${s.key}`}>
+            <button key={s.key} type="button" role="radio" aria-checked={source === s.key} className="developmentHistoryChip" data-on={source === s.key ? '1' : undefined} style={phone ? { justifyContent: 'center' } : undefined} title={s.hint} onClick={() => setSource(s.key)} data-testid={`history-source-${s.key}`}>
               {s.label}
             </button>
           ))}

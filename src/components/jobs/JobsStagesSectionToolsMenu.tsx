@@ -13,6 +13,7 @@ import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { buildStagesSectionToolsMenu, type StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu'
 import StagesSectionToolsIcon from '../icons/StagesSectionToolsIcon'
 import { stagesToolsMenuItemStyle } from './stagesToolsMenuStyles'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 export type JobsStagesSectionToolsMenuInputs = Parameters<typeof buildStagesSectionToolsMenu>[0]
 
@@ -111,8 +112,8 @@ export function JobsStagesSectionToolsMenu({
                           alignItems: 'center',
                           justifyContent: 'center',
                           borderRadius: 9999,
-                          background: '#f59e0b',
-                          color: '#1c1917',
+                          background: ORANGE_UNDER_WORDS,
+                          color: WORDS_ON_ORANGE,
                           fontSize: 10,
                           fontWeight: 700,
                           fontVariantNumeric: 'tabular-nums',

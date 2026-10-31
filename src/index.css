@@ -4900,8 +4900,9 @@ button.lienCalKinds:hover, button.lienCalKinds[aria-expanded='true'] { border-st
   padding: 0.05rem 0.35rem;
   border: 2px solid var(--surface);
   border-radius: 999px;
-  background: #f59e0b;
-  color: #241a05;
+  /* Orange under words, white on it (v2.6186, lib/orangeUnderWords). */
+  background: #c75000;
+  color: #ffffff;
   font-size: 0.66rem;
   font-weight: 800;
   line-height: 1.4;

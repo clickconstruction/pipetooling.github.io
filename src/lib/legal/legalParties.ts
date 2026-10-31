@@ -87,6 +87,11 @@ export function payerRoleWords(payer: { viaGc: boolean }, customerType: string):
   return 'customer'
 }
 
+/** A signer's printed name with a signing mode typed after it (`Sam Owner electronically`, `Sam Owner on paper`) is the name alone (v2.6184). */
+export function signerDisplayName(name: string): string {
+  return name.trim().replace(/\s+(?:electronically|on paper|by hand|in person|typed|drawn)\.?$/i, '').trim()
+}
+
 /** `subcontract signed by R. Vance` · `agreement signed` · `1 of 2 signed` · `agreement sent, not signed` · `no agreement of ours needed` · `no signed agreement`. */
 export function contractStateWords(agreements: ReadonlyArray<{ coverage: JobContractCoverage }>, viaGc: boolean): string {
   const paper = viaGc ? 'subcontract' : 'agreement'
@@ -98,7 +103,7 @@ export function contractStateWords(agreements: ReadonlyArray<{ coverage: JobCont
       const c = a.coverage
       if (c.kind !== 'signed') continue
       const list = c.signerNames?.length ? c.signerNames : c.signerName ? [c.signerName] : []
-      for (const n of list) if (n.trim()) names.add(n.trim())
+      for (const n of list) { const clean = signerDisplayName(n); if (clean) names.add(clean) }
     }
     const by = joinSignerNames([...names])
     const head = agreements.length === 1 ? paper : `${agreements.length} ${paper}s`
@@ -110,9 +115,9 @@ export function contractStateWords(agreements: ReadonlyArray<{ coverage: JobCont
   return `no signed ${paper}`
 }
 
-/** `Lubbock, TX` from a one-line address, '' when the line has no city. */
+/** `Lubbock, TX` from a one-line address, '' when the line has no city. A suite or unit typed before the city with no comma (`Ste B Amarillo`) is dropped (v2.6184). */
 export function cityStateWords(address: string): string {
-  const city = cityOfAddress(address)
+  const city = cityOfAddress(address).replace(/^(?:ste\.?|suite|unit|apt\.?|bldg\.?|#)\s*[\w-]+\s+/i, '').trim()
   return city ? `${city}, TX` : ''
 }
 

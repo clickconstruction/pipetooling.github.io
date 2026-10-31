@@ -25,6 +25,7 @@ import { PipelineContractCoverageCard, type PipelineContractCoverage } from './P
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import type { LienDeskMoneyCard } from '../../lib/jobs/lienDeskMoneyCard'
 import type { LienDeskPile } from '../../lib/jobs/lienDesk'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 export type PipelineGcRoundCards = {
   held: { count: number; total: number } | null
@@ -88,8 +89,8 @@ const badgeStyle: CSSProperties = {
   height: 16,
   padding: '0 4px',
   borderRadius: 9999,
-  background: '#f59e0b',
-  color: '#1c1917',
+  background: ORANGE_UNDER_WORDS,
+  color: WORDS_ON_ORANGE,
   fontSize: '0.62rem',
   fontWeight: 700,
   flex: 'none',

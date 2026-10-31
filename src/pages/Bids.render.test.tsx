@@ -112,6 +112,10 @@ vi.mock('../lib/supabase', async () => {
   }
 })
 
+// v2.6167: the smoke renders a desk. The wide header (≥1151 px) is where the page draws its own New Bid; below
+// it the app header's Bid press, which Layout draws and this smoke never mounts, is the one New Bid.
+vi.mock('../hooks/useMatchMedia', () => ({ useMatchMedia: (query: string) => query === '(min-width: 1151px)' }))
+
 vi.mock('../hooks/useAuth', async () => {
   const { useAuthModuleMock } = await import('../test/renderSmokeMocks')
   return useAuthModuleMock()

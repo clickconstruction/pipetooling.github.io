@@ -41,6 +41,7 @@ import {
   saveJobFollowupSettings,
 } from '../../lib/jobs/jobFollowupStore'
 import { EmptyState } from '../EmptyState'
+import { ORANGE_UNDER_WORDS, WORDS_ON_ORANGE } from '../../lib/orangeUnderWords'
 
 /**
  * Job Follow-Up Mode (v2.1718): the office reviews quiet jobs one card at a
@@ -781,7 +782,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                 <>
                   {/* Phones: chips share the badge row so the wrapping title can't push them down. */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem' }}>
-                    <span style={{ background: '#f59e0b', color: 'var(--text-on-bright-solid)', fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
+                    <span style={{ background: ORANGE_UNDER_WORDS, color: WORDS_ON_ORANGE, fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
                     <span style={STAGE_CHIP[current.job.stage]}>{JOB_FOLLOWUP_STAGE_LABELS[current.job.stage]}</span>
                     {clockChip(current)}
                   </div>
@@ -789,7 +790,7 @@ export function JobsFollowupModal({ open, onClose, renderStageRow, onOpenBoardRo
                 </>
               ) : (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.55rem', flexWrap: 'wrap' }}>
-                  <span style={{ background: '#f59e0b', color: 'var(--text-on-bright-solid)', fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
+                  <span style={{ background: ORANGE_UNDER_WORDS, color: WORDS_ON_ORANGE, fontWeight: 800, fontSize: '0.72rem', borderRadius: 6, padding: '0.2rem 0.5rem' }}>{current.job.hcpNumber}</span>
                   <span style={{ fontWeight: 800, fontSize: '1.05rem' }}>{current.job.jobName}</span>
                   <span style={STAGE_CHIP[current.job.stage]}>{JOB_FOLLOWUP_STAGE_LABELS[current.job.stage]}</span>
                   {clockChip(current)}
