@@ -26,8 +26,9 @@ import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robot
 //
 // Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
 // on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0;
-// a new bid v2.6183 / 0.10.0; its plan set into Drive and onto the bid v2.6185 / 0.11.0) are a SECOND path, not a
-// loosening of the first: nineteen verbs (_shared/devMcpWrites.ts) POST one of eight hard-coded, dev-gated definer RPCs as the dev —
+// a new bid v2.6183 / 0.10.0; its plan set into Drive and onto the bid v2.6185 / 0.11.0; a sworn statement drafted onto a
+// matter's Timeline v2.6244 / 0.13.0) are a SECOND path, not a
+// loosening of the first: twenty-one verbs (_shared/devMcpWrites.ts) POST one of ten hard-coded, dev-gated definer RPCs as the dev —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table write, never through view_as. One more
 // (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
@@ -36,7 +37,7 @@ import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robot
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.12.2'
+const SERVER_VERSION = '0.13.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -198,6 +199,16 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { item: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['item', 'plan_hash'] },
   },
   {
+    name: 'plan_matter_statement',
+    description: "Dry-run a sworn statement or an unsworn declaration drafted onto a legal matter's Timeline (v2.6244, punch list #220): the affidavit the office would otherwise draft in a chat and retype — the title, the day it is about (and the span's last day), who swears it (one of our team by users.id with their full name as it reads on their ID, or a witness typed in), the form (before a notary, or under penalty of perjury), the county and the paragraphs — as a DRAFT on the Said lane the office prints, signs and files from the desk's Swear a statement… window. The robot never prints, signs or files. action add drafts one (matter_id, on, title, body, affiant, form?, incident_to?, venue_county?); update changes a draft it or the office made (entry_id and the fields that change; null clears the span or the county), refused once the signed copy is filed. Replies with the matter, the statement before and the draft as it would be written with its state words, how many statements the matter holds, whether the firm reads it now, and a plan_hash. Nothing is written. Write only what the record shows and what the affiant can swear to: the paragraphs are theirs once signed.",
+    inputSchema: { type: 'object', properties: { statement: { type: 'object', description: "{ action: 'add' | 'update' (add when left out), matter_id? (legal_matters.id — read_rows on legal_matters by payer_name), entry_id? (a kind 'statement' row of legal_matter_entries), on? (YYYY-MM-DD, the day it is about), title?, body? (the paragraphs), affiant? ({ kind: 'team' | 'witness', user_id? (find_person; team only), name (their full name), role? }), form? ('notary' | 'declaration'), incident_to? (YYYY-MM-DD, or null to clear), venue_county? (or null to clear) }" } }, required: ['statement'] },
+  },
+  {
+    name: 'apply_matter_statement',
+    description: "Draft the statement you planned: the same statement plus the plan_hash from plan_matter_statement. Runs the dry run again first and writes only when it still matches — a statement added or dropped on the matter since, or a change to the draft you are updating, refuses it: plan again. Written as you through legal_statement_add / legal_statement_update with source mcp; the office sees the draft on the Timeline's Said lane at once, tagged dev MCP, and prints, signs and files it from there.",
+    inputSchema: { type: 'object', properties: { statement: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['statement', 'plan_hash'] },
+  },
+  {
     name: 'plan_matter_document',
     description: "Dry-run a document onto a legal matter's Evidence tab (v2.6004): what the office files for the firm on a Collections account — a sent letter, a received notice, a receipt, a scan. The file travels as content_base64 (a PDF, an image, an email as .eml or plain text, up to 10 MB); the server turns it into mime, size_bytes and sha256, which the plan hash commits to, and stores nothing. Replies with the matter, the row as it would be written, how many documents the matter holds, whether the firm reads it now, and a plan_hash.",
     inputSchema: { type: 'object', properties: { document: { type: 'object', description: "{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), title, shows (one line on what it shows), original_name (the file name, with its extension), content_base64 (the file), dated_on? (YYYY-MM-DD, the paper's own day), state? (draft | final | sent | received; final when left out), received_on? (YYYY-MM-DD), sent_on? (YYYY-MM-DD, today when left out), sent_how? (email | certified_mail | mail | hand | other; needed when state is sent), sent_to? (who it went to; needed when state is sent) }" } }, required: ['document'] },
@@ -274,7 +285,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are nineteen verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) and plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are twenty-one verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole) plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database) and plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -672,19 +683,6 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       return ok(report, { target: 'edge_functions', rowCount: report.probed })
     }
 
-    case 'plan_cost_batch':
-    case 'apply_cost_batch':
-    case 'revert_cost_batch':
-    case 'plan_hr_entry':
-    case 'apply_hr_entry':
-    case 'plan_matter_narrative':
-    case 'apply_matter_narrative':
-    case 'plan_matter_plan_item':
-    case 'apply_matter_plan_item':
-    case 'plan_gap_answer':
-    case 'apply_gap_answer':
-    case 'plan_history_entry':
-    case 'apply_history_entry':
     case 'mint_twin_setup_code': {
       // v2.6187: a setup code for a twin, through twin-setup as the dev (it enforces dev-for-any-twin
       // and ten per ten minutes). The key itself never crosses this door — a tool result is
@@ -832,12 +830,30 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
           : `The probe could not read the set yet: ${String(probe.note ?? 'no reason given')}. Open the folder link and check the file is there, then press Check the link on the bid form (or GET plan-fetch?bid=…&probe=1 again).`,
       }, { target: bidTag ?? built.target })
     }
+    case 'plan_cost_batch':
+    case 'apply_cost_batch':
+    case 'revert_cost_batch':
+    case 'plan_hr_entry':
+    case 'apply_hr_entry':
+    case 'plan_matter_narrative':
+    case 'apply_matter_narrative':
+    case 'plan_matter_plan_item':
+    case 'apply_matter_plan_item':
+    case 'plan_matter_statement':
+    case 'apply_matter_statement':
+    case 'plan_gap_answer':
+    case 'apply_gap_answer':
+    case 'plan_history_entry':
+    case 'apply_history_entry':
     case 'plan_bid':
     case 'apply_bid':
     case 'plan_matter_document':
     case 'apply_matter_document': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as
       // refuses these before it gets here; this check is the belt to that suspender.
+      // Every write verb's label sits HERE, above this block (v2.6244): v2.6187's mint_twin_setup_code block was
+      // merged between the older labels and this branch, so for a day plan_cost_batch through apply_history_entry
+      // fell through into it and answered "mint_twin_setup_code needs label".
       if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
       // v2.6004: a document's bytes arrive as content_base64. They become mime, size_bytes and sha256
       // before the dry run (so the plan hash commits to the file) and are stored only at apply.
