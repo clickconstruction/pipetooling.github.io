@@ -70,7 +70,7 @@ export function BidsDirectCostsSection(p: BidsDirectCostsSectionProps) {
                 <option key={k} value={k}>{DIRECT_COST_KIND_LABELS[k]}</option>
               ))}
             </select>
-            <button type="button" onClick={() => void p.onAdd(addKind)} disabled={!p.canAdd} style={{ padding: '0.25rem 0.6rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: p.canAdd ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: 500 }}>
+            <button type="button" onClick={() => void p.onAdd(addKind)} disabled={!p.canAdd} style={{ padding: '0.25rem 0.6rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: p.canAdd ? 'pointer' : 'not-allowed', fontSize: '0.75rem', fontWeight: 500 }}>
               + Add
             </button>
           </span>

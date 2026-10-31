@@ -88,4 +88,13 @@ describe('markOutcome · the press that fits the count (punch list #176, change 
     expect(worked).toMatchObject({ outcome: 'worked', label: 'Worked it', enabled: false, hint: 'counting…' })
     expect(question).toMatchObject({ outcome: 'question', enabled: true })
   })
+
+  it('held on a kept station (#183 PR 4): Done and Worked it keep their words but wait with reading again…, Not sure stays lit', () => {
+    const [done, worked, question] = markPresses(3, 'open', false, true)
+    expect(done).toMatchObject({ outcome: 'done', label: 'Done · 0 open', enabled: false, hint: 'reading again…' })
+    expect(worked).toMatchObject({ outcome: 'worked', label: 'Worked it · 3 left', enabled: false, hint: 'reading again…' })
+    expect(question).toMatchObject({ outcome: 'question', enabled: true })
+    // Still counting wins the words: the count is not in either way.
+    expect(markPresses(null, 'open', true, true)[0]).toMatchObject({ label: 'Done', hint: 'counting…' })
+  })
 })

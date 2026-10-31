@@ -442,7 +442,7 @@ export type NeedsYouInputs = {
    */
   statementRoundEnabled?: boolean
   /** `office` = the whole office's week (punch list #49); absent = the signed-in sender's own round. */
-  statementRound?: { count: number; total: number; gcNames: string[]; office?: boolean; late?: number } | null
+  statementRound?: { count: number; total: number; gcNames: string[]; late?: number } | null
   gcReviewStatus: GcReviewWeekStatus | null
   /** Parent computes both from the clock (gcReviewNudgeState/gcReviewWeekdayIndex) — the builder stays pure. */
   gcReviewNudge: GcReviewNudgeState | null
@@ -1356,28 +1356,16 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     const preview = r.gcNames.slice(0, 3).join(', ')
     const more = r.gcNames.length > 3 ? ` +${r.gcNames.length - 3} more` : ''
     const total = `$${Math.round(r.total).toLocaleString('en-US')}`
-    items.push(
-      r.office
-        ? {
-            // The office's week: every checked GC, whoever its account man is.
-            key: 'statement-round',
-            severity: 'blue',
-            kicker: 'GC statements',
-            title: r.count === 1 ? 'One GC statement is ready to send' : `${r.count} GC statements are ready to send`,
-            detail: `${preview}${more} · ${total} checked and ready${r.late ? ` · ${r.late} broke a promise` : ''} — grouped by the account man to ask.`,
-            figure: r.count > 99 ? '99+' : String(r.count),
-            actionLabel: 'Open the list',
-          }
-        : {
-            key: 'statement-round',
-            severity: 'blue',
-            kicker: 'Statement round',
-            title: r.count === 1 ? 'One GC is waiting on your statement' : `${r.count} GCs are waiting on your statement`,
-            detail: `${preview}${more} · ${total} certified and ready — a personal email from you.`,
-            figure: r.count > 99 ? '99+' : String(r.count),
-            actionLabel: 'Start round',
-          },
-    )
+    // The office's week (punch list #49): every checked GC, whoever its account man is.
+    items.push({
+      key: 'statement-round',
+      severity: 'blue',
+      kicker: 'GC statements',
+      title: r.count === 1 ? 'One GC statement is ready to send' : `${r.count} GC statements are ready to send`,
+      detail: `${preview}${more} · ${total} checked and ready${r.late ? ` · ${r.late} broke a promise` : ''} — grouped by the account man to ask.`,
+      figure: r.count > 99 ? '99+' : String(r.count),
+      actionLabel: 'Open the list',
+    })
   }
 
   if (inputs.gcReviewEnabled && inputs.gcReviewStatus != null && inputs.gcReviewNudge === 'due') {
@@ -1474,14 +1462,26 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
   if (inputs.robotAuditsEnabled && inputs.robotLockedShadows != null && inputs.robotLockedShadows.length > 0) {
     const sealed = inputs.robotLockedShadows
     const n = sealed.length
-    const one = sealed[0] as RobotLockedShadow
+    // Robot fixtures (punch list #221, PR 4): a sealed run whose fixtures wait on the Counts tab leads the card.
+    const ready = sealed.filter((s) => (s.fixturesFound ?? 0) > 0 && (s.fixturesTaken ?? 0) === 0)
+    const one = (ready[0] ?? sealed[0]) as RobotLockedShadow
     const where = one.project ? ` (${one.project})` : ''
     items.push({
       key: 'robot-locked',
       severity: 'blue',
       kicker: 'Robot bid',
-      title: n === 1 ? `The robot has a sealed number on b${one.referenceBid}${where}` : `The robot has sealed numbers on ${n} live bids`,
-      detail: 'Locked before ours went out — the score lands the moment we send, and the envelope opens for you right then. Nothing to do; this is the head start.',
+      title:
+        ready.length === 1
+          ? `The robot's fixtures are ready on b${one.referenceBid}${where}`
+          : ready.length > 1
+            ? `The robot's fixtures are ready on ${ready.length} live bids`
+            : n === 1
+              ? `The robot has a sealed number on b${one.referenceBid}${where}`
+              : `The robot has sealed numbers on ${n} live bids`,
+      detail:
+        ready.length > 0
+          ? 'Open the bid on the Counts tab and press Robot fixtures. Take the ones you want; the rest wait, and its number stays sealed until you send.'
+          : 'Locked before ours went out — the score lands the moment we send, and the envelope opens for you right then. Nothing to do; this is the head start.',
       figure: n > 99 ? '99+' : String(n),
       actionLabel: 'Open Robot Board',
     })

@@ -350,7 +350,7 @@ export function BridgeCollectDesk(props: BridgeCollectDeskProps) {
               </button>
             )}
             {sheet && onRecordPlan && !planRecorded && (
-              <button type="button" disabled={!!recording} onClick={() => onRecordPlan(collectSheetAsCallMoves(sheet, owners))} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: 'var(--text-red-600)', color: 'var(--surface)', fontWeight: 700, cursor: 'pointer' }} data-testid="bridge-collect-record-plan">
+              <button type="button" disabled={!!recording} onClick={() => onRecordPlan(collectSheetAsCallMoves(sheet, owners))} style={{ height: 36, padding: '0 14px', borderRadius: 8, border: 0, background: '#dc2626', color: '#fff', fontWeight: 700, cursor: 'pointer' }} data-testid="bridge-collect-record-plan">
                 {recording ? 'Recording…' : "Record this as the week's plan"}
               </button>
             )}

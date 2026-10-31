@@ -375,7 +375,7 @@ export function JobActivityView({
                 type="button"
                 onClick={() => void commitPctEditor()}
                 disabled={pctSaving}
-                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? 'var(--bg-200)' : '#3b82f6', color: pctSaving ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
+                style={{ padding: '0.35rem 0.75rem', fontSize: '0.8125rem', fontWeight: 600, background: pctSaving ? 'var(--bg-200)' : '#2563eb', color: pctSaving ? 'var(--text-muted)' : '#fff', border: 'none', borderRadius: 4, cursor: pctSaving ? 'not-allowed' : 'pointer', flexShrink: 0 }}
               >
                 {pctSaving ? 'Setting…' : `Set to ${pctDraft}%`}
               </button>
@@ -435,7 +435,7 @@ export function JobActivityView({
               onClick={() => void post()}
               disabled={submitting}
               style={{
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 999,

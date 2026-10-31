@@ -165,7 +165,7 @@ export default function SettingsCatalogsProspectsTab({
                   <button
                     type="submit"
                     disabled={prospectCopySaving}
-                    style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: prospectCopySaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+                    style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: prospectCopySaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
                   >
                     {prospectCopySaving ? 'Saving…' : 'Save'}
                   </button>
@@ -234,7 +234,7 @@ export default function SettingsCatalogsProspectsTab({
                     disabled={estimateCxSaving}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: '#3b82f6',
+                      background: '#2563eb',
                       color: 'white',
                       border: 'none',
                       borderRadius: 4,
@@ -395,7 +395,7 @@ export default function SettingsCatalogsProspectsTab({
                     disabled={estimateLineItemCatalogSaving}
                     style={{
                       padding: '0.5rem 1rem',
-                      background: '#3b82f6',
+                      background: '#2563eb',
                       color: 'white',
                       border: 'none',
                       borderRadius: 4,
@@ -463,7 +463,7 @@ export default function SettingsCatalogsProspectsTab({
                     style={{
                       marginTop: '0.75rem',
                       padding: '0.5rem 1rem',
-                      background: '#3b82f6',
+                      background: '#2563eb',
                       color: 'white',
                       border: 'none',
                       borderRadius: 4,

@@ -217,8 +217,8 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   onClick={settleCancel}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: safeCancel ? '#3b82f6' : 'var(--bg-muted)',
-                    border: safeCancel ? '1px solid #3b82f6' : '1px solid var(--border-strong)',
+                    background: safeCancel ? '#2563eb' : 'var(--bg-muted)',
+                    border: safeCancel ? '1px solid #2563eb' : '1px solid var(--border-strong)',
                     borderRadius: 6,
                     color: safeCancel ? 'white' : 'var(--text-700)',
                     fontWeight: safeCancel ? 600 : 500,
@@ -234,7 +234,7 @@ export function ConfirmDialogProvider({ children }: { children: ReactNode }) {
                   onClick={settleConfirm}
                   style={{
                     padding: '0.5rem 1rem',
-                    background: pending.kind === 'confirm' && pending.options.danger ? '#dc2626' : '#3b82f6',
+                    background: pending.kind === 'confirm' && pending.options.danger ? '#dc2626' : '#2563eb',
                     border: 'none',
                     borderRadius: 6,
                     color: 'white',

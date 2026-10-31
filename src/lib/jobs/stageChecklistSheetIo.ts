@@ -9,6 +9,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError, formatErrorMessage } from '../../utils/errorHandling'
+import { REPORT_PHOTOS_BUCKET, reportPhotoPath } from '../photos/reportPhotos'
 import { stageProgressRowsFromRpc } from '../reports/stageProgressReport'
 import { type JobStageRef, type StageChecklistAnswer, type StageChecklistPick, type StageChecklistQuestion } from './stageChecklist'
 import { loadQuestions } from './stageChecklistIo'
@@ -31,10 +32,12 @@ export interface AnswerRow {
   photo_drive_file_id: string | null
   photo_filed_at: string | null
   photo_fail_why: string | null
+  /** The report photo that is the answer's photo (punch list #189 PR 6, migration 20261031150000); absent before the push. */
+  report_photo_id?: string | null
 }
 
 /** The kernel's answer from a row. */
-export function answerFromRow(r: AnswerRow): StageChecklistAnswer & { id: string; fixtureId: string; storagePath: string | null } {
+export function answerFromRow(r: AnswerRow): StageChecklistAnswer & { id: string; fixtureId: string; storagePath: string | null; reportPhotoId: string | null } {
   const pick = r.pick === 'yes' || r.pick === 'no' || r.pick === 'not_here' ? r.pick : null
   const photo = r.photo_file_name
     ? {
@@ -45,12 +48,14 @@ export function answerFromRow(r: AnswerRow): StageChecklistAnswer & { id: string
         failWhy: r.photo_fail_why,
       }
     : null
-  return { id: r.id, fixtureId: r.fixture_id, questionId: r.question_id, pick, note: r.note ?? '', photo, storagePath: r.photo_storage_path }
+  return { id: r.id, fixtureId: r.fixture_id, questionId: r.question_id, pick, note: r.note ?? '', photo, storagePath: r.photo_storage_path, reportPhotoId: r.report_photo_id ?? null }
 }
 
 export type JobAnswer = ReturnType<typeof answerFromRow>
 
-const ANSWER_COLS = 'id, fixture_id, question_id, pick, note, photo_file_name, photo_taken_at, photo_storage_path, photo_drive_file_id, photo_filed_at, photo_fail_why'
+// Every column: `report_photo_id` (PR 6 of #189) is read when the push has made it and null before, so the read never
+// names a column prod does not have yet.
+const ANSWER_COLS = '*'
 
 type UntypedRpc = (fn: string, args: Record<string, unknown>) => Promise<{ data: unknown; error: { message: string } | null }>
 
@@ -152,11 +157,78 @@ export async function attachAnswerPhoto(input: AttachPhotoInput, who: AnswerWho)
   return answerFromRow(result.data as AnswerRow)
 }
 
-/** A link to a waiting shot, for the sheet's thumbnail; null once Drive has it or when the bucket will not say. */
-export async function waitingPhotoUrl(storagePath: string | null): Promise<string | null> {
-  if (!storagePath) return null
-  const { data } = await db.storage.from(STAGE_CHECKLIST_PHOTOS_BUCKET).createSignedUrl(storagePath, 3600)
-  return data?.signedUrl ?? null
+export interface ReportPhotoAnswerInput extends AnswerKey {
+  /** The `report_photos` row that is the answer's photo. */
+  reportPhotoId: string
+  fileName: string
+  takenAt: string
+  bytes: number
+}
+
+/**
+ * A photo answers a checklist question (punch list #189, PR 6): the report photo onto the answer row for the stage
+ * and question. The bytes stay in the report-photos bucket, so `photo_storage_path` is cleared and the report sweep
+ * files the one copy; the row's trigger reads the photo's Drive standing and keeps it in step (`20261031150000`).
+ */
+export async function answerWithReportPhoto(input: ReportPhotoAnswerInput, who: AnswerWho): Promise<JobAnswer> {
+  const row = await ensureAnswerRow(input, who)
+  const now = new Date().toISOString()
+  const result = await db
+    .from('stage_checklist_answers')
+    .update({
+      report_photo_id: input.reportPhotoId,
+      photo_file_name: input.fileName.slice(0, 200),
+      photo_taken_at: input.takenAt,
+      photo_bytes: input.bytes,
+      photo_storage_path: null,
+      photo_drive_file_id: null,
+      photo_filed_at: null,
+      photo_fail_why: null,
+      updated_at: now,
+    })
+    .eq('id', row.id)
+    .select(ANSWER_COLS)
+    .single()
+  checkSupabaseError(result, 'answer the question with the photo')
+  return answerFromRow(result.data as AnswerRow)
+}
+
+/** Save's writes, one a question, best-effort: the ones that failed say why and the report stands saved. */
+export async function answerQuestionsWithReportPhotos(writes: ReadonlyArray<ReportPhotoAnswerInput>, who: AnswerWho): Promise<{ answered: number; failed: string[] }> {
+  let answered = 0
+  const failed: string[] = []
+  for (const w of writes) {
+    try {
+      await answerWithReportPhoto(w, who)
+      answered += 1
+    } catch (e) {
+      failed.push(formatErrorMessage(e, 'The answer did not write.'))
+    }
+  }
+  return { answered, failed }
+}
+
+/** What the sheet needs to show a photo still on its way: where it waits, in the checklist bucket or the report's. */
+export interface WaitingPhotoRef {
+  storagePath: string | null
+  reportPhotoId: string | null
+  jobId: string
+}
+
+/**
+ * A link to a waiting shot, for the sheet's thumbnail: from the checklist bucket by its path, or from the report
+ * bucket for a photo taken on a field report (PR 6); null once Drive has it or when the bucket will not say.
+ */
+export async function waitingPhotoUrl(photo: WaitingPhotoRef): Promise<string | null> {
+  if (photo.storagePath) {
+    const { data } = await db.storage.from(STAGE_CHECKLIST_PHOTOS_BUCKET).createSignedUrl(photo.storagePath, 3600)
+    return data?.signedUrl ?? null
+  }
+  if (photo.reportPhotoId) {
+    const { data } = await db.storage.from(REPORT_PHOTOS_BUCKET).createSignedUrl(reportPhotoPath(photo.jobId, photo.reportPhotoId), 3600)
+    return data?.signedUrl ?? null
+  }
+  return null
 }
 
 /** The sheet's and the strip's io. */
@@ -167,7 +239,7 @@ export interface StageChecklistSheetIo {
   pick: (key: AnswerKey, pick: StageChecklistPick, who: AnswerWho) => Promise<JobAnswer>
   note: (key: AnswerKey, note: string, who: AnswerWho) => Promise<JobAnswer>
   photo: (input: AttachPhotoInput, who: AnswerWho) => Promise<JobAnswer>
-  photoUrl: (storagePath: string | null) => Promise<string | null>
+  photoUrl: (photo: WaitingPhotoRef) => Promise<string | null>
 }
 
 export function supabaseStageChecklistSheetIo(): StageChecklistSheetIo {

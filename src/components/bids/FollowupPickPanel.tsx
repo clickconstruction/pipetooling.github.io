@@ -51,8 +51,8 @@ function chipStyle(on: boolean, dashed = false): CSSProperties {
     borderRadius: 999,
     cursor: 'pointer',
     whiteSpace: 'nowrap',
-    border: on ? '1px solid #3b82f6' : `1px ${dashed ? 'dashed' : 'solid'} var(--border-strong)`,
-    background: on ? '#3b82f6' : 'var(--surface)',
+    border: on ? '1px solid #2563eb' : `1px ${dashed ? 'dashed' : 'solid'} var(--border-strong)`,
+    background: on ? '#2563eb' : 'var(--surface)',
     color: on ? '#fff' : dashed ? 'var(--text-muted)' : 'var(--text-700)',
     fontWeight: on ? 600 : 400,
   }
@@ -214,7 +214,7 @@ export function FollowupPickPanel({ todayYmd, value, onChange, people, onAddPers
           type="button"
           disabled={saving}
           onClick={onSave}
-          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.9rem', borderRadius: 6, border: 'none', background: '#3b82f6', color: '#fff', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
+          style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, padding: '0.28rem 0.9rem', borderRadius: 6, border: 'none', background: '#2563eb', color: '#fff', cursor: saving ? 'wait' : 'pointer', opacity: saving ? 0.7 : 1 }}
         >
           {saving ? 'Saving…' : saveLabel}
         </button>

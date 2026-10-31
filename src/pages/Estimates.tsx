@@ -386,7 +386,7 @@ const estimateDetailCreateJobButtonStyle: CSSProperties = {
   fontWeight: 600,
   border: 'none',
   borderRadius: 6,
-  background: '#3b82f6',
+  background: '#2563eb',
   color: 'white',
   cursor: 'pointer',
   whiteSpace: 'nowrap',
@@ -980,10 +980,10 @@ function EstimateList() {
             />
           </div>
           <div style={{ display: 'flex', gap: '0.45rem', alignItems: 'center', flexWrap: 'wrap', marginTop: '0.6rem' }}>
-            <button type="button" onClick={() => setLedgerKind('all')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'all' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'all' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'all' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>All kinds</button>
-            <button type="button" onClick={() => setLedgerKind('estimate')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'estimate' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'estimate' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'estimate' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Estimates</button>
-            <button type="button" onClick={() => setLedgerKind('change_order')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'change_order' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'change_order' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'change_order' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Change orders</button>
-            <button type="button" onClick={() => setLedgerKind('bid_proposal')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'bid_proposal' ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerKind === 'bid_proposal' ? '#3b82f6' : 'var(--surface)', color: ledgerKind === 'bid_proposal' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Bid proposals</button>
+            <button type="button" onClick={() => setLedgerKind('all')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'all' ? 'var(--text-link, #2563eb)' : 'var(--border-strong)'), background: ledgerKind === 'all' ? '#2563eb' : 'var(--surface)', color: ledgerKind === 'all' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>All kinds</button>
+            <button type="button" onClick={() => setLedgerKind('estimate')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'estimate' ? 'var(--text-link, #2563eb)' : 'var(--border-strong)'), background: ledgerKind === 'estimate' ? '#2563eb' : 'var(--surface)', color: ledgerKind === 'estimate' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Estimates</button>
+            <button type="button" onClick={() => setLedgerKind('change_order')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'change_order' ? 'var(--text-link, #2563eb)' : 'var(--border-strong)'), background: ledgerKind === 'change_order' ? '#2563eb' : 'var(--surface)', color: ledgerKind === 'change_order' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Change orders</button>
+            <button type="button" onClick={() => setLedgerKind('bid_proposal')} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerKind === 'bid_proposal' ? 'var(--text-link, #2563eb)' : 'var(--border-strong)'), background: ledgerKind === 'bid_proposal' ? '#2563eb' : 'var(--surface)', color: ledgerKind === 'bid_proposal' ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Bid proposals</button>
             <select
               value={ledgerDays}
               onChange={(e) => setLedgerDays(Number(e.target.value))}
@@ -995,7 +995,7 @@ function EstimateList() {
               <option value={365}>Last year</option>
               <option value={0}>All time</option>
             </select>
-            <button type="button" onClick={() => setLedgerIncludeClosed((p) => !p)} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerIncludeClosed ? 'var(--text-link, #3b82f6)' : 'var(--border-strong)'), background: ledgerIncludeClosed ? '#3b82f6' : 'var(--surface)', color: ledgerIncludeClosed ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Include superseded & declined</button>
+            <button type="button" onClick={() => setLedgerIncludeClosed((p) => !p)} style={{ padding: '0.22rem 0.7rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid ' + (ledgerIncludeClosed ? 'var(--text-link, #2563eb)' : 'var(--border-strong)'), background: ledgerIncludeClosed ? '#2563eb' : 'var(--surface)', color: ledgerIncludeClosed ? 'white' : 'var(--text-700)', cursor: 'pointer' }}>Include superseded & declined</button>
           </div>
           {loading ? (
             <p>Loading…</p>

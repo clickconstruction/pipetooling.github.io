@@ -43,7 +43,7 @@ const thNum: CSSProperties = { ...th, textAlign: 'right' }
 const td: CSSProperties = { padding: '0.35rem 0.5rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem', verticalAlign: 'top' }
 const tdNum: CSSProperties = { ...td, textAlign: 'right', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 const muted: CSSProperties = { color: 'var(--text-muted)' }
-const btn = (primary = false): CSSProperties => ({ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: `1px solid ${primary ? '#3b82f6' : 'var(--border-strong)'}`, borderRadius: 6, background: primary ? '#3b82f6' : 'var(--surface)', color: primary ? 'white' : 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' })
+const btn = (primary = false): CSSProperties => ({ padding: '0.3rem 0.7rem', fontSize: '0.78rem', fontWeight: 600, border: `1px solid ${primary ? '#2563eb' : 'var(--border-strong)'}`, borderRadius: 6, background: primary ? '#2563eb' : 'var(--surface)', color: primary ? 'white' : 'inherit', cursor: 'pointer', whiteSpace: 'nowrap' })
 
 export function JobCostsVerdict({ verdict: v, canWrite, budget, linkedBid, onOpenBidCounts, doorway, kept, jobFinished, onPrint = null }: Props) {
   const [sectionsOpen, setSectionsOpen] = useState(false)

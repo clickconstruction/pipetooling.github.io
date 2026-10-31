@@ -59,7 +59,7 @@ function readPrefs(): Prefs {
   }
 }
 
-const chip = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.85rem', fontWeight: 600, padding: '0.35rem 0.8rem', border: `1px solid ${on ? 'var(--text-link)' : 'var(--border-strong)'}`, borderRadius: 8, background: on ? 'var(--text-link)' : 'var(--surface)', color: on ? 'var(--surface)' : 'var(--text-700)', cursor: 'pointer' })
+const chip = (on: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.85rem', fontWeight: 600, padding: '0.35rem 0.8rem', border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`, borderRadius: 8, background: on ? '#2563eb' : 'var(--surface)', color: on ? '#fff' : 'var(--text-700)', cursor: 'pointer' })
 const smallChip = (on: boolean): CSSProperties => ({ ...chip(on), fontSize: '0.76rem', padding: '0.2rem 0.6rem', borderRadius: 999 })
 const th = (active: boolean, right: boolean): CSSProperties => ({ font: 'inherit', fontSize: '0.72rem', fontWeight: 600, color: active ? 'var(--text-strong)' : 'var(--text-muted)', textAlign: right ? 'right' : 'left', padding: '0.55rem 0.6rem', borderBottom: '1px solid var(--border)', whiteSpace: 'nowrap', background: 'none', border: 'none', borderBottomWidth: 1, borderBottomStyle: 'solid', borderBottomColor: 'var(--border)', cursor: 'pointer', width: '100%' })
 const td: CSSProperties = { padding: '0.5rem 0.6rem', borderBottom: '1px solid var(--border)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', fontSize: '0.85rem' }

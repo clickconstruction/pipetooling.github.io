@@ -573,7 +573,7 @@ export function BidsBuilderReviewTab({
             onClick={() => newCustomerModal?.openNewCustomerModal({ onCreated: onLoadCustomers })}
             style={{
               padding: '0.5rem 1rem',
-              background: '#3b82f6',
+              background: '#2563eb',
               color: 'white',
               border: 'none',
               borderRadius: 4,
@@ -843,8 +843,8 @@ export function BidsBuilderReviewTab({
                             fontSize: '0.72rem',
                             padding: '0.18rem 0.55rem',
                             borderRadius: 999,
-                            border: '1px solid ' + (active ? '#3b82f6' : 'var(--border-strong)'),
-                            background: active ? '#3b82f6' : 'var(--surface)',
+                            border: '1px solid ' + (active ? '#2563eb' : 'var(--border-strong)'),
+                            background: active ? '#2563eb' : 'var(--surface)',
                             color: active ? 'white' : 'var(--text-700)',
                             cursor: 'pointer',
                             fontWeight: active ? 700 : 400,
@@ -870,7 +870,7 @@ export function BidsBuilderReviewTab({
                       type="button"
                       disabled={savingQuickLogCustomerId === customer.id}
                       onClick={() => void submitQuickLog(customer, [...checkedSet])}
-                      style={{ padding: '0.4rem 0.8rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', opacity: savingQuickLogCustomerId === customer.id ? 0.6 : 1, whiteSpace: 'nowrap' }}
+                      style={{ padding: '0.4rem 0.8rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, fontWeight: 600, fontSize: '0.82rem', cursor: 'pointer', opacity: savingQuickLogCustomerId === customer.id ? 0.6 : 1, whiteSpace: 'nowrap' }}
                     >
                       {savingQuickLogCustomerId === customer.id
                         ? 'Logging…'
@@ -1101,7 +1101,7 @@ export function BidsBuilderReviewTab({
                         setContactPersonNote('')
                       }}
                       title="Add contact person"
-                      style={{ padding: '0.375rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
+                      style={{ padding: '0.375rem 0.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', display: 'inline-flex', alignItems: 'center', justifyContent: 'center' }}
                     >
                       <CustomerContactCardIcon size={16} />
                     </button>
@@ -1152,7 +1152,7 @@ export function BidsBuilderReviewTab({
                           setCallSessionCustomer(customer)
                         }}
                         title="Walk every open bid while they're on the phone, then promise the next follow-up"
-                        style={{ padding: '0.375rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
+                        style={{ padding: '0.375rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem', fontWeight: 600 }}
                       >
                         📞 Start call session
                       </button>
@@ -1394,7 +1394,7 @@ export function BidsBuilderReviewTab({
                 }
                 void saveSnooze(snoozeModalCustomer.id, until.toISOString(), snoozeNoteInput)
               }}
-              style={{ padding: '0.45rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', opacity: savingSnooze || !snoozeDateInput ? 0.6 : 1 }}
+              style={{ padding: '0.45rem 0.9rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', fontWeight: 600, fontSize: '0.85rem', opacity: savingSnooze || !snoozeDateInput ? 0.6 : 1 }}
             >
               {savingSnooze ? 'Saving…' : 'Snooze until date'}
             </button>
@@ -1530,7 +1530,7 @@ export function BidsBuilderReviewTab({
                   setContactPersonEmail('')
                   setContactPersonNote('')
                 }}
-                style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: savingContactPerson ? 'not-allowed' : 'pointer' }}
+                style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: savingContactPerson ? 'not-allowed' : 'pointer' }}
               >
                 {savingContactPerson ? 'Saving…' : 'Save'}
               </button>

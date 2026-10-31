@@ -13,12 +13,18 @@
  * Payment made stream (Settings → Email streams), else the office roles. The words come
  * from `bankReturnedDeposits.ts` (`noticeInputFromCase`, `buildBankReturnNoticeEmail`,
  * `buildBankReturnNoticePush`). Deno only.
+ *
+ * A person's hours (punch list #141 PR 5, v2.6217): the push goes through `pushHoursSend.ts`,
+ * which pushes the people on and holds one outside their Push me hours, writing the row as
+ * `held` and sending nothing; the email goes now as before. Three functions bundle this file:
+ * `mercury-webhook`, `stripe-webhook`, `ar-returned-checks`.
  */
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import webpush from 'npm:web-push@3.6.7'
 import { arCaseNoticeClaim, arCaseNoticeDue, buildBankReturnNoticeEmail, buildBankReturnNoticePush, noticeInputFromCase, type ArReturnCaseRow } from './bankReturnedDeposits.ts'
+import { sendPushHonouringHours } from './pushHoursSend.ts'
 import type { sendEmailViaResend } from './resendSendEmail.ts'
 import { REAL_ACCOUNT } from './realAccount.ts'
+import { webPushSender } from './webPushSend.ts'
 
 /** The caller's `sendEmailViaResend`. */
 export type SendEmail = typeof sendEmailViaResend
@@ -34,7 +40,6 @@ const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
 const BANK_RETURN_EMAIL_TYPE = 'bank_return'
 
 type NoticeRecipient = { id: string; email: string | null; name: string | null; role: string | null }
-type PushSubRow = { id: string; user_id: string; endpoint: string; p256dh_key: string; auth_key: string }
 
 function isUniqueViolation(err: { code?: string } | null): boolean {
   return err?.code === '23505'
@@ -63,7 +68,7 @@ export async function loadOpenReturnCases(admin: Admin): Promise<ArReturnCaseRow
   return (data ?? []) as ArReturnCaseRow[]
 }
 
-export type CaseNoticeResult = { sent: boolean; reason?: 'already_told' | 'dry_run'; recipients?: number; emails?: number; pushes?: number }
+export type CaseNoticeResult = { sent: boolean; reason?: 'already_told' | 'dry_run'; recipients?: number; emails?: number; pushes?: number; held?: number }
 
 /**
  * Tell the office about one case, once. `dryRun` builds the words and touches nothing.
@@ -125,31 +130,21 @@ export async function sendReturnCaseNotice(
     }
   } else console.error('bank-return: RESEND_API_KEY missing — no email sent')
 
+  // Through each person's hours (#141 PR 5): the people on are pushed, one off is held with a row and no push. The
+  // record of the email and the push is written here, so the helper keeps none.
   let pushesSent = 0
+  let heldCount = 0
   const pushed = new Set<string>()
-  const vapidPublicKey = Deno.env.get('VAPID_PUBLIC_KEY')
-  const vapidPrivateKey = Deno.env.get('VAPID_PRIVATE_KEY')
-  if (vapidPublicKey && vapidPrivateKey && recipients.length > 0) {
-    const { data: subs } = await admin
-      .from('push_subscriptions')
-      .select('id, user_id, endpoint, p256dh_key, auth_key')
-      .in('user_id', recipients.map((r) => r.id))
-    webpush.setVapidDetails('mailto:team@pipetooling.com', vapidPublicKey, vapidPrivateKey)
-    for (const sub of (subs ?? []) as PushSubRow[]) {
-      try {
-        await webpush.sendNotification(
-          { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh_key, auth: sub.auth_key } },
-          JSON.stringify(push),
-          { TTL: 86400 },
-        )
-        pushesSent += 1
-        pushed.add(sub.user_id)
-      } catch (e) {
-        const status = (e as { statusCode?: number }).statusCode
-        if (status === 404 || status === 410) await admin.from('push_subscriptions').delete().eq('id', sub.id)
-        else console.error('bank-return push', sub.user_id, e instanceof Error ? e.message : String(e))
-      }
-    }
+  if (recipients.length > 0) {
+    const result = await sendPushHonouringHours(
+      admin,
+      { userIds: recipients.map((r) => r.id), title: push.title, body: push.body, url: push.url, tag: push.tag, templateType: BANK_RETURN_EMAIL_TYPE },
+      webPushSender(admin, 'bank-return'),
+      { record: 'none' },
+    )
+    pushesSent = result.devices
+    heldCount = result.held.length
+    for (const id of result.sent) pushed.add(id)
   }
 
   const history = recipients
@@ -176,6 +171,7 @@ export async function sendReturnCaseNotice(
     recipients: recipients.length,
     emails: emailsSent,
     pushes: pushesSent,
+    held: heldCount,
   })
-  return { sent: true, recipients: recipients.length, emails: emailsSent, pushes: pushesSent }
+  return { sent: true, recipients: recipients.length, emails: emailsSent, pushes: pushesSent, held: heldCount }
 }

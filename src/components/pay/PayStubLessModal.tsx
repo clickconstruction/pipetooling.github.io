@@ -422,7 +422,7 @@ export function PayStubLessModal({
             style={{
               padding: '0.35rem 0.75rem',
               fontSize: '0.8125rem',
-              background: deductionsLocked || savingManual ? DEAD_PRESS_FILL : '#3b82f6',
+              background: deductionsLocked || savingManual ? DEAD_PRESS_FILL : '#2563eb',
               color: deductionsLocked || savingManual ? DEAD_PRESS_TEXT : 'white',
               border: 'none',
               borderRadius: 6,

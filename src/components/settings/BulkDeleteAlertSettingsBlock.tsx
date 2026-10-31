@@ -182,7 +182,7 @@ export default function BulkDeleteAlertSettingsBlock() {
                   padding: '0.5rem 1rem',
                   fontSize: '0.875rem',
                   fontWeight: 500,
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: '#fff',
                   border: 'none',
                   borderRadius: 6,

@@ -362,7 +362,7 @@ export function WriteupEditorModal({ open, onClose, mode, row, templates, userOp
               disabled={saving}
               style={{
                 padding: '0.5rem 1rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: '#fff',
                 border: 'none',
                 borderRadius: 6,

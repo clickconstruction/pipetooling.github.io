@@ -206,7 +206,12 @@ the kit read once per run through `_shared/walkKit.ts`). Each person's own hours
 `user_push_hours`, v2.6026) hold a push for them since v2.6029 (punch list #141 PR 3): the planner splits each due push
 with `pushDecision`, a held person gets a `notification_history` row with `channel = 'held'` and no push, the office
 hears at once when the holder is off (`message_reply_off`, *Dana wrote to Luis, who is off until 6 AM.*), and a push to
-the Customers seat alone widens to the office roles who are on while the seat is off. What a hold did shows on three
+the Customers seat alone widens to the office roles who are on while the seat is off. Every other push the app sends
+(a dispatch or estimator request, a marked bid, help feedback, a lien notice, the try-out question, a bid's call-again
+day, Ready to Bill, a returned check, a work order, a checklist item or reminder, a filed report) goes through the same
+hours since v2.6217 (punch list #141 PR 5): `_shared/pushHoursSend.ts` reads the rows, splits with `pushDecision`,
+sends to the people on through `_shared/webPushSend.ts` and writes each held person's row as `held` with the sender's
+own `template_type`, which the Dashboard's line names (`heldKind`). The Settings test push alone skips the hours. What a hold did shows on three
 surfaces (v2.6060, punch list #141 PR 4): the Dashboard's **While you were off** line reads the person's own held rows
 since their hours last closed, one wait per line, a line answered meanwhile left out and named (`messages/whatWaited.ts`
 over `whatWaitedIo.ts`, `useWhileOff`, the Needs you key `while-off`); the thread's pill says *off until 6 AM* for the

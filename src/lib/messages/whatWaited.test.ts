@@ -81,7 +81,7 @@ describe('While you were off: the line', () => {
     const rows = [held('m9', wed('22:00')), held(null, wed('22:30'), 'work_order')]
     const out = whatWaited({ held: rows, lines: [], answers: [], since, now, back: true })!
     expect(out.count).toBe(2)
-    expect(out.title).toBe('While you were off: a reply and a push waited')
+    expect(out.title).toBe('While you were off: a reply and a work order waited')
     expect(out.first).toBeNull()
   })
 
@@ -102,7 +102,26 @@ describe('While you were off: the line', () => {
     expect(waitedCountWords(new Map([['reply', 1]]))).toBe('a reply')
     expect(waitedCountWords(new Map([['reply', 2], ['work order', 1], ['push', 2]]))).toBe('2 replies, a work order and 2 pushes')
     for (const t of ['message_reply', 'message_reply_wait', 'message_reply_breach', 'message_reply_off']) expect(heldKind(t)).toBe('reply')
-    expect(heldKind('work_order')).toBe('push')
+    // The other senders' kinds (PR 5), by the template their held row carries.
+    expect(heldKind('work_order')).toBe('work order')
+    expect(heldKind('work_order_offered')).toBe('work order')
+    expect(heldKind('stage_assigned_started')).toBe('work order')
+    expect(heldKind('dispatch_request')).toBe('dispatch request')
+    expect(heldKind('dispatch_request_closed')).toBe('dispatch answer')
+    expect(heldKind('estimator_request')).toBe('estimator request')
+    expect(heldKind('bid_mark')).toBe('marked bid')
+    expect(heldKind('help_feedback')).toBe('help note')
+    expect(heldKind('lien_approval_ask')).toBe('lien notice')
+    expect(heldKind('trial_helper_verdict')).toBe('try-out question')
+    expect(heldKind('bid_followup')).toBe('call-again day')
+    expect(heldKind('ready_to_bill')).toBe('Ready to Bill')
+    expect(heldKind('bank_return')).toBe('returned check')
+    expect(heldKind('checklist_completed')).toBe('checklist item')
+    expect(heldKind('checklist-reopen-abc')).toBe('checklist item')
+    expect(heldKind('scheduled_reminder')).toBe('task reminder')
+    expect(heldKind('report_submitted')).toBe('report')
+    expect(heldKind('something_new')).toBe('push')
+    expect(waitedCountWords(new Map([['estimator request', 1], ['call-again day', 2]]))).toBe('an estimator request and 2 call-again days')
   })
 
   it('the words, plain', () => {

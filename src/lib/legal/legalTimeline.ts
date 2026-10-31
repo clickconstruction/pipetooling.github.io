@@ -18,6 +18,7 @@ import type { LienTimelineStep } from '../jobs/lienTimeline'
 import { type LegalDocumentState, legalDocumentSentHowWords, legalDocumentStateOf, legalDocumentStateWords, legalPortalDocumentFromRow } from './legalMatterDocuments'
 import { isOfferEntry, offerExpiryOnLine, offerExpiryWhat, offerHoldKey, offerMetaOf } from './legalOffers'
 import { entryRecordedByWords, legalEntryKindWords } from './legalAsks'
+import { isStatementEntry, statementByWords, statementFirmKindWords, statementHoldKey, statementKindWords, statementMetaOf, statementStateWords } from './affidavitPaper'
 import { firmEntryKindWords } from './legalFirmWords'
 import type { EmptyStateWords } from '../emptyWords'
 
@@ -78,6 +79,8 @@ export function timelineHoldKey(item: Pick<LegalTimelineItem, 'kind' | 'entryId'
   // A said item's entryId is its own hold key (contact:<id> · promise:<id> · call:<id> · note:<job id>).
   if (item.kind === 'said') return item.entryId
   if (item.entryKind === 'offer') return offerHoldKey(item.entryId)
+  // v2.6209 (punch list #220): a statement is held under its own key.
+  if (item.kind === 'statement') return statementHoldKey(item.entryId)
   return item.kind === 'event' ? eventHoldKey(item.entryId) : item.kind === 'plan' ? planHoldKey(item.entryId) : ''
 }
 
@@ -290,7 +293,8 @@ export function timelineDocumentsFromPortal(docs: ReadonlyArray<{ id: string; ti
   }))
 }
 
-export type LegalTimelineState = 'planned' | 'due_today' | 'overdue' | 'done' | 'happened' | 'undone'
+/** `stale` (v2.6209): a statement printed a fortnight ago with no signed copy, drawn amber. */
+export type LegalTimelineState = 'planned' | 'due_today' | 'overdue' | 'done' | 'happened' | 'undone' | 'stale'
 
 /** A document an event names, as the line draws it: the title (or a stand-in when the row is gone) and whether the office holds it. */
 export type LegalTimelineItemDocument = { id: string; title: string; held: boolean }
@@ -327,7 +331,8 @@ export type LegalTimelineItem = {
   lane: LegalTimelineLane
   /** The day the item sits on: a planned step's day, a done step's done day, an entry's or an event's `occurred_on`, a document's added day. */
   ymd: string
-  kind: 'plan' | 'event' | 'entry' | 'document' | 'deadline' | 'said' | 'did'
+  /** `statement` (v2.6209, punch list #220): a sworn statement or declaration on the Said lane, on the day it is about. */
+  kind: 'plan' | 'event' | 'entry' | 'document' | 'deadline' | 'said' | 'did' | 'statement'
   entryKind: string | null
   entryId: string | null
   documentId: string | null
@@ -388,6 +393,8 @@ export type LegalTimelineInput = {
   said?: ReadonlyArray<LegalTimelineSaid>
   /** What we did folded in (v2.5851). */
   did?: ReadonlyArray<LegalTimelineDid>
+  /** An instant's day in the app's zone (v2.6209), for a statement's print log; the first ten characters when absent. */
+  dayOfIso?: (iso: string) => string
 }
 
 const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -452,6 +459,7 @@ function bucketOf(ymd: string, todayYmd: string): 'past' | 'today' | 'upcoming' 
 export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
   const { entries, documents = [], todayYmd, holds = {}, holdReasons = {}, reader, deadlines = [], said = [], did = [] } = input
   const userNameOf = input.userNameOf ?? (() => null)
+  const dayOfIso = input.dayOfIso ?? ((iso: string) => iso.slice(0, 10))
   const items: Array<LegalTimelineItem & { sortKey: string }> = []
   const docById = new Map(documents.map((d) => [d.id, d] as const))
   const deadlineByKey = new Map(deadlines.map((d) => [d.key, d] as const))
@@ -494,6 +502,25 @@ export function buildLegalTimeline(input: LegalTimelineInput): LegalTimeline {
         state: voided ? 'undone' : 'happened', stateWords: voided ? `Undone${voidReason ? `: ${voidReason}` : '.'}` : '',
         plannedYmd: null, doneYmd: null, held, heldReason: held ? (holdReasons[holdKey] ?? '') : '', voided, voidReason, isLivePlan: false,
         documents: meta.documentIds.map((id) => { const d = docById.get(id); return { id, title: d?.title ?? 'a document no longer on Evidence', held: d?.held ?? false } }),
+        ...none,
+        sortKey: `${e.occurred_on}|${e.created_at}`,
+      })
+      continue
+    }
+    if (isStatementEntry(e)) {
+      // v2.6209 (punch list #220): a sworn statement or declaration sits on the Said lane on the day it is about; the title
+      // is the line, the paragraphs its notes, the affiant its by-line; held under statement:<id>; the state words say
+      // draft, printed, stale or sworn, and `documentId` names the signed scan once filed.
+      const meta = statementMetaOf(e.meta)
+      const holdKey = statementHoldKey(e.id)
+      const held = holds[holdKey] === true
+      const { state, words } = statementStateWords(meta, { todayYmd, voided, voidReason, dayOfIso })
+      const by = statementByWords(meta.affiant)
+      items.push({
+        key: `entry:${e.id}`, lane: 'said', ymd: e.occurred_on, kind: 'statement', entryKind: 'statement', entryId: e.id, documentId: meta.documentId,
+        what: meta.title || e.body.split('\n')[0] || 'Statement', kindWords: reader === 'office' ? statementKindWords(meta) : statementFirmKindWords(meta), notes: e.body, amount: null,
+        byName: meta.source === 'mcp' && reader === 'office' ? `${by} · dev MCP` : by, source: meta.source, viaPortal: false,
+        state, stateWords: words, plannedYmd: null, doneYmd: null, held, heldReason: held ? (holdReasons[holdKey] ?? '') : '', voided, voidReason, isLivePlan: false, documents: [],
         ...none,
         sortKey: `${e.occurred_on}|${e.created_at}`,
       })

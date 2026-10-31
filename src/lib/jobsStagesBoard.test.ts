@@ -370,6 +370,14 @@ describe('buildReadyToBillStageRows', () => {
 })
 
 describe('filterJobsByStagesSearch', () => {
+  it('finds a job by a number it answered to before a combine (v2.6226)', () => {
+    const a = jobStub({ id: 'job-a', hcp_number: '468', job_name: 'Diamondback', job_address: 'Gun Dog Trail', invoices: [], prior_numbers: ['HCP 550', 'C# 543'] })
+    const b = jobStub({ id: 'job-b', hcp_number: '200', job_name: 'Beta', job_address: '2 Oak', invoices: [], prior_numbers: [] })
+    expect(filterJobsByStagesSearch([a, b], '550').map((j) => j.id)).toEqual(['job-a'])
+    expect(filterJobsByStagesSearch([a, b], '543').map((j) => j.id)).toEqual(['job-a'])
+    expect(filterJobsByStagesSearch([a, b], '200').map((j) => j.id)).toEqual(['job-b'])
+  })
+
   it('includes job only in extraJobIds when text does not match', () => {
     const a = jobStub({
       id: 'job-a',

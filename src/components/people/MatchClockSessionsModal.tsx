@@ -529,7 +529,7 @@ function MatchSessionGroups({ st, layout, popoverZIndex }: { st: MatchState; lay
                                   type="button"
                                   onClick={() => void st.applySuggestion(s, sug)}
                                   disabled={st.savingId != null}
-                                  style={{ marginLeft: 'auto', flexShrink: 0, background: '#3b82f6', color: '#fff', border: 'none', borderRadius: 6, padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 650, cursor: st.savingId != null ? 'not-allowed' : 'pointer' }}
+                                  style={{ marginLeft: 'auto', flexShrink: 0, background: '#2563eb', color: '#fff', border: 'none', borderRadius: 6, padding: '0.25rem 0.75rem', fontSize: '0.75rem', fontWeight: 650, cursor: st.savingId != null ? 'not-allowed' : 'pointer' }}
                                 >
                                   {st.savingId === s.id ? '…' : 'Assign'}
                                 </button>

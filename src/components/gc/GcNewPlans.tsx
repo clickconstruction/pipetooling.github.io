@@ -84,7 +84,7 @@ function StepHeading({ n, title, hint }: { n: number; title: string; hint: strin
           width: '1.5rem',
           height: '1.5rem',
           borderRadius: '50%',
-          background: 'var(--text-blue-500)',
+          background: '#2563eb',
           color: 'white',
           alignItems: 'center',
           justifyContent: 'center',

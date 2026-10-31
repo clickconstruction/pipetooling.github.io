@@ -319,7 +319,7 @@ export default function FieldPctUpdateModal({
           disabled={!canSave}
           style={{
             ...footBtn,
-            background: canSave ? '#3b82f6' : 'var(--bg-muted)',
+            background: canSave ? '#2563eb' : 'var(--bg-muted)',
             color: canSave ? '#fff' : 'var(--text-muted)',
             border: 'none',
             cursor: canSave ? 'pointer' : 'not-allowed',

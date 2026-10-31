@@ -3735,6 +3735,9 @@ export type Database = {
           outcome_at: string | null
           outcome_note: string | null
           sort_order: number
+          owner_user_id: string | null
+          locked_by: string | null
+          locked_at: string | null
           source_bid_version_id: string | null
           starred_price_book_version_id: string | null
         }
@@ -3751,6 +3754,9 @@ export type Database = {
           outcome_at?: string | null
           outcome_note?: string | null
           sort_order?: number
+          owner_user_id?: string | null
+          locked_by?: string | null
+          locked_at?: string | null
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
         }
@@ -3767,6 +3773,9 @@ export type Database = {
           outcome_at?: string | null
           outcome_note?: string | null
           sort_order?: number
+          owner_user_id?: string | null
+          locked_by?: string | null
+          locked_at?: string | null
           source_bid_version_id?: string | null
           starred_price_book_version_id?: string | null
         }
@@ -20279,6 +20288,7 @@ export type Database = {
           gc_shares_stage_dates: boolean
           google_drive_link: string | null
           hcp_number: string
+          prior_numbers: string[]
           id: string
           job_address: string
           job_name: string
@@ -20347,6 +20357,7 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
+          prior_numbers?: string[]
           id?: string
           job_address?: string
           job_name?: string
@@ -20415,6 +20426,7 @@ export type Database = {
           gc_shares_stage_dates?: boolean
           google_drive_link?: string | null
           hcp_number?: string
+          prior_numbers?: string[]
           id?: string
           job_address?: string
           job_name?: string
@@ -30078,6 +30090,7 @@ export type Database = {
           photo_taken_at: string | null
           pick: string | null
           question_id: string
+          report_photo_id: string | null
           updated_at: string
         }
         Insert: {
@@ -30098,6 +30111,7 @@ export type Database = {
           photo_taken_at?: string | null
           pick?: string | null
           question_id: string
+          report_photo_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -30118,6 +30132,7 @@ export type Database = {
           photo_taken_at?: string | null
           pick?: string | null
           question_id?: string
+          report_photo_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -30147,6 +30162,13 @@ export type Database = {
             columns: ["question_id"]
             isOneToOne: false
             referencedRelation: "stage_checklist_templates"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_answers_report_photo_id_fkey"
+            columns: ["report_photo_id"]
+            isOneToOne: false
+            referencedRelation: "report_photos"
             referencedColumns: ["id"]
           },
         ]
@@ -37098,7 +37120,6 @@ export type Database = {
       get_my_partner_jobs: { Args: never; Returns: Json }
       get_my_partner_ledger: { Args: { p_weeks?: number }; Returns: Json }
       get_my_partner_summary: { Args: never; Returns: Json }
-      get_my_statement_round: { Args: never; Returns: Json }
       get_my_statement_week: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_paid_profit_stats: { Args: never; Returns: Json }
@@ -37162,10 +37183,6 @@ export type Database = {
         Returns: Json
       }
       get_stages_enrichment: { Args: { p_job_ids: string[] }; Returns: Json }
-      get_statement_round_for_user: {
-        Args: { p_user_id: string }
-        Returns: Json
-      }
       get_statement_week_for_office: { Args: never; Returns: Json }
       get_supervised_days_payload: {
         Args: { p_from: string; p_to: string }

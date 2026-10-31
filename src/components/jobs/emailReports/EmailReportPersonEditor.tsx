@@ -20,7 +20,7 @@ const LABEL: CSSProperties = { fontSize: '0.8125rem', fontWeight: 600, color: 'v
 const INPUT: CSSProperties = { width: '100%', padding: '0.4rem 0.55rem', fontSize: '0.875rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-strong)', boxSizing: 'border-box' }
 const SECTION: CSSProperties = { border: '1px solid var(--border)', borderRadius: 8, padding: '0.85rem', marginBottom: '0.75rem', background: 'var(--bg-subtle)' }
 function segBtn(active: boolean): CSSProperties {
-  return { padding: '0.3rem 0.6rem', fontSize: '0.8125rem', fontWeight: active ? 600 : 400, border: '1px solid var(--border-strong)', background: active ? '#3b82f6' : 'var(--surface)', color: active ? 'white' : 'var(--text-strong)', cursor: 'pointer' }
+  return { padding: '0.3rem 0.6rem', fontSize: '0.8125rem', fontWeight: active ? 600 : 400, border: '1px solid var(--border-strong)', background: active ? '#2563eb' : 'var(--surface)', color: active ? 'white' : 'var(--text-strong)', cursor: 'pointer' }
 }
 
 function draftFromSubscription(s: SubscriptionWithAuthors | null, person: EmailReportPerson | null): SubscriptionDraft {
@@ -311,7 +311,7 @@ export function EmailReportPersonEditor({
       {sendResult ? <p style={{ color: 'var(--text-green-700)', fontSize: '0.8125rem', margin: '0 0 0.5rem' }}>{sendResult}</p> : null}
 
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" onClick={() => void save()} disabled={saving} style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', fontWeight: 600, border: 'none', borderRadius: 4, background: '#3b82f6', color: 'white', cursor: saving ? 'wait' : 'pointer' }}>
+        <button type="button" onClick={() => void save()} disabled={saving} style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', fontWeight: 600, border: 'none', borderRadius: 4, background: '#2563eb', color: 'white', cursor: saving ? 'wait' : 'pointer' }}>
           {saving ? '…' : 'Save'}
         </button>
         <button type="button" onClick={onCancel} disabled={saving} style={{ padding: '0.4rem 0.9rem', fontSize: '0.875rem', background: 'var(--bg-muted)', border: '1px solid var(--border-strong)', borderRadius: 4, cursor: 'pointer' }}>

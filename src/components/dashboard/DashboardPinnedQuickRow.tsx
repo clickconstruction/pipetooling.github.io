@@ -127,7 +127,7 @@ function TallySquareLink({ accessibleName, unlinkedCount }: { accessibleName: st
   return (
     <div ref={ref} style={{ position: 'relative', width: 48, minHeight: 48, alignSelf: 'stretch', flexShrink: 0 }}>
       <Link
-        to="/tally"
+        to="/tally?tab=transactions"
         title={accessibleName}
         aria-label={accessibleName}
         style={{
@@ -139,7 +139,7 @@ function TallySquareLink({ accessibleName, unlinkedCount }: { accessibleName: st
           width: 48,
           height: '100%',
           minHeight: 48,
-          background: '#3b82f6',
+          background: '#2563eb',
           color: 'white',
           borderRadius: 8,
           textDecoration: 'none',
@@ -230,7 +230,7 @@ function JobReportSquareButton({ onClick }: { onClick: () => void }) {
         justifyContent: 'center',
         gap: tall ? 6 : 4,
         padding: '0.35rem 0.25rem',
-        background: '#3b82f6',
+        background: '#2563eb',
         color: 'white',
         borderRadius: 8,
         border: 'none',
@@ -363,7 +363,7 @@ export function DashboardPinnedQuickRow({
     padding: '0.5rem 1rem',
     fontSize: '0.9375rem',
     fontWeight: 600,
-    background: '#3b82f6',
+    background: '#2563eb',
     color: 'white',
     border: 'none',
     borderRadius: 8,
@@ -380,7 +380,7 @@ export function DashboardPinnedQuickRow({
           <button type="button" onClick={() => setNewReportModalOpen(true)} style={{ minHeight: 36, padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', cursor: 'pointer', textDecoration: 'underline' }}>
             Job report
           </button>
-          <Link to="/tally" aria-label={tallyLinkAccessibleName} style={{ minHeight: 36, display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)' }}>
+          <Link to="/tally?tab=transactions" aria-label={tallyLinkAccessibleName} style={{ minHeight: 36, display: 'inline-flex', alignItems: 'center', color: 'var(--text-link)' }}>
             Tally{(tallyUnlinkedCount ?? 0) > 0 ? ` · ${tallyUnlinkedCount}` : ''}
           </Link>
         </div>
@@ -401,7 +401,7 @@ export function DashboardPinnedQuickRow({
             style={{
               flex: 1,
               padding: '0 1.5rem',
-              background: '#3b82f6',
+              background: '#2563eb',
               color: 'white',
               borderRadius: 8,
               border: 'none',

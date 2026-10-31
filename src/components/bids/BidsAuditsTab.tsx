@@ -805,7 +805,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                 type="button"
                 disabled={busy === `verdict:${stateKey}` || !open.text.trim()}
                 onClick={() => void postVerdictDraft(audit, entry, bucket)}
-                style={{ padding: '0.3rem 0.75rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                style={{ padding: '0.3rem 0.75rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
               >
                 Post
               </button>
@@ -1145,7 +1145,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                           type="button"
                           disabled={busy === key || !(composer[key] ?? '').trim()}
                           onClick={() => void insertNote(audit, question.section, 'answer', composer[key] ?? '', question.id, key)}
-                          style={{ padding: '0.4rem 0.9rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
+                          style={{ padding: '0.4rem 0.9rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.875rem' }}
                         >
                           Answer
                         </button>
@@ -1205,8 +1205,8 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
                   fontSize: '0.72rem',
                   fontWeight: 700,
                   border: '1px solid',
-                  borderColor: cardSection === sec ? '#3b82f6' : 'var(--border)',
-                  background: cardSection === sec ? '#3b82f6' : 'var(--surface)',
+                  borderColor: cardSection === sec ? '#2563eb' : 'var(--border)',
+                  background: cardSection === sec ? '#2563eb' : 'var(--surface)',
                   color: cardSection === sec ? 'white' : 'var(--text-muted)',
                   borderRadius: 999,
                   padding: '0.15rem 0.65rem',
@@ -1269,7 +1269,7 @@ export function BidsAuditsTab({ authUser, myRole, focusAuditId = null }: { authU
             <button
               type="button"
               onClick={() => setRunThrough({ start: 0 })}
-              style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontWeight: 600, whiteSpace: 'nowrap' }}
+              style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 6, cursor: 'pointer', font: 'inherit', fontWeight: 600, whiteSpace: 'nowrap' }}
             >
               Answer the {rulingsView.openCount} question{rulingsView.openCount === 1 ? '' : 's'}
             </button>
