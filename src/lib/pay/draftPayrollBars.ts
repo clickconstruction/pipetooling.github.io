@@ -225,6 +225,23 @@ export function draftPayrollRowBar(input: DraftPayrollRowBarInput): DraftPayroll
 
 const ORDER: DraftPayrollBarPartKind[] = ['paid', 'owed', 'withheld', 'estimate']
 
+/** Whole-number shares that add to 100 (largest remainder), so *69% · 31%* never reads *69% · 30%*. */
+export function wholeShares(fractions: ReadonlyArray<number>): number[] {
+  const raw = fractions.map((f) => Math.max(0, f) * 100)
+  const floors = raw.map((r) => Math.floor(r))
+  const total = raw.reduce((s, r) => s + r, 0)
+  let left = Math.round(total) - floors.reduce((s, f) => s + f, 0)
+  const order = raw
+    .map((r, i) => ({ i, rest: r - Math.floor(r) }))
+    .sort((a, b) => b.rest - a.rest || a.i - b.i)
+  for (const { i } of order) {
+    if (left <= 0) break
+    floors[i] = (floors[i] ?? 0) + 1
+    left -= 1
+  }
+  return floors
+}
+
 /** Every row's bar and the period's bar summed from them. `rosterCount` is everyone on the roster, shown or not. */
 export function draftPayrollBars(rowsIn: ReadonlyArray<DraftPayrollRowBarInput>, rosterCount: number): DraftPayrollBars {
   const rows = rowsIn.map(draftPayrollRowBar)
@@ -233,14 +250,17 @@ export function draftPayrollBars(rowsIn: ReadonlyArray<DraftPayrollRowBarInput>,
   const total = round2(rows.reduce((s, r) => s + r.cashDue, 0))
   const partsTotal = round2(ORDER.reduce((s, k) => s + (sums.get(k) ?? 0), 0))
   const scale = Math.max(total, partsTotal)
-  const parts: DraftPayrollBarPart[] = ORDER.filter((k) => (sums.get(k) ?? 0) > EPS).map((k) => {
+  const kinds = ORDER.filter((k) => (sums.get(k) ?? 0) > EPS)
+  // The share beside each figure (the owner, 2026-10-30: *paid $X (69%) · no report $Y (31%)*).
+  const shares = wholeShares(kinds.map((k) => frac(sums.get(k) ?? 0, scale)))
+  const parts: DraftPayrollBarPart[] = kinds.map((k, i) => {
     const amount = sums.get(k) ?? 0
     return {
       kind: k,
       amount,
       fraction: frac(amount, scale),
-      label: `${PART_SHORT_WORDS[k]} ${usd(amount)}`,
-      title: `${usd(amount)} ${PART_WORDS[k]}`,
+      label: `${PART_SHORT_WORDS[k]} ${usd(amount)} (${shares[i] ?? 0}%)`,
+      title: `${usd(amount)} ${PART_WORDS[k]} · ${shares[i] ?? 0}% of the period`,
     }
   })
   const paidCount = rows.filter((r) => r.status === 'Paid').length

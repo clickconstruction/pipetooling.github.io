@@ -118,9 +118,9 @@ describe('DraftPayrollModal with the bars', () => {
     const period = screen.getByTestId('draft-payroll-period-bar')
     expect(screen.queryByText(/Total: \$4,498\.00/)).toBeNull()
     expect(screen.getByText('This period · $4,498.00 · 1 of 5 paid')).toBeTruthy()
-    expect(within(period).getByTitle('$1,444.00 paid')).toBeTruthy()
-    expect(within(period).getByTitle('$1,934.00 owed on a report')).toBeTruthy()
-    expect(within(period).getByTitle('$1,120.00 no report yet')).toBeTruthy()
+    expect(within(period).getByTitle('$1,444.00 paid · 32% of the period')).toBeTruthy()
+    expect(within(period).getByTitle('$1,934.00 owed on a report · 43% of the period')).toBeTruthy()
+    expect(within(period).getByTitle('$1,120.00 no report yet · 25% of the period')).toBeTruthy()
 
     // The banner is one chip in the button row; the dots sit on the rows whose sessions wait.
     expect(screen.queryByText(/clock sessions in this period still need approval/)).toBeNull()
@@ -152,7 +152,7 @@ describe('DraftPayrollModal with the bars', () => {
     expect(salary.closest('td')?.querySelector('[data-draft-payroll-money]')).toBeTruthy()
     // The owner (2026-10-30): no legend under the period bar and no key paragraph under the table; the words are inside the parts and on the hover.
     expect(screen.queryByText(/A green bar is money sent/)).toBeNull()
-    expect(within(period).getByText('owed $1,934.00')).toBeTruthy()
+    expect(within(period).getByText('owed $1,934.00 (43%)')).toBeTruthy()
     // A report with nothing paid on it: Record payment, blue, in Cash due, and not in Actions (the owner, 2026-10-30).
     const sidRow = screen.getByText('Sid Sample').closest('tr') as HTMLElement
     const sidCells = sidRow.querySelectorAll('td')

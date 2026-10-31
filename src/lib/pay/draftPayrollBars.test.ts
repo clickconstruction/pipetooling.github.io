@@ -7,6 +7,7 @@ import {
   pendingChipWords,
   pendingDotTitle,
   pendingDotWords,
+  wholeShares,
   type DraftPayrollRowBarInput,
 } from './draftPayrollBars'
 
@@ -114,12 +115,17 @@ describe('draftPayrollBars', () => {
     expect(bars.period.total).toBe(1071 + 1245 + 1120 + 1062)
     expect(bars.period.caption).toBe('This period · $4,498.00 · 1 of 9 paid')
     expect(bars.period.parts.map((p) => [p.kind, p.amount, p.label])).toEqual([
-      ['paid', 1071 + 373, 'paid $1,444.00'],
-      ['owed', 872 + 962, 'owed $1,834.00'],
-      ['withheld', 100, 'withheld $100.00'],
-      ['estimate', 1120, 'no report $1,120.00'],
+      ['paid', 1071 + 373, 'paid $1,444.00 (32%)'],
+      ['owed', 872 + 962, 'owed $1,834.00 (41%)'],
+      ['withheld', 100, 'withheld $100.00 (2%)'],
+      ['estimate', 1120, 'no report $1,120.00 (25%)'],
     ])
-    expect(bars.period.parts.map((p) => p.title)).toEqual(['$1,444.00 paid', '$1,834.00 owed on a report', '$100.00 withheld', '$1,120.00 no report yet'])
+    expect(bars.period.parts.map((p) => p.title)).toEqual([
+      '$1,444.00 paid · 32% of the period',
+      '$1,834.00 owed on a report · 41% of the period',
+      '$100.00 withheld · 2% of the period',
+      '$1,120.00 no report yet · 25% of the period',
+    ])
     const fractions = bars.period.parts.reduce((s, p) => s + p.fraction, 0)
     expect(fractions).toBeCloseTo(1, 5)
     expect(bars.rows.map((r) => r.person)).toEqual(['Hal', 'Paco', 'Rosa', 'Sid'])
@@ -129,6 +135,16 @@ describe('draftPayrollBars', () => {
     const bars = draftPayrollBars([], 0)
     expect(bars.period.parts).toEqual([])
     expect(bars.period.caption).toBe('This period · $0.00 · 0 of 0 paid')
+  })
+})
+
+describe('wholeShares', () => {
+  it('rounds to whole shares that add to 100', () => {
+    expect(wholeShares([0.6879, 0.3121])).toEqual([69, 31])
+    expect(wholeShares([1 / 3, 1 / 3, 1 / 3])).toEqual([34, 33, 33])
+    expect(wholeShares([0.5, 0.25, 0.25])).toEqual([50, 25, 25])
+    expect(wholeShares([1])).toEqual([100])
+    expect(wholeShares([])).toEqual([])
   })
 })
 
