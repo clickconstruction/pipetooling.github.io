@@ -9,6 +9,8 @@ import {
   fixtureButtonWords,
   fixtureSetLineWords,
   fixturesAddedToast,
+  fixturesScoreOf,
+  fixturesScoreWords,
   isSure,
   moneyWords,
   pairRobotFixtures,
@@ -206,5 +208,20 @@ describe('the fallback read of a substrate', () => {
   })
   it('is empty without a substrate', () => {
     expect(deriveFixtureRows(null, [])).toEqual([])
+  })
+})
+
+describe('the fixtures score at send', () => {
+  it('reads the column and says it plainly', () => {
+    const s = fixturesScoreOf({ found: 23, taken: 19, changed: 2, set_aside: 2, left: 0, missed: 3, reasons: { by_others: 1, wrong_count: 1 } })
+    expect(s).toEqual({ found: 23, taken: 19, changed: 2, set_aside: 2, left: 0, missed: 3, reasons: { by_others: 1, wrong_count: 1 } })
+    expect(fixturesScoreWords(s!)).toBe('Fixtures: 19 of 23 taken, 2 changed, 2 set aside, 3 the robot missed.')
+    expect(plainWordsFailures(fixturesScoreWords(s!))).toEqual([])
+  })
+  it('is null without a score and says only what is there', () => {
+    expect(fixturesScoreOf(null)).toBeNull()
+    expect(fixturesScoreOf([1])).toBeNull()
+    expect(fixturesScoreWords(fixturesScoreOf({ found: '5', taken: 5 })!)).toBe('Fixtures: 5 of 5 taken.')
+    expect(fixturesScoreWords(fixturesScoreOf({ found: 5, taken: 2, left: 3 })!)).toBe('Fixtures: 2 of 5 taken, 3 not taken.')
   })
 })

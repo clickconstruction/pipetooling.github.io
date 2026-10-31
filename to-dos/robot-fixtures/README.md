@@ -1,8 +1,8 @@
 ---
 name: "Robot fixtures: the robot pulls the fixtures off the plans, the estimator picks which to add to her count"
 number: 221
-group: ready
-status: proposed 2026-10-30 · the owner's picks the same day (keep the dollar score, fixtures open at the seal, a count and a price from day one, set aside and never delete) · PR 1 (v2.6180, the ground) and PR 2 (v2.6181, the kernels) on main 2026-10-31, migration pushed, twin-mcp 1.9.0 deployed · PR 3 (v2.6188, the window) and PR 3b (v2.6225, the Pricing tab and the status sheet's door) on main 2026-10-31 · PR 4 (the stage) in flight
+group: close
+status: proposed 2026-10-30 · the owner's picks the same day · built 2026-10-31 as v2.6180, v2.6181, v2.6188, v2.6225, v2.6236 and v2.6237 · migrations pushed, twin-mcp deployed · waiting on the first real pull
 mockup: to-dos/robot-fixtures/mockup.html
 summary: >
   The robots already read every plumbing bid's plans, count the fixtures, price them on their own book and seal a
@@ -17,9 +17,9 @@ summary: >
   the robot, priced by her book first and by the robot where her book has none), how a row leaves (set aside with
   her reason, never deleted), the stage strip (Plans filed → Read → Fixtures ready → Checked → Sealed → Sent →
   Scored), and which set.
-next: PR 4 the stage strip, then PR 5 assisted; then the recorded guide for the estimator on a bid with a real pull.
+next: The first bid a robot seals with its fixtures handed over, then the owner's look and the recorded guide for the estimator. Press Set up on this Mac on the rounds Mac to refresh its round text. Then delete this folder.
 size: M as a train of five, plus one later
-blocker: Nothing. The owner's picks are in (2026-10-30); the plan-sets PRs (#6557, #6560) are on main.
+blocker: Nothing in the code. The window shows on the first bid a robot seals with the hand-over step.
 opinion: build — the Counts tab door with the status sheet as the second door, the run marked assisted with its dollar score kept and the fixtures scored against her list, fixtures open once the robot seals, her book first and the robot's price where her book has none, set aside and never delete
 ---
 
