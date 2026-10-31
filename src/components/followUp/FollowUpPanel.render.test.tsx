@@ -128,7 +128,7 @@ const ROWS: FollowUpRows = {
     line('m-priya', 'priya', 'voicemail', 'in', '2026-10-01T20:00:00.000Z', 'Calling about when you start.'),
     line('n-elena', 'elena', 'note', 'team', '2026-09-28T15:00:00.000Z', 'Call Elena about the gate code.', { who_user_id: 'u-rosa', back_on: TODAY, back_by: 'u-rosa' }),
     line('m-elena', 'elena', 'portal', 'in', '2026-10-02T13:00:00.000Z', 'Can the sink in exam 3 move left?'),
-    line('m-unk', 'unk1', 'email', 'in', '2026-10-02T15:00:00.000Z', 'Is this the plumbing office?', { subject: 'Invitation to bid' }),
+    line('m-unk', 'unk1', 'email', 'in', '2026-10-02T15:00:00.000Z', 'Is this the plumbing office?', { subject: 'Plumbing office?' }),
   ],
   heard: [question('q-greg', 'm-greg', 'greg', '2026-10-01T14:00:00.000Z')],
   owed: [owed('o-priya', 'priya', 'the start date', '2026-10-05')],
