@@ -37098,7 +37098,6 @@ export type Database = {
       get_my_partner_jobs: { Args: never; Returns: Json }
       get_my_partner_ledger: { Args: { p_weeks?: number }; Returns: Json }
       get_my_partner_summary: { Args: never; Returns: Json }
-      get_my_statement_round: { Args: never; Returns: Json }
       get_my_statement_week: { Args: never; Returns: Json }
       get_paid_job_email_payload: { Args: { p_job_id: string }; Returns: Json }
       get_paid_profit_stats: { Args: never; Returns: Json }
@@ -37162,10 +37161,6 @@ export type Database = {
         Returns: Json
       }
       get_stages_enrichment: { Args: { p_job_ids: string[] }; Returns: Json }
-      get_statement_round_for_user: {
-        Args: { p_user_id: string }
-        Returns: Json
-      }
       get_statement_week_for_office: { Args: never; Returns: Json }
       get_supervised_days_payload: {
         Args: { p_from: string; p_to: string }
