@@ -5,6 +5,7 @@ import { bidsIn, carriedUncosted, proposalUncostedWords, uncostedWords } from '.
 import { aboutMoney, isHole, priceStanding, type TradeStanding, type TradeStandingRow } from '../../lib/gc/priceStanding'
 import type { GcProject, GcState } from '../../lib/gc/types'
 import { money } from '../../lib/gc/words'
+import { BAR_STANDINGS, type BoardPriceBarKind } from '../../lib/gc/boardPriceBar'
 import { Btn, PlusUnknown } from './gcUi'
 import type { PriceCardHandle } from './usePriceCard'
 
@@ -29,8 +30,11 @@ const GROUPS: Record<TradeStanding, { words: string; dot: string }> = {
   real: { words: 'A real number', dot: 'var(--text-green-700)' },
 }
 
-/** Something on the row that opens the card. It keeps the row's own click from firing. */
-export function GcPriceTrigger({ card, label, children, style }: { card: PriceCardHandle; label: string; children: ReactNode; style?: CSSProperties }) {
+/**
+ * Something on the row that opens the card. It keeps the row's own click from firing. `onArm` runs as it opens, so a
+ * price bar's segment (punch list #217) can say which group of trades the card lights.
+ */
+export function GcPriceTrigger({ card, label, children, style, onArm }: { card: PriceCardHandle; label: string; children: ReactNode; style?: CSSProperties; onArm?: () => void }) {
   const ref = useRef<HTMLSpanElement>(null)
   const open = card.anchor !== null && card.anchor === ref.current
   return (
@@ -41,17 +45,25 @@ export function GcPriceTrigger({ card, label, children, style }: { card: PriceCa
       aria-haspopup="dialog"
       aria-expanded={open}
       aria-label={label}
-      onMouseEnter={(e) => card.enter(e.currentTarget)}
+      onMouseEnter={(e) => {
+        onArm?.()
+        card.enter(e.currentTarget)
+      }}
       onMouseLeave={card.leave}
-      onFocus={(e) => card.enter(e.currentTarget)}
+      onFocus={(e) => {
+        onArm?.()
+        card.enter(e.currentTarget)
+      }}
       onClick={(e) => {
         e.stopPropagation()
+        onArm?.()
         card.toggle(e.currentTarget)
       }}
       onKeyDown={(e: KeyboardEvent<HTMLSpanElement>) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault()
           e.stopPropagation()
+          onArm?.()
           card.toggle(e.currentTarget)
         }
       }}
@@ -81,6 +93,7 @@ export function GcPriceCard({
   onOpen,
   onCompare,
   moneyShown = true,
+  focus = null,
 }: {
   card: PriceCardHandle
   state: GcState
@@ -90,6 +103,8 @@ export function GcPriceCard({
   onCompare?: (packageId: string) => void
   /** The reader is on the money team (B5-c). False: the trades alone, without our costs and fee. */
   moneyShown?: boolean
+  /** The price bar's segment that opened the card (punch list #217): its groups are lit, the overhead lights the totals. */
+  focus?: BoardPriceBarKind | null
 }) {
   const ref = useRef<HTMLDivElement>(null)
   const phone = useMatchMedia('(max-width: 720px)')
@@ -132,6 +147,8 @@ export function GcPriceCard({
       }
   const days = (n: number) => `${n} ${n === 1 ? 'trade' : 'trades'}`
   const groups = (Object.keys(GROUPS) as TradeStanding[]).filter((st) => p.counts[st] > 0)
+  const lit = (st: TradeStanding) => focus !== null && BAR_STANDINGS[focus].includes(st)
+  const litStyle: CSSProperties = { background: 'var(--bg-blue-tint)', margin: '0 -0.5rem', padding: '0.25rem 0.5rem', borderRadius: 6 }
   return createPortal(
     <div
       ref={ref}
@@ -169,7 +186,7 @@ export function GcPriceCard({
         </span>
       </div>
       {groups.map((st) => (
-        <div key={st} style={{ display: 'grid', gap: '0.15rem' }}>
+        <div key={st} data-gc-price-group={st} data-lit={lit(st) ? '1' : undefined} style={{ display: 'grid', gap: '0.15rem', ...(lit(st) ? litStyle : null) }}>
           <div style={{ display: 'flex', gap: '0.4rem', alignItems: 'center', fontSize: '0.68rem', letterSpacing: '0.06em', textTransform: 'uppercase', fontWeight: 700, color: 'var(--text-muted)' }}>
             <span style={{ width: 8, height: 8, borderRadius: 999, background: GROUPS[st].dot, display: 'inline-block' }} />
             {GROUPS[st].words} · {p.counts[st]}
@@ -192,7 +209,7 @@ export function GcPriceCard({
             ))}
         </div>
       ))}
-      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.1rem 0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-strong)', fontVariantNumeric: 'tabular-nums' }}>
+      <div data-gc-price-totals data-lit={focus === 'overhead' ? '1' : undefined} style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr) auto', gap: '0.1rem 0.75rem', paddingTop: '0.5rem', borderTop: '1px solid var(--border-strong)', fontVariantNumeric: 'tabular-nums', ...(focus === 'overhead' ? litStyle : null) }}>
         {moneyShown && (
           <>
             <span style={{ color: 'var(--text-muted)' }}>Trades with a number</span>
