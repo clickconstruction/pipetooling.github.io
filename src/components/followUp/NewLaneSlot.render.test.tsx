@@ -267,7 +267,7 @@ describe('the sort card above the thread', () => {
     expect(await screen.findByText('A customer we know')).toBeTruthy()
     const who = card('Who is this?')
     const blue = who.getByRole('button', { name: 'Who is this?' })
-    expect(blue.style.background).toBe('var(--text-blue-700)')
+    expect(blue.style.background).toBe('rgb(29, 78, 216)')
     expect(acts.whoDrawn).toHaveBeenLastCalledWith(true)
     fireEvent.click(blue)
     expect(acts.openWho).toHaveBeenCalledTimes(1)

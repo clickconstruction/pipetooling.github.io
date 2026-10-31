@@ -39,7 +39,7 @@ const btn = (kind: 'primary' | 'green' | 'amber' | 'plain' = 'plain', disabled =
   padding: '5px 10px',
   borderRadius: 7,
   border: `1px solid ${kind === 'plain' ? 'var(--border-strong)' : 'transparent'}`,
-  background: kind === 'primary' ? 'var(--text-link)' : kind === 'green' ? 'var(--text-green-800)' : kind === 'amber' ? 'var(--text-amber-800)' : 'var(--surface)',
+  background: kind === 'primary' ? '#2563eb' : kind === 'green' ? '#166534' : kind === 'amber' ? '#92400e' : 'var(--surface)',
   color: kind === 'plain' ? 'var(--text-700)' : '#fff',
   fontSize: '0.8125rem',
   fontWeight: 600,

@@ -101,7 +101,7 @@ export function PeopleHoursPhoneView({
   const seg = (key: HoursPhoneViewKey, label: string, count: number | null) => {
     const active = view === key
     return (
-      <button key={key} type="button" role="tab" aria-selected={active} data-hours-phone-tab={key} onClick={() => onView(key)} style={{ flex: 1, minHeight: 40, padding: '0 0.4rem', border: 'none', background: active ? 'var(--text-link)' : 'var(--surface)', color: active ? 'var(--surface)' : 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
+      <button key={key} type="button" role="tab" aria-selected={active} data-hours-phone-tab={key} onClick={() => onView(key)} style={{ flex: 1, minHeight: 40, padding: '0 0.4rem', border: 'none', background: active ? '#2563eb' : 'var(--surface)', color: active ? '#fff' : 'var(--text-700)', font: 'inherit', fontSize: '0.875rem', fontWeight: 600, cursor: 'pointer', whiteSpace: 'nowrap' }}>
         {label}
         {count != null ? ` ${count}` : ''}
       </button>

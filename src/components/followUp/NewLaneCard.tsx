@@ -287,7 +287,7 @@ export function NewLaneCard({ row, channels, guesses, roster = [], jobs = [], pe
             type="button"
             onClick={onSomeoneElse}
             disabled={busy}
-            style={{ background: 'var(--text-blue-700)', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', flex: 'none' }}
+            style={{ background: '#1d4ed8', color: 'white', border: 'none', borderRadius: 6, padding: '0.35rem 0.75rem', fontWeight: 600, cursor: 'pointer', fontSize: '0.85rem', whiteSpace: 'nowrap', flex: 'none' }}
           >
             Who is this?
           </button>

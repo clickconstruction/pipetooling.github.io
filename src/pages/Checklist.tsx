@@ -880,9 +880,9 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                             padding: '0.35rem 0.6rem',
                             fontSize: '0.8125rem',
                             fontWeight: 500,
-                            border: '1px solid #3b82f6',
+                            border: '1px solid #2563eb',
                             borderRadius: 4,
-                            background: '#3b82f6',
+                            background: '#2563eb',
                             color: 'white',
                             cursor: 'pointer',
                           }}
@@ -1008,9 +1008,9 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                               padding: '0.25rem 0.5rem',
                               fontSize: '0.8125rem',
                               fontWeight: 500,
-                              border: '1px solid #3b82f6',
+                              border: '1px solid #2563eb',
                               borderRadius: 4,
-                              background: '#3b82f6',
+                              background: '#2563eb',
                               color: 'white',
                               cursor: 'pointer',
                             }}
@@ -1087,7 +1087,7 @@ function ChecklistTodayTab({ authUserId, isDev, canOpenVehiclesPage, setError }:
                 title={!fwdCanSubmit ? `Required: ${fwdMissingFields.join(', ')}` : undefined}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,
@@ -3067,7 +3067,7 @@ function ChecklistOutstandingTab({ authUserId, isDev, canSeeCosts, canManageChec
                 title={!fwdCanSubmit ? `Required: ${fwdMissingFields.join(', ')}` : undefined}
                 style={{
                   padding: '0.5rem 1rem',
-                  background: '#3b82f6',
+                  background: '#2563eb',
                   color: 'white',
                   border: 'none',
                   borderRadius: 4,

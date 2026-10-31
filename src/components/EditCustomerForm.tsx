@@ -517,7 +517,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 fontSize: '0.875rem',
                 border: '1px solid var(--border-strong)',
                 borderRadius: '4px 0 0 4px',
-                background: customerType === 'residential' ? '#3b82f6' : 'var(--surface)',
+                background: customerType === 'residential' ? '#2563eb' : 'var(--surface)',
                 color: customerType === 'residential' ? 'white' : 'var(--text-700)',
                 cursor: 'pointer',
               }}
@@ -533,7 +533,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
                 fontSize: '0.875rem',
                 border: '1px solid var(--border-strong)',
                 borderRadius: '0 4px 4px 0',
-                background: customerType === 'commercial' ? '#3b82f6' : 'var(--surface)',
+                background: customerType === 'commercial' ? '#2563eb' : 'var(--surface)',
                 color: customerType === 'commercial' ? 'white' : 'var(--text-700)',
                 cursor: 'pointer',
               }}
@@ -734,7 +734,7 @@ export default function EditCustomerForm({ customerId, onSaved, onCancel, onDele
               disabled={loading}
               style={{
                 padding: '0.5rem 1rem',
-                background: '#3b82f6',
+                background: '#2563eb',
                 color: 'white',
                 border: 'none',
                 borderRadius: 4,

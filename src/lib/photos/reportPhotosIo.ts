@@ -75,19 +75,22 @@ export async function sendReportPhoto(input: SendReportPhotoInput): Promise<{ st
 
 export type AttachReportPhoto = { id: string; fixtureId: string | null; stageName: string | null; caption: string }
 
-/** Save: each sent shot takes the report's id, its stage and its caption, one update a row, best-effort. */
-export async function attachReportPhotos(reportId: string, photos: ReadonlyArray<AttachReportPhoto>): Promise<{ attached: number; failed: string[] }> {
+/** Save: each sent shot takes the report's id, its stage and its caption, one update a row, best-effort. `failedIds` names the shots that did not, so nothing else builds on them. */
+export async function attachReportPhotos(reportId: string, photos: ReadonlyArray<AttachReportPhoto>): Promise<{ attached: number; failed: string[]; failedIds?: string[] }> {
   let attached = 0
   const failed: string[] = []
+  const failedIds: string[] = []
   for (const p of photos) {
     const { error } = await db
       .from('report_photos')
       .update({ report_id: reportId, fixture_id: p.fixtureId, stage_name: p.stageName ?? '', caption: p.caption })
       .eq('id', p.id)
-    if (error) failed.push(formatErrorMessage(error, 'A photo did not attach.'))
-    else attached += 1
+    if (error) {
+      failed.push(formatErrorMessage(error, 'A photo did not attach.'))
+      failedIds.push(p.id)
+    } else attached += 1
   }
-  return { attached, failed }
+  return { attached, failed, failedIds }
 }
 
 /** A form closed without saving: its sent shots leave the bucket and the table. Best-effort. */

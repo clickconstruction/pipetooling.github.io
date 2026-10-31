@@ -254,7 +254,7 @@ export function QuickfillPercentCompleteSection({
               disabled={!canSave}
               title={move.same && typed != null ? 'The knob sits where the job already is.' : undefined}
               onClick={() => void run(card, 'save')}
-              style={{ font: 'inherit', fontSize: '0.875rem', fontWeight: 600, padding: '0.45rem 0.8rem', borderRadius: 6, border: 'none', background: canSave ? '#3b82f6' : 'var(--bg-muted)', color: canSave ? '#fff' : 'var(--text-muted)', cursor: canSave ? 'pointer' : 'not-allowed' }}
+              style={{ font: 'inherit', fontSize: '0.875rem', fontWeight: 600, padding: '0.45rem 0.8rem', borderRadius: 6, border: 'none', background: canSave ? '#2563eb' : 'var(--bg-muted)', color: canSave ? '#fff' : 'var(--text-muted)', cursor: canSave ? 'pointer' : 'not-allowed' }}
             >
               {busy ? 'Saving…' : typed == null || move.same ? 'Save' : `Save ${typed}%`}
             </button>

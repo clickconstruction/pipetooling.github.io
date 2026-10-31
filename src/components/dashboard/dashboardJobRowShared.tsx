@@ -80,7 +80,7 @@ export const jobCardMobileActionButtonStyle = (kind: 'primary' | 'due' | 'ghost'
   fontWeight: kind === 'ghost' ? 500 : 600,
   borderRadius: 8,
   border: kind === 'ghost' ? '1px solid var(--border-strong)' : 'none',
-  background: kind === 'due' ? '#f2c230' : kind === 'primary' ? '#3b82f6' : 'var(--surface)',
+  background: kind === 'due' ? '#f2c230' : kind === 'primary' ? '#2563eb' : 'var(--surface)',
   color: kind === 'due' ? '#4a3800' : kind === 'primary' ? '#fff' : 'var(--text-link)',
   cursor: busy ? 'not-allowed' : 'pointer',
   opacity: busy ? 0.6 : 1,

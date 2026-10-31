@@ -22,7 +22,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { formatErrorMessage } from '../../utils/errorHandling'
 
 const quiet: React.CSSProperties = { background: 'none', border: 'none', padding: 0, font: 'inherit', fontSize: '0.8rem', color: 'var(--text-muted)', cursor: 'pointer', textDecoration: 'underline dotted' }
-const primary: React.CSSProperties = { padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: 'var(--text-link)', color: 'white', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }
+const primary: React.CSSProperties = { padding: '0.5rem 1rem', borderRadius: 8, border: 'none', background: '#2563eb', color: 'white', font: 'inherit', fontSize: '0.85rem', fontWeight: 600, cursor: 'pointer' }
 const secondary: React.CSSProperties = { padding: '0.5rem 1rem', borderRadius: 8, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', font: 'inherit', fontSize: '0.85rem', fontWeight: 500, cursor: 'pointer' }
 
 function promptEligibleRole(role: string | null | undefined): boolean {

@@ -196,7 +196,7 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
             )}
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
               <button type="button" onClick={onClose} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>Cancel</button>
-              <button type="button" disabled={chosen.length === 0} onClick={() => setStep('confirm')} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: chosen.length === 0 ? 'not-allowed' : 'pointer', opacity: chosen.length === 0 ? 0.5 : 1 }}>
+              <button type="button" disabled={chosen.length === 0} onClick={() => setStep('confirm')} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: chosen.length === 0 ? 'not-allowed' : 'pointer', opacity: chosen.length === 0 ? 0.5 : 1 }}>
                 Preview {chosen.length > 0 ? `${chosen.length} move${chosen.length === 1 ? '' : 's'}` : ''} →
               </button>
             </div>
@@ -230,7 +230,7 @@ export function AdoptBidModal({ targetBid, onClose, onAdopted }: Props) {
             </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '0.4rem', marginTop: '0.8rem' }}>
               <button type="button" onClick={() => setStep('pick')} disabled={busy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.8rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--bg-muted)', color: 'var(--text-strong)', cursor: 'pointer' }}>← Back</button>
-              <button type="button" onClick={() => void adoptAll()} disabled={busy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#3b82f6', color: '#fff', cursor: busy ? 'wait' : 'pointer' }}>
+              <button type="button" onClick={() => void adoptAll()} disabled={busy} style={{ font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.9rem', border: 'none', borderRadius: 6, background: '#2563eb', color: '#fff', cursor: busy ? 'wait' : 'pointer' }}>
                 {busy ? 'Adopting…' : `Adopt ${chosen.length} bid${chosen.length === 1 ? '' : 's'}`}
               </button>
             </div>

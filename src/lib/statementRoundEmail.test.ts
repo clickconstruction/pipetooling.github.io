@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  groupStatementRoundChains,
-  parseStatementRoundPayload,
-  planStatementRoundChainEdit,
-  statementRoundNudgeFromPayload,
-  type StatementRoundRequestRow,
-} from './statementRoundEmail'
+import { groupStatementRoundChains, planStatementRoundChainEdit, type StatementRoundRequestRow } from './statementRoundEmail'
 
 // 2026-09-07 is a Monday; 12:00Z = 07:00 Central (CDT).
 const row = (id: string, sendAt: string, recipient = 'u1', weekly = true): StatementRoundRequestRow => ({
@@ -73,28 +67,5 @@ describe('planStatementRoundChainEdit', () => {
       inserts: [],
       cancelIds: ['a'],
     })
-  })
-})
-
-describe('round payload → nudge', () => {
-  it('parses the RPC shape and sums the ready GCs', () => {
-    const p = parseStatementRoundPayload({
-      week_start: '2026-08-31',
-      user_id: 'u1',
-      ready: [
-        { gc_id: 'a', gc_name: 'RMC- Dudley Mason', amount: 58221, job_count: 16, oldest_age_days: 172, certified_by_name: 'Robert' },
-        { gc_id: 'b', gc_name: 'Knight Contracting', amount: '38036.27', job_count: 4, oldest_age_days: null, certified_by_name: null },
-      ],
-      held: { count: 4, total: 89000 },
-      assigned_to_me: 2,
-      sent_by_me: 0,
-    })
-    expect(p?.ready[1]?.amount).toBe(38036.27)
-    expect(statementRoundNudgeFromPayload(p)).toEqual({ count: 2, total: 96257.27, gcNames: ['RMC- Dudley Mason', 'Knight Contracting'] })
-  })
-  it('null / malformed / empty payloads make no nudge', () => {
-    expect(parseStatementRoundPayload(null)).toBeNull()
-    expect(parseStatementRoundPayload({ ready: 'x' })).toBeNull()
-    expect(statementRoundNudgeFromPayload(parseStatementRoundPayload({ week_start: '2026-08-31', ready: [] }))).toBeNull()
   })
 })

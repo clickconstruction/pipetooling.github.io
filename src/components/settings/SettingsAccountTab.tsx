@@ -150,7 +150,7 @@ export default function SettingsAccountTab({
           <button
             type="submit"
             disabled={myProfileSaving}
-            style={{ padding: '0.5rem 1rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: myProfileSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
+            style={{ padding: '0.5rem 1rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: myProfileSaving ? 'not-allowed' : 'pointer', fontWeight: 500 }}
           >
             {myProfileSaving ? 'Saving…' : 'Save'}
           </button>

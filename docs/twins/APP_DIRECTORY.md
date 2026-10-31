@@ -42,7 +42,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Who owes us money → `/accounts-receivable`
 - Schedule crews to jobs by week → `/schedule-dispatch`
 
-- See one development, a site with many bids and jobs, in five looks (History, Pieces, Money, Plans, Questions) → `/developments/:id` (from the house line on a bid or a job; guide `see-everything-on-a-development`)
+- See one development, a site with many bids and jobs, in five looks (History, Jobs & bids, Money, Plans, Questions) → `/developments/:id` (from the house line on a bid or a job; guide `see-everything-on-a-development`)
 
 **People / hours / money**
 - Who worked, approve hours, clock cards → `/people`
@@ -317,7 +317,7 @@ Roles: dev, master, assistant, controller, estimator, primary; super limited.
 
 ### /tally — Tally
 Company card charges sorted to jobs: the office's Team queue (one card per person per day,
-the likely job first), each holder's own card, payroll marks, follow-up. The **On site** tab (`?tab=on-site`, v2.6041, punch list #209) is the crew's side of Materials on site: the job's cages and boxes by place, the flow row Unsorted → Used → Count, each box's lines with Used, Move to… and Can't find, the Count this box walk, Photo, the site map; `?job=` and `?container=` open a box straight away (the Job Mode card's Materials on site, a label's code through `/b/:code`). Guide: `keep-track-of-the-material-in-the-cages-and-boxes-on-site`.
+the likely job first), each holder's own card, payroll marks, follow-up. The **On site** tab (`?tab=on-site`, v2.6041, punch list #209; first in the row and the tab the page opens on since v2.6229) is the crew's side of Materials on site: the job's cages and boxes by place, the flow row Unsorted → Used → Count, each box's lines with Used, Move to… and Can't find, the Count this box walk, Photo, the site map; `?job=` and `?container=` open a box straight away (the Job Mode card's Materials on site, a label's code through `/b/:code`). Guide: `keep-track-of-the-material-in-the-cages-and-boxes-on-site`.
 Roles: all (Team for dev, master, assistant/controller; payroll actions gated).
 
 ### /b/:code — A box label's short address

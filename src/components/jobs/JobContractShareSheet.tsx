@@ -134,7 +134,7 @@ export default function JobContractShareSheet({
           <button type="button" style={btn} disabled={sending} onClick={onClose}>
             Cancel
           </button>
-          <button type="button" style={{ ...btn, background: 'var(--text-link)', borderColor: 'var(--text-link)', color: 'white' }} disabled={sending || recipients.length === 0} onClick={() => void send()}>
+          <button type="button" style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }} disabled={sending || recipients.length === 0} onClick={() => void send()}>
             {sending ? 'Sending…' : `Send copy${recipients.length > 1 ? ` to ${recipients.length}` : ''}`}
           </button>
         </div>

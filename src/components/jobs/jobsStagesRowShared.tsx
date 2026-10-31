@@ -4,6 +4,7 @@ import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
 import type { MarkFixture } from '../../lib/jobs/stageChecklistMarks'
 import { customerListImpliesLinkedRow } from '../../lib/jobs/customerLinkHeuristics'
 import { Link, type NavigateFunction } from 'react-router-dom'
+import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import { effectiveJobLedgerNumber } from '../../lib/ledgerDisplayPrefixes'
 import type { JobCalendarJobIdentity } from '../../lib/jobCalendarModal'
 import { type StagesUpcomingAppointment } from '../../lib/stagesUpcomingSchedule'
@@ -299,14 +300,17 @@ export function renderStagesJobHcpChip(job: JobWithDetails, extraStyle?: CSSProp
       color: tagInfo ? '#fff' : 'var(--text-700)',
       ...extraStyle,
     }
+    // The numbers the job answered to before a combine (v2.6226) ride in the chip's title, so a search by an old HCP number finds a row that explains itself.
+    const prior = priorNumbersBare(job.prior_numbers)
     return (
-      <span style={mergedChipStyle} title={stName}>
+      <span style={mergedChipStyle} title={prior ? `${stName} · ${prior}` : stName} data-prior-numbers={prior ? '1' : undefined}>
         <StagesSearchMark text={t} onColor={!!tagInfo} /> {serviceLabel}
       </span>
     )
   }
+  const prior = priorNumbersBare(job.prior_numbers)
   return (
-    <span style={{ ...stagesJobHcpBadgeStyle, ...extraStyle }}>
+    <span style={{ ...stagesJobHcpBadgeStyle, ...extraStyle }} title={prior || undefined} data-prior-numbers={prior ? '1' : undefined}>
       Job: <StagesSearchMark text={t} />
     </span>
   )

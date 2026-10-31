@@ -65,7 +65,7 @@ function buttonStyle(a: WonMomentAction, won: boolean): React.CSSProperties {
       fontSize: '0.875rem',
       fontWeight: 600,
       fontFamily: 'inherit',
-      background: won ? '#16a34a' : '#3b82f6',
+      background: won ? '#16a34a' : '#2563eb',
       color: 'white',
       border: 'none',
       borderRadius: 6,

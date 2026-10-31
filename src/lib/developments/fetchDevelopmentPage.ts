@@ -184,6 +184,17 @@ export async function fetchDevelopmentPage(developmentId: string, includeAddress
   const shown: Members = includeAddress ? { bids: [...inIt.bids, ...atAddress.bids], jobs: [...inIt.jobs, ...atAddress.jobs] } : inIt
   const bidIds = shown.bids.map((b) => b.id)
   const jobIds = shown.jobs.map((j) => j.id)
+  // The numbers a job answered to before a combine (v2.6226): a read of its own that fails soft, so the page
+  // stands before the column's migration is pushed and the figure is a courtesy after.
+  if (jobIds.length) {
+    try {
+      const { data } = await supabase.from('jobs_ledger').select('id, prior_numbers').in('id', jobIds).limit(500)
+      const byId = new Map((data ?? []).map((r) => [r.id as string, (r.prior_numbers ?? []) as string[]]))
+      for (const j of shown.jobs) j.prior_numbers = byId.get(j.id) ?? []
+    } catch {
+      /* the column is not there yet, or the read failed: the job lines carry no prior numbers */
+    }
+  }
 
   const customerTally = new Map<string, number>()
   for (const b of shown.bids) if (b.customer_id) customerTally.set(b.customer_id, (customerTally.get(b.customer_id) ?? 0) + 1)

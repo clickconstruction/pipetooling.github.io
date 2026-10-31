@@ -27,7 +27,8 @@ import { DevelopmentAskSheet, type AskAboutOption, type AskPreset } from '../com
 import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/developments/DevelopmentChipConfirm'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
-import { DevelopmentPlansCard, DevelopmentQuestionsCard } from '../components/developments/DevelopmentSideCards'
+import { DevelopmentPlansCard } from '../components/developments/DevelopmentSideCards'
+import { DevelopmentQuestionsLook } from '../components/developments/DevelopmentQuestionsLook'
 import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import { DevelopmentCounts, type CountTileSpec } from '../components/developments/DevelopmentCounts'
 import { buildAtAddressCard, buildCountCard, type CountCard, type CountDoor, type CountFootDoor, type CountKey, type CountPress } from '../lib/developments/countCards'
@@ -57,7 +58,9 @@ import { batchOutcomeWords, countedLabel, pluralNoun } from '../lib/batchWords'
 import { buildWhatChanged, filterChangeLines, placeSinceLine, type ChangeLine } from '../lib/developments/whatChanged'
 import { aboutIsPiece, entryLine, narrowLines, narrowedWords, onRecordNotes, type HistoryChip, type HistoryDraft, type HistoryEntry, type HistoryPiece } from '../lib/developments/history'
 import { keepHistoryEntry } from '../lib/developments/historyWrites'
-import { DevelopmentHistoryChips, DevelopmentHistoryComposer, type HistoryAboutOption } from '../components/developments/DevelopmentHistoryTools'
+import { DevelopmentHistoryChips, DevelopmentHistoryComposer } from '../components/developments/DevelopmentHistoryTools'
+import { aboutGroups, aboutKeyOfPiece, aboutRows, type AboutGroup } from '../lib/developments/aboutPicker'
+import { TakeoffPartSearchIcon } from '../components/icons/TakeoffPartSearchIcon'
 import { EmptyState } from '../components/EmptyState'
 import { DevelopmentLineWindow } from '../components/developments/DevelopmentLineWindow'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel, resolveBidLedgerPrefix, resolveJobLedgerPrefix } from '../lib/ledgerDisplayPrefixes'
@@ -119,6 +122,8 @@ export default function DevelopmentPage() {
   const [histPiece, setHistPiece] = useState<HistoryPiece | null>(null)
   const [lineOpen, setLineOpen] = useState<ChangeLine | null>(null)
   const [writing, setWriting] = useState(false)
+  // The composer folds by default (the owner, 2026-10-30): the stream reads first, *Write a line* opens the box.
+  const [composing, setComposing] = useState(false)
   // Ask a question (PR 4): the window's preset from the press that opened it, and the send in flight.
   const [ask, setAsk] = useState<AskPreset | null>(null)
   const [asking, setAsking] = useState(false)
@@ -237,13 +242,12 @@ export default function DevelopmentPage() {
   const sinceShown = useMemo(() => placeSinceLine(feedShown, lastLooked), [feedShown, lastLooked])
   // The Plans question read back (PR 5): the open one, or the newest answered.
   const plansAsk = useMemo(() => (data ? plansAskOnRecord(data.requests, nowMs) : null), [data, nowMs])
-  const historyAbouts = useMemo<HistoryAboutOption[]>(() => {
+  // The About picker's groups (v2.6205): the site, the pieces written about last, jobs and bids newest first, the customer.
+  const historyGroups = useMemo<AboutGroup[]>(() => {
     if (!shown || !data) return []
-    const jobs = shown.jobs.map((j) => ({ key: `job:${j.id}`, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim(), about: { kind: 'job' as const, id: j.id }, group: 'jobs' as const }))
-    const bids = shown.bids.map((b) => ({ key: `bid:${b.id}`, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim(), about: { kind: 'bid' as const, id: b.id }, group: 'bids' as const }))
-    const customer = data.customer ? [{ key: 'customer', label: data.customer.name, about: { kind: 'customer' as const, id: data.customer.id }, group: 'customer' as const }] : []
-    return [{ key: 'site', label: `🏠 ${data.development.name}`, about: { kind: 'site' as const }, group: 'site' as const }, ...jobs, ...bids, ...customer]
-  }, [shown, data, jobLabel, bidLabel])
+    const customer = data.customer ? { id: data.customer.id, name: data.customer.name } : null
+    return aboutGroups(aboutRows({ development: { name: data.development.name }, customer, jobs: shown.jobs, bids: shown.bids, jobLabel, bidLabel }), entries)
+  }, [shown, data, entries, jobLabel, bidLabel])
   // The undated notes the records carry (the owner, mid-build: *all the job, bid, and customer comments along side it*), drawn under the chips.
   const onRecord = useMemo(() => (shown && data ? onRecordNotes(shown, data.customers, { bidLabel, jobLabel }) : []), [shown, data, bidLabel, jobLabel])
   const notInIt = useMemo(() => {
@@ -554,7 +558,7 @@ export default function DevelopmentPage() {
       title: putInLabel(at, name),
       rows: rows.map((r) => ({ label: r.label, before: r.before, after: r.after, changes: r.changes })),
       preview: previewBlock(preview.lines, preview.more),
-      previewCaption: 'The pieces that go in',
+      previewCaption: 'The jobs and bids that go in',
       confirmLabel: putInLabel(at, name),
       onConfirm: () => {
         setChipConfirm(null)
@@ -855,7 +859,7 @@ export default function DevelopmentPage() {
         {dev.archived_at ? <span style={{ fontSize: '0.72rem', fontWeight: 700, padding: '1px 8px', borderRadius: 9999, background: 'var(--bg-muted)', color: 'var(--text-muted)' }}>Archived</span> : null}
         <span style={{ fontSize: '0.78rem', color: 'var(--text-faint)' }}>Development since {shortDay(dev.created_at)}</span>
         <div style={{ marginLeft: 'auto', display: 'inline-flex', gap: 8, flexWrap: 'wrap' }}>
-          {btn('Ask a question', () => openAsk(), 'Ask the estimators or Dispatch about the site or one of its pieces; the answer comes back under Questions', true)}
+          {btn('Ask a question', () => openAsk(), 'Ask the estimators or Dispatch about the site or one of its jobs or bids; the answer comes back under Questions', true)}
           {btn('Edit', () => navigate('/settings?tab=settings-jobs'), 'Rename, the default GC, archive: Settings → Jobs & dispatch → Manage developments')}
         </div>
       </div>
@@ -869,7 +873,7 @@ export default function DevelopmentPage() {
             <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>{whoIsThis}</span>
           )
         ) : (
-          <span style={{ color: 'var(--text-faint)' }}>none on its pieces yet</span>
+          <span style={{ color: 'var(--text-faint)' }}>none on its jobs or bids yet</span>
         )}
         {address ? (
           <a href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`} target="_blank" rel="noopener noreferrer" style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
@@ -978,13 +982,17 @@ export default function DevelopmentPage() {
               {/* The search (the owner, 2026-10-28): people, jobs or bids, across every line, new and old, the kept lines too. */}
               {feed.length > 0 ? (
                 <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+                  {/* The spyglass in the box (the owner, 2026-10-30) says what the box is before a word is typed. */}
+                  <span aria-hidden style={{ position: 'absolute', left: 9, display: 'inline-flex', color: 'var(--text-muted)', pointerEvents: 'none' }}>
+                    <TakeoffPartSearchIcon />
+                  </span>
                   <input
                     value={feedQuery}
                     onChange={(e) => setFeedQuery(e.target.value)}
                     placeholder="Search people, jobs, bids, words"
                     aria-label="Search the history"
                     data-testid="feed-search"
-                    style={{ height: 30, width: 'min(240px, 60vw)', padding: '0 26px 0 10px', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
+                    style={{ height: 30, width: 'min(240px, 60vw)', padding: '0 26px 0 28px', border: '1px solid var(--border-strong)', borderRadius: 5, font: 'inherit', fontSize: '0.8rem', background: 'var(--surface)', color: 'var(--text-strong)' }}
                   />
                   {feedQuery ? (
                     <button type="button" onClick={() => setFeedQuery('')} aria-label="Clear the search" title="Clear" style={{ position: 'absolute', right: 4, border: 'none', background: 'none', color: 'var(--text-muted)', cursor: 'pointer', font: 'inherit', fontSize: '0.9rem', lineHeight: 1, padding: '2px 4px' }}>
@@ -998,7 +1006,7 @@ export default function DevelopmentPage() {
                 <>
                   {feed.length > 0 ? <FoldButton open={olderOpen} label={olderOpen ? `Hide the ${feed.length} older` : `Show ${feed.length} older`} onClick={() => setOlderOpen((v) => !v)} testId="feed-fold" /> : null}
                   {historyOpen ? null : (
-                    <LinkButton onClick={() => setWriting(true)} title="Keep a line: what happened, when, about which piece">
+                    <LinkButton onClick={() => { setWriting(true); setComposing(true) }} title="Keep a line: what happened, when, about which job or bid">
                       Write ›
                     </LinkButton>
                   )}
@@ -1011,7 +1019,15 @@ export default function DevelopmentPage() {
         >
           {historyOpen ? (
             <>
-              <DevelopmentHistoryComposer options={historyAbouts} phone={phone} busy={keeping} onKeep={keepHistory} />
+              {composing ? (
+                <DevelopmentHistoryComposer groups={historyGroups} preferKey={aboutKeyOfPiece(histPiece)} phone={phone} busy={keeping} onKeep={keepHistory} onClose={() => setComposing(false)} />
+              ) : (
+                <div style={{ marginBottom: 10 }}>
+                  <SmallButton onClick={() => setComposing(true)} title="Keep a line: what happened, when, about which job or bid">
+                    Write a line
+                  </SmallButton>
+                </div>
+              )}
               <DevelopmentHistoryChips chip={histChip} onChip={setHistChip} piece={histPiece} onClearPiece={() => setHistPiece(null)} phone={phone} />
               {onRecordShown.length > 0 ? (
                 <div data-testid="history-on-record" style={{ marginBottom: 10, padding: '6px 10px', border: '1px dashed var(--border-strong)', borderRadius: 6, fontSize: '0.8rem' }}>
@@ -1055,7 +1071,7 @@ export default function DevelopmentPage() {
 
         <Card
           id={DEVELOPMENT_JUMP_ANCHOR.pieces}
-          title="Pieces" fold={foldFor('pieces', `${activePieces} working or waiting · ${pieces.length - activePieces} paid${suggestions.length ? ` · ${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : ''}`)}
+          title="Jobs & bids" fold={foldFor('pieces', `${activePieces} working or waiting · ${pieces.length - activePieces} paid${suggestions.length ? ` · ${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : ''}`)}
           meta={`each bid with the job it became${plans.newest ? ` · newest set ${plans.newest.dated ? shortDay(plans.newest.dated) : shortDay(plans.newest.filedAt)}` : ''}`}
           right={
             <>
@@ -1121,7 +1137,7 @@ export default function DevelopmentPage() {
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>
-          <DevelopmentQuestionsCard requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} waitingCard={cards.waiting} onRow={openCountRow} onPress={pressCount} />
+          <DevelopmentQuestionsLook requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} onAsk={(lane) => openAsk({ lane })} phone={phone} />
         </Card>
       </div>
       {chipConfirm ? (

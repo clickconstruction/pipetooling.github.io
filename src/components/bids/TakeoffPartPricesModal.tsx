@@ -266,7 +266,7 @@ export function TakeoffPartPricesModal({
                                     setPartPricesModal(null)
                                   }}
                                   title={`Price this line at ${row.supply_house_name}'s price ($${row.price.toFixed(2)}) — even if it isn't the lowest`}
-                                  style={{ marginLeft: '0.35rem', padding: '0.25rem 0.5rem', background: '#3b82f6', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
+                                  style={{ marginLeft: '0.35rem', padding: '0.25rem 0.5rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer', fontSize: '0.8125rem' }}
                                 >
                                   Use
                                 </button>
@@ -312,7 +312,7 @@ export function TakeoffPartPricesModal({
                         type="button"
                         onClick={() => canAdd && addPartPriceInModal(partPricesModalAddSupplyHouseId, addPriceNum)}
                         disabled={!canAdd}
-                        style={{ padding: '0.25rem 0.5rem', background: canAdd ? '#3b82f6' : DEAD_PRESS_FILL, color: canAdd ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed', fontSize: '0.8125rem' }}
+                        style={{ padding: '0.25rem 0.5rem', background: canAdd ? '#2563eb' : DEAD_PRESS_FILL, color: canAdd ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canAdd ? 'pointer' : 'not-allowed', fontSize: '0.8125rem' }}
                       >
                         {partPricesModalAdding ? 'Adding…' : 'Add'}
                       </button>

@@ -170,7 +170,7 @@ export default function PersonLicenseHoursLogModal({ personName, userId, onClose
             disabled={loading || !userId || rows.length === 0}
             style={{
               padding: '0.4rem 0.85rem',
-              background: '#3b82f6',
+              background: '#2563eb',
               color: '#fff',
               border: 'none',
               borderRadius: 4,

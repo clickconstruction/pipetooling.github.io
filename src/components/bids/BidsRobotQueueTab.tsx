@@ -276,7 +276,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceType
       <button
         type="button"
         onClick={() => void copyPrompt(bid)}
-        style={requested ? { ...btnStyle, background: '#3b82f6', borderColor: '#3b82f6', color: 'white', fontWeight: 600 } : btnStyle}
+        style={requested ? { ...btnStyle, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 } : btnStyle}
       >
         {copiedBidId === bid.id ? 'Copied ✓' : 'Copy robot prompt'}
       </button>
@@ -510,7 +510,7 @@ export function BidsRobotQueueTab({ bids, twinBidBySourceId, plumbingServiceType
                   <button
                     type="button"
                     onClick={() => void copyBacktestPrompt(c.bid, rowAxis)}
-                    style={hot && !flagged ? { ...btnStyle, background: '#3b82f6', borderColor: '#3b82f6', color: 'white', fontWeight: 600 } : btnStyle}
+                    style={hot && !flagged ? { ...btnStyle, background: '#2563eb', borderColor: '#2563eb', color: 'white', fontWeight: 600 } : btnStyle}
                   >
                     {copiedBidId === c.bid.id ? 'Copied ✓' : 'Copy backtest prompt'}
                   </button>
