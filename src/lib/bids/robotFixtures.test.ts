@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
+import type { PlanPageRow, PlanSubstrate } from './planText'
 import {
   backingOf,
   checkWords,
@@ -193,8 +194,8 @@ describe('the fallback read of a substrate', () => {
         { sheet_no: 'P-601', schedules: [{ schedule_type: 'plumbing_fixture', rows: [{ tag: 'WC-1', description: 'Water closet, floor mounted', manufacturer: 'Kohler', model: 'K-96057', qty_scheduled: { value: 5 } }, { tag: 'BFP-1', description: 'Backflow preventer', qty_scheduled: null }] }] },
       ],
       rollup: { fixture_tags: [{ tag: 'BFP-1', qty: 1, reconciliation: 'full' }] },
-    }
-    const pages = [{ page: 14, sheet_no: 'P-201', title: 'Plan', text: 'WC-1 (TYP OF 3)\nFD-1', has_text: true, source: 'round' }]
+    } as unknown as PlanSubstrate
+    const pages: PlanPageRow[] = [{ page: 14, sheet_no: 'P-201', title: 'Plan', text: 'WC-1 (TYP OF 3)\nFD-1', has_text: true, source: 'round' }]
     const rows = deriveFixtureRows(sub, pages)
     expect(rows.map((r) => `${r.tag}:${r.name}:${r.count}`)).toEqual(['WC-1:Water closet, floor mounted:5', 'BFP-1:Backflow preventer:1'])
     const wcRow = rows[0]!
