@@ -1,7 +1,7 @@
 -- Firms and their coverage, PR 4 (v2.6233, punch list #222, migration *_legal_hand_off_counties): Snell hands Bell and
 -- Travis to Alamo, which becomes first call there; a county Snell no longer covers is refused; Hays goes to a new
 -- firm typed in the sheet; retiring Snell with the hand-off waits while an account is still with it, then retires it
--- once the account closes; retire as its own step is refused while the firm covers a county and when it is the only
+-- once the account closes and revokes its portal link; retire as its own step is refused while the firm covers a county and when it is the only
 -- firm that stands; the receiver missing, a county list left empty, a hand-off to the giver itself, an assistant and
 -- a training account are refused. Everything rolls back. Raises on the first failed assertion; ends with
 -- "legal_firm_coverage hand off PASSED". See scripts/pgtest-legal-firm-coverage.sh. Never against prod.
@@ -30,6 +30,8 @@ INSERT INTO public.legal_firm_counties (firm_id, county, first_call) VALUES
 -- One account is with Snell.
 INSERT INTO public.legal_matters (id, payer_key, payer_name, firm_id, stage) VALUES
   ('00000000-0000-0000-0000-0000000222e1', 'c:zz-learning', 'ZZ The Learning Experience', '00000000-0000-0000-0000-0000000222f1', 'referred');
+-- Snell's portal link is live; retiring Snell revokes it and keeps the row.
+INSERT INTO public.legal_portal_links (firm_id, token_hash) VALUES ('00000000-0000-0000-0000-0000000222f1', 'zz-snell-link');
 
 CREATE SCHEMA lfh;
 CREATE FUNCTION lfh.same(label text, got text, want text) RETURNS void LANGUAGE plpgsql AS $$
@@ -54,6 +56,9 @@ CREATE FUNCTION lfh.live() RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
 CREATE FUNCTION lfh.firms() RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
   SELECT string_agg(name || CASE WHEN active THEN '' ELSE ' (retired)' END, ', ' ORDER BY name) FROM public.legal_firms WHERE name LIKE 'ZZ %' $$;
 CREATE FUNCTION lfh.firm_id(p_name text) RETURNS uuid LANGUAGE sql SECURITY DEFINER AS $$ SELECT id FROM public.legal_firms WHERE name = p_name $$;
+-- A firm's portal links in one line: `1 live of 1`.
+CREATE FUNCTION lfh.links(p_firm uuid) RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
+  SELECT (count(*) FILTER (WHERE revoked_at IS NULL))::text || ' live of ' || count(*)::text FROM public.legal_portal_links WHERE firm_id = p_firm $$;
 CREATE FUNCTION lfh.hand(p_from uuid, p_counties text[], p_to uuid, p_new jsonb, p_retire boolean) RETURNS text LANGUAGE sql AS $$
   SELECT public.legal_hand_off_counties(p_from, p_counties, p_to, p_new, p_retire)::text $$;
 CREATE FUNCTION lfh.retire(p_firm uuid) RETURNS text LANGUAGE sql AS $$ SELECT public.legal_retire_firm(p_firm)::text $$;
@@ -80,6 +85,7 @@ SELECT lfh.same('the new firm stands and is first call in Hays',
 SELECT lfh.has('retiring Snell with its last county waits while an account is still with it',
   lfh.hand('00000000-0000-0000-0000-0000000222f1', ARRAY['Comal'], '00000000-0000-0000-0000-0000000222f2', NULL, true), '1 account is still with ZZ Snell');
 SELECT lfh.same('that refusal changed nothing either', lfh.live(), 'Bell:ZZ Alamo* Comal:ZZ Alamo* Comal:ZZ Snell Hays:ZZ Hill Country* Travis:ZZ Alamo*');
+SELECT lfh.same('Snell''s portal link still works while the retire waits', lfh.links('00000000-0000-0000-0000-0000000222f1'), '1 live of 1');
 RESET ROLE;
 UPDATE public.legal_matters SET closed_at = now() WHERE id = '00000000-0000-0000-0000-0000000222e1';
 SET LOCAL ROLE authenticated;
@@ -87,6 +93,7 @@ SELECT lfh.as_user('00000000-0000-0000-0000-0000000222d1');
 SELECT lfh.has('with the account closed, Snell hands off Comal and is retired in the same call',
   lfh.hand('00000000-0000-0000-0000-0000000222f1', ARRAY['Comal'], '00000000-0000-0000-0000-0000000222f2', NULL, true), '"retired": true');
 SELECT lfh.same('Snell is retired', lfh.firms(), 'ZZ Alamo, ZZ Hill Country, ZZ Snell (retired)');
+SELECT lfh.same('retiring Snell revoked its portal link and kept the row', lfh.links('00000000-0000-0000-0000-0000000222f1'), '0 live of 1');
 SELECT lfh.same('Comal is Alamo''s alone', lfh.live(), 'Bell:ZZ Alamo* Comal:ZZ Alamo* Hays:ZZ Hill Country* Travis:ZZ Alamo*');
 
 SELECT lfh.has('retire as its own step is refused while the firm covers a county',
@@ -113,6 +120,8 @@ SELECT lfh.as_user('00000000-0000-0000-0000-0000000222d2');
 SELECT lfh.has('a training account is refused',
   lfh.hand('00000000-0000-0000-0000-0000000222f2', ARRAY['Bell'], NULL, '{"name": "ZZ Other"}', false), 'training account');
 SELECT lfh.same('none of them wrote', lfh.live(), 'Bell:ZZ Alamo* Comal:ZZ Alamo* Hays:ZZ Alamo* Travis:ZZ Alamo*');
+-- Back to the dev before the setup writes below: the training trigger reads the request's user, not the role.
+SELECT lfh.as_user('00000000-0000-0000-0000-0000000222d1');
 RESET ROLE;
 
 -- The only firm that stands, covering nothing, cannot be retired: the desk would have no firm.
