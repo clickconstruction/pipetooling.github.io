@@ -2,7 +2,7 @@
 title: swear a statement on a collections account
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: affidavit, sworn statement, declaration, notary, jurat, witness, legal desk, collections, timeline, evidence, penalty of perjury, venue, county, print, pdf, signing page, declarant, signed copy, scan, file
+keywords: affidavit, sworn statement, declaration, notary, jurat, witness, legal desk, collections, timeline, evidence, penalty of perjury, venue, county, print, pdf, signing page, declarant, signed copy, scan, file, business records, custodian of records, rule 902
 where: /legal-desk
 ---
 A sworn statement puts what someone saw or heard on paper, under oath, for the attorney. The Legal desk drafts it, prints it and keeps the signed copy. The office never types the same story twice.
@@ -63,5 +63,9 @@ The scan lands under **Documents for the firm** on the signing day. The Timeline
 :::example They changed it by hand
 The witness crossed out a sentence and initialed the change before signing. Pick **They changed it by hand** when you file. The Timeline keeps the printed text and says the scan governs. Nobody is quoted on a sentence they did not swear to.
 :::
+
+## The business-records affidavit
+
+The firm asks for one business-records affidavit on every account that reaches suit. It puts our invoices, the clock and the job thread into evidence with nobody called to testify. The form is Rule 902, subpart 10, of the Texas Rules of Evidence. Open **Swear a statement…** and press {{button:outline|Business records, Rule 902(10)}} under **Start from**. Pick who signs it. The custodian of records is the office person who keeps the books. Pick **The records attached** from the papers on Evidence. Type **Pages of records** when you know the count. The paragraphs write themselves in the rule's own words. Print it, have it signed before a notary, and file the signed copy as above. The firm serves the records and the affidavit on the other side at least 14 days before trial.
 
 Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney) for the desk as a whole.
