@@ -18,6 +18,8 @@ import {
   namedWords,
   rulePick,
   tiedWords,
+  startedBidWords,
+  INVITATION_WORDS,
   type LaneLineRow,
 } from './newLaneRows'
 import type { Teammate } from './team'
@@ -71,12 +73,12 @@ describe('which jobs are still under way', () => {
 
 describe('a line’s box and its tie', () => {
   it('reads the box and whether a person tied it, and nothing it does not know', () => {
-    expect(laneFacts({ mailbox: 'bids', tied_by: 'u-rosa' })).toEqual({ mailbox: 'bids', tiedByHand: true, auto: false })
-    expect(laneFacts({ mailbox: 'office', tied_by: null })).toEqual({ mailbox: null, tiedByHand: false, auto: false })
-    expect(laneFacts({})).toEqual({ mailbox: null, tiedByHand: false, auto: false })
+    expect(laneFacts({ mailbox: 'bids', tied_by: 'u-rosa' })).toEqual({ mailbox: 'bids', tiedByHand: true, auto: false, invitation: null })
+    expect(laneFacts({ mailbox: 'office', tied_by: null })).toEqual({ mailbox: null, tiedByHand: false, auto: false, invitation: null })
+    expect(laneFacts({})).toEqual({ mailbox: null, tiedByHand: false, auto: false, invitation: null })
     // The app's own text back (v2.6012) reads as such, and only as the boolean true.
-    expect(laneFacts({ auto: true })).toEqual({ mailbox: null, tiedByHand: false, auto: true })
-    expect(laneFacts({ auto: null })).toEqual({ mailbox: null, tiedByHand: false, auto: false })
+    expect(laneFacts({ auto: true })).toEqual({ mailbox: null, tiedByHand: false, auto: true, invitation: null })
+    expect(laneFacts({ auto: null })).toEqual({ mailbox: null, tiedByHand: false, auto: false, invitation: null })
   })
 })
 
@@ -214,5 +216,21 @@ describe('the open person’s lane row', () => {
     expect(laneRowFor(greg, { conversation: WAITING, lines: [asked], active: new Set() }, TODAY, NOW)).toMatchObject({ sort: 'has', via: 'Email to bids@' })
     const page = line('m-dana-page', 'dana', 'in', '2026-10-13T13:00:00Z', { channel: 'portal' })
     expect(laneRowFor({ ...dana, jobIds: [] }, { conversation: WAITING, lines: [page], active }, TODAY, NOW)).toBeNull()
+  })
+})
+
+describe('an invitation on the line (punch list #223 PR 3, v2.6222)', () => {
+  it('laneFacts reads the kept facts, else reads an email in itself, and nothing on a text or a line out', () => {
+    const kept = { kind: 'addendum', project: 'Oak Hill Clinic', due: null, portal: null, cue: 'addendum' }
+    expect(laneFacts({ channel: 'email', direction: 'in', invitation: kept, subject: 'Hello', body: '' }).invitation).toEqual({ ...kept, answer: null })
+    expect(laneFacts({ channel: 'email', direction: 'in', invitation: null, subject: 'Invitation to Bid: Lakeline shell', body: 'Bids due 11/12 at 2pm', at: '2026-10-13T13:00:00Z' }).invitation).toMatchObject({ kind: 'invitation', project: 'Lakeline shell', due: { date: '2026-11-12', time: '14:00' } })
+    expect(laneFacts({ channel: 'text', direction: 'in', body: 'Invitation to bid' }).invitation).toBeNull()
+    expect(laneFacts({ channel: 'email', direction: 'out', subject: 'Invitation to Bid: x', body: '' }).invitation).toBeNull()
+    expect(laneFacts({ mailbox: 'bids' }).invitation).toBeNull()
+  })
+
+  it('says what the presses did, in plain words', () => {
+    expect(startedBidWords({ bidNumber: '512', project: 'Oak Hill Clinic', customer: 'Ridgeway Builders' })).toBe('Bid b512 is started on Ridgeway Builders: Oak Hill Clinic. The thread is on it.')
+    for (const words of [startedBidWords({ bidNumber: '512', project: 'Oak Hill Clinic', customer: 'Ridgeway Builders' }), INVITATION_WORDS.notForUs, INVITATION_WORDS.kept]) expect(plainWordsFailures(words)).toEqual([])
   })
 })

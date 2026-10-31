@@ -324,6 +324,9 @@ function PortalRowView<C, N extends { contactId: string }>({ row, contact, ...pr
   )
 }
 
+/** *Bid it?* (v2.6222) wears the estimator's purple, so an invitation reads apart from the office's three sorts at a glance. */
+const BID_PRESS: CSSProperties = { background: '#6d28d9', border: '1px solid #6d28d9' }
+
 /** The one press on a New row (v2.5793): the sort's question as a small blue pill beside the name, the same words as the card it opens. */
 const SORT_PRESS: CSSProperties = {
   display: 'inline-block',
@@ -352,7 +355,7 @@ function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props
       contact={contact}
       landOn={row.messageId}
       pill={
-        <button type="button" onClick={() => actions.openThread(contact.id, row.messageId)} title={row.why} style={SORT_PRESS} data-new-lane-press={row.sort}>
+        <button type="button" onClick={() => actions.openThread(contact.id, row.messageId)} title={row.why} style={row.sort === 'bid' ? { ...SORT_PRESS, ...BID_PRESS } : SORT_PRESS} data-new-lane-press={row.sort}>
           {row.head}
           <span aria-hidden> ›</span>
         </button>

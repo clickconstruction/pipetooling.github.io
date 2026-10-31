@@ -9,6 +9,7 @@ import type { Contact, ContactKind } from '../contacts/kernel'
 import type { JobTile } from '../messages/jobTiles'
 import { jobKey, jobKeyOfRow } from '../messages/load'
 import type { MessageChannel } from '../messages/thread'
+import { invitation, invitationOf, type Invitation } from '../emailIn/invitation'
 import { hasChoices, newLane, type GuessKind, type HasChoice, type HasPerson, type HasPick, type LaneJob, type Mailbox, type NewLaneMessage, type NewLaneRow, type WhoGuess } from './newLane'
 import { onFollowUp, stateToday, whoGetsIt, type AssignSeats, type ContactState } from './queue'
 import type { Teammate } from './team'
@@ -47,13 +48,50 @@ export function activeJobKeys(rows: LaneJobRows): Set<string> {
  * A line's box, whether a person tied it, and whether the app sent it on its own, from R6's `messages.mailbox`, R7's
  * `messages.tied_by` and v2.6012's `messages.auto`.
  */
-export function laneFacts(row: { mailbox?: string | null; tied_by?: string | null; auto?: boolean | null }): Pick<NewLaneMessage, 'mailbox' | 'tiedByHand' | 'auto'> {
+export function laneFacts(row: LaneFactsRow): Pick<NewLaneMessage, 'mailbox' | 'tiedByHand' | 'auto' | 'invitation'> {
   return {
     mailbox: row.mailbox === 'team' || row.mailbox === 'bids' ? (row.mailbox as Mailbox) : null,
     tiedByHand: Boolean(row.tied_by),
     auto: row.auto === true,
+    invitation: lineInvitation(row),
   }
 }
+
+/** The columns `laneFacts` reads: the box, who tied it, the app's own send, and what the reader read from an invitation (v2.6222). */
+export interface LaneFactsRow {
+  mailbox?: string | null
+  tied_by?: string | null
+  auto?: boolean | null
+  /** `messages.invitation`: the kernel's facts with a person's answer, null on every other line, missing on a read from before the column. */
+  invitation?: unknown
+  channel?: string
+  direction?: string
+  subject?: string | null
+  body?: string
+  at?: string
+}
+
+/**
+ * The invitation a line is (v2.6222): the facts the reader kept on it, else, for an email in from before the reader
+ * kept them, what the same kernel reads from its subject and words now. An answer on the row is kept as it is.
+ */
+export function lineInvitation(row: LaneFactsRow): Invitation | null {
+  const kept = invitationOf(row.invitation)
+  if (kept) return kept
+  if (row.channel !== 'email' || row.direction !== 'in') return null
+  return invitation({ subject: row.subject ?? '', text: row.body ?? '', at: row.at ?? '' })
+}
+
+/** What *Start a bid* says once it lands: the bid's number and name, and where the thread is now. */
+export function startedBidWords(bid: { bidNumber: string; project: string; customer: string }): string {
+  return `Bid b${bid.bidNumber} is started on ${bid.customer}: ${bid.project}. The thread is on it.`
+}
+
+/** What the two other *Bid it?* presses say once they land. */
+export const INVITATION_WORDS = {
+  notForUs: 'Not for us. The thread is done. Their next invitation shows again.',
+  kept: 'Kept for later. No bid yet.',
+} as const
 
 /** The person's jobs as *Which job?* reads them: each tile's number and name, and whether it is still under way. */
 export function laneJobs(keys: readonly string[], tiles: Readonly<Record<string, JobTile>>, active: ReadonlySet<string>): LaneJob[] {
@@ -146,6 +184,8 @@ export interface LaneLineRow {
   mailbox?: string | null
   tied_by?: string | null
   auto?: boolean | null
+  /** `messages.invitation` (v2.6222). */
+  invitation?: unknown
 }
 
 const LINE_CHANNELS: ReadonlySet<string> = new Set<MessageChannel>(['call', 'voicemail', 'missed', 'text', 'email', 'note', 'event', 'portal'])

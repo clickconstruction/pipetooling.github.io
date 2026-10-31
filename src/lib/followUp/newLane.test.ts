@@ -26,6 +26,8 @@ import {
   teamGuess,
 } from './newLane'
 import { guessWait, namedWords } from './newLaneRows'
+import { invitation } from '../emailIn/invitation'
+import { bidCustomerChoices, bidHead, bidWhy, START_BID_WORDS } from './newLane'
 
 // The four made-up lines on screen 7 of the customer Messages prototype (v0.8, mockup A), on Tue Oct 13 2026 at
 // 10:00 AM in Chicago, with three people who must stay off the lane. Nothing here is a real row.
@@ -506,5 +508,71 @@ describe('the app texted back after a missed call (v2.6012)', () => {
   it('an app text from before their call says nothing', () => {
     const earlier = { ...textedBack('dana2', 'a-d'), at: '2026-10-13T11:00:00Z' }
     expect(newLane([dana], [missed('dana2', 'm-d'), earlier], ACTIVE, NOW)[0]?.autoLine).toBeNull()
+  })
+})
+
+describe('Bid it? (punch list #223 PR 3, v2.6222)', () => {
+  const INVITE = invitation({ subject: 'Invitation to Bid: Oak Hill Clinic, Boerne', text: 'Bids are due Thursday, November 12 at 2:00 PM.', links: ['https://app.buildingconnected.com/p/1'], at: '2026-10-13T13:00:00Z' })!
+  const dale: NewLaneContact = { id: 'dale', kind: 'unknown', name: 'Dale Ferris', company: '', jobIds: [], defaultJobId: null, has: 'Wendi' }
+  const channels = [{ kind: 'email' as const, value: 'dale@ridgeway.example' }]
+  const mail = (patch: Partial<NewLaneMessage> = {}): NewLaneMessage => ({
+    id: 'm-dale',
+    contactId: 'dale',
+    jobId: null,
+    channel: 'email',
+    direction: 'in',
+    at: '2026-10-13T13:00:00Z',
+    subject: 'Invitation to Bid: Oak Hill Clinic, Boerne',
+    body: 'Bids are due Thursday, November 12 at 2:00 PM.',
+    mailbox: 'bids',
+    invitation: INVITE,
+    ...patch,
+  })
+
+  it('asks Bid it? of an invitation ahead of Who is this?, with the facts on the row', () => {
+    const r = newLane([dale], [mail()], new Set(), NOW)[0]!
+    expect(r.sort).toBe('bid')
+    expect(r.head).toBe('Bid it?')
+    expect(r.why).toBe('Invitation to bid, due Thu Nov 12 at 2:00 PM, on BuildingConnected. A general contractor is a customer, so the bid goes on them.')
+    expect(r.invitation).toBe(INVITE)
+  })
+
+  it('asks it of a named customer too, held or not', () => {
+    const ridgeway: NewLaneContact = { ...dale, kind: 'customer', company: 'Ridgeway Builders', has: null }
+    expect(newLane([ridgeway], [mail()], new Set(), NOW)[0]?.sort).toBe('bid')
+  })
+
+  it('stops asking once the line is answered, or on a bid', () => {
+    expect(newLane([dale], [mail({ invitation: { ...INVITE, answer: { what: 'kept', at: NOW, by: null } } })], new Set(), NOW)[0]?.sort).toBe('who')
+    expect(newLane([dale], [mail({ jobId: 'bid:b1' })], new Set(), NOW)[0]?.sort).toBe('who')
+    expect(newLane([dale], [mail({ invitation: null })], new Set(), NOW)[0]?.sort).toBe('who')
+    // Not for us closes the thread; a later invitation from them asks again.
+    expect(newLane([{ ...dale, kind: 'customer' }], [mail({ id: 'm-1', invitation: { ...INVITE, answer: { what: 'not_for_us', at: NOW, by: null, reason: 'too far' } } }), mail({ id: 'm-2', at: '2026-10-13T14:00:00Z' })], new Set(), NOW)[0]?.sort).toBe('bid')
+  })
+
+  it('the head names the job and who it is from', () => {
+    expect(bidHead({ who: 'Dale Ferris', company: '', body: '', invitation: INVITE, channels })).toBe('Bid it? Oak Hill Clinic, Boerne, from Ridgeway')
+    expect(bidHead({ who: 'Dale Ferris', company: 'Ridgeway Builders', body: '', invitation: INVITE, channels })).toBe('Bid it? Oak Hill Clinic, Boerne, from Ridgeway Builders')
+    expect(bidHead({ who: 'Dale Ferris', company: '', body: '', invitation: { ...INVITE, project: null }, channels })).toBe('Bid it? From Ridgeway')
+    expect(bidHead({ who: 'dale@gmail.com', company: '', body: '', invitation: { ...INVITE, project: null }, channels: [{ kind: 'email', value: 'dale@gmail.com' }] })).toBe('Bid it?')
+  })
+
+  it('offers a Start a bid press per customer the sender may be, or the contact’s own', () => {
+    const row = { who: 'Dale Ferris', body: '', channels }
+    const known: WhoKnown = {
+      customers: [{ id: 'c-ridgeway', name: 'Ridgeway Builders', emails: ['dale@ridgeway.example'] }],
+      people: [{ id: 'p-1', name: 'Dale Ferris', customerId: 'c-ridgeway', customer: 'Ridgeway Builders', phones: [], emails: ['dale@ridgeway.example'] }],
+    }
+    const choices = bidCustomerChoices(row, known, null)
+    expect(choices.map((c) => [c.customerId, c.label])).toEqual([['c-ridgeway', 'Start a bid on Ridgeway Builders']])
+    expect(choices[0]!.words.endsWith(START_BID_WORDS)).toBe(true)
+    expect(choices[0]!.guess?.record).toBeTruthy()
+    expect(bidCustomerChoices(row, {}, null)).toEqual([])
+    const own = bidCustomerChoices(row, known, { id: 'c-own', name: 'Ridgeway Builders' })
+    expect(own).toEqual([{ customerId: 'c-own', customer: 'Ridgeway Builders', label: 'Start a bid on Ridgeway Builders', words: START_BID_WORDS, guess: null }])
+  })
+
+  it('writes plain words', () => {
+    for (const words of [bidWhy(INVITE), START_BID_WORDS]) expect(plainWordsFailures(words)).toEqual([])
   })
 })

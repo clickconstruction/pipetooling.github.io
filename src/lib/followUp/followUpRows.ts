@@ -37,6 +37,8 @@ export type FollowUpMessageRow = MessageRow & {
   tied_by?: string | null
   /** The app sent it on its own (v2.6012): the New lane says the app texted back and the row still waits. */
   auto?: boolean | null
+  /** What the reader read from an invitation to bid (v2.6222, `messages.invitation`), with a person's answer once there is one. */
+  invitation?: unknown
 }
 
 /** A `contact_owed` row. */

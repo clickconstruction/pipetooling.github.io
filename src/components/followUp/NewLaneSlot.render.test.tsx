@@ -92,7 +92,7 @@ const ROWS: Record<string, NewLaneCardRows> = {
   },
   dale: {
     contact: { state: 'waiting', snoozed_until: null, has_user_id: null },
-    lines: [line('m-dale', 'dale', 'in', { at: '2026-10-22T16:02:00Z', channel: 'email', subject: 'Invitation to Bid: Lakeline shell', body: 'Please see the attached Invitation to Bid. Bids are due the 30th.', mailbox: 'bids' })],
+    lines: [line('m-dale', 'dale', 'in', { at: '2026-10-22T16:02:00Z', channel: 'email', subject: 'Lakeline shell plumbing', body: 'Can you price the plumbing on the Lakeline shell? Plans attached.', mailbox: 'bids' })],
     tiles: {},
     active: new Set(),
     seats: { customer: 'u-rosa', trade: 'u-robert', arch: null },
@@ -114,6 +114,9 @@ function fakeIo(over: Partial<NewLaneCardIo> = {}, rows: Record<string, NewLaneC
     loadKnown: vi.fn(async () => ({ customers: [{ id: 'alvarez', name: 'Alvarez Family Dental' }] })),
     markNotice: vi.fn(async () => undefined),
     unmarkNotice: vi.fn(async () => undefined),
+    makeCustomerRecord: vi.fn(async () => 'c-new'),
+    startBid: vi.fn(async () => ({ bidId: 'b-new', bidNumber: '512', customer: 'Ridgeway Builders' })),
+    answerInvitation: vi.fn(async () => undefined),
     name: vi.fn(async (contactId: string) => contactId),
     makeCustomer: vi.fn(async (contactId: string) => contactId),
     makeRecord: vi.fn(async (contactId: string) => contactId),
@@ -402,5 +405,87 @@ describe('One of our own team (v2.5546)', () => {
     fireEvent.click(await screen.findByRole('button', { name: /One of our own team/ }))
     fireEvent.click(card('Which of ours?').getByRole('button', { name: 'Back' }))
     expect(card('Who is this?').getByRole('button', { name: /a new lead on Prospects/i })).toBeTruthy()
+  })
+})
+
+describe('Bid it? (punch list #223 PR 3, v2.6222)', () => {
+  const INVITE = { kind: 'invitation', project: 'Oak Hill Clinic, Boerne', due: { date: '2026-11-12', time: '14:00' }, portal: { label: 'BuildingConnected', url: 'https://app.buildingconnected.com/p/1' }, cue: 'invitation to bid' }
+  const SENDER = person('invite', 'unknown', 'Dale Ferris', { channels: [{ id: 'ch-invite', kind: 'email', value: 'dale@ridgeway.example', optedOutAt: null }] })
+  const RIDGEWAY = person('ridgeway', 'customer', 'Dale Ferris', { company: 'Ridgeway Builders', customerId: 'c-ridgeway', channels: [{ id: 'ch-r', kind: 'email', value: 'dale@ridgeway.example', optedOutAt: null }] })
+  const rowsFor = (id: string, hasUserId: string | null = 'u-robert'): Record<string, NewLaneCardRows> => ({
+    [id]: {
+      contact: { state: 'waiting', snoozed_until: null, has_user_id: hasUserId },
+      lines: [line(`m-${id}`, id, 'in', { at: '2026-10-22T16:02:00Z', channel: 'email', subject: 'Invitation to Bid: Oak Hill Clinic, Boerne', body: 'Bids are due Thursday, November 12 at 2:00 PM.', mailbox: 'bids', invitation: INVITE })],
+      tiles: {},
+      active: new Set(),
+      seats: { customer: 'u-rosa', trade: 'u-robert', arch: null },
+      team: [ROBERT, ROSA],
+    },
+  })
+  const known = () => vi.fn(async () => ({ customers: [{ id: 'c-ridgeway', name: 'Ridgeway Builders', emails: ['dale@ridgeway.example'] }] }))
+  const renderBid = (contact: Contact, io: NewLaneCardIo) => {
+    const openBid = vi.fn()
+    const say = vi.fn()
+    render(<NewLaneSlot contact={contact} acts={{ openWho: vi.fn(), showContact: vi.fn() }} io={io} say={say} reread={vi.fn()} me={{ id: 'u-robert', name: 'Robert' }} nowIso={NOW} openBid={openBid} />)
+    return { openBid, say }
+  }
+
+  it('draws the card: the job and who from, the facts, the Bid field, a customer we know, a new customer, Not for us and Keep it', async () => {
+    renderBid(SENDER, fakeIo({ loadKnown: known() }, rowsFor('invite')))
+    const bid = within(await screen.findByRole('region', { name: 'Sort: Bid it?' }))
+    expect(bid.getByRole('heading', { name: 'Bid it? Oak Hill Clinic, Boerne, from Ridgeway' })).toBeTruthy()
+    expect(bid.getByText('Invitation to bid, due Thu Nov 12 at 2:00 PM, on BuildingConnected. A general contractor is a customer, so the bid goes on them.')).toBeTruthy()
+    expect((bid.getByLabelText(/^Bid/) as HTMLInputElement).value).toBe('Oak Hill Clinic, Boerne')
+    expect(await bid.findByText('A customer we know')).toBeTruthy()
+    expect(bid.getByRole('button', { name: /Start a bid on Ridgeway Builders/ })).toBeTruthy()
+    expect((bid.getByLabelText(/^Customer/) as HTMLInputElement).value).toBe('Ridgeway')
+    expect(bid.getByRole('button', { name: /Make the customer and start the bid/ })).toBeTruthy()
+    expect((bid.getByRole('button', { name: /^Not for us/ }) as HTMLButtonElement).disabled).toBe(true)
+    expect(bid.getByRole('button', { name: /Keep it with Dale/ })).toBeTruthy()
+  })
+
+  it('Start a bid on a customer we know names the sender first, starts the bid with the facts, says so and opens the bid', async () => {
+    const io = fakeIo({ loadKnown: known() }, rowsFor('invite'))
+    const { openBid, say } = renderBid(SENDER, io)
+    fireEvent.click(await screen.findByRole('button', { name: /Start a bid on Ridgeway Builders/ }))
+    await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-invite', { customerId: 'c-ridgeway', projectName: 'Oak Hill Clinic, Boerne', dueDate: '2026-11-12', dueTime: '14:00', links: ['https://app.buildingconnected.com/p/1'] }))
+    expect(io.name).toHaveBeenCalledWith('invite', expect.objectContaining({ kind: 'customer', record: { table: 'customers', id: 'c-ridgeway' } }))
+    expect(say).toHaveBeenCalledWith('Bid b512 is started on Ridgeway Builders: Oak Hill Clinic, Boerne. The thread is on it.', 'success')
+    expect(openBid).toHaveBeenCalledWith('b-new')
+  })
+
+  it('Make the customer and start the bid makes the company, names the sender as a person at it, then starts the bid', async () => {
+    const io = fakeIo({ loadKnown: vi.fn(async () => ({})) }, rowsFor('invite'))
+    renderBid(SENDER, io)
+    const bid = within(await screen.findByRole('region', { name: 'Sort: Bid it?' }))
+    fireEvent.change(await bid.findByLabelText(/^Customer/), { target: { value: 'Ridgeway Builders' } })
+    fireEvent.click(bid.getByRole('button', { name: /Make the customer and start the bid/ }))
+    await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-invite', expect.objectContaining({ customerId: 'c-new', projectName: 'Oak Hill Clinic, Boerne' })))
+    expect(io.makeCustomerRecord).toHaveBeenCalledWith('invite', { customerName: 'Ridgeway Builders', personName: 'Dale Ferris', email: 'dale@ridgeway.example', phone: null, customerType: 'commercial' }, { userId: 'u-robert' }, expect.any(String))
+    expect(io.name).toHaveBeenCalledWith('invite', expect.objectContaining({ record: { table: 'customers', id: 'c-new' }, newPerson: true, name: 'Dale Ferris' }))
+  })
+
+  it('Not for us needs a reason, then answers with it; Keep it answers kept', async () => {
+    const io = fakeIo({ loadKnown: known() }, rowsFor('invite'))
+    const { say } = renderBid(SENDER, io)
+    const bid = within(await screen.findByRole('region', { name: 'Sort: Bid it?' }))
+    fireEvent.change(bid.getByLabelText(/Not for us, because/), { target: { value: 'too far' } })
+    fireEvent.click(bid.getByRole('button', { name: /^Not for us/ }))
+    await waitFor(() => expect(io.answerInvitation).toHaveBeenCalledWith('m-invite', 'not_for_us', 'too far'))
+    expect(say).toHaveBeenCalledWith('Not for us. The thread is done. Their next invitation shows again.', 'success')
+    fireEvent.click(bid.getByRole('button', { name: /Keep it with Dale/ }))
+    await waitFor(() => expect(io.answerInvitation).toHaveBeenCalledWith('m-invite', 'kept', null))
+  })
+
+  it('a customer already: their own Start a bid press, no new customer, and no naming first', async () => {
+    const io = fakeIo({ loadKnown: known() }, rowsFor('ridgeway'))
+    renderBid(RIDGEWAY, io)
+    const bid = within(await screen.findByRole('region', { name: 'Sort: Bid it?' }))
+    expect(bid.getByRole('heading', { name: 'Bid it? Oak Hill Clinic, Boerne, from Ridgeway Builders' })).toBeTruthy()
+    expect(bid.getByText('The customer')).toBeTruthy()
+    expect(bid.queryByText('A new customer')).toBeNull()
+    fireEvent.click(bid.getByRole('button', { name: /Start a bid on Ridgeway Builders/ }))
+    await waitFor(() => expect(io.startBid).toHaveBeenCalledWith('m-ridgeway', expect.objectContaining({ customerId: 'c-ridgeway' })))
+    expect(io.name).not.toHaveBeenCalled()
   })
 })
