@@ -8,8 +8,11 @@ SET lock_timeout = '3s';
 -- row under its own trigger word, and only while the firm has the matter: released to it and not pulled
 -- back (`released_at`, which a pull-back clears), and open, or closed in this very transaction
 -- (`legal_close_matter` writes its closing step right after the close). That is the set the portal shows:
--- a pulled-back matter's read-only view carries none of these, and a matter in review or in house is not
--- the firm's, though it may still carry the firm that had it. Every row also carries its source's id
+-- a pulled-back matter's read-only view carries nothing written after the pull-back, and a matter in review
+-- or in house is not the firm's, though it may still carry the firm that had it or was picked for it. The
+-- four that email now (an answer, an ask, a note, a payment applied) need the release too, by the owner's
+-- word of 2026-11-01 (*Yes, stop them*): after a pull-back, nothing the office adds to the matter emails the
+-- firm that had it. A matter closed while with the firm keeps those four, as before. Every row also carries its source's id
 -- (`entryId`, `documentId`), because holding a planned step, an event, an offer, a statement or a paper
 -- back from counsel is a press after the save, never part of it: the dispatcher reads each source when the
 -- digest is built and drops a line the office held back or undid. `legal-notify-dispatch` (v2.6283) holds
@@ -38,12 +41,12 @@ EXCEPTION WHEN duplicate_object THEN NULL;
 END $$;
 ALTER TABLE public.legal_notification_queue VALIDATE CONSTRAINT legal_notification_queue_trigger_check_v3;
 
--- 2. The office's entries. The four that email now (answer, ask, note, payment applied) keep the gate they
---    had (a firm on the matter) and gain their entry's id; the five that ride the digest (step, plan, event,
---    offer, statement) queue only while the firm has the matter. A step that only echoes a release or a
---    pull-back (its body is the desk's own line for those) is left to the referred / pulled rows; one held
---    back at insert stays home. Same function name, so the existing AFTER INSERT trigger
---    (legal_entries_notify_answer) runs it.
+-- 2. The office's entries, all nine only on a matter released to the firm (see the header). The four that
+--    email now (answer, ask, note, payment applied) gain their entry's id; the five that ride the digest
+--    (step, plan, event, offer, statement) also need the matter open, or closed in this transaction. A step
+--    that only echoes a release or a pull-back (its body is the desk's own line for those) is left to the
+--    referred / pulled rows; one held back at insert stays home. Same function name, so the existing AFTER
+--    INSERT trigger (legal_entries_notify_answer) runs it.
 CREATE OR REPLACE FUNCTION public.legal_entries_notify_answer()
 RETURNS trigger LANGUAGE plpgsql SECURITY DEFINER SET search_path = public AS $$
 DECLARE
@@ -57,7 +60,9 @@ BEGIN
   IF NEW.via_portal OR NEW.kind NOT IN ('answer', 'question', 'note', 'recovery_applied', 'step', 'plan', 'event', 'offer', 'statement') THEN RETURN NEW; END IF;
   SELECT firm_id, payer_name, held_overrides, released_at, closed_at INTO v_firm, v_payer, v_held, v_released, v_closed
     FROM public.legal_matters WHERE id = NEW.matter_id;
-  IF v_firm IS NULL THEN RETURN NEW; END IF;
+  -- Nothing reaches a firm that does not have the matter: a pull-back clears released_at, and a matter in
+  -- review or in house may still carry the firm that had it, or the one picked for it before a release.
+  IF v_firm IS NULL OR v_released IS NULL THEN RETURN NEW; END IF;
   IF NEW.kind = 'answer' THEN
     -- A malformed askId must never fail the office's insert (item 17 review): cast only a real uuid.
     IF NEW.meta ? 'askId' AND (NEW.meta->>'askId') ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$' THEN
@@ -76,8 +81,8 @@ BEGIN
     INSERT INTO public.legal_notification_queue (firm_id, matter_id, trigger, payload)
     VALUES (v_firm, NEW.matter_id, 'applied', jsonb_build_object('payer', v_payer, 'body', NEW.body, 'amount', NEW.amount, 'entryId', NEW.id));
   ELSE
-    -- step, plan, event, offer, statement: only while the firm has the matter (see the header).
-    IF v_released IS NULL OR (v_closed IS NOT NULL AND v_closed <> now()) THEN RETURN NEW; END IF;
+    -- step, plan, event, offer, statement: and open, or closed in this very transaction (see the header).
+    IF v_closed IS NOT NULL AND v_closed <> now() THEN RETURN NEW; END IF;
     IF NEW.kind = 'step' THEN
       IF NEW.body LIKE 'Marked attorney-ready%' OR NEW.body LIKE 'Pulled back from counsel%' THEN RETURN NEW; END IF;
       INSERT INTO public.legal_notification_queue (firm_id, matter_id, trigger, payload)
