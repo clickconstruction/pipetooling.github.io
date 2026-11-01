@@ -78,6 +78,7 @@ const RULES: Record<LienTimelineStep['kind'], string> = {
   suit: '§ 53.158: suit within one year after the last day a claimant may file the affidavit, or one year after completion, termination or abandonment, whichever is later.',
   release: '§ 53.152: once paid, the claimant furnishes a release of the lien within ten days of a request.',
   demand: 'CPRC § 38.001: a claim presented to the debtor; attorney’s fees follow when it is not paid within 30 days (§ 38.002).',
+  courtesy: 'Our paper, not a Chapter 53 step: the plain reminder sent by email and text between the notice and the affidavit, naming the lien’s day from the affidavit’s own clock (punch list #231).',
 }
 
 const DOES: Partial<Record<LienTimelineStep['kind'], string>> = {
@@ -210,6 +211,8 @@ function titleFor(step: LienTimelineStep, e: LegalEnvelope | null): string {
       return 'The release of record'
     case 'demand':
       return 'The demand letter'
+    case 'courtesy':
+      return 'The courtesy notice'
   }
 }
 

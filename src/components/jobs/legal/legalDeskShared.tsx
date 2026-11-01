@@ -76,6 +76,7 @@ export function DeskEnvelopeAnswersBand({ e, packet }: { e: LegalEnvelope; packe
     <div data-legal-envelope-answers={e.key} style={{ background: 'var(--bg-200)', borderRadius: 6, padding: '6px 10px', fontSize: '0.8rem', lineHeight: 1.45 }}>
       <div><b>The owner's answers</b> <span style={MUTED}>· {w.owner}</span></div>
       <div><b>Letter two</b> <span style={MUTED}>· {w.letterTwo}</span> <b style={{ marginLeft: 10 }}>GC's written okay to pay Click direct:</b> <span style={MUTED}>{w.gcOkay}</span></div>
+      <div data-legal-envelope-courtesy><b>Courtesy notice</b> <span style={MUTED}>· {w.courtesy}</span></div>
     </div>
   )
 }

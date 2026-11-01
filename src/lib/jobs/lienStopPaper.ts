@@ -12,7 +12,7 @@ import type { LienTimelineStep } from './lienTimeline'
  */
 
 /** Which paper of ours a stop sends; `none` for the stops that are a fact, the owner's hold or counsel's filing. */
-export type LienStopPaperKind = 'notice' | 'retainage' | 'affidavit' | 'serve' | 'release' | 'demand' | 'none'
+export type LienStopPaperKind = 'notice' | 'retainage' | 'affidavit' | 'serve' | 'release' | 'demand' | 'courtesy' | 'none'
 
 export function lienStopPaperKind(step: Pick<LienTimelineStep, 'kind'>): LienStopPaperKind {
   switch (step.kind) {
@@ -22,6 +22,7 @@ export function lienStopPaperKind(step: Pick<LienTimelineStep, 'kind'>): LienSto
     case 'serve':
     case 'release':
     case 'demand':
+    case 'courtesy':
       return step.kind
     default:
       return 'none'
@@ -134,5 +135,7 @@ export function lienStopWindowWords({ step, noticeMonths }: LienStopWindowWordsI
       return { eyebrow, title: 'The release of record', line: standing(step), noPaper: null }
     case 'demand':
       return { eyebrow, title: 'The demand letter', line: standing(step), noPaper: null }
+    case 'courtesy':
+      return { eyebrow, title: 'The courtesy notice', line: standing(step), noPaper: null }
   }
 }

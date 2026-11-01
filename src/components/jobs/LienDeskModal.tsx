@@ -1919,6 +1919,7 @@ export default function LienDeskModal({
       return { ...none, note: 'The release of record is made in the Release of Lien window once the job is paid.' }
     }
     if (kind === 'demand') return { ...none, note: 'The demand letter is sent from the job’s Lien window; its reply day is on the strip.' }
+    if (kind === 'courtesy') return { ...none, note: 'The courtesy notice goes from the sent notice’s footer here; its record is on the notice and in the job’s History.' }
     return none
   }
 
