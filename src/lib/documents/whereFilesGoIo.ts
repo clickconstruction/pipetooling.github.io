@@ -74,7 +74,8 @@ export async function loadWhereFilesGoJobs(): Promise<WhereFilesGoJob[]> {
     () => supabase.from('jobs_ledger').select(JOB_COLUMNS).or('status.is.null,status.neq.paid').order('hcp_number', { ascending: false }).limit(1000),
     'loadWhereFilesGoJobs',
   )
-  return (data ?? []) as WhereFilesGoJob[]
+  // Through unknown until the types chore after migration 20261101163412 regenerates database.ts with the two stamps.
+  return (data ?? []) as unknown as WhereFilesGoJob[]
 }
 
 /**
@@ -94,7 +95,8 @@ export async function findWhereFilesGoJobs(typed: string): Promise<WhereFilesGoJ
         .limit(8),
     'findWhereFilesGoJobs',
   )
-  return (data ?? []) as WhereFilesGoJob[]
+  // Through unknown until the types chore after migration 20261101163412 regenerates database.ts with the two stamps.
+  return (data ?? []) as unknown as WhereFilesGoJob[]
 }
 
 type BidRow = { id: string; project_name: string | null; bid_number: string | null; address: string | null; created_at: string | null; customers: { name: string | null } | { name: string | null }[] | null }
