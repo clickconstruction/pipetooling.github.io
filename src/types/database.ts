@@ -9688,6 +9688,81 @@ export type Database = {
         }
         Relationships: []
       }
+      email_tag_threads: {
+        Row: {
+          bid_id: string | null
+          gmail_thread_id: string
+          id: string
+          jobs_ledger_id: string | null
+          last_error: string | null
+          last_read_at: string | null
+          project_id: string | null
+          tagged_at: string
+          tagged_by: string | null
+          user_id: string
+        }
+        Insert: {
+          bid_id?: string | null
+          gmail_thread_id: string
+          id?: string
+          jobs_ledger_id?: string | null
+          last_error?: string | null
+          last_read_at?: string | null
+          project_id?: string | null
+          tagged_at?: string
+          tagged_by?: string | null
+          user_id: string
+        }
+        Update: {
+          bid_id?: string | null
+          gmail_thread_id?: string
+          id?: string
+          jobs_ledger_id?: string | null
+          last_error?: string | null
+          last_read_at?: string | null
+          project_id?: string | null
+          tagged_at?: string
+          tagged_by?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_tag_threads_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tag_threads_jobs_ledger_id_fkey"
+            columns: ["jobs_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tag_threads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "gc_projects"
+            referencedColumns: ["project_id"]
+          },
+          {
+            foreignKeyName: "email_tag_threads_tagged_by_fkey"
+            columns: ["tagged_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_tag_threads_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_templates: {
         Row: {
           body: string
@@ -24482,6 +24557,7 @@ export type Database = {
           introduces_user_id: string | null
           invitation: Json | null
           jobs_ledger_id: string | null
+          mail_user_id: string | null
           mailbox: string | null
           office_only: boolean
           optout_line: string | null
@@ -24522,6 +24598,7 @@ export type Database = {
           introduces_user_id?: string | null
           invitation?: Json | null
           jobs_ledger_id?: string | null
+          mail_user_id?: string | null
           mailbox?: string | null
           office_only?: boolean
           optout_line?: string | null
@@ -24562,6 +24639,7 @@ export type Database = {
           introduces_user_id?: string | null
           invitation?: Json | null
           jobs_ledger_id?: string | null
+          mail_user_id?: string | null
           mailbox?: string | null
           office_only?: boolean
           optout_line?: string | null
@@ -24627,6 +24705,13 @@ export type Database = {
             columns: ["jobs_ledger_id"]
             isOneToOne: false
             referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_mail_user_id_fkey"
+            columns: ["mail_user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
             referencedColumns: ["id"]
           },
           {
@@ -33696,6 +33781,8 @@ export type Database = {
           is_sample: boolean
           is_walk_tester: boolean
           last_sign_in_at: string | null
+          my_mail_hidden_labels: string[]
+          my_mail_on: boolean
           name: string
           needs_supervision: boolean
           notes: string | null
@@ -33728,6 +33815,8 @@ export type Database = {
           is_sample?: boolean
           is_walk_tester?: boolean
           last_sign_in_at?: string | null
+          my_mail_hidden_labels?: string[]
+          my_mail_on?: boolean
           name: string
           needs_supervision?: boolean
           notes?: string | null
@@ -33760,6 +33849,8 @@ export type Database = {
           is_sample?: boolean
           is_walk_tester?: boolean
           last_sign_in_at?: string | null
+          my_mail_hidden_labels?: string[]
+          my_mail_on?: boolean
           name?: string
           needs_supervision?: boolean
           notes?: string | null
@@ -39266,6 +39357,13 @@ export type Database = {
       move_labor_job_payment: {
         Args: { p_payment_id: string; p_reason?: string; p_to_job_id: string }
         Returns: string
+      }
+      my_mail_set: {
+        Args: { p_hidden_labels?: string[]; p_on: boolean }
+        Returns: {
+          hidden_labels: string[]
+          is_on: boolean
+        }[]
       }
       my_partner_partnership_id: { Args: never; Returns: string }
       my_sub_portal_address: { Args: never; Returns: Json }
