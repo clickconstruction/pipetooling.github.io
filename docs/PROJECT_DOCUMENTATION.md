@@ -2011,7 +2011,7 @@ pipetooling.github.io/
 - **Customers on mobile (dev only)**: Devs on mobile see Customers link in hamburger dropdown instead of header icon
 - Role-based link visibility
 - Impersonation: desktop **Back** (full meaning in **`title`** / **`aria-label`**); Settings banner **Back to my Account**
-- **Gear menu** (top-right): Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime `force-reload` channel)
+- **Gear menu** (top-right): **Roadmap** row above Partnerships for dev / master / assistant-like / primary via `canOpenRoadmap` (v2.6258 — it left the header and the phone drawer); Settings link (all users); Global Reload (dev-only, broadcasts reload to all connected clients via Supabase Realtime `force-reload` channel)
 - Sign out functionality
 
 #### `src/types/database.ts`
@@ -2835,7 +2835,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `/bids` - Bids management (bid board, counts, takeoffs, cover letter, submission & followup)
 - `/prospects` - Prospects (Customers pipeline + Team hiring board)
 - `/checklist` - Checklist (Today, History, Review, Manage) — the daily list
-- `/roadmap` - Roadmap (Goals strip + Map / Plan / Timeline; v2.2916 — was the Checklist page's Roadmap tab; dev / master / assistant-like / primary via `canOpenRoadmap`)
+- `/roadmap` - Roadmap (Goals strip + Map / Plan / Timeline; v2.2916 — was the Checklist page's Roadmap tab; dev / master / assistant-like / primary via `canOpenRoadmap`; its door is the gear menu's row above Partnerships since v2.6258)
 - `/punch-list` - Punch list (v2.3558 — the `to-dos/` board in the app: rows from the `virtual:punch-list` module, rendered at build time from `to-dos/` by `todoBoardPlugin` (v2.3623; `npm run check:todos` in CI); mock-ups served at `/to-dos/…` by `todoMockupsPlugin`; every row opens with the to-do's `number:` — required, unique, never reused, `#n<N>` anchors the row (v2.3708); dev / master via `canOpenPunchList`; the door is the Punch list chip under the Settings rail's search box, v2.4041 — it left the gear menu and the phone dock's More sheet then)
 - `/tally` - Job parts tally (every role; its doors are the Job Parts Tally chip under the Settings rail's search box — off the gear menu since v2.4061 — and the Dashboard's wrench square)
 - `/help` - Help guides

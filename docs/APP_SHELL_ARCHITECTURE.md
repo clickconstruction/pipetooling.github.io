@@ -118,7 +118,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | C | Role route guard + per-role landing | guard 399–404; farm bounce 347–351; add-task link 320–337; `useAssistantDispatchLanding` 177; App index 303, `*` 349, `SignInRoute` dest 133–143 | ~50 | `role`, `estimatorProspectsAccess`, `farmModeActive`, `location` | **high** (every navigation) | partially extracted (`layoutRouteAccess.ts`, `assistantDispatchLanding.ts`, `farmModeToggle.ts`) |
 | D | Session side-effects | heartbeat 139, dismissal sync 141–145, localities 168–172, dashboard prefetch 319, 358–371 | ~30 | `authUser.id` only | low | partially extracted (libs + hooks; effects inline) |
 | E | Shell modes | mode hooks + derivations 146–198, `phoneDockModes` 284–308, `exitFarmMode` 352–355 | ~85 | read by F, G, H, I, K, L | med | partially extracted (4 `use*ModeEnabled` hooks, PO kernel); derivations inline |
-| F | Desktop top nav | `renderNavLinks` 641–829, gates 496–528, icons 530–609, nav fit 238–252, desktop branch 1036–1040 | ~335 | role, farm, partner, `isMobile`, prefetch | med | inline (gate kernels: roadmap, banking) |
+| F | Desktop top nav | `renderNavLinks` 641–829, gates 496–528, icons 530–609, nav fit 238–252, desktop branch 1036–1040 | ~335 | role, farm, partner, `isMobile`, prefetch | med | inline (gate kernels: banking; roadmap's gate feeds the gear row, H) |
 | G | Header toolbar | search button 1042, contact row + task buttons 1043–1176, header Bid 1177–1193, icon cluster 1194–1285 | ~260 | 3 modal contexts, mode flags, `isMobile`, `phoneDockActive` | low | partially extracted (`HeaderGlobalSearch*`, eligibility kernels) |
 | H | Gear menu + View as | `!phoneDockActive` 1286–1977; `ViewAsPanel` mount 1999 | ~695 | ~20 shell values (mode flags + setters, theme, gates, `impersonating`, `forceReload`, `signOutEverywhere`); shared click-outside | med | inline (`ViewAsPanel` extracted) |
 | I | Mobile menu + phone dock + mode footers | hamburger 889–1035, `renderMobileHeaderLinks` 611–639, dock state 253–275, footers/sheet 2268–2291 | ~225 | `renderNavLinks`, mode flags, `signOutEverywhere` | med | dock/footers extracted (`DispatchModeFooter`, `PhoneDockMoreSheet`, `phoneDock.ts`); hamburger inline |
@@ -142,7 +142,6 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | Estimates · Jobs · Schedule | ✓ | ✓ | ✓ (Schedule bold) | ✓ (bold) | Estimates | Estimates · Jobs | ✓ | — | 702, 728–729, 782–801 |
 | Projects · Bids | ✓ | ✓ | ✓ | ✓ | Bids | Bids | ✓ | — | 703, 730, 802–817 |
 | Prospects | ✓ | ✓ | ✓ | ✓ | if `estimatorProspectsAccess` | — | — | — | 705, 806 |
-| Roadmap (`canOpenRoadmap`) | ✓ | ✓ | ✓ | ✓ | — | ✓ | — | — | 731, 809 |
 | Partner Statement (`useIsPartner`) | — | — | — | — | if partner | **phone only** | if partner (**route refuses**) | if partner | 635, 692, 770 |
 | Map icon (desktop) / gear·m | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | — | 523–528, 1195–1211, 1731 |
 | Materials icon (desktop) / gear·m | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | 496–505, 1212–1228, 1687 |
@@ -156,6 +155,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | Gear: Job Mode toggle | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 1323 (`canLeaveJobFieldReport`) |
 | Gear: Dispatch Mode · PO tab | D·PO | D·PO | D·PO | D·PO (PO since v2.5011) | — | — | — | — | 1374, 1423 |
 | Gear: Farm · Pin · Dark · Calendar · Help · Settings · Sign out · Hard Reload (Job Parts Tally moved to the Settings rail, v2.4061) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 1472–1634, 1797–1950 |
+| Gear: Roadmap (`canOpenRoadmap`; above Partnerships since v2.6258 — the header and phone drawer lost the link) | ✓ | ✓ | ✓ | ✓ | — | ✓ | — | — | 1649 |
 | Gear: Documents | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | 1658–1686 |
 | Gear: Banking (`canAccessBanking`) — the AR link left the menu in v2.4041 | B | B | — | B | — | — | — | — | 1753–1774 |
 | Gear: Partnerships · Global Reload (View as… moved to the Settings rail, v2.4041) | ✓ | — | — | — | — | — | — | — | 1636, 1952 |
@@ -243,7 +243,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 ### H. Gear menu + View as
 
-- **Render:** 1286–1977, hidden while `phoneDockActive`. The menu (`data-navtrack="gear-menu"`, 1307–1975) has three parts. Mode toggles 1323–1635 (Job, Dispatch, PO tab, Farm, Pin, Dark, then the "Auto (dark 8pm–4am)" reset row when `themeOverride !== null`, 1614). Page links 1636–1909 (Partnerships, Documents, Materials/Checklist/Map on a phone, Banking, Calendar, Help, Settings — Accounts Receivable, View as… and Punch list left the menu in v2.4041 and Job Parts Tally in v2.4061; the last three are the Settings rail's doors, `lib/settingsRailDoors.ts`, and `ViewAsPanel` now mounts from `Settings.tsx`). Session actions 1910–1973 (Sign out → `signOutEverywhere`, Hard Reload → `hardReloadFromRoot`, dev Global Reload → `forceReload.forceEveryoneToReload()`). `ViewAsPanel` mounts at 1999, outside `<nav>`.
+- **Render:** 1286–1977, hidden while `phoneDockActive`. The menu (`data-navtrack="gear-menu"`, 1307–1975) has three parts. Mode toggles 1323–1635 (Job, Dispatch, PO tab, Farm, Pin, Dark, then the "Auto (dark 8pm–4am)" reset row when `themeOverride !== null`, 1614). Page links 1636–1909 (Roadmap since v2.6258, Partnerships, Documents, Materials/Checklist/Map on a phone, Banking, Calendar, Help, Settings — Accounts Receivable, View as… and Punch list left the menu in v2.4041 and Job Parts Tally in v2.4061; the last three are the Settings rail's doors, `lib/settingsRailDoors.ts`, and `ViewAsPanel` now mounts from `Settings.tsx`). Session actions 1910–1973 (Sign out → `signOutEverywhere`, Hard Reload → `hardReloadFromRoot`, dev Global Reload → `forceReload.forceEveryoneToReload()`). `ViewAsPanel` mounts at 1999, outside `<nav>`.
 - **Owned state:** `gearOpen` 203, `gearRef` 206 (`viewAsOpen` left with the door, v2.4041). **Shared:** click-outside effect 381–397, which also closes `menuOpen` and `pinForOpen`.
 - **Reads:** role, `authUser`, all E flags and setters, `theme`/`themeOverride`, `isMobile`, `canShow*`, `farmModeActive`, `impersonating`, `forceReload`.
 - **Tests:** `ViewAsPanel.render.test.tsx` (1), `bankingAccess.test.ts` (4). `punchListAccess.ts` and `canLeaveJobFieldReport.ts` have no test. The menu itself is untested.

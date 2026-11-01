@@ -367,7 +367,7 @@ it beside it, v2.5882; the audit with a call per door is punch list #188).
 
 ### Header (any page)
 Global search (⌘K or Ctrl+K; for the office jobs/bids/customers by name or J#/B#/C#, and under them every page, tab, window, Settings card, guide and to-do the role may open, from one gated index, `src/lib/search/doors.ts`, v2.5900 to v2.5933, punch list #181; the estimator, primary and superintendent get the doors alone, helpers and subs their job lookup with the guides; guide `global-search`), Inbox, **Messages** with its count on the word's corner for the office team (`/messages`, v2.5762), Task dispatch/add,
-gear menu (theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
+gear menu (**Roadmap** above Partnerships for the roles that plan it, v2.6258; theme, sign out). The 🤖 DIGITAL TWIN banner lives here when you are a twin.
 Above the nav on every page, one strip: the slow line (*The app is slow right now.* / *Could not reach the app.* / *No signal.*, v2.6009; guide `know-what-to-do-when-the-app-is-slow`) and, since v2.6099, the waiting bar — a clock in, a clock out, a job note or a field report pressed with no signal waits on the phone and goes out in order when the signal returns, amber with **Try now**, green with **Got it**, red with **Fix**; a tap opens the list (Needs you · Waiting · Sent today); guide `keep-working-when-the-signal-drops` (v2.6101), and `what-no-connection-means` for a press that did not wait.
 On a phone with Dispatch Mode on, an assistant / controller gets the **phone dock** instead of
 the hamburger and gear: a bottom bar of Jobs (`/jobs?tab=stages`) · Schedule

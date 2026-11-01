@@ -7,7 +7,7 @@ order: 46
 ---
 The **⚡ Next up** panel is a short list of the roadmap tasks worth doing next, and *why*. The panel just points, and never re-orders your roadmap.
 
-The **Plan** view is where the **Roadmap** page opens. You open the page from the header, under **Roadmap**. You tap **Map** or **Timeline** to switch views. The app remembers your pick on that device. The Plan view opens with the goals. Below them sits a progress box with *assigned* and *unstaffed* filters, then the small Next up panel. The panel hides while a filter is on. The stage numbers and the full lists below it stay exactly as you arranged them.
+The **Plan** view is where the **Roadmap** page opens. You open the page from the {{icon:gear}} gear menu at the top right, under **Roadmap**. You tap **Map** or **Timeline** to switch views. The app remembers your pick on that device. The Plan view opens with the goals. Below them sits a progress box with *assigned* and *unstaffed* filters, then the small Next up panel. The panel hides while a filter is on. The stage numbers and the full lists below it stay exactly as you arranged them.
 
 ## Two lanes
 
