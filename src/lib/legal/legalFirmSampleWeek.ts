@@ -34,12 +34,14 @@ const SAMPLE_MATTERS: readonly SampleMatter[] = [
   { payer: 'Northline Builders', stage: 'suit', theirs: false, daysAgo: 32 },
 ]
 type SampleEvent = { daysAgo: number; trigger: LegalNowTrigger; payer: string; note?: string; body?: string; question?: string; amount?: number; reason?: string }
-/** One line per event the builders know, oldest first; the fee last, since it never sends on its own. */
+/** The week's lines oldest first: the six that email on their own, and among them the acts that ride the digest only (a step, a paper, the fee seen), which sit dim under Each event. */
 const SAMPLE_WEEK: readonly SampleEvent[] = [
   { daysAgo: 6, trigger: 'referred', payer: 'Ridgeway Builders', note: 'Signed subcontract on file. The GC disputes the change order.' },
   { daysAgo: 5, trigger: 'ask', payer: 'Ridgeway Builders', body: 'Do you have the signed change order for the add?' },
   { daysAgo: 4, trigger: 'answer', payer: 'Cedar Bend Homes', question: 'Was the final bill sent certified?', body: 'Yes, certified mail. The green card is on the Paper tab.' },
+  { daysAgo: 4, trigger: 'step', payer: 'Cedar Bend Homes', body: 'Stage moved from referred to demand by the office' },
   { daysAgo: 3, trigger: 'note', payer: 'Northline Builders', body: 'The GC called. They say a check went out Friday.' },
+  { daysAgo: 3, trigger: 'paper', payer: 'Ridgeway Builders', body: 'Signed subcontract, 14 pages' },
   { daysAgo: 2, trigger: 'applied', payer: 'Cedar Bend Homes', amount: 4200 },
   { daysAgo: 2, trigger: 'pulled', payer: 'Northline Builders', reason: 'paid in full' },
   { daysAgo: 2, trigger: 'fee_seen', payer: 'Ridgeway Builders', amount: 450 },

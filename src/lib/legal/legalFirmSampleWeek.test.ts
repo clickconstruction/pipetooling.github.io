@@ -5,21 +5,25 @@ import { plainWordsFailures } from '../plainWords'
 const base = { companyName: 'Click Plumbing and Electrical', firmName: 'Marlowe & Tate, PLLC', otherHandling: 'Ann Sample', name: 'Lena Okafor', preparedOn: '2026-11-01' }
 
 describe('the sample inbox · punch list #233 · what the card shows is what the builders send', () => {
-  it('Each event on every matter: seven lines, the fee dim and last, and it opens nothing', () => {
+  it('Each event on every matter: nine lines, the digest-only acts dim, and they open nothing', () => {
     const inbox = firmSampleInbox({ ...base, rule: { mode: 'now', scope: 'all', digestWeekday: 1 } })
     expect(inbox.lines.map((l) => l.subject)).toEqual([
       'New account referred: Ridgeway Builders',
       'Click Plumbing and Electrical asks you about Ridgeway Builders',
       'Click Plumbing and Electrical answered on Cedar Bend Homes',
+      'Step by the office: Cedar Bend Homes',
       'A note from Click Plumbing and Electrical on Northline Builders',
+      'Paper added: Ridgeway Builders',
       'Payment applied on Cedar Bend Homes',
       'Referral withdrawn: Northline Builders',
       'Click Plumbing and Electrical saw your fee on Ridgeway Builders',
     ])
-    expect(inbox.lines.map((l) => l.dim)).toEqual([false, false, false, false, false, false, true])
-    expect(inbox.lines.map((l) => l.day)).toEqual(['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Fri', 'Fri'])
+    expect(inbox.lines.map((l) => l.dim)).toEqual([false, false, false, true, false, true, false, false, true])
+    expect(inbox.lines.map((l) => l.day)).toEqual(['Mon', 'Tue', 'Wed', 'Wed', 'Thu', 'Thu', 'Fri', 'Fri', 'Fri'])
     expect(inbox.firstKey).toBe('referred:Ridgeway Builders')
     expect(inbox.email('fee_seen:Ridgeway Builders')).toBeNull()
+    expect(inbox.email('step:Cedar Bend Homes')).toBeNull()
+    expect(inbox.email('paper:Ridgeway Builders')).toBeNull()
     expect(inbox.email('nope')).toBeNull()
   })
 
@@ -36,7 +40,7 @@ describe('the sample inbox · punch list #233 · what the card shows is what the
 
   it('Only theirs narrows to the account handled by the person being added', () => {
     const inbox = firmSampleInbox({ ...base, rule: { mode: 'now', scope: 'mine', digestWeekday: 1 } })
-    expect(inbox.lines.map((l) => l.key)).toEqual(['referred:Ridgeway Builders', 'ask:Ridgeway Builders', 'fee_seen:Ridgeway Builders'])
+    expect(inbox.lines.map((l) => l.key)).toEqual(['referred:Ridgeway Builders', 'ask:Ridgeway Builders', 'paper:Ridgeway Builders', 'fee_seen:Ridgeway Builders'])
   })
 
   it('Weekly digest: one line on the picked day, the digest opened with every open matter and the fee among the week’s lines', () => {
@@ -46,6 +50,8 @@ describe('the sample inbox · punch list #233 · what the card shows is what the
     expect(html).toContain('Your weekly digest, Lena Okafor.')
     for (const payer of ['Ridgeway Builders', 'Cedar Bend Homes', 'Northline Builders']) expect(html).toContain(payer)
     expect(html).toContain('Fee seen by the office')
+    expect(html).toContain('Step by the office — Stage moved from referred to demand by the office')
+    expect(html).toContain('Paper added — Signed subcontract, 14 pages')
     expect(html).toContain('$4,200.00')
     const mine = firmSampleInbox({ ...base, rule: { mode: 'digest', scope: 'mine', digestWeekday: 9 } })
     expect(mine.lines[0]).toMatchObject({ day: 'Mon', subject: 'Weekly digest — 1 open matter at Click Plumbing and Electrical' })
