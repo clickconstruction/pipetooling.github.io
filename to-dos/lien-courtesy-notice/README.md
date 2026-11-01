@@ -2,7 +2,7 @@
 name: "A courtesy notice between the § 53.056 notice and the lien"
 number: 231
 group: gated
-status: looked at and drawn 2026-11-01 · nothing built · the finding, the shape and the mock-up are here; the owner's six calls and counsel's read of the words come first
+status: looked at and drawn 2026-11-01 · the owner took all six recommendations the same day ("Take all recommended") · nothing built; the word to build the four PRs has not come · counsel's read of the words comes before the first real send
 summary: >
   Supply houses send a plain letter a week or two before they lien: we already sent you the notice,
   nothing has come, here is the day the lien goes on unless it is paid, here is where to pay, here is
@@ -14,10 +14,10 @@ summary: >
   Timeline so the affidavit's packet shows it went. No new statutory paper, no certified mail, no new
   claim.
 next: >
-  The owner answers the six calls under "Your calls" and counsel reads the words. Then PR 1, the
-  kernel, which changes no screen.
+  The owner's word to build. Then PR 1, the kernel, which changes no screen; counsel reads the words
+  before PR 2's first real send.
 size: M (four PRs: S, M, S, XS; one function redeploy; no migration)
-blocker: The owner's six calls, and counsel's read of the courtesy words before the first real send.
+blocker: The owner has not yet said to build; counsel's read of the courtesy words before the first real send.
 opinion: build — the gap is real and visible on the desk today; the shape reuses the sent notice, the pay page and the cover letter's three doors, so the words are already counsel's
 ---
 
@@ -125,11 +125,13 @@ Weighed and set aside:
 - **The risk of a notice that sounds like a threat.** The sentence that converts is the one that names the day the lien goes on. It is also the one sentence that can be unlawful if the lien cannot in fact go on. So the day is never typed: it comes from the live affidavit step, through the same gate the demand letter uses, and the message is held rather than sent without it. The frame is counsel's: we would rather pick up a check. The office can edit nothing but the greeting, so the words stay what counsel read.
 - **What is still thin.** Texting the GC's contact needs their card to say we may text; most GC contacts have not been asked. The owner's email is on few property records today, so most owners will get nothing from this until the roll lookup or the office fills it. Both are honest limits, and the window says so per recipient rather than pretending.
 
-## Your calls
+## The owner's picks
 
-1. **Who presses.** The office alone (the recommendation), or the leader approves each one as he does a notice.
-2. **The owner too.** Send the owner a copy when their email is on file (the recommendation, with counsel's rule to copy the GC on every owner letter kept the other way round), or the GC only.
-3. **Texts.** Text the GC's contact when their card allows it (the recommendation), or email only.
-4. **Day 7.** Offer it from day 7 and let letter two keep day 10 (the recommendation), or offer both on day 10.
-5. **Counsel first.** Counsel reads the words before the first real send (the recommendation), or the office goes ahead and counsel reads the record.
-6. **The pay offer.** When a discount offer is live on the notice, the courtesy notice repeats its sentence (the recommendation), or stays silent on it.
+The owner, 2026-11-01, on the six calls below: *"Take all recommended."* Each is settled as its first option. The word to build the four PRs has not come yet; the card waits for it.
+
+1. **Who presses.** The office alone (the recommendation, **picked**), or the leader approves each one as he does a notice.
+2. **The owner too.** Send the owner a copy when their email is on file (the recommendation, **picked**, with counsel's rule to copy the GC on every owner letter kept the other way round), or the GC only.
+3. **Texts.** Text the GC's contact when their card allows it (the recommendation, **picked**), or email only.
+4. **Day 7.** Offer it from day 7 and let letter two keep day 10 (the recommendation, **picked**), or offer both on day 10.
+5. **Counsel first.** Counsel reads the words before the first real send (the recommendation, **picked**), or the office goes ahead and counsel reads the record.
+6. **The pay offer.** When a discount offer is live on the notice, the courtesy notice repeats its sentence (the recommendation, **picked**), or stays silent on it.
