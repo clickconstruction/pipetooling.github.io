@@ -1,0 +1,404 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Firm portal: Notifications shows</title>
+<meta name="description" content="Punch list #233: the law firm portal's Notifications tab redrawn so the add form is the row it makes and a sample inbox shows what each rule sends.">
+<style>
+  /* Every person, firm, address and account here is made up: Marlowe & Tate, PLLC and its people Dana Whitlock,
+     Priya Natarajan, Owen Castellanos, Marcus Bell and the one being added, Lena Okafor; the accounts Ridgeway
+     Builders, Cedar Bend Homes and Northline Builders. The company is the office's own. Today is Sun, Nov 1, 2026.
+     The page chrome uses src/index.css's tokens; the portal frames are pinned light on src/lib/portal/portalTheme.ts's
+     palette, as the real page is (data-theme="light"). The email samples quote supabase/functions/_shared/legalEmails.ts's
+     builders word for word, so what the preview shows is what the firm gets. */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1f2937; --text-700: #374151; --text-muted: #6b7280; --text-faint: #9ca3af; --text-green-700: #15803d; --bg-green-100: #dcfce7; --text-amber-800: #92400e; --bg-amber-100: #fef3c7; --text-red-700: #b91c1c; --bg-red-100: #fee2e2; --text-blue-700: #1d4ed8; --bg-blue-tint: #eff6ff; --shadow: 0 1px 2px rgba(17,24,39,.06), 0 4px 14px rgba(17,24,39,.06); --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280; --text-green-700: #86efac; --bg-green-100: #14532d; --text-amber-800: #fcd34d; --bg-amber-100: #4a3005; --text-red-700: #fca5a5; --bg-red-100: #5a1d1d; --text-blue-700: #93c5fd; --bg-blue-tint: #1e2a44; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35); } }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #e5e7eb; --text-700: #d1d5db; --text-muted: #9ca3af; --text-faint: #6b7280; --text-green-700: #86efac; --bg-green-100: #14532d; --text-amber-800: #fcd34d; --bg-amber-100: #4a3005; --text-red-700: #fca5a5; --bg-red-100: #5a1d1d; --text-blue-700: #93c5fd; --bg-blue-tint: #1e2a44; --shadow: 0 1px 2px rgba(0,0,0,.4), 0 4px 14px rgba(0,0,0,.35); }
+  * { box-sizing: border-box; }
+  html { font-size: 16px; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); text-wrap: balance; max-width: 40ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b { color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  nav.jump a, .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; text-decoration: none; }
+  .controls { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; }
+  h3 { font-size: 15px; margin: 22px 0 6px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .pass2 { margin: 16px 0 0; padding: 12px 14px; border: 1px solid var(--text-blue-700); background: var(--bg-blue-tint); border-radius: 10px; max-width: 104ch; }
+  .pass2 .cap { color: var(--text-blue-700); margin-bottom: 4px; }
+  .pass2 p { margin: 4px 0; color: var(--text-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; flex: 1 1 480px; max-width: 100%; }
+  .col.narrow { flex: 0 1 430px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap .n { color: var(--text-red-700); }
+  .cap .ok { color: var(--text-green-700); }
+  .counts { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin-top: 14px; max-width: 760px; }
+  .count { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); }
+  .count .big { font-size: 30px; font-weight: 700; color: var(--text-strong); line-height: 1.1; }
+  .count .big.bad { color: var(--text-red-700); }
+  .count .big.good { color: var(--text-green-700); }
+  .count .sub { color: var(--text-muted); font-size: 12.5px; margin-top: 2px; }
+  .calls { display: grid; gap: 10px; max-width: 104ch; margin-top: 12px; }
+  .call { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; box-shadow: var(--shadow); }
+  .call .q { font-weight: 700; color: var(--text-strong); margin: 0 0 6px; }
+  .call ol { margin: 0; padding-left: 20px; color: var(--text-700); }
+  .call li { margin: 3px 0; }
+  .call li b.rec { color: var(--text-green-700); }
+  /* ---------- the portal frames: the firm's page, pinned light ---------- */
+  .portal { --ink: #16283c; --paper: #f6f3ec; --card: #fdfcf9; --muted: #5a6b7e; --faint: #5e6d7c; --hair: #ddd6c8; --copper: #9a5b2b; --band: #f1ece2; --green: #1f7a3a; --red: #b42318; color-scheme: light; background: var(--paper); color: var(--ink); font: 13.5px/1.45 -apple-system, 'Segoe UI', Roboto, sans-serif; border: 1px solid var(--hair); border-radius: 10px; padding: 16px 18px 22px; box-shadow: var(--shadow); container-type: inline-size; min-width: 0; }
+  .portal.phone { width: 390px; max-width: 100%; padding: 14px 14px 20px; }
+  .portal.today { border-style: dashed; }
+  .portal .head { display: flex; justify-content: space-between; align-items: flex-end; border-bottom: 2px solid var(--copper); padding-bottom: 8px; margin-bottom: 12px; gap: 10px; flex-wrap: wrap; }
+  .portal .head b { font-size: 17px; }
+  .portal .head .sub { color: var(--muted); font-size: 12px; }
+  .portal .head .for { text-align: right; font-size: 12px; color: var(--muted); }
+  .portal .tabs { display: flex; gap: 2px; border-bottom: 1px solid var(--hair); margin-bottom: 14px; overflow-x: auto; }
+  .portal .tabs span { padding: 6px 10px; font-size: 12.5px; color: var(--muted); white-space: nowrap; }
+  .portal .tabs span.on { color: var(--ink); font-weight: 700; border: 1px solid var(--hair); border-bottom-color: var(--paper); border-radius: 6px 6px 0 0; margin-bottom: -1px; background: var(--paper); }
+  .pair { display: grid; grid-template-columns: minmax(0, 1.25fr) minmax(260px, .85fr); gap: 16px; align-items: start; }
+  .pair > * { min-width: 0; }
+  @container (max-width: 720px) { .pair { grid-template-columns: minmax(0, 1fr); gap: 14px; } .pcard .acts { flex-direction: column; } .pcard .acts > * { width: 100%; justify-content: center; } .rule .scope { margin-left: 0 !important; } }
+  .pcard { background: var(--card); border: 1px solid var(--hair); border-radius: 6px; padding: 12px 14px; margin-bottom: 10px; }
+  .pcard.add { border-color: var(--copper); }
+  .pcap { font-size: 10.5px; color: var(--faint); text-transform: uppercase; letter-spacing: .07em; margin-bottom: 8px; }
+  .who { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .who .mail { color: var(--muted); font-size: 12.5px; }
+  .st { font-size: 11px; font-weight: 700; }
+  .st.ok { color: var(--green); } .st.wait { color: var(--copper); } .st.stop { color: var(--red); }
+  .field { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); margin-bottom: 8px; }
+  .field input { font: inherit; font-size: 13px; padding: 5px 8px; border: 1px solid var(--hair); border-radius: 4px; background: var(--card); color: var(--ink); width: 100%; }
+  .field .hint { font-size: 11.5px; color: var(--faint); }
+  .fields2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 10px; }
+  @container (max-width: 480px) { .fields2 { grid-template-columns: 1fr; } }
+  .rule { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 8px; font-size: 13px; }
+  .rule .lbl { color: var(--muted); }
+  .seg { display: inline-flex; border: 1px solid var(--hair); border-radius: 999px; overflow: hidden; font-size: 11.5px; font-weight: 700; }
+  .seg button { padding: 3px 10px; border: none; background: transparent; color: var(--faint); cursor: pointer; font: inherit; font-size: 11.5px; font-weight: 700; }
+  .seg button.on { background: var(--copper); color: #fff; }
+  .pbtn { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; font-weight: 600; padding: 3px 9px; border-radius: 5px; border: 1px solid var(--copper); color: var(--copper); background: var(--card); cursor: pointer; font-family: inherit; }
+  .pbtn.ghost { border-color: var(--hair); color: var(--muted); }
+  .pbtn.red { border-color: var(--red); color: var(--red); }
+  .pbtn.fill { background: var(--copper); color: #fff; padding: 6px 12px; font-size: 12.5px; justify-content: center; }
+  .pbtn.fill.wait { background: var(--hair); color: var(--muted); }
+  .wd { display: inline-flex; gap: 4px; flex-wrap: wrap; }
+  .wd .pbtn { padding: 2px 7px; }
+  select.ps { font: inherit; font-size: 12.5px; padding: 3px 6px; border: 1px solid var(--hair); border-radius: 4px; background: var(--card); color: var(--ink); }
+  .scope { margin-left: auto; display: inline-flex; gap: 6px; align-items: center; }
+  .pcard.add .scope { margin-left: 0; flex-basis: 100%; }
+  .pcard.add .rule .lbl { min-width: 50px; }
+  .pcard.add .scope .lbl { min-width: 50px; }
+  .scopehint { font-size: 11.5px; color: var(--faint); margin-top: 4px; width: 100%; }
+  .acts { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .sendline { font-size: 11.5px; color: var(--faint); margin-top: 6px; }
+  .empty { background: var(--card); border: 1px solid var(--hair); border-radius: 6px; padding: 14px 16px; }
+  .empty b { display: block; margin-bottom: 6px; }
+  /* the inbox preview */
+  .inbox { margin-top: 12px; border-top: 1px dotted var(--hair); padding-top: 10px; }
+  .inbox .pcap { margin-bottom: 6px; }
+  .ib { border: 1px solid var(--hair); border-radius: 6px; overflow: hidden; background: #fff; }
+  .ib .l { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; padding: 5px 10px; border-bottom: 1px solid var(--hair); font-size: 12.5px; align-items: baseline; }
+  .ib .l:last-child { border-bottom: none; }
+  .ib .l .d { color: var(--faint); font-size: 11px; font-variant-numeric: tabular-nums; }
+  .ib .l .s { font-weight: 600; min-width: 0; }
+  .ib .l[data-open] { cursor: pointer; }
+  .ib .l[data-open]:hover .s { text-decoration: underline; }
+  .ib .l.top .s { color: var(--copper); }
+  .ib .l.dim .s { color: var(--faint); font-weight: 500; }
+  .ib .l .tag { display: inline-block; margin-left: 6px; font-size: 10px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--faint); border: 1px solid var(--hair); border-radius: 999px; padding: 0 6px; vertical-align: 1px; }
+  .ib .l.none { grid-template-columns: 1fr; color: var(--muted); font-size: 12.5px; }
+  .em { margin-top: 8px; border: 1px solid var(--hair); border-radius: 6px; background: #fff; padding: 12px 14px; font: 13px/1.5 -apple-system, 'Segoe UI', Roboto, sans-serif; color: #16283c; }
+  .em .subj { font-size: 11px; color: var(--faint); margin-bottom: 8px; }
+  .em .eh { border-bottom: 2px solid #9a5b2b; padding-bottom: 6px; margin-bottom: 10px; }
+  .em .eh span { color: #5a6b7e; font-size: 11.5px; display: block; }
+  .em p { margin: 0 0 8px; }
+  .em h4 { font-size: 12.5px; margin: 10px 0 3px; }
+  .em ul { margin: 0 0 6px; padding-left: 18px; }
+  .em li { margin: 1px 0; }
+  .em .open { display: inline-block; background: #9a5b2b; color: #fff; padding: 5px 10px; border-radius: 5px; font-size: 12px; margin: 4px 0 8px; }
+  .em .foot { color: #5e6d7c; font-size: 11px; margin: 10px 0 0; }
+  .em .foot u { text-decoration: underline; }
+  .paused { border: 1px solid var(--red); color: var(--red); background: var(--card); border-radius: 6px; padding: 10px 14px; margin-bottom: 10px; font-size: 13px; }
+  /* today's right column, drawn to be counted */
+  .todayblock { background: var(--card); border: 1px solid var(--hair); border-radius: 6px; padding: 12px 14px; font-size: 12.5px; color: var(--muted); }
+  .todayblock b { color: var(--ink); }
+  .todayblock .ct { display: inline-block; margin-left: 6px; font-size: 10.5px; font-weight: 700; color: var(--red); border: 1px solid var(--red); border-radius: 999px; padding: 0 6px; vertical-align: 1px; }
+  .fake { display: grid; gap: 3px; font-size: 11.5px; color: var(--muted); margin-bottom: 8px; }
+  .fake div { border: 1px solid var(--hair); border-radius: 4px; background: var(--card); height: 28px; }
+  .fake .dd { display: flex; align-items: center; justify-content: space-between; padding: 0 8px; color: var(--ink); font-size: 13px; }
+  .popup { background: #4b5563; color: #fff; border-radius: 8px; padding: 6px 10px; font-size: 13px; margin: -4px 0 8px 4px; width: 160px; box-shadow: 0 6px 20px rgba(0,0,0,.25); }
+  .popup div { padding: 2px 0; }
+  .popup div.chk::before { content: "✓ "; }
+  @media (max-width: 720px) { h2 { margin-top: 36px; } .col.narrow { flex-basis: 100%; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #233 · mock-up · the law firm's portal, Notifications tab</p>
+  <h1>Notifications: the tab shows each person what they will get</h1>
+  <p>The firm adds its people here and sets how each hears from the office. Today the right-hand column is a Role dropdown that gates nothing and two paragraphs that explain the tab in 171 words. The redraw makes the add form the row it will become, with the two rules in it, and replaces the paragraphs with the thing itself: a sample week of the person's inbox that follows the rule as it is switched, with the first email opened under it. The <i>Role</i> becomes a typed <i>Title</i> that the office reads beside the name. The blue <i>Second pass</i> box under each frame says what the first render showed and what changed.</p>
+  <nav class="jump"><a href="#s1">1 · Today</a><a href="#s2">2 · The tab at desk width</a><a href="#s3">3 · On a phone</a><a href="#s4">4 · Is this the best we can do?</a><a href="#s5">5 · The owner's calls</a></nav>
+  <div class="controls"><span class="lbl">List</span><button type="button" data-list="people" aria-pressed="true">Four people</button><button type="button" data-list="empty" aria-pressed="false">Nobody yet</button><span class="lbl" style="margin-left:8px">Office</span><button type="button" data-paused="no" aria-pressed="true">Sending</button><button type="button" data-paused="yes" aria-pressed="false">Paused the firm</button></div>
+</header>
+
+<h2 id="s1"><span class="num">1</span> Today: the words a first-timer reads</h2>
+<p class="lede">The right column as it is on main, redrawn to be counted. The red counts are words. The sentence under <i>What you hear about</i> runs 38 words with a colon in it; the plain-words rule is 20 and no glue.</p>
+<div class="row">
+  <div class="col narrow">
+    <div class="cap">The right column today <span class="n">171 words</span></div>
+    <div class="portal today" style="padding:14px">
+      <div class="pcard" style="margin-bottom:12px"><div class="pcap">Add a person at the firm <span class="ct">6</span></div>
+        <div class="fake">Name<div></div></div><div class="fake">Email<div></div></div>
+        <div class="fake">Role<div class="dd">paralegal <span>⌃⌄</span></div></div>
+        <div class="popup"><div class="chk">paralegal</div><div>attorney</div><div>billing</div></div>
+        <span class="pbtn fill" style="width:100%">Send them a confirmation</span></div>
+      <div class="todayblock"><b>How this behaves</b><span class="ct">67</span><br>Each person chooses an email for each event or a weekly digest, and every matter or only the ones they handle. A new address gets one confirmation email and nothing else until they click it. Every email carries a one-click link to stop. Click Plumbing and Electrical can pause all emails to the firm or remove a person; you see that here when it happens.<br><br><b>What you hear about</b><span class="ct">59</span><br>A new account referred to you, the office answering or asking you something, a note from the office, a payment the office applied, and a referral withdrawn and why: each as its own email or in the digest. A fee or cost the office saw rides the digest only. The digest also lists every open matter.</div>
+      <div class="todayblock" style="margin-top:10px"><b>Nobody at the firm is on the list yet.</b><span class="ct">32</span><br>Add the people who should hear from Click Plumbing and Electrical. Each gets one confirmation email and nothing else until they click it.</div>
+    </div>
+  </div>
+  <div class="col">
+    <div class="cap">What the words say, and what shows it instead</div>
+    <div class="say">
+      <p class="lose"><b>The Role dropdown</b> offers paralegal, attorney and billing as if each opened a different door. The column is free text in <code>legal_firm_recipients.role</code>, sixty characters, and nothing reads it but three labels: the person's row here, the office's list on the Legal desk, and the <i>Recorded by</i> picker on a matter. Every person gets the same seven events, filtered only by their own two rules.</p>
+      <p class="gain"><b>Each person chooses each event or a weekly digest, every matter or only theirs</b> → the two switches sit in the add form, and the sample inbox swaps as they are pressed.</p>
+      <p class="gain"><b>One confirmation email and nothing else until they click it</b> → the button says <i>Send them a confirmation</i>, the new row reads <i>not confirmed yet</i> with <i>Resend the confirmation</i> beside it, and one nine-word line stays under the button.</p>
+      <p class="gain"><b>Every email carries a one-click link to stop</b> → the opened sample email ends in the real footer with <i>Stop these emails to you</i>.</p>
+      <p class="gain"><b>The office can pause the firm or remove a person; you see it here</b> → the red band already draws when it happens. Press <i>Paused the firm</i> above to see it. The sentence goes.</p>
+      <p class="gain"><b>What you hear about: seven events</b> → seven subject lines in the sample inbox, as the builders write them. <b>A fee the office saw rides the digest only</b> → that line sits dim at the foot of the <i>Each event</i> inbox with the tag <i>weekly digest only</i>, and in the digest it is a line like the others. <b>The digest lists every open matter</b> → the digest sample opens on its <i>Open matters</i> list.</p>
+      <p class="rule"><b>A fact the words never said</b>: <i>Only my matters</i> matches the person's typed name against the handling name the office wrote on the matter (<code>legal-notify-dispatch</code>'s <code>canSee</code>). A paralegal who picks it and is named on nothing hears nothing. The redraw counts it under the switch: <i>The office names Lena Okafor as handling 0 of 3 open matters today.</i></p>
+    </div>
+    <div class="counts"><div class="count"><div class="big bad">171</div><div class="sub">words of prose on the tab today, the 38-word sentence among them</div></div><div class="count"><div class="big good">50</div><div class="sub">words of prose proposed, every sentence under 20 words, plus a 12-word count under <i>Only theirs</i> when it is picked; the inbox is the thing itself</div></div></div>
+  </div>
+</div>
+
+<h2 id="s2"><span class="num">2</span> The tab at desk width</h2>
+<p class="lede">The left column is the people, one card each, the same shape as today with a <i>Matters</i> label before the scope switch and the handling count under <i>Only theirs</i>. The right column is the add form drawn as the card it makes, and under its button the sample inbox. Type a name, press the switches: the preview follows, and pressing a subject line opens that email under the list. Type <b>Dana Whitlock</b> as the name and pick <i>Only theirs</i> to see it narrow to her matters.</p>
+<div class="row"><div class="col" style="flex-basis:100%"><div class="cap">Proposed <span class="ok">live: type and press</span></div><div class="portal" data-tab="desk"></div></div></div>
+<div class="pass2" id="pass2-2"><div class="cap">Second pass · written after the render</div><p data-pass2="desk">The first render put the form's <i>Matters</i> switch on a line of its own, pushed to the right edge as it is on a row, so the two rules read as two different kinds of thing. Fixed: in the add card both switches sit at the left under aligned labels, <i>Emails</i> then <i>Matters</i>; a row keeps <i>Matters</i> at the right, where today's page has it. The inbox cut every subject at the column's edge with an ellipsis, and the account's name was the part lost: <i>Click Plumbing and Electrical asks you a…</i> Fixed: a subject wraps onto a second line, since the account is the point of the line. Added after the render: each subject line opens its email under the list, so the firm reads any of the seven and not only the first; the dim fee line opens nothing, because under <i>Each event</i> it is never sent. Kept as drawn: the opened referral names Dana as handling Ridgeway while Lena is on <i>Every matter</i>, which is what that email will say.</p></div>
+
+<h2 id="s3"><span class="num">3</span> On a phone</h2>
+<p class="lede">One column: the people, then the add card with its inbox under the button. The switches wrap onto their own lines and the scope switch drops under <i>Emails</i>.</p>
+<div class="row"><div class="col narrow"><div class="cap">Proposed, 390 px wide</div><div class="portal phone" data-tab="phone"></div></div>
+<div class="col"><div class="cap">What a first-timer reads, in order</div><div class="say">
+  <p>Four people and their rules, each card a name, a title and a status word: <i>confirmed</i>, <i>not confirmed yet</i>, <i>stopped</i>.</p>
+  <p>Then <i>Add a person at the firm</i>: Name, Email, Title with its one hint, Emails, Matters, the button, and one line under it.</p>
+  <p>Then <i>What lands in Lena's inbox</i>: the sample week as subject lines and the first email opened, with the stop link in its footer.</p>
+  <p class="rule">Fifty words of prose in all, and the twelve-word count when <i>Only theirs</i> is picked. The subject lines and the email are the thing itself, quoted from the builders, so they are not counted and not rewritten.</p>
+</div></div></div>
+<div class="pass2" id="pass2-3"><div class="cap">Second pass · written after the render</div><p data-pass2="phone">At 390 px the people stack with the status word on its own line and every press full width, and the form's inbox sits under its button, as meant. The inbox cut subjects to five words at this width, worse than at the desk; the wrap fixes both. The tab runs four cards before the form, as today's page does, so a firm with twelve people scrolls to add the thirteenth. Kept: the list is the page, and a new firm meets the empty state with its press first. The opened email reads whole at this width, footer and stop link included.</p></div>
+
+<h2 id="s4"><span class="num">4</span> Is this the best we can do?</h2>
+<p class="lede">The first pass, before the render. Each line is a path considered and the reason it was taken or cut.</p>
+<div class="say">
+  <p class="lose"><b>Role sets the starting rules.</b> Considered: attorney → each event on every matter, billing → the weekly digest where fees ride, paralegal → each event on only theirs, said in the pick itself. Cut. It adds a third thing to learn, it guesses wrong for half the firms (a billing clerk who wants each applied payment the moment it lands), and the paralegal preset lands on <i>Only theirs</i>, which hears nothing until the office names them. The two switches are two taps, and they are in the form now, so a preset saves nothing.</p>
+  <p class="lose"><b>Role gates events.</b> Considered: each person ticks which of the seven events they hear. Cut for now. Seven boxes per person is the wordy thing again, no firm has asked, and the digest already separates the money lines from the rest. It stays open as the owner's call 1, option C.</p>
+  <p class="lose"><b>Drop the role.</b> Considered. Cut: the office reads it on the Legal desk's list, and the <i>Recorded by</i> picker uses it to tell two names apart. It stays as a typed <i>Title</i>, optional, with one hint that says where it shows.</p>
+  <p class="lose"><b>A timeline of the seven events.</b> Considered: seven rows, a mark on the one that rides the digest. Cut: it is a list that tells. The same seven as subject lines in an inbox show the sender, the matter and the day, and the dim <i>weekly digest only</i> line at the foot says the one exception without a sentence.</p>
+  <p class="lose"><b>One sample email only.</b> Considered: the cheapest form. Kept, and joined by the inbox list, because one email shows the frame and the stop link but not the week, and the digest's point is that it is one email where the other rule is six.</p>
+  <p class="gain"><b>The form is the row.</b> Taken. The card the firm fills has the same fields and the same two switches as the card it becomes, so the first row teaches the second. The weekday and time appear under <i>Weekly digest</i> exactly as they do on a row.</p>
+  <p class="gain"><b>Count instead of warn.</b> Taken. Under <i>Only theirs</i> a count reads from the firm's own open matters: <i>The office names Priya Natarajan as handling 1 of 3 open matters today.</i> A zero is the warning.</p>
+  <p class="gain"><b>The sample week is made up, and says so.</b> Taken. The subject lines name sample accounts, never the firm's real matters: a sample <i>Referral withdrawn: Cedar Bend Homes</i> on a real matter would read as news. The handling count is the one real figure, and it is a count.</p>
+</div>
+
+<h2 id="s5"><span class="num">5</span> The owner's calls</h2>
+<div class="calls">
+  <div class="call"><p class="q">1 · What is the role?</p><ol><li><b class="rec">A typed Title, optional, that gates nothing</b> (recommended, as drawn). The hint says where it shows. The rules are the two switches in the form.</li><li>A pick that sets the starting rules and says so: <i>attorney · each event, every matter</i>, <i>billing · weekly digest, every matter</i>, <i>paralegal · each event, only theirs</i>. The switches still show and still change. One more PR than A.</li><li>Per-person event picks: each person ticks which of the seven they hear. A migration (a column of picks), the dispatcher and both desks. Two PRs more than A.</li></ol></div>
+  <div class="call"><p class="q">2 · How deep is the preview?</p><ol><li><b class="rec">The sample inbox and the first email opened under it</b> (recommended, as drawn). The opened email is what shows the frame, the handling line and the stop link.</li><li>The sample inbox alone, with a <i>Read one ›</i> fold. Shorter on a phone, and the stop link is a sentence again.</li></ol></div>
+</div>
+
+<p class="lede" style="margin-top:36px;font-size:12.5px;color:var(--text-muted)">The card: <code>to-dos/legal-portal-notifications-show/README.md</code>. The real words are in <code>src/lib/legal/legalFirmWords.ts</code> and <code>supabase/functions/_shared/legalEmails.ts</code>; the page is <code>src/pages/LegalPortal.tsx</code>'s <code>NotificationsPanel</code>.</p>
+</div>
+
+<script>
+(function () {
+  var CO = 'Click Plumbing and Electrical';
+  var FIRM = 'Marlowe & Tate, PLLC';
+  var MATTERS = [
+    { payer: 'Ridgeway Builders', stage: 'referred', handling: 'Dana Whitlock', since: '2026-10-26' },
+    { payer: 'Cedar Bend Homes', stage: 'demand sent', handling: 'Priya Natarajan', since: '2026-10-12' },
+    { payer: 'Northline Builders', stage: 'suit filed', handling: 'Dana Whitlock', since: '2026-09-30' },
+  ];
+  var PEOPLE = [
+    { name: 'Dana Whitlock', email: 'dwhitlock@marlowetate.example.com', title: 'attorney', mode: 'now', scope: 'all', wd: 1, time: '07:00', status: 'ok' },
+    { name: 'Priya Natarajan', email: 'pnatarajan@marlowetate.example.com', title: 'paralegal', mode: 'now', scope: 'mine', wd: 1, time: '07:00', status: 'ok' },
+    { name: 'Owen Castellanos', email: 'owen.c@marlowetate.example.com', title: 'billing', mode: 'digest', scope: 'all', wd: 1, time: '07:00', status: 'wait' },
+    { name: 'Marcus Bell', email: 'mbell@marlowetate.example.com', title: 'of counsel', mode: 'now', scope: 'all', wd: 1, time: '07:00', status: 'stop' },
+  ];
+  var WD = ['', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri'];
+  var TIMES = ['06:00', '07:00', '08:00', '09:00', '12:00', '16:00'];
+  // The sample week: one line per event the builders know, in the subjects they write (_shared/legalEmails.ts).
+  var WEEK = [
+    { d: 'Mon', t: 'referred', payer: 'Ridgeway Builders' },
+    { d: 'Tue', t: 'ask', payer: 'Ridgeway Builders', body: 'Do you have the signed change order for the add?' },
+    { d: 'Wed', t: 'answer', payer: 'Cedar Bend Homes', q: 'Was the final bill sent certified?', body: 'Yes, certified on Oct 2. The green card is on the Paper tab.' },
+    { d: 'Thu', t: 'note', payer: 'Northline Builders', body: 'The GC called. They say a check went out Friday.' },
+    { d: 'Fri', t: 'applied', payer: 'Cedar Bend Homes', amount: 4200 },
+    { d: 'Fri', t: 'pulled', payer: 'Northline Builders', reason: 'paid in full on Oct 30' },
+    { d: 'Fri', t: 'fee_seen', payer: 'Ridgeway Builders', amount: 450 },
+  ];
+  var DAYS = { Mon: '2026-10-26', Tue: '2026-10-27', Wed: '2026-10-28', Thu: '2026-10-29', Fri: '2026-10-30' };
+  var DIGEST_LABEL = { referred: 'New account referred', answer: 'Office answered', pulled: 'Referral withdrawn', ask: 'The office asks', note: 'Note from the office', applied: 'Payment applied', fee_seen: 'Fee seen by the office' };
+  function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function subject(e) {
+    switch (e.t) {
+      case 'referred': return 'New account referred: ' + e.payer;
+      case 'answer': return CO + ' answered on ' + e.payer;
+      case 'ask': return CO + ' asks you about ' + e.payer;
+      case 'note': return 'A note from ' + CO + ' on ' + e.payer;
+      case 'applied': return 'Payment applied on ' + e.payer;
+      case 'fee_seen': return CO + ' saw your fee on ' + e.payer;
+      case 'pulled': return 'Referral withdrawn: ' + e.payer;
+    }
+  }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;'); }
+  function firstName(n) { return (n || '').trim().split(/\s+/)[0] || ''; }
+  function handlingCount(name) { var n = (name || '').trim().toLowerCase(); return MATTERS.filter(function (m) { return n && m.handling.toLowerCase() === n; }).length; }
+  function mine(name) { var n = (name || '').trim().toLowerCase(); return MATTERS.filter(function (m) { return m.handling.toLowerCase() === n; }).map(function (m) { return m.payer; }); }
+  function handlingOf(payer, name) { var m = MATTERS.filter(function (x) { return x.payer === payer; })[0]; return m ? m.handling : name; }
+
+  var state = { list: 'people', paused: false, form: { name: 'Lena Okafor', email: 'lokafor@marlowetate.example.com', title: 'paralegal', mode: 'now', scope: 'all', wd: 1, time: '07:00', open: 'referred' }, people: PEOPLE.map(function (p) { return Object.assign({}, p); }) };
+
+  function seg(key, idx, val, pairs) {
+    return '<span class="seg">' + pairs.map(function (p) { return '<button type="button" data-set="' + key + '" data-idx="' + idx + '" data-val="' + p[0] + '" class="' + (val === p[0] ? 'on' : '') + '">' + p[1] + '</button>'; }).join('') + '</span>';
+  }
+  function ruleRow(r, idx) {
+    var h = '<div class="rule"><span class="lbl">Emails</span>' + seg('mode', idx, r.mode, [['now', 'Each event'], ['digest', 'Weekly digest']]);
+    if (r.mode === 'digest') {
+      h += '<span class="wd">' + [1, 2, 3, 4, 5].map(function (d) { return '<button type="button" class="pbtn' + (r.wd === d ? '' : ' ghost') + '" data-set="wd" data-idx="' + idx + '" data-val="' + d + '">' + WD[d] + '</button>'; }).join('') + '</span>';
+      h += '<select class="ps" data-set="time" data-idx="' + idx + '">' + TIMES.map(function (t) { return '<option' + (t === r.time ? ' selected' : '') + '>' + t + ' Central</option>'; }).join('') + '</select>';
+    }
+    h += '<span class="scope"><span class="lbl">Matters</span>' + seg('scope', idx, r.scope, [['all', 'Every matter'], ['mine', 'Only theirs']]) + '</span>';
+    if (r.scope === 'mine') {
+      var who = (r.name || '').trim() || 'them';
+      h += '<div class="scopehint">The office names ' + esc(who) + ' as handling ' + handlingCount(r.name) + ' of ' + MATTERS.length + ' open matters today.</div>';
+    }
+    return h + '</div>';
+  }
+  function personCard(r, idx) {
+    var st = r.status === 'ok' ? '<span class="st ok">confirmed</span>' : r.status === 'wait' ? '<span class="st wait">not confirmed yet</span>' : '<span class="st stop">stopped</span>';
+    var acts = '';
+    if (r.status === 'wait') acts += '<button type="button" class="pbtn ghost">Resend the confirmation</button>';
+    acts += r.status === 'stop' ? '<button type="button" class="pbtn">Turn emails back on</button>' : '<button type="button" class="pbtn ghost red">Stop emails to this person</button>';
+    return '<div class="pcard"><div class="who"><div><b>' + esc(r.name) + '</b> <span class="mail">' + esc(r.email) + (r.title ? ' · ' + esc(r.title) : '') + '</span></div>' + st + '</div>' + ruleRow(r, idx) + '<div class="acts">' + acts + '</div></div>';
+  }
+  function inboxLines(f) {
+    var only = f.scope === 'mine' ? mine(f.name) : null;
+    var lines = WEEK.filter(function (e) { return !only || only.indexOf(e.payer) >= 0; });
+    if (f.mode === 'digest') {
+      var n = only ? MATTERS.filter(function (m) { return only.indexOf(m.payer) >= 0; }).length : MATTERS.length;
+      return '<div class="ib"><div class="l top"><span class="d">' + WD[f.wd] + '</span><span class="s">Weekly digest — ' + n + ' open matter' + (n === 1 ? '' : 's') + ' at ' + esc(CO) + '</span></div></div>';
+    }
+    if (!lines.length) return '<div class="ib"><div class="l none">Nothing this week. The office has not named ' + esc((f.name || '').trim() || 'them') + ' as handling a matter.</div></div>';
+    var open = openedOf(f, lines);
+    return '<div class="ib">' + lines.map(function (e) {
+      var dim = e.t === 'fee_seen';
+      var cls = dim ? 'dim' : e === open ? 'top' : '';
+      return '<div class="l ' + cls + '"' + (dim ? '' : ' data-open="' + e.t + '"') + '><span class="d">' + e.d + '</span><span class="s">' + esc(subject(e)) + (dim ? '<span class="tag">weekly digest only</span>' : '') + '</span></div>';
+    }).join('') + '</div>';
+  }
+  /** The line that is open under the list: the one pressed, else the first that sends. */
+  function openedOf(f, lines) {
+    var sends = lines.filter(function (e) { return e.t !== 'fee_seen'; });
+    return sends.filter(function (e) { return e.t === f.open; })[0] || sends[0] || null;
+  }
+  function emailFrame(subj, body) {
+    return '<div class="em"><div class="subj">Opened: <b>' + esc(subj) + '</b></div><div class="eh"><b>' + esc(CO) + '</b><span>Collections referred to counsel</span></div>' + body + '<span class="open">Open the portal</span><p class="foot">You get this because you are on the firm\'s email list on ' + esc(CO) + '\'s legal portal. <u>Stop these emails to you</u>.</p></div>';
+  }
+  function openedEmail(f) {
+    var only = f.scope === 'mine' ? mine(f.name) : null;
+    var who = (f.name || '').trim() || 'you';
+    if (f.mode === 'digest') {
+      var ms = MATTERS.filter(function (m) { return !only || only.indexOf(m.payer) >= 0; });
+      var evs = WEEK.filter(function (e) { return !only || only.indexOf(e.payer) >= 0; });
+      var ml = ms.length ? ms.map(function (m) { return '<li><b>' + esc(m.payer) + '</b> — ' + m.stage + ' · handling ' + esc(m.handling) + ' · since ' + m.since + '</li>'; }).join('') : '<li>No open matters.</li>';
+      var el = evs.length ? evs.map(function (e) {
+        var det = e.t === 'pulled' ? (e.reason ? ' — ' + esc(e.reason) : '') : ((e.t === 'applied' || e.t === 'fee_seen') && e.amount != null ? ' ' + money(e.amount) : '') + (e.body && e.t !== 'referred' ? ' — ' + esc(e.body) : '');
+        return '<li>' + DAYS[e.d] + ' · ' + DIGEST_LABEL[e.t] + ': <b>' + esc(e.payer) + '</b>' + det + '</li>';
+      }).join('') : '<li>Nothing new since your last digest.</li>';
+      return emailFrame('Weekly digest — ' + ms.length + ' open matter' + (ms.length === 1 ? '' : 's') + ' at ' + CO, '<p>Your weekly digest, ' + esc(who) + '.</p><h4>Open matters</h4><ul>' + ml + '</ul><h4>Since your last digest</h4><ul>' + el + '</ul>');
+    }
+    var lines = WEEK.filter(function (e) { return !only || only.indexOf(e.payer) >= 0; });
+    var e = openedOf(f, lines);
+    if (!e) return '';
+    var body;
+    var p = '<b>' + esc(e.payer) + '</b>';
+    switch (e.t) {
+      case 'referred': body = '<p>' + esc(CO) + ' has referred ' + p + ' to ' + esc(FIRM) + ' — handling: ' + esc(only ? who : handlingOf(e.payer, who)) + '.<br><i>“Signed subcontract on file. The GC disputes the change order.”</i></p>'; break;
+      case 'ask': body = '<p>The office asks on ' + p + ':<br><i>' + esc(e.body) + '</i><br>Answer it on the matter\'s Fees &amp; steps tab.</p>'; break;
+      case 'answer': body = '<p>The office answered your question on ' + p + '.<br>You asked: <i>' + esc(e.q) + '</i><br>The office: <i>' + esc(e.body) + '</i></p>'; break;
+      case 'note': body = '<p>The office added a note on ' + p + ':<br><i>' + esc(e.body) + '</i></p>'; break;
+      case 'applied': body = '<p>The office applied <b>' + money(e.amount) + '</b> you received on ' + p + ' to the job, and recorded your share.</p>'; break;
+      case 'pulled': body = '<p>' + esc(CO) + ' has withdrawn the referral of ' + p + '.<br>Why: <i>' + esc(e.reason) + '</i><br>Your fees and costs and the conversation stay readable on the portal; the account\'s records do not.</p>'; break;
+    }
+    return emailFrame(subject(e), body);
+  }
+  function addCard() {
+    var f = state.form;
+    var fn = firstName(f.name);
+    var ready = f.name.trim() && /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(f.email);
+    return '<div class="pcard add"><div class="pcap">Add a person at the firm</div>' +
+      '<div class="fields2"><label class="field">Name<input data-f="name" value="' + esc(f.name) + '"></label><label class="field">Email<input data-f="email" value="' + esc(f.email) + '"></label></div>' +
+      '<label class="field">Title<input data-f="title" value="' + esc(f.title) + '" placeholder="attorney, paralegal, billing"><span class="hint">Optional. Shows beside their name, here and to the office.</span></label>' +
+      ruleRow(Object.assign({}, f), 'form') +
+      '<div style="margin-top:12px"><button type="button" class="pbtn fill' + (ready ? '' : ' wait') + '" style="width:100%">Send ' + (fn ? esc(fn) : 'them') + ' a confirmation</button><div class="sendline">Nothing else goes to them until they click it.</div></div>' +
+      '<div class="inbox"><div class="pcap">What lands in ' + (fn ? esc(fn) + '\'s' : 'their') + ' inbox · a sample week</div>' + inboxLines(f) + openedEmail(f) + '</div></div>';
+  }
+  function tab() {
+    var left = '';
+    if (state.paused) left += '<div class="paused">' + esc(CO) + ' has paused all emails to the firm. The portal still works; ask the office to resume.</div>';
+    if (state.list === 'empty') left += '<div class="empty"><b>Nobody at the firm is on the list yet.</b><button type="button" class="pbtn" data-focus="name">Add the first person</button></div>';
+    else left += state.people.map(personCard).join('');
+    return '<div class="head"><div><b>' + esc(CO) + '</b><div class="sub">Collections referred to counsel · prepared 2026-11-01 · no sign-in, one revocable link</div></div><div class="for">For <b>' + esc(FIRM) + '</b><br>3 matters · $31,420.00 in balance</div></div>' +
+      '<div class="tabs"><span>Start here</span><span>Matters · 3</span><span>Lien grid</span><span>Who covers what</span><span class="on">Notifications · ' + (state.list === 'empty' ? 0 : state.people.length) + ' people</span></div>' +
+      '<div class="pair"><div>' + left + '</div><div>' + addCard() + '</div></div>';
+  }
+  function draw() { document.querySelectorAll('[data-tab]').forEach(function (el) { el.innerHTML = tab(); }); }
+  document.addEventListener('click', function (ev) {
+    var line = ev.target.closest('[data-open]');
+    if (line) { state.form.open = line.dataset.open; draw(); return; }
+    var b = ev.target.closest('button');
+    if (!b) return;
+    if (b.dataset.list) { state.list = b.dataset.list; document.querySelectorAll('[data-list]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); draw(); return; }
+    if (b.dataset.paused) { state.paused = b.dataset.paused === 'yes'; document.querySelectorAll('[data-paused]').forEach(function (x) { x.setAttribute('aria-pressed', String(x === b)); }); draw(); return; }
+    if (b.dataset.focus) { var inp = b.closest('.portal').querySelector('input[data-f="name"]'); if (inp) inp.focus(); return; }
+    if (!b.dataset.set) return;
+    var target = b.dataset.idx === 'form' ? state.form : state.people[Number(b.dataset.idx)];
+    var v = b.dataset.val;
+    target[b.dataset.set] = b.dataset.set === 'wd' ? Number(v) : v;
+    draw();
+  });
+  document.addEventListener('change', function (ev) {
+    var s = ev.target;
+    if (s.tagName === 'SELECT' && s.dataset.set === 'time') { var t = s.dataset.idx === 'form' ? state.form : state.people[Number(s.dataset.idx)]; t.time = s.value.replace(' Central', ''); draw(); }
+  });
+  document.addEventListener('input', function (ev) {
+    var i = ev.target;
+    if (i.tagName !== 'INPUT' || !i.dataset.f) return;
+    state.form[i.dataset.f] = i.value;
+    // Redraw everything but the input being typed in, so the caret stays.
+    var root = i.closest('.portal');
+    var at = i.selectionStart;
+    draw();
+    var again = root.querySelector('input[data-f="' + i.dataset.f + '"]');
+    if (again) { again.focus(); try { again.setSelectionRange(at, at); } catch (e) {} }
+  });
+  draw();
+})();
+</script>
+</body>
+</html>
