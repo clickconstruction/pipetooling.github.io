@@ -1,0 +1,438 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Every photo uploaded, one list</title>
+<style>
+  /* Punch list #232. Every job, person, street and count here is made up: Ridgeway Builders and Oak Hollow Apartments
+     Building C at 4410 Pecan Creek Rd (job J1042), Hollis Property Group's Pecan Creek Dental (J1038), Vista Ridge Homes'
+     Maple Row Townhomes (J1051); the crew Mateo Ruiz and Jordan Pike, the office's Carla Nguyen, the GC's Greg Paulk.
+     The pictures are coloured stand-ins. Tokens are src/index.css's (light values and the [data-theme="dark"] block);
+     the app's #2563eb blue stays literal as the app keeps it. Frames are fixed at 375 (the phone), 560 and 760 (a window
+     at a desk) and 1,280 (the desk). */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --bg-red-100: #fee2e2; --text-green-700: #15803d; --text-green-800: #166534; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --border-blue: #93c5fd; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --blue: #2563eb; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-amber-100: #45390f; --bg-green-100: #14532d; --bg-red-100: #4c1d1d; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --border-blue: #3b82f6; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); max-width: 34ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b { color: var(--text-strong); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  nav.jump a.pick { border-color: var(--text-green-700); color: var(--text-green-700); background: var(--bg-green-100); }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  h2 .num.today { background: var(--text-muted); }
+  h2 .num.pick { background: var(--text-green-700); color: var(--surface); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-green-700); background: var(--bg-green-100); border: 1px solid var(--text-green-700); border-radius: 6px; padding: 1px 7px; }
+  h3 { font-size: 15px; margin: 26px 0 4px; color: var(--text-strong); }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .say p.lose { border-color: var(--text-amber-800); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; max-width: 100%; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 375px; }
+  .col.w560 { flex: 0 0 560px; }
+  .col.w760 { flex: 0 0 760px; }
+  .col.desk { flex: 1 1 100%; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap .m { margin-left: auto; font-weight: 600; letter-spacing: 0; text-transform: none; color: var(--text-strong); font-size: 12px; }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { position: relative; background: var(--bg-page); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; overflow-y: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  .screen { font-size: 16px; line-height: 1.45; font-family: var(--font); color: var(--text-base); padding: 0 0 14px; }
+  .screen.w375 { width: 375px; }
+  .screen.w560 { width: 560px; }
+  .screen.w760 { width: 760px; }
+  .screen.w1280 { width: 1248px; padding: 0 0 18px; }
+  .foot { font-size: 12px; color: var(--text-700); line-height: 1.45; }
+  /* the app's chrome, simplified */
+  .appbar { display: flex; align-items: center; gap: 10px; padding: 10px 16px; background: var(--surface); border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 700; color: var(--text-strong); }
+  .appbar .sp { flex: 1; }
+  .appbar .ico { width: 30px; height: 30px; border-radius: 8px; display: inline-flex; align-items: center; justify-content: center; font-size: 15px; background: var(--bg-muted); color: var(--text-700); font-weight: 400; }
+  .appbar .url { font-family: ui-monospace, Menlo, monospace; font-size: 11px; font-weight: 500; color: var(--text-muted); }
+  .body { padding: 12px 16px 0; display: grid; gap: 12px; }
+  .w1280 .body { padding: 10px 20px 0; }
+  /* the Documents page's tab row: a filled blue box for the chosen tab, muted words for the rest (pageTabStyle) */
+  .pagetabs { display: flex; gap: 4px; flex-wrap: wrap; margin-bottom: 2px; }
+  .pagetabs span { padding: 6px 1.5rem; font-size: 15px; color: var(--text-muted); border-radius: 6px; position: relative; }
+  .pagetabs span.on { background: var(--blue); color: #ffffff; font-weight: 700; }
+  .pagetabs span.new::after { content: "new"; position: absolute; top: -8px; right: 6px; font-size: 9px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-green-700); }
+  .w375 .pagetabs span { padding: 6px 12px; font-size: 14px; }
+  .search { min-height: 40px; border: 1px solid var(--border-strong); border-radius: 6px; background: var(--surface); padding: 0 11px; display: flex; align-items: center; color: var(--text-muted); font-size: 15px; }
+  .search.filled { color: var(--text-strong); }
+  .chips { display: flex; gap: 5px; flex-wrap: wrap; align-items: center; }
+  .chips .lbl { font-size: 12px; font-weight: 600; color: var(--text-muted); margin-right: 2px; }
+  .w375 .chips { flex-wrap: nowrap; overflow-x: auto; padding-bottom: 2px; }
+  .chip { display: inline-flex; align-items: center; gap: 4px; padding: 4px 11px; border-radius: 999px; font-size: 13px; border: 1px solid var(--border-strong); color: var(--text-700); background: var(--surface); white-space: nowrap; }
+  .chip.on { background: var(--bg-blue-tint); border-color: #3b82f6; color: var(--text-blue-700); font-weight: 600; }
+  .chip.amber { background: var(--bg-amber-100); color: var(--text-amber-800); border-color: var(--text-amber-800); }
+  .chip.amber.on { font-weight: 700; }
+  /* a day's heading and its rows, the Sent tab's table shape */
+  .day { font-size: 12px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-muted); padding: 10px 0 2px; border-bottom: 1px solid var(--border); }
+  .prow { display: grid; grid-template-columns: 72px 1fr auto; gap: 12px; align-items: center; padding: 8px 6px; border-bottom: 1px solid var(--border); }
+  .w375 .prow { grid-template-columns: 64px 1fr; }
+  .prow .ph { width: 72px; height: 72px; border-radius: 8px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .w375 .prow .ph { width: 64px; height: 64px; }
+  .ph.glyph { display: grid; place-items: center; background: var(--bg-muted); color: var(--text-link); font-size: 22px; }
+  .ph.a { background: linear-gradient(135deg, #8aa7c4, #3f5b78 60%, #2b3f55); }
+  .ph.b { background: linear-gradient(160deg, #d9c4a3, #9d7d58 55%, #5a4630); }
+  .ph.c { background: linear-gradient(140deg, #b9c7b3, #6c8a5e 50%, #3e5636); }
+  .ph.d { background: linear-gradient(150deg, #c9c9cf, #7b7f8c 55%, #434754); }
+  .ph.e { background: linear-gradient(150deg, #e3d4c0, #b08a61 50%, #6d5035); }
+  .ph.f { background: linear-gradient(130deg, #a9c4d8, #5f8aa8 55%, #2f5570); }
+  .ph.g { background: linear-gradient(140deg, #d8d2e8, #8f82b5 55%, #4f4472); }
+  .ph i { position: absolute; left: 0; right: 0; bottom: 0; font-size: 9px; font-style: normal; font-weight: 600; text-align: center; background: rgba(17, 24, 39, 0.55); color: #f9fafb; padding: 1px 0; }
+  .prow .what { min-width: 0; display: grid; gap: 1px; }
+  .prow .name { font-size: 15px; font-weight: 600; color: var(--text-link); text-decoration: underline; text-decoration-color: var(--border-strong); }
+  .prow .job { font-size: 13px; color: var(--text-700); }
+  .prow .job b { font-weight: 600; }
+  .prow .who { font-size: 13px; color: var(--text-muted); display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .src { display: inline-flex; align-items: center; padding: 0 7px; border-radius: 999px; font-size: 11.5px; font-weight: 600; border: 1px solid var(--border-strong); color: var(--text-700); background: var(--surface); line-height: 18px; }
+  .src.rep { color: var(--text-blue-700); border-color: var(--text-blue-700); background: var(--bg-blue-tint); }
+  .src.box { color: var(--text-amber-800); border-color: var(--text-amber-800); background: var(--bg-amber-100); }
+  .src.chk { color: var(--text-green-800); border-color: var(--text-green-700); background: var(--bg-green-100); }
+  .src.msg { color: var(--text-700); border-color: var(--border-strong); background: var(--bg-muted); }
+  .prow .where { font-size: 13px; text-align: right; white-space: nowrap; display: grid; gap: 1px; justify-items: end; }
+  .w375 .prow .where { grid-column: 2; text-align: left; justify-items: start; white-space: normal; }
+  .where .ok { color: var(--text-green-800); font-weight: 600; }
+  .where .wait { color: var(--text-muted); font-weight: 500; }
+  .where .held { color: var(--text-amber-800); font-weight: 600; }
+  .where .sub { color: var(--text-muted); font-size: 12px; }
+  .where .link { color: var(--text-link); text-decoration: underline; }
+  .more { margin-top: 8px; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px; padding: 0 12px; border-radius: 6px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-700); font: 500 13px var(--font); text-decoration: none; }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #ffffff; font-weight: 600; }
+  .btn.tall { min-height: 48px; font-size: 15px; }
+  .btn.dead { opacity: .45; }
+  .footline { font-size: 12.5px; color: var(--text-muted); padding-top: 10px; }
+  /* the ledger today */
+  table.ledger { border-collapse: collapse; width: 100%; font-size: 14px; }
+  table.ledger th { text-align: left; font-size: 12px; font-weight: 600; color: var(--text-muted); padding: 5px 8px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.ledger td { padding: 7px 8px; border-bottom: 1px solid var(--border); vertical-align: middle; }
+  table.ledger td.ic { white-space: nowrap; color: var(--text-link); font-size: 15px; }
+  table.ledger td.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .status { display: inline-block; margin-left: 6px; padding: 0 7px; border-radius: 999px; font-size: 12px; font-weight: 600; background: var(--bg-green-100); color: var(--text-green-800); }
+  .status.grey { background: var(--bg-muted); color: var(--text-700); }
+  /* the job window */
+  .win { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 10px; box-shadow: var(--shadow); }
+  .win .head { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); }
+  .win .head b { font-size: 16px; }
+  .win .head .x { margin-left: auto; color: var(--text-muted); font-size: 18px; }
+  .win .wtabs { display: flex; gap: 2px; padding: 8px 14px 0; border-bottom: 1px solid var(--border); }
+  .win .wtabs span { padding: 6px 12px; font-size: 14px; color: var(--text-muted); border-radius: 6px 6px 0 0; }
+  .win .wtabs span.on { background: var(--blue); color: #ffffff; font-weight: 700; }
+  .win .sec { padding: 10px 14px 4px; display: grid; gap: 5px; }
+  .win .sec h4 { margin: 0; font-size: 15px; font-weight: 700; color: var(--text-strong); }
+  .win .sec .ln { font-size: 14px; color: var(--text-700); }
+  .win .sec .ln a { color: var(--text-link); }
+  .win .sec.new { border-left: 3px solid var(--text-green-700); margin-left: -3px; }
+  .win .strip { display: flex; gap: 8px; align-items: center; }
+  .win .strip .ph { width: 56px; height: 56px; border-radius: 8px; border: 1px solid var(--border); position: relative; overflow: hidden; }
+  .win .strip .ph.more { display: grid; place-items: center; background: var(--bg-muted); color: var(--text-700); font-weight: 700; font-size: 14px; }
+  .dashed { border: 1px dashed var(--border-strong); border-radius: 8px; padding: 8px 10px; font-size: 13.5px; color: var(--text-700); }
+  .dashed a { color: var(--text-link); }
+  /* the viewer */
+  .viewer { background: var(--surface); border: 1px solid var(--border-strong); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; }
+  .viewer .vhead { display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-bottom: 1px solid var(--border); font-size: 15px; font-weight: 700; color: var(--text-strong); }
+  .viewer .vhead .x { margin-left: auto; color: var(--text-muted); font-size: 18px; font-weight: 400; }
+  .viewer .vbody { display: grid; grid-template-columns: 1fr 250px; }
+  .w375 .viewer .vbody { grid-template-columns: 1fr; }
+  .viewer .pic { aspect-ratio: 4 / 3; position: relative; }
+  .viewer .pic .arrow { position: absolute; top: 50%; transform: translateY(-50%); width: 36px; height: 36px; border-radius: 50%; background: rgba(17, 24, 39, 0.55); color: #f9fafb; display: grid; place-items: center; font-size: 16px; }
+  .viewer .pic .arrow.l { left: 8px; } .viewer .pic .arrow.r { right: 8px; }
+  .viewer .facts { padding: 12px 14px; display: grid; gap: 7px; font-size: 13.5px; color: var(--text-700); border-left: 1px solid var(--border); align-content: start; }
+  .w375 .viewer .facts { border-left: none; border-top: 1px solid var(--border); }
+  .viewer .facts .k { font-size: 11px; font-weight: 700; letter-spacing: .05em; text-transform: uppercase; color: var(--text-muted); display: block; }
+  .viewer .facts .v { color: var(--text-strong); }
+  .viewer .vfoot { display: flex; gap: 8px; flex-wrap: wrap; padding: 10px 14px; border-top: 1px solid var(--border); }
+  /* the phone's bottom sheet */
+  .sheet { background: var(--surface); border: 1px solid var(--border-strong); border-top-left-radius: 16px; border-top-right-radius: 16px; padding: 10px 14px 14px; display: grid; gap: 10px; box-shadow: var(--shadow); margin-top: 8px; }
+  .sheet .grab { width: 40px; height: 4px; border-radius: 2px; background: var(--border-strong); margin: 0 auto; }
+  /* the summary */
+  ol.changes { margin: 8px 0 0; padding-left: 20px; color: var(--text-700); max-width: 104ch; display: grid; gap: 6px; }
+  .sumwrap { overflow-x: auto; max-width: 100%; }
+  table.sum { border-collapse: collapse; margin-top: 10px; font-size: 13.5px; min-width: 640px; }
+  table.sum th, table.sum td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.sum th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); }
+  table.sum td:nth-child(2) { color: var(--text-green-700); font-weight: 600; }
+  @media (max-width: 420px) { .col.p375, .col.w560, .col.w760 { flex-basis: 100%; } .pagetabs span { padding: 6px 10px; } }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #232 · a proposal · 2026-11-01</p>
+  <h1>Every photo uploaded, one list: a Photos tab on the Documents page</h1>
+  <p>The owner's ask: <b>a view that shows every photo uploaded, newest first, where it is saved and who uploaded it</b>, beside the Documents tab he already likes. Today a photo reaches the app from four doors, each with its own table, and the only list is one job at a time in the job window's strip. The proposal is one tab fed by one database view that reads the four tables as one, each row with its thumbnail, its job, its source, its person and its Drive line. Every name here is made up.</p>
+  <div class="controls">
+    <span class="lbl">Theme</span><button type="button" data-theme-pick="light" aria-pressed="true">Light</button><button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button>
+  </div>
+  <nav class="jump">
+    <a href="#today">Today</a>
+    <a href="#desk" class="pick">1 · The Photos tab at a desk</a>
+    <a href="#phone" class="pick">2 · On a phone</a>
+    <a href="#viewer" class="pick">3 · The viewer</a>
+    <a href="#window" class="pick">4 · The job window's line</a>
+    <a href="#drive">5 · Photos the list cannot show</a>
+    <a href="#pass">The pass</a>
+    <a href="#pick">The pick</a>
+  </nav>
+</header>
+
+<h2 id="today"><span class="num today">Now</span>Today: a Docs column on the Jobs ledger, and one job's strip</h2>
+<p class="lede">Documents → Jobs lists each job's papers in a Docs column. A photo is not a paper, so it is not there. A job's photos are under its address in the job window, read live from the job's Drive folder, with no name of who took them.</p>
+<div class="row">
+  <div class="col desk">
+    <div class="cap">Documents → Jobs · 1,280 px <span class="m">a ledger of papers; no photo on it</span></div>
+    <div class="frame now"><div class="screen w1280">
+      <div class="appbar"><span class="ico">≡</span>Documents<span class="sp"></span><span class="url">/documents?tab=jobs</span></div>
+      <div class="body">
+        <div class="pagetabs"><span>Company</span><span>Search</span><span>Estimates</span><span>Bid proposals</span><span class="on">Jobs</span><span>Supply invoices</span><span>Sent</span><span>Where files go</span><span>Upload</span></div>
+        <div class="search">Search jobs: a number, a name, a customer</div>
+        <table class="ledger">
+          <tr><th>Docs</th><th>Job</th><th>Customer</th><th>Status</th><th style="text-align:right">Revenue</th></tr>
+          <tr><td class="ic">▣ +</td><td>J1042 · Oak Hollow Apartments Building C</td><td>Ridgeway Builders · 4410 Pecan Creek Rd</td><td><span class="status">Working</span></td><td class="num">$184,200</td></tr>
+          <tr><td class="ic">▣ ✎ ⚖</td><td>J1038 · Pecan Creek Dental</td><td>Hollis Property Group</td><td><span class="status grey">Billed</span></td><td class="num">$62,900</td></tr>
+          <tr><td class="ic">+</td><td>J1051 · Maple Row Townhomes</td><td>Vista Ridge Homes</td><td><span class="status">Working</span></td><td class="num">$241,500</td></tr>
+        </table>
+      </div>
+    </div></div>
+    <p class="foot">The Docs column opens a sent bill, a signed contract, a test report or the job's Drive folder, or adds a link. Nothing on the page knows a photo was taken.</p>
+  </div>
+  <div class="col p375">
+    <div class="cap">The job window · 375 px <span class="m">the strip under the address (v2.6090)</span></div>
+    <div class="frame now"><div class="screen w375">
+      <div class="win" style="border:none;box-shadow:none;border-radius:0">
+        <div class="head"><b>J1042 · Oak Hollow Apartments Building C</b><span class="x">×</span></div>
+        <div class="sec">
+          <div class="ln">4410 Pecan Creek Rd · Ridgeway Builders</div>
+          <div class="ln"><a href="#today">Photos · 15</a></div>
+          <div class="strip"><div class="ph a"><i>Nov 1</i></div><div class="ph b"><i>Nov 1</i></div><div class="ph c"><i>Oct 30</i></div><div class="ph more">+ 12</div></div>
+          <div class="ln" style="font-size:12.5px;color:var(--text-muted)">From the customer's Drive folder. Shown here, never copied out. A photo taken in the app saves to that folder.</div>
+        </div>
+      </div>
+    </div></div>
+    <p class="foot">One job, from its folder: the file's name and Drive's time. The person is in the file's name because the sweep wrote it there; Drive itself says the app's account uploaded every one.</p>
+  </div>
+</div>
+
+<h2 id="desk"><span class="num pick">1</span>Documents → Photos at a desk: every job, newest first <span class="tag">Recommended</span></h2>
+<p class="lede">A tab between Sent and Where files go. A search box, a row of source chips, a row of where chips, then the rows by day. Each row: the thumbnail, the caption, the job and its customer, the source and the person and the time, and on the right where the photo is.</p>
+<div class="row">
+  <div class="col desk">
+    <div class="cap opt">Documents → Photos · 1,280 px <span class="m">the office's list; the Texts &amp; email chip shows to the office and the estimator</span></div>
+    <div class="frame"><div class="screen w1280">
+      <div class="appbar"><span class="ico">≡</span>Documents<span class="sp"></span><span class="url">/documents?tab=photos</span></div>
+      <div class="body">
+        <div class="pagetabs"><span>Company</span><span>Search</span><span>Estimates</span><span>Bid proposals</span><span>Jobs</span><span>Supply invoices</span><span>Sent</span><span class="on new">Photos</span><span>Where files go</span><span>Upload</span></div>
+        <div class="search">Find a photo: a job, a customer, a person, a stage</div>
+        <div class="chips"><span class="lbl">Source</span><span class="chip on">All</span><span class="chip">Reports</span><span class="chip">Tally boxes</span><span class="chip">Checklists</span><span class="chip">Texts &amp; email</span></div>
+        <div class="chips"><span class="lbl">Where</span><span class="chip on">Everywhere</span><span class="chip">In Drive</span><span class="chip amber">Not in Drive yet · 2</span></div>
+
+        <div>
+          <div class="day">Today · Sat, Nov 1</div>
+          <div class="prow"><div class="ph a"><i>1600 px</i></div><div class="what"><span class="name">Rough In</span><span class="job"><b>J1042</b> · Oak Hollow Apartments Building C · Ridgeway Builders</span><span class="who"><span class="src rep">Report</span>Mateo Ruiz · 2:14 PM · 4.2 MB → 310 KB</span></div><div class="where"><span class="wait">On its way to Drive</span><span class="sub">the sweep runs every 5 minutes</span></div></div>
+          <div class="prow"><div class="ph b"><i>1600 px</i></div><div class="what"><span class="name">A1 after Count</span><span class="job"><b>J1042</b> · Oak Hollow Apartments Building C · Ridgeway Builders</span><span class="who"><span class="src box">Tally box</span>Jordan Pike · 11:52 AM</span></div><div class="where"><span class="ok">In Drive · Customer Pictures <span class="link">Open ↗</span></span><span class="sub">2026-11-01 Jordan Pike · A1 after Count.jpg</span></div></div>
+          <div class="prow"><div class="ph c"><i>1600 px</i></div><div class="what"><span class="name">Did the water test hold</span><span class="job"><b>J1051</b> · Maple Row Townhomes · Vista Ridge Homes</span><span class="who"><span class="src chk">Checklist</span>Mateo Ruiz · Top Out · 10:05 AM</span></div><div class="where"><span class="held">Not in Drive yet</span><span class="sub">That job has no Drive folder yet · <span class="link">Make the job's Drive folders</span></span></div></div>
+          <div class="prow"><div class="ph f"><i>JPEG</i></div><div class="what"><span class="name">IMG_4471.jpg</span><span class="job"><b>J1038</b> · Pecan Creek Dental · Hollis Property Group</span><span class="who"><span class="src msg">Text from Greg Paulk</span>came in 9:40 AM · <span class="link">the thread</span></span></div><div class="where"><span class="ok">In Drive · Team only › Photos <span class="link">Open ↗</span></span><span class="sub">saved by Carla Nguyen · 9:52 AM</span></div></div>
+        </div>
+        <div>
+          <div class="day">Yesterday · Fri, Oct 31</div>
+          <div class="prow"><div class="ph d"><i>1600 px</i></div><div class="what"><span class="name">Top Out</span><span class="job"><b>J1042</b> · Oak Hollow Apartments Building C · Ridgeway Builders</span><span class="who"><span class="src rep">Report</span>Mateo Ruiz · 4:31 PM</span></div><div class="where"><span class="ok">In Drive · Customer Pictures <span class="link">Open ↗</span></span><span class="sub">2026-10-31 Mateo Ruiz · Top Out.jpg</span></div></div>
+          <div class="prow"><div class="ph glyph">▣</div><div class="what"><span class="name">B2 after Used</span><span class="job"><b>J1051</b> · Maple Row Townhomes · Vista Ridge Homes</span><span class="who"><span class="src box">Tally box</span>Jordan Pike · 3:10 PM</span></div><div class="where"><span class="held">Still on Jordan's phone</span><span class="sub">kept for want of signal; sends when the phone has it</span></div></div>
+          <div class="prow"><div class="ph e"><i>1600 px</i></div><div class="what"><span class="name">Water heater</span><span class="job"><b>J1038</b> · Pecan Creek Dental · Hollis Property Group</span><span class="who"><span class="src rep">Report</span>Carla Nguyen · 1:20 PM · from the desk</span></div><div class="where"><span class="ok">In Drive · Customer Pictures <span class="link">Open ↗</span></span><span class="sub">2026-10-31 Carla Nguyen · Water heater.jpg</span></div></div>
+        </div>
+        <div>
+          <div class="day">Thu, Oct 30</div>
+          <div class="prow"><div class="ph g"><i>PNG</i></div><div class="what"><span class="name">site plan markup.png</span><span class="job"><b>J1042</b> · Oak Hollow Apartments Building C · Ridgeway Builders</span><span class="who"><span class="src msg">Email from Greg Paulk</span>came in 8:12 AM · <span class="link">the thread</span></span></div><div class="where"><span class="wait">Our copy, not in Drive</span><span class="sub"><span class="link">Save to Drive</span> on the thread files it</span></div></div>
+        </div>
+        <div class="more"><span class="btn">Show more</span></div>
+        <div class="footline">A photo put in a Drive folder by hand is in the job's own strip, not here. Open the job to see the whole folder.</div>
+      </div>
+    </div></div>
+    <div class="say">
+      <p class="rule"><b>Newest first across every source.</b> One read of a hundred rows from one view; Show more reads the next hundred from the last row's time, so a photo filed while the page is open never shifts it.</p>
+      <p class="gain"><b>The Drive line is the row's own words.</b> In Drive with Open; On its way while the sweep has not run; Not in Drive yet with the reason and the press that fixes it; Still on the phone; Our copy for a text's picture nobody saved. Nothing is guessed.</p>
+      <p class="gain"><b>Who took it is the name the row kept.</b> A report, a box or a checklist photo names the user as they were at the time. A text's picture names the sender on the line, Greg Paulk, and the office person who saved it.</p>
+      <p class="lose"><b>The folder's name is the job's link as it stands.</b> The row keeps the file's id, not the folder. Open opens the file itself, so the name helps and never misleads.</p>
+    </div>
+  </div>
+</div>
+
+<h2 id="phone"><span class="num pick">2</span>On a phone: the same list as cards, the filters in one scrolling row <span class="tag">Recommended</span></h2>
+<p class="lede">The office reads this at a desk most days; on a phone the rows stack the Drive line under the words and the chips scroll sideways. Nothing is cut.</p>
+<div class="row">
+  <div class="col p375">
+    <div class="cap opt">Documents → Photos · 375 px</div>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">≡</span>Documents<span class="sp"></span><span class="url">/documents?tab=photos</span></div>
+      <div class="body">
+        <div class="pagetabs"><span>Sent</span><span class="on new">Photos</span><span>Where files go</span></div>
+        <div class="search filled">Oak Hollow</div>
+        <div class="chips"><span class="chip on">All</span><span class="chip">Reports</span><span class="chip">Tally boxes</span><span class="chip">Checklists</span><span class="chip">Texts &amp; email</span></div>
+        <div class="chips"><span class="chip on">Everywhere</span><span class="chip">In Drive</span><span class="chip amber">Not in Drive yet · 1</span></div>
+        <div>
+          <div class="day">Today · Sat, Nov 1</div>
+          <div class="prow"><div class="ph a"></div><div class="what"><span class="name">Rough In</span><span class="job"><b>J1042</b> · Oak Hollow Apartments C</span><span class="who"><span class="src rep">Report</span>Mateo Ruiz · 2:14 PM</span></div><div class="where"><span class="wait">On its way to Drive</span></div></div>
+          <div class="prow"><div class="ph b"></div><div class="what"><span class="name">A1 after Count</span><span class="job"><b>J1042</b> · Oak Hollow Apartments C</span><span class="who"><span class="src box">Tally box</span>Jordan Pike · 11:52 AM</span></div><div class="where"><span class="ok">In Drive · Customer Pictures <span class="link">Open ↗</span></span></div></div>
+          <div class="day">Yesterday · Fri, Oct 31</div>
+          <div class="prow"><div class="ph d"></div><div class="what"><span class="name">Top Out</span><span class="job"><b>J1042</b> · Oak Hollow Apartments C</span><span class="who"><span class="src rep">Report</span>Mateo Ruiz · 4:31 PM</span></div><div class="where"><span class="ok">In Drive · Customer Pictures <span class="link">Open ↗</span></span></div></div>
+          <div class="day">Thu, Oct 30</div>
+          <div class="prow"><div class="ph g"></div><div class="what"><span class="name">site plan markup.png</span><span class="job"><b>J1042</b> · Oak Hollow Apartments C</span><span class="who"><span class="src msg">Email from Greg Paulk</span>8:12 AM</span></div><div class="where"><span class="wait">Our copy, not in Drive</span></div></div>
+        </div>
+        <div class="more"><span class="btn tall" style="width:100%">Show more</span></div>
+      </div>
+    </div></div>
+    <p class="foot">The search narrows to one job's photos across every source, which is the question the strip cannot answer: a text's picture and a report's photo on the same list.</p>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">A row pressed · 375 px <span class="m">the viewer as a sheet</span></div>
+    <div class="frame"><div class="screen w375">
+      <div class="appbar"><span class="ico">≡</span>Documents<span class="sp"></span><span class="url">/documents?tab=photos</span></div>
+      <div class="body" style="opacity:.45">
+        <div class="pagetabs"><span>Sent</span><span class="on">Photos</span><span>Where files go</span></div>
+        <div class="search filled">Oak Hollow</div>
+      </div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="viewer" style="box-shadow:none;border:none">
+          <div class="vbody">
+            <div class="pic ph a" style="border-radius:8px"><span class="arrow l">‹</span><span class="arrow r">›</span></div>
+            <div class="facts">
+              <div><span class="k">Photo</span><span class="v">Rough In · 1600 × 1200 · 310 KB (was 4.2 MB)</span></div>
+              <div><span class="k">Job</span><span class="v">J1042 · Oak Hollow Apartments Building C</span></div>
+              <div><span class="k">Taken</span><span class="v">Report · Mateo Ruiz · Sat, Nov 1 · 2:14 PM</span></div>
+              <div><span class="k">Where</span><span class="v wait" style="color:var(--text-muted)">On its way to Drive</span></div>
+            </div>
+          </div>
+          <div class="vfoot"><span class="btn tall dead">Open in Drive ↗</span><span class="btn tall">Open the report</span><span class="btn tall">Open the job</span></div>
+        </div>
+      </div>
+    </div></div>
+    <p class="foot">Open in Drive is dead until the sweep has filed the photo; the words above it say why. Open the report shows the card with the same photo on its strip.</p>
+  </div>
+</div>
+
+<h2 id="viewer"><span class="num pick">3</span>The viewer at a desk: the picture, its facts, and every door <span class="tag">Recommended</span></h2>
+<p class="lede">One picture at full size, streamed while it is on screen and never kept, with the facts beside it and the presses under it. Left and right move through the list in the order shown.</p>
+<div class="row">
+  <div class="col w760">
+    <div class="cap opt">The viewer · 760 px window</div>
+    <div class="frame"><div class="screen w760" style="padding:16px">
+      <div class="viewer">
+        <div class="vhead">A1 after Count · J1042 · Oak Hollow Apartments Building C<span class="x">×</span></div>
+        <div class="vbody">
+          <div class="pic ph b" style="border-radius:0;border:none"><span class="arrow l">‹</span><span class="arrow r">›</span></div>
+          <div class="facts">
+            <div><span class="k">Photo</span><span class="v">A1 after Count · 1600 × 1200 · 290 KB (was 3.8 MB)</span></div>
+            <div><span class="k">Job</span><span class="v">J1042 · Oak Hollow Apartments Building C · Ridgeway Builders</span></div>
+            <div><span class="k">Taken</span><span class="v">Tally box A1 · Jordan Pike · Sat, Nov 1 · 11:52 AM</span></div>
+            <div><span class="k">Where</span><span class="v" style="color:var(--text-green-800);font-weight:600">In Drive · Customer Pictures</span><span class="v" style="font-size:12.5px;color:var(--text-muted)">2026-11-01 Jordan Pike · A1 after Count.jpg · filed 11:56 AM</span></div>
+            <div><span class="k">Position</span><span class="v">2 of 8 today</span></div>
+          </div>
+        </div>
+        <div class="vfoot"><span class="btn primary">Open in Drive ↗</span><span class="btn">Open the box</span><span class="btn">Open the job</span><span class="btn">Only Jordan's photos</span><span class="btn" style="margin-left:auto">Close</span></div>
+      </div>
+    </div></div>
+    <div class="say">
+      <p class="rule"><b>The bytes come from where the photo is.</b> A waiting photo through a signed link on its bucket, as the report card already does; a filed one through the <code>job-photos</code> function's full read on its Drive id, as the strip does. Nothing is copied.</p>
+      <p class="gain"><b>The source press opens what the photo came with.</b> A report's card, the Tally's On site tab on that box, the checklist's sheet, or the Messages thread.</p>
+    </div>
+  </div>
+</div>
+
+<h2 id="window"><span class="num pick">4</span>The job window's Documents tab: one Photos line <span class="tag">Recommended</span></h2>
+<p class="lede">The ask names the Documents tab, and the job window has one. It gains a Photos section after the folder links: a count line whose press opens the strip's viewer the window already has. Nothing new is read.</p>
+<div class="row">
+  <div class="col w560">
+    <div class="cap opt">The job window → Documents · 560 px</div>
+    <div class="frame"><div class="screen w560" style="padding:14px">
+      <div class="win">
+        <div class="head"><b>J1042 · Oak Hollow Apartments Building C</b><span class="x">×</span></div>
+        <div class="wtabs"><span>Job</span><span>Edit</span><span>Bill</span><span>Costs</span><span>History</span><span class="on">Documents</span></div>
+        <div class="sec"><h4>Pay applications</h4><div class="ln">#3 · Oct 28 · $41,200 · <a href="#window">G702-G703 ↗</a></div></div>
+        <div class="sec"><h4>Bills</h4><div class="ln">Draw 3 · Oct 28 · $41,200 · billed</div></div>
+        <div class="sec"><h4>Contract</h4><div class="ln">Signed Sep 12 by Greg Paulk and Carla Nguyen · <a href="#window">Open</a></div></div>
+        <div class="sec"><h4>Sent from this job</h4><div class="ln">Draw 3 to Greg Paulk · Oct 28, 4:10 PM · by Carla Nguyen</div></div>
+        <div class="sec"><h4>Job folders</h4><div class="ln"><a href="#window">Job folder</a> · <a href="#window">Pictures</a> · <a href="#window">Plans</a></div></div>
+        <div class="sec new"><h4>Photos</h4><div class="ln"><a href="#window">15 in Drive</a> · 1 on its way · the newest Sat, Nov 1 by Mateo Ruiz</div><div class="ln" style="font-size:12.5px;color:var(--text-muted)">Opens the job's photos, the same as the strip under the address.</div></div>
+      </div>
+    </div></div>
+    <p class="foot">A job with no folder link shows the strip's dashed card here too: <b>No Drive folder is linked to this job yet</b> with <b>Make the job's Drive folders</b> for the office.</p>
+  </div>
+</div>
+
+<h2 id="drive"><span class="num">5</span>Photos the list cannot show, and the door to them</h2>
+<p class="lede">A photo dropped into a job's Drive folder by hand, or saved there by the office before the app kept rows, has no row of ours. Listing them across every job would be one Drive call per job on every load, and the ledger holds two hundred. Three ways were weighed.</p>
+<div class="row">
+  <div class="col w560">
+    <div class="cap">The door, as drawn in the tab's foot and the job window</div>
+    <div class="frame"><div class="screen w560" style="padding:14px;display:grid;gap:10px">
+      <div class="footline" style="padding:0">A photo put in a Drive folder by hand is in the job's own strip, not here. Open the job to see the whole folder.</div>
+      <div class="dashed">In the job window: <b>Photos · 15</b> under the address reads the folder live, hand-dropped files included. <a href="#drive">Open the folder in Drive ↗</a></div>
+    </div></div>
+    <div class="say">
+      <p class="lose"><b>Live, one Drive call per job on each load.</b> Refused: two hundred jobs is two hundred calls before the first row draws.</p>
+      <p class="lose"><b>Nightly, an index table walked from every folder.</b> Possible: a second system to keep true when a file is renamed, deleted or a folder relinked. Its own card if the owner wants it.</p>
+      <p class="rule"><b>Not at first, with the job's strip as the door.</b> Recommended. The list is for what the app took in; the strip is for the folder. The foot says so in one line.</p>
+    </div>
+  </div>
+</div>
+
+<h2 id="pass">Is this the best we can do?</h2>
+<h3>What changed because of the pass</h3>
+<ol class="changes">
+  <li><b>One view, not four reads.</b> The first draft read each table in turn and merged on the client. One <code>security_invoker</code> view keeps every table's own policy and gives one newest-first page.</li>
+  <li><b>The Drive line is a state, not a yes or no.</b> In Drive, On its way, Not in Drive yet with the reason, Still on the phone, Our copy not in Drive, Shared with no copy here: the row's own words, each with its press.</li>
+  <li><b>Texts and email joined the list</b> for the office and the estimator, since a customer's picture on a text is often the one that matters, and their policy already reads those rows.</li>
+  <li><b>The primary's list follows the ledger.</b> The report photos' gate names a primary on every job; the view adds the ledger clause the box photos already have, so a primary sees their own jobs' photos only.</li>
+  <li><b>Drive-only photos stay out</b>, and the foot and the job window say where they are, rather than a nightly index nobody asked for.</li>
+  <li><b>The viewer's doors name the source.</b> Open the report, Open the box, Open the thread: the office learns which press the photo came with, not just where it sits.</li>
+  <li><b>The job window's Documents tab gets a line, not a tab.</b> The strip under the address already is the job's photo list; a second copy of it would be two lists of one folder.</li>
+</ol>
+
+<h2 id="pick"><span class="num">?</span>The pick</h2>
+<div class="sumwrap"><table class="sum">
+  <tr><th>Call</th><th>Recommended</th><th>Also possible</th></tr>
+  <tr><td><b>1 · where the list lives</b></td><td>A Photos tab on the Documents page across every job, and a one-line door on the job window's Documents tab</td><td>A Photos tab in the job window only (most of it is v2.6090's strip)</td></tr>
+  <tr><td><b>2 · one list or one per source</b></td><td>One view that unions the four tables, one page newest first</td><td>Four lists, four Show more presses</td></tr>
+  <tr><td><b>3 · texts and email</b></td><td>In the list for the office and the estimator</td><td>Left to the Messages thread</td></tr>
+  <tr><td><b>4 · a primary's scope</b></td><td>The view follows the jobs ledger: their own jobs only</td><td>What the report photos' gate shows today: every job</td></tr>
+  <tr><td><b>5 · Drive-only photos</b></td><td>Not at first; the job's strip is the door</td><td>A nightly index of every folder, its own card</td></tr>
+</table></div>
+<p class="lede" style="margin-top:12px"><b>Recommendation:</b> build it as the three-PR train on the card: the view and the kernel, then the tab with its viewer and guide, then the job window's line.</p>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  var root = document.documentElement;
+  var q = new URLSearchParams(location.search);
+  function setTheme(t) {
+    root.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+    document.querySelectorAll('[data-theme-pick]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-pick') === (t === 'dark' ? 'dark' : 'light'))); });
+  }
+  setTheme(q.get('theme') === 'dark' ? 'dark' : 'light');
+  document.querySelectorAll('[data-theme-pick]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var t = b.getAttribute('data-theme-pick');
+      setTheme(t);
+      var u = new URL(location.href); u.searchParams.set('theme', t); history.replaceState(null, '', u);
+    });
+  });
+})();
+</script>
+</body>
+</html>
