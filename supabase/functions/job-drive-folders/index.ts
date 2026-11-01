@@ -1,8 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DRIVE, driveFolderIdFromUrl, findOrCreateFolder, googleAccessToken } from '../_shared/driveUpload.ts'
+import { googleAccessToken } from '../_shared/driveUpload.ts'
 import { checkFolderWrite, DRIVE_SETTINGS_KEYS, NO_ROOT_WORDS, readDriveSettings, type DriveFolderFacts } from '../_shared/driveSettings.ts'
-import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { FolderTree, JOB_FOLDER_COLUMNS, folderUrl, type FolderHold, type JobFolderRow, type PlaceAct } from '../_shared/jobFolders.ts'
 import {
   BID_FOLDER_PIECES,
   DRIVE_BID_FOLDER_PATTERN_KEY,
@@ -10,13 +10,13 @@ import {
   DRIVE_JOB_FOLDER_PATTERN_KEY,
   DRIVE_JOBS_ROOT_FOLDER_ID_KEY,
   driveFolderIdFromLinkOrId,
-  folderName,
   folderPatternJson,
   JOB_FOLDER_PIECES,
-  JOB_FOLDER_TREE,
   parseFolderPattern,
   parseFoldersMade,
   type DriveSettings,
+  tidyOutcomeWords,
+  type TidyCounts,
 } from '../_shared/whereFilesGo.ts'
 
 /**
@@ -24,20 +24,30 @@ import {
  * Pipeline job's Google Drive folders, so the office never makes them by hand and the app's service account can
  * always write there (the first box photo stopped at a Drive 403 on a hand-made pictures folder). Since Where files
  * go (punch list #211) the office sets the root and the name's pattern on Documents → Where files go, and the same
- * function carries that tab's three verbs. Four bodies:
+ * function carries that tab's three verbs. Since v2.6284 (the owner's rule of 2026-11-01) the tree is root › <customer> ›
+ * <job pattern> › the five, one implementation in `_shared/jobFolders.ts` (`FolderTree.placeJob`) under the press, the
+ * sweep below and the photo sweep's first photo on a job with no folder. Five bodies:
  *
  *   POST { job_id }                                                      — the press
- *     Finds or makes the job's folder, named by the office's pattern (`folderName`, `<job number> · <job name>` as it
- *     ships), under the jobs root (the setting `drive_jobs_root_folder_id`, the DRIVE_JOBS_FOLDER_ID env while it is
- *     empty: the Jobs folder in the "PipeTooling Jobs" Shared Drive, so every new folder inherits its sharing) and
- *     under it Customer Pictures, Plans and Team only, with Photos and Sent by us inside Team only. A job whose bid
- *     already has a folder (bids.drive_link, made by drive-intake) takes that folder as its own, so a bid's folder
- *     and its job's meet. Writes jobs_ledger.google_drive_link, job_pictures_link and job_plans_link where they
- *     are empty; a link already set is kept, and the answer says whether the service account can write there.
- *     Idempotent: a second press finds what is there and makes only what is missing. When the office's choice is
- *     as-needed (`drive_folders_made`, Where files go PR 3), a job that had no folder gets its folder alone and the
- *     link on the job; the folders inside are made as something first lands in them (`photoFolderFor`, `landingFolder`),
- *     and the answer names them `later`. A press on a job that has its folder fills in what is missing either way.
+ *     Places the job's folder in the tree: finds or makes the customer's folder under the jobs root (the setting
+ *     `drive_jobs_root_folder_id`, the DRIVE_JOBS_FOLDER_ID env while it is empty: the Jobs folder in the "PipeTooling
+ *     Jobs" Shared Drive, so every folder inherits its sharing; a job with no customer goes under *No customer yet*),
+ *     then the job's own folder under it, named by the office's pattern (`folderName`, `<job number> · <job name>` as it
+ *     ships): kept and moved or renamed into place when the job already has one in the Shared Drive, its bid's folder
+ *     (bids.drive_link, made by drive-intake) the same way, a flat one under the root from before the tree moved under
+ *     the customer, else made. Under it Customer Pictures, Plans and Team only, with Photos and Sent by us inside Team
+ *     only; as-needed (`drive_folders_made`) leaves the folders inside for the sweeps as before. Writes
+ *     jobs_ledger.google_drive_link (when the folder changed), job_pictures_link and job_plans_link where they are
+ *     empty, drive_folder_tidied_at always and drive_folder_hold (null, or why the folder could not be placed). A
+ *     folder in a My Drive is never moved: the service account can make folders there but cannot own a file, so the
+ *     job is held (409 `outside_drive`) with the words every surface shares. The answer carries `placed` (`act`,
+ *     `path`, `customer_folder`, `hold`). Idempotent: a second press finds what is there.
+ *
+ *   POST { sweep: { limit?, all?, offset? } }                           — the folder sweep (X-Cron-Secret, or the office)
+ *     The same rule over many jobs: by default the live jobs never placed or placed more than seven days ago, oldest
+ *     first, `limit` (25) at a time — the cron every 10 minutes (20261101163412) calls it only while such a job exists;
+ *     with `all` the live jobs by number from `offset`, so the tab's press walks every one. Answers the counts
+ *     (`looked`, `made`, `moved`, `renamed`, `in_place`, `held`, `left`), the held jobs with their reasons, and the line.
  *
  *   POST { check: { folder } }                                           — the write check (#211)
  *     A folder link or id → whether the service account can add a file there, in the words every surface shares
@@ -77,44 +87,6 @@ function json(body: unknown, status = 200): Response {
 const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']
 /** Who sets where files go: the office, not the estimators. */
 const SETTINGS_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
-const folderUrl = (id: string) => `https://drive.google.com/drive/folders/${id}`
-
-/** The folder names under a job's folder, as photo-save and drive-link look for them. */
-const { pictures: PICTURES, plans: PLANS, teamOnly: TEAM_ONLY, photos: PHOTOS, sentByUs: SENT_BY_US } = JOB_FOLDER_TREE
-
-/** Where a folder came from; `later` is a folder inside that the sweeps make as something first lands in it (as-needed). */
-type Source = 'kept' | 'bid' | 'found' | 'made' | 'later'
-
-/** Whether the service account can open a folder and put a file in it, as Drive sees its capabilities. */
-async function canWrite(token: string, id: string): Promise<boolean> {
-  const res = await fetch(`${DRIVE}/files/${encodeURIComponent(id)}?fields=id,capabilities/canAddChildren&supportsAllDrives=true`, {
-    headers: { Authorization: `Bearer ${token}` },
-  })
-  if (res.status === 403 || res.status === 404) return false
-  if (!res.ok) throw new Error(`Drive answered ${res.status} when the app looked at the job's folder.`)
-  const body = (await res.json().catch(() => ({}))) as { capabilities?: { canAddChildren?: boolean } }
-  return body.capabilities?.canAddChildren === true
-}
-
-/** A link the job already holds: kept as it is, with whether the app can write there (null for a link that is not a Drive folder). */
-async function keptLink(token: string, url: string): Promise<{ url: string; source: 'kept'; writable: boolean | null }> {
-  const id = driveFolderIdFromUrl(url)
-  return { url, source: 'kept', writable: id ? await canWrite(token, id) : null }
-}
-
-type JobRow = { id: string; hcp_number: string | null; job_name: string | null; customer_name: string | null; job_address: string | null; created_at: string | null }
-
-/** The pieces a job's folder name can be built from, as the office's pattern picks them. */
-function jobFacts(job: JobRow) {
-  return {
-    id: job.id,
-    number: job.hcp_number,
-    name: job.job_name,
-    customer: job.customer_name,
-    address: job.job_address,
-    year: job.created_at ? todayYmdInAppTz(new Date(job.created_at)).slice(0, 4) : null,
-  }
-}
 
 /** The tab's answer: the settings, the root's live check and the pieces the trays offer. */
 async function settingsAnswer(token: string, appEmail: string, settings: DriveSettings) {
@@ -143,21 +115,29 @@ serve(async (req) => {
     if (!saJson) return json({ error: 'Drive is not set up for the app yet: set GOOGLE_SERVICE_ACCOUNT_JSON (docs/DRIVE_INTAKE_SETUP.md).' }, 503)
     const admin = createClient(supabaseUrl, serviceRoleKey, { auth: { autoRefreshToken: false, persistSession: false } })
 
-    // --- the caller: a staff session with an office role, never a training account or a twin ---
-    const auth = req.headers.get('Authorization') ?? ''
-    const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
-    const { data: u } = await anon.auth.getUser()
-    if (!u?.user) return json({ error: 'Sign in first.' }, 401)
-    const { data: who } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
-    if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)
-    if (who.read_only) return json({ error: 'A training account cannot change Drive or the job.' }, 403)
-    if (who.is_digital_twin) return json({ error: 'A digital twin cannot change Drive or the job.' }, 403)
-
     const body = (await req.json().catch(() => ({}))) as {
       job_id?: string
       check?: { folder?: string }
       settings?: boolean
       set?: { root?: string | null; job_pattern?: unknown; bid_pattern?: unknown; folders_made?: unknown }
+      sweep?: { limit?: unknown; all?: unknown; offset?: unknown }
+    }
+
+    // --- the caller: the cron's secret for the sweep, else a staff session with an office role, never a training account or a twin ---
+    const cronSecret = Deno.env.get('CRON_SECRET')
+    const headerSecret = req.headers.get('X-Cron-Secret') ?? req.headers.get('x-cron-secret')
+    const byCron = Boolean(body.sweep) && Boolean(cronSecret) && headerSecret === cronSecret
+    let who: { role: string | null; read_only: boolean | null; is_digital_twin: boolean | null } | null = null
+    if (!byCron) {
+      const auth = req.headers.get('Authorization') ?? ''
+      const anon = createClient(supabaseUrl, Deno.env.get('SUPABASE_ANON_KEY')!, { global: { headers: { Authorization: auth } } })
+      const { data: u } = await anon.auth.getUser()
+      if (!u?.user) return json({ error: 'Sign in first.' }, 401)
+      const { data: row } = await admin.from('users').select('role, read_only, is_digital_twin').eq('id', u.user.id).maybeSingle()
+      who = (row as typeof who) ?? null
+      if (!who || !OFFICE_ROLES.includes(String(who.role))) return json({ error: 'Office only.' }, 403)
+      if (who.read_only) return json({ error: 'A training account cannot change Drive or the job.' }, 403)
+      if (who.is_digital_twin) return json({ error: 'A digital twin cannot change Drive or the job.' }, 403)
     }
     const appEmail = String((JSON.parse(saJson) as { client_email?: string }).client_email ?? '')
     const token = await googleAccessToken(saJson)
@@ -175,7 +155,7 @@ serve(async (req) => {
 
     // --- the tab's write: the root only once the app can write there ---
     if (body.set) {
-      if (!SETTINGS_ROLES.includes(String(who.role))) return json({ error: 'The office sets where files go.' }, 403)
+      if (!who || !SETTINGS_ROLES.includes(String(who.role))) return json({ error: 'The office sets where files go.' }, 403)
       const rows: { key: string; value_text: string }[] = []
       let rootFacts: DriveFolderFacts | null = null
       if (body.set.root !== undefined) {
@@ -209,101 +189,117 @@ serve(async (req) => {
       return json({ ...answer, saved: rows.map((r) => r.key), root_folder: rootFacts ?? answer.root?.folder ?? null })
     }
 
-    // --- the press: one job's folders ---
-    const jobId = String(body.job_id ?? '').trim()
-    if (!/^[0-9a-f-]{36}$/i.test(jobId)) return json({ error: 'job_id is required' }, 400)
-    const jobsFolderId = settings.rootFolderId
-    if (!jobsFolderId) return json({ error: NO_ROOT_WORDS, why: 'no_root' }, 503)
-    const { data: jobData } = await admin
-      .from('jobs_ledger')
-      .select('id, hcp_number, job_name, customer_name, job_address, created_at, bid_id, google_drive_link, job_pictures_link, job_plans_link')
-      .eq('id', jobId)
-      .maybeSingle()
-    const job = jobData as (JobRow & { bid_id: string | null; google_drive_link: string | null; job_pictures_link: string | null; job_plans_link: string | null }) | null
-    if (!job) return json({ error: 'No job with that id.' }, 404)
+    // --- the tree: the root's name for the path words, once ---
+    const rootId = settings.rootFolderId
+    if (!rootId) return json({ error: NO_ROOT_WORDS, why: 'no_root' }, 503)
+    const rootFacts = await checkFolderWrite(token, rootId, appEmail)
+    const rootName = rootFacts.folder?.name || 'Jobs'
+    const tree = new FolderTree(admin, token, settings, rootId, appEmail, rootName)
+    const label = (job: JobFolderRow) => [String(job.hcp_number ?? '').trim(), String(job.job_name ?? '').trim()].filter(Boolean).join(' · ') || `job ${job.id.slice(0, 8)}`
 
-    // --- the job's folder: kept, its bid's, found under the root, or made there ---
-    let folderId: string | null = null
-    let folderSource: Source = 'made'
-    const ownLink = String(job.google_drive_link ?? '').trim()
-    if (ownLink) {
-      const ownId = driveFolderIdFromUrl(ownLink)
-      if (!ownId) return json({ error: 'This job’s Drive link is not a folder. Fix the link on the Edit tab, then press again.', why: 'not_a_folder' }, 409)
-      if (!(await canWrite(token, ownId))) {
-        return json({ error: `The app cannot write in this job’s Drive folder. Share the folder with ${appEmail} as an editor, or clear the link on the Edit tab and press again.`, why: 'folder_unshared', app_email: appEmail }, 409)
+    // --- the sweep: many jobs through the rule, counted ---
+    if (body.sweep) {
+      const limit = Math.min(50, Math.max(1, Number(body.sweep.limit ?? 25) || 25))
+      const all = body.sweep.all === true
+      const offset = Math.max(0, Number(body.sweep.offset ?? 0) || 0)
+      let rows: JobFolderRow[] = []
+      let total = 0
+      if (all) {
+        const { data, count, error } = await admin
+          .from('jobs_ledger')
+          .select(JOB_FOLDER_COLUMNS, { count: 'exact' })
+          .or('status.is.null,status.neq.paid')
+          .order('hcp_number', { ascending: false })
+          .order('id', { ascending: true })
+          .range(offset, offset + limit - 1)
+        if (error) return json({ error: `The jobs did not read: ${error.message}` }, 500)
+        rows = (data ?? []) as JobFolderRow[]
+        total = count ?? rows.length
+      } else {
+        const since = new Date(Date.now() - 7 * 86_400_000).toISOString()
+        const { data, count, error } = await admin
+          .from('jobs_ledger')
+          .select(JOB_FOLDER_COLUMNS, { count: 'exact' })
+          .or('status.is.null,status.neq.paid')
+          .or(`drive_folder_tidied_at.is.null,drive_folder_tidied_at.lt.${since}`)
+          .order('drive_folder_tidied_at', { ascending: true, nullsFirst: true })
+          .order('created_at', { ascending: true })
+          .limit(limit)
+        if (error) return json({ error: `The jobs did not read: ${error.message}` }, 500)
+        rows = (data ?? []) as JobFolderRow[]
+        total = count ?? rows.length
       }
-      folderId = ownId
-      folderSource = 'kept'
-    } else if (job.bid_id) {
-      const { data: bid } = await admin.from('bids').select('drive_link').eq('id', job.bid_id).maybeSingle()
-      const bidId = driveFolderIdFromUrl((bid as { drive_link?: string | null } | null)?.drive_link ?? null)
-      if (bidId && (await canWrite(token, bidId))) {
-        folderId = bidId
-        folderSource = 'bid'
+      const counts: TidyCounts = { looked: 0, made: 0, moved: 0, renamed: 0, inPlace: 0, held: 0, left: 0 }
+      const held: { job_id: string; label: string; why: string; kind: FolderHold['kind'] | 'failed' }[] = []
+      const tally: Record<PlaceAct, () => void> = {
+        made: () => {
+          counts.made += 1
+        },
+        moved: () => {
+          counts.moved += 1
+        },
+        renamed: () => {
+          counts.renamed += 1
+        },
+        move_rename: () => {
+          counts.moved += 1
+          counts.renamed += 1
+        },
+        in_place: () => {
+          counts.inPlace += 1
+        },
       }
-    }
-    if (!folderId) {
-      const made = await findOrCreateFolder(token, jobsFolderId, folderName(settings.jobPattern, jobFacts(job)))
-      folderId = made.id
-      folderSource = made.created ? 'made' : 'found'
-    }
-
-    // --- as needed: the job's folder alone, the folders inside as something first lands in them ---
-    const picturesLink = String(job.job_pictures_link ?? '').trim()
-    const plansLink = String(job.job_plans_link ?? '').trim()
-    if (settings.foldersMade === 'as-needed' && folderSource !== 'kept') {
-      const patch: Record<string, string> = {}
-      if (!ownLink) patch.google_drive_link = folderUrl(folderId)
-      if (Object.keys(patch).length > 0) {
-        const { error } = await admin.from('jobs_ledger').update(patch).eq('id', job.id)
-        if (error) return json({ error: `The folder was made but not recorded on the job: ${error.message}` }, 500)
+      for (const job of rows) {
+        counts.looked += 1
+        try {
+          const placed = await tree.placeJob(job)
+          if (placed.hold) {
+            counts.held += 1
+            held.push({ job_id: job.id, label: label(job), why: placed.hold.why, kind: placed.hold.kind })
+          } else tally[placed.act]()
+        } catch (e) {
+          // Drive or the row refused this one: its reason goes on the row, unstamped, so the next run tries it again.
+          const why = e instanceof Error ? e.message : String(e)
+          counts.held += 1
+          held.push({ job_id: job.id, label: label(job), why, kind: 'failed' })
+          await admin.from('jobs_ledger').update({ drive_folder_hold: why.slice(0, 300) }).eq('id', job.id)
+        }
       }
-      const later = { url: '', source: 'later' as Source, writable: null as boolean | null }
+      counts.left = Math.max(0, total - (all ? offset : 0) - rows.length)
       return json({
         success: true,
-        app_email: appEmail,
-        folders_made: settings.foldersMade,
-        folder: { url: folderUrl(folderId), source: folderSource },
-        pictures: picturesLink ? await keptLink(token, picturesLink) : later,
-        plans: plansLink ? await keptLink(token, plansLink) : later,
-        team_url: '',
-        photos_url: '',
-        sent_url: '',
-        stamped: Object.keys(patch),
+        by: byCron ? 'cron' : 'office',
+        mode: all ? 'all' : 'recent',
+        counts: { looked: counts.looked, made: counts.made, moved: counts.moved, renamed: counts.renamed, in_place: counts.inPlace, held: counts.held, left: counts.left },
+        held,
+        line: tidyOutcomeWords(counts),
+        next_offset: all ? offset + rows.length : null,
+        total,
       })
     }
 
-    // --- the folders inside, each found or made ---
-    const pictures = await findOrCreateFolder(token, folderId, PICTURES)
-    const plans = await findOrCreateFolder(token, folderId, PLANS)
-    const team = await findOrCreateFolder(token, folderId, TEAM_ONLY)
-    const photos = await findOrCreateFolder(token, team.id, PHOTOS)
-    const sent = await findOrCreateFolder(token, team.id, SENT_BY_US)
-    const madeOrFound = (f: { id: string; created: boolean }) => ({ url: folderUrl(f.id), source: (f.created ? 'made' : 'found') as Source, writable: true as boolean | null })
+    // --- the press: one job's folders ---
+    const jobId = String(body.job_id ?? '').trim()
+    if (!/^[0-9a-f-]{36}$/i.test(jobId)) return json({ error: 'job_id is required' }, 400)
+    const { data: jobData } = await admin.from('jobs_ledger').select(JOB_FOLDER_COLUMNS).eq('id', jobId).maybeSingle()
+    const job = jobData as JobFolderRow | null
+    if (!job) return json({ error: 'No job with that id.' }, 404)
 
-    // --- the links on the job: written where empty, kept where set ---
-    const picturesOut = picturesLink ? await keptLink(token, picturesLink) : madeOrFound(pictures)
-    const plansOut = plansLink ? await keptLink(token, plansLink) : madeOrFound(plans)
-    const patch: Record<string, string> = {}
-    if (!ownLink) patch.google_drive_link = folderUrl(folderId)
-    if (!picturesLink) patch.job_pictures_link = picturesOut.url
-    if (!plansLink) patch.job_plans_link = plansOut.url
-    if (Object.keys(patch).length > 0) {
-      const { error } = await admin.from('jobs_ledger').update(patch).eq('id', job.id)
-      if (error) return json({ error: `The folders were made but not recorded on the job: ${error.message}` }, 500)
-    }
-
+    const placed = await tree.placeJob(job)
+    const placedOut = { act: placed.act, path: placed.path, customer_folder: placed.customerFolder, hold: placed.hold }
+    if (placed.hold) return json({ error: placed.hold.why, why: placed.hold.kind, app_email: appEmail, placed: placedOut }, 409)
     return json({
       success: true,
       app_email: appEmail,
       folders_made: settings.foldersMade,
-      folder: { url: folderUrl(folderId), source: folderSource },
-      pictures: picturesOut,
-      plans: plansOut,
-      team_url: folderUrl(team.id),
-      photos_url: folderUrl(photos.id),
-      sent_url: folderUrl(sent.id),
-      stamped: Object.keys(patch),
+      folder: placed.folder,
+      pictures: placed.pictures,
+      plans: placed.plans,
+      team_url: placed.teamUrl,
+      photos_url: placed.photosUrl,
+      sent_url: placed.sentUrl,
+      stamped: placed.stamped,
+      placed: placedOut,
     })
   } catch (e) {
     return json({ error: e instanceof Error ? e.message : String(e) }, 500)

@@ -130,6 +130,8 @@ export class FakeDb {
   rpcCalls: Array<{ who: Who; fn: string; args: Row; uid: string | null }> = []
   /** Bearer token to user id. */
   sessions: Record<string, string> = {}
+  /** The address a user signs in with, where it is not their `users` row's: what `auth.getUser()` answers as `email`. */
+  authEmails: Record<string, string | null> = {}
   /** The users `gc_office_team()` answers true for. */
   office = new Set<string>()
   /** The bucket's objects, by `bucket/path`. */
@@ -145,6 +147,7 @@ export class FakeDb {
     this.calls = []
     this.rpcCalls = []
     this.sessions = {}
+    this.authEmails = {}
     this.office = new Set()
     this.files = {}
     this.refuse = {}
@@ -163,7 +166,9 @@ export class FakeDb {
       auth: {
         getUser: async () => {
           this.calls.push(`${who} auth.getUser`)
-          return uid ? { data: { user: { id: uid } }, error: null } : { data: { user: null }, error: { message: 'invalid JWT' } }
+          if (!uid) return { data: { user: null }, error: { message: 'invalid JWT' } }
+          const email = uid in this.authEmails ? this.authEmails[uid] : (this.rows('users').find((u) => u.id === uid)?.email ?? null)
+          return { data: { user: { id: uid, email } }, error: null }
         },
       },
       from: (table: string) => this.table(table, who),

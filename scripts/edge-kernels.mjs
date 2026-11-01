@@ -237,6 +237,11 @@ export const ENTRIES = {
   },
   'lib/myMail/rows.ts': { values: ['MY_MAIL_METADATA_HEADERS', 'MY_MAIL_SNIPPET_MAX', 'isOwnMail', 'isTheirs', 'myMailFold', 'myMailRow', 'readMyMail'], types: ['MyMailGmailMessage', 'MyMailRead', 'MyMailReader'] },
   'lib/myMail/mailGuess.ts': { values: ['guessJob', 'subjectJobChip'], types: ['MyMailGuess', 'MyMailGuessFacts'] },
+  // Whose session reads the mail (v2.6290): one Imitate or View as opened is refused, and only the sign-in address is read.
+  'lib/myMail/imitation.ts': {
+    values: ['IMITATION_SKEW_SECONDS', 'IMITATION_WINDOW_SECONDS', 'MAGIC_LINK_METHODS', 'MY_MAIL_NOT_SIGN_IN_WORDS', 'imitationsSince', 'isSignInAddress', 'openedByImitation', 'sessionLinkAt'],
+    types: [],
+  },
   'lib/myMail/tagPlan.ts': {
     values: ['MY_MAIL_MAILBOX', 'MY_MAIL_NEVER_LABELS', 'MY_MAIL_SENT_LABEL', 'planTag'],
     types: ['MyMailKnown', 'MyMailKnownLine', 'MyMailPerson', 'MyMailTagFile', 'MyMailTagLink', 'MyMailTagPlan', 'MyMailTagSkip', 'MyMailTagStep', 'MyMailThread', 'MyMailThreadRow'],

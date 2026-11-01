@@ -42,6 +42,14 @@ export interface JobDriveFolderOut {
   writable: boolean | null
 }
 
+/** What the press did with the folder this time, and where it now sits (v2.6284, the tree under the customer). */
+export interface JobDrivePlaced {
+  act: 'made' | 'moved' | 'renamed' | 'move_rename' | 'in_place'
+  /** *Jobs › Oak Hollow HOA › 972 · Oak Hollow Bldg C*; empty when the function did not say. */
+  path: string
+  customerFolder: { name: string; url: string } | null
+}
+
 /** The function's answer, in the page's words. */
 export interface JobDriveFolders {
   /** The service account's address, the one to share a hand-made folder with. */
@@ -56,6 +64,8 @@ export interface JobDriveFolders {
   sentUrl: string
   /** The `jobs_ledger` columns the press wrote. */
   stamped: string[]
+  /** Where the folder sits in the tree and what the press did; null from a function that predates the tree. */
+  placed: JobDrivePlaced | null
 }
 
 /** The three columns the press may write, as a patch on the job row the window holds. */
@@ -71,6 +81,7 @@ type Raw = {
   photos_url?: unknown
   sent_url?: unknown
   stamped?: unknown
+  placed?: { act?: unknown; path?: unknown; customer_folder?: { name?: unknown; url?: unknown } | null }
 }
 
 const str = (v: unknown): string => (typeof v === 'string' ? v : '')
@@ -94,7 +105,15 @@ export function jobDriveFoldersFromAnswer(data: unknown): JobDriveFolders {
     photosUrl: str(r.photos_url),
     sentUrl: str(r.sent_url),
     stamped: Array.isArray(r.stamped) ? r.stamped.filter((s): s is string => typeof s === 'string') : [],
+    placed: placedOf(r.placed),
   }
+}
+
+function placedOf(v: Raw['placed']): JobDrivePlaced | null {
+  if (!v || typeof v !== 'object') return null
+  const act = v.act === 'made' || v.act === 'moved' || v.act === 'renamed' || v.act === 'move_rename' || v.act === 'in_place' ? v.act : 'in_place'
+  const cf = v.customer_folder && typeof v.customer_folder === 'object' && str(v.customer_folder.name) ? { name: str(v.customer_folder.name), url: str(v.customer_folder.url) } : null
+  return { act, path: str(v.path), customerFolder: cf }
 }
 
 /** The job row's new links, from what the press wrote: the window and the desk patch their copy of the job with it. */
@@ -121,18 +140,22 @@ export function foldersMadeLater(r: JobDriveFolders): boolean {
 /** The line under the press once the folders are made, and the hold when a kept folder is closed to the app. */
 export function driveFoldersMadeWords(r: JobDriveFolders): DriveFoldersMadeWords {
   const later = foldersMadeLater(r)
+  // Where it sits: under its customer's folder (v2.6284), or under Jobs from a function that predates the tree.
+  const under = r.placed?.customerFolder ? `under ${r.placed.customerFolder.name}` : 'under Jobs'
   const first =
     r.folder.source === 'made'
       ? later
-        ? 'The job’s folder is ready under Jobs.'
-        : 'The job’s folders are ready under Jobs.'
+        ? `The job’s folder is ready ${under}.`
+        : `The job’s folders are ready ${under}.`
       : r.folder.source === 'found'
-        ? 'The job’s folder was already under Jobs.'
+        ? `The job’s folder was already ${under}.`
         : r.folder.source === 'bid'
           ? 'The job uses its bid’s folder.'
           : 'The job keeps its folder.'
+  const placed =
+    r.placed?.act === 'moved' ? `It was moved ${under}.` : r.placed?.act === 'renamed' ? 'It was renamed to the office’s pattern.' : r.placed?.act === 'move_rename' ? `It was moved ${under} and renamed to the office’s pattern.` : ''
   const second = later ? 'The folders inside are made as something first lands in them.' : r.folder.source === 'made' ? '' : 'The folders missing inside it are made.'
-  const line = second ? `${first} ${second}` : first
+  const line = [first, placed, second].filter(Boolean).join(' ')
   const closed = [r.pictures.writable === false ? 'pictures' : null, r.plans.writable === false ? 'plans' : null].filter((s): s is string => s !== null)
   const hold =
     closed.length === 0

@@ -48,7 +48,7 @@ export interface DriveFolderFacts {
   folders: number | null
 }
 
-type Meta = {
+export type DriveMeta = {
   id?: string
   name?: string
   mimeType?: string
@@ -61,11 +61,11 @@ type Meta = {
 
 const FOLDER_MIME = 'application/vnd.google-apps.folder'
 
-async function meta(token: string, id: string): Promise<{ status: number; body: Meta }> {
+async function meta(token: string, id: string): Promise<{ status: number; body: DriveMeta }> {
   const res = await fetch(`${DRIVE}/files/${encodeURIComponent(id)}?fields=id,name,mimeType,parents,driveId,owners(displayName,emailAddress),capabilities/canAddChildren&supportsAllDrives=true`, {
     headers: { Authorization: `Bearer ${token}` },
   })
-  const body = (await res.json().catch(() => ({}))) as Meta
+  const body = (await res.json().catch(() => ({}))) as DriveMeta
   return { status: res.status, body }
 }
 
@@ -83,11 +83,13 @@ export async function checkFolderWrite(token: string, folderId: string | null, a
   if (body.mimeType !== FOLDER_MIME) return answer({ kind: 'not_a_folder' })
   const facts = withFacts ? await folderFacts(token, folderId, body) : null
   if (body.capabilities?.canAddChildren !== true) return answer({ kind: 'cannot_write' }, facts)
+  // A folder in a My Drive takes the app's folders but never its files (v2.6284): the check says so before a photo finds out.
+  if (!body.driveId) return answer({ kind: 'outside_drive', owner: metaOwner(body) }, facts)
   return answer({ kind: 'ok' }, facts)
 }
 
 /** The folder's name, path, owner, Shared Drive and the count of folders inside, each read best-effort. */
-async function folderFacts(token: string, id: string, body: Meta): Promise<DriveFolderFacts> {
+async function folderFacts(token: string, id: string, body: DriveMeta): Promise<DriveFolderFacts> {
   const path: string[] = []
   let parent = body.parents?.[0] ?? null
   for (let i = 0; i < 6 && parent; i += 1) {
@@ -104,7 +106,7 @@ async function folderFacts(token: string, id: string, body: Meta): Promise<Drive
     // A Shared Drive's root reads as a parent with the drive's own name; the path begins there.
     if (drive && path[0] !== drive) path.unshift(drive)
   }
-  const owner = body.owners?.[0] ? body.owners[0].displayName || body.owners[0].emailAddress || null : null
+  const owner = metaOwner(body)
   let folders: number | null = null
   const q = encodeURIComponent(`'${id}' in parents and mimeType = '${FOLDER_MIME}' and trashed = false`)
   const res = await fetch(`${DRIVE}/files?q=${q}&fields=files(id),nextPageToken&pageSize=1000&supportsAllDrives=true&includeItemsFromAllDrives=true`, { headers: { Authorization: `Bearer ${token}` } }).catch(() => null)
