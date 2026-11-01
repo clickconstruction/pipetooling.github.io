@@ -10,6 +10,7 @@ import {
   sizeWords,
   sourceChips,
   sourceWords,
+  threadPath,
   thumbSource,
   viewerTitle,
   whereChips,
@@ -126,6 +127,11 @@ describe('a row’s words', () => {
   it('titles the viewer by the caption and the job', () => {
     expect(viewerTitle(row())).toBe('Rough In · J1042 · Oak Hollow Apartments Building C · Ridgeway Builders')
     expect(viewerTitle(row({ job_id: null, job_hcp_number: null, job_name: null, customer_name: null }))).toBe('Rough In')
+  })
+
+  it('opens the thread at the line, or nowhere for a line with no contact', () => {
+    expect(threadPath(row({ contact_id: 'c1', message_id: 'm1' }))).toBe('/messages?thread=c1&at=m1')
+    expect(threadPath(row({ contact_id: null, message_id: 'm1' }))).toBeNull()
   })
 
   it('takes a first name', () => {
