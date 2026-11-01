@@ -187,6 +187,12 @@ Never raise `max_rows` instead — it moves the cliff and hides it again.
 
 ---
 
+## RPC read answers 400 `42703 column record.<x> does not exist`
+
+**Symptom** (v2.6125): a `.rpc()` read that narrows its `select` and orders on a column the select leaves out answers 400 42703 — PostgREST orders an RPC's rows on the columns its select returns; a filter on such a column answers 200, and a table read is never affected. Fail-soft callers read it as zero (Quickfill's Unpriced fixtures did for a month). **Fix**: select every column the read orders on (`unpricedFixturesIo.test.ts` pins it). The lens's PostgREST (`src/lib/lens/answer/postgrest.ts`) answers such a read 200, so a lens walk cannot catch it.
+
+---
+
 ## "infinite recursion detected in policy for relation X"
 
 **Symptoms**: A read or write on a table fails with `infinite recursion detected in policy for relation "<table>"`. Seen 2026-07-04 on **every** `public.users` UPDATE (role changes, profile edits) — the failing policy queried `users` inside a `users` policy.
