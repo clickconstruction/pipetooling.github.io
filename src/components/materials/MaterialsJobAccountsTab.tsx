@@ -15,7 +15,10 @@ import {
 } from '../../lib/materials/jobAccountsFlow'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { buildHeldLienLines, type HeldLienAffidavitRow, type HeldLienLine, type HeldLienNoticeRow } from '../../lib/materials/heldLienLine'
-import { heldNoticeRisk, type HeldNoticeRisk } from '../../lib/materials/heldHouseNotice'
+import { customerPaidInFull, heldNoticeRisk, type HeldNoticeRisk } from '../../lib/materials/heldHouseNotice'
+import { houseNoticeStrip } from '../../lib/materials/houseNoticeStrip'
+import { HeldHouseNoticeStrip } from './HeldHouseNoticeStrip'
+import { ShapeSwitch, SideBySide, useShapeView } from '../prototypes/SideBySide'
 import { buildHouseAsks, unpaidInvoiceNumbers } from '../../lib/materials/houseAsk'
 import { SupplyHouseAskSheet } from './SupplyHouseAskSheet'
 import { buildLienSupplierCard, buildLienSupplierJobs, type LienSupplierCardRow, type LienSupplierInvoiceInput, type LienSupplierJob, type LienSupplierWord } from '../../lib/jobs/lienJobSuppliers'
@@ -204,6 +207,10 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
     }
     return out
   }, [view, suppliers, kindByJob, todayYmd])
+  // A house's notice window as a strip (punch list #217, people-docs-8, a prototype): behind a per-person
+  // switch, off by default; `?sbs=1` draws today's words and the strips together for a dev.
+  const shape = useShapeView('house-notice-window')
+  const stripsOn = shape.on || shape.sideBySide
 
   /** What the houses told us, read fresh; a missing table (before the push) or a refused read is no words. */
   async function readWords(): Promise<WordRow[]> {
@@ -461,6 +468,122 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
     return new Map(card.rows.map((r) => [r.houseId, r]))
   }
 
+  /**
+   * A job's houses: the red line and the grid as today, or (punch list #217, people-docs-8) the line as chips, the
+   * grid without its notice words, and each owed house's notice window as a bar under the grid.
+   */
+  function renderHouses(row: JobAccountsRow, withStrip: boolean) {
+    const strip = withStrip && todayYmd ? houseNoticeStrip(suppliers.get(row.jobId), kindByJob.get(row.jobId) ?? '', todayYmd, customerPaidInFull(row)) : null
+    return (
+      <>
+      {riskByJob.get(row.jobId) ? (
+        <div data-held-risk-line style={{ padding: '0.45rem 0.75rem', marginBottom: '0.6rem', borderRadius: 8, border: '1px solid var(--border-red)', background: 'var(--bg-red-tint)', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
+          {strip ? (
+            <span data-held-notice-chips style={{ display: 'inline-flex', gap: '0.35rem', flexWrap: 'wrap', marginRight: '0.5rem', verticalAlign: 'middle' }}>
+              {strip.chips.map((c) => (
+                <span key={c.key} data-held-notice-chip={c.key} style={{ fontSize: '0.68rem', fontWeight: 700, padding: '0 0.5rem', borderRadius: 999, lineHeight: 1.75, background: c.tone === 'ok' ? 'var(--bg-emerald-tint)' : 'var(--bg-amber-tint)', color: c.tone === 'ok' ? 'var(--text-emerald-800)' : 'var(--text-amber-800)' }}>
+                  {c.text}
+                </span>
+              ))}
+            </span>
+          ) : (
+            <strong>{riskByJob.get(row.jobId)!.words}.</strong>
+          )}{' '}
+          The customer has paid us, so a notice from the house would land on them. Pay the house, or call it and write down what it says.
+        </div>
+      ) : null}
+
+      <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.5rem 0.875rem', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
+          <div>Supply house</div>
+          <div style={{ textAlign: 'right' }}>Invoices</div>
+          <div>Oldest due</div>
+          <div style={{ textAlign: 'right' }}>Paid</div>
+          <div style={{ textAlign: 'right' }}>Owed</div>
+          <div />
+        </div>
+        {row.houses.map((group, gi) => {
+          // The house's own notice and what it told us (v2.4440): the Lien desk card's row for this house.
+          const hr = houseRowsFor(row).get(group.supplyHouseId)
+          // With the strips on, the per-house notice words go: the bar, the ticks and the mark say it.
+      const nw = hr && group.owed > 0.005 && !withStrip ? houseNoticeWords(hr) : null
+          const wordKey = `${row.jobId}:${group.supplyHouseId}`
+          return (
+          <div key={group.supplyHouseId} style={{ borderBottom: gi === row.houses.length - 1 ? 'none' : '1px solid var(--border)' }}>
+          <div
+            style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', alignItems: 'center' }}
+          >
+            <div style={{ minWidth: 0 }}>
+            <div style={{ fontWeight: 500, overflowWrap: 'anywhere', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+              {group.name}
+              {group.owedOnJobAccount > 0.005 && <JobAccountChip amount={group.owedOnJobAccount} />}
+            </div>
+            {nw ? (
+              <div data-held-house-notice={hr!.notice.kind} style={{ fontSize: '0.75rem', marginTop: 2 }}>
+                <span style={{ color: NOTICE_INK[nw.tone], fontWeight: nw.tone === 'amber' ? 600 : undefined }}>{nw.text}</span>
+                {nw.sub ? <span style={{ color: 'var(--text-muted)' }}> · {nw.sub}</span> : null}
+              </div>
+            ) : null}
+            {hr?.word?.note ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>“{hr.word.note}”</div> : null}
+            {hr && group.owed > 0.005 ? (
+              <button
+                type="button"
+                data-held-word-door={group.name}
+                aria-expanded={wordHouse === wordKey}
+                onClick={() => setWordHouse(wordHouse === wordKey ? null : wordKey)}
+                style={{ border: 'none', background: 'none', padding: 0, marginTop: 2, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.75rem' }}
+              >
+                {hr.word ? 'Change what they told us…' : 'They told us…'}
+              </button>
+            ) : null}
+            </div>
+            <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{group.invoiceCount}</div>
+            <div>
+              {group.oldestUnpaidBucket ? (
+                <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...DUE_CHIP_STYLES[group.oldestUnpaidBucket] }}>
+                  {dueChipText(group, todayYmd)}
+                </span>
+              ) : (
+                <span style={{ color: 'var(--text-faint)' }}>—</span>
+              )}
+            </div>
+            <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-600)' }}>${formatCurrency(group.paid)}</div>
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: group.owed > 0.005 ? 'var(--text-amber-800)' : 'var(--text-600)' }}>${formatCurrency(group.owed)}</div>
+              {hr?.theirBalanceWords ? <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{hr.theirBalanceWords}</div> : null}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <button
+                type="button"
+                title="Open this house on the Supply Houses tab — invoices and Make Payment live there"
+                onClick={() => onOpenSupplyHouse(group.supplyHouseId)}
+              >
+                Open house
+              </button>
+            </div>
+          </div>
+          {hr && wordHouse === wordKey ? (
+            <LienSupplierWordForm
+              row={hr}
+              jobId={row.jobId}
+              authName={authName}
+              isMobile={isMobile}
+              onCancel={() => setWordHouse(null)}
+              onDone={() => {
+                setWordHouse(null)
+                void reloadWords()
+              }}
+            />
+          ) : null}
+          </div>
+          )
+        })}
+      </div>
+      {strip ? <HeldHouseNoticeStrip strip={strip} showChips={false} onTellUs={(houseId) => setWordHouse(`${row.jobId}:${houseId}`)} testId={`held-notice-strip-${row.jobId}`} /> : null}
+      </>
+    )
+  }
+
   /** Job window (Job / Edit / Bill tabs) in place; falls back to the Jobs page if the provider is absent. */
   function openJobWindow(jobId: string) {
     if (jobFormModal) {
@@ -620,6 +743,7 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
             <button type="button" onClick={() => void load()} disabled={loading}>
               Refresh
             </button>
+            <ShapeSwitch view={shape} words={{ off: 'Show the window strips', on: 'Show today’s look' }} />
           </div>
 
           {/* Legend */}
@@ -915,97 +1039,11 @@ export function MaterialsJobAccountsTab({ active, myRole, onOpenSupplyHouse, aut
                             )
                           })()}
 
-                          {riskByJob.get(row.jobId) ? (
-                            <div data-held-risk-line style={{ padding: '0.45rem 0.75rem', marginBottom: '0.6rem', borderRadius: 8, border: '1px solid var(--border-red)', background: 'var(--bg-red-tint)', fontSize: '0.8125rem', color: 'var(--text-red-700)' }}>
-                              <strong>{riskByJob.get(row.jobId)!.words}.</strong> The customer has paid us, so a notice from the house would land on them. Pay the house, or call it and write down what it says.
-                            </div>
-                          ) : null}
-
-                          <div style={{ border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden' }}>
-                            <div style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.5rem 0.875rem', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', fontWeight: 600, color: 'var(--text-muted)' }}>
-                              <div>Supply house</div>
-                              <div style={{ textAlign: 'right' }}>Invoices</div>
-                              <div>Oldest due</div>
-                              <div style={{ textAlign: 'right' }}>Paid</div>
-                              <div style={{ textAlign: 'right' }}>Owed</div>
-                              <div />
-                            </div>
-                            {row.houses.map((group, gi) => {
-                              // The house's own notice and what it told us (v2.4440): the Lien desk card's row for this house.
-                              const hr = houseRowsFor(row).get(group.supplyHouseId)
-                              const nw = hr && group.owed > 0.005 ? houseNoticeWords(hr) : null
-                              const wordKey = `${row.jobId}:${group.supplyHouseId}`
-                              return (
-                              <div key={group.supplyHouseId} style={{ borderBottom: gi === row.houses.length - 1 ? 'none' : '1px solid var(--border)' }}>
-                              <div
-                                style={{ display: 'grid', gridTemplateColumns: '1fr 90px 190px 110px 110px 130px', gap: '0.75rem', padding: '0.625rem 0.875rem', fontSize: '0.8125rem', alignItems: 'center' }}
-                              >
-                                <div style={{ minWidth: 0 }}>
-                                <div style={{ fontWeight: 500, overflowWrap: 'anywhere', display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
-                                  {group.name}
-                                  {group.owedOnJobAccount > 0.005 && <JobAccountChip amount={group.owedOnJobAccount} />}
-                                </div>
-                                {nw ? (
-                                  <div data-held-house-notice={hr!.notice.kind} style={{ fontSize: '0.75rem', marginTop: 2 }}>
-                                    <span style={{ color: NOTICE_INK[nw.tone], fontWeight: nw.tone === 'amber' ? 600 : undefined }}>{nw.text}</span>
-                                    {nw.sub ? <span style={{ color: 'var(--text-muted)' }}> · {nw.sub}</span> : null}
-                                  </div>
-                                ) : null}
-                                {hr?.word?.note ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>“{hr.word.note}”</div> : null}
-                                {hr && group.owed > 0.005 ? (
-                                  <button
-                                    type="button"
-                                    data-held-word-door={group.name}
-                                    aria-expanded={wordHouse === wordKey}
-                                    onClick={() => setWordHouse(wordHouse === wordKey ? null : wordKey)}
-                                    style={{ border: 'none', background: 'none', padding: 0, marginTop: 2, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.75rem' }}
-                                  >
-                                    {hr.word ? 'Change what they told us…' : 'They told us…'}
-                                  </button>
-                                ) : null}
-                                </div>
-                                <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums' }}>{group.invoiceCount}</div>
-                                <div>
-                                  {group.oldestUnpaidBucket ? (
-                                    <span style={{ padding: '2px 8px', borderRadius: 4, fontSize: '0.75rem', fontVariantNumeric: 'tabular-nums', ...DUE_CHIP_STYLES[group.oldestUnpaidBucket] }}>
-                                      {dueChipText(group, todayYmd)}
-                                    </span>
-                                  ) : (
-                                    <span style={{ color: 'var(--text-faint)' }}>—</span>
-                                  )}
-                                </div>
-                                <div style={{ textAlign: 'right', fontVariantNumeric: 'tabular-nums', color: 'var(--text-600)' }}>${formatCurrency(group.paid)}</div>
-                                <div style={{ textAlign: 'right' }}>
-                                  <div style={{ fontVariantNumeric: 'tabular-nums', fontWeight: 600, color: group.owed > 0.005 ? 'var(--text-amber-800)' : 'var(--text-600)' }}>${formatCurrency(group.owed)}</div>
-                                  {hr?.theirBalanceWords ? <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)' }}>{hr.theirBalanceWords}</div> : null}
-                                </div>
-                                <div style={{ textAlign: 'right' }}>
-                                  <button
-                                    type="button"
-                                    title="Open this house on the Supply Houses tab — invoices and Make Payment live there"
-                                    onClick={() => onOpenSupplyHouse(group.supplyHouseId)}
-                                  >
-                                    Open house
-                                  </button>
-                                </div>
-                              </div>
-                              {hr && wordHouse === wordKey ? (
-                                <LienSupplierWordForm
-                                  row={hr}
-                                  jobId={row.jobId}
-                                  authName={authName}
-                                  isMobile={isMobile}
-                                  onCancel={() => setWordHouse(null)}
-                                  onDone={() => {
-                                    setWordHouse(null)
-                                    void reloadWords()
-                                  }}
-                                />
-                              ) : null}
-                              </div>
-                              )
-                            })}
-                          </div>
+                          {shape.sideBySide ? (
+                            <SideBySide testId={`held-sbs-${row.jobId}`} label="With the strip" today={renderHouses(row, false)} shape={renderHouses(row, true)} />
+                          ) : (
+                            renderHouses(row, stripsOn)
+                          )}
                           {row.hasJobAccountShare && row.suppliersOwed - row.owedOnJobAccount > 0.005 && (
                             <div style={{ fontSize: '0.75rem', color: JOB_ACCOUNT_TEAL.text }}>
                               Packet on file — the unflagged invoices here may belong on the job account. Flag them with the Edit pencil on the
