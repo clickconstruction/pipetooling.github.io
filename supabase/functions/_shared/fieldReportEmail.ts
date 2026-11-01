@@ -4,6 +4,7 @@
  * Pure: the resolved report content in, subject + HTML + text out.
  */
 import { APP_CALENDAR_TZ } from './appTimeZone.ts'
+import { reportPhotosEmailBlock, type ReportEmailPhoto } from './reportPhotoEmail.ts'
 
 function escapeHtml(s: string): string {
   return s
@@ -34,6 +35,8 @@ export interface ReportContent {
   jobDisplay: string
   createdAt: string
   fieldValues: Record<string, unknown>
+  /** The report's photos (punch list #229, PR 5): attached, linked in Drive, or named; none for a report without. */
+  photos?: ReportEmailPhoto[]
 }
 
 export function buildReportEmail(content: ReportContent): { subject: string; html: string; text: string } {
@@ -58,13 +61,15 @@ export function buildReportEmail(content: ReportContent): { subject: string; htm
           .join('')
       : '<div style="color:#9ca3af;font-size:14px">No content</div>'
 
+  const photoBlock = reportPhotosEmailBlock(content.photos ?? [])
+
   const html = `<div style="font-family:Arial,Helvetica,sans-serif;max-width:640px;margin:0 auto;padding:16px;color:#111827">
     <h2 style="font-size:18px;margin:0 0 4px">${escapeHtml(content.templateName)}</h2>
     <div style="font-size:14px;color:#374151;margin-bottom:2px">${escapeHtml(content.jobDisplay)}</div>
     <div style="font-size:13px;color:#6b7280;margin-bottom:16px">${escapeHtml(when)} · ${escapeHtml(
       content.authorName,
     )}</div>
-    <div style="border-top:1px solid #e5e7eb;padding-top:16px">${fieldsHtml}</div>
+    <div style="border-top:1px solid #e5e7eb;padding-top:16px">${fieldsHtml}${photoBlock.html}</div>
     <div style="margin-top:24px;font-size:12px;color:#9ca3af">Sent by ClickTooling because you're subscribed to report emails.</div>
   </div>`
 
@@ -76,6 +81,7 @@ export function buildReportEmail(content: ReportContent): { subject: string; htm
     ...(fieldEntries.length > 0
       ? fieldEntries.map(([label, value]) => `${label}:\n${value}\n`)
       : ['No content']),
+    ...(photoBlock.text ? [photoBlock.text] : []),
   ]
   return { subject, html, text: textLines.join('\n') }
 }
