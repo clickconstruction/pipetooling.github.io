@@ -184,7 +184,7 @@ export default function AiaG702G703History({
             </button>
           </span>
         ) : (
-          <span style={{ color: 'var(--text-amber-800)' }}>The copy was not kept.</span>
+          <span style={{ color: 'var(--text-amber-800)' }}>The copy was not kept. The send went out, and this row is the record.</span>
         )}
       </div>
     )

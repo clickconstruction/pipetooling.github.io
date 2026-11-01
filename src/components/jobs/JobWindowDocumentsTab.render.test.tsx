@@ -485,7 +485,7 @@ describe('JobWindowDocumentsTab', () => {
     expect(rows).toHaveLength(3)
     expect(rows[0]!.textContent).toMatch(/^Bill 2Emailed Oct 6, 2026, .* · to ap@gc\.example · by DanaBill 2\.pdf$/)
     expect(rows[1]!.textContent).toMatch(/^Records for 9703 Lenox HillPrinted 2 times, last Oct 5, 2026, .* · to Umar Khan · by Dana$/)
-    expect(rows[2]!.textContent).toMatch(/^Demand letterMailed Oct 1, 2026, .* · to Umar Khan · by DanaThe copy was not kept\.$/)
+    expect(rows[2]!.textContent).toMatch(/^Demand letterMailed Oct 1, 2026, .* · to Umar Khan · by DanaThe copy was not kept\. The send went out, and this row is the record\.$/)
 
     fireEvent.click(screen.getByRole('button', { name: 'Records for 9703 Lenox Hill' }))
     await waitFor(() => expect(openCopySpy).toHaveBeenCalledTimes(1))

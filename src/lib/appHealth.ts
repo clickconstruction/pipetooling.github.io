@@ -252,6 +252,13 @@ export const appHealth: AppHealthStore = createAppHealthStore({
 export const SLOW_WORDS = 'The app is slow right now.'
 export const UNREACHABLE_WORDS = 'Could not reach the app.'
 export const OFFLINE_WORDS = 'No signal.'
+/**
+ * The sentence after each lead (the health rule, 2026-11-01): what the app does by itself, and the one
+ * press if a person is needed, so a status line never leaves the person to work out what to do.
+ */
+export const SLOW_NEXT_WORDS = 'It goes the moment a read lands. Nothing to press.'
+export const UNREACHABLE_NEXT_WORDS = 'Check your signal, then press Retry to open the page again.'
+export const OFFLINE_NEXT_WORDS = 'Clock presses, notes and reports wait on the phone and go out when the signal is back.'
 export const DEV_RUNBOOK_WORDS = 'Run /db-freeze before anyone restarts.'
 export const RETRY_LABEL = 'Retry'
 export const AUTH_GATE_SLOW_WORDS = 'The app is slow right now. Keep this open.'
@@ -274,8 +281,9 @@ export interface AppHealthStripWords {
 
 /**
  * What the strip reads for a reading, or null when it is gone. `keptReadAt` (the page on screen is a
- * kept one, read then) adds *The page you see was read at 7:52 AM.* right after the lead; `dev` adds
- * the runbook line last once the trouble is a minute old.
+ * kept one, read then) adds *The page you see was read at 7:52 AM.* right after the lead; the state's
+ * next sentence follows (what the app does by itself, and the one press); `dev` adds the runbook line
+ * last once the trouble is a minute old.
  */
 export function appHealthStripWords(
   reading: AppHealthReading,
@@ -288,11 +296,11 @@ export function appHealthStripWords(
     case 'fine':
       return null
     case 'slow':
-      return { tone: 'amber', lead: SLOW_WORDS, lines: [...keptLine, ...devLine], retry: false }
+      return { tone: 'amber', lead: SLOW_WORDS, lines: [...keptLine, SLOW_NEXT_WORDS, ...devLine], retry: false }
     case 'unreachable':
-      return { tone: 'red', lead: UNREACHABLE_WORDS, lines: [...keptLine, ...devLine], retry: true }
+      return { tone: 'red', lead: UNREACHABLE_WORDS, lines: [...keptLine, UNREACHABLE_NEXT_WORDS, ...devLine], retry: true }
     case 'offline':
-      return { tone: 'grey', lead: OFFLINE_WORDS, lines: keptLine, retry: false }
+      return { tone: 'grey', lead: OFFLINE_WORDS, lines: [...keptLine, OFFLINE_NEXT_WORDS], retry: false }
   }
 }
 

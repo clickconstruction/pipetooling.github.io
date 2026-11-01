@@ -114,7 +114,7 @@ export function previousWorkdayYmd(ymd: string): string {
 export type OfficeRoundState =
   | { kind: 'today'; sheet: RoundCloseSheet }
   | { kind: 'not-yet'; previous: RoundCloseSheet | null; previousYmd: string; weekend: boolean }
-  | { kind: 'missed'; previousYmd: string; lastSheet: RoundCloseSheet | null; lastYmd: string | null }
+  | { kind: 'missed'; previousYmd: string; lastSheet: RoundCloseSheet | null; lastYmd: string | null; weekend: boolean }
 
 /**
  * The Dashboard card's state: the round ran today (its sheet); no round yet today, with the
@@ -133,7 +133,55 @@ export function officeRoundState(events: ReadonlyArray<RoundCloseEvent>, todayYm
   const lastYmd = days[days.length - 1] ?? null
   const lastSheet = lastYmd ? roundCloseSheet(events, lastYmd, label) : null
   // A weekend after a Friday with no marks still reads missed; a weekday with no round yet, against a marked Friday, reads not yet above.
-  return { kind: 'missed', previousYmd, lastSheet, lastYmd }
+  return { kind: 'missed', previousYmd, lastSheet, lastYmd, weekend: !isWorkdayYmd(todayYmd) }
+}
+
+export type RoundStart = { sectionId: string; label: string; lastYmd: string | null }
+
+/**
+ * The station today's round starts on (the health rule, 2026-11-01): of the stations marked at all in
+ * the events read, the one marked longest ago, the round's order breaking a tie; with no mark on any,
+ * the first station. The card names it and its press opens it, so a missed round ends in a press, not
+ * in *The stations wait on Quickfill.* `stations` is the round's list in order, personal ones left out.
+ */
+export function roundStartStation(events: ReadonlyArray<RoundCloseEvent>, stations: ReadonlyArray<{ sectionId: string; label: string }>): RoundStart | null {
+  const first = stations[0]
+  if (!first) return null
+  const lastYmd = new Map<string, string>()
+  for (const e of events) {
+    const d = calendarYmdInAppTzFromIso(e.marked_at)
+    if (!d) continue
+    const cur = lastYmd.get(e.section_id)
+    if (!cur || d > cur) lastYmd.set(e.section_id, d)
+  }
+  let best: RoundStart | null = null
+  for (const s of stations) {
+    const d = lastYmd.get(s.sectionId)
+    if (!d) continue
+    if (!best || d < (best.lastYmd ?? '')) best = { sectionId: s.sectionId, label: s.label, lastYmd: d }
+  }
+  return best ?? { sectionId: first.sectionId, label: first.label, lastYmd: null }
+}
+
+/** The press under the card's sentence: it opens the station the round starts on. On a weekend after a miss the round is not today's. */
+export const ROUND_START_PRESS = "Start today's round"
+export const ROUND_START_PRESS_WEEKEND = 'Start the round'
+export function roundStartPress(state: OfficeRoundState): string {
+  return state.kind === 'missed' && state.weekend ? ROUND_START_PRESS_WEEKEND : ROUND_START_PRESS
+}
+
+/**
+ * The card's sentence while no round has run today: what happened, then where today's starts, so the
+ * person reads a press and not a state. A weekend owes no round and says so.
+ */
+export function roundStartWords(state: OfficeRoundState, start: RoundStart | null, dayLabel: (ymd: string) => string): string {
+  if (state.kind === 'today') return ''
+  if (state.kind === 'not-yet' && state.weekend) return 'No round is due on the weekend.'
+  const lead = state.kind === 'missed' ? `The round did not run ${dayLabel(state.previousYmd)}.` : 'The round has not started yet.'
+  if (!start) return `${lead} It opens on Quickfill.`
+  const since = start.lastYmd ? `marked last ${dayLabel(start.lastYmd)}` : 'which has waited longest'
+  const whose = state.kind === 'missed' && state.weekend ? 'The next round starts on' : "Today's starts on"
+  return `${lead} ${whose} ${start.label}, ${since}.`
 }
 
 /** *Today 9:51 AM · Dana · 8 still open · 2 questions* and the like, for the card's head. */

@@ -44,7 +44,7 @@ export function SentCopyRows({ lines, rowTestId }: { lines: ReadonlyArray<SentCo
                 <span style={{ color: 'var(--text-muted)', marginLeft: '0.5rem', fontSize: '0.8125rem' }}>{sentCopyWords(line, sentCopyWhen)}</span>
                 {kept ? null : (
                   <span data-testid={`${rowTestId}-no-copy`} style={{ color: 'var(--text-amber-800)', marginLeft: '0.5rem', fontSize: '0.8125rem' }}>
-                    The copy was not kept.
+                    The copy was not kept. The send went out, and this row is the record.
                   </span>
                 )}
                 {line.row.attachments.map((a) => (

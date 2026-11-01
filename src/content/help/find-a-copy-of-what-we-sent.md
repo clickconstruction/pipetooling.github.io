@@ -38,7 +38,7 @@ An email may list attachments after its line. Press one to open it.
 - **Printed** means someone printed it here.
 - **Handed over**, **Mailed** and **Emailed** come from how the send was recorded.
 - **Printed 3 times** means the same page was printed three times. The line shows the last time.
-- **The copy was not kept** means the send happened but the copy could not be saved. The line is still the record that it went.
+- **The copy was not kept** means the send happened but the copy could not be saved. The row reads *The copy was not kept. The send went out, and this row is the record.* Nothing to do.
 
 ## What files a copy today
 

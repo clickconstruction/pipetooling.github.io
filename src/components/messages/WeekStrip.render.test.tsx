@@ -59,7 +59,7 @@ describe('WeekStrip', { timeout: 15_000 }, () => {
     expect(tiles.map((t) => t.textContent)).toEqual([
       'Answered within an hour50%1 of 2 · ↓ from 100% last week',
       'Longest wait right now2 d 4 hDana Whitfield · Rosa has it',
-      'Texts not delivered1',
+      'Texts not delivered1Call them, or send it as an email.',
       'Estimates2 sent · 1 opened · 0 accepted1 opened and quiet',
       'Ratings2 asked · 1 answered · 5 of 5',
     ])

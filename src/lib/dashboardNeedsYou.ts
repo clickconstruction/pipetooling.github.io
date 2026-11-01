@@ -1931,12 +1931,15 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
     }
     const names = [b.firstBid, b.firstMatrix ? `${b.firstMatrix} matrix` : null].filter(Boolean).join(' · ')
     const stuck = b.matricesStuck > 0 ? `${b.matricesStuck === 1 ? 'A matrix has' : `${b.matricesStuck} matrices have`} been working with no heartbeat for over an hour, or sit blocked. ` : b.requestOverdue ? 'A bid request has waited over a week. ' : ''
+    // The health rule (2026-11-01): the line says what the rounds do by themselves, and names a press only when a
+    // person is needed, so the owner reads a decision and not a count.
+    const base = `${parts.join(' · ')}${names ? ` — ${names}.` : '.'}`
     items.push({
       key: 'robot-backlog',
       severity: stuck ? 'amber' : 'blue',
       kicker: 'Robots',
-      title: 'Robots have work waiting',
-      detail: `${stuck}${parts.join(' · ')}${names ? ` — ${names}.` : '.'}`,
+      title: stuck ? 'A robot needs a person' : 'Robots have work waiting',
+      detail: stuck ? `${stuck}${base} The Console row says what it needs.` : `${base} The next round takes the top row by itself while the Mac is awake. Nothing to press.`,
       figure: String(b.bidsWaiting + b.matricesOpen),
       actionLabel: 'Open the Console',
       secondary: [
