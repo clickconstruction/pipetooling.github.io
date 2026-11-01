@@ -75,6 +75,10 @@ Copy to Text names the photos at the end, as in *Photos: 1 photo on Rough In*.
 The form shows no photo tile. A line reads *Photos go on a job's report. A report on a project or a bid takes none yet.* Pick the job instead when the work has one.
 :::
 
+## A Turnaway's photo
+
+The Turnaway form takes a photo too. Press {{button:amber|Turnaway}} on the bar and pick the reason. A camera tile sits under the reasons. Take the shot of the locked gate or the empty lot. The press reads {{button:amber|File Turnaway · 1 photo}} and waits while the shot is on its way. The photo is named by the reason in Drive. Dispatch sees *1 photo on the report* on its line.
+
 ## The size the office picks
 
 The office picks the size once in Settings → Jobs & billing → **Photos**. Small is 1200 px, Medium 1600 px and Large 2400 px on the long edge. Medium is the default. It reads fine on a desktop and goes up on one bar of signal. The app refuses any photo over 2 MB.

@@ -44,10 +44,14 @@ export function buildTurnawayDispatchTitle(args: {
   jobLabel: string
   reason: TurnawayReason
   note: string
+  /** The photos on the report (punch list #229, PR 2): dispatch reads *· 1 photo on the report* and opens it. */
+  photos?: number
 }): string {
   const base = `Turnaway: ${args.jobLabel} — ${turnawayReasonLabel(args.reason)}`
   const trimmedNote = args.note.trim()
-  const full = trimmedNote ? `${base}. ${trimmedNote}` : base
+  const withNote = trimmedNote ? `${base}. ${trimmedNote}` : base
+  const n = args.photos ?? 0
+  const full = n > 0 ? `${withNote} · ${n === 1 ? '1 photo' : `${n} photos`} on the report` : withNote
   return full.length > TITLE_MAX ? `${full.slice(0, TITLE_MAX - 1)}…` : full
 }
 
@@ -87,4 +91,15 @@ export function findTurnawayTemplateId(
   templates: readonly { id: string; name: string }[],
 ): string | undefined {
   return templates.find((t) => isTurnawayTemplateName(t.name))?.id
+}
+
+/**
+ * The File Turnaway press's words (punch list #229, PR 2): what it files, with the photos riding; a shot still on
+ * its way reads *Sending 1 photo…* and the press waits, as the field report's Save does.
+ */
+export function turnawayFileWords(input: { photos: number; inFlight: number; saving: boolean }): string {
+  if (input.saving) return 'Filing…'
+  if (input.inFlight > 0) return input.inFlight === 1 ? 'Sending 1 photo…' : `Sending ${input.inFlight} photos…`
+  if (input.photos > 0) return `File Turnaway · ${input.photos === 1 ? '1 photo' : `${input.photos} photos`}`
+  return 'File Turnaway'
 }
