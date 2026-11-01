@@ -34,7 +34,8 @@ export function ReportPhotosStrip({ reportId, compact = false }: { reportId: str
       <div data-testid="report-photos-strip" data-compact style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: 6 }}>
         {photos.map((p) => {
           const where = cardPhotoWords(p)
-          const label = [p.stage_name || p.caption || 'Photo', p.by_name, where.text].filter(Boolean).join(' · ')
+          const name = [p.stage_name || p.caption || 'Photo', p.by_name].filter(Boolean).join(' · ')
+          const label = `${name} · ${where.text}`
           const thumb = p.previewUrl ? (
             <img src={p.previewUrl} alt={label} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
           ) : (
@@ -50,7 +51,7 @@ export function ReportPhotosStrip({ reportId, compact = false }: { reportId: str
                 e.stopPropagation()
                 openInExternalBrowser(driveFileUrl(p.drive_file_id!))
               }}
-              aria-label={`Open ${label} in Drive`}
+              aria-label={`Open ${name} in Drive`}
               title={label}
               style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', font: 'inherit' }}
             >
