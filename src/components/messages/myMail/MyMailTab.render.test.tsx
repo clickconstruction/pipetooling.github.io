@@ -278,7 +278,9 @@ describe('MyMailTab', () => {
     })
     const { host } = await tab(io, { start: 'all' })
     await waitFor(() => expect(rowIds()).toEqual(['dale-late']))
-    fireEvent.click(rowOf('dale-late').getByRole('button', { name: 'open the line ›' }))
+    // The row says so before the reader does (v2.6295), and never offers a line it does not have.
+    expect(rowOf('dale-late').queryByRole('button', { name: 'open the line ›' })).toBeNull()
+    fireEvent.click(rowOf('dale-late').getByRole('button', { name: 'not on the job yet ›' }))
     const reader = await screen.findByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })
     expect(await within(reader).findByText('This mail is not on the job yet.')).toBeTruthy()
     fireEvent.click(within(reader).getByRole('button', { name: 'Put it on the job' }))

@@ -149,6 +149,8 @@ export const MY_MAIL_LIST_WORDS = {
   tag: 'Tag…',
   noGuess: 'no guess',
   openLine: 'open the line ›',
+  /** A tagged conversation's mail that no line holds yet (v2.6295): the same press, which opens the reader and its Put it on the job. */
+  notOnJob: 'not on the job yet ›',
   inMessages: 'already in Messages ✓',
   show: 'show',
   hide: 'hide',
@@ -160,6 +162,16 @@ export const MY_MAIL_LIST_WORDS = {
   notMoved: 'The conversation was not moved.',
   notPutOn: 'The mail was not put on the job.',
 } as const
+
+/**
+ * The quiet press beside a tagged conversation's ✓, which opens the reader (v2.6295). A mail with its line says
+ * *open the line ›*. One that no line holds yet, a reply that came after the follow stopped or before it got there, says
+ * *not on the job yet ›*, since the reader's bar then offers **Put it on the job**: until v2.6295 the row said it had a
+ * line it did not have.
+ */
+export function taggedPressWords(messageId: string | null): string {
+  return messageId ? MY_MAIL_LIST_WORDS.openLine : MY_MAIL_LIST_WORDS.notOnJob
+}
 
 /** Why a press of the tag did not go, when the failure brings no words of its own. */
 export function notTaggedWords(act: MyMailTagAct): string {
