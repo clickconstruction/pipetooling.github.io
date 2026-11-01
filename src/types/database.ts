@@ -9751,6 +9751,7 @@ export type Database = {
           id: string
           jobs_ledger_id: string | null
           last_error: string | null
+          last_mail_at: string | null
           last_read_at: string | null
           project_id: string | null
           tagged_at: string
@@ -9763,6 +9764,7 @@ export type Database = {
           id?: string
           jobs_ledger_id?: string | null
           last_error?: string | null
+          last_mail_at?: string | null
           last_read_at?: string | null
           project_id?: string | null
           tagged_at?: string
@@ -9775,6 +9777,7 @@ export type Database = {
           id?: string
           jobs_ledger_id?: string | null
           last_error?: string | null
+          last_mail_at?: string | null
           last_read_at?: string | null
           project_id?: string | null
           tagged_at?: string
@@ -20492,6 +20495,8 @@ export type Database = {
           customer_name: string | null
           customer_phone: string | null
           development_id: string | null
+          drive_folder_hold: string | null
+          drive_folder_tidied_at: string | null
           first_work_date: string | null
           gc_auto_offer_next: boolean
           gc_customer_id: string | null
@@ -20561,6 +20566,8 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           development_id?: string | null
+          drive_folder_hold?: string | null
+          drive_folder_tidied_at?: string | null
           first_work_date?: string | null
           gc_auto_offer_next?: boolean
           gc_customer_id?: string | null
@@ -20630,6 +20637,8 @@ export type Database = {
           customer_name?: string | null
           customer_phone?: string | null
           development_id?: string | null
+          drive_folder_hold?: string | null
+          drive_folder_tidied_at?: string | null
           first_work_date?: string | null
           gc_auto_offer_next?: boolean
           gc_customer_id?: string | null
