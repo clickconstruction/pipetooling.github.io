@@ -88,7 +88,7 @@ Press **Reply in Gmail ↗** at the foot to answer. You reply in Gmail as always
 
 After the tag, the bar on the mail turns green. Press **open the thread ›** to see the lines on the person's thread. The green bar also holds **Another job…** and **Untag**.
 
-A mail that came after the tag may say *This mail is not on the job yet.* Press {{button:blue|Put it on the job}} to bring it along.
+A mail that came after the tag may not be on the job yet. Its row in the list says **not on the job yet ›**. Open it, and the bar says *This mail is not on the job yet.* Press {{button:blue|Put it on the job}} to bring it along.
 
 ## Name a sender nobody knows
 

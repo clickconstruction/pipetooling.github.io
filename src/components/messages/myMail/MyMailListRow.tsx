@@ -2,13 +2,13 @@
  * Messages → My email (punch list #230 PR 3): one mail of the person's own Inbox or Sent, as the mock-up's list draws
  * it (`to-dos/messages-my-email/mockup.html`, section 1). Its way (↓ in, ↑ out), who with the address under the name,
  * the subject with the files and Gmail's snippet under it, the day, and the last column (`myMail/list.ts`'s `rowEnd`):
- * a tagged conversation's job with ✓ and *open the line ›*, the guess with **Yes** and *other…*, *already in Messages
- * ✓* for a mail a box holds on a job, or **Tag…**. A press on the rest of the row opens the reader. On a phone the row
+ * a tagged conversation's job with ✓ and *open the line ›* (*not on the job yet ›* for a mail no line holds yet, v2.6295),
+ * the guess with **Yes** and *other…*, *already in Messages ✓* for a mail a box holds on a job, or **Tag…**. A press on the rest of the row opens the reader. On a phone the row
  * is one column, the last column under the words. Nothing on a row says unread or counts anything.
  */
 import type { CSSProperties } from 'react'
 import type { MyMailRow } from '../../../lib/myMail/contract'
-import { chipWords, filesWords, MY_MAIL_LIST_WORDS, rowDay, rowEnd, wayOf, whoLine } from '../../../lib/myMail/list'
+import { chipWords, filesWords, MY_MAIL_LIST_WORDS, rowDay, rowEnd, taggedPressWords, wayOf, whoLine } from '../../../lib/myMail/list'
 import { Btn } from '../../gc/gcUi'
 import { chipStyle, mutedSmall as muted, oneLine } from './myMailStyles'
 
@@ -42,7 +42,7 @@ function RowEnd({ row, busy, onOpen, onYes, onPick }: Pick<MyMailListRowProps, '
             ✓ {chipWords(end.chip)}
           </span>
           <Btn kind="quiet" onClick={onOpen}>
-            {W.openLine}
+            {taggedPressWords(end.messageId)}
           </Btn>
         </>
       )

@@ -17,6 +17,7 @@ import {
   rowDay,
   rowEnd,
   tagActWords,
+  taggedPressWords,
   taggedWords,
   untaggedWords,
   wayOf,
@@ -56,6 +57,14 @@ describe('rowEnd: a row’s last column', () => {
   it('offers the tag on a box’s line that sits on the person, with no job', () => {
     expect(rowEnd(row({ inMessages: { messageId: 'm-8', jobKey: null } }))).toEqual({ kind: 'tag' })
     expect(rowEnd(row({ inMessages: { messageId: 'm-8', jobKey: null }, guess: { ...elm, why: 'Dale Okafor is on this job' } })).kind).toBe('guess')
+  })
+
+  it('names the tagged press by whether a line holds the mail: open the line ›, else not on the job yet ›', () => {
+    expect(taggedPressWords('m-1')).toBe('open the line ›')
+    // A reply that came after the follow stopped: the conversation is tagged, this mail is no line yet.
+    const late = rowEnd(row({ tagged: { ...elm, messageId: null } }))
+    expect(late).toEqual({ kind: 'tagged', chip: { ...elm, messageId: null }, messageId: null })
+    expect(taggedPressWords(late.kind === 'tagged' ? late.messageId : 'x')).toBe('not on the job yet ›')
   })
 })
 

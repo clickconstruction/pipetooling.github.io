@@ -2,7 +2,8 @@
 /**
  * One mail of the My email list (punch list #230 PR 3) over made-up rows: the way, who with the address, the subject
  * with the files and the snippet, the day, and each last column the mock-up draws, a guess with Yes and other…, no
- * guess with Tag…, a tagged conversation with ✓ and open the line ›, a box's line on a job; the presses each reach
+ * guess with Tag…, a tagged conversation with ✓ and open the line › (not on the job yet › for a mail no line holds), a
+ * box's line on a job; the presses each reach
  * their handler, a row being tagged waits, and a phone draws the row in one column.
  */
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
@@ -64,6 +65,15 @@ describe('MyMailListRow', () => {
     fireEvent.click(within(row).getByRole('button', { name: 'open the line ›' }))
     expect(presses.onOpen).toHaveBeenCalledTimes(1)
     expect(within(row).queryByRole('button', { name: 'Yes' })).toBeNull()
+  })
+
+  it('says not on the job yet › on a tagged conversation’s mail that no line holds, and still opens the reader', () => {
+    const dale = byId('dale-old')
+    const { presses, row } = draw('dale-old', { row: { ...dale, tagged: { ...dale.tagged!, messageId: null } } })
+    expect(row.querySelector('[data-my-mail-chip="tagged"]')?.textContent).toBe('✓ JP1077 · 4 Elm Ct')
+    expect(within(row).queryByRole('button', { name: 'open the line ›' })).toBeNull()
+    fireEvent.click(within(row).getByRole('button', { name: 'not on the job yet ›' }))
+    expect(presses.onOpen).toHaveBeenCalledTimes(1)
   })
 
   it('reads a mail a box holds on a job as already in Messages, with nothing to press', () => {
