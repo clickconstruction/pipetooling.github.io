@@ -103,6 +103,18 @@ describe('driveFoldersMadeWords', () => {
     expect(made.foldersMade).toBe('upfront')
   })
 
+  it('says where in the tree the folder sits and what the press did with it (v2.6284)', () => {
+    const under = { ...withSource('found'), placed: { act: 'move_rename' as const, path: 'Jobs › Oak Hollow HOA › 972 · Oak Hollow Bldg C', customerFolder: { name: 'Oak Hollow HOA', url: 'https://drive.google.com/drive/folders/1GGGGGGGGGGGGGGGGGGGGGGGGGGG' } } }
+    expect(driveFoldersMadeWords(under).line).toBe('The job’s folder was already under Oak Hollow HOA. It was moved under Oak Hollow HOA and renamed to the office’s pattern. The folders missing inside it are made.')
+    expect(driveFoldersMadeWords({ ...under, placed: { ...under.placed, act: 'moved' } }).line).toContain('It was moved under Oak Hollow HOA.')
+    expect(driveFoldersMadeWords({ ...under, placed: { ...under.placed, act: 'renamed' } }).line).toContain('It was renamed to the office’s pattern.')
+    expect(driveFoldersMadeWords({ ...withSource('made'), placed: { ...under.placed, act: 'made' } }).line).toBe('The job’s folders are ready under Oak Hollow HOA.')
+    expect(jobDriveFoldersFromAnswer({ ...answer, placed: { act: 'moved', path: 'Jobs › A › B', customer_folder: { name: 'A', url: 'https://x' } } }).placed).toEqual({ act: 'moved', path: 'Jobs › A › B', customerFolder: { name: 'A', url: 'https://x' } })
+    expect(jobDriveFoldersFromAnswer({ ...answer, placed: { act: 'odd' } }).placed).toEqual({ act: 'in_place', path: '', customerFolder: null })
+    expect(jobDriveFoldersFromAnswer(answer).placed).toBeNull()
+    for (const act of ['moved', 'renamed', 'move_rename'] as const) expect(plainWordsFailures(driveFoldersMadeWords({ ...under, placed: { ...under.placed, act } }).line)).toEqual([])
+  })
+
   it('keeps to plain words', () => {
     const later = { url: '', source: 'later' as const, writable: null }
     for (const source of ['made', 'found', 'bid', 'kept'] as const) {
