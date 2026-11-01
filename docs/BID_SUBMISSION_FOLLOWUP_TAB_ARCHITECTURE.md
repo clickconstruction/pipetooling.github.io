@@ -170,7 +170,7 @@ Any sub-extraction from this file threads a subset of these props through; none 
 - **Owned local state:** `selectedAccountManagerForPrint` (152); renders the `submissionFollowupStaleDaysInput` input (`#submission-followup-stale-days`, 918–936).
 - **Derived:** `uniqueAccountManagers`, `unassignedBidsCount`, `totalBidsCount` (option labels with counts).
 - **Handlers:** `printFollowupSheet`, `downloadFollowupSheetPdf`, `setSubmissionFollowupStaleDaysInput`.
-- **Sub-components:** none; plain inputs/buttons (`#3b82f6` / `#10b981` / `#d1d5db` literal button colors).
+- **Sub-components:** none; plain inputs/buttons (`#2563eb` / `#10b981` literal button colors — the blue since v2.6218 — and *Print* / *PDF* dimmed to `deadPress.ts`'s `DEAD_PRESS_FILL` / `DEAD_PRESS_TEXT` since v2.6062, where `#d1d5db` under white read 1.47:1).
 - **External coupling:** the stale threshold feeds `submissionFollowupListRowBackground` and the `BidPreviewModalContext` overlay effect — so its state stays at the tab level even if the toolbar JSX moves.
 - **Extraction status + risk + approach:** **first Stage-B move** as `BidSubmissionFollowupPrintToolbar`, after the two PDF builders are in `lib/`. Props: the manager list + counts, the stale input value + setter, and the two document actions. Low risk; validates the seam.
 

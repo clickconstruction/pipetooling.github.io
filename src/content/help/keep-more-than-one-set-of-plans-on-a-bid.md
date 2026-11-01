@@ -43,8 +43,6 @@ The robot reads one set, the one in the **Plans link** box above the list. The P
 
 Press the memo on a set to change it. A set with no memo shows {{button:outline|Add a memo}}. Type the line and press Enter. A robot that reads the plans can write this memo too, to say what it thinks changed.
 
-Press the memo on a set to change it. A set with no memo shows {{button:outline|Add a memo}}. Type the line and press Enter. A robot that reads the plans can write this memo too, to say what it thinks changed.
-
 Press {{button:outline|Check the link}} on a set to read its file name and size again. Press {{button:outline|Open ↗}} to open the set in Drive. Press **×** on a set, then {{button:outline|Remove}}, to take it off the bid. Removing a set never deletes the files in Drive.
 
 ## Find a set from the Bid Board
