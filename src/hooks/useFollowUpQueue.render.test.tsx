@@ -87,6 +87,7 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}): FollowUpIo {
     callDone: none,
     callMove: none,
     setPrefers: vi.fn(async () => undefined),
+    putBack: vi.fn(async () => undefined),
     unhighlight: none,
     ...overrides,
   }

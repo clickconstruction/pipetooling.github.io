@@ -15,6 +15,12 @@ import { ReportTemplateSignatureField } from './ReportTemplateSignatureField'
 import { STICKY_MODAL_CLOSE_BUTTON_STYLE, stickyModalHeaderStyle, stickyModalPanelStyle } from '../lib/stickyModalHeaderStyle'
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
+import { useReportPhotos } from '../hooks/useReportPhotos'
+import { ReportPhotoTiles } from './reports/ReportPhotoTiles'
+import { ReportPhotosStrip } from './reports/ReportPhotosStrip'
+import { REPORT_PHOTO_WORDS, newPhotoLine, reportEditSaveWords } from '../lib/photos/reportPhotos'
 
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
 
@@ -25,6 +31,8 @@ export type ReportForEdit = {
   job_display_name: string
   created_at: string
   field_values?: Record<string, string>
+  /** The ledger job (punch list #229, PR 4): the form takes more photos on a job's report; none on a project's or a bid's. */
+  job_ledger_id?: string | null
 }
 
 type Props = {
@@ -36,7 +44,12 @@ type Props = {
 }
 
 export default function ReportEditModal({ open, report, onClose, onSaved, viewerRole }: Props) {
-  const { profileName } = useAuth()
+  const { profileName, user, role } = useAuth()
+  // More photos on a saved report (punch list #229, PR 4): the same hook as the forms, with no stages; the ones
+  // already on the report are drawn by the strip and stay, since Drive is their home.
+  const phone = useNarrowViewport640()
+  const photoJobId = open && report ? (report.job_ledger_id ?? null) : null
+  const photos = useReportPhotos({ open: open && !!report, jobId: photoJobId, authUserId: user?.id ?? null, byName: profileName?.trim() || '', cameraFirst: phone && canLeaveJobFieldReport(role), stages: [] })
   const [templateFields, setTemplateFields] = useState<ReportTemplateField[]>([])
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -64,6 +77,7 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
 
   function handleClose() {
     setError(null)
+    photos.drop()
     onClose()
   }
 
@@ -90,11 +104,17 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
       .from('reports')
       .update({ field_values: fv, updated_at: new Date().toISOString() })
       .eq('id', report.id)
-    setSaving(false)
     if (err) {
+      setSaving(false)
       setError(err.message)
       return
     }
+    // The photos added here ride with the report (PR 4), named by the first long field's words.
+    if (photos.riding.length > 0) {
+      const firstLong = templateFields.find((f) => (f.input_type ?? 'long_text') === 'long_text')?.label ?? null
+      await photos.attach(report.id, firstLong ? (fv[firstLong] ?? '') : '')
+    }
+    setSaving(false)
     onSaved()
     handleClose()
   }
@@ -203,14 +223,36 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
             <p style={{ color: 'var(--text-muted)', marginBottom: '1rem' }}>No fields to edit.</p>
           )}
 
+          {/* The report's photos (punch list #229, PR 4): the saved ones as the card draws them, then the tile for more. */}
+          {report ? (
+            <div style={{ marginBottom: '1rem' }} data-testid="report-photos-block">
+              <ReportPhotosStrip reportId={report.id} foot={photoJobId ? <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>{REPORT_PHOTO_WORDS.savedStays}</span> : null} />
+              {photoJobId ? (
+                <>
+                  <input {...photos.inputProps} />
+                  {photos.lastShrink ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>{newPhotoLine({ shrinkWords: photos.lastShrink, jobHasFolder: photos.jobHasFolder })}</div> : null}
+                  <ReportPhotoTiles
+                    tiles={photos.tiles}
+                    stages={[]}
+                    onTake={() => photos.openCamera(null)}
+                    onStage={photos.putOnStage}
+                    onRemove={photos.remove}
+                    onRetry={photos.retry}
+                    captureWords={photos.tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.add}
+                  />
+                </>
+              ) : null}
+            </div>
+          ) : null}
+
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
             <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>
               Cancel
             </button>
-            <button type="submit" disabled={saving} style={{ padding: '0.5rem 1rem', background: saving ? DEAD_PRESS_FILL : '#2563eb', color: saving ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: saving ? 'not-allowed' : 'pointer' }}>
-              {saving ? 'Saving…' : 'Save'}
+            <button type="submit" disabled={saving || photos.inFlight} style={{ padding: '0.5rem 1rem', background: saving || photos.inFlight ? DEAD_PRESS_FILL : '#2563eb', color: saving || photos.inFlight ? DEAD_PRESS_TEXT : 'white', border: 'none', borderRadius: 4, cursor: saving || photos.inFlight ? 'not-allowed' : 'pointer' }}>
+              {reportEditSaveWords({ tiles: photos.tiles, saving })}
             </button>
           </div>
         </form>

@@ -92,6 +92,7 @@ export const ENTRIES = {
   'lib/emailIn/leftOut.ts': { values: ['leftOut', 'outsideInbox'], types: ['LeftOut'] },
   // A notice, not a person (punch list #223 PR 1, v2.6202): the senders the office marked, which the reader leaves out.
   'lib/emailIn/leftOutSenders.ts': { values: ['leftOutSenders', 'domainOf', 'OPEN_MAIL_DOMAINS', 'NOTICE_LINES'], types: ['LeftOutSenderMatch', 'LeftOutSenderRow'] },
+  'lib/emailIn/bidInSubject.ts': { values: ['bidInSubject', 'BID_NAME_MIN'], types: ['LiveBid'] },
   'lib/emailIn/invitation.ts': {
     values: ['invitation', 'invitationCue', 'portalLink', 'projectFromSubject', 'dueIn', 'dayIn', 'timeIn', 'dueWords', 'invitationFacts', 'openInvitation', 'invitationOf', 'KIND_WORDS', 'CUE_LINES'],
     types: ['Invitation', 'InvitationAnswer', 'InvitationInput', 'InvitationKind'],

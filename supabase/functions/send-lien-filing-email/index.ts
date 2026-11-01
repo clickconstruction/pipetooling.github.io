@@ -64,7 +64,8 @@ serve(async (req) => {
       /** v2.3436: which instrument — sets the log's email_type and the default subject/body. */
       email_type?: string
     }
-    const emailType = body.email_type === 'demand_letter' ? 'demand_letter' : 'lien_filing_notice'
+    // v2.6261 (punch list #231): `lien_courtesy` is the plain reminder before a lien — the caller's words, no attachment.
+    const emailType = body.email_type === 'demand_letter' ? 'demand_letter' : body.email_type === 'lien_courtesy' ? 'lien_courtesy' : 'lien_filing_notice'
 
     const jobId = typeof body.job_id === 'string' ? body.job_id.trim() : ''
     const toEmail = typeof body.to_email === 'string' ? body.to_email.trim() : ''
@@ -74,9 +75,10 @@ serve(async (req) => {
     if (!jobId) return jsonResponse({ error: 'job_id required' }, 400)
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
     if (!emailRegex.test(toEmail)) return jsonResponse({ error: 'Valid to_email required' }, 400)
-    if (!pdfBase64 || pdfBase64.length > MAX_PDF_BASE64_CHARS) {
+    if (emailType !== 'lien_courtesy' && (!pdfBase64 || pdfBase64.length > MAX_PDF_BASE64_CHARS)) {
       return jsonResponse({ error: 'Invalid or oversized PDF attachment' }, 400)
     }
+    if (pdfBase64.length > MAX_PDF_BASE64_CHARS) return jsonResponse({ error: 'Oversized PDF attachment' }, 400)
 
     // RLS is the access check: only office/master roles can read the job row.
     const { data: jl, error: jlErr } = await userClient
@@ -91,17 +93,21 @@ serve(async (req) => {
         ? body.subject.trim()
         : emailType === 'demand_letter'
           ? `Final demand for payment — ${jl.job_name ?? 'job'}`
-          : `Notice of claim for unpaid labor or materials — ${jl.job_name ?? 'job'}`
+          : emailType === 'lien_courtesy'
+            ? `A reminder on our notice of claim — ${jl.job_name ?? 'job'}`
+            : `Notice of claim for unpaid labor or materials — ${jl.job_name ?? 'job'}`
     const textPlain =
       typeof body.email_text === 'string' && body.email_text.trim().length > 0
         ? body.email_text.trim()
         : emailType === 'demand_letter'
           ? 'Please find attached our final demand for payment, with the invoice and its exhibits, as one PDF.'
-          : 'Please find the attached notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). A copy is also being delivered by certified mail.'
+          : emailType === 'lien_courtesy'
+            ? 'The notice of claim we mailed stands. This is a reminder, not a new notice.'
+            : 'Please find the attached notice of claim for unpaid labor or materials (Tex. Prop. Code § 53.056). A copy is also being delivered by certified mail.'
     // One builder with the run window's courtesy-email preview (v2.5073), so the preview is the send.
     const htmlBody = lienFilingEmailHtml(textPlain)
 
-    const attachments = [{ filename: lienFilingAttachmentName(pdfFilename), content: pdfBase64 }]
+    const attachments = pdfBase64 ? [{ filename: lienFilingAttachmentName(pdfFilename), content: pdfBase64 }] : []
     const resendResponse = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
@@ -128,7 +134,7 @@ serve(async (req) => {
     // Sent copies (docs/SENT_COPIES.md): the notice or the demand as it went, with its PDF, is kept on the job.
     const recipientLabel = typeof body.recipient_label === 'string' ? body.recipient_label.trim() : ''
     await fileSentEmailBestEffort(
-      { kind: emailType === 'demand_letter' ? 'demand_letter' : 'lien_notice', recipientName: recipientLabel, jobIds: [jobId], sentBy: user.id },
+      { kind: emailType === 'demand_letter' ? 'demand_letter' : emailType === 'lien_courtesy' ? 'lien_courtesy' : 'lien_notice', recipientName: recipientLabel, jobIds: [jobId], sentBy: user.id },
       { to: [toEmail], from: COMPANY_EMAIL_FROM, subject, html: htmlBody, attachments, resendEmailId: sent.id ?? null },
     )
 

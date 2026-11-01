@@ -2,7 +2,7 @@
 title: review a collections account before it goes to your attorney
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev, timeline, planned step, plan, what happens next
+keywords: legal, attorney, law firm, collections, packet, sworn account, lien clock, demand letter, worth it, write down, theory, exhibits, contact history, attorney ready, release, held back, ask a dev, timeline, planned step, plan, what happens next, email, eml, messages, from the job's messages
 where: /legal-desk
 ---
 Before an account that will not pay goes to a law firm, the office should see what the firm sees. The Legal desk in the Pipeline's Collections section is that review, one account at a time.
@@ -78,6 +78,17 @@ The list sits under headings by whose paper each one is. The payer's paper comes
 A draft wears a {{chip:yellow|draft}} chip on the desk and on the firm's portal. The firm sees drafts on purpose, so counsel can read a letter before it goes out. When the letter goes out, pick **Mark sent…** from its row's {{button:outline|⋯}} menu. Pick the day, how it went and who it went to. Pick the mailing receipt under the proof, once it is on the matter. The row's chip then reads {{chip:blue|sent · certified mail}}. The full record sits at the top of the row's {{button:outline|⋯}} menu, with the receipt one press away. **Mark final** is for a draft that is now the paper. **Received…** is for a paper that came in. *Not sent after all* clears a record made by mistake. All four sit in the same menu. **Whose paper…** sits there too and moves the paper under another heading.
 
 The firm sees each document under Evidence on its portal, with a link that opens for 15 minutes. The printed packet lists them as one more exhibit. Each row's actions sit behind its {{button:outline|⋯}} menu. **Hold from the firm…** keeps one back with a reason, such as an internal report. The firm sees only how many were held. **Remove** takes a document off the matter.
+
+## From the job's messages
+
+An email with the customer can go on the matter as the mail itself. Open the **Evidence** tab. Press {{button:outline|From the job’s messages…}} beside {{button:outline|Choose files}}. A window lists every email conversation on the account's jobs. Each row shows the subject, how many emails, and the days they span. The row's second line says where the mail came from and which job it is on. *tagged by Marisol from their mail* means a teammate tagged it from their own mail. *read from bids@* means the shared box read it. The emails the app sent itself follow under **The app’s own sends**.
+
+Tick each conversation the firm should read. The press counts the emails, such as {{button:dark|Put 4 on the matter}}. Each email becomes its own document, saved as a .eml file. The firm opens it in any mail program. A tagged email goes on as received, with its files inside. A box's email goes on as the app's record of the mail. The files we kept ride inside it, up to 10 MB. Each document gets its title, its day and one line on what it shows. A mail that came in reads as received. A mail we sent reads as sent by email.
+
+A conversation already on the matter reads {{chip:gray|on the matter}} and has no tick. An email over 10 MB stays off, with its reason under the press. When the press is done, the window says what went on and what did not. The Evidence list reads again. A row made this way opens **The line in Messages** from its {{button:outline|⋯}} menu. Removing the line in Messages leaves the matter's copy in place.
+
+No email on the account yet? Tag the conversation from Messages, or copy bids@ on your next email. Read [tag an email onto a job from Gmail](/help/tag-an-email-onto-a-job-from-gmail).
+
 ## Write the narrative for the firm
 
 The **Narrative** tab is where you tell the firm the story. Write who did the work, for whom, and where. Then say what happened in date order, what they say against what the record shows, and what is still missing. Press {{button:outline|Start from the outline}} to begin from those four headings. The text is markdown, so ## starts a heading and a table is drawn with pipes. Press {{button:dark|Preview as the firm sees it}} to check it. Then press {{button:dark|Save narrative}}.

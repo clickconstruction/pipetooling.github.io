@@ -40,6 +40,7 @@ const ALL_TYPES: JobActivityEventType[] = [
   'contract_reminded',
   'demand_letter_sent',
   'lien_notice_sent',
+  'lien_courtesy_sent',
   'invoice_resent',
   'sub_stage_change',
   'sub_progress',

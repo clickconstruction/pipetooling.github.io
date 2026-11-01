@@ -17,6 +17,7 @@ import type { HeardPromiseKind } from '../messages/promises'
 import { supabase } from '../supabase'
 import { checkSupabaseError, DatabaseError, formatErrorMessage } from '../../utils/errorHandling'
 import type { ContactOwedRow, FollowUpContactRow, FollowUpMessageRow, FollowUpRows, MessageHighlightRow, MessagePromiseRow } from './followUpRows'
+import { SET_ASIDE_DAYS, type SetAsideRow } from './setAsideFold'
 import type { ContactState } from './queue'
 import { courtFactsFromRows, type CourtFacts } from './courtFacts'
 import type { LaneJobRows } from './newLaneRows'
@@ -30,6 +31,8 @@ export interface FollowUpIo {
   takeIt(contactId: string): Promise<void>
   /** Null puts it back for whoever answers first. */
   handTo(contactId: string, userId: string | null): Promise<void>
+  /** Put back a notice the reader set aside (v2.6231): the next read takes it. */
+  putBack(id: string): Promise<void>
   /** Returns the snooze's day for `snoozed`. */
   setState(contactId: string, state: ContactState): Promise<string | null>
   markOwed(contactId: string, what: string, day: DayKept): Promise<string>
@@ -169,7 +172,17 @@ async function loadJobStates(db: SupabaseClient, jobs: readonly ContactJobRow[])
   }
 }
 
-/** Follow up's reads and presses on a client: the app's own unless a test hands it another. */
+/** The notices the reader set aside this week and nobody put back (v2.6231), newest first; none when the read fails. */
+async function loadSetAside(db: SupabaseClient): Promise<SetAsideRow[]> {
+  try {
+    const since = new Date(Date.now() - SET_ASIDE_DAYS * 86400000).toISOString()
+    const r = await db.from('email_set_aside').select('id, mailbox, from_address, from_name, subject, at, reason').is('put_back_at', null).gte('at', since).order('at', { ascending: false }).limit(50)
+    return r.error ? [] : ((r.data ?? []) as unknown as SetAsideRow[])
+  } catch {
+    return []
+  }
+}
+
 /** The hand-off's ping (v2.6228): `{ handed: { contact_id } }` to messages-notify as the user. A client with no functions door (a smoke's fake) pings nobody. */
 async function pingHanded(db: SupabaseClient, contactId: string): Promise<void> {
   try {
@@ -180,6 +193,7 @@ async function pingHanded(db: SupabaseClient, contactId: string): Promise<void> 
   }
 }
 
+/** Follow up's reads and presses on a client: the app's own unless a test hands it another. */
 export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
   // The cut 1 and cut 2 tables join the generated types with the lead's types PR; until then the client is untyped.
   const db = client as SupabaseClient
@@ -190,7 +204,7 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
   }
   return {
     async loadQueue(todayYmd) {
-      const [contacts, channels, inbound, notes, autos, heard, owed, jobs, callTasks] = await Promise.all([
+      const [contacts, channels, inbound, notes, autos, heard, owed, jobs, callTasks, setAside] = await Promise.all([
         db.from('contacts').select(CONTACT_COLUMNS),
         db.from('contact_channels').select(CHANNEL_COLUMNS),
         // Their lines in while the conversation is open or snoozed: the queue reads each person's newest.
@@ -203,6 +217,8 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
         db.from('contact_jobs').select(JOB_COLUMNS).in('contact.state', ['waiting', 'snoozed']),
         // The calls to make (v2.5596), fail-soft before the push.
         loadOpenCallTasks(db),
+        // The notices set aside this week (v2.6231), fail-soft before the push: a read that fails leaves the fold out.
+        loadSetAside(db),
       ])
       checkSupabaseError(contacts, 'load the people Follow up reads')
       checkSupabaseError(channels, 'load their numbers and addresses')
@@ -230,6 +246,7 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
         jobs: jobRows,
         jobStates: await loadJobStates(db, jobRows),
         callTasks,
+        setAside,
       }
     },
     async loadHighlights(messageIds) {
@@ -249,6 +266,9 @@ export function supabaseFollowUpIo(client: unknown = supabase): FollowUpIo {
     callMove: (id, dueYmd) => supabaseCallTasksIo(db).move(id, dueYmd),
     async setPrefers(contactId, prefers) {
       await call('contact_set_prefers', { p_contact: contactId, p_prefers: prefers }, 'set how they hear from us')
+    },
+    async putBack(id) {
+      await call('email_put_back', { p_id: id }, 'put a notice back')
     },
     async handTo(contactId, userId) {
       await call('hand_to', { p_contact_id: contactId, p_user_id: userId }, 'hand a conversation on')

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { supabase } from '../../../lib/supabase'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso, companyWeekStartSundayContaining, todayYmdInAppTz } from '../../../utils/dateUtils'
@@ -7,6 +7,9 @@ import { EmptyState } from '../../EmptyState'
 import { LEGAL_DOCUMENT_FILTERS, LEGAL_DOCUMENT_SENT_HOWS, groupLegalDocumentsByWhose, legalDocumentDayWords, legalDocumentFilterCounts, legalDocumentFilterEmptyWords, legalDocumentFilterWords, legalDocumentGroupOf, legalDocumentKindWords, legalDocumentPassesFilter, legalDocumentProblem, legalDocumentSentHowWords, legalDocumentSentProblem, legalDocumentSizeWords, legalDocumentStateChipWords, legalDocumentStateWords, legalDocumentTimelineDay, legalDocumentTitleFromName, legalDocumentWhoseChoices, legalDocumentWhoseGuess, legalDocumentWhoseOf, legalPortalDocumentFromRow, type LegalDocumentDraft, type LegalDocumentFilter, type LegalDocumentSentDraft, type LegalDocumentWhose } from '../../../lib/legal/legalMatterDocuments'
 import { EVIDENCE_LANDING_LIT_MS, evidenceLanding, evidenceRowSelector } from '../../../lib/legal/evidenceLanding'
 import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatterDocumentSent, openLegalMatterDocument, retireLegalMatterDocument, setLegalMatterDocumentState, setLegalMatterDocumentWhose, updateLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { EVIDENCE_FROM_MESSAGES_WORDS, evidenceJobTiles, messagesLineHref, type EvidenceJobRow } from '../../../lib/legal/evidenceFromMessages'
+import { evidenceFromMessagesIo } from '../../../lib/legal/evidenceFromMessagesIo'
+import LegalEvidenceFromMessagesWindow from './LegalEvidenceFromMessagesWindow'
 
 /**
  * Documents for the firm, on the Legal desk's Evidence tab (v2.4810): a drop zone, a title and
@@ -28,6 +31,11 @@ import { addLegalMatterDocument, markLegalMatterDocumentReceived, markLegalMatte
  * into view and wears `.legalDocLanded` for a moment (`evidenceLanding` decides what the landing finds;
  * a filter hiding the row clears to All with one line under the filters, a paper gone from the matter
  * says so). The address carries the row (`&doc=`) until it is pressed, when `onLandingDone` clears it.
+ *
+ * Since v2.6276 (punch list #230 PR 5) **From the job's messages…** beside the drop zone opens the window that puts an
+ * email conversation on the account's jobs on the matter, one `.eml` per email (`LegalEvidenceFromMessagesWindow`),
+ * shown while `fromMessages` is given: the upload's own gate on an open matter. A row made that way names its line
+ * (`source_message_id`), and its ⋯ opens **The line in Messages** in a new tab.
  */
 const shortDay = (ymd: string) => (ymd ? new Date(`${ymd}T12:00:00Z`).toLocaleDateString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' }) : '')
 const MUTED: CSSProperties = { color: 'var(--text-muted)' }
@@ -50,7 +58,7 @@ function stateChipColor(state: string): string {
 
 type Pending = { key: string; file: File; draft: LegalDocumentDraft; /** The person picked whose paper it is; the title no longer guesses. */ whoseTouched: boolean }
 
-export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit, onChanged, payerName = '', landOn = null, onLandingDone, linkedStatements = {}, onOpenStatement }: { matterId: string; documents: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; onChanged: () => void; /** The payer's name, for the heading of their paper and the guess (v2.6108). */ payerName?: string; /** The row to land on, lit (v2.6166); from the address. */ landOn?: string | null; /** The landed row was pressed: the address lets the row go. */ onLandingDone?: () => void; /** v2.6212 (punch list #220): the statement each signed scan belongs to, by document id. */ linkedStatements?: Record<string, string>; /** Opens the statement's window. */ onOpenStatement?: (entryId: string) => void }) {
+export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit, onChanged, payerName = '', landOn = null, onLandingDone, linkedStatements = {}, onOpenStatement, fromMessages = null }: { matterId: string; documents: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; onChanged: () => void; /** The payer's name, for the heading of their paper and the guess (v2.6108). */ payerName?: string; /** The row to land on, lit (v2.6166); from the address. */ landOn?: string | null; /** The landed row was pressed: the address lets the row go. */ onLandingDone?: () => void; /** v2.6212 (punch list #220): the statement each signed scan belongs to, by document id. */ linkedStatements?: Record<string, string>; /** Opens the statement's window. */ onOpenStatement?: (entryId: string) => void; /** v2.6276 (punch list #230 PR 5): the account the door reads the email of; null hides it (a closed matter, or no hand to put a paper). */ fromMessages?: { accountName: string; jobs: ReadonlyArray<EvidenceJobRow> } | null }) {
   const [pending, setPending] = useState<Pending[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -59,6 +67,11 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
   const [receivedFor, setReceivedFor] = useState<{ id: string; on: string } | null>(null)
   const [whoseFor, setWhoseFor] = useState<{ id: string; whose: LegalDocumentWhose | '' } | null>(null)
   const [menuFor, setMenuFor] = useState<string | null>(null)
+  /** v2.6276: the From the job's messages… window, and the door's reads for this matter and account. */
+  const [pullOpen, setPullOpen] = useState(false)
+  const pullJobs = fromMessages?.jobs
+  const pullIo = useMemo(() => (pullOpen && pullJobs ? evidenceFromMessagesIo(supabase, { matterId, jobs: pullJobs }) : null), [pullOpen, matterId, pullJobs])
+  const canPull = canEdit && Boolean(fromMessages)
   const [filter, setFilter] = useState<LegalDocumentFilter>('all')
   const todayYmd = todayYmdInAppTz()
   const weekStart = companyWeekStartSundayContaining(todayYmd) ?? ''
@@ -166,6 +179,14 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
         >
           Drop PDFs, images or .eml files here, or{' '}
           <button type="button" onClick={() => fileRef.current?.click()} style={btn}>Choose files</button>
+          {canPull ? (
+            <>
+              {' '}or{' '}
+              <button type="button" data-legal-documents-from-messages onClick={() => setPullOpen(true)} title={EVIDENCE_FROM_MESSAGES_WORDS.doorHint} style={btn}>
+                {EVIDENCE_FROM_MESSAGES_WORDS.door}
+              </button>
+            </>
+          ) : null}
           <input ref={fileRef} type="file" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.eml,.txt,application/pdf,image/*,message/rfc822,text/plain" aria-label="Choose documents" style={{ display: 'none' }} onChange={(e) => { if (e.target.files?.length) take(e.target.files); e.target.value = '' }} />
           {' '}· each needs a title and one line on what it shows before it saves
         </div>
@@ -245,7 +266,14 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
                                 {d.held_reason ? <div style={{ color: 'var(--text-amber-700)' }}>Held from the firm: {d.held_reason}</div> : null}
                                 {group.guessed ? <div>Under {g.words} by its title. Whose paper… sets it.</div> : null}
                                 {linkedStatements[d.id] ? <div data-legal-document-statement>The signed copy of a sworn statement on the Timeline.</div> : null}
+                                {d.source_message_id ? <div data-legal-document-source-line>{EVIDENCE_FROM_MESSAGES_WORDS.lineRecord}</div> : null}
                               </div>
+                              {/* v2.6276: an .eml made from a Messages line opens the line, in a new tab so the desk stays. */}
+                              {d.source_message_id && d.source_contact_id ? (
+                                <a role="menuitem" data-legal-document-line-door href={messagesLineHref(d.source_contact_id, d.source_message_id)} target="_blank" rel="noopener noreferrer" onClick={() => setMenuFor(null)} style={{ ...btn, border: 'none', justifyContent: 'flex-start', height: 28, borderRadius: 6, textDecoration: 'none' }}>
+                                  {EVIDENCE_FROM_MESSAGES_WORDS.lineDoor} ↗
+                                </a>
+                              ) : null}
                               {([
                                 // v2.6212: a signed scan's door back to its statement.
                                 linkedStatements[d.id] && onOpenStatement ? { label: 'The statement on the Timeline', go: () => onOpenStatement(linkedStatements[d.id]!) } : null,
@@ -304,6 +332,9 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
           </div>
         )
       })}
+      {pullOpen && fromMessages && pullIo ? (
+        <LegalEvidenceFromMessagesWindow accountName={fromMessages.accountName} jobNumbers={evidenceJobTiles(fromMessages.jobs, [], todayYmd).numbers} io={pullIo} onClose={() => setPullOpen(false)} onPut={onChanged} />
+      ) : null}
     </div>
   )
 }

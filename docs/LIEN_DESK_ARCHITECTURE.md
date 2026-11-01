@@ -8,7 +8,7 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-24
+last_updated: 2026-11-01
 ---
 
 > **Line numbers are as of `f423bd6e5`** (the `mapped_at` commit; re-anchored 2026-10-05 from `a05cef4c4` through the file's diff, 2,002 → 2,251 lines) and drift with every edit — search the symbol named beside each range. The file is 3,510 lines at `2ba1fb9c0` (v2.5462), so ranges after the first few hundred lines sit up to a thousand lines lower now. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is one of the busiest components (119 commits in the 90 days to v2.5087); re-check ranges before any move. The dated notes below say what each version added; the regions under them carry the same facts by line.
@@ -91,7 +91,7 @@ last_updated: 2026-10-24
 | `onChanged` | `refetchLienDesk` | after every write (`run`) |
 | `onOpenEditJob(jobId, focus?)` | `tryOpenEditJob` with focus → `propertyRecordFocus` / `focusRow` | gate doors, paper "gc" door, retainage door |
 | `onOpenCompanySettings?` | `navigate('/settings?tab=settings-jobs&focus=issuer.<field>')` | paper "company" door |
-| `onOpenLienInstruments`, `onOpenLienAffidavit?`, `onOpenLegalDesk?` | `LienInstrumentsModal` over the desk, which stays open under it since v2.4523 — as it does under `onOpenCalendarJob`'s window and `onPutGcOnNotice`'s — so closing the window lands back on the desk (`onOpenLienInstruments` fetches an unloaded job; `onOpenLienAffidavit` only toasts for one) / the Legal desk's page, `/legal-desk` (since v2.5936, punch list #182) | ready footer, book rows, affidavit pane |
+| `onOpenLienInstruments`, `onOpenLienAffidavit?`, `onOpenLegalDesk?` | `LienInstrumentsModal` over the desk, which stays open under it since v2.4523 — as it does under `onOpenCalendarJob`'s window and `onPutGcOnNotice`'s — so closing the window lands back on the desk (`onOpenLienInstruments` fetches an unloaded job; `onOpenLienAffidavit` only toasts for one) / the Legal desk's page, `/legal-desk` (since v2.5936, punch list #182), whose Evidence tab puts the account's email from Messages on the matter since v2.6276 ([GLOSSARY → Document (Legal desk)](./GLOSSARY.md)) | ready footer, book rows, affidavit pane |
 | `legalSignoff?` | `{ stateFor, ask }` over `useLegalMatters`; `ask` writes `legal_add_entry` | sent footer (counsel) |
 | `onPutGcOnNotice?` | close desk → `setGcNotice({ gcId })` | header GC picker |
 | `calendarRows?`, `onOpenCalendarJob?`, `onCalendarChanged?` | `lienCalendarRows` (every billed job with its `LienPayRunway`; null while the board reads) / `setLienInstrumentsModal` over the desk / re-read pay dates or bump the clocks, then `refetchLienDesk` | Calendar kind (K), Share |

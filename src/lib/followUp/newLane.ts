@@ -257,7 +257,8 @@ export function newLane(
     if (invite) {
       sort = 'bid'
       why = bidWhy(invite)
-    } else if (c.kind === 'unknown') {
+    } else if (c.kind === 'unknown' && !(line.jobId?.startsWith('bid:') && line.invitation)) {
+      // An addendum the reader landed on the bid it names (v2.6231) makes no sort row: the thread sits on the bid.
       sort = 'who'
       why = whoWhy(line.channel, mailbox)
     } else if (active.length >= 2 && line.jobId === c.defaultJobId && !line.tiedByHand) {
