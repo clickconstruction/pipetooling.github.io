@@ -1788,6 +1788,8 @@ Devs: **Settings → Templates & testing → Workflow email (Edge Function)** (c
 
 ### customer-portal
 
+> **v2.6269 — the courtesy notice on the owner's card** (punch list #231): beside the recorded notices the function reads their desk items (`job_lien_desk_items` by `sent_filing_id`: `fields, voided_at`) and `buildPortalPropertyNotices` sets `courtesyOn`, the newest day a courtesy email reached the owner (`ownerCourtesyOn`, [`_shared/portalPropertyNotices.ts`](../supabase/functions/_shared/portalPropertyNotices.ts)); the card says the reminder reached them and that the notice stands. **Redeploy required.**
+
 > **v2.5956 — an owner-records packet's sent day on Chicago's calendar**: `sent.on` is now the day the packet went out on the office's calendar (`todayYmdInAppTz(new Date(at))`), not the first ten characters of its UTC timestamp, so an evening send no longer reads as tomorrow; a bare `YYYY-MM-DD` passes through. **Redeploy after the merge.**
 
 > **v2.5948 — Your jobs** (punch list #185 PR 5): the answer gains `myJobs` from [`_shared/portalMyJobs.ts`](../supabase/functions/_shared/portalMyJobs.ts) (`portalMyJobs`): the viewer's own jobs (never one they GC for someone else, never a billing-only job), open ones first by how far along, then paid ones they were asked to review, at most six, each with its stage from `jobs_ledger.status` (Booked, Working, Done, Billed, Paid) and its review from `customer_ratings` read as the service role (the newest open ask's `public_token` for `/rate`, or their stars). Best effort: a failed read sends `[]` and the statement stands. The homeowner's sample answers carry `SAMPLE_MY_JOBS`. **Redeploy required.**
@@ -2384,6 +2386,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 **Endpoint**: `POST /functions/v1/file-submittal-package` — `{ submittal_id }`; staff user JWT in `Authorization` (a pricing sharer on the bid through `can_access_bid_for_pricing`, or an estimating role). Returns `{ ok, reused, file_id, file_url, file_name, folder_link }`; 503 `not_configured` without the Drive secrets, 409 `not_fileable` for a draft or an unbuilt package, 502 with `folder_link` when Google refuses the upload (the storage-quota note points at `DRIVE_IMPERSONATE_USER`, `docs/DRIVE_INTAKE_SETUP.md`). Idempotent: a revision already filed answers `reused: true`; a same-name file in the folder is reused. Stamps `bid_submittals.drive_file_id / drive_file_url / drive_filed_at`, and `bids.drive_link` when the bid had none. Helpers: `_shared/driveUpload.ts` (lifted from `drive-intake` in the same release — it imports them now), names in `_shared/submittalDriveNames.ts`. Secrets: `GOOGLE_SERVICE_ACCOUNT_JSON`, `DRIVE_JOBS_FOLDER_ID`, optional `DRIVE_IMPERSONATE_USER`.
 ### legal-portal
+
+> **v2.6269 — the courtesy notice under a notice** (punch list #231): the notice desk items shaped down for the firm carry `fields.courtesy` beside the owner's call, letter two and the GC's okay, so the firm's band reads the **Courtesy notice** line. **Redeploy required.**
 
 > **v2.6209 — statements travel like planned steps (punch list #220)**: kind `statement` rows (the office's *Swear a statement…*, migration `20261031040000`) go to the firm unless held under `held_overrides` key `statement:<id>`, which stays home and counts in `heldCount`; a draft travels as a draft, loudly chipped, as a letter's draft does. **Redeploy after the push**; before it the old function sends every statement, held or not.
 
@@ -3413,6 +3417,8 @@ The caller sends no text: the function writes the title (*Wendi marked a bid for
 ---
 
 ### messages-notify
+
+> **v2.6269 — the courtesy notice as a legal line** (punch list #231): [`_shared/messagesReplyPush.ts`](../supabase/functions/_shared/messagesReplyPush.ts) reads the notice desk items' `job_id, kind, status` too and adds the owner's courtesy sends (`legalSendsFromCourtesy`, the regenerated edge copy of [`legalRoute.ts`](../src/lib/messages/legalRoute.ts)), so a reply after the reminder routes to the office as one after the notice does. **Redeploy required** for every function that bundles the copy (`messages-notify`, `messages-reply-push`).
 
 > **v2.6228 — a hand-off pings the person it went to**: a fourth body, `{ "handed": { "contact_id": "<contacts.id>" } }`, as the user, right after `hand_to` (`followUpIo.handTo`). The function refuses unless the thread's `has_how` is `handed` to someone other than the caller within the last 15 minutes (`handedFresh`) and the caller wrote an event line on it in that time (the hand's own); it builds the words itself ([`src/lib/messages/handedPush.ts`](../src/lib/messages/handedPush.ts), mirrored: *Rosa handed you Dale Ferris*, the newest line in, the thread at it), keeps the person's push hours (`pushDecision` over `pushHoursFor`, a held row with no push), sends through the same `pushToPerson` as a reply's push and records one `notification_history` row as `message_handed`. Answers `{ pushed, held, devices }`. **Redeploy required.**
 

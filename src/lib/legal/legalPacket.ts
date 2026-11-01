@@ -859,6 +859,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     propertyKindOf,
     isSub: account.viaGc,
     todayYmd,
+    // The courtesy notices (punch list #231) draw on each job's strip, off the same desk items the answers band reads.
+    items: input.lienDeskItems ?? [],
   })
   const openBalanceOf = (id: string) => { const j = jobs.find((x) => x.id === id); return j ? jobOpenBalance(j) : 0 }
   const envelopes = attachEnvelopeAnswers(buildLegalEnvelopes(lienFilingsLive, { labelOf: (id) => labelByJob.get(id) ?? '—', propertyKind: '', propertyKindOf, mailPieces: input.mailPieces ?? [] }), { items: input.lienDeskItems ?? [], openBalanceOf, todayYmd })

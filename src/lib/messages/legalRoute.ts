@@ -15,7 +15,7 @@ import { jobKey } from './jobKeys'
 import type { ThreadMessage } from './thread'
 
 /** The papers the desk sends. */
-export type LegalPaper = 'notice' | 'retainage' | 'affidavit' | 'release' | 'demand' | 'secondLetter'
+export type LegalPaper = 'notice' | 'retainage' | 'affidavit' | 'release' | 'demand' | 'secondLetter' | 'courtesy'
 
 /** Each paper's name, as the app already calls it (the customer's timeline). It is the line's subject. */
 export const LEGAL_PAPER_NAMES: Readonly<Record<LegalPaper, string>> = {
@@ -25,15 +25,17 @@ export const LEGAL_PAPER_NAMES: Readonly<Record<LegalPaper, string>> = {
   release: 'Lien release',
   demand: 'Demand letter',
   secondLetter: 'Second letter',
+  courtesy: 'Courtesy notice',
 }
 
-/** How a paper went, as the desk records it. */
-export type LegalSendMethod = 'certified_mail' | 'traceable_courier' | 'email' | 'hand'
+/** How a paper went, as the desk records it; `text` is the courtesy notice's (punch list #231). */
+export type LegalSendMethod = 'certified_mail' | 'traceable_courier' | 'email' | 'hand' | 'text'
 
 const METHOD_WORDS: Readonly<Record<LegalSendMethod, string>> = {
   certified_mail: 'certified mail',
   traceable_courier: 'traceable courier',
   email: 'email',
+  text: 'text',
   hand: 'hand',
 }
 const METHODS = Object.keys(METHOD_WORDS) as LegalSendMethod[]
@@ -154,6 +156,31 @@ export function legalSendsFromDemandLetters(letters: readonly DemandLetterRow[])
     if (d.voided_at || !d.sent_at) continue
     const methods = d.sent_method in METHOD_WORDS ? [d.sent_method as LegalSendMethod] : []
     out.push({ id: `demand:${d.id}`, jobId: d.job_id, paper: 'demand', methods, at: atOfDay(d.sent_at, d.created_at) })
+  }
+  return out
+}
+
+type CourtesyItemRow = Pick<Tables<'job_lien_desk_items'>, 'job_id' | 'kind' | 'status' | 'fields' | 'voided_at'>
+
+/**
+ * The courtesy notices that reached one person (punch list #231): each record on a sent notice's
+ * `fields.courtesy[]` whose channels to `recipient` went, one line per press. Read off the record as
+ * it is kept, without the kernel, so the edge copy holds it.
+ */
+export function legalSendsFromCourtesy(items: readonly CourtesyItemRow[], opts: { recipient?: 'owner' | 'original_contractor' } = {}): LegalSend[] {
+  const out: LegalSend[] = []
+  for (const it of items) {
+    if (it.kind !== 'notice_53_056' || it.status !== 'sent' || it.voided_at) continue
+    const raw = (it.fields as { courtesy?: unknown } | null)?.courtesy
+    if (!Array.isArray(raw)) continue
+    raw.forEach((r, i) => {
+      if (!r || typeof r !== 'object' || typeof (r as { at?: unknown }).at !== 'string') return
+      const rec = r as { at: string; to?: unknown }
+      const to = Array.isArray(rec.to) ? (rec.to as Array<Record<string, unknown> | null>) : []
+      const went = to.filter((t) => t && t.ok === true && (t.channel === 'email' || t.channel === 'text') && (!opts.recipient || t.who === opts.recipient))
+      if (went.length === 0) return
+      out.push({ id: `courtesy:${it.job_id}:${i}:${rec.at}`, jobId: it.job_id, paper: 'courtesy', methods: inOrder(went.map((t) => t!.channel as LegalSendMethod)), at: rec.at })
+    })
   }
   return out
 }

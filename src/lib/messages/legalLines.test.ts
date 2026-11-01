@@ -99,7 +99,7 @@ describe('legalLines', () => {
       ['filing:f-retainage', 'retainage'],
       ['filing:f-two', 'secondLetter'],
     ])
-    expect(Object.values(LEGAL_PAPER_NAMES)).toEqual(['Notice of unpaid balance', 'Retainage notice', 'Lien affidavit', 'Lien release', 'Demand letter', 'Second letter'])
+    expect(Object.values(LEGAL_PAPER_NAMES)).toEqual(['Notice of unpaid balance', 'Retainage notice', 'Lien affidavit', 'Lien release', 'Demand letter', 'Second letter', 'Courtesy notice'])
   })
 
   it('shows an affidavit once it is served, and a release with no send, at noon of its day', () => {

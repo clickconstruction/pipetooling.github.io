@@ -1,4 +1,5 @@
 import { daysBetweenYmd } from './billedExpectedPay'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { filingDeadlineForMonth, LIEN_SUIT_COUNSEL_LEAD_DAYS, serveDueForFiling, suitDeadlineFor } from './lienDeadlines'
 
 export { LIEN_SUIT_COUNSEL_LEAD_DAYS, suitDeadlineFor }
@@ -40,7 +41,7 @@ import { workMonthShort } from './forecastWorkMonths'
  * (v2.3670). An unknown kind shows residential dates, the earlier ones, and says so (v2.5031).
  */
 
-export type LienTimelineStepKind = 'last_work' | 'notice' | 'retainage' | 'affidavit' | 'serve' | 'hold' | 'suit' | 'release' | 'demand'
+export type LienTimelineStepKind = 'last_work' | 'notice' | 'retainage' | 'affidavit' | 'serve' | 'hold' | 'suit' | 'release' | 'demand' | 'courtesy'
 
 /** Whose move a live step is (v2.3877). */
 export type LienTimelineMove = 'ours' | 'gc' | 'owner' | 'county' | 'counsel'
@@ -206,6 +207,19 @@ export interface LienTimelineInput {
   paid: boolean
   /** The job's demand letters (v2.3877); absent when the caller has not loaded them — the strip then draws no letter. */
   demandLetters?: ReadonlyArray<LienTimelineDemandLetter>
+  /** The courtesy notices sent on the job (punch list #231, v2.6269), from the sent notice's record; absent when the caller has not loaded them. */
+  courtesy?: ReadonlyArray<LienTimelineCourtesy>
+}
+
+/** One courtesy notice as the timeline reads it: when it went, how, and the lien's day it named. */
+export interface LienTimelineCourtesy {
+  /** ISO. */
+  at: string
+  /** `by email and text` — the channels that went. */
+  how: string
+  by: string
+  /** 'YYYY-MM-DD' the message named; '' when none. */
+  lienDay: string
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
@@ -520,20 +534,24 @@ export function buildLienTimeline(input: LienTimelineInput): LienTimeline {
   }
 
   // 10 · the demand letter (v2.3877): the newest sent letter, placed by its date among the others.
-  const demand = demandStep(input.demandLetters, todayYmd)
-  if (demand) {
+  // 11 · the courtesy notice (punch list #231): the newest one sent, placed the same way — our paper, not a Chapter 53 step.
+  const placeOurPaper = (paper: LienTimelineStep) => {
     // Before the first live step dated after it (a sent notice is dated on its deadline, so finished
-    // steps never push the letter back); else right after the finished ones.
+    // steps never push the paper back); else right after the finished ones.
     const finished = (s: LienTimelineStep) => s.state === 'done' || s.state === 'missed' || s.state === 'blocked'
-    const at = steps.findIndex((s) => !finished(s) && s.date && s.date > demand.date)
+    const at = steps.findIndex((s) => !finished(s) && s.date && s.date > paper.date)
     if (at === -1) {
       let after = 0
       steps.forEach((s, i) => { if (finished(s)) after = i + 1 })
-      steps.splice(after, 0, demand)
+      steps.splice(after, 0, paper)
     } else {
-      steps.splice(at, 0, demand)
+      steps.splice(at, 0, paper)
     }
   }
+  const demand = demandStep(input.demandLetters, todayYmd)
+  if (demand) placeOurPaper(demand)
+  const courtesy = courtesyStep(input.courtesy, todayYmd)
+  if (courtesy) placeOurPaper(courtesy)
 
   // Whose move each live step is (v2.3877).
   const paidBy: LienTimelineMove = input.isSub ? 'gc' : 'owner'
@@ -638,6 +656,15 @@ function demandStep(letters: ReadonlyArray<LienTimelineDemandLetter> | undefined
     return { ...base, date: l.deadlineDate, dateWords: lienDateWords(l.deadlineDate, todayYmd), state: 'missed', words: `overdue ${-left} ${-left === 1 ? 'day' : 'days'} · the fee clock runs`, daysLeft: left }
   }
   return { ...base, date: l.deadlineDate, dateWords: `reply by ${lienDateWords(l.deadlineDate, todayYmd)}`, state: 'due', words: `${daysWords(left)} · sent ${lienDateWords(sent, todayYmd)} · ${money}`, daysLeft: left }
+}
+
+/** The newest courtesy notice as one finished step, or null when none went (punch list #231). */
+function courtesyStep(sent: ReadonlyArray<LienTimelineCourtesy> | undefined, todayYmd: string): LienTimelineStep | null {
+  const c = [...(sent ?? [])].filter((x) => x.at).sort((a, b) => b.at.localeCompare(a.at))[0]
+  if (!c) return null
+  const day = calendarYmdInAppTzFromIso(c.at)
+  const named = c.lienDay ? ` · named ${lienDateWords(c.lienDay, todayYmd)}` : ''
+  return { kind: 'courtesy', key: 'courtesy', cite: '', label: 'Courtesy notice', date: day, dateWords: `sent ${lienDateWords(day, todayYmd)}`, state: 'done', words: `${c.how}${c.by ? ` · by ${c.by}` : ''}${named}`, daysLeft: null, door: null }
 }
 
 function demandDebtor(input: LienTimelineInput): LienTimelineMove {
