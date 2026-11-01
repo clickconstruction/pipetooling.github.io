@@ -1,16 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  TURNAWAY_PENDING_ACTION,
-  TURNAWAY_REASONS,
-  TURNAWAY_TEMPLATE_NAME,
-  buildTurnawayDispatchTitle,
-  buildTurnawayFieldValues,
-  buildTurnawayReferenceSummary,
-  findTurnawayTemplateId,
-  isTurnawayTemplateName,
-  parseTurnawayReason,
-  turnawayReasonLabel,
-} from './turnaway'
+import { TURNAWAY_PENDING_ACTION, TURNAWAY_REASONS, TURNAWAY_TEMPLATE_NAME, buildTurnawayDispatchTitle, buildTurnawayFieldValues, buildTurnawayReferenceSummary, findTurnawayTemplateId, isTurnawayTemplateName, parseTurnawayReason, turnawayReasonLabel, turnawayFileWords } from './turnaway'
 
 describe('turnawayReasonLabel', () => {
   it('maps every reason to a human label', () => {
@@ -125,5 +114,24 @@ describe('constants', () => {
   it('pins the cross-PR contract tokens', () => {
     expect(TURNAWAY_TEMPLATE_NAME).toBe('Turnaway')
     expect(TURNAWAY_PENDING_ACTION).toBe('trip_charge_turnaway')
+  })
+})
+
+// Punch list #229, PR 2: a Turnaway takes a photo.
+describe('turnaway photos', () => {
+  it('the dispatch title counts the photos on the report', () => {
+    const base = { jobLabel: 'J1042 Oak Hollow', reason: 'site_not_ready' as const, note: 'Gate chained.' }
+    expect(buildTurnawayDispatchTitle(base)).toBe('Turnaway: J1042 Oak Hollow — Site not ready. Gate chained.')
+    expect(buildTurnawayDispatchTitle({ ...base, photos: 0 })).toBe('Turnaway: J1042 Oak Hollow — Site not ready. Gate chained.')
+    expect(buildTurnawayDispatchTitle({ ...base, photos: 1 })).toBe('Turnaway: J1042 Oak Hollow — Site not ready. Gate chained. · 1 photo on the report')
+    expect(buildTurnawayDispatchTitle({ ...base, note: '', photos: 2 })).toBe('Turnaway: J1042 Oak Hollow — Site not ready · 2 photos on the report')
+  })
+
+  it('the press names what it files and waits for a shot on its way', () => {
+    expect(turnawayFileWords({ photos: 0, inFlight: 0, saving: false })).toBe('File Turnaway')
+    expect(turnawayFileWords({ photos: 1, inFlight: 0, saving: false })).toBe('File Turnaway · 1 photo')
+    expect(turnawayFileWords({ photos: 2, inFlight: 0, saving: false })).toBe('File Turnaway · 2 photos')
+    expect(turnawayFileWords({ photos: 1, inFlight: 1, saving: false })).toBe('Sending 1 photo…')
+    expect(turnawayFileWords({ photos: 1, inFlight: 0, saving: true })).toBe('Filing…')
   })
 })

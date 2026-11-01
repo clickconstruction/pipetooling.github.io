@@ -10,10 +10,17 @@ import {
   buildTurnawayDispatchTitle,
   buildTurnawayFieldValues,
   buildTurnawayReferenceSummary,
+  turnawayFileWords,
   turnawayReasonLabel,
   type TurnawayReason,
 } from '../../lib/turnaway'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { useAuth } from '../../hooks/useAuth'
+import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
+import { canLeaveJobFieldReport } from '../../lib/canLeaveJobFieldReport'
+import { useReportPhotos } from '../../hooks/useReportPhotos'
+import { ReportPhotoTiles } from '../reports/ReportPhotoTiles'
+import { REPORT_PHOTO_WORDS, newPhotoLine } from '../../lib/photos/reportPhotos'
 
 type Props = {
   open: boolean
@@ -41,6 +48,12 @@ export default function TurnawayModal({
   jobAddress,
 }: Props) {
   const { showToast } = useToastContext()
+  const { profileName } = useAuth()
+  // The photo (punch list #229, PR 2): the locked gate or the empty lot, the proof the office wants for the trip
+  // charge. The same hook as the field report, with no stages to pick; the camera on a phone for the field roles.
+  const phone = useNarrowViewport640()
+  const cameraFirst = phone && canLeaveJobFieldReport(userRole)
+  const photos = useReportPhotos({ open, jobId, authUserId, byName: profileName?.trim() || '', cameraFirst, stages: [] })
   const [templateId, setTemplateId] = useState<string | null>(null)
   const [templateLoading, setTemplateLoading] = useState(false)
   const [reason, setReason] = useState<TurnawayReason | null>(null)
@@ -133,6 +146,9 @@ export default function TurnawayModal({
       setError(err.message)
       return
     }
+    // The photo rides with the report (punch list #229, PR 2), named by the reason: *2026-11-01 Mateo Ruiz · Site not ready.jpg*.
+    const riding = photos.riding.length
+    if (inserted?.id && riding > 0) await photos.attach(inserted.id, turnawayReasonLabel(reason))
     if (inserted?.id) {
       void supabase.functions
         .invoke('send-report-notification', { body: { report_id: inserted.id } })
@@ -144,7 +160,7 @@ export default function TurnawayModal({
     try {
       await createDispatchRequest({
         fromUserId: authUserId,
-        title: buildTurnawayDispatchTitle({ jobLabel: `${hcpNumber} ${jobName}`, reason, note }),
+        title: buildTurnawayDispatchTitle({ jobLabel: `${hcpNumber} ${jobName}`, reason, note, photos: riding }),
         jobId,
         referenceSummary: buildTurnawayReferenceSummary(reason, { hcpNumber, jobName, jobAddress }),
         pendingAction: TURNAWAY_PENDING_ACTION,
@@ -159,7 +175,14 @@ export default function TurnawayModal({
 
   if (!open) return null
 
-  const canSubmit = !!authUserId && !!templateId && !!reason && !saving
+  // A shot still on its way holds the press, as the field report's Save does.
+  const canSubmit = !!authUserId && !!templateId && !!reason && !saving && !photos.inFlight
+
+  /** Every close path: a sent shot that no report holds is thrown away. */
+  function handleClose() {
+    photos.drop()
+    onClose()
+  }
 
   function reasonChipStyles(r: TurnawayReason): CSSProperties {
     const selected = reason === r
@@ -198,7 +221,7 @@ export default function TurnawayModal({
               {jobAddress}
             </p>
           </div>
-          <button type="button" onClick={onClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
+          <button type="button" onClick={handleClose} style={{ background: 'none', border: 'none', cursor: 'pointer', fontSize: '1.25rem', color: 'var(--text-muted)' }} aria-label="Close">×</button>
         </div>
 
         {!templateLoading && !templateId && (
@@ -217,6 +240,21 @@ export default function TurnawayModal({
             </div>
           </div>
 
+          {/* The photo (punch list #229, PR 2): the field report's tiles, under the reason. */}
+          <div style={{ marginBottom: '1rem' }} data-testid="report-photos-block">
+            <input {...photos.inputProps} />
+            {photos.lastShrink ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>{newPhotoLine({ shrinkWords: photos.lastShrink, jobHasFolder: photos.jobHasFolder })}</div> : null}
+            <ReportPhotoTiles
+              tiles={photos.tiles}
+              stages={[]}
+              onTake={() => photos.openCamera(null)}
+              onStage={photos.putOnStage}
+              onRemove={photos.remove}
+              onRetry={photos.retry}
+              captureWords={cameraFirst ? (photos.tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.take) : REPORT_PHOTO_WORDS.add}
+            />
+          </div>
+
           <div style={{ marginBottom: '1rem' }}>
             <label style={{ display: 'block', marginBottom: 4, fontWeight: 500 }}>Note (optional)</label>
             <textarea
@@ -230,13 +268,13 @@ export default function TurnawayModal({
           {error && <p style={{ color: 'var(--text-red-700)', marginBottom: '1rem' }}>{error}</p>}
 
           <div style={{ display: 'flex', gap: '0.5rem', justifyContent: 'flex-end' }}>
-            <button type="button" onClick={onClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
+            <button type="button" onClick={handleClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
             <button
               type="submit"
               disabled={!canSubmit}
               style={{ padding: '0.5rem 1rem', background: canSubmit ? '#d97706' : DEAD_PRESS_FILL, color: canSubmit ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canSubmit ? 'pointer' : 'not-allowed' }}
             >
-              {saving ? 'Filing…' : 'File Turnaway'}
+              {turnawayFileWords({ photos: photos.riding.length, inFlight: photos.tiles.filter((t) => t.status === 'shrinking' || t.status === 'sending').length, saving })}
             </button>
           </div>
         </form>

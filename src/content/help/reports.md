@@ -91,4 +91,4 @@ Don't poll the Reports tab. Subscribe instead. In **Settings → Your dashboard 
 
 ## Special reports
 
-Some reports are filed by dedicated buttons rather than the generic picker. For example, **Turnaway** reports come from {{button:amber|Turnaway — not ready / not home}} on the Job Mode card. A turnaway is a visit where the work could not be done. Those reports also alert dispatch for a trip charge. They still appear in the Reports tab like any other report.
+Some reports are filed by dedicated buttons rather than the generic picker. For example, **Turnaway** reports come from {{button:amber|Turnaway — not ready / not home}} on the Job Mode card. A turnaway is a visit where the work could not be done. Those reports also alert dispatch for a trip charge. They still appear in the Reports tab like any other report. The Turnaway form takes a photo of the site under the reason. Dispatch's line then ends with the photo count.
