@@ -136,7 +136,7 @@ describe('sample emails (What customers see)', () => {
     expect(digest.html).toContain('New account referred')
     // Released three days ago and referred yesterday, on the company's calendar.
     expect(digest.html).toContain(' · since 2026-09-13')
-    expect(digest.html).toContain('<li>2026-09-15 · New account referred')
+    expect(digest.html).toContain('<li>Sep 15 · New account referred</li>')
   })
 })
 
