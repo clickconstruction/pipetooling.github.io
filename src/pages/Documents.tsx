@@ -23,6 +23,7 @@ import { openInExternalBrowser } from '../lib/openInExternalBrowser'
 import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/documentsPageTab'
 import { canReadSentCopies } from '../lib/sent/sentCopies'
 import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
+import { DocumentsPhotosTab } from '../components/documents/DocumentsPhotosTab'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
 import {
@@ -1923,6 +1924,9 @@ export default function Documents() {
             Sent
           </button>
         ) : null}
+        <button type="button" style={pageTabStyle(documentsTab === 'photos')} onClick={() => setDocumentsTab('photos')}>
+          Photos
+        </button>
         {whereFilesGoVisible ? (
           <button type="button" style={pageTabStyle(documentsTab === 'where-files-go')} onClick={() => setDocumentsTab('where-files-go')}>
             Where files go
@@ -1946,6 +1950,7 @@ export default function Documents() {
       {documentsTab === 'supply-invoices' ? <DocumentsSupplyHouseInvoicesLedger /> : null}
       {documentsTab === 'sent' && sentTabVisible ? <DocumentsSentLedger /> : null}
       {documentsTab === 'where-files-go' && whereFilesGoVisible ? <DocumentsWhereFilesGo /> : null}
+      {documentsTab === 'photos' ? <DocumentsPhotosTab /> : null}
     </div>
   )
 }

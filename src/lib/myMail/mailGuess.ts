@@ -38,8 +38,11 @@ function onlyOne(chips: readonly MyMailJobChip[]): MyMailJobChip | null {
   return byKey.size === 1 ? ([...byKey.values()][0] ?? null) : null
 }
 
-/** A subject job as a chip: its kind and id from its key, its first number, its name. Null for a key that is not a job's. */
-function chipOf(job: SubjectJob): MyMailJobChip | null {
+/**
+ * A subject job as a chip: its kind and id from its key, its first number, its name. Null for a key that is not a job's.
+ * The function (`gmail-mine`) draws a tagged row's chip and a guess's facts with it too, so one job reads one way.
+ */
+export function subjectJobChip(job: SubjectJob): MyMailJobChip | null {
   const ref = jobRefOf(job.key)
   if (!ref) return null
   const num = job.labels.map((l) => l.trim()).find((l) => l !== '') ?? ''
@@ -51,7 +54,7 @@ function bySubject(subject: string, jobs: readonly SubjectJob[]): MyMailGuess | 
   if (subject === MY_MAIL_NO_SUBJECT) return null
   const key = jobInSubject(subject, jobs)
   const job = key ? jobs.find((j) => j.key === key) : undefined
-  const chip = job ? chipOf(job) : null
+  const chip = job ? subjectJobChip(job) : null
   if (!job || !chip) return null
   const named = job.labels.map((l) => l.trim()).find((l) => l !== '' && jobInSubject(subject, [{ key: job.key, labels: [l], name: '', mine: true }]) === job.key)
   return { ...chip, why: `the subject names ${named ?? chip.name}` }

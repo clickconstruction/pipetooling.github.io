@@ -1687,6 +1687,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "get-stripe-payouts",
   "get-submittal-room",
   "gmail-count",
+  "gmail-mine",
   "gmail-sync",
   "gsa-per-diem",
   "import-manual-transactions",
