@@ -3,11 +3,14 @@
  * (`to-dos/messages-my-email/mockup.html`). A row reads its way (↓ in, ↑ out), who with the address under the name,
  * the subject over Gmail's snippet, the day as a thread list says it (`listWhen`), the files, and its last column,
  * which is the whole point: a tagged conversation's job with ✓, the app's guess with **Yes**, a mail the boxes already
- * hold on a job, or **Tag…**. The page of rows moves by Gmail's own page tokens, one page at a time. The words of a tag
- * and an untag are here too, said once to the person who pressed. Pure; nothing here counts, nags or marks read.
+ * hold on a job, or **Tag…**. The page of rows moves by Gmail's own page tokens, one page at a time, and a page the
+ * view drew nothing of while Gmail holds older mail offers **Older ›** (`emptyPageWords`). The words of a tag, a move,
+ * a mail put on the job and an untag are here too, said once to the person who pressed. Pure; nothing here counts, nags
+ * or marks read.
  */
+import type { EmptyWords } from '../emptyWords'
 import { listWhen } from '../messages/listRows'
-import type { MyMailJobChip, MyMailRow, MyMailTagOk, MyMailUntagOk } from './contract'
+import type { MyMailJobChip, MyMailRow, MyMailTagOk, MyMailUntagOk, MyMailView } from './contract'
 
 /** A row's last column. */
 export type MyMailRowEnd =
@@ -103,6 +106,29 @@ export function taggedWords(ok: Pick<MyMailTagOk, 'lines' | 'tied' | 'files'>, c
   return `${chip ? `Tagged onto ${jobWords(chip)}.` : 'Tagged.'} ${onTheJobWords(ok)}`
 }
 
+/**
+ * The press that tagged a conversation: a first tag (**Yes**, a pick), **Another job…** on a tagged one, which moves it,
+ * or **Put it on the job** on a mail of one that no line holds yet. Each is `gmail-mine`'s `tag`, safe to run again.
+ */
+export type MyMailTagAct = 'tag' | 'move' | 'put'
+
+/**
+ * What the green bar says a tag put on the job. A move or a put that brought no line along says nothing: the chip says
+ * where the conversation is, and *every mail was on the job already* would not be true of it.
+ */
+export function doneWords(ok: Pick<MyMailTagOk, 'lines' | 'tied' | 'files'>, act: MyMailTagAct = 'tag'): string | null {
+  return act !== 'tag' && ok.lines + ok.tied === 0 ? null : onTheJobWords(ok)
+}
+
+/** The words after a tag, by the press that made it: the job, then what is on it now, when anything came along. */
+export function tagActWords(act: MyMailTagAct, ok: Pick<MyMailTagOk, 'lines' | 'tied' | 'files'>, chip?: Pick<MyMailJobChip, 'num' | 'name'> | null): string {
+  if (act === 'tag') return taggedWords(ok, chip)
+  const job = jobWords(chip)
+  const along = doneWords(ok, act)
+  if (act === 'move') return along ? `Moved to ${job}. ${along}` : `Moved to ${job}.`
+  return along ? `Added to ${job}. ${along}` : `Nothing new went on ${job}.`
+}
+
 /** The words after an untag: what came off the job, and the copy a legal matter keeps. */
 export function untaggedWords(ok: Pick<MyMailUntagOk, 'removed' | 'keptForMatter'>): string {
   const off = ok.removed > 0 ? `Untagged. ${lines(ok.removed)} came off the job.` : 'Untagged. Nothing came off the job.'
@@ -131,4 +157,28 @@ export const MY_MAIL_LIST_WORDS = {
   openSettings: 'Open Your account',
   tagging: 'Tagging…',
   notTagged: 'The conversation was not tagged.',
+  notMoved: 'The conversation was not moved.',
+  notPutOn: 'The mail was not put on the job.',
 } as const
+
+/** Why a press of the tag did not go, when the failure brings no words of its own. */
+export function notTaggedWords(act: MyMailTagAct): string {
+  return act === 'move' ? MY_MAIL_LIST_WORDS.notMoved : act === 'put' ? MY_MAIL_LIST_WORDS.notPutOn : MY_MAIL_LIST_WORDS.notTagged
+}
+
+/** What a view says of a page it drew nothing of, while Gmail holds older mail. */
+const EMPTY_PAGE: Readonly<Record<MyMailView, string>> = {
+  toTag: 'Nothing to tag on this page.',
+  tagged: 'No tagged conversations on this page.',
+  all: 'Only notices and newsletters on this page.',
+}
+
+/**
+ * What an empty page says while Gmail holds older mail (`nextPageToken`): the view drew nothing here, which is not the
+ * end of the box, so the line offers **Older ›**, the press that fills it, in `emptyWords`' data shape. The true end,
+ * with no older page, keeps the view's own words (`MY_MAIL_WORDS.empty`): To tag's *Nothing waiting to tag.* is the good
+ * state only there.
+ */
+export function emptyPageWords(view: MyMailView): EmptyWords {
+  return { main: EMPTY_PAGE[view], next: MY_MAIL_LIST_WORDS.older, tail: 'shows the next fifty mails.' }
+}

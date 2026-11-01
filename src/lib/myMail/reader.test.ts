@@ -1,10 +1,12 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import type { MyMailJobChip, MyMailRow } from './contract'
-import { canUntag, fileWords, fromWords, MY_MAIL_READER_WORDS, partiesWords, partyWords, readerBody, threadCountWords, unknownSenderContact, type MyMailOpened } from './reader'
+import type { MyMailJobChip, MyMailRow, MyMailTagOk } from './contract'
+import { canUntag, fileWords, fromWords, MY_MAIL_READER_WORDS, partiesWords, partyWords, readerBody, taggedJob, threadCountWords, unknownSenderContact, type MyMailOpened } from './reader'
 
 // Made-up mail in Marisol Vega's box.
 const elm: MyMailJobChip = { kind: 'pipeline', id: 'job-elm', key: 'pipeline:job-elm', num: 'JP1077', name: '4 Elm Ct' }
+const harbor: MyMailJobChip = { kind: 'pipeline', id: 'job-harbor', key: 'pipeline:job-harbor', num: 'JP1081', name: '19 Harbor Ln' }
+const tagOk = (jobKey: string, over: Partial<MyMailTagOk> = {}): MyMailTagOk => ({ ok: true, jobKey, lines: 0, tied: 3, files: 0, contactId: 'c-dale', unknownSender: null, ...over })
 const row = (over: Partial<MyMailRow> = {}): MyMailRow => ({
   gmailId: 'g-1',
   threadId: 't-1',
@@ -70,10 +72,42 @@ describe('canUntag', () => {
     expect(canUntag(opened({ tagged: { ...elm, messageId: 'm-1' }, inMessages: { messageId: 'm-1', jobKey: elm.key }, threadRows: [row({ gmailId: 'g-2' })] }))).toBe(true)
   })
 
-  it('offers none on a conversation not tagged, or one the boxes wrote whole', () => {
-    expect(canUntag(opened())).toBe(false)
+  it('offers it on a conversation the boxes hold whole too, since the untag still unties their lines, ends the tag and takes the label off', () => {
+    // bids@ copied on every mail, as the guides advise: every line is the box's, and a wrong tag must still come off.
     const box = { messageId: 'm-1', jobKey: elm.key }
-    expect(canUntag(opened({ tagged: { ...elm, messageId: 'm-1' }, inMessages: box, threadRows: [row({ gmailId: 'g-2', inMessages: { messageId: 'm-2', jobKey: elm.key } })] }))).toBe(false)
+    expect(canUntag(opened({ tagged: { ...elm, messageId: 'm-1' }, inMessages: box, threadRows: [row({ gmailId: 'g-2', inMessages: { messageId: 'm-2', jobKey: elm.key } })] }))).toBe(true)
+  })
+
+  it('offers it on a mail of a tagged conversation that no line holds yet, and none on a conversation not tagged', () => {
+    expect(canUntag(opened({ tagged: { ...elm, messageId: null } }))).toBe(true)
+    expect(canUntag(opened())).toBe(false)
+    expect(canUntag(opened({ inMessages: { messageId: 'm-1', jobKey: elm.key } }))).toBe(false)
+  })
+})
+
+describe('taggedJob: the job a tagged conversation’s bar names', () => {
+  it('names the job the conversation is tagged onto, on the job when a line holds this mail', () => {
+    expect(taggedJob(opened({ tagged: { ...elm, messageId: 'm-1' } }), null)).toEqual({ key: elm.key, chip: { ...elm, messageId: 'm-1' }, onTheJob: true })
+  })
+
+  it('says a mail no line holds yet is not on the job, a reply that came after the follow stopped', () => {
+    expect(taggedJob(opened({ tagged: { ...elm, messageId: null } }), null)).toEqual({ key: elm.key, chip: { ...elm, messageId: null }, onTheJob: false })
+    // This sitting tagged it before, but the mail read since says this one is not on the job.
+    expect(taggedJob(opened({ tagged: { ...elm, messageId: null } }), { ok: tagOk(elm.key), chip: elm }, true).onTheJob).toBe(false)
+  })
+
+  it('names this sitting’s tag over a mail read before it: a first tag, a move, a mail put on the job', () => {
+    expect(taggedJob(opened(), { ok: tagOk(elm.key), chip: elm }, false)).toEqual({ key: elm.key, chip: elm, onTheJob: true })
+    expect(taggedJob(opened(), { ok: tagOk(elm.key), chip: elm })).toEqual({ key: elm.key, chip: elm, onTheJob: true })
+    const moved = taggedJob(opened({ tagged: { ...elm, messageId: 'm-1' } }), { ok: tagOk(harbor.key), chip: harbor }, false)
+    expect(moved).toEqual({ key: harbor.key, chip: harbor, onTheJob: true })
+    const put = taggedJob(opened({ tagged: { ...elm, messageId: null } }), { ok: tagOk(elm.key, { lines: 1, tied: 0 }), chip: elm }, false)
+    expect(put).toEqual({ key: elm.key, chip: { ...elm, messageId: null }, onTheJob: true })
+  })
+
+  it('says the job without a chip when a move’s press did not know it, and trusts the mail read after the tag', () => {
+    expect(taggedJob(opened({ tagged: { ...elm, messageId: 'm-1' } }), { ok: tagOk(harbor.key), chip: null }, false)).toEqual({ key: harbor.key, chip: null, onTheJob: true })
+    expect(taggedJob(opened({ tagged: { ...harbor, messageId: 'm-1' } }), { ok: tagOk(harbor.key), chip: null }, true)).toEqual({ key: harbor.key, chip: { ...harbor, messageId: 'm-1' }, onTheJob: true })
   })
 })
 
@@ -96,8 +130,22 @@ describe('unknownSenderContact', () => {
 
 describe('the reader’s words', () => {
   it('keeps its sentences in plain words', () => {
-    for (const text of [MY_MAIL_READER_WORDS.untagAsk, MY_MAIL_READER_WORDS.nothingHere, MY_MAIL_READER_WORDS.inMessagesWhy, MY_MAIL_READER_WORDS.tagOntoAJob, MY_MAIL_READER_WORDS.offline, MY_MAIL_READER_WORDS.notUntagged]) {
+    for (const text of [
+      MY_MAIL_READER_WORDS.untagAsk,
+      MY_MAIL_READER_WORDS.notOnTheJob,
+      MY_MAIL_READER_WORDS.nothingHere,
+      MY_MAIL_READER_WORDS.inMessagesWhy,
+      MY_MAIL_READER_WORDS.tagOntoAJob,
+      MY_MAIL_READER_WORDS.offline,
+      MY_MAIL_READER_WORDS.notUntagged,
+    ]) {
       expect(plainWordsFailures(text)).toEqual([])
     }
+  })
+
+  it('asks before an untag in words true of a conversation the boxes hold too', () => {
+    expect(MY_MAIL_READER_WORDS.untagAsk).toBe(
+      'Untag takes this conversation off the job. The lines the tag wrote go, with their files and the copy of each mail. A line the bids@ or team@ reader took goes back to where it was.',
+    )
   })
 })

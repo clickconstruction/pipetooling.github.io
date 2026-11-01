@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { spineMessagesView } from '../messages/spineRows'
-import { contactOfLine, jobsOfAddress } from './picker'
+import { contactOfLine, jobsOfAddress, pickedJob } from './picker'
 
 describe('jobsOfAddress: their jobs first in the picker', () => {
   it('lists the rail of whoever holds the address, read case-blind, each job once', () => {
@@ -36,5 +36,18 @@ describe('contactOfLine', () => {
     expect(contactOfLine(view, line.id)).toBe(line.contactId)
     expect(contactOfLine(view, 'no-such-line')).toBeNull()
     expect(contactOfLine(null, line.id)).toBeNull()
+  })
+})
+
+describe('pickedJob: what a pick tags the conversation onto', () => {
+  it('tags the job picked, a bid, a GC project or a Pipeline job', () => {
+    expect(pickedJob('pipeline:job-harbor')).toEqual({ kind: 'pipeline', id: 'job-harbor' })
+    expect(pickedJob('bid:bid-cedar', 'pipeline:job-elm')).toEqual({ kind: 'bid', id: 'bid-cedar' })
+  })
+
+  it('does nothing for the job the conversation is on already, or a key that names no job', () => {
+    expect(pickedJob('pipeline:job-elm', 'pipeline:job-elm')).toBeNull()
+    expect(pickedJob(null)).toBeNull()
+    expect(pickedJob('nonsense')).toBeNull()
   })
 })
