@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A job's kind: service call or project</title>
+<style>
+body{margin:0;background:#0b1220;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f3f4f6;padding:20px}
+h1{font-size:18px;margin:0 0 4px}
+h2.sec{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin:28px 0 10px}
+p.lead{color:#9ca3af;font-size:13px;margin:0 0 18px;max-width:1100px;line-height:1.45}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:8px}
+.cap{font-size:12px;color:#9ca3af;max-width:460px;line-height:1.4}
+.cap b{color:#f3f4f6}
+.desk{width:460px;box-sizing:border-box;background:#f8fafc;color:#0f172a;border-radius:12px;border:1px solid #cbd5e1;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+.mbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #e2e8f0;background:#fff}
+.mbar .t{font-weight:700;font-size:15px}.mbar .x{margin-left:auto;color:#64748b}
+.pane{padding:14px;display:flex;flex-direction:column;gap:12px}
+.mute{color:#64748b;font-size:12px}
+label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:#475569}
+.in{background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:7px 8px;font-size:13px;color:#0f172a}
+.seg{display:flex;border:1px solid #cbd5e1;border-radius:8px;overflow:hidden}
+.seg span{flex:1 1 0;padding:9px 10px;text-align:center;font-weight:600;min-height:40px;display:flex;align-items:center;justify-content:center}
+.seg span.on{background:#2563eb;color:#fff}
+.chip{display:inline-block;font-size:11px;font-weight:600;border-radius:999px;padding:2px 8px;vertical-align:middle;margin-left:6px}
+.chip.project{background:#dbeafe;color:#1e40af}
+.chip.service{background:#dcfce7;color:#166534}
+.chip.unset{background:#fef3c7;color:#92400e}
+.newchip{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#9a4b00;background:#fff1dc;border:1px solid #f0b56a;border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
+table{border-collapse:collapse;width:100%;font-size:12px}
+th,td{text-align:left;padding:6px 6px;border-bottom:1px solid #e2e8f0;vertical-align:middle}
+th{color:#475569;font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.filters{display:flex;gap:6px;flex-wrap:wrap;font-size:12px}
+.filters span{border:1px solid #cbd5e1;border-radius:999px;padding:3px 10px;color:#475569;background:#fff}
+.filters span.on{background:#0f172a;color:#fff;border-color:#0f172a}
+.dbtn{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:6px 10px;font-size:12px;color:#0f172a}
+.dbtn.pri{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+.deck{border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.deck .h{display:flex;justify-content:space-between;font-size:12px;color:#475569}
+.deck .j{font-weight:700}
+.deck .sig{font-size:12px;color:#475569}
+.deck .sig li{margin:2px 0}
+.notes{margin-top:26px;max-width:1100px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.n{background:#111827;border:1px solid #374151;border-radius:12px;padding:12px 14px;font-size:13px;color:#d1d5db;line-height:1.45}
+.n h3{margin:0 0 6px;font-size:13px;color:#f9fafb}
+.n ul{margin:0;padding-left:16px}.n li{margin-bottom:4px}
+.n code{font-size:12px;color:#93c5fd}
+</style>
+</head>
+<body>
+<h1>A job's kind: service call or project</h1>
+<p class="lead">One kind per job, read from the job's own facts by one kernel (a bid or a GC project behind it, Stage Plan rows, an HCP number) and settled by one press when the facts are thin. Shown as a chip, filtered on the board, backfilled on Quickfill. Made-up names and figures.</p>
+
+<h2 class="sec">1 · The New Job form: one press, defaulted</h2>
+<div class="row">
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">New Job</span><span class="x">✕</span></div>
+      <div class="pane">
+        <label class="f">Customer<span class="in">Ridgeway Builders</span></label>
+        <label class="f">Job name<span class="in">Harbor Lane Offices · Building C rough-in</span></label>
+        <label class="f">Kind <span class="newchip">new</span>
+          <span class="seg"><span>Service call</span><span class="on">Project</span></span>
+          <span class="mute">Project, from bid B917. Change it if that is wrong.</span>
+        </label>
+        <label class="f">Service type<span class="in">Plumbing</span></label>
+        <div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="dbtn">Not now</button><button type="button" class="dbtn pri">Make the job</button></div>
+      </div>
+    </div>
+    <div class="cap"><b>Defaulted from the signals.</b> A job made from a bid reads <i>Project, from bid B917</i>; one made from an HCP import reads <i>Service call, from HCP 9057</i>; one with neither shows no default and the control waits for the press. The explicit press wins over the signals from then on.</div>
+  </div>
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">New Job</span><span class="x">✕</span></div>
+      <div class="pane">
+        <label class="f">Customer<span class="in">Pruett &amp; Vance</span></label>
+        <label class="f">Job name<span class="in">Cedar Row Clinic · water heater swap, T&amp;M</span></label>
+        <label class="f">Kind <span class="newchip">new</span>
+          <span class="seg"><span class="on">Service call</span><span>Project</span></span>
+          <span class="mute">No bid, no stages, no HCP number: your call. Service call is a visit or two and one bill; Project runs through stages and bills by pay app or draw.</span>
+        </label>
+        <label class="f">Service type<span class="in">Plumbing</span></label>
+        <div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="dbtn">Not now</button><button type="button" class="dbtn pri">Make the job</button></div>
+      </div>
+    </div>
+    <div class="cap"><b>A T&amp;M commercial job</b> is the case the signals cannot settle. The control says why and what each kind means in one sentence each.</div>
+  </div>
+</div>
+
+<h2 class="sec">2 · The chip: the job window and the board</h2>
+<div class="row">
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">J1042 · Pruett &amp; Vance · Harbor Lane Offices <span class="chip project">Project</span></span><span class="x">✕</span></div>
+      <div class="pane"><div class="mute">Working · Trim Set · 61% · from bid B874 · GC: Ridgeway Builders</div></div>
+    </div>
+    <div class="desk">
+      <div class="mbar"><span class="t">9057 · Dana Whitfield · Cedar Row Clinic <span class="chip service">Service call</span></span><span class="x">✕</span></div>
+      <div class="pane"><div class="mute">Scheduled Nov 3 · HCP 9057 · one bill</div></div>
+    </div>
+    <div class="cap"><b>The chip</b> sits in the job window's header beside the name, blue for a project, green for a service call, amber <i>Kind not set</i> until the office presses.</div>
+  </div>
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">Jobs</span><span class="x"></span></div>
+      <div class="pane">
+        <div class="filters"><span class="on">All kinds</span><span>Projects</span><span>Service calls</span><span>Kind not set · 7</span></div>
+        <table>
+          <tr><th>Job</th><th>Kind</th><th>Where</th></tr>
+          <tr><td>J1042 · Harbor Lane Offices</td><td><span class="chip project" style="margin:0">Project</span></td><td>Trim Set · 61%</td></tr>
+          <tr><td>9057 · Cedar Row Clinic</td><td><span class="chip service" style="margin:0">Service call</span></td><td>Nov 3 · 8:00</td></tr>
+          <tr><td>J1050 · Mobilizations</td><td><span class="chip project" style="margin:0">Project</span></td><td>Rough In · 40%</td></tr>
+          <tr><td>9024 · Cedar Row install</td><td><span class="chip unset" style="margin:0">Kind not set</span></td><td>Working</td></tr>
+        </table>
+      </div>
+    </div>
+    <div class="cap"><b>The board</b> gains the kind as a column and a filter. <i>Kind not set · 7</i> is the same seven the Quickfill deck line lists.</div>
+  </div>
+</div>
+
+<h2 class="sec">3 · Quickfill: jobs working with no kind</h2>
+<div class="row">
+  <div class="col">
+    <div class="desk" style="width:520px">
+      <div class="mbar"><span class="t">Quickfill · Fill them in</span><span class="x"></span></div>
+      <div class="pane">
+        <div class="deck">
+          <div class="h"><span>Jobs working with no kind <span class="newchip">new</span></span><span>1 of 7</span></div>
+          <div class="j">9024 · Cedar Row install · $56,000</div>
+          <ul class="sig"><li>HCP number 9024. No bid behind it. No stages typed.</li><li>Clocked 212 h over 6 weeks by 3 people; billed once, $18,000, with $38,000 left.</li></ul>
+          <div class="mute">Six weeks and three people on one job reads like a project. The press is yours.</div>
+          <div style="display:flex;gap:8px"><button type="button" class="dbtn pri">Project</button><button type="button" class="dbtn">Service call</button><button type="button" class="dbtn">Skip</button></div>
+          <div class="mute">Next: J1031 · Lakeside duplex · no kind · Then: 5 more</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap wide"><b>The deck line</b> shows the signals the kernel had and what the hours and the billing say, and asks for the press. Needs you review can stamp the plain ones (a bid behind the job and nothing against it) and leave the office the rest.</div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="n"><h3>The kernel</h3><ul>
+    <li><code>jobKind(job)</code>: the explicit kind if set; else <code>bid_id</code> or <code>project_id</code> → project; else Stage Plan rows → project; else an HCP number alone → service call; else not set.</li>
+    <li>One source. #234's baseline, #237's checklists, the Pipeline's board, pay apps and the reports each read it; none re-derives it from a column of its own.</li>
+  </ul></div>
+  <div class="n"><h3>What is new</h3><ul>
+    <li><code>jobs_ledger.kind</code>, nullable, <code>service</code> · <code>project</code>. One additive migration.</li>
+    <li>The form's control with its default and reason; the chip and the board filter; the deck line; the guide and the Glossary's <i>Job kind</i>.</li>
+  </ul></div>
+  <div class="n"><h3>Later, not here</h3><ul>
+    <li>A warranty call on a finished project links back to its project: a parent link, not a kind.</li>
+    <li>Reports that split service revenue from construction revenue read the kind instead of the HCP-number heuristic: each its own PR.</li>
+  </ul></div>
+</div>
+</body>
+</html>
