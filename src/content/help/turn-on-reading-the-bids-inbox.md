@@ -20,7 +20,7 @@ An email that Gmail first put in Spam lands too, once it reaches the Inbox. Movi
 
 Each email it reads lands on its sender's thread. In Gmail, that email gets the label **In ClickTooling**.
 
-An invitation to bid lands as **Bid it?** in New, held by the estimator. The guide [sort new messages before anyone answers them](/help/sort-new-messages#bid-it) shows the card.
+An invitation to bid lands as **Bid it?** in New, held by the estimator. An email whose subject names a bid we are pricing lands on that bid's thread. The guide [sort new messages before anyone answers them](/help/sort-new-messages#bid-it) shows the card.
 
 ## A teammate's email
 
@@ -44,6 +44,8 @@ Rosa emails Elena about Thursday and copies team@. Elena's thread shows *Rosa Di
 The office can mark a sender **A notice, not a person** on the sort card in New. The guide [sort new messages before anyone answers them](/help/sort-new-messages#a-notice-not-a-person) shows the press. From then on the app leaves that address out. Its email stays in Gmail with no label, like a newsletter. Marking the company's domain leaves out every address there.
 
 Press **Not a notice after all** on the thread to take them off the list. Their next email lands again.
+
+The app writes down each mail it sets aside, a marked sender's or one that says unsubscribe at its foot. New shows the count in a fold with **Put back** on each. The guide [sort new messages before anyone answers them](/help/sort-new-messages#notices-set-aside) shows it.
 
 ## See how it is doing
 

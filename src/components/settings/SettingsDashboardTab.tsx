@@ -1237,7 +1237,7 @@ export default function SettingsDashboardTab({
               type="button"
                           onClick={(e) => {
                             e.stopPropagation()
-                            setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values })
+                            setReportForEdit({ id: r.id, template_id: r.template_id, template_name: r.template_name, job_display_name: r.job_display_name, created_at: r.created_at, field_values: r.field_values, job_ledger_id: r.job_ledger_id ?? null })
                             setEditReportModalOpen(true)
                           }}
                           style={{ flexShrink: 0, padding: '0.35rem 0.75rem', fontSize: '0.875rem', background: '#2563eb', color: 'white', border: 'none', borderRadius: 4, cursor: 'pointer' }}

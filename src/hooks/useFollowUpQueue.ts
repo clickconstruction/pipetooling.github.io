@@ -4,6 +4,7 @@
  * lane built from the same rows, `followUpNewLane`), and reads again after every press, so what the screen draws is what the tables hold. A press that is refused leaves its words
  * in `problem`.
  */
+import type { SetAsideRow } from '../lib/followUp/setAsideFold'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { followUpInputFromRows, followUpNewLane, type FollowUpContact, type FollowUpLine, type FollowUpRows } from '../lib/followUp/followUpRows'
 import { pressProblem, type FollowUpIo } from '../lib/followUp/followUpIo'
@@ -24,6 +25,8 @@ export interface UseFollowUpQueueOptions<C, N extends { contactId: string }> {
 }
 
 export interface FollowUpQueueState<C, N extends { contactId: string }> {
+  /** The notices the reader set aside this week (v2.6231), for the fold under New. */
+  setAside: readonly SetAsideRow[]
   queue: FollowUpQueue<C, N> | null
   contacts: readonly FollowUpContact[]
   /** The lines the queue read, by id: a row's snippet. */
@@ -98,5 +101,5 @@ export function useFollowUpQueue<C = never, N extends { contactId: string } = ne
     return { queue: followUpQueue<C, N>(input, { ...passThrough, newLane }), contacts: input.contacts, lines: new Map(input.messages.map((m) => [m.id, m])) }
   }, [rows, today, userNames, passThrough, nowIso])
 
-  return { queue: built.queue, contacts: built.contacts, lines: built.lines, loading, problem, pressing, reload, press }
+  return { queue: built.queue, contacts: built.contacts, lines: built.lines, setAside: rows?.setAside ?? [], loading, problem, pressing, reload, press }
 }

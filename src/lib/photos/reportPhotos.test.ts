@@ -2,11 +2,12 @@ import { describe, expect, it } from 'vitest'
 import {
   cardPhotoWords,
   driveFileUrl,
-  newPhotoLine,
   newPhotoId,
+  newPhotoLine,
   photoCountWords,
   photosInFlight,
   photosSentence,
+  reportEditSaveWords,
   reportPhotoCaption,
   reportPhotoPath,
   reportSaveWords,
@@ -103,5 +104,18 @@ describe('reportPhotos', () => {
     expect(photoCountWords(0)).toBe('')
     expect(photoCountWords(1)).toBe('1 photo')
     expect(photoCountWords(3)).toBe('3 photos')
+  })
+})
+
+// Punch list #229, PR 4: the Edit report form's Save names the photos added.
+describe('reportEditSaveWords', () => {
+  const tile = (status: 'shrinking' | 'sending' | 'sent' | 'failed') =>
+    ({ id: status, status, previewUrl: '', originalBytes: 0, bytes: 0, width: 0, height: 0, longEdge: 1600, shrunk: false, fixtureId: null, stageName: null, questionId: null, questionWords: null, storagePath: null, takenAt: '', failWhy: null }) as const
+  it('reads Save with nothing added, counts the sent shots, and waits for one on its way', () => {
+    expect(reportEditSaveWords({ tiles: [], saving: false })).toBe('Save')
+    expect(reportEditSaveWords({ tiles: [tile('sent')], saving: false })).toBe('Save · 1 photo added')
+    expect(reportEditSaveWords({ tiles: [tile('sent'), tile('sent'), tile('failed')], saving: false })).toBe('Save · 2 photos added')
+    expect(reportEditSaveWords({ tiles: [tile('sent'), tile('sending')], saving: false })).toBe('Sending 1 photo…')
+    expect(reportEditSaveWords({ tiles: [tile('sent')], saving: true })).toBe('Saving…')
   })
 })
