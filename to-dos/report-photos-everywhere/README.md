@@ -2,7 +2,7 @@
 name: "Photos on every report: the desk's form, Turnaway, Edit report, every reader, the email and the queue"
 number: 229
 group: close
-status: proposed 2026-11-01 from the owner's ask of the same day; the gap mapped against the code the same morning; branch claude/report-photos-everywhere-392880 builds the train
+status: built 2026-11-01 — the six PRs (#6682, #6690, #6684, #6691, #6687, #6695), the fix #6699 and the closing docs PR on main the same day; walked live on the dev server and on clicktooling.com at desk and phone width; left: the owner's look at the screenshots, then delete the folder
 mockup: to-dos/report-photos-everywhere/mockup.html
 summary: >
   The owner wants a person to leave photos on their reports the way the Job Parts Tally's On site
@@ -18,10 +18,11 @@ summary: >
   that exists into a hook and mounts it on every form, puts the one photo strip on every reader
   with a count on the folded rows, attaches the photos to the email, and lets a kept report carry
   its shots through the offline queue.
-next: build PR 1, the shared photo hook and the desk's New report form with photos, then the rest of the train in order; test each live on a ZZ Test job at phone and desk width
-size: M as a train of six PRs (S · XS · S · S · S · M), no migration in the first five; the queue PR is the only one that touches the outbox's shape
-blocker: none; the four calls under The owner's calls are made as recommended unless the owner says otherwise
-opinion: build the first five as recommended; the queue PR is the one worth the owner's eye, since a photo kept on a phone is bytes the app must keep until the signal is back
+next: The owner's look at the live screenshots in the session's report; then delete the folder.
+size: M as a train of six PRs (S · XS · S · S · S · M) plus a fix and a closing docs PR; no migration anywhere, the queue PR raised the outbox's IndexedDB to version 2
+blocker: The owner's look.
+opinion: built as recommended, the four calls made as the card proposed; the queue PR is still the one worth the owner's eye, since a photo kept on a phone is bytes the app holds until the signal is back
+ver: v2.6255 · v2.6256 · v2.6260 · v2.6262 · v2.6263 · v2.6265 · v2.6273 · v2.6277
 ---
 
 # Photos on every report (#229)
@@ -230,3 +231,24 @@ deleted after:
 6. No signal: the browser offline, Leave report with a shot, Save reads *Save report · 1 photo*,
    the toast says kept, the bar reads *1 report · 1 photo waiting to send*; online again, the
    report lands with its photo on the card.
+
+## Where it stands (2026-11-01)
+
+Every PR of the plan is on main, each with its guide, release note and fragment: PR 1 #6682
+(v2.6255), PR 2 #6690 (v2.6262), PR 3 #6684 (v2.6256), PR 4 #6691 (v2.6263), PR 5 #6687
+(v2.6260, `send-report-email` and `send-report-notification` redeployed from main the same day),
+PR 6 #6695 (v2.6265). No migration anywhere in the train.
+
+The live walk ran the recipe above on the dev server from the train's integration branch against
+prod's ZZ Test J1085, then the desk's form and the no-signal flow on clicktooling.com once the
+queue had landed them; every flow passed. It found one bug, fixed in #6699 (v2.6273): the count
+hook keyed its read on the ids in order and threw the answer away when the Reports tab re-ordered
+its 578 cards under it, so no row had its badge. The closing docs PR (v2.6277) adds the Glossary's
+clauses the train deferred and makes the Edit form's second tile read *Add a photo* at a desk.
+
+The four calls under The owner's calls were made as recommended: no photo on a project's or a
+bid's report, no taking a saved photo back on Edit, the email attaches, the queue built last.
+
+Two ZZ Test leftovers the app's own policies would not let the session delete: the open dispatch
+request *Turnaway: 1085 ZZ Test — Site not ready* (the office closes it from the Inbox) and the
+five files the sweep filed in the ZZ Test customer's Drive Photos folder.
