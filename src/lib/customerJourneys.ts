@@ -438,6 +438,16 @@ export function customerJourneys(): Journey[] {
           render: { kind: 'page', path: GC_PORTAL_SAMPLE_PATH },
         },
         {
+          id: 'gc-progress-bill',
+          label: 'A progress bill',
+          sublabel: 'Bill Customer → the email channel, with the PDF, on a job billed in parts',
+          when: 'Each bill that is part of the job',
+          customerCan: 'Read the bill as a PDF, check its lines against the contract, and pay it the way the payment instructions say.',
+          guide: 'ready-to-bill-pipeline',
+          reflects: ['Invoice letterhead and footer', 'Payment instructions', 'The job’s priced lines'],
+          render: { kind: 'paper', paper: 'progress-bill' },
+        },
+        {
           id: 'gc-statement-email',
           label: 'Statement email',
           sublabel: 'GC Review → Certify, or the monthly round',
