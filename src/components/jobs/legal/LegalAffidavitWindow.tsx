@@ -4,7 +4,7 @@ import { calendarYmdInAppTzFromIso } from '../../../utils/dateUtils'
 import type { LegalEntryRow } from '../../../lib/legal/legalMatters'
 import {
   AFFIDAVIT_FORMS, FORM_HELP_WORDS, STATEMENT_BODY_MAX,
-  defaultStatementForm, defaultVenueCounty, incidentSpanWords, recordCheckHeading, statementChipWords, statementDraftProblem, statementFaceWords, statementMetaOf, statementOpener, statementShortDay, suggestedStatementTitle, venueChoices,
+  defaultStatementForm, defaultVenueCounty, incidentSpanWords, isOneWordName, recordCheckHeading, statementChipWords, statementDraftProblem, statementFaceWords, statementMetaOf, statementOpener, statementShortDay, suggestedStatementTitle, venueChoices,
   STATEMENT_FACES,
   type AffiantKind, type AffidavitForm, type DeclarantDetails, type StatementAffiant, type StatementDraft, type StatementFace, type StatementFilingDraft, type StatementMeta,
 } from '../../../lib/legal/affidavitPaper'
@@ -119,9 +119,11 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
     return next
   })
   const pickTeam = (value: string) => {
+    // v2.6243: under the business-records preset a new pick takes the preset's role line, as Start from wrote it.
+    const presetRole = preset === 'records' ? businessRecordsRole(records.standing) : null
     if (value === WITNESS) {
       setRoleTouched(false)
-      setAffiant({ kind: 'witness', userId: null, name: '', role: '' })
+      setAffiant({ kind: 'witness', userId: null, name: '', role: presetRole ?? '' })
       return
     }
     const u = picks.find((p) => p.id === value)
@@ -130,7 +132,7 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
       return
     }
     setRoleTouched(false)
-    setAffiant({ kind: 'team', userId: u.id, name: (u.name ?? '').trim(), role: rosterRoleLine(u) })
+    setAffiant({ kind: 'team', userId: u.id, name: (u.name ?? '').trim(), role: presetRole ?? rosterRoleLine(u) })
   }
   const setForm = (form: AffidavitForm) => setDraft((d) => {
     const next: StatementDraft = { ...d, form }
@@ -150,12 +152,12 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
   }
   const startStatement = () => {
     setPreset(null)
-    // v2.6247: the records role (*the custodian of records for …*) was written by the preset, so an unedited role line goes back to the roster's.
-    const rosterRole = (a: StatementAffiant): string => {
-      const u = a.kind === 'team' && a.userId ? picks.find((p) => p.id === a.userId) : undefined
-      return u ? rosterRoleLine(u) : ''
-    }
-    setDraft((d) => ({ ...d, title: titleTouched ? d.title : suggestedStatementTitle(d.affiant, d.form), affiant: roleTouched ? d.affiant : { ...d.affiant, role: rosterRole(d.affiant) }, body: bodyTouched ? d.body : '' }))
+    setDraft((d) => {
+      // v2.6243: back from the records preset, an untouched role line returns to the roster's (or to blank for a witness).
+      const u = d.affiant.kind === 'team' ? picks.find((p) => p.id === d.affiant.userId) : undefined
+      const affiant = roleTouched ? d.affiant : { ...d.affiant, role: u ? rosterRoleLine(u) : '' }
+      return { ...d, affiant, title: titleTouched ? d.title : suggestedStatementTitle(affiant, d.form), body: bodyTouched ? d.body : '' }
+    })
   }
   const trimmed = (): StatementDraft => ({ ...draft, title: draft.title.trim(), body: draft.body.trim(), affiant: { ...draft.affiant, name: draft.affiant.name.trim(), role: draft.affiant.role.trim() } })
   const save = async () => {
@@ -285,15 +287,15 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
                 <label style={label}>
                   Their full name
                   <input aria-label="Their full name" value={draft.affiant.name} onChange={(e) => setAffiant({ ...draft.affiant, name: e.target.value })} placeholder={kindOf === 'witness' ? 'Thanh Van Nguyen' : 'First, middle and last name'} disabled={signed} style={input} />
-                  <span style={help}>{kindOf === 'witness' ? 'As it reads on their ID.' : 'Prefilled from the roster. Type it as it reads on their ID.'}{draft.form === 'notary' ? ' The notary checks it.' : ''}</span>
+                  <span data-legal-affidavit-name-help style={help}>{signed ? 'As it reads on the signed paper.' : isOneWordName(draft.affiant.name) ? `One word so far. Type the whole name as it reads on their ID.${draft.form === 'notary' ? ' The notary checks it.' : ' Texas asks for a first and a last name.'}` : `${kindOf === 'witness' ? 'As it reads on their ID.' : 'Prefilled from the roster. Type it as it reads on their ID.'}${draft.form === 'notary' ? ' The notary checks it.' : ''}`}</span>
                 </label>
               ) : null}
             </div>
             <label style={label}>
               Their role, one line
-              {/* v2.6247: the role goes straight onto the draft. Through setAffiant the records preset read roleTouched before it was set and wrote its own role over every keystroke. */}
+              {/* v2.6247: the role goes straight onto the draft. Through setAffiant the records preset read a stale roleTouched and wrote its own role over the first edit after each pick. */}
               <input aria-label="Their role, one line" value={draft.affiant.role} onChange={(e) => { setRoleTouched(true); setDraft({ ...draft, affiant: { ...draft.affiant, role: e.target.value } }) }} placeholder={kindOf === 'witness' ? 'the foreman for Brightline Electric, the electrical subcontractor on the job' : 'Responsible Master Plumber of record for Click Plumbing and Electrical, License No. …'} disabled={signed} style={input} />
-              <span style={help}>{kindOf === 'witness' ? 'Who they are and why they were there. The paper adds that they have no stake.' : roleTouched ? 'Edited. The paper reads it as typed.' : picks.find((u) => u.id === draft.affiant.userId)?.role === 'master_technician' ? 'Prefilled from the roster. Add the license number, then edit as you like.' : 'Prefilled from the roster. Edit it.'}</span>
+              <span data-legal-affidavit-role-help style={help}>{preset === 'records' && !roleTouched ? 'The business-records form wrote it from the pick above. It reads under the signature. Edit it as you like.' : kindOf === 'witness' ? 'Who they are and why they were there. The paper adds that they have no stake.' : roleTouched ? 'Edited. The paper reads it as typed.' : picks.find((u) => u.id === draft.affiant.userId)?.role === 'master_technician' ? 'Prefilled from the roster. Add the license number, then edit as you like.' : 'Prefilled from the roster. Edit it.'}</span>
             </label>
             <div style={{ display: 'grid', gridTemplateColumns: isMobile ? 'minmax(0, 1fr)' : 'auto auto minmax(0, 1fr)', gap: 10, alignItems: 'end', minWidth: 0 }}>
               <label style={label}>
@@ -333,7 +335,8 @@ export default function LegalAffidavitWindow({ entry, initialOn = null, account,
             <div data-legal-affidavit-record-check style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', display: 'grid', gap: 6, minWidth: 0 }}>
               <b style={{ fontSize: '0.8rem' }}>{recordCheckHeading(draft.incidentOn, draft.incidentTo || null)}</b>
               {check.loading ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>Reading the clock, the reports and the job thread…</span> : null}
-              {!check.loading && check.lines.length === 0 ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>Pick the day it is about and the record for those days lists here.</span> : null}
+              {/* v2.6248: once signed the check is off, so its empty words say so instead of asking for a day that is picked. */}
+              {!check.loading && check.lines.length === 0 ? <span style={{ ...MUTED, fontSize: '0.78rem' }}>{signed ? 'Not read again once the signed copy is filed.' : 'Pick the day it is about and the record for those days lists here.'}</span> : null}
               {check.lines.map((l, i) => (
                 <div key={`${l.ymd}-${i}`} data-legal-record-line={l.kind} data-theirs={l.theirs ? 'yes' : 'no'} style={{ display: 'grid', gridTemplateColumns: '3.2rem minmax(0, 1fr)', gap: 8, fontSize: '0.78rem', lineHeight: 1.4, color: l.text.startsWith('Nothing recorded') ? 'var(--text-amber-700)' : 'var(--text)', fontWeight: l.theirs ? 600 : 400 }}>
                   <span style={{ ...MUTED, fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>{statementShortDay(l.ymd)}</span>

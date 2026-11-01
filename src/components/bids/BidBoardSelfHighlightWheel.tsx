@@ -206,11 +206,17 @@ export function BidBoardSelfHighlightWheel({ pref, onSave, previewName }: Props)
         aria-label="Pick how your name looks on the board"
         aria-expanded={open}
         style={{
+          // One borderless dot (v2.6253): the 30px round hit area stays, transparent and
+          // unbordered, so the tap target and the browser's focus ring are unchanged while the
+          // eye sees only the 16px colour dot. Open draws a ring in the theme's own ink, never a
+          // literal grey, so the pressed state reads in both themes.
           width: 30,
           height: 30,
           borderRadius: 999,
-          border: '1px solid var(--border-strong)',
-          background: 'var(--surface)',
+          border: 'none',
+          background: 'transparent',
+          outline: open ? '2px solid var(--text-700)' : undefined,
+          outlineOffset: open ? 1 : undefined,
           cursor: 'pointer',
           display: 'inline-flex',
           alignItems: 'center',
@@ -226,8 +232,6 @@ export function BidBoardSelfHighlightWheel({ pref, onSave, previewName }: Props)
             borderRadius: '50%',
             background:
               'conic-gradient(#ef4444, #f59e0b, #eab308, #22c55e, #06b6d4, #3b82f6, #8b5cf6, #ec4899, #ef4444)',
-            border: '1.5px solid var(--surface)',
-            boxShadow: '0 0 0 1px var(--border-strong)',
           }}
         />
       </button>

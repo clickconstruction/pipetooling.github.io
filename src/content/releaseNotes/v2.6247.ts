@@ -3,11 +3,11 @@ import type { ReleaseNote } from '../../lib/releaseNotes'
 const note: ReleaseNote = {
   version: 'v2.6247',
   date: '2026-10-31',
-  title: 'Leaving the business-records preset gives the affiant their own role back (punch list #220)',
+  title: 'The role line under the business-records preset keeps what you type (punch list #220)',
   kind: 'fix',
   highlights: [
-    'In Swear a statement…, pressing What someone saw or heard after Business records now puts the roster’s role line back on the person picked. A role you typed yourself stays.',
-    'Under Business records, the role line can be typed in again. It used to snap back to the rule’s role on every keystroke.',
+    'Under Business records in Swear a statement…, the first thing typed or pasted into the role line after picking who swears it used to vanish. The line snapped back to the rule’s role. It now keeps what you type.',
+    'A role you typed under Business records stays when you press What someone saw or heard.',
   ],
   roles: ['dev', 'master_technician', 'assistant', 'controller'],
 }

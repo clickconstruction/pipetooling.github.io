@@ -21569,6 +21569,7 @@ export type Database = {
         Row: {
           county: string
           firm_id: string
+          first_call: boolean
           id: string
           set_by: string | null
           since: string
@@ -21577,6 +21578,7 @@ export type Database = {
         Insert: {
           county: string
           firm_id: string
+          first_call?: boolean
           id?: string
           set_by?: string | null
           since?: string
@@ -21585,6 +21587,7 @@ export type Database = {
         Update: {
           county?: string
           firm_id?: string
+          first_call?: boolean
           id?: string
           set_by?: string | null
           since?: string
@@ -35870,6 +35873,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_legal_statement_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_mcp_issue_key: {
         Args: { p_label?: string; p_token: string }
         Returns: string
@@ -37580,12 +37587,26 @@ export type Database = {
         Args: { p_firm_id: string }
         Returns: undefined
       }
+      legal_firm_live_matter_count: {
+        Args: { p_firm_id: string }
+        Returns: number
+      }
       legal_firm_recipient_remove: {
         Args: { p_recipient_id: string }
         Returns: Json
       }
       legal_firm_set_paused: {
         Args: { p_firm_id: string; p_paused: boolean }
+        Returns: Json
+      }
+      legal_hand_off_counties: {
+        Args: {
+          p_counties: string[]
+          p_from_firm: string
+          p_new_firm?: Json
+          p_retire?: boolean
+          p_to_firm?: string
+        }
         Returns: Json
       }
       legal_leave_in_house: { Args: { p_matter_id: string }; Returns: Json }
@@ -37711,6 +37732,9 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_retire_firm: { Args: { p_firm_id: string }; Returns: Json }
+      legal_retire_firm_now: { Args: { p_firm_id: string }; Returns: undefined }
+      legal_save_county_coverage: { Args: { p_counties: Json }; Returns: Json }
       legal_set_counsel_read: {
         Args: {
           p_cost_to_try?: number

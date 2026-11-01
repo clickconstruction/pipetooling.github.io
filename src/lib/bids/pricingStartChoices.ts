@@ -7,6 +7,7 @@
  * the book into the bid, stamps the version, and stars the copy.
  */
 import { resolvePriceBookTemplateRoot } from './resolveCurrentPriceBookTemplateId'
+import type { EmptyNext, EmptyStateWords } from '../emptyWords'
 
 type VersionLike = { id: string; name: string; customer_id: string | null; starred_price_book_version_id: string | null }
 type PricingLike = { id: string; bid_version_id: string | null; source_version_id: string | null; name?: string | null }
@@ -20,8 +21,11 @@ export type PricingStartDonor = {
   crossGc: boolean
 }
 
+/** What keeps the Workbench from drawing: no version to price, no counts on it, or no cost estimate on the bid. */
+export type PricingSetupMissing = 'version' | 'counts' | 'cost-estimate'
+
 export type PricingStartChoices =
-  | { kind: 'needs-setup' }
+  | { kind: 'needs-setup'; missing: PricingSetupMissing }
   | {
       kind: 'start'
       /** Names the version when same-GC siblings exist, else the GC (the old words named the GC twice). */
@@ -49,8 +53,11 @@ export function pricingStartChoices(input: {
   const me = selectedBidVersionId ? (bidVersions.find((v) => v.id === selectedBidVersionId) ?? null) : null
   const noPricingHere = me != null && !bidPricings.some((p) => p.bid_version_id === me.id)
   // The book door only helps when the Workbench could actually render afterward — a version
-  // missing counts or the bid missing its cost estimate keeps the old setup sentence.
-  if (!me || !noPricingHere || !hasCounts || !hasCostEstimate) return { kind: 'needs-setup' }
+  // missing counts or the bid missing its cost estimate gets the setup words instead, which name
+  // what is missing and the press that fills it (v2.6251).
+  if (!me || !noPricingHere) return { kind: 'needs-setup', missing: 'version' }
+  if (!hasCounts) return { kind: 'needs-setup', missing: 'counts' }
+  if (!hasCostEstimate) return { kind: 'needs-setup', missing: 'cost-estimate' }
 
   const myGc = me.customer_id ?? null
   const sameGcSiblings = bidVersions.some((v) => v.id !== me.id && (v.customer_id ?? null) === myGc)
@@ -96,5 +103,27 @@ export function pricingStartChoices(input: {
       ? `The book ${siblingName} prices from, as a fresh copy at today's book prices.`
       : "A fresh copy of the book at today's prices.",
     donors,
+  }
+}
+
+/** The doors the setup words press: the Counts and Labor tabs of this bid, and the adopt window. */
+export type PricingSetupDoors = { countsTo: string; laborTo: string; onAdopt: () => void }
+
+/**
+ * The words the start panel draws when the Workbench cannot render yet (v2.6251): an empty
+ * state that names what is missing and the press that fills it, with *Adopt an existing bid*
+ * always offered — an adopt needs only the bid to exist, so an empty packet is where the Gun
+ * Dog adopts start (punch list #208). Before this the panel printed one sentence with no press,
+ * and a bid with no counts had no door to the adopt at all.
+ */
+export function pricingSetupWords(missing: PricingSetupMissing, doors: PricingSetupDoors): EmptyStateWords {
+  const adopt: EmptyNext = { label: 'Adopt an existing bid', onPress: doors.onAdopt }
+  switch (missing) {
+    case 'counts':
+      return { main: 'No counts on this version yet.', next: { label: 'Open Counts', to: doors.countsTo }, tail: 'to count the plans', orNext: adopt }
+    case 'cost-estimate':
+      return { main: 'No cost estimate on this bid yet.', next: { label: 'Open Labor', to: doors.laborTo }, tail: 'to make one', orNext: adopt }
+    case 'version':
+      return { main: 'Nothing to price on this version yet.', next: adopt, tail: "folds another bid's counts and prices in." }
   }
 }

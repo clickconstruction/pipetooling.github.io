@@ -2,7 +2,7 @@
 name: "Legal desk: affidavits from the desk — the thinking, the window and the print faces"
 number: 220
 group: close
-status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 · PR 4 the print faces v2.6211 · PR 5 filing the scan v2.6212 · PR 6 the business-records preset v2.6213 · all six built 2026-10-31 · PR 7 the affiant's full name v2.6238 (claude/220-affidavit-full-name), from the live walk
+status: card and mock-up 2026-10-30 · the owner's answers written in the same day (notaries on staff, in person only, Guadalupe County, any team member swears, the 902(10) preset wanted) · PR 1 the kernel v2.6208 · PR 2 the migration v2.6209 · PR 3 the window v2.6210 · PR 4 the print faces v2.6211 · PR 5 filing the scan v2.6212 · PR 6 the business-records preset v2.6213 · all six built 2026-10-31 · PR 7 the affiant's full name v2.6238 (claude/220-affidavit-full-name), from the live walk · PR 8 a declaration names its signer one way v2.6243 (claude/220-affidavit-one-name), from the live screenshots · PR 9 the robot path v2.6244 (claude/220-mcp-statement-verbs-ce4096): dev-mcp `plan_matter_statement` / `apply_matter_statement` · the full walk on a ZZ Test account 2026-10-31: four fixes (the declaration's county words #6663, the filed toast's day #6664, the preset's role #6665, the record check between spans #6666; their versions are on the PRs) · question 3 answered 2026-10-31
 mockup: to-dos/legal-desk-affidavits/mockup.html
 summary: >
   The office made one affidavit by hand this month: drafted in a chat, exported, printed, driven to a
@@ -13,10 +13,10 @@ summary: >
   how it is signed, before a notary or under penalty of perjury with no notary; print the paper, the
   statement alone, or the signing page alone to staple on a handwritten statement; file the signed scan
   and confirm the two days. The text lands on the Timeline's Said lane, the scan on Evidence, linked.
-next: the merges in order, then the push and the portal deploy, then the owner's look at a live account; after PR 2 merges, `supabase db push` and `supabase functions deploy legal-portal` (PR 3's client calls the RPCs, so the push comes before its deploy). Question 3 (drafts to counsel) is still open and the default follows the everything-goes rule until the owner says otherwise.
+next: the four fix PRs from the live walk merge; then the owner's own look on a live account. The push and the portal deploy are done; every question is answered.
 size: M as a train of six (S · S · M · S · M · S)
-blocker: None. The owner answered 2026-10-30; the one open question (drafts to counsel) changes no PR before 5.
-opinion: build as recommended with the owner's defaults — before a notary for everyone, Guadalupe County on the venue line, blank one tap away; the one design call still open is whether the firm reads a draft before the witness signs
+blocker: None. The owner answered every question (2026-10-30 and 2026-10-31).
+opinion: built as recommended with the owner's defaults — before a notary for everyone, Guadalupe County on the venue line, blank one tap away; the firm reads a draft before the witness signs, as the owner confirmed
 ---
 
 # Legal desk: affidavits from the desk (#220)
@@ -227,11 +227,17 @@ row with three states, and the record check beside the incident day is what woul
 
 ### The robot path
 
-dev-mcp's `plan_matter_document` / `apply_matter_document` (v2.6004) files the scan today and is enough for the paper.
-The text is not a document: `shows` is one line, and a statement is pages. A robot that drafts an affidavit needs
-`plan_matter_statement` / `apply_matter_statement` over a `dev_legal_statement_write` RPC, the twelfth and thirteenth
-write verbs, so it can leave the draft on the Timeline for the office to print. That is a follow-up after PR 5, not in
-this train; until then a robot files the scan and the office types the statement.
+dev-mcp's `plan_matter_document` / `apply_matter_document` (v2.6004) files the scan and is enough for the paper. The
+text is not a document: `shows` is one line, and a statement is pages. Built after the train (PR 9, v2.6244, server
+0.13.0): `plan_matter_statement` / `apply_matter_statement` over `dev_legal_statement_write` (migration
+`20261031190000`), the twentieth and twenty-first write verbs. A robot drafts an affidavit or an unsworn declaration
+onto the matter's Timeline — the day it is about and the span, the title, who swears it by `users.id` with their full
+name as it reads on their ID (or a witness typed in), the form, the county, the paragraphs — and may change a draft it
+or the office made until the signed copy is filed; the plan commits to the draft as it would be written and the
+matter's live statement count, and apply writes through `legal_statement_add` / `_update` with `source = 'mcp'`, so
+the Said lane's chip reads *· dev MCP*. The office prints, signs and files it from the window as before; the robot
+never prints, signs or files, and `plan_matter_document` still files the scan. Deploy: push the migration, then
+`supabase functions deploy dev-mcp`.
 
 ## The recommendation
 
@@ -269,7 +275,7 @@ reads them. The blue *Second pass* box under each section says what the first re
   bucket, `app_settings` for the office county.
 - The firm: `supabase/functions/legal-portal/index.ts` ships entries by kind minus the held (`statement:<id>` joins
   `plan:` / `event:` / `offer:`), `_shared/legalMatterDocuments.ts` for the row.
-- The robot: `supabase/functions/dev-mcp/` and `_shared/devMcpWrites.ts` (the later verb pair).
+- The robot: `supabase/functions/dev-mcp/` and `_shared/devMcpWrites.ts` (the verb pair, PR 9, v2.6244).
 
 ## The plan
 
@@ -283,8 +289,8 @@ reads them. The blue *Second pass* box under each section says what the first re
 
 | 6 | **The business-records affidavit** as a preset on the same window (Tex. R. Evid. 902(10), the form in 902(10)(B) quoted verbatim): the office as custodian of records, the affiant picked from the roster, the records named by their Evidence rows (the invoices, the clock, the job thread) with the row count and page count the form asks for; printed and filed through PRs 4 and 5 unchanged. Wanted by the owner (2026-10-30) if it adds value: it is what lets the firm put our invoices and the clock into evidence without calling anyone to testify, and the firm asks for it on every account that reaches suit. | S |
 
-Later, not in the train: dev-mcp `plan_matter_statement` / `apply_matter_statement`; *Insert the statements* in the
-narrative. Not wanted: remote online notarization — the office signs everything in person (the owner, 2026-10-30).
+Built after the train: dev-mcp `plan_matter_statement` / `apply_matter_statement` (PR 9, v2.6244). Later: *Insert
+the statements* in the narrative. Not wanted: remote online notarization — the office signs everything in person (the owner, 2026-10-30).
 
 ## How to verify
 
@@ -307,10 +313,10 @@ browser's print sheet with the app hidden. `npx vitest run src/lib/legal src/com
 2. **Who swears.** Generally the RMP, but any team member on the project who heard or saw something. → The roster pick
    lists every team member, the RMP first. (The question as asked — whether the firm would settle for a declaration —
    falls away: with a notary on staff the sworn form costs nothing.)
-3. **Drafts to counsel.** Not answered. → The default follows the desk's rule since 2026-10-05: everything goes to
-   counsel unless the office holds it, so a draft travels with its loud *draft · not signed* chip and *Hold from counsel*
-   on its ⋯ keeps it home. One sentence from the owner flips the default to signed-only; it changes PR 2's portal line
-   and nothing before it.
+3. **Drafts to counsel.** Answered 2026-10-31, by the person at the keyboard: yes, a draft statement travels to the
+   firm before it is signed. → The desk's rule since 2026-10-05 stands as built: everything goes to counsel unless the
+   office holds it, so a draft travels with its loud *draft · not signed* chip (the firm reads *sworn statement by a
+   witness · draft, not signed*) and *Hold from counsel…* on its row keeps it home. The portal line is unchanged.
 4. **The county.** Guadalupe County, Texas, for the overwhelming majority; blank must stay an option for the notary to
    fill when the paper is signed elsewhere. → Guadalupe seeded as the office county; *Leave it blank for the notary* the
    second pick; the property's county the third. The affiant's last county is not offered.
@@ -324,6 +330,24 @@ one before it merges: the kernel and the shared jurat; the migration, the RPCs, 
 the window, its doors and the record check; the print sheet with the three faces and Save as PDF; filing the signed
 scan with the two links; the business-records preset (Tex. R. Evid. 902(10)(B), quoted from the Supreme Court's order
 of 2014-08-19). Left after the merges: `supabase db push`, `supabase functions deploy legal-portal`, the owner's look on a
-live account. Later, not in the train: dev-mcp `plan_matter_statement` / `apply_matter_statement`; *Insert the
-statements* in the narrative. Question 3 (drafts to counsel) stays answered by the desk's rule until the owner says
-otherwise.
+live account. The robot path landed after the train as PR 9 (v2.6244): dev-mcp `plan_matter_statement` /
+`apply_matter_statement` over `dev_legal_statement_write`, waiting on `supabase db push` and `supabase functions
+deploy dev-mcp` after its merge. Later: *Insert the statements* in the narrative. Question 3 (drafts to counsel) was
+answered 2026-10-31: drafts travel to the firm before they are signed, so the desk's rule stands and nothing changes.
+
+**The live walk, 2026-10-31**, on clicktooling.com on a ZZ Test account (customer, job 9920, the matter the desk made;
+all deleted after), desktop and phone width, the card's *How to verify* end to end. Everything on the recipe held:
+the roster with the RMP first and the full-name field, the record check re-heading to the day typed, the three faces
+with the jurat's blanks empty and Guadalupe on the venue line, the declarant form and the § 132.001(d) block, Save as
+PDF, the draft chip on the Said lane and the strip, filing a 1 KB scan onto Evidence under *Our record* with the two
+doors each way, the firm's preview reading the signed one and a draft with its chip, the business-records picks
+rewriting the paragraphs, a witness's opener, **Not signed…** → *Undone: …*, the office county in Settings, the
+window filling a phone's screen and printing from its frame. The console showed nothing from the desk. Four small
+things were wrong and each got its PR: a declaration's **Signed in** picks still named the notary, and a property
+county equal to the office's hid the declaration's default (#6663); the Filed toast read the typed
+*2026-10-30* (#6664); switching the preset back to *What someone saw or heard* left *an employee of
+Click…* on a roster affiant's role line (#6665); the record check kept the old span's line under the
+new heading while it re-read, and a signed statement's check asked for a day already picked (#6666).
+Noted, not changed: **Whose paper** offers *Ours* and *Our record* side by side, the Evidence tab's own vocabulary
+since v2.6108, which a first-timer cannot tell apart from the words; a signed statement's Timeline row keeps the
+generic **Undo…** though its scan stays on Evidence; a Save as PDF is logged as *the whole paper* with no PDF word.

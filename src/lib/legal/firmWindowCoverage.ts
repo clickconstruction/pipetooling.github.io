@@ -2,24 +2,35 @@
  * Where a firm covers, as its window reads it (punch list #222, PR 1, v2.6195). One row per county the
  * firm covers with the cases and the open dollars in it, the cases with the firm that sit outside its
  * counties (released before the map changed), the chips' words, the nudge while no county is colored for
- * any firm, and the line the Replace panel reads when retiring would leave counties with no firm.
+ * any firm.
  *
  * The counts follow the Map view's legend (`legendCounts` in `firmMap.ts`): a case with a firm counts for
- * that firm wherever it sits; a case with no firm counts for the firm of its county. So the window's total
- * and the legend's row for the firm say the same number. Pure.
+ * that firm wherever it sits; a case with no firm counts for the first call of its county. So the window's total
+ * and the legend's row for the firm say the same number. Since v2.6227 (PR 3) a firm may cover a county without
+ * being its first call: that row reads `also`, names the first call, and counts only the cases already with the
+ * firm there. Pure.
  */
-import { countyWords } from './firmCounties'
+import { countyWords, firmsOfCover, type Coverage } from './firmCounties'
 import type { LegalMapCase } from './firmMap'
 import { formatLegalMoney } from './legalPacket'
 
-export type FirmCoverageRow = { county: string; cases: number; balance: number }
+export type FirmCoverageRow = {
+  county: string
+  cases: number
+  balance: number
+  /** `first`: the firm is the county's first call. `also`: another firm is, named in `firstCall`. */
+  role: 'first' | 'also'
+  firstCall: string
+}
 
 export type FirmWindowCoverage = {
-  /** The firm's counties, the largest open balance first, then by name. */
+  /** The firm's counties: first call ones first, then the ones it also covers; each by its open balance, then by name. */
   rows: FirmCoverageRow[]
   /** Cases with the firm in a county it no longer covers, or with no county: counted, not a row. */
   elsewhere: { cases: number; balance: number }
   counties: number
+  /** How many of the counties it covers without being first call. */
+  also: number
   cases: number
   balance: number
 }
@@ -28,19 +39,23 @@ const round2 = (n: number): number => Math.round(n * 100) / 100
 
 type CaseLike = Pick<LegalMapCase, 'county' | 'firmId' | 'balance'>
 
-export function firmWindowCoverage(firmId: string, countiesByFirm: ReadonlyMap<string, ReadonlyArray<string>>, cases: ReadonlyArray<CaseLike>): FirmWindowCoverage {
-  const counties = new Set(countiesByFirm.get(firmId) ?? [])
+export function firmWindowCoverage(firmId: string, coverage: Coverage, cases: ReadonlyArray<CaseLike>): FirmWindowCoverage {
+  const counties = new Set<string>()
   const rows: FirmCoverageRow[] = []
-  for (const county of counties) {
-    const here = cases.filter((c) => c.county === county && (c.firmId == null || c.firmId === firmId))
-    rows.push({ county, cases: here.length, balance: round2(here.reduce((s, c) => s + c.balance, 0)) })
+  for (const [county, cover] of coverage) {
+    if (!firmsOfCover(cover).includes(firmId)) continue
+    counties.add(county)
+    const role = cover.first === firmId ? 'first' : 'also'
+    // Under review in a shared county, a case is the first call's until the office switches; one already with this firm is this firm's.
+    const here = cases.filter((c) => c.county === county && (c.firmId === firmId || (role === 'first' && c.firmId == null)))
+    rows.push({ county, cases: here.length, balance: round2(here.reduce((s, c) => s + c.balance, 0)), role, firstCall: cover.first })
   }
-  rows.sort((a, b) => b.balance - a.balance || b.cases - a.cases || a.county.localeCompare(b.county))
+  rows.sort((a, b) => (a.role === b.role ? 0 : a.role === 'first' ? -1 : 1) || b.balance - a.balance || b.cases - a.cases || a.county.localeCompare(b.county))
   const away = cases.filter((c) => c.firmId === firmId && !(c.county && counties.has(c.county)))
   const elsewhere = { cases: away.length, balance: round2(away.reduce((s, c) => s + c.balance, 0)) }
   const inRows = rows.reduce((s, r) => s + r.cases, 0)
   const balance = round2(rows.reduce((s, r) => s + r.balance, 0) + elsewhere.balance)
-  return { rows, elsewhere, counties: rows.length, cases: inRows + elsewhere.cases, balance }
+  return { rows, elsewhere, counties: rows.length, also: rows.filter((r) => r.role === 'also').length, cases: inRows + elsewhere.cases, balance }
 }
 
 /** The chip beside the heading: `5 counties`, `1 county`, or `no counties colored`. */
@@ -54,11 +69,12 @@ export function coverageCasesChip(cases: number, balance: number): string {
   return `${cases} ${cases === 1 ? 'case' : 'cases'} · ${formatLegalMoney(balance)}`
 }
 
-/** The sum row's first cell: `5 counties`, or `5 counties · 1 case with the firm elsewhere`. */
-export function coverageSumWords(c: Pick<FirmWindowCoverage, 'counties' | 'elsewhere'>): string {
-  const head = coverageCountyChip(c.counties)
-  if (c.elsewhere.cases === 0) return head
-  return `${head} · ${c.elsewhere.cases} ${c.elsewhere.cases === 1 ? 'case' : 'cases'} with the firm elsewhere`
+/** The sum row's first cell: `5 counties`, `5 counties · 1 shared`, or `… · 1 case with the firm elsewhere`. */
+export function coverageSumWords(c: Pick<FirmWindowCoverage, 'counties' | 'elsewhere'> & { also?: number }): string {
+  const parts = [coverageCountyChip(c.counties)]
+  if (c.also) parts.push(`${c.also} shared`)
+  if (c.elsewhere.cases) parts.push(`${c.elsewhere.cases} ${c.elsewhere.cases === 1 ? 'case' : 'cases'} with the firm elsewhere`)
+  return parts.join(' · ')
 }
 
 /** Under the heading: what covering means for a release. */
@@ -74,11 +90,9 @@ export type CoverageState =
   /** Other firms cover counties; this one covers none. */
   | { kind: 'none_here' }
 
-export function coverageState(firmId: string, countiesByFirm: ReadonlyMap<string, ReadonlyArray<string>>, activeFirms: number): CoverageState {
-  if ((countiesByFirm.get(firmId) ?? []).length > 0) return { kind: 'covers' }
-  let colored = 0
-  for (const list of countiesByFirm.values()) colored += list.length
-  if (colored === 0) return { kind: 'nothing_colored', firms: activeFirms }
+export function coverageState(firmId: string, coverage: Coverage, activeFirms: number): CoverageState {
+  for (const cover of coverage.values()) if (firmsOfCover(cover).includes(firmId)) return { kind: 'covers' }
+  if (coverage.size === 0) return { kind: 'nothing_colored', firms: activeFirms }
   return { kind: 'none_here' }
 }
 
@@ -111,23 +125,4 @@ export function bridgeEndsWords(firmName: string, off: ReadonlyArray<{ name: str
   const more = off.length > 3 ? ` and ${off.length - 3} more` : ''
   const n = off.length
   return `Saving ends the default. ${n} ${n === 1 ? 'case sits' : 'cases sit'} where no firm covers: ${named.join(', ')}${more}. Add ${n === 1 ? 'its county' : 'their counties'} too, or the desk cannot release ${n === 1 ? 'it' : 'them'}.`
-}
-
-/** `Bell, Hays and Travis` · `Bell and Hays` · `Bell`. */
-function countyList(counties: ReadonlyArray<string>): string {
-  const names = counties.map((c) => countyWords(c))
-  if (names.length <= 1) return names[0] ?? ''
-  if (names.length === 2) return `${names[0]} and ${names[1]}`
-  return `${names.slice(0, -1).join(', ')} and ${names[names.length - 1]}`
-}
-
-/**
- * Over the Replace panel (v2.4712) while the firm covers counties: today's replace retires the firm everywhere
- * and its counties count as uncovered until a dev colors them again. Null when the firm covers none.
- */
-export function replaceLeavesUncoveredWords(firmName: string, counties: ReadonlyArray<string>): string | null {
-  if (counties.length === 0) return null
-  const sorted = [...counties].sort((a, b) => a.localeCompare(b))
-  const n = sorted.length
-  return `Replacing retires ${firmName} everywhere. ${n === 1 ? countyList(sorted) : `Its ${n} counties, ${countyList(sorted)},`} would have no firm until you color ${n === 1 ? 'it' : 'them'} for the new firm under Firms….`
 }

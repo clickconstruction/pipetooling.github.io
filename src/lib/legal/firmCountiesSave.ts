@@ -1,31 +1,31 @@
 /**
- * The one write of a county map (punch list #222, PR 2, v2.6221): the Settings picker, **Firms…** and the firm
- * window's *Extend coverage* all save through here, so the doors can never write a county two ways. The plan is
- * `countyWritePlan`'s: close the live row of every county that changes hands or clears, then insert the new live
- * rows; closes first, so the one-firm-per-county index never sees two live rows for a county. A unique violation
- * on the insert means another tab saved a county first.
+ * The one write of a county map (punch list #222, PR 2, v2.6221; one database call since PR 3, v2.6227): the
+ * Settings picker, **Firms…** and the firm window's *Extend coverage* all save through here, so the doors can never
+ * write a county two ways. Each changed county goes to `legal_save_county_coverage` with the firms that should cover
+ * it, its first call, and the firms this picker read; the database reads every county before it writes any, so a
+ * refusal changes nothing, and a county another tab changed since the picker read it comes back `stale`.
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { countyWritePlan, type CountyChange } from './firmCounties'
+import { countySavePayload, type CountyChange } from './firmCounties'
 
 export type CountySaveResult = { ok: true } | { ok: false; conflict: boolean; message: string }
 
 export const COUNTY_SAVE_CONFLICT_WORDS = 'Another tab saved a county first. The map shows what stands now.'
 
-export async function saveCountyChanges(db: SupabaseClient, changes: ReadonlyArray<CountyChange>, setBy: string | null, now: string = new Date().toISOString()): Promise<CountySaveResult> {
+/** The save's refusal in the office's words: the database update not pushed yet reads as that, not as Postgres. */
+export function countySaveErrorWords(error: unknown): string {
+  const text = formatErrorMessage(error)
+  if (/legal_save_county_coverage/.test(text) && /(could not find|does not exist|schema cache)/i.test(text)) return 'Saving counties needs a database update that is not live yet. Ask a dev to push it, then try again.'
+  return `Could not save: ${text}`
+}
+
+export async function saveCountyChanges(db: SupabaseClient, changes: ReadonlyArray<CountyChange>): Promise<CountySaveResult> {
   if (changes.length === 0) return { ok: true }
-  const plan = countyWritePlan(changes, setBy)
-  for (const county of plan.close) {
-    const { error } = await db.from('legal_firm_counties').update({ until: now }).eq('county', county).is('until', null)
-    if (error) return { ok: false, conflict: false, message: `Could not save ${county}: ${formatErrorMessage(error)}` }
-  }
-  if (plan.insert.length > 0) {
-    const { error } = await db.from('legal_firm_counties').insert(plan.insert.map((r) => ({ ...r, since: now })))
-    if (error) {
-      const conflict = (error as { code?: string }).code === '23505'
-      return { ok: false, conflict, message: conflict ? COUNTY_SAVE_CONFLICT_WORDS : `Could not save: ${formatErrorMessage(error)}` }
-    }
-  }
+  const { data, error } = await db.rpc('legal_save_county_coverage', { p_counties: countySavePayload(changes) })
+  if (error) return { ok: false, conflict: false, message: countySaveErrorWords(error) }
+  const answer = (data ?? {}) as { ok?: boolean; error?: string }
+  if (answer.error === 'stale') return { ok: false, conflict: true, message: COUNTY_SAVE_CONFLICT_WORDS }
+  if (answer.error) return { ok: false, conflict: false, message: answer.error }
   return { ok: true }
 }

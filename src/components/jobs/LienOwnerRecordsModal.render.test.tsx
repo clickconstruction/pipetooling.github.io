@@ -172,7 +172,8 @@ describe('LienOwnerRecordsModal', () => {
     await waitFor(() => expect(screen.queryByRole('button', { name: 'Record it as sent' })).toBeNull())
     const sent = (io.saved[3]!.file as OwnerRecordsFile).sent!
     expect(sent).toMatchObject({ by: 'Taunya', how: 'mail', total: 18635, jobIds: ['j273', 'j881'] })
-    expect(screen.getByTestId('owner-records-foot').textContent).toMatch(/^Sent Oct \d+, 2026 by Taunya\. Mailed\.$/)
+    // The send is stamped today, so the month and year are today's.
+    expect(screen.getByTestId('owner-records-foot').textContent).toMatch(/^Sent [A-Z][a-z]{2} \d{1,2}, \d{4} by Taunya\. Mailed\.$/)
     // The packet as it stood is filed with the send, pointing at the request's row.
     await waitFor(() => expect(io.filed).toHaveLength(1))
     expect(io.filed[0]).toMatchObject({ kind: 'owner_records_packet', how: 'mail', title: 'Records for 9703 Lenox Hl, San Antonio, TX', recipientName: 'Khan Umar & Bangash Shazmeena', jobIds: ['j273', 'j881'], customerId: 'c1', source: { table: 'lien_owner_record_requests', id: 'row-1' } })

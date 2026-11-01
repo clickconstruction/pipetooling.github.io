@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { formatErrorMessage } from '../../../utils/errorHandling'
 import { saveBlobAs } from '../../../lib/storageSave'
-import { DECLARANT_BLANK, STATEMENT_FACES, declarantProblem, type DeclarantDetails, type StatementDraft, type StatementFace } from '../../../lib/legal/affidavitPaper'
+import { DECLARANT_BLANK, STATEMENT_FACES, declarantProblem, fullNameWords, isOneWordName, type DeclarantDetails, type StatementDraft, type StatementFace } from '../../../lib/legal/affidavitPaper'
 import { printNeedsDeclarant, statementPdfBlob, statementPdfFilename, statementPrintHtml } from '../../../lib/legal/statementPrint'
 import { btn, btnPrimary, MUTED } from './legalDeskShared'
 
@@ -9,8 +9,10 @@ import { btn, btnPrimary, MUTED } from './legalDeskShared'
  * The print sheet (punch list #220, v2.6211): the paper as it prints, drawn in a light frame inside the window, with
  * the three faces as a pick — the whole paper, the statement alone, the signing page alone — **Print** (the frame's
  * own print: the phone's print sheet or the desktop's dialog, no popup) and **Save as PDF**. A declaration's whole
- * paper and signing page carry the declarant's name, date of birth and address, typed here when the office presses
- * Print, held for the session so a reprint after an edit does not ask again, and never saved.
+ * paper and signing page carry the declarant's name, date of birth and address. The name is *Their full name* from
+ * the statement, shown here and changed there (v2.6243), so the paper names them one way. The date of birth and the
+ * address are typed here when the office presses Print, held for the session so a reprint after an edit does not ask
+ * again, and never saved.
  */
 export type PrintSheetProps = {
   draft: StatementDraft
@@ -30,13 +32,15 @@ const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: '0.72rem', color
 
 export default function LegalStatementPrintSheet({ draft, face, onFace, accountWords, declarant, onDeclarant, onPrinted, onBack, busy }: PrintSheetProps) {
   const frame = useRef<HTMLIFrameElement | null>(null)
-  const [details, setDetails] = useState<DeclarantDetails>(declarant ?? { ...DECLARANT_BLANK, firstName: draft.affiant.name.trim().split(/\s+/)[0] ?? '', lastName: draft.affiant.name.trim().split(/\s+/).slice(-1)[0] ?? '' })
-  const [asking, setAsking] = useState(() => printNeedsDeclarant(draft.form, face, declarant))
+  const [details, setDetails] = useState<DeclarantDetails>(declarant ?? DECLARANT_BLANK)
+  const needsDeclarant = printNeedsDeclarant(draft, face, declarant)
+  const [asking, setAsking] = useState(needsDeclarant)
   const [error, setError] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
-  useEffect(() => { setAsking(printNeedsDeclarant(draft.form, face, declarant)) }, [draft.form, face, declarant])
+  useEffect(() => { setAsking(needsDeclarant) }, [needsDeclarant])
   const html = useMemo(() => statementPrintHtml({ draft, face, declarant, accountWords }), [draft, face, declarant, accountWords])
-  const detailsProblem = declarantProblem(details)
+  const detailsProblem = declarantProblem(details, draft.affiant.name)
+  const nameOnPaper = fullNameWords(draft.affiant.name)
 
   const print = async () => {
     setError(null)
@@ -76,19 +80,24 @@ export default function LegalStatementPrintSheet({ draft, face, onFace, accountW
       {asking ? (
         <form data-legal-declarant-form onSubmit={(e) => { e.preventDefault(); if (!detailsProblem) { onDeclarant(details); setAsking(false) } }} style={{ display: 'grid', gap: 8, padding: '10px 12px', border: '1px dashed var(--border-strong)', borderRadius: 8 }}>
           <b style={{ fontSize: '0.84rem' }}>The declaration names the declarant</b>
-          <span style={{ ...MUTED, fontSize: '0.78rem' }}>Texas asks for their full name, date of birth and address on the paper. Typed here, kept for this session only, never saved to the record. The signed scan carries them, as it must.</span>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
-            <label style={lab}>First<input aria-label="First name" value={details.firstName} onChange={(e) => setDetails({ ...details, firstName: e.target.value })} style={field} /></label>
-            <label style={lab}>Middle<input aria-label="Middle name" value={details.middleName} onChange={(e) => setDetails({ ...details, middleName: e.target.value })} style={field} /></label>
-            <label style={lab}>Last<input aria-label="Last name" value={details.lastName} onChange={(e) => setDetails({ ...details, lastName: e.target.value })} style={field} /></label>
-            <label style={lab}>Date of birth<input type="date" aria-label="Date of birth" value={details.dateOfBirth} onChange={(e) => setDetails({ ...details, dateOfBirth: e.target.value })} style={field} /></label>
+          <span style={{ ...MUTED, fontSize: '0.78rem' }}>Texas puts their full name, date of birth and address on the paper. The name comes from the statement. The rest is typed here for this session only. It is never saved to the record. The signed scan carries it, as it must.</span>
+          {/* Who they are on one line, the name read from the statement and the date of birth typed here; the address on the next. */}
+          <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', alignItems: 'flex-end' }}>
+            <div data-legal-declarant-name style={{ ...lab, flex: '1 1 260px', minWidth: 0 }}>
+              Name on the paper
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap', minHeight: 30 }}>
+                <b style={{ fontSize: '0.9rem', color: isOneWordName(nameOnPaper) ? 'var(--text-amber-700)' : 'var(--text)' }}>{nameOnPaper || 'Not typed yet'}</b>
+                <button type="button" onClick={onBack} style={{ ...btn, height: 26, fontWeight: 400 }}>Change the name</button>
+              </div>
+            </div>
+            <label style={{ ...lab, flex: '0 1 200px' }}>Date of birth<input type="date" aria-label="Date of birth" value={details.dateOfBirth} onChange={(e) => setDetails({ ...details, dateOfBirth: e.target.value })} style={field} /></label>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8 }}>
             <label style={{ ...lab, gridColumn: 'span 2' }}>Street<input aria-label="Street" value={details.street} onChange={(e) => setDetails({ ...details, street: e.target.value })} style={field} /></label>
             <label style={lab}>City<input aria-label="City" value={details.city} onChange={(e) => setDetails({ ...details, city: e.target.value })} style={field} /></label>
             <label style={lab}>State<input aria-label="State" value={details.state} onChange={(e) => setDetails({ ...details, state: e.target.value })} style={field} /></label>
             <label style={lab}>Zip code<input aria-label="Zip code" value={details.zip} onChange={(e) => setDetails({ ...details, zip: e.target.value })} style={field} /></label>
-            <label style={lab}>Country<input aria-label="Country" value={details.country} onChange={(e) => setDetails({ ...details, country: e.target.value })} style={field} /></label>
+            <label style={{ ...lab, gridColumn: 'span 2' }}>Country<input aria-label="Country" value={details.country} onChange={(e) => setDetails({ ...details, country: e.target.value })} style={field} /></label>
           </div>
           <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
             <button type="submit" disabled={Boolean(detailsProblem)} title={detailsProblem ?? undefined} style={{ ...btnPrimary, opacity: detailsProblem ? 0.6 : 1 }}>Put them on the paper</button>

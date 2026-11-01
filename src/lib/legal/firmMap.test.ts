@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { caseNote, caseStand, casesInCounty, countyCardFacts, effectiveStand, legendCounts, lensSummaryWords, shapeMapCases, uncoveredCounties, uncoveredWords, type MapAccount } from './firmMap'
+import { bridgeFirmOf, bridgeMapWords, caseNote, caseStand, casesInCounty, countyCardFacts, effectiveStand, legendCounts, lensSummaryWords, shapeMapCases, uncoveredCounties, uncoveredWords, type MapAccount } from './firmMap'
 
 const acc = (key: string, name: string, balance: number, jobs: MapAccount['jobs'], viaGc = false): MapAccount => ({ key, name, balance, viaGc, jobs })
 
@@ -95,3 +95,28 @@ describe('the lens (v2.5784)', () => {
     expect(lensSummaryWords([])).toBe('Nothing is in Collections.')
   })
 })
+
+describe('the bridge on the Map (v2.6233, punch list #222)', () => {
+  const none = new Map<string, string>()
+  it('one firm and no county colored is the bridge; a second firm or a colored county ends it', () => {
+    expect(bridgeFirmOf(none, [{ id: 'snell' }])).toBe('snell')
+    expect(bridgeFirmOf(none, [{ id: 'snell' }, { id: 'alamo' }])).toBeNull()
+    expect(bridgeFirmOf(new Map([['Bexar', 'snell']]), [{ id: 'snell' }])).toBeNull()
+  })
+  it('under the bridge no case is red, the one firm counts every case, the flag is silent and the card names the firm by default', () => {
+    expect(cases.some((c) => effectiveStand(c, none) === 'none')).toBe(true)
+    expect(cases.some((c) => effectiveStand(c, none, 'snell') === 'none')).toBe(false)
+    expect(uncoveredWords(cases, none, 'snell')).toBeNull()
+    expect(uncoveredCounties(cases, none, 'snell')).toEqual([])
+    const counts = legendCounts(cases, none, [{ id: 'snell', name: 'Snell' }], 'snell')
+    // Every case with no firm yet counts for the one firm; a case already released to another firm keeps its own row.
+    const elsewhere = cases.filter((c) => c.firmId && c.firmId !== 'snell').length
+    expect(counts.find((r) => r.firmId === 'snell')!.count).toBe(cases.length - elsewhere)
+    expect(counts.find((r) => r.firmId === null)!.count).toBe(elsewhere)
+    const card = countyCardFacts('Williamson', cases, none, new Map([['snell', 'Snell']]), 'snell')
+    expect(card.firmName).toBe('Snell')
+    expect(card.rows.every((r) => r.stand !== 'none')).toBe(true)
+    expect(bridgeMapWords('Snell')).toBe('Snell takes every account today, by default. No county is colored yet. The first county colored for any firm ends that.')
+  })
+})
+
