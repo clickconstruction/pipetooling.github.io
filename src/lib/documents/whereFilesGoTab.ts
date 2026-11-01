@@ -7,6 +7,7 @@
  */
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { batchWords, countedLabel, type BatchWords } from '../batchWords'
+import { tidyOutcomeWords, type TidyCounts } from './folderName'
 import { jobDriveLinkState } from '../jobs/jobDriveFolders'
 import {
   BID_FOLDER_PIECES,
@@ -154,6 +155,10 @@ export interface WhereFilesGoJob {
   google_drive_link: string | null
   job_pictures_link: string | null
   job_plans_link: string | null
+  /** Why the folder sweep could not place this job's folder (v2.6284); null or missing when it sits in the tree. */
+  drive_folder_hold?: string | null
+  /** When the sweep or the press last placed the folder; null or missing when it never looked. */
+  drive_folder_tidied_at?: string | null
 }
 
 /** The pieces a job's folder name is built from, as the function reads them (`jobFacts` on `job-drive-folders`). */
@@ -229,8 +234,10 @@ export const FOLDERS_MADE_WORDS: Readonly<Record<FoldersMade, string>> = {
   'as-needed': 'Make each folder when something first lands in it',
 }
 
-/** The words for a change that applies to folders made from then on. */
-export const APPLIES_FROM_NOW_WORDS = 'A change applies to folders made from now on. Nothing that exists is moved or renamed.'
+/** The words for a change to the name: the sweep carries it to every live job's folder (v2.6284). */
+export const APPLIES_FROM_NOW_WORDS = 'A change reaches every live job’s folder the next time the sweep looks at it. Links keep working through a rename.'
+/** The tree card's line on the level above the job (v2.6284). */
+export const UNDER_CUSTOMER_WORDS = 'Under the root, each customer has a folder named by the customer. The job’s folder sits inside it. A job with no customer yet sits under No customer yet.'
 export const FIXED_NAMES_WORDS = 'The five names stay as they are. The sweeps file by them.'
 
 /** The jobs whose pasted folder the app can look at: a live job with a Drive folder link. */
@@ -275,4 +282,90 @@ export function makeFoldersWords(ready: number, held: number): BatchWords {
     heldWhy: { one: 'has a link that is not a folder', many: 'have links that are not folders' },
     noun: ['job without one', 'jobs without one'],
   })
+}
+
+// --- the folder sweep's press (v2.6287, the tree under the customer) --------------------------------------------------
+
+/** The jobs the sweep could not place, each with its reason from the row, so the line reads without a run. */
+export function heldJobs<T extends Pick<WhereFilesGoJob, 'drive_folder_hold'>>(jobs: readonly T[]): { job: T; why: string }[] {
+  return jobs.flatMap((job) => (job.drive_folder_hold && job.drive_folder_hold.trim() ? [{ job, why: job.drive_folder_hold.trim() }] : []))
+}
+
+/** The amber line over the held jobs: null when none is held. */
+export function treeHeldLineWords(held: number): string | null {
+  if (held <= 0) return null
+  return held === 1 ? 'Held: 1 job whose folder is not in the tree' : `Held: ${held} jobs whose folder is not in the tree`
+}
+
+/** The press that walks every live job through the rule: *Tidy the folders for 412 live jobs*, dead at zero. */
+export function tidyWords(live: number): { button: string; dead: boolean } {
+  return { button: countedLabel('Tidy the folders for', live, ['live job', 'live jobs']), dead: live <= 0 }
+}
+
+/** One page of the sweep as the tab reads it. */
+export interface TidySweep {
+  counts: TidyCounts
+  held: { jobId: string; label: string; why: string; kind: string }[]
+  line: string
+  nextOffset: number | null
+  total: number
+}
+
+const num = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? v : 0)
+
+/** The `sweep` verb's JSON as the tab reads it; a field missing reads as zero or empty, never throws. */
+export function tidySweepFromAnswer(data: unknown): TidySweep {
+  const r = (data && typeof data === 'object' ? data : {}) as {
+    counts?: { looked?: unknown; made?: unknown; moved?: unknown; renamed?: unknown; in_place?: unknown; held?: unknown; left?: unknown }
+    held?: unknown
+    line?: unknown
+    next_offset?: unknown
+    total?: unknown
+  }
+  const c = r.counts ?? {}
+  const counts: TidyCounts = { looked: num(c.looked), made: num(c.made), moved: num(c.moved), renamed: num(c.renamed), inPlace: num(c.in_place), held: num(c.held), left: num(c.left) }
+  const held = Array.isArray(r.held)
+    ? r.held.flatMap((h) => {
+        const x = (h && typeof h === 'object' ? h : {}) as { job_id?: unknown; label?: unknown; why?: unknown; kind?: unknown }
+        return str(x.job_id) ? [{ jobId: str(x.job_id), label: str(x.label) || `job ${str(x.job_id).slice(0, 8)}`, why: str(x.why), kind: str(x.kind) }] : []
+      })
+    : []
+  return { counts, held, line: str(r.line) || tidyOutcomeWords(counts), nextOffset: typeof r.next_offset === 'number' ? r.next_offset : null, total: num(r.total) }
+}
+
+/** Pages of the sweep added up: the tab's one tally over a whole walk. */
+export function tidyTotals(pages: readonly TidySweep[]): TidyCounts {
+  const t: TidyCounts = { looked: 0, made: 0, moved: 0, renamed: 0, inPlace: 0, held: 0, left: 0 }
+  for (const p of pages) {
+    t.looked += p.counts.looked
+    t.made += p.counts.made
+    t.moved += p.counts.moved
+    t.renamed += p.counts.renamed
+    t.inPlace += p.counts.inPlace
+    t.held += p.counts.held
+    t.left = p.counts.left
+  }
+  return t
+}
+
+/** The press's words while it walks: *Tidying… 75 of 412 · 3 made · 12 moved · 2 held*. */
+export function tidyProgressWords(t: TidyCounts, total: number): string {
+  const parts = [`${t.looked} of ${Math.max(total, t.looked)}`]
+  if (t.made) parts.push(`${t.made} made`)
+  if (t.moved) parts.push(`${t.moved} moved`)
+  if (t.renamed) parts.push(`${t.renamed} renamed`)
+  if (t.held) parts.push(`${t.held} held`)
+  return `Tidying… ${parts.join(' · ')}`
+}
+
+/** The line once the walk is done: the sweep's own words over the whole of it. */
+export function tidyDoneWords(t: TidyCounts): string {
+  return tidyOutcomeWords({ ...t, left: 0 })
+}
+
+/** The page of the sweep to ask for next: the first from the top, then where the last one stopped; null once every job was looked at. */
+export function tidyNextOffset(last: TidySweep | null): number | null {
+  if (!last) return 0
+  if (last.nextOffset == null || last.nextOffset >= last.total || last.counts.looked === 0) return null
+  return last.nextOffset
 }

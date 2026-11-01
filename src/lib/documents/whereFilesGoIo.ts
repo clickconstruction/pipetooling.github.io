@@ -8,7 +8,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { fnProblem, type FnResult } from '../gc/gcIo'
 import type { BidFolderPiece, FoldersMade, JobFolderPiece } from './folderName'
-import { folderCheckFromAnswer, pickerQuery, whereFilesGoFromAnswer, type FolderCheck, type WhereFilesGo, type WhereFilesGoBid, type WhereFilesGoJob } from './whereFilesGoTab'
+import { folderCheckFromAnswer, pickerQuery, tidySweepFromAnswer, whereFilesGoFromAnswer, type FolderCheck, type TidySweep, type WhereFilesGo, type WhereFilesGoBid, type WhereFilesGoJob } from './whereFilesGoTab'
 
 /** A `set` the function refused in words, with the reason it named. */
 export class WhereFilesGoRefused extends Error {
@@ -58,7 +58,15 @@ export async function setWhereFilesGo(set: WhereFilesGoSet): Promise<WhereFilesG
   return whereFilesGoFromAnswer(r.data)
 }
 
-const JOB_COLUMNS = 'id, hcp_number, job_name, customer_name, job_address, created_at, google_drive_link, job_pictures_link, job_plans_link'
+/** One page of the folder sweep over every live job (v2.6287): `offset` is where the last page stopped, 25 jobs a page. */
+export async function tidyDriveFolders(offset: number, limit = 25): Promise<TidySweep> {
+  const r = (await supabase.functions.invoke('job-drive-folders', { body: { sweep: { all: true, offset, limit } } })) as FnResult
+  const problem = await fnProblem(r, 'The folders were not tidied.')
+  if (problem) throw new Error(problem)
+  return tidySweepFromAnswer(r.data)
+}
+
+const JOB_COLUMNS = 'id, hcp_number, job_name, customer_name, job_address, created_at, google_drive_link, job_pictures_link, job_plans_link, drive_folder_hold, drive_folder_tidied_at'
 
 /** Every live job (the Pipeline's own scope: a status that is null or not paid), newest number first. */
 export async function loadWhereFilesGoJobs(): Promise<WhereFilesGoJob[]> {

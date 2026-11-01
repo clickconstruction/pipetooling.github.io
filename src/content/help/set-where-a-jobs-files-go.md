@@ -49,6 +49,10 @@ A folder in someone's My Drive is never moved. The app can make folders there bu
 
 The first photo on a job with no folder makes the folder itself. A photo does not wait on a press.
 
+Under the cards, {{button:blue|Tidy the folders for 412 live jobs}} walks every live job through the sweep now. The button counts as it goes. When it is done a line says how many folders were made, moved, renamed and held.
+
+An amber line counts the jobs whose folder is not in the tree. Press it to read each job with its reason and a door to the job. The line reads from the jobs themselves, so you see it without a run.
+
 ## Make the folders for every job without one
 
 Under the cards, {{button:blue|Make the folders for 14 jobs without one}} names how many live jobs have no folder. Press it once. The app makes each job's folder under the root and writes the links on the job. A job whose link is not a folder is held with the reason and a door to the job. A job that fails stays listed with its reason. The rest go through.
