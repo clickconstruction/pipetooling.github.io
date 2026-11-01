@@ -187,6 +187,14 @@ function besideItems(row: Pick<LienNextUpRow, 'action' | 'sub'>): { items: LienS
         ],
         foot: 'After step 4 · letter two',
       }
+    case 'courtesy':
+      return {
+        items: [
+          { state: 'done', title: 'Notice sent', detail: 'The packet went out and nothing has come since.' },
+          { state: 'now', title: 'Send a courtesy notice', detail: `${row.sub}. A plain reminder by email and text: the notice stands, the day the lien goes on unless it is paid, the pay link, your number.` },
+        ],
+        foot: 'After step 4 · courtesy notice',
+      }
     case 'record_service':
       return {
         items: [
