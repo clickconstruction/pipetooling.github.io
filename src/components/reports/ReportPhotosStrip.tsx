@@ -12,7 +12,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
  * no photos, so older cards look as they did. A read that fails draws nothing too: the words of the report matter
  * more than its pictures.
  */
-export function ReportPhotosStrip({ reportId }: { reportId: string }) {
+export function ReportPhotosStrip({ reportId, compact = false }: { reportId: string; /** The thread's row (punch list #229, PR 3): 56 px thumbnails and no words, the count on the row's own badge. */ compact?: boolean }) {
   const [photos, setPhotos] = useState<ReportPhotoForCard[] | null>(null)
   useEffect(() => {
     let live = true
@@ -29,6 +29,42 @@ export function ReportPhotosStrip({ reportId }: { reportId: string }) {
     }
   }, [reportId])
   if (!photos || photos.length === 0) return null
+  if (compact) {
+    return (
+      <div data-testid="report-photos-strip" data-compact style={{ display: 'flex', gap: '0.4rem', flexWrap: 'wrap', marginTop: 6 }}>
+        {photos.map((p) => {
+          const where = cardPhotoWords(p)
+          const label = [p.stage_name || p.caption || 'Photo', p.by_name, where.text].filter(Boolean).join(' · ')
+          const thumb = p.previewUrl ? (
+            <img src={p.previewUrl} alt={label} style={{ width: 56, height: 56, objectFit: 'cover', borderRadius: 8, border: '1px solid var(--border)', display: 'block' }} />
+          ) : (
+            <span aria-label={label} title={label} style={{ width: 56, height: 56, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-muted)', display: 'grid', placeItems: 'center', color: 'var(--text-link)' }}>
+              <CameraGlyph size={18} />
+            </span>
+          )
+          return p.drive_file_id ? (
+            <button
+              key={p.id}
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation()
+                openInExternalBrowser(driveFileUrl(p.drive_file_id!))
+              }}
+              aria-label={`Open ${label} in Drive`}
+              title={label}
+              style={{ padding: 0, border: 'none', background: 'transparent', cursor: 'pointer', font: 'inherit' }}
+            >
+              {thumb}
+            </button>
+          ) : (
+            <span key={p.id} title={label}>
+              {thumb}
+            </span>
+          )
+        })}
+      </div>
+    )
+  }
   return (
     <div data-testid="report-photos-strip" style={{ marginBottom: '0.75rem' }}>
       <span style={{ color: 'var(--text-muted)', fontWeight: 500, display: 'block', marginBottom: '0.25rem', fontSize: '0.875rem' }}>Photos · {photoCountWords(photos.length)}</span>

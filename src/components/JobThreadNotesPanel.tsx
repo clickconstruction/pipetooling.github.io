@@ -25,6 +25,9 @@ import { pctNoteRequired, validatePctCommit } from '../lib/jobs/stagesPctNote'
 import { recordedPercentProvenance } from '../lib/jobPercentProvenance'
 import { PercentProvenanceChip } from './jobs/PercentProvenanceChip'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
+import { ReportPhotosStrip } from './reports/ReportPhotosStrip'
+import { ReportPhotoCount } from './reports/ReportPhotoCount'
+import { useReportPhotoCounts } from '../hooks/useReportPhotoCounts'
 
 export type JobThreadNoteRow = {
   id: string
@@ -256,6 +259,10 @@ export function JobThreadNotesPanel({
       })),
     [activityProp, notes],
   )
+  // The reports' photos (punch list #229, PR 3): one count read for the thread's reports; a badge on the item, the
+  // compact strip under its lines when it has any.
+  const reportIds = useMemo(() => activity.flatMap((i) => (i.kind === 'report' ? [i.report.id] : [])), [activity])
+  const photoCounts = useReportPhotoCounts(reportIds)
 
   const [activityFilter, setActivityFilter] = useState<JobActivityFilter>('all')
   const filterEnabled = activityProp != null
@@ -663,6 +670,7 @@ export function JobThreadNotesPanel({
                       <span style={{ marginLeft: '0.5rem' }}>
                         {weekdayTimeChicago} · {daysAgoLabel}
                       </span>
+                      <ReportPhotoCount count={photoCounts.get(r.id)} style={{ marginLeft: '0.5rem' }} />
                     </div>
                     <div style={{ color: 'var(--text-gray-800)' }}>
                       <span style={{ fontWeight: 600 }}>{displayReportTemplateName(r.template_name, viewerRole)}</span>
@@ -681,6 +689,7 @@ export function JobThreadNotesPanel({
                           ))}
                         </div>
                       ) : null}
+                      {photoCounts.get(r.id) ? <ReportPhotosStrip reportId={r.id} compact /> : null}
                     </div>
                   </li>
                 )
