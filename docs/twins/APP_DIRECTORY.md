@@ -62,6 +62,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Small quotes to homeowners (not bids) → `/estimates`
 - Contracts and document packets → `/documents`
 - Set where a job's Drive files go, move the jobs root, name a job's folder, or make the folders for every job without one → `/documents?tab=where-files-go` (the office; guide `set-where-a-jobs-files-go`)
+- See every photo uploaded to the app, newest first, with its job, who took it and whether it is in Drive, and open the report, the box, the thread or the job it came with → `/documents?tab=photos` (v2.6270, punch list #232; guide `find-every-photo-that-was-uploaded`)
 
 **Everything else**
 - Your day, pins, nudges → `/dashboard`
@@ -342,7 +343,7 @@ Roles: dev, master, assistant, controller, estimator, primary; super: price+asse
 Supply houses (`?tab=supply-houses`, the office): the Add invoice window's first section, **The bill**, fills the fields from a PDF or picture on the house's thread, or one dropped in, for the office to check and save, a guess asking for a Yes (v2.6095, punch list #179; the switch `bill_read_on_v1` beside the Accounts payable heading); **Record this bill** under a house's file in Messages lands here on that file (`&house=<id>&bill=<attachment>`), and *N bills to record* / **Record them** on the house's row opens the form on the first; guide `record-a-supply-house-bill-from-its-pdf`.
 
 ### /documents — Documents
-Contract library (Documents/Packets), quick-send. Roles: staff + estimator, primary, super. **Where files go** (`?tab=where-files-go`, v2.6057, punch list #211): the office sets the jobs root with a live write check, how a job's and a bid's Drive folder is named as pieces with a real job's example, and whether a job's folders are made up front or as needed; under the cards it makes the folders for every live job without one, checks one job's folder (a paid job looked up by its number since v2.6073) and every pasted folder, and reads the amber line of the ones the app cannot write to. The four office roles, never the estimator; guide `set-where-a-jobs-files-go`.
+Contract library (Documents/Packets), quick-send. Roles: staff + estimator, primary, super. **Photos** (`?tab=photos`, v2.6270, punch list #232): every photo uploaded, newest first by day, with its job, its source, who took it and its Drive line, the chips and the search asked of the server, and a viewer with doors to the report, the box, the thread and the job. **Where files go** (`?tab=where-files-go`, v2.6057, punch list #211): the office sets the jobs root with a live write check, how a job's and a bid's Drive folder is named as pieces with a real job's example, and whether a job's folders are made up front or as needed; under the cards it makes the folders for every live job without one, checks one job's folder (a paid job looked up by its number since v2.6073) and every pasted folder, and reads the amber line of the ones the app cannot write to. The four office roles, never the estimator; guide `set-where-a-jobs-files-go`.
 
 ### /estimates·/projects·/workflows — Projects & workflows
 Project containers linking jobs/bids; workflow boards. Roles: staff; super assigned-only.

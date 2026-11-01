@@ -3,7 +3,7 @@ import { parseDocumentsPageTabFromSearch } from './documentsPageTab'
 
 describe('parseDocumentsPageTabFromSearch', () => {
   it('reads each tab by name, the Sent tab among them', () => {
-    for (const tab of ['company', 'search', 'estimates', 'bid-proposals', 'jobs', 'supply-invoices', 'sent', 'where-files-go', 'upload'] as const) {
+    for (const tab of ['company', 'search', 'estimates', 'bid-proposals', 'jobs', 'supply-invoices', 'sent', 'where-files-go', 'photos', 'upload'] as const) {
       expect(parseDocumentsPageTabFromSearch(`?tab=${tab}`)).toBe(tab)
     }
   })

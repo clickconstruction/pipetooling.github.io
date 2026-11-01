@@ -264,9 +264,16 @@ export function sourceDoorWords(row: Pick<UploadedPhotoRow, 'source'>): string {
   }
 }
 
-/** The thread's address for a message picture's line. */
-export function threadPath(row: Pick<UploadedPhotoRow, 'contact_id'>): string | null {
-  return row.contact_id ? `/messages?thread=${encodeURIComponent(row.contact_id)}` : null
+/** The thread's address for a message picture's line, opened at that line. */
+export function threadPath(row: Pick<UploadedPhotoRow, 'contact_id' | 'message_id'>): string | null {
+  if (!row.contact_id) return null
+  const at = row.message_id ? `&at=${encodeURIComponent(row.message_id)}` : ''
+  return `/messages?thread=${encodeURIComponent(row.contact_id)}${at}`
+}
+
+/** The job window's address, for a press outside the window's own opener. */
+export function jobWindowPath(jobId: string): string {
+  return `/jobs?jobDetail=${encodeURIComponent(jobId)}`
 }
 
 /** The empty state's words. */
