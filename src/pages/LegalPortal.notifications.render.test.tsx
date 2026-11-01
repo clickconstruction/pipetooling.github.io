@@ -97,3 +97,31 @@ describe('LegalPortal — Notifications · the add card carries the rule', () =>
     expect(document.activeElement).toBe(document.querySelector('[data-legal-add-person] input'))
   })
 })
+
+/** v2.6280 (punch list #233 PR 2): the sample inbox under the add card follows the rule and opens the email pressed. */
+describe('LegalPortal — Notifications · the sample inbox', () => {
+  it('lists the sample week under Each event, swaps to one digest line, and opens the line pressed', async () => {
+    await openNotifications(null)
+    const form = document.querySelector('[data-legal-add-person]') as HTMLFormElement
+    const lines = () => Array.from(form.querySelectorAll('[data-legal-inbox-line]')) as HTMLButtonElement[]
+    expect(lines()).toHaveLength(7)
+    expect(lines()[0]?.getAttribute('data-legal-inbox-line')).toBe('open')
+    expect(lines()[6]?.getAttribute('data-legal-inbox-line')).toBe('dim')
+    expect(lines()[6]?.disabled).toBe(true)
+    expect(lines()[6]?.textContent).toMatch(/saw your fee on Ridgeway Builders.*weekly digest only/)
+    expect(form.textContent).toMatch(/What lands in their inbox/)
+    const frame = () => form.querySelector('[data-legal-sample-inbox] iframe')
+    expect(frame()?.getAttribute('srcdoc')).toContain('has referred <b>Ridgeway Builders</b>')
+    expect(frame()?.getAttribute('srcdoc')).toContain('Stop these emails to you')
+    fireEvent.click(lines()[3] as HTMLButtonElement)
+    expect(frame()?.getAttribute('srcdoc')).toContain('The GC called.')
+    fireEvent.change(form.querySelector('input') as HTMLInputElement, { target: { value: 'Ann Sample' } })
+    expect(form.textContent).toMatch(/What lands in Ann's inbox/)
+    fireEvent.click(within(form).getByRole('button', { name: 'Only theirs' }))
+    expect(lines()).toHaveLength(3)
+    fireEvent.click(within(form).getByRole('button', { name: 'Weekly digest' }))
+    expect(lines()).toHaveLength(1)
+    expect(lines()[0]?.textContent).toMatch(/Weekly digest — 1 open matter/)
+    expect(frame()?.getAttribute('srcdoc')).toContain('Your weekly digest, Ann Sample.')
+  })
+})

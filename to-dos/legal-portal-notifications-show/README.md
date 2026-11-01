@@ -2,7 +2,7 @@
 name: "Firm portal: the Notifications tab shows each person what they will get"
 number: 233
 group: ready
-status: card and mock-up 2026-11-01 from the owner's ask the same day · the thinking, a first pass, the render, a second pass · nothing built · the owner's three calls at the foot, a recommendation on each · call 3 added the same day on the owner's question, does the digest cover everything that changed · the digest's shape by matter decided the same day on the owner's word · calls 1 and 2 answered 2026-11-01, A and A, in the owner's words *A typed Title* and *Sample inbox, one email open* · PR 1 the form v2.6278 (claude/233-notifications-form-row)
+status: card and mock-up 2026-11-01 from the owner's ask the same day · the thinking, a first pass, the render, a second pass · nothing built · the owner's three calls at the foot, a recommendation on each · call 3 added the same day on the owner's question, does the digest cover everything that changed · the digest's shape by matter decided the same day on the owner's word · calls 1 and 2 answered 2026-11-01, A and A, in the owner's words *A typed Title* and *Sample inbox, one email open* · PR 1 the form v2.6278 (claude/233-notifications-form-row) · PR 2 the sample inbox v2.6280 (claude/233-notifications-sample-inbox) · PR 3 the digest by matter v2.6281 (claude/233-digest-by-matter), all three built 2026-11-01
 mockup: to-dos/legal-portal-notifications-show/mockup.html
 summary: >
   The law firm's portal has a Notifications tab where the firm adds its people and sets how each hears
@@ -14,9 +14,9 @@ summary: >
   rule as it is switched, each subject line opening its email, and a count under Only theirs that reads
   from the firm's own matters. Fifty words of prose where there were 171. Two PRs, no migration, one
   function redeploy.
-next: PR 1 merges, then PR 2 (the sample inbox), PR 3 (the digest reads by matter, decided); call 3 decides PR 4 (the digest carries every office act).
+next: PRs 1 to 3 merge, then `supabase functions deploy submit-legal-portal` and `legal-notify-dispatch`; call 3 decides PR 4 (the digest carries every office act).
 size: S as a train of three (S · S · S), M with call 3's PR 4
-blocker: None for PRs 1 to 3. Call 3 for PR 4.
+blocker: Call 3 for PR 4; the two function deploys after the merges.
 opinion: build as drawn — the title typed, the switches in the form, the inbox with one email open; the role presets and per-event picks stay unbuilt until a firm asks; call 3 is worth its one migration, since the digest today is not the record it reads as
 ---
 
@@ -257,4 +257,4 @@ Answered 2026-11-01, relayed from the main session in the owner's words: call 1 
 
 ## Where it stands
 
-Card and mock-up, 2026-11-01. Calls 1 and 2 answered the same day, both as recommended; PR 1 (v2.6278) built the same day on `claude/233-notifications-form-row`. Call 3 was added the same day on the owner's question whether the digest covers everything that changed, and the read says it does not; it is open.
+Card and mock-up, 2026-11-01. Calls 1 and 2 answered the same day, both as recommended; PR 1 (v2.6278), PR 2 (v2.6280) and PR 3 (v2.6281, the digest by matter) built the same day, stacked. Call 3 was added the same day on the owner's question whether the digest covers everything that changed, and the read says it does not; it is open.
