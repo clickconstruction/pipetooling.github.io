@@ -104,11 +104,13 @@ export function ReportPhotoTiles({
                 ? REPORT_PHOTO_WORDS.sending
                 : t.status === 'failed'
                   ? (t.failWhy ?? 'Did not send.')
-                  : shrinkWords({ before: t.originalBytes, after: t.bytes, longEdge: t.longEdge, shrunk: t.shrunk })
+                  : t.status === 'kept'
+                    ? REPORT_PHOTO_WORDS.kept
+                    : shrinkWords({ before: t.originalBytes, after: t.bytes, longEdge: t.longEdge, shrunk: t.shrunk })
           return (
             <div key={t.id} style={tileFrame} data-testid="report-photo-tile" data-status={t.status}>
               <img src={t.previewUrl} alt={t.stageName ? `Photo of ${t.stageName}` : 'Photo for the report'} style={img} />
-              <span style={{ ...small, color: t.status === 'failed' ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: t.status === 'failed' ? 600 : 500, whiteSpace: 'normal' }}>{words}</span>
+              <span style={{ ...small, color: t.status === 'failed' ? 'var(--text-amber-800)' : 'var(--text-muted)', fontWeight: t.status === 'failed' || t.status === 'kept' ? 600 : 500, whiteSpace: 'normal' }}>{words}</span>
               {t.stageName ? <span style={{ ...small, color: 'var(--text-blue-700)', fontWeight: 600 }}>{t.stageName}</span> : null}
               {t.questionWords ? (
                 <span style={{ ...small, whiteSpace: 'normal' }} data-testid="report-photo-tile-answers">

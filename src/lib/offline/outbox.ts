@@ -108,6 +108,27 @@ export interface MovedLineStamp {
   to: number
 }
 
+/**
+ * A photo riding with a kept report (punch list #229, PR 6): its row's facts, and whether the shot is already in
+ * the bucket with its row (`sent`, so only the attach is left) or waits on the phone (`keptPhotos.ts` holds the
+ * bytes by this id). The replay sends the unsent ones first, then the report, then ties them to it.
+ */
+export interface KeptReportPhoto {
+  id: string
+  sent: boolean
+  fixtureId: string | null
+  stageName: string | null
+  caption: string
+  questionId: string | null
+  questionWords: string | null
+  takenAt: string
+  bytes: number
+  originalBytes: number
+  width: number
+  height: number
+  byName: string
+}
+
 export interface FieldReportPayload {
   templateId: string
   fieldValues: unknown
@@ -118,6 +139,8 @@ export interface FieldReportPayload {
   lng: number | null
   /** PR 3: the moved lines to stamp on the job after the report lands; none when the report has no lines. */
   movedLines?: MovedLineStamp[]
+  /** Punch list #229, PR 6: the photos riding with the report; none when it has no photos. */
+  photos?: KeptReportPhoto[]
 }
 
 export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
@@ -522,11 +545,12 @@ export function outboxBarWords(presses: readonly OutboxPress[], now: number, opt
     const countdown = opts.offline || due <= now ? null : countdownWords(due - now)
     const tried = oldest.lastTriedAt != null ? [lastTriedWords(oldest.lastTriedAt, fmt)] : []
     const button: OutboxBarButton = { kind: 'try-now', label: TRY_NOW_LABEL, door: null, pressIds: waiting.map((p) => p.id) }
+    const photoLine = photosWaitingLine(waiting)
     if (waiting.length === 1) {
       return {
         tone: 'amber',
         lead: pressLead(oldest, fmt),
-        lines: [WAITING_WORDS, ...tried, ...sentLine],
+        lines: [WAITING_WORDS, ...photoLine, ...tried, ...sentLine],
         countdown,
         button,
         opensList: true,
@@ -536,7 +560,7 @@ export function outboxBarWords(presses: readonly OutboxPress[], now: number, opt
     return {
       tone: 'amber',
       lead: `${waiting.length} waiting to send`,
-      lines: [...tried, ...sentLine],
+      lines: [...photoLine, ...tried, ...sentLine],
       countdown,
       button,
       opensList: true,
@@ -562,6 +586,23 @@ export function outboxBarWords(presses: readonly OutboxPress[], now: number, opt
 export function outboxHoldsEverything(presses: readonly OutboxPress[], now: number): boolean {
   const holding = presses.some((p) => p.state === 'waiting' || p.state === 'sending')
   return holding && !presses.some((p) => needsAPerson(p, now))
+}
+
+/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report. */
+export function keptPhotoCount(presses: readonly OutboxPress[]): number {
+  let n = 0
+  for (const p of presses) {
+    if (p.kind !== 'field-report' || (p.state !== 'waiting' && p.state !== 'sending')) continue
+    n += ((p.payload as FieldReportPayload).photos ?? []).length
+  }
+  return n
+}
+
+/** The bar's line for them: *1 photo with it*, *3 photos with them*; nothing when none ride. */
+export function photosWaitingLine(waiting: readonly OutboxPress[]): string[] {
+  const n = keptPhotoCount(waiting)
+  if (n === 0) return []
+  return [`${n === 1 ? '1 photo' : `${n} photos`} with ${waiting.length === 1 ? 'it' : 'them'}`]
 }
 
 /** The waiting count the slow line and the No signal line name: "2 waiting to send". */

@@ -7,7 +7,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { formatErrorMessage } from '../../utils/errorHandling'
+import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../utils/errorHandling'
 import { REPORT_PHOTOS_BUCKET, reportPhotoPath, type ReportPhotoRow } from './reportPhotos'
 import { REPORT_PHOTO_SIZE_SETTING_KEY, photoSizeFromSetting, type ReportPhotoSize } from './shrink'
 
@@ -29,6 +29,16 @@ export async function setReportPhotoSize(size: ReportPhotoSize): Promise<void> {
   if (error) throw new Error(formatErrorMessage(error, 'The size did not save.'))
 }
 
+/** Why a shot did not send, with its class (punch list #229, PR 6): a `network` failure keeps the shot on the phone. */
+export class ReportPhotoSendError extends Error {
+  kind: DatabaseErrorKind
+  constructor(message: string, kind: DatabaseErrorKind) {
+    super(message)
+    this.name = 'ReportPhotoSendError'
+    this.kind = kind
+  }
+}
+
 export type SendReportPhotoInput = {
   id: string
   jobId: string
@@ -46,10 +56,10 @@ export type SendReportPhotoInput = {
  * (over 2 MB, no door to the job); the caller keeps the tile with Retry.
  */
 export async function sendReportPhoto(input: SendReportPhotoInput): Promise<{ storagePath: string }> {
-  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new Error('The phone has no signal.')
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) throw new ReportPhotoSendError('The phone has no signal.', 'network')
   const storagePath = reportPhotoPath(input.jobId, input.id)
   const { error } = await db.storage.from(REPORT_PHOTOS_BUCKET).upload(storagePath, input.blob, { contentType: input.blob.type || 'image/jpeg', upsert: true })
-  if (error) throw new Error(formatErrorMessage(error, 'The photo did not send.'))
+  if (error) throw new ReportPhotoSendError(formatErrorMessage(error, 'The photo did not send.'), errorKindOf(error))
   const { error: rowError } = await db.from('report_photos').upsert(
     {
       id: input.id,
@@ -68,7 +78,7 @@ export async function sendReportPhoto(input: SendReportPhotoInput): Promise<{ st
   if (rowError) {
     // The bytes without a row would wait forever; take them back.
     await db.storage.from(REPORT_PHOTOS_BUCKET).remove([storagePath]).catch(() => undefined)
-    throw new Error(formatErrorMessage(rowError, 'The photo did not send.'))
+    throw new ReportPhotoSendError(formatErrorMessage(rowError, 'The photo did not send.'), errorKindOf(rowError))
   }
   return { storagePath }
 }
