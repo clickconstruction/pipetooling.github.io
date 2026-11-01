@@ -8,12 +8,18 @@ covers:
   - supabase/functions/twin-mcp/index.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-09
+last_updated: 2026-11-01
 ---
 
 ## Overview
 
 **Line numbers are exact as of `a05cef4c4` and go stale with every commit. Search for the symbol (the case label or helper name), not the number.** Before you trust a range, regenerate the facts with `npm run map -- supabase/functions/twin-mcp/index.ts`.
+
+> **v2.6180 (after `mapped_at`) — `put_fixtures` (twin-mcp 1.9.0):** a fenced pipeline write (region 5) called once after `paste_counts` and before `lock_shadow`; it lands the robot's fixtures on the human bid the shell is paired to (`bid_fixture_pulls`, `bid_fixture_pull_rows`, at most 400 rows), prices each row from the 🤖 Robot Default book when the robot does not say, and replaces the shell's earlier pull unless a person has taken or set aside a row of it (`docs/recent-features/v2.6180.md`).
+
+> **v2.6207 (after `mapped_at`) — `put_plan_memo` (twin-mcp 1.10.0):** writes a memo on the plan set the robot reads (the `bid_plan_sets` row whose link is `bids.plans_link`) or the set named, making the row when a bid has a plans link and none; the same bid fence as `add_bid_note` (`docs/recent-features/v2.6207.md`).
+
+> **v2.6237 (after `mapped_at`) — the hand-over step named (twin-mcp 1.10.1):** `paste_counts` on a shadow shell with no pull returns `fixtures_next`, `lock_shadow` returns `fixtures_handed_over`, and `score_shadows` counts an assisted run (one whose fixtures the estimator took) with practice and reports `assisted_runs`, so an assisted run never gates an axis. The `serverInfo` version reads `1.10.1` now, not the `1.4.2` counted at `mapped_at` (`docs/recent-features/v2.6237.md`).
 
 **What this surface is.** [`supabase/functions/twin-mcp/index.ts`](../supabase/functions/twin-mcp/index.ts) has **3,362 lines**. It is a Deno edge function, not React: the stateless JSON-RPC MCP server that lets any MCP-capable agent hold a digital-twin seat. It has 0 components, 0 hooks and 22 module functions. Churn is **42 commits in 90 days**; the last was `67e865b14` on 2026-09-20 (v2.3630). The purpose, endpoint, auth, secrets and every verb's contract are documented in [EDGE_FUNCTIONS.md → twin-mcp](./EDGE_FUNCTIONS.md#twin-mcp). This map links there and does not restate verb behavior.
 

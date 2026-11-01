@@ -8,12 +8,14 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-23
+last_updated: 2026-11-01
 ---
 
 ## Overview
 
 **Line numbers are exact as of `a05cef4c4` and rot with every commit — search the symbol, not the number.** Regenerate the facts with `npm run map -- src/components/jobs/JobFormModal.tsx` before trusting a range.
+
+> **v2.6112 (after `mapped_at`) — other job charges carry a date and a memo:** `MaterialRow` gains `charged_on` and `memo` (two nullable `jobs_ledger_materials` columns, migration `20261030060000`); `JobFormModal.tsx` hydrates both from the job's materials, `addMaterialRow` stamps a new row with today's date (`todayYmdInAppTz`), and `removeMaterialRow`'s cleared last row drops both; the materials slice (`buildMaterialsSliceJson`, `materialInsertRows`) and `JOBS_LEDGER_MATERIALS_EMBED` carry them, and the row draws in `JobFormPartsCostSection` (§14) as a date box, the description and a memo line summoned by **+ memo** (`docs/recent-features/v2.6112.md`).
 
 [`src/components/jobs/JobFormModal.tsx`](../src/components/jobs/JobFormModal.tsx) is **3,372 lines** since the extraction order's nine moves (2026-09-26 to 09-28, v2.3871–v2.3973): 79 `useState` · 24 effects · 33 `useMemo` · 7 `useCallback` · 23 `useRef` · 23 custom-hook calls. The regions and line ranges below describe the file before those moves, at `mapped_at` — refresh them with `npm run map` before cutting anything further. At `mapped_at` it was **5,457 lines**: one default-exported component `JobFormModal` (309–5457, 5,149 lines; render 3919–5456, 1,538 lines) over a module scope of types, `FOCUS_FIELD_RING` and the z-index ladder (27–307) — **0 module functions**. Census: **97 `useState` · 30 effects · 37 `useMemo` · 12 `useCallback` · 39 `useRef` · 21 custom-hook calls**; 133 local imports, 40 child components in the render. Churn: **150 commits in 90 days**, last `a05cef4c4` (2026-09-25) — the hottest modal in the repo; run `npm run sessions` before touching it.
 
