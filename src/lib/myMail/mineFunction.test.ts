@@ -35,6 +35,7 @@ import {
   MY_MAIL_OFFICE_ROLES,
   MY_MAIL_QUERY_MAX,
   MY_MAIL_REFUSAL_STATUS,
+  leftOutOfTab,
   myMailAddressKey,
   myMailBodyHtml,
   myMailEmlPath,
@@ -205,6 +206,16 @@ describe('myMailQuery: the Gmail search a page reads', () => {
     expect(neverRead(['CHAT'])).toBe(true)
     expect(neverRead(['toString'])).toBe(false)
     expect(neverRead(undefined)).toBe(false)
+  })
+
+  it('leaves out of the tab what is never read, and a mail under a label the person leaves out, by Gmail’s id', () => {
+    expect(leftOutOfTab(['INBOX', 'Label_7'], ['Label_7'])).toBe(true)
+    expect(leftOutOfTab(['INBOX', 'Label_8'], ['Label_7'])).toBe(false)
+    expect(leftOutOfTab(['SENT', 'DRAFT'], [])).toBe(true)
+    expect(leftOutOfTab(['INBOX'], [])).toBe(false)
+    // The id, never the name: a label named like a hidden one is not it.
+    expect(leftOutOfTab(['Personal'], ['Label_7'])).toBe(false)
+    expect(leftOutOfTab(undefined, ['Label_7'])).toBe(false)
   })
 })
 

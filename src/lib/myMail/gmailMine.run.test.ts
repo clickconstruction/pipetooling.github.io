@@ -347,6 +347,16 @@ describe('gmail-mine: list', () => {
     expect(by['g-jo']).toMatchObject({ guess: null, tagged: null, inMessages: null, folded: null })
   })
 
+  it('never draws a mail under a label the person leaves out that the search let past, held by Gmail’s id (v2.6296)', async () => {
+    // Gmail's search left Jo's mail on the page though it carries Personal, a label Marisol leaves out.
+    google.boxes[MARISOL]!.labels.push({ id: 'Label_7', name: 'Personal' })
+    google.boxes[MARISOL]!.mails.find((m) => m.id === 'g-jo')!.labelIds.push('Label_7')
+    const res = await post('marisol-jwt', { action: 'list', view: 'all' })
+    expect(res.status).toBe(200)
+    expect((res.body.rows as Row[]).map((r) => r.gmailId)).toEqual(['g-dale-3', 'g-sam', 'g-priya-1', 'g-board', 'g-elm-old', 'g-news'])
+    expect(google.calls).toContain(`${MARISOL} GET /labels`)
+  })
+
   it('answers To tag without what is on a job or folded, and searches with the fence and the person’s hidden label', async () => {
     const res = await post('marisol-jwt', { action: 'list', view: 'toTag' })
     // What is left to tag, then the newsletter behind the fold line with its kind.
@@ -435,6 +445,24 @@ describe('gmail-mine: open', () => {
   it('answers not there for a mail Gmail does not have, and for a draft', async () => {
     expect(await post('marisol-jwt', { action: 'open', gmailId: 'g-nope' })).toMatchObject({ status: 404, body: { ok: false, error: 'notFound', words: MY_MAIL_REFUSAL_WORDS.notFound } })
     expect(await post('marisol-jwt', { action: 'open', gmailId: 'g-draft-elm' })).toMatchObject({ status: 404, body: { error: 'notFound' } })
+  })
+
+  it('never shows a mail under a label the person leaves out: not in the conversation, and not there when opened (v2.6296)', async () => {
+    // Marisol leaves out Personal; her box spells it personal, and her own reply in the Elm conversation carries it.
+    google.boxes[MARISOL]!.labels.push({ id: 'Label_7', name: 'personal' })
+    google.boxes[MARISOL]!.mails.find((m) => m.id === 'g-marisol-1')!.labelIds.push('Label_7')
+    const res = await post('marisol-jwt', { action: 'open', gmailId: 'g-ana-1' })
+    expect(res.status).toBe(200)
+    const m = res.body.mail as Row
+    expect((m.threadRows as Row[]).map((r) => r.gmailId)).toEqual(['g-dale-1'])
+    expect(m.threadCount).toBe(2)
+    expect(await post('marisol-jwt', { action: 'open', gmailId: 'g-marisol-1' })).toMatchObject({ status: 404, body: { ok: false, error: 'notFound' } })
+    expect(writes()).toEqual([])
+  })
+
+  it('stops an open when Gmail will not list the labels the person leaves out, and shows nothing', async () => {
+    google.labelsDown = true
+    expect(await post('marisol-jwt', { action: 'open', gmailId: 'g-ana-1' })).toMatchObject({ status: 502, body: { ok: false, error: 'google' } })
   })
 })
 
