@@ -7,8 +7,9 @@
  * what a request may say, the Gmail search a page reads, how each refusal answers, the words when Google or the database
  * says no, the mail's HTML for the reader, which jobs are open, the facts the guess reads, the line a tagged mail writes,
  * where its files and its raw copy go in the bucket, the tag's grey line on the thread, and what an untag removes. Since
- * PR 4 also the follow, the cron's action: whose tagged conversations it reads, which, and what it does with each mail
- * of one. Pure; mirrored to the edge by `scripts/edge-kernels.mjs`.
+ * PR 4 also the follow, the cron's action: whose tagged conversations it reads, which (each one until 60 days after its
+ * newest mail, or after its tag when that is later), and what it does with each mail of one. Pure; mirrored to the
+ * edge by `scripts/edge-kernels.mjs`.
  */
 import { fileKeep, rfcMessageId, type EmailFileRow } from '../emailIn/emailLine.ts'
 import { base64UrlBytes, type EmailAddress, type EmailIn, type GmailMessage, type GmailPart } from '../emailIn/gmailMessage.ts'
@@ -693,7 +694,10 @@ export function isFollowRequest(raw: unknown): raw is MyMailFollowRequest {
 /** How many tagged conversations one run of the follow reads; the rest wait for the next run, five minutes on. */
 export const FOLLOW_ROWS_PER_RUN = 100
 
-/** How long a tagged conversation is followed: while its last read, or its tag before any read, is this young. */
+/**
+ * How long a tagged conversation is followed: until this many days since its newest mail (`last_mail_at`), or since
+ * its tag when that is later, so a conversation is followed while it is alive and for this long after every tag.
+ */
 export const FOLLOW_WINDOW_DAYS = 60
 
 /**
@@ -702,15 +706,34 @@ export const FOLLOW_WINDOW_DAYS = 60
  */
 export const MY_MAIL_OFFICE_ROLES: readonly string[] = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']
 
-/** The start of the window: a conversation read (or tagged and not yet read) after this instant is followed. */
+/** The start of the window: a conversation whose newest mail, or whose tag, is after this instant is followed. */
 export function followSince(now: Date | number): string {
   const ms = typeof now === 'number' ? now : now.getTime()
   return new Date(ms - FOLLOW_WINDOW_DAYS * 86_400_000).toISOString()
 }
 
-/** `coalesce(last_read_at, tagged_at) > since` as a PostgREST `or`: the rows the window holds. */
+/**
+ * `greatest(last_mail_at, tagged_at) > since` as a PostgREST `or`: the rows the window holds, a conversation whose newest
+ * mail or whose tag is younger than the window, however lately it was read. A tag holds its conversation for the whole
+ * window even when its newest mail is older, since the tag's grey line says later mail lands by itself; a row with no
+ * newest mail yet (tagged before the column was pushed, not read since) is held by its tag alone. The cron's gate
+ * (`20261101172319_gmail_mine_follow_window.sql`) asks the same.
+ */
 export function followWindow(since: string): string {
-  return `last_read_at.gt.${since},and(last_read_at.is.null,tagged_at.gt.${since})`
+  return `last_mail_at.gt.${since},tagged_at.gt.${since}`
+}
+
+/**
+ * The newest mail of a conversation, which the follow's window keys on (`email_tag_threads.last_mail_at`): the latest
+ * time Gmail took one of its mails (`internalDate`, the email's `at`), a draft, Spam, Trash and a chat left out as the
+ * tag and the follow leave them. Never earlier than `kept`, the time the row already holds, so a mail deleted from
+ * Gmail never pulls the window back. ISO; null when no mail has a time and nothing is kept.
+ */
+export function newestMailAt(messages: readonly Pick<EmailIn, 'at' | 'labels'>[], kept: string | null = null): string | null {
+  const times = messages.flatMap((m) => (m.at && !neverRead(m.labels) ? [Date.parse(m.at)] : []))
+  if (kept) times.push(Date.parse(kept))
+  const newest = Math.max(...times.filter((ms) => Number.isFinite(ms)))
+  return Number.isFinite(newest) ? new Date(newest).toISOString() : null
 }
 
 /** A person as the follow reads their `users` row. */

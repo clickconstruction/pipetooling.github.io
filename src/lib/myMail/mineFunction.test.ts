@@ -50,6 +50,7 @@ import {
   myMailTagEventWords,
   myMailTeam,
   neverRead,
+  newestMailAt,
   parseMyMailRequest,
   pipelineIsOpen,
   planFollow,
@@ -563,17 +564,46 @@ describe('the follow: whose conversations, which, and what it does with each mai
     expect(parseMyMailRequest({ action: 'follow' })).toBeNull()
   })
 
-  it('reads a conversation read, or tagged and not yet read, in the last 60 days, and 100 a run', () => {
+  it('reads a conversation whose newest mail or tag is younger than 60 days, however lately it was read, and 100 a run', () => {
     expect([FOLLOW_ROWS_PER_RUN, FOLLOW_WINDOW_DAYS]).toEqual([100, 60])
     expect(followSince(Date.parse('2026-11-01T12:00:00.000Z'))).toBe('2026-09-02T12:00:00.000Z')
     expect(followSince(new Date('2026-11-01T12:00:00.000Z'))).toBe('2026-09-02T12:00:00.000Z')
-    expect(followWindow('2026-09-02T12:00:00.000Z')).toBe('last_read_at.gt.2026-09-02T12:00:00.000Z,and(last_read_at.is.null,tagged_at.gt.2026-09-02T12:00:00.000Z)')
-    // As PostgREST reads the filter: coalesce(last_read_at, tagged_at) after the window's start.
+    expect(followWindow('2026-09-02T12:00:00.000Z')).toBe('last_mail_at.gt.2026-09-02T12:00:00.000Z,tagged_at.gt.2026-09-02T12:00:00.000Z')
+    // As PostgREST reads the filter: greatest(last_mail_at, tagged_at) after the window's start.
     const inWindow = orFilter(followWindow('2026-09-02T12:00:00.000Z'))
-    expect(inWindow({ last_read_at: '2026-10-30T00:00:00.000Z', tagged_at: '2026-01-01T00:00:00.000Z' })).toBe(true)
-    expect(inWindow({ last_read_at: '2026-08-01T00:00:00.000Z', tagged_at: '2026-10-30T00:00:00.000Z' })).toBe(false)
-    expect(inWindow({ last_read_at: null, tagged_at: '2026-10-30T00:00:00.000Z' })).toBe(true)
-    expect(inWindow({ last_read_at: null, tagged_at: '2026-08-01T00:00:00.000Z' })).toBe(false)
+    // Mail two days ago on a conversation tagged in January: alive, so followed.
+    expect(inWindow({ last_mail_at: '2026-10-30T00:00:00.000Z', tagged_at: '2026-01-01T00:00:00.000Z', last_read_at: '2026-11-01T11:55:00.000Z' })).toBe(true)
+    // Read five minutes ago, but its newest mail is 61 days old and its tag older: quiet, so not followed.
+    expect(inWindow({ last_mail_at: '2026-09-01T12:00:00.000Z', tagged_at: '2026-08-01T00:00:00.000Z', last_read_at: '2026-11-01T11:55:00.000Z' })).toBe(false)
+    // Tagged yesterday with its newest mail 90 days old: the tag holds it for the window, so a reply to it lands.
+    expect(inWindow({ last_mail_at: '2026-08-03T12:00:00.000Z', tagged_at: '2026-10-31T12:00:00.000Z', last_read_at: null })).toBe(true)
+    // The same tag 61 days on with nothing new: closed.
+    expect(inWindow({ last_mail_at: '2026-06-03T12:00:00.000Z', tagged_at: '2026-09-01T12:00:00.000Z', last_read_at: '2026-11-01T11:55:00.000Z' })).toBe(false)
+    // Tagged before the column was pushed and not read since: its tag alone.
+    expect(inWindow({ last_mail_at: null, tagged_at: '2026-10-30T00:00:00.000Z', last_read_at: null })).toBe(true)
+    expect(inWindow({ last_mail_at: null, tagged_at: '2026-08-01T00:00:00.000Z', last_read_at: '2026-11-01T11:55:00.000Z' })).toBe(false)
+  })
+
+  it('keys the window on the newest mail: drafts, Spam, Trash and chats left out, never earlier than the row’s own', () => {
+    const m = (at: string | null, labels: string[] = ['INBOX']) => ({ at, labels })
+    const thread = [
+      m('2026-10-30T15:00:00.000Z'),
+      m('2026-10-31T09:30:00.000Z', ['SENT']),
+      m('2026-11-01T09:00:00.000Z', ['DRAFT']),
+      m('2026-11-01T10:00:00.000Z', ['SPAM']),
+      m('2026-11-01T11:00:00.000Z', ['INBOX', 'TRASH']),
+      m('2026-11-01T12:00:00.000Z', ['CHAT']),
+      m(null),
+    ]
+    expect(newestMailAt(thread)).toBe('2026-10-31T09:30:00.000Z')
+    // A later mail than the row's moves it on; Postgres's own spelling of the row's time reads the same.
+    expect(newestMailAt(thread, '2026-10-01T00:00:00+00:00')).toBe('2026-10-31T09:30:00.000Z')
+    // The newest mail deleted from Gmail since: the row's time stands, so the window never moves back.
+    expect(newestMailAt(thread, '2026-11-01T08:00:00+00:00')).toBe('2026-11-01T08:00:00.000Z')
+    expect(newestMailAt([], '2026-10-01T00:00:00.000Z')).toBe('2026-10-01T00:00:00.000Z')
+    // No mail with a time, and nothing kept: none, and the tag stands in with its own time.
+    expect(newestMailAt([m(null), m('2026-11-01T09:00:00.000Z', ['DRAFT'])])).toBeNull()
+    expect(newestMailAt([m('not a time')])).toBeNull()
   })
 
   it('reads as each office member whose switch is on: never a sample, a twin, the walk tester, an archived or training account', () => {

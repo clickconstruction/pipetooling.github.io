@@ -69,7 +69,7 @@ export function buildLegalConfirmEmail(i: { companyName: string; email: string; 
  * notes and applied payments email the firm too, and — digest only — a fee or cost the office saw. Closing a
  * matter, moving a step back, the office's undo and a signed-off step send nothing yet (a paralegal entering six costs should not get six emails back).
  */
-export const LEGAL_NOW_TRIGGERS = ['referred', 'answer', 'pulled', 'ask', 'note', 'applied', 'fee_seen'] as const
+export const LEGAL_NOW_TRIGGERS = ['referred', 'answer', 'pulled', 'ask', 'note', 'applied', 'fee_seen', 'step', 'plan', 'event', 'offer', 'statement', 'paper', 'released'] as const
 export type LegalNowTrigger = (typeof LEGAL_NOW_TRIGGERS)[number]
 
 /** A queue row's trigger, or null for one this build does not know (it is skipped, never mislabeled). */
@@ -77,9 +77,10 @@ export function legalNowTriggerOf(raw: unknown): LegalNowTrigger | null {
   return typeof raw === 'string' && (LEGAL_NOW_TRIGGERS as readonly string[]).includes(raw) ? (raw as LegalNowTrigger) : null
 }
 
-/** False for the events that ride the digest only (`fee_seen`). */
+/** The six that send an email of their own; the rest ride the digest only (v2.6283: every office act, so a paralegal entering six things does not get six emails back). */
+const SENDS_NOW: ReadonlySet<LegalNowTrigger> = new Set<LegalNowTrigger>(['referred', 'answer', 'pulled', 'ask', 'note', 'applied'])
 export function legalTriggerSendsNow(t: LegalNowTrigger): boolean {
-  return t !== 'fee_seen'
+  return SENDS_NOW.has(t)
 }
 
 function money(n: unknown): string {
@@ -142,6 +143,11 @@ export function buildLegalNowEmail(i: {
     case 'pulled':
       subject = `${LEGAL_REFERRAL_WITHDRAWN}: ${payer}`
       line = `${legalEsc(i.companyName)} has withdrawn the referral of ${p}.${i.reason ? `<br>Why: <i>${legalEsc(i.reason)}</i>` : ''}<br>Your fees and costs and the conversation stay readable on the portal; the account's records do not.`
+      break
+    default:
+      // v2.6283: the digest-only acts never send on their own; the shape is here so a caller that asks gets the digest's words.
+      subject = `${DIGEST_LABEL[i.trigger]}: ${payer}`
+      line = `${DIGEST_LABEL[i.trigger]} on ${p}${i.amount != null ? ` ${money(i.amount)}` : ''}${said}`
   }
   const html = legalWrapHtml(i.companyName, `<p>${line}</p>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)
   return { subject, text: `${subject}\n\n${i.portalUrl}`, html }
@@ -159,6 +165,14 @@ const DIGEST_LABEL: Record<LegalNowTrigger, string> = {
   note: 'Note from the office',
   applied: 'Payment applied',
   fee_seen: 'Fee seen by the office',
+  // v2.6283: the office's own acts, digest only.
+  step: 'Step by the office',
+  plan: 'Planned step by the office',
+  event: 'What happened, recorded by the office',
+  offer: 'Offer',
+  statement: 'Statement by the office',
+  paper: 'Paper added',
+  released: 'Paper released to you',
 }
 
 /** A week's line reads its day short, in the company's zone: *Oct 27*. */
@@ -176,7 +190,7 @@ function shortDayInAppTz(d: Date): string {
 export function buildLegalDigestEmail(i: { companyName: string; recipientName: string; matters: LegalDigestMatter[]; events: LegalDigestEvent[]; portalUrl: string; unsubscribeUrl: string }): LegalEmail {
   const detail = (e: LegalDigestEvent): string => {
     if (e.trigger === 'pulled') return e.reason ? ` — ${legalEsc(e.reason)}` : ''
-    const amt = (e.trigger === 'applied' || e.trigger === 'fee_seen') && e.amount != null ? ` ${money(e.amount)}` : ''
+    const amt = (e.trigger === 'applied' || e.trigger === 'fee_seen' || e.trigger === 'offer') && e.amount != null ? ` ${money(e.amount)}` : ''
     return `${amt}${e.body && e.trigger !== 'referred' ? ` — ${legalEsc(e.body)}` : ''}`
   }
   const keyOf = (payer: string) => payer.trim().toLowerCase()

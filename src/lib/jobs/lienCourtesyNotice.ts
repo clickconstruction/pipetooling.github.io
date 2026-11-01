@@ -335,13 +335,15 @@ export function courtesyEmailText(f: CourtesyFacts, who: CourtesyWho, greeting: 
   const sent = demandDate(f.noticeSentOn)
   const lien = demandDate(f.lienDay)
   const county = f.county.trim() ? ` in ${f.county.trim()} County` : ''
+  // The affidavit lands on the property, so the sentence names it (the owner's ask, 2026-11-01).
+  const onWhere = where ? ` on ${where}` : ''
   const sign = `${f.contactPerson.trim()}${f.phone.trim() ? ` · ${f.phone.trim()}` : ''}\n${us} · Job ${f.jobNumber.trim()}`
   const offer = f.offer ? `\n\n${lienOfferSentence(f.offer)}` : ''
   if (who === 'owner') {
     return [
       `To the owner of ${where},`,
       `On ${sent} we mailed you the notice of claim under Tex. Prop. Code § 53.056 on ${job}: ${gc} has not paid us ${amount} for work in ${f.monthsWords}. That notice stands. This is a reminder, not a new notice. You did not hire us, and nothing here is billed to you.`,
-      `Nothing has come in since. Unless the ${amount} is paid, we will file the lien affidavit${county} by ${lien}. We would rather pick up a check than put an affidavit on your property.`,
+      `Nothing has come in since. Unless the ${amount} is paid, we will file the lien affidavit${onWhere}${county} by ${lien}. A recorded affidavit goes into the county's public records on your property, where a title search finds it later, even after it is released. We would rather pick up a check than put that on record.`,
       `Please pay us only if ${gc} has told you in writing that you may pay us directly. Otherwise hold ${amount} back from your next payment to ${gc}, as the cover letter asked, and call us so we know it is held. We cannot deposit a joint check.${offer}`,
       `If something is wrong, or a payment is already on its way, reply to this email or call and tell us.`,
       sign,
@@ -350,7 +352,7 @@ export function courtesyEmailText(f: CourtesyFacts, who: CourtesyWho, greeting: 
   return [
     greeting.trim() || courtesyGreeting(f.gcName),
     `On ${sent} we mailed you and the owner of ${where} the Notice of Claim for Unpaid Labor or Materials (Tex. Prop. Code § 53.056) on job ${job}: ${amount} for work in ${f.monthsWords}. That notice stands. This is a reminder, not a new notice.`,
-    `Nothing has come in since. Unless the ${amount} is paid, we will file the lien affidavit${county} by ${lien}. A recorded affidavit is harder to take off than the notice, and we would rather pick up a check.`,
+    `Nothing has come in since. Unless the ${amount} is paid, we will file the lien affidavit${onWhere}${county} by ${lien}. A recorded affidavit is harder to take off than the notice. It goes into the county's public records on the property, where a title search finds it later, even after it is released. We would rather pick up a check.`,
     `${courtesyPayLine(f)}${offer}`,
     `If something on the bill is wrong, or a payment is already on its way, reply to this email or call and tell us.`,
     sign,
@@ -362,11 +364,12 @@ export function courtesyTextBody(f: CourtesyFacts, who: CourtesyWho): string {
   const us = f.claimantName.trim() || 'us'
   const amount = money(f.claim)
   const link = f.payLinks.find((l) => l.address.trim())?.address.trim() ?? ''
+  const onWhere = f.propertyAddress.trim() ? ` on ${f.propertyAddress.trim()}` : ''
   const call = `Questions: ${f.contactPerson.trim()}${f.phone.trim() ? ` ${f.phone.trim()}` : ''}.`
   if (who === 'owner') {
     return `${us}: on ${formatYmdMonthDay(f.noticeSentOn)} we mailed you the notice of claim on ${f.propertyAddress.trim()} (job ${f.jobNumber.trim()}), ${amount} owed by ${f.gcName.trim() || 'your contractor'}. Nothing has come. Unless it is paid, the lien affidavit is filed by ${formatYmdMonthDay(f.lienDay)}. Pay us only with ${f.gcName.trim() || 'the contractor'}'s written okay; otherwise hold it back and call. ${call} This is a reminder, not a new notice.`
   }
-  return `${us}: on ${formatYmdMonthDay(f.noticeSentOn)} we mailed you and the owner the notice of claim on ${f.jobName.trim()} (job ${f.jobNumber.trim()}), ${amount} for ${f.monthsWords}. Nothing has come. Unless it is paid, the lien affidavit is filed by ${formatYmdMonthDay(f.lienDay)}.${link ? ` Pay here: ${link}` : ` Pay by check or wire payable only to ${us}.`} ${call} This is a reminder, not a new notice.`
+  return `${us}: on ${formatYmdMonthDay(f.noticeSentOn)} we mailed you and the owner the notice of claim on ${f.jobName.trim()} (job ${f.jobNumber.trim()}), ${amount} for ${f.monthsWords}. Nothing has come. Unless it is paid, the lien affidavit is filed${onWhere} by ${formatYmdMonthDay(f.lienDay)}.${link ? ` Pay here: ${link}` : ` Pay by check or wire payable only to ${us}.`} ${call} This is a reminder, not a new notice.`
 }
 
 // ---------------------------------------------------------------------------

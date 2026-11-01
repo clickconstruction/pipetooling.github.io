@@ -5,7 +5,8 @@
  * and a Google behind `fetch`: the token exchange (whose `sub` names the box) and one Gmail box per person. Since PR 4
  * the database orders a read (`order`, nulls placed as Postgres places them), compares (`gt`, `gte`, `lt`, `lte`, in an
  * `or` too, with `and(...)` inside it), stands back on a duplicate when an upsert asks it to (`ignoreDuplicates`), and
- * refuses with a code. Nothing here reaches a network or a database. Test-only.
+ * refuses with a code; and Google can stumble on one conversation (`down`, a 503) until the test takes it out. Nothing
+ * here reaches a network or a database. Test-only.
  */
 
 export type Row = Record<string, unknown>
@@ -403,6 +404,8 @@ export class FakeGoogle {
   calls: string[] = []
   /** Every `messages.list` search. */
   queries: string[] = []
+  /** Conversations whose read Google answers with a 503, a blip, until a test takes them out. */
+  down = new Set<string>()
   nextLabel = 1
 
   reset() {
@@ -411,6 +414,7 @@ export class FakeGoogle {
     this.subs = []
     this.calls = []
     this.queries = []
+    this.down = new Set()
     this.nextLabel = 1
   }
 
@@ -493,6 +497,7 @@ export class FakeGoogle {
       return reply(200, { id: mail.id, threadId: mail.threadId, labelIds: mail.labelIds })
     }
     if ((m = /^\/threads\/([^/]+)$/.exec(path)) && method === 'GET') {
+      if (this.down.has(decodeURIComponent(m[1]!))) return reply(503, { error: { code: 503, message: 'Backend Error' } })
       const mails = box.mails.filter((x) => x.threadId === decodeURIComponent(m![1]!)).sort((a, b) => a.at.localeCompare(b.at))
       if (mails.length === 0) return notFound()
       const format = url.searchParams.get('format') ?? 'full'

@@ -19,10 +19,11 @@
  *   `landMail`, the one place that knows how a mail becomes a line: placed (`email_place_address`), its files copied
  *   into `message-attachments` under `mine/`, its line written through `email_write_line` (the same Message-ID fence the
  *   boxes use, so nothing is written twice) and its raw mail kept as `mine/<line id>.eml`. Then the `email_tag_threads`
- *   row (its follow's place cleared, so the next run reads it first), the grey line in the other party's thread (the
- *   app's own event, keyed `mytag:<row id>`, moved with a tag onto another job), and the Gmail label *Tagged in
- *   ClickTooling* on its mail. A step the database refuses stops the tag with its words; what was written stays, and a
- *   second tag finishes it.
+ *   row (its follow's place cleared, so the next run reads it first, and the conversation's newest mail kept as
+ *   `last_mail_at`, which the follow's window keys on), the grey line in the other party's thread (the app's own event,
+ *   keyed `mytag:<row id>`, moved with a tag onto another job), and the Gmail label *Tagged in ClickTooling* on its
+ *   mail. A step the database refuses stops the tag with its words; what was written stays, and a second tag finishes
+ *   it.
  * - `untag` ({ threadId }): the person's own lines of the conversation go, with their files and raw copies, once the
  *   live documents a legal matter made from them are counted (`keptForMatter`: the matter keeps its own copy); a line the
  *   boxes wrote stays, untied when the tag or the follow tied it; the grey line and the `email_tag_threads` row go, and
@@ -36,12 +37,14 @@
  *
  * The cron's door (PR 4): `gmail-mine-follow`, every five minutes, posts `{ action: 'follow' }` with `X-Cron-Secret`
  * equal to CRON_SECRET, as `gmail-count` checks it; no signed-in caller may ask for it. The follow reads the tagged
- * conversations of each person whose switch is on and who is a real account on the office team, read (or tagged and
- * not yet read) in the last 60 days, the oldest read first and one whose last read failed after the rest, 100 a run,
- * as that person with one Google token each: a mail no line holds yet lands through `landMail` as a tag lands it, a
- * box's line on no job that nobody placed by hand is tied to the tag's job as the service role with the tagger stamped,
- * and what landed or was tied gets the label. Then the row's `last_read_at` is now, or its `last_error` the reason and
- * the next row still runs; a person whose token fails has their rows' `last_error` written and is skipped for the run.
+ * conversations of each person whose switch is on and who is a real account on the office team, while the newest mail
+ * of each, or its tag when that is later, is younger than 60 days (`followWindow`), the least recently read first, a
+ * failed read included, 100 a run, as that person with one Google token each: a mail no line holds yet lands through
+ * `landMail` as a tag lands it, a box's line on no job that nobody placed by hand is tied to the tag's job as the
+ * service role with the tagger stamped, and what landed or was tied gets the label. Then the row's `last_read_at` is
+ * now and its `last_mail_at` the newest mail the read found (`newestMailAt`, never earlier than the row's own), or its
+ * `last_read_at` now and its `last_error` the reason with its `last_mail_at` left as it was, so every row takes its
+ * turn, and the next row still runs; a person whose token fails has their rows marked so and is skipped for the run.
  *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, GOOGLE_SERVICE_ACCOUNT_JSON (the reader's),
  * GMAIL_IMPERSONATE_USER (bids@, so a copy from the box reads as ours), EMAIL_FROM, CRON_SECRET (the follow's door).
@@ -136,6 +139,7 @@ import {
   myMailTagEventRow,
   myMailTeam,
   neverRead,
+  newestMailAt,
   parseMyMailRequest,
   planFollow,
   planUntag,
@@ -164,7 +168,7 @@ const LINE_COLUMNS = 'id, gmail_id, rfc_message_id, bid_id, project_id, jobs_led
 const HELD_COLUMNS = 'id, contact_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mailbox, mail_user_id'
 const BID_COLUMNS = 'id, bid_number, project_name, service_type_id, outcome'
 const FOLLOW_USER_COLUMNS = 'id, name, email, role, read_only, is_sample, is_digital_twin, is_walk_tester, my_mail_on, archived_at'
-const FOLLOW_TAG_COLUMNS = 'id, user_id, gmail_thread_id, bid_id, project_id, jobs_ledger_id, tagged_by'
+const FOLLOW_TAG_COLUMNS = 'id, user_id, gmail_thread_id, bid_id, project_id, jobs_ledger_id, tagged_by, last_mail_at'
 const FOLLOW_LINE_COLUMNS = 'id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mail_user_id, tied_by'
 const PIPELINE_COLUMNS = 'id, hcp_number, click_number, job_name, service_type_id, status, customer_id, gc_customer_id'
 /** How many values one `in` filter carries: a page's Message-IDs run long. */
@@ -741,10 +745,12 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   }
 
   // A second tag onto another job moves the row with it; its own lines moved with their tie steps above. The follow's
-  // place is cleared, so its next run reads the conversation first and the window starts again from the tag.
+  // place is cleared, so its next run reads the conversation first, and the window runs 60 days from the tag and on
+  // from the conversation's newest mail while mail keeps coming (`newestMailAt`; the tag's own time when no mail has one).
+  const taggedAt = nowIso()
   const saved = await admin
     .from('email_tag_threads')
-    .upsert({ ...plan.threadRow, tagged_at: nowIso(), last_read_at: null, last_error: null }, { onConflict: 'user_id,gmail_thread_id' })
+    .upsert({ ...plan.threadRow, tagged_at: taggedAt, last_mail_at: newestMailAt(emails) ?? taggedAt, last_read_at: null, last_error: null }, { onConflict: 'user_id,gmail_thread_id' })
     .select('id')
     .single()
   if (saved.error) throw stopped('The tag stopped before it was kept. Its lines are written.', saved.error.message)
@@ -867,11 +873,19 @@ interface FollowTag {
   project_id: string | null
   jobs_ledger_id: string | null
   tagged_by: string | null
+  /** The conversation's newest mail as the tag or the last good read found it; null until one has. */
+  last_mail_at: string | null
 }
 
-/** The run's marks on the rows it read: the read's time and no error, or the reason with the time left where it was. */
-async function markFollowed(admin: Admin, ids: readonly string[], error: string | null): Promise<void> {
-  const patch = error === null ? { last_read_at: nowIso(), last_error: null } : { last_error: error.slice(0, 1000) }
+/**
+ * The run's marks on the rows it read: the read's time, then no error and the conversation's newest mail when the read
+ * found one (`lastMailAt`), or the reason with the newest mail left where it was. A failed read moves `last_read_at`
+ * too, so the row goes to the back and is read again in its turn: never starved behind a run's worth of healthy rows,
+ * never read ahead of them run after run. Its `last_mail_at` stands, so it ages out of the window like any other.
+ */
+async function markFollowed(admin: Admin, ids: readonly string[], error: string | null, lastMailAt: string | null = null): Promise<void> {
+  const readAt = nowIso()
+  const patch = error === null ? { last_read_at: readAt, last_error: null, ...(lastMailAt ? { last_mail_at: lastMailAt } : {}) } : { last_read_at: readAt, last_error: error.slice(0, 1000) }
   for (let i = 0; i < ids.length; i += IN_CHUNK) {
     const chunk = ids.slice(i, i + IN_CHUNK)
     const { error: failed } = await admin.from('email_tag_threads').update(patch).in('id', chunk)
@@ -902,9 +916,11 @@ async function tieAsTagger(admin: Admin, lineId: string, tag: FollowTag, job: My
 /**
  * One tagged conversation, read as its person: its mail by the headers (`threads.get`, `format=metadata`), the lines that
  * hold it, then `planFollow`: a box's loose line is tied, each mail no line holds is read whole and lands through
- * `landMail` as a tag lands it, and what landed or was tied gets the label. Throws what stopped it; what was done stays.
+ * `landMail` as a tag lands it, and what landed or was tied gets the label. Answers the conversation's newest mail
+ * (`newestMailAt` over the headers' `internalDate`, never earlier than the row's own). Throws what stopped it; what was
+ * done stays.
  */
-async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known: Pick<MyMailKnown, 'team' | 'boxes'>, done: TagCounts, labels: { labelled: number; missed: number }): Promise<void> {
+async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known: Pick<MyMailKnown, 'team' | 'boxes'>, done: TagCounts, labels: { labelled: number; missed: number }): Promise<string | null> {
   const { admin, me } = as
   const person = { userId: me.id, address: me.email, name: me.name }
   const thread = await gmailThreadHeaders(as.token, tag.gmail_thread_id, MY_MAIL_METADATA_HEADERS)
@@ -944,14 +960,17 @@ async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known
   const label = await labelMails(as, landed)
   labels.labelled += label.labelled
   labels.missed += label.missed
+  return newestMailAt(mails, tag.last_mail_at)
 }
 
 /**
- * The follow: the tagged conversations worth reading, oldest read first and one whose last read failed after the rest,
- * at most `FOLLOW_ROWS_PER_RUN`, each read as its person with one Google token per person per run. A row read in full
- * moves its `last_read_at` and clears its `last_error`; a row that failed keeps its time and records the reason, and the
- * next row still runs. A person whose token fails (off the Workspace, or switched off at Google since) has their rows'
- * `last_error` written and is skipped for the run. One line of counts, never a subject or an address.
+ * The follow: the tagged conversations in the window (`followWindow`: the newest mail, or the tag when that is later,
+ * younger than 60 days), in turn: the least recently read first (one never read before any), then the oldest tag, at
+ * most `FOLLOW_ROWS_PER_RUN`, each read as its person with one Google token per person per run. A row read in full moves
+ * its `last_read_at`, clears its `last_error` and moves its `last_mail_at` up to the newest mail it found; a row that
+ * failed moves its `last_read_at` too and records the reason, keeping its `last_mail_at`, and the next row still runs. A
+ * person whose token fails (off the Workspace, or switched off at Google since) has their rows marked so and is skipped
+ * for the run. One line of counts, never a subject or an address.
  */
 async function follow(admin: Admin, saJson: string): Promise<Response> {
   const users = await rows<MyMailFollowUserRow>(admin.from('users').select(FOLLOW_USER_COLUMNS).eq('my_mail_on', true).in('role', [...MY_MAIL_OFFICE_ROLES]), 'the people who tag')
@@ -965,7 +984,6 @@ async function follow(admin: Admin, saJson: string): Promise<Response> {
             .select(FOLLOW_TAG_COLUMNS)
             .in('user_id', [...people.keys()])
             .or(followWindow(followSince(Date.now())))
-            .order('last_error', { ascending: true, nullsFirst: true })
             .order('last_read_at', { ascending: true, nullsFirst: true })
             .order('tagged_at', { ascending: true })
             .limit(FOLLOW_ROWS_PER_RUN),
@@ -1000,8 +1018,8 @@ async function follow(admin: Admin, saJson: string): Promise<Response> {
         try {
           const job = tagRowJob(tag)
           if (!job) throw stopped('Reading later mail stopped. The tag names no job.', 'no job column is set')
-          await followOne(as, tag, job, { team, boxes }, done, labels)
-          await markFollowed(admin, [tag.id], null)
+          const newest = await followOne(as, tag, job, { team, boxes }, done, labels)
+          await markFollowed(admin, [tag.id], null, newest)
         } catch (e) {
           failed++
           await markFollowed(admin, [tag.id], followReason(e))
