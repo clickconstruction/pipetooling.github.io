@@ -28,7 +28,7 @@
  * `billedExpectedPayModel`, the deadlines from `buildLienPayRunway`; this only
  * arranges them.
  */
-import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
+import { billedExpectedPayModel, billedReferenceYmd, daysBetweenYmd, formatYmdMonthDay, type ExpectedPayPaceInput, type ExpectedPayRowInput, type ExpectedPaySource, type PaySpeedData, type PromisedPayDate } from './billedExpectedPay'
 import { LIEN_RUNWAY_AMBER_DAYS, LIEN_RUNWAY_RED_DAYS, type LienPayRunway } from './lienPayRunway'
 
 export type LedgerTone = 'done' | 'plain' | 'green' | 'amber' | 'red' | 'blue'
@@ -46,6 +46,10 @@ export type LedgerRow = {
   joiner: string
   /** "Sep 23"; '' when there is none. */
   date: string
+  /** The row's day as 'YYYY-MM-DD' (v2.6139, the Track view draws it against today); '' when there is none. */
+  ymd: string
+  /** On an Expected row (v2.6139): where the guess came from, so the Track view can mark it *guessed · ~30 d over 6 payments*. Absent on a promise and on every other row. */
+  pace?: LedgerPace
   /** The right column: "7d ago" · "1d past" · "in 4d" · "16d" · "today"; '' when there is none. */
   far: string
   tone: LedgerTone
@@ -61,6 +65,9 @@ export type LedgerRow = {
   /** The sub-line's hover: the whole sentence behind a few words (v2.5491). */
   subTitle?: string
 }
+
+/** The pace behind an Expected row (v2.6139): the model's source, its days and the payments or payers behind it. */
+export type LedgerPace = { source: ExpectedPaySource; medianDays: number; samples: number; payers: number; /** The model's own tail: "pays in ~35d" · "the GC pace ~35d over 3 payers" · "commercial pace ~12d" · "company avg". */ paceWords: string }
 
 /** The notice's state under the ledger's lien row (v2.5491): the AR chip's words and tone, from `lienArChipFor`. */
 export type LedgerLienState = { words: string; tone: LedgerTone; title?: string }
@@ -119,7 +126,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
   const billedYmd = row ? billedReferenceYmd(row) : null
   if (billedYmd) {
     const ago = daysBetweenYmd(billedYmd, todayYmd) ?? 0
-    rows.push({ key: 'billed', label: 'Billed', joiner: '', date: formatYmdMonthDay(billedYmd), far: farWords(-ago, 'bare'), tone: 'done', bold: false, dot: 'filled', action: null, title: `The bill went out ${formatYmdMonthDay(billedYmd)} — the day the pay estimate below counts from`, sub: '' })
+    rows.push({ key: 'billed', label: 'Billed', joiner: '', date: formatYmdMonthDay(billedYmd), ymd: billedYmd, far: farWords(-ago, 'bare'), tone: 'done', bold: false, dot: 'filled', action: null, title: `The bill went out ${formatYmdMonthDay(billedYmd)} — the day the pay estimate below counts from`, sub: '' })
   }
 
   // The money — their word if they gave one, else the estimate from their pay history; none on a bill the office gave up on
@@ -138,6 +145,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       label: promised ? 'They said' : 'Expected',
       joiner: '',
       date: formatYmdMonthDay(moneyYmd),
+      ymd: moneyYmd,
       far: moneyPast ? `${dWord(-moneyTo)} past` : farWords(moneyTo, 'in'),
       tone,
       bold: false,
@@ -145,6 +153,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
       action: moneyAction,
       title: moneyTitle,
       sub: promised && stat ? `expected ${formatYmdMonthDay(stat.expectedYmd)} by their history` : '',
+      ...(!promised && stat ? { pace: { source: stat.source, medianDays: stat.medianDays, samples: stat.samples, payers: stat.payers, paceWords: stat.paceWords } } : {}),
     })
   }
 
@@ -152,12 +161,12 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
   let verdict: LedgerVerdict | null = null
   if (runway && runway.state !== 'none') {
     if (runway.state === 'filed') {
-      rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? '', far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '', ...state })
+      rows.push({ key: 'filed', label: 'Lien filed', joiner: '', date: runway.lines[0]?.replace(/^lien filed\s*/i, '') ?? '', ymd: runway.filedYmd ?? '', far: '', tone: 'green', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '', ...state })
     } else if (runway.state === 'closed') {
       const noticeClosed = /^notice/i.test(runway.lines[1] ?? '')
       const closedYmd = noticeClosed ? runway.noticeByYmd : runway.lienByYmd
       const closedDays = closedYmd ? (daysBetweenYmd(todayYmd, closedYmd) ?? 0) : 0
-      rows.push({ key: 'closed', label: noticeClosed ? 'Notice window closed' : 'Lien window closed', joiner: '', date: closedYmd ? formatYmdMonthDay(closedYmd) : '', far: closedYmd ? farWords(closedDays, 'bare') : '', tone: 'done', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
+      rows.push({ key: 'closed', label: noticeClosed ? 'Notice window closed' : 'Lien window closed', joiner: '', date: closedYmd ? formatYmdMonthDay(closedYmd) : '', ymd: closedYmd ?? '', far: closedYmd ? farWords(closedDays, 'bare') : '', tone: 'done', bold: false, dot: 'filled', action: 'lien-desk', title: runway.title, sub: '' })
       verdict = { label: 'Lien gone', value: '', tone: 'red', action: 'lien-desk', title: runway.title }
     } else {
       // On a sub job the notice comes first; nothing can be filed before it goes.
@@ -178,6 +187,7 @@ export function buildBilledDatesLedger({ todayYmd, row, data, pace = null, promi
           label: noticeFirst ? 'Lien notice' : urgent ? 'File the lien' : 'Lien',
           joiner: 'by',
           date: formatYmdMonthDay(deadlineYmd),
+          ymd: deadlineYmd,
           far: farWords(deadlineDays, 'bare'),
           tone,
           bold: urgent,

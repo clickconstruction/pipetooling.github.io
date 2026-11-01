@@ -27,6 +27,10 @@ A lien is a legal claim on the property for unpaid work. Every row in **Billed**
 
 *Lien by* is the last day the affidavit can be filed with the county clerk, not a day to send anything. An affidavit is the sworn lien paper. *Lien notice by* is the last day to send the § 53.056 notice to the owner and the GC. The deadline row and the bold line open the job's **Lien window** on its timeline. There the last work month, the property kind and the statute are spelled out. You hover a row for the same in a line.
 
+### See the same dates as a track
+
+The dates block can also be drawn. A small switch sits in its top right corner. The switch reads **Dates** {{button:outline|Words}} {{button:outline|Track}}. The switch opens on Words, the lines above. Press {{button:outline|Track}} and the same three dates sit on one line against today. The bill is a filled dot. The expected pay date is a dashed ring marked *guessed*. A date the customer named is a solid blue ring marked *their word*. The lien date is a flag. The room between the pay date and the flag is a green band with its days, like *37d of room*. The band turns red when the money is expected after the flag. With no pay history the band reads *Ask for a date*. Today is a blue line. Under the track a tag names the guess, like *guessed · ~30 d over 6 payments*. Press the tag to see the payments it read. The ring, the flag and the band open the same windows as the lines. Your choice is remembered on this device. The same switch sits on a job window's Job tab, and one choice drives both.
+
 :::example A house with no property kind set
 The lien row shows the **residential** date — a month earlier than commercial — and the hover says *Property kind is not set, so the earlier (residential) date is shown*. That is the safe reading: a house read as commercial is a lien lost a month late. Open the job's Edit tab → **Property record** and pick {{button:outline|Residential}} or {{button:outline|Commercial}} to confirm it.
 :::

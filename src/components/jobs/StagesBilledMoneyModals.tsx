@@ -50,6 +50,8 @@ export type StagesBilledMoneyModalsProps = {
   setBilledAgingChartOpen: Dispatch<SetStateAction<boolean>>
   billedPaymentForecastOpen: boolean
   setBilledPaymentForecastOpen: Dispatch<SetStateAction<boolean>>
+  /** The forecast opens on its pay-speeds breakdown (v2.6139): the Track view's guessed tag. */
+  forecastOpensOnBreakdown?: boolean
   chaseModalOpen: boolean
   setChaseModalOpen: Dispatch<SetStateAction<boolean>>
   fixBillLinesOpen: boolean
@@ -101,6 +103,7 @@ export default function StagesBilledMoneyModals({
   setBilledAgingChartOpen,
   billedPaymentForecastOpen,
   setBilledPaymentForecastOpen,
+  forecastOpensOnBreakdown = false,
   chaseModalOpen,
   setChaseModalOpen,
   fixBillLinesOpen,
@@ -251,6 +254,7 @@ export default function StagesBilledMoneyModals({
           promises={promisedPayDates}
           slipByCustomer={promiseSlipByCustomer}
           pace={billedPace}
+          openOnBreakdown={forecastOpensOnBreakdown}
           todayYmd={calendarYmdInAppTzFromIso(new Date().toISOString())}
           onClose={() => setBilledPaymentForecastOpen(false)}
           onOpenInvoice={(invoiceId) => {

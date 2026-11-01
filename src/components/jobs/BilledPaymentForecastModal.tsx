@@ -103,7 +103,10 @@ export default function BilledPaymentForecastModal({
   workMonths,
   onOpenLienNotice,
   pace,
+  openOnBreakdown = false,
 }: {
+  /** Open with the pay-speeds breakdown already up (v2.6139): the Track view's *guessed* tag lands on the payments it read. */
+  openOnBreakdown?: boolean
   rows: StageRow[]
   /** True while any non-paid scope is still fetching — the totals can still grow. */
   loading?: boolean
@@ -148,7 +151,7 @@ export default function BilledPaymentForecastModal({
   // bucket; clicking it again (or Show all) restores every bucket.
   const [bucketFilter, setBucketFilter] = useState<ForecastBucketKey | null>(null)
   // Pay-speeds drill-down (v2.2022): the strip is now the door.
-  const [paySpeedsOpen, setPaySpeedsOpen] = useState(false)
+  const [paySpeedsOpen, setPaySpeedsOpen] = useState(openOnBreakdown)
   const [paySpeedsHover, setPaySpeedsHover] = useState(false)
   // Work months (lien clock): which rows are open, and the one quiet line
   // above the buckets when a sub job's notice month is closing.
