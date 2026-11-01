@@ -1,0 +1,266 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The checklist as a document: stamps, signatures, filing</title>
+<style>
+body{margin:0;background:#0b1220;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f3f4f6;padding:20px}
+h1{font-size:18px;margin:0 0 4px}
+h2.sec{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin:28px 0 10px}
+p.lead{color:#9ca3af;font-size:13px;margin:0 0 18px;max-width:1180px;line-height:1.45}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:8px}
+.cap{font-size:12px;color:#9ca3af;max-width:390px;line-height:1.4}
+.cap b{color:#f3f4f6}
+.cap.wide{max-width:980px}
+.phone{width:390px;height:844px;box-sizing:border-box;background:#111827;color:#f3f4f6;display:flex;flex-direction:column;overflow:hidden;font-size:14px;position:relative;border-radius:18px;border:1px solid #374151}
+.top{display:flex;flex-direction:column;gap:10px;padding:14px 14px 10px;border-bottom:1px solid #374151}
+.nav{display:flex;gap:18px;align-items:center}
+.nav .ham{width:22px;height:16px;border-top:3px solid #f3f4f6;border-bottom:3px solid #f3f4f6;box-sizing:border-box}
+.nav .on{font-weight:700;border-bottom:2px solid #f3f4f6;padding-bottom:2px}
+.nav .off{color:#9ca3af}
+.body{padding:12px 14px;display:flex;flex-direction:column;gap:12px;flex:1 1 auto;overflow:hidden}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af}
+.jt{font-weight:700;color:#f9fafb}.js{font-size:12px;color:#9ca3af}
+.b{flex:1 1 0;border-radius:8px;min-height:44px;font-size:13px;border:0}
+.b.pri{background:#2563eb;color:#fff;font-weight:700}
+.b.sec{background:#1f2937;color:#f3f4f6;border:1px solid #4b5563}
+.b.dis{opacity:.45}
+.btns{display:flex;gap:8px}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#1f2937;border-radius:18px 18px 0 0;border-top:1px solid #4b5563;display:flex;flex-direction:column;max-height:790px}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:#4b5563;margin:8px auto 0}
+.sheet .hd{padding:10px 16px 8px;border-bottom:1px solid #374151}
+.sheet .hd h3{margin:0;font-size:17px;color:#f9fafb}
+.sheet .hd .sub{font-size:12px;color:#9ca3af;margin-top:2px}
+.sheet .sc{padding:12px 16px;display:flex;flex-direction:column;gap:12px;overflow:hidden}
+.q{display:flex;flex-direction:column;gap:6px;padding:8px 0;border-bottom:1px solid #374151}
+.q .w{font-size:14px;color:#f3f4f6}
+.q .meta{font-size:11px;color:#9ca3af}
+.picks{display:flex;gap:6px}
+.pk{flex:1 1 0;min-height:44px;border-radius:8px;border:1px solid #4b5563;background:#111827;color:#f3f4f6;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.pk.yes{border-color:#16a34a}.pk.yes.sel{background:#16a34a;color:#fff}
+.pk.no{border-color:#dc2626}.pk.nh{}
+.sigchip{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#fcd34d;border:1px solid #92400e;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.newchip{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#f3b25f;border:1px solid #8a5a1a;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.gravity{font-size:14px;color:#f3f4f6;line-height:1.45}
+.pad{position:relative;background:#f8fafc;border-radius:10px;height:150px}
+.pad .line{position:absolute;left:16px;right:16px;bottom:34px;border-top:1px solid #94a3b8}
+.pad .ink{position:absolute;left:40px;bottom:40px;font-family:"Snell Roundhand","Brush Script MT",cursive;font-size:34px;color:#0f172a;transform:rotate(-4deg)}
+.pad .clear{position:absolute;right:8px;top:8px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;font-size:11px;padding:3px 8px;color:#475569}
+.tog{display:flex;align-items:center;gap:8px;font-size:13px;color:#d1d5db}
+.tog .box{width:18px;height:18px;border-radius:4px;border:1px solid #4b5563;background:#111827;flex:none}
+.tog .box.on{background:#2563eb;border-color:#2563eb}
+.hint{font-size:12px;color:#9ca3af}
+.foot{display:flex;gap:8px;padding:10px 16px 16px;border-top:1px solid #374151;margin-top:auto;align-items:center}
+.signed{display:flex;align-items:center;gap:8px;font-size:12px;color:#9ca3af}
+.mark{height:28px;background:#f8fafc;border-radius:4px;padding:0 8px;display:inline-flex;align-items:center;color:#0f172a;font-family:"Snell Roundhand","Brush Script MT",cursive;font-size:18px}
+.addbox{border:1px dashed #4b5563;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.in{background:#111827;border:1px solid #4b5563;border-radius:8px;min-height:40px;padding:8px 10px;font-size:14px;color:#f3f4f6}
+
+/* desk */
+.desk{width:1000px;height:680px;box-sizing:border-box;background:#f8fafc;color:#0f172a;border-radius:12px;border:1px solid #cbd5e1;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+.mbar{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid #e2e8f0;background:#fff}
+.mbar .t{font-weight:700;font-size:15px}.mbar .mute{color:#64748b}.mbar .x{margin-left:auto;color:#64748b}
+.tabs{display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid #e2e8f0;background:#fff}
+.tab{padding:8px 12px;border-radius:8px 8px 0 0;color:#475569}
+.tab.on{background:#f8fafc;color:#0f172a;font-weight:700;border:1px solid #e2e8f0;border-bottom-color:#f8fafc;margin-bottom:-1px}
+.pane{padding:16px 20px;display:flex;flex-direction:column;gap:14px;overflow:hidden}
+.mute{color:#64748b;font-size:12px}
+h4{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#475569}
+.srow{display:flex;gap:14px;align-items:flex-start}
+.stg{flex:1 1 0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stg.filed{border-color:#86efac}.stg.nr{border-color:#f59e0b}.stg.author{border-color:#93c5fd;border-style:dashed}
+.stg .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.stg .h .n{font-weight:700}.stg .h .s{font-size:12px;white-space:nowrap}
+.s.ok{color:#15803d}.s.warn{color:#b45309}.s.blue{color:#1d4ed8}
+.rec{font-size:11px;color:#475569;display:flex;gap:10px;flex-wrap:wrap}
+.rec b{color:#0f172a}
+.ans{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:6px 0;border-top:1px solid #f1f5f9}
+.ans .p{flex:none;width:54px;text-align:center;border-radius:4px;padding:2px 0;font-weight:700;font-size:11px}
+.ans .p.y{background:#dcfce7;color:#15803d}.ans .p.n{background:#fee2e2;color:#b91c1c}.ans .p.h{background:#e2e8f0;color:#475569}.ans .p.o{background:#fef3c7;color:#b45309}
+.ans .w{flex:1 1 auto;min-width:0}
+.ans .w .m{color:#64748b;font-size:11px}
+.ans .ph{width:30px;height:30px;border-radius:4px;background:linear-gradient(135deg,#94a3b8,#475569);flex:none}
+.ans .mk{height:22px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:4px;padding:0 6px;display:inline-flex;align-items:center;color:#0f172a;font-family:"Snell Roundhand","Brush Script MT",cursive;font-size:14px;flex:none}
+.jobtag{font-size:10px;border:1px solid #cbd5e1;border-radius:4px;padding:0 4px;color:#475569;margin-left:4px;vertical-align:middle}
+.sigtag{font-size:10px;border:1px solid #f59e0b;border-radius:4px;padding:0 4px;color:#b45309;margin-left:4px;vertical-align:middle}
+.lk{color:#2563eb;font-size:12px}
+.dbtn{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:6px 10px;font-size:12px;color:#0f172a}
+.dbtn.pri{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+.arow{display:flex;gap:8px;align-items:center;font-size:12px;padding:6px 0;border-top:1px solid #f1f5f9}
+.arow .box{flex:1 1 auto;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px}
+.arow label{display:flex;gap:4px;align-items:center;white-space:nowrap;color:#475569}
+.inline-add{display:flex;flex-direction:column;gap:6px;border:1px dashed #cbd5e1;border-radius:8px;padding:8px 10px;font-size:12px;color:#64748b;margin-top:4px}
+.inline-add .box{background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:7px 8px;color:#94a3b8}
+.inline-add .r2{display:flex;gap:10px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+
+.notes{margin-top:26px;max-width:1180px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.n{background:#111827;border:1px solid #374151;border-radius:12px;padding:12px 14px;font-size:13px;color:#d1d5db;line-height:1.45}
+.n h3{margin:0 0 6px;font-size:13px;color:#f9fafb}
+.n ul{margin:0;padding-left:16px}.n li{margin-bottom:4px}
+.n .q{color:#fcd34d}.n code{font-size:12px;color:#93c5fd}
+table.t{border-collapse:collapse;font-size:12px;width:100%}
+table.t th,table.t td{border-bottom:1px solid #374151;padding:6px 8px;text-align:left;vertical-align:top}
+table.t th{color:#9ca3af;font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<h1>The checklist as a document: stamps, signatures, filing</h1>
+<p class="lead">Your call of 2026-11-01: checklists leave Settings and live on the job's Documents tab, where each stage's list is a document; an answer stamps the row with the person's name and the time; and some items need a signature, the way the app already takes one on a lien notice or a contract, so the person feels the weight of what they are claiming. The author of the list decides which items need one. Below: the signature moment on the phone, the office authoring a list on Documents, and a filed document with its record number. Made-up names and figures.</p>
+
+<h2 class="sec">1 · The phone: an item that needs a signature</h2>
+<div class="row">
+  <div class="col">
+    <div class="phone">
+      <div class="top"><div class="nav"><span class="ham" aria-hidden="true"></span><span class="on">Job Mode</span><span class="off">Search</span></div></div>
+      <div class="body">
+        <div><div class="jt">J1042 · Pruett &amp; Vance</div><div class="js">Harbor Lane Offices · clocked in 7:04 · Trim Set</div></div>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="hd"><h3>Trim Set checklist</h3><div class="sub">J1042 · Pruett &amp; Vance · 2 of 5 answered</div></div>
+        <div class="sc">
+          <div class="q"><div class="w">Are all fixtures set and caulked?</div><div class="picks"><div class="pk yes sel">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div><div class="meta">Luis Ortega · Nov 1 · 8:12 am</div></div>
+          <div class="q"><div class="w">Did the final water test hold? <span class="sigchip">needs a signature</span></div><div class="picks"><div class="pk yes" style="background:#16a34a;color:#fff">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div><div class="meta">Press an answer and the signature sheet opens. The row is not answered until it is signed.</div></div>
+          <div class="q"><div class="w">Are the cleanouts capped and marked?</div><div class="picks"><div class="pk yes">Yes</div><div class="pk no">No</div><div class="pk nh" style="background:#4b5563;color:#fff">Not here</div></div><div class="meta">Luis Ortega · Nov 1 · 8:13 am</div></div>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>The stamp.</b> Every answered row already keeps who and when; the sheet now shows it under the picks. An item the author marked <i>needs a signature</i> carries the chip, and pressing an answer on it opens the signature sheet instead of saving at once.</div>
+  </div>
+
+  <div class="col">
+    <div class="phone">
+      <div class="top"><div class="nav"><span class="ham" aria-hidden="true"></span><span class="on">Job Mode</span><span class="off">Search</span></div></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="hd"><h3>Sign your answer <span class="newchip">new</span></h3><div class="sub">Trim Set · J1042 · Pruett &amp; Vance</div></div>
+        <div class="sc">
+          <div class="gravity">You are signing <b>Yes</b> to “Did the final water test hold?”. It goes on J1042's Trim Set record with your name and the time. The office, the GC and an inspector can read it.</div>
+          <div class="pad"><div class="line"></div><div class="ink">Luis Ortega</div><div class="clear">Clear</div></div>
+          <div class="hint">Draw with your finger, or type your name. <b style="color:#d1d5db">Luis Ortega · Nov 1 · 9:14 am</b> stamps it when you press Sign.</div>
+          <div class="tog"><span class="box on"></span>I did this check myself and the answer is true.</div>
+          <div class="hint">A signed answer is locked. Take it back opens a new row with a reason; the signed one stays in the record.</div>
+        </div>
+        <div class="foot"><button type="button" class="b sec">Not now</button><button type="button" class="b pri">Sign and save</button></div>
+      </div>
+    </div>
+    <div class="cap"><b>The signature sheet</b> is the app's own signing pattern: a mark drawn or typed, adopted with one press, under the signer's own sign-in, bound to the answer as given (the question's words, the pick, the time) by a hash, so a later change voids it. The gravity words say what is being claimed and who will read it.</div>
+  </div>
+
+  <div class="col">
+    <div class="phone">
+      <div class="top"><div class="nav"><span class="ham" aria-hidden="true"></span><span class="on">Job Mode</span><span class="off">Search</span></div></div>
+      <div class="body"></div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="hd"><h3>Trim Set checklist</h3><div class="sub">J1042 · Pruett &amp; Vance · 3 of 5 answered</div></div>
+        <div class="sc">
+          <div class="q"><div class="w">Did the final water test hold? <span class="sigchip">signed</span></div><div class="picks"><div class="pk yes sel" style="opacity:.8">Yes</div><div class="pk no" style="opacity:.4">No</div><div class="pk nh" style="opacity:.4">Not here</div></div><div class="signed"><span class="mark">Luis Ortega</span><span>Signed · Luis Ortega · Nov 1 · 9:14 am · <span style="color:#93c5fd">Take it back</span></span></div></div>
+          <div class="q"><div class="w">Are the two carriers in units 7 and 8 set?</div><div class="meta">Added by Pat Sample, superintendent · Nov 1</div><div class="picks"><div class="pk yes">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div></div>
+          <div class="addbox">
+            <div class="eyebrow">Add a check for Trim Set on this job</div>
+            <div class="in">Is the water heater pan drain run to the hub?</div>
+            <div class="tog"><span class="box"></span>Asks for a photo</div>
+            <div class="tog"><span class="box on"></span>Needs a signature <span class="newchip">new</span></div>
+            <div class="hint">Whoever answers it signs, and the row is locked after. Use it where a wrong answer costs a wall or an inspection.</div>
+            <div class="btns"><button type="button" class="b sec">Not now</button><button type="button" class="b pri">Add the check</button></div>
+          </div>
+        </div>
+        <div class="foot"><span class="hint" style="flex:1 1 auto">3 of 5 answered. When the last is answered the list files itself as a document on the job.</span></div>
+      </div>
+    </div>
+    <div class="cap"><b>After signing</b> the row shows the mark, the name and the time, its picks are locked, and <i>Take it back</i> is the only door. The superintendent's <b>Add a check</b> box gains the <b>Needs a signature</b> toggle: the author decides which items carry that weight.</div>
+  </div>
+</div>
+
+<h2 class="sec">2 · The office: Documents → Stage checklists, authoring and reading in one place</h2>
+<div class="row">
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">J1042 · Pruett &amp; Vance · Harbor Lane Offices</span><span class="mute">Working · Trim Set · 61%</span><span class="x">✕</span></div>
+      <div class="tabs"><span class="tab">Edit</span><span class="tab">Stages</span><span class="tab">Billing</span><span class="tab">Reports</span><span class="tab on">Documents</span><span class="tab">Notes</span></div>
+      <div class="pane">
+        <div class="mute">Pay applications · Lien paper · Folders · Photos · <b style="color:#0f172a">Stage checklists</b> · Hours statements · Test reports</div>
+        <div style="display:flex;gap:10px;align-items:baseline"><h4>Stage checklists</h4><span class="mute">2 of 3 filed · 3 items added on this job · <span class="lk">Print</span></span></div>
+        <div class="srow">
+          <div class="stg filed">
+            <div class="h"><span class="n">Rough In</span><span class="s ok">Filed · CL-1042-1</span></div>
+            <div class="rec"><span>Filed <b>Oct 15 · 4:02 pm</b></span><span>In the job's Drive folder</span><span>v1</span></div>
+            <div class="ans"><span class="p y">Yes</span><div class="w">Is the water test on?<span class="sigtag">signed</span><div class="m">Luis Ortega · Oct 14 · 9:40 am</div></div><span class="mk">Luis Ortega</span><div class="ph"></div></div>
+            <div class="ans"><span class="p y">Yes</span><div class="w">Are the stub-outs at plan heights?<div class="m">Luis Ortega · Oct 14 · 9:41 am</div></div></div>
+            <div class="ans"><span class="p h">Not here</span><div class="w">Is the grease interceptor set?<div class="m">Luis Ortega · Oct 14 · 9:41 am</div></div></div>
+            <div class="ans"><span class="p y">Yes</span><div class="w">Photo of the slab penetrations<span class="jobtag">job</span><div class="m">Added by Jo Sample Oct 9 · Luis Ortega · Oct 15 · 2:10 pm</div></div><div class="ph"></div></div>
+            <div class="mute"><span class="lk">Use as the company's Rough In list</span> · <span class="lk">Amend</span> (a new version; this one stays)</div>
+          </div>
+          <div class="stg nr">
+            <div class="h"><span class="n">Trim Set</span><span class="s warn">Open · 3 of 6</span></div>
+            <div class="rec"><span>Files itself when the last row is answered</span></div>
+            <div class="ans"><span class="p y">Yes</span><div class="w">Are all fixtures set and caulked?<div class="m">Luis Ortega · Nov 1 · 8:12 am</div></div></div>
+            <div class="ans"><span class="p y">Yes</span><div class="w">Did the final water test hold?<span class="sigtag">signed</span><div class="m">Luis Ortega · Nov 1 · 9:14 am</div></div><span class="mk">Luis Ortega</span><div class="ph"></div></div>
+            <div class="ans"><span class="p h">Not here</span><div class="w">Are the cleanouts capped and marked?<div class="m">Luis Ortega · Nov 1 · 8:13 am</div></div></div>
+            <div class="ans"><span class="p o">open</span><div class="w">Are the two carriers in units 7 and 8 set?<span class="jobtag">job</span><div class="m">Added by Pat Sample Nov 1</div></div></div>
+            <div class="ans"><span class="p o">open</span><div class="w">Photo of the ADA lav rough heights<span class="jobtag">job</span><div class="m">Added by Jo Sample Oct 30 · asks for a photo</div></div></div>
+            <div class="ans"><span class="p o">open</span><div class="w">Is the water heater pan drain run to the hub?<span class="jobtag">job</span><span class="sigtag">needs a signature</span><div class="m">Added by Pat Sample Nov 1</div></div></div>
+            <div class="inline-add"><div class="box">Add a check for Trim Set on this job…</div><div class="r2"><span><label><input type="checkbox"> Asks for a photo</label> &nbsp; <label><input type="checkbox"> Needs a signature <span class="newchip">new</span></label></span><button type="button" class="dbtn pri">Add the check</button></div></div>
+          </div>
+          <div class="stg author">
+            <div class="h"><span class="n">Ground <span class="newchip">new</span></span><span class="s blue">No list yet</span></div>
+            <div class="mute">This stage has no checklist. Make one here for this job, and keep it for every job if it is good.</div>
+            <div class="arow"><span class="box">Is the sleeve set before the pour?</span><label><input type="checkbox" checked> photo</label><label><input type="checkbox" checked> signature</label></div>
+            <div class="arow"><span class="box">Is the underground test on and holding?</span><label><input type="checkbox"> photo</label><label><input type="checkbox" checked> signature</label></div>
+            <div class="arow"><span class="box" style="color:#94a3b8">Add a check…</span><label><input type="checkbox"> photo</label><label><input type="checkbox"> signature</label></div>
+            <div style="display:flex;gap:8px;justify-content:flex-end"><button type="button" class="dbtn">Make it for this job</button><button type="button" class="dbtn pri">Make it the company's Ground list</button></div>
+          </div>
+        </div>
+        <div class="mute">The company's standard lists are made here too: author one on any job and press <i>Use as the company's list</i>. Settings → Jobs &amp; billing → Stage checklists becomes a read-only card that says which job each list came from.</div>
+      </div>
+    </div>
+    <div class="cap wide"><b>One door.</b> The office authors and reads in the same place. A stage with a list shows it as a document: <span style="color:#86efac">filed</span> with its record number, time and Drive copy, or <span style="color:#fcd34d">open</span> with what is left. A stage with no list offers to make one, item by item, each with its two toggles, and to keep it as the company's list for that kind. Every answer carries its stamp; a signed one carries the mark. <i>Amend</i> on a filed document starts a new version and never edits the old.</div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="n"><h3>The document</h3><ul>
+    <li>One record per job stage: <code>stage_checklist_records</code>, the hours statement's shape: a snapshot of the questions as they stood (the words never change under an answer), the record id <code>CL-&lt;job&gt;-&lt;n&gt;</code>, a state (open · filed · amended), <code>filed_at</code>, the PDF's Drive id.</li>
+    <li>It files itself when the last row is answered, stamped by the last answer's time, and a PDF lands in the job's Drive folder the way a checklist photo does. No press to forget.</li>
+    <li>Filed means immutable. Adding a check or taking an answer back starts version n+1; version n stays readable and printable.</li>
+  </ul></div>
+  <div class="n"><h3>The stamp and the signature</h3><ul>
+    <li>The stamp exists today: <code>stage_checklist_answers</code> keeps who and when on every press. The sheet, the read-out and the paper now show it.</li>
+    <li>The signature follows <code>lienNoticeSignature.ts</code>: a mark typed or drawn (<code>SignatureTypeOrDrawInput</code>), adopted with the press, under the signer's sign-in, bound by a hash of the answer as given. Columns on the answer row: the mode, the PNG path, the printed name, the hash, the time.</li>
+    <li>A signature item is not answered until it is signed; Not here signs too, since it is the claim an inspector would test.</li>
+    <li>Signed rows lock. Take it back writes a new answer row with a reason; the voided signature stays.</li>
+  </ul></div>
+  <div class="n"><h3>Is that the best we can do?</h3><ul>
+    <li><b>A number with a unit.</b> "Did the test hold?" is weaker than "Test pressure · 60 psi · 15 min". A third toggle, <i>asks for a number</i>, makes the record what an inspector reads. Recommended for PR 2.</li>
+    <li><b>A countersign.</b> Some items may want the superintendent's signature under the crew's. Recommended as a later toggle, not now.</li>
+    <li><b>Who reads it.</b> The filed PDF can ride the GC portal and the pay application packet. Later.</li>
+    <li><b>No signal.</b> The mark is a small PNG; it rides the outbox the way report photos do, so a signature on one bar of signal still lands.</li>
+  </ul></div>
+  <div class="n"><h3>Decisions <span class="q">(yours)</span></h3><ul>
+    <li><span class="q">Files itself, or a press?</span> Recommended: itself, at the last answer.</li>
+    <li><span class="q">Not here on a signature item: sign or not?</span> Recommended: sign.</li>
+    <li><span class="q">Who may mark an item as needing a signature?</span> Recommended: whoever may add it (office, superintendent on his jobs).</li>
+    <li><span class="q">Retire the Settings card, or keep it as a read-only mirror?</span> Recommended: a mirror for one release, then gone.</li>
+    <li><span class="q">Add a number-with-unit item kind now or later?</span></li>
+  </ul></div>
+  <div class="n" style="grid-column:1/-1"><h3>A plan</h3>
+    <table class="t">
+      <tr><th>PR</th><th>Builds</th><th>Size</th><th>Needs</th></tr>
+      <tr><td>1</td><td>Items on the job (job-scoped question rows, who adds, take off) and the Documents read-out with stamps shown on every row, desk and phone</td><td>M</td><td>one migration</td></tr>
+      <tr><td>2</td><td>Needs a signature: the toggle for the author, the signature sheet on the phone with the gravity words, the columns on the answer, lock and Take it back</td><td>M</td><td>one migration; the app's signature input</td></tr>
+      <tr><td>3</td><td>The record: <code>stage_checklist_records</code>, files itself at the last answer, record id, the PDF to Drive, Amend as a new version, Print</td><td>M</td><td>one migration; a PDF renderer like the hours statement's</td></tr>
+      <tr><td>4</td><td>Authoring on Documents: make a list for a stage with no list, Use as the company's list, the Settings card read-only</td><td>S</td><td>none</td></tr>
+      <tr><td>5</td><td>The superintendent's line reads the count (lands with #234's PR 3)</td><td>S</td><td>none</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>

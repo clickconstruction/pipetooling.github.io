@@ -1,0 +1,323 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Stage checklists: items on the job, and the office's read-out</title>
+<style>
+body{margin:0;background:#0b1220;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f3f4f6;padding:20px}
+h1{font-size:18px;margin:0 0 4px}
+h2.sec{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin:28px 0 10px}
+p.lead{color:#9ca3af;font-size:13px;margin:0 0 18px;max-width:1180px;line-height:1.45}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:8px}
+.cap{font-size:12px;color:#9ca3af;max-width:390px;line-height:1.4}
+.cap b{color:#f3f4f6}
+.cap.wide{max-width:900px}
+.phone{width:390px;height:844px;box-sizing:border-box;background:#111827;color:#f3f4f6;display:flex;flex-direction:column;overflow:hidden;font-size:14px;position:relative;border-radius:18px;border:1px solid #374151}
+.top{display:flex;flex-direction:column;gap:10px;padding:14px 14px 10px;border-bottom:1px solid #374151}
+.nav{display:flex;gap:18px;align-items:center}
+.nav .ham{width:22px;height:16px;border-top:3px solid #f3f4f6;border-bottom:3px solid #f3f4f6;box-sizing:border-box}
+.nav .on{font-weight:700;border-bottom:2px solid #f3f4f6;padding-bottom:2px}
+.nav .off{color:#9ca3af}
+.body{padding:12px 14px;display:flex;flex-direction:column;gap:12px;flex:1 1 auto;overflow:hidden}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af}
+.card{background:#1f2937;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px}
+.card.quiet{background:#111827;border:1px solid #374151}
+.jt{font-weight:700;color:#f9fafb}.js{font-size:12px;color:#9ca3af}
+.b{flex:1 1 0;border-radius:8px;min-height:44px;font-size:13px;border:0}
+.b.pri{background:#2563eb;color:#fff;font-weight:700}
+.b.sec{background:#1f2937;color:#f3f4f6;border:1px solid #4b5563}
+.b.grn{background:#16a34a;color:#fff;font-weight:700}
+.btns{display:flex;gap:8px}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:64px;background:#0b1220;border-top:1px solid #374151;display:flex;align-items:center;justify-content:space-around;font-size:11px;color:#9ca3af}
+.tabbar .on{color:#f3f4f6;font-weight:700}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.55)}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#1f2937;border-radius:18px 18px 0 0;border-top:1px solid #4b5563;display:flex;flex-direction:column;max-height:790px}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:#4b5563;margin:8px auto 0}
+.sheet .hd{padding:10px 16px 0}
+.sheet .hd h3{margin:0;font-size:17px;color:#f9fafb}
+.sheet .hd .sub{font-size:12px;color:#9ca3af;margin-top:2px}
+.sheet .sc{padding:12px 16px;display:flex;flex-direction:column;gap:10px;overflow:hidden}
+.q{display:flex;flex-direction:column;gap:6px;padding:8px 0;border-bottom:1px solid #374151}
+.q .w{font-size:14px;color:#f3f4f6}
+.q .meta{font-size:11px;color:#9ca3af}
+.picks{display:flex;gap:6px}
+.pk{flex:1 1 0;min-height:44px;border-radius:8px;border:1px solid #4b5563;background:#111827;color:#f3f4f6;font-size:13px;font-weight:600;display:flex;align-items:center;justify-content:center}
+.pk.yes{border-color:#16a34a}.pk.yes.sel{background:#16a34a;color:#fff}
+.pk.no{border-color:#dc2626}.pk.no.sel{background:#dc2626;color:#fff}
+.pk.nh.sel{background:#4b5563;color:#fff}
+.photo{display:flex;gap:8px;align-items:center;font-size:12px;color:#9ca3af}
+.photo .th{width:44px;height:44px;border-radius:6px;background:#374151;flex:none}
+.photo .th.has{background:linear-gradient(135deg,#475569,#1e293b)}
+.grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin-top:4px;display:flex;justify-content:space-between;align-items:center}
+.grp .tag{font-size:10px;letter-spacing:.04em;border:1px solid #4b5563;border-radius:4px;padding:1px 5px;color:#d1d5db}
+.add{border:1px dashed #4b5563;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.add .in{background:#111827;border:1px solid #4b5563;border-radius:8px;min-height:44px;padding:10px;font-size:14px;color:#f3f4f6}
+.add .in.ph{color:#6b7280}
+.tog{display:flex;align-items:center;gap:8px;font-size:13px;color:#d1d5db}
+.tog .sw{width:36px;height:20px;border-radius:10px;background:#374151;position:relative}
+.tog .sw.on{background:#2563eb}
+.tog .sw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:8px;background:#fff}
+.tog .sw.on::after{left:18px}
+.foot{display:flex;gap:8px;padding:10px 16px 16px;border-top:1px solid #374151;margin-top:auto;align-items:center}
+.foot .cnt{font-size:12px;color:#9ca3af;flex:1 1 auto}
+.strip{display:flex;flex-direction:column;gap:6px}
+.strip .r{display:flex;justify-content:space-between;align-items:center;background:#1f2937;border:1px solid #374151;border-radius:10px;padding:10px 12px;font-size:13px}
+.strip .r .st{font-size:12px}
+.ok{color:#86efac}.warn{color:#fcd34d}.bad{color:#fca5a5}
+.toast{position:absolute;left:14px;right:14px;top:72px;background:#065f46;color:#ecfdf5;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.4)}
+
+/* the office at a desk, light */
+.desk{width:980px;height:640px;box-sizing:border-box;background:#f8fafc;color:#0f172a;border-radius:12px;border:1px solid #cbd5e1;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+.desk .mbar{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid #e2e8f0;background:#fff}
+.desk .mbar .t{font-weight:700;font-size:15px}
+.desk .mbar .x{margin-left:auto;color:#64748b}
+.desk .tabs{display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid #e2e8f0;background:#fff}
+.desk .tab{padding:8px 12px;border-radius:8px 8px 0 0;color:#475569}
+.desk .tab.on{background:#f8fafc;color:#0f172a;font-weight:700;border:1px solid #e2e8f0;border-bottom-color:#f8fafc;margin-bottom:-1px}
+.desk .pane{padding:16px 20px;display:flex;flex-direction:column;gap:16px;overflow:hidden}
+.desk .mute{color:#64748b;font-size:12px}
+.desk h4{margin:0;font-size:13px;letter-spacing:.06em;text-transform:uppercase;color:#475569}
+.desk .sect{display:flex;flex-direction:column;gap:8px}
+.desk .srow{display:flex;gap:14px;align-items:flex-start}
+.stg{flex:1 1 0;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stg .h{display:flex;justify-content:space-between;align-items:baseline}
+.stg .h .n{font-weight:700}
+.stg .h .s{font-size:12px}
+.stg .s.ok{color:#15803d}.stg .s.warn{color:#b45309}.stg .s.none{color:#64748b}
+.ans{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:5px 0;border-top:1px solid #f1f5f9}
+.ans .p{flex:none;width:52px;text-align:center;border-radius:4px;padding:2px 0;font-weight:700;font-size:11px}
+.ans .p.y{background:#dcfce7;color:#15803d}.ans .p.n{background:#fee2e2;color:#b91c1c}.ans .p.h{background:#e2e8f0;color:#475569}.ans .p.o{background:#fef3c7;color:#b45309}
+.ans .w{flex:1 1 auto;min-width:0}
+.ans .w .m{color:#64748b;font-size:11px}
+.ans .ph{width:30px;height:30px;border-radius:4px;background:linear-gradient(135deg,#94a3b8,#475569);flex:none}
+.ans .ph.none{background:#f1f5f9;border:1px dashed #cbd5e1}
+.ans .job{font-size:10px;border:1px solid #cbd5e1;border-radius:4px;padding:0 4px;color:#475569;margin-left:4px;vertical-align:middle}
+.lk{color:#2563eb;font-size:12px}
+.dbtn{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:6px 10px;font-size:12px;color:#0f172a}
+.dbtn.pri{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+.drow{display:flex;gap:8px;align-items:center}
+.inline-add{display:flex;gap:8px;align-items:center;border:1px dashed #cbd5e1;border-radius:8px;padding:8px 10px;font-size:12px;color:#64748b}
+.inline-add .box{flex:1 1 auto;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:6px 8px;color:#0f172a}
+
+/* office phone */
+.ph-desk .pane{padding:10px 14px;gap:12px}
+
+.notes{margin-top:26px;max-width:1180px;display:grid;grid-template-columns:repeat(auto-fit,minmax(340px,1fr));gap:14px}
+.n{background:#111827;border:1px solid #374151;border-radius:12px;padding:12px 14px;font-size:13px;color:#d1d5db;line-height:1.45}
+.n h3{margin:0 0 6px;font-size:13px;color:#f9fafb}
+.n ul{margin:0;padding-left:16px}
+.n li{margin-bottom:4px}
+.n .q{color:#fcd34d}
+.n code{font-size:12px;color:#93c5fd}
+table.t{border-collapse:collapse;font-size:12px;width:100%}
+table.t th,table.t td{border-bottom:1px solid #374151;padding:6px 8px;text-align:left;vertical-align:top}
+table.t th{color:#9ca3af;font-weight:600;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+</style>
+</head>
+<body>
+<h1>Stage checklists: items on the job, and the office's read-out</h1>
+<p class="lead">What exists (punch list #164): the office writes a short list of questions once per stage kind, Rough In, Top Out and Trim Set; the crew answers each on the phone with Yes, No or Not here, a note and a photo where asked; every press saves; a stage reads <i>not ready</i> on the Pipeline until every question is answered. What is missing, in your words: a superintendent adds items, the office adds items and looks at a checklist, and the checklist sits in the job's Documents. The proposal below adds <b>items on the job</b> under the company's questions, with the same presses, and one <b>read-out</b> the office opens from Edit Job → Documents. Made-up names and figures.</p>
+
+<h2 class="sec">1 · The technician's phone</h2>
+<div class="row">
+  <div class="col">
+    <div class="phone">
+      <div class="top"><div class="nav"><span class="ham" aria-hidden="true"></span><span class="on">Job Mode</span><span class="off">Search</span></div></div>
+      <div class="body">
+        <div><div class="jt">J1042 · Pruett &amp; Vance</div><div class="js">Harbor Lane Offices · clocked in 7:04</div></div>
+        <div class="eyebrow">Stage checklists</div>
+        <div class="strip">
+          <div class="r"><span>Rough In</span><span class="st ok">Checklist filled</span></div>
+          <div class="r"><span>Top Out</span><span class="st ok">Checklist filled</span></div>
+          <div class="r" style="border-color:#d97706"><span>Trim Set</span><span class="st warn">3 of 5 answered, not ready</span></div>
+        </div>
+        <div class="js">The office's questions and the ones added for this job count the same. Press a stage to answer.</div>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="hd"><h3>Trim Set checklist</h3><div class="sub">J1042 · Pruett &amp; Vance · 3 of 5 answered</div></div>
+        <div class="sc">
+          <div class="grp"><span>The company's questions</span></div>
+          <div class="q"><div class="w">Are all fixtures set and caulked?</div><div class="picks"><div class="pk yes sel">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div></div>
+          <div class="q"><div class="w">Did the final water test hold?</div><div class="picks"><div class="pk yes sel">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div><div class="photo"><div class="th has"></div><span>In the customer's Drive folder.</span></div></div>
+          <div class="q"><div class="w">Are the cleanouts capped and marked?</div><div class="picks"><div class="pk yes">Yes</div><div class="pk no">No</div><div class="pk nh sel">Not here</div></div></div>
+
+          <div class="grp"><span>Added for this job</span><span class="tag">2 items</span></div>
+          <div class="q"><div class="w">Are the two carriers in units 7 and 8 set?</div><div class="meta">Added by Pat Sample, superintendent · Nov 1</div><div class="picks"><div class="pk yes">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div></div>
+          <div class="q" style="border-bottom:0"><div class="w">Photo of the ADA lav rough heights before the wall closes</div><div class="meta">Added by the office · Oct 30 · asks for a photo</div><div class="picks"><div class="pk yes">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div><div class="photo"><div class="th"></div><button type="button" class="b sec" style="flex:none;padding:0 12px;min-height:40px">Take the photo</button></div></div>
+        </div>
+        <div class="foot"><span class="cnt">3 of 5 answered. Trim Set reads not ready on the Pipeline until all 5 are.</span><button type="button" class="b sec" style="flex:none;padding:0 16px;opacity:.5">Done</button></div>
+      </div>
+    </div>
+    <div class="cap"><b>The technician</b> sees the sheet he already knows, with one new group under the company's questions: <b>Added for this job</b>, each item saying who added it and when. Same three presses, same photo press, same strict count. He cannot add an item; he can leave a note on one.</div>
+  </div>
+</div>
+
+<h2 class="sec">2 · The superintendent's phone</h2>
+<div class="row">
+  <div class="col">
+    <div class="phone">
+      <div class="top"><div class="nav"><span class="ham" aria-hidden="true"></span><span class="on">Home</span><span class="off">Search</span></div></div>
+      <div class="body">
+        <div class="card" style="border:2px solid #dc2626">
+          <div><div class="jt">Pruett &amp; Vance · trim-out</div><div class="js">240 h at award</div></div>
+          <div style="font-size:17px;font-weight:700;color:#fca5a5">4 days behind.</div>
+          <div class="js">Checklist: 3 of 5 ready. The 2 not ready are the proof of what is holding it.</div>
+          <div class="btns"><button type="button" class="b pri">Set the % on trim-out</button><button type="button" class="b sec">Open the checklist</button></div>
+        </div>
+      </div>
+      <div class="dim"></div>
+      <div class="sheet">
+        <div class="grab"></div>
+        <div class="hd"><h3>Trim Set checklist</h3><div class="sub">J1042 · Pruett &amp; Vance · 3 of 5 answered</div></div>
+        <div class="sc">
+          <div class="grp"><span>The company's questions</span><span class="tag">3 of 3 answered</span></div>
+          <div class="js" style="margin-top:-4px">Fixtures set ✓ · Water test held ✓ 📷 · Cleanouts: not here</div>
+
+          <div class="grp"><span>Added for this job</span><span class="tag">0 of 2 answered</span></div>
+          <div class="q"><div class="w">Are the two carriers in units 7 and 8 set?</div><div class="meta">You added this · Nov 1 · <span style="color:#93c5fd">Take off</span></div><div class="picks"><div class="pk yes">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div></div>
+          <div class="q"><div class="w">Photo of the ADA lav rough heights before the wall closes</div><div class="meta">Added by the office · Oct 30 · asks for a photo</div><div class="picks"><div class="pk yes">Yes</div><div class="pk no">No</div><div class="pk nh">Not here</div></div></div>
+
+          <div class="add">
+            <div class="eyebrow">Add a check for Trim Set on this job</div>
+            <div class="in">Is the water heater pan drain run to the hub?</div>
+            <div class="tog"><span class="sw on"></span>Asks for a photo</div>
+            <div class="js">The crew sees it on this job's Trim Set sheet now. It counts toward ready like the office's questions. You can take it off later; an answer it already has stays.</div>
+            <div class="btns"><button type="button" class="b sec">Not now</button><button type="button" class="b pri">Add the check</button></div>
+          </div>
+        </div>
+        <div class="foot"><span class="cnt">3 of 5 answered. Adding one makes it 3 of 6.</span></div>
+      </div>
+    </div>
+    <div class="cap"><b>The superintendent</b> opens the same sheet from the line's card. He can answer like the crew, and under the job's items he has <b>Add a check</b>: the words, whether it asks for a photo, one press. It lands on the crew's sheet at once and counts toward ready. Only the person who added an item, or the office, can take it off.</div>
+  </div>
+
+  <div class="col">
+    <div class="phone">
+      <div class="top"><div class="nav"><span class="ham" aria-hidden="true"></span><span class="on">Home</span><span class="off">Search</span></div></div>
+      <div class="toast">Added — Trim Set on J1042 is now 3 of 6.</div>
+      <div class="body" style="padding-top:60px">
+        <div class="card" style="border:2px solid #dc2626">
+          <div><div class="jt">Pruett &amp; Vance · trim-out</div><div class="js">240 h at award</div></div>
+          <div style="font-size:17px;font-weight:700;color:#fca5a5">4 days behind.</div>
+          <div class="js">Checklist: 3 of 6 ready · 1 you added today.</div>
+          <div class="btns"><button type="button" class="b pri">Set the % on trim-out</button><button type="button" class="b sec">Open the checklist</button></div>
+        </div>
+        <div class="card quiet">
+          <div class="eyebrow">On the crew's phone</div>
+          <div class="js">Luis is clocked in on J1042. His Trim Set strip now reads <span class="warn">3 of 6 answered, not ready</span>, and the new item sits under <i>Added for this job</i> with your name on it. No push, no text: the sheet is where he already looks.</div>
+        </div>
+      </div>
+      <div class="tabbar"><span class="on">Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div>
+    </div>
+    <div class="cap"><b>After Add.</b> The card's proof line moves to 3 of 6. The crew's strip moves with it on its next read. Whether a push should ride with an added item is one of the decisions at the foot.</div>
+  </div>
+</div>
+
+<h2 class="sec">3 · The office at a desk · Edit Job → Documents → Stage checklists</h2>
+<div class="row">
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">J1042 · Pruett &amp; Vance · Harbor Lane Offices</span><span class="mute">Working · Trim Set · 61%</span><span class="x">✕</span></div>
+      <div class="tabs"><span class="tab">Edit</span><span class="tab">Stages</span><span class="tab">Billing</span><span class="tab">Reports</span><span class="tab on">Documents</span><span class="tab">Notes</span></div>
+      <div class="pane">
+        <div class="mute">Pay applications · Lien paper · Folders · Photos · <b style="color:#0f172a">Stage checklists</b> · Hours statements · Test reports</div>
+        <div class="sect">
+          <div class="drow"><h4>Stage checklists</h4><span class="mute">2 of 3 stages ready · 5 items added on this job · <span class="lk">Print the checklists</span></span></div>
+          <div class="srow">
+            <div class="stg">
+              <div class="h"><span class="n">Rough In</span><span class="s ok">Ready · 4 of 4</span></div>
+              <div class="ans"><span class="p y">Yes</span><div class="w">Is the water test on? <div class="m">Luis Ortega · Oct 14</div></div><div class="ph"></div></div>
+              <div class="ans"><span class="p y">Yes</span><div class="w">Are the stub-outs at plan heights? <div class="m">Luis Ortega · Oct 14</div></div><div class="ph none"></div></div>
+              <div class="ans"><span class="p h">Not here</span><div class="w">Is the grease interceptor set? <div class="m">Luis Ortega · Oct 14</div></div><div class="ph none"></div></div>
+              <div class="ans"><span class="p y">Yes</span><div class="w">Photo of the slab penetrations<span class="job">job</span> <div class="m">Added by the office Oct 9 · Luis Ortega · Oct 15</div></div><div class="ph"></div></div>
+            </div>
+            <div class="stg">
+              <div class="h"><span class="n">Top Out</span><span class="s ok">Ready · 3 of 3</span></div>
+              <div class="ans"><span class="p y">Yes</span><div class="w">Did the top-out test hold? <div class="m">Luis Ortega · Oct 23</div></div><div class="ph"></div></div>
+              <div class="ans"><span class="p n">No</span><div class="w">Are the vents through the roof? <div class="m">Luis Ortega · Oct 23 · "Roofer not here until Mon"</div></div><div class="ph none"></div></div>
+              <div class="ans"><span class="p y">Yes</span><div class="w">Are the hangers at code spacing? <div class="m">Luis Ortega · Oct 24</div></div><div class="ph none"></div></div>
+              <div class="mute">A No still counts as answered. The stage read ready on Oct 24.</div>
+            </div>
+            <div class="stg" style="border-color:#f59e0b">
+              <div class="h"><span class="n">Trim Set</span><span class="s warn">Not ready · 3 of 6</span></div>
+              <div class="ans"><span class="p y">Yes</span><div class="w">Are all fixtures set and caulked? <div class="m">Luis Ortega · Nov 1</div></div><div class="ph none"></div></div>
+              <div class="ans"><span class="p y">Yes</span><div class="w">Did the final water test hold? <div class="m">Luis Ortega · Nov 1</div></div><div class="ph"></div></div>
+              <div class="ans"><span class="p h">Not here</span><div class="w">Are the cleanouts capped and marked? <div class="m">Luis Ortega · Nov 1</div></div><div class="ph none"></div></div>
+              <div class="ans"><span class="p o">open</span><div class="w">Are the two carriers in units 7 and 8 set?<span class="job">job</span> <div class="m">Added by Pat Sample Nov 1 · <span class="lk">Take off</span></div></div><div class="ph none"></div></div>
+              <div class="ans"><span class="p o">open</span><div class="w">Photo of the ADA lav rough heights<span class="job">job</span> <div class="m">Added by Jo Sample Nov 1 · asks for a photo · <span class="lk">Take off</span></div></div><div class="ph none"></div></div>
+              <div class="ans"><span class="p o">open</span><div class="w">Is the water heater pan drain run to the hub?<span class="job">job</span> <div class="m">Added by Pat Sample Nov 1 · asks for a photo</div></div><div class="ph none"></div></div>
+              <div class="inline-add"><span class="box">Add a check for Trim Set on this job…</span><label style="display:flex;gap:4px;align-items:center"><input type="checkbox"> photo</label><button type="button" class="dbtn pri">Add</button></div>
+            </div>
+          </div>
+          <div class="mute">The company's questions are written once on <span class="lk">Settings → Jobs &amp; billing → Stage checklists</span>. Items added here are this job's alone. A No or a Not here is an answer; <i>open</i> is what holds a stage.</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap wide"><b>The office</b> gets one read-out, a new section of the job's Documents tab: each stage with its standing, every question with its pick, who answered, when, the note, the photo thumbnail, and <span style="color:#fcd34d">open</span> for what is unanswered. Items added on the job carry a <i>job</i> tag and who added them; the office adds one inline, and takes one off (retired, its answer kept). <b>Print the checklists</b> draws the three stages on light paper for an inspector or the GC, the same way a pay application prints.</div>
+  </div>
+</div>
+
+<h2 class="sec">4 · The office on a phone</h2>
+<div class="row">
+  <div class="col">
+    <div class="phone" style="background:#f8fafc;color:#0f172a;border-color:#cbd5e1">
+      <div style="display:flex;align-items:center;gap:10px;padding:14px 14px 10px;border-bottom:1px solid #e2e8f0;background:#fff"><span style="font-weight:700">J1042 · Pruett &amp; Vance</span><span style="margin-left:auto;color:#64748b">✕</span></div>
+      <div style="display:flex;gap:4px;padding:8px 14px 0;border-bottom:1px solid #e2e8f0;background:#fff;font-size:12px;overflow:hidden;white-space:nowrap"><span class="tab" style="padding:6px 8px;color:#475569">Edit</span><span class="tab" style="padding:6px 8px;color:#475569">Stages</span><span class="tab" style="padding:6px 8px;color:#475569">Reports</span><span class="tab on" style="padding:6px 8px;background:#f8fafc;font-weight:700;border:1px solid #e2e8f0;border-bottom-color:#f8fafc;margin-bottom:-1px;border-radius:8px 8px 0 0">Documents</span></div>
+      <div style="padding:12px 14px;display:flex;flex-direction:column;gap:12px;font-size:13px;overflow:hidden">
+        <div style="font-size:12px;color:#64748b">Pay applications · Lien paper · Folders · Photos · <b style="color:#0f172a">Stage checklists</b></div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline"><h4 style="margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#475569">Stage checklists</h4><span class="lk">Print</span></div>
+        <div class="stg"><div class="h"><span class="n">Rough In</span><span class="s ok">Ready · 4 of 4</span></div></div>
+        <div class="stg"><div class="h"><span class="n">Top Out</span><span class="s ok">Ready · 3 of 3</span></div></div>
+        <div class="stg" style="border-color:#f59e0b">
+          <div class="h"><span class="n">Trim Set</span><span class="s warn">Not ready · 3 of 6</span></div>
+          <div class="ans"><span class="p y">Yes</span><div class="w">Fixtures set and caulked <div class="m">Luis · Nov 1</div></div></div>
+          <div class="ans"><span class="p y">Yes</span><div class="w">Final water test held <div class="m">Luis · Nov 1</div></div><div class="ph"></div></div>
+          <div class="ans"><span class="p h">Not here</span><div class="w">Cleanouts capped <div class="m">Luis · Nov 1</div></div></div>
+          <div class="ans"><span class="p o">open</span><div class="w">Carriers in 7 and 8 set?<span class="job">job</span> <div class="m">Pat Sample · Nov 1</div></div></div>
+          <div class="ans"><span class="p o">open</span><div class="w">Photo of ADA lav heights<span class="job">job</span> <div class="m">Jo Sample · Nov 1 · photo</div></div></div>
+          <div class="ans"><span class="p o">open</span><div class="w">WH pan drain to hub?<span class="job">job</span> <div class="m">Pat Sample · Nov 1 · photo</div></div></div>
+          <button type="button" class="dbtn" style="min-height:44px;margin-top:4px">+ Add a check for Trim Set</button>
+        </div>
+        <div class="mute">Ready stages fold to one line. Press one to open it.</div>
+      </div>
+    </div>
+    <div class="cap"><b>The office on a phone</b> is the same section, narrow: ready stages fold to one line, the open stage shows its rows, and <b>Add a check</b> is a 44 px press that opens the same add box the superintendent has.</div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="n"><h3>What exists and is reused</h3><ul>
+    <li><code>stage_checklist_templates</code> (the company's questions per kind) and <code>stage_checklist_answers</code> (pick, note, who, when, photo), the kernel <code>stageChecklist.ts</code> with the strict rule, the sheet, the strip, the Pipeline's ☐ mark, the photo road to Drive, report photos answering a question.</li>
+    <li>The Documents tab already holds paper sections (pay applications, lien paper, folders, photos, test reports); the checklist read-out is one more.</li>
+    <li>Who may answer is <code>can_report_stage_progress(job_id)</code>: the office, and the superintendent and crew on their own jobs.</li>
+  </ul></div>
+  <div class="n"><h3>What is new</h3><ul>
+    <li><b>Items on the job.</b> Recommended shape: question rows with a <code>job_id</code> + <code>fixture_id</code> scope beside the company's null-scoped rows, so answers, the kernel and the sheet change nothing but the grouping. Columns: the words, asks for a photo, added by, added at, retired at.</li>
+    <li><b>Who adds:</b> the office set and the superintendent on his jobs. The technician answers and notes; he does not add. Who takes off: the adder or the office; retired keeps its answer.</li>
+    <li><b>The sheet's second group</b>, <i>Added for this job</i>, and the superintendent's <b>Add a check</b> at its foot.</li>
+    <li><b>The read-out</b> on Edit Job → Documents, desk and phone, with inline add, take off and <b>Print</b>.</li>
+    <li><b>The line's proof</b> reads this same count: "checklist 3 of 6 ready".</li>
+  </ul></div>
+  <div class="n"><h3>Decisions <span class="q">(yours)</span></h3><ul>
+    <li><span class="q">Does a job item count toward ready?</span> Recommended yes, same strict rule, or adding one is decoration. It means an item added after a stage read ready flips it back, which is the point.</li>
+    <li><span class="q">Should the technician add items too?</span> The mock-up says no: he notes, the superintendent and office add.</li>
+    <li><span class="q">A push when an item is added</span> to a stage someone is clocked in on, or trust the strip?</li>
+    <li><span class="q">Print</span>: in PR 1, or later? It is what makes "Documents" the right home.</li>
+    <li><span class="q">Reuse an item across jobs</span> ("make this a company question") from the read-out, or keep the editor the only door?</li>
+  </ul></div>
+  <div class="n"><h3>A plan, if you take the recommendations</h3>
+    <table class="t">
+      <tr><th>PR</th><th>Builds</th><th>Size</th></tr>
+      <tr><td>A</td><td>Job-scoped items: the migration, RLS by adder, the kernel's grouping, the sheet's second group and the add box (superintendent + office)</td><td>M</td></tr>
+      <tr><td>B</td><td>The Documents read-out, desk and phone, with inline add and take off; the guide</td><td>M</td></tr>
+      <tr><td>C</td><td>Print the checklists (light paper, three stages)</td><td>S</td></tr>
+      <tr><td>D</td><td>The line's proof reads the count (lands with #234's PR 3)</td><td>S</td></tr>
+    </table>
+  </div>
+</div>
+</body>
+</html>
