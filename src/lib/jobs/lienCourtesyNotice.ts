@@ -343,7 +343,7 @@ export function courtesyEmailText(f: CourtesyFacts, who: CourtesyWho, greeting: 
     return [
       `To the owner of ${where},`,
       `On ${sent} we mailed you the notice of claim under Tex. Prop. Code § 53.056 on ${job}: ${gc} has not paid us ${amount} for work in ${f.monthsWords}. That notice stands. This is a reminder, not a new notice. You did not hire us, and nothing here is billed to you.`,
-      `Nothing has come in since. Unless the ${amount} is paid, we will file the lien affidavit${onWhere}${county} by ${lien}. We would rather pick up a check than put that affidavit on record.`,
+      `Nothing has come in since. Unless the ${amount} is paid, we will file the lien affidavit${onWhere}${county} by ${lien}. A recorded affidavit goes into the county's public records on your property, where a title search finds it later, even after it is released. We would rather pick up a check than put that on record.`,
       `Please pay us only if ${gc} has told you in writing that you may pay us directly. Otherwise hold ${amount} back from your next payment to ${gc}, as the cover letter asked, and call us so we know it is held. We cannot deposit a joint check.${offer}`,
       `If something is wrong, or a payment is already on its way, reply to this email or call and tell us.`,
       sign,
@@ -352,7 +352,7 @@ export function courtesyEmailText(f: CourtesyFacts, who: CourtesyWho, greeting: 
   return [
     greeting.trim() || courtesyGreeting(f.gcName),
     `On ${sent} we mailed you and the owner of ${where} the Notice of Claim for Unpaid Labor or Materials (Tex. Prop. Code § 53.056) on job ${job}: ${amount} for work in ${f.monthsWords}. That notice stands. This is a reminder, not a new notice.`,
-    `Nothing has come in since. Unless the ${amount} is paid, we will file the lien affidavit${onWhere}${county} by ${lien}. A recorded affidavit is harder to take off than the notice, and we would rather pick up a check.`,
+    `Nothing has come in since. Unless the ${amount} is paid, we will file the lien affidavit${onWhere}${county} by ${lien}. A recorded affidavit is harder to take off than the notice. It goes into the county's public records on the property, where a title search finds it later, even after it is released. We would rather pick up a check.`,
     `${courtesyPayLine(f)}${offer}`,
     `If something on the bill is wrong, or a payment is already on its way, reply to this email or call and tell us.`,
     sign,

@@ -41,6 +41,7 @@ The toast says what went and what did not, with the reason. A refusal on one cha
 - The notice we mailed on its day stands. The message is a reminder, not a new notice.
 - One number, the notice's claim.
 - The day the lien affidavit is filed unless it is paid, and the property it is filed on. The day comes from the affidavit's own clock.
+- That a recorded affidavit is public record on the property. A title search finds it later, even after it is released.
 - Where to pay, in one line, and that we cannot take a joint check.
 - The master plumber's name and number, and that a wrong bill should be answered.
 
