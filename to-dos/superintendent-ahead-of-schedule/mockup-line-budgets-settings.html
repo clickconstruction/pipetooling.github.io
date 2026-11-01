@@ -1,0 +1,193 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Settings → Line budgets, with sliders</title>
+<style>
+body{margin:0;background:#0b1220;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f3f4f6;padding:20px}
+h1{font-size:18px;margin:0 0 4px}
+p.lead{color:#9ca3af;font-size:13px;margin:0 0 18px;max-width:900px;line-height:1.45}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.cap{font-size:12px;color:#9ca3af;max-width:620px;line-height:1.4;margin-top:8px}
+.cap b{color:#f3f4f6}
+.desk{width:620px;max-width:100%;box-sizing:border-box;background:#f8fafc;color:#0f172a;border-radius:12px;border:1px solid #cbd5e1;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+.mbar{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid #e2e8f0;background:#fff}
+.mbar .t{font-weight:700;font-size:16px}
+.pane{padding:14px 16px 16px;display:flex;flex-direction:column;gap:14px}
+.mute{color:#64748b;font-size:12px}
+.newchip{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#9a4b00;background:#fff1dc;border:1px solid #f0b56a;border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
+.legend{display:flex;gap:14px;font-size:11px;color:#475569}
+.legend span::before{content:"";display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px;vertical-align:-1px}
+.legend .l::before{background:#2563eb}.legend .m::before{background:#f59e0b}.legend .p::before{background:#cbd5e1}
+
+/* the rate */
+.rate{display:flex;flex-direction:column;gap:6px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+.rate .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.rate .h .k{font-weight:700}
+.rate .h .v{font-variant-numeric:tabular-nums}
+.rate .h .v b{font-size:16px}
+.rate input[type=range]{width:100%;accent-color:#2563eb}
+.rate .ro{display:flex;justify-content:space-between;align-items:center;font-size:12px;color:#475569;gap:8px;flex-wrap:wrap}
+.lk{color:#2563eb;background:none;border:0;font-size:12px;padding:0;cursor:pointer;font-family:inherit}
+
+/* a stage row */
+.stage{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+.stage .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.stage .h .k{font-weight:700;font-size:14px}
+.stage .h .nums{display:flex;gap:10px;font-variant-numeric:tabular-nums;font-size:12px;color:#475569;flex-wrap:wrap}
+.stage .h .nums b{color:#0f172a;font-size:13px}
+.stage .h .nums .lab b{color:#1d4ed8}.stage .h .nums .mat b{color:#b45309}
+.stage .h .nums input{width:38px;border:0;border-bottom:1px dashed #94a3b8;background:none;font:inherit;font-weight:700;text-align:right;padding:0 1px;color:inherit}
+.stage .h .nums .lab input{color:#1d4ed8}.stage .h .nums .mat input{color:#b45309}
+.dual{position:relative;height:34px}
+.dual .bar{position:absolute;left:0;right:0;top:11px;height:12px;border-radius:6px;overflow:hidden;background:#e2e8f0;display:flex}
+.dual .bar i{display:block;height:12px}
+.dual .bar .l{background:#2563eb}.dual .bar .m{background:#f59e0b}.dual .bar .p{background:#cbd5e1}
+.dual .target{position:absolute;top:6px;width:0;height:22px;border-left:2px dashed #94a3b8;pointer-events:none}
+.dual .target span{position:absolute;top:-16px;left:-28px;font-size:9px;color:#94a3b8;white-space:nowrap;width:56px;text-align:center}
+.dual input[type=range]{position:absolute;left:0;right:0;top:0;width:100%;height:34px;margin:0;background:none;-webkit-appearance:none;appearance:none;pointer-events:none}
+.dual input[type=range]::-webkit-slider-runnable-track{height:34px;background:transparent}
+.dual input[type=range]::-moz-range-track{height:34px;background:transparent}
+.dual input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;pointer-events:auto;width:22px;height:22px;margin-top:6px;border-radius:11px;background:#fff;border:2px solid #0f172a;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:grab}
+.dual input[type=range]::-moz-range-thumb{pointer-events:auto;width:22px;height:22px;border-radius:11px;background:#fff;border:2px solid #0f172a;box-shadow:0 1px 3px rgba(0,0,0,.3);cursor:grab}
+.dual input[type=range]:focus-visible::-webkit-slider-thumb{outline:2px solid #2563eb;outline-offset:2px}
+.sl{display:grid;grid-template-columns:78px 1fr 64px 120px;gap:10px;align-items:center;font-size:12px;color:#475569}
+.sl .k{font-weight:600}
+.sl input[type=range]{width:100%;margin:0;accent-color:#2563eb;height:28px}
+.sl.mat input[type=range]{accent-color:#f59e0b}
+.sl .pct{display:flex;align-items:baseline;gap:2px;font-variant-numeric:tabular-nums;justify-content:flex-end}
+.sl .pct input{width:36px;border:0;border-bottom:1px dashed #94a3b8;background:none;font:inherit;font-weight:700;font-size:13px;text-align:right;padding:0 1px;color:#1d4ed8}
+.sl.mat .pct input{color:#b45309}
+.sl .d{font-variant-numeric:tabular-nums;color:#0f172a;text-align:right;white-space:nowrap}
+.readbar{display:flex;flex-direction:column;gap:3px}
+.readbar .bar{position:relative;height:10px;border-radius:5px;overflow:hidden;background:#e2e8f0;display:flex}
+.readbar .bar i{display:block;height:10px}
+.readbar .bar .l{background:#2563eb}.readbar .bar .m{background:#f59e0b}.readbar .bar .p{background:#cbd5e1}
+.readbar .bar .p.bad{background:#fecaca}
+.readbar .target{position:absolute;top:-2px;width:0;height:14px;border-left:2px dashed #64748b}
+.readbar .mg{display:flex;justify-content:space-between;font-size:12px;color:#475569}
+.readbar .mg b{color:#0f172a;font-variant-numeric:tabular-nums}
+.readbar .mg b.bad{color:#b91c1c}
+@media (max-width:520px){.sl{grid-template-columns:70px 1fr 56px;row-gap:2px}.sl .d{grid-column:2/4;text-align:left}}
+.stage .ex{font-size:12px;color:#475569;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.stage .ex b{color:#0f172a;font-variant-numeric:tabular-nums}
+.stage .ex .bad{color:#b91c1c}
+.stage .learn{font-size:11px;color:#64748b;display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;align-items:center}
+.stage .learn .chip{background:#fff1dc;border:1px solid #f0b56a;color:#9a4b00;border-radius:4px;padding:0 5px;font-size:10px}
+.foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.dbtn{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:7px 12px;font-size:12px;color:#0f172a;cursor:pointer;font-family:inherit;min-height:36px}
+.dbtn.pri{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+.dbtn:disabled{opacity:.5;cursor:default}
+.ex-size{display:flex;align-items:center;gap:8px;font-size:12px;color:#475569}
+.ex-size select{font:inherit;border:1px solid #cbd5e1;border-radius:6px;padding:3px 6px;background:#fff;color:#0f172a}
+.notes{margin-top:22px;max-width:900px;display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:14px}
+.n{background:#111827;border:1px solid #374151;border-radius:12px;padding:12px 14px;font-size:13px;color:#d1d5db;line-height:1.45}
+.n h3{margin:0 0 6px;font-size:13px;color:#f9fafb}
+.n ul{margin:0;padding-left:16px}.n li{margin-bottom:4px}
+</style>
+</head>
+<body>
+<h1>Settings → Jobs &amp; billing → Line budgets, with sliders</h1>
+<p class="lead">Drag it. Each stage kind has two sliders, labor and materials, the same control as the cost rate; the margin is whatever is left and reads out under them with the target mark. The numbers beside each slider can be typed too, and every row reads itself out on a line of a size you choose, so 45% means a number, not a number of percent. Made-up figures.</p>
+
+<div class="row">
+  <div>
+    <div class="desk">
+      <div class="mbar"><span class="t">Line budgets <span class="newchip">new</span></span></div>
+      <div class="pane">
+        <div class="mute">The split a typed line gets until you tune it, and the cost rate the hours use. Lines priced on the workbench carry their own and ignore this.</div>
+        <div class="legend"><span class="l">labor</span><span class="m">materials</span><span class="p">margin, what is left</span><span style="color:#94a3b8">┆ the dashed mark is the 20% target margin</span></div>
+
+        <div class="rate">
+          <div class="h"><span class="k">Cost rate</span><span class="v"><b id="rate-v">$45</b> per hour, burdened</span></div>
+          <input type="range" id="rate" min="30" max="80" step="1" value="45" aria-label="Cost rate per hour">
+          <div class="ro"><span>The roster ran <b>$44.70</b> an hour across 9 people this quarter, burdened.</span><button type="button" class="lk" id="rate-roster">Use the roster's rate</button></div>
+        </div>
+
+        <div class="ex-size">Read each split on a line of <select id="exsize"><option value="4000">$4,000</option><option value="10000" selected>$10,000</option><option value="28000">$28,000</option><option value="52000">$52,000</option></select></div>
+
+        <div id="stages"></div>
+
+        <div class="foot">
+          <span class="mute" id="status">Saved Oct 2. Nothing changed yet.</span>
+          <span style="display:flex;gap:8px"><button type="button" class="dbtn" id="undo" disabled>Back to what you saved</button><button type="button" class="dbtn pri" id="save" disabled>Save the splits</button></span>
+        </div>
+      </div>
+    </div>
+    <div class="cap"><b>What changed from the first draw.</b> Four pairs of boxes became two sliders per stage kind, labor and materials, with the margin read out under them instead of implied. The materials slider can only reach what labor left, so the two never sum past 100. A dashed mark on the read-out bar is the company's target margin, and the margin turns red under it. Each row reads itself out in dollars and hours on a line of the size you pick. The learning line sits on the row it belongs to, with one press to take it. Save names how many rows changed; Back to what you saved is the undo.</div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="n"><h3>The rules the bar keeps</h3><ul>
+    <li>Labor and materials never cross and never sum past 100; the margin is the remainder and can reach zero, drawn red when under the target.</li>
+    <li>Typing a number moves the thumb; dragging the thumb writes the number. One source.</li>
+    <li>The example line is only a reading; nothing on a job changes until Save, and Save changes only lines still <i>assumed</i>, never a workbench line or one you tuned.</li>
+  </ul></div>
+  <div class="n"><h3>What is new against the first draw</h3><ul>
+    <li>The dual-thumb bar per stage kind, the target-margin mark, the dollars-and-hours read-out on a chosen line size, the learning line as a press on its row, the roster's rate as a press.</li>
+    <li>Same columns underneath: a split per kind and one cost rate.</li>
+  </ul></div>
+</div>
+
+<script>
+(function(){
+  const STAGES=[
+    {key:'rough_in',name:'Rough In',l:45,m:35,saved:[45,35],learn:null},
+    {key:'top_out',name:'Top Out',l:45,m:35,saved:[45,35],learn:null},
+    {key:'trim_set',name:'Trim Set',l:40,m:40,saved:[40,40],learn:null},
+    {key:'any',name:'Any line',l:45,m:35,saved:[45,35],learn:{l:52,n:6}},
+  ];
+  const TARGET=20;
+  let rate=45;const SAVED_RATE=45;
+  const $=s=>document.querySelector(s);
+  const fmt=n=>'$'+Math.round(n).toLocaleString('en-US');
+  function render(){
+    const size=+$('#exsize').value;
+    $('#stages').innerHTML=STAGES.map(s=>{
+      const p=100-s.l-s.m;const lab=size*s.l/100,mat=size*s.m/100,mar=size*p/100;const hrs=lab/rate;
+      const under=p<TARGET;
+      return `<div class="stage" data-k="${s.key}">
+        <div class="h"><span class="k">${s.name}</span><span class="mute">on a ${fmt(size)} line</span></div>
+        <div class="sl lab"><span class="k" style="color:#1d4ed8">Labor</span><input type="range" min="0" max="100" step="1" value="${s.l}" data-f="l" aria-label="${s.name} labor percent"><span class="pct"><input type="text" inputmode="numeric" value="${s.l}" data-f="l" aria-label="${s.name} labor percent, typed">%</span><span class="d">${fmt(lab)} · ${Math.round(hrs)} h</span></div>
+        <div class="sl mat"><span class="k" style="color:#b45309">Materials</span><input type="range" min="0" max="${100-s.l}" step="1" value="${s.m}" data-f="m" aria-label="${s.name} materials percent"><span class="pct"><input type="text" inputmode="numeric" value="${s.m}" data-f="m" aria-label="${s.name} materials percent, typed">%</span><span class="d">${fmt(mat)}</span></div>
+        <div class="readbar"><div class="bar"><i class="l" style="width:${s.l}%"></i><i class="m" style="width:${s.m}%"></i><i class="p ${under?'bad':''}" style="width:${p}%"></i><span class="target" style="left:${100-TARGET}%" title="target margin ${TARGET}%"></span></div><div class="mg"><span>Margin, what is left</span><span><b class="${under?'bad':''}">${p}% · ${fmt(mar)}</b>${under?' <span style="color:#b91c1c">· under the '+TARGET+'% target</span>':''}</span></div></div>
+        ${s.learn?`<div class="learn"><span><span class="chip">your tunes</span> ${s.name} ran <b>${s.learn.l}%</b> labor on your last ${s.learn.n} tunes, against ${s.saved[0]}% here.</span><button type="button" class="lk" data-a="take" data-k="${s.key}">Use ${s.learn.l}%</button></div>`:''}
+      </div>`;}).join('');
+    $('#rate-v').textContent='$'+rate;
+    const changed=STAGES.filter(s=>s.l!==s.saved[0]||s.m!==s.saved[1]).length+(rate!==SAVED_RATE?1:0);
+    $('#save').disabled=!changed;$('#undo').disabled=!changed;
+    $('#save').textContent=changed?`Save · ${changed} ${changed===1?'row':'rows'} changed`:'Save the splits';
+    $('#status').textContent=changed?`${changed} ${changed===1?'row':'rows'} changed. Nothing on a job moves until Save; only lines still assumed take the new split.`:'Saved Oct 2. Nothing changed yet.';
+  }
+  function clamp(n){return Math.max(0,Math.min(100,n));}
+  document.addEventListener('input',e=>{
+    const el=e.target;
+    if(el.id==='rate'){rate=+el.value;render();return;}
+    if(el.id==='exsize'){render();return;}
+    const st=el.closest('.stage');if(!st)return;const s=STAGES.find(x=>x.key===st.dataset.k);const f=el.dataset.f;
+    if(el.type==='range'){
+      const v=clamp(+el.value);
+      if(f==='l'){s.l=v;s.m=Math.min(s.m,100-s.l);}else{s.m=Math.min(v,100-s.l);}
+      render();
+      const again=document.querySelector(`.stage[data-k="${s.key}"] input[type="range"][data-f="${f}"]`);if(again)again.focus();
+    }else{
+      const v=el.value.replace(/[^0-9]/g,'');if(v==='')return;const n=clamp(+v);
+      if(f==='l'){s.l=Math.min(n,100-s.m);}else{s.m=Math.min(n,100-s.l);}
+      const focus=document.activeElement===el;render();
+      if(focus){const again=document.querySelector(`.stage[data-k="${s.key}"] input[data-f="${f}"][type="text"]`);if(again){again.focus();again.select();}}
+    }
+  });
+  document.addEventListener('click',e=>{
+    const a=e.target.closest('[data-a="take"]');
+    if(a){const s=STAGES.find(x=>x.key===a.dataset.k);const keepP=100-s.l-s.m;s.l=s.learn.l;s.m=Math.max(0,Math.min(100-s.l,100-s.l-keepP));render();return;}
+    if(e.target.id==='rate-roster'){rate=45;$('#rate').value=45;render();return;}
+    if(e.target.id==='undo'){STAGES.forEach(s=>{s.l=s.saved[0];s.m=s.saved[1];});rate=SAVED_RATE;$('#rate').value=rate;render();return;}
+    if(e.target.id==='save'){STAGES.forEach(s=>{s.saved=[s.l,s.m];});render();$('#status').textContent='Saved just now. Lines still assumed on open projects take the new splits; workbench and tuned lines keep theirs.';return;}
+  });
+  render();
+})();
+</script>
+</body>
+</html>

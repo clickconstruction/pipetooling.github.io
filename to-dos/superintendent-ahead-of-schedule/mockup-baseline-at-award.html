@@ -1,0 +1,158 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>#234 PR 1: a number at award, every time, with its source</title>
+<style>
+body{margin:0;background:#0b1220;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f3f4f6;padding:20px}
+h1{font-size:18px;margin:0 0 4px}
+h2.sec{font-size:13px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin:28px 0 10px}
+p.lead{color:#9ca3af;font-size:13px;margin:0 0 18px;max-width:1100px;line-height:1.45}
+.row{display:flex;gap:22px;flex-wrap:wrap;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:8px}
+.cap{font-size:12px;color:#9ca3af;max-width:520px;line-height:1.4}
+.cap b{color:#f3f4f6}
+.desk{width:520px;box-sizing:border-box;background:#f8fafc;color:#0f172a;border-radius:12px;border:1px solid #cbd5e1;display:flex;flex-direction:column;overflow:hidden;font-size:13px}
+.mbar{display:flex;align-items:center;gap:10px;padding:10px 14px;border-bottom:1px solid #e2e8f0;background:#fff}
+.mbar .t{font-weight:700;font-size:15px}.mbar .x{margin-left:auto;color:#64748b}
+.pane{padding:14px;display:flex;flex-direction:column;gap:12px}
+.mute{color:#64748b;font-size:12px}
+h4{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#475569}
+.src{display:flex;flex-direction:column;gap:6px}
+.opt{display:flex;gap:10px;align-items:flex-start;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;background:#fff}
+.opt.on{border-color:#2563eb;background:#eff6ff}
+.opt.dead{opacity:.55}
+.opt .r{width:18px;height:18px;border-radius:9px;border:2px solid #94a3b8;flex:none;margin-top:2px}
+.opt.on .r{border-color:#2563eb;background:radial-gradient(#2563eb 45%,transparent 50%)}
+.opt .b{flex:1 1 auto;min-width:0}
+.opt .n{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.opt .w{font-size:12px;color:#475569;margin-top:2px}
+.opt .why{font-size:11px;color:#64748b;margin-top:4px}
+.opt input{width:80px;border:1px solid #cbd5e1;border-radius:6px;padding:5px 6px;font-size:13px;font-family:inherit}
+.dbtn{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:7px 12px;font-size:12px;color:#0f172a}
+.dbtn.pri{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+.strip{display:flex;flex-direction:column;gap:4px;border-radius:10px;padding:10px 12px;border:1px solid #e2e8f0;background:#fff}
+.strip.bid{border-left:4px solid #2563eb}.strip.book{border-left:4px solid #94a3b8;border-style:solid solid solid dashed}.strip.typed{border-left:4px solid #7c3aed}.strip.none{border-left:4px solid #f59e0b;background:#fffbeb}
+.strip .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.strip .h .n{font-weight:700;font-size:15px;font-variant-numeric:tabular-nums}
+.strip .h .s{font-size:11px;color:#475569}
+.strip .l{font-size:12px;color:#475569}
+.strip .k{display:flex;gap:8px;margin-top:4px}
+.glyph{font-weight:700;margin-right:4px}
+.newchip{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#9a4b00;background:#fff1dc;border:1px solid #f0b56a;border-radius:4px;padding:0 5px;margin-left:6px;vertical-align:middle}
+.deck{border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.deck .h{display:flex;justify-content:space-between;font-size:12px;color:#475569}
+.deck .j{font-weight:700}
+.deck ul{margin:0;padding-left:16px;font-size:12px;color:#475569}
+.ledger{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:11px;background:#fff;border:1px solid #e2e8f0;border-radius:8px;padding:8px 10px;color:#0f172a;white-space:pre;overflow-x:auto}
+.notes{margin-top:26px;max-width:1100px;display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px}
+.n{background:#111827;border:1px solid #374151;border-radius:12px;padding:12px 14px;font-size:13px;color:#d1d5db;line-height:1.45}
+.n h3{margin:0 0 6px;font-size:13px;color:#f9fafb}
+.n ul{margin:0;padding-left:16px}.n li{margin-bottom:4px}
+.n code{font-size:12px;color:#93c5fd}.n .q{color:#fcd34d}
+</style>
+</head>
+<body>
+<h1>#234 PR 1: a number at award, every time, with its source</h1>
+<p class="lead">When a project is awarded, the app writes one hours baseline, frozen, and says where it came from. Three sources, tried in order: the bid's Labor rows, the labor book's assumed hours, a typed figure. The office sees the pick and can change it in the same window. Afterward the Costs tab, the Pipeline's burning card and the superintendent's line all read that one row and its source. Made-up names and figures. <i>Project</i> here is #238's kind: a service call never sees any of this.</p>
+
+<h2 class="sec">1 · The award moment: the window that writes the number</h2>
+<div class="row">
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">Award B917 · Harbor Lane Offices</span><span class="x">✕</span></div>
+      <div class="pane">
+        <div class="mute">Makes J1050 from the bid, a <b>project</b>. One more thing to settle before it runs: the hours it should take.</div>
+        <h4>Hours baseline at award <span class="newchip">new</span></h4>
+        <div class="src">
+          <div class="opt dead"><span class="r"></span><div class="b"><div class="n">From the bid's Labor rows</div><div class="w">Not usable: hours on 9 of 31 rows.</div><div class="why">Fill the Labor rows on B917 and this becomes the pick. The 9 rows carry 71 h.</div></div></div>
+          <div class="opt on"><span class="r"></span><div class="b"><div class="n">471 h · from the book, assumed</div><div class="w">4.2 h per $1k × $112,000, from 12 similar projects.</div><div class="why">A guess, read as one. The line draws grey and the score skips it until a bid baseline or a typed one replaces it.</div></div></div>
+          <div class="opt"><span class="r"></span><div class="b"><div class="n">Typed · <input type="text" placeholder="hours"> h</div><div class="w">Your own figure, with your name on it.</div><div class="why">When you know better than the book: a repeat building, a known crew, a plan the bid did not show.</div></div></div>
+        </div>
+        <div class="mute">Whichever you pick is frozen as the award snapshot. Refresh from bid later writes a dated sibling; the score keeps the award's.</div>
+        <div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="dbtn">Not now</button><button type="button" class="dbtn pri">Award it · 471 h assumed</button></div>
+      </div>
+    </div>
+    <div class="cap"><b>Every time.</b> The window never lets a project leave award without a number. The first usable source is picked for you; the dead one says what would make it usable; the press names the number and its source. <i>Not now</i> still makes the job, with the book's number written and marked assumed, so nothing is ever blank.</div>
+  </div>
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">Award B874 · Building C rough-in</span><span class="x">✕</span></div>
+      <div class="pane">
+        <div class="mute">Makes J1042 from the bid, a <b>project</b>.</div>
+        <h4>Hours baseline at award <span class="newchip">new</span></h4>
+        <div class="src">
+          <div class="opt on"><span class="r"></span><div class="b"><div class="n">480 h · from the bid's Labor rows</div><div class="w">36 of 36 rows carry hours. Rough In 210 h · Top Out 150 h · Trim Set 120 h.</div><div class="why">The bid's own number. This is the one that scores.</div></div></div>
+          <div class="opt"><span class="r"></span><div class="b"><div class="n">516 h · from the book</div><div class="w">4.3 h per $1k × $120,000, from 14 similar projects.</div><div class="why">The book runs 8% over the bid here. Worth a look at the bid, not a reason to override it.</div></div></div>
+          <div class="opt"><span class="r"></span><div class="b"><div class="n">Typed · <input type="text" placeholder="hours"> h</div><div class="w">Your own figure, with your name on it.</div></div></div>
+        </div>
+        <div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="dbtn">Not now</button><button type="button" class="dbtn pri">Award it · 480 h from the bid</button></div>
+      </div>
+    </div>
+    <div class="cap"><b>When the bid carries hours</b> the pick is the bid's, by stage where the Labor rows give it, and the book's number sits beside it as a second opinion. A gap between the two is a reading, not a decision.</div>
+  </div>
+</div>
+
+<h2 class="sec">2 · Afterward: the Costs tab's strip reads the row and its source</h2>
+<div class="row">
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">J1042 · Costs</span><span class="x">✕</span></div>
+      <div class="pane">
+        <div class="strip bid"><div class="h"><span><span class="glyph">◆</span>Baseline from bid B874 at award</span><span class="n">480 h</span></div><div class="l">Frozen Oct 2 · plus change order 2, 36 h, so 516 h · planned finish Nov 14 from the rough schedule</div><div class="l">212 h on the clock at 48% certified · 12% of the hours under the work so far</div><div class="k"><button type="button" class="dbtn">Refresh from bid</button><button type="button" class="dbtn">Add a change order</button></div></div>
+        <div class="strip book"><div class="h"><span><span class="glyph">≈</span>Baseline assumed from the book at award</span><span class="n">471 h</span></div><div class="l">Frozen Nov 1 · 4.2 h per $1k × $112,000 · 12 similar projects · a guess, read as one</div><div class="l">The superintendent's line draws grey. The score skips this job until a bid or typed baseline replaces it.</div><div class="k"><button type="button" class="dbtn">Fill the Labor rows on B917</button><button type="button" class="dbtn">Type a baseline</button></div></div>
+        <div class="strip typed"><div class="h"><span><span class="glyph">✎</span>Baseline typed at award by Jo Sample</span><span class="n">220 h</span></div><div class="l">Frozen Oct 20 · "Repeat of the Lakeside building, same crew" · the book said 262 h</div><div class="l">Scores like a bid baseline. The name on it is the point.</div><div class="k"><button type="button" class="dbtn">Change it</button></div></div>
+        <div class="strip none"><div class="h"><span><span class="glyph">!</span>No baseline on this project</span><span class="n">—</span></div><div class="l">Awarded Sep 3, before baselines were written at award. 1 of 7 on Quickfill.</div><div class="k"><button type="button" class="dbtn pri">Take B901's estimate · 158 h</button><button type="button" class="dbtn">Freeze the book's 471 h</button></div></div>
+      </div>
+    </div>
+    <div class="cap"><b>Four states, one row each.</b> The glyph is the source: ◆ bid, ≈ book, ✎ typed, ! none. The strip says when it was frozen, what it was computed from, and what the line and the score do with it. Only the amber state asks for anything.</div>
+  </div>
+  <div class="col">
+    <div class="desk">
+      <div class="mbar"><span class="t">Quickfill · Fill them in</span><span class="x"></span></div>
+      <div class="pane">
+        <div class="deck">
+          <div class="h"><span>Projects working with no hours baseline <span class="newchip">new</span></span><span>1 of 7</span></div>
+          <div class="j">J1031 · Lakeside duplex · $56,000</div>
+          <ul><li>A project, awarded Sep 3, before baselines were written at award.</li><li>Bid B901 has hours on 22 of 24 rows: 158 h.</li><li>The book says 4.4 h per $1k, about 246 h. 97 h on the clock so far at 35%.</li></ul>
+          <div class="mute">The bid's rows are nearly full; its number is the better pick.</div>
+          <div style="display:flex;gap:8px"><button type="button" class="dbtn pri">Take B901's estimate · 158 h</button><button type="button" class="dbtn">Freeze the book's 246 h</button><button type="button" class="dbtn">Skip</button></div>
+          <div class="mute">Next: J1024 · Cedar Row install · Then: 5 more</div>
+        </div>
+        <h4>What the row looks like</h4>
+        <div class="ledger">job_budgets
+  job_id        J1042
+  kind          bid        -- bid · book · typed
+  hours         480
+  source_ref    B874       -- the bid, or "12 similar projects", or the typer
+  at_award      true       -- the one the score reads
+  frozen_at     2026-10-02 14:10
+  frozen_by     Jo Sample
+  note          null       -- the typed one's words
+  (a Refresh from bid writes a sibling with at_award false)</div>
+      </div>
+    </div>
+    <div class="cap"><b>The deck line</b> catches the projects awarded before this shipped, newest first, with the two numbers side by side and a one-line read of which is better. <b>The row</b> is today's <code>job_budgets</code> with three more columns: the source, the award flag, the freeze stamp.</div>
+  </div>
+</div>
+
+<div class="notes">
+  <div class="n"><h3>The rule</h3><ul>
+    <li>A project leaves award with exactly one baseline row marked <code>at_award</code>. Sources in order: the bid's Labor rows when usable (the Labor head's bar already says usable or not, v2.3598), else the book's assumed hours, else typed.</li>
+    <li>The office can pick a different source in the award window; the press names the number and the source.</li>
+    <li>Refresh from bid writes a dated sibling; the award row never changes. Change orders add to it.</li>
+    <li>A book baseline draws the line grey and is skipped by the score; a bid or typed baseline scores.</li>
+  </ul></div>
+  <div class="n"><h3>What is new</h3><ul>
+    <li>Three columns on <code>job_budgets</code>: <code>source_ref</code>, <code>at_award</code>, <code>frozen_by</code> (and <code>kind</code> gains <code>book</code>). One additive migration.</li>
+    <li>The award window's block, the strip's four states, the Quickfill deck line, the gate on #238's <code>jobKind</code>.</li>
+  </ul></div>
+  <div class="n"><h3>Decisions <span class="q">(yours)</span></h3><ul>
+    <li><span class="q">Does a book baseline score, or only bid and typed?</span> Drawn here: only bid and typed.</li>
+    <li><span class="q">Can Not now leave award with nothing?</span> Drawn here: no, the book's number is written and marked assumed.</li>
+    <li><span class="q">Who may type a baseline?</span> Recommended: the office set and the estimator on his own bid.</li>
+  </ul></div>
+</div>
+</body>
+</html>
