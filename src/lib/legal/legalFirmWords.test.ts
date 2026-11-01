@@ -154,3 +154,31 @@ describe('firmExhibitWhere · v2.4701 · an exhibit cell never promises a docume
     }
   })
 })
+
+describe('the Notifications tab words · punch list #233 · the add card is the row it becomes', () => {
+  it('every line a first-timer reads passes plain words', async () => {
+    const { plainWordsFailures } = await import('../plainWords')
+    const { FIRM_NOTIFICATIONS_WORDS, firmHandlingCountLine, firmSendConfirmationLabel } = await import('./legalFirmWords')
+    for (const line of Object.values(FIRM_NOTIFICATIONS_WORDS)) expect(plainWordsFailures(line)).toEqual([])
+    expect(plainWordsFailures(firmHandlingCountLine('Dana Whitlock', [{ handling: 'Dana Whitlock' }, { handling: 'Priya Natarajan' }]))).toEqual([])
+    expect(plainWordsFailures(firmSendConfirmationLabel('Dana Whitlock'))).toEqual([])
+  })
+
+  it('the press names the person by first name, and them until a name is typed', async () => {
+    const { firmSendConfirmationLabel } = await import('./legalFirmWords')
+    expect(firmSendConfirmationLabel('  Dana Whitlock ')).toBe('Send Dana a confirmation')
+    expect(firmSendConfirmationLabel('')).toBe('Send them a confirmation')
+    expect(firmSendConfirmationLabel('   ')).toBe('Send them a confirmation')
+  })
+
+  it('the count under Only theirs reads the dispatcher’s rule: the typed name against the handling name, case and spaces aside', async () => {
+    const { firmHandlesMatter, firmHandlingCountLine } = await import('./legalFirmWords')
+    const matters = [{ handling: 'Dana Whitlock' }, { handling: 'priya natarajan' }, { handling: ' Dana Whitlock ' }]
+    expect(firmHandlingCountLine('dana whitlock', matters)).toBe('The office names dana whitlock as handling 2 of 3 open matters today.')
+    expect(firmHandlingCountLine('Lena Okafor', matters)).toBe('The office names Lena Okafor as handling 0 of 3 open matters today.')
+    expect(firmHandlingCountLine('', matters)).toBe('The office names them as handling 0 of 3 open matters today.')
+    expect(firmHandlingCountLine('Priya Natarajan', [{ handling: 'Priya Natarajan' }])).toBe('The office names Priya Natarajan as handling 1 of 1 open matter today.')
+    expect(firmHandlingCountLine('Dana Whitlock', [])).toBe('No matters are open yet.')
+    expect(firmHandlesMatter('', '')).toBe(false)
+  })
+})

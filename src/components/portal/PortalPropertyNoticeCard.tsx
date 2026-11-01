@@ -24,6 +24,7 @@ export function PortalPropertyNoticeCard({ notice, phone, companyName }: { notic
         {notice.address ? <b>{notice.address}. </b> : null}
         We did work on your property under {gc}. {gc} has not paid us <b>{amount}</b>
         {months ? ` for work in ${months}` : ''}. On {mailed} we mailed you the notice of claim Texas law requires (Tex. Prop. Code § 53.056). You did not hire us, and this is not a lawsuit.
+        {notice.courtesyOn ? <span data-portal-property-notice-courtesy> On {formatPortalDate(notice.courtesyOn) ?? notice.courtesyOn} we also emailed you a reminder. That notice stands; the reminder is not a new notice.</span> : null}
       </p>
       <p style={{ margin: '0 0 6px', color: MUTED }}>You may hold back {amount} from anything you still owe {gc}. The clean ways to finish it, before your next payment to {gc}:</p>
       <ol style={{ margin: '0 0 8px', paddingLeft: 20 }}>

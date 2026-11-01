@@ -369,9 +369,13 @@ Once retainage is on the job, every § 53.056 notice names it inside the claim. 
 
 The cover letters give the signing master's own phone as the number to call. It comes from his record in People. The letterhead's number is used only when he has none.
 
+## The courtesy notice
+
+A sent notice still needs watching. The notice's footer counts the days since the packet went out. From day 7 the footer offers {{button:blue|Send a courtesy notice ▸}}. The courtesy notice is a plain reminder by email and text. The reminder says the notice stands. The reminder names the day the lien goes on unless the claim is paid. The reminder carries the pay link. The desk holds the press when the lien cannot go on, and says why. See [send a courtesy notice before a lien](/help/send-a-courtesy-notice-before-a-lien).
+
 ## Letter two
 
-A sent notice still needs watching. Its footer counts the days since the packet went out. It says whether the GC has paid, and whether the GC told the owner to pay us. Counsel's rule is a second owner letter 10 to 14 days after the first packet, when neither has happened. From day 10 the row under Sent wears {{chip:yellow|day 12 · letter two}}. It turns red on day 14, and the Dashboard's lien card counts them.
+The footer also says whether the GC has paid, and whether the GC told the owner to pay us. Counsel's rule is a second owner letter 10 to 14 days after the first packet, when neither has happened. From day 10 the row under Sent wears {{chip:yellow|day 12 · letter two}}. It turns red on day 14, and the Dashboard's lien card counts them. While no courtesy notice has gone, the row leads with the courtesy press instead.
 
 - {{button:blue|Send letter two ▸}} asks which letter to send.
   - **We believe the owner paid the GC out** is the paid out letter. It names the 10 percent the owner had to reserve and the affidavit date. It asks the owner three questions to answer by phone.

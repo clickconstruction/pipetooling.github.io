@@ -400,7 +400,7 @@ serve(async (req) => {
     // The rest of the office's draft (the cover letter, a skip's reason, the leader's spoken word) never leaves.
     const deskItems = ((deskItemRes.data ?? []) as Row[]).map((it) => {
       const f = (it.fields && typeof it.fields === 'object' ? it.fields : {}) as Row
-      return { id: it.id, job_id: it.job_id, kind: it.kind, status: it.status, sent_at: it.sent_at ?? null, sent_filing_id: it.sent_filing_id ?? null, created_at: it.created_at, voided_at: it.voided_at ?? null, fields: { letterTwo: f.letterTwo ?? null, gcAuthorizedDirectPay: f.gcAuthorizedDirectPay ?? null, ownerCall: f.ownerCall ?? null } }
+      return { id: it.id, job_id: it.job_id, kind: it.kind, status: it.status, sent_at: it.sent_at ?? null, sent_filing_id: it.sent_filing_id ?? null, created_at: it.created_at, voided_at: it.voided_at ?? null, fields: { letterTwo: f.letterTwo ?? null, gcAuthorizedDirectPay: f.gcAuthorizedDirectPay ?? null, ownerCall: f.ownerCall ?? null, courtesy: f.courtesy ?? null } }
     })
     const promises = (promRes.data ?? []) as Row[]
     const touches = (touchRes.data ?? []) as Row[]

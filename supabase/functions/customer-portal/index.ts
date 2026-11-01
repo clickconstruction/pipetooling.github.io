@@ -20,7 +20,7 @@ import {
 import { buildPortalProperties } from '../_shared/portalProperties.ts'
 import { buildPortalChecks, type PortalChecksEventRow, type PortalChecksInvoiceRow, type PortalChecksPaymentRow } from '../_shared/portalChecks.ts'
 import { buildPortalWaivers, type PortalWaiverInvoiceRow, type PortalWaiverReleaseRow, type PortalWaiverRow } from '../_shared/portalWaivers.ts'
-import { buildPortalPropertyNotices, type PortalNoticeFilingRow, type PortalPropertyNotice } from '../_shared/portalPropertyNotices.ts'
+import { buildPortalPropertyNotices, type PortalNoticeFilingRow, type PortalNoticeItemRow, type PortalPropertyNotice } from '../_shared/portalPropertyNotices.ts'
 import { openBillJobIds, owedJobIdsForViewer, PORTAL_OPEN_INVOICE_STATUS } from '../_shared/portalBillMembership.ts'
 import { linkMayBeStale, type OpenStripeBillRow } from '../_shared/stripeInvoiceLinkRefresh.ts'
 import { refreshStripeInvoiceLinks } from '../_shared/stripeInvoiceLinkRefreshIo.ts'
@@ -438,7 +438,12 @@ serve(async (req) => {
           .in('job_id', ownerJobIds)
           .eq('kind', 'notice_53_056')
           .is('voided_at', null)
-        propertyNotices = buildPortalPropertyNotices({ jobs, filings: (filingRows ?? []) as PortalNoticeFilingRow[], viewerCustomerId: link.customer_id })
+        // The courtesy notice's record (punch list #231) rides the sent notice's desk item: read it so the card can say the reminder reached them.
+        const filingIds = ((filingRows ?? []) as PortalNoticeFilingRow[]).map((f) => f.id)
+        const { data: itemRows } = filingIds.length
+          ? await admin.from('job_lien_desk_items').select('sent_filing_id, fields, voided_at').in('sent_filing_id', filingIds)
+          : { data: [] as PortalNoticeItemRow[] }
+        propertyNotices = buildPortalPropertyNotices({ jobs, filings: (filingRows ?? []) as PortalNoticeFilingRow[], viewerCustomerId: link.customer_id, items: (itemRows ?? []) as PortalNoticeItemRow[] })
       }
     }
 

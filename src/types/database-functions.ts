@@ -373,3 +373,19 @@ export interface LegalPortalLinkMintResult {
   label?: string | null
   error?: string
 }
+
+/**
+ * v2.6266 (punch list #230): `my_mail_set(p_on, p_hidden_labels)` — the signed-in person's own switch, *Show my mail
+ * on the My email tab* (`users.my_mail_on`), and the Gmail labels they leave out (`users.my_mail_hidden_labels`).
+ * Null labels leave them as they are. Here until the chore(types) after 20261101083844 lands.
+ */
+export interface MyMailSetParams {
+  p_on: boolean
+  p_hidden_labels?: string[] | null
+}
+
+/** One row of `my_mail_set`: the switch and the labels as saved. */
+export interface MyMailSetRow {
+  is_on: boolean
+  hidden_labels: string[]
+}

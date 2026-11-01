@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: 58caa94ee
 audience: Developers, AI Agents
-last_updated: 2026-10-29
+last_updated: 2026-11-01
 ---
 
 > **Line numbers are as of `58caa94ee`** (v2.4706, from the `npm run map` fact sheets). This is the hottest surface in the repo (253 commits in 90 days on the tab, 82 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -23,6 +23,14 @@ last_updated: 2026-10-29
 > **v2.5626 / v2.5627 / v2.5632 (after `mapped_at`) — the customer's door on a row:** the speech bubble beside the customer's name on a row or card (`MessagesButton` in `jobsStagesRowShared.tsx`, the row context's `onOpenCustomerDoor` through `onPressInstead`) opens [`JobCustomerSheet.tsx`](../src/components/jobs/JobCustomerSheet.tsx) over the board (Call · Text · Email · Open their thread · Their record, whose word came last, the thread's last three lines since v2.5632), and the bubble carries the orange **waiting dot** from `hooks/useBoardDots.ts` (one read per load of the board's jobs, again when a line lands since v2.5635). Since v2.5627 a forward move to Working, Ready to Bill or Billed by the office asks first through **Tell the customer** over the board while the Residential customer flow's step is set to Asks (`tellCustomer/moveOffer.ts` over the felt moves; My way has no say). The page map's §22 and `MESSAGES_ARCHITECTURE.md` hold the detail.
 
 > **v2.5522 (after `mapped_at`) — the in-the-mail mark on Deadlines:** `useBilledLienClocks` reads the approved, printed, unsent desk items once more (`job_lien_desk_items`, chunked) and `JobsStagesTab.tsx` hands `clock.mailedMonths` to the runway (`lienPayRunway.ts`'s `mailedMonths`; `LienRunwayNoticeMonth.state` gains `'mailed'`), so a notice printed and waiting on its number wears its own amber envelope on the desk's Deadlines and the bar's second door reads *Record the mailing · N*; the read fails soft, the months reading as owed.
+
+> **v2.6087 (after `mapped_at`) — the checklist's standing on a stage name:** `JobsStagesTab.tsx` calls `useStageChecklistStates` (one read of the live questions and, only when any exist, one chunked read of the answers on the board's jobs, fail-soft) and hands `checklistMarksFor(job)` (`lib/jobs/stageChecklistMarks.ts`) through `StagesRowRenderContext` to `JobsStagesTable.tsx`, `JobsStagesUnifiedTable.tsx` and the card list, so `StagesStageBar` draws a stage with a question left in amber with `☐` before its name and *not ready* in its title; null while no question exists, so the board reads nothing until the office types one (`docs/recent-features/v2.6087.md`).
+
+> **v2.6096 (after `mapped_at`) — the GC Review shell glue is shared:** the print (`printGcReviewGroups`, filed as a send) and the copy for email (`copyGcReviewGroupForEmail`) that the tab wired inline since v2.1414 live in `lib/jobs/gcReviewShellIo.ts` and the tab calls them, so the Needs you line's `GcReviewWindow` (the Pipeline's own `JobsGcReviewModal` over the Dashboard) drives the modal with the same words (`docs/recent-features/v2.6096.md`).
+
+> **v2.6201 (after `mapped_at`) — the development name on a row opens its page:** in both identity lines of `jobsStagesRowShared.tsx` (`renderJobCustomerLine`, `renderJobCustomerAndAddressLine`) the development name is a `Link` to `/developments/<id>` (`data-nav="development-page"`, stopping the row's own click; a name with no id keeps the plain span), and the `onDevelopmentFilter` prop left `StagesRowRenderContext`, `JobsStagesTable.tsx`, `JobsStagesUnifiedTable.tsx`, the card list and the tab; filtering the board to one development stays in the Tools menu's house dropdown (`onDevelopmentFilterChange`) (`docs/recent-features/v2.6201.md`).
+
+> **v2.6226 (after `mapped_at`) — a combined job's prior numbers on the number chip:** the row's number chip in `jobsStagesRowShared.tsx` carries `priorNumbersBare(job.prior_numbers)` (`lib/jobs/priorNumbers.ts`) in its title, the HCP and C# numbers a source job answered to before a combine; `search_jobs_ledger` matches them too, so every picker on that RPC finds a job by an old number (`docs/recent-features/v2.6226.md`).
 
 The Pipeline board (tab label "Pipeline"; the `stages` key, URL slug and `JobsStages*` filenames are unchanged): Waiting → Working → Ready to Bill → Billed Awaiting Payment → Collections → Paid in Full, rendered by [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx).
 

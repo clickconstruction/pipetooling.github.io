@@ -2,12 +2,15 @@
  * Fakes for `gmail-mine`'s handler test (punch list #230 PR 2), after `src/lib/mail/mailRunFakes.ts`: a recording
  * in-memory database with the slice of the Supabase client the function uses (the caller's client and the service
  * role's told apart, so a test sees which one called `tie_message`), the four database functions it calls, a bucket,
- * and a Google behind `fetch`: the token exchange (whose `sub` names the box) and one Gmail box per person. Nothing here
- * reaches a network or a database. Test-only.
+ * and a Google behind `fetch`: the token exchange (whose `sub` names the box) and one Gmail box per person. Since PR 4
+ * the database orders a read (`order`, nulls placed as Postgres places them), compares (`gt`, `gte`, `lt`, `lte`, in an
+ * `or` too, with `and(...)` inside it), stands back on a duplicate when an upsert asks it to (`ignoreDuplicates`), and
+ * refuses with a code; and Google can stumble on one conversation (`down`, a 503) until the test takes it out. Nothing
+ * here reaches a network or a database. Test-only.
  */
 
 export type Row = Record<string, unknown>
-type Answer = { data: unknown; error: { message: string } | null }
+type Answer = { data: unknown; error: { message: string; code?: string } | null }
 export type Who = 'admin' | 'caller'
 
 /** A thenable query answer, as the client's builders are. */
@@ -43,33 +46,73 @@ const valueOf = (r: Row, column: string): unknown => {
 const likeRegex = (pattern: string, caseBlind: boolean) =>
   new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/[*%]/g, '.*').replace(/_/g, '.')}$`, caseBlind ? 'i' : '')
 
-/** One PostgREST `or` filter (`a.eq.1,b.in.(x,y),c->>d.ilike.*@e`) as a predicate. */
-export function orFilter(filter: string): (r: Row) => boolean {
-  const terms = splitTop(filter).map((term) => {
-    const m = /^([a-z_]+(?:->>[a-z_]+)?)\.(eq|neq|in|ilike|like|is)\.([\s\S]*)$/i.exec(term.trim())
-    if (!m) throw new Error(`the fake cannot read the or filter ${term}`)
-    const [, column, op, raw] = m as unknown as [string, string, string, string]
-    switch (op) {
-      case 'eq':
-        return (r: Row) => String(valueOf(r, column)) === raw
-      case 'neq':
-        return (r: Row) => String(valueOf(r, column)) !== raw
-      case 'is':
-        return (r: Row) => (raw === 'null' ? valueOf(r, column) == null : String(valueOf(r, column)) === raw)
-      case 'in': {
-        const vals = splitTop(raw.replace(/^\(/, '').replace(/\)$/, '')).map((v) => v.trim().replace(/^"|"$/g, ''))
-        return (r: Row) => vals.includes(String(valueOf(r, column)))
-      }
-      default: {
-        const re = likeRegex(raw, op.toLowerCase() === 'ilike')
-        return (r: Row) => {
-          const v = valueOf(r, column)
-          return typeof v === 'string' && re.test(v)
-        }
+type Compare = 'gt' | 'gte' | 'lt' | 'lte'
+
+/** A value against another as Postgres compares them: a null is never greater or less than anything. ISO times compare as text. */
+const compared = (v: unknown, raw: unknown, op: Compare): boolean => {
+  if (v === null || v === undefined || raw === null || raw === undefined) return false
+  const [a, b] = [String(v), String(raw)]
+  const c = typeof v === 'number' && typeof raw === 'number' ? v - raw : a < b ? -1 : a > b ? 1 : 0
+  return op === 'gt' ? c > 0 : op === 'gte' ? c >= 0 : op === 'lt' ? c < 0 : c <= 0
+}
+
+/** One term of a PostgREST `or` (`a.eq.1`, `b.in.(x,y)`, `c->>d.ilike.*@e`, `e.gt.2026-…`, `and(f.is.null,g.gt.…)`). */
+function orTerm(term: string): (r: Row) => boolean {
+  const and = /^and\(([\s\S]*)\)$/i.exec(term.trim())
+  if (and) {
+    const parts = splitTop(and[1]!).map(orTerm)
+    return (r) => parts.every((t) => t(r))
+  }
+  const m = /^([a-z_]+(?:->>[a-z_]+)?)\.(eq|neq|in|ilike|like|is|gte|gt|lte|lt)\.([\s\S]*)$/i.exec(term.trim())
+  if (!m) throw new Error(`the fake cannot read the or filter ${term}`)
+  const [, column, op, raw] = m as unknown as [string, string, string, string]
+  switch (op) {
+    case 'eq':
+      return (r: Row) => String(valueOf(r, column)) === raw
+    case 'neq':
+      return (r: Row) => String(valueOf(r, column)) !== raw
+    case 'is':
+      return (r: Row) => (raw === 'null' ? valueOf(r, column) == null : String(valueOf(r, column)) === raw)
+    case 'in': {
+      const vals = splitTop(raw.replace(/^\(/, '').replace(/\)$/, '')).map((v) => v.trim().replace(/^"|"$/g, ''))
+      return (r: Row) => vals.includes(String(valueOf(r, column)))
+    }
+    case 'gt':
+    case 'gte':
+    case 'lt':
+    case 'lte':
+      return (r: Row) => compared(valueOf(r, column), raw, op as Compare)
+    default: {
+      const re = likeRegex(raw, op.toLowerCase() === 'ilike')
+      return (r: Row) => {
+        const v = valueOf(r, column)
+        return typeof v === 'string' && re.test(v)
       }
     }
-  })
+  }
+}
+
+/** One PostgREST `or` filter (`a.eq.1,b.in.(x,y),c->>d.ilike.*@e,and(e.is.null,f.gt.x)`) as a predicate. */
+export function orFilter(filter: string): (r: Row) => boolean {
+  const terms = splitTop(filter).map(orTerm)
   return (r) => terms.some((t) => t(r))
+}
+
+/** Rows in the order a read asked for, nulls placed as Postgres places them (last going up, first going down) unless named. */
+function ordered(rows: Row[], orders: readonly { column: string; ascending: boolean; nullsFirst: boolean }[]): Row[] {
+  if (orders.length === 0) return rows
+  return [...rows].sort((x, y) => {
+    for (const o of orders) {
+      const a = x[o.column] ?? null
+      const b = y[o.column] ?? null
+      if (a === null && b === null) continue
+      if (a === null) return o.nullsFirst ? -1 : 1
+      if (b === null) return o.nullsFirst ? 1 : -1
+      const c = compared(a, b, 'lt') ? -1 : compared(a, b, 'gt') ? 1 : 0
+      if (c !== 0) return o.ascending ? c : -c
+    }
+    return 0
+  })
 }
 
 export class FakeDb {
@@ -83,8 +126,8 @@ export class FakeDb {
   office = new Set<string>()
   /** The bucket's objects, by `bucket/path`. */
   files: Record<string, { bytes: Uint8Array; contentType: string | undefined }> = {}
-  /** A refusal to plant: `admin delete messages` → its words, once per call that matches. */
-  refuse: Record<string, string> = {}
+  /** A refusal to plant: `admin delete messages` → its words (or its words and code), for every call that matches. */
+  refuse: Record<string, string | { message: string; code: string }> = {}
   nextId = 1
 
   reset() {
@@ -133,17 +176,21 @@ export class FakeDb {
     let op: 'select' | 'insert' | 'upsert' | 'update' | 'delete' = 'select'
     let values: Row | Row[] = {}
     let onConflict: string[] = []
+    let ignoreDuplicates = false
     let limit = Infinity
+    const orders: { column: string; ascending: boolean; nullsFirst: boolean }[] = []
     const where: Array<(r: Row) => boolean> = []
     const run = (): Answer => {
       const key = `${who} ${op} ${name}`
       this.calls.push(key)
-      if (this.refuse[key]) return { data: null, error: { message: this.refuse[key]! } }
+      const refused = this.refuse[key]
+      if (refused) return { data: null, error: typeof refused === 'string' ? { message: refused } : { ...refused } }
       const rows = this.rows(name)
       const matched = rows.filter((r) => where.every((w) => w(r)))
       switch (op) {
         case 'select':
-          return { data: matched.slice(0, limit), error: null }
+          // Copies, as PostgREST answers: a later write never changes what a read already answered.
+          return { data: ordered(matched, orders).slice(0, limit).map((r) => ({ ...r })), error: null }
         case 'update':
           for (const r of matched) Object.assign(r, values)
           return { data: matched, error: null }
@@ -165,6 +212,7 @@ export class FakeDb {
           const out: Row[] = []
           for (const v of Array.isArray(values) ? values : [values]) {
             const had = rows.find((r) => onConflict.length > 0 && onConflict.every((c) => r[c] === v[c]))
+            if (had && ignoreDuplicates) continue
             if (had) out.push(Object.assign(had, v))
             else {
               const made = { id: `${name}-${this.nextId++}`, ...v }
@@ -183,11 +231,25 @@ export class FakeDb {
       in: (c: string, vs: unknown[]) => (where.push((r) => vs.includes(r[c])), chain),
       is: (c: string, v: unknown) => (where.push((r) => (r[c] ?? null) === v), chain),
       not: (c: string, operator: string, v: unknown) => (where.push((r) => (operator === 'is' ? (r[c] ?? null) !== v : r[c] !== v)), chain),
+      gt: (c: string, v: unknown) => (where.push((r) => compared(r[c], v, 'gt')), chain),
+      gte: (c: string, v: unknown) => (where.push((r) => compared(r[c], v, 'gte')), chain),
+      lt: (c: string, v: unknown) => (where.push((r) => compared(r[c], v, 'lt')), chain),
+      lte: (c: string, v: unknown) => (where.push((r) => compared(r[c], v, 'lte')), chain),
       or: (filter: string) => (where.push(orFilter(filter)), chain),
-      order: () => chain,
+      order: (column: string, opts?: { ascending?: boolean; nullsFirst?: boolean }) => {
+        const ascending = opts?.ascending ?? true
+        orders.push({ column, ascending, nullsFirst: opts?.nullsFirst ?? !ascending })
+        return chain
+      },
       limit: (n: number) => ((limit = n), chain),
       insert: (v: Row | Row[]) => ((op = 'insert'), (values = v), chain),
-      upsert: (v: Row | Row[], opts?: { onConflict?: string }) => ((op = 'upsert'), (values = v), (onConflict = (opts?.onConflict ?? '').split(',').map((c) => c.trim()).filter(Boolean)), chain),
+      upsert: (v: Row | Row[], opts?: { onConflict?: string; ignoreDuplicates?: boolean }) => (
+        (op = 'upsert'),
+        (values = v),
+        (onConflict = (opts?.onConflict ?? '').split(',').map((c) => c.trim()).filter(Boolean)),
+        (ignoreDuplicates = opts?.ignoreDuplicates === true),
+        chain
+      ),
       update: (v: Row) => ((op = 'update'), (values = v), chain),
       delete: () => ((op = 'delete'), chain),
       maybeSingle: () => {
@@ -337,6 +399,8 @@ export class FakeGoogle {
   calls: string[] = []
   /** Every `messages.list` search. */
   queries: string[] = []
+  /** Conversations whose read Google answers with a 503, a blip, until a test takes them out. */
+  down = new Set<string>()
   nextLabel = 1
 
   reset() {
@@ -345,6 +409,7 @@ export class FakeGoogle {
     this.subs = []
     this.calls = []
     this.queries = []
+    this.down = new Set()
     this.nextLabel = 1
   }
 
@@ -427,6 +492,7 @@ export class FakeGoogle {
       return reply(200, { id: mail.id, threadId: mail.threadId, labelIds: mail.labelIds })
     }
     if ((m = /^\/threads\/([^/]+)$/.exec(path)) && method === 'GET') {
+      if (this.down.has(decodeURIComponent(m[1]!))) return reply(503, { error: { code: 503, message: 'Backend Error' } })
       const mails = box.mails.filter((x) => x.threadId === decodeURIComponent(m![1]!)).sort((a, b) => a.at.localeCompare(b.at))
       if (mails.length === 0) return notFound()
       const format = url.searchParams.get('format') ?? 'full'

@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"><title>Stage Checklist Walk</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a persona bar across the top, the device frame on the left, a rail of steps and cross-persona activity on the right; the rail stacks under the frame below 960px. The frames depict the app and keep its own fixed look (dark phones, light desk). */
+:root{
+  --bg:#f1f2ee; --fg:#171a20; --muted:#5f6675; --line:#d6d8cf; --panel:#ffffff; --panel-2:#f7f8f4;
+  --accent:#1d4ed8; --accent-fg:#ffffff; --new:#9a4b00; --new-bg:#fff1dc; --new-line:#f0b56a;
+  --font-body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0e1014; --fg:#e7e8eb; --muted:#9ba2b1; --line:#2a2f3a; --panel:#161a22; --panel-2:#1b2029;
+  --accent:#7ea2ff; --accent-fg:#0b1020; --new:#f3b25f; --new-bg:#3a2a12; --new-line:#8a5a1a; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0e1014; --fg:#e7e8eb; --muted:#9ba2b1; --line:#2a2f3a; --panel:#161a22; --panel-2:#1b2029;
+  --accent:#7ea2ff; --accent-fg:#0b1020; --new:#f3b25f; --new-bg:#3a2a12; --new-line:#8a5a1a; color-scheme:dark}
+
+html,body{height:100%}
+body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font-body);font-size:14px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px}
+*{box-sizing:border-box}
+button{font-family:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+header.bar{display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center;padding-block:14px 6px;border-bottom:1px solid var(--line)}
+header.bar h1{font-size:17px;margin:0;font-weight:600;letter-spacing:-.01em}
+header.bar .sub{color:var(--muted);font-size:12px}
+.personas{display:flex;gap:6px;flex-wrap:wrap;margin-left:auto}
+.personas button{border:1px solid var(--line);background:var(--panel);color:var(--fg);border-radius:999px;padding:7px 12px;font-size:13px;display:flex;gap:6px;align-items:center}
+.personas button[aria-pressed="true"]{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.personas .k{font-family:var(--font-mono);font-size:11px;opacity:.7}
+.tools{display:flex;gap:6px;align-items:center}
+.tools button{border:1px solid var(--line);background:transparent;color:var(--muted);border-radius:8px;padding:6px 10px;font-size:12px}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:22px;align-items:start}
+@media (max-width:960px){.grid{grid-template-columns:1fr}}
+.stage{display:flex;justify-content:center;min-width:0}
+.rail{display:flex;flex-direction:column;gap:14px;min-width:0}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px 14px}
+.panel h2{margin:0 0 8px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.steps{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.steps li{display:flex;gap:8px;align-items:flex-start}
+.steps .n{font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:16px;padding-top:2px}
+.steps .new{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--new);background:var(--new-bg);border:1px solid var(--new-line);border-radius:4px;padding:0 5px;margin-left:4px;vertical-align:middle}
+.log{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:6px;font-size:12px;max-height:260px;overflow:auto}
+.log li{display:flex;gap:8px;align-items:flex-start;padding-bottom:6px;border-bottom:1px solid var(--line)}
+.log .who{font-family:var(--font-mono);font-size:11px;color:var(--muted);min-width:52px;padding-top:1px}
+.log .empty{color:var(--muted)}
+.legend{font-size:12px;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+.legend .new{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:var(--new);background:var(--new-bg);border:1px solid var(--new-line);border-radius:4px;padding:0 5px}
+
+/* ---------- the phone frame: the app's dark look, fixed on purpose ---------- */
+.phone{width:min(390px,100%);height:844px;max-height:min(844px,calc(100vh - 140px));background:#111827;color:#f3f4f6;display:flex;flex-direction:column;overflow:hidden;font-size:14px;position:relative;border-radius:22px;border:1px solid #374151;box-shadow:0 20px 50px rgba(0,0,0,.25)}
+.phone.light{background:#f8fafc;color:#0f172a;border-color:#cbd5e1}
+.p-top{display:flex;flex-direction:column;gap:10px;padding:14px 14px 10px;border-bottom:1px solid #374151;flex:none}
+.light .p-top{border-color:#e2e8f0;background:#fff}
+.p-nav{display:flex;gap:18px;align-items:center}
+.p-nav .ham{width:22px;height:16px;border-top:3px solid currentColor;border-bottom:3px solid currentColor}
+.p-nav .on{font-weight:700;border-bottom:2px solid currentColor;padding-bottom:2px}
+.p-nav .off{opacity:.6}
+.p-body{padding:12px 14px 80px;display:flex;flex-direction:column;gap:12px;flex:1 1 auto;overflow:auto}
+.eyebrow{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af}
+.light .eyebrow{color:#64748b}
+.card{background:#1f2937;border-radius:12px;padding:12px 14px;display:flex;flex-direction:column;gap:8px;border:2px solid transparent}
+.card.quiet{background:#111827;border:1px solid #374151}
+.card.red{border-color:#dc2626}.card.amber{border-color:#d97706}.card.green{border-color:#16a34a}
+.jt{font-weight:700;color:#f9fafb}.js{font-size:12px;color:#9ca3af}
+.line{font-size:17px;font-weight:700}
+.line.red{color:#fca5a5}.line.amber{color:#fcd34d}.line.green{color:#86efac}
+.bars{display:flex;flex-direction:column;gap:4px;font-size:12px}
+.bar{display:flex;align-items:center;gap:8px}
+.bar .k{flex:0 0 48px;color:#9ca3af}.bar .t{flex:1 1 auto;height:8px;border-radius:4px;background:#374151;overflow:hidden}.bar .f{height:8px;border-radius:4px}
+.bar .f.own{opacity:.6}
+.bar .v{flex:0 0 32px;text-align:right;color:#d1d5db;font-variant-numeric:tabular-nums}
+.proof{font-size:12px;color:#9ca3af;border-top:1px solid #374151;padding-top:6px}
+.btns{display:flex;gap:8px}
+.b{flex:1 1 0;border-radius:8px;min-height:44px;font-size:13px;border:0;padding:0 10px}
+.b.pri{background:#2563eb;color:#fff;font-weight:700}
+.b.sec{background:#1f2937;color:#f3f4f6;border:1px solid #4b5563}
+.light .b.sec{background:#fff;color:#0f172a;border-color:#cbd5e1}
+.b.grn{background:#16a34a;color:#fff;font-weight:700}
+.b.dis{opacity:.45;cursor:not-allowed}
+.tabbar{position:absolute;left:0;right:0;bottom:0;height:64px;background:#0b1220;border-top:1px solid #374151;display:flex;align-items:center;justify-content:space-around;font-size:11px;color:#9ca3af}
+.tabbar .on{color:#f3f4f6;font-weight:700}
+.dim{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:3}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:#1f2937;border-radius:18px 18px 0 0;border-top:1px solid #4b5563;display:flex;flex-direction:column;max-height:92%;z-index:4}
+.sheet .grab{width:40px;height:4px;border-radius:2px;background:#4b5563;margin:8px auto 0;flex:none}
+.sheet .hd{padding:10px 16px 8px;flex:none;border-bottom:1px solid #374151}
+.sheet .hd h3{margin:0;font-size:17px;color:#f9fafb}
+.sheet .hd .sub{font-size:12px;color:#9ca3af;margin-top:2px}
+.sheet .sc{padding:12px 16px;display:flex;flex-direction:column;gap:10px;overflow:auto}
+.foot{display:flex;gap:8px;padding:10px 16px 16px;border-top:1px solid #374151;align-items:center;flex:none}
+.foot .cnt{font-size:12px;color:#9ca3af;flex:1 1 auto}
+.q{display:flex;flex-direction:column;gap:6px;padding:8px 0;border-bottom:1px solid #374151}
+.q .w{font-size:14px;color:#f3f4f6}
+.q .meta{font-size:11px;color:#9ca3af}
+.q .meta button{background:none;border:0;color:#93c5fd;font-size:11px;padding:0}
+.picks{display:flex;gap:6px}
+.pk{flex:1 1 0;min-height:44px;border-radius:8px;border:1px solid #4b5563;background:#111827;color:#f3f4f6;font-size:13px;font-weight:600}
+.pk.yes{border-color:#16a34a}.pk.yes.sel{background:#16a34a;color:#fff}
+.pk.no{border-color:#dc2626}.pk.no.sel{background:#dc2626;color:#fff}
+.pk.nh.sel{background:#4b5563;color:#fff}
+.photo{display:flex;gap:8px;align-items:center;font-size:12px;color:#9ca3af}
+.photo .th{width:44px;height:44px;border-radius:6px;background:#374151;flex:none}
+.photo .th.has{background:linear-gradient(135deg,#64748b,#1e293b)}
+.notein{background:#111827;border:1px solid #4b5563;border-radius:8px;min-height:40px;padding:8px 10px;font-size:13px;color:#f3f4f6;width:100%;font-family:inherit}
+.grp{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;margin-top:4px;display:flex;justify-content:space-between;align-items:center}
+.grp .tag{font-size:10px;letter-spacing:.04em;border:1px solid #4b5563;border-radius:4px;padding:1px 5px;color:#d1d5db;text-transform:none}
+.addbox{border:1px dashed #4b5563;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.tog{display:flex;align-items:center;gap:8px;font-size:13px;color:#d1d5db}
+.tog input{width:18px;height:18px}
+.strip{display:flex;flex-direction:column;gap:6px}
+.strip button{display:flex;justify-content:space-between;align-items:center;background:#1f2937;border:1px solid #374151;border-radius:10px;padding:12px;font-size:13px;color:#f3f4f6;min-height:44px;text-align:left}
+.strip button.warn{border-color:#d97706}
+.st.ok{color:#86efac}.st.warn{color:#fcd34d}
+.ok{color:#86efac}.warn{color:#fcd34d}.bad{color:#fca5a5}
+.toast{position:absolute;left:14px;right:14px;top:72px;background:#065f46;color:#ecfdf5;border-radius:10px;padding:10px 12px;font-size:13px;font-weight:600;box-shadow:0 6px 20px rgba(0,0,0,.4);z-index:5}
+.numline{display:grid;grid-template-columns:1fr auto 1fr;align-items:baseline;gap:14px}
+.numline .lead{display:flex;gap:10px;align-items:baseline;justify-self:end}
+.numline .was{font-size:16px;color:#9ca3af;font-variant-numeric:tabular-nums}
+.numline .arrow{color:#6b7280}
+.numline .now{font-size:34px;font-weight:700;font-variant-numeric:tabular-nums;line-height:1;background:none;color:#f3f4f6;border:0;padding:0;margin:0;font-family:inherit}
+.numline .numwrap{display:inline-flex;align-items:baseline;border-bottom:2px dashed #4b5563;padding-bottom:3px;position:relative;justify-self:center}
+.numline .numwrap:focus-within{border-bottom-color:#60a5fa}
+.numline .delta{font-size:13px;justify-self:start}
+.numline .mirror{position:absolute;left:0;top:0;visibility:hidden;white-space:pre;pointer-events:none}
+.qp{display:flex;gap:8px}
+.qp button{flex:1 1 0;min-height:48px;border-radius:8px;background:#111827;border:1px solid #4b5563;color:#f3f4f6;font-size:15px;font-weight:600}
+.qp button.sel{background:#1d4ed8;border-color:#1d4ed8;color:#fff}
+.stp{display:flex;gap:8px}
+.stp button{flex:1 1 0;min-height:56px;border-radius:8px;background:#111827;border:1px solid #4b5563;color:#f3f4f6;font-size:18px}
+.readback{background:#111827;border:1px solid #374151;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:4px;font-size:13px}
+.readback .t{font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af}
+.readback .l{font-weight:700}
+.readback .m{font-size:12px;color:#9ca3af}
+.hint{font-size:12px;color:#9ca3af}
+.prov{display:inline-block;font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#9ca3af;border:1px solid #4b5563;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle}
+.thread{display:flex;flex-direction:column;gap:6px}
+.thread .m{background:#1f2937;border:1px solid #374151;border-radius:10px;padding:8px 10px;font-size:12px}
+.thread .m .who{color:#9ca3af;font-size:11px}
+
+/* ---------- the desk frame: the app at a desk, light ---------- */
+.desk{width:100%;max-width:1000px;min-height:640px;background:#f8fafc;color:#0f172a;border-radius:12px;border:1px solid #cbd5e1;display:flex;flex-direction:column;overflow:hidden;font-size:13px;position:relative;box-shadow:0 20px 50px rgba(0,0,0,.15)}
+.appbar{display:flex;align-items:center;gap:14px;padding:8px 16px;background:#0f172a;color:#e2e8f0;font-size:12px}
+.appbar .brand{font-weight:700;letter-spacing:.02em}
+.appbar button{background:none;border:0;color:#cbd5e1;font-size:12px;padding:4px 8px;border-radius:6px}
+.appbar button[aria-pressed="true"]{background:#1e293b;color:#fff}
+.mbar{display:flex;align-items:center;gap:14px;padding:10px 16px;border-bottom:1px solid #e2e8f0;background:#fff}
+.mbar .t{font-weight:700;font-size:15px}
+.mbar .mute{color:#64748b}
+.mbar .x{margin-left:auto;color:#64748b}
+.tabs{display:flex;gap:4px;padding:8px 16px 0;border-bottom:1px solid #e2e8f0;background:#fff;overflow-x:auto}
+.tabs button{padding:8px 12px;border-radius:8px 8px 0 0;color:#475569;background:none;border:1px solid transparent;font-size:13px;white-space:nowrap}
+.tabs button[aria-pressed="true"]{background:#f8fafc;color:#0f172a;font-weight:700;border-color:#e2e8f0;border-bottom-color:#f8fafc;margin-bottom:-1px}
+.pane{padding:16px 20px;display:flex;flex-direction:column;gap:16px;overflow:auto;flex:1 1 auto}
+.narrow .pane{padding:10px 14px;gap:12px}
+.mute{color:#64748b;font-size:12px}
+.pane h4{margin:0;font-size:12px;letter-spacing:.06em;text-transform:uppercase;color:#475569}
+.sect{display:flex;flex-direction:column;gap:8px}
+.srow{display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap}
+.stg{flex:1 1 260px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.stg.nr{border-color:#f59e0b}
+button.stg{color:#0f172a;font-family:inherit;font-size:13px;text-align:left;cursor:pointer;width:100%}
+.ans .off{flex:none;background:none;border:1px solid #cbd5e1;border-radius:4px;color:#475569;font-size:11px;padding:2px 6px;min-height:0;align-self:flex-start}
+.stg .h{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.stg .h .n{font-weight:700}
+.stg .h .s{font-size:12px;white-space:nowrap}
+.s.ok{color:#15803d}.s.warn{color:#b45309}.s.none{color:#64748b}
+.ans{display:flex;gap:8px;align-items:flex-start;font-size:12px;padding:6px 0;border-top:1px solid #f1f5f9}
+.ans .p{flex:none;width:54px;text-align:center;border-radius:4px;padding:2px 0;font-weight:700;font-size:11px}
+.ans .p.y{background:#dcfce7;color:#15803d}.ans .p.n{background:#fee2e2;color:#b91c1c}.ans .p.h{background:#e2e8f0;color:#475569}.ans .p.o{background:#fef3c7;color:#b45309}
+.ans .w{flex:1 1 auto;min-width:0}
+.ans .w .m{color:#64748b;font-size:11px}
+.ans .w .m button{background:none;border:0;color:#2563eb;font-size:11px;padding:0}
+.ans .ph{width:30px;height:30px;border-radius:4px;background:linear-gradient(135deg,#94a3b8,#475569);flex:none}
+.ans .ph.none{background:#f1f5f9;border:1px dashed #cbd5e1}
+.jobtag{font-size:10px;border:1px solid #cbd5e1;border-radius:4px;padding:0 4px;color:#475569;margin-left:4px;vertical-align:middle}
+.lk{color:#2563eb;background:none;border:0;font-size:12px;padding:0}
+.dbtn{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:6px 10px;font-size:12px;color:#0f172a;min-height:32px}
+.dbtn.pri{background:#2563eb;color:#fff;border-color:#2563eb;font-weight:600}
+.narrow .dbtn{min-height:44px}
+.drow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.inline-add{display:flex;flex-direction:column;gap:6px;border:1px dashed #cbd5e1;border-radius:8px;padding:8px 10px;font-size:12px;color:#64748b;margin-top:4px}
+.inline-add input[type=text]{width:100%;background:#fff;border:1px solid #cbd5e1;border-radius:6px;padding:7px 8px;color:#0f172a;font-family:inherit;font-size:12px;min-width:0}
+.inline-add .r2{display:flex;gap:10px;align-items:center;justify-content:space-between}
+.pipe{display:flex;gap:6px;align-items:stretch}
+.pipe .seg{flex:1 1 0;border-radius:8px;padding:8px 10px;font-size:12px;border:1px solid #e2e8f0;background:#fff;display:flex;flex-direction:column;gap:2px}
+.pipe .seg.done{background:#dcfce7;border-color:#86efac}
+.pipe .seg.now{background:#dbeafe;border-color:#93c5fd}
+.pipe .mark{color:#b45309;font-weight:700}
+.editor{display:flex;flex-direction:column;gap:8px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:10px 12px}
+.editor .r{display:flex;gap:8px;align-items:center;font-size:12px;padding:6px 0;border-top:1px solid #f1f5f9}
+.editor .r .w{flex:1 1 auto}
+.paper{position:absolute;inset:0;background:rgba(15,23,42,.55);display:flex;align-items:flex-start;justify-content:center;padding:20px;overflow:auto;z-index:6}
+.paper .sheetp{background:#fff;color:#111;width:100%;max-width:720px;border-radius:4px;padding:28px 32px;font-family:Georgia,"Times New Roman",serif;font-size:13px;box-shadow:0 20px 60px rgba(0,0,0,.4)}
+.paper .sheetp h3{margin:0 0 2px;font-size:18px}
+.paper .sheetp .mt{color:#555;font-size:12px;margin-bottom:14px}
+.paper .sheetp h5{margin:14px 0 4px;font-size:13px;text-transform:uppercase;letter-spacing:.06em}
+.paper .sheetp table{width:100%;border-collapse:collapse}
+.paper .sheetp td{padding:4px 6px;border-bottom:1px solid #ddd;vertical-align:top}
+.paper .sheetp td.p{width:84px;font-weight:700;white-space:nowrap}
+.paper .close{position:absolute;top:10px;right:14px;background:#fff;border:0;border-radius:6px;padding:6px 10px;font-size:12px}
+@media (prefers-reduced-motion: no-preference){.toast{animation:in .18s ease-out}.sheet{animation:up .22s cubic-bezier(.2,.8,.2,1)}@keyframes in{from{transform:translateY(-6px);opacity:0}to{transform:none;opacity:1}}@keyframes up{from{transform:translateY(28px);opacity:.5}to{transform:none;opacity:1}}}
+.steps li.done{color:var(--muted)}
+.steps li.done .n{color:var(--accent);font-weight:600}
+.who{font-size:12px;color:var(--muted);margin:-4px 0 10px}
+@media (max-width:480px){.personas button{padding:6px 9px;font-size:12px}.personas{margin-left:0}}
+.narrow .appbar .me,.narrow .mbar .mute{display:none}
+.numline input.now{text-align:left;outline:none;height:auto;min-width:1ch;caret-color:#60a5fa}
+.sigchip{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#fcd34d;border:1px solid #92400e;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;text-transform:uppercase}
+.stamp{font-size:11px;color:#9ca3af}
+.signed{display:flex;align-items:center;gap:8px;font-size:12px;color:#9ca3af;flex-wrap:wrap}
+.signed button{background:none;border:0;color:#93c5fd;font-size:12px;padding:0}
+.mark{height:28px;background:#f8fafc;border-radius:4px;padding:0 8px;display:inline-flex;align-items:center;color:#0f172a;font-family:"Snell Roundhand","Brush Script MT",cursive;font-size:18px;flex:none}
+.mark img{height:28px;display:block}
+.picks.locked .pk{opacity:.4;pointer-events:none}
+.picks.locked .pk.sel{opacity:.85}
+.gravity{font-size:14px;color:#f3f4f6;line-height:1.45}
+.gravity b{color:#fff}
+.padwrap{position:relative;background:#f8fafc;border-radius:10px;overflow:hidden}
+.padwrap canvas{display:block;width:100%;height:150px;touch-action:none;cursor:crosshair}
+.padline{position:absolute;left:16px;right:16px;bottom:34px;border-top:1px solid #94a3b8;pointer-events:none}
+.padclear{position:absolute;right:8px;top:8px;background:#fff;border:1px solid #cbd5e1;border-radius:6px;font-size:11px;padding:3px 8px;color:#475569}
+.stg.filed{border-color:#86afac}
+.stg.filed{border-color:#86efac}
+.stg .rec{font-size:11px;color:#475569;display:flex;gap:10px;flex-wrap:wrap}
+.stg .rec b{color:#0f172a}
+.stg .mark{height:22px;font-size:14px;border:1px solid #e2e8f0;padding:0 6px}
+.stg .mark img{height:22px}
+.sigtag{font-size:10px;border:1px solid #f59e0b;border-radius:4px;padding:0 4px;color:#b45309;margin-left:4px;vertical-align:middle}
+.s.blue{color:#1d4ed8}
+/* the sheet, second pass: one row open at a time, the rest as statements */
+.prog{height:4px;border-radius:2px;background:#374151;margin-top:8px;overflow:hidden}.prog div{height:4px;background:#60a5fa;border-radius:2px}
+.rec-h{display:flex;flex-direction:column;gap:2px}
+.rec-h .id{font-family:var(--font-mono);font-size:12px;color:#d1d5db}
+.row-c{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #374151;padding:10px 0;color:#f3f4f6;font-family:inherit;cursor:pointer}
+.row-c:last-child{border-bottom:0}
+.c-chip{flex:none;width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;margin-top:1px}
+.c-chip.yes{background:#14532d;color:#86efac}.c-chip.no{background:#7f1d1d;color:#fca5a5}.c-chip.nh{background:#374151;color:#d1d5db}.c-chip.open{border:1px dashed #6b7280;color:#6b7280;background:none}
+.c-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.c-w{font-size:14px;color:#f3f4f6;line-height:1.3}
+.c-w.open{color:#d1d5db}
+.c-stamp{font-size:11px;color:#9ca3af}
+.c-note{font-size:12px;color:#d1d5db;font-style:italic}
+.ink{height:22px;flex:none;background:#f8fafc;border-radius:4px;padding:0 5px;display:inline-flex;align-items:center;color:#0f172a;font-family:"Snell Roundhand","Brush Script MT",cursive;font-size:14px;margin-top:2px}
+img.ink{padding:0 2px;width:auto}
+.thumb{width:26px;height:26px;border-radius:5px;background:linear-gradient(135deg,#64748b,#1e293b);flex:none;margin-top:1px}
+.row-a{display:flex;flex-direction:column;gap:8px;padding:12px;margin:6px 0;border:1px solid #374151;border-radius:12px;background:#111827}
+.row-a.now{border-color:#2563eb}
+.nowlbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd}
+.need{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#fcd34d;border:1px solid #92400e;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;font-weight:400;white-space:nowrap;display:inline-block}
+.lnk{background:none;border:0;color:#93c5fd;font-size:13px;padding:0;text-align:left;font-family:inherit}
+.jobchip{font-size:10px;border:1px solid #4b5563;border-radius:4px;padding:0 4px;color:#9ca3af;margin-left:6px;vertical-align:middle}
+.grp2{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;padding:10px 0 2px;border-bottom:1px solid #374151}
+.grp2 .cnt2{font-size:11px;letter-spacing:0;text-transform:none;color:#9ca3af}
+</style>
+
+<div class="wrap">
+  <header class="bar">
+    <div><h1>Stage Checklist Walk</h1><div class="sub">Click through punch list #234's line and the checklist tooling as three people. One shared job; what one does, the others see.</div></div>
+    <nav class="personas" id="personas" aria-label="Who you are"></nav>
+    <div class="tools"><button type="button" data-a="reset">Start over</button></div>
+  </header>
+  <div class="grid">
+    <div class="stage" id="frame"></div>
+    <aside class="rail">
+      <section class="panel"><h2 id="steps-h">Walk it as this person</h2><div class="who" id="who"></div><ol class="steps" id="steps"></ol></section>
+      <section class="panel"><h2>What just happened, across everyone</h2><ul class="log" id="log"></ul></section>
+      <section class="panel"><h2>Reading the frames</h2><div class="legend"><div><span class="new">new</span> is not in the app today; everything else is drawn as it exists.</div><div>Names and figures are made up. Nothing here writes anywhere.</div></div></section>
+    </aside>
+  </div>
+</div>
+
+<script>
+(function(){
+'use strict';
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const STAGES=[{key:'rough_in',name:'Rough In'},{key:'top_out',name:'Top Out'},{key:'trim_set',name:'Trim Set'}];
+const WHO={tech:'Luis Ortega',sup:'Pat Sample',office:'Jo',system:'app'};
+const WHO_SHORT={tech:'Luis',sup:'Pat',office:'Jo',system:'app'};
+const PERSONAS=[
+  {key:'tech',label:'Technician',k:'phone'},
+  {key:'sup',label:'Superintendent',k:'phone'},
+  {key:'office',label:'Office',k:'desk'},
+  {key:'officePhone',label:'Office',k:'phone'},
+];
+
+function fresh(){return {
+  persona:'tech',
+  officeTab:'documents', officePhoneTab:'documents',
+  sheet:null, pctSheet:null, heldSheet:false, paper:false, toast:null,
+  job:{num:'J1042',name:'Pruett & Vance',site:'Harbor Lane Offices',baseline:240,hours:187,pct:61,certPct:55,planned:'Nov 14',payApp:3},
+  pctCheckedToday:false,
+  seen:{tech:true},
+  filed:{rough_in:{id:'CL-1042-1',at:'Oct 15 · 4:02 pm',v:1},top_out:{id:'CL-1042-2',at:'Oct 24 · 3:15 pm',v:1}},
+  nextRecord:3, sigSheet:null, sigStrokes:[], sigAgree:false, promoted:{}, clock:552,
+  company:{
+    rough_in:[{id:'c1',w:'Is the water test on?',photo:true,sig:true},{id:'c2',w:'Are the stub-outs at plan heights?'},{id:'c3',w:'Is the grease interceptor set?'}],
+    top_out:[{id:'c4',w:'Did the top-out test hold?',photo:true,sig:true},{id:'c5',w:'Are the vents through the roof?'},{id:'c6',w:'Are the hangers at code spacing?'}],
+    trim_set:[{id:'c7',w:'Are all fixtures set and caulked?'},{id:'c8',w:'Did the final water test hold?',photo:true,sig:true},{id:'c9',w:'Are the cleanouts capped and marked?'}],
+  },
+  items:[
+    {id:'j1',stage:'rough_in',w:'Photo of the slab penetrations',photo:true,by:'office',at:'Oct 9'},
+    {id:'j2',stage:'trim_set',w:'Are the two carriers in units 7 and 8 set?',by:'sup',at:'Nov 1'},
+    {id:'j3',stage:'trim_set',w:'Photo of the ADA lav rough heights before the wall closes',photo:true,by:'office',at:'Oct 30'},
+  ],
+  answers:{
+    c1:{pick:'yes',photo:true,signed:true,by:'tech',at:'Oct 14 · 9:40 am'},c2:{pick:'yes',by:'tech',at:'Oct 14 · 9:41 am'},c3:{pick:'nh',by:'tech',at:'Oct 14 · 9:41 am'},j1:{pick:'yes',photo:true,by:'tech',at:'Oct 15 · 2:10 pm'},
+    c4:{pick:'yes',photo:true,signed:true,by:'tech',at:'Oct 23 · 3:05 pm'},c5:{pick:'no',note:'Roofer not here until Mon',by:'tech',at:'Oct 23 · 3:06 pm'},c6:{pick:'yes',by:'tech',at:'Oct 24 · 11:20 am'},
+    c7:{pick:'yes',by:'tech',at:'Nov 1 · 8:12 am'},c9:{pick:'nh',by:'tech',at:'Nov 1 · 8:13 am'},
+  },
+  thread:[
+    {who:'tech',at:'Nov 1 · 7:04',w:'Clocked in on Trim Set.'},
+    {who:'tech',at:'Oct 31 · 15:40',w:'61% complete — trim set in units 1–6.'},
+  ],
+  log:[], nextId:20,
+};}
+let S=fresh();
+
+/* ---------- kernels ---------- */
+const stageName=k=>STAGES.find(s=>s.key===k).name;
+function questions(stage){return S.company[stage].concat(S.items.filter(i=>i.stage===stage&&!i.retired));}
+function answered(q){const a=S.answers[q.id];if(!a||!a.pick)return false;if(q.photo&&a.pick!=='nh'&&!a.photo)return false;if(q.sig&&!a.signed)return false;return true;}
+/* A made-up clock for the stamps: starts at 9:12 am on Nov 1 and moves two minutes a press. */
+function stamp(){S.clock+=2;const h=Math.floor(S.clock/60),m=S.clock%60;return `Nov 1 · ${(h+11)%12+1}:${String(m).padStart(2,'0')} ${h<12?'am':'pm'}`;}
+/* The record files itself when the last row is answered; an added check on a filed record reopens it as the next version. */
+function fileIfReady(){
+  STAGES.forEach(s=>{const c=count(s.key);const f=S.filed[s.key];
+    if(c.ready&&(!f||f.open)){const v=f?f.v+1:1;const id=f?f.id:`CL-1042-${S.nextRecord++}`;S.filed[s.key]={id,at:stamp(),v};
+      log('system',`${s.name} filed itself as a document on ${S.job.num}: record ${id}${v>1?' v'+v:''}. A PDF is on its way to the job's Drive folder.`);}
+    else if(!c.ready&&f&&!f.open){f.open=true;log('system',`${s.name}'s record ${f.id} is reopened: v${f.v+1} is in progress and v${f.v} stays as filed.`);}
+  });
+}
+const sigWords=v=>v==='yes'?'Yes':v==='no'?'No':'Not here';
+function count(stage){const qs=questions(stage);const done=qs.filter(answered).length;return {done,total:qs.length,ready:qs.length>0&&done===qs.length};}
+function line(pct){
+  const j=S.job;const hoursPct=Math.round(j.hours/j.baseline*100);const diff=pct-hoursPct;const days=Math.round(diff/4);
+  const tone=days>=1?'green':days>=-1?'amber':'red';
+  let words;
+  if(days>0)words=`${days} day${days===1?'':'s'} ahead at this pace.`;
+  else if(days===0)words='Even with the hours at this pace.';
+  else if(days===-1)words='1 day behind at this pace.';
+  else words=`${-days} days behind.`;
+  const atPace=days>=0?`Nov ${14-days}`:`Nov ${14-days}`;
+  return {hoursPct,diff,days,tone,words,atPace};
+}
+function toast(t){S.toast=t;render();clearTimeout(toast.h);toast.h=setTimeout(()=>{S.toast=null;render();},2600);}
+function log(who,w){S.log.unshift({who,w});if(S.log.length>40)S.log.pop();}
+
+/* ---------- pieces shared by phones ---------- */
+function pNav(on){return `<div class="p-top"><div class="p-nav"><span class="ham" aria-hidden="true"></span><span class="on">${esc(on)}</span><span class="off">Search</span></div></div>`;}
+function tabbar(on){return `<div class="tabbar">${['Dashboard','Schedule','Inbox','Customers'].map(t=>`<span class="${t===on?'on':''}">${t}</span>`).join('')}</div>`;}
+function stripRows(){
+  return `<div class="strip">${STAGES.map(s=>{const c=count(s.key);const st=c.ready?`<span class="st ok">Checklist filled</span>`:`<span class="st warn">${c.done} of ${c.total} answered, not ready</span>`;
+    return `<button type="button" class="${c.ready?'':'warn'}" data-a="openSheet" data-x="${s.key}"><span>${s.name}</span>${st}</button>`;}).join('')}</div>`;
+}
+function markHtml(a,by){return a.sig?`<span class="mark"><img src="${a.sig}" alt="signature"></span>`:`<span class="mark">${esc(WHO[by||'tech'])}</span>`;}
+const PICK_GLYPH={yes:'✓',no:'✗',nh:'—'};
+/* An answered or waiting question as one line: the pick, the words, the stamp, the ink, the photo. Tap to open it. */
+function rowCompact(q,isFiled){
+  const a=S.answers[q.id]||{};const done=answered(q);const partial=!!a.pick&&!done;
+  const chip=done?`<span class="c-chip ${a.pick}">${PICK_GLYPH[a.pick]}</span>`:`<span class="c-chip open">${partial?'…':''}</span>`;
+  const ink=q.sig&&a.signed?(a.sig?`<img class="ink" src="${a.sig}" alt="signature">`:`<span class="ink">${esc(WHO[a.by||'tech'])}</span>`):'';
+  const ph=q.photo&&a.photo?`<span class="thumb" title="In the customer's Drive folder"></span>`:'';
+  let stamp;
+  if(done||partial)stamp=`${q.sig&&a.signed?'Signed · ':''}${esc(WHO[a.by||'tech'])} · ${esc(a.at||'today')}${partial?(q.sig&&!a.signed?' · waits for the signature':' · waits for the photo'):''}`;
+  else stamp=[q.sig?'needs a signature':'',q.photo?'asks for a photo':'',q.by?'added by '+esc(WHO[q.by])+' · '+esc(q.at):''].filter(Boolean).join(' · ')||'waiting';
+  const note=a.note?`<span class="c-note">“${esc(a.note)}”</span>`:'';
+  const tag=q.by?`<span class="jobchip">job</span>`:'';
+  const canOpen=!isFiled||(q.sig&&a.signed);
+  return `<button type="button" class="row-c" data-a="expand" data-q="${q.id}" ${canOpen?'':'disabled style="cursor:default"'}>${chip}<span class="c-body"><span class="c-w ${done?'':'open'}">${esc(q.w)}${tag}</span><span class="c-stamp">${stamp}</span>${note}</span>${ink}${ph}</button>`;
+}
+/* The one open question: the presses, the photo, the note, and when signed the mark and Take it back. */
+function rowActive(q,isNext,isFiled){
+  const a=S.answers[q.id]||{};const who=S.persona==='officePhone'?'office':S.persona;
+  const pk=v=>`<button type="button" class="pk ${v} ${a.pick===v?'sel':''}" data-a="pick" data-q="${q.id}" data-v="${v}">${sigWords(v)}</button>`;
+  const needs=[q.sig?`<span class="need">${a.signed?'signed':'needs a signature'}</span>`:'',q.photo&&!a.photo?`<span class="need">photo</span>`:''].join('');
+  let meta='';
+  if(q.by){const canRetire=!isFiled&&(who==='office'||q.by===who);meta=`<div class="meta">${q.by===who?'You added this':'Added by '+esc(WHO[q.by])+(q.by==='office'?'':', superintendent')} · ${esc(q.at)}${canRetire?` · <button type="button" data-a="retire" data-q="${q.id}">Take off</button>`:''}</div>`;}
+  const locked=q.sig&&a.signed;
+  let body;
+  if(locked)body=`<div class="signed">${markHtml(a,a.by)}<span>Signed · ${esc(WHO[a.by||'tech'])} · ${esc(a.at)}${isFiled?'':` · <button type="button" data-a="takeBack" data-q="${q.id}">Take it back</button>`}</span></div>`;
+  else body=`<div class="picks">${pk('yes')}${pk('no')}${pk('nh')}</div>${q.sig&&!a.pick?`<div class="stamp">An answer here opens the signature sheet. The row is not answered until it is signed.</div>`:a.pick?`<div class="stamp">${esc(WHO[a.by||'tech'])} · ${esc(a.at||'today')}</div>`:''}`;
+  let photo='';
+  if(q.photo&&a.pick&&a.pick!=='nh'){photo=a.photo?`<div class="photo"><div class="th has"></div><span>In the customer's Drive folder.</span></div>`:`<div class="photo"><div class="th"></div><button type="button" class="b sec" style="flex:none;min-height:40px" data-a="photo" data-q="${q.id}">Take the photo</button></div>`;}
+  let note='';
+  if(!isFiled){note=(a.note||S.sheet.noteOpen===q.id)?`<input class="notein" id="note-${q.id}" placeholder="What is there to say?" value="${esc(a.note||'')}" data-a="note" data-q="${q.id}">`:`<button type="button" class="lnk" data-a="noteOpen" data-q="${q.id}">Add a note</button>`;}
+  const close=isNext?'':`<button type="button" class="lnk" data-a="collapse">Close this one</button>`;
+  return `<div class="row-a ${isNext?'now':''}">${isNext?'<div class="nowlbl">Next</div>':''}<div class="w" style="font-size:16px;color:#f9fafb">${esc(q.w)}${needs}</div>${meta}${body}${photo}${note}${close}</div>`;
+}
+function sigSheetView(){
+  const P=S.sigSheet;const q=questions(S.sheet?S.sheet.stage:'trim_set').find(z=>z.id===P.q);if(!q)return '';
+  const ok=S.sigStrokes.length>0&&S.sigAgree;const me=S.persona==='officePhone'?'office':S.persona;
+  return `<div class="dim" style="z-index:5" data-a="sigClose"></div>
+  <div class="sheet" style="z-index:6" role="dialog" aria-label="Sign your answer">
+    <div class="grab"></div>
+    <div class="hd"><h3>Sign your answer <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></h3><div class="sub">${stageName(S.sheet.stage)} · ${esc(S.job.num)} · ${esc(S.job.name)}</div></div>
+    <div class="sc">
+      <div class="gravity">You are signing <b>${sigWords(P.v)}</b> to “${esc(q.w)}”. It goes on ${esc(S.job.num)}'s ${stageName(S.sheet.stage)} record with your name and the time. The office, the GC and an inspector can read it.</div>
+      <div class="padwrap"><canvas id="sigpad" width="700" height="300" aria-label="Signature pad"></canvas><div class="padline"></div><button type="button" class="padclear" data-a="sigClear">Clear</button></div>
+      <div class="hint">Draw with your finger. <span style="color:#d1d5db">${esc(WHO[me])}</span> and the time stamp it when you press Sign.</div>
+      <label class="tog"><input type="checkbox" id="sig-agree" data-a="sigAgree" ${S.sigAgree?'checked':''}> I did this check myself and the answer is true.</label>
+      <div class="hint">A signed answer is locked. Take it back opens a new row; the signed one stays in the record.</div>
+    </div>
+    <div class="foot"><button type="button" class="b sec" data-a="sigClose">Not now</button><button type="button" class="b pri ${ok?'':'dis'}" data-a="sigSave">Sign and save</button></div>
+  </div>`;
+}
+function checklistSheet(stage,canAdd){
+  const c=count(stage);const qs=S.company[stage];const items=S.items.filter(i=>i.stage===stage&&!i.retired);
+  const f=S.filed[stage];const isFiled=!!(f&&!f.open);const all=qs.concat(items);
+  const nextQ=isFiled?null:(all.find(q=>!answered(q))||null);
+  const openId=S.sheet.expand||(nextQ?nextQ.id:null);
+  const ans=arr=>arr.filter(answered).length;
+  const row=q=>q.id===openId?rowActive(q,nextQ&&q.id===nextQ.id&&!S.sheet.expand,isFiled):rowCompact(q,isFiled);
+  const add=!canAdd?'':S.sheet.add?`
+    <div class="addbox">
+      <div class="eyebrow">Add a check for ${stageName(stage)} on this job <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></div>
+      <input class="notein" id="draft" placeholder="The question the crew answers" value="${esc(S.sheet.draft||'')}" data-a="draft">
+      <label class="tog"><input type="checkbox" id="draft-photo" data-a="draftPhoto" ${S.sheet.photo?'checked':''}> Asks for a photo</label>
+      <label class="tog"><input type="checkbox" id="draft-sig" data-a="draftSig" ${S.sheet.sig?'checked':''}> Needs a signature <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></label>
+      <div class="hint">The crew sees it on this job's ${stageName(stage)} sheet now. It counts toward ready like the office's questions. ${S.sheet.sig?'Whoever answers it signs, and the row is locked after.':'You can take it off later; an answer it already has stays.'}</div>
+      <div class="btns"><button type="button" class="b sec" data-a="toggleAdd">Not now</button><button type="button" class="b pri ${(S.sheet.draft||'').trim()?'':'dis'}" data-a="addItem" data-x="${stage}">Add the check</button></div>
+    </div>`:`<button type="button" class="b sec" data-a="toggleAdd">+ Add a check for ${stageName(stage)} <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></button>`;
+  const left=c.total-c.done;const pct=c.total?Math.round(c.done/c.total*100):0;
+  const head=isFiled
+    ?`<div class="rec-h"><h3>${stageName(stage)} · filed</h3><span class="id">Record ${f.id}${f.v>1?' · v'+f.v:''} · ${esc(f.at)}</span><div class="sub">${esc(S.job.num)} · ${esc(S.job.name)} · in the job's Drive folder · ${c.total} answers${all.some(q=>q.sig)?', '+all.filter(q=>q.sig).length+' signed':''}</div></div>`
+    :`<h3>${stageName(stage)} checklist</h3><div class="sub">${esc(S.job.num)} · ${esc(S.job.name)} · ${c.done} of ${c.total} answered${left?' · '+left+' left':''}</div><div class="prog"><div style="width:${pct}%"></div></div>`;
+  const foot=isFiled
+    ?`<span class="cnt">Filed. Nothing here changes; the office can amend it as a new version.</span><button type="button" class="b sec" style="flex:none;padding:0 16px" data-a="closeSheet">Close</button>`
+    :`<span class="cnt">${left?left+' left. The list files itself as a document on the job when the last is answered.':'All answered. Filed as record '+(S.filed[stage]?S.filed[stage].id:'')+'.'}</span><button type="button" class="b ${left?'sec':'grn'}" style="flex:none;padding:0 16px" data-a="${left?'closeSheet':'sheetDone'}">${left?'Close':'Done'}</button>`;
+  return `<div class="dim" data-a="closeSheet"></div>
+  <div class="sheet" role="dialog" aria-label="${stageName(stage)} checklist">
+    <div class="grab"></div>
+    <div class="hd">${head}</div>
+    <div class="sc" style="gap:0">
+      <div class="grp2"><span>The company's questions</span><span class="cnt2">${ans(qs)} of ${qs.length}</span></div>
+      ${qs.map(row).join('')}
+      <div class="grp2"><span>Added for this job <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></span><span class="cnt2">${items.length?ans(items)+' of '+items.length:'none'}</span></div>
+      ${items.map(row).join('')||`<div class="hint" style="padding:10px 0">Nothing added for this job's ${stageName(stage)}.${canAdd?'':' The superintendent or the office adds one.'}</div>`}
+      <div style="padding-top:10px">${add}</div>
+    </div>
+    <div class="foot">${foot}</div>
+  </div>`;
+}
+
+/* ---------- technician ---------- */
+function viewTech(){
+  const c=count('trim_set');
+  return `<div class="phone">${pNav('Job Mode')}
+    <div class="p-body">
+      ${S.toast?`<div class="toast">${esc(S.toast)}</div>`:''}
+      <div><div class="jt">${esc(S.job.num)} · ${esc(S.job.name)}</div><div class="js">${esc(S.job.site)} · clocked in 7:04 · Trim Set</div></div>
+      <div class="card quiet" style="flex-direction:row;justify-content:space-between;align-items:flex-end;gap:16px">
+        <div><div class="jt" style="font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums">3.2 h</div><div class="js">today on this job</div></div>
+        <div style="text-align:right"><div class="jt" style="font-size:22px;line-height:1.1;font-variant-numeric:tabular-nums">${S.job.pct}%</div><div class="js">job done · Trim Set</div></div>
+      </div>
+      <div class="btns"><button type="button" class="b sec">% done</button><button type="button" class="b sec">Leave report</button><button type="button" class="b sec">Clock out</button></div>
+      <div class="eyebrow">Stage checklists</div>
+      ${stripRows()}
+      <div class="js">The office's questions and the ones added for this job count the same. Press a stage to answer.</div>
+      <div class="eyebrow">Photos · 15</div>
+      <div style="display:flex;gap:8px"><span style="width:64px;height:64px;border-radius:8px;background:linear-gradient(135deg,#64748b,#1e293b)"></span><span style="width:64px;height:64px;border-radius:8px;background:linear-gradient(160deg,#475569,#0f172a)"></span><span style="width:64px;height:64px;border-radius:8px;background:linear-gradient(120deg,#334155,#1e293b)"></span><span style="width:64px;height:64px;border-radius:8px;background:#1f2937;border:1px solid #374151;display:flex;align-items:center;justify-content:center;font-size:12px;color:#9ca3af">+ 12</span></div>
+      <div class="eyebrow">Customer</div>
+      <div class="card quiet"><div class="jt" style="font-size:13px">${esc(S.job.name)}</div><div class="js">${esc(S.job.site)} · GC: Ridgeway Builders</div><div class="js">Site contact: Dana Whitfield · 555-0142</div></div>
+    </div>
+    ${S.sheet?checklistSheet(S.sheet.stage,false):''}
+    ${S.sheet&&S.sigSheet?sigSheetView():''}
+    ${tabbar('Dashboard')}
+  </div>`;
+}
+
+/* ---------- superintendent ---------- */
+function supCard(){
+  const j=S.job;const L=line(j.pct);const c=count('trim_set');
+  const bars=`<div class="bars">
+    <div class="bar"><span class="k">Done</span><div class="t"><div class="f own" style="width:${j.pct}%;background:#60a5fa"></div></div><span class="v">${j.pct}%</span></div>
+    <div class="bar"><span class="k">Hours</span><div class="t"><div class="f" style="width:${Math.min(100,L.hoursPct)}%;background:#f59e0b"></div></div><span class="v">${L.hoursPct}%</span></div></div>`;
+  const proof=`<div class="proof">Certified: pay app ${j.payApp} at ${j.certPct}% · checklist ${c.done} of ${c.total} ready · <span class="warn">your ${j.pct}% reads provisional until pay app ${j.payApp+1}</span>.</div>`;
+  let move='';
+  if(L.tone==='red'){
+    move=S.pctCheckedToday
+      ?`<div style="font-size:13px;color:#f3f4f6">You checked the percent today and kept ${j.pct}%. So the hours are the problem: 31 h went into trim-out this week and the work did not move.</div>
+        <div class="proof">Checklist: ${c.done} of ${c.total} ready. The ${c.total-c.done} not ready are the proof of what is holding it.</div>
+        <div class="btns"><button type="button" class="b pri" data-a="openHeld">Say what held it</button><button type="button" class="b sec" data-a="openSheet" data-x="trim_set">Open the checklist</button></div>`
+      :`<div style="font-size:13px;color:#f3f4f6">31 hours went in this week and the percent did not move.</div>
+        <div class="btns"><button type="button" class="b pri" data-a="openPct">Set the % on trim-out</button><button type="button" class="b sec" data-a="openSheet" data-x="trim_set">Open the checklist</button></div>`;
+  }else{
+    move=`<div class="btns"><button type="button" class="b sec" data-a="openSheet" data-x="trim_set">Open the checklist</button><button type="button" class="b sec" data-a="openPct">Set the %</button></div>`;
+  }
+  const held=S.heldNoteSaved?`<div class="proof">You said: “${esc(S.heldNoteSaved)}” The office reads it on the job.</div>`:'';
+  return `<div class="card ${L.tone}">
+    <div><div class="jt">${esc(j.name)} · trim-out</div><div class="js">${j.baseline} h at award</div></div>
+    <div class="line ${L.tone}">${L.words}</div>
+    ${bars}
+    <div class="js">Planned finish ${j.planned}. At this pace, ${L.atPace}.</div>
+    ${proof}${held}${move}
+  </div>`;
+}
+function pctSheet(){
+  const j=S.job;const P=S.pctSheet;const base=j.pct;const next=P.next;const d=next-base;
+  const delta=d>0?`<span class="delta ok">▲ ${d}</span>`:d<0?`<span class="delta bad">▼ ${-d}</span>`:`<span class="delta" style="color:#9ca3af">no change</span>`;
+  const L=line(next);const c=count('trim_set');const chkPct=Math.round(c.done/c.total*100);
+  const disagree=Math.abs(chkPct-next)>=5?`<span class="warn">Checklist says ${c.done} of ${c.total} ready, about ${chkPct}%.</span> `:`<span class="ok">Checklist agrees: ${c.done} of ${c.total} ready, about ${chkPct}%.</span> `;
+  const save=d===0?`Keep ${base}%`:`Save · trim-out ${next}%`;
+  return `<div class="dim" data-a="closePct"></div>
+  <div class="sheet" role="dialog" aria-label="Set the percent on trim-out">
+    <div class="grab"></div>
+    <div class="hd"><h3>How far along is trim-out?</h3><div class="sub">${esc(j.num)} · ${esc(j.name)} · ${esc(j.site)}</div></div>
+    <div class="sc">
+      <div class="numline"><span class="lead"><span class="was">${base}%</span><span class="arrow">→</span></span><span class="numwrap"><span class="now mirror" id="pct-mirror" aria-hidden="true">${next}</span><input class="now" id="pct-typed" type="text" inputmode="numeric" value="${next}" aria-label="Type a number" data-a="pctTyped" style="width:${String(next).length+0.15}ch"><span class="now" style="font-size:24px">%</span></span>${delta}</div>
+      <div class="hint">Tap the number to type one.</div>
+      <div class="qp">${[25,50,75,100].map(v=>`<button type="button" class="${next===v?'sel':''}" data-a="pctSet" data-v="${v}">${v===100?'Done ✓':v}</button>`).join('')}</div>
+      <div class="stp"><button type="button" data-a="pctStep" data-v="-5">−5</button><button type="button" data-a="pctStep" data-v="5">+5</button></div>
+      <div class="readback">
+        <div class="t">What this reads on your line <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></div>
+        <div class="l ${L.tone==='red'?'bad':L.tone==='amber'?'warn':'ok'}">At ${next}%, ${L.words.replace(/\.$/,'').toLowerCase()}.</div>
+        <div class="m">The line reads even at ${L.hoursPct}%, where the hours stand.</div>
+        <div class="m">${disagree}Your number reads provisional until pay app ${j.payApp+1} is certified.</div>
+      </div>
+      <textarea class="notein" id="pct-note" rows="2" placeholder="What moved? Trim set in units 1–6, waiting on the last two carriers…" data-a="pctNote">${esc(P.note||'')}</textarea>
+      <div class="hint">Files a Status Report under your name, the way the crew's does. The office sees it on the job.</div>
+    </div>
+    <div class="foot"><button type="button" class="b sec" data-a="closePct">Not now</button><button type="button" class="b pri" data-a="pctSave">${save}</button></div>
+  </div>`;
+}
+function heldSheet(){
+  return `<div class="dim" data-a="closeHeld"></div>
+  <div class="sheet" role="dialog" aria-label="Say what held it">
+    <div class="grab"></div>
+    <div class="hd"><h3>Say what held trim-out</h3><div class="sub">A note on the job's thread. The office reads it. <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></div></div>
+    <div class="sc">
+      <textarea class="notein" id="held-note" rows="3" placeholder="Last two carriers on back order since Oct 27. Crew pulled to Building C Thu–Fri." data-a="heldNote">${esc(S.heldDraft||'')}</textarea>
+      <div class="hint">Nothing on the score changes, and the card stops asking you to set the % until new hours land.</div>
+    </div>
+    <div class="foot"><button type="button" class="b sec" data-a="closeHeld">Not now</button><button type="button" class="b pri ${(S.heldDraft||'').trim()?'':'dis'}" data-a="heldSave">Save the note</button></div>
+  </div>`;
+}
+function viewSup(){
+  return `<div class="phone">${pNav('Home')}
+    <div class="p-body">
+      ${S.toast?`<div class="toast">${esc(S.toast)}</div>`:''}
+      <div style="display:flex;align-items:baseline;justify-content:space-between"><span class="eyebrow">Your projects <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></span><span class="js">pay app period Oct 26 to Nov 8</span></div>
+      ${supCard()}
+      <div class="card green">
+        <div><div class="jt">Ridgeway Builders · Building C rough-in</div><div class="js">480 h at award, plus 36 h on change order 2</div></div>
+        <div class="line green">3 days ahead at this pace.</div>
+        <div class="bars"><div class="bar"><span class="k">Done</span><div class="t"><div class="f own" style="width:52%;background:#60a5fa"></div></div><span class="v">52%</span></div><div class="bar"><span class="k">Hours</span><div class="t"><div class="f" style="width:44%;background:#f59e0b"></div></div><span class="v">44%</span></div></div>
+        <div class="proof">Certified: pay app 3 at 48% · checklist 11 of 14 ready · your 52% reads provisional until pay app 4.</div>
+      </div>
+      <div class="card quiet">
+        <div class="eyebrow">This period, across your jobs</div>
+        <div style="font-size:15px;font-weight:700;color:#f9fafb">2 days ahead · 38 h under baseline</div>
+        <div style="font-size:13px;color:#d1d5db">Labor saved $2,130. Bonus [your share] of it, paid when pay app 4 is certified.</div>
+        <div class="js">The score reads certified percent only. The office sees the same number on People → Review.</div>
+      </div>
+    </div>
+    ${S.sheet?checklistSheet(S.sheet.stage,true):''}
+    ${S.sheet&&S.sigSheet?sigSheetView():''}
+    ${S.pctSheet?pctSheet():''}
+    ${S.heldSheet?heldSheet():''}
+    ${tabbar('Dashboard')}
+  </div>`;
+}
+
+/* ---------- office ---------- */
+function pickChip(q){const a=S.answers[q.id];if(!a||!a.pick)return `<span class="p o">open</span>`;if(q.photo&&a.pick!=='nh'&&!a.photo)return `<span class="p o">photo</span>`;if(q.sig&&!a.signed)return `<span class="p o">unsigned</span>`;return a.pick==='yes'?`<span class="p y">Yes</span>`:a.pick==='no'?`<span class="p n">No</span>`:`<span class="p h">Not here</span>`;}
+const NEWTAG=`<span style="font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#9a4b00;background:#fff1dc;border:1px solid #f0b56a;border-radius:4px;padding:0 5px;margin-left:4px;vertical-align:middle">new</span>`;
+function stageCard(stage,narrow){
+  const c=count(stage);const qs=questions(stage);const f=S.filed[stage];const isFiled=!!(f&&!f.open);
+  const folded=narrow&&isFiled&&!(S.unfold&&S.unfold[stage]);
+  const status=isFiled?`<span class="s ok">Filed · ${f.id}${f.v>1?' v'+f.v:''}</span>`:f&&f.open?`<span class="s warn">Reopened · v${f.v+1} · ${c.done} of ${c.total}</span>`:`<span class="s warn">Open · ${c.done} of ${c.total}</span>`;
+  const head=`<div class="h"><span class="n">${stageName(stage)}</span>${status}</div>`;
+  if(folded)return `<button type="button" class="stg" style="text-align:left;font-family:inherit;cursor:pointer" data-a="unfold" data-x="${stage}">${head}</button>`;
+  const rec=isFiled?`<div class="rec"><span>Filed <b>${esc(f.at)}</b></span><span>In the job's Drive folder</span><span>v${f.v}</span></div>`:`<div class="rec"><span>Files itself when the last row is answered${f&&f.open?'; v'+f.v+' stays as filed':''}</span></div>`;
+  const rows=qs.map(q=>{const a=S.answers[q.id]||{};const added=q.by?`Added by ${esc(WHO[q.by])} ${esc(q.at)}${q.photo?' · asks for a photo':''}`:'';
+    const ansd=a.pick?`${esc(WHO[a.by||'tech'])} · ${esc(a.at||'today')}${a.note?' · “'+esc(a.note)+'”':''}`:'';
+    const meta=[added,ansd].filter(Boolean).join('<br>');
+    const ph=q.photo?(a.photo?`<div class="ph" title="In the customer's Drive folder"></div>`:`<div class="ph none" title="No photo yet"></div>`):'';
+    const mk=q.sig&&a.signed?markHtml(a,a.by):'';
+    const tag=q.sig?`<span class="sigtag">${a.signed?'signed':'needs a signature'}</span>`:'';
+    const off=q.by?`<button type="button" class="off" data-a="retire" data-q="${q.id}">Take off</button>`:'';
+    return `<div class="ans">${pickChip(q)}<div class="w">${esc(q.w)}${q.by?'<span class="jobtag">job</span>':''}${tag}<div class="m">${meta}</div></div>${mk}${ph}${off}</div>`;}).join('');
+  const addId=`add-${stage}`;
+  const add=`<div class="inline-add"><input type="text" id="${addId}" placeholder="Add a check for ${stageName(stage)} on this job…" data-a="deskDraft" data-x="${stage}" value="${esc((S.deskDraft&&S.deskDraft[stage])||'')}"><div class="r2"><span style="display:flex;gap:12px;flex-wrap:wrap"><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="${addId}-photo" data-a="deskDraftPhoto" data-x="${stage}" ${(S.deskPhoto&&S.deskPhoto[stage])?'checked':''}> Asks for a photo</label><label style="display:flex;gap:5px;align-items:center"><input type="checkbox" id="${addId}-sig" data-a="deskDraftSig" data-x="${stage}" ${(S.deskSig&&S.deskSig[stage])?'checked':''}> Needs a signature${NEWTAG}</label></span><button type="button" class="dbtn pri" data-a="deskAdd" data-x="${stage}">Add the check</button></div></div>`;
+  const note=stage==='top_out'&&c.ready?`<div class="mute">A No still counts as answered.</div>`:'';
+  const links=`<div class="mute"><button type="button" class="lk" data-a="promote" data-x="${stage}">${S.promoted[stage]?'Used as the company\'s '+stageName(stage)+' list ✓':'Use as the company\'s '+stageName(stage)+' list'}</button>${NEWTAG}${isFiled?` · <button type="button" class="lk" data-a="amend" data-x="${stage}">Amend</button> (a new version; this one stays)`:''}</div>`;
+  return `<div class="stg ${isFiled?'filed':'nr'}">${head}${rec}${rows}${note}${isFiled?'':add}${links}</div>`;
+}
+function documentsSection(narrow){
+  const filed=STAGES.filter(s=>S.filed[s.key]&&!S.filed[s.key].open).length;const added=S.items.filter(i=>!i.retired).length;
+  return `<div class="mute">Pay applications · Lien paper · Folders · Photos · <b style="color:#0f172a">Stage checklists</b>${NEWTAG} · Hours statements · Test reports</div>
+  <div class="sect">
+    <div class="drow"><h4>Stage checklists</h4><span class="mute">${filed} of 3 filed · ${added} item${added===1?'':'s'} added on this job</span><button type="button" class="lk" data-a="paper">Print the checklists</button></div>
+    <div class="srow">${STAGES.map(s=>stageCard(s.key,narrow)).join('')}</div>
+    <div class="mute">Each stage's list is a document on the job: every answer stamped with a name and a time, a signature where the list's author asked for one, filed with a record number when the last row is answered. The company's standard lists are made here too: author one and press <i>Use as the company's list</i>. <button type="button" class="lk" data-a="officeTab" data-x="settings">Settings</button> only shows where each came from.</div>
+  </div>`;
+}
+function stagesTab(){
+  return `<div class="sect"><h4>Stages</h4>
+    <div class="pipe">${STAGES.map((s,i)=>{const c=count(s.key);const mark=c.ready?'':`<span class="mark">☐</span> `;const cls=i<2?'done':'now';
+      return `<div class="seg ${cls}"><div style="font-weight:700">${mark}${s.name}</div><div class="mute">${i<2?'done':'on site now · '+S.job.pct+'%'}${c.total?' · checklist '+c.done+' of '+c.total:''}</div></div>`;}).join('')}</div>
+    <div class="mute">The Pipeline's mark as it exists (v2.6087): ☐ in amber before a stage whose checklist is not ready, the count in its title. Items added on the job move it the same way.</div>
+  </div>`;
+}
+function settingsTab(){
+  return `<div class="sect"><h4>Settings → Jobs &amp; billing → Stage checklists</h4>
+    <div class="mute">Read-only now${NEWTAG}. The company's lists are made on a job's Documents tab and kept with <i>Use as the company's list</i>; this card says which job each came from. Nothing is typed here any more.</div>
+    ${STAGES.map(s=>`<div class="editor"><div style="display:flex;justify-content:space-between;gap:8px"><span style="font-weight:700">${s.name}</span><span class="mute">${S.promoted[s.key]?'from '+esc(S.job.num)+' · Nov 1':'from J0988 · Oct 2'}</span></div>
+      ${S.company[s.key].map(q=>`<div class="r"><span class="w">${esc(q.w)}</span><span class="mute">${[q.photo?'asks for a photo':'',q.sig?'needs a signature':''].filter(Boolean).join(' · ')}</span></div>`).join('')}
+    </div>`).join('')}
+  </div>`;
+}
+function notesTab(){
+  return `<div class="sect"><h4>Job thread</h4>
+    <div class="thread">${S.thread.map(m=>`<div class="m" style="background:#fff;border-color:#e2e8f0;color:#0f172a"><div class="who" style="color:#64748b">${esc(WHO[m.who])} · ${esc(m.at)}</div>${esc(m.w)}</div>`).join('')}</div>
+    <div class="mute">Status reports and notes as they exist. The superintendent's “what held it” note lands here.</div>
+  </div>`;
+}
+function paperOverlay(){
+  return `<div class="paper" data-a="paperClose"><button type="button" class="close" data-a="paperClose">Close</button>
+    <div class="sheetp" onclick="event.stopPropagation()">
+      <h3>Stage checklists · ${esc(S.job.num)} ${esc(S.job.name)}</h3>
+      <div class="mt">${esc(S.job.site)} · printed Nov 1, 2026 · Click Plumbing</div>
+      ${STAGES.map(s=>{const c=count(s.key);const f=S.filed[s.key];const isFiled=!!(f&&!f.open);return `<h5>${s.name} · ${isFiled?'filed · record '+f.id+(f.v>1?' v'+f.v:'')+' · '+esc(f.at):(c.ready?'ready':'open')+' · '+c.done+' of '+c.total}</h5><table>${questions(s.key).map(q=>{const a=S.answers[q.id]||{};const p=!a.pick?'open':(q.sig&&!a.signed)?'unsigned':sigWords(a.pick);
+        return `<tr><td class="p">${p}</td><td>${esc(q.w)}${q.by?' <i>(added for this job by '+esc(WHO[q.by])+')</i>':''}${a.note?'<br><i>'+esc(a.note)+'</i>':''}</td><td style="width:150px;color:#555">${a.pick?esc(WHO[a.by||'tech'])+'<br>'+esc(a.at||'today'):''}${q.photo&&a.photo?'<br>photo in Drive':''}</td><td style="width:120px">${q.sig&&a.signed?(a.sig?'<img src="'+a.sig+'" alt="signature" style="height:26px">':'<span style="font-family:\'Snell Roundhand\',\'Brush Script MT\',cursive;font-size:18px">'+esc(WHO[a.by||'tech'])+'</span>')+'<div style="font-size:10px;color:#555">signed</div>':''}</td></tr>`;}).join('')}</table>`;}).join('')}
+      <div class="mt" style="margin-top:16px">A paper reader for an inspector or the GC: every answer with its name and time, a signature where one was required, the record number once filed. In the app this is the same light paper a pay application prints on.</div>
+    </div></div>`;
+}
+function viewOffice(narrow){
+  const tab=narrow?S.officePhoneTab:S.officeTab;
+  const tabs=[['edit','Edit'],['stages','Stages'],['billing','Billing'],['reports','Reports'],['documents','Documents'],['notes','Notes']];
+  const body=tab==='documents'?documentsSection(narrow):tab==='stages'?stagesTab():tab==='settings'?settingsTab():tab==='notes'?notesTab():`<div class="mute">The ${tabs.find(t=>t[0]===tab)[1]} tab as it exists. Nothing in this walk changes it.</div>`;
+  const inner=`
+    <div class="appbar"><span class="brand">PipeTooling</span><button type="button" data-a="officeTab" data-x="documents" aria-pressed="${tab!=='settings'}">Jobs</button><button type="button" data-a="officeTab" data-x="settings" aria-pressed="${tab==='settings'}">Settings</button><span class="me" style="margin-left:auto">${esc(WHO.office)} · assistant</span></div>
+    ${tab==='settings'?'':`<div class="mbar"><span class="t">${esc(S.job.num)} · ${esc(S.job.name)}${narrow?'':' · '+esc(S.job.site)}</span><span class="mute">Working · Trim Set · ${S.job.pct}%</span><span class="x">✕</span></div>
+    <div class="tabs">${tabs.map(t=>`<button type="button" data-a="officeTab" data-x="${t[0]}" aria-pressed="${tab===t[0]}">${t[1]}</button>`).join('')}</div>`}
+    <div class="pane">${body}</div>
+    ${S.paper?paperOverlay():''}`;
+  if(narrow)return `<div class="phone light narrow">${S.toast?`<div class="toast">${esc(S.toast)}</div>`:''}${inner}</div>`;
+  return `<div class="desk">${S.toast?`<div class="toast" style="left:auto;right:16px;top:auto;bottom:16px;max-width:360px">${esc(S.toast)}</div>`:''}${inner}</div>`;
+}
+
+/* ---------- rail ---------- */
+const sn=k=>!!S.seen[k];
+const STEPS={
+  tech:[
+    {w:'Read the Stage checklists strip. Trim Set is not ready.',d:()=>sn('tech')},
+    {w:'Press Trim Set. Every answered row carries a name and a time.',n:true,d:()=>sn('techSheet')},
+    {w:'Press Yes on Did the final water test hold? It needs a signature: sign, tick the line, and the row locks with your name and the time.',n:true,d:()=>{const a=S.answers.c8;return !!(a&&a.signed);}},
+    {w:'Scroll to Added for this job: two items, each saying who added it.',n:true,d:()=>sn('techScrolled')},
+    {w:'Answer the carriers question. Take the photo on the ADA item. Each press saves.',d:()=>{const a=S.answers;return !!(a.j2&&a.j2.pick&&a.j3&&a.j3.photo);}},
+    {w:'When the last row is answered the list files itself as a document on the job, with a record number.',n:true,d:()=>{const f=S.filed.trim_set;return !!(f&&!f.open);}},
+    {w:'Now switch to Superintendent and watch his card\'s proof line.',d:()=>sn('sup')},
+  ],
+  sup:[
+    {w:'Read the red card: 4 days behind, hours ahead of the work.',n:true,d:()=>sn('sup')},
+    {w:'Press Set the % on trim-out. Pick 75, or type a number, and read the line recompute under your thumb.',n:true,d:()=>sn('pctSheet')},
+    {w:'Save, or step back to 61 and Keep it: the card flips to the honest branch.',n:true,d:()=>sn('pctSaved')},
+    {w:'Press Open the checklist. Add a check for Trim Set with Needs a signature on; the technician\'s sheet gets it at once.',n:true,d:()=>sn('supAdded')},
+    {w:'Take off an item you added. One the office added, you cannot.',n:true,d:()=>sn('supRetired')},
+    {w:'Switch to Technician or Office to see the item land.',d:()=>sn('supThenOther')},
+  ],
+  office:[
+    {w:'Open Documents. Each stage is a document: every answer stamped with a name and a time, a signature where one was required, a record number once filed.',n:true,d:()=>sn('officeDocs')},
+    {w:'Add a check inline on Trim Set with Needs a signature on. Take one off.',n:true,d:()=>sn('officeAdded')||sn('officeRetired')},
+    {w:'Press Print the checklists for the paper an inspector or a GC reads.',n:true,d:()=>sn('printed')},
+    {w:'Open Stages: the Pipeline\'s ☐ mark as it exists, moved by job items too.',d:()=>sn('stagesTab')},
+    {w:'On a filed document press Use as the company\'s list: new jobs get it, and Settings only says where it came from.',n:true,d:()=>sn('promoted')},
+    {w:'Open Notes to read the superintendent\'s “what held it” note once he writes one.',n:true,d:()=>sn('notesTab')},
+  ],
+  officePhone:[
+    {w:'The same Documents section, narrow: filed documents fold to one line.',n:true,d:()=>sn('officePhone')},
+    {w:'Press a folded document to open it; the open one shows its rows and stamps.',n:true,d:()=>sn('unfold')},
+    {w:'Add a check with the 44 px press at the foot of Trim Set.',n:true,d:()=>sn('officePhoneAdded')},
+    {w:'Print opens the same paper.',n:true,d:()=>sn('printedPhone')},
+  ],
+};
+const WHO_LINE={
+  tech:`You are ${WHO.tech}, a helper, clocked in on ${'J1042'}'s Trim Set.`,
+  sup:`You are ${WHO.sup}, superintendent on J1042 and Building C.`,
+  office:`You are ${WHO.office}, assistant, at a desk.`,
+  officePhone:`You are ${WHO.office}, assistant, on a phone.`,
+};
+function renderRail(){
+  const p=S.persona;const pr=PERSONAS.find(x=>x.key===p);
+  document.getElementById('steps-h').textContent=`Walk it as the ${pr.label.toLowerCase()} ${pr.k==='desk'?'at a desk':'on a phone'}`;
+  document.getElementById('who').textContent=WHO_LINE[p];
+  document.getElementById('steps').innerHTML=STEPS[p].map((s,i)=>{const d=s.d();return `<li class="${d?'done':''}"><span class="n">${d?'✓':i+1}</span><span>${s.w}${s.n?'<span class="new">new</span>':''}</span></li>`;}).join('');
+  document.getElementById('log').innerHTML=S.log.length?S.log.map(l=>`<li><span class="who">${esc(WHO_SHORT[l.who])}</span><span>${l.w}</span></li>`).join(''):`<li class="empty">Nothing yet. Press something in the frame.</li>`;
+  document.getElementById('personas').innerHTML=PERSONAS.map(x=>`<button type="button" data-a="persona" data-x="${x.key}" aria-pressed="${S.persona===x.key}">${x.label} <span class="k">${x.k}</span></button>`).join('');
+}
+const SCROLLERS=['.sc','.p-body','.pane'];
+function render(){
+  const f=document.getElementById('frame');
+  const keep=SCROLLERS.map(s=>{const el=f.querySelector(s);return el?el.scrollTop:0;});
+  if(S.persona==='office'&&S.officeTab==='documents')S.seen.officeDocs=true;
+  if(S.persona==='officePhone')S.seen.officePhone=true;
+  f.innerHTML=S.persona==='tech'?viewTech():S.persona==='sup'?viewSup():S.persona==='office'?viewOffice(false):viewOffice(true);
+  SCROLLERS.forEach((s,i)=>{const el=f.querySelector(s);if(el&&keep[i])el.scrollTop=keep[i];});
+  fitPct();
+  wireSigPad();
+  renderRail();
+}
+/* The signature pad: strokes kept in state so a re-render redraws them. */
+function wireSigPad(){
+  const c=document.getElementById('sigpad');if(!c)return;const ctx=c.getContext('2d');
+  const redraw=()=>{ctx.clearRect(0,0,c.width,c.height);ctx.lineWidth=5;ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle='#0f172a';
+    S.sigStrokes.forEach(s=>{if(s.length<2)return;ctx.beginPath();ctx.moveTo(s[0][0],s[0][1]);for(let i=1;i<s.length;i++)ctx.lineTo(s[i][0],s[i][1]);ctx.stroke();});};
+  redraw();let cur=null;
+  const pt=e=>{const r=c.getBoundingClientRect();return [(e.clientX-r.left)/r.width*c.width,(e.clientY-r.top)/r.height*c.height];};
+  c.onpointerdown=e=>{e.preventDefault();c.setPointerCapture(e.pointerId);cur=[pt(e)];S.sigStrokes.push(cur);};
+  c.onpointermove=e=>{if(!cur)return;cur.push(pt(e));redraw();};
+  const up=()=>{if(cur&&cur.length===1)cur.push([cur[0][0]+2,cur[0][1]+2]);cur=null;redraw();syncSigBtn();};
+  c.onpointerup=up;c.onpointercancel=up;
+}
+function syncSigBtn(){const b=document.querySelector('[data-a="sigSave"]');if(b)b.classList.toggle('dis',!(S.sigStrokes.length&&S.sigAgree));}
+/* The percent field takes the width of its own digits, measured on a hidden twin in the same font. */
+function fitPct(){
+  const inp=document.getElementById('pct-typed'),m=document.getElementById('pct-mirror');
+  if(!inp||!m)return;m.textContent=inp.value.replace(/[^0-9]/g,'')||'0';inp.style.width=(m.offsetWidth+2)+'px';
+}
+if(document.fonts&&document.fonts.ready)document.fonts.ready.then(fitPct);
+
+/* ---------- actions ---------- */
+function whoNow(){return S.persona==='officePhone'?'office':S.persona;}
+function addItem(stage,words,photo,by,sig){
+  const id='j'+(S.nextId++);S.items.push({id,stage,w:words,photo,sig:!!sig,by,at:'Nov 1'});
+  if(by==='sup')S.seen.supAdded=true;else if(S.persona==='officePhone')S.seen.officePhoneAdded=true;else S.seen.officeAdded=true;
+  const c=count(stage);const flags=[photo?'asks for a photo':'',sig?'needs a signature':''].filter(Boolean).join(', ');
+  log(by,`added “${esc(words)}” to ${stageName(stage)} on ${S.job.num}${flags?' ('+flags+')':''}. The crew's strip reads ${c.done} of ${c.total}; the Pipeline's ☐ ${c.ready?'clears':'stays'}.`);
+  fileIfReady();
+  toast(`Added — ${stageName(stage)} on ${S.job.num} is now ${c.done} of ${c.total}.`);
+}
+document.addEventListener('click',e=>{
+  const el=e.target.closest('[data-a]');if(!el)return;
+  const a=el.dataset.a,x=el.dataset.x;
+  if(el.tagName==='INPUT'||el.tagName==='TEXTAREA')return;
+  switch(a){
+    case 'persona':S.persona=x;S.seen[x]=true;if(x!=='sup'&&S.seen.supAdded)S.seen.supThenOther=true;S.sheet=null;S.pctSheet=null;S.heldSheet=false;S.paper=false;S.toast=null;clearTimeout(toast.h);break;
+    case 'reset':{const p=S.persona;S=fresh();S.persona=p;S.seen[p]=true;log('system','Started over.');break;}
+    case 'openSheet':S.sheet={stage:x,add:false,draft:'',photo:false,expand:null,noteOpen:null};S.pctSheet=null;S.heldSheet=false;if(S.persona==='tech')S.seen.techSheet=true;break;
+    case 'expand':{const q=el.dataset.q;S.sheet.expand=S.sheet.expand===q?null:q;S.sheet.noteOpen=null;break;}
+    case 'collapse':S.sheet.expand=null;S.sheet.noteOpen=null;break;
+    case 'noteOpen':S.sheet.noteOpen=el.dataset.q;break;
+    case 'closeSheet':S.sheet=null;break;
+    case 'sheetDone':{const st=S.sheet.stage;S.sheet=null;const f=S.filed[st];log(whoNow(),`closed ${stageName(st)}'s checklist${f&&!f.open?', filed as record '+f.id:''}.`);toast(f&&!f.open?`${stageName(st)} filed as record ${f.id}.`:`${stageName(st)} checklist filled. It reads ready on the Pipeline.`);return;}
+    case 'pick':{const q=el.dataset.q,v=el.dataset.v;const qq=questions(S.sheet.stage).find(z=>z.id===q);
+      if(qq.sig){S.sigSheet={q,v};S.sigStrokes=[];S.sigAgree=false;break;}
+      const prev=S.answers[q]||{};S.answers[q]={...prev,pick:v,by:whoNow(),at:stamp()};
+      if(!(qq.photo&&v!=='nh'&&!S.answers[q].photo)){S.sheet.expand=null;S.sheet.noteOpen=null;}
+      const c=count(S.sheet.stage);
+      log(whoNow(),`answered “${esc(qq.w)}” ${sigWords(v)} at ${S.answers[q].at}. ${stageName(S.sheet.stage)} is ${c.done} of ${c.total}${c.ready?', ready':''}.`);fileIfReady();break;}
+    case 'photo':{const q=el.dataset.q;const prev=S.answers[q]||{};S.answers[q]={...prev,photo:true,by:prev.by||whoNow(),at:prev.at||stamp()};
+      const qq=questions(S.sheet.stage).find(z=>z.id===q);S.sheet.expand=null;S.sheet.noteOpen=null;log(whoNow(),`took the photo for “${esc(qq.w)}”. It is on its way to the customer's Drive folder.`);fileIfReady();toast('Photo taken. On its way to the customer\'s Drive folder.');return;}
+    case 'sigClose':S.sigSheet=null;S.sigStrokes=[];break;
+    case 'sigClear':S.sigStrokes=[];break;
+    case 'sigSave':{if(!(S.sigStrokes.length&&S.sigAgree))return;const P=S.sigSheet;const canvas=document.getElementById('sigpad');const url=canvas?canvas.toDataURL('image/png'):null;
+      const prev=S.answers[P.q]||{};const at=stamp();S.answers[P.q]={...prev,pick:P.v,signed:true,sig:url,by:whoNow(),at};S.sigSheet=null;S.sigStrokes=[];S.sigAgree=false;
+      {const qq0=questions(S.sheet.stage).find(z=>z.id===P.q);if(!(qq0.photo&&P.v!=='nh'&&!S.answers[P.q].photo)){S.sheet.expand=null;}else{S.sheet.expand=P.q;}S.sheet.noteOpen=null;}
+      const qq=questions(S.sheet.stage).find(z=>z.id===P.q);const c=count(S.sheet.stage);
+      log(whoNow(),`signed ${sigWords(P.v)} to “${esc(qq.w)}” at ${at}. The row is locked; the mark is bound to the answer as given. ${stageName(S.sheet.stage)} is ${c.done} of ${c.total}${c.ready?', ready':''}.`);
+      fileIfReady();toast(`Signed. ${esc(WHO[whoNow()])} · ${at} stamps the row.`);return;}
+    case 'takeBack':{const q=el.dataset.q;const a=S.answers[q];if(!a)return;const qq=questions(S.sheet.stage).find(z=>z.id===q);delete S.answers[q];
+      log(whoNow(),`took back the signed answer on “${esc(qq.w)}”. The signed row stays in the record as voided; a new answer is waited on.`);fileIfReady();toast('Taken back. The signed row stays in the record.');return;}
+    case 'toggleAdd':S.sheet.add=!S.sheet.add;break;
+    case 'addItem':{const w=(S.sheet.draft||'').trim();if(!w)return;addItem(x,w,!!S.sheet.photo,whoNow(),!!S.sheet.sig);S.sheet.add=false;S.sheet.draft='';S.sheet.photo=false;S.sheet.sig=false;return;}
+    case 'retire':{const q=el.dataset.q;const it=S.items.find(i=>i.id===q);const me=whoNow();if(!it)return;if(!(me==='office'||it.by===me)){toast('Only the office or the person who added it can take it off.');return;}
+      it.retired=true;if(me==='sup')S.seen.supRetired=true;else S.seen.officeRetired=true;const c=count(it.stage);log(me,`took “${esc(it.w)}” off ${stageName(it.stage)}. Its answer, if any, is kept. ${stageName(it.stage)} is ${c.done} of ${c.total}${c.ready?', ready':''}.`);fileIfReady();toast(`Taken off. ${stageName(it.stage)} is ${c.done} of ${c.total}.`);return;}
+    case 'promote':{S.promoted[x]=true;S.seen.promoted=true;const n=questions(x).length;log('office',`made ${S.job.num}'s ${stageName(x)} list the company's: ${n} questions, with their photo and signature flags. New jobs with a ${stageName(x)} stage get it; Settings says it came from ${S.job.num}.`);toast(`The company's ${stageName(x)} list now comes from ${S.job.num}.`);return;}
+    case 'amend':{const f=S.filed[x];if(!f)return;f.open=true;log('office',`amended ${stageName(x)}'s record ${f.id}: v${f.v+1} is in progress and v${f.v} stays as filed.`);toast(`${f.id} v${f.v+1} is open. v${f.v} stays as filed.`);return;}
+    case 'openPct':S.pctSheet={next:S.job.pct,note:''};S.sheet=null;S.seen.pctSheet=true;break;
+    case 'closePct':S.pctSheet=null;break;
+    case 'pctSet':S.pctSheet.next=+el.dataset.v;break;
+    case 'pctStep':S.pctSheet.next=Math.max(0,Math.min(100,S.pctSheet.next+ +el.dataset.v));break;
+    case 'pctSave':{const base=S.job.pct,next=S.pctSheet.next,note=(S.pctSheet.note||'').trim();S.pctSheet=null;S.seen.pctSaved=true;
+      if(next===base){S.pctCheckedToday=true;S.thread.unshift({who:'sup',at:'Nov 1 · 9:12',w:`Checked trim-out at ${base}%, kept it.${note?' — '+note:''}`});log('sup',`kept trim-out at ${base}%. His card now reads the honest branch: the hours are the problem.`);toast(`Kept ${base}%. The card asks what held it instead.`);return;}
+      S.job.pct=next;S.pctCheckedToday=false;const L=line(next);S.thread.unshift({who:'sup',at:'Nov 1 · 9:12',w:`${next}% complete${note?' — '+note:''} (trim-out, provisional until pay app ${S.job.payApp+1}).`});
+      log('sup',`set trim-out to ${next}%. Status Report filed. His line reads “${L.words}” The score does not move until pay app ${S.job.payApp+1} is certified.`);toast(`Saved — ${S.job.num} trim-out is now ${next}% done.`);return;}
+    case 'openHeld':S.heldSheet=true;break;
+    case 'closeHeld':S.heldSheet=false;break;
+    case 'heldSave':{const w=(S.heldDraft||'').trim();if(!w)return;S.heldSheet=false;S.heldNoteSaved=w;S.heldDraft='';S.thread.unshift({who:'sup',at:'Nov 1 · 9:20',w:`What held trim-out: ${w}`});log('sup',`wrote what held trim-out. It is on the job's thread; the office reads it on Notes.`);toast('Saved to the job\'s thread.');return;}
+    case 'officeTab':if(S.persona==='officePhone')S.officePhoneTab=x;else S.officeTab=x;S.paper=false;if(x==='stages')S.seen.stagesTab=true;if(x==='notes')S.seen.notesTab=true;break;
+    case 'unfold':S.unfold=S.unfold||{};S.unfold[x]=!S.unfold[x];S.seen.unfold=true;break;
+    case 'deskAdd':{const w=((S.deskDraft||{})[x]||'').trim();if(!w){toast('Type the check first.');return;}addItem(x,w,!!((S.deskPhoto||{})[x]),'office',!!((S.deskSig||{})[x]));S.deskDraft[x]='';if(S.deskPhoto)S.deskPhoto[x]=false;if(S.deskSig)S.deskSig[x]=false;return;}
+    case 'coAdd':{const w=((S.coDraft||{})[x]||'').trim();if(!w){toast('Type the question first.');return;}const id='c'+(S.nextId++);S.company[x].push({id,w});S.coDraft[x]='';S.seen.coAdded=true;
+      log('office',`added the company question “${esc(w)}” for every ${stageName(x)}. ${S.job.num}'s ${stageName(x)} now reads ${count(x).done} of ${count(x).total}.`);toast(`Saved. Every ${stageName(x)} asks it now.`);return;}
+    case 'paper':S.paper=true;if(S.persona==='officePhone')S.seen.printedPhone=true;else S.seen.printed=true;log('office',`printed ${S.job.num}'s stage checklists.`);break;
+    case 'paperClose':S.paper=false;break;
+    default:return;
+  }
+  render();
+});
+document.addEventListener('input',e=>{
+  const el=e.target.closest('[data-a]');if(!el)return;const a=el.dataset.a,x=el.dataset.x;
+  if(a==='pctTyped'){fitPct();return;}
+  if(a==='draft')S.sheet.draft=el.value;
+  else if(a==='draftPhoto')S.sheet.photo=el.checked;
+  else if(a==='draftSig'){S.sheet.sig=el.checked;render();return;}
+  else if(a==='deskDraftSig'){S.deskSig=S.deskSig||{};S.deskSig[x]=el.checked;}
+  else if(a==='sigAgree'){S.sigAgree=el.checked;syncSigBtn();return;}
+  else if(a==='pctNote')S.pctSheet.note=el.value;
+  else if(a==='heldNote')S.heldDraft=el.value;
+  else if(a==='deskDraft'){S.deskDraft=S.deskDraft||{};S.deskDraft[x]=el.value;}
+  else if(a==='deskDraftPhoto'){S.deskPhoto=S.deskPhoto||{};S.deskPhoto[x]=el.checked;}
+  else if(a==='coDraft'){S.coDraft=S.coDraft||{};S.coDraft[x]=el.value;}
+  else if(a==='note'){const q=el.dataset.q;const prev=S.answers[q]||{};S.answers[q]={...prev,note:el.value};}
+  else return;
+  if(a==='draft'||a==='draftPhoto'){const btn=document.querySelector('[data-a="addItem"]');if(btn)btn.classList.toggle('dis',!(S.sheet.draft||'').trim());}
+  if(a==='heldNote'){const btn=document.querySelector('[data-a="heldSave"]');if(btn)btn.classList.toggle('dis',!(S.heldDraft||'').trim());}
+});
+document.addEventListener('change',e=>{
+  const typed=e.target.closest('[data-a="pctTyped"]');
+  if(typed&&S.pctSheet){const digits=typed.value.replace(/[^0-9]/g,'');if(digits)S.pctSheet.next=Math.max(0,Math.min(100,parseInt(digits,10)));render();return;}
+  const el=e.target.closest('[data-a="note"]');if(!el)return;const q=el.dataset.q;const a=S.answers[q];if(a&&a.note&&a.note.trim()){const qq=questions(S.sheet.stage).find(z=>z.id===q);log(whoNow(),`noted on “${esc(qq.w)}”: “${esc(a.note.trim())}”.`);}
+});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.closest('[data-a="pctTyped"]'))e.target.blur();});
+document.getElementById('frame').addEventListener('scroll',e=>{
+  if(S.persona==='tech'&&S.sheet&&e.target.classList&&e.target.classList.contains('sc')&&e.target.scrollTop>80&&!S.seen.techScrolled){S.seen.techScrolled=true;renderRail();}
+},true);
+render();
+})();
+</script>
+
+</html>

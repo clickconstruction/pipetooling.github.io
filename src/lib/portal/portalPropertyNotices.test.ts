@@ -43,6 +43,7 @@ describe('buildPortalPropertyNotices (v2.3825)', () => {
       claim: 17585,
       months: ['2026-04', '2026-06', '2026-07', '2026-08'],
       mailedOn: '2026-09-25',
+      courtesyOn: '',
     })
   })
   it('never for the GC viewing, a voided filing, another kind, or a job paid off', () => {
@@ -79,7 +80,7 @@ describe('parsePortalPayload · propertyNotices', () => {
   const base = { company: {}, customerName: 'Umar Khan', audience: 'all', bills: [], sharedBills: [], requestableJobs: [], requestableProperties: [] }
   it('reads the notices, and a function from before them reads none', () => {
     const p = parsePortalPayload({ ...base, propertyNotices: [{ key: 'f1', address: '9703 Lenox Hl', jobNumbers: ['273'], gcName: 'RMC- Dudley Mason', claimantName: 'Click', contactPerson: 'Malachi', claim: 17585, months: ['2026-08'], mailedOn: '2026-09-25' }] })
-    expect(p?.propertyNotices).toEqual([{ key: 'f1', address: '9703 Lenox Hl', jobNumbers: ['273'], gcName: 'RMC- Dudley Mason', claimantName: 'Click', contactPerson: 'Malachi', claim: 17585, months: ['2026-08'], mailedOn: '2026-09-25' }])
+    expect(p?.propertyNotices).toEqual([{ key: 'f1', address: '9703 Lenox Hl', jobNumbers: ['273'], gcName: 'RMC- Dudley Mason', claimantName: 'Click', contactPerson: 'Malachi', claim: 17585, months: ['2026-08'], mailedOn: '2026-09-25', courtesyOn: '' }])
     expect(parsePortalPayload(base)?.propertyNotices).toEqual([])
   })
 })

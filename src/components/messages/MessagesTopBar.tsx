@@ -5,6 +5,11 @@
  * (`MessagesJumpStrip`, PR 1, measuring this bar as what is pinned) and **7 days**, which opens The last 7 days under
  * the bar and stays as you left it on this browser. On a phone (`phone`) the controls take a row that scrolls away and
  * the strip sticks on its own, as one line. The words and the fold's memory: `lib/messages/topBar.ts`.
+ *
+ * Since punch list #230 PR 3 the title is followed by two tabs, **Follow up · My email** (`tabs`, a `tablist`, the
+ * pressed one filled), drawn while the person's own switch is on. While My email is open the bar keeps the title, the
+ * tabs and the ?, and leaves out the kind picker, Show, the glass, the strip and 7 days: those are Follow up's, and
+ * the tab has its own search.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Search } from 'lucide-react'
@@ -13,6 +18,7 @@ import { SHOW_WORDS, type ShowLens } from '../../lib/messages/showLens'
 import type { JumpCounts, JumpLane } from '../../lib/messages/jumpStrip'
 import { pickerLabel, TOP_BAR_WORDS } from '../../lib/messages/topBar'
 import { LEGEND_WORDS } from '../../lib/messages/laneLegend'
+import { MESSAGES_TABS, type MessagesTab } from '../../lib/myMail/tab'
 import { MessagesJumpStrip } from './MessagesJumpStrip'
 
 export interface MessagesTopBarProps {
@@ -31,6 +37,11 @@ export interface MessagesTopBarProps {
   phone: boolean
   /** The ? at the bar's end (v2.5802): what each lane holds, as a card under the bar. Left out: no ?. */
   legend?: { open: boolean; onToggle: (open: boolean) => void }
+  /**
+   * The two tabs after the title (punch list #230 PR 3): the open one, the press, and whether My email is drawn, which
+   * is while the person's own switch is on. Left out, or with `myMailOn` false: no tabs, the bar as it was.
+   */
+  tabs?: { tab: MessagesTab; onTab: (tab: MessagesTab) => void; myMailOn: boolean }
 }
 
 const pillStyle = (on: boolean): CSSProperties => ({
@@ -67,6 +78,19 @@ const segStyle = (on: boolean, first: boolean): CSSProperties => ({
   color: on ? 'var(--text-blue-500)' : 'var(--text-600)',
   fontWeight: on ? 600 : 400,
   cursor: 'pointer',
+  whiteSpace: 'nowrap',
+})
+/** A tab: the open one filled blue under white words, the other quiet, as the mock-up's bar draws them. */
+const tabStyle = (on: boolean): CSSProperties => ({
+  fontFamily: 'inherit',
+  fontSize: '0.85rem',
+  padding: '0.25rem 0.7rem',
+  borderRadius: 8,
+  border: `1px solid ${on ? '#2563eb' : 'var(--border-strong)'}`,
+  background: on ? '#2563eb' : 'var(--surface)',
+  color: on ? 'white' : 'var(--text-600)',
+  fontWeight: 600,
+  cursor: on ? 'default' : 'pointer',
   whiteSpace: 'nowrap',
 })
 const glassStyle = (on: boolean): CSSProperties => ({
@@ -131,8 +155,37 @@ function KindPicker({ pill, onPick }: Pick<MessagesTopBarProps, 'pill' | 'onPick
   )
 }
 
-export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOpen, onSearch, weekOpen, onWeek, strip, phone, legend }: MessagesTopBarProps) {
+/** Follow up · My email, after the title. */
+function TabRow({ tab, onTab }: { tab: MessagesTab; onTab: (tab: MessagesTab) => void }) {
+  return (
+    <div role="tablist" aria-label={TOP_BAR_WORDS.tabs} data-messages-tabs style={{ display: 'inline-flex', gap: '0.3rem' }}>
+      {MESSAGES_TABS.map((t) => {
+        const on = tab === t.key
+        return (
+          <button
+            key={t.key}
+            type="button"
+            role="tab"
+            aria-selected={on}
+            title={t.key === 'myMail' ? TOP_BAR_WORDS.myMailTip : TOP_BAR_WORDS.followUpTip}
+            onClick={() => {
+              if (!on) onTab(t.key)
+            }}
+            data-testid={`messages-tab-${t.key}`}
+            style={tabStyle(on)}
+          >
+            {t.label}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOpen, onSearch, weekOpen, onWeek, strip, phone, legend, tabs }: MessagesTopBarProps) {
   const title = <h1 className="messagesTopTitle">{TOP_BAR_WORDS.title}</h1>
+  const tabRow = tabs?.myMailOn ? <TabRow tab={tabs.tab} onTab={tabs.onTab} /> : null
+  const myMailOpen = Boolean(tabRow) && tabs?.tab === 'myMail'
   const picker = <KindPicker pill={pill} onPick={onPick} />
   const show = (
     <div role="radiogroup" aria-label={SHOW_WORDS.label} data-messages-show style={{ display: 'inline-flex', border: '1px solid var(--border-strong)', borderRadius: 999, overflow: 'hidden', background: 'var(--surface)' }}>
@@ -165,11 +218,22 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
     </button>
   ) : null
 
+  if (myMailOpen) {
+    // My email (punch list #230 PR 3): the title, the tabs and the ?; the rest is Follow up's.
+    return (
+      <div className={phone ? 'messagesTopBar isControls' : 'messagesTopBar'} {...(phone ? {} : { 'data-messages-pinned': '' })} data-messages-top-bar>
+        {title}
+        {tabRow}
+        {help ? <span style={{ marginLeft: 'auto', display: 'inline-flex' }}>{help}</span> : null}
+      </div>
+    )
+  }
   if (phone) {
     return (
       <>
         <div className="messagesTopBar isControls" data-messages-top-bar>
           {title}
+          {tabRow}
           {picker}
           {glass}
           {show}
@@ -183,6 +247,7 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
   return (
     <div className="messagesTopBar" data-messages-pinned data-messages-top-bar>
       {title}
+      {tabRow}
       {picker}
       {show}
       {glass}

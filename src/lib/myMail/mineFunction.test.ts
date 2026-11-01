@@ -1,12 +1,15 @@
 import { describe, expect, it } from 'vitest'
 import { emailFileRows, KEEP_FILE_BYTES } from '../emailIn/emailLine'
 import type { EmailFile, EmailIn, GmailPart } from '../emailIn/gmailMessage'
+import { GC_OFFICE_TEAM } from '../gc/access'
 import { buildLedgerPrefixMap } from '../ledgerDisplayPrefixes'
 import { plainWordsFailures } from '../plainWords'
 import { MY_MAIL_REFUSAL_WORDS, type MyMailJobChip, type MyMailRow } from './contract'
+import { orFilter } from './gmailMineFakes'
 import { guessJob } from './mailGuess'
 import {
   bidIsOpen,
+  columnNotPushed,
   contactJobsOf,
   contactsByAddress,
   customerOpenJobs,
@@ -14,11 +17,19 @@ import {
   domainFilter,
   fencedQuery,
   filledRow,
+  FOLLOW_ROWS_PER_RUN,
+  FOLLOW_WINDOW_DAYS,
+  followPeople,
+  followSince,
+  followWindow,
   gcProjectIsOpen,
   gmailRefusal,
+  isFollowRequest,
   knownLines,
   MY_MAIL_EML_MIME,
+  MY_MAIL_FOLLOW_GONE,
   MY_MAIL_HTML_MAX,
+  MY_MAIL_OFFICE_ROLES,
   MY_MAIL_QUERY_MAX,
   MY_MAIL_REFUSAL_STATUS,
   myMailAddressKey,
@@ -34,15 +45,23 @@ import {
   myMailOurDomains,
   myMailParties,
   myMailQuery,
+  myMailTagEventKey,
+  myMailTagEventRow,
+  myMailTagEventWords,
   myMailTeam,
   neverRead,
+  newestMailAt,
   parseMyMailRequest,
   pipelineIsOpen,
+  planFollow,
   planUntag,
   safeFileName,
   stoppedRefusal,
+  tagRowJob,
   tokenRefusal,
   wantsGuess,
+  type MyMailFollowLine,
+  type MyMailFollowUserRow,
   type MyMailPageFacts,
   type MyMailPipelineRow,
 } from './mineFunction'
@@ -501,5 +520,219 @@ describe('planUntag: what an untag removes', () => {
     expect(myMailAddressKey(' Dale@Ridgeway.Example ')).toBe('dale@ridgeway.example')
     expect(myMailAddressKey('nobody')).toBe('')
     expect(myMailAddressKey(null)).toBe('')
+  })
+})
+
+describe('the tag’s grey line on the thread', () => {
+  it('is the app’s own event in the other party’s thread, keyed by the tag’s row and on its job', () => {
+    expect(myMailTagEventKey('tag-1')).toBe('mytag:tag-1')
+    expect(
+      myMailTagEventRow({ tagRowId: 'tag-1', who: { name: ' Marisol Vega ', email: 'marisol@clickplumbing.example' }, contactId: 'c-dale', jobColumns: { bid_id: null, project_id: null, jobs_ledger_id: ELM } }),
+    ).toEqual({
+      contact_id: 'c-dale',
+      channel: 'event',
+      direction: 'team',
+      who_text: 'The app',
+      body: 'Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.',
+      quo_id: 'mytag:tag-1',
+      bid_id: null,
+      project_id: null,
+      jobs_ledger_id: ELM,
+    })
+  })
+
+  it('names the address when the person has no name, and says it in plain words', () => {
+    expect(myMailTagEventWords({ name: ' ', email: 'marisol@clickplumbing.example' })).toBe(
+      'marisol@clickplumbing.example tagged this conversation from their mail. Later mail in it lands here by itself.',
+    )
+    expect(plainWordsFailures(myMailTagEventWords({ name: 'Marisol Vega', email: '' }))).toEqual([])
+    expect(plainWordsFailures(MY_MAIL_FOLLOW_GONE)).toEqual([])
+  })
+
+  it('reads a column the push has not added yet as not there, and any other failure as a failure', () => {
+    expect(['42703', 'PGRST200', 'PGRST204'].map(columnNotPushed)).toEqual([true, true, true])
+    expect(['42P01', '23505', null, undefined].map(columnNotPushed)).toEqual([false, false, false, false])
+  })
+})
+
+describe('the follow: whose conversations, which, and what it does with each mail', () => {
+  it('is the cron’s alone: the tab’s parser refuses it', () => {
+    expect(isFollowRequest({ action: 'follow' })).toBe(true)
+    expect(isFollowRequest({ action: 'list' })).toBe(false)
+    expect(isFollowRequest('follow')).toBe(false)
+    expect(isFollowRequest(null)).toBe(false)
+    expect(parseMyMailRequest({ action: 'follow' })).toBeNull()
+  })
+
+  it('reads a conversation whose newest mail or tag is younger than 60 days, however lately it was read, and 100 a run', () => {
+    expect([FOLLOW_ROWS_PER_RUN, FOLLOW_WINDOW_DAYS]).toEqual([100, 60])
+    expect(followSince(Date.parse('2026-11-01T12:00:00.000Z'))).toBe('2026-09-02T12:00:00.000Z')
+    expect(followSince(new Date('2026-11-01T12:00:00.000Z'))).toBe('2026-09-02T12:00:00.000Z')
+    expect(followWindow('2026-09-02T12:00:00.000Z')).toBe('last_mail_at.gt.2026-09-02T12:00:00.000Z,tagged_at.gt.2026-09-02T12:00:00.000Z')
+    // As PostgREST reads the filter: greatest(last_mail_at, tagged_at) after the window's start.
+    const inWindow = orFilter(followWindow('2026-09-02T12:00:00.000Z'))
+    // Mail two days ago on a conversation tagged in January: alive, so followed.
+    expect(inWindow({ last_mail_at: '2026-10-30T00:00:00.000Z', tagged_at: '2026-01-01T00:00:00.000Z', last_read_at: '2026-11-01T11:55:00.000Z' })).toBe(true)
+    // Read five minutes ago, but its newest mail is 61 days old and its tag older: quiet, so not followed.
+    expect(inWindow({ last_mail_at: '2026-09-01T12:00:00.000Z', tagged_at: '2026-08-01T00:00:00.000Z', last_read_at: '2026-11-01T11:55:00.000Z' })).toBe(false)
+    // Tagged yesterday with its newest mail 90 days old: the tag holds it for the window, so a reply to it lands.
+    expect(inWindow({ last_mail_at: '2026-08-03T12:00:00.000Z', tagged_at: '2026-10-31T12:00:00.000Z', last_read_at: null })).toBe(true)
+    // The same tag 61 days on with nothing new: closed.
+    expect(inWindow({ last_mail_at: '2026-06-03T12:00:00.000Z', tagged_at: '2026-09-01T12:00:00.000Z', last_read_at: '2026-11-01T11:55:00.000Z' })).toBe(false)
+    // Tagged before the column was pushed and not read since: its tag alone.
+    expect(inWindow({ last_mail_at: null, tagged_at: '2026-10-30T00:00:00.000Z', last_read_at: null })).toBe(true)
+    expect(inWindow({ last_mail_at: null, tagged_at: '2026-08-01T00:00:00.000Z', last_read_at: '2026-11-01T11:55:00.000Z' })).toBe(false)
+  })
+
+  it('keys the window on the newest mail: drafts, Spam, Trash and chats left out, never earlier than the row’s own', () => {
+    const m = (at: string | null, labels: string[] = ['INBOX']) => ({ at, labels })
+    const thread = [
+      m('2026-10-30T15:00:00.000Z'),
+      m('2026-10-31T09:30:00.000Z', ['SENT']),
+      m('2026-11-01T09:00:00.000Z', ['DRAFT']),
+      m('2026-11-01T10:00:00.000Z', ['SPAM']),
+      m('2026-11-01T11:00:00.000Z', ['INBOX', 'TRASH']),
+      m('2026-11-01T12:00:00.000Z', ['CHAT']),
+      m(null),
+    ]
+    expect(newestMailAt(thread)).toBe('2026-10-31T09:30:00.000Z')
+    // A later mail than the row's moves it on; Postgres's own spelling of the row's time reads the same.
+    expect(newestMailAt(thread, '2026-10-01T00:00:00+00:00')).toBe('2026-10-31T09:30:00.000Z')
+    // The newest mail deleted from Gmail since: the row's time stands, so the window never moves back.
+    expect(newestMailAt(thread, '2026-11-01T08:00:00+00:00')).toBe('2026-11-01T08:00:00.000Z')
+    expect(newestMailAt([], '2026-10-01T00:00:00.000Z')).toBe('2026-10-01T00:00:00.000Z')
+    // No mail with a time, and nothing kept: none, and the tag stands in with its own time.
+    expect(newestMailAt([m(null), m('2026-11-01T09:00:00.000Z', ['DRAFT'])])).toBeNull()
+    expect(newestMailAt([m('not a time')])).toBeNull()
+  })
+
+  it('reads as each office member whose switch is on: never a sample, a twin, the walk tester, an archived or training account', () => {
+    const u = (id: string, over: Partial<MyMailFollowUserRow> = {}): MyMailFollowUserRow => ({
+      id,
+      name: ` ${id} `,
+      email: `${id}@clickplumbing.example`,
+      role: 'estimator',
+      read_only: false,
+      is_sample: false,
+      is_digital_twin: false,
+      is_walk_tester: false,
+      my_mail_on: true,
+      archived_at: null,
+      ...over,
+    })
+    expect(
+      followPeople([
+        u('marisol'),
+        u('off', { my_mail_on: false }),
+        u('sample', { is_sample: true }),
+        u('twin', { is_digital_twin: true }),
+        u('tester', { is_walk_tester: true }),
+        u('gone', { archived_at: '2026-10-01T00:00:00.000Z' }),
+        u('trainee', { read_only: true }),
+        u('sub', { role: 'subcontractor' }),
+        u('nomail', { email: 'nobody' }),
+        u('rosa', { role: 'assistant', email: ' rosa@clickplumbing.example ' }),
+      ]),
+    ).toEqual([
+      { id: 'marisol', name: 'marisol', email: 'marisol@clickplumbing.example' },
+      { id: 'rosa', name: 'rosa', email: 'rosa@clickplumbing.example' },
+    ])
+    expect([...MY_MAIL_OFFICE_ROLES]).toEqual([...GC_OFFICE_TEAM])
+  })
+
+  it('reads the tag’s job as planTag takes it, and none from a row that names none', () => {
+    expect(tagRowJob({ bid_id: null, project_id: null, jobs_ledger_id: ELM })).toEqual({ kind: 'pipeline', id: ELM, key: `pipeline:${ELM}`, num: '', name: '' })
+    expect(tagRowJob({ bid_id: CLUB, project_id: null, jobs_ledger_id: null })).toMatchObject({ kind: 'bid', id: CLUB, key: `bid:${CLUB}` })
+    expect(tagRowJob({ bid_id: null, project_id: CLINIC, jobs_ledger_id: null })).toMatchObject({ kind: 'project', id: CLINIC })
+    expect(tagRowJob({ bid_id: null, project_id: null, jobs_ledger_id: null })).toBeNull()
+  })
+
+  describe('planFollow', () => {
+    const marisol = { userId: MARISOL, address: 'marisol@clickplumbing.example', name: 'Marisol Vega' }
+    const elm: MyMailJobChip = { kind: 'pipeline', id: ELM, key: `pipeline:${ELM}`, num: '', name: '' }
+    const m = (gmailId: string, over: Partial<EmailIn> = {}): EmailIn => ({
+      gmailId,
+      threadId: 't-elm',
+      labels: ['INBOX'],
+      at: null,
+      from: { name: 'Dale Okafor', address: 'dale@ridgeway.example' },
+      to: [{ name: '', address: marisol.address }],
+      cc: [],
+      subject: 'Re: 4 Elm Ct water heater',
+      text: '',
+      links: [],
+      files: [],
+      headers: { 'message-id': `<${gmailId}@x>` },
+      ...over,
+    })
+    const line = (id: string, rfc: string | null, over: Partial<MyMailFollowLine> = {}): MyMailFollowLine => ({
+      id,
+      gmail_id: null,
+      rfc_message_id: rfc,
+      bid_id: null,
+      project_id: null,
+      jobs_ledger_id: null,
+      mail_user_id: null,
+      tied_by: null,
+      ...over,
+    })
+
+    it('writes a mail no line holds, ties a box’s line nobody placed, and leaves every placed line where it is', () => {
+      const steps = planFollow(
+        { threadId: 't-elm', messages: [m('g-new'), m('g-loose'), m('g-mine'), m('g-moved'), m('g-untied'), m('g-elsewhere'), m('g-bare', { headers: {} })] },
+        marisol,
+        elm,
+        {
+          lines: [
+            line('m-loose', '<g-loose@x>'),
+            line('m-mine', '<g-mine@x>', { mail_user_id: MARISOL, jobs_ledger_id: ELM }),
+            line('m-moved', '<g-moved@x>', { mail_user_id: MARISOL, jobs_ledger_id: HARBOR, tied_by: 'u-rosa' }),
+            line('m-untied', '<g-untied@x>', { tied_by: 'u-rosa' }),
+            line('m-elsewhere', '<g-elsewhere@x>', { bid_id: CLUB }),
+            line('m-bare', null, { gmail_id: 'g-bare', mail_user_id: MARISOL, jobs_ledger_id: ELM }),
+          ],
+        },
+      )
+      expect(steps).toEqual([
+        { kind: 'write', gmailId: 'g-new' },
+        { kind: 'tie', gmailId: 'g-loose', messageId: 'm-loose' },
+        { kind: 'held', gmailId: 'g-mine', messageId: 'm-mine' },
+        { kind: 'held', gmailId: 'g-moved', messageId: 'm-moved' },
+        { kind: 'held', gmailId: 'g-untied', messageId: 'm-untied' },
+        { kind: 'held', gmailId: 'g-elsewhere', messageId: 'm-elsewhere' },
+        { kind: 'held', gmailId: 'g-bare', messageId: 'm-bare' },
+      ])
+    })
+
+    it('leaves out what a tag leaves out, and finds a mail with no Message-ID only in this person’s box', () => {
+      const steps = planFollow(
+        {
+          threadId: 't-elm',
+          messages: [
+            m('g-draft', { labels: ['DRAFT'] }),
+            m('g-trash', { labels: ['TRASH'], headers: { 'message-id': '<g-held@x>' } }),
+            m('g-box', { from: { name: 'Bids', address: 'bids@clickplumbing.example' } }),
+            m('g-1'),
+            m('g-1-again', { headers: { 'message-id': '<g-1@x>' } }),
+            m('g-held', { headers: { 'message-id': '<g-held@x>' } }),
+            m('g-held-again', { headers: { 'message-id': '<g-held@x>' } }),
+            m('g-rosas', { headers: {} }),
+          ],
+        },
+        marisol,
+        elm,
+        { boxes: ['bids@clickplumbing.example'], lines: [line('m-held', '<g-held@x>'), line('m-rosa', null, { gmail_id: 'g-rosas', mail_user_id: 'u-rosa', jobs_ledger_id: ELM })] },
+      )
+      expect(steps).toEqual([
+        { kind: 'skip', gmailId: 'g-draft', why: 'draft' },
+        { kind: 'skip', gmailId: 'g-trash', why: 'spamOrTrash' },
+        { kind: 'skip', gmailId: 'g-box', why: 'noParty' },
+        { kind: 'write', gmailId: 'g-1' },
+        { kind: 'skip', gmailId: 'g-1-again', why: 'twice' },
+        { kind: 'tie', gmailId: 'g-held', messageId: 'm-held' },
+        { kind: 'skip', gmailId: 'g-held-again', why: 'twice' },
+        { kind: 'write', gmailId: 'g-rosas' },
+      ])
+    })
   })
 })

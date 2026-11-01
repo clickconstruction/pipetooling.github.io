@@ -2,7 +2,7 @@
 
 > Every time the company sends someone something, a copy is kept and the office can find it in Documents. This file is the plan, the rules and the list of what is wired; the code is `src/lib/sent/`.
 
-last_updated: 2026-10-28
+last_updated: 2026-11-01
 
 ## The owner's rules
 
@@ -20,7 +20,7 @@ Why it matters: before this, about thirty kinds of paper kept a "sent" date and 
 - **One table**, `sent_documents` ([migration doc](./migrations/20261005173119_sent_documents.md)): one row per send. Append-only: no UPDATE policy on the table or on the bucket.
 - **One bucket**, `sent-documents` (private): `<row id>/copy.html` for a page, `<row id>/<file>` for a PDF or an attachment.
 - **One helper each side.** The client calls `fileSentCopy(filing, body)`, `printAndFile(html, filing)`, `printWhenReadyAndFile(build, filing)` or, for a PDF built after the click, `printPdfAndFile(build, filing, building)` ([`sentCopiesIo.ts`](../src/lib/sent/sentCopiesIo.ts)); the rules are pure in [`sentCopies.ts`](../src/lib/sent/sentCopies.ts) (13 tests). Opening a kept file goes through [`storageSave.ts`](../src/lib/storageSave.ts) since v2.4610: a PDF opens in its own tab, a file the browser cannot show is read into the page and saved from the app's own address, so Safari asks once at most. An email function calls `fileSentEmailBestEffort(filing, message)` ([`_shared/fileSentCopy.ts`](../supabase/functions/_shared/fileSentCopy.ts)), or passes `options.file` to `sendEmailViaResend`: the message as it was read and each attachment are kept.
-- **Best effort, never in the way.** Filing never throws and is not awaited by a click. If the copy cannot be stored the row is still written with no path, and the list says *The copy was not kept*.
+- **Best effort, never in the way.** Filing never throws and is not awaited by a click. If the copy cannot be stored the row is still written with no path, and the list says *The copy was not kept. The send went out, and this row is the record.* (v2.6267: the amber words say what happened and that nothing is owed, since filing is never retried).
 - **A repeat does not pile up.** The copy's SHA-256 is on the row. A second print of the same page points at the first file, and the list folds the rows into one line (*Printed 3 times, last …*).
 - **A key is never kept.** The law firm's portal link (`legal_firm_link`, from `legal-send-firm-link`) is a key to the firm's portal, so its filed copy shows the button and the address with `?t=…` (`sentCopyKeptHtml` in `_shared/sentCopyEmail.ts`); the firm's link is never in a filed copy. A GC mode trade partner's email (`gc_trade_email`, from `gc-trade-email`, v2.4936) carries its company's portal link, and its filed copy shows `/t/…`. It has no company key on `sent_documents` yet, so it is found by kind and by its message row (`source_id`). A submittal reviewer's room link (`submittal_room_link`, from `send-submittal-room-link`, v2.5026) is their own key to the review room, and its filed copy shows `?t=…`. The function hides it itself (`roomLinkKeptHtml` in `_shared/submittalRoomLinkEmail.ts`), because a change to `sentCopyKeptHtml` would reach every email function's bundle.
 - **A copy is shown, never run.** A kept page opens inside a frame whose sandbox has scripts, forms and navigation off (`sentCopyFrameHtml`): the file was stored by someone on staff and is treated as a file.

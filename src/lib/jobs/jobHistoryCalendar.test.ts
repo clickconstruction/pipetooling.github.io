@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildCrewCalendar, crewDayLabel, crewDayWords, crewHoursWords, crewMonthName, crewQuietWords, crewRangeFor, crewSummaryWords, sessionMinutes } from './jobHistoryCalendar'
+import { buildCrewCalendar, crewDayLabel, crewDayWords, crewEmptyWords, crewHoursWords, crewMonthName, crewQuietWords, crewRangeFor, crewRangeWords, crewSummaryWords, sessionMinutes, type CrewRangeMode } from './jobHistoryCalendar'
+import { plainWordsFailures } from '../plainWords'
 import type { ProjectsJobHistoryClockRow } from '../projectsJobHistoryData'
 import { ymdAddDays } from '../../utils/dateUtils'
 
@@ -90,7 +91,7 @@ describe('jobHistoryCalendar (v2.4694)', () => {
     const clipped = buildCrewCalendar(rows, { ...opts, startYmd: '2026-10-01' })
     expect(clipped.months.map((m) => m.key)).toEqual(['2026-10'])
     expect(clipped.daysWorked).toBe(2)
-    expect(crewSummaryWords(buildCrewCalendar([], opts), '2026-10-06')).toBe('No days worked in this range.')
+    expect(crewSummaryWords(buildCrewCalendar([], opts), '2026-10-06')).toBe('')
   })
 
   it('a day\'s label names the people and the hours; the range modes', () => {
@@ -104,5 +105,19 @@ describe('jobHistoryCalendar (v2.4694)', () => {
     expect(crewRangeFor('whole', '2026-10-06', '', { start: 'x', end: 'y' }, ymdAddDays)).toEqual({ start: '2026-10-06', end: '2026-10-06' })
     expect(crewRangeFor(90, '2026-10-06', '2026-07-14', { start: 'x', end: 'y' }, ymdAddDays)).toEqual({ start: '2026-07-08', end: '2026-10-06' })
     expect(crewRangeFor('custom', '2026-10-06', '2026-07-14', { start: '2026-09-01', end: '2026-09-30' }, ymdAddDays)).toEqual({ start: '2026-09-01', end: '2026-09-30' })
+  })
+})
+
+describe('crewEmptyWords and crewRangeWords', () => {
+  it('the whole job names the first clock-in; a narrowed range names Whole job as the way back out', () => {
+    expect(crewEmptyWords('whole')).toEqual({ main: 'No days on this job yet.', next: '', tail: 'The first clock-in on this job starts the calendar.' })
+    expect(crewEmptyWords(90)).toEqual({ main: 'No days worked in the last 90 days.', next: 'Whole job', tail: 'shows every day worked.' })
+    expect(crewEmptyWords(365).main).toBe('No days worked in the last 365 days.')
+    expect(crewEmptyWords('custom').main).toBe('No days worked between these dates.')
+    for (const mode of ['whole', 90, 365, 'custom'] as const) {
+      const w = crewEmptyWords(mode)
+      expect(plainWordsFailures([w.main, w.next, w.tail].filter(Boolean).join(' '))).toEqual([])
+    }
+    expect(['whole', 90, 365, 'custom'].map((m) => crewRangeWords(m as CrewRangeMode))).toEqual(['Whole job', 'Last 90 days', 'Last 365 days', 'Pick dates…'])
   })
 })
