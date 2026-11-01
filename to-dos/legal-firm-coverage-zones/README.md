@@ -2,7 +2,7 @@
 name: "Firms and their coverage: the firm window shows where a firm covers, extends it, hands counties off to another firm, and two firms may share a county"
 number: 222
 group: close
-status: proposed 2026-10-30 · mock-up drawn the same day · Taunya asked for the whole train on 2026-10-31, on the defaults this card names · PR 1 built as v2.6195 · PR 2 built as v2.6221 · PR 3 built as v2.6227 · PR 4 built as v2.6233 · all four built; the PR 3 and PR 4 migrations are pushed right after their merges
+status: proposed 2026-10-30 · mock-up drawn the same day · Taunya asked for the whole train on 2026-10-31, on the defaults this card names · PR 1 built as v2.6195 · PR 2 built as v2.6221 · PR 3 built as v2.6227 · PR 4 built as v2.6233 · all four merged; the PR 3 and PR 4 migrations were pushed right after their merges on 2026-10-31
 mockup: to-dos/legal-firm-coverage-zones/mockup.html
 summary: >
   The Legal desk's firm window holds a firm's details, Click's particulars and, at the bottom, Replace with a new
@@ -16,9 +16,9 @@ summary: >
   county with one first-call firm per county that the office can switch at release. It also names a cliff the
   live app has today: one firm, no county colored, so the first county colored for anyone ends the bridge and
   every other account loses its firm.
-next: The two migration pushes right after their merges, then Taunya colors Snell's counties (the bridge nudge) and the card closes.
+next: Taunya colors Snell's counties (the bridge nudge), then this card closes.
 size: L as a train of four (M, M, L+migration, M+migration); one migration for shared coverage, one for the hand-off RPC; no edge function change
-blocker: The db pushes for PRs 3 and 4, right after each merge, by the person who pushes.
+blocker: Taunya's choice of Snell's counties.
 ver: proposed
 opinion: build — the window answers "where does this firm cover" today with nothing, Replace orphans a territory, and the one-firm-per-county rule is ours, not Taunya's; PR 1 first because the bridge cliff is live
 ---
