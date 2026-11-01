@@ -6,7 +6,7 @@ import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { legalPortalAddress } from '../_shared/legalPortalAddress.ts'
 import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, legalNowTriggerOf, legalPageHtml, legalTriggerSendsNow, legalWrapHtml } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
-import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo, legalDigestSince } from '../_shared/legalNotifyLedger.ts'
+import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo, legalDigestShows, legalDigestSince, legalDigestSourceIds, type LegalDigestSources } from '../_shared/legalNotifyLedger.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 
 /**
@@ -55,6 +55,26 @@ async function sha256Hex(value: string): Promise<string> {
   const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value))
   return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, '0')).join('')
 }
+/**
+ * The state of each entry, paper and matter a digest's lines came from (v2.6283), read when the digest is
+ * built so a line the office held back or undid since it was queued is left out. Null when a read fails:
+ * the digest then waits for the next tick rather than go out with a held line in it.
+ */
+async function readDigestSources(admin: SupabaseClient, ids: { entryIds: string[]; documentIds: string[]; matterIds: string[] }): Promise<LegalDigestSources | null> {
+  const none = Promise.resolve({ data: [] as Row[], error: null })
+  const [ent, doc, mat] = await Promise.all([
+    ids.entryIds.length ? admin.from('legal_matter_entries').select('id, kind, voided_at').in('id', ids.entryIds) : none,
+    ids.documentIds.length ? admin.from('legal_matter_documents').select('id, held_reason, voided_at').in('id', ids.documentIds) : none,
+    ids.matterIds.length ? admin.from('legal_matters').select('id, held_overrides').in('id', ids.matterIds) : none,
+  ])
+  if (ent.error || doc.error || mat.error) return null
+  return {
+    entries: new Map(((ent.data ?? []) as Row[]).map((e) => [String(e.id), { kind: String(e.kind ?? ''), voided: Boolean(e.voided_at) }])),
+    documents: new Map(((doc.data ?? []) as Row[]).map((d) => [String(d.id), { held: String(d.held_reason ?? '').trim().length > 0, voided: Boolean(d.voided_at) }])),
+    held: new Map(((mat.data ?? []) as Row[]).map((m) => [String(m.id), m.held_overrides && typeof m.held_overrides === 'object' ? (m.held_overrides as Record<string, unknown>) : {}])),
+  }
+}
+
 /** Weekday 1..7 (Mon..Sun) and HH:MM in the company time zone. */
 function nowInAppTz(now = new Date()): { weekday: number; hhmm: string } {
   const parts = new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short', hour: '2-digit', minute: '2-digit', hour12: false }).formatToParts(now)
@@ -251,10 +271,19 @@ serve(async (req) => {
         if (r.digest_weekday !== weekday || hhmm < r.digest_time) continue
         if (ymdInAppTz(r.last_digest_at) === today) continue
         // v2.6283 (punch list #233): each digest reads back to this person's own last digest (or their confirmation,
-        // at most eight days), so two people on different weekdays no longer split the week. `digested_at` below
-        // is housekeeping for the open-rows index, not the gate.
-        const { data: sinceRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).gt('created_at', legalDigestSince(r, new Date().toISOString())).order('created_at').limit(200)
-        const events = ((sinceRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; created_at: string }>).filter((e) => canSee(r, e.matter_id) && legalNowTriggerOf(e.trigger) != null)
+        // at most eight days), so two people on different weekdays no longer split the week. The window closes at
+        // `readAt`, which becomes the person's last_digest_at, so a line queued while this one sends lands in the
+        // next digest, never in neither or both. `digested_at` below is housekeeping for the open-rows index.
+        const readAt = new Date().toISOString()
+        const { data: sinceRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).gt('created_at', legalDigestSince(r, readAt)).lte('created_at', readAt).order('created_at').limit(200)
+        const known = ((sinceRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; created_at: string }>).filter((e) => canSee(r, e.matter_id) && legalNowTriggerOf(e.trigger) != null)
+        // A line the office held back from counsel or undid since it was queued is left out, as the portal leaves it out.
+        const sources = await readDigestSources(admin, legalDigestSourceIds(known))
+        if (!sources) {
+          result.errors.push(`${r.email}: could not read what the digest's lines came from; tried again next tick`)
+          continue
+        }
+        const events = known.filter((e) => legalDigestShows(e, sources))
         const mine = matters.filter((m) => canSee(r, m.id))
         const unsub = await unsubscribeLink(admin, r)
         // v2.3512: one builder for the sender and Settings → What customers see (_shared/legalEmails.ts).
@@ -273,7 +302,7 @@ serve(async (req) => {
           continue
         }
         result.digests++
-        await admin.from('legal_firm_recipients').update({ last_digest_at: new Date().toISOString(), updated_at: new Date().toISOString() }).eq('id', r.id)
+        await admin.from('legal_firm_recipients').update({ last_digest_at: readAt, updated_at: new Date().toISOString() }).eq('id', r.id)
         // An event is "digested" once every digest recipient who could see it has had it — approximate with the last digest recipient of the firm.
         if (digestRecipients.every((x) => x.id === r.id || ymdInAppTz(x.last_digest_at) === today || x.digest_weekday !== weekday)) {
           const ids = events.map((e) => e.id)

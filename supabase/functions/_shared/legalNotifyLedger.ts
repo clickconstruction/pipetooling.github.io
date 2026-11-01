@@ -145,3 +145,55 @@ export function legalDigestSince(r: { last_digest_at?: string | null; confirmed_
   const since = own && own.getTime() > floor.getTime() ? own : floor
   return since.toISOString()
 }
+
+/** The office's entries it can hold back from counsel under a `held_overrides` key `<kind>:<id>`, as the portal reads them (legal-portal). */
+export const LEGAL_HOLDABLE_ENTRY_KINDS: readonly string[] = ['plan', 'event', 'offer', 'statement']
+
+type DigestRow = { matter_id: string | null; payload: Record<string, unknown> }
+
+/** The entries, papers and matters a digest's lines came from (v2.6283), read when the digest is built. */
+export function legalDigestSourceIds(rows: ReadonlyArray<DigestRow>): { entryIds: string[]; documentIds: string[]; matterIds: string[] } {
+  const entryIds = new Set<string>()
+  const documentIds = new Set<string>()
+  const matterIds = new Set<string>()
+  for (const r of rows) {
+    const e = r.payload.entryId
+    const d = r.payload.documentId
+    if (typeof e === 'string' && e) {
+      entryIds.add(e)
+      if (r.matter_id) matterIds.add(r.matter_id)
+    }
+    if (typeof d === 'string' && d) documentIds.add(d)
+  }
+  return { entryIds: [...entryIds], documentIds: [...documentIds], matterIds: [...matterIds] }
+}
+
+export type LegalDigestSources = {
+  entries: ReadonlyMap<string, { kind: string; voided: boolean }>
+  documents: ReadonlyMap<string, { held: boolean; voided: boolean }>
+  /** Each matter's `held_overrides`. */
+  held: ReadonlyMap<string, Record<string, unknown>>
+}
+
+/**
+ * Whether a queued line still belongs in the digest (v2.6283, punch list #233). The office holds a planned
+ * step, an event, an offer, a statement or a paper back from counsel with a press after it is saved, and can
+ * undo an entry, often after the line was queued; the digest goes out days later. So each line's source is
+ * read as it stands, the way the portal reads it: an undone or missing entry, a held one, and a voided or held
+ * paper are left out. A line with no source id (a release, a pull-back, a fee seen, a row queued before
+ * v2.6283) always shows.
+ */
+export function legalDigestShows(row: DigestRow, s: LegalDigestSources): boolean {
+  const entryId = typeof row.payload.entryId === 'string' ? row.payload.entryId : ''
+  if (entryId) {
+    const e = s.entries.get(entryId)
+    if (!e || e.voided) return false
+    if (LEGAL_HOLDABLE_ENTRY_KINDS.includes(e.kind) && row.matter_id && s.held.get(row.matter_id)?.[`${e.kind}:${entryId}`] === true) return false
+  }
+  const documentId = typeof row.payload.documentId === 'string' ? row.payload.documentId : ''
+  if (documentId) {
+    const d = s.documents.get(documentId)
+    if (!d || d.voided || d.held) return false
+  }
+  return true
+}

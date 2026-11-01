@@ -122,3 +122,50 @@ describe('legalDigestSince · v2.6283 · each digest reads back to its own perso
     expect(legalDigestSince({ last_digest_at: 'junk', confirmed_at: null }, now)).toBe('2026-10-25T13:00:00.000Z')
   })
 })
+
+describe('legalDigestShows · v2.6283 · a line the office held back or undid since it was queued is left out', () => {
+  it('collects each line’s entry, paper and matter once', async () => {
+    const { legalDigestSourceIds } = await import('./legalNotifyLedger')
+    expect(legalDigestSourceIds([
+      { matter_id: 'm1', payload: { entryId: 'x1' } },
+      { matter_id: 'm1', payload: { entryId: 'x2' } },
+      { matter_id: 'm2', payload: { documentId: 'd1' } },
+      { matter_id: 'm3', payload: { payer: 'A release has no source id' } },
+      { matter_id: 'm1', payload: { entryId: 'x1' } },
+    ])).toEqual({ entryIds: ['x1', 'x2'], documentIds: ['d1'], matterIds: ['m1'] })
+  })
+
+  it('reads each source as the portal does: undone, missing or held entries and voided or held papers stay out', async () => {
+    const { legalDigestShows } = await import('./legalNotifyLedger')
+    const s = {
+      entries: new Map([
+        ['step', { kind: 'step', voided: false }],
+        ['undone', { kind: 'note', voided: true }],
+        ['plan-held', { kind: 'plan', voided: false }],
+        ['plan-open', { kind: 'plan', voided: false }],
+        ['statement-held', { kind: 'statement', voided: false }],
+        // A step is never held from counsel, so a held_overrides key in its shape changes nothing.
+        ['step-keyed', { kind: 'step', voided: false }],
+      ]),
+      documents: new Map([
+        ['paper', { held: false, voided: false }],
+        ['paper-held', { held: true, voided: false }],
+        ['paper-voided', { held: false, voided: true }],
+      ]),
+      held: new Map([['m1', { 'plan:plan-held': true, 'statement:statement-held': true, 'step:step-keyed': true, 'plan:plan-open': false, _reasons: { 'plan:plan-held': 'not yet' } }]]),
+    }
+    const shows = (payload: Record<string, unknown>) => legalDigestShows({ matter_id: 'm1', payload }, s)
+    expect(shows({ entryId: 'step' })).toBe(true)
+    expect(shows({ entryId: 'plan-open' })).toBe(true)
+    expect(shows({ entryId: 'step-keyed' })).toBe(true)
+    expect(shows({ entryId: 'undone' })).toBe(false)
+    expect(shows({ entryId: 'plan-held' })).toBe(false)
+    expect(shows({ entryId: 'statement-held' })).toBe(false)
+    expect(shows({ entryId: 'gone' })).toBe(false)
+    expect(shows({ documentId: 'paper' })).toBe(true)
+    expect(shows({ documentId: 'paper-held' })).toBe(false)
+    expect(shows({ documentId: 'paper-voided' })).toBe(false)
+    expect(shows({ documentId: 'gone' })).toBe(false)
+    expect(shows({ payer: 'A release, a pull-back, a fee seen' })).toBe(true)
+  })
+})

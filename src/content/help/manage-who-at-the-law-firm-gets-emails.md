@@ -32,6 +32,8 @@ Under the card, a sample week shows what lands in that person's inbox under the 
 - A step the office records, a planned step, a what-happened line, an offer, or a statement the office drafts. These go in the digest only.
 - A paper the office adds to Evidence, or a held paper released to them. These go in the digest only.
 
+Something the office holds back from the firm, or undoes, stays out of the digest. So do its steps, plans, offers, statements and papers on a matter pulled back from the firm.
+
 People on **Each event** get one email per event within five minutes. When an email does not go, it is tried again every five minutes for an hour. The others are not sent it twice. Digest people get one email on their day. Each open matter is a heading with its stage, and the week's lines sit under it. The matters with news come first. A quiet matter reads *Nothing new this week*. Each person's digest reads back to their own last digest. Two people on different days each get a whole week.
 
 ## What the office sees and controls
