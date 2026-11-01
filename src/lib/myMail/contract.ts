@@ -1,0 +1,209 @@
+/**
+ * Messages → My email (punch list #230, `to-dos/messages-my-email/README.md`, PR 1): the contract between the edge
+ * function `gmail-mine` (PR 2) and the tab on `/messages?tab=my-email` (PR 3). Both import these names, so neither
+ * spells a request, an answer or a refusal of its own.
+ *
+ * The tab is a tagging desk, never a second inbox (the owner's calls, 2026-11-01): the function reads the signed-in
+ * person's own Inbox and Sent live, as their own `users.email` and no other address, under the delegation the bids@
+ * reader already holds, and keeps nothing until the person tags a conversation. A tag copies that Gmail conversation
+ * onto the job as lines in Messages, and later mail in it lands by itself (PR 4). The Legal desk pulls a tagged
+ * conversation onto a matter's Evidence (PR 5); a tag never writes to a matter.
+ *
+ * Types and constants only, with no imports, so the edge copy (`scripts/edge-kernels.mjs`) can hold it as it stands.
+ */
+
+// ---------- the list ----------
+
+/** The tab's three views: what is left to tag (the default), what is on a job, and everything read. */
+export type MyMailView = 'toTag' | 'tagged' | 'all'
+
+/** The two Gmail labels the tab reads, by Gmail's own ids. Drafts, Spam, Trash and Chats are never read. */
+export type MyMailLabel = 'INBOX' | 'SENT'
+
+/**
+ * Why a mail folds under the one line, as the bids@ reader leaves such mail out (`emailIn/leftOut.ts`): a list, a
+ * machine or one of Gmail's other tabs (`bulk`), a no-reply sender (`noReply`), or a notice and not a person
+ * (`notice`: a sender the office marked so, or a copy of our own from a box or the app). Null: a person wrote it.
+ */
+export type MyMailFold = 'bulk' | 'noReply' | 'notice' | null
+
+/** An address with the name its header gives. */
+export interface MyMailParty {
+  /** The display name, trimmed; '' when the header gives none, and the tab then draws the address. */
+  name: string
+  address: string
+}
+
+/** A bid, a GC project or a Pipeline job: `messages/jobKeys.ts`'s `JobKind`, the SQL doors' `p_job_kind`. */
+export type MyMailJobKind = 'bid' | 'project' | 'pipeline'
+
+/** A job as `tie_message` takes it: a bid's `bids.id`, a GC project's `projects.id`, a Pipeline job's `jobs_ledger.id`. */
+export interface MyMailJobRef {
+  kind: MyMailJobKind
+  id: string
+}
+
+/** A job as a chip reads it: key is `${kind}:${id}` as messages/jobKeys.ts keys it; num as the app shows it (JP1077, BP523, #42). */
+export interface MyMailJobChip extends MyMailJobRef {
+  key: string
+  num: string
+  name: string
+}
+
+/** What a row's subject reads when the mail has none, as Gmail itself writes it. */
+export const MY_MAIL_NO_SUBJECT = '(no subject)'
+
+/** One mail of the person's own Inbox or Sent, as the list draws it (`myMail/rows.ts` makes it; the function fills the last three). */
+export interface MyMailRow {
+  gmailId: string
+  threadId: string
+  /** Out when the person sent it (their own address is its From), else in. */
+  direction: 'in' | 'out'
+  /** The other party: From on a mail in, the first To on a mail out. */
+  who: MyMailParty
+  /** The mail's subject, or `MY_MAIL_NO_SUBJECT`. */
+  subject: string
+  /** Gmail's own snippet, as text. */
+  snippet: string
+  /** ISO instant. */
+  at: string
+  /** How many files the mail carries. */
+  files: number
+  folded: MyMailFold
+  /** Set when the conversation is tagged (email_tag_threads holds the thread). messageId is this mail's line when it has one. */
+  tagged: (MyMailJobChip & { messageId: string | null }) | null
+  /** The app's guess, never acted on alone. */
+  guess: (MyMailJobChip & { why: string }) | null
+  /** A line already holds this mail's Message-ID (the boxes read it): the line and its job key when tied. */
+  inMessages: { messageId: string; jobKey: string | null } | null
+}
+
+// ---------- the four actions ----------
+
+/** A page of the list: the view, an optional Gmail search, the next page's token, and the labels (both when left out). */
+export interface MyMailListRequest {
+  action: 'list'
+  view: MyMailView
+  q?: string
+  pageToken?: string | null
+  labels?: MyMailLabel[]
+}
+
+/** A page: the address read, its rows newest first, the next page's token, and how many of them fold under the one line. */
+export interface MyMailListOk {
+  ok: true
+  address: string
+  rows: MyMailRow[]
+  nextPageToken: string | null
+  folded: number
+}
+
+/** One mail whole, read for the screen and kept nowhere. */
+export interface MyMailOpenRequest {
+  action: 'open'
+  gmailId: string
+}
+
+/** A file a mail carries, as the reader lists it before any copy. */
+export interface MyMailFile {
+  name: string
+  mime: string
+  /** Bytes. */
+  size: number
+}
+
+/** The mail whole: its row, its addresses, its words, its files, and the rest of its conversation as rows. */
+export interface MyMailOpenOk {
+  ok: true
+  mail: MyMailRow & {
+    to: MyMailParty[]
+    cc: MyMailParty[]
+    bodyText: string
+    bodyHtml: string | null
+    fileList: MyMailFile[]
+    threadCount: number
+    threadRows: MyMailRow[]
+  }
+}
+
+/** Tag a conversation onto a job: every mail in it so far lands as a line, and later mail follows (PR 4). */
+export interface MyMailTagRequest {
+  action: 'tag'
+  threadId: string
+  job: MyMailJobRef
+}
+
+/**
+ * The tag done: the job's key, the lines written, the lines the boxes already held that were tied, the files kept, the
+ * contact the conversation landed on, and the sender when no contact held the address (the tab asks *Who is this?*).
+ */
+export interface MyMailTagOk {
+  ok: true
+  jobKey: string
+  lines: number
+  tied: number
+  files: number
+  contactId: string | null
+  unknownSender: { contactId: string; address: string; name: string } | null
+}
+
+/** Take a conversation back off its job. */
+export interface MyMailUntagRequest {
+  action: 'untag'
+  threadId: string
+}
+
+/** The untag done: the lines removed, and whether the office already put the conversation on a legal matter, which keeps its own copy. */
+export interface MyMailUntagOk {
+  ok: true
+  removed: number
+  keptForMatter: boolean
+}
+
+/** What the tab posts to the function. */
+export type MyMailRequest = MyMailListRequest | MyMailOpenRequest | MyMailTagRequest | MyMailUntagRequest
+
+// ---------- a refusal ----------
+
+/**
+ * Why the function refused: not signed in (`signIn`); a training account, a sample account or a digital twin
+ * (`readOnly`); not on the office team (`officeOnly`); the person's switch is off (`off`); an address off the company's
+ * Workspace, which Google refuses at its token exchange (`offWorkspace`); Google's own failure (`google`); a request the
+ * function cannot read (`badRequest`); a mail, a conversation or a job that is not there (`notFound`).
+ */
+export type MyMailRefusalError = 'signIn' | 'readOnly' | 'officeOnly' | 'off' | 'offWorkspace' | 'google' | 'badRequest' | 'notFound'
+
+/** A refusal: its reason and the office's sentence for it, which the tab shows as it comes. */
+export interface MyMailRefusal {
+  ok: false
+  error: MyMailRefusalError
+  words: string
+}
+
+/** The office's sentence for each refusal, in plain words (`plainWords.ts`). */
+export const MY_MAIL_REFUSAL_WORDS: Readonly<Record<MyMailRefusalError, string>> = {
+  signIn: 'Sign in again to read your mail here.',
+  readOnly: 'A training, sample or robot account cannot read mail here.',
+  officeOnly: 'My email is for the office team.',
+  off: 'Your mail is not shown here. Turn on Show my mail on the My email tab in Settings, under Your account.',
+  offWorkspace: 'Google will not read this address for the app: it is not on the company Workspace.',
+  google: 'Google did not answer the app. Try again in a minute.',
+  badRequest: 'The app asked for something it cannot do. Reload the page and try again.',
+  notFound: 'That mail or that job is not there anymore.',
+}
+
+/** A refusal with the office's sentence, or with `words` when the function has better ones (Google's own reason after ours). */
+export function myMailRefusal(error: MyMailRefusalError, words?: string): MyMailRefusal {
+  return { ok: false, error, words: words?.trim() || MY_MAIL_REFUSAL_WORDS[error] }
+}
+
+// ---------- the names both sides share ----------
+
+/** The edge function's name: `supabase.functions.invoke(MY_MAIL_FUNCTION, { body: request })`. */
+export const MY_MAIL_FUNCTION = 'gmail-mine'
+
+/** How many mails a page of the list reads. */
+export const MY_MAIL_PAGE = 50
+
+/** The Gmail label a tagged mail carries in the person's own box (the owner's call 6), so Gmail shows what is on a job. */
+export const MY_MAIL_GMAIL_LABEL = 'Tagged in ClickTooling'
