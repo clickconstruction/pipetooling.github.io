@@ -230,6 +230,30 @@ button.stg{color:#0f172a;font-family:inherit;font-size:13px;text-align:left;curs
 .stg .mark img{height:22px}
 .sigtag{font-size:10px;border:1px solid #f59e0b;border-radius:4px;padding:0 4px;color:#b45309;margin-left:4px;vertical-align:middle}
 .s.blue{color:#1d4ed8}
+/* the sheet, second pass: one row open at a time, the rest as statements */
+.prog{height:4px;border-radius:2px;background:#374151;margin-top:8px;overflow:hidden}.prog div{height:4px;background:#60a5fa;border-radius:2px}
+.rec-h{display:flex;flex-direction:column;gap:2px}
+.rec-h .id{font-family:var(--font-mono);font-size:12px;color:#d1d5db}
+.row-c{display:flex;gap:10px;align-items:flex-start;width:100%;text-align:left;background:none;border:0;border-bottom:1px solid #374151;padding:10px 0;color:#f3f4f6;font-family:inherit;cursor:pointer}
+.row-c:last-child{border-bottom:0}
+.c-chip{flex:none;width:26px;height:26px;border-radius:13px;display:inline-flex;align-items:center;justify-content:center;font-size:14px;font-weight:700;margin-top:1px}
+.c-chip.yes{background:#14532d;color:#86efac}.c-chip.no{background:#7f1d1d;color:#fca5a5}.c-chip.nh{background:#374151;color:#d1d5db}.c-chip.open{border:1px dashed #6b7280;color:#6b7280;background:none}
+.c-body{flex:1 1 auto;min-width:0;display:flex;flex-direction:column;gap:2px}
+.c-w{font-size:14px;color:#f3f4f6;line-height:1.3}
+.c-w.open{color:#d1d5db}
+.c-stamp{font-size:11px;color:#9ca3af}
+.c-note{font-size:12px;color:#d1d5db;font-style:italic}
+.ink{height:22px;flex:none;background:#f8fafc;border-radius:4px;padding:0 5px;display:inline-flex;align-items:center;color:#0f172a;font-family:"Snell Roundhand","Brush Script MT",cursive;font-size:14px;margin-top:2px}
+img.ink{padding:0 2px;width:auto}
+.thumb{width:26px;height:26px;border-radius:5px;background:linear-gradient(135deg,#64748b,#1e293b);flex:none;margin-top:1px}
+.row-a{display:flex;flex-direction:column;gap:8px;padding:12px;margin:6px 0;border:1px solid #374151;border-radius:12px;background:#111827}
+.row-a.now{border-color:#2563eb}
+.nowlbl{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#93c5fd}
+.need{font-size:10px;letter-spacing:.06em;text-transform:uppercase;color:#fcd34d;border:1px solid #92400e;border-radius:4px;padding:1px 5px;margin-left:6px;vertical-align:middle;font-weight:400;white-space:nowrap;display:inline-block}
+.lnk{background:none;border:0;color:#93c5fd;font-size:13px;padding:0;text-align:left;font-family:inherit}
+.jobchip{font-size:10px;border:1px solid #4b5563;border-radius:4px;padding:0 4px;color:#9ca3af;margin-left:6px;vertical-align:middle}
+.grp2{display:flex;justify-content:space-between;align-items:baseline;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:#9ca3af;padding:10px 0 2px;border-bottom:1px solid #374151}
+.grp2 .cnt2{font-size:11px;letter-spacing:0;text-transform:none;color:#9ca3af}
 </style>
 
 <div class="wrap">
@@ -332,21 +356,38 @@ function stripRows(){
     return `<button type="button" class="${c.ready?'':'warn'}" data-a="openSheet" data-x="${s.key}"><span>${s.name}</span>${st}</button>`;}).join('')}</div>`;
 }
 function markHtml(a,by){return a.sig?`<span class="mark"><img src="${a.sig}" alt="signature"></span>`:`<span class="mark">${esc(WHO[by||'tech'])}</span>`;}
-function questionRow(q,opts){
+const PICK_GLYPH={yes:'✓',no:'✗',nh:'—'};
+/* An answered or waiting question as one line: the pick, the words, the stamp, the ink, the photo. Tap to open it. */
+function rowCompact(q,isFiled){
+  const a=S.answers[q.id]||{};const done=answered(q);const partial=!!a.pick&&!done;
+  const chip=done?`<span class="c-chip ${a.pick}">${PICK_GLYPH[a.pick]}</span>`:`<span class="c-chip open">${partial?'…':''}</span>`;
+  const ink=q.sig&&a.signed?(a.sig?`<img class="ink" src="${a.sig}" alt="signature">`:`<span class="ink">${esc(WHO[a.by||'tech'])}</span>`):'';
+  const ph=q.photo&&a.photo?`<span class="thumb" title="In the customer's Drive folder"></span>`:'';
+  let stamp;
+  if(done||partial)stamp=`${q.sig&&a.signed?'Signed · ':''}${esc(WHO[a.by||'tech'])} · ${esc(a.at||'today')}${partial?(q.sig&&!a.signed?' · waits for the signature':' · waits for the photo'):''}`;
+  else stamp=[q.sig?'needs a signature':'',q.photo?'asks for a photo':'',q.by?'added by '+esc(WHO[q.by])+' · '+esc(q.at):''].filter(Boolean).join(' · ')||'waiting';
+  const note=a.note?`<span class="c-note">“${esc(a.note)}”</span>`:'';
+  const tag=q.by?`<span class="jobchip">job</span>`:'';
+  const canOpen=!isFiled||(q.sig&&a.signed);
+  return `<button type="button" class="row-c" data-a="expand" data-q="${q.id}" ${canOpen?'':'disabled style="cursor:default"'}>${chip}<span class="c-body"><span class="c-w ${done?'':'open'}">${esc(q.w)}${tag}</span><span class="c-stamp">${stamp}</span>${note}</span>${ink}${ph}</button>`;
+}
+/* The one open question: the presses, the photo, the note, and when signed the mark and Take it back. */
+function rowActive(q,isNext,isFiled){
   const a=S.answers[q.id]||{};const who=S.persona==='officePhone'?'office':S.persona;
   const pk=v=>`<button type="button" class="pk ${v} ${a.pick===v?'sel':''}" data-a="pick" data-q="${q.id}" data-v="${v}">${sigWords(v)}</button>`;
+  const needs=[q.sig?`<span class="need">${a.signed?'signed':'needs a signature'}</span>`:'',q.photo&&!a.photo?`<span class="need">photo</span>`:''].join('');
   let meta='';
-  if(q.by){const canRetire=who==='office'||q.by===who;meta=`<div class="meta">${q.by===who?'You added this':'Added by '+esc(WHO[q.by])+(q.by==='office'?'':', superintendent')} · ${esc(q.at)}${q.photo?' · asks for a photo':''}${canRetire?` · <button type="button" data-a="retire" data-q="${q.id}">Take off</button>`:''}</div>`;}
-  let photo='';
-  if(q.photo&&a.pick!=='nh'){photo=a.photo?`<div class="photo"><div class="th has"></div><span>In the customer's Drive folder.</span></div>`:`<div class="photo"><div class="th"></div><button type="button" class="b sec" style="flex:none;min-height:40px" data-a="photo" data-q="${q.id}">Take the photo</button></div>`;}
-  const note=`<input class="notein" id="note-${q.id}" placeholder="A note, if there is something to say" value="${esc(a.note||'')}" data-a="note" data-q="${q.id}">`;
-  const chip=q.sig?`<span class="sigchip">${a.signed?'signed':'needs a signature'}</span>`:'';
+  if(q.by){const canRetire=!isFiled&&(who==='office'||q.by===who);meta=`<div class="meta">${q.by===who?'You added this':'Added by '+esc(WHO[q.by])+(q.by==='office'?'':', superintendent')} · ${esc(q.at)}${canRetire?` · <button type="button" data-a="retire" data-q="${q.id}">Take off</button>`:''}</div>`;}
   const locked=q.sig&&a.signed;
-  let stampLine='';
-  if(locked)stampLine=`<div class="signed">${markHtml(a,a.by)}<span>Signed · ${esc(WHO[a.by||'tech'])} · ${esc(a.at)} · <button type="button" data-a="takeBack" data-q="${q.id}">Take it back</button></span></div>`;
-  else if(a.pick)stampLine=`<div class="stamp">${esc(WHO[a.by||'tech'])} · ${esc(a.at||'today')}</div>`;
-  else if(q.sig)stampLine=`<div class="stamp">Press an answer and the signature sheet opens. The row is not answered until it is signed.</div>`;
-  return `<div class="q"><div class="w">${esc(q.w)}${chip}</div>${meta}<div class="picks ${locked?'locked':''}">${pk('yes')}${pk('no')}${pk('nh')}</div>${stampLine}${photo}${opts&&opts.notes&&!locked?note:''}</div>`;
+  let body;
+  if(locked)body=`<div class="signed">${markHtml(a,a.by)}<span>Signed · ${esc(WHO[a.by||'tech'])} · ${esc(a.at)}${isFiled?'':` · <button type="button" data-a="takeBack" data-q="${q.id}">Take it back</button>`}</span></div>`;
+  else body=`<div class="picks">${pk('yes')}${pk('no')}${pk('nh')}</div>${q.sig&&!a.pick?`<div class="stamp">An answer here opens the signature sheet. The row is not answered until it is signed.</div>`:a.pick?`<div class="stamp">${esc(WHO[a.by||'tech'])} · ${esc(a.at||'today')}</div>`:''}`;
+  let photo='';
+  if(q.photo&&a.pick&&a.pick!=='nh'){photo=a.photo?`<div class="photo"><div class="th has"></div><span>In the customer's Drive folder.</span></div>`:`<div class="photo"><div class="th"></div><button type="button" class="b sec" style="flex:none;min-height:40px" data-a="photo" data-q="${q.id}">Take the photo</button></div>`;}
+  let note='';
+  if(!isFiled){note=(a.note||S.sheet.noteOpen===q.id)?`<input class="notein" id="note-${q.id}" placeholder="What is there to say?" value="${esc(a.note||'')}" data-a="note" data-q="${q.id}">`:`<button type="button" class="lnk" data-a="noteOpen" data-q="${q.id}">Add a note</button>`;}
+  const close=isNext?'':`<button type="button" class="lnk" data-a="collapse">Close this one</button>`;
+  return `<div class="row-a ${isNext?'now':''}">${isNext?'<div class="nowlbl">Next</div>':''}<div class="w" style="font-size:16px;color:#f9fafb">${esc(q.w)}${needs}</div>${meta}${body}${photo}${note}${close}</div>`;
 }
 function sigSheetView(){
   const P=S.sigSheet;const q=questions(S.sheet?S.sheet.stage:'trim_set').find(z=>z.id===P.q);if(!q)return '';
@@ -367,7 +408,11 @@ function sigSheetView(){
 }
 function checklistSheet(stage,canAdd){
   const c=count(stage);const qs=S.company[stage];const items=S.items.filter(i=>i.stage===stage&&!i.retired);
+  const f=S.filed[stage];const isFiled=!!(f&&!f.open);const all=qs.concat(items);
+  const nextQ=isFiled?null:(all.find(q=>!answered(q))||null);
+  const openId=S.sheet.expand||(nextQ?nextQ.id:null);
   const ans=arr=>arr.filter(answered).length;
+  const row=q=>q.id===openId?rowActive(q,nextQ&&q.id===nextQ.id&&!S.sheet.expand,isFiled):rowCompact(q,isFiled);
   const add=!canAdd?'':S.sheet.add?`
     <div class="addbox">
       <div class="eyebrow">Add a check for ${stageName(stage)} on this job <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></div>
@@ -377,19 +422,25 @@ function checklistSheet(stage,canAdd){
       <div class="hint">The crew sees it on this job's ${stageName(stage)} sheet now. It counts toward ready like the office's questions. ${S.sheet.sig?'Whoever answers it signs, and the row is locked after.':'You can take it off later; an answer it already has stays.'}</div>
       <div class="btns"><button type="button" class="b sec" data-a="toggleAdd">Not now</button><button type="button" class="b pri ${(S.sheet.draft||'').trim()?'':'dis'}" data-a="addItem" data-x="${stage}">Add the check</button></div>
     </div>`:`<button type="button" class="b sec" data-a="toggleAdd">+ Add a check for ${stageName(stage)} <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></button>`;
-  const doneBtn=c.ready?`<button type="button" class="b grn" style="flex:none;padding:0 16px" data-a="sheetDone">Done</button>`:`<button type="button" class="b sec dis" style="flex:none;padding:0 16px" disabled>Done</button>`;
+  const left=c.total-c.done;const pct=c.total?Math.round(c.done/c.total*100):0;
+  const head=isFiled
+    ?`<div class="rec-h"><h3>${stageName(stage)} · filed</h3><span class="id">Record ${f.id}${f.v>1?' · v'+f.v:''} · ${esc(f.at)}</span><div class="sub">${esc(S.job.num)} · ${esc(S.job.name)} · in the job's Drive folder · ${c.total} answers${all.some(q=>q.sig)?', '+all.filter(q=>q.sig).length+' signed':''}</div></div>`
+    :`<h3>${stageName(stage)} checklist</h3><div class="sub">${esc(S.job.num)} · ${esc(S.job.name)} · ${c.done} of ${c.total} answered${left?' · '+left+' left':''}</div><div class="prog"><div style="width:${pct}%"></div></div>`;
+  const foot=isFiled
+    ?`<span class="cnt">Filed. Nothing here changes; the office can amend it as a new version.</span><button type="button" class="b sec" style="flex:none;padding:0 16px" data-a="closeSheet">Close</button>`
+    :`<span class="cnt">${left?left+' left. The list files itself as a document on the job when the last is answered.':'All answered. Filed as record '+(S.filed[stage]?S.filed[stage].id:'')+'.'}</span><button type="button" class="b ${left?'sec':'grn'}" style="flex:none;padding:0 16px" data-a="${left?'closeSheet':'sheetDone'}">${left?'Close':'Done'}</button>`;
   return `<div class="dim" data-a="closeSheet"></div>
   <div class="sheet" role="dialog" aria-label="${stageName(stage)} checklist">
     <div class="grab"></div>
-    <div class="hd"><h3>${stageName(stage)} checklist</h3><div class="sub">${esc(S.job.num)} · ${esc(S.job.name)} · ${c.done} of ${c.total} answered</div></div>
-    <div class="sc">
-      <div class="grp"><span>The company's questions</span><span class="tag">${ans(qs)} of ${qs.length} answered</span></div>
-      ${qs.map(q=>questionRow(q,{notes:true})).join('')}
-      <div class="grp"><span>Added for this job <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></span><span class="tag">${items.length?ans(items)+' of '+items.length+' answered':'none yet'}</span></div>
-      ${items.map(q=>questionRow(q,{notes:true})).join('')||`<div class="hint">Nothing added for this job's ${stageName(stage)}.${canAdd?'':' The superintendent or the office adds one.'}</div>`}
-      ${add}
+    <div class="hd">${head}</div>
+    <div class="sc" style="gap:0">
+      <div class="grp2"><span>The company's questions</span><span class="cnt2">${ans(qs)} of ${qs.length}</span></div>
+      ${qs.map(row).join('')}
+      <div class="grp2"><span>Added for this job <span class="prov" style="color:#f3b25f;border-color:#8a5a1a">new</span></span><span class="cnt2">${items.length?ans(items)+' of '+items.length:'none'}</span></div>
+      ${items.map(row).join('')||`<div class="hint" style="padding:10px 0">Nothing added for this job's ${stageName(stage)}.${canAdd?'':' The superintendent or the office adds one.'}</div>`}
+      <div style="padding-top:10px">${add}</div>
     </div>
-    <div class="foot"><span class="cnt">${c.done} of ${c.total} answered. ${c.ready?(S.filed[stage]&&!S.filed[stage].open?'Filed as record '+S.filed[stage].id+'.':stageName(stage)+' reads ready on the Pipeline.'):'When the last is answered the list files itself as a document on the job.'}</span>${doneBtn}</div>
+    <div class="foot">${foot}</div>
   </div>`;
 }
 
@@ -688,20 +739,25 @@ document.addEventListener('click',e=>{
   switch(a){
     case 'persona':S.persona=x;S.seen[x]=true;if(x!=='sup'&&S.seen.supAdded)S.seen.supThenOther=true;S.sheet=null;S.pctSheet=null;S.heldSheet=false;S.paper=false;S.toast=null;clearTimeout(toast.h);break;
     case 'reset':{const p=S.persona;S=fresh();S.persona=p;S.seen[p]=true;log('system','Started over.');break;}
-    case 'openSheet':S.sheet={stage:x,add:false,draft:'',photo:false};S.pctSheet=null;S.heldSheet=false;if(S.persona==='tech')S.seen.techSheet=true;break;
+    case 'openSheet':S.sheet={stage:x,add:false,draft:'',photo:false,expand:null,noteOpen:null};S.pctSheet=null;S.heldSheet=false;if(S.persona==='tech')S.seen.techSheet=true;break;
+    case 'expand':{const q=el.dataset.q;S.sheet.expand=S.sheet.expand===q?null:q;S.sheet.noteOpen=null;break;}
+    case 'collapse':S.sheet.expand=null;S.sheet.noteOpen=null;break;
+    case 'noteOpen':S.sheet.noteOpen=el.dataset.q;break;
     case 'closeSheet':S.sheet=null;break;
     case 'sheetDone':{const st=S.sheet.stage;S.sheet=null;const f=S.filed[st];log(whoNow(),`closed ${stageName(st)}'s checklist${f&&!f.open?', filed as record '+f.id:''}.`);toast(f&&!f.open?`${stageName(st)} filed as record ${f.id}.`:`${stageName(st)} checklist filled. It reads ready on the Pipeline.`);return;}
     case 'pick':{const q=el.dataset.q,v=el.dataset.v;const qq=questions(S.sheet.stage).find(z=>z.id===q);
       if(qq.sig){S.sigSheet={q,v};S.sigStrokes=[];S.sigAgree=false;break;}
       const prev=S.answers[q]||{};S.answers[q]={...prev,pick:v,by:whoNow(),at:stamp()};
+      if(!(qq.photo&&v!=='nh'&&!S.answers[q].photo)){S.sheet.expand=null;S.sheet.noteOpen=null;}
       const c=count(S.sheet.stage);
       log(whoNow(),`answered “${esc(qq.w)}” ${sigWords(v)} at ${S.answers[q].at}. ${stageName(S.sheet.stage)} is ${c.done} of ${c.total}${c.ready?', ready':''}.`);fileIfReady();break;}
     case 'photo':{const q=el.dataset.q;const prev=S.answers[q]||{};S.answers[q]={...prev,photo:true,by:prev.by||whoNow(),at:prev.at||stamp()};
-      const qq=questions(S.sheet.stage).find(z=>z.id===q);log(whoNow(),`took the photo for “${esc(qq.w)}”. It is on its way to the customer's Drive folder.`);fileIfReady();toast('Photo taken. On its way to the customer\'s Drive folder.');return;}
+      const qq=questions(S.sheet.stage).find(z=>z.id===q);S.sheet.expand=null;S.sheet.noteOpen=null;log(whoNow(),`took the photo for “${esc(qq.w)}”. It is on its way to the customer's Drive folder.`);fileIfReady();toast('Photo taken. On its way to the customer\'s Drive folder.');return;}
     case 'sigClose':S.sigSheet=null;S.sigStrokes=[];break;
     case 'sigClear':S.sigStrokes=[];break;
     case 'sigSave':{if(!(S.sigStrokes.length&&S.sigAgree))return;const P=S.sigSheet;const canvas=document.getElementById('sigpad');const url=canvas?canvas.toDataURL('image/png'):null;
       const prev=S.answers[P.q]||{};const at=stamp();S.answers[P.q]={...prev,pick:P.v,signed:true,sig:url,by:whoNow(),at};S.sigSheet=null;S.sigStrokes=[];S.sigAgree=false;
+      {const qq0=questions(S.sheet.stage).find(z=>z.id===P.q);if(!(qq0.photo&&P.v!=='nh'&&!S.answers[P.q].photo)){S.sheet.expand=null;}else{S.sheet.expand=P.q;}S.sheet.noteOpen=null;}
       const qq=questions(S.sheet.stage).find(z=>z.id===P.q);const c=count(S.sheet.stage);
       log(whoNow(),`signed ${sigWords(P.v)} to “${esc(qq.w)}” at ${at}. The row is locked; the mark is bound to the answer as given. ${stageName(S.sheet.stage)} is ${c.done} of ${c.total}${c.ready?', ready':''}.`);
       fileIfReady();toast(`Signed. ${esc(WHO[whoNow()])} · ${at} stamps the row.`);return;}

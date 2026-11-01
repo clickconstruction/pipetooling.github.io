@@ -62,7 +62,9 @@ Three files beside this card, made-up names and figures:
   off as you go and a log of what each press did for the others. It also holds #234's *Set the %*
   sheet with its live read-back, since the line and the checklist meet on the same card. The
   private artifact the owner clicked through is *Stage Checklist Walk* —
-  https://claude.ai/artifact/V1TM7YbctmHp5Rj9TP4Ygu.
+  https://claude.ai/artifact/V1TM7YbctmHp5Rj9TP4Ygu. **The walk's sheet is the design**: its
+  second pass (below, *The sheet*) came after the owner read the first and said it was not the
+  best we could do; the phone boards in the two mock-up files still draw the first pass.
 
 ## The thinking
 
@@ -126,6 +128,21 @@ item with the two toggles, for this job or as the company's list for that kind; 
 be promoted with *Use as the company's list*. Settings → Stage checklists becomes a read-only
 card that says which job each list came from, for one release, then goes.
 
+**The sheet.** The phone sheet is two things, never one form. While the list is open it keeps
+one row open at a time: a progress bar under the title with *2 of 5 answered · 3 left*; the next
+unanswered question as the one big row, labelled *Next*, with the three presses at 44 px, its
+*needs a signature* and *photo* chips, and *Add a note* as a link that opens the box; every
+other row a statement, ✓ ✗ or — · the words · the name and the time · the ink where it was
+signed · a thumbnail where there is a photo, which a tap reopens to change. After an answer the
+list moves to the next question by itself; a signed row that still owes its photo stays open
+with the mark, *Take it back* and *Take the photo*. Once filed the sheet reads as paper: the
+header *Rough In · filed · Record CL-1042-1 · Oct 15 · 4:02 pm · in the job's Drive folder · 4
+answers, 1 signed*, every row a statement, nothing to press but a signed row that opens to show
+its mark, and the foot *Filed. Nothing here changes; the office can amend it as a new version.*
+with Close. What this replaced: a sheet that kept three buttons and an empty note box on every
+answered row, said the count twice, buried the record number at the foot, and never said which
+question was next.
+
 **The paper.** *Print the checklists* draws the three stages on the light paper a pay
 application prints on: every answer with its name and time, a signature where one was required,
 the record number once filed. It is what an inspector or the GC reads, and the filed PDF is the
@@ -186,10 +203,11 @@ promote and print; the Settings card read-only; the guides.
 
 1. **PR 1 · items on the job and the read-out** (M). The job-scoped rows (one migration with the
    adder, the time and `retired_at`; RLS by `can_report_stage_progress` for the superintendent and
-   the office set for writes), the kernel's grouping, the sheet's second group with the
-   superintendent's *Add a check* and the stamp on every answered row, the Documents section on
-   desk and phone with inline add and take off, the guide *add a check to a job's stage checklist*.
-   Useful on its own.
+   the office set for writes), the kernel's grouping, the sheet rebuilt as *The sheet* above
+   describes (the progress header, one *Next* row with the presses, statement rows with the stamp,
+   *Add a note* as a link) with the second group and the superintendent's *Add a check*, the
+   Documents section on desk and phone with inline add and take off, the guide *add a check to a
+   job's stage checklist*. Useful on its own.
 2. **PR 2 · needs a signature** (M). The toggle on every add box, the signature columns on the
    answer (one migration), the signature sheet with the gravity words and the agreed line over
    `SignatureTypeOrDrawInput`, the lock, *Take it back*, the outbox ride, the guide *sign a
@@ -219,4 +237,5 @@ Delete every ZZ Test row after.
 
 2026-11-01: thought through with the owner on the click-through and mocked up; nothing built.
 The owner asked to build it. PR 1 and PR 4 wait on nothing; PR 2 and PR 3 take the recommended
-answers to calls 1 and 2 as defaults.
+answers to calls 1 and 2 as defaults. Later the same day the owner read the sheet and asked for
+better; the walk's sheet is now its second pass (*The sheet* above) and PR 1 builds that one.
