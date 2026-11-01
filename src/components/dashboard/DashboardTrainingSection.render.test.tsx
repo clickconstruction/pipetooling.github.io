@@ -4,11 +4,12 @@
  * each, nothing drawn while the role need not take a course or the tables are not there yet, and the dock told
  * whether the card is on the page.
  */
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { installDomShims } from '../../test/renderSmokeMocks'
-import { DashboardTrainingSection } from './DashboardTrainingSection'
+import { installDomShims, SMOKE_AUTH_USER_ID } from '../../test/renderSmokeMocks'
+import { shapeViewStorageKey } from '../prototypes/useShapeView'
+import { DashboardTrainingSection, TRAINING_DUE_STRIP_KEY } from './DashboardTrainingSection'
 
 vi.mock('../../lib/supabase', async () => ({ supabase: (await import('../../test/renderSmokeMocks')).makeSupabaseStub() }))
 
@@ -19,12 +20,18 @@ const io = vi.hoisted(() => ({
   lessons: [] as string[],
   offered: false,
   plumbingLessons: [] as string[],
+  retakeFrom: null as string | null,
 }))
+const auth = vi.hoisted(() => ({ role: 'helpers' as string }))
+vi.mock('../../hooks/useAuth', async () => {
+  const m = await import('../../test/renderSmokeMocks')
+  return { ...m.useAuthModuleMock(), useOptionalAuth: () => m.makeUseAuthValue({ role: auth.role }) }
+})
 vi.mock('../../lib/training/trainingIo', () => ({
   loadTrainingCatalog: () =>
     Promise.resolve({
       policies: [
-        { slug: 'osha-30-refresher', title: 'OSHA 30 refresher', on: io.enabled, requiredRoles: ['helpers'], goodForMonths: 12, dueSoonDays: 30, retakeFrom: null, offered: false },
+        { slug: 'osha-30-refresher', title: 'OSHA 30 refresher', on: io.enabled, requiredRoles: ['helpers'], goodForMonths: 12, dueSoonDays: 30, retakeFrom: io.retakeFrom, offered: false },
         ...(io.offered ? [{ slug: 'intro-to-plumbing', title: 'Intro to plumbing', on: true, requiredRoles: ['helpers'], goodForMonths: 120, dueSoonDays: 30, retakeFrom: null, offered: true }] : []),
       ],
       missing: io.missing,
@@ -36,9 +43,9 @@ const TODAY = new Date()
 const ymd = (d: Date) => d.toISOString().slice(0, 10)
 const daysAgo = (n: number) => ymd(new Date(TODAY.getTime() - n * 86_400_000))
 
-function open(role: string | null = 'helpers', onVisibility?: (v: boolean) => void) {
+function open(role: string | null = 'helpers', onVisibility?: (v: boolean) => void, search = '') {
   return render(
-    <MemoryRouter>
+    <MemoryRouter initialEntries={[`/${search}`]}>
       <Routes>
         <Route path="/" element={<DashboardTrainingSection userId="u-1" role={role as never} onVisibility={onVisibility} />} />
         <Route path="/training/:slug" element={<div>Course page</div>} />
@@ -47,8 +54,13 @@ function open(role: string | null = 'helpers', onVisibility?: (v: boolean) => vo
   )
 }
 
+const STORAGE_KEY = shapeViewStorageKey(TRAINING_DUE_STRIP_KEY, SMOKE_AUTH_USER_ID)
+
 beforeEach(() => {
   installDomShims()
+  localStorage.clear()
+  auth.role = 'helpers'
+  io.retakeFrom = null
   io.missing = false
   io.enabled = true
   io.passes = []
@@ -131,6 +143,68 @@ describe('DashboardTrainingSection', () => {
     open('assistant')
     await screen.findByText('Read it again')
     expect(screen.getByText(/^Done /)).toBeTruthy()
+  })
+
+  it('Due strip (punch list #217, field-11): off by default the words stay; on, a pass due in days draws the strip with the window, the chip reads due soon, and the verdict splits', async () => {
+    io.passes = [{ slug: 'osha-30-refresher', passedOn: daysAgo(361), contentVersion: '1a2b3c4d' }]
+    open()
+    await screen.findByText('1 course to take again')
+    expect(screen.queryByTestId('training-due-strip')).toBeNull()
+    expect(document.querySelector('[data-training-card]')?.getAttribute('data-training-shape')).toBe('words')
+    const sw = screen.getByTestId('shape-switch') as HTMLButtonElement
+    expect(sw.textContent).toBe('Due strip')
+    fireEvent.click(sw)
+    const strip = await screen.findByTestId('training-due-strip')
+    expect(strip.getAttribute('data-state')).toBe('due-soon')
+    expect(within(strip).getByTestId('training-due-window')).toBeTruthy()
+    const pct = Number(strip.getAttribute('data-today-pct'))
+    expect(pct).toBeGreaterThan(90)
+    expect(pct).toBeLessThan(100)
+    expect(strip.getAttribute('aria-label')).toMatch(/^OSHA 30 refresher: passed .* on version 1a2b3c4d, good until .*\. Today is \d+ days? before, inside the last 30 days: due soon\.$/)
+    expect(screen.getByTestId('training-due-chip').textContent).toMatch(/^due soon · \d+ days?$/)
+    expect(screen.getByText(/^1 course due soon$/)).toBeTruthy()
+    expect(screen.queryByText(/^Done /)).toBeNull()
+    expect(screen.getByText('Take it again')).toBeTruthy()
+    expect(localStorage.getItem(STORAGE_KEY)).toBe('1')
+  })
+
+  it('Due strip: a pass past its day reads lapsed, full strip, the tick at the end', async () => {
+    io.passes = [{ slug: 'osha-30-refresher', passedOn: daysAgo(400), contentVersion: '1a2b3c4d' }]
+    localStorage.setItem(STORAGE_KEY, '1')
+    open()
+    const strip = await screen.findByTestId('training-due-strip')
+    expect(strip.getAttribute('data-state')).toBe('lapsed')
+    expect(strip.getAttribute('data-today-pct')).toBe('100')
+    expect(screen.getByTestId('training-due-chip').textContent).toMatch(/^lapsed · \d+ days$/)
+    expect(screen.getByText('1 course lapsed')).toBeTruthy()
+  })
+
+  it('Due strip: a retake day that voids the old pass is its own case, the strip cut at that day, the chip red', async () => {
+    io.passes = [{ slug: 'osha-30-refresher', passedOn: daysAgo(100), contentVersion: 'aaaa1111' }]
+    io.retakeFrom = daysAgo(10)
+    localStorage.setItem(STORAGE_KEY, '1')
+    open()
+    const strip = await screen.findByTestId('training-due-strip')
+    expect(strip.getAttribute('data-state')).toBe('superseded')
+    expect(within(strip).queryByTestId('training-due-window')).toBeNull()
+    expect(screen.getByTestId('training-due-chip').textContent).toBe('older version · take it again')
+    expect(screen.getByText('1 course to take again')).toBeTruthy()
+    expect(screen.getByText(/^Passed .* on an older version\. Everyone takes it again from .*\.$/)).toBeTruthy()
+    expect(strip.getAttribute('aria-label')).toContain('counts for nothing')
+  })
+
+  it('Due strip: a dev with ?sbs=1 sees Today and With the strip on the same read', async () => {
+    io.passes = [{ slug: 'osha-30-refresher', passedOn: daysAgo(100), contentVersion: '1a2b3c4d' }]
+    auth.role = 'dev'
+    open('helpers', undefined, '?sbs=1')
+    await screen.findByTestId('side-by-side')
+    expect(screen.getByText('Today')).toBeTruthy()
+    expect(screen.getByText('With the strip')).toBeTruthy()
+    expect(screen.getAllByText('OSHA 30 refresher').length).toBe(2)
+    expect(screen.getByText(/^Done /)).toBeTruthy()
+    expect(screen.getByTestId('training-due-strip').getAttribute('data-state')).toBe('current')
+    expect(screen.getByTestId('training-due-chip').textContent).toBe('current')
+    expect(screen.getAllByText('You are caught up').length).toBe(2)
   })
 
   it('a helper, who must take the offered course, sees it as a red row and never under Available', async () => {
