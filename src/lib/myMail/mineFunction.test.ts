@@ -373,6 +373,10 @@ describe('the facts a page’s guesses read', () => {
     expect(filledRow(row('a'), { tagged: elmChip, line, guess: { ...elmChip, why: 'x' } })).toMatchObject({ tagged: { ...elmChip, messageId: 'm-1' }, inMessages: { messageId: 'm-1', jobKey: `pipeline:${ELM}` }, guess: null })
     expect(filledRow(row('a'), { tagged: null, line: null, guess: { ...elmChip, why: 'x' } })).toMatchObject({ tagged: null, inMessages: null, guess: { why: 'x' } })
     expect(filledRow(row('a'), { tagged: elmChip, line: null, guess: null }).tagged).toEqual({ ...elmChip, messageId: null })
+    // The person's own tag line is theirs: drawn through tagged, never as a line someone else holds.
+    const mine = { ...line, mail_user_id: 'u-me' }
+    expect(filledRow(row('a'), { tagged: elmChip, line: mine, guess: null }, 'u-me')).toMatchObject({ tagged: { ...elmChip, messageId: 'm-1' }, inMessages: null })
+    expect(filledRow(row('a'), { tagged: elmChip, line: { ...line, mail_user_id: 'u-other' }, guess: null }, 'u-me').inMessages).toEqual({ messageId: 'm-1', jobKey: `pipeline:${ELM}` })
   })
 
   it('wants a guess only on a row not tagged, not folded, and with no line on a job yet', () => {

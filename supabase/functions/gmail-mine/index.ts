@@ -366,7 +366,7 @@ async function fillRows(ctx: Ctx, box: Box, reads: readonly MyMailRead[], guessF
       tagged: h.tagKey ? (facts.chips[h.tagKey] ?? null) : null,
       line: h.line,
       guess: h.guess ? guessJob(h.read.row, myMailGuessFacts(h.read.row, facts)) : null,
-    }),
+    }, me.id),
   )
 }
 

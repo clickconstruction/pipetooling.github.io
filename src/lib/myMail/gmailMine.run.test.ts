@@ -245,8 +245,9 @@ describe('gmail-mine: list', () => {
     expect(by['g-board']!.guess).toEqual({ kind: 'pipeline', id: MILL, key: `pipeline:${MILL}`, num: 'JP1090', name: '7 Mill Rd', why: 'cedarbend.example is Cedar Bend HOA' })
     // A mail bids@ already holds, tied by the office: its line and job, no guess.
     expect(by['g-priya-1']).toMatchObject({ inMessages: { messageId: 'm-box-club', jobKey: `bid:${CLUB}` }, guess: null, tagged: null })
-    // A tagged conversation: the job's chip with this mail's line, no guess.
-    expect(by['g-elm-old']).toMatchObject({ tagged: { ...elmChip, messageId: 'm-mine-elm' }, inMessages: { messageId: 'm-mine-elm', jobKey: `pipeline:${ELM}` }, guess: null })
+    // A tagged conversation: the job's chip with this mail's line, no guess; the person's own tag line is theirs,
+    // never a line someone else holds (`inMessages`), so the tab can offer Untag.
+    expect(by['g-elm-old']).toMatchObject({ tagged: { ...elmChip, messageId: 'm-mine-elm' }, inMessages: null, guess: null })
     expect(by['g-jo']).toMatchObject({ guess: null, tagged: null, inMessages: null, folded: null })
   })
 

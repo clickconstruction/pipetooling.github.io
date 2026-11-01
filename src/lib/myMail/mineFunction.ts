@@ -487,11 +487,14 @@ export interface MyMailLine {
  * A row with what the database holds: the tagged conversation's chip with this mail's line on it, the line that holds
  * this mail (the boxes', or an earlier tag's) and its job, and the guess when there is one. A tagged row has no guess.
  */
-export function filledRow(row: MyMailRow, held: { tagged: MyMailJobChip | null; line: MyMailLine | null; guess: MyMailGuess | null }): MyMailRow {
+export function filledRow(row: MyMailRow, held: { tagged: MyMailJobChip | null; line: MyMailLine | null; guess: MyMailGuess | null }, me?: string): MyMailRow {
+  // A line this person's own tag wrote is theirs, drawn through `tagged`; `inMessages` names a line someone else holds
+  // (the boxes' reader, or another person's tag), the one the tab cannot untag.
+  const theirs = held.line && !(me && held.line.mail_user_id === me) ? held.line : null
   return {
     ...row,
     tagged: held.tagged ? { ...held.tagged, messageId: held.line?.id ?? null } : null,
-    inMessages: held.line ? { messageId: held.line.id, jobKey: jobKeyOfRow(held.line) } : null,
+    inMessages: theirs ? { messageId: theirs.id, jobKey: jobKeyOfRow(theirs) } : null,
     guess: held.tagged ? null : held.guess,
   }
 }
