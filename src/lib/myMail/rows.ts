@@ -8,7 +8,8 @@
  *
  * Two rules of the reader read differently for a person's own box. Its Inbox gate does not hold: the tab reads Sent
  * too, and a conversation holds archived mail, so the fold reads every rule after the gate. And the person's own mail
- * never folds: a reply that quotes a newsletter's foot is still theirs.
+ * never folds: a reply that quotes a newsletter's foot is still theirs. Their own mail is mail from their own address,
+ * or any mail in their Sent (`isOwnMail`), whatever address it went out from: an alias, or a box sent as.
  *
  * `files` counts the parts a message carries. A `format=metadata` read carries none, so the list asks for the parts
  * (`format=full`, or `fields` with the parts and no bodies) when the count should show.
@@ -61,6 +62,14 @@ export function isTheirs(address: string | null | undefined, reader: Pick<MyMail
   return a !== '' && a === clean(reader.address)
 }
 
+/**
+ * Whether a mail is the person's own, going out: from their own address, or carrying Gmail's SENT label whatever
+ * address it went out from (an alias, a send-as, a box sent as), since only what they sent sits in their Sent.
+ */
+export function isOwnMail(email: Pick<EmailIn, 'from' | 'labels'>, reader: Pick<MyMailReader, 'address'>): boolean {
+  return isTheirs(email.from?.address, reader) || email.labels.includes('SENT')
+}
+
 /** The reader's verdict as the tab folds it: Gmail's other tabs and Spam or Trash read as bulk, a copy of ours as a notice. */
 const FOLD_OF: Readonly<Record<LeftOut, MyMailFold>> = {
   spamOrTrash: 'bulk',
@@ -74,11 +83,11 @@ const FOLD_OF: Readonly<Record<LeftOut, MyMailFold>> = {
 /**
  * Why a mail folds, by the bids@ reader's own rules (`leftOut`: the list and machine headers, the body's foot, a
  * no-reply sender, Gmail's other tabs, a copy of ours) and then the office's notice list. Null for a person's mail, and
- * always for the person's own: what they sent never folds.
+ * always for the person's own (`isOwnMail`): what they sent never folds, from a box's address or an alias as well.
  */
 export function myMailFold(email: Pick<EmailIn, 'labels' | 'from' | 'headers'> & Partial<Pick<EmailIn, 'text'>>, reader: MyMailReader): MyMailFold {
   const from = email.from?.address ?? ''
-  if (isTheirs(from, reader)) return null
+  if (isOwnMail(email, reader)) return null
   const boxes = new Set((reader.boxes ?? []).map(clean).filter((a) => a !== ''))
   // Past the reader's Inbox gate: Sent and a conversation's archived mail are read too.
   const labels = email.labels.includes('INBOX') ? email.labels : [...email.labels, 'INBOX']
@@ -90,10 +99,14 @@ export function myMailFold(email: Pick<EmailIn, 'labels' | 'from' | 'headers'> &
 
 const party = (a: EmailAddress | null | undefined): MyMailParty => ({ name: a?.name?.trim() ?? '', address: a?.address.trim() ?? '' })
 
-/** The other party: the sender on a mail in; on a mail out the first To who is not the person, then the first Cc, then the first To. */
+/**
+ * The other party: the sender on a mail in; on a mail out the first To who is neither the person nor the address it
+ * went out from (an alias), then the first Cc, then the first To.
+ */
 function otherParty(email: Pick<EmailIn, 'from' | 'to' | 'cc'>, out: boolean, reader: MyMailReader): MyMailParty {
   if (!out) return party(email.from)
-  const them = [...email.to, ...email.cc].find((a) => !isTheirs(a.address, reader))
+  const from = clean(email.from?.address)
+  const them = [...email.to, ...email.cc].find((a) => !isTheirs(a.address, reader) && clean(a.address) !== from)
   return party(them ?? email.to[0] ?? email.from)
 }
 
@@ -117,7 +130,7 @@ function snippetOf(snippet: string | undefined, text: string): string {
 /** One message read for the list: the row, the parsed email and its Message-ID, all from one parse. */
 export function readMyMail(message: MyMailGmailMessage, reader: MyMailReader): MyMailRead {
   const email = readGmailMessage(message)
-  const out = isTheirs(email.from?.address, reader)
+  const out = isOwnMail(email, reader)
   const row: MyMailRow = {
     gmailId: email.gmailId,
     threadId: email.threadId ?? '',

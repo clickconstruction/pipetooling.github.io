@@ -3,7 +3,7 @@ import { rfcMessageId as readerMessageId } from '../emailIn/emailLine'
 import type { GmailPart } from '../emailIn/gmailMessage'
 import { leftOutSenders } from '../emailIn/leftOutSenders'
 import { MY_MAIL_NO_SUBJECT } from './contract'
-import { isTheirs, MY_MAIL_METADATA_HEADERS, MY_MAIL_SNIPPET_MAX, myMailFold, myMailRow, readMyMail, rfcMessageId, type MyMailGmailMessage, type MyMailReader } from './rows'
+import { isOwnMail, isTheirs, MY_MAIL_METADATA_HEADERS, MY_MAIL_SNIPPET_MAX, myMailFold, myMailRow, readMyMail, rfcMessageId, type MyMailGmailMessage, type MyMailReader } from './rows'
 
 // Made-up mail: Marisol Vega is the estimator whose box it is; Dale Okafor at Ridgeway Builders and Priya Nair at the
 // Cedar Bend HOA are customers; Harlan Freight is a supplier.
@@ -128,6 +128,16 @@ describe('myMailRow: a mail in the person’s own box as the tab’s row', () =>
     for (const header of ['from', 'to', 'cc', 'subject', 'date', 'message-id', 'list-unsubscribe', 'list-id', 'precedence', 'auto-submitted']) expect(asked.has(header)).toBe(true)
   })
 
+  it('reads a mail in the person’s Sent as theirs from any address it went out from, and names the first one outside', () => {
+    const alias = mail('g-alias', { From: 'Click Plumbing Estimating <estimating@clickplumbing.example>', To: 'estimating@clickplumbing.example, Dale Okafor <dale@ridgeway.example>', Subject: 'Re: 4 Elm Ct water heater' }, { labels: ['SENT'] })
+    expect(myMailRow(alias, reader)).toMatchObject({ direction: 'out', who: { name: 'Dale Okafor', address: 'dale@ridgeway.example' }, folded: null })
+    // The same address in the Inbox is someone writing in.
+    expect(myMailRow(mail('g-alias-in', { From: 'estimating@clickplumbing.example', To: MARISOL }), reader)).toMatchObject({ direction: 'in', who: { address: 'estimating@clickplumbing.example' } })
+    expect(isOwnMail({ from: { name: null, address: 'estimating@clickplumbing.example' }, labels: ['SENT'] }, reader)).toBe(true)
+    expect(isOwnMail({ from: { name: null, address: 'estimating@clickplumbing.example' }, labels: ['INBOX'] }, reader)).toBe(false)
+    expect(isOwnMail({ from: { name: null, address: MARISOL }, labels: [] }, reader)).toBe(true)
+  })
+
   it('knows the person’s own address case-blind, and nothing as theirs when empty', () => {
     expect(isTheirs(' MARISOL@clickplumbing.example ', reader)).toBe(true)
     expect(isTheirs('rosa@clickplumbing.example', reader)).toBe(false)
@@ -179,6 +189,15 @@ describe('myMailFold: what the tab folds, as the bids@ reader leaves it out', ()
   it('never folds a person, or the person’s own mail though it quotes a newsletter’s foot', () => {
     expect(fold({ From: 'Dale Okafor <dale@ridgeway.example>' })).toBeNull()
     expect(fold({ From: MARISOL, 'List-Unsubscribe': '<mailto:u@x.example>' }, { labels: ['SENT'], text: 'Forwarding this.\n\nUnsubscribe' })).toBeNull()
+  })
+
+  it('never folds the person’s own mail sent as a box or from an address on the notice list', () => {
+    const marked = { ...reader, isNotice: leftOutSenders([{ value: 'estimating@clickplumbing.example', kind: 'address', mailbox: null }], 'mine') }
+    expect(fold({ From: 'bids@clickplumbing.example', To: 'dale@ridgeway.example' }, { labels: ['SENT'] })).toBeNull()
+    expect(fold({ From: 'estimating@clickplumbing.example', To: 'dale@ridgeway.example' }, { labels: ['SENT'] }, marked)).toBeNull()
+    // Neither address writing in is the person: a copy of ours, and a notice, as before.
+    expect(fold({ From: 'bids@clickplumbing.example' })).toBe('notice')
+    expect(fold({ From: 'estimating@clickplumbing.example' }, {}, marked)).toBe('notice')
   })
 
   it('reads past the reader’s Inbox gate: an archived mail of a conversation folds by the same rules', () => {

@@ -5,8 +5,12 @@
  * and a Google behind `fetch`: the token exchange (whose `sub` names the box) and one Gmail box per person. Since PR 4
  * the database orders a read (`order`, nulls placed as Postgres places them), compares (`gt`, `gte`, `lt`, `lte`, in an
  * `or` too, with `and(...)` inside it), stands back on a duplicate when an upsert asks it to (`ignoreDuplicates`), and
- * refuses with a code; and Google can stumble on one conversation (`down`, a 503) until the test takes it out. Nothing
- * here reaches a network or a database. Test-only.
+ * refuses with a code; and Google can stumble on one conversation (`down`, a 503) until the test takes it out. Since
+ * v2.6292 the database keeps the foreign keys a line's delete meets as the migrations made them (a promise and a
+ * highlight go with their line, what we owe refuses it, `23503`), refuses a second `contact_jobs` row for one person
+ * and job as its partial unique indexes do (`23505`), and lets a test act just before a database function runs
+ * (`onRpc`); Google can refuse a label change on one mail (`stuck`), refuse to list the labels (`labelsDown`), and let a
+ * test act as a conversation is read (`onThreadRead`). Nothing here reaches a network or a database. Test-only.
  */
 
 export type Row = Record<string, unknown>
@@ -47,6 +51,10 @@ const likeRegex = (pattern: string, caseBlind: boolean) =>
   new RegExp(`^${pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/[*%]/g, '.*').replace(/_/g, '.')}$`, caseBlind ? 'i' : '')
 
 type Compare = 'gt' | 'gte' | 'lt' | 'lte'
+
+/** A job's three columns, as a line and a person's job carry it, and each one's unique index on `contact_jobs`. */
+const JOB_COLUMNS = ['bid_id', 'project_id', 'jobs_ledger_id'] as const
+const JOB_INDEX: Record<(typeof JOB_COLUMNS)[number], string> = { bid_id: 'bid', project_id: 'project', jobs_ledger_id: 'pipeline' }
 
 /** A value against another as Postgres compares them: a null is never greater or less than anything. ISO times compare as text. */
 const compared = (v: unknown, raw: unknown, op: Compare): boolean => {
@@ -130,6 +138,8 @@ export class FakeDb {
   files: Record<string, { bytes: Uint8Array; contentType: string | undefined }> = {}
   /** A refusal to plant: `admin delete messages` → its words (or its words and code), for every call that matches. */
   refuse: Record<string, string | { message: string; code: string }> = {}
+  /** Called with a database function's name and arguments just before it runs: a test's other writer, landing first. */
+  onRpc: ((fn: string, args: Row) => void) | null = null
   nextId = 1
 
   reset() {
@@ -141,6 +151,7 @@ export class FakeDb {
     this.office = new Set()
     this.files = {}
     this.refuse = {}
+    this.onRpc = null
     this.nextId = 1
   }
 
@@ -164,6 +175,7 @@ export class FakeDb {
       rpc: (fn: string, args: Row = {}) => {
         this.calls.push(`${who} rpc ${fn}`)
         this.rpcCalls.push({ who, fn, args, uid })
+        this.onRpc?.(fn, args)
         const answer = this.call(fn, args, uid)
         return {
           ...settle(answer),
@@ -200,16 +212,32 @@ export class FakeDb {
           for (const r of matched) Object.assign(r, values)
           return { data: matched, error: null }
         case 'delete': {
+          if (name === 'messages') {
+            // contact_owed.done_note_message_id is ON DELETE RESTRICT: the delete fails whole.
+            const ids = new Set(matched.map((r) => r.id))
+            if (this.rows('contact_owed').some((o) => ids.has(o.done_note_message_id))) {
+              return { data: null, error: { message: 'update or delete on table "messages" violates foreign key constraint "contact_owed_done_note_message_id_fkey" on table "contact_owed"', code: '23503' } }
+            }
+          }
           this.tables[name] = rows.filter((r) => !matched.includes(r))
-          // message_attachments.message_id is ON DELETE CASCADE.
+          // message_attachments, message_promises and message_highlights are ON DELETE CASCADE on their message_id.
           if (name === 'messages') {
             const ids = new Set(matched.map((r) => r.id))
-            this.tables.message_attachments = this.rows('message_attachments').filter((a) => !ids.has(a.message_id))
+            for (const t of ['message_attachments', 'message_promises', 'message_highlights']) this.tables[t] = this.rows(t).filter((a) => !ids.has(a.message_id))
           }
           return { data: matched, error: null }
         }
         case 'insert': {
-          const made = (Array.isArray(values) ? values : [values]).map((v) => ({ id: `${name}-${this.nextId++}`, ...v }))
+          const made: Row[] = (Array.isArray(values) ? values : [values]).map((v) => ({ id: `${name}-${this.nextId++}`, ...v }))
+          // contact_jobs holds one row a person and a job: its partial unique indexes, one a job column.
+          if (name === 'contact_jobs') {
+            for (const m of made) {
+              const column = JOB_COLUMNS.find((c) => m[c] != null)
+              if (column && rows.some((r) => r.contact_id === m.contact_id && r[column] === m[column])) {
+                return { data: null, error: { message: `duplicate key value violates unique constraint "contact_jobs_${JOB_INDEX[column]}_once"`, code: '23505' } }
+              }
+            }
+          }
           rows.push(...made)
           return { data: made, error: null }
         }
@@ -406,6 +434,12 @@ export class FakeGoogle {
   queries: string[] = []
   /** Conversations whose read Google answers with a 503, a blip, until a test takes them out. */
   down = new Set<string>()
+  /** Mails whose label change Gmail refuses (a 500), until a test takes them out. */
+  stuck = new Set<string>()
+  /** Gmail refuses to list a box's labels (a 503). */
+  labelsDown = false
+  /** Called with a conversation's id as Gmail reads it: a test's untag, beginning while the follow runs. */
+  onThreadRead: ((threadId: string) => void) | null = null
   nextLabel = 1
 
   reset() {
@@ -415,6 +449,9 @@ export class FakeGoogle {
     this.calls = []
     this.queries = []
     this.down = new Set()
+    this.stuck = new Set()
+    this.labelsDown = false
+    this.onThreadRead = null
     this.nextLabel = 1
   }
 
@@ -491,19 +528,21 @@ export class FakeGoogle {
     if ((m = /^\/messages\/([^/]+)\/modify$/.exec(path)) && method === 'POST') {
       const mail = box.mails.find((x) => x.id === decodeURIComponent(m![1]!))
       if (!mail) return notFound()
+      if (this.stuck.has(mail.id)) return reply(500, { error: { code: 500, message: 'Backend Error' } })
       const add = (body.addLabelIds as string[] | undefined) ?? []
       const remove = new Set((body.removeLabelIds as string[] | undefined) ?? [])
       mail.labelIds = [...new Set([...mail.labelIds.filter((l) => !remove.has(l)), ...add])]
       return reply(200, { id: mail.id, threadId: mail.threadId, labelIds: mail.labelIds })
     }
     if ((m = /^\/threads\/([^/]+)$/.exec(path)) && method === 'GET') {
+      this.onThreadRead?.(decodeURIComponent(m[1]!))
       if (this.down.has(decodeURIComponent(m[1]!))) return reply(503, { error: { code: 503, message: 'Backend Error' } })
       const mails = box.mails.filter((x) => x.threadId === decodeURIComponent(m![1]!)).sort((a, b) => a.at.localeCompare(b.at))
       if (mails.length === 0) return notFound()
       const format = url.searchParams.get('format') ?? 'full'
       return reply(200, { id: decodeURIComponent(m[1]!), messages: mails.map((x) => this.message(x, format, url.searchParams.getAll('metadataHeaders'))) })
     }
-    if (path === '/labels' && method === 'GET') return reply(200, { labels: box.labels })
+    if (path === '/labels' && method === 'GET') return this.labelsDown ? reply(503, { error: { code: 503, message: 'Backend Error' } }) : reply(200, { labels: box.labels })
     if (path === '/labels' && method === 'POST') {
       const made = { id: `Label_${this.nextLabel++}`, name: String(body.name) }
       box.labels.push(made)

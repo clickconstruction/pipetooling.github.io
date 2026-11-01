@@ -190,6 +190,60 @@ describe('planTag: what a tag writes, mail by mail', () => {
     })
   })
 
+  it('never writes or ties a mail under a label the person leaves out, by Gmail’s id', () => {
+    const personal = { ...dale2, labels: ['INBOX', 'Label_7'] }
+    const plan = planTag({ threadId: 't-elm', messages: [dale1, personal] }, marisol, elm, { ...known({ '<g-dale-2@mail.example>': { messageId: 'm-3', jobKey: null } }), hidden: ['Label_7'] })
+    expect(kinds(plan.steps)).toEqual(['write:in', 'skip:hidden'])
+    expect(plan.counts).toEqual({ lines: 1, tied: 0, files: 1, skipped: 1 })
+  })
+
+  it('finds the person’s own line for a mail with no Message-ID by its Gmail id, and moves it with a tag onto another job', () => {
+    const bare = { ...marisol1, headers: {} }
+    const plan = planTag({ threadId: 't-elm', messages: [bare] }, marisol, elm, { ...known(), byGmailId: { 'g-marisol-1': { messageId: 'm-bare', jobKey: harborKey, mine: true } } })
+    expect(plan.steps).toEqual([{ kind: 'tie', gmailId: 'g-marisol-1', rfcMessageId: null, messageId: 'm-bare', onJob: harborKey, tie: true }])
+    expect(plan.counts).toEqual({ lines: 0, tied: 1, files: 0, skipped: 0 })
+  })
+
+  it('moves a box’s line the tag tied before (its row records it) with a tag onto another job, and never the office’s tie', () => {
+    const plan = planTag(
+      conversation,
+      marisol,
+      elm,
+      known({
+        '<g-dale-1@mail.example>': { messageId: 'm-1', jobKey: harborKey, tagTie: true },
+        '<g-marisol-1@mail.example>': { messageId: 'm-2', jobKey: harborKey },
+      }),
+    )
+    expect(kinds(plan.steps).slice(0, 2)).toEqual(['tie:true', 'tie:false'])
+  })
+
+  it('reads a mail in the person’s Sent as theirs from any address they sent it as: ours to the first one outside', () => {
+    const alias = { name: 'Click Plumbing Estimating', address: 'estimating@clickplumbing.example' }
+    const sent = email('g-alias', { labels: ['SENT'], from: alias, to: [daleAt], cc: [rosaAt] })
+    expect(planTag({ threadId: 't-elm', messages: [sent] }, marisol, elm, known()).steps[0]).toMatchObject({
+      kind: 'write',
+      direction: 'out',
+      party: daleAt,
+      whoUserId: 'u-marisol',
+      whoText: "Click Plumbing Estimating <estimating@clickplumbing.example> to Dale Okafor <dale@ridgeway.example> · from Marisol Vega's mail",
+    })
+    // Sent as a box: theirs, never a copy of ours to leave out.
+    const asBids = email('g-as-bids', { labels: ['SENT'], from: { name: 'Bids', address: 'bids@clickplumbing.example' }, to: [daleAt] })
+    expect(planTag({ threadId: 't-elm', messages: [asBids] }, marisol, elm, known()).steps[0]).toMatchObject({ kind: 'write', direction: 'out', party: daleAt, whoUserId: 'u-marisol' })
+    // The same alias in the Inbox is someone writing in, as before.
+    expect(planTag({ threadId: 't-elm', messages: [{ ...sent, labels: ['INBOX'] }] }, marisol, elm, known()).steps[0]).toMatchObject({ kind: 'write', direction: 'in', party: alias })
+  })
+
+  it('writes the person’s own note from an alias, with nobody outside, on their own thread', () => {
+    const note = email('g-alias-note', { labels: ['SENT'], from: { name: 'Estimating', address: 'estimating@clickplumbing.example' }, to: [rosaAt] })
+    expect(planTag({ threadId: 't-elm', messages: [note] }, marisol, elm, known()).steps[0]).toMatchObject({
+      kind: 'write',
+      direction: 'in',
+      party: { name: 'Marisol Vega', address: 'Marisol@ClickPlumbing.example' },
+      whoUserId: null,
+    })
+  })
+
   it('puts a bid or a GC project in its own column, and keys the job from its kind and id', () => {
     const bid = planTag(conversation, marisol, { kind: 'bid', id: 'bid-club', key: 'stale', num: 'BP523', name: 'Cedar Bend clubhouse' }, known())
     expect(bid.jobKey).toBe('bid:bid-club')

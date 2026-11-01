@@ -24,8 +24,11 @@ import {
   followWindow,
   gcProjectIsOpen,
   gmailRefusal,
+  isDuplicateKey,
   isFollowRequest,
+  isTagTie,
   knownLines,
+  knownOwnLines,
   MY_MAIL_EML_MIME,
   MY_MAIL_FOLLOW_GONE,
   MY_MAIL_HTML_MAX,
@@ -40,6 +43,8 @@ import {
   myMailFileRow,
   myMailGuessAsks,
   myMailGuessFacts,
+  myMailHiddenLabelIds,
+  myMailHiddenLabels,
   myMailJobs,
   myMailLineRow,
   myMailOurDomains,
@@ -48,9 +53,11 @@ import {
   myMailTagEventKey,
   myMailTagEventRow,
   myMailTagEventWords,
+  myMailTagRecord,
   myMailTeam,
   neverRead,
   newestMailAt,
+  orphanCopies,
   parseMyMailRequest,
   pipelineIsOpen,
   planFollow,
@@ -60,8 +67,10 @@ import {
   tagRowJob,
   tokenRefusal,
   wantsGuess,
+  withTies,
   type MyMailFollowLine,
   type MyMailFollowUserRow,
+  type MyMailLine,
   type MyMailPageFacts,
   type MyMailPipelineRow,
 } from './mineFunction'
@@ -152,8 +161,10 @@ describe('parseMyMailRequest: what the tab may ask', () => {
 describe('myMailQuery: the Gmail search a page reads', () => {
   const FENCE = '-in:drafts -in:spam -in:trash -in:chats'
 
-  it('reads the Inbox and Sent, never Drafts, Spam, Trash or Chats, and To tag leaves out what a tag labelled', () => {
-    expect(myMailQuery({ view: 'toTag' })).toBe(`(in:inbox OR in:sent) ${FENCE} -label:"Tagged in ClickTooling"`)
+  it('reads the Inbox and Sent, never Drafts, Spam, Trash or Chats; Tagged reads the tag’s label, and To tag reads past it', () => {
+    // A label left behind (an untag that could not take it off, a job deleted with its tag) never hides a mail from
+    // To tag: `viewRows` hides a tagged conversation by the database's own record.
+    expect(myMailQuery({ view: 'toTag' })).toBe(`(in:inbox OR in:sent) ${FENCE}`)
     expect(myMailQuery({ view: 'all' })).toBe(`(in:inbox OR in:sent) ${FENCE}`)
     expect(myMailQuery({ view: 'tagged' })).toBe(`(in:inbox OR in:sent) ${FENCE} label:"Tagged in ClickTooling"`)
   })
@@ -169,6 +180,21 @@ describe('myMailQuery: the Gmail search a page reads', () => {
     expect(fencedQuery('subject:"water heater"')).toBe('(subject:"water heater")')
     expect(fencedQuery('"water heater')).toBe('(water heater)')
     expect(fencedQuery(' ( ) ')).toBe('')
+  })
+
+  it('reads the labels a person leaves out, and finds their Gmail ids by the name whole, case-blind', () => {
+    expect(myMailHiddenLabels([' Personal ', '', 'Kids', 42, null])).toEqual(['Personal', 'Kids'])
+    expect(myMailHiddenLabels(null)).toEqual([])
+    const labels = [
+      { id: 'INBOX', name: 'INBOX' },
+      { id: 'Label_7', name: 'personal' },
+      { id: 'Label_8', name: 'Personal/Taxes' },
+      { id: 'Label_9', name: 'Kids "soccer"' },
+    ]
+    // The name whole: a nested label under it is its own label, and a hidden label Gmail does not hold is none.
+    expect(myMailHiddenLabelIds(labels, ['Personal', 'Kids "soccer"', 'Gone'])).toEqual(['Label_7', 'Label_9'])
+    expect(myMailHiddenLabelIds(labels, [])).toEqual([])
+    expect(myMailHiddenLabelIds(undefined, ['Personal'])).toEqual([])
   })
 
   it('knows a draft, a mail in Spam or Trash and a chat by their labels', () => {
@@ -447,6 +473,38 @@ describe('what a tag writes', () => {
     })
   })
 
+  it('marks a box’s line as the tag’s own tie only while the row records it, on the tag’s job, as the tag stamped it', () => {
+    const record = { tied: ['m-box', 'm-moved', 'm-retied'], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }
+    const held = (id: string, over: Partial<Parameters<typeof knownLines>[0][number]> = {}) => ({ id, rfc_message_id: `<${id}@x>`, bid_id: null, project_id: null, jobs_ledger_id: ELM, mailbox: 'bids', mail_user_id: null, tied_by: MARISOL, ...over })
+    expect(
+      knownLines(
+        [held('m-box'), held('m-moved', { jobs_ledger_id: null, bid_id: CLUB }), held('m-retied', { tied_by: 'u-rosa' }), held('m-by-hand'), held('m-mine', { mailbox: 'mine', mail_user_id: MARISOL })],
+        MARISOL,
+        record,
+      ),
+    ).toEqual({
+      '<m-box@x>': { messageId: 'm-box', jobKey: `pipeline:${ELM}`, mine: false, tagTie: true },
+      '<m-moved@x>': { messageId: 'm-moved', jobKey: `bid:${CLUB}`, mine: false },
+      '<m-retied@x>': { messageId: 'm-retied', jobKey: `pipeline:${ELM}`, mine: false },
+      '<m-by-hand@x>': { messageId: 'm-by-hand', jobKey: `pipeline:${ELM}`, mine: false },
+      '<m-mine@x>': { messageId: 'm-mine', jobKey: `pipeline:${ELM}`, mine: true },
+    })
+  })
+
+  it('finds the person’s own line for a mail with no Message-ID by its Gmail id, in their box alone', () => {
+    expect(
+      knownOwnLines(
+        [
+          { id: 'm-mine', gmail_id: 'g-bare', bid_id: null, project_id: null, jobs_ledger_id: ELM, mail_user_id: MARISOL },
+          { id: 'm-rosa', gmail_id: 'g-rosa', bid_id: null, project_id: null, jobs_ledger_id: ELM, mail_user_id: 'u-rosa' },
+          { id: 'm-twice', gmail_id: 'g-bare', bid_id: CLUB, project_id: null, jobs_ledger_id: null, mail_user_id: MARISOL },
+          { id: 'm-none', gmail_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, mail_user_id: MARISOL },
+        ],
+        MARISOL,
+      ),
+    ).toEqual({ 'g-bare': { messageId: 'm-mine', jobKey: `pipeline:${ELM}`, mine: true } })
+  })
+
   it('reads the team’s addresses as the bids@ reader does', () => {
     expect(myMailTeam([{ id: MARISOL, name: ' Marisol Vega ', email: 'Marisol@ClickPlumbing.example' }, { id: 'u-x', name: null, email: 'x@clickplumbing.example' }, { id: 'u-none', name: 'No Mail', email: null }])).toEqual({
       'marisol@clickplumbing.example': { userId: MARISOL, name: 'Marisol Vega' },
@@ -497,23 +555,56 @@ describe('what a tag writes', () => {
 })
 
 describe('planUntag: what an untag removes', () => {
-  it('removes the person’s own lines, and unties a box’s line only when the tag tied it', () => {
+  const boxLine = (id: string, over: Partial<MyMailLine> = {}): MyMailLine => ({ id, bid_id: null, project_id: null, jobs_ledger_id: ELM, mail_user_id: null, tied_by: MARISOL, ...over })
+
+  it('removes the person’s own lines, and unties a box’s line only when the row records it as the tag’s own tie', () => {
+    const record = { tied: ['m-box-tied', 'm-box-office', 'm-box-elsewhere', 'm-box-untied', 'm-gone'], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }
     const plan = planUntag({
       userId: MARISOL,
-      tagJobKey: `pipeline:${ELM}`,
+      record,
       own: [{ id: 'm-mine-1' }, { id: 'm-mine-2' }, { id: 'm-mine-1' }],
-      box: [
-        { id: 'm-box-tied', bid_id: null, project_id: null, jobs_ledger_id: ELM, mail_user_id: null, tied_by: MARISOL },
-        { id: 'm-box-office', bid_id: null, project_id: null, jobs_ledger_id: ELM, mail_user_id: null, tied_by: 'u-rosa' },
-        { id: 'm-box-elsewhere', bid_id: CLUB, project_id: null, jobs_ledger_id: null, mail_user_id: null, tied_by: MARISOL },
-        { id: 'm-box-untied', bid_id: null, project_id: null, jobs_ledger_id: null, mail_user_id: null, tied_by: MARISOL },
+      tied: [
+        boxLine('m-box-tied'),
+        // Recorded, but tied again since by Rosa, moved to the clubhouse bid, or untied: each is someone's own placing.
+        boxLine('m-box-office', { tied_by: 'u-rosa' }),
+        boxLine('m-box-elsewhere', { jobs_ledger_id: null, bid_id: CLUB }),
+        boxLine('m-box-untied', { jobs_ledger_id: null }),
       ],
     })
-    expect(plan).toEqual({ remove: ['m-mine-1', 'm-mine-2'], untie: ['m-box-tied'] })
+    expect(plan).toEqual({ remove: ['m-mine-1', 'm-mine-2'], keep: [], untie: ['m-box-tied'] })
+  })
+
+  it('never unties a line the person tied by hand before the tag, which the row does not record', () => {
+    // Marisol tied the box's line to 4 Elm Ct on the thread herself, then tagged the conversation onto the same job.
+    const byHand = boxLine('m-box-by-hand')
+    expect(planUntag({ userId: MARISOL, record: { tied: [], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }, own: [], tied: [byHand] }).untie).toEqual([])
+    expect(isTagTie(byHand, { tied: [], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }, MARISOL)).toBe(false)
+    expect(isTagTie(byHand, { tied: ['m-box-by-hand'], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL }, MARISOL)).toBe(true)
+  })
+
+  it('keeps a line the office keeps something on, a promise or a highlight, and removes the rest', () => {
+    const plan = planUntag({ userId: MARISOL, record: null, own: [{ id: 'm-mine-1' }, { id: 'm-promised' }, { id: 'm-highlighted' }], kept: ['m-promised', 'm-highlighted', 'm-not-mine'] })
+    expect(plan).toEqual({ remove: ['m-mine-1'], keep: ['m-promised', 'm-highlighted'], untie: [] })
   })
 
   it('unties nothing when no tag row is left to say which job it tied', () => {
-    expect(planUntag({ userId: MARISOL, tagJobKey: null, own: [{ id: 'm-1' }], box: [{ id: 'm-box', bid_id: null, project_id: null, jobs_ledger_id: ELM, mail_user_id: null, tied_by: MARISOL }] })).toEqual({ remove: ['m-1'], untie: [] })
+    expect(planUntag({ userId: MARISOL, record: null, own: [{ id: 'm-1' }], tied: [boxLine('m-box')] })).toEqual({ remove: ['m-1'], keep: [], untie: [] })
+    expect(planUntag({ userId: MARISOL, record: { tied: ['m-box'], jobKey: null, taggedBy: MARISOL }, own: [], tied: [boxLine('m-box')] }).untie).toEqual([])
+  })
+
+  it('reads the row’s record of its ties, and adds more once each', () => {
+    expect(myMailTagRecord({ tied_line_ids: ['m-1', 'm-1', '', 'm-2'], bid_id: null, project_id: null, jobs_ledger_id: ELM, tagged_by: MARISOL })).toEqual({ tied: ['m-1', 'm-2'], jobKey: `pipeline:${ELM}`, taggedBy: MARISOL })
+    // A row read before the column was pushed records none.
+    expect(myMailTagRecord({ bid_id: CLUB, project_id: null, jobs_ledger_id: null })).toEqual({ tied: [], jobKey: `bid:${CLUB}`, taggedBy: null })
+    expect(myMailTagRecord(null)).toBeNull()
+    expect(withTies(['m-1', 'm-2'], ['m-2', 'm-3'])).toEqual(['m-1', 'm-2', 'm-3'])
+    expect(withTies(null, ['m-1'])).toEqual(['m-1'])
+  })
+
+  it('names the copies no line holds, and a duplicate row as Postgres’s unique violation', () => {
+    expect(orphanCopies(['mine/u/g/1-a.pdf', 'mine/u/g/2-b.pdf', 'mine/u/g/1-a.pdf'], ['mine/u/g/2-b.pdf', null])).toEqual(['mine/u/g/1-a.pdf'])
+    expect(orphanCopies(['mine/u/g/1-a.pdf'], ['mine/u/g/1-a.pdf'])).toEqual([])
+    expect(['23505', '23503', null].map(isDuplicateKey)).toEqual([true, false, false])
   })
 
   it('keys an address as the database keys it', () => {
@@ -701,6 +792,20 @@ describe('the follow: whose conversations, which, and what it does with each mai
         { kind: 'held', gmailId: 'g-untied', messageId: 'm-untied' },
         { kind: 'held', gmailId: 'g-elsewhere', messageId: 'm-elsewhere' },
         { kind: 'held', gmailId: 'g-bare', messageId: 'm-bare' },
+      ])
+    })
+
+    it('leaves out a mail under a label the person leaves out, held by a line or not, as a tag leaves it out', () => {
+      const steps = planFollow(
+        { threadId: 't-elm', messages: [m('g-new'), m('g-private', { labels: ['INBOX', 'Label_7'] }), m('g-loose-private', { labels: ['Label_7'] })] },
+        marisol,
+        elm,
+        { hidden: ['Label_7'], lines: [line('m-loose', '<g-loose-private@x>')] },
+      )
+      expect(steps).toEqual([
+        { kind: 'write', gmailId: 'g-new' },
+        { kind: 'skip', gmailId: 'g-private', why: 'hidden' },
+        { kind: 'skip', gmailId: 'g-loose-private', why: 'hidden' },
       ])
     })
 

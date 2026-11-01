@@ -112,6 +112,8 @@ Every tagged conversation has **Untag**. A conversation our bids or team inbox r
 
 A conversation the office already put on a legal matter keeps the matter's own copy.
 
+A line the office wrote a promise or a highlight on stays on the job. Its files stay with it.
+
 Tagged the wrong job? Move the conversation instead.
 
 1. Press **Another job…** on the green bar.

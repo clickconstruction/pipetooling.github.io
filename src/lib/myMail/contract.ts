@@ -57,7 +57,7 @@ export const MY_MAIL_NO_SUBJECT = '(no subject)'
 export interface MyMailRow {
   gmailId: string
   threadId: string
-  /** Out when the person sent it (their own address is its From), else in. */
+  /** Out when the person sent it (their own address is its From, or it sits in their Sent, whatever address it went out from), else in. */
   direction: 'in' | 'out'
   /** The other party: From on a mail in, the first To on a mail out. */
   who: MyMailParty
@@ -89,7 +89,10 @@ export interface MyMailListRequest {
   labels?: MyMailLabel[]
 }
 
-/** A page: the address read, its rows newest first, the next page's token, and how many of them fold under the one line. */
+/**
+ * A page: the address read, its rows (the ones the view draws, newest first, then the ones behind its fold line, newest
+ * first, each flagged with its `folded` kind), the next page's token, and how many of them fold under the one line.
+ */
 export interface MyMailListOk {
   ok: true
   address: string
@@ -153,11 +156,18 @@ export interface MyMailUntagRequest {
   threadId: string
 }
 
-/** The untag done: the lines removed, and whether the office already put the conversation on a legal matter, which keeps its own copy. */
+/**
+ * The untag done: the lines removed, and whether the office already put the conversation on a legal matter, which keeps
+ * its own copy. Since v2.6292 also `held`, the person's lines that stay on the job with their files because the office
+ * keeps something on them (a promise written down, a highlight, or what we owe done by one), and `labelLeft`, the mails
+ * the label *Tagged in ClickTooling* could not come off in Gmail. A function deployed before v2.6292 sends neither.
+ */
 export interface MyMailUntagOk {
   ok: true
   removed: number
   keptForMatter: boolean
+  held?: number
+  labelLeft?: number
 }
 
 /** What the tab posts to the function. */
