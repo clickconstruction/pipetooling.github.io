@@ -36,7 +36,7 @@ export type LienArTone = 'red' | 'amber' | 'green' | 'blue' | 'muted'
 /** `due`: a paper is owed and not out; `out`: paper is out; `gone`: a window closed with nothing sent. */
 export type LienArState = 'due' | 'out' | 'gone'
 
-export type LienArPaper = 'notice' | 'retainage' | 'affidavit' | 'letter_two' | 'release'
+export type LienArPaper = 'notice' | 'retainage' | 'affidavit' | 'letter_two' | 'courtesy' | 'release'
 
 export type LienArDoor =
   | { to: 'desk'; jobId: string | null; kind: 'notice' | 'affidavit' | 'retainage'; pile: LienDeskPile | null }
@@ -92,6 +92,7 @@ const MOVE_WORDS: Record<LienNextUpAction, string> = {
   mail_needs_you: 'Envelope came back',
   review_hold: 'Held',
   letter_two: 'Letter two',
+  courtesy: 'Courtesy notice',
   note_missed: 'Window closed',
   fix_property: 'Affidavit · fix the property',
   send_notice: 'Affidavit · notice first',
@@ -171,6 +172,7 @@ function doorFor(row: LienNextUpRow, jobId: string): LienArDoor {
 
 function paperOf(row: LienNextUpRow): LienArPaper {
   if (row.action === 'letter_two') return 'letter_two'
+  if (row.action === 'courtesy') return 'courtesy'
   return row.kind
 }
 

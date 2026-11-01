@@ -12,6 +12,7 @@ import { isLienLeader, isLienOffice, type LienDeskEntry, type LienDeskPile, type
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import type { LienRetainageEntry } from './lienDeskRetainage'
 import { letterTwoIsDue, type LetterTwoStatus } from './lienLetterTwo'
+import { COURTESY_BUTTON, courtesyIsDue, type CourtesyStatus } from './lienCourtesyNotice'
 import { lienOfferChipWords, lienOfferFromItem } from './lienPayOffer'
 import { lienChipSigned, lienFieldsHash, lienPenAwaitsConfirm, signatureColumnsOf } from './lienNoticeSignature'
 import { formatYmdMonthDay } from './billedExpectedPay'
@@ -33,6 +34,8 @@ export type LienNextUpAction =
   | 'record_mailing'
   | 'review_hold'
   | 'letter_two'
+  /** The courtesy notice (punch list #231): the plain reminder by email and text from day 7 after a sent notice. */
+  | 'courtesy'
   | 'note_missed'
   | 'fix_property'
   | 'send_notice'
@@ -94,6 +97,7 @@ const BUTTON: Record<LienNextUpAction, string> = {
   record_mailing: 'Record the mailing',
   review_hold: 'Review the hold',
   letter_two: 'Send letter two',
+  courtesy: COURTESY_BUTTON,
   note_missed: 'Note it',
   fix_property: 'Fix the property',
   send_notice: 'Send the notice first',
@@ -108,6 +112,8 @@ export type LienNextUpInput = {
   affidavits: ReadonlyArray<LienAffidavitEntry>
   retainage: ReadonlyArray<LienRetainageEntry>
   letterTwoByJob: Readonly<Record<string, LetterTwoStatus>>
+  /** The courtesy notice per job with a sent notice (punch list #231); absent on readers that do not build it. */
+  courtesyByJob?: Readonly<Record<string, CourtesyStatus>>
   /** Filed affidavits not yet served (`LienWatchResult.serveDue`). */
   serveDue?: ReadonlyArray<{ jobId: string; serveDue: string }>
   role: string | null | undefined
@@ -221,8 +227,16 @@ export function buildLienNextUp(input: LienNextUpInput): LienNextUpRow[] {
         break
       case 'sent': {
         const two = input.letterTwoByJob[e.jobId]
-        if (!two || !letterTwoIsDue(two)) break
-        push({ ...base, key: `letter-two:${e.jobId}`, sub: two.words || 'Letter two is due', dueOn: null, daysLeft: null, severity: two.state === 'overdue' ? 'red' : 'amber', action: 'letter_two', button: office ? BUTTON.letter_two : null, target: pane('sent') })
+        const courtesy = input.courtesyByJob?.[e.jobId]
+        const courtesyDue = Boolean(courtesy && courtesyIsDue(courtesy))
+        const twoDue = Boolean(two && letterTwoIsDue(two))
+        // The courtesy notice (punch list #231) is the light step, so it leads while none has gone, even past day 10; once one went, letter two leads from day 10 with the courtesy's state in its words.
+        if (courtesyDue && (!twoDue || !courtesy!.lastSentAt)) {
+          push({ ...base, key: `courtesy:${e.jobId}`, sub: courtesy!.words, dueOn: null, daysLeft: null, severity: two?.state === 'overdue' ? 'red' : 'amber', action: 'courtesy', button: office ? BUTTON.courtesy : null, target: pane('sent') })
+          break
+        }
+        if (!two || !twoDue) break
+        push({ ...base, key: `letter-two:${e.jobId}`, sub: `${two.words || 'Letter two is due'}${courtesy?.lastSentAt ? ` · ${courtesy.words}` : ''}`, dueOn: null, daysLeft: null, severity: two.state === 'overdue' ? 'red' : 'amber', action: 'letter_two', button: office ? BUTTON.letter_two : null, target: pane('sent') })
         break
       }
       case 'missed':
