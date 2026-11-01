@@ -2,7 +2,7 @@
 title: manage who at the law firm gets emails
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients, not reaching, bounced, retry
+keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients, title, only theirs, handling, not reaching, bounced, retry
 ---
 You open the Legal desk to see who at the law firm gets our emails. The firm sets the rules on its portal, and the office keeps two overrides.
 
@@ -10,13 +10,13 @@ Two guards nobody can switch off. A new address is inert until its owner clicks 
 
 ## What the firm sets, on their portal
 
-The firm opens the **Notifications** page on its portal. Each person at the firm has one rule there:
+The firm opens the **Notifications** page on its portal. The card **Add a person at the firm** is the row it becomes. The firm types a name, an email and a title. The title is optional, a word like attorney or paralegal. It shows beside the name on the portal and on your Legal desk. It changes nothing else. Each person has one rule, set on the card and changed later on their row:
 
-- **Each event** or **Weekly digest**. Each event sends one email per event. A digest also picks a weekday and a Central time.
-- **Every matter** or **Only my matters**. A matter is one account sent to the firm. My matters are the ones where the person is named as the handling person.
+- **Emails**: **Each event** or **Weekly digest**. Each event sends one email per event. A digest also picks a weekday and a Central time.
+- **Matters**: **Every matter** or **Only theirs**. A matter is one account sent to the firm. Only theirs means the matters where the office named that person as handling. A count under the pick says how many open matters name them today. A zero means they would hear nothing yet.
 - {{button:outline|Stop emails to this person}} and {{button:outline|Turn emails back on}}.
 
-**Add a person** sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. When that email cannot be sent, the portal says so in red. The firm presses {{button:outline|Resend the confirmation}} a minute later. The handling person on a matter always hears about it. They hear under their own rule, one email per event or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
+The press under the card names the person, *Send Ann a confirmation*. It sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. When that email cannot be sent, the portal says so in red. The firm presses {{button:outline|Resend the confirmation}} a minute later. The handling person on a matter always hears about it. They hear under their own rule, one email per event or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
 
 ## What they hear about
 
