@@ -7,7 +7,7 @@ order: 44
 ---
 The roadmap picker sits at the top of the Roadmap page. It switches roadmaps, and its bottom section holds the management actions.
 
-You open the page from the header. Tap **Roadmap** there.
+You open the page from the {{icon:gear}} gear menu at the top right. Tap **Roadmap** there.
 
 ## Create a roadmap
 

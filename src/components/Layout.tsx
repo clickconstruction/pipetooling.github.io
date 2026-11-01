@@ -525,6 +525,7 @@ export default function Layout() {
       isSubcontractorLikeRole(role))
 
   // Roadmap (Tier-2 #41): the RLS edit set — dev / master / assistant-like / primary — never under Farm Mode.
+  // Its door is the gear menu's row above Partnerships (v2.6258); the header lost the link.
   const canShowRoadmapNav = canOpenRoadmap(role, farmModeActive)
 
   const canShowMapNav =
@@ -554,6 +555,12 @@ export default function Layout() {
   const bridgeIcon = (
     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 640" width="1em" height="1em" fill="currentColor" fillRule="evenodd" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
       <path d="M320 64 C178.6 64 64 178.6 64 320 C64 461.4 178.6 576 320 576 C461.4 576 576 461.4 576 320 C576 178.6 461.4 64 320 64 Z M320 128 C426 128 512 214 512 320 C512 426 426 512 320 512 C214 512 128 426 128 320 C128 214 214 128 320 128 Z M432 208 L272 272 L208 432 L368 368 Z M320 296 C333.3 296 344 306.7 344 320 C344 333.3 333.3 344 320 344 C306.7 344 296 333.3 296 320 C296 306.7 306.7 296 320 296 Z" />
+    </svg>
+  )
+  // Flag glyph (Font Awesome flag) for the gear menu's Roadmap row (v2.6258).
+  const roadmapIcon = (
+    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="1em" height="1em" fill="currentColor" aria-hidden="true" style={{ verticalAlign: 'middle' }}>
+      <path d="M64 32C64 14.3 49.7 0 32 0S0 14.3 0 32V64 368 480c0 17.7 14.3 32 32 32s32-14.3 32-32V352l64.3-16.1c41.1-10.3 84.6-5.5 122.5 13.4c44.2 22.1 95.5 24.8 141.7 7.4l34.7-13c12.5-4.7 20.8-16.6 20.8-30V66.1c0-23-24.2-38-44.8-27.7l-9.6 4.8c-46.3 23.2-100.8 23.2-147.1 0c-35.1-17.6-75.4-22-113.5-12.5L64 48V32z" />
     </svg>
   )
   // Handshake glyph (Font Awesome handshake-simple), same 640-grid style as the other nav icons.
@@ -724,7 +731,6 @@ export default function Layout() {
           <NavLink to="/estimates" style={linkStyle} onClick={onNavClick}>Estimates</NavLink>
           <NavLink to="/jobs" style={linkStyle} onClick={onNavClick}>Jobs</NavLink>
           <NavLink to="/bids" style={linkStyle} onClick={onNavClick}>Bids</NavLink>
-          {canShowRoadmapNav && <NavLink to="/roadmap" style={linkStyle} onClick={onNavClick}>Roadmap</NavLink>}
         </>
       )
     }
@@ -804,9 +810,6 @@ export default function Layout() {
             )}
             {/* Messages in the header (residential R2): the GC office team, as `canOpenMessages` says. Its count (R7) is everyone waiting on us. */}
             {canOpenMessages(role) && <NavLink to="/messages" style={linkStyle} onClick={onNavClick}><span style={{ position: 'relative', display: 'inline-block' }}>Messages<MessagesBadge /></span></NavLink>}
-            {canShowRoadmapNav && (
-              <NavLink to="/roadmap" style={linkStyle} onClick={onNavClick}>Roadmap</NavLink>
-            )}
             {role === 'superintendent' && (
               <>
                 <NavLink to="/projects" style={linkStyle} onClick={onNavClick}>Projects</NavLink>
@@ -1643,6 +1646,28 @@ export default function Layout() {
                   >
                     Auto (dark 8pm–4am)
                   </button>
+                )}
+                {canShowRoadmapNav && (
+                  <NavLink
+                    to="/roadmap"
+                    onClick={() => setGearOpen(false)}
+                    style={({ isActive }) => ({
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.35rem',
+                      padding: '0.5rem 1rem',
+                      textDecoration: 'none',
+                      color: 'inherit',
+                      borderBottom: '1px solid var(--chrome-border)',
+                      boxSizing: 'border-box',
+                      ...(isActive && { fontWeight: 600 }),
+                    })}
+                    title="Roadmap"
+                    aria-label="Roadmap"
+                  >
+                    {roadmapIcon}
+                    Roadmap
+                  </NavLink>
                 )}
                 {role === 'dev' && !farmModeActive && (
                   <NavLink

@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller, primary
 keywords: roadmap, goals, stages, plan, map, timeline, progress, who sees the roadmap, farm, tech tree
 order: 41
 ---
-Roadmap is its own page now. You tap Roadmap in the header to open it.
+Roadmap is its own page now. You tap **Roadmap** in the {{icon:gear}} gear menu at the top right to open it.
 
 **Roadmap** is the planner. It holds the big goals, the stages that lead to them, and who is on which task. The daily list stays on **Checklist**. The two pages talk to each other, but they are different work.
 
@@ -17,7 +17,7 @@ Roadmap is its own page now. You tap Roadmap in the header to open it.
 
 ## Who sees it
 
-The header shows **Roadmap** to the owner, leaders, assistants, the controller, and primaries. Those are the same people who can already edit roadmap tasks. Helpers and subs never see it. The roadmap reaches them as ordinary tasks on **Today**. Look for the purple {{chip:purple|⛰ goal}} chip. A link into the roadmap from a role that is not on the list lands on Today and says so.
+The gear menu shows **Roadmap** to the owner, leaders, assistants, the controller, and primaries. Those are the same people who can already edit roadmap tasks. Helpers and subs never see it. The roadmap reaches them as ordinary tasks on **Today**. Look for the purple {{chip:purple|⛰ goal}} chip. A link into the roadmap from a role that is not on the list lands on Today and says so.
 
 Old links still work. A bookmark to the Roadmap tab on the Checklist page opens this page with the same roadmap selected.
 

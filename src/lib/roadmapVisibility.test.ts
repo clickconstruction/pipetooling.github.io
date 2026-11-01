@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { canOpenRoadmap, canSeeRoadmapNeedsYou, roadmapPath } from './roadmapVisibility'
 import type { UserRole } from '../hooks/useAuth'
@@ -44,5 +46,35 @@ describe('roadmapPath', () => {
 
   it('URL-encodes the id', () => {
     expect(roadmapPath('a b')).toBe('/roadmap?roadmap=a+b')
+  })
+})
+
+describe('the Roadmap door is the gear menu row above Partnerships (v2.6258)', () => {
+  const layout = readFileSync(join(__dirname, '../components/Layout.tsx'), 'utf8')
+  const gearStart = layout.indexOf('data-navtrack="gear-menu"')
+  const gear = layout.slice(gearStart)
+
+  it('the gear menu lists Roadmap, then Partnerships, for a dev who sees both', () => {
+    expect(gearStart).toBeGreaterThan(0)
+    const roadmap = gear.indexOf('to="/roadmap"')
+    const partnerships = gear.indexOf('to="/partnerships"')
+    expect(roadmap).toBeGreaterThan(0)
+    expect(partnerships).toBeGreaterThan(roadmap)
+    // Nothing but the Roadmap row sits between the two.
+    expect(gear.slice(roadmap, partnerships).match(/<NavLink/g) ?? []).toHaveLength(1)
+  })
+
+  it('the row keeps the roadmap gate (canOpenRoadmap, never under Farm Mode) and the neighbours\' look', () => {
+    const row = gear.slice(gear.lastIndexOf('{', gear.indexOf('to="/roadmap"')) - 40, gear.indexOf('to="/partnerships"'))
+    expect(row).toMatch(/\{canShowRoadmapNav && \(/)
+    expect(row).toMatch(/\{roadmapIcon\}\s*Roadmap/)
+    expect(row).toMatch(/onClick=\{\(\) => setGearOpen\(false\)\}/)
+    expect(layout).toMatch(/const canShowRoadmapNav = canOpenRoadmap\(role, farmModeActive\)/)
+  })
+
+  it('the header and the phone drawer (renderNavLinks) no longer carry the link', () => {
+    const nav = layout.slice(layout.indexOf('function renderNavLinks('), gearStart)
+    expect(nav).not.toMatch(/to="\/roadmap"/)
+    expect(nav).not.toMatch(/>Roadmap</)
   })
 })

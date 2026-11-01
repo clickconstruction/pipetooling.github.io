@@ -21,7 +21,7 @@ The Plan lists — **Now**, **Up next**, and **Goals** — follow the same stage
 
 ## Reorder the stages — and the tasks inside them
 
-1. Open the **Roadmap** page from the header's **Roadmap** link. Either view works.
+1. Open the **Roadmap** page from the {{icon:gear}} gear menu's **Roadmap** row. Either view works.
 2. Press {{button:outline|Order stages}} on the right side of the toolbar. It appears once the roadmap has at least two stages.
 3. **Drag any stage row** up or down. The numbers renumber live. The top row is always #1.
 4. **Tap the ▸ on a stage** to reveal its tasks. Then drag those too. The top task is always **N.1**. Tasks stay inside their stage here. To move a task to another stage, use the Map's Edit-Tasks drag.

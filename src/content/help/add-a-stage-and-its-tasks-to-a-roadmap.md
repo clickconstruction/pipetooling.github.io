@@ -7,7 +7,7 @@ order: 42
 ---
 On **Roadmap → Map** every box is a **stage**, a numbered group of tasks. The lines between boxes say which stage must finish before the next unlocks.
 
-You open the map from the header, under **Roadmap**. You need to be an **editor** on the roadmap to add anything. Check {{button:outline|Members}} if you do not see the buttons below.
+You open the map from the {{icon:gear}} gear menu at the top right, under **Roadmap**. You need to be an **editor** on the roadmap to add anything. Check {{button:outline|Members}} if you do not see the buttons below.
 
 ## Add a stage
 

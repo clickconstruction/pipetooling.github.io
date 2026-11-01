@@ -7,7 +7,7 @@ order: 45
 ---
 Roadmap → Timeline draws the roadmap as a Gantt chart, a bar chart of work in order. The roadmap has no dates, so the columns are dependency waves, not months.
 
-You open it from the header under **Roadmap**. A dependency wave is a set of stages you can work at the same time. Everything in the *Now* wave can be worked today. The next wave unlocks when the front clears. And so on to the 🎯 goal.
+You open it from the {{icon:gear}} gear menu at the top right, under **Roadmap**. A dependency wave is a set of stages you can work at the same time. Everything in the *Now* wave can be worked today. The next wave unlocks when the front clears. And so on to the 🎯 goal.
 
 ## How to read it
 
