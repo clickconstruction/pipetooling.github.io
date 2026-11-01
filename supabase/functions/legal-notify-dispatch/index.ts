@@ -6,7 +6,7 @@ import { COMPANY_EMAIL_FROM } from '../_shared/emailFrom.ts'
 import { legalPortalAddress } from '../_shared/legalPortalAddress.ts'
 import { LEGAL_CONFIRM_EXPIRED_REASON, buildLegalDigestEmail, buildLegalNowEmail, legalNowTriggerOf, legalPageHtml, legalTriggerSendsNow, legalWrapHtml } from '../_shared/legalEmails.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
-import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo } from '../_shared/legalNotifyLedger.ts'
+import { constantTimeEqual, legalNotifyDone, legalNotifyDue, legalNotifyRecord, legalRecipientSendPatch, legalUnsubscribeSecret, legalUnsubscribeToken, parseSentTo, legalDigestSince } from '../_shared/legalNotifyLedger.ts'
 import { LEGAL_PORTAL_STAGES } from '../_shared/legalStages.ts'
 
 /**
@@ -250,7 +250,10 @@ serve(async (req) => {
       for (const r of recipients.filter((x) => x.mode === 'digest')) {
         if (r.digest_weekday !== weekday || hhmm < r.digest_time) continue
         if (ymdInAppTz(r.last_digest_at) === today) continue
-        const { data: sinceRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).is('digested_at', null).order('created_at').limit(200)
+        // v2.6283 (punch list #233): each digest reads back to this person's own last digest (or their confirmation,
+        // at most eight days), so two people on different weekdays no longer split the week. `digested_at` below
+        // is housekeeping for the open-rows index, not the gate.
+        const { data: sinceRows } = await admin.from('legal_notification_queue').select('*').eq('firm_id', firm.id).gt('created_at', legalDigestSince(r, new Date().toISOString())).order('created_at').limit(200)
         const events = ((sinceRows ?? []) as Array<{ id: string; matter_id: string | null; trigger: string; payload: Row; created_at: string }>).filter((e) => canSee(r, e.matter_id) && legalNowTriggerOf(e.trigger) != null)
         const mine = matters.filter((m) => canSee(r, m.id))
         const unsub = await unsubscribeLink(admin, r)

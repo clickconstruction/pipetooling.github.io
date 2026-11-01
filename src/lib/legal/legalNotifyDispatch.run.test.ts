@@ -39,6 +39,7 @@ function table(name: string): Chain {
   chain.is = (c: unknown, v: unknown) => (preds.push((r) => (r[c as string] ?? null) === v), chain)
   chain.not = (c: unknown, _o: unknown, v: unknown) => (preds.push((r) => (r[c as string] ?? null) !== v), chain)
   chain.in = (c: unknown, v: unknown) => (preds.push((r) => (v as unknown[]).includes(r[c as string])), chain)
+  chain.gt = (c: unknown, v: unknown) => (preds.push((r) => String(r[c as string] ?? '') > String(v)), chain)
   chain.order = () => chain
   chain.limit = (n: unknown) => ((lim = n as number), chain)
   chain.update = (p: unknown) => ((op = 'update'), (patch = p as Row), chain)

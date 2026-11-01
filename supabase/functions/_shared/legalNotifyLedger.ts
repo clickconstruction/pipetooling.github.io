@@ -128,3 +128,20 @@ export async function legalUnsubscribeToken(serverKey: string, recipientId: stri
   const hash = hex(await crypto.subtle.digest('SHA-256', enc.encode(token)))
   return { token, hash }
 }
+
+/** A digest reads back at most this many days, so a person just moved onto the digest is not sent a season. */
+export const LEGAL_DIGEST_MAX_DAYS = 8
+
+/**
+ * Since when this person's digest reads (v2.6283, punch list #233): their own last digest, else their
+ * confirmation (an event is heard by whoever was subscribed when it happened, never replayed to whoever
+ * joins later), and never more than `LEGAL_DIGEST_MAX_DAYS` back. Per person, so two people on different
+ * weekdays each read their own week; before this the queue was stamped digested for the whole firm on the
+ * first weekday's send, and the second person's digest held only the days since.
+ */
+export function legalDigestSince(r: { last_digest_at?: string | null; confirmed_at?: string | null }, nowIso: string): string {
+  const floor = new Date(new Date(nowIso).getTime() - LEGAL_DIGEST_MAX_DAYS * 86_400_000)
+  const own = [r.last_digest_at, r.confirmed_at].map((t) => (t ? new Date(t) : null)).find((d) => d && Number.isFinite(d.getTime())) ?? null
+  const since = own && own.getTime() > floor.getTime() ? own : floor
+  return since.toISOString()
+}

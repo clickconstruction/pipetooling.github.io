@@ -110,3 +110,15 @@ describe('legalUnsubscribeToken · v2.4662 · minted once', () => {
     expect((await legalUnsubscribeToken('other', 'rec-1', null)).token).not.toBe(a)
   })
 })
+
+describe('legalDigestSince · v2.6283 · each digest reads back to its own person', () => {
+  it('reads from the last digest, else the confirmation, never more than eight days back', async () => {
+    const { legalDigestSince, LEGAL_DIGEST_MAX_DAYS } = await import('./legalNotifyLedger')
+    const now = '2026-11-02T13:00:00.000Z'
+    expect(legalDigestSince({ last_digest_at: '2026-10-28T13:00:00Z', confirmed_at: '2026-09-01T00:00:00Z' }, now)).toBe('2026-10-28T13:00:00.000Z')
+    expect(legalDigestSince({ last_digest_at: null, confirmed_at: '2026-10-30T09:00:00Z' }, now)).toBe('2026-10-30T09:00:00.000Z')
+    expect(LEGAL_DIGEST_MAX_DAYS).toBe(8)
+    expect(legalDigestSince({ last_digest_at: '2026-09-01T00:00:00Z', confirmed_at: '2026-08-01T00:00:00Z' }, now)).toBe('2026-10-25T13:00:00.000Z')
+    expect(legalDigestSince({ last_digest_at: 'junk', confirmed_at: null }, now)).toBe('2026-10-25T13:00:00.000Z')
+  })
+})
