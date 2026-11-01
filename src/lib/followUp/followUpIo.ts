@@ -80,10 +80,11 @@ const CONTACT_COLUMNS = [
 const CHANNEL_COLUMNS = 'id, contact_id, kind, value, opted_out_at, created_at'
 /**
  * A line's columns as Follow up reads them, the thread's read too (`followUpThreadIo.ts`). The box it came through,
- * who tied it and whether the app sent it on its own are the New lane's (R6's `mailbox`, R7's `tied_by`, v2.6012's `auto`).
+ * who tied it, whether the app sent it on its own and what the reader read from an invitation to bid are the New lane's
+ * (R6's `mailbox`, R7's `tied_by`, v2.6012's `auto`, v2.6222's `invitation`).
  */
 export const MESSAGE_COLUMNS =
-  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at, mailbox, tied_by, auto'
+  'id, contact_id, channel_id, bid_id, project_id, jobs_ledger_id, channel, direction, who_user_id, who_text, at, subject, body, optout_line, back_on, back_by, back_words, back_done_at, mailbox, tied_by, auto, invitation'
 /** The open people's jobs, for the New lane's *Which job?*. */
 const JOB_COLUMNS = 'contact_id, bid_id, project_id, jobs_ledger_id, is_default, created_at, contact:contacts!inner(state)'
 export const OWED_COLUMNS = 'id, contact_id, what, by_day, by_words, marked_by, marked_at, done_at, done_how, done_note_message_id'

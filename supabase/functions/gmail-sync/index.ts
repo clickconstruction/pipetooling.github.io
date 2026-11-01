@@ -19,6 +19,9 @@
  *     out, under the teammate's name (`emailLine.ts`'s `emailParty`). Before that every staff address was left out.
  *   - Mail the reader leaves out (`leftOut.ts`: bulk, no-reply, Gmail's other tabs, the box's own and the app's) stays
  *     with no label.
+ *   - An invitation to bid (punch list #223 PR 3, v2.6222): `emailIn/invitation.ts` reads each line in, and what it
+ *     read rides on the line as `messages.invitation`, so the New lane asks *Bid it?*; the trade seat (the estimator's)
+ *     is handed the thread when nobody has it.
  *   - A sender the office marked **A notice, not a person** (punch list #223 PR 1, v2.6202: `email_left_out_senders`,
  *     an address or a company's whole domain, read once per run through `leftOutSenders.ts`) is left out the same way,
  *     before the address is placed, so nothing flips their done thread back to waiting.
@@ -65,6 +68,8 @@ import { base64UrlBytes, parseAddress, readGmailMessage } from '../_shared/gcKer
 import { jobInSubject } from '../_shared/gcKernels/lib/emailIn/jobInSubject.ts'
 import { leftOut, outsideInbox } from '../_shared/gcKernels/lib/emailIn/leftOut.ts'
 import { leftOutSenders, type LeftOutSenderMatch, type LeftOutSenderRow } from '../_shared/gcKernels/lib/emailIn/leftOutSenders.ts'
+import { invitation } from '../_shared/gcKernels/lib/emailIn/invitation.ts'
+import { ASSIGN_RULE_KEY, parseAssignSeats, type AssignRuleSeats } from '../_shared/gcKernels/lib/followUp/assignSeats.ts'
 import { subjectJobs, subjectNumbers, type SubjectBidRow, type SubjectPipelineRow, type SubjectProjectRow } from '../_shared/gcKernels/lib/emailIn/subjectJobs.ts'
 import { buildLedgerPrefixMap, type LedgerPrefixMap } from '../_shared/gcKernels/lib/ledgerDisplayPrefixes.ts'
 
@@ -107,6 +112,8 @@ interface Ctx {
   prefixes: LedgerPrefixMap
   /** The senders the office marked a notice (v2.6202), for this box: the row that matches, or null. */
   isNotice: (address: string) => LeftOutSenderMatch
+  /** *Who gets a new message*'s seats (v2.6222): an invitation to bid is held by the trade seat, the estimator's. */
+  seats: AssignRuleSeats
 }
 
 function jsonResponse(body: unknown, status = 200): Response {
@@ -299,7 +306,11 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
 
   // Our line going out: the forwarded copy's first sender, or the teammate who copied the box (v2.5722).
   const ourSender = party.direction === 'out' ? ctx.member((fwd ? fwd.from : email.from)?.address ?? '') : null
+  // An invitation to bid (punch list #223 PR 3, v2.6222): what the line's subject, words and links say, kept on the
+  // line so the New lane asks *Bid it?* and the card never reads the body again. Null on every other line.
+  const invite = line.direction === 'in' ? invitation({ subject: line.subject ?? '', text: line.body, links: email.links, at: line.at ?? email.at ?? nowIso() }) : null
   const row = {
+    invitation: invite,
     contact_id: contactId,
     channel_id: placed.data.placed_channel,
     direction: line.direction,
@@ -319,12 +330,19 @@ async function takeOne(ctx: Ctx, id: string): Promise<Took> {
   // and the next run's write is a repeat.
   const wrote = await ctx.admin.rpc('email_write_line', { p_gmail_id: email.gmailId, p_row: row, p_files: files, p_note: note })
   if (wrote.error) throw new Error(`Writing ${email.gmailId} failed: ${wrote.error.message}`)
+  const written = (wrote.data as { written: boolean }[] | null)?.[0]?.written !== false
+  // The rule's estimator holds a Bid it? row (the card's call 6, v2.6222): the trade seat, when nobody has the thread
+  // yet. Written as the rule's own hold, so a person can still take it or hand it on.
+  if (written && invite && ctx.seats.trade) {
+    const held = await ctx.admin.from('contacts').update({ has_user_id: ctx.seats.trade, has_how: 'rule', has_since: nowIso(), has_until: null }).eq('id', contactId).is('has_user_id', null)
+    if (held.error) console.warn(`gmail-sync: ${email.gmailId}'s invitation was not handed to the estimator's seat: ${held.error.message}`)
+  }
   await gmailAddLabel(ctx.token, email.gmailId, ctx.labelId)
-  return (wrote.data as { written: boolean }[] | null)?.[0]?.written === false ? 'already' : 'taken'
+  return written ? 'taken' : 'already'
 }
 
 /** One box's run: its token, its row, its label, and its walk. A failure here is this box's alone. */
-async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap, notices: readonly LeftOutSenderRow[]): Promise<Record<string, unknown>> {
+async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, prefixes: LedgerPrefixMap, notices: readonly LeftOutSenderRow[], seats: AssignRuleSeats): Promise<Record<string, unknown>> {
   const startedAt = nowIso()
   await saveState(admin, b.mailbox, { last_run_at: startedAt })
   try {
@@ -341,7 +359,7 @@ async function runBox(admin: Admin, saJson: string, b: ReaderBox, team: Team, pr
       return { ok: true, started: true }
     }
 
-    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox) }
+    const ctx: Ctx = { admin, token, labelId, box: b.mailbox, mailbox: b.words, ...team, prefixes, isNotice: leftOutSenders(notices, b.mailbox), seats }
     let walk: HistoryWalk
     try {
       walk = await walkHistory(state.history_id, (pageToken) => gmailHistory(token, state.history_id, pageToken), (id) => takeOne(ctx, id), MAX_PER_RUN)
@@ -382,11 +400,14 @@ async function run(admin: Admin): Promise<{ ok: boolean; boxes: Record<string, u
   const team = await loadTeam(admin, settings, boxes.map((b) => b.address))
   const prefixes = await loadPrefixes(admin)
   const notices = await loadLeftOutSenders(admin)
+  // The seats, once a run (v2.6222): a missing or unreadable row reads as no seats, and nobody is handed an invitation.
+  const { data: seatsRow } = await admin.from('app_settings').select('value_text').eq('key', ASSIGN_RULE_KEY).maybeSingle()
+  const seats = parseAssignSeats(seatsRow?.value_text)
   const out: Record<string, unknown> = {}
   let ok = true
   for (const b of boxes) {
     try {
-      out[b.mailbox] = await runBox(admin, saJson, b, team, prefixes, notices)
+      out[b.mailbox] = await runBox(admin, saJson, b, team, prefixes, notices, seats)
     } catch (e) {
       ok = false
       console.error(`gmail-sync ${b.mailbox}`, e)

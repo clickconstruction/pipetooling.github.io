@@ -2,7 +2,7 @@
 title: turn on reading the bids inbox
 category: Office
 roles: dev, master_technician
-keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages, teammate, our team, copy the box, cc, notice, newsletter, left out
+keywords: bids inbox, bids@, read bids, email, gmail, reader, switch, phone and texts, settings, in clicktooling, label, messages, teammate, our team, copy the box, cc, notice, newsletter, left out, invitation to bid, bid it
 where: /settings?tab=settings-phone-texts#settings-phone-texts-read-bids
 order: 117
 ---
@@ -19,6 +19,8 @@ The switch now reads {{button:green|On}}. The first read comes within a minute. 
 An email that Gmail first put in Spam lands too, once it reaches the Inbox. Moving it there is enough.
 
 Each email it reads lands on its sender's thread. In Gmail, that email gets the label **In ClickTooling**.
+
+An invitation to bid lands as **Bid it?** in New, held by the estimator. The guide [sort new messages before anyone answers them](/help/sort-new-messages#bid-it) shows the card.
 
 ## A teammate's email
 

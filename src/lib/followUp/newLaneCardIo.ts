@@ -84,6 +84,29 @@ export interface NewLaneCardIo {
   markNotice(contactId: string, scope: 'address' | 'domain'): Promise<void>
   /** *Not a notice after all*: takes the thread's rows off the list and puts the thread back in New. */
   unmarkNotice(contactId: string): Promise<void>
+  /**
+   * *A new customer* on the *Bid it?* card (v2.6222): the customer's row alone, from the sender, as `makeCustomer` makes
+   * it, answering the customer's id so the bid can go on them. The card then names the contact through `name`.
+   */
+  makeCustomerRecord(contactId: string, make: NewCustomerFacts, by: { userId: string }, todayYmd: string): Promise<string>
+  /**
+   * *Start a bid* (v2.6222, `start_bid_from_message`): the bid on the customer with the name, the links and the due
+   * day, the line tied to it and the event line written. Answers the bid's id and number.
+   */
+  startBid(messageId: string, bid: StartBidFacts): Promise<{ bidId: string; bidNumber: string; customer: string }>
+  /** *Not for us* (a reason required) or *Keep it* (v2.6222, `answer_invitation`). */
+  answerInvitation(messageId: string, answer: 'not_for_us' | 'kept', reason: string | null): Promise<void>
+}
+
+/** What *Start a bid* makes the bid from: the card's field and what the reader read. */
+export interface StartBidFacts {
+  customerId: string
+  projectName: string
+  /** YYYY-MM-DD, or null. */
+  dueDate: string | null
+  /** HH:MM, or null. */
+  dueTime: string | null
+  links: readonly string[]
 }
 
 /** What *A new customer* is made from: the field's name, the sender's own, their address and number, the box's kind. */
@@ -129,6 +152,16 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
   // The spine's and cut 2's tables join the generated types with the lead's types PR; until then the client is untyped.
   const db = client as SupabaseClient
   const presses = supabaseFollowUpIo(client)
+  /** The customer's row from the sender, the lead doors' insert (`customerPayloadFrom`): its id. */
+  const makeCustomerRow = async (contactId: string, make: NewCustomerFacts, by: { userId: string }, todayYmd: string): Promise<string> => {
+    const typed = db as unknown as SupabaseClient<Database>
+    const owner = await resolveCompanyOwnerUserId(typed, by.userId)
+    const customerName = make.customerName.trim()
+    const payload = { ...customerPayloadFrom({ contactId, name: customerName, phone: make.phone, email: make.email, words: null }, owner, todayYmd), customer_type: make.customerType }
+    const made = await typed.from('customers').insert(payload).select('id').single()
+    checkSupabaseError(made, 'make them a customer')
+    return (made.data as { id: string }).id
+  }
   return {
     async loadCard(contactId, jobKeys, nowIso) {
       const newest = (direction: 'in' | 'out') =>
@@ -274,16 +307,29 @@ export function supabaseNewLaneCardIo(client: unknown = supabase): NewLaneCardIo
       throw new Error('That one needs its record made first.')
     },
     async makeCustomer(contactId, make, by, todayYmd) {
-      const typed = db as unknown as SupabaseClient<Database>
-      const owner = await resolveCompanyOwnerUserId(typed, by.userId)
+      const customerId = await makeCustomerRow(contactId, make, by, todayYmd)
       const customerName = make.customerName.trim()
-      const payload = { ...customerPayloadFrom({ contactId, name: customerName, phone: make.phone, email: make.email, words: null }, owner, todayYmd), customer_type: make.customerType }
-      const made = await typed.from('customers').insert(payload).select('id').single()
-      checkSupabaseError(made, 'make them a customer')
-      const customerId = (made.data as { id: string }).id
       // The sender is the customer's own person when the names read as one, else a person at the company by name.
       const person = make.personName?.trim() || null
       return nameContact(contactId, { record: { table: 'customers', id: customerId }, kind: 'customer', name: person && !samePerson(person, customerName) ? person : null })
+    },
+    makeCustomerRecord: makeCustomerRow,
+    async startBid(messageId, bid) {
+      const result = await db.rpc('start_bid_from_message', {
+        p_message_id: messageId,
+        p_customer_id: bid.customerId,
+        p_project_name: bid.projectName,
+        p_due_date: bid.dueDate,
+        p_due_time: bid.dueTime,
+        p_links: [...bid.links],
+      })
+      checkSupabaseError(result, 'start the bid')
+      const out = (result.data ?? {}) as { bid_id?: string; bid_number?: string | number; customer?: string }
+      return { bidId: out.bid_id ?? '', bidNumber: String(out.bid_number ?? ''), customer: out.customer ?? '' }
+    },
+    async answerInvitation(messageId, answer, reason) {
+      const result = await db.rpc('answer_invitation', { p_message_id: messageId, p_answer: answer, p_reason: reason })
+      checkSupabaseError(result, answer === 'not_for_us' ? 'say it is not for us' : 'keep it for later')
     },
     async makeRecord(contactId, make, by) {
       const typed = db as unknown as SupabaseClient<Database>
