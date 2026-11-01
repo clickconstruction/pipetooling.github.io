@@ -174,4 +174,14 @@ describe('DocumentsPhotosTab', () => {
     await waitFor(() => expect(document.querySelector('[data-uploaded-photo-open]')).toBeNull())
     expect((screen.getByLabelText('Find a photo') as HTMLInputElement).value).toBe('Jordan Pike')
   })
+
+  it('closes the viewer when it opens the job, so the job window is not under it', async () => {
+    io.rows = [row({})]
+    renderWithProviders(<DocumentsPhotosTab io={fakeIo()} />)
+    await screen.findAllByTestId('documents-photos-row')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Open Rough In' })[0]!)
+    await waitFor(() => expect(document.querySelector('[data-uploaded-photo-open="p1"]')).toBeTruthy())
+    fireEvent.click(screen.getByRole('button', { name: 'Open the job' }))
+    await waitFor(() => expect(document.querySelector('[data-uploaded-photo-open]')).toBeNull())
+  })
 })
