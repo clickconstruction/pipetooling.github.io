@@ -185,7 +185,7 @@ describe('myMailQuery: the Gmail search a page reads', () => {
 describe('the refusals: their statuses and their words', () => {
   it('gives every refusal its status', () => {
     expect(Object.keys(MY_MAIL_REFUSAL_STATUS).sort()).toEqual(Object.keys(MY_MAIL_REFUSAL_WORDS).sort())
-    expect(MY_MAIL_REFUSAL_STATUS).toMatchObject({ signIn: 401, readOnly: 403, officeOnly: 403, off: 403, offWorkspace: 403, badRequest: 400, notFound: 404, google: 502 })
+    expect(MY_MAIL_REFUSAL_STATUS).toMatchObject({ signIn: 401, readOnly: 403, officeOnly: 403, off: 403, imitated: 403, offWorkspace: 403, badRequest: 400, notFound: 404, google: 502 })
   })
 
   it('reads an address Google will not hand the app as off the Workspace, with Google’s reason after ours', () => {

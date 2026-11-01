@@ -155,6 +155,20 @@ serve(async (req) => {
       )
     }
 
+    // Every imitation is on record before its link exists (v2.6290, punch list #230): the session it opens carries the
+    // person's own JWT, and gmail-mine refuses a magic-link session that follows a record of them (`user_imitations`).
+    // An imitation the app cannot record would read the person's mail, so none is opened.
+    const { error: recordError } = await adminClient
+      .from('user_imitations')
+      .insert({ operator_id: authUser.id, target_id: user.id })
+    if (recordError) {
+      console.error('login-as-user: the imitation was not recorded:', recordError.message)
+      return new Response(
+        JSON.stringify({ error: 'The app could not record this imitation, so it did not open one.' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      )
+    }
+
     // Generate magic link for the target user
     const { data: linkData, error: linkError } = await adminClient.auth.admin.generateLink({
       type: 'magiclink',
