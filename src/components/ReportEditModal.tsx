@@ -49,7 +49,8 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
   // already on the report are drawn by the strip and stay, since Drive is their home.
   const phone = useNarrowViewport640()
   const photoJobId = open && report ? (report.job_ledger_id ?? null) : null
-  const photos = useReportPhotos({ open: open && !!report, jobId: photoJobId, authUserId: user?.id ?? null, byName: profileName?.trim() || '', cameraFirst: phone && canLeaveJobFieldReport(role), stages: [] })
+  const cameraFirst = phone && canLeaveJobFieldReport(role)
+  const photos = useReportPhotos({ open: open && !!report, jobId: photoJobId, authUserId: user?.id ?? null, byName: profileName?.trim() || '', cameraFirst, stages: [] })
   const [templateFields, setTemplateFields] = useState<ReportTemplateField[]>([])
   const [fieldValues, setFieldValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -238,7 +239,7 @@ export default function ReportEditModal({ open, report, onClose, onSaved, viewer
                     onStage={photos.putOnStage}
                     onRemove={photos.remove}
                     onRetry={photos.retry}
-                    captureWords={photos.tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.add}
+                    captureWords={cameraFirst ? (photos.tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.take) : REPORT_PHOTO_WORDS.add}
                   />
                 </>
               ) : null}

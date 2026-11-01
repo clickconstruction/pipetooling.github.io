@@ -1,8 +1,8 @@
 ---
 name: "Firm portal: the Notifications tab shows each person what they will get"
 number: 233
-group: gated
-status: card and mock-up 2026-11-01 from the owner's ask the same day · the thinking, a first pass, the render, a second pass · nothing built · the owner's two calls at the foot, a recommendation on each
+group: ready
+status: card and mock-up 2026-11-01 from the owner's ask the same day · the thinking, a first pass, the render, a second pass · nothing built · the owner's three calls at the foot, a recommendation on each · call 3 added the same day on the owner's question, does the digest cover everything that changed · the digest's shape by matter decided the same day on the owner's word · calls 1 and 2 answered 2026-11-01, A and A, in the owner's words *A typed Title* and *Sample inbox, one email open* · PR 1 the form v2.6278 (claude/233-notifications-form-row)
 mockup: to-dos/legal-portal-notifications-show/mockup.html
 summary: >
   The law firm's portal has a Notifications tab where the firm adds its people and sets how each hears
@@ -14,10 +14,10 @@ summary: >
   rule as it is switched, each subject line opening its email, and a count under Only theirs that reads
   from the firm's own matters. Fifty words of prose where there were 171. Two PRs, no migration, one
   function redeploy.
-next: The owner's two calls, then PR 1 (the form is the row) and PR 2 (the sample inbox).
-size: S as a train of two (S · S)
-blocker: The owner's picks on the role and the preview's depth.
-opinion: build as drawn — the title typed, the switches in the form, the inbox with one email open; the role presets and per-event picks stay unbuilt until a firm asks
+next: PR 1 merges, then PR 2 (the sample inbox), PR 3 (the digest reads by matter, decided); call 3 decides PR 4 (the digest carries every office act).
+size: S as a train of three (S · S · S), M with call 3's PR 4
+blocker: None for PRs 1 to 3. Call 3 for PR 4.
+opinion: build as drawn — the title typed, the switches in the form, the inbox with one email open; the role presets and per-event picks stay unbuilt until a firm asks; call 3 is worth its one migration, since the digest today is not the record it reads as
 ---
 
 # Firm portal: the Notifications tab shows each person what they will get (#233)
@@ -56,6 +56,16 @@ What the tab is, read in the code on 2026-11-01:
 - **The words a first-timer reads today**, counted on the mock-up's first section: the empty state 32 words, *How
   this behaves* 67, *What you hear about* 59, the form 13: **171**, with a 38-word sentence and a 22-word one, a
   colon and a semicolon as glue. The plain-words rule (`src/lib/plainWords.ts`) is 20 words and no glue.
+- **The digest does not cover everything that changed** (the owner's question, 2026-11-01). The digest reads
+  `legal_notification_queue` since the last digest, and only the seven acts above write a row (the triggers in
+  `20261006170000_legal_firm_notify_events.sql`): the entries trigger ignores a step the office records, a planned
+  step, a what-happened event, an offer, a statement, a step moved back, an undo and a signed-off step; nothing
+  watches `legal_matter_documents` (a paper added, held papers released) or the narrative; a matter closed sends
+  nothing. A stage change shows only sideways, as the stage word on the *Open matters* list. And the stamp is
+  firm-wide by weekday: a row is marked digested once the people due that weekday are sent, anyone on another
+  weekday counting as served (the dispatcher's own comment calls it an approximation), so with Owen on Monday and
+  Priya on Wednesday, Priya's digest holds Monday to Wednesday only. Two more limits: 200 rows per digest, and a
+  person who confirms later never gets what came before (by design, v2.3325).
 - The red band for an office pause already draws when it happens (`payload.firmPaused`), and a removed person
   simply leaves the list; the sentence that says so is the only trace of either.
 
@@ -104,6 +114,19 @@ stop link but not the week, and the digest's point is that it is one email where
 row drawn as it will look once confirmed (taken as the form itself: the card the firm fills has the same fields and
 switches as the card it becomes).
 
+### The digest reads by matter
+
+The owner, 2026-11-01, on the first digest sample: *"It puts the date and then what happened and then the context
+which is what account it matters for last. I would instead like this to be sorted by the Ridgeway Builders and
+then everything for Ridgeway Builders underneath it and then Northline Builders and then everything for Northline
+Builders underneath it."* Decided, not a call. `buildLegalDigestEmail` drops its two lists (*Open matters*, *Since
+your last digest*) for one: every matter the person can see as a heading with its stage line (*Ridgeway Builders —
+referred · handling Dana Whitlock · since 2026-10-26*), the week's lines under it as *day · what happened — detail*
+(*Oct 27 · The office asks — Do you have the signed change order for the add?*), matters with news first, then the
+quiet ones each reading *Nothing new this week*; a matter withdrawn during the week keeps its heading, reading
+*referral withdrawn · was handling …*, since it is no longer on the open list the dispatcher reads. The day prints
+short (*Oct 26*). The builder is pure and shared, so the sample inbox and the real email change together.
+
 ### The sample week is made up, and says so
 
 The subject lines name sample accounts, never the firm's real matters: a sample *Referral withdrawn: Cedar Bend
@@ -138,11 +161,20 @@ and what changed:
 
 ## The owner's calls
 
+Answered 2026-11-01, relayed from the main session in the owner's words: call 1 *A typed Title* (A), call 2 *Sample inbox, one email open* (A). Call 3 is open.
+
 1. **What is the role?** A: a typed Title, optional, that gates nothing (recommended, as drawn). B: a pick that sets
    the starting rules and says so, the switches still shown and changeable (one PR more). C: per-person event picks
    (a migration for the picks, the dispatcher, both desks: two PRs more).
 2. **How deep is the preview?** A: the sample inbox and one email opened under it, any line pressable (recommended,
    as drawn). B: the inbox alone with a *Read one ›* fold; shorter on a phone, and the stop link is a sentence again.
+3. **Does the digest carry every office act?** Added on the owner's question. A: yes, as PR 3 (recommended): a
+   digest-only line per office act the way the fee line already rides, so *Since your last digest* reads *Step by
+   the office: Cedar Bend Homes — demand sent*, *Planned step*, *What happened*, *Offer*, *Statement*, *Paper added:
+   the signed subcontract*, *Papers released*, *Matter closed*; and a per-person stamp so two weekdays no longer
+   split the week. Each event stays as it is: six emails a week is the rule's point, and a paralegal entering six
+   costs should not get six emails back (the v2.4600-era rule in `legalEmails.ts`). B: leave the digest as the
+   seven acts, and the sample inbox stays honest to it. The tab does not change either way.
 
 ## Where it plugs in
 
@@ -190,9 +222,26 @@ and what changed:
    *Each event*, one under *Weekly digest*, the fee line dim and never opened, *Only theirs* narrowing to the typed
    name's matters and the no-matters line, the opened email through the real builders); the inbox under the add
    card's button, a line pressable; the render smoke (the inbox swaps on the switch). Guide, release note, fragment.
-3. If call 1 is B: **PR 3** adds `legalFirmRolePreset.ts` (the three presets as rule patches) and the pick above the
+3. **PR 3 — the digest reads by matter** (S, decided). `buildLegalDigestEmail` regrouped as above, with its tests
+   (a matter with news, a quiet one, a withdrawn one, *Only theirs* narrowing the headings); the dispatcher passes
+   the events it already has, so no query changes. Deploy: `supabase functions deploy legal-notify-dispatch`;
+   Settings → What customers see draws the new shape. Release note, fragment, the guide's digest sentence.
+4. **PR 4 — the digest carries every office act** (M, on call 3A): one migration that widens the entries trigger
+   to every office-made kind (step, plan, event, offer, statement, and a `closed` row from the matter trigger) and
+   adds a trigger on `legal_matter_documents` for a paper added and for held papers released, each queued under a
+   new trigger word that `legalTriggerSendsNow` holds to the digest; `LEGAL_NOW_TRIGGERS` and `DIGEST_LABEL` gain
+   the words, in the firm's vocabulary from `firmEntryKindWords`; the dispatcher stamps `sent_to`-style per person
+   for the digest lane (a `digested_to` ledger beside `sent_to`, same shape as `legalNotifyLedger.ts`) so each
+   weekday's person reads back to their own last digest; the sample inbox's digest shows the new lines. Deploy:
+   client, then `supabase db push`, then `supabase functions deploy legal-notify-dispatch`. Its own
+   `docs/migrations/` page and `EDGE_FUNCTIONS.md` section.
+5. If call 1 is B: **PR 5** adds `legalFirmRolePreset.ts` (the three presets as rule patches) and the pick above the
    switches, which set them. If call 1 is C: a migration for the picks column, the dispatcher's filter, both desks'
    rows, and the sample inbox honouring the picks; two PRs.
+
+- Call 3A on the dev bed: as the dev, record a step and add a paper on a ZZ test matter; the queue holds a row for
+  each with the new trigger words; no *Each event* email goes; the next digest lists both lines; with two digest
+  people on different weekdays, each digest reads back to that person's own last send.
 
 ## How to verify
 
@@ -208,4 +257,4 @@ and what changed:
 
 ## Where it stands
 
-Card and mock-up, 2026-11-01. Nothing built. Waiting on the owner's two calls.
+Card and mock-up, 2026-11-01. Calls 1 and 2 answered the same day, both as recommended; PR 1 (v2.6278) built the same day on `claude/233-notifications-form-row`. Call 3 was added the same day on the owner's question whether the digest covers everything that changed, and the read says it does not; it is open.
