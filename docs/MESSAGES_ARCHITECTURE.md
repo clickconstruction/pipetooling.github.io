@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-10-29
+last_updated: 2026-11-01
 ---
 
 ## What it is, in one paragraph
@@ -66,12 +66,12 @@ our own numbers or addresses never becomes one: the readers place it only while 
 - `messages` — one row per call, voicemail, missed call, text, email, team note, event or portal line: `contact_id`,
   the job keys (`bid_id`, `project_id`, `jobs_ledger_id`), `channel`, `direction` (in, out, team), `who_user_id` or
   `who_text`, `at`, `subject`, `body`, the source id (`quo_id`, the RFC `Message-ID` for email, since v2.5705 `estimate:<id>:opened|accepted|declined` on the estimate's event lines, unique so a resend never
-  doubles), `delivery` (Quo's answer on our sent text, read on the client since v2.5703), `mailbox` (team, bids), `quick_reply_id` (or `introduces_user_id` on a bio text, v2.5590), `estimate_id`, `office_only`, `optout_line`, `back_on` / `back_by`
+  doubles), `delivery` (Quo's answer on our sent text, read on the client since v2.5703), `mailbox` (team, bids, or since punch list #230 `mine`, an email tagged from a person's own box, whose `mail_user_id` names), `quick_reply_id` (or `introduces_user_id` on a bio text, v2.5590), `estimate_id`, `office_only`, `optout_line`, `back_on` / `back_by`
   (a note's follow-up day), and cut 5's call columns (recording, transcript, summary, length).
 - `message_attachments` — a file as it arrived or went (`bucket_path` our copy, `link`, `sent_as`, `drive_file_id` once
   filed, `paper_answer` once read as a paper).
 - `message_highlights`, `message_promises` (what a line was read as: a quote, a start, papers, a payment, with the day; since v2.5710 `said`, the day a person gave on a logged call),
-  `contact_owed` (what we owe a person, one open row), `quick_replies` with its uses and versions (and `phone_press`, the one live On my way and I'm here line each, v2.5573), `user_bio_lines` (a tech's bio, v2.5587), `nudge_offers` (Today's sends, v2.5595), `call_tasks` (v2.5596) and `tell_customer_prefs` (My way, v2.5597).
+  `contact_owed` (what we owe a person, one open row), `quick_replies` with its uses and versions (and `phone_press`, the one live On my way and I'm here line each, v2.5573), `user_bio_lines` (a tech's bio, v2.5587), `nudge_offers` (Today's sends, v2.5595), `call_tasks` (v2.5596), `tell_customer_prefs` (My way, v2.5597) and `email_tag_threads` (punch list #230, v2.6266: a Gmail conversation a person tagged onto a job from the My email tab, which reads their own box only while their `users.my_mail_on` is on; read by the office team, written by `gmail-mine`).
 
 The kernels are `src/lib/contacts/` (`kernel.ts`, `names.ts`, `load.ts`) and `src/lib/messages/`: `thread.ts` (one
 thread per person, the rows and the move line), `stamps.ts` (their last word and ours), `load.ts` and `jobKeys.ts` (the

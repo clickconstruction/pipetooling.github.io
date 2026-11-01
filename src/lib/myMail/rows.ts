@@ -1,0 +1,141 @@
+/**
+ * Messages → My email (punch list #230 PR 1): one mail of a person's own Inbox or Sent as the tab's row. The function
+ * (`gmail-mine`, PR 2) reads the message from Gmail and passes it here with the person's own address; the row's
+ * `tagged`, `guess` and `inMessages` are left for it to fill (from `email_tag_threads`, `mailGuess.ts` and
+ * `messages.rfc_message_id`, which `rfcMessageId` below reads off the mail). Pure, over the bids@ reader's own parts:
+ * `readGmailMessage` reads the message, `leftOut` and the office's *A notice, not a person* list fold what the reader
+ * leaves out, and `fileKeep` counts the files it would keep.
+ *
+ * Two rules of the reader read differently for a person's own box. Its Inbox gate does not hold: the tab reads Sent
+ * too, and a conversation holds archived mail, so the fold reads every rule after the gate. And the person's own mail
+ * never folds: a reply that quotes a newsletter's foot is still theirs.
+ *
+ * `files` counts the parts a message carries. A `format=metadata` read carries none, so the list asks for the parts
+ * (`format=full`, or `fields` with the parts and no bodies) when the count should show.
+ */
+import { fileKeep, rfcMessageId } from '../emailIn/emailLine'
+import { decodeEntities, readGmailMessage, type EmailAddress, type EmailIn, type GmailMessage } from '../emailIn/gmailMessage'
+import { leftOut, type LeftOut } from '../emailIn/leftOut'
+import type { LeftOutSenderMatch } from '../emailIn/leftOutSenders'
+import { MY_MAIL_NO_SUBJECT, type MyMailFold, type MyMailParty, type MyMailRow } from './contract'
+
+/** The mail's own Message-ID, trimmed, for the function's lookup of a line the boxes already wrote. */
+export { rfcMessageId }
+
+/**
+ * The headers the list asks Gmail for (`format=metadata`'s `metadataHeaders`): the row's addresses, subject, day and
+ * Message-ID, and every header the fold reads. Gmail sends only the headers asked for.
+ */
+export const MY_MAIL_METADATA_HEADERS: readonly string[] = ['From', 'To', 'Cc', 'Subject', 'Date', 'Message-ID', 'List-Unsubscribe', 'List-Id', 'Precedence', 'Auto-Submitted']
+
+/** The longest snippet a row makes from the words, when Gmail sent no snippet of its own. */
+export const MY_MAIL_SNIPPET_MAX = 200
+
+/** A Gmail message as `users.messages.get` and `users.threads.get` answer it: the reader's shape, with Gmail's snippet. */
+export interface MyMailGmailMessage extends GmailMessage {
+  snippet?: string
+}
+
+/** Whose box it is, and what the office leaves out of it. */
+export interface MyMailReader {
+  /** The person's own address, as `users.email` holds it: a mail from it is theirs, going out. */
+  address: string
+  /** The boxes' own addresses and the app's sender (`tagPlan.ts`'s `known.boxes`): a mail from one is a copy of our own, folded as a notice. */
+  boxes?: readonly string[]
+  /** The office's *A notice, not a person* list (`leftOutSenders(rows, 'mine')`: the rows for both boxes hold here). */
+  isNotice?: (address: string) => LeftOutSenderMatch
+}
+
+/** A message read for the list: its row, the email the parser read, and its Message-ID. */
+export interface MyMailRead {
+  row: MyMailRow
+  email: EmailIn
+  rfcMessageId: string | null
+}
+
+const clean = (address: string | null | undefined): string => (address ?? '').trim().toLowerCase()
+
+/** Whether an address is the person's own, case-blind. */
+export function isTheirs(address: string | null | undefined, reader: Pick<MyMailReader, 'address'>): boolean {
+  const a = clean(address)
+  return a !== '' && a === clean(reader.address)
+}
+
+/** The reader's verdict as the tab folds it: Gmail's other tabs and Spam or Trash read as bulk, a copy of ours as a notice. */
+const FOLD_OF: Readonly<Record<LeftOut, MyMailFold>> = {
+  spamOrTrash: 'bulk',
+  notInbox: null,
+  ours: 'notice',
+  bulk: 'bulk',
+  noReply: 'noReply',
+  category: 'bulk',
+}
+
+/**
+ * Why a mail folds, by the bids@ reader's own rules (`leftOut`: the list and machine headers, the body's foot, a
+ * no-reply sender, Gmail's other tabs, a copy of ours) and then the office's notice list. Null for a person's mail, and
+ * always for the person's own: what they sent never folds.
+ */
+export function myMailFold(email: Pick<EmailIn, 'labels' | 'from' | 'headers'> & Partial<Pick<EmailIn, 'text'>>, reader: MyMailReader): MyMailFold {
+  const from = email.from?.address ?? ''
+  if (isTheirs(from, reader)) return null
+  const boxes = new Set((reader.boxes ?? []).map(clean).filter((a) => a !== ''))
+  // Past the reader's Inbox gate: Sent and a conversation's archived mail are read too.
+  const labels = email.labels.includes('INBOX') ? email.labels : [...email.labels, 'INBOX']
+  const verdict = leftOut({ ...email, labels }, (address) => boxes.has(clean(address)))
+  const fold = verdict ? FOLD_OF[verdict] : null
+  if (fold) return fold
+  return from && reader.isNotice?.(from) ? 'notice' : null
+}
+
+const party = (a: EmailAddress | null | undefined): MyMailParty => ({ name: a?.name?.trim() ?? '', address: a?.address.trim() ?? '' })
+
+/** The other party: the sender on a mail in; on a mail out the first To who is not the person, then the first Cc, then the first To. */
+function otherParty(email: Pick<EmailIn, 'from' | 'to' | 'cc'>, out: boolean, reader: MyMailReader): MyMailParty {
+  if (!out) return party(email.from)
+  const them = [...email.to, ...email.cc].find((a) => !isTheirs(a.address, reader))
+  return party(them ?? email.to[0] ?? email.from)
+}
+
+const EPOCH = new Date(0).toISOString()
+
+/** When it came: Gmail's own time, else the Date header, else the start of 1970 so a mail with no time sorts last. */
+function whenOf(email: Pick<EmailIn, 'at' | 'headers'>): string {
+  if (email.at) return email.at
+  const ms = Date.parse(email.headers['date'] ?? '')
+  return Number.isFinite(ms) ? new Date(ms).toISOString() : EPOCH
+}
+
+/** Gmail's snippet as text (it sends HTML's entities), else the words' start, on one line. */
+function snippetOf(snippet: string | undefined, text: string): string {
+  const own = decodeEntities(snippet ?? '').replace(/\s+/g, ' ').trim()
+  if (own) return own
+  const words = text.replace(/\s+/g, ' ').trim()
+  return words.length > MY_MAIL_SNIPPET_MAX ? `${words.slice(0, MY_MAIL_SNIPPET_MAX - 3).trimEnd()}...` : words
+}
+
+/** One message read for the list: the row, the parsed email and its Message-ID, all from one parse. */
+export function readMyMail(message: MyMailGmailMessage, reader: MyMailReader): MyMailRead {
+  const email = readGmailMessage(message)
+  const out = isTheirs(email.from?.address, reader)
+  const row: MyMailRow = {
+    gmailId: email.gmailId,
+    threadId: email.threadId ?? '',
+    direction: out ? 'out' : 'in',
+    who: otherParty(email, out, reader),
+    subject: email.subject.trim() || MY_MAIL_NO_SUBJECT,
+    snippet: snippetOf(message.snippet, email.text),
+    at: whenOf(email),
+    files: email.files.filter((f) => fileKeep(f) !== 'skip').length,
+    folded: myMailFold(email, reader),
+    tagged: null,
+    guess: null,
+    inMessages: null,
+  }
+  return { row, email, rfcMessageId: rfcMessageId(email) }
+}
+
+/** One message as the tab's row, with `tagged`, `guess` and `inMessages` left for the function to fill. */
+export function myMailRow(message: MyMailGmailMessage, reader: MyMailReader): MyMailRow {
+  return readMyMail(message, reader).row
+}
