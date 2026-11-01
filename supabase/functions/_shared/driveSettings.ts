@@ -59,14 +59,22 @@ export type DriveMeta = {
   error?: { message?: string }
 }
 
-const FOLDER_MIME = 'application/vnd.google-apps.folder'
+/** A Drive folder's MIME type, the one test that a link is a folder. */
+export const FOLDER_MIME = 'application/vnd.google-apps.folder'
 
-async function meta(token: string, id: string): Promise<{ status: number; body: DriveMeta }> {
+/** A file or folder as Drive describes it to the service account: the write check's read, and `jobFolders.ts`' (v2.6284). */
+export async function driveFolderMeta(token: string, id: string): Promise<{ status: number; body: DriveMeta }> {
   const res = await fetch(`${DRIVE}/files/${encodeURIComponent(id)}?fields=id,name,mimeType,parents,driveId,owners(displayName,emailAddress),capabilities/canAddChildren&supportsAllDrives=true`, {
     headers: { Authorization: `Bearer ${token}` },
   })
   const body = (await res.json().catch(() => ({}))) as DriveMeta
   return { status: res.status, body }
+}
+
+/** The owner's name or address as Drive gives it; null inside a Shared Drive, where the drive owns the file. */
+export function metaOwner(body: DriveMeta): string | null {
+  const owner = body.owners?.[0]
+  return owner ? owner.displayName || owner.emailAddress || null : null
 }
 
 /**
@@ -77,7 +85,7 @@ async function meta(token: string, id: string): Promise<{ status: number; body: 
 export async function checkFolderWrite(token: string, folderId: string | null, appEmail: string, withFacts = true): Promise<{ ok: boolean; words: string; seen: WriteCheckSeen; folder: DriveFolderFacts | null }> {
   const answer = (seen: WriteCheckSeen, folder: DriveFolderFacts | null = null) => ({ ...writeCheckWords(seen, appEmail), seen, folder })
   if (!folderId) return answer({ kind: 'no_link' })
-  const { status, body } = await meta(token, folderId)
+  const { status, body } = await driveFolderMeta(token, folderId)
   if (status === 403 || status === 404) return answer({ kind: 'cannot_open', status, reason: body.error?.message ?? null })
   if (status < 200 || status >= 300) throw new Error(`Drive answered ${status} when the app looked at the folder.`)
   if (body.mimeType !== FOLDER_MIME) return answer({ kind: 'not_a_folder' })
@@ -93,7 +101,7 @@ async function folderFacts(token: string, id: string, body: DriveMeta): Promise<
   const path: string[] = []
   let parent = body.parents?.[0] ?? null
   for (let i = 0; i < 6 && parent; i += 1) {
-    const p = await meta(token, parent).catch(() => null)
+    const p = await driveFolderMeta(token, parent).catch(() => null)
     if (!p || p.status < 200 || p.status >= 300 || !p.body.name) break
     path.unshift(p.body.name)
     parent = p.body.parents?.[0] ?? null
