@@ -8,13 +8,13 @@ A slow morning used to look like a dead app. Now one line at the top of every sc
 
 ## The line at the top
 
-The app watches every read it makes. When a read has waited four seconds and nothing has come back, a line appears above the menu. The line reads *The app is slow right now.* in amber. The line goes away on its own as soon as a read comes back.
+The app watches every read it makes. When a read has waited four seconds and nothing has come back, a line appears above the menu. The line reads *The app is slow right now.* in amber. Under it the line reads *It goes the moment a read lands. Nothing to press.* The line goes away on its own as soon as a read comes back.
 
 You do not need to do anything. Leave the page open. Do not reload the page. Do not press the same button again. The app is catching up.
 
 :::example The line on a slow morning
 
-**The app is slow right now.**
+**The app is slow right now.** It goes the moment a read lands. Nothing to press.
 
 :::
 
@@ -54,11 +54,11 @@ Quickfill's Roller and the phone's round keep the deck you last read on your dev
 
 ## Could not reach the app
 
-When the app gets no answer at all, the line turns red. The line reads *Could not reach the app.* and offers {{button:outline|Retry}}. Check your signal first. Then press Retry. Retry opens the page again.
+When the app gets no answer at all, the line turns red. The line reads *Could not reach the app.* and offers {{button:outline|Retry}}. Under it the line reads *Check your signal, then press Retry to open the page again.* Check your signal first. Then press Retry. Retry opens the page again.
 
 ## No signal
 
-When your phone has no signal, the line reads *No signal.* in grey. Nothing is wrong with the app. The line goes when the signal is back.
+When your phone has no signal, the line reads *No signal.* in grey. Under it the line reads *Clock presses, notes and reports wait on the phone and go out when the signal is back.* Nothing is wrong with the app. The line goes when the signal is back.
 
 A clock press, a job note or a field report you make with no signal waits on the phone. The line counts it, like *No signal. 2 waiting to send ›*. Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for what waits and what does not.
 

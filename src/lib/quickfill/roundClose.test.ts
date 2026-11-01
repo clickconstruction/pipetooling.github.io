@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { officeRoundHeadline, officeRoundState, previousWorkdayYmd, roundCloseSheet, roundCloseSummary, roundCloseTitle, type RoundCloseEvent } from './roundClose'
+import { officeRoundHeadline, officeRoundState, previousWorkdayYmd, ROUND_START_PRESS, ROUND_START_PRESS_WEEKEND, roundCloseSheet, roundCloseSummary, roundCloseTitle, roundStartPress, roundStartStation, roundStartWords, type RoundCloseEvent } from './roundClose'
 
 // Central daylight time written as UTC (+5). Today is Friday 2026-10-23.
 const TODAY = '2026-10-23'
@@ -63,6 +63,40 @@ describe('roundClose · the sheet at the end of the round (punch list #176, chan
     expect(officeRoundHeadline(officeRoundState([], TODAY, label), dayLabel)).toBe('')
     expect(previousWorkdayYmd('2026-10-26')).toBe('2026-10-23')
     expect(previousWorkdayYmd('2026-10-23')).toBe('2026-10-22')
+  })
+
+  it('today’s round starts on the station marked longest ago, and the card’s sentence ends in that station (the health rule)', () => {
+    const stations = [
+      { sectionId: 'needs-you', label: "Today's lines" },
+      { sectionId: 'texts', label: 'Texts' },
+      { sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment' },
+    ]
+    const events = [ev('2026-10-20', '09:10', 'billed-awaiting', 9, 'worked'), ev('2026-10-21', '09:17', 'texts', 0, 'done'), ev('2026-10-22', '11:52', 'texts', 0, 'done')]
+    // Billed Awaiting Payment was marked longest ago; Today's lines, never marked in the window, is left out.
+    expect(roundStartStation(events, stations)).toEqual({ sectionId: 'billed-awaiting', label: 'Billed Awaiting Payment', lastYmd: '2026-10-20' })
+    // No mark on any station: the first in the round's order, with no day.
+    expect(roundStartStation([], stations)).toEqual({ sectionId: 'needs-you', label: "Today's lines", lastYmd: null })
+    expect(roundStartStation(events, [])).toBeNull()
+    // A tie keeps the round's order.
+    expect(roundStartStation([ev('2026-10-21', '09:00', 'billed-awaiting', 1, 'worked'), ev('2026-10-21', '09:30', 'texts', 0, 'done')], stations)?.sectionId).toBe('texts')
+
+    const start = roundStartStation(events, stations)
+    const missed = officeRoundState([ev('2026-10-21', '09:17', 'texts', 0, 'done')], TODAY, label)
+    expect(roundStartWords(missed, start, dayLabel)).toBe("The round did not run Thursday. Today's starts on Billed Awaiting Payment, marked last 2026-10-20.")
+    expect(roundStartWords(missed, { sectionId: 'needs-you', label: "Today's lines", lastYmd: null }, dayLabel)).toBe("The round did not run Thursday. Today's starts on Today's lines, which has waited longest.")
+    expect(roundStartWords(missed, null, dayLabel)).toBe('The round did not run Thursday. It opens on Quickfill.')
+    const notYet = officeRoundState([ev('2026-10-22', '11:52', 'texts', 0, 'done')], TODAY, label)
+    expect(roundStartWords(notYet, start, dayLabel)).toBe("The round has not started yet. Today's starts on Billed Awaiting Payment, marked last 2026-10-20.")
+    const sunday = officeRoundState([ev('2026-10-23', '11:52', 'texts', 0, 'done')], '2026-10-25', label)
+    expect(roundStartWords(sunday, start, dayLabel)).toBe('No round is due on the weekend.')
+    expect(roundStartWords(officeRoundState([ev(TODAY, '09:51', 'texts', 0, 'done')], TODAY, label), start, dayLabel)).toBe('')
+    expect(ROUND_START_PRESS).toBe("Start today's round")
+    expect(roundStartPress(missed)).toBe(ROUND_START_PRESS)
+    // A Saturday after a Friday with no marks: the round is not today's.
+    const saturday = officeRoundState([ev('2026-10-21', '09:17', 'texts', 0, 'done')], '2026-10-24', label)
+    expect(saturday).toMatchObject({ kind: 'missed', weekend: true, previousYmd: '2026-10-23' })
+    expect(roundStartWords(saturday, start, dayLabel)).toBe('The round did not run 2026-10-23. The next round starts on Billed Awaiting Payment, marked last 2026-10-20.')
+    expect(roundStartPress(saturday)).toBe(ROUND_START_PRESS_WEEKEND)
   })
 
   it('on a weekend the card says the last round, not that one has not started (v2.5868)', () => {

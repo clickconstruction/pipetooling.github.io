@@ -65,7 +65,7 @@ Press {{button:outline|7 days}} in the bar. **The last 7 days** opens under the 
 
 - **Answered within an hour** is the share of people we answered inside an hour. A person who writes twice before we reply counts once. A reminder the app sent does not count as an answer. Neither does a note, since they never see one. The line under it compares last week. Press it to open Needs a reply.
 - **Longest wait right now** names the person who has waited longest for a reply, and who has it. Press it to open their thread.
-- **Texts not delivered** counts the texts of ours that never reached a phone this week. Press it to open Went out on its texts. The rows in red are the ones.
+- **Texts not delivered** counts the texts of ours that never reached a phone this week. Under the count it reads *Call them, or send it as an email.* Press it to open Went out on its texts. The rows in red are the ones, each with those two presses.
 - **Estimates** counts the estimates sent this week, how many the customer opened and how many they accepted. The line under it says how many were opened and then went quiet. Press it to open Waiting on them.
 - **Ratings** counts the rating asks sent this week, how many the customer answered and the score of 5. The line under it counts answers of 2 or less. Press it to open the newest answer. [Edit the quick replies](/help/edit-the-quick-replies) says how an ask goes out.
 

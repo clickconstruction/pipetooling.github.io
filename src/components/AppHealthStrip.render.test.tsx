@@ -31,7 +31,7 @@ describe('AppHealthStrip render smoke', () => {
     store.requestStarted(Date.now() - SLOW_AFTER_MS - 500)
     renderWithProviders(<AppHealthStrip store={store} />)
     const strip = await screen.findByRole('status')
-    expect(strip.textContent).toBe('The app is slow right now.')
+    expect(strip.textContent).toBe('The app is slow right now.It goes the moment a read lands. Nothing to press.')
     expect(strip.getAttribute('data-tone')).toBe('amber')
     expect(strip.getAttribute('data-app-health')).toBe('slow')
     expect(screen.queryByRole('button', { name: 'Retry' })).toBeNull()
@@ -43,7 +43,7 @@ describe('AppHealthStrip render smoke', () => {
     const retry = vi.fn()
     renderWithProviders(<AppHealthStrip store={store} retry={retry} />)
     const button = await screen.findByRole('button', { name: 'Retry' })
-    expect(screen.getByRole('status').textContent).toBe('Could not reach the app.Retry')
+    expect(screen.getByRole('status').textContent).toBe('Could not reach the app.Check your signal, then press Retry to open the page again.Retry')
     expect(screen.getByRole('status').getAttribute('data-tone')).toBe('red')
     fireEvent.click(button)
     expect(retry).toHaveBeenCalledTimes(1)
@@ -53,7 +53,7 @@ describe('AppHealthStrip render smoke', () => {
     const store = createAppHealthStore({ online: false })
     renderWithProviders(<AppHealthStrip store={store} />)
     const strip = await screen.findByRole('status')
-    expect(strip.textContent).toBe('No signal.')
+    expect(strip.textContent).toBe('No signal.Clock presses, notes and reports wait on the phone and go out when the signal is back.')
     expect(strip.getAttribute('data-tone')).toBe('grey')
   })
 
@@ -68,12 +68,12 @@ describe('AppHealthStrip render smoke', () => {
     }
     mockRole = 'dev'
     const { unmount } = renderWithProviders(<AppHealthStrip store={store} />)
-    expect((await screen.findByRole('status')).textContent).toBe('The app is slow right now.Run /db-freeze before anyone restarts.')
+    expect((await screen.findByRole('status')).textContent).toBe('The app is slow right now.It goes the moment a read lands. Nothing to press.Run /db-freeze before anyone restarts.')
     unmount()
 
     mockRole = 'assistant'
     renderWithProviders(<AppHealthStrip store={store} />)
-    expect((await screen.findByRole('status')).textContent).toBe('The app is slow right now.')
+    expect((await screen.findByRole('status')).textContent).toBe('The app is slow right now.It goes the moment a read lands. Nothing to press.')
   })
 
   it('names the time the page on screen was read while a kept page shows, and drops the line when the page is live (#183 PR 2)', async () => {
@@ -84,9 +84,9 @@ describe('AppHealthStrip render smoke', () => {
     kept.show('board', readAt)
     renderWithProviders(<AppHealthStrip store={store} keptStore={kept} />)
     const strip = await screen.findByRole('status')
-    expect(strip.textContent).toBe(`The app is slow right now.The page you see was read at ${formatKeptReadTime(readAt)}.`)
+    expect(strip.textContent).toBe(`The app is slow right now.The page you see was read at ${formatKeptReadTime(readAt)}.It goes the moment a read lands. Nothing to press.`)
     act(() => kept.hide('board'))
-    expect(strip.textContent).toBe('The app is slow right now.')
+    expect(strip.textContent).toBe('The app is slow right now.It goes the moment a read lands. Nothing to press.')
   })
 
   it('goes when a read lands and the 3 s hold is over', async () => {
@@ -96,7 +96,7 @@ describe('AppHealthStrip render smoke', () => {
       const id = store.requestStarted(Date.now() - SLOW_AFTER_MS - 10_000)
       store.read(Date.now() - 10_000)
       const { container } = renderWithProviders(<AppHealthStrip store={store} />)
-      expect(container.textContent).toBe('The app is slow right now.') // first paint
+      expect(container.textContent).toBe('The app is slow right now.It goes the moment a read lands. Nothing to press.') // first paint
       store.requestLanded(id, { status: 200 }, Date.now())
       await vi.advanceTimersByTimeAsync(50)
       expect(container.textContent).toBe('')
@@ -167,7 +167,7 @@ describe('AppHealthStrip render smoke · the outbox bar', () => {
     renderWithProviders(<AppHealthStrip store={store} outboxStore={box} />)
     const strip = await screen.findByRole('status')
     expect(strip.getAttribute('data-tone')).toBe('amber')
-    expect(strip.textContent).toBe('The app is slow right now.Nothing you pressed is lost.2 waiting to send ›')
+    expect(strip.textContent).toBe('The app is slow right now.It goes the moment a read lands. Nothing to press.Nothing you pressed is lost.2 waiting to send ›')
   })
 
   it('with no signal the strip reads No signal and the count, with no countdown and no Nothing lost line', async () => {
@@ -177,7 +177,7 @@ describe('AppHealthStrip render smoke · the outbox bar', () => {
     renderWithProviders(<AppHealthStrip store={createAppHealthStore({ online: false })} outboxStore={box} />)
     const strip = await screen.findByRole('status')
     expect(strip.getAttribute('data-tone')).toBe('grey')
-    expect(strip.textContent).toBe('No signal.1 waiting to send ›')
+    expect(strip.textContent).toBe('No signal.Clock presses, notes and reports wait on the phone and go out when the signal is back.1 waiting to send ›')
   })
 
   it('a press that needs a person is named beside the slow line, in the health tone', async () => {
@@ -188,6 +188,6 @@ describe('AppHealthStrip render smoke · the outbox bar', () => {
     box.put(markRefused(clockIn(now - 60_000), { message: 'No.', code: null }))
     renderWithProviders(<AppHealthStrip store={store} outboxStore={box} />)
     const strip = await screen.findByRole('status')
-    expect(strip.textContent).toBe('The app is slow right now.1 press needs you ›')
+    expect(strip.textContent).toBe('The app is slow right now.It goes the moment a read lands. Nothing to press.1 press needs you ›')
   })
 })

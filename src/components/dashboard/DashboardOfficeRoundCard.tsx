@@ -4,8 +4,9 @@ import { supabase } from '../../lib/supabase'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatDayLabel } from '../../lib/quickfill/markHistory'
 import { isMarkOutcome } from '../../lib/quickfill/markOutcome'
-import { officeRoundHeadline, officeRoundState, type OfficeRoundState, type RoundCloseEvent } from '../../lib/quickfill/roundClose'
-import { foldRetiredSectionId, QUICKFILL_SECTION_LABEL_BY_ID } from '../../lib/quickfill/sections'
+import { QUICKFILL_AFTERNOON_SECTIONS, QUICKFILL_PERSONAL_SECTIONS } from '../../lib/quickfill/round'
+import { officeRoundHeadline, officeRoundState, roundStartPress, roundStartStation, roundStartWords, type OfficeRoundState, type RoundCloseEvent, type RoundStart } from '../../lib/quickfill/roundClose'
+import { foldRetiredSectionId, QUICKFILL_SECTION_LABEL_BY_ID, QUICKFILL_SECTIONS } from '../../lib/quickfill/sections'
 import { quickfillStationHref } from '../../lib/quickfill/stationDeepLink'
 
 /**
@@ -14,14 +15,25 @@ import { quickfillStationHref } from '../../lib/quickfill/stationDeepLink'
  * · 8 still open · 2 questions* with the still-open stations and the questions as doors into
  * Quickfill; *No round yet today* with yesterday's shape before it runs; *No round Thursday*
  * in red the morning after a miss. Reads the last ten days of `quickfill_section_mark_events`
- * once per visit; the kernel `roundClose.ts` does the rest.
+ * once per visit; the kernel `roundClose.ts` does the rest. While no round has run today the
+ * sentence names the station today's round starts on (`roundStartStation`: marked longest ago)
+ * and **Start today's round** opens it (the health rule, 2026-11-01), instead of *The stations
+ * wait on Quickfill* and a link to the page.
  */
 const DAYS_BACK = 10
+
+/**
+ * The round's stations in order, what `roundStartStation` picks from: the personal ones left out, and the
+ * afternoon ones (Office Leaving joins the round after 3 PM, `stationInRoundNow`), which a morning round
+ * never starts on and would otherwise win every pick as the least-marked station.
+ */
+const ROUND_STATIONS = QUICKFILL_SECTIONS.filter((s) => !QUICKFILL_PERSONAL_SECTIONS.has(s.sectionId) && !QUICKFILL_AFTERNOON_SECTIONS.has(s.sectionId)).map(({ sectionId, label }) => ({ sectionId, label }))
 
 
 export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
   const navigate = useNavigate()
   const [state, setState] = useState<OfficeRoundState | null>(null)
+  const [start, setStart] = useState<RoundStart | null>(null)
   useEffect(() => {
     if (!enabled) return
     let cancelled = false
@@ -43,6 +55,7 @@ export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
         marked_by_name: r.users?.name ?? null,
       }))
       setState(officeRoundState(events, todayYmdInAppTz(), (id) => QUICKFILL_SECTION_LABEL_BY_ID.get(id) ?? id))
+      setStart(roundStartStation(events, ROUND_STATIONS))
     })()
     return () => {
       cancelled = true
@@ -89,10 +102,16 @@ export function DashboardOfficeRoundCard({ enabled }: { enabled: boolean }) {
         </>
       ) : (
         <p style={{ margin: '0.2rem 0 0.5rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }}>
-          {missed ? 'The round did not run that day. The stations wait on Quickfill.' : weekend ? 'No round is due on the weekend.' : 'The round has not started yet. It opens on Quickfill.'}{' '}
-          <button type="button" onClick={() => navigate('/quickfill')} style={{ padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }}>
-            Open Quickfill ›
-          </button>
+          {roundStartWords(state, start, formatDayLabel)}{' '}
+          {start && !weekend ? (
+            <button type="button" onClick={() => navigate(quickfillStationHref(start.sectionId))} style={{ padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', fontWeight: 700, cursor: 'pointer' }}>
+              {roundStartPress(state)} ›
+            </button>
+          ) : (
+            <button type="button" onClick={() => navigate('/quickfill')} style={{ padding: 0, border: 'none', background: 'none', color: 'var(--text-link)', font: 'inherit', fontSize: '0.8125rem', cursor: 'pointer' }}>
+              Open Quickfill ›
+            </button>
+          )}
         </p>
       )}
     </section>

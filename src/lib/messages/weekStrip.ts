@@ -287,6 +287,8 @@ export const STRIP_WORDS = {
   answered: 'Answered within an hour',
   longest: 'Longest wait right now',
   notDelivered: 'Texts not delivered',
+  /** Under the count (the health rule, 2026-11-01): the rows carry the two presses, so the tile names them. */
+  notDeliveredSub: 'Call them, or send it as an email.',
   estimates: 'Estimates',
   none: 'none',
   of: (count: number, of: number) => `${count} of ${of}`,
@@ -340,7 +342,7 @@ export function stripTiles(input: { lines: readonly StripLine[]; estimates: read
       key: 'notDelivered',
       label: STRIP_WORDS.notDelivered,
       value: bad.count ? String(bad.count) : STRIP_WORDS.none,
-      sub: null,
+      sub: bad.count ? STRIP_WORDS.notDeliveredSub : null,
       door: bad.count ? { kind: 'went-out' } : null,
       tip: STRIP_WORDS.tips.notDelivered,
     },

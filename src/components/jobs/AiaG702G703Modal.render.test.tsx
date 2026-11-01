@@ -614,7 +614,7 @@ describe('AiaG702G703Modal', () => {
       'Went out Oct 2, 10:40 AM by Taunyaas J1023-App1.xlsx',
       'Went out Oct 2, 10:12 AM by Taunyaas J1023-App1.xlsx',
       'Went out Nov 2, 9:05 AM by Taunyaas J1023-App2.xlsx',
-      'Went out Oct 1, 10:05 AM by TaunyaThe copy was not kept.',
+      'Went out Oct 1, 10:05 AM by TaunyaThe copy was not kept. The send went out, and this row is the record.',
     ])
     expect(screen.getByTestId('aia-history-unsaved').textContent).toContain('Downloaded with no number typed')
     fireEvent.click(screen.getByRole('button', { name: 'J1023-App2.xlsx' }))

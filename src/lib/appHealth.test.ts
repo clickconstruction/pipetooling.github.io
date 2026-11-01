@@ -4,12 +4,15 @@ import {
   DEV_RUNBOOK_AFTER_MS,
   DEV_RUNBOOK_WORDS,
   KEPT_PAGE_WORDS_LEAD,
+  OFFLINE_NEXT_WORDS,
   OFFLINE_WORDS,
   SIGNAL_TTL_MS,
   SLOW_AFTER_MS,
+  SLOW_NEXT_WORDS,
   SLOW_WORDS,
   STRIP_HOLD_MS,
   UNREACHABLE_AFTER_MS,
+  UNREACHABLE_NEXT_WORDS,
   UNREACHABLE_WORDS,
   appHealthHoldsGate,
   appHealthStripWords,
@@ -298,24 +301,24 @@ describe('appHealth · the words', () => {
   })
 
   it('slow reads the owner is own line in amber with no Retry', () => {
-    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0 })).toEqual({ tone: 'amber', lead: SLOW_WORDS, lines: [], retry: false })
+    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0 })).toEqual({ tone: 'amber', lead: SLOW_WORDS, lines: [SLOW_NEXT_WORDS], retry: false })
   })
 
   it('unreachable reads in red with Retry', () => {
-    expect(appHealthStripWords(reading('unreachable'), { dev: false, now: T0 })).toEqual({ tone: 'red', lead: UNREACHABLE_WORDS, lines: [], retry: true })
+    expect(appHealthStripWords(reading('unreachable'), { dev: false, now: T0 })).toEqual({ tone: 'red', lead: UNREACHABLE_WORDS, lines: [UNREACHABLE_NEXT_WORDS], retry: true })
   })
 
   it('offline reads No signal in grey', () => {
-    expect(appHealthStripWords(reading('offline'), { dev: true, now: T0 + 100_000 })).toEqual({ tone: 'grey', lead: OFFLINE_WORDS, lines: [], retry: false })
+    expect(appHealthStripWords(reading('offline'), { dev: true, now: T0 + 100_000 })).toEqual({ tone: 'grey', lead: OFFLINE_WORDS, lines: [OFFLINE_NEXT_WORDS], retry: false })
   })
 
   it('a dev sees the runbook line once the trouble is a minute old; nobody else does', () => {
     const at59 = { dev: true, now: T0 + DEV_RUNBOOK_AFTER_MS - 1 }
     const at60 = { dev: true, now: T0 + DEV_RUNBOOK_AFTER_MS }
-    expect(appHealthStripWords(reading('slow'), at59)?.lines).toEqual([])
-    expect(appHealthStripWords(reading('slow'), at60)?.lines).toEqual([DEV_RUNBOOK_WORDS])
-    expect(appHealthStripWords(reading('unreachable'), at60)?.lines).toEqual([DEV_RUNBOOK_WORDS])
-    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0 + 500_000 })?.lines).toEqual([])
+    expect(appHealthStripWords(reading('slow'), at59)?.lines).toEqual([SLOW_NEXT_WORDS])
+    expect(appHealthStripWords(reading('slow'), at60)?.lines).toEqual([SLOW_NEXT_WORDS, DEV_RUNBOOK_WORDS])
+    expect(appHealthStripWords(reading('unreachable'), at60)?.lines).toEqual([UNREACHABLE_NEXT_WORDS, DEV_RUNBOOK_WORDS])
+    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0 + 500_000 })?.lines).toEqual([SLOW_NEXT_WORDS])
   })
 
   it('a kept page on screen adds The page you see was read at, right after the lead, in every state (#183 PR 2)', () => {
@@ -323,19 +326,20 @@ describe('appHealth · the words', () => {
     const format = { timeZone: APP_CALENDAR_TZ }
     expect(keptPageWords(keptReadAt, format)).toBe('The page you see was read at 7:52 AM.')
     expect(KEPT_PAGE_WORDS_LEAD).toBe('The page you see was read at')
-    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.'])
-    expect(appHealthStripWords(reading('unreachable'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.'])
-    expect(appHealthStripWords(reading('offline'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.'])
+    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.', SLOW_NEXT_WORDS])
+    expect(appHealthStripWords(reading('unreachable'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.', UNREACHABLE_NEXT_WORDS])
+    expect(appHealthStripWords(reading('offline'), { dev: false, now: T0, keptReadAt, format })?.lines).toEqual(['The page you see was read at 7:52 AM.', OFFLINE_NEXT_WORDS])
     expect(appHealthStripWords(reading('slow'), { dev: true, now: T0 + DEV_RUNBOOK_AFTER_MS, keptReadAt, format })?.lines).toEqual([
       'The page you see was read at 7:52 AM.',
+      SLOW_NEXT_WORDS,
       DEV_RUNBOOK_WORDS,
     ])
-    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0, keptReadAt: null })?.lines).toEqual([])
+    expect(appHealthStripWords(reading('slow'), { dev: false, now: T0, keptReadAt: null })?.lines).toEqual([SLOW_NEXT_WORDS])
     expect(appHealthStripWords(reading('fine', null), { dev: false, now: T0, keptReadAt })).toBeNull()
   })
 
   it('every sentence is plain words', () => {
-    for (const words of [SLOW_WORDS, UNREACHABLE_WORDS, OFFLINE_WORDS, DEV_RUNBOOK_WORDS, AUTH_GATE_SLOW_WORDS, keptPageWords(Date.UTC(2026, 9, 28, 12, 52))]) {
+    for (const words of [SLOW_WORDS, UNREACHABLE_WORDS, OFFLINE_WORDS, SLOW_NEXT_WORDS, UNREACHABLE_NEXT_WORDS, OFFLINE_NEXT_WORDS, DEV_RUNBOOK_WORDS, AUTH_GATE_SLOW_WORDS, keptPageWords(Date.UTC(2026, 9, 28, 12, 52))]) {
       expect(plainWordsFailures(words), words).toEqual([])
     }
   })

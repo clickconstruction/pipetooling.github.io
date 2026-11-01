@@ -142,7 +142,7 @@ describe('the last 7 days (punch list #140 PR 5)', () => {
     expect(tiles.map((t) => [t.key, t.value, t.sub, t.door])).toEqual([
       ['answered', '50%', '1 of 2 · ↓ from 100% last week', { kind: 'needs-reply' }],
       ['longest', '2 d 4 h', 'Dana Whitfield · Rosa has it', { kind: 'thread', contactId: 'c-dana', at: 'm1' }],
-      ['notDelivered', '1', null, { kind: 'went-out' }],
+      ['notDelivered', '1', 'Call them, or send it as an email.', { kind: 'went-out' }],
       ['estimates', '2 sent · 1 opened · 0 accepted', '1 opened and quiet', { kind: 'waiting' }],
       ['ratings', '3 asked · 2 answered · 3.5 of 5', '1 answer of 2 or less', { kind: 'thread', contactId: 'c-dana', at: null }],
     ])
@@ -166,7 +166,7 @@ describe('the last 7 days (punch list #140 PR 5)', () => {
   })
 
   it('reads in plain words', () => {
-    const words = [STRIP_WORDS.title, STRIP_WORDS.note, STRIP_WORDS.problem, STRIP_WORDS.answered, STRIP_WORDS.longest, STRIP_WORDS.notDelivered, STRIP_WORDS.ratings, STRIP_WORDS.ratingLow(1), STRIP_WORDS.ratingLow(2), STRIP_WORDS.officeWait, ...Object.values(STRIP_WORDS.tips)]
+    const words = [STRIP_WORDS.title, STRIP_WORDS.note, STRIP_WORDS.problem, STRIP_WORDS.answered, STRIP_WORDS.longest, STRIP_WORDS.notDelivered, STRIP_WORDS.notDeliveredSub, STRIP_WORDS.ratings, STRIP_WORDS.ratingLow(1), STRIP_WORDS.ratingLow(2), STRIP_WORDS.officeWait, ...Object.values(STRIP_WORDS.tips)]
     for (const w of words) expect(plainWordsFailures(w), w).toEqual([])
   })
 })
