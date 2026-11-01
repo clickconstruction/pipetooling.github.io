@@ -4,16 +4,18 @@
  * (`supabase/functions/gmail-mine/index.ts` does the reads and the writes, `docs/EDGE_FUNCTIONS.md` → gmail-mine). Here:
  * what a request may say, the Gmail search a page reads, how each refusal answers, the words when Google or the database
  * says no, the mail's HTML for the reader, which jobs are open, the facts the guess reads, the line a tagged mail writes,
- * where its files and its raw copy go in the bucket, and what an untag removes. Pure; mirrored to the edge by
- * `scripts/edge-kernels.mjs`.
+ * where its files and its raw copy go in the bucket, the tag's grey line on the thread, and what an untag removes. Since
+ * PR 4 also the follow, the cron's action: whose tagged conversations it reads, which, and what it does with each mail
+ * of one. Pure; mirrored to the edge by `scripts/edge-kernels.mjs`.
  */
-import { fileKeep, type EmailFileRow } from '../emailIn/emailLine'
+import { fileKeep, rfcMessageId, type EmailFileRow } from '../emailIn/emailLine'
 import { base64UrlBytes, type EmailAddress, type EmailIn, type GmailMessage, type GmailPart } from '../emailIn/gmailMessage'
 import type { SubjectJob } from '../emailIn/jobInSubject'
 import { domainOf, OPEN_MAIL_DOMAINS } from '../emailIn/leftOutSenders'
 import { subjectJobs, subjectNumbers, type SubjectBidRow, type SubjectPipelineRow, type SubjectProjectRow } from '../emailIn/subjectJobs'
 import type { LedgerPrefixMap } from '../ledgerDisplayPrefixes'
-import { jobKey, jobKeyOfRow } from '../messages/jobKeys'
+import { jobKey, jobKeyOfRow, jobRefOf } from '../messages/jobKeys'
+import { isFixtureAccount } from '../walk/kitDoor'
 import {
   MY_MAIL_GMAIL_LABEL,
   MY_MAIL_NO_SUBJECT,
@@ -31,7 +33,18 @@ import {
   type MyMailView,
 } from './contract'
 import { subjectJobChip, type MyMailGuess, type MyMailGuessFacts } from './mailGuess'
-import { MY_MAIL_MAILBOX, MY_MAIL_NEVER_LABELS, type MyMailKnownLine, type MyMailTagPlan, type MyMailTagStep } from './tagPlan'
+import {
+  MY_MAIL_MAILBOX,
+  MY_MAIL_NEVER_LABELS,
+  planTag,
+  type MyMailKnown,
+  type MyMailKnownLine,
+  type MyMailPerson,
+  type MyMailTagPlan,
+  type MyMailTagSkip,
+  type MyMailTagStep,
+  type MyMailThread,
+} from './tagPlan'
 
 // ---------- the request ----------
 
@@ -596,6 +609,39 @@ export function myMailFileRow(f: EmailFileRow, kept?: { path: string } | { left:
   return kept && 'path' in kept ? { ...base, bucket_path: kept.path } : { ...base, left_in_gmail: 'not_copied' }
 }
 
+// ---------- the tag's grey line on the thread ----------
+
+/** The key a tag's grey line stands on (`messages.quo_id`): one line per tagged conversation, by its `email_tag_threads` row. */
+export const myMailTagEventKey = (tagRowId: string): string => `mytag:${tagRowId}`
+
+/** The grey line's words: who tagged the conversation, and that later mail in it lands by itself. The name, else the address. */
+export function myMailTagEventWords(who: { name: string; email: string }): string {
+  const name = who.name.trim() || who.email.trim()
+  return `${name} tagged this conversation from their mail. Later mail in it lands here by itself.`
+}
+
+/**
+ * The row of a tag's grey line in the other party's thread, the app's own event as `_shared/estimateThreadLine.ts`
+ * writes one: `channel` event, `direction` team, `who_text` The app, keyed on `quo_id` by the tag's row so a second tag
+ * writes none, and on the tag's job in its one column. Its time is the database's: when the tag was pressed.
+ */
+export function myMailTagEventRow(input: {
+  tagRowId: string
+  who: { name: string; email: string }
+  contactId: string
+  jobColumns: MyMailTagPlan['jobColumns']
+}): Record<string, unknown> {
+  return {
+    contact_id: input.contactId,
+    channel: 'event',
+    direction: 'team',
+    who_text: 'The app',
+    body: myMailTagEventWords(input.who),
+    quo_id: myMailTagEventKey(input.tagRowId),
+    ...input.jobColumns,
+  }
+}
+
 // ---------- what an untag removes ----------
 
 /**
@@ -611,3 +657,181 @@ export function planUntag(input: { userId: string; tagJobKey: string | null; own
       : input.box.filter((l) => !gone.has(l.id) && !l.mail_user_id && l.tied_by === input.userId && jobKeyOfRow(l) === input.tagJobKey).map((l) => l.id)
   return { remove, untie: [...new Set(untie)] }
 }
+
+/**
+ * A read that names a column a migration adds before the push has run: Postgres's undefined column (`42703`), or
+ * PostgREST's own words for a column or a link it does not know (`PGRST200`, `PGRST204`), as the Legal desk's io reads
+ * them. The untag counts a matter's copies of the lines this way (`legal_matter_documents.source_message_id`, PR 5), and
+ * reads none until the column is there.
+ */
+export const columnNotPushed = (code: string | null | undefined): boolean => code === '42703' || code === 'PGRST200' || code === 'PGRST204'
+
+// ---------- the follow: later mail in a tagged conversation (PR 4) ----------
+
+/** The cron's request (`gmail-mine-follow`, every five minutes). The tab never sends it, and `parseMyMailRequest` refuses it. */
+export interface MyMailFollowRequest {
+  action: 'follow'
+}
+
+/** A run of the follow: the tagged conversations it read, the lines it wrote and tied, and how many it could not read. */
+export interface MyMailFollowOk {
+  ok: true
+  rows: number
+  lines: number
+  tied: number
+  failed: number
+}
+
+/** Whether a body is the cron's `{ action: 'follow' }`. */
+export function isFollowRequest(raw: unknown): raw is MyMailFollowRequest {
+  return Boolean(raw) && typeof raw === 'object' && (raw as Record<string, unknown>).action === 'follow'
+}
+
+/** How many tagged conversations one run of the follow reads; the rest wait for the next run, five minutes on. */
+export const FOLLOW_ROWS_PER_RUN = 100
+
+/** How long a tagged conversation is followed: while its last read, or its tag before any read, is this young. */
+export const FOLLOW_WINDOW_DAYS = 60
+
+/**
+ * The office team's roles, as `gc_office_team()` names them (`src/lib/gc/access.ts`'s `GC_OFFICE_TEAM`, which the test
+ * holds this to). The cron has no caller to ask the database's helper as, so the follow reads the roles itself.
+ */
+export const MY_MAIL_OFFICE_ROLES: readonly string[] = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']
+
+/** The start of the window: a conversation read (or tagged and not yet read) after this instant is followed. */
+export function followSince(now: Date | number): string {
+  const ms = typeof now === 'number' ? now : now.getTime()
+  return new Date(ms - FOLLOW_WINDOW_DAYS * 86_400_000).toISOString()
+}
+
+/** `coalesce(last_read_at, tagged_at) > since` as a PostgREST `or`: the rows the window holds. */
+export function followWindow(since: string): string {
+  return `last_read_at.gt.${since},and(last_read_at.is.null,tagged_at.gt.${since})`
+}
+
+/** A person as the follow reads their `users` row. */
+export interface MyMailFollowUserRow {
+  id: string
+  name: string | null
+  email: string | null
+  role: string | null
+  read_only?: boolean | null
+  is_sample?: boolean | null
+  is_digital_twin?: boolean | null
+  is_walk_tester?: boolean | null
+  my_mail_on?: boolean | null
+  archived_at?: string | null
+}
+
+/** A person whose tagged conversations the follow reads, as that person: their id, their name and their own address. */
+export interface MyMailFollowPerson {
+  id: string
+  name: string
+  email: string
+}
+
+/**
+ * Whose tagged conversations the follow reads, as the function's gate reads a person who may tag: their switch on
+ * (`users.my_mail_on`), a real account (never a sample, a twin or the walk tester) that is not archived, on the office
+ * team, not in training (a training account never tags, so its conversations wait), with an address of their own.
+ */
+export function followPeople(users: readonly MyMailFollowUserRow[]): MyMailFollowPerson[] {
+  return users.flatMap((u) => {
+    const email = (u.email ?? '').trim()
+    const ok =
+      u.my_mail_on === true &&
+      !isFixtureAccount(u) &&
+      u.is_walk_tester !== true &&
+      !u.archived_at &&
+      u.read_only !== true &&
+      MY_MAIL_OFFICE_ROLES.includes(u.role ?? '') &&
+      myMailAddressKey(email) !== ''
+    return ok ? [{ id: u.id, name: (u.name ?? '').trim(), email }] : []
+  })
+}
+
+/**
+ * The job a tag's row names, as `planTag` takes it: a written line reads only its kind and id, so the chip's number and
+ * name stay empty. Null when the row names none (its constraint says it always names one).
+ */
+export function tagRowJob(row: { bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null }): MyMailJobChip | null {
+  const key = jobKeyOfRow(row)
+  const ref = jobRefOf(key)
+  return key && ref ? { kind: ref.kind, id: ref.id, key, num: '', name: '' } : null
+}
+
+/** A line as the follow reads one: its job, whose box wrote it, who last tied it, and the two keys a mail finds it by. */
+export interface MyMailFollowLine extends MyMailLine {
+  gmail_id: string | null
+  rfc_message_id: string | null
+}
+
+/**
+ * What the follow does with one mail of a tagged conversation: read it whole and write it as the tag writes one
+ * (`write`), tie a box's line that holds it to the tag's job (`tie`), leave the line that holds it where it is (`held`),
+ * or leave it out (`skip`, with `planTag`'s reason).
+ */
+export type MyMailFollowStep =
+  | { kind: 'write'; gmailId: string }
+  | { kind: 'tie'; gmailId: string; messageId: string }
+  | { kind: 'held'; gmailId: string; messageId: string }
+  | { kind: 'skip'; gmailId: string; why: MyMailTagSkip }
+
+/** Why a mail is never read or written, by its labels (the first of `MY_MAIL_NEVER_LABELS` it carries), or null. */
+function neverWhy(labels: readonly string[]): MyMailTagSkip | null {
+  for (const [label, why] of Object.entries(MY_MAIL_NEVER_LABELS)) if (labels.includes(label)) return why
+  return null
+}
+
+/**
+ * The follow's plan for one tagged conversation, read by its headers (`format=metadata`), over the lines that hold its
+ * mail: by Message-ID in any box, else by Gmail id in this person's box, as `list` finds them. A draft, a mail in Spam
+ * or Trash and a chat are left out, as a tag leaves them. A mail a line holds is left where its line is, but for a box's
+ * line that sits on no job and that no person has tied or untied (`tied_by` null), which is tied to the tag's job: the
+ * follow never moves a line a person placed. Every other mail goes through `planTag` as the tag plans one, so a copy of
+ * ours (from a box or the app's sender) and a Message-ID twice are left as the tag leaves them, never read whole run
+ * after run, and the rest are read whole and written. In the conversation's order. Pure.
+ */
+export function planFollow(
+  thread: MyMailThread,
+  person: MyMailPerson,
+  job: MyMailJobChip,
+  known: { lines: readonly MyMailFollowLine[]; team?: MyMailKnown['team']; boxes?: MyMailKnown['boxes'] },
+): MyMailFollowStep[] {
+  const byRfc = new Map<string, MyMailFollowLine>()
+  const byId = new Map<string, MyMailFollowLine>()
+  for (const l of known.lines) {
+    const rfc = (l.rfc_message_id ?? '').trim()
+    if (rfc && !byRfc.has(rfc)) byRfc.set(rfc, l)
+    if (l.gmail_id && l.mail_user_id === person.userId && !byId.has(l.gmail_id)) byId.set(l.gmail_id, l)
+  }
+  const lineOf = new Map<string, MyMailFollowLine>()
+  const free: EmailIn[] = []
+  for (const email of thread.messages) {
+    if (neverWhy(email.labels)) continue
+    const rfc = rfcMessageId(email)
+    const line = rfc ? byRfc.get(rfc) : byId.get(email.gmailId)
+    if (line) lineOf.set(email.gmailId, line)
+    else free.push(email)
+  }
+  const planned = new Map(planTag({ threadId: thread.threadId, messages: free }, person, job, { byMessageId: {}, team: known.team, boxes: known.boxes }).steps.map((s) => [s.gmailId, s]))
+  const seen = new Set<string>()
+  return thread.messages.map((email): MyMailFollowStep => {
+    const never = neverWhy(email.labels)
+    if (never) return { kind: 'skip', gmailId: email.gmailId, why: never }
+    const line = lineOf.get(email.gmailId)
+    if (!line) {
+      const step = planned.get(email.gmailId)
+      if (step?.kind === 'write') return { kind: 'write', gmailId: email.gmailId }
+      return { kind: 'skip', gmailId: email.gmailId, why: step?.kind === 'skip' ? step.why : 'twice' }
+    }
+    if (seen.has(line.id)) return { kind: 'skip', gmailId: email.gmailId, why: 'twice' }
+    seen.add(line.id)
+    const loose = !line.mail_user_id && jobKeyOfRow(line) === null && !line.tied_by
+    return loose ? { kind: 'tie', gmailId: email.gmailId, messageId: line.id } : { kind: 'held', gmailId: email.gmailId, messageId: line.id }
+  })
+}
+
+/** A followed conversation's `last_error` when Gmail no longer has it in the person's box: deleted there, nothing more lands. */
+export const MY_MAIL_FOLLOW_GONE = 'This conversation is gone from their Gmail. Later mail in it cannot land.'

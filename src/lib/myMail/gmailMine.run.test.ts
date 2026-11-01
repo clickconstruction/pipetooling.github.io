@@ -2,12 +2,16 @@
  * gmail-mine's own handler, run here (punch list #230 PR 2) on the fakes in `gmailMineFakes.ts`: the caller's gates (a
  * sample, the switch off, an address off the Workspace refused at Google's token exchange), a page of the list with a
  * tagged row, a row the boxes already hold, guessed rows and a folded one, an open, a tag of a three-mail conversation
- * with one file, a second tag that writes nothing twice, a tag onto another job, and an untag. The token is signed by
- * the real `_shared/googleToken.ts` with a key made for the run; Google answers from the fake behind `fetch`.
+ * with one file, a second tag that writes nothing twice, a tag onto another job, and an untag. Since PR 4 the tag's grey
+ * line on the thread, the untag's `keptForMatter`, and the cron's follow: a later reply landing by itself, a box's line
+ * tied, the window and the order, a person whose switch is off, a token Google refuses, a conversation gone from Gmail,
+ * the run's limit, and the door the cron alone opens. The token is signed by the real `_shared/googleToken.ts` with a
+ * key made for the run; Google answers from the fake behind `fetch`.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MY_MAIL_REFUSAL_WORDS } from './contract'
 import { FakeDb, FakeGoogle, fakeServiceAccountJson, type FakeMail, type Row } from './gmailMineFakes'
+import { FOLLOW_ROWS_PER_RUN, MY_MAIL_FOLLOW_GONE } from './mineFunction'
 
 type Handler = (req: Request) => Promise<Response>
 const box: { handler: Handler | null } = { handler: null }
@@ -26,6 +30,7 @@ const ENV: Record<string, string> = {
   SUPABASE_ANON_KEY: 'anon-key',
   GMAIL_IMPERSONATE_USER: 'bids@clickplumbing.example',
   EMAIL_FROM: 'ClickTooling <team@noreply.clicktooling.example>',
+  CRON_SECRET: 'cron-secret-for-the-run',
 }
 // A Deno file: loaded by path at run time, so the app's typecheck does not follow it into Deno's globals.
 const FUNCTION_FILE = '../../../supabase/functions/gmail-mine/index.ts'
@@ -160,6 +165,14 @@ async function post(bearer: string | null, body: unknown): Promise<{ status: num
   if (bearer) headers.Authorization = `Bearer ${bearer}`
   const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
   return { status: res.status, body: (await res.json()) as Record<string, unknown>, headers: res.headers }
+}
+
+/** A post as the cron makes it: its secret in `X-Cron-Secret` and no session. */
+async function cron(body: unknown, secret: string = ENV.CRON_SECRET!, bearer: string | null = null): Promise<{ status: number; body: Record<string, unknown> }> {
+  const headers: Record<string, string> = { 'Content-Type': 'application/json', 'X-Cron-Secret': secret }
+  if (bearer) headers.Authorization = `Bearer ${bearer}`
+  const res = await box.handler!(new Request('http://localhost/functions/v1/gmail-mine', { method: 'POST', headers, body: JSON.stringify(body) }))
+  return { status: res.status, body: (await res.json()) as Record<string, unknown> }
 }
 
 const writes = () => db.calls.filter((c) => / (insert|upsert|update|delete) /.test(c) || c.includes(' storage upload') || c.includes(' storage remove'))
@@ -436,5 +449,218 @@ describe('gmail-mine: tag and untag', () => {
     expect(mine()).toHaveLength(2)
     expect(Object.keys(db.files)).toHaveLength(3)
     expect(db.rows('email_tag_threads')).toEqual([])
+  })
+
+  const events = () => lines().filter((l) => l.channel === 'event')
+
+  it('writes one grey line in the other party’s thread, tied to the job, and the untag takes it off', async () => {
+    await post('marisol-jwt', tagElm)
+    const [row] = db.rows('email_tag_threads')
+    expect(events()).toEqual([
+      expect.objectContaining({
+        contact_id: 'c-dale',
+        channel: 'event',
+        direction: 'team',
+        who_text: 'The app',
+        body: 'Marisol Vega tagged this conversation from their mail. Later mail in it lands here by itself.',
+        quo_id: `mytag:${row!.id}`,
+        jobs_ledger_id: ELM,
+        bid_id: null,
+        project_id: null,
+      }),
+    ])
+    // A second tag writes no second line.
+    await post('marisol-jwt', tagElm)
+    expect(events()).toHaveLength(1)
+    await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    expect(events()).toEqual([])
+  })
+
+  it('moves the grey line with a tag onto another job, and clears the follow’s place for its next run', async () => {
+    await post('marisol-jwt', tagElm)
+    Object.assign(db.rows('email_tag_threads')[0]!, { last_read_at: '2026-11-01T15:00:00.000Z', last_error: 'Google did not answer the app.' })
+    await post('marisol-jwt', { ...tagElm, job: { kind: 'pipeline', id: HARBOR } })
+    expect(events()).toEqual([expect.objectContaining({ jobs_ledger_id: HARBOR, contact_id: 'c-dale' })])
+    expect(db.rows('email_tag_threads')).toEqual([expect.objectContaining({ jobs_ledger_id: HARBOR, last_read_at: null, last_error: null })])
+  })
+
+  it('says the matter keeps its copy when the Legal desk made a live document from one of the lines, and not otherwise', async () => {
+    const untagWith = async (doc: Row | null) => {
+      await post('marisol-jwt', tagElm)
+      const ana = mine().find((l) => l.gmail_id === 'g-ana-1')!
+      db.tables.legal_matter_documents = doc ? [{ id: 'doc-1', matter_id: 'matter-1', source_message_id: ana.id, ...doc }] : []
+      return post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    }
+    expect((await untagWith({ voided_at: null })).body).toEqual({ ok: true, removed: 2, keptForMatter: true })
+    // The matter's copy stays (ON DELETE SET NULL in the database); the line is gone from the thread.
+    expect(mine()).toEqual([])
+    expect((await untagWith({ voided_at: '2026-11-01T12:00:00.000Z' })).body).toEqual({ ok: true, removed: 2, keptForMatter: false })
+    expect((await untagWith(null)).body).toEqual({ ok: true, removed: 2, keptForMatter: false })
+  })
+
+  it('reads no matter copies before the Legal desk’s column is pushed, and still untags', async () => {
+    await post('marisol-jwt', tagElm)
+    db.refuse['admin select legal_matter_documents'] = { message: 'column legal_matter_documents.source_message_id does not exist', code: '42703' }
+    const res = await post('marisol-jwt', { action: 'untag', threadId: 't-elm' })
+    expect(res).toMatchObject({ status: 200, body: { ok: true, removed: 2, keptForMatter: false } })
+    expect(mine()).toEqual([])
+    expect(logged.some((l) => l.includes('"event":"gmail_mine_matters_unread"') && l.includes('"code":"42703"'))).toBe(true)
+  })
+})
+
+describe('gmail-mine: follow, the cron’s', () => {
+  const tagElm = { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } }
+  const ROSA = 'rosa@clickplumbing.example'
+  const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString()
+  const tagRow = (id: string, userId: string, threadId: string, over: Row = {}): Row => ({
+    id,
+    user_id: userId,
+    gmail_thread_id: threadId,
+    bid_id: null,
+    project_id: null,
+    jobs_ledger_id: ELM,
+    tagged_by: userId,
+    tagged_at: ago(1),
+    last_read_at: null,
+    last_error: null,
+    ...over,
+  })
+  const threadReads = () => google.calls.filter((c) => c.includes(' GET /threads/')).map((c) => /\/threads\/([^?]+)/.exec(c)![1])
+  const fullReads = () => google.calls.filter((c) => /GET \/messages\/[^/?]+\?format=full/.test(c)).map((c) => /\/messages\/([^?]+)/.exec(c)![1])
+  const rowOf = (id: string) => db.rows('email_tag_threads').find((r) => r.id === id)
+  const labelOf = () => google.boxes[MARISOL]!.labels.find((l) => l.name === LABEL)?.id
+
+  describe('after a tag', () => {
+    beforeEach(async () => {
+      google.boxes[MARISOL]!.mails = elmThread()
+      db.tables.messages = [{ id: 'm-box-1', contact_id: 'c-dale', gmail_id: 'bx-dale-1', gmail_thread_id: 'bx-t-1', rfc_message_id: '<dale-1@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null }]
+      await post('marisol-jwt', tagElm)
+      // Later: Dale answers in Marisol's box alone; Ana writes again with bids@ copied, which took it first and left it on no job.
+      google.boxes[MARISOL]!.mails.push(
+        mail('g-dale-2', 't-elm', '2026-11-01T16:00:00.000Z', { From: DALE, Subject: 'Re: 4 Elm Ct water heater', 'Message-ID': '<dale-2@ridgeway.example>' }, 'Go with the 50 then.'),
+        mail('g-ana-2', 't-elm', '2026-11-01T16:30:00.000Z', { From: 'Ana Ruiz <ana@ridgeway.example>', Cc: 'bids@clickplumbing.example', Subject: 'Re: 4 Elm Ct water heater', 'Message-ID': '<ana-2@ridgeway.example>' }, 'Delivery is Friday.'),
+      )
+      const ana = db.rows('contacts').find((c) => c.name === 'Ana Ruiz')!
+      db.rows('messages').push({ id: 'm-box-2', contact_id: ana.id, gmail_id: 'bx-ana-2', gmail_thread_id: 'bx-t-2', rfc_message_id: '<ana-2@ridgeway.example>', mailbox: 'bids', mail_user_id: null, bid_id: null, project_id: null, jobs_ledger_id: null, tied_by: null })
+      google.calls.length = 0
+      logged.length = 0
+    })
+
+    it('lands a new reply on the job by itself, ties the one a box holds, and passes over what is already a line', async () => {
+      const writesBefore = rpcs('email_write_line').length
+      const res = await cron({ action: 'follow' })
+      expect(res).toEqual({ status: 200, body: { ok: true, rows: 1, lines: 1, tied: 1, failed: 0 } })
+
+      // Dale's reply, as the tag writes a mail: on Dale, from Marisol's box, on the job, with its raw copy.
+      const dale2 = lines().find((l) => l.gmail_id === 'g-dale-2')
+      expect(dale2).toMatchObject({
+        direction: 'in',
+        contact_id: 'c-dale',
+        channel_id: 'ch-dale',
+        who_text: "Dale Okafor <dale@ridgeway.example> to Marisol Vega's mail",
+        body: 'Go with the 50 then.',
+        gmail_thread_id: 't-elm',
+        mailbox: 'mine',
+        rfc_message_id: '<dale-2@ridgeway.example>',
+        mail_user_id: 'u-marisol',
+        jobs_ledger_id: ELM,
+      })
+      expect(db.files[`message-attachments/mine/${dale2!.id}.eml`]?.contentType).toBe('message/rfc822')
+      expect(rpcs('email_write_line')).toHaveLength(writesBefore + 1)
+
+      // The box's line of Ana's mail is tied as the service role, stamped with who tagged it; the job joins Ana's jobs.
+      expect(rpcs('tie_message').slice(-1)).toEqual([{ who: 'admin', fn: 'tie_message', args: { p_message_id: 'm-box-2', p_job_kind: 'pipeline', p_job_id: ELM }, uid: null }])
+      expect(lines().find((l) => l.id === 'm-box-2')).toMatchObject({ jobs_ledger_id: ELM, tied_by: 'u-marisol', mail_user_id: null })
+      expect(lines().some((l) => l.gmail_id === 'g-ana-2')).toBe(false)
+
+      // Read by the headers, and only the new mail whole; both now carry the label.
+      expect(threadReads()).toEqual(['t-elm'])
+      expect(google.calls.find((c) => c.includes('/threads/t-elm'))).toContain('format=metadata&metadataHeaders=From')
+      expect(fullReads()).toEqual(['g-dale-2'])
+      const labelled = google.boxes[MARISOL]!.mails.filter((m) => m.labelIds.includes(labelOf() ?? '-')).map((m) => m.id)
+      expect(labelled).toEqual(expect.arrayContaining(['g-dale-2', 'g-ana-2']))
+
+      // The row's place moves, and nothing is wrong with it.
+      const row = db.rows('email_tag_threads')[0]!
+      expect(row.last_error).toBeNull()
+      expect(Date.now() - Date.parse(String(row.last_read_at))).toBeLessThan(60_000)
+
+      // One line of counts, never a subject, a body or an address.
+      expect(logged.filter((l) => l.includes('"event":"gmail_mine_follow"'))).toEqual([expect.stringContaining('"rows":1,"people":1,"lines":1,"tied":1,"failed":0')])
+      for (const line of logged) for (const secret of ['water heater', 'Go with the 50', 'Delivery', 'ridgeway.example', MARISOL]) expect(line, line).not.toContain(secret)
+
+      // The next run finds every mail a line and writes nothing.
+      const again = await cron({ action: 'follow' })
+      expect(again.body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0 })
+      expect(rpcs('email_write_line')).toHaveLength(writesBefore + 1)
+    })
+
+    it('never moves a line a person placed: one the office untied, one tied elsewhere, the person’s own moved by hand', async () => {
+      Object.assign(lines().find((l) => l.id === 'm-box-2')!, { tied_by: 'u-rosa' })
+      Object.assign(lines().find((l) => l.id === 'm-box-1')!, { jobs_ledger_id: null, bid_id: CLUB, tied_by: 'u-rosa' })
+      Object.assign(lines().find((l) => l.gmail_id === 'g-marisol-1')!, { jobs_ledger_id: HARBOR, tied_by: 'u-rosa' })
+      google.boxes[MARISOL]!.mails = google.boxes[MARISOL]!.mails.filter((m) => m.id !== 'g-dale-2')
+      const ties = rpcs('tie_message').length
+      const res = await cron({ action: 'follow' })
+      expect(res.body).toEqual({ ok: true, rows: 1, lines: 0, tied: 0, failed: 0 })
+      expect(rpcs('tie_message')).toHaveLength(ties)
+      expect(lines().find((l) => l.id === 'm-box-2')).toMatchObject({ jobs_ledger_id: null, tied_by: 'u-rosa' })
+      expect(lines().find((l) => l.gmail_id === 'g-marisol-1')).toMatchObject({ jobs_ledger_id: HARBOR })
+    })
+  })
+
+  it('reads the oldest first in the window, a failed one last, skips a switch that is off, and runs on past a failure', async () => {
+    google.boxes[MARISOL]!.mails = elmThread()
+    google.refuse[ROSA] = { status: 401, body: { error: 'unauthorized_client', error_description: 'Client is unauthorized to retrieve access tokens using this method.' } }
+    const [errAt, rosaAt, oldAt] = [ago(4), ago(3), ago(70)]
+    db.tables.email_tag_threads = [
+      tagRow('tag-elm', 'u-marisol', 't-elm', { tagged_at: ago(1) }),
+      tagRow('tag-err', 'u-marisol', 't-err', { tagged_at: ago(20), last_read_at: errAt, last_error: 'Google did not answer the app.' }),
+      tagRow('tag-gone', 'u-marisol', 't-gone', { tagged_at: ago(5) }),
+      tagRow('tag-rosa', 'u-rosa', 't-rosa', { tagged_at: ago(10), last_read_at: rosaAt }),
+      tagRow('tag-old', 'u-marisol', 't-old', { tagged_at: ago(90), last_read_at: oldAt }),
+      tagRow('tag-olive', 'u-off', 't-olive', { tagged_at: ago(1) }),
+    ]
+    const res = await cron({ action: 'follow' })
+    // The Elm conversation's three mails land (no line held them); the gone ones and Rosa's fail, and the run goes on.
+    expect(res.body).toEqual({ ok: true, rows: 4, lines: 3, tied: 0, failed: 3 })
+    expect(google.subs).toEqual([MARISOL, ROSA])
+    expect(threadReads()).toEqual(['t-gone', 't-elm', 't-err'])
+
+    expect(rowOf('tag-gone')).toMatchObject({ last_read_at: null, last_error: MY_MAIL_FOLLOW_GONE })
+    expect(rowOf('tag-elm')).toMatchObject({ last_read_at: expect.any(String), last_error: null })
+    expect(rowOf('tag-err')).toMatchObject({ last_read_at: errAt, last_error: MY_MAIL_FOLLOW_GONE })
+    expect(rowOf('tag-rosa')).toMatchObject({
+      last_read_at: rosaAt,
+      last_error: `${MY_MAIL_REFUSAL_WORDS.offWorkspace} Google said: Client is unauthorized to retrieve access tokens using this method.`,
+    })
+    // Out of the window, and a person whose switch is off: never read, never marked.
+    expect(rowOf('tag-old')).toMatchObject({ last_read_at: oldAt, last_error: null })
+    expect(rowOf('tag-olive')).toMatchObject({ last_read_at: null, last_error: null })
+    expect(google.subs).not.toContain('olive@clickplumbing.example')
+    expect(lines().filter((l) => l.mail_user_id === 'u-marisol')).toHaveLength(3)
+  })
+
+  it('reads at most a run’s worth of conversations, and leaves the newest for the next run', async () => {
+    db.tables.email_tag_threads = Array.from({ length: FOLLOW_ROWS_PER_RUN + 2 }, (_, i) => tagRow(`tag-${i}`, 'u-marisol', `t-none-${i}`, { tagged_at: ago(30 - i * 0.01) }))
+    const res = await cron({ action: 'follow' })
+    expect(res.body).toEqual({ ok: true, rows: FOLLOW_ROWS_PER_RUN, lines: 0, tied: 0, failed: FOLLOW_ROWS_PER_RUN })
+    expect(threadReads()).toHaveLength(FOLLOW_ROWS_PER_RUN)
+    expect(google.subs).toEqual([MARISOL])
+    expect([rowOf(`tag-${FOLLOW_ROWS_PER_RUN}`), rowOf(`tag-${FOLLOW_ROWS_PER_RUN + 1}`)]).toEqual([
+      expect.objectContaining({ last_error: null }),
+      expect.objectContaining({ last_error: null }),
+    ])
+  })
+
+  it('opens to the cron’s secret alone: a signed-in person and a wrong secret are refused, and the secret runs nothing else', async () => {
+    db.tables.email_tag_threads = [tagRow('tag-elm', 'u-marisol', 't-elm')]
+    expect(await post('marisol-jwt', { action: 'follow' })).toMatchObject({ status: 400, body: { ok: false, error: 'badRequest', words: MY_MAIL_REFUSAL_WORDS.badRequest } })
+    expect(await cron({ action: 'follow' }, 'not-the-secret')).toMatchObject({ status: 401, body: { ok: false, error: 'signIn' } })
+    expect(await cron({ action: 'follow' }, 'not-the-secret', 'marisol-jwt')).toMatchObject({ status: 400, body: { error: 'badRequest' } })
+    expect(await cron({ action: 'list', view: 'all' })).toMatchObject({ status: 400, body: { error: 'badRequest' } })
+    expect(google.subs).toEqual([])
+    expect(writes()).toEqual([])
+    expect(rowOf('tag-elm')).toMatchObject({ last_read_at: null, last_error: null })
   })
 })
