@@ -11,7 +11,7 @@ const note: ReleaseNote = {
     'Before this, an adopt left no line on either log, so a retired bid\'s own record never said where its counts went.',
     'The adopted bid no longer remembers a price scenario that now belongs to the package, so its window draws no star that is not its own.',
   ],
-  roles: ['dev', 'master_technician', 'assistant', 'controller', 'estimator'],
+  roles: ['dev', 'master_technician', 'assistant', 'controller', 'estimator', 'primary', 'superintendent'],
 }
 
 export default note

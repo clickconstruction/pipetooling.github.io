@@ -113,6 +113,12 @@ CREATE FUNCTION copt.pulls(p_bid uuid) RETURNS text LANGUAGE sql STABLE SECURITY
     || ', taken on ' || COALESCE((SELECT v2.name FROM public.bid_versions v2 WHERE v2.id = x.taken_version_id), '-'),
     ', ' ORDER BY x.sequence_order, x.id), '(none)')
   FROM public.bid_fixture_pull_rows x WHERE x.bid_id = p_bid $$;
+-- The adopt's lines on a bid's log (v2.6250): who wrote them and the words, with the bid number normalized to B#. Read
+-- as the owner, so a primary's lines show whatever the caller may see.
+CREATE FUNCTION copt.logs(p_bid uuid) RETURNS text LANGUAGE sql STABLE SECURITY DEFINER AS $$
+  SELECT COALESCE(string_agg(COALESCE(u.name, '?') || ': ' || regexp_replace(e.notes, 'B[0-9?]+', 'B#', 'g'), E'\n' ORDER BY e.created_at, e.id), '(none)')
+  FROM public.bids_submission_entries e LEFT JOIN public.users u ON u.id = e.created_by
+  WHERE e.bid_id = p_bid AND e.notes LIKE '% adopted %' $$;
 GRANT USAGE ON SCHEMA copt TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA copt TO authenticated;
 
@@ -214,6 +220,11 @@ END $$;
 SELECT copt.same('adopt: plan tags', copt.tags('00000000-0000-0000-0000-0000000009d4', (SELECT adopted FROM a)), (SELECT tags FROM want));
 SELECT copt.same('adopt: the robot''s pull is the package''s', copt.pulls('00000000-0000-0000-0000-0000000009d4'), 'WC-1 -> Copies: package / Adopted, taken on Adopted');
 SELECT copt.same('adopt: none left under the retired bid', copt.pulls('00000000-0000-0000-0000-0000000009d3'), '(none)');
+-- v2.6250 · a line on both bids' logs, through the owner's helper: who, which bid, the version and what moved.
+SELECT copt.same('adopt: the retired bid''s log', copt.logs('00000000-0000-0000-0000-0000000009d3'),
+  'Copies Estimator: Copies Estimator adopted this bid into B# "Copies: package" as the version "Adopted". Moved there: 3 count rows, 1 price scenario, 0 plan sets, 0 CountTooling projects. The cost estimate and this log stay here.');
+SELECT copt.same('adopt: the package''s log', copt.logs('00000000-0000-0000-0000-0000000009d4'),
+  'Copies Estimator: Copies Estimator adopted B# "Copies: adopted" as the version "Adopted". Moved here: 3 count rows, 1 price scenario, 0 plan sets, 0 CountTooling projects. The old bid left the board and stays searchable by its number.');
 
 -- A primary may make a version and may not write quoted costs (ACCESS_CONTROL.md): the version is
 -- made, without them, and nothing fails.
@@ -224,6 +235,28 @@ UPDATE pv SET ve = public.create_bid_version('00000000-0000-0000-0000-0000000009
 SELECT copt.same('a primary''s new version: the rows', copt.rows('00000000-0000-0000-0000-0000000009d6', (SELECT ve FROM pv)), (SELECT rows FROM want));
 RESET ROLE;
 SELECT copt.same('a primary''s new version: no quoted costs, and no error', copt.costs('00000000-0000-0000-0000-0000000009d6', (SELECT ve FROM pv)), '(none)');
+
+-- v2.6250 · a primary's adopt. The insert policy on bids_submission_entries admits no primary, so written as the
+-- caller the two log lines failed on RLS and rolled the whole adopt back; through the owner's helper the adopt is
+-- made and both lines land. The seed writes as the estimator (the bids' maker), the adopt runs as the primary.
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000009e1","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000009e1', true);
+SET LOCAL ROLE authenticated;
+SELECT copt.seed('00000000-0000-0000-0000-0000000009d7', 'Copies: a primary adopts this');
+SELECT copt.seed('00000000-0000-0000-0000-0000000009d8', 'Copies: a primary''s package');
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000009e2","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000009e2', true);
+CREATE TEMP TABLE pa ON COMMIT DROP AS SELECT public.adopt_bid_as_version('00000000-0000-0000-0000-0000000009d8', '00000000-0000-0000-0000-0000000009d7', 'By a primary', 'To Plans') AS adopted;
+SELECT copt.same('a primary''s adopt: the rows are the package''s', copt.rows('00000000-0000-0000-0000-0000000009d8', (SELECT adopted FROM pa)), (SELECT rows FROM want));
+RESET ROLE;
+DO $$ BEGIN
+  ASSERT (SELECT adopted_into_bid_id FROM public.bids WHERE id = '00000000-0000-0000-0000-0000000009d7') = '00000000-0000-0000-0000-0000000009d8', 'the adopted bid retired into the package';
+  RAISE NOTICE 'ok: a primary''s adopt: the adopted bid retired';
+END $$;
+SELECT copt.same('a primary''s adopt: the retired bid''s log', copt.logs('00000000-0000-0000-0000-0000000009d7'),
+  'Copies Primary: Copies Primary adopted this bid into B# "Copies: a primary''s package" as the version "By a primary". Moved there: 3 count rows, 1 price scenario, 0 plan sets, 0 CountTooling projects. The cost estimate and this log stay here.');
+SELECT copt.same('a primary''s adopt: the package''s log', copt.logs('00000000-0000-0000-0000-0000000009d8'),
+  'Copies Primary: Copies Primary adopted B# "Copies: a primary adopts this" as the version "By a primary". Moved here: 3 count rows, 1 price scenario, 0 plan sets, 0 CountTooling projects. The old bid left the board and stays searchable by its number.');
 
 SELECT 'bid_copies PASSED' AS result;
 ROLLBACK;

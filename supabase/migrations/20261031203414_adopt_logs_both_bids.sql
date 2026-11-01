@@ -2,10 +2,85 @@
 -- trace of its own: `bids_submission_entries` got nothing on either bid, and `bid_changes` attributes every
 -- moved row to the target while the source's `adopted_into_bid_id` is not a column it records, so the retired
 -- source's own record never said where it went (found in the ZZ Test dry run of 2026-10-31). The body is
--- 20261031123000's, verbatim, plus a count of what each move touched and the two lines before the source
+-- 20261031123000's, verbatim, plus a count of what each move touched, the two lines before the source
 -- retires, and the retired row's remembered price scenario cleared (it moved; the new version's ★ keeps it).
--- No table, no column, no grant changes. Idempotent: CREATE OR REPLACE.
+--
+-- The two lines are written through adopt_logs_both_bids, a SECURITY DEFINER helper in the shape of
+-- robot_fixtures_follow_adopt (20261031015000). adopt_bid_as_version runs as the caller, and the one INSERT
+-- policy on bids_submission_entries admits devs, masters, assistants, controllers and estimators, while
+-- can_access_bid_for_pricing — the adopt's own door — also admits a primary, a superintendent linked through
+-- master_superintendents and any bid's creator: written as the caller, every adopt by those people failed on
+-- RLS and the whole adopt rolled back (found by a read-only check of prod on 2026-10-31, before the push). The
+-- helper refuses a signed-in caller who cannot price both bids, keeps the digital-twin fence's rule (a definer
+-- skips the fence: a twin writes only on its own bids), and writes only once the version is the package's; the
+-- read-only statement trigger on the table still fires inside it. No table, no column changes; one new
+-- function, EXECUTE for authenticated and service_role, none for anon. Idempotent: CREATE OR REPLACE.
 SET lock_timeout = '3s';
+
+-- ---------------------------------------------------------------- the helper: both log lines, as the owner
+
+CREATE OR REPLACE FUNCTION public.adopt_logs_both_bids(
+  p_source_bid_id uuid,
+  p_target_bid_id uuid,
+  p_new_version_id uuid,
+  p_version_name text,
+  p_moved text
+) RETURNS integer
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+DECLARE
+  v_source_number text;
+  v_source_name text;
+  v_target_number text;
+  v_target_name text;
+  v_who text;
+BEGIN
+  IF p_source_bid_id IS NULL OR p_target_bid_id IS NULL OR p_new_version_id IS NULL OR p_source_bid_id = p_target_bid_id THEN
+    RETURN 0;
+  END IF;
+  -- The service role and the owner have no auth.uid() and are trusted; a signed-in caller must be able to
+  -- price both bids (adopt_bid_as_version refuses them first).
+  IF auth.uid() IS NOT NULL
+     AND NOT (public.can_access_bid_for_pricing(p_source_bid_id) AND public.can_access_bid_for_pricing(p_target_bid_id)) THEN
+    RAISE EXCEPTION 'adopt_logs_both_bids: not allowed';
+  END IF;
+  -- A definer skips the digital-twin fence, so its rule is kept here: a twin writes only on its own bids (the
+  -- bids it made or is the estimator of), the predicate the fence puts on every table that carries a bid_id.
+  IF public.is_digital_twin() AND NOT (
+       EXISTS (SELECT 1 FROM public.bids b WHERE b.id = p_source_bid_id AND (b.created_by = auth.uid() OR b.estimator_id = auth.uid()))
+   AND EXISTS (SELECT 1 FROM public.bids b WHERE b.id = p_target_bid_id AND (b.created_by = auth.uid() OR b.estimator_id = auth.uid()))) THEN
+    RAISE EXCEPTION 'adopt_logs_both_bids: a twin writes only on its own bids';
+  END IF;
+  -- Only once the adopt has made the version on the package.
+  IF NOT EXISTS (SELECT 1 FROM public.bid_versions v WHERE v.id = p_new_version_id AND v.bid_id = p_target_bid_id) THEN
+    RAISE EXCEPTION 'adopt_logs_both_bids: that version is not the package''s';
+  END IF;
+  SELECT b.bid_number::text, b.project_name INTO v_source_number, v_source_name FROM public.bids b WHERE b.id = p_source_bid_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'adopt_logs_both_bids: bid not found'; END IF;
+  SELECT b.bid_number::text, b.project_name INTO v_target_number, v_target_name FROM public.bids b WHERE b.id = p_target_bid_id;
+  IF NOT FOUND THEN RAISE EXCEPTION 'adopt_logs_both_bids: bid not found'; END IF;
+  SELECT u.name INTO v_who FROM public.users u WHERE u.id = auth.uid();
+  v_who := COALESCE(NULLIF(v_who, ''), 'Someone');
+  INSERT INTO public.bids_submission_entries (bid_id, notes, created_by) VALUES
+    (p_source_bid_id,
+     format('%s adopted this bid into B%s "%s" as the version "%s". Moved there: %s. The cost estimate and this log stay here.',
+            v_who, COALESCE(v_target_number, '?'), COALESCE(v_target_name, ''), COALESCE(NULLIF(p_version_name, ''), 'Adopted bid'), COALESCE(p_moved, '')),
+     auth.uid()),
+    (p_target_bid_id,
+     format('%s adopted B%s "%s" as the version "%s". Moved here: %s. The old bid left the board and stays searchable by its number.',
+            v_who, COALESCE(v_source_number, '?'), COALESCE(v_source_name, ''), COALESCE(NULLIF(p_version_name, ''), 'Adopted bid'), COALESCE(p_moved, '')),
+     auth.uid());
+  RETURN 2;
+END;
+$$;
+REVOKE ALL ON FUNCTION public.adopt_logs_both_bids(uuid, uuid, uuid, text, text) FROM public, anon;
+GRANT EXECUTE ON FUNCTION public.adopt_logs_both_bids(uuid, uuid, uuid, text, text) TO authenticated, service_role;
+COMMENT ON FUNCTION public.adopt_logs_both_bids(uuid, uuid, uuid, text, text) IS
+  'v2.6250: an adopt writes its line on both bids'' logs (bids_submission_entries), as the owner, since the table''s insert policy admits fewer roles than may adopt (no primary, no superintendent). Called by adopt_bid_as_version before the source retires with the version''s name and the words for what moved; refused for a signed-in caller who cannot price both bids, held to a twin''s own bids, and only once the version is the package''s.';
+
+-- ---------------------------------------------------------------- the adopt: the lines go through the helper
 
 CREATE OR REPLACE FUNCTION public.adopt_bid_as_version(
   p_target_bid_id uuid,
@@ -23,7 +98,6 @@ DECLARE
   v_scen integer := 0;
   v_sets integer := 0;
   v_cts integer := 0;
-  v_who text;
   v_moved text;
   v_version_name text;
 BEGIN
@@ -127,25 +201,16 @@ BEGIN
   -- A line on both bids' logs (v2.6250): the adopt itself left no trace before — the change ledger
   -- attributed every moved row to the target, and the source's retirement is not a column it records —
   -- so an investigator reading the source saw nothing. The words name who, which bid, the version and
-  -- what moved; the counts are the moves above. Written as the caller (the insert policy covers every
-  -- role that may price a bid), the way a lock or unlock writes its line.
+  -- what moved; the counts are the moves above. Written through the owner's helper: the insert policy on
+  -- bids_submission_entries admits fewer roles than may adopt (no primary, no superintendent), so written
+  -- as the caller their adopt failed on RLS here and rolled back whole.
   v_version_name := COALESCE(NULLIF(p_name, ''), v_source.project_name, 'Adopted bid');
-  SELECT u.name INTO v_who FROM public.users u WHERE u.id = auth.uid();
-  v_who := COALESCE(NULLIF(v_who, ''), 'Someone');
   v_moved := format('%s count row%s, %s price scenario%s, %s plan set%s, %s CountTooling project%s',
                     v_rows, CASE WHEN v_rows = 1 THEN '' ELSE 's' END,
                     v_scen, CASE WHEN v_scen = 1 THEN '' ELSE 's' END,
                     v_sets, CASE WHEN v_sets = 1 THEN '' ELSE 's' END,
                     v_cts,  CASE WHEN v_cts = 1 THEN '' ELSE 's' END);
-  INSERT INTO public.bids_submission_entries (bid_id, notes, created_by) VALUES
-    (p_source_bid_id,
-     format('%s adopted this bid into B%s "%s" as the version "%s". Moved there: %s. The cost estimate and this log stay here.',
-            v_who, COALESCE(v_target.bid_number::text, '?'), COALESCE(v_target.project_name, ''), v_version_name, v_moved),
-     auth.uid()),
-    (p_target_bid_id,
-     format('%s adopted B%s "%s" as the version "%s". Moved here: %s. The old bid left the board and stays searchable by its number.',
-            v_who, COALESCE(v_source.bid_number::text, '?'), COALESCE(v_source.project_name, ''), v_version_name, v_moved),
-     auth.uid());
+  PERFORM public.adopt_logs_both_bids(p_source_bid_id, p_target_bid_id, v_new_id, v_version_name, v_moved);
 
   -- Retire the source row from the board (never deleted; number stays searchable). Its remembered price
   -- scenario moved above and is the new version's ★ when it was one of the moved ones, so the pointer on the
