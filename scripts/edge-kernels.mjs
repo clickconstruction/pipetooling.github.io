@@ -242,8 +242,8 @@ export const ENTRIES = {
     types: ['MyMailKnown', 'MyMailKnownLine', 'MyMailPerson', 'MyMailTagFile', 'MyMailTagLink', 'MyMailTagPlan', 'MyMailTagSkip', 'MyMailTagStep', 'MyMailThread', 'MyMailThreadRow'],
   },
   'lib/myMail/view.ts': { values: ['MY_MAIL_WORDS', 'foldedCount', 'rowsForView', 'viewRows'], types: ['MyMailViewRows'] },
-  // Since PR 4 (v2.6279) also the follow, the cron's action: whose tagged conversations it reads, the window, what it
-  // does with each mail, and the tag's grey line on the thread.
+  // Since PR 4 (v2.6279) also the follow, the cron's action: whose tagged conversations it reads, the window and the
+  // newest mail it keys on (v2.6289), what it does with each mail, and the tag's grey line on the thread.
   'lib/myMail/mineFunction.ts': {
     values: [
       'FOLLOW_ROWS_PER_RUN',
@@ -291,6 +291,7 @@ export const ENTRIES = {
       'myMailTagEventWords',
       'myMailTeam',
       'neverRead',
+      'newestMailAt',
       'parseMyMailRequest',
       'pipelineIsOpen',
       'planFollow',
