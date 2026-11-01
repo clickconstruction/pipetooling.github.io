@@ -2,7 +2,7 @@
 title: manage who at the law firm gets emails
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients, title, only theirs, handling, not reaching, bounced, retry
+keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients, title, only theirs, handling, sample inbox, not reaching, bounced, retry
 ---
 You open the Legal desk to see who at the law firm gets our emails. The firm sets the rules on its portal, and the office keeps two overrides.
 
@@ -17,6 +17,8 @@ The firm opens the **Notifications** page on its portal. The card **Add a person
 - {{button:outline|Stop emails to this person}} and {{button:outline|Turn emails back on}}.
 
 The press under the card names the person, *Send Ann a confirmation*. It sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. When that email cannot be sent, the portal says so in red. The firm presses {{button:outline|Resend the confirmation}} a minute later. The handling person on a matter always hears about it. They hear under their own rule, one email per event or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
+
+Under the card, a sample week shows what lands in that person's inbox under the rule picked. The accounts in it are made up. Each line is an email's subject. Press a line to read that email under the list, with its stop link. Under **Each event** the fee line is dim and reads *weekly digest only*. A fee the office saw rides the digest alone. Under **Weekly digest** the one line opens the digest, every open matter first.
 
 ## What they hear about
 
