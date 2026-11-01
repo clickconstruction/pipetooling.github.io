@@ -222,7 +222,11 @@ hours card draws the coverage line, and since v2.6154 the coverage grid above it
 
 **Files.** A file on a line is our copy in the private bucket; its lasting link is `/files/messages/<id>`; **Save to
 Drive** (`drive-link`, cut 7b) files it to the job's Drive folder and the link becomes `/files/drive/…`. A reply's files
-go out as a file, a link or a picture (`replyFiles.ts`, `sentLineFiles.ts`).
+go out as a file, a link or a picture (`replyFiles.ts`, `sentLineFiles.ts`). Since v2.6276 (punch list #230 PR 5) the
+Legal desk's Evidence door **From the job's messages…** reads a collections account's email lines with their files and
+puts each email on a matter as an `.eml` (a tagged line's raw copy at `mine/<line id>.eml` as received, else one made
+from the line by `lib/legal/evidenceFromMessages.ts`'s `emlOf`), the matter's row naming the line in
+`legal_matter_documents.source_message_id`; the desk pulls, and nothing in Messages writes to a matter.
 
 ## Who sees what
 
