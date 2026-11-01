@@ -203,3 +203,49 @@ export function firmJobRecordWords(j: Pick<LegalJobLine, 'contract' | 'record'>)
   const { onFile, notOnFile } = firmJobRecord(j)
   return `${onFile.join(', ')}${notOnFile.length ? `. Not on file: ${notOnFile.join(', ')}` : ''}`
 }
+
+/**
+ * The Notifications tab's words (punch list #233, v2.6278): the add card is the row it becomes, so
+ * the card and a person's row read one way. Every line a first-timer reads is held to plain words
+ * by `legalFirmWords.test.ts`. The role is a typed title that gates nothing: the column is read as
+ * a label here, on the office's Legal desk list and in the *Recorded by* picker, and nowhere else.
+ */
+export const FIRM_NOTIFICATIONS_WORDS = {
+  addCaption: 'Add a person at the firm',
+  name: 'Name',
+  email: 'Email',
+  title: 'Title',
+  titlePlaceholder: 'attorney, paralegal, billing',
+  titleHint: 'Optional. Shows beside their name, here and to the office.',
+  emails: 'Emails',
+  matters: 'Matters',
+  everyMatter: 'Every matter',
+  onlyTheirs: 'Only theirs',
+  sendLine: 'Nothing else goes to them until they click it.',
+  emptyTitle: 'Nobody at the firm is on the list yet.',
+  emptyPress: 'Add the first person',
+  noMatters: 'No matters are open yet.',
+} as const
+
+/** The add card's press names the person by first name: *Send Dana a confirmation*; *them* until a name is typed. */
+export function firmSendConfirmationLabel(name: string): string {
+  const first = name.trim().split(/\s+/)[0] ?? ''
+  return `Send ${first || 'them'} a confirmation`
+}
+
+/** *Only theirs* is the dispatcher's rule (`legal-notify-dispatch`'s `canSee`): the person's typed name against the matter's handling name, trimmed and lowercased. */
+export function firmHandlesMatter(name: string, handling: string): boolean {
+  const n = name.trim().toLowerCase()
+  return n !== '' && handling.trim().toLowerCase() === n
+}
+
+/**
+ * The count under *Only theirs*: how many of the firm's open matters name this person as handling today.
+ * A zero is the warning the old words never gave, since a person named on nothing hears nothing.
+ */
+export function firmHandlingCountLine(name: string, matters: ReadonlyArray<{ handling: string }>): string {
+  if (matters.length === 0) return FIRM_NOTIFICATIONS_WORDS.noMatters
+  const who = name.trim() || 'them'
+  const n = matters.filter((m) => firmHandlesMatter(name, m.handling)).length
+  return `The office names ${who} as handling ${n} of ${matters.length} open matter${matters.length === 1 ? '' : 's'} today.`
+}

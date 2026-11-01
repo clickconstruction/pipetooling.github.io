@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /** v2.4662 (punch list #85 item 26): a person whose emails are not going through carries the line on the firm's Notifications page. */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 import { sampleLegalPortalResponse } from '../../supabase/functions/_shared/customerSampleFixtures'
 import LegalPortal from './LegalPortal'
@@ -50,5 +50,50 @@ describe('LegalPortal — Notifications · a person not reaching', () => {
     cleanup()
     await openNotifications('2026-10-05', true)
     expect(document.querySelector('[data-legal-not-reaching]')).toBeNull()
+  })
+})
+
+/** v2.6278 (punch list #233): the add card is the row it becomes, with the rule in it and the handling count under Only theirs. */
+describe('LegalPortal — Notifications · the add card carries the rule', () => {
+  it('adds a person with their rule and title, and the count under Only theirs reads the sample matter', async () => {
+    await openNotifications(null)
+    // Bo Sample is on Only theirs and handles nothing; Ann Sample handles the one sample matter.
+    const counts = Array.from(document.querySelectorAll('[data-legal-handling-count]')).map((n) => n.textContent)
+    expect(counts).toEqual(['The office names Bo Sample as handling 0 of 1 open matter today.'])
+    expect(document.body.textContent).not.toMatch(/How this behaves|What you hear about|Only my matters/)
+    const form = document.querySelector('[data-legal-add-person]') as HTMLFormElement
+    expect(form.textContent).toMatch(/Title.*Optional\. Shows beside their name, here and to the office\./)
+    expect(screen.getByRole('button', { name: 'Send them a confirmation' })).toBeTruthy()
+    const inputs = form.querySelectorAll('input')
+    fireEvent.change(inputs[0] as HTMLInputElement, { target: { value: 'Ann Sample' } })
+    fireEvent.change(inputs[1] as HTMLInputElement, { target: { value: 'ann2@samplepartner.example.com' } })
+    fireEvent.change(inputs[2] as HTMLInputElement, { target: { value: 'attorney' } })
+    expect(screen.getByRole('button', { name: 'Send Ann a confirmation' })).toBeTruthy()
+    fireEvent.click(within(form).getByRole('button', { name: 'Weekly digest' }))
+    fireEvent.click(within(form).getByRole('button', { name: 'Wed' }))
+    fireEvent.click(within(form).getByRole('button', { name: 'Only theirs' }))
+    expect(form.querySelector('[data-legal-handling-count]')?.textContent).toBe('The office names Ann Sample as handling 1 of 1 open matter today.')
+    fireEvent.submit(form)
+    await waitFor(() => expect((globalThis.fetch as unknown as { mock: { calls: unknown[][] } }).mock.calls.length).toBeGreaterThan(1))
+    const posts = (globalThis.fetch as unknown as { mock: { calls: Array<[string, { body?: string }]> } }).mock.calls.filter(([url]) => /submit-legal-portal/.test(String(url)))
+    const sent = JSON.parse(String(posts[0]?.[1]?.body)) as Record<string, unknown>
+    expect(sent).toMatchObject({ kind: 'recipient_add', name: 'Ann Sample', email: 'ann2@samplepartner.example.com', role: 'attorney', mode: 'digest', scope: 'mine', digestWeekday: 3, digestTime: '07:00' })
+  })
+
+  it('with nobody on the list, the empty card offers the first press and it lands on the name', async () => {
+    const payload = sampleLegalPortalResponse(company as never, new Date().toISOString().slice(0, 10)) as { recipients: unknown[] }
+    payload.recipients = []
+    vi.stubGlobal('fetch', vi.fn(() => Promise.resolve(new Response(JSON.stringify(payload), { status: 200, headers: { 'Content-Type': 'application/json' } }))))
+    render(
+      <MemoryRouter initialEntries={['/legal?t=tok_live']}>
+        <LegalPortal />
+      </MemoryRouter>,
+    )
+    await waitFor(() => expect(screen.getAllByText(/Brazos Ridge Contracting/).length).toBeGreaterThan(0))
+    fireEvent.click(screen.getByRole('button', { name: /^Notifications/ }))
+    await waitFor(() => expect(document.querySelector('[data-legal-nobody]')).not.toBeNull())
+    expect(document.querySelector('[data-legal-nobody]')?.textContent).toBe('Nobody at the firm is on the list yet.Add the first person')
+    fireEvent.click(screen.getByRole('button', { name: 'Add the first person' }))
+    expect(document.activeElement).toBe(document.querySelector('[data-legal-add-person] input'))
   })
 })

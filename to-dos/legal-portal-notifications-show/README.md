@@ -1,8 +1,8 @@
 ---
 name: "Firm portal: the Notifications tab shows each person what they will get"
 number: 233
-group: gated
-status: card and mock-up 2026-11-01 from the owner's ask the same day · the thinking, a first pass, the render, a second pass · nothing built · the owner's three calls at the foot, a recommendation on each · call 3 added the same day on the owner's question, does the digest cover everything that changed · the digest's shape by matter decided the same day on the owner's word
+group: ready
+status: card and mock-up 2026-11-01 from the owner's ask the same day · the thinking, a first pass, the render, a second pass · nothing built · the owner's three calls at the foot, a recommendation on each · call 3 added the same day on the owner's question, does the digest cover everything that changed · the digest's shape by matter decided the same day on the owner's word · calls 1 and 2 answered 2026-11-01, A and A, in the owner's words *A typed Title* and *Sample inbox, one email open* · PR 1 the form v2.6278 (claude/233-notifications-form-row)
 mockup: to-dos/legal-portal-notifications-show/mockup.html
 summary: >
   The law firm's portal has a Notifications tab where the firm adds its people and sets how each hears
@@ -14,9 +14,9 @@ summary: >
   rule as it is switched, each subject line opening its email, and a count under Only theirs that reads
   from the firm's own matters. Fifty words of prose where there were 171. Two PRs, no migration, one
   function redeploy.
-next: The owner's three calls, then PR 1 (the form is the row), PR 2 (the sample inbox), PR 3 (the digest reads by matter, decided) and, on call 3, PR 4 (the digest carries every office act).
+next: PR 1 merges, then PR 2 (the sample inbox), PR 3 (the digest reads by matter, decided); call 3 decides PR 4 (the digest carries every office act).
 size: S as a train of three (S · S · S), M with call 3's PR 4
-blocker: The owner's picks on the role, the preview's depth and the digest's reach.
+blocker: None for PRs 1 to 3. Call 3 for PR 4.
 opinion: build as drawn — the title typed, the switches in the form, the inbox with one email open; the role presets and per-event picks stay unbuilt until a firm asks; call 3 is worth its one migration, since the digest today is not the record it reads as
 ---
 
@@ -161,6 +161,8 @@ and what changed:
 
 ## The owner's calls
 
+Answered 2026-11-01, relayed from the main session in the owner's words: call 1 *A typed Title* (A), call 2 *Sample inbox, one email open* (A). Call 3 is open.
+
 1. **What is the role?** A: a typed Title, optional, that gates nothing (recommended, as drawn). B: a pick that sets
    the starting rules and says so, the switches still shown and changeable (one PR more). C: per-person event picks
    (a migration for the picks, the dispatcher, both desks: two PRs more).
@@ -255,4 +257,4 @@ and what changed:
 
 ## Where it stands
 
-Card and mock-up, 2026-11-01. Nothing built. Waiting on the owner's three calls; call 3 was added the same day on the owner's question whether the digest covers everything that changed, and the read says it does not.
+Card and mock-up, 2026-11-01. Calls 1 and 2 answered the same day, both as recommended; PR 1 (v2.6278) built the same day on `claude/233-notifications-form-row`. Call 3 was added the same day on the owner's question whether the digest covers everything that changed, and the read says it does not; it is open.

@@ -144,7 +144,10 @@ serve(async (req) => {
         if (!name || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return jsonResponse({ error: 'A name and a working email, please.' }, 400)
         const { count: n } = await admin.from('legal_firm_recipients').select('id', { count: 'exact', head: true }).eq('firm_id', link.firm_id).is('removed_at', null)
         if ((n ?? 0) >= 12) return jsonResponse({ error: 'Twelve people is the limit — remove someone first.' }, 400)
-        const { data: ins, error } = await admin.from('legal_firm_recipients').insert({ firm_id: link.firm_id, name, email, role, added_via_portal: true, mode: str(body.mode, 10) === 'digest' ? 'digest' : 'now', scope: str(body.scope, 10) === 'mine' ? 'mine' : 'all' }).select('id').single()
+        // v2.6278 (punch list #233): the add card carries the whole rule, so the digest's day and time land with the row; a missing or odd value keeps the column's default (Mon 07:00).
+        const addWeekday = Number(body.digestWeekday)
+        const addTime = str(body.digestTime, 5)
+        const { data: ins, error } = await admin.from('legal_firm_recipients').insert({ firm_id: link.firm_id, name, email, role, added_via_portal: true, mode: str(body.mode, 10) === 'digest' ? 'digest' : 'now', scope: str(body.scope, 10) === 'mine' ? 'mine' : 'all', ...(Number.isInteger(addWeekday) && addWeekday >= 1 && addWeekday <= 7 ? { digest_weekday: addWeekday } : {}), ...(/^[0-2][0-9]:[0-5][0-9]$/.test(addTime) ? { digest_time: addTime } : {}) }).select('id').single()
         if (error) return jsonResponse({ error: error.message.includes('legal_firm_recipients_email_idx') ? 'That address is already on the list.' : 'Could not add them.' }, 400)
         const sent = await sendConfirm((ins as { id: string }).id, name, email)
         return jsonResponse({ ok: true, confirmationSent: sent })
