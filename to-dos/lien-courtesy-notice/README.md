@@ -2,7 +2,7 @@
 name: "A courtesy notice between the § 53.056 notice and the lien"
 number: 231
 group: gated
-status: looked at and drawn 2026-11-01 · the owner took all six recommendations the same day ("Take all recommended") · nothing built; the word to build the four PRs has not come · counsel's read of the words comes before the first real send
+status: looked at and drawn 2026-11-01 · the owner took all six recommendations the same day ("Take all recommended") and said build it · built in four PRs, v2.6259 (#6686), v2.6261 (#6704), v2.6269 (#6713) and v2.6271 · the migration push and the function redeploys are the lead's · counsel's read of the words comes before the first real send
 summary: >
   Supply houses send a plain letter a week or two before they lien: we already sent you the notice,
   nothing has come, here is the day the lien goes on unless it is paid, here is where to pay, here is
