@@ -9756,6 +9756,8 @@ export type Database = {
           project_id: string | null
           tagged_at: string
           tagged_by: string | null
+          tied_line_ids: string[]
+          untagging_at: string | null
           user_id: string
         }
         Insert: {
@@ -9769,6 +9771,8 @@ export type Database = {
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
+          tied_line_ids?: string[]
+          untagging_at?: string | null
           user_id: string
         }
         Update: {
@@ -9782,6 +9786,8 @@ export type Database = {
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
+          tied_line_ids?: string[]
+          untagging_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -33507,6 +33513,42 @@ export type Database = {
           {
             foreignKeyName: "user_dismissals_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_imitations: {
+        Row: {
+          created_at: string
+          id: string
+          operator_id: string | null
+          target_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          operator_id?: string | null
+          target_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          operator_id?: string | null
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_imitations_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_imitations_target_id_fkey"
+            columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
