@@ -6,7 +6,8 @@
 // hr_agent_write (docs/HR_FILES.md); since v2.6004 dev_legal_document_write, whose apply stores the
 // file in the legal-matter-documents bucket before the row; since v2.6005 dev_legal_gap_answer_write, the
 // one line the attorney reads instead of a packet gap; since v2.6183 dev_bid_write, a new bid as the New Bid form
-// makes it (action create) and, v2.6185, the plan set onto it (action file_plans). The verb grammar is plan_ (a dry run, its own call) →
+// makes it (action create) and, v2.6185, the plan set onto it (action file_plans); since v2.6244 dev_legal_statement_write, a sworn
+// statement drafted onto a matter's Timeline (punch list #220). The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
 // hash uses the platform's crypto.subtle, which Deno and Node both have.
 
@@ -22,6 +23,11 @@ export const WRITE_VERBS = {
   // v2.5800: a planned step on a legal matter's timeline (dev_legal_plan_write over legal_plan_add / _update / _mark_done).
   plan_matter_plan_item: { rpc: 'dev_legal_plan_write', step: 'plan' },
   apply_matter_plan_item: { rpc: 'dev_legal_plan_write', step: 'apply' },
+  // v2.6244 (punch list #220): a sworn statement or an unsworn declaration drafted onto a matter's Timeline
+  // (dev_legal_statement_write over legal_statement_add / _update, source mcp). The robot drafts; the office
+  // prints, signs and files, so the wrapper never reaches legal_statement_print or _sign.
+  plan_matter_statement: { rpc: 'dev_legal_statement_write', step: 'plan' },
+  apply_matter_statement: { rpc: 'dev_legal_statement_write', step: 'apply' },
   // v2.6004: a document on a legal matter's Evidence tab (dev_legal_document_write). The server turns
   // content_base64 into mime, size_bytes and sha256 before the dry run and stores the file only at apply.
   plan_matter_document: { rpc: 'dev_legal_document_write', step: 'plan' },
@@ -53,10 +59,13 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : verb === 'apply_history_entry' ? 'plan_history_entry' : verb === 'apply_bid' ? 'plan_bid' : verb === 'apply_file_plans' ? 'plan_file_plans' : null
+  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_statement' ? 'plan_matter_statement' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : verb === 'apply_history_entry' ? 'plan_history_entry' : verb === 'apply_bid' ? 'plan_bid' : verb === 'apply_file_plans' ? 'plan_file_plans' : null
 }
 
 const PLAN_ITEM_ACTIONS = ['add', 'update', 'mark_done'] as const
+const STATEMENT_ACTIONS = ['add', 'update'] as const
+const STATEMENT_FORMS = ['notary', 'declaration'] as const
+const AFFIANT_KINDS = ['team', 'witness'] as const
 const DOCUMENT_STATES = ['draft', 'final', 'sent', 'received'] as const
 const DOCUMENT_SENT_HOWS = ['email', 'certified_mail', 'mail', 'hand', 'other'] as const
 const HISTORY_SOURCES = ['email', 'call', 'text', 'on_site', 'letter', 'note'] as const
@@ -144,6 +153,72 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
       }
       target = entryId
     }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target, planHash }
+  }
+  if (verb === 'plan_matter_statement' || verb === 'apply_matter_statement') {
+    const statement = obj(input.statement)
+    const action = statement && typeof statement.action === 'string' ? statement.action.trim() : 'add'
+    const shape = `${verb} needs statement — { action: add | update (add when left out); add: matter_id (a legal_matters.id), on (YYYY-MM-DD, the day it is about, not ahead of today), title (the paper's heading, under 200 characters), body (the statement's paragraphs, under 20,000), affiant { kind: team | witness, user_id? (a users.id for one of our team — find_person; never for a witness), name (their full name, as it reads on their ID, under 200), role? (the line after "I am", e.g. the foreman on the job, under 300) }, form? (notary | declaration; notary when left out), incident_to? (YYYY-MM-DD, the span's last day), venue_county? (the county it is signed in, under 60; the office's when left out); update: entry_id (the statement's legal_matter_entries.id) and at least one of on, title, body, affiant (replaced whole), form, incident_to (null clears the span), venue_county (null clears it) — refused once the signed copy is filed }.`
+    if (!statement || !(STATEMENT_ACTIONS as readonly string[]).includes(action)) return { ok: false, error: shape }
+    const str = (k: string) => (typeof statement[k] === 'string' ? (statement[k] as string).trim() : '')
+    const p: Json = { action }
+    let target: string
+    if (action === 'add') {
+      const matterId = str('matter_id')
+      if (!UUID_RE.test(matterId)) return { ok: false, error: shape }
+      p.matter_id = matterId
+      target = matterId
+    } else {
+      const entryId = str('entry_id')
+      if (!UUID_RE.test(entryId)) return { ok: false, error: shape }
+      p.entry_id = entryId
+      target = entryId
+    }
+    const adding = action === 'add'
+    const on = str('on')
+    if (on) {
+      if (!YMD_RE.test(on)) return { ok: false, error: shape }
+      p.on = on
+    } else if (adding) return { ok: false, error: shape }
+    const title = str('title')
+    if (title) {
+      if (title.length > 200) return { ok: false, error: shape }
+      p.title = title
+    } else if (adding) return { ok: false, error: shape }
+    const body = str('body')
+    if (body) {
+      if (body.length > 20000) return { ok: false, error: shape }
+      p.body = body
+    } else if (adding) return { ok: false, error: shape }
+    if (statement.affiant !== undefined || adding) {
+      const a = obj(statement.affiant)
+      const kind = a && typeof a.kind === 'string' ? a.kind.trim() : ''
+      const name = a && typeof a.name === 'string' ? a.name.trim() : ''
+      const role = a && typeof a.role === 'string' ? a.role.trim() : ''
+      const userId = a && typeof a.user_id === 'string' ? a.user_id.trim() : ''
+      if (!a || !(AFFIANT_KINDS as readonly string[]).includes(kind) || !name || name.length > 200 || role.length > 300) return { ok: false, error: shape }
+      if (userId && (kind !== 'team' || !UUID_RE.test(userId))) return { ok: false, error: shape }
+      const affiant: Json = { kind, name, role }
+      if (userId) affiant.user_id = userId
+      p.affiant = affiant
+    }
+    const form = str('form')
+    if (form) {
+      if (!(STATEMENT_FORMS as readonly string[]).includes(form)) return { ok: false, error: shape }
+      p.form = form
+    }
+    // On an update a JSON null clears the span or the county; on an add it is the same as leaving it out.
+    for (const k of ['incident_to', 'venue_county'] as const) {
+      if (statement[k] === null && !adding) {
+        p[k] = null
+        continue
+      }
+      const v = str(k)
+      if (!v) continue
+      if (k === 'incident_to' ? !YMD_RE.test(v) : v.length > 60) return { ok: false, error: shape }
+      p[k] = v
+    }
+    if (!adding && Object.keys(p).length === 2) return { ok: false, error: `${verb}: an update names at least one change — on, title, body, affiant, form, incident_to or venue_county.` }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target, planHash }
   }
   if (verb === 'plan_matter_document' || verb === 'apply_matter_document') {
@@ -350,7 +425,7 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : verb === 'plan_history_entry' ? 'apply_history_entry' : verb === 'plan_bid' ? 'apply_bid' : verb === 'plan_file_plans' ? 'apply_file_plans' : 'apply_hr_entry'
+  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_statement' ? 'apply_matter_statement' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : verb === 'plan_history_entry' ? 'apply_history_entry' : verb === 'plan_bid' ? 'apply_bid' : verb === 'plan_file_plans' ? 'apply_file_plans' : 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
@@ -368,13 +443,14 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const cost = verb === 'apply_cost_batch'
   const narrative = verb === 'apply_matter_narrative'
   const planItem = verb === 'apply_matter_plan_item'
+  const statement = verb === 'apply_matter_statement'
   const document = verb === 'apply_matter_document'
   const gapAnswer = verb === 'apply_gap_answer'
   const history = verb === 'apply_history_entry'
   const bid = verb === 'apply_bid'
   const filePlans = verb === 'apply_file_plans'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 
@@ -385,40 +461,42 @@ export function planMismatch(verb: WriteVerb, quoted: string, fresh: string): st
 
 /**
  * apply_file_plans' Drive leg failed (v2.6239): the words name Drive's reason and the one fix, so the agent can
- * hand a person the exact share to make. Found live 2026-10-31 on ZZ bid b566: the intake service account could
- * see the plumbing bids folder but not write in it, and the old words said only "Drive refused the filing".
- * Storage quota is tested first because Drive answers it with a 403 too.
+ * hand a person the exact step. Found live 2026-10-31 on ZZ bid b566, where the old words said only "Drive refused
+ * the filing". Since v2.6241 the seat files into a Shared Drive (`target`), and the by-hand door stays the office's
+ * division folder, where the bid form's Find looks. Storage quota is tested first because Drive answers it with a
+ * 403 too.
  */
 export type DriveFilingFailure = {
   /** Drive's error, as driveUpload throws it ("Folder create failed (403): …"). */
   message: string
   /** The service account's client_email; null when the key cannot be read. */
   serviceAccount: string | null
+  /** Where the seat files: its path in words ("PipeTooling Jobs › Bid plans › Plumbing") and the deepest folder it reached. */
+  target: { name: string; url: string }
+  /** The office's division folder a person drops the file into by hand. */
   division: { label: string; url: string }
   /** The project folder's name, the one the bid form's Find looks for. */
   folderName: string
-  /** The project folder when it was made before the failure; empty when the create itself failed. */
-  folderLink: string
 }
 
 export function driveFilingRefusal(f: DriveFilingFailure): string {
   const reason = f.message.trim().replace(/[.\s]+$/, '')
   const account = f.serviceAccount ? `The intake service account (${f.serviceAccount})` : 'The intake service account'
-  const shareWith = f.serviceAccount ?? 'the intake service account (the client_email in GOOGLE_SERVICE_ACCOUNT_JSON)'
-  const share = `Whoever owns ${f.division.url} shares it with ${shareWith} as Editor (Content manager on a Shared Drive).`
-  const byHand = `Until then a person drops the file into a folder named "${f.folderName}" in ${f.folderLink || f.division.url} and presses Find the folder on the bid form.`
+  const grantTo = f.serviceAccount ?? 'the intake service account (the client_email in GOOGLE_SERVICE_ACCOUNT_JSON)'
+  const grant = `A manager of ${f.target.url} gives ${grantTo} write access there: Contributor on a Shared Drive, Editor on a My Drive folder.`
+  const byHand = `Until then a person drops the file into a folder named "${f.folderName}" in the ${f.division.label} bids folder (${f.division.url}) and presses Find the folder on the bid form.`
   const retry = 'The staged copy is still there: call apply_file_plans again with the same plans and plan_hash.'
   if (/storage ?quota/i.test(reason)) {
-    return `Drive refused the upload: ${reason}. The ${f.division.label} bids folder is not on a Shared Drive, so the service account has no storage there. Move that folder onto a Shared Drive the service account is in, or set DRIVE_IMPERSONATE_USER (docs/DRIVE_INTAKE_SETUP.md). ${byHand} ${retry}`
+    return `Drive refused the upload: ${reason}. ${f.target.name} is not on a Shared Drive the service account is in, so it has no storage there. File into a Shared Drive folder the service account belongs to, or set DRIVE_IMPERSONATE_USER (docs/DRIVE_INTAKE_SETUP.md). ${byHand} ${retry}`
   }
   if (/rate ?limit/i.test(reason)) {
     return `Drive is rate-limiting the service account: ${reason}. Wait a minute. ${retry}`
   }
   if (/sufficient permissions|not have permission|forbidden/i.test(reason)) {
-    return `Drive refused the filing: ${reason}. ${account} can see the ${f.division.label} bids folder but cannot write in it. ${share} ${byHand} ${retry}`
+    return `Drive refused the filing: ${reason}. ${account} can see ${f.target.name} but cannot write in it. ${grant} ${byHand} ${retry}`
   }
   if (/\(404\)|not found/i.test(reason)) {
-    return `Drive refused the filing: ${reason}. ${account} cannot see the ${f.division.label} bids folder at all. ${share} ${byHand} ${retry}`
+    return `Drive refused the filing: ${reason}. ${account} cannot see ${f.target.name} at all. ${grant} ${byHand} ${retry}`
   }
   return `Drive refused the filing: ${reason}. ${byHand} ${retry}`
 }

@@ -835,6 +835,7 @@ export type Database = {
       bid_count_sources: {
         Row: {
           bid_id: string
+          bid_version_id: string | null
           first_imported_at: string
           id: string
           imported_by: string | null
@@ -847,6 +848,7 @@ export type Database = {
         }
         Insert: {
           bid_id: string
+          bid_version_id?: string | null
           first_imported_at?: string
           id?: string
           imported_by?: string | null
@@ -859,6 +861,7 @@ export type Database = {
         }
         Update: {
           bid_id?: string
+          bid_version_id?: string | null
           first_imported_at?: string
           id?: string
           imported_by?: string | null
@@ -875,6 +878,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_count_sources_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
             referencedColumns: ["id"]
           },
           {
@@ -1607,6 +1617,7 @@ export type Database = {
       bid_plan_sets: {
         Row: {
           bid_id: string
+          bid_version_id: string | null
           check_note: string | null
           checked_at: string | null
           created_at: string
@@ -1623,6 +1634,7 @@ export type Database = {
         }
         Insert: {
           bid_id: string
+          bid_version_id?: string | null
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -1639,6 +1651,7 @@ export type Database = {
         }
         Update: {
           bid_id?: string
+          bid_version_id?: string | null
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -1659,6 +1672,13 @@ export type Database = {
             columns: ["bid_id"]
             isOneToOne: false
             referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bid_plan_sets_bid_version_id_fkey"
+            columns: ["bid_version_id"]
+            isOneToOne: false
+            referencedRelation: "bid_versions"
             referencedColumns: ["id"]
           },
           {
@@ -9572,6 +9592,51 @@ export type Database = {
           {
             foreignKeyName: "email_box_watch_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      email_left_out_senders: {
+        Row: {
+          contact_id: string | null
+          id: string
+          kind: string
+          mailbox: string | null
+          marked_at: string
+          marked_by: string | null
+          value: string
+        }
+        Insert: {
+          contact_id?: string | null
+          id?: string
+          kind: string
+          mailbox?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          value: string
+        }
+        Update: {
+          contact_id?: string | null
+          id?: string
+          kind?: string
+          mailbox?: string | null
+          marked_at?: string
+          marked_by?: string | null
+          value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_left_out_senders_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_left_out_senders_marked_by_fkey"
+            columns: ["marked_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -21504,6 +21569,7 @@ export type Database = {
         Row: {
           county: string
           firm_id: string
+          first_call: boolean
           id: string
           set_by: string | null
           since: string
@@ -21512,6 +21578,7 @@ export type Database = {
         Insert: {
           county: string
           firm_id: string
+          first_call?: boolean
           id?: string
           set_by?: string | null
           since?: string
@@ -21520,6 +21587,7 @@ export type Database = {
         Update: {
           county?: string
           firm_id?: string
+          first_call?: boolean
           id?: string
           set_by?: string | null
           since?: string
@@ -35805,6 +35873,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_legal_statement_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dev_mcp_issue_key: {
         Args: { p_label?: string; p_token: string }
         Returns: string
@@ -35895,6 +35967,7 @@ export type Database = {
         Returns: number
       }
       email_box_can_see: { Args: { p_watch: string }; Returns: boolean }
+      email_open_mail_domain: { Args: { p_domain: string }; Returns: boolean }
       email_place_address: {
         Args: { p_name: string; p_value: string }
         Returns: {
@@ -37514,12 +37587,26 @@ export type Database = {
         Args: { p_firm_id: string }
         Returns: undefined
       }
+      legal_firm_live_matter_count: {
+        Args: { p_firm_id: string }
+        Returns: number
+      }
       legal_firm_recipient_remove: {
         Args: { p_recipient_id: string }
         Returns: Json
       }
       legal_firm_set_paused: {
         Args: { p_firm_id: string; p_paused: boolean }
+        Returns: Json
+      }
+      legal_hand_off_counties: {
+        Args: {
+          p_counties: string[]
+          p_from_firm: string
+          p_new_firm?: Json
+          p_retire?: boolean
+          p_to_firm?: string
+        }
         Returns: Json
       }
       legal_leave_in_house: { Args: { p_matter_id: string }; Returns: Json }
@@ -37645,6 +37732,9 @@ export type Database = {
         }
         Returns: Json
       }
+      legal_retire_firm: { Args: { p_firm_id: string }; Returns: Json }
+      legal_retire_firm_now: { Args: { p_firm_id: string }; Returns: undefined }
+      legal_save_county_coverage: { Args: { p_counties: Json }; Returns: Json }
       legal_set_counsel_read: {
         Args: {
           p_cost_to_try?: number
@@ -39021,6 +39111,10 @@ export type Database = {
             Args: { p_job_id: string; p_note?: string; p_paid_on?: string }
             Returns: Json
           }
+      mark_notice: {
+        Args: { p_contact_id: string; p_scope: string }
+        Returns: undefined
+      }
       mark_owed: {
         Args: {
           p_by_day?: string
@@ -40474,9 +40568,14 @@ export type Database = {
         Returns: boolean
       }
       unhighlight: { Args: { p_highlight_id: string }; Returns: undefined }
+      unmark_notice: { Args: { p_contact_id: string }; Returns: undefined }
       unresolve_noncard_transaction_attribution: {
         Args: { p_mercury_transaction_id: string }
         Returns: undefined
+      }
+      untake_robot_fixture_rows: {
+        Args: { p_pull_id: string; p_row_ids?: string[] }
+        Returns: Json
       }
       untake_robot_fixtures: { Args: { p_pull_id: string }; Returns: Json }
       update_bids_count_rows_order:

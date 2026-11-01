@@ -2672,6 +2672,11 @@ export function BidsPricingTab({
                         if (t) selectPanelVersion(t)
                       }}
                       onCopyFrom={(versionId) => void copyBasePriceFromVersion(versionId)}
+                      setupDoors={{
+                        countsTo: `/bids?tab=counts&bidId=${selectedBidForPricing.id}`,
+                        laborTo: `/bids?tab=labor&bidId=${selectedBidForPricing.id}`,
+                        onAdopt: () => setAdoptOpen(true),
+                      }}
                     />
                   )
                 }

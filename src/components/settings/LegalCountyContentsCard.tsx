@@ -10,10 +10,14 @@ import type { VenueBlock } from '../../lib/legal/legalParties'
  * its county until another dot is clicked. Nothing here colors a county. On the Legal desk's
  * Map (v2.5784, `onOpen`) the door is a press that opens the desk on the case, not a link away.
  */
-export default function LegalCountyContentsCard({ county, cases, assignments, firmNames, heldId, onHold, onOpen, lens = false, venue = null }: {
+export default function LegalCountyContentsCard({ county, cases, assignments, also, bridgeFirmId = null, firmNames, heldId, onHold, onOpen, lens = false, venue = null }: {
   county: string | null
   cases: ReadonlyArray<LegalMapCase>
   assignments: CountyAssignments
+  /** county → the firms that also cover it (v2.6227): the title names them after the first call. */
+  also?: ReadonlyMap<string, ReadonlyArray<string>>
+  /** The bridge's firm (v2.6233): while no county is colored, it takes the county's cases by default. */
+  bridgeFirmId?: string | null
   firmNames: ReadonlyMap<string, string>
   /** The held case's `id`. */
   heldId: string | null
@@ -35,13 +39,16 @@ export default function LegalCountyContentsCard({ county, cases, assignments, fi
       </div>
     )
   }
-  const facts = countyCardFacts(county, cases, assignments, firmNames)
+  const facts = countyCardFacts(county, cases, assignments, firmNames, bridgeFirmId)
+  const sharers = (also?.get(county) ?? []).map((id) => firmNames.get(id)).filter((n): n is string => Boolean(n))
   return (
     <div data-legal-county-card={county} style={frame}>
       <h4 style={{ margin: '0 0 2px', fontSize: '0.84rem' }}>
         {facts.title}{' '}
         <span style={{ fontWeight: 400, ...muted }}>
           · {facts.firmName ?? <span style={{ padding: '0 6px', borderRadius: 999, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }}>no firm covers it</span>}
+          {facts.firmName && sharers.length ? <span data-legal-county-card-sharers> first call · {sharers.join(', ')} also {sharers.length === 1 ? 'covers' : 'cover'} it</span> : null}
+          {facts.firmName && bridgeFirmId && !assignments.has(county) ? <span data-legal-county-card-bridge> by default, no county colored yet</span> : null}
         </span>
       </h4>
       <div style={{ ...muted, marginBottom: 4 }}>{facts.countLine}</div>

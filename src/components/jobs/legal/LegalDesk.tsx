@@ -21,7 +21,7 @@ import { useEditCustomerModal } from '../../../contexts/EditCustomerModalContext
 import { useToastContext } from '../../../contexts/ToastContext'
 import { legalRpc, legalRpcData, type LegalMattersData } from '../../../hooks/useLegalMatters'
 import { supabase } from '../../../lib/supabase'
-import { listLegalMatterDocuments } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, listLegalMatterDocuments, retireLegalMatterDocument } from '../../../lib/legal/legalMatterDocumentsIo'
 import { answersNarrativeMarkdown, gapAnswerByline, LEGAL_GAP_ANSWER_MAX } from '../../../lib/legal/legalGapAnswers'
 
 import type { LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
@@ -33,7 +33,7 @@ import { buildLegalTimeline, eventsNarrativeMarkdown, planHoldKey, timelineDocum
 import AccountWriteDownPanel, { type WriteDownHeld } from './AccountWriteDownPanel'
 import LegalAffidavitWindow from './LegalAffidavitWindow'
 import { useOfficeCounty } from '../../../hooks/useOfficeCounty'
-import type { DeclarantDetails, StatementDraft, StatementFace } from '../../../lib/legal/affidavitPaper'
+import { statementFiledWords, statementMetaOf, type DeclarantDetails, type StatementDraft, type StatementFace, type StatementFilingDraft } from '../../../lib/legal/affidavitPaper'
 import { writeDownResultWords } from '../../../lib/legal/accountWriteDown'
 
 import LegalPortalLinkButton from './LegalPortalLinkButton'
@@ -43,8 +43,9 @@ import { DeskLegendCard } from '../../help/LegendCard'
 import { LEGAL_DESK_LEGEND } from '../../../lib/legal/legalDeskLegend'
 import LegalDeskMapView from './LegalDeskMapView'
 import LegalFirmsWindow from './LegalFirmsWindow'
+import LegalReleaseFirmChooser from './LegalReleaseFirmChooser'
 import { useLegalMapCases } from '../../../hooks/useLegalMapCases'
-import { assignmentsFromCountiesByFirm, countyWords } from '../../../lib/legal/firmCounties'
+import { alsoCovers, countyWords, coverageFromCountiesByFirm, firstCalls } from '../../../lib/legal/firmCounties'
 import { LEGAL_NOTHING_IN_COLLECTIONS } from '../../../lib/legal/firmMap'
 import { EmptyState } from '../../EmptyState'
 import { cityOfAddress, firmForAccount, firmOf, firmSegmentWords, releaseHoldWords, switchWords, venueLineWords, type FirmForAccount, type VenueJob } from '../../../lib/legal/firmForAccount'
@@ -171,7 +172,10 @@ export default function LegalDesk(props: LegalDeskProps) {
   // v2.4794: the accounts the office gave up on — read like any other, never marked attorney-ready.
   const rawGivenUp = useMemo(() => groupCollectionsByPayer(uncollectibleJobs, contractCoverage, todayYmd), [uncollectibleJobs, contractCoverage, todayYmd])
   const firmNames = useMemo(() => new Map((legal?.firms ?? []).map((f) => [f.id, f.name] as const)), [legal?.firms])
-  const assignments = useMemo(() => assignmentsFromCountiesByFirm(legal?.countiesByFirm ?? EMPTY_COUNTIES), [legal?.countiesByFirm])
+  // v2.6227 (punch list #222, PR 3): a county may have several firms; the venue rule reads each county's first call and the firms that also cover it.
+  const coverage = useMemo(() => legal?.coverage ?? coverageFromCountiesByFirm(legal?.countiesByFirm ?? EMPTY_COUNTIES, (legal?.activeFirms ?? []).map((f) => f.id)), [legal?.coverage, legal?.countiesByFirm, legal?.activeFirms])
+  const assignments = useMemo(() => firstCalls(coverage), [coverage])
+  const alsoByCounty = useMemo(() => alsoCovers(coverage), [coverage])
   // v2.5792 (punch list #144 PR 2): every job's venue county — the property record's, else where its geocode falls — shared with the Map.
   const mapCases = useLegalMapCases({ accounts: rawAccounts, givenUp: rawGivenUp, byPayerKey: legal?.byPayerKey ?? EMPTY_MATTERS, firmNames }, Boolean(legal?.available))
   /** The office's switch on a two-county account: the firm id picked for this release; cleared when the account changes. */
@@ -187,8 +191,8 @@ export default function LegalDesk(props: LegalDeskProps) {
       const guess = placed ? '' : suggestTxCountyForCity(cityOfAddress(j.job_address))
       return { jobId: j.id, label: j.hcp_number || (j.click_number == null ? '' : String(j.click_number)) || '—', county: placed?.county ?? guess, from: placed ? placed.from : guess ? 'address' : 'none', balance: jobOpenBalance(j) }
     })
-    return firmForAccount({ jobs, matterFirmId: matterIsWithFirm(m) || matterAwaitsClose(m) ? m?.firm_id ?? null : null, assignments, firms: legal?.firms ?? [], override })
-  }, [legal?.byPayerKey, legal?.firms, mapCases.countyByJobId, assignments])
+    return firmForAccount({ jobs, matterFirmId: matterIsWithFirm(m) || matterAwaitsClose(m) ? m?.firm_id ?? null : null, assignments, also: alsoByCounty, firms: legal?.firms ?? [], override })
+  }, [legal?.byPayerKey, legal?.firms, mapCases.countyByJobId, assignments, alsoByCounty])
   // The rail's "keeps ~" reads each account's own firm's fee model.
   const accounts = useMemo(() => sortAccountsByNet(rawAccounts, (a) => quickNet(a.balance, feeModelOf(firmOf(firmFor(a))))), [rawAccounts, firmFor])
   const givenUpAccounts = useMemo(() => sortAccountsByNet(rawGivenUp, (a) => quickNet(a.balance, feeModelOf(firmOf(firmFor(a))))), [rawGivenUp, firmFor])
@@ -202,7 +206,7 @@ export default function LegalDesk(props: LegalDeskProps) {
   /** The account-level write-down panel under the header, the desk's second exit (v2.5760). */
   const [writeDownOpen, setWriteDownOpen] = useState(false)
   /** Swear a statement (punch list #220, v2.6210): the window on a new statement (on a day) or on an existing one. */
-  const [statementWin, setStatementWin] = useState<{ entryId: string | null; on: string | null; print: StatementFace | null } | null>(null)
+  const [statementWin, setStatementWin] = useState<{ entryId: string | null; on: string | null; print: StatementFace | null; file: boolean } | null>(null)
   /** A declaration's declarant details by statement (v2.6211): typed at print time, held for the session, never saved. */
   const declarantRef = useRef<Map<string, DeclarantDetails>>(new Map())
   const [, bumpDeclarant] = useState(0)
@@ -694,11 +698,38 @@ export default function LegalDesk(props: LegalDeskProps) {
   }
   /** v2.6211: note a print on the row — which face, the text as printed; the paper prints whether or not the note lands. */
   const statementPrint = async (entryId: string, face: StatementFace, text: string): Promise<boolean> => Boolean(await run('Note the print', () => legalRpc('legal_statement_print', { p_entry_id: entryId, p_face: face, p_text: text })))
+  /**
+   * v2.6212: file the signed copy — the scan onto Evidence through the add press's own path (title = the statement's,
+   * dated the signing day, final, whose as picked), then the statement signed and pointed at it. A refused signing
+   * takes the scan back off Evidence, so a half-filed copy never sits there.
+   */
+  const statementFile = async (entryId: string, file: File, filing: StatementFilingDraft): Promise<boolean> => {
+    const ok = await run('File the signed copy', async () => {
+      if (!matter) return 'The matter could not be found'
+      const entry = (legal?.entriesByMatter.get(matter.id) ?? []).find((e) => e.id === entryId)
+      if (!entry) return 'The statement could not be found'
+      const meta = statementMetaOf(entry.meta)
+      let docId: string
+      try {
+        docId = await addLegalMatterDocument(supabase, matter.id, { title: meta.title || 'Sworn statement', shows: filing.shows, datedOn: filing.signedOn, state: 'final', whose: filing.whose }, file)
+      } catch (e) {
+        return formatErrorMessage(e, 'Could not store the signed scan.')
+      }
+      const err = await legalRpc('legal_statement_sign', { p_entry_id: entryId, p_document_id: docId, p_signed_on: filing.signedOn, p_as_printed: filing.asPrinted, p_on: filing.incidentOn, p_incident_to: filing.incidentTo || null, p_clear_incident_to: !filing.incidentTo })
+      if (err) {
+        await retireLegalMatterDocument(supabase, docId).catch(() => undefined)
+        return err
+      }
+      return null
+    })
+    if (ok) showToast(statementFiledWords(filing.signedOn), 'success')
+    return Boolean(ok)
+  }
   const matterDocuments = matter ? (legal?.documentsByMatter.get(matter.id) ?? []) : []
   const planActs: PlanActs = {
     holds: holdOverrides,
     holdReasons: heldReasonsOf(matter),
-    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on, print: null }), editStatement: (entryId, opts) => setStatementWin({ entryId, on: null, print: opts?.print ? 'whole' : null }) } : null,
+    acts: stored && canEditReview ? { busy, add: planAdd, addEvent: eventAdd, documents: matterDocuments.map((d) => ({ id: d.id, title: d.title })), update: planUpdate, markDone: planMarkDone, undo: voidEntry, canUndo: (i) => (i.kind === 'plan' || i.kind === 'event' || i.kind === 'statement') && !i.voided && !i.viaPortal, hold: matter ? { holdBack, shareAgain } : undefined, swearStatement: (on) => setStatementWin({ entryId: null, on, print: null, file: false }), editStatement: (entryId, opts) => setStatementWin({ entryId, on: null, print: opts?.print ? 'whole' : null, file: Boolean(opts?.file) }) } : null,
   }
   /** #85 item 16: accept a firm step that would have moved the stage back. */
   const moveStage = async (stageTo: string, entryId: string) => {
@@ -956,7 +987,7 @@ export default function LegalDesk(props: LegalDeskProps) {
             cases={mapCases.cases}
             loading={mapCases.loading}
             firms={legal?.activeFirms ?? []}
-            countiesByFirm={legal?.countiesByFirm ?? new Map()}
+            coverage={coverage}
             stacked={stacked}
             openOn={mapOpenOn}
             venueFor={venueFor}
@@ -1194,6 +1225,8 @@ export default function LegalDesk(props: LegalDeskProps) {
                   This is the release. The matter goes to <b>{firm.name}</b> the moment you confirm — {selected.jobs.length} job{selected.jobs.length === 1 ? '' : 's'}, {formatLegalMoney(selected.balance)}, theory <b>{packet.theory.label}</b>, exhibits A–{packet.exhibits[packet.exhibits.length - 1]?.letter ?? 'A'}.
                   {packet.theirWord.heldCount ? <> <b>{packet.theirWord.heldCount} entr{packet.theirWord.heldCount === 1 ? 'y is' : 'ies are'} held back</b> from the firm.</> : null}
                 </p>
+                {/* v2.6227 (punch list #222, PR 3): every firm that could take it, its role, its fee model and what Click keeps; the pick is the header's switch. */}
+                <LegalReleaseFirmChooser account={selectedFirm} pickedId={firm.id} balance={selected.balance} alsoByCounty={alsoByCounty} onPick={setFirmOverride} />
                 {packet.worth.verdict === 'not worth it' ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>Click keeps {formatLegalMoney(packet.worth.net)}.</b> The firm’s cut and costs eat what is left. Write down / stop pursuing is the other exit.</p> : null}
                 {packet.readiness.stops ? <p style={{ fontSize: '0.84rem', color: '#b42318', margin: '0 0 8px' }}><b>{packet.readiness.stops} red gap{packet.readiness.stops === 1 ? '' : 's'} still open</b> — {packet.gaps.filter((g) => g.severity === 'stop').map((g) => g.label).join('; ')}. You can mark anyway; the packet says so on its cover sheet.</p> : null}
                 <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '0 0 10px' }}>
@@ -1306,7 +1339,7 @@ export default function LegalDesk(props: LegalDeskProps) {
           onSaved={() => { void legal?.reload() }}
           onShowAccount={(key) => { setFirmOpen(false); setSelectedKey(key); showTab('account') }}
           firms={legal?.activeFirms ?? []}
-          countiesByFirm={legal?.countiesByFirm ?? EMPTY_COUNTIES}
+          coverage={coverage}
           cases={mapCases.cases}
           // Punch list #222: the Map opens with this firm lit (PR 1); a dev extends the firm's counties inside the window (PR 2).
           onShowOnMap={(id) => { setFirmOpen(false); setMapOpenOn({ county: null, heldId: null, firmId: id, nonce: Date.now() }); pressView('map') }}
@@ -1329,6 +1362,9 @@ export default function LegalDesk(props: LegalDeskProps) {
           declarant={statementWin.entryId ? (declarantRef.current.get(statementWin.entryId) ?? null) : null}
           onDeclarant={(id, d) => { declarantRef.current.set(id, d); bumpDeclarant((t) => t + 1) }}
           initialPrint={statementWin.print}
+          onFile={statementFile}
+          initialFile={statementWin.file}
+          documents={matterDocuments.map((d) => ({ id: d.id, title: d.title }))}
           onClose={() => setStatementWin(null)}
           onShowTimeline={() => showTab('timeline')}
           zIndex={DESK_LAYER_Z + 12}

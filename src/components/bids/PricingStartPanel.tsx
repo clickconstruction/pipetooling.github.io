@@ -3,9 +3,13 @@
  * list #137). Pure render — the words come from `pricingStartChoices`, the doors from the
  * tab: the book press runs `onSelectPriceBookTemplate` (clone, stamp the version, star),
  * "another book ▸" opens the price book drawer, the copy runs `copyBasePriceFromVersion`.
+ * When the Workbench cannot draw yet (no version, no counts, no cost estimate) the panel is an
+ * empty state that names what is missing and its press, with *Adopt an existing bid* always
+ * offered (v2.6251) — the words from `pricingSetupWords`.
  */
 import type { CSSProperties } from 'react'
-import type { PricingStartChoices } from '../../lib/bids/pricingStartChoices'
+import { EmptyState } from '../EmptyState'
+import { pricingSetupWords, type PricingSetupDoors, type PricingStartChoices } from '../../lib/bids/pricingStartChoices'
 
 const frame: CSSProperties = { padding: '1rem', border: '1px dashed var(--border-strong)', borderRadius: 8, color: 'var(--text-muted)', fontSize: '0.875rem' }
 const subnote: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '0.35rem' }
@@ -21,10 +25,16 @@ export function PricingStartPanel(props: {
   onPickBook: (templateId: string) => void
   onBrowseBooks: () => void
   onCopyFrom: (versionId: string) => void
+  /** The Counts and Labor tabs of this bid, and the adopt window: the presses of the setup words. */
+  setupDoors: PricingSetupDoors
 }) {
-  const { choices, busyBook, busyCopy, onPickBook, onBrowseBooks, onCopyFrom } = props
+  const { choices, busyBook, busyCopy, onPickBook, onBrowseBooks, onCopyFrom, setupDoors } = props
   if (choices.kind === 'needs-setup') {
-    return <div style={frame}>The Workbench needs Counts, an active Pricing, and a cost estimate. Set those up on the Counts / Labor tabs, then come back.</div>
+    return (
+      <div style={frame}>
+        <EmptyState {...pricingSetupWords(choices.missing, setupDoors)} compact />
+      </div>
+    )
   }
   const bookId = choices.bookTemplateId
   return (

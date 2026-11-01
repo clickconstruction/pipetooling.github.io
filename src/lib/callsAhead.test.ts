@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { callsAhead, namesCreatedIn, schemaCallsIn } from './callsAhead'
+import { CALLS_AHEAD_LABEL_DESCRIPTION, GITHUB_LABEL_DESCRIPTION_MAX, callsAhead, callsAheadLabelCalls, ghFailureWords, labelAlreadyExists, namesCreatedIn, schemaCallsIn } from './callsAhead'
 
 describe('schemaCallsIn', () => {
   it('reads a literal rpc name, through an `as never` cast or a template literal, with its line', () => {
@@ -143,5 +143,35 @@ describe('callsAhead', () => {
 
   it('is empty with nothing pending', () => {
     expect(callsAhead([{ file: 'a.ts', calls: [{ kind: 'rpc', name: 'land_field_press', line: 1 }] }], new Map(), applied)).toEqual([])
+  })
+})
+
+describe('the label', () => {
+  it('fits GitHub’s 100-character description cap, which refused the old 110-character one on every run', () => {
+    expect(GITHUB_LABEL_DESCRIPTION_MAX).toBe(100)
+    expect(CALLS_AHEAD_LABEL_DESCRIPTION.length).toBeLessThanOrEqual(GITHUB_LABEL_DESCRIPTION_MAX)
+  })
+
+  it('reads, makes and adds the label through REST, the name encoded in the read', () => {
+    const calls = callsAheadLabelCalls('clickconstruction/pipetooling.github.io', 6635)
+    expect(calls.read).toEqual(['api', 'repos/clickconstruction/pipetooling.github.io/labels/push%20right%20after%20the%20merge'])
+    expect(calls.make).toEqual(['api', '-X', 'POST', 'repos/clickconstruction/pipetooling.github.io/labels', '-f', 'name=push right after the merge', '-f', 'color=D93F0B', '-f', `description=${CALLS_AHEAD_LABEL_DESCRIPTION}`])
+    expect(calls.add).toEqual(['api', '-X', 'POST', 'repos/clickconstruction/pipetooling.github.io/issues/6635/labels', '-f', 'labels[]=push right after the merge'])
+  })
+
+  it('says GitHub’s reason for a failure, not the command line', () => {
+    const tooLong = JSON.stringify({ message: 'Validation Failed', errors: [{ resource: 'Label', code: 'custom', field: 'description', message: 'description is too long (maximum is 100 characters)' }] })
+    expect(ghFailureWords(tooLong, 'gh: Validation Failed (HTTP 422)', 'Command failed: gh api')).toBe('Validation Failed: description is too long (maximum is 100 characters)')
+    const forbidden = JSON.stringify({ message: 'Resource not accessible by integration' })
+    expect(ghFailureWords(forbidden, 'gh: Resource not accessible by integration (HTTP 403)', 'Command failed: gh api')).toBe('Resource not accessible by integration')
+    expect(ghFailureWords(JSON.stringify({ message: 'Validation Failed', errors: [{ field: 'color', code: 'invalid' }] }), '', '')).toBe('Validation Failed: color invalid')
+    expect(ghFailureWords('', '\ngh: not logged in\nmore', 'Command failed: gh api')).toBe('gh: not logged in')
+    expect(ghFailureWords('', '', 'Command failed: gh api\nstderr')).toBe('Command failed: gh api')
+  })
+
+  it('carries on to the add when another run made the label first', () => {
+    expect(labelAlreadyExists(JSON.stringify({ message: 'Validation Failed', errors: [{ resource: 'Label', code: 'already_exists', field: 'name' }] }))).toBe(true)
+    expect(labelAlreadyExists(JSON.stringify({ message: 'Not Found' }))).toBe(false)
+    expect(labelAlreadyExists('not json')).toBe(false)
   })
 })

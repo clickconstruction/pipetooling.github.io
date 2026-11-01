@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { pricingStartChoices } from './pricingStartChoices'
+import { pricingSetupWords, pricingStartChoices } from './pricingStartChoices'
 
 /**
  * The start panel for a version with no prices (punch list #137): the side-by-side rebid
@@ -119,15 +119,15 @@ describe('pricingStartChoices — the setup sentence stays where the panel canno
   const versions = [{ id: 'v1', name: 'Base', customer_id: null, starred_price_book_version_id: null }]
 
   it('no counts', () => {
-    expect(pricingStartChoices({ ...BASE, selectedBidVersionId: 'v1', bidVersions: versions, bidPricings: [], hasCounts: false })).toEqual({ kind: 'needs-setup' })
+    expect(pricingStartChoices({ ...BASE, selectedBidVersionId: 'v1', bidVersions: versions, bidPricings: [], hasCounts: false })).toEqual({ kind: 'needs-setup', missing: 'counts' })
   })
 
   it('no cost estimate', () => {
-    expect(pricingStartChoices({ ...BASE, selectedBidVersionId: 'v1', bidVersions: versions, bidPricings: [], hasCostEstimate: false })).toEqual({ kind: 'needs-setup' })
+    expect(pricingStartChoices({ ...BASE, selectedBidVersionId: 'v1', bidVersions: versions, bidPricings: [], hasCostEstimate: false })).toEqual({ kind: 'needs-setup', missing: 'cost-estimate' })
   })
 
   it('an unsplit bid (no active version)', () => {
-    expect(pricingStartChoices({ ...BASE, selectedBidVersionId: null, bidVersions: [], bidPricings: [] })).toEqual({ kind: 'needs-setup' })
+    expect(pricingStartChoices({ ...BASE, selectedBidVersionId: null, bidVersions: [], bidPricings: [] })).toEqual({ kind: 'needs-setup', missing: 'version' })
   })
 
   it('the version already has a price', () => {
@@ -138,6 +138,34 @@ describe('pricingStartChoices — the setup sentence stays where the panel canno
         bidVersions: versions,
         bidPricings: [{ id: 'p1', bid_version_id: 'v1', source_version_id: null, name: 'HALEY' }],
       }),
-    ).toEqual({ kind: 'needs-setup' })
+    ).toEqual({ kind: 'needs-setup', missing: 'version' })
+  })
+})
+
+describe('pricingSetupWords — the empty start names the press, and always offers the adopt (v2.6251)', () => {
+  const onAdopt = () => {}
+  const doors = { countsTo: '/bids?tab=counts&bidId=b1', laborTo: '/bids?tab=labor&bidId=b1', onAdopt }
+
+  it('no counts: Open Counts leads, the adopt is the other way', () => {
+    expect(pricingSetupWords('counts', doors)).toEqual({
+      main: 'No counts on this version yet.',
+      next: { label: 'Open Counts', to: '/bids?tab=counts&bidId=b1' },
+      tail: 'to count the plans',
+      orNext: { label: 'Adopt an existing bid', onPress: onAdopt },
+    })
+  })
+
+  it('no cost estimate: Open Labor leads', () => {
+    const w = pricingSetupWords('cost-estimate', doors)
+    expect(w.main).toBe('No cost estimate on this bid yet.')
+    expect(w.next).toEqual({ label: 'Open Labor', to: '/bids?tab=labor&bidId=b1' })
+    expect(w.orNext?.label).toBe('Adopt an existing bid')
+  })
+
+  it('no version to price: the adopt is the one press', () => {
+    const w = pricingSetupWords('version', doors)
+    expect(w.main).toBe('Nothing to price on this version yet.')
+    expect(w.next).toEqual({ label: 'Adopt an existing bid', onPress: onAdopt })
+    expect(w.orNext).toBeUndefined()
   })
 })

@@ -50,7 +50,7 @@ function stateChipColor(state: string): string {
 
 type Pending = { key: string; file: File; draft: LegalDocumentDraft; /** The person picked whose paper it is; the title no longer guesses. */ whoseTouched: boolean }
 
-export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit, onChanged, payerName = '', landOn = null, onLandingDone }: { matterId: string; documents: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; onChanged: () => void; /** The payer's name, for the heading of their paper and the guess (v2.6108). */ payerName?: string; /** The row to land on, lit (v2.6166); from the address. */ landOn?: string | null; /** The landed row was pressed: the address lets the row go. */ onLandingDone?: () => void }) {
+export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit, onChanged, payerName = '', landOn = null, onLandingDone, linkedStatements = {}, onOpenStatement }: { matterId: string; documents: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; onChanged: () => void; /** The payer's name, for the heading of their paper and the guess (v2.6108). */ payerName?: string; /** The row to land on, lit (v2.6166); from the address. */ landOn?: string | null; /** The landed row was pressed: the address lets the row go. */ onLandingDone?: () => void; /** v2.6212 (punch list #220): the statement each signed scan belongs to, by document id. */ linkedStatements?: Record<string, string>; /** Opens the statement's window. */ onOpenStatement?: (entryId: string) => void }) {
   const [pending, setPending] = useState<Pending[]>([])
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -244,8 +244,11 @@ export default function LegalMatterDocumentsPanel({ matterId, documents, canEdit
                                 {stateWords && doc.state !== 'draft' ? <div data-legal-document-state-words>{stateWords}{proof ? <> · proof: <button type="button" onClick={() => { setMenuFor(null); open(proof) }} style={{ ...btn, border: 'none', padding: 0, height: 'auto', fontSize: '0.72rem', color: 'var(--text-link)' }}>{proof.title}</button></> : null}</div> : null}
                                 {d.held_reason ? <div style={{ color: 'var(--text-amber-700)' }}>Held from the firm: {d.held_reason}</div> : null}
                                 {group.guessed ? <div>Under {g.words} by its title. Whose paper… sets it.</div> : null}
+                                {linkedStatements[d.id] ? <div data-legal-document-statement>The signed copy of a sworn statement on the Timeline.</div> : null}
                               </div>
                               {([
+                                // v2.6212: a signed scan's door back to its statement.
+                                linkedStatements[d.id] && onOpenStatement ? { label: 'The statement on the Timeline', go: () => onOpenStatement(linkedStatements[d.id]!) } : null,
                                 d.held_reason ? { label: 'Release to the firm', go: () => void act('Could not release the document.', () => updateLegalMatterDocument(supabase, d.id, { held_reason: '' })) } : { label: 'Hold from the firm…', go: () => setHoldFor({ id: d.id, reason: '' }) },
                                 { label: 'Whose paper…', go: () => { setSentFor(null); setReceivedFor(null); setWhoseFor({ id: d.id, whose: legalDocumentWhoseOf(d.whose) ?? '' }) } },
                                 doc.state === 'draft' || doc.state === 'final' ? { label: 'Mark sent…', go: () => { setReceivedFor(null); setWhoseFor(null); setSentFor({ id: d.id, draft: { sentOn: todayYmd, sentHow: '', sentTo: '', proofDocumentId: '' } }) } } : null,

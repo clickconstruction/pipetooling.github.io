@@ -2,7 +2,7 @@
 name: "Legal desk: the settlement floor — what it does today, and five ways to show what could happen instead"
 number: 218
 group: close
-status: the owner picked C 2026-10-30 ("Build C") · the train of four is open on main with auto-merge, in queue order — PR 1 #6559 the gate retired · PR 2 #6565 the attorney's read (migration 20261030090000_legal_counsel_read) · PR 3 #6567 the paths and the walk-away line · PR 4 #6568 the firm's side and both prints (the versions are the PRs' own fragments, cited once they land) · after PR 1 deploy submit-legal-portal and legal-portal, after PR 2 db push then deploy submit-legal-portal
+status: built 2026-10-30 as C with A folded in, all on main — v2.6170 #6559 the gate retired · v2.6173 the attorney's read (landed inside #6567's squash; #6565 closed) with migration 20261030090000 applied · v2.6176 #6567 the paths and the walk-away line · v2.6177 #6568 the firm's side and both prints · submit-legal-portal and legal-portal redeployed · left: the owner's look at the cards on a live account
 mockup: to-dos/legal-desk-settlement-floor/mockup.html
 summary: >
   The office sets one settlement floor per matter, a dollar amount or a percent of the open balance,
@@ -13,10 +13,10 @@ summary: >
   attorney's read of the case and the two paths drawn side by side with a line derived from the
   cost to continue, show what a refused offer cost, or flip it so the firm records what it expects.
   The recommendation is the third with the first folded in.
-next: Land the train in order, push the migration and redeploy the two functions, then the owner's look at the cards on a live account; D's one line per closed matter once a matter has closed behind a refused offer.
-size: A S · B S · C M as a train of four · D S · E S
-blocker: None. The queue; #171's step 2 (the floor against the claim) is superseded by C.
-opinion: your call — built as C with A folded in; the look at the cards live is the owner's, and D waits for history
+next: The owner's look at a live account with an offer logged: Can we sue? with the read's chip, the paths under the bars with the green line on the claim bar, the same cards on the firm's portal; a week of use, then delete the folder. D's one line per closed matter once a matter has closed behind a refused offer.
+size: built — S · M · M · S
+blocker: None. The look is the owner's.
+opinion: your call — the code is done; the look at the cards live is yours, and D waits for history
 ---
 
 # Legal desk: the settlement floor (#218)
@@ -196,3 +196,15 @@ firm on its portal, *Settled* with an amount moves the stage at once and the des
 apply*. After PR 2, the firm's *How this case tries* lands on the desk as the chip with its why. After PR 3, an
 account with a logged offer draws the two paths with the derived line on the claim bar, and the sentence under them
 reads the same figures. `npx vitest run src/lib/legal src/components/jobs/legal` after each.
+
+## Where it stands
+
+**Built 2026-10-30, the owner's pick of C ("Build C").** Four PRs, each with its release note, fragment, guide and doc
+amendments: v2.6170 (#6559) retired the gate; v2.6173 the attorney's read as a note entry with the office's
+`legal_set_counsel_read` (migration `20261030090000`, applied) and the firm's portal act; v2.6176 (#6567) the paths
+kernel, the cards under the bars and the walk-away line on the claim bar; v2.6177 (#6568) the same cards on the firm's
+portal and in both prints. The queue took #6567 ahead of #6565, whose commits it carried, so v2.6173 landed inside
+#6567's squash and #6565 closed unmerged. `submit-legal-portal` and `legal-portal` are redeployed from main. Not done:
+the owner's live look, and D. The owner's calls left open: a second firm rate for trial (one `contingency_pct` today),
+and whether B's *Hold a floor* door ever returns (the columns stay null for it).
+

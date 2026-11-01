@@ -401,7 +401,10 @@ export function fixtureButtonWords(ticks: FixtureTicks, review: FixtureReview, h
     sentences.push(updates === 1 ? '1 of your rows takes the robot’s count and keeps its parts and prices.' : `${updates} of your rows take the robot’s count and keep their parts and prices.`)
   }
   const stay = Math.max(0, herRowCount - updates)
-  sentences.push(stay === 1 ? 'Your other row stays as it is.' : `Your ${stay} other rows stay as they are.`)
+  if (stay > 0) {
+    const other = updates > 0 ? ' other' : ''
+    sentences.push(stay === 1 ? `Your${other} row stays as it is.` : `Your ${stay}${other} rows stay as they are.`)
+  }
   return { button, dead: false, foot: sentences.join(' '), adds, updates, total }
 }
 
@@ -434,6 +437,34 @@ export function fixtureSetLineWords(args: {
   return sentences.join(' ')
 }
 
+/** The fixtures score as `score_locked_shadows` writes it at send (v2.6180). */
+export type FixturesScore = { found: number; taken: number; changed: number; set_aside: number; left: number; missed: number; reasons: Record<string, number> }
+
+/** The score as its jsonb column lands, or null when the run has none. */
+export function fixturesScoreOf(raw: unknown): FixturesScore | null {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null
+  const o = raw as Record<string, unknown>
+  const n = (k: string) => numberOf(o[k]) ?? 0
+  const reasons: Record<string, number> = {}
+  if (o.reasons && typeof o.reasons === 'object' && !Array.isArray(o.reasons)) {
+    for (const [k, v] of Object.entries(o.reasons as Record<string, unknown>)) {
+      const c = numberOf(v)
+      if (c != null) reasons[k] = c
+    }
+  }
+  return { found: n('found'), taken: n('taken'), changed: n('changed'), set_aside: n('set_aside'), left: n('left'), missed: n('missed'), reasons }
+}
+
+/** *Fixtures: 19 of 23 taken, 2 changed, 2 set aside, 3 the robot missed.* The honest measure of the augment. */
+export function fixturesScoreWords(score: FixturesScore): string {
+  const parts = [`${score.taken} of ${score.found} taken`]
+  if (score.changed > 0) parts.push(`${score.changed} changed`)
+  if (score.set_aside > 0) parts.push(`${score.set_aside} set aside`)
+  if (score.left > 0) parts.push(`${score.left} not taken`)
+  if (score.missed > 0) parts.push(`${score.missed} the robot missed`)
+  return `Fixtures: ${parts.join(', ')}.`
+}
+
 /** Before the robot seals: what the window says when it is opened too soon. */
 export const FIXTURES_NOT_YET_WORDS = 'Its fixtures open when it seals its number, usually within the hour. The Plans panel answers questions about the set now.'
 
@@ -443,6 +474,19 @@ export function fixturesAddedToast(adds: number, updates: number): string {
   if (adds > 0) parts.push(`${adds} ${adds === 1 ? 'fixture' : 'fixtures'} added from the robot`)
   if (updates > 0) parts.push(`${updates} ${updates === 1 ? 'row' : 'rows'} updated`)
   return parts.length ? `${parts.join(', ')}.` : 'Nothing changed.'
+}
+
+/**
+ * The toast after Undo (v2.6242), from `untake_robot_fixture_rows`' own counts. Undo takes back one press
+ * (v2.6237), so the words say what that press's Undo did and never that the robot's rows are all off her
+ * count: *1 fixture taken back.*, *1 row back to your number.*, and a row she changed since stays hers.
+ */
+export function fixturesUndoneToast(r: { removed: number; restored: number; kept: number }): string {
+  const parts: string[] = []
+  if (r.removed > 0) parts.push(`${r.removed} ${r.removed === 1 ? 'fixture' : 'fixtures'} taken back`)
+  if (r.restored > 0) parts.push(`${r.restored} ${r.restored === 1 ? 'row' : 'rows'} back to your number`)
+  const head = parts.length ? `${parts.join(', ')}.` : 'Nothing to undo.'
+  return r.kept > 0 ? `${head} ${r.kept} ${r.kept === 1 ? 'stays because you changed it' : 'stay because you changed them'}.` : head
 }
 
 /** The schedule row's one line: *Kohler Highline K-96057 · 1.28 gpf · waste 4"*. */

@@ -16,6 +16,7 @@
  */
 import type { DiffEntry, TakeoffDiff, DiffBucketKey } from './takeoffDiff'
 import { canWorkRobotAudits } from './bidAudits'
+import { fixturesScoreOf, type FixturesScore } from './robotFixtures'
 
 export interface EnvelopeBid {
   id: string
@@ -90,6 +91,9 @@ export interface EnvelopeRun {
   practice: boolean
   /** v2.3234: which human number the run scored against; null when unknown (pre-migration rows). */
   scoredAgainst?: 'best_effort' | 'sent' | null
+  /** v2.6237 (punch list #221): she took robot fixtures on this bid, and the fixtures score at send. */
+  assisted?: boolean
+  fixturesScore?: FixturesScore | null
 }
 
 export function envelopeRunFromShadow(r: {
@@ -101,6 +105,8 @@ export function envelopeRunFromShadow(r: {
   teacher_name?: string | null
   teacher_standard?: boolean | null
   reference_kind?: string | null
+  assisted_at?: string | null
+  fixtures_score?: unknown
 }): EnvelopeRun {
   return {
     kind: 'shadow',
@@ -112,6 +118,8 @@ export function envelopeRunFromShadow(r: {
     teacherName: r.teacher_name ?? null,
     practice: r.teacher_standard === false,
     scoredAgainst: r.reference_kind === 'best_effort' || r.reference_kind === 'sent' ? r.reference_kind : null,
+    assisted: !!r.assisted_at,
+    fixturesScore: fixturesScoreOf(r.fixtures_score),
   }
 }
 

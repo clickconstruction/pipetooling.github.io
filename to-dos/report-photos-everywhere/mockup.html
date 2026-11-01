@@ -1,0 +1,338 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photos on every report</title>
+<style>
+  /* Punch list #229. Every job, person and street here is made up: Ridgeway Builders, Oak Hollow Apartments Building C
+     at 4410 Pecan Creek Rd, job JP1042, the crew Mateo Ruiz, the office's Carla Nguyen. Tokens are src/index.css's
+     (light values and the [data-theme="dark"] block); the app's #2563eb blue stays literal as the app keeps it.
+     Frames are fixed at 375 (the phone) and 560 (a window at a desk) and 640 (the email). */
+  :root { color-scheme: light; --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb; --border: #cfd4db; --border-strong: #aab2bd; --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-600: #4b5563; --text-muted: #6b7280; --text-faint: #767f8d; --text-link: #2563eb; --bg-amber-100: #fef3c7; --bg-green-100: #dcfce7; --text-green-700: #15803d; --text-green-800: #166534; --text-amber-800: #92400e; --text-red-700: #b91c1c; --bg-blue-tint: #eff6ff; --text-blue-700: #1d4ed8; --border-blue: #93c5fd; --shadow: 0 8px 24px rgba(15, 23, 42, .12); --font: system-ui, -apple-system, Segoe UI, Roboto, sans-serif; --blue: #2563eb; --amber: #d97706; }
+  :root[data-theme="dark"] { color-scheme: dark; --bg-page: #111827; --surface: #1f2937; --bg-subtle: #18212f; --bg-muted: #374151; --bg-200: #4b5563; --border: #374151; --border-strong: #4b5563; --text-strong: #f9fafb; --text-base: #f3f4f6; --text-700: #d1d5db; --text-600: #d1d5db; --text-muted: #9ca3af; --text-faint: #8892a3; --text-link: #60a5fa; --bg-amber-100: #45390f; --bg-green-100: #14532d; --text-green-700: #4ade80; --text-green-800: #86efac; --text-amber-800: #fcd34d; --text-red-700: #fca5a5; --bg-blue-tint: #1e3358; --text-blue-700: #93c5fd; --border-blue: #3b82f6; --shadow: 0 8px 24px rgba(0, 0, 0, .45); }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; overflow-x: hidden; }
+  .wrap { max-width: 1280px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; color: var(--text-strong); max-width: 34ch; }
+  header.top p { margin: 8px 0 0; color: var(--text-700); max-width: 96ch; }
+  b { color: var(--text-strong); }
+  .controls { display: flex; gap: 14px; flex-wrap: wrap; margin: 14px 0 0; align-items: center; }
+  .controls .lbl { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+  .controls button { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 12px; cursor: pointer; }
+  .controls button[aria-pressed="true"] { background: var(--text-strong); color: var(--bg-page); border-color: var(--text-strong); }
+  nav.jump { display: flex; gap: 8px; flex-wrap: wrap; margin: 14px 0 0; }
+  nav.jump a { border: 1px solid var(--border-strong); border-radius: 999px; background: var(--surface); color: var(--text-base); font: 600 12.5px var(--font); padding: 5px 13px; text-decoration: none; }
+  h2 { font-size: 20px; margin: 48px 0 6px; display: flex; align-items: center; gap: 10px; color: var(--text-strong); flex-wrap: wrap; scroll-margin-top: 16px; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; min-width: 26px; height: 26px; padding: 0 8px; border-radius: 999px; background: var(--text-strong); color: var(--bg-page); font-size: 13px; font-weight: 700; }
+  .lede { margin: 0 0 6px; color: var(--text-700); max-width: 104ch; }
+  .say { margin: 12px 0 0; display: grid; gap: 6px; max-width: 104ch; }
+  .say p { margin: 0; color: var(--text-700); padding-left: 10px; border-left: 3px solid var(--border-strong); }
+  .say p.rule { border-color: var(--text-blue-700); }
+  .say p.gain { border-color: var(--text-green-700); }
+  .row { display: flex; flex-wrap: wrap; gap: 18px; align-items: flex-start; margin-top: 14px; }
+  .col { display: grid; gap: 6px; min-width: 0; max-width: 100%; }
+  .col.p375 { flex: 0 0 375px; }
+  .col.w560 { flex: 0 0 560px; }
+  .col.w640 { flex: 0 0 640px; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--text-muted); display: flex; gap: 10px; align-items: baseline; flex-wrap: wrap; }
+  .cap.now { color: var(--text-muted); }
+  .cap.opt { color: var(--text-green-700); }
+  .frame { position: relative; background: var(--surface); border: 1px solid var(--border); border-radius: 12px; box-shadow: var(--shadow); overflow: hidden; max-width: 100%; }
+  .frame.now { border-style: dashed; }
+  .screen { font-size: 15px; line-height: 1.45; color: var(--text-base); padding: 14px 16px; display: grid; gap: 12px; }
+  .screen.w375 { width: 375px; }
+  .screen.w560 { width: 560px; }
+  .screen.w640 { width: 640px; font-family: Arial, Helvetica, sans-serif; background: #ffffff; color: #111827; }
+  .foot { font-size: 12px; color: var(--text-700); line-height: 1.45; }
+  .foot .ok { color: var(--text-green-700); font-weight: 700; }
+  .foot .bad { color: var(--text-red-700); font-weight: 700; }
+  /* the app's pieces */
+  .hd { display: flex; align-items: flex-start; gap: 10px; }
+  .hd h3 { margin: 0; font-size: 20px; color: var(--text-strong); }
+  .hd .sub { margin: 2px 0 0; font-size: 14px; color: var(--text-muted); }
+  .hd .x { margin-left: auto; font-size: 22px; color: var(--text-muted); line-height: 1; }
+  .label { font-size: 14px; font-weight: 500; color: var(--text-strong); margin: 0 0 4px; }
+  .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .chip { padding: 8px 16px; font-size: 14px; border: 1px solid var(--border-strong); background: var(--surface); border-radius: 4px; color: var(--text-base); }
+  .chip.on { border: 2px solid #3b82f6; background: var(--bg-blue-tint); font-weight: 600; }
+  .chip.r { border-radius: 999px; }
+  .chip.r.on { background: var(--bg-amber-100); border-color: var(--text-amber-800); color: var(--text-amber-800); }
+  .box { min-height: 72px; border: 1px solid var(--border-strong); border-radius: 4px; padding: 8px; color: var(--text-muted); font-size: 14px; }
+  .box.filled { color: var(--text-base); }
+  .pick { display: flex; align-items: center; gap: 10px; border: 1px solid var(--border); background: var(--bg-muted); border-radius: 6px; padding: 10px 12px; font-size: 14px; }
+  .pick .tick { color: #16a34a; font-size: 18px; }
+  .pick .ch { margin-left: auto; border: 1px solid var(--border-strong); background: var(--surface); border-radius: 4px; padding: 5px 12px; font-size: 14px; }
+  .tiles { display: flex; gap: 10px; flex-wrap: wrap; align-items: flex-start; }
+  .tile { width: 96px; display: grid; gap: 4px; font-size: 11.5px; color: var(--text-muted); line-height: 1.25; }
+  .tile .img { width: 96px; height: 96px; border-radius: 10px; border: 1px solid var(--border); background: linear-gradient(135deg, #cbd5e1, #64748b 60%, #334155); }
+  .tile .img.b { background: linear-gradient(160deg, #e2e8f0, #94a3b8 50%, #475569); }
+  .tile .img.c { background: linear-gradient(200deg, #d6d3d1, #78716c 55%, #44403c); }
+  .tile .st { color: var(--text-blue-700); font-weight: 600; }
+  .tile .q { color: var(--text-link); font-weight: 600; }
+  .tile .amber { color: var(--text-amber-800); font-weight: 600; }
+  .tile.add { width: 96px; height: 96px; border-radius: 10px; border: 1px dashed var(--border-strong); color: var(--text-link); display: grid; place-items: center; align-content: center; gap: 4px; font-size: 12.5px; font-weight: 700; text-align: center; }
+  .tile.add .cam { font-size: 22px; }
+  .small { font-size: 12px; color: var(--text-muted); }
+  .ask { padding: 10px 11px; border-radius: 10px; background: var(--bg-blue-tint); border: 1px solid var(--border-blue); display: grid; gap: 6px; }
+  .ask .t { font-size: 13px; font-weight: 600; }
+  .ask .chips .chip { min-height: 48px; display: inline-flex; align-items: center; border-radius: 10px; font-weight: 700; color: var(--text-700); }
+  .strip { display: grid; gap: 4px; }
+  .strip .t { color: var(--text-muted); font-weight: 500; font-size: 14px; }
+  .strip .tiles .tile { width: 88px; }
+  .strip .tiles .img { width: 88px; height: 88px; border-radius: 8px; }
+  .strip .in { color: var(--text-green-800); font-weight: 500; }
+  .strip .wait { color: var(--text-muted); font-weight: 500; }
+  .strip .held { color: var(--text-amber-800); font-weight: 600; }
+  .fields { font-size: 14px; display: grid; gap: 10px; }
+  .fields .l { color: var(--text-muted); font-weight: 500; display: block; margin-bottom: 3px; }
+  .ft { display: flex; align-items: center; gap: 8px; border-top: 1px solid var(--border); padding-top: 12px; }
+  .ft .sp { flex: 1; }
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 40px; padding: 0 16px; border-radius: 4px; border: 1px solid var(--border-strong); background: var(--surface); color: var(--text-strong); font: 600 14px var(--font); }
+  .btn.primary { background: var(--blue); border-color: var(--blue); color: #ffffff; }
+  .btn.quiet { border: none; background: none; color: var(--text-muted); font-weight: 400; padding: 0 10px; }
+  .btn.tall { min-height: 48px; border-radius: 10px; font-size: 15px; }
+  .btn.go { flex: 1; }
+  .btn.amber { background: var(--amber); border-color: var(--amber); color: #ffffff; }
+  .note { font-size: 13px; color: var(--text-muted); }
+  .quiet-line { font-size: 12.5px; color: var(--text-muted); font-style: italic; }
+  /* the Dashboard's Recent reports */
+  .rr { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); overflow: hidden; }
+  .rr .h { padding: 8px 12px; display: flex; align-items: flex-start; gap: 9px; font-size: 14px; }
+  .rr .h .k { font-weight: 600; color: var(--text-strong); }
+  .rr .h .m { color: var(--text-muted); font-size: 12.5px; }
+  .rr .h .t { margin-left: auto; color: var(--text-muted); font-size: 12px; white-space: nowrap; }
+  .rr.read { background: var(--bg-subtle); opacity: .78; }
+  .rr .bd { padding: 4px 12px 14px; border-top: 1px solid var(--border); font-size: 14px; display: grid; gap: 10px; }
+  .pc { display: inline-flex; align-items: center; gap: 3px; font-size: 12px; font-weight: 600; color: var(--text-blue-700); background: var(--bg-blue-tint); border-radius: 6px; padding: 0 6px; }
+  .pc.new { color: var(--text-green-700); background: var(--bg-green-100); }
+  /* the waiting bar */
+  .bar { display: flex; align-items: center; gap: 10px; padding: 8px 16px; margin: -14px -16px 0; background: var(--bg-amber-100); color: var(--text-amber-800); font-size: 13px; font-weight: 600; border-bottom: 1px solid var(--text-amber-800); }
+  .bar .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--amber); flex: none; }
+  .toast { margin: 0 auto; background: var(--text-strong); color: var(--bg-page); border-radius: 8px; padding: 8px 14px; font-size: 13px; font-weight: 600; width: max-content; max-width: 100%; }
+  /* the thread */
+  .th { border-left: 3px solid #93c5fd; padding: 8px 0 8px 8px; border-bottom: 1px solid var(--border); font-size: 13px; display: grid; gap: 4px; }
+  .th .who { color: var(--text-muted); }
+  .th .who .tag { font-size: 10.5px; font-weight: 700; text-transform: uppercase; color: var(--text-link); margin-right: 5px; }
+  .th .who b { color: var(--text-strong); }
+  /* the email */
+  .em h3 { font-size: 18px; margin: 0 0 4px; }
+  .em .j { font-size: 14px; color: #374151; }
+  .em .w { font-size: 13px; color: #6b7280; margin-bottom: 14px; }
+  .em .f { border-top: 1px solid #e5e7eb; padding-top: 14px; display: grid; gap: 12px; }
+  .em .f .l { color: #6b7280; font-weight: 600; font-size: 13px; margin-bottom: 2px; }
+  .em .f .v { font-size: 14px; color: #111827; white-space: pre-wrap; }
+  .em .att { display: flex; gap: 10px; flex-wrap: wrap; }
+  .em .att .a { display: grid; gap: 3px; font-size: 12px; color: #374151; width: 160px; }
+  .em .att .a .i { width: 160px; height: 110px; border-radius: 6px; border: 1px solid #e5e7eb; background: linear-gradient(135deg, #cbd5e1, #64748b 60%, #334155); }
+  .em .att .a .i.b { background: linear-gradient(160deg, #e2e8f0, #94a3b8 50%, #475569); }
+  .em .fine { margin-top: 20px; font-size: 12px; color: #9ca3af; }
+  .review { margin-top: 48px; max-width: 104ch; }
+  .review h2 { margin-top: 0; }
+  .review ul { margin: 6px 0 0; padding-left: 20px; color: var(--text-700); display: grid; gap: 6px; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <p class="eyebrow">Punch list #229 · mock-up · 2026-11-01</p>
+  <h1>Photos on every report: the desk's form, Turnaway, Edit report, every reader, the email and the queue</h1>
+  <p>The per-job Leave report form already takes photos for every role and the report card shows them (punch list #189). These are the six doors that still do not. Each section draws today's screen dashed and the plan's screen solid, from the real screen's own shapes. <b>Every name and number here is made up.</b></p>
+  <div class="controls">
+    <span class="lbl">Theme</span>
+    <button type="button" aria-pressed="true" onclick="setTheme('light', this)">Light</button>
+    <button type="button" aria-pressed="false" onclick="setTheme('dark', this)">Dark</button>
+  </div>
+  <nav class="jump">
+    <a href="#s1">1 · The desk's New report</a>
+    <a href="#s2">2 · Turnaway</a>
+    <a href="#s3">3 · Every reader</a>
+    <a href="#s4">4 · Edit report</a>
+    <a href="#s5">5 · The email</a>
+    <a href="#s6">6 · No signal</a>
+    <a href="#review">Is this the best we can do?</a>
+  </nav>
+</header>
+
+<h2 id="s1"><span class="num">1</span> The desk's New report form takes photos on a job</h2>
+<p class="lede">Jobs → Reports → <b>New report</b>, the Stages tab's row report, and the Dashboard's Job Report square all open this form. Today it has no photo tile. The plan mounts the same block the per-job form shows at a desk, under <b>Report type</b>, with the same stage chips on a job with lines.</p>
+<div class="row">
+  <div class="col w560">
+    <div class="cap now">Today</div>
+    <div class="frame now"><div class="screen w560">
+      <div class="hd"><div><h3>New report</h3></div><div class="x">×</div></div>
+      <div><p class="label">Reporting on *</p><div class="pick"><span class="tick">✓</span><div><b>Oak Hollow Apartments Building C</b> <span class="small">· HCP JP1042</span><div class="small">4410 Pecan Creek Rd</div></div><span class="ch">Change</span></div></div>
+      <div><p class="label">Report type</p><div class="chips"><span class="chip on">Status</span><span class="chip">Walk</span><span class="chip">Note</span><span class="chip">EOD</span></div></div>
+      <div class="fields"><div><span class="l">How complete is the job?</span><div class="box filled">40%</div></div><div><span class="l">Notes</span><div class="box">Type here</div></div></div>
+      <div class="ft"><span class="btn">Copy to Text</span><span class="sp"></span><span class="btn">Cancel</span><span class="btn primary">Save report</span></div>
+    </div></div>
+    <div class="foot"><span class="bad">No photo is possible.</span> The office types what the crew sent by text.</div>
+  </div>
+  <div class="col w560">
+    <div class="cap opt">The plan</div>
+    <div class="frame"><div class="screen w560">
+      <div class="hd"><div><h3>New report</h3></div><div class="x">×</div></div>
+      <div><p class="label">Reporting on *</p><div class="pick"><span class="tick">✓</span><div><b>Oak Hollow Apartments Building C</b> <span class="small">· HCP JP1042</span><div class="small">4410 Pecan Creek Rd</div></div><span class="ch">Change</span></div></div>
+      <div><p class="label">Report type</p><div class="chips"><span class="chip on">Status</span><span class="chip">Walk</span><span class="chip">Note</span><span class="chip">EOD</span></div></div>
+      <div>
+        <div class="small" style="margin-bottom:6px">New photo · 4.2 MB → 310 KB · 1600 px · goes to the job's Drive folder</div>
+        <div class="tiles">
+          <div class="tile"><div class="img"></div><span>4.2 MB → 310 KB · 1600 px</span><span class="st">Rough In</span><span class="q">Remove</span></div>
+          <div class="tile"><div class="img b"></div><span>Sending…</span><span class="q">Remove</span></div>
+          <div class="tile add"><span class="cam">📷</span>Add a photo</div>
+        </div>
+        <div class="ask" style="margin-top:10px"><div class="t">This photo shows</div><div class="chips"><span class="chip">Rough In</span><span class="chip">Top Out</span><span class="chip">Trim Set</span></div></div>
+      </div>
+      <div class="fields"><div><span class="l">How complete is the job?</span><div class="box filled">40%</div></div><div><span class="l">Notes</span><div class="box">Type here</div></div></div>
+      <div class="ft"><span class="btn">Copy to Text</span><span class="sp"></span><span class="btn">Cancel</span><span class="btn primary">Sending 1 photo…</span></div>
+    </div></div>
+    <div class="foot"><span class="ok">The same block as the per-job form.</span> The file picker at a desk, the camera on a phone for the field roles. Save waits while a shot is on its way and then reads <b>Save report · 2 photos</b>. A report on a project or a bid shows no tile and one quiet line: <i>Photos ride on a job's report.</i></div>
+  </div>
+</div>
+
+<h2 id="s2"><span class="num">2</span> Turnaway takes a photo</h2>
+<p class="lede">The crew's Turnaway from the press bar files a report and alerts Dispatch. The locked gate is the proof the office wants for the trip charge, and today it cannot be on the report.</p>
+<div class="row">
+  <div class="col p375">
+    <div class="cap now">Today · 375</div>
+    <div class="frame now"><div class="screen w375">
+      <div class="hd"><div><h3>Turnaway</h3><p class="sub">JP1042 · Oak Hollow Building C</p></div><div class="x">×</div></div>
+      <div><p class="label">Why?</p><div class="chips"><span class="chip r on">Locked gate</span><span class="chip r">No one home</span><span class="chip r">Not ready</span><span class="chip r">Other</span></div></div>
+      <div><p class="label">Note</p><div class="box filled">Gate chained at 7:05, no answer at the office trailer.</div></div>
+      <div class="ft"><span class="btn quiet">Cancel</span><span class="sp"></span><span class="btn amber tall">File Turnaway</span></div>
+    </div></div>
+    <div class="foot"><span class="bad">No photo.</span> The chain on the gate is in the tech's camera roll and nowhere else.</div>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">The plan · 375</div>
+    <div class="frame"><div class="screen w375">
+      <div class="hd"><div><h3>Turnaway</h3><p class="sub">JP1042 · Oak Hollow Building C</p></div><div class="x">×</div></div>
+      <div><p class="label">Why?</p><div class="chips"><span class="chip r on">Locked gate</span><span class="chip r">No one home</span><span class="chip r">Not ready</span><span class="chip r">Other</span></div></div>
+      <div class="tiles"><div class="tile"><div class="img c"></div><span>3.8 MB → 290 KB · 1600 px</span><span class="st">Locked gate</span><span class="q">Remove</span></div><div class="tile add"><span class="cam">📷</span>Take another</div></div>
+      <div><p class="label">Note</p><div class="box filled">Gate chained at 7:05, no answer at the office trailer.</div></div>
+      <div class="ft"><span class="btn quiet">Cancel</span><span class="sp"></span><span class="btn amber tall">File Turnaway · 1 photo</span></div>
+    </div></div>
+    <div class="foot"><span class="ok">A camera tile under the reason.</span> The photo is captioned by the reason, so Drive reads <i>2026-11-01 Mateo Ruiz · Locked gate.jpg</i>. The press names what it files.</div>
+  </div>
+</div>
+
+<h2 id="s3"><span class="num">3</span> Every reader shows the photos, and the folded rows count them</h2>
+<p class="lede">The office reads a report three ways before it ever opens the card: the Dashboard's Recent reports, the Reports tab's rows, and the job window's thread. All three draw the words by hand today and never the photos.</p>
+<div class="row">
+  <div class="col w560">
+    <div class="cap now">Today · the Dashboard's Recent reports</div>
+    <div class="frame now"><div class="screen w560">
+      <div class="rr read"><div class="h"><div><span class="k">Status Report</span> <span class="m">· Mateo Ruiz</span><div class="m">JP1042 · Oak Hollow Building C</div></div><span class="t">Yesterday 4:12 pm</span></div></div>
+      <div class="rr"><div class="h"><div><span class="k">Status Report</span> <span class="m">· Mateo Ruiz</span><div class="m">JP1042 · Oak Hollow Building C</div></div><span class="t">7:41 am</span></div>
+        <div class="bd"><div class="small">11/1/2026, 7:41 am · Mateo Ruiz</div><div class="fields"><div><span class="l">How complete is the job?</span>45%</div><div><span class="l">Stage progress</span>Rough In 30 → 45 · 2 photos on Rough In</div><div><span class="l">Notes</span>Drains in bath 2 done. Water heater set.</div></div><div class="chips"><span class="chip">Open job</span><span class="chip">Edit</span></div></div>
+      </div>
+    </div></div>
+    <div class="foot"><span class="bad">Stage progress says <i>2 photos</i> and the office cannot see them here.</span> They open the Reports tab's card to find them.</div>
+  </div>
+  <div class="col w560">
+    <div class="cap opt">The plan · the Dashboard's Recent reports</div>
+    <div class="frame"><div class="screen w560">
+      <div class="rr read"><div class="h"><div><span class="k">Status Report</span> <span class="m">· Mateo Ruiz</span> <span class="pc">📷 1</span><div class="m">JP1042 · Oak Hollow Building C</div></div><span class="t">Yesterday 4:12 pm</span></div></div>
+      <div class="rr"><div class="h"><div><span class="k">Status Report</span> <span class="m">· Mateo Ruiz</span> <span class="pc new">📷 2</span><div class="m">JP1042 · Oak Hollow Building C</div></div><span class="t">7:41 am</span></div>
+        <div class="bd"><div class="small">11/1/2026, 7:41 am · Mateo Ruiz</div><div class="fields"><div><span class="l">How complete is the job?</span>45%</div><div><span class="l">Stage progress</span>Rough In 30 → 45 · 2 photos on Rough In</div><div><span class="l">Notes</span>Drains in bath 2 done. Water heater set.</div></div>
+          <div class="strip"><span class="t">Photos · 2</span><div class="tiles"><div class="tile"><div class="img"></div><span><b>Rough In · Mateo Ruiz</b></span><span class="in">in Drive · 310 KB</span></div><div class="tile"><div class="img b"></div><span><b>Rough In · Mateo Ruiz</b></span><span class="wait">not in Drive yet · 298 KB</span></div></div></div>
+          <div class="chips"><span class="chip">Open job</span><span class="chip">Edit</span></div></div>
+      </div>
+    </div></div>
+    <div class="foot"><span class="ok">The one strip, mounted.</span> A folded row carries <b>📷 2</b> from one read per list, never one a row. A filed photo is a door to Drive; a waiting one shows its thumbnail. A report with no photos draws as it did.</div>
+  </div>
+</div>
+<div class="row">
+  <div class="col p375">
+    <div class="cap opt">The plan · the job window's thread · 375</div>
+    <div class="frame"><div class="screen w375">
+      <div class="th"><div class="who"><span class="tag">Report</span><b>Mateo Ruiz</b> · Sat 7:41 am · today <span class="pc">📷 2</span></div><div><b>Status Report</b></div><div><span class="small">How complete is the job?</span> — 45%</div><div><span class="small">Notes</span> — Drains in bath 2 done. Water heater set.</div><div class="tiles" style="margin-top:4px"><div class="tile" style="width:56px"><div class="img" style="width:56px;height:56px;border-radius:8px"></div></div><div class="tile" style="width:56px"><div class="img b" style="width:56px;height:56px;border-radius:8px"></div></div></div></div>
+      <div class="th" style="border-left-color:var(--border)"><div class="who"><b>Carla Nguyen</b> · Fri 3:10 pm · yesterday</div><div>Called the GC about the gate code.</div></div>
+    </div></div>
+    <div class="foot">On the thread the strip is small: 56 px thumbnails under the item, the count beside the time.</div>
+  </div>
+</div>
+
+<h2 id="s4"><span class="num">4</span> Edit report shows the photos and takes more</h2>
+<p class="lede">The author may edit a report for a few days from the Dashboard or Settings → My reports. Today the form shows the fields and nothing else.</p>
+<div class="row">
+  <div class="col w560">
+    <div class="cap opt">The plan</div>
+    <div class="frame"><div class="screen w560">
+      <div class="hd"><div><h3>Edit report</h3><p class="sub">Status Report · JP1042 · Oak Hollow Building C</p></div><div class="x">×</div></div>
+      <div class="fields"><div><span class="l">How complete is the job?</span><div class="box filled">45%</div></div><div><span class="l">Notes</span><div class="box filled">Drains in bath 2 done. Water heater set.</div></div></div>
+      <div class="strip"><span class="t">Photos · 2</span><div class="tiles"><div class="tile"><div class="img"></div><span><b>Rough In · Mateo Ruiz</b></span><span class="in">in Drive · 310 KB</span></div><div class="tile"><div class="img b"></div><span><b>Rough In · Mateo Ruiz</b></span><span class="wait">not in Drive yet · 298 KB</span></div><div class="tile add"><span class="cam">📷</span>Add a photo</div></div><div class="quiet-line">A photo already on the report stays. Take one back in the job's Drive folder.</div></div>
+      <div class="ft"><span class="sp"></span><span class="btn">Cancel</span><span class="btn primary">Save</span></div>
+    </div></div>
+    <div class="foot"><span class="ok">The strip as the card draws it, then the tile.</span> A new shot attaches on Save like a new report's. Nothing on the form deletes a saved photo: Drive is its home, and the sweep may have filed it already. The owner's call 2 names the alternative.</div>
+  </div>
+</div>
+
+<h2 id="s5"><span class="num">5</span> The email attaches the photos; the push counts them</h2>
+<p class="lede">Subscribers get the report by email at Save, including an outside address such as a GC. The sweep has not filed anything yet, so there is no Drive link to send. The plan attaches the shrunk photos from the bucket, up to ten and under 8 MB in all, with a line naming each.</p>
+<div class="row">
+  <div class="col w640">
+    <div class="cap opt">The plan · the email at 640</div>
+    <div class="frame"><div class="screen w640 em">
+      <h3>Status Report — JP1042 · Oak Hollow Apartments Building C</h3>
+      <div class="j">JP1042 · Oak Hollow Apartments Building C</div>
+      <div class="w">11/1/2026, 7:41 AM · Mateo Ruiz</div>
+      <div class="f">
+        <div><div class="l">How complete is the job?</div><div class="v">45%</div></div>
+        <div><div class="l">Stage progress</div><div class="v">Rough In 30 → 45 · 2 photos on Rough In</div></div>
+        <div><div class="l">Notes</div><div class="v">Drains in bath 2 done. Water heater set.</div></div>
+        <div><div class="l">Photos · 2 · attached</div><div class="att"><div class="a"><div class="i"></div><span>Rough In · Mateo Ruiz · 310 KB</span></div><div class="a"><div class="i b"></div><span>Rough In · Mateo Ruiz · 298 KB</span></div></div></div>
+      </div>
+      <div class="fine">Sent by ClickTooling because you're subscribed to report emails.</div>
+    </div></div>
+    <div class="foot"><span class="ok">The picture is in the mail.</span> A photo past the cap is named without its file. The push reads <i>Mateo Ruiz submitted a Status Report for JP1042 · 2 photos</i>. A report on a ZZ test job still sends nothing (v2.6127).</div>
+  </div>
+</div>
+
+<h2 id="s6"><span class="num">6</span> A report with photos waits on the phone</h2>
+<p class="lede">Today a report with photos never queues: Save waits while a shot is on its way, and with no signal the form stays open with Retry. The plan keeps the shrunk bytes beside the press and sends them first when the signal is back. This is punch list #189's PR 7, unblocked since #163's field report through the queue shipped.</p>
+<div class="row">
+  <div class="col p375">
+    <div class="cap now">Today · no signal · 375</div>
+    <div class="frame now"><div class="screen w375">
+      <div class="tiles"><div class="tile"><div class="img"></div><span class="amber">The phone has no signal.</span><span class="st">Rough In</span><span><span class="q">Retry</span> &nbsp; <span class="q" style="color:var(--text-muted)">Remove</span></span></div><div class="tile add"><span class="cam">📷</span>Take another</div></div>
+      <div><p class="label">What got done? <span class="small">optional</span></p><div class="box filled">Drains in bath 2 done.</div></div>
+      <div class="ft"><span class="btn tall">Not now</span><span class="btn primary tall go">Save · job 45% · 0 photos</span></div>
+    </div></div>
+    <div class="foot"><span class="bad">The tech is stuck on site pressing Retry,</span> or saves without the photo and loses it.</div>
+  </div>
+  <div class="col p375">
+    <div class="cap opt">The plan · no signal · 375</div>
+    <div class="frame"><div class="screen w375">
+      <div class="bar"><span class="dot"></span>1 report · 1 photo waiting to send</div>
+      <div class="tiles"><div class="tile"><div class="img"></div><span>4.2 MB → 310 KB · kept on the phone</span><span class="st">Rough In</span><span class="q" style="color:var(--text-muted)">Remove</span></div><div class="tile add"><span class="cam">📷</span>Take another</div></div>
+      <div><p class="label">What got done? <span class="small">optional</span></p><div class="box filled">Drains in bath 2 done.</div></div>
+      <div class="ft"><span class="btn tall">Not now</span><span class="btn primary tall go">Save · job 45% · 1 photo</span></div>
+      <div class="toast">Kept on the phone. It sends when the signal is back.</div>
+    </div></div>
+    <div class="foot"><span class="ok">Save never waits.</span> The shrunk copy, about 300 KB, waits in the outbox's own store beside the press. When the signal returns the replay sends the photo's bytes and row, then the report, then the attach, with the same ids every try so a resend counts once. The bar counts photos with presses.</div>
+  </div>
+</div>
+
+<section class="review" id="review">
+  <h2>Is this the best we can do?</h2>
+  <p class="lede">The self-review in full is on the card. The short of it:</p>
+  <ul>
+    <li><b>One block, one strip.</b> Nothing new is designed; the per-job form's photo block becomes a hook and the card's strip is mounted where the words are. A second photo design would be the mistake.</li>
+    <li><b>The Tally pattern kept whole.</b> The bytes go up as soon as the shot is shrunk, Save only ties them, Drive is the home and the bucket a waiting room, the sweep is one function, the card says where each photo is in words.</li>
+    <li><b>A weak signal is the real case.</b> Section 6 is in the train, not a leftover, because the tech on a bad site is the person this is for. The shrunk copy is what waits, so ten shots are 3 MB on the phone.</li>
+    <li><b>Two shapes rejected.</b> Routing every door through the per-job form, which is a decomposition card of its own; and a photo as a template field type, since every report type benefits and the table is keyed to the report.</li>
+    <li><b>Four calls for the owner,</b> each made as recommended unless the owner says otherwise: no photo on a project or a bid report yet; no taking back a saved photo on the Edit form; attach the photos to the email rather than link them; the queue built last as its own PR.</li>
+  </ul>
+</section>
+</div>
+<script>
+  function setTheme(t, btn) {
+    document.documentElement.setAttribute('data-theme', t)
+    for (const b of btn.parentElement.querySelectorAll('button')) b.setAttribute('aria-pressed', String(b === btn))
+  }
+</script>
+</body>
+</html>

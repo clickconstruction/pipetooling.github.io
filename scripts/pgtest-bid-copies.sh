@@ -5,9 +5,10 @@
 #
 # The same bed as scripts/pgtest-combined-copies.sh: the Supabase Postgres image with every file in
 # supabase/migrations applied in order (about a minute). The scenario makes a new version, a
-# duplicate in the same trade and in another, a duplicate of a bid with versions, and an adopt, as
-# an estimator and once as a primary, through RLS, inside one transaction that rolls back; it
-# raises on its first failed assertion and ends with "bid_copies PASSED". It also re-runs the
+# duplicate in the same trade and in another, a duplicate of a bid with versions, and an adopt (with
+# its line on both bids' logs, v2.6250), as an estimator and once as a primary, through RLS, inside
+# one transaction that rolls back; it raises on its first failed assertion and ends with
+# "bid_copies PASSED". It also re-runs the
 # stage-box scenario (combined_copies), since both test the same four functions.
 # PGTEST_KEEP=1 leaves the container up. Needs docker. Never touches prod.
 set -euo pipefail

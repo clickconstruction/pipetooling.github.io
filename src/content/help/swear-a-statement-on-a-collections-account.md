@@ -2,7 +2,7 @@
 title: swear a statement on a collections account
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: affidavit, sworn statement, declaration, notary, jurat, witness, legal desk, collections, timeline, evidence, penalty of perjury, venue, county, print, pdf, signing page, declarant
+keywords: affidavit, sworn statement, declaration, notary, jurat, witness, legal desk, collections, timeline, evidence, penalty of perjury, venue, county, print, pdf, signing page, declarant, signed copy, scan, file, business records, custodian of records, rule 902
 where: /legal-desk
 ---
 A sworn statement puts what someone saw or heard on paper, under oath, for the attorney. The Legal desk drafts it, prints it and keeps the signed copy. The office never types the same story twice.
@@ -17,16 +17,17 @@ Open the desk at `/legal-desk` and pick the account. Open the **Evidence** tab. 
 
 ## Fill in the statement
 
-1. Pick **Who swears it**. The list shows our team with the RMP first. The RMP is the responsible master plumber. Pick *Someone else, a witness…* to type a name.
-2. Read **Their role, one line**. The desk fills it from the roster. Change it if the paper should read otherwise.
-3. Type the **Title**. The desk suggests *Affidavit of* and the name.
-4. Pick **The day it is about**. Add a last day in **to** when the statement spans several days. This is where it sits on the Timeline. The signing day is not typed here.
-5. Pick **How it is signed**. {{button:outline|Before a notary}} is on to start. Press {{button:outline|No notary, under penalty of perjury}} for a witness who signs where they stand.
-6. Pick **Signed in**. The office's county is on to start. Press {{button:outline|Leave it blank for the notary}} when the signing happens somewhere else.
-7. Type the statement, one paragraph per line. Paragraph 1 is written for you. The paper numbers the rest.
-8. Press {{button:dark|Save the draft}}.
+1. Pick **Who swears it**. The list shows our team with the RMP first. The RMP is the responsible master plumber. Pick *Someone else, a witness…* for anyone else.
+2. Check **Their full name**. The roster may hold a first name only. Type the name as it reads on their ID. The notary checks it against the ID.
+3. Read **Their role, one line**. The desk fills it from the roster. Add the RMP's license number. Change anything that should read otherwise.
+4. Type the **Title**. The desk suggests *Affidavit of* and the name.
+5. Pick **The day it is about**. Add a last day in **to** when the statement spans several days. The statement sits on the Timeline on the first day. The signing day is not typed here.
+6. Pick **How it is signed**. {{button:outline|Before a notary}} is on to start. Press {{button:outline|No notary, under penalty of perjury}} for a witness who signs where they stand.
+7. Pick **Signed in**. The office's county is on to start. Press {{button:outline|Leave it blank for the notary}} when the signing happens somewhere else. A declaration starts on the property's county. Its blank reads {{button:outline|Leave it blank for the signer}}.
+8. Type the statement, one paragraph per line. Paragraph 1 is written for you. The paper numbers the rest.
+9. Press {{button:dark|Save the draft}}.
 
-The right side reads **What the record says** about those days. It lists the clock sessions, the field reports and the job notes in the span. A day with nothing on it says so. Check every date in the statement against that list before anyone signs.
+The right side reads **What the record says** about those days. The panel lists the clock sessions, the field reports and the job notes in the span. A day with nothing on it says so. Check every date in the statement against that list before anyone signs.
 
 :::example A date the record contradicts
 The statement says the crew was told to leave on August 10. The record check shows a clock session on August 11 and nothing on August 10. Fix the paragraph before you print. A sworn date that a public record contradicts means a second affidavit by hand.
@@ -34,13 +35,13 @@ The statement says the crew was told to leave on August 10. The record check sho
 
 ## Where the draft lands
 
-The draft sits on the Timeline's **Said** lane on the day it is about. Its chip reads {{chip:blue|sworn statement · draft}}. The Evidence tab's **Sworn statements** strip lists it too. The firm reads the draft on its portal, marked as a draft. Press **Hold from counsel…** on the row to keep it home.
+The draft sits on the Timeline's **Said** lane on the day it is about. The draft's chip reads {{chip:blue|sworn statement · draft}}. The Evidence tab's **Sworn statements** strip lists it too. The firm reads the draft on its portal, marked as a draft. Press **Hold from counsel…** on the row to keep it home.
 
 Press **Edit** on the row to change the words. Press **Not signed…** when nobody will sign it. Type why, then press {{button:outline|Drop the draft}}. The line stays on the Timeline as undone, with your reason.
 
 ## The office's county
 
-The office sets the county under **Settings**, then **Jobs & billing**. The block is **The office's county for sworn statements**. The window starts its venue line there. It is where the notary watches the signing, not where the job is.
+The office sets the county under **Settings**, then **Jobs & billing**. The block is **The office's county for sworn statements**. The window starts its venue line there. The venue line names where the notary watches the signing, not where the job is.
 
 ## Print the paper
 
@@ -48,12 +49,24 @@ Press {{button:outline|Print}} in the window. A new or changed draft saves first
 
 Press the ▾ beside Print to pick a face. **The whole paper** is the statement, the signature line and the jurat. **The statement alone** has no signing block. Read it over together before anyone signs. **The signing page alone** is the jurat with a line naming the handwritten statement it is stapled to. Print it when a witness writes their own words. The signer initials each page.
 
-A declaration with no notary asks for the declarant's full name, date of birth and address. Texas puts them on the paper. Type them when you print. The desk keeps them for this session only and never saves them. Each print is noted on the row: when, by whom and which face.
+A declaration with no notary asks for the declarant's date of birth and address when you print. Texas puts them on the paper beside the full name. The name comes from **Their full name** in the window, so the paper names them one way. A name of one word holds the print. Press {{button:outline|Change the name}} and type it as it reads on their ID. The desk keeps the date of birth and the address for this session only. It never saves them. Each print is noted on the row: when, by whom and which face.
 
 :::example The witness dislikes a sentence
 Open the draft from the Timeline. Change the sentence. Press Print. The print sheet opens on the new page. Four presses, on a phone or at the desk.
 :::
 
-## What comes next
+## File the signed copy
 
-Filing the signed scan comes in the next release. Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney) for the desk as a whole.
+The signed paper comes back as a scan or a phone photo. Press {{button:outline|File the signed copy…}} in the window or on the row. Drop the scan on the panel, or press {{button:outline|Choose the scan}}. Confirm **The day it is about**. Type **Signed on** as the jurat reads it. The notary wrote it by hand. Answer whether the paper reads as last printed. Pick **Whose paper** it is. Read the **Shows** line and change it if you like. Press {{button:dark|File the signed copy}}.
+
+The scan lands under **Documents for the firm** on the signing day. The Timeline's line turns signed, with the chip {{chip:green|sworn statement}}. The line's words read *Sworn Oct 29 before a notary in Guadalupe County*. Press **Open the signed copy** on the row to see the scan. The scan's {{button:outline|⋯}} menu offers **The statement on the Timeline**. The firm reads both on its portal.
+
+:::example They changed it by hand
+The witness crossed out a sentence and initialed the change before signing. Pick **They changed it by hand** when you file. The Timeline keeps the printed text and says the scan governs. Nobody is quoted on a sentence they did not swear to.
+:::
+
+## The business-records affidavit
+
+The firm asks for one business-records affidavit on every account that reaches suit. The affidavit puts our invoices, the clock and the job thread into evidence with nobody called to testify. The form is Rule 902, subpart 10, of the Texas Rules of Evidence. Open **Swear a statement…** and press {{button:outline|Business records, Rule 902(10)}} under **Start from**. Pick who signs it. The custodian of records is the office person who keeps the books. Pick **The records attached** from the papers on Evidence. Type **Pages of records** when you know the count. The paragraphs write themselves in the rule's own words. Print it, have it signed before a notary, and file the signed copy as above. The firm serves the records and the affidavit on the other side at least 14 days before trial.
+
+Read [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney) for the desk as a whole.

@@ -18,7 +18,8 @@
  *   - NO NOTARY, UNDER PENALTY OF PERJURY: an unsworn declaration under Tex. Civ. Prac. & Rem. Code
  *     § 132.001, the jurat of subsection (d) quoted whole (`DECLARATION_STATUTE_FORM`). § 132.001(b)
  *     keeps it off any paper the county clerk files, so the § 53.054 lien affidavit never takes it.
- *     The declarant's date of birth and address are typed at print time and never saved.
+ *     The declarant's date of birth and address are typed at print time and never saved. The block names the
+ *     declarant by *Their full name* from the draft, so the paper names them one way (v2.6243).
  *
  * Three print faces under each form: the whole paper, the statement alone (to read over together),
  * and the signing page alone, which names the handwritten statement it is stapled to. The signing
@@ -27,6 +28,7 @@
  */
 import type { FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
 import type { LegalEntryRow } from './legalMatters'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 /** Who wrote it: the office at the desk, or a dev's robot through dev-mcp (a later verb pair). */
 export type StatementSource = 'office' | 'mcp'
@@ -169,7 +171,8 @@ export function suggestedStatementTitle(affiant: Pick<StatementAffiant, 'name' |
 
 /** Why the draft cannot be saved as typed; null when it can. */
 export function statementDraftProblem(d: StatementDraft, todayYmd: string): string | null {
-  if (!d.affiant.name.trim()) return d.affiant.kind === 'team' ? 'Pick who swears it.' : 'Type the witness’s name.'
+  // v2.6238: a picked team member's roster name may be a first name only; the paper needs the name on their ID.
+  if (!d.affiant.name.trim()) return d.affiant.kind === 'witness' ? 'Type the witness’s full name.' : d.affiant.userId ? 'Type their full name, as it reads on their ID.' : 'Pick who swears it.'
   if (d.affiant.role.trim().length > STATEMENT_ROLE_MAX) return `Keep the role line under ${STATEMENT_ROLE_MAX} characters.`
   if (!d.title.trim()) return 'Give the statement a title.'
   if (d.title.trim().length > STATEMENT_TITLE_MAX) return `Keep the title under ${STATEMENT_TITLE_MAX} characters.`
@@ -200,10 +203,14 @@ export type VenueChoice = { value: string; words: string; /** What the line unde
 export function venueChoices(input: { officeCounty: string; propertyCounty: string | null; form: AffidavitForm }): VenueChoice[] {
   const office = input.officeCounty.trim()
   const property = (input.propertyCounty ?? '').trim()
+  const declaration = input.form === 'declaration'
+  const same = Boolean(property) && property.toLowerCase() === office.toLowerCase()
   const out: VenueChoice[] = []
-  if (office) out.push({ value: office, words: `${office} County · the office’s`, note: 'Where the notary watches the signing. Not where the job is.' })
-  if (property && property.toLowerCase() !== office.toLowerCase()) out.push({ value: property, words: `${property} County · the property’s`, note: input.form === 'declaration' ? 'Where they sign. The declaration says Executed in this county.' : 'For a signing on site.' })
-  out.push({ value: '', words: 'Leave it blank for the notary', note: 'The notary writes the county in by hand where the paper is signed.' })
+  // v2.6245: a declaration has no notary, so its lines name the signer. The property's county is the declaration's
+  // default; when it is the office's county too, the one pick says so, or it reads as a trip to the office.
+  if (office) out.push({ value: office, words: `${office} County · the office’s${same ? ' and the property’s' : ''}`, note: declaration ? 'Where they sign. The declaration says Executed in this county.' : 'Where the notary watches the signing. Not where the job is.' })
+  if (property && !same) out.push({ value: property, words: `${property} County · the property’s`, note: declaration ? 'Where they sign. The declaration says Executed in this county.' : 'For a signing on site.' })
+  out.push(declaration ? { value: '', words: 'Leave it blank for the signer', note: 'They write the county in by hand where they sign.' } : { value: '', words: 'Leave it blank for the notary', note: 'The notary writes the county in by hand where the paper is signed.' })
   return out
 }
 
@@ -234,6 +241,13 @@ export function statementLongDay(ymd: string): string {
   return `${MONTHS_LONG[Number(ymd.slice(5, 7)) - 1]} ${Number(ymd.slice(8, 10))}, ${ymd.slice(0, 4)}`
 }
 
+/** *7:12 AM* in the company's zone: a clock session's edge, a print's moment. */
+export function clockWordsInAppTz(iso: string): string {
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', timeZone: APP_CALENDAR_TZ })
+}
+
 /** *Sep 3* · *Sep 3 to Sep 17* — the span as the desk says it. */
 export function incidentSpanWords(incidentOn: string, incidentTo: string | null): string {
   const a = statementShortDay(incidentOn)
@@ -245,9 +259,20 @@ export function incidentSpanWords(incidentOn: string, incidentTo: string | null)
  * and sound mind, and that the facts are their own. A witness also says their role and that they have no
  * stake. The noun follows the form: an affidavit before a notary, a declaration without one.
  */
+/** A name as the paper prints it: trimmed, one space between words (v2.6243). */
+export function fullNameWords(name: string): string {
+  return name.trim().split(/\s+/).filter(Boolean).join(' ')
+}
+
+/** A single word: the roster may hold a first name only, and § 132.001(d) asks for a first and a last name. */
+export function isOneWordName(name: string): boolean {
+  const n = fullNameWords(name)
+  return n !== '' && !n.includes(' ')
+}
+
 export function statementOpener(affiant: StatementAffiant, form: AffidavitForm): string {
   const noun = form === 'notary' ? 'affidavit' : 'declaration'
-  const name = affiant.name.trim() || '_______________'
+  const name = fullNameWords(affiant.name) || '_______________'
   const base = `My name is ${name}. I am over eighteen years of age, of sound mind, and capable of making this ${noun}.`
   if (affiant.kind === 'witness') {
     const role = affiant.role.trim()
@@ -274,42 +299,42 @@ export const DECLARATION_STATUTE_FORM =
 /** The sentence every declaration carries, word for word from § 132.001(d). */
 export const DECLARATION_PERJURY_SENTENCE = 'I declare under penalty of perjury that the foregoing is true and correct.'
 
-/** What the declarant types when the office presses Print on a declaration: held for the session, never saved. */
-export type DeclarantDetails = { firstName: string; middleName: string; lastName: string; dateOfBirth: string; street: string; city: string; state: string; zip: string; country: string }
+/**
+ * What the declarant types when the office presses Print on a declaration: held for the session, never saved. The
+ * name is not asked again here (v2.6243): the block reads *Their full name* from the draft, so the title, ¶1, the
+ * block and the signature name the declarant one way.
+ */
+export type DeclarantDetails = { dateOfBirth: string; street: string; city: string; state: string; zip: string; country: string }
 
-export const DECLARANT_BLANK: DeclarantDetails = { firstName: '', middleName: '', lastName: '', dateOfBirth: '', street: '', city: '', state: 'Texas', zip: '', country: 'United States of America' }
+export const DECLARANT_BLANK: DeclarantDetails = { dateOfBirth: '', street: '', city: '', state: 'Texas', zip: '', country: 'United States of America' }
 
-/** Why the declarant's details cannot print yet; null when the block is whole. */
-export function declarantProblem(d: DeclarantDetails): string | null {
-  if (!d.firstName.trim() || !d.lastName.trim()) return 'Type the declarant’s first and last name as the statute asks.'
+/** Why the declaration's block cannot print yet; null when it is whole. A one-word name waits too, for the statute's first and last. */
+export function declarantProblem(d: DeclarantDetails, name: string): string | null {
+  if (!fullNameWords(name)) return 'Type their full name on the statement first.'
+  if (isOneWordName(name)) return 'Their full name is one word. Texas asks for a first and a last name. Go back and type it as it reads on their ID.'
   if (!d.dateOfBirth.trim()) return 'Type the declarant’s date of birth.'
   if (!d.street.trim() || !d.city.trim() || !d.state.trim() || !d.zip.trim() || !d.country.trim()) return 'Type the declarant’s street, city, state, zip code and country.'
   return null
 }
 
 /**
- * The § 132.001(d) block as the paper prints it: the two sentences with the declarant's details, then the
- * *Executed in* line with the county named (or the blank) and the day left blank for the declarant's hand.
- * With no details, the statute's own blanks print, so a paper can still be handed over to fill by hand.
+ * The § 132.001(d) block as the paper prints it: the two sentences with the draft's full name and the declarant's
+ * details, then the *Executed in* line with the county named (or the blank) and the day left blank for the
+ * declarant's hand. With no details, the statute's own blanks print, so a paper can still be filled by hand.
  */
-export function declarationJurat(details: DeclarantDetails | null, venueCounty: string): { statement: string; executed: string } {
+export function declarationJurat(details: DeclarantDetails | null, venueCounty: string, name: string): { statement: string; executed: string } {
   const county = venueCounty.trim() || '__________'
-  if (!details) {
-    return { statement: DECLARATION_STATUTE_FORM.slice(0, DECLARATION_STATUTE_FORM.indexOf(' Executed in')), executed: `Executed in ${county} County, State of Texas, on the ______ day of __________, __________.` }
-  }
-  const name = [details.firstName, details.middleName, details.lastName].map((s) => s.trim()).filter(Boolean).join(' ')
+  const executed = `Executed in ${county} County, State of Texas, on the ______ day of __________, __________.`
+  if (!details) return { statement: DECLARATION_STATUTE_FORM.slice(0, DECLARATION_STATUTE_FORM.indexOf(' Executed in')), executed }
   const dob = details.dateOfBirth.trim()
   const address = `${details.street.trim()}, ${details.city.trim()}, ${details.state.trim()} ${details.zip.trim()}, and ${details.country.trim()}`
-  return {
-    statement: `My name is ${name}, my date of birth is ${YMD.test(dob) ? statementLongDay(dob) : dob}, and my address is ${address}. ${DECLARATION_PERJURY_SENTENCE}`,
-    executed: `Executed in ${county} County, State of Texas, on the ______ day of __________, __________.`,
-  }
+  return { statement: `My name is ${fullNameWords(name) || '__________'}, my date of birth is ${YMD.test(dob) ? statementLongDay(dob) : dob}, and my address is ${address}. ${DECLARATION_PERJURY_SENTENCE}`, executed }
 }
 
 /** The signing page alone names what it is stapled to, so no notary or court calls it a loose jurat. */
 export function attachedToLine(form: AffidavitForm, affiantName: string): string {
   const noun = form === 'notary' ? 'This jurat' : 'This declaration'
-  return `${noun} is attached to the handwritten statement of ${affiantName.trim() || '_______________'}, _____ pages, each initialed by the signer.`
+  return `${noun} is attached to the handwritten statement of ${fullNameWords(affiantName) || '_______________'}, _____ pages, each initialed by the signer.`
 }
 
 /** The line over the affiant's signature on a sworn paper: the day is the notary's to fill. */
@@ -330,7 +355,7 @@ export type StatementPaperInput = {
  */
 export function statementPaperBlocks(input: StatementPaperInput): FilingDocBlock[] {
   const { draft, face } = input
-  const name = draft.affiant.name.trim() || '_______________'
+  const name = fullNameWords(draft.affiant.name) || '_______________'
   const title = draft.title.trim() || (draft.form === 'notary' ? 'Affidavit' : 'Declaration')
   const blocks: FilingDocBlock[] = []
   if (face === 'signing') {
@@ -348,9 +373,19 @@ export function statementPaperBlocks(input: StatementPaperInput): FilingDocBlock
   return blocks
 }
 
+/**
+ * The role as it reads under a signature (v2.6238): a witness's line is written to follow *I am …* (*the foreman for
+ * Brightline Electric*), so under the signature its leading article goes and its first letter rises (*Foreman for
+ * Brightline Electric*). A line already capitalized reads as typed; a closing full stop goes.
+ */
+export function signatureRoleLine(role: string): string {
+  const r = role.trim().replace(/\.$/, '').replace(/^(the|a|an)\s+/i, '')
+  return r ? r.charAt(0).toUpperCase() + r.slice(1) : ''
+}
+
 function signingBlocks(input: StatementPaperInput, name: string): FilingDocBlock[] {
   const { draft } = input
-  const role = draft.affiant.role.trim()
+  const role = signatureRoleLine(draft.affiant.role)
   if (draft.form === 'notary') {
     return [
       { kind: 'paragraph', text: SIGNED_ON_LINE },
@@ -358,7 +393,7 @@ function signingBlocks(input: StatementPaperInput, name: string): FilingDocBlock
       { kind: 'notarial', who: name, county: draft.venueCounty, courtesy: true },
     ]
   }
-  const j = declarationJurat(input.declarant ?? null, draft.venueCounty)
+  const j = declarationJurat(input.declarant ?? null, draft.venueCounty, draft.affiant.name)
   return [
     { kind: 'paragraph', text: j.statement },
     { kind: 'paragraph', text: j.executed },
@@ -465,6 +500,11 @@ export function statementChipWords(meta: StatementMeta, dayOfIso: (iso: string) 
   return `printed ${n}×${lastDay ? ` · last ${statementShortDay(lastDay)}` : ''}`
 }
 
+/** The desk's toast once the scan is filed (v2.6246): the signing day in words, never the typed `YYYY-MM-DD`. */
+export function statementFiledWords(signedOn: string): string {
+  return `Filed. The signed copy is on Evidence on ${statementShortDay(signedOn)}. The statement reads sworn on the Timeline.`
+}
+
 /** The Evidence row's *shows* line when the scan is filed: the sworn words, then the span it is about. */
 export function statementShowsLine(meta: Pick<StatementMeta, 'form' | 'signedOn' | 'venueCounty' | 'incidentTo'>, incidentOn: string): string {
   return `${statementSignedWords(meta)} What was seen or heard on ${incidentSpanWords(incidentOn, meta.incidentTo)}.`
@@ -525,4 +565,51 @@ export function recordCheckLines(input: {
 /** The record check's heading: *What the record says about Sep 3 to Sep 17*. */
 export function recordCheckHeading(incidentOn: string, incidentTo: string | null): string {
   return YMD.test(incidentOn) ? `What the record says about ${incidentSpanWords(incidentOn, incidentTo)}` : 'What the record says about those days'
+}
+
+// ---------- filing the signed copy (PR 5, v2.6212) ----------
+
+import type { LegalDocumentWhose } from './legalMatterDocuments'
+
+/** What *File the signed copy…* asks: the scan is the file beside it. */
+export type StatementFilingDraft = {
+  /** The day it was signed, read off the jurat; the Evidence row's day. */
+  signedOn: string
+  /** The signed paper reads as the text last printed (false: changed by hand; the scan governs). */
+  asPrinted: boolean
+  /** The day it is about, confirmed or corrected, and the span's last day or ''. */
+  incidentOn: string
+  incidentTo: string
+  /** Whose paper the scan is on Evidence; null is our record. */
+  whose: LegalDocumentWhose | null
+  /** The Evidence row's one line. */
+  shows: string
+}
+
+/** The row's *shows* line as the filing form prefills it, re-derived while untouched. */
+export function statementFilingShows(meta: Pick<StatementMeta, 'form' | 'venueCounty'>, d: Pick<StatementFilingDraft, 'signedOn' | 'incidentOn' | 'incidentTo'>): string {
+  return statementShowsLine({ form: meta.form, venueCounty: meta.venueCounty, signedOn: YMD.test(d.signedOn) ? d.signedOn : null, incidentTo: d.incidentTo || null }, d.incidentOn)
+}
+
+/** *Oct 28 at 2:14 PM*, the last print the question names; '' when nothing was printed from the desk. */
+export function lastPrintWords(meta: Pick<StatementMeta, 'prints'>, dayOfIso: (iso: string) => string, clockWords: (iso: string) => string): string {
+  const last = meta.prints[meta.prints.length - 1]
+  if (!last || !last.at) return ''
+  return `${statementShortDay(dayOfIso(last.at))} at ${clockWords(last.at)}`
+}
+
+/** Why the signed copy cannot be filed as typed; null when it can. The RPC (`legal_statement_sign`) holds the same rules. */
+export function statementFilingProblem(d: StatementFilingDraft, file: { size: number; type: string; name: string } | null, todayYmd: string): string | null {
+  if (!file) return 'Choose the signed scan.'
+  if (!ymdValid(d.incidentOn)) return 'Pick the day it is about.'
+  if (d.incidentOn > todayYmd) return 'The day it is about cannot be ahead of today.'
+  if (d.incidentTo) {
+    if (!ymdValid(d.incidentTo)) return 'Pick the last day of the span, or clear it.'
+    if (d.incidentTo < d.incidentOn) return 'The last day of the span comes before the first. Swap them.'
+  }
+  if (!ymdValid(d.signedOn)) return 'Type the day it was signed, off the jurat.'
+  if (d.signedOn > todayYmd) return 'The day it was signed cannot be ahead of today.'
+  if (d.signedOn < d.incidentOn) return 'The day it was signed comes before the day it is about. Check the jurat.'
+  if (!d.shows.trim()) return 'Say in one line what it shows.'
+  return null
 }
