@@ -104,6 +104,8 @@ describe('the walk tester hides wherever a sample does', () => {
       'src/lib/lens/world/lensWorld.ts',
       'src/lib/messages/assignRuleIo.ts',
       'src/lib/messages/pushCoverageIo.ts',
+      // My email's follow (punch list #230 PR 4): `followPeople` reads as nobody a sample, a twin or the walk tester.
+      'src/lib/myMail/mineFunction.ts',
       'src/lib/people/fetchActiveUsers.ts',
       'src/lib/quo/seatsCardIo.ts',
       'src/lib/scheduleDispatchHub.ts',

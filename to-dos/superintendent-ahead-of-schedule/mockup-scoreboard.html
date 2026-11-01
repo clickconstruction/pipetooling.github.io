@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>The scoreboard and the bonus rule, proposed</title>
+</head>
+<body>
+<style>
+body{margin:0;background:#111827;font-family:system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#f3f4f6}
+a{color:#60a5fa}a:hover{color:#93c5fd}
+</style>
+<div style="max-width: 1280px; margin: 0 auto; box-sizing: border-box; padding: 28px 36px 36px; display: flex; flex-direction: column; gap: 18px; background: #111827; color: #f3f4f6; font-size: 13px">
+  <div style="display: flex; flex-direction: column; gap: 6px">
+    <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af">People → Review · Schedule</div>
+    <h1 style="margin: 0; font-size: 24px; font-weight: 800; color: #f9fafb">Superintendents against their baselines · pay app period Oct 26 to Nov 8</h1>
+    <p style="margin: 0; color: #d1d5db; line-height: 1.5; max-width: 1000px">One kernel, two readers: the superintendent sees his own row on his phone, the office sees every row here. Scored on certified percent only, settled when the pay app is certified and the bill goes out.</p>
+  </div>
+
+  <div style="border: 1px solid #374151; border-radius: 12px; overflow: hidden">
+    <div style="display: grid; grid-template-columns: 1.4fr 1.2fr 0.9fr 1.1fr 0.9fr 0.9fr 1fr; gap: 0; background: #1f2937; border-bottom: 1px solid #374151; padding: 10px 14px; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af">
+      <span>Superintendent</span><span>Jobs certified</span><span>Certified %</span><span>Hours used / baseline</span><span>Days vs plan</span><span>Labor saved</span><span>Bonus</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1.4fr 1.2fr 0.9fr 1.1fr 0.9fr 0.9fr 1fr; gap: 0; padding: 12px 14px; border-bottom: 1px solid #374151; align-items: center">
+      <span style="font-weight: 700; color: #f9fafb">Pat Sample</span><span style="color: #d1d5db">Ridgeway Builders · Pruett &amp; Vance</span><span style="color: #d1d5db">48% · 61%</span><span style="color: #d1d5db">412 h / 516 h</span><span style="color: #86efac; font-weight: 700">+3 days</span><span style="color: #86efac; font-weight: 700">$2,130</span><span style="color: #f3f4f6">[share] × $2,130</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1.4fr 1.2fr 0.9fr 1.1fr 0.9fr 0.9fr 1fr; gap: 0; padding: 12px 14px; border-bottom: 1px solid #374151; align-items: center">
+      <span style="font-weight: 700; color: #f9fafb">Lee Sample</span><span style="color: #d1d5db">Harbor Lane Offices</span><span style="color: #d1d5db">35%</span><span style="color: #d1d5db">290 h / 240 h</span><span style="color: #fca5a5; font-weight: 700">−4 days</span><span style="color: #fca5a5; font-weight: 700">−$1,420</span><span style="color: #9ca3af">$0 · nothing owed back</span>
+    </div>
+    <div style="display: grid; grid-template-columns: 1.4fr 1.2fr 0.9fr 1.1fr 0.9fr 0.9fr 1fr; gap: 0; padding: 12px 14px; align-items: center">
+      <span style="font-weight: 700; color: #f9fafb">Sam Sample</span><span style="color: #d1d5db">Cedar Row Clinic</span><span style="color: #9ca3af">not scored</span><span style="color: #9ca3af">no baseline on the job</span><span style="color: #9ca3af">—</span><span style="color: #9ca3af">—</span><span><a href="#baseline" style="color: #60a5fa; text-decoration: none">Set the baseline ›</a></span>
+    </div>
+  </div>
+
+  <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px">
+    <div style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 8px">
+      <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af">How it is scored</div>
+      <div style="color: #d1d5db; line-height: 1.5">Baseline: the award snapshot's hours, plus change orders. Refresh from bid never moves the score.</div>
+      <div style="color: #d1d5db; line-height: 1.5">Percent: the pay app the GC certified. The crew's own percent is provisional and shown grey.</div>
+      <div style="color: #d1d5db; line-height: 1.5">Hours: field clock hours on the job. Sub labor sheets have no clock hours, so a sub-performed stage [counts on the sub's hours | is left out].</div>
+      <div style="color: #d1d5db; line-height: 1.5">Days: the planned finish from the rough schedule against the finish at the progress pace so far.</div>
+      <div style="color: #d1d5db; line-height: 1.5">A commercial job with no baseline is not scored and says so. Residential and service jobs are never scored.</div>
+      <div style="color: #9ca3af; line-height: 1.5">Every certified job feeds Book vs jobs, so the next baseline is sharper.</div>
+    </div>
+    <div style="background: #1f2937; border: 1px solid #374151; border-radius: 12px; padding: 16px 18px; display: flex; flex-direction: column; gap: 10px">
+      <div style="font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: #9ca3af">Settings → People → Superintendent bonus</div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="color: #d1d5db; font-weight: 700">Basis</span>
+        <label style="display: flex; align-items: center; gap: 8px; color: #f3f4f6; min-height: 44px"><input type="radio" name="basis" value="hours" checked> Hours saved against the baseline, at the job's labor rate</label>
+        <label style="display: flex; align-items: center; gap: 8px; color: #f3f4f6; min-height: 44px"><input type="radio" name="basis" value="days"> Days ahead of the planned finish, at a day rate</label>
+      </div>
+      <div style="display: flex; align-items: center; gap: 10px; flex-wrap: wrap"><label for="share" style="color: #d1d5db; font-weight: 700">Share</label><input id="share" type="text" value="[your share] %" style="width: 120px; background: #111827; color: #f3f4f6; border: 1px solid #4b5563; border-radius: 8px; padding: 10px 12px; font-size: 14px; min-height: 44px; box-sizing: border-box"><span style="color: #9ca3af">of labor saved, or</span><label for="dayrate" style="color: #d1d5db; font-weight: 700">Day rate</label><input id="dayrate" type="text" value="$[rate]" style="width: 100px; background: #111827; color: #f3f4f6; border: 1px solid #4b5563; border-radius: 8px; padding: 10px 12px; font-size: 14px; min-height: 44px; box-sizing: border-box"></div>
+      <div style="display: flex; flex-direction: column; gap: 6px">
+        <span style="color: #d1d5db; font-weight: 700">Paid at</span>
+        <label style="display: flex; align-items: center; gap: 8px; color: #f3f4f6; min-height: 44px"><input type="radio" name="paid" value="payapp" checked> The certified pay app</label>
+        <label style="display: flex; align-items: center; gap: 8px; color: #f3f4f6; min-height: 44px"><input type="radio" name="paid" value="inspection"> A passed inspection</label>
+        <label style="display: flex; align-items: center; gap: 8px; color: #f3f4f6; min-height: 44px"><input type="radio" name="paid" value="office"> The office's sign-off</label>
+      </div>
+      <div style="color: #9ca3af; line-height: 1.5">The bracketed values are the three decisions that are yours. Nothing here is typed per job; the rule computes every row.</div>
+    </div>
+  </div>
+</div>
+</body>
+</html>

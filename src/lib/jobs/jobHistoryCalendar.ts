@@ -194,9 +194,9 @@ export function buildCrewCalendar(
   return { months, daysWorked: worked.length, maxPeople, minutes, people, firstYmd, lastYmd }
 }
 
-/** `23 days · Jul 14 → today · 4 people at most · 380 h`; `No days worked in this range.` when none. */
+/** `23 days · Jul 14 → today · 4 people at most · 380 h`; '' when none (`crewEmptyWords` says why). */
 export function crewSummaryWords(cal: CrewCalendar, todayYmd: string): string {
-  if (cal.daysWorked === 0) return 'No days worked in this range.'
+  if (cal.daysWorked === 0) return ''
   const from = crewDayWords(cal.firstYmd).replace(/^\w+ /, '')
   const to = cal.lastYmd === todayYmd ? 'today' : crewDayWords(cal.lastYmd).replace(/^\w+ /, '')
   const span = cal.firstYmd === cal.lastYmd ? from : `${from} → ${to}`
@@ -229,4 +229,22 @@ export function crewRangeFor(mode: CrewRangeMode, todayYmd: string, wholeStartYm
 export function crewQuietWords(n: number): string {
   if (n <= 0) return ''
   return n === 1 ? 'after a quiet month' : `after ${n} quiet months`
+}
+
+/** The range menu's words: what the one word on the card says for each mode. */
+export const CREW_RANGE_WORDS: Readonly<Record<string, string>> = { whole: 'Whole job', 90: 'Last 90 days', 365: 'Last 365 days', custom: 'Pick dates…' }
+
+export function crewRangeWords(mode: CrewRangeMode): string {
+  return CREW_RANGE_WORDS[String(mode)] ?? 'Whole job'
+}
+
+/**
+ * What the card says when the range holds no day worked, in the shape `EmptyState` draws: the
+ * whole job names what fills it, the first clock-in; a narrowed range names the press that
+ * widens it back out, Whole job. Plain words: one idea a sentence, the control's exact name.
+ */
+export function crewEmptyWords(mode: CrewRangeMode): { main: string; next: string; tail: string } {
+  if (mode === 'whole') return { main: 'No days on this job yet.', next: '', tail: 'The first clock-in on this job starts the calendar.' }
+  if (mode === 'custom') return { main: 'No days worked between these dates.', next: 'Whole job', tail: 'shows every day worked.' }
+  return { main: `No days worked in the last ${mode} days.`, next: 'Whole job', tail: 'shows every day worked.' }
 }

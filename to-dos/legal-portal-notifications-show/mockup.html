@@ -152,7 +152,7 @@
   <p class="eyebrow">Punch list #233 · mock-up · the law firm's portal, Notifications tab</p>
   <h1>Notifications: the tab shows each person what they will get</h1>
   <p>The firm adds its people here and sets how each hears from the office. Today the right-hand column is a Role dropdown that gates nothing and two paragraphs that explain the tab in 171 words. The redraw makes the add form the row it will become, with the two rules in it, and replaces the paragraphs with the thing itself: a sample week of the person's inbox that follows the rule as it is switched, with the first email opened under it. The <i>Role</i> becomes a typed <i>Title</i> that the office reads beside the name. The blue <i>Second pass</i> box under each frame says what the first render showed and what changed.</p>
-  <nav class="jump"><a href="#s1">1 · Today</a><a href="#s2">2 · The tab at desk width</a><a href="#s3">3 · On a phone</a><a href="#s4">4 · Is this the best we can do?</a><a href="#s5">5 · The owner's calls</a></nav>
+  <nav class="jump"><a href="#s1">1 · Today</a><a href="#s2">2 · The tab at desk width</a><a href="#s3">3 · On a phone</a><a href="#s4">4 · Is this the best we can do?</a><a href="#s5">5 · The owner's three calls</a></nav>
   <div class="controls"><span class="lbl">List</span><button type="button" data-list="people" aria-pressed="true">Four people</button><button type="button" data-list="empty" aria-pressed="false">Nobody yet</button><span class="lbl" style="margin-left:8px">Office</span><button type="button" data-paused="no" aria-pressed="true">Sending</button><button type="button" data-paused="yes" aria-pressed="false">Paused the firm</button></div>
 </header>
 
@@ -179,7 +179,7 @@
       <p class="gain"><b>One confirmation email and nothing else until they click it</b> → the button says <i>Send them a confirmation</i>, the new row reads <i>not confirmed yet</i> with <i>Resend the confirmation</i> beside it, and one nine-word line stays under the button.</p>
       <p class="gain"><b>Every email carries a one-click link to stop</b> → the opened sample email ends in the real footer with <i>Stop these emails to you</i>.</p>
       <p class="gain"><b>The office can pause the firm or remove a person; you see it here</b> → the red band already draws when it happens. Press <i>Paused the firm</i> above to see it. The sentence goes.</p>
-      <p class="gain"><b>What you hear about: seven events</b> → seven subject lines in the sample inbox, as the builders write them. <b>A fee the office saw rides the digest only</b> → that line sits dim at the foot of the <i>Each event</i> inbox with the tag <i>weekly digest only</i>, and in the digest it is a line like the others. <b>The digest lists every open matter</b> → the digest sample opens on its <i>Open matters</i> list.</p>
+      <p class="gain"><b>What you hear about: seven events</b> → seven subject lines in the sample inbox, as the builders write them. <b>A fee the office saw rides the digest only</b> → that line sits dim at the foot of the <i>Each event</i> inbox with the tag <i>weekly digest only</i>, and in the digest it is a line like the others. <b>The digest lists every open matter</b> → the digest sample is every open matter as a heading, the week's lines under each, <i>Nothing new this week</i> under a quiet one.</p>
       <p class="rule"><b>A fact the words never said</b>: <i>Only my matters</i> matches the person's typed name against the handling name the office wrote on the matter (<code>legal-notify-dispatch</code>'s <code>canSee</code>). A paralegal who picks it and is named on nothing hears nothing. The redraw counts it under the switch: <i>The office names Lena Okafor as handling 0 of 3 open matters today.</i></p>
     </div>
     <div class="counts"><div class="count"><div class="big bad">171</div><div class="sub">words of prose on the tab today, the 38-word sentence among them</div></div><div class="count"><div class="big good">50</div><div class="sub">words of prose proposed, every sentence under 20 words, plus a 12-word count under <i>Only theirs</i> when it is picked; the inbox is the thing itself</div></div></div>
@@ -210,15 +210,17 @@
   <p class="lose"><b>Drop the role.</b> Considered. Cut: the office reads it on the Legal desk's list, and the <i>Recorded by</i> picker uses it to tell two names apart. It stays as a typed <i>Title</i>, optional, with one hint that says where it shows.</p>
   <p class="lose"><b>A timeline of the seven events.</b> Considered: seven rows, a mark on the one that rides the digest. Cut: it is a list that tells. The same seven as subject lines in an inbox show the sender, the matter and the day, and the dim <i>weekly digest only</i> line at the foot says the one exception without a sentence.</p>
   <p class="lose"><b>One sample email only.</b> Considered: the cheapest form. Kept, and joined by the inbox list, because one email shows the frame and the stop link but not the week, and the digest's point is that it is one email where the other rule is six.</p>
+  <p class="gain"><b>The digest reads by matter.</b> The owner, 2026-11-01, on the first sample: the digest put the date first, then what happened, then the account it mattered for last. Redrawn: each account is a heading with its stage line, and the week's lines sit under it, newest account first; a quiet matter reads <i>Nothing new this week</i>; a withdrawn one reads <i>referral withdrawn</i> on its heading. The day shortens to <i>Oct 26</i>. This is the real builder's shape to change, <code>buildLegalDigestEmail</code>, so the sample and the email stay one thing.</p>
   <p class="gain"><b>The form is the row.</b> Taken. The card the firm fills has the same fields and the same two switches as the card it becomes, so the first row teaches the second. The weekday and time appear under <i>Weekly digest</i> exactly as they do on a row.</p>
   <p class="gain"><b>Count instead of warn.</b> Taken. Under <i>Only theirs</i> a count reads from the firm's own open matters: <i>The office names Priya Natarajan as handling 1 of 3 open matters today.</i> A zero is the warning.</p>
   <p class="gain"><b>The sample week is made up, and says so.</b> Taken. The subject lines name sample accounts, never the firm's real matters: a sample <i>Referral withdrawn: Cedar Bend Homes</i> on a real matter would read as news. The handling count is the one real figure, and it is a count.</p>
 </div>
 
-<h2 id="s5"><span class="num">5</span> The owner's calls</h2>
+<h2 id="s5"><span class="num">5</span> The owner's three calls</h2>
 <div class="calls">
   <div class="call"><p class="q">1 · What is the role?</p><ol><li><b class="rec">A typed Title, optional, that gates nothing</b> (recommended, as drawn). The hint says where it shows. The rules are the two switches in the form.</li><li>A pick that sets the starting rules and says so: <i>attorney · each event, every matter</i>, <i>billing · weekly digest, every matter</i>, <i>paralegal · each event, only theirs</i>. The switches still show and still change. One more PR than A.</li><li>Per-person event picks: each person ticks which of the seven they hear. A migration (a column of picks), the dispatcher and both desks. Two PRs more than A.</li></ol></div>
   <div class="call"><p class="q">2 · How deep is the preview?</p><ol><li><b class="rec">The sample inbox and the first email opened under it</b> (recommended, as drawn). The opened email is what shows the frame, the handling line and the stop link.</li><li>The sample inbox alone, with a <i>Read one ›</i> fold. Shorter on a phone, and the stop link is a sentence again.</li></ol></div>
+  <div class="call"><p class="q">3 · Does the digest carry every office act?</p><p class="muted" style="margin:0 0 6px;font-size:12.5px">Added on the owner's question. Today it does not: only the seven acts write a queue row, so a step the office records, a planned step, a what-happened event, an offer, a statement, a paper added to Evidence and a matter closed never make a line; a stage change shows only as the stage word on <i>Open matters</i>. And the week is stamped by weekday, so two digest people on different days split it.</p><ol><li><b class="rec">Yes, as PR 3</b> (recommended): a digest-only line per office act, the way the fee line already rides, and a per-person stamp so each digest reads back to that person's own last send. One migration, the dispatcher. <i>Each event</i> stays as it is.</li><li>Leave the digest as the seven acts; the sample inbox stays honest to it.</li></ol><p class="muted" style="margin:6px 0 0;font-size:12.5px">Decided the same day, not a call: the digest reads by matter, each account a heading with its lines under it, whichever reach it has.</p></div>
 </div>
 
 <p class="lede" style="margin-top:36px;font-size:12.5px;color:var(--text-muted)">The card: <code>to-dos/legal-portal-notifications-show/README.md</code>. The real words are in <code>src/lib/legal/legalFirmWords.ts</code> and <code>supabase/functions/_shared/legalEmails.ts</code>; the page is <code>src/pages/LegalPortal.tsx</code>'s <code>NotificationsPanel</code>.</p>
@@ -232,6 +234,7 @@
     { payer: 'Ridgeway Builders', stage: 'referred', handling: 'Dana Whitlock', since: '2026-10-26' },
     { payer: 'Cedar Bend Homes', stage: 'demand sent', handling: 'Priya Natarajan', since: '2026-10-12' },
     { payer: 'Northline Builders', stage: 'suit filed', handling: 'Dana Whitlock', since: '2026-09-30' },
+    { payer: 'Saltgrass Mechanical', stage: 'payment plan', handling: 'Priya Natarajan', since: '2026-08-14' },
   ];
   var PEOPLE = [
     { name: 'Dana Whitlock', email: 'dwhitlock@marlowetate.example.com', title: 'attorney', mode: 'now', scope: 'all', wd: 1, time: '07:00', status: 'ok' },
@@ -251,7 +254,7 @@
     { d: 'Fri', t: 'pulled', payer: 'Northline Builders', reason: 'paid in full on Oct 30' },
     { d: 'Fri', t: 'fee_seen', payer: 'Ridgeway Builders', amount: 450 },
   ];
-  var DAYS = { Mon: '2026-10-26', Tue: '2026-10-27', Wed: '2026-10-28', Thu: '2026-10-29', Fri: '2026-10-30' };
+  var DAYS = { Mon: 'Oct 26', Tue: 'Oct 27', Wed: 'Oct 28', Thu: 'Oct 29', Fri: 'Oct 30' };
   var DIGEST_LABEL = { referred: 'New account referred', answer: 'Office answered', pulled: 'Referral withdrawn', ask: 'The office asks', note: 'Note from the office', applied: 'Payment applied', fee_seen: 'Fee seen by the office' };
   function money(n) { return '$' + n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
   function subject(e) {
@@ -323,14 +326,26 @@
     var only = f.scope === 'mine' ? mine(f.name) : null;
     var who = (f.name || '').trim() || 'you';
     if (f.mode === 'digest') {
+      // The owner, 2026-11-01: the digest reads by matter. Each account is a heading with its stage line, and
+      // the week's lines sit under it; a matter with nothing new says so; a withdrawn one reads withdrawn.
       var ms = MATTERS.filter(function (m) { return !only || only.indexOf(m.payer) >= 0; });
       var evs = WEEK.filter(function (e) { return !only || only.indexOf(e.payer) >= 0; });
-      var ml = ms.length ? ms.map(function (m) { return '<li><b>' + esc(m.payer) + '</b> — ' + m.stage + ' · handling ' + esc(m.handling) + ' · since ' + m.since + '</li>'; }).join('') : '<li>No open matters.</li>';
-      var el = evs.length ? evs.map(function (e) {
-        var det = e.t === 'pulled' ? (e.reason ? ' — ' + esc(e.reason) : '') : ((e.t === 'applied' || e.t === 'fee_seen') && e.amount != null ? ' ' + money(e.amount) : '') + (e.body && e.t !== 'referred' ? ' — ' + esc(e.body) : '');
-        return '<li>' + DAYS[e.d] + ' · ' + DIGEST_LABEL[e.t] + ': <b>' + esc(e.payer) + '</b>' + det + '</li>';
-      }).join('') : '<li>Nothing new since your last digest.</li>';
-      return emailFrame('Weekly digest — ' + ms.length + ' open matter' + (ms.length === 1 ? '' : 's') + ' at ' + CO, '<p>Your weekly digest, ' + esc(who) + '.</p><h4>Open matters</h4><ul>' + ml + '</ul><h4>Since your last digest</h4><ul>' + el + '</ul>');
+      var detail = function (e) {
+        if (e.t === 'pulled') return e.reason ? ' — ' + esc(e.reason) : '';
+        var amt = (e.t === 'applied' || e.t === 'fee_seen') && e.amount != null ? ' ' + money(e.amount) : '';
+        return amt + (e.body && e.t !== 'referred' ? ' — ' + esc(e.body) : '');
+      };
+      var withNews = ms.filter(function (m) { return evs.some(function (e) { return e.payer === m.payer; }); });
+      var quiet = ms.filter(function (m) { return withNews.indexOf(m) < 0; });
+      var block = function (m) {
+        var mine = evs.filter(function (e) { return e.payer === m.payer; });
+        var pulled = mine.some(function (e) { return e.t === 'pulled'; });
+        var head = '<h4>' + esc(m.payer) + ' <span style="font-weight:400;color:#5a6b7e">— ' + (pulled ? 'referral withdrawn · was handling ' : m.stage + ' · handling ') + esc(m.handling) + (pulled ? '' : ' · since ' + m.since) + '</span></h4>';
+        var li = mine.length ? mine.map(function (e) { return '<li>' + DAYS[e.d] + ' · ' + DIGEST_LABEL[e.t] + detail(e) + '</li>'; }).join('') : '<li style="color:#5a6b7e">Nothing new this week.</li>';
+        return head + '<ul>' + li + '</ul>';
+      };
+      var body = ms.length ? withNews.map(block).join('') + quiet.map(block).join('') : '<p>No open matters.</p>';
+      return emailFrame('Weekly digest — ' + ms.length + ' open matter' + (ms.length === 1 ? '' : 's') + ' at ' + CO, '<p>Your weekly digest, ' + esc(who) + '.</p>' + body);
     }
     var lines = WEEK.filter(function (e) { return !only || only.indexOf(e.payer) >= 0; });
     var e = openedOf(f, lines);
@@ -363,8 +378,8 @@
     if (state.paused) left += '<div class="paused">' + esc(CO) + ' has paused all emails to the firm. The portal still works; ask the office to resume.</div>';
     if (state.list === 'empty') left += '<div class="empty"><b>Nobody at the firm is on the list yet.</b><button type="button" class="pbtn" data-focus="name">Add the first person</button></div>';
     else left += state.people.map(personCard).join('');
-    return '<div class="head"><div><b>' + esc(CO) + '</b><div class="sub">Collections referred to counsel · prepared 2026-11-01 · no sign-in, one revocable link</div></div><div class="for">For <b>' + esc(FIRM) + '</b><br>3 matters · $31,420.00 in balance</div></div>' +
-      '<div class="tabs"><span>Start here</span><span>Matters · 3</span><span>Lien grid</span><span>Who covers what</span><span class="on">Notifications · ' + (state.list === 'empty' ? 0 : state.people.length) + ' people</span></div>' +
+    return '<div class="head"><div><b>' + esc(CO) + '</b><div class="sub">Collections referred to counsel · prepared 2026-11-01 · no sign-in, one revocable link</div></div><div class="for">For <b>' + esc(FIRM) + '</b><br>4 matters · $38,960.00 in balance</div></div>' +
+      '<div class="tabs"><span>Start here</span><span>Matters · 4</span><span>Lien grid</span><span>Who covers what</span><span class="on">Notifications · ' + (state.list === 'empty' ? 0 : state.people.length) + ' people</span></div>' +
       '<div class="pair"><div>' + left + '</div><div>' + addCard() + '</div></div>';
   }
   function draw() { document.querySelectorAll('[data-tab]').forEach(function (el) { el.innerHTML = tab(); }); }

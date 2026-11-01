@@ -644,7 +644,7 @@ describe('the plan set goes into the Shared Drive (v2.6241)', () => {
   })
 
   it('files into the drive the intake account is a member of, at its root beside Jobs', () => {
-    expect(ROBOT_PLANS_SHARED_DRIVE).toEqual({ id: '0AI1sqwYSeegpUk9PVA', name: 'PipeTooling Jobs', folderName: 'Bid plans' })
+    expect(ROBOT_PLANS_SHARED_DRIVE).toEqual({ id: '0ANSfYqm0sENHUk9PVA', name: 'PipeTooling Jobs', folderName: 'Bid plans' })
   })
 
   it('walks Bid plans › division › project and never writes in the office’s division folder', () => {

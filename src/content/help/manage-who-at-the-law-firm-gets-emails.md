@@ -2,7 +2,7 @@
 title: manage who at the law firm gets emails
 category: Billing & Money
 roles: dev, master_technician, assistant, controller
-keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients, not reaching, bounced, retry
+keywords: legal, attorney, law firm, portal, emails, notifications, digest, confirm, unsubscribe, pause, recipients, title, only theirs, handling, sample inbox, not reaching, bounced, retry
 ---
 You open the Legal desk to see who at the law firm gets our emails. The firm sets the rules on its portal, and the office keeps two overrides.
 
@@ -10,13 +10,15 @@ Two guards nobody can switch off. A new address is inert until its owner clicks 
 
 ## What the firm sets, on their portal
 
-The firm opens the **Notifications** page on its portal. Each person at the firm has one rule there:
+The firm opens the **Notifications** page on its portal. The card **Add a person at the firm** is the row it becomes. The firm types a name, an email and a title. The title is optional, a word like attorney or paralegal. It shows beside the name on the portal and on your Legal desk. It changes nothing else. Each person has one rule, set on the card and changed later on their row:
 
-- **Each event** or **Weekly digest**. Each event sends one email per event. A digest also picks a weekday and a Central time.
-- **Every matter** or **Only my matters**. A matter is one account sent to the firm. My matters are the ones where the person is named as the handling person.
+- **Emails**: **Each event** or **Weekly digest**. Each event sends one email per event. A digest also picks a weekday and a Central time.
+- **Matters**: **Every matter** or **Only theirs**. A matter is one account sent to the firm. Only theirs means the matters where the office named that person as handling. A count under the pick says how many open matters name them today. A zero means they would hear nothing yet.
 - {{button:outline|Stop emails to this person}} and {{button:outline|Turn emails back on}}.
 
-**Add a person** sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. When that email cannot be sent, the portal says so in red. The firm presses {{button:outline|Resend the confirmation}} a minute later. The handling person on a matter always hears about it. They hear under their own rule, one email per event or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
+The press under the card names the person, *Send Ann a confirmation*. It sends that address one confirmation email. Nothing else goes out until they click *Yes, email me*. When that email cannot be sent, the portal says so in red. The firm presses {{button:outline|Resend the confirmation}} a minute later. The handling person on a matter always hears about it. They hear under their own rule, one email per event or in their digest. That holds even when they chose *only my matters*. Nobody hears anything until they are on this list and confirmed. The firm's contact email on the office's Settings page is a contact, not a subscription.
+
+Under the card, a sample week shows what lands in that person's inbox under the rule picked. The accounts in it are made up. Each line is an email's subject. Press a line to read that email under the list, with its stop link. Under **Each event** the fee line is dim and reads *weekly digest only*. A fee the office saw rides the digest alone. Under **Weekly digest** the one line opens the digest, each matter a heading with its week under it.
 
 ## What they hear about
 
@@ -27,8 +29,12 @@ The firm opens the **Notifications** page on its portal. Each person at the firm
 - A payment they received that the office applied to the job.
 - An account pulled back, with the office's reason. The firm's email calls it a referral withdrawn.
 - A fee or cost they added that the office saw. This one goes in the digest only.
+- A step the office records, a planned step, a what-happened line, an offer, or a statement the office drafts. These go in the digest only.
+- A paper the office adds to Evidence, or a held paper released to them. These go in the digest only.
 
-People on **Each event** get one email per event within five minutes. When an email does not go, it is tried again every five minutes for an hour. The others are not sent it twice. Digest people get one email on their day: every open matter, then everything since their last digest.
+Something the office holds back from the firm, or undoes, stays out of the digest. Once a matter is pulled back from the firm, nothing the office adds to it reaches that firm. Before a matter is released to a firm, nothing reaches that firm either.
+
+People on **Each event** get one email per event within five minutes. When an email does not go, it is tried again every five minutes for an hour. The others are not sent it twice. Digest people get one email on their day. Each open matter is a heading with its stage, and the week's lines sit under it. The matters with news come first. A quiet matter reads *Nothing new this week*. Each person's digest reads back to their own last digest. Two people on different days each get a whole week.
 
 ## What the office sees and controls
 

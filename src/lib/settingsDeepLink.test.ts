@@ -21,6 +21,11 @@ describe('resolveSettingsDeepLink', () => {
     expect(resolveSettingsDeepLink('', '#settings-dev-mcp-keys')).toEqual({ tabId: 'settings-account', anchorId: 'settings-dev-mcp-keys' })
   })
 
+  it('lands the My email in Messages card on Your account, with the tab or by its anchor alone (punch list #230)', () => {
+    expect(resolveSettingsDeepLink('?tab=settings-account', '#settings-my-mail')).toEqual({ tabId: 'settings-account', anchorId: 'settings-my-mail' })
+    expect(resolveSettingsDeepLink('', '#settings-my-mail')).toEqual({ tabId: 'settings-account', anchorId: 'settings-my-mail' })
+  })
+
   it('maps known section-anchor hashes to their owning tab + anchor', () => {
     expect(resolveSettingsDeepLink('', '#settings-time-off')).toEqual({
       tabId: 'settings-account',

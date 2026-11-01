@@ -1,0 +1,195 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Month rhythm bar</title>
+<style>
+  :root {
+    --bg: #0f1722; --surface: #162130; --surface-2: #1c2a3b; --border: #2a3a4f;
+    --text: #e6edf5; --muted: #8fa1b8; --faint: #5f7088;
+    --amber: #f59e0b; --amber-dim: rgba(245,158,11,.18);
+    --blue: #3b82f6; --blue-dim: rgba(59,130,246,.18);
+    --green: #22c55e; --green-dim: rgba(34,197,94,.18);
+    --red: #ef4444; --red-dim: rgba(239,68,68,.18);
+    --purple: #a78bfa; --purple-dim: rgba(167,139,250,.18);
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.45 -apple-system, "Segoe UI", Inter, sans-serif; padding: 24px 16px 48px; }
+  h1 { font-size: 18px; margin: 0 0 4px; }
+  h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 36px 0 10px; }
+  p.note { color: var(--muted); margin: 0 0 18px; max-width: 760px; }
+  .frame { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 14px; max-width: 980px; }
+  .deskhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+  .deskhead .title { font-weight: 700; font-size: 15px; }
+  .chip { display: inline-block; padding: 2px 9px; border-radius: 999px; font-size: 12px; background: var(--surface-2); color: var(--muted); border: 1px solid var(--border); }
+  .chip.on { background: var(--blue); color: #fff; border-color: var(--blue); }
+
+  /* The bar */
+  .rhythm { position: relative; }
+  .rhythm .label { display: flex; justify-content: space-between; color: var(--muted); font-size: 12px; margin-bottom: 6px; }
+  .zones { display: grid; grid-template-columns: 5fr 4fr 4fr 3fr 14fr; gap: 3px; }
+  .zone { border-radius: 8px; padding: 8px 10px; min-height: 74px; position: relative; background: var(--surface-2); border: 1px solid var(--border); overflow: hidden; }
+  .zone .name { font-weight: 700; font-size: 13px; display: flex; align-items: center; gap: 6px; }
+  .zone .days { color: var(--muted); font-size: 11px; margin-top: 1px; }
+  .zone .count { margin-top: 8px; font-size: 13px; }
+  .zone .count b { font-size: 16px; }
+  .zone .fill { position: absolute; left: 0; bottom: 0; height: 3px; background: var(--green); }
+  .zone.amber { border-color: var(--amber); background: var(--amber-dim); }
+  .zone.amber .name { color: var(--amber); }
+  .zone.blue .name { color: var(--blue); }
+  .zone.purple .name { color: var(--purple); }
+  .zone.red { border-color: var(--red); }
+  .zone.red .name { color: var(--red); }
+  .zone.quiet { background: transparent; border-style: dashed; color: var(--muted); }
+  .zone.quiet .name { color: var(--faint); font-weight: 600; }
+  .zone.done { opacity: .85; }
+  .zone.done .name { color: var(--green); }
+  .zone.ahead { opacity: .75; }
+  .today { position: absolute; top: 0; height: 12px; width: 2px; background: #fff; }
+  .today::after { content: "today"; position: absolute; top: 0; left: 5px; font-size: 10px; line-height: 12px; color: #fff; white-space: nowrap; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; background: currentColor; display: inline-block; }
+  .press { display: inline-block; margin-top: 6px; padding: 3px 9px; border-radius: 6px; background: var(--amber); color: #111; font-weight: 600; font-size: 12px; }
+  .slip { color: var(--red); font-weight: 600; }
+  .ok { color: var(--green); }
+  .sub { color: var(--muted); font-size: 12px; }
+
+  /* Dashboard card */
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 12px 14px; max-width: 520px; }
+  .card .head { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 8px; }
+  .card .head b { font-size: 14px; }
+  .card .head a { color: var(--blue); font-size: 12px; text-decoration: none; }
+  .mini { display: grid; grid-template-columns: 5fr 4fr 4fr 3fr 14fr; gap: 2px; height: 10px; border-radius: 5px; overflow: hidden; }
+  .mini div { background: var(--surface-2); }
+  .mini .a { background: var(--amber); } .mini .b { background: var(--blue); } .mini .c { background: var(--purple); } .mini .d { background: var(--faint); }
+  .mini .q { background: var(--surface-2); }
+  .legend { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .legend span b { color: var(--text); }
+
+  /* Phone */
+  .phone { width: 360px; background: var(--surface); border: 1px solid var(--border); border-radius: 18px; padding: 12px; }
+  .phone .zones { grid-template-columns: 1fr; gap: 6px; }
+  .phone .zone { min-height: 0; display: grid; grid-template-columns: 1fr auto; align-items: center; padding: 8px 10px; }
+  .phone .zone .count { margin-top: 0; text-align: right; }
+  .phone .zone .days { grid-column: 1; }
+  .phone .zone.quiet { padding: 6px 10px; }
+  .two { display: flex; gap: 24px; flex-wrap: wrap; align-items: flex-start; }
+</style>
+</head>
+<body>
+
+<h1>The month rhythm bar</h1>
+<p class="note">Five zones across the top, each with its days and what is outstanding in it. The bar is the office's rule, read from the Rules sheet (the days are editable there). It never sends or files anything; it says what this week is for, what is left, and what slipped.</p>
+
+<h2>A · On the Lien desk, above Do now — Nov 3, reminders week</h2>
+<div class="frame">
+  <div class="deskhead">
+    <span class="title">⏱ Lien desk</span>
+    <span class="chip on">Do now · 36</span><span class="chip">Deadlines</span><span class="chip">All filings</span>
+    <span class="chip" style="margin-left:auto">§ Rules</span>
+  </div>
+  <div class="rhythm">
+    <div class="label"><span>November · the office's month</span><span>every deadline is the 15th</span></div>
+    <div class="zones">
+      <div class="zone amber">
+        <div class="today" style="left: 52%"></div>
+        <div class="name"><span class="dot"></span>Reminders</div>
+        <div class="days">Nov 1 – 5 · today is the 3rd</div>
+        <div class="count"><b>12</b> to send · <span class="ok">4 sent</span></div>
+        <span class="press">Send 12 reminders ›</span>
+        <div class="fill" style="width: 25%"></div>
+      </div>
+      <div class="zone blue ahead">
+        <div class="name"><span class="dot"></span>Notices</div>
+        <div class="days">Nov 6 – 9</div>
+        <div class="count"><b>10</b> coming<div class="sub">3 to draft · 7 to approve</div></div>
+      </div>
+      <div class="zone purple ahead">
+        <div class="name"><span class="dot"></span>Liens</div>
+        <div class="days">Nov 10 – 13</div>
+        <div class="count"><b>3</b> affidavits<div class="sub">due Nov 15</div></div>
+      </div>
+      <div class="zone ahead">
+        <div class="name">Catch-up</div>
+        <div class="days">14 – 15</div>
+        <div class="count"><span class="sub">what slipped</span></div>
+      </div>
+      <div class="zone quiet">
+        <div class="name">Nothing scheduled</div>
+        <div class="days">Nov 16 – 30</div>
+        <div class="count"><span class="sub">Queuing for December: 9 reminders · 6 notices · 2 liens</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>The same bar on Nov 12 — liens week, with one slip</h2>
+<div class="frame">
+  <div class="rhythm">
+    <div class="label"><span>November · the office's month</span><span>every deadline is the 15th</span></div>
+    <div class="zones">
+      <div class="zone done">
+        <div class="name">✓ Reminders</div>
+        <div class="days">Nov 1 – 5</div>
+        <div class="count"><span class="ok">16 sent</span></div>
+        <div class="fill" style="width: 100%"></div>
+      </div>
+      <div class="zone red">
+        <div class="name">Notices</div>
+        <div class="days">Nov 6 – 9 · closed</div>
+        <div class="count"><span class="ok">9 sent</span> · <span class="slip">1 slipped</span><div class="sub">891 Take 5 · Liberty Hill, waiting on approval</div></div>
+        <div class="fill" style="width: 90%"></div>
+      </div>
+      <div class="zone purple" style="border-color: var(--purple); background: var(--purple-dim)">
+        <div class="today" style="left: 62%"></div>
+        <div class="name"><span class="dot"></span>Liens</div>
+        <div class="days">Nov 10 – 13 · today is the 12th</div>
+        <div class="count"><b>1</b> to file · <span class="ok">2 filed</span></div>
+        <span class="press" style="background: var(--purple); color:#111">File 1 affidavit ›</span>
+        <div class="fill" style="width: 66%"></div>
+      </div>
+      <div class="zone amber ahead" style="opacity:1">
+        <div class="name">Catch-up</div>
+        <div class="days">14 – 15</div>
+        <div class="count"><b>1</b> notice<div class="sub">+ 2 affidavit copies to mail</div></div>
+      </div>
+      <div class="zone quiet">
+        <div class="name">Nothing scheduled</div>
+        <div class="days">Nov 16 – 30</div>
+        <div class="count"><span class="sub">Queuing for December: 11 reminders · 6 notices · 3 liens</span></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<h2>B · On the Dashboard, as a card for office roles</h2>
+<div class="two">
+  <div class="card">
+    <div class="head"><b>Lien month · reminders week</b><a href="#">Open the Lien desk ›</a></div>
+    <div class="mini"><div class="a"></div><div class="b"></div><div class="c"></div><div class="d"></div><div class="q"></div></div>
+    <div class="legend">
+      <span><b>12</b> reminders to send by Nov 5</span>
+      <span><b>10</b> notices Nov 6–9</span>
+      <span><b>3</b> liens Nov 10–13</span>
+    </div>
+  </div>
+
+  <div class="phone">
+    <div class="label" style="color: var(--muted); font-size:12px; margin-bottom:6px">November · reminders week</div>
+    <div class="zones">
+      <div class="zone amber"><div class="name"><span class="dot"></span>Reminders</div><div class="count"><b>12</b> to send · <span class="ok">4 sent</span></div><div class="days">Nov 1 – 5 · today</div></div>
+      <div class="zone blue ahead"><div class="name"><span class="dot"></span>Notices</div><div class="count"><b>10</b> coming</div><div class="days">Nov 6 – 9</div></div>
+      <div class="zone purple ahead"><div class="name"><span class="dot"></span>Liens</div><div class="count"><b>3</b> due Nov 15</div><div class="days">Nov 10 – 13</div></div>
+      <div class="zone ahead"><div class="name">Catch-up</div><div class="count"><span class="sub">what slipped</span></div><div class="days">Nov 14 – 15</div></div>
+      <div class="zone quiet"><div class="name">Nothing scheduled</div><div class="count"><span class="sub">9 · 6 · 2 queue for Dec</span></div><div class="days">Nov 16 – 30</div></div>
+    </div>
+  </div>
+</div>
+
+<h2>What each zone reads</h2>
+<p class="note">
+<b>Ahead:</b> the count coming and its day, greyed. <b>This week:</b> tinted in its colour, the count left and the count done, a thin green line for progress, the today mark, and the one press that opens Do now filtered to that work. <b>Behind:</b> green with a tick when everything went; red with the slipped count and the first job's name when something did not, and the slip is carried into Catch-up. <b>Nothing scheduled:</b> dashed, with what is already queuing for next month so the size of the month ahead is never a surprise.
+</p>
+
+</body>
+</html>

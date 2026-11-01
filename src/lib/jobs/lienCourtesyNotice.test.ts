@@ -156,7 +156,7 @@ describe('the courtesy notice — the words', () => {
   it('the GC’s email names the notice as standing, the lien’s day, the pay link and the signer, and never a joint check', () => {
     const text = courtesyEmailText(facts, 'original_contractor', 'Dana,')
     expect(text.startsWith('Dana,\n\nOn October 14, 2026 we mailed you and the owner of 2200 Riverbend Dr, Austin, TX 78704 the Notice of Claim for Unpaid Labor or Materials (Tex. Prop. Code § 53.056) on job 741, Riverbend Dental: $4,850.00 for work in August 2026. That notice stands. This is a reminder, not a new notice.')).toBe(true)
-    expect(text).toContain('we will file the lien affidavit in Travis County by November 16, 2026')
+    expect(text).toContain('we will file the lien affidavit on 2200 Riverbend Dr, Austin, TX 78704 in Travis County by November 16, 2026. A recorded affidavit is harder to take off than the notice. It goes into the county\'s public records on the property, where a title search finds it later, even after it is released. We would rather pick up a check.')
     expect(text).toContain('Pay it here: clicktooling.com/pay/8f3a')
     expect(text).toContain('We cannot deposit a joint check.')
     expect(text).toContain('reply to this email or call and tell us.')
@@ -170,6 +170,7 @@ describe('the courtesy notice — the words', () => {
     expect(text.startsWith('To the owner of 2200 Riverbend Dr, Austin, TX 78704,')).toBe(true)
     expect(text).toContain('Ridgeway Builders has not paid us $4,850.00 for work in August 2026. That notice stands. This is a reminder, not a new notice. You did not hire us, and nothing here is billed to you.')
     expect(text).toContain('Please pay us only if Ridgeway Builders has told you in writing that you may pay us directly. Otherwise hold $4,850.00 back from your next payment to Ridgeway Builders, as the cover letter asked, and call us so we know it is held. We cannot deposit a joint check.')
+    expect(text).toContain('we will file the lien affidavit on 2200 Riverbend Dr, Austin, TX 78704 in Travis County by November 16, 2026. A recorded affidavit goes into the county\'s public records on your property, where a title search finds it later, even after it is released. We would rather pick up a check than put that on record.')
     expect(text).not.toContain('clicktooling.com/pay')
     expect(courtesyOwnerSubject(facts)).toBe('A reminder on the notice we mailed Oct 14 · 2200 Riverbend Dr, Austin, TX 78704')
   })
@@ -189,7 +190,7 @@ describe('the courtesy notice — the words', () => {
 
   it('the text is short and carries the first pay link, and the owner’s text carries the rule instead', () => {
     const gc = courtesyTextBody(facts, 'original_contractor')
-    expect(gc).toBe('Click Plumbing and Electrical: on Oct 14 we mailed you and the owner the notice of claim on Riverbend Dental (job 741), $4,850.00 for August 2026. Nothing has come. Unless it is paid, the lien affidavit is filed by Nov 16. Pay here: clicktooling.com/pay/8f3a Questions: R. Douglas, Master Plumber (512) 555-0147. This is a reminder, not a new notice.')
+    expect(gc).toBe('Click Plumbing and Electrical: on Oct 14 we mailed you and the owner the notice of claim on Riverbend Dental (job 741), $4,850.00 for August 2026. Nothing has come. Unless it is paid, the lien affidavit is filed on 2200 Riverbend Dr, Austin, TX 78704 by Nov 16. Pay here: clicktooling.com/pay/8f3a Questions: R. Douglas, Master Plumber (512) 555-0147. This is a reminder, not a new notice.')
     expect(gc.length).toBeLessThan(400)
     const owner = courtesyTextBody(facts, 'owner')
     expect(owner).toContain("Pay us only with Ridgeway Builders's written okay; otherwise hold it back and call.")

@@ -67,15 +67,24 @@ describe('JobHistoryCrewCalendar', () => {
     expect(picked.props.onPickUser).toHaveBeenCalledWith(null)
   })
 
-  it('the range chips; Dates… shows From and To; nothing worked says so', () => {
-    const { props } = draw()
-    fireEvent.click(screen.getByRole('button', { name: 'Last 90d' }))
+  it('the range is one menu; Pick dates… shows From and To; an empty range names the way out; no legend without a calendar', () => {
+    const { container, props } = draw()
+    expect(container.querySelector('[data-crew-legend]')).not.toBeNull()
+    const menu = screen.getByRole('combobox', { name: 'Days on the job range' }) as HTMLSelectElement
+    expect(menu.value).toBe('whole')
+    expect(Array.from(menu.options).map((o) => o.textContent)).toEqual(['Whole job', 'Last 90 days', 'Last 365 days', 'Pick dates…'])
+    fireEvent.change(menu, { target: { value: '90' } })
     expect(props.onRangeMode).toHaveBeenCalledWith(90)
-    expect(screen.getByRole('button', { name: 'Whole job' }).getAttribute('aria-pressed')).toBe('true')
     const custom = draw({ range: { mode: 'custom', start: '2026-09-01', end: '2026-09-30' }, calendar: buildCrewCalendar(rows, { ...opts, startYmd: '2026-09-01', endYmd: '2026-09-30' }) })
     expect((screen.getAllByLabelText('Days on the job from')[0] as HTMLInputElement).value).toBe('2026-09-01')
-    expect(custom.container.querySelector('[data-crew-summary]')?.textContent).toBe('No days worked in this range.')
+    expect(custom.container.querySelector('[data-crew-summary]')).toBeNull()
+    expect(custom.container.querySelector('[data-empty-state]')?.textContent).toBe('No days worked between these dates. Whole job shows every day worked.')
+    fireEvent.click(screen.getAllByRole('button', { name: 'Whole job' })[0]!)
+    expect(custom.props.onRangeMode).toHaveBeenCalledWith('whole')
     expect(custom.container.querySelector('[data-crew-months]')).toBeNull()
+    expect(custom.container.querySelector('[data-crew-legend]')).toBeNull()
+    const none = draw({ calendar: buildCrewCalendar([], opts) })
+    expect(none.container.querySelector('[data-empty-state]')?.textContent).toBe('No days on this job yet. The first clock-in on this job starts the calendar.')
   })
 
   it('a month header carries its § 53.056 line when the lien timeline hands one in (v2.4707)', () => {

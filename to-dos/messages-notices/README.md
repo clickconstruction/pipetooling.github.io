@@ -1,8 +1,8 @@
 ---
 name: "Messages: an invitation is a bid lead and a notice is not a person — New stops asking Who is this? of mail nobody wrote to us"
 number: 223
-group: gated
-status: proposed 2026-10-30 from Taunya's look at New on the Messages page · read against the reader, the sort card and the lane · four pieces, six calls at the foot · nothing built
+group: close
+status: proposed 2026-10-30 from Taunya's look at New on the Messages page · built 2026-10-31 and 11-01 as v2.6200, v2.6202, v2.6222 and v2.6231, with v2.6228 beside it · three migrations pushed, gmail-sync and messages-notify deployed · calls 1, 2, 4, 5 and 6 taken as recommended, call 3 built as recommended and waiting on Wendi's word
 summary: >
   On 2026-10-30 New held thirteen rows and eleven of them were mail nobody wrote to us: nine
   invitations to bid and agency procurement notices, one newsletter, one bid platform's own
@@ -17,10 +17,10 @@ summary: >
   its card offers Start a bid with the GC, the link and the due date, Not for us, or Keep it
   with the GC; an addendum lands on the bid it names); and the robot's first pass (the obvious
   notices folded with a count and Put back).
-next: The six calls at the foot. PR 1 needs calls 1 and 2 only and can go first; PR 2 needs none.
+next: Wendi's word on call 3, what Start a bid makes. A walk on prod, by How to verify below. Then call 5's other half, the notice press as the card's first guess for a domain marked before. Then delete this folder.
 size: M+S+L+M (PR 1 a notice, with one small migration and a gmail-sync redeploy; PR 2 the reader's body cue; PR 3 Bid it?; PR 4 the addendum tie and the robot's fold)
-blocker: The six calls. Call 3 wants the estimator's word on what a bid made from an email should carry.
-ver: v2.5354 · 5494 · 5546 · 5559 · 5711 · 5716 · 5722 · 5793 · 5795 · 5798 · 5811 · 5814 · 5982 · 6179 · 6191 (PR #6595, the row these pieces build on; this card is PR #6601)
+blocker: Nothing in the code. Call 3 waits on Wendi's word, and the walk on a real invitation and a real newsletter reaching bids@.
+ver: v2.6200 · v2.6202 · v2.6222 · v2.6228 · v2.6231 (PRs #6604, #6608, #6628, #6632, #6638), built on v2.5354 · 5494 · 5546 · 5559 · 5711 · 5716 · 5722 · 5793 · 5795 · 5798 · 5811 · 5814 · 5982 · 6179 · 6191 (PR #6595, the row these pieces build on; this card is PR #6601)
 opinion: build — every door exists (the reader's left-out rule, the sort card's record-making presses, the bid's ITB links, the line-to-job tie by subject, the Sort all desk); what is missing is two more answers to the sort's question and a list the reader remembers
 mockup: to-dos/messages-notices/mockup.html
 ---
@@ -32,9 +32,10 @@ mockup: to-dos/messages-notices/mockup.html
 New on the Messages page is meant to hold what came in and still needs sorting, one row per
 person. On 2026-10-30 it held thirteen rows, and eleven were not people writing to us. This card
 says why they get through, what the app already does with mail like it, and the four pieces that
-would make New hold only what needs a person. **Six calls sit at the foot.** Calls 1 and 2 unlock
-the small first PR; call 3 wants Wendi's word, since it is about what a bid made from an email
-should carry.
+would make New hold only what needs a person. **All four pieces are built and live as of
+2026-11-01.** The six calls at the foot had no answers, so five were taken as recommended. Call 3
+was built as recommended and still wants Wendi's word, since it is about what a bid made from an
+email should carry.
 
 ## The ask, in Taunya's words
 
@@ -180,12 +181,12 @@ Each row holds the recommendation the mock-up draws. Each is answered in one lin
 
 | # | The call | Options | Recommended | Answer |
 |---|---|---|---|---|
-| 1 | What the notice press remembers | This address. The whole domain. Ask each time. | The address, with the domain offered as a second press when it is a company's own, never an open mail service. | |
-| 2 | Where a notice's thread goes | Done and off Follow up, search still finds it. Gone from every list on Messages. A Notices kind pill. | Done and off Follow up; search and the *Who is this?* pill still find it. A Notices pill only if the fold's count asks for one. | |
-| 3 | What Start a bid makes (**Wendi's word**) | A bid on the GC with the name, the ITB link and the due date, undecided. Only the GC named, New Bid left to the estimator. The bid plus the plans filed for the robots (#221). | The first. Filing plans for the robots stays a press on the bid. | |
-| 4 | What Not for us leaves behind | No bid; a grey line with the reason; the sender stays a customer. A bid made and archived with the reason, so the Development page holds it. | No bid. The thread holds the reason; the next invitation from them still shows. | |
-| 5 | How far the robot goes | Marks notices itself for a marked domain or a body cue, folded with Put back. Only suggests; a person presses. Off until the office has pressed the notice press ten times. | Marks itself for a marked domain or a body cue; suggests for the rest. | |
-| 6 | Who holds a Bid it? row | The office, under Everyone. The estimator the *Who gets a new message* rule picks, so Mine shows it to them. | The rule's estimator. | |
+| 1 | What the notice press remembers | This address. The whole domain. Ask each time. | The address, with the domain offered as a second press when it is a company's own, never an open mail service. | Taken as recommended, v2.6202. |
+| 2 | Where a notice's thread goes | Done and off Follow up, search still finds it. Gone from every list on Messages. A Notices kind pill. | Done and off Follow up; search and the *Who is this?* pill still find it. A Notices pill only if the fold's count asks for one. | Taken as recommended, v2.6202. |
+| 3 | What Start a bid makes (**Wendi's word**) | A bid on the GC with the name, the ITB link and the due date, undecided. Only the GC named, New Bid left to the estimator. The bid plus the plans filed for the robots (#221). | The first. Filing plans for the robots stays a press on the bid. | Built as recommended, v2.6222: a Plumbing bid on the GC with the rule's estimator, undecided. Waiting on Wendi's word. |
+| 4 | What Not for us leaves behind | No bid; a grey line with the reason; the sender stays a customer. A bid made and archived with the reason, so the Development page holds it. | No bid. The thread holds the reason; the next invitation from them still shows. | Taken as recommended, v2.6222. |
+| 5 | How far the robot goes | Marks notices itself for a marked domain or a body cue, folded with Put back. Only suggests; a person presses. Off until the office has pressed the notice press ten times. | Marks itself for a marked domain or a body cue; suggests for the rest. | Taken as recommended. The marking is built, v2.6231. The suggesting is not built yet. |
+| 6 | Who holds a Bid it? row | The office, under Everyone. The estimator the *Who gets a new message* rule picks, so Mine shows it to them. | The rule's estimator. | Taken as recommended, v2.6222: the trade seat holds the row. |
 
 ## Where it plugs in
 
@@ -214,14 +215,18 @@ Each row holds the recommendation the mock-up draws. Each is answered in one lin
 
 1. **A notice, not a person** (M, calls 1 and 2). The table and the two RPCs, the card's block, the
    reader's skip, the undo on the thread, the guides. Push the migration right after the merge
-   (the client calls `mark_notice`), then deploy `gmail-sync`.
+   (the client calls `mark_notice`), then deploy `gmail-sync`. **Shipped as v2.6202, PR #6608,
+   migration `20261031030000`.**
 2. **The reader reads the body** (S, no call). `leftOut.ts`'s body rule with the platform footer
-   held as taken; the edge copy; deploy `gmail-sync`. Independent of PR 1.
+   held as taken; the edge copy; deploy `gmail-sync`. Independent of PR 1. **Shipped as v2.6200,
+   PR #6604.**
 3. **Bid it?** (L, calls 3, 4 and 6). The invitation kernel, the fourth sort, the card and its
    three presses, the bid's insert and tie, the holder rule, the guide. One migration if the facts
-   are kept on the line.
+   are kept on the line. **Shipped as v2.6222, PR #6628, migration `20261031050000`.**
 4. **The addendum's tie and the robot's fold** (M, call 5). The bid's name in `subjectJobs.ts`; the
-   reader marking a notice itself; the fold under New with Put back. Deploy `gmail-sync`.
+   reader marking a notice itself; the fold under New with Put back. Deploy `gmail-sync`. **Shipped
+   as v2.6231, PR #6638, migration `20261101085132`. The tie reads the bid's name in its own kernel,
+   `emailIn/bidInSubject.ts`.**
 
 PR 1 and PR 2 both touch `leftOut.ts` and `gmail-sync` and land one after the other, either order.
 PR 3 waits on neither. PR 4 waits on PR 1 and PR 3.
@@ -250,3 +255,11 @@ PR 3 waits on neither. PR 4 waits on PR 1 and PR 3.
   line came from sits after it. The mock-up's *Bid it?* rows draw that shape. At Taunya's ask the
   card carries both PRs on the punch list: the version chip names PR #6595 and PR #6601, and the
   card's history link lists PR #6601 once it merges.
+- 2026-10-31: PR 2 shipped as v2.6200 (PR #6604) and PR 1 as v2.6202 (PR #6608). The calls had no
+  answers yet, so calls 1 and 2 were taken as recommended. Beside the train, from the owner's
+  question about drag folders for each role: v2.6228 (PR #6632). Handing a thread on now pings the
+  person it went to, and a thread's ⋯ sends it to someone's Checklist as a task.
+- 2026-11-01: PR 3 shipped as v2.6222 (PR #6628) and PR 4 as v2.6231 (PR #6638). Calls 4, 5 and 6
+  were taken as recommended, and call 3 was built as recommended. All three migrations are pushed,
+  and the live gmail-sync runs main's code. Left: Wendi's word on call 3, the walk by How to verify,
+  and call 5's other half. Then delete this folder.

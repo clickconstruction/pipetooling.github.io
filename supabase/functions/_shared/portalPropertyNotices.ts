@@ -56,6 +56,33 @@ export type PortalPropertyNotice = {
   months: string[]
   /** 'YYYY-MM-DD' the owner's copy went out (the owner send, else the filing day). */
   mailedOn: string
+  /** 'YYYY-MM-DD' the newest courtesy notice reached the owner by email (punch list #231); '' when none has. */
+  courtesyOn: string
+}
+
+/** A sent notice's desk item, as the portal reads it for the courtesy record (punch list #231). */
+export type PortalNoticeItemRow = {
+  sent_filing_id?: string | null
+  fields?: unknown
+  voided_at?: string | null
+}
+
+/** The newest day a courtesy notice's email went to the owner, off the item's `fields.courtesy[]`; '' when none did. */
+export function ownerCourtesyOn(items: ReadonlyArray<PortalNoticeItemRow>, filingIds: ReadonlySet<string>): string {
+  let best = ''
+  for (const it of items) {
+    if (it.voided_at || !it.sent_filing_id || !filingIds.has(it.sent_filing_id)) continue
+    const raw = it.fields && typeof it.fields === 'object' ? (it.fields as Record<string, unknown>).courtesy : null
+    if (!Array.isArray(raw)) continue
+    for (const r of raw as Array<Record<string, unknown> | null>) {
+      const at = typeof r?.at === 'string' ? r.at : ''
+      const to = Array.isArray(r?.to) ? (r!.to as Array<Record<string, unknown> | null>) : []
+      if (!at || !to.some((t) => t && t.ok === true && t.who === 'owner' && t.channel === 'email')) continue
+      const day = todayYmdInAppTz(new Date(at))
+      if (day > best) best = day
+    }
+  }
+  return best
 }
 
 const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
@@ -98,6 +125,8 @@ export function buildPortalPropertyNotices(args: {
   jobs: ReadonlyArray<PortalNoticeJobRow>
   filings: ReadonlyArray<PortalNoticeFilingRow>
   viewerCustomerId: string
+  /** The notices' desk items (punch list #231), for the courtesy record; absent on an older caller. */
+  items?: ReadonlyArray<PortalNoticeItemRow>
 }): PortalPropertyNotice[] {
   const owes = (j: PortalNoticeJobRow) => num(j.revenue) - num(j.payments_made) > 0.005
   const jobs = new Map(args.jobs.filter((j) => j.customer_id === args.viewerCustomerId && (j.gc_customer_id ?? '').trim() !== '' && j.gc_customer_id !== args.viewerCustomerId && owes(j)).map((j) => [j.id, j]))
@@ -125,6 +154,7 @@ export function buildPortalPropertyNotices(args: {
       claim: Math.round(claim * 100) / 100,
       months: [...new Set(fs.flatMap((f) => f.months_covered ?? []))].sort(),
       mailedOn,
+      courtesyOn: ownerCourtesyOn(args.items ?? [], new Set(fs.map((f) => f.id))),
     })
   }
   return out.sort((a, b) => b.mailedOn.localeCompare(a.mailedOn) || a.key.localeCompare(b.key))

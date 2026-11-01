@@ -39,13 +39,14 @@ export function divisionBidFolderByKey(key: string | null | undefined): Division
 
 /**
  * Where the dev seat files a plan set (v2.6241): the "PipeTooling Jobs" Shared Drive the intake service account is
- * already a member of (docs/DRIVE_INTAKE_SETUP.md), in Bid plans › <Division> › <project>. The office's division
+ * already a member of (docs/DRIVE_INTAKE_SETUP.md; since v2.6293 the drive in Click Plumbing's own Workspace, the
+ * Douglas Mining one retired), in Bid plans › <Division> › <project>. The office's division
  * folders above sit in a My Drive, where a service account can make a folder but cannot own a file (no storage
  * quota; found live 2026-10-31 on ZZ bid b566), and the owner keeps them view-only. Bid plans sits at the drive's
  * root beside Jobs, so the job-folder sweeps never read it as a job. The bid form's Find still looks in the
  * division folders: a set the seat files needs no Find, because apply stamps the bid's plans link itself.
  */
-export const ROBOT_PLANS_SHARED_DRIVE = { id: '0AI1sqwYSeegpUk9PVA', name: 'PipeTooling Jobs', folderName: 'Bid plans' } as const
+export const ROBOT_PLANS_SHARED_DRIVE = { id: '0ANSfYqm0sENHUk9PVA', name: 'PipeTooling Jobs', folderName: 'Bid plans' } as const
 
 /** The division's folder name inside Bid plans. */
 export function robotPlansDivisionFolderName(key: DivisionKey): string {
