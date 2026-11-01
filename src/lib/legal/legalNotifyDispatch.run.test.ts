@@ -7,6 +7,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LEGAL_NOTIFY_MAX_TRIES } from './legalNotifyLedger'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 type Handler = (req: Request) => Promise<Response>
 type Row = Record<string, unknown>
@@ -14,7 +15,7 @@ const box: { handler: Handler | null } = { handler: null }
 const db: { tables: Record<string, Row[]>; writes: string[] } = { tables: {}, writes: [] }
 const sent: Array<{ to: string; subject: string; html: string }> = []
 const failFor = new Set<string>()
-const fake = { ledgerWriteFails: false }
+const fake: { ledgerWriteFails: boolean; failSelect: string | null } = { ledgerWriteFails: false, failSelect: null }
 
 type Chain = { [method: string]: (...args: unknown[]) => unknown }
 function table(name: string): Chain {
@@ -25,6 +26,7 @@ function table(name: string): Chain {
   const rows = () => (db.tables[name] ??= [])
   const run = () => {
     const hit = rows().filter((r) => preds.every((p) => p(r)))
+    if (op === 'select' && fake.failSelect === name) return { data: null, error: { message: 'canceling statement due to statement timeout' } }
     if (op === 'update') {
       db.writes.push(`update ${name} ${Object.keys(patch).sort().join(',')}`)
       if (fake.ledgerWriteFails && 'sent_to' in patch) return { data: null, error: { message: 'statement timeout' } }
@@ -39,6 +41,8 @@ function table(name: string): Chain {
   chain.is = (c: unknown, v: unknown) => (preds.push((r) => (r[c as string] ?? null) === v), chain)
   chain.not = (c: unknown, _o: unknown, v: unknown) => (preds.push((r) => (r[c as string] ?? null) !== v), chain)
   chain.in = (c: unknown, v: unknown) => (preds.push((r) => (v as unknown[]).includes(r[c as string])), chain)
+  chain.gt = (c: unknown, v: unknown) => (preds.push((r) => String(r[c as string] ?? '') > String(v)), chain)
+  chain.lte = (c: unknown, v: unknown) => (preds.push((r) => String(r[c as string] ?? '') <= String(v)), chain)
   chain.order = () => chain
   chain.limit = (n: unknown) => ((lim = n as number), chain)
   chain.update = (p: unknown) => ((op = 'update'), (patch = p as Row), chain)
@@ -73,6 +77,7 @@ beforeEach(() => {
   sent.length = 0
   failFor.clear()
   fake.ledgerWriteFails = false
+  fake.failSelect = null
   db.writes = []
   db.tables = {
     legal_firms: [{ id: 'f1', name: 'Sample & Partner', paused_at: null, active: true }],
@@ -181,5 +186,61 @@ describe('legal-notify-dispatch · the now lane per person (v2.4662)', () => {
     expect((await tick('x')).status).toBe(401)
     expect((await tick('')).status).toBe(401)
     expect(sent).toEqual([])
+  })
+})
+
+/** v2.6283 (punch list #233 PR 4): the digest reads each person's own week and leaves out what the office held back or undid. */
+describe('legal-notify-dispatch · the digest lane (v2.6283)', () => {
+  const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString()
+  const todayWeekday = ({ Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 } as Record<string, number>)[new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short' }).format(new Date())] ?? 1
+  const line = (id: string, trigger: string, payload: Row, extra: Row = {}): Row => event(id, { trigger, payload: { payer: 'Sample Contracting', ...payload }, created_at: ago(3), sent_now_at: ago(3), ...extra })
+
+  beforeEach(() => {
+    db.tables.legal_firm_recipients = [{ ...person('dee', 'dee@firm.test'), mode: 'digest', digest_weekday: todayWeekday, digest_time: '00:00', confirmed_at: ago(7) }]
+    db.tables.legal_matters = [{ id: 'm1', firm_id: 'f1', payer_name: 'Sample Contracting', stage: 'demand', handling_name: 'ann', released_at: ago(30), held_overrides: { 'plan:x2': true, _reasons: { 'plan:x2': 'not yet' } } }]
+    db.tables.legal_matter_entries = [
+      { id: 'x1', kind: 'step', voided_at: null },
+      { id: 'x2', kind: 'plan', voided_at: null },
+      { id: 'x3', kind: 'note', voided_at: ago(1) },
+    ]
+    db.tables.legal_matter_documents = [
+      { id: 'd1', held_reason: 'office only', voided_at: null },
+      { id: 'd2', held_reason: '', voided_at: null },
+    ]
+    db.tables.legal_notification_queue = [
+      // Queued before dee confirmed: never replayed to whoever joins later.
+      line('old', 'referred', {}, { created_at: ago(10) }),
+      // Another person's digest already stamped it: dee's own week still carries it.
+      line('s1', 'step', { body: 'Stage moved from referred to demand by the office', entryId: 'x1' }, { digested_at: ago(2) }),
+      line('s2', 'plan', { body: 'File the suit · planned for Nov 4', entryId: 'x2' }),
+      line('s3', 'paper', { body: 'Internal memo', documentId: 'd1' }),
+      line('s4', 'note', { body: 'The GC called.', entryId: 'x3' }),
+      line('s5', 'paper', { body: 'Signed subcontract', documentId: 'd2' }),
+    ]
+  })
+
+  it('sends dee her own week under the matter, without the held plan, the held paper or the undone note, once a day', async () => {
+    expect((await tick()).body).toMatchObject({ ok: true, digests: 1 })
+    expect(sent.map((s) => s.to)).toEqual(['dee@firm.test'])
+    const html = sent[0]!.html
+    expect(html).toContain('<b>Sample Contracting</b>')
+    expect(html).toContain('Step by the office — Stage moved from referred to demand by the office')
+    expect(html).toContain('Paper added — Signed subcontract')
+    for (const out of ['File the suit', 'Internal memo', 'The GC called.', 'New account referred']) expect(html).not.toContain(out)
+    expect(rec('dee').last_digest_at).toEqual(expect.any(String))
+    sent.length = 0
+    await tick()
+    expect(sent).toEqual([])
+  })
+
+  it('a read of the lines’ sources that fails holds the digest for the next tick, never sends it unchecked', async () => {
+    fake.failSelect = 'legal_matter_documents'
+    const first = await tick()
+    expect(sent).toEqual([])
+    expect(first.body.errors).toEqual(["dee@firm.test: could not read what the digest's lines came from; tried again next tick"])
+    expect(rec('dee').last_digest_at).toBeNull()
+    fake.failSelect = null
+    expect((await tick()).body).toMatchObject({ digests: 1 })
+    expect(sent.map((s) => s.to)).toEqual(['dee@firm.test'])
   })
 })

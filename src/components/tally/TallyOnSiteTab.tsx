@@ -203,7 +203,8 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <button type="button" aria-label="Site map" title="The site map: every pinned box" onClick={() => setSheet({ kind: 'map', focusId: null })} style={{ ...btn, borderRadius: 999, padding: '0 0.9rem', flex: '0 0 auto', gap: '0.35rem' }}><span aria-hidden>◎</span>Map</button>
         </div>
         {!query.trim() && chips.length > 2 ? (
-          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center' }}>
+          /* The row is a grid item, so without minWidth: 0 it takes the chips' full width and lays the whole page out wider than a phone; iOS Safari then lets a pinch zoom the app out (v2.6286). */
+          <div style={{ display: 'flex', gap: '0.35rem', alignItems: 'center', minWidth: 0 }}>
             <button type="button" aria-label="All places" title="Every place on this site" onClick={() => setSheet({ kind: 'places' })} style={{ ...btn, minHeight: 36, padding: '0 0.65rem', borderRadius: 999, fontSize: '0.85rem', flex: '0 0 auto', gap: '0.25rem' }}>Places <span aria-hidden style={{ fontSize: '0.7rem' }}>▾</span></button>
           <div style={{ display: 'flex', gap: '0.35rem', overflowX: 'auto', paddingBottom: '0.15rem', scrollbarWidth: 'none', minWidth: 0, flex: 1 }}>
             {chips.map((ch) => (

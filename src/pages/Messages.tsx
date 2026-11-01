@@ -9,6 +9,12 @@
  * the kind picker, Show, the search glass, the jump strip (v2.5799, PR 1, the Pipeline's stage bar over the lanes),
  * 7 days, which opens The last 7 days under the bar, and the ? (v2.5802, PR 3) that says what each lane holds, the
  * lanes' headings being bands with no sentence under them.
+ *
+ * Since punch list #230 PR 3 the page has two tabs, **Follow up** and **My email** (`?tab=my-email`, `myMail/tab.ts`),
+ * the second drawn in the bar while the person's own switch is on (`users.my_mail_on`, read once a load). My email
+ * draws `components/messages/myMail/MyMailTab` in place of every Follow up section, with its own view (`?view=`) and
+ * its own reading of `?q=`; the thread window still opens over it, and `useMessagesHost` reads the view while it is
+ * open, as for Everyone, for the job picker's jobs and the line a tagged conversation sits on.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
@@ -42,6 +48,10 @@ import { peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type Kin
 import { keepLens, lensCounts, queueForShow, readLens, SHOW_WORDS, type ShowLens } from '../lib/messages/showLens'
 import { waitsFromQueue } from '../lib/messages/weekStrip'
 import type { WentOutFilter } from '../lib/messages/wentOut'
+import { MyMailTab } from '../components/messages/myMail/MyMailTab'
+import { loadMyMailSetting } from '../lib/myMail/myMailIo'
+import { contactOfLine, jobsOfAddress } from '../lib/myMail/picker'
+import { tabOf, viewOf, withTab, withView, type MessagesTab } from '../lib/myMail/tab'
 
 /** Search every message (v2.5701): the box under the pills, a hit's row, and the lane's one-line answers. */
 const searchBox: CSSProperties = { padding: '0.55rem 0.8rem', borderRadius: 10, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', fontSize: '0.95rem', maxWidth: 560, width: '100%', boxSizing: 'border-box' }
@@ -59,6 +69,23 @@ export default function Messages() {
   const gate = pageGate({ loading: authLoading, user, role }, canOpenMessages)
   const canOpen = gate === 'open'
   const onFollowUp = pillOnFollowUp(pill)
+  // My email (punch list #230 PR 3): the person's own switch, read once a load, and the tab the URL asks for. The tab
+  // is drawn while the switch is on, or while a link asks for it. Undefined until the read lands; null when it cannot
+  // be read, and before the switch's column is pushed (`ready`), so no tab shows ahead of the database.
+  const [myMailOn, setMyMailOn] = useState<boolean | null | undefined>(undefined)
+  useEffect(() => {
+    if (!canOpen) return
+    let live = true
+    loadMyMailSetting(user?.id)
+      .then((s) => live && setMyMailOn(s.ready ? s.on : null))
+      .catch(() => live && setMyMailOn(null))
+    return () => {
+      live = false
+    }
+  }, [canOpen, user?.id])
+  const tab = tabOf(params)
+  const myMailOpen = canOpen && tab === 'myMail'
+  const pickTab = useCallback((next: MessagesTab) => setParams((prev) => withTab(prev, next), { replace: true }), [setParams])
   // Everyone we have talked with (v2.5700): the people list under the queues, opened on a press, since its view reads
   // every contact and message there is. The queues never wait on that read.
   const [everyoneOpen, setEveryoneOpen] = useState(false)
@@ -67,7 +94,8 @@ export default function Messages() {
   // The words live in the URL as `?q=` (v2.5708), like the pill: a reload keeps them and a link carries them.
   const q = queryOf(params)
   const setQ = useCallback((words: string) => setParams((prev) => withQuery(prev, words), { replace: true }), [setParams])
-  const searching = q.trim().length >= SEARCH_MIN
+  // On My email the words are the tab's own, a Gmail search: Follow up's search stays shut.
+  const searching = !myMailOpen && q.trim().length >= SEARCH_MIN
   // On a phone, three empty lists fold to one line until something waits or the office opens them (v2.5708).
   const phone = useMatchMedia('(max-width: 760px)')
   const [queueCount, setQueueCount] = useState<number | null>(null)
@@ -84,7 +112,9 @@ export default function Messages() {
     },
     [setParams],
   )
-  const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null || everyoneOpen || searching || answering), closeThread: thread.closeThread })
+  const host = useMessagesHost({ enabled: canOpen && (!onFollowUp || thread.contactId !== null || everyoneOpen || searching || answering || myMailOpen), closeThread: thread.closeThread })
+  const myMailJobs = useMemo(() => ({ theirs: (address: string) => jobsOfAddress(host.view, address), search: host.writes.searchJobs }), [host.view, host.writes.searchJobs])
+  const lineContact = useCallback((messageId: string) => contactOfLine(host.view, messageId), [host.view])
 
   const [team, setTeam] = useState<GcTeamMember[]>([])
   useEffect(() => {
@@ -105,7 +135,7 @@ export default function Messages() {
   const [lens, setLens] = useState<ShowLens>(readLens)
   // The one-row header (v2.5801, punch list #151 PR 2): the search box opens from the glass, or at once for a link with
   // ?q=, and closing it clears the words; The last 7 days opens from 7 days and stays as you left it on this browser.
-  const [searchOpen, setSearchOpen] = useState(() => q.trim().length > 0)
+  const [searchOpen, setSearchOpen] = useState(() => tab !== 'myMail' && q.trim().length > 0)
   const searchRef = useRef<HTMLInputElement>(null)
   const openSearch = (open: boolean) => {
     setSearchOpen(open)
@@ -212,148 +242,167 @@ export default function Messages() {
         strip={!searching && onFollowUp ? { counts: jumpCounts, onJump: jump } : undefined}
         phone={phone}
         legend={{ open: legendOpen, onToggle: setLegendOpen }}
+        tabs={{ tab, onTab: pickTab, myMailOn: myMailOn === true || myMailOpen }}
       />
       {legendOpen && !searching && <LaneLegend onClose={() => setLegendOpen(false)} />}
-      {lens === 'mine' && !searching && (
-        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="show-note">
-          {SHOW_WORDS.notNarrowed}
-        </div>
-      )}
-      {searchOpen && (
-        <div style={{ display: 'grid', gap: '0.35rem' }}>
-          <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label={SEARCH_WORDS.label} placeholder={SEARCH_WORDS.placeholder} data-testid="search-lines" style={searchBox} />
-          {q.trim().length > 0 && !searching && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{SEARCH_WORDS.short}</span>}
-        </div>
-      )}
-      {/* Punch list #140 PR 2: the owner's and a dev's line to the switches still off, gone once all eight are on. */}
-      {isOwnerOrDev(role) && !searching && <SwitchOnCard />}
-
-      {searching && (
-        <section aria-label="Lines that match" data-testid="search-hits">
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>{SEARCH_WORDS.title(found?.total ?? 0)}</h3>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{SEARCH_WORDS.note}</span>
-          </div>
-          <div style={{ display: 'grid', gap: '0.5rem' }}>
-            {host.problem ? (
-              <div style={searchAnswer}>{host.problem}</div>
-            ) : !found ? (
-              <div style={searchAnswer}>{SEARCH_WORDS.reading}</div>
-            ) : found.hits.length === 0 ? (
-              <div style={searchAnswer} data-testid="search-none">
-                {SEARCH_WORDS.none}
-              </div>
-            ) : (
-              <>
-                {found.hits.map((h) => (
-                  <button key={h.id} type="button" onClick={() => thread.openThread(h.contactId, h.id)} data-testid="search-hit" style={searchHit}>
-                    <span style={{ display: 'grid', gap: '0.1rem', minWidth: 0 }}>
-                      <span>
-                        <span style={{ fontWeight: 600 }}>{h.name}</span> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>· {h.who}</span>
-                      </span>
-                      <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
-                        {h.before}
-                        <mark style={searchMark}>{h.match}</mark>
-                        {h.after}
-                      </span>
-                    </span>
-                    <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{h.when}</span>
-                  </button>
-                ))}
-                {found.total > found.hits.length && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{SEARCH_WORDS.more(found.total - found.hits.length)}</div>}
-              </>
-            )}
-          </div>
-        </section>
-      )}
-
-      {!searching && onFollowUp && weekOpen && (
-        <WeekStrip
-          pill={pill}
-          waits={waits}
-          mine={lens === 'mine'}
-          onOpenThread={(id, at) => thread.openThread(id, at)}
-          onNeedsReply={() => {
-            setQueuesOpen(true)
-            scrollTo('queues')
-          }}
-          onWentOut={() => {
-            setWentOutFilter('texts')
-            scrollTo('went-out')
-          }}
-          onWaiting={() => scrollTo('waiting-on-them')}
+      {myMailOpen ? (
+        <MyMailTab
+          view={viewOf(params)}
+          onView={(v) => setParams((prev) => withView(prev, v), { replace: true })}
+          q={q}
+          onQ={setQ}
+          on={myMailOn}
+          phone={phone}
+          jobs={myMailJobs}
+          writes={host.writes}
+          lineContact={lineContact}
+          onOpenThread={(contactId, at) => thread.openThread(contactId, at)}
+          onChanged={host.reread}
         />
-      )}
-
-
-      {!searching && onFollowUp && foldQueues && (
-        <button
-          type="button"
-          onClick={() => setQueuesOpen(true)}
-          data-testid="queues-fold"
-          style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%', textAlign: 'left', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.85rem', background: 'var(--surface)', color: 'var(--text-muted)', font: 'inherit', fontSize: '0.875rem', cursor: 'pointer' }}
-        >
-          <span aria-hidden>▸</span>
-          <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{QUEUES_FOLD_WORDS.line}</span>
-          <span style={{ marginLeft: 'auto' }}>{QUEUES_FOLD_WORDS.tail}</span>
-        </button>
-      )}
-      {searching ? null : onFollowUp ? (
-        // The panel stays mounted under the fold, so its count keeps the fold honest.
-        <div id="queues" style={foldQueues ? { display: 'none' } : undefined} data-testid="queues">
-          <FollowUpPanel
-            me={me}
-            team={followUpTeam}
-            onOpenThread={thread.openThread}
-            say={showToast}
-            narrow={narrow}
-            onCount={setQueueCount}
-            onQueue={onQueue}
-            laneLook="bands"
-            answerAll={{ on: answering, onChange: answerAllOnChange, thread: { view: host.view, nowIso: host.nowIso, searchJobs: host.writes.searchJobs } }}
-          />
-        </div>
       ) : (
-        <div style={{ display: 'grid', gap: '0.5rem' }}>
-          <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>They never count on Follow up. Each shows here by their last line.</div>
-          <GcMessages view={listView} problem={host.problem} nowIso={host.nowIso} onOpenThread={(id) => thread.openThread(id)} filters={false} />
-        </div>
-      )}
+        <>
+          {lens === 'mine' && !searching && (
+            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="show-note">
+              {SHOW_WORDS.notNarrowed}
+            </div>
+          )}
+          {searchOpen && (
+            <div style={{ display: 'grid', gap: '0.35rem' }}>
+              <input ref={searchRef} type="search" value={q} onChange={(e) => setQ(e.target.value)} aria-label={SEARCH_WORDS.label} placeholder={SEARCH_WORDS.placeholder} data-testid="search-lines" style={searchBox} />
+              {q.trim().length > 0 && !searching && <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>{SEARCH_WORDS.short}</span>}
+            </div>
+          )}
+          {/* Punch list #140 PR 2: the owner's and a dev's line to the switches still off, gone once all eight are on. */}
+          {isOwnerOrDev(role) && !searching && <SwitchOnCard />}
 
-      {/* Went out (v2.5686, punch list #133 PR 3): the queues are inbound; this is where a pressed send shows. */}
-      {/* Waiting on them (v2.5704): who went quiet after our send; Needs a reply above is who waits on us. */}
-      {!searching && onFollowUp && <WaitingOnThem pill={pill} onOpenThread={(id, more) => thread.openThread(id, null, more)} onCount={setWaitingCount} />}
+          {searching && (
+            <section aria-label="Lines that match" data-testid="search-hits">
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>{SEARCH_WORDS.title(found?.total ?? 0)}</h3>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{SEARCH_WORDS.note}</span>
+              </div>
+              <div style={{ display: 'grid', gap: '0.5rem' }}>
+                {host.problem ? (
+                  <div style={searchAnswer}>{host.problem}</div>
+                ) : !found ? (
+                  <div style={searchAnswer}>{SEARCH_WORDS.reading}</div>
+                ) : found.hits.length === 0 ? (
+                  <div style={searchAnswer} data-testid="search-none">
+                    {SEARCH_WORDS.none}
+                  </div>
+                ) : (
+                  <>
+                    {found.hits.map((h) => (
+                      <button key={h.id} type="button" onClick={() => thread.openThread(h.contactId, h.id)} data-testid="search-hit" style={searchHit}>
+                        <span style={{ display: 'grid', gap: '0.1rem', minWidth: 0 }}>
+                          <span>
+                            <span style={{ fontWeight: 600 }}>{h.name}</span> <span style={{ color: 'var(--text-muted)', fontSize: '0.8rem' }}>· {h.who}</span>
+                          </span>
+                          <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>
+                            {h.before}
+                            <mark style={searchMark}>{h.match}</mark>
+                            {h.after}
+                          </span>
+                        </span>
+                        <span style={{ marginLeft: 'auto', color: 'var(--text-muted)', fontSize: '0.8rem', whiteSpace: 'nowrap' }}>{h.when}</span>
+                      </button>
+                    ))}
+                    {found.total > found.hits.length && <div style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{SEARCH_WORDS.more(found.total - found.hits.length)}</div>}
+                  </>
+                )}
+              </div>
+            </section>
+          )}
 
-      {!searching && <WentOutToday pill={pill} onOpenThread={thread.openThread} filter={wentOutFilter} onFilter={setWentOutFilter} onCount={setWentOutCount} />}
+          {!searching && onFollowUp && weekOpen && (
+            <WeekStrip
+              pill={pill}
+              waits={waits}
+              mine={lens === 'mine'}
+              onOpenThread={(id, at) => thread.openThread(id, at)}
+              onNeedsReply={() => {
+                setQueuesOpen(true)
+                scrollTo('queues')
+              }}
+              onWentOut={() => {
+                setWentOutFilter('texts')
+                scrollTo('went-out')
+              }}
+              onWaiting={() => scrollTo('waiting-on-them')}
+            />
+          )}
 
-      {/* Everyone we have talked with (v2.5700): the people list with its search, for every pill the queues serve; the
-          last pill already shows the list in the queues' place. */}
-      {!searching && onFollowUp && (
-        <section aria-label={EVERYONE_WORDS.title} data-testid="everyone">
-          <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
-            <h3 style={{ margin: 0, fontSize: '1rem' }}>{EVERYONE_WORDS.title}</h3>
-            <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{EVERYONE_WORDS.note}</span>
+
+          {!searching && onFollowUp && foldQueues && (
             <button
               type="button"
-              onClick={() => setEveryoneOpen((open) => !open)}
-              data-testid="everyone-toggle"
-              style={{
-                marginLeft: 'auto',
-                padding: '0.3rem 0.8rem',
-                borderRadius: 999,
-                border: '1px solid var(--border-strong)',
-                background: 'var(--surface)',
-                color: 'var(--text-link)',
-                fontWeight: 600,
-                fontSize: '0.85rem',
-                cursor: 'pointer',
-              }}
+              onClick={() => setQueuesOpen(true)}
+              data-testid="queues-fold"
+              style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', width: '100%', textAlign: 'left', border: '1px solid var(--border)', borderRadius: 10, padding: '0.6rem 0.85rem', background: 'var(--surface)', color: 'var(--text-muted)', font: 'inherit', fontSize: '0.875rem', cursor: 'pointer' }}
             >
-              {everyoneOpen ? EVERYONE_WORDS.hide : EVERYONE_WORDS.show}
+              <span aria-hidden>▸</span>
+              <span style={{ color: 'var(--text-strong)', fontWeight: 600 }}>{QUEUES_FOLD_WORDS.line}</span>
+              <span style={{ marginLeft: 'auto' }}>{QUEUES_FOLD_WORDS.tail}</span>
             </button>
-          </div>
-          {everyoneOpen && <GcMessages view={listView} problem={host.problem} nowIso={host.nowIso} onOpenThread={(id) => thread.openThread(id)} filters={false} />}
-        </section>
+          )}
+          {searching ? null : onFollowUp ? (
+            // The panel stays mounted under the fold, so its count keeps the fold honest.
+            <div id="queues" style={foldQueues ? { display: 'none' } : undefined} data-testid="queues">
+              <FollowUpPanel
+                me={me}
+                team={followUpTeam}
+                onOpenThread={thread.openThread}
+                say={showToast}
+                narrow={narrow}
+                onCount={setQueueCount}
+                onQueue={onQueue}
+                laneLook="bands"
+                answerAll={{ on: answering, onChange: answerAllOnChange, thread: { view: host.view, nowIso: host.nowIso, searchJobs: host.writes.searchJobs } }}
+              />
+            </div>
+          ) : (
+            <div style={{ display: 'grid', gap: '0.5rem' }}>
+              <div style={{ fontSize: '0.875rem', color: 'var(--text-muted)' }}>They never count on Follow up. Each shows here by their last line.</div>
+              <GcMessages view={listView} problem={host.problem} nowIso={host.nowIso} onOpenThread={(id) => thread.openThread(id)} filters={false} />
+            </div>
+          )}
+
+          {/* Went out (v2.5686, punch list #133 PR 3): the queues are inbound; this is where a pressed send shows. */}
+          {/* Waiting on them (v2.5704): who went quiet after our send; Needs a reply above is who waits on us. */}
+          {!searching && onFollowUp && <WaitingOnThem pill={pill} onOpenThread={(id, more) => thread.openThread(id, null, more)} onCount={setWaitingCount} />}
+
+          {!searching && <WentOutToday pill={pill} onOpenThread={thread.openThread} filter={wentOutFilter} onFilter={setWentOutFilter} onCount={setWentOutCount} />}
+
+          {/* Everyone we have talked with (v2.5700): the people list with its search, for every pill the queues serve; the
+              last pill already shows the list in the queues' place. */}
+          {!searching && onFollowUp && (
+            <section aria-label={EVERYONE_WORDS.title} data-testid="everyone">
+              <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', marginBottom: '0.4rem', flexWrap: 'wrap' }}>
+                <h3 style={{ margin: 0, fontSize: '1rem' }}>{EVERYONE_WORDS.title}</h3>
+                <span style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{EVERYONE_WORDS.note}</span>
+                <button
+                  type="button"
+                  onClick={() => setEveryoneOpen((open) => !open)}
+                  data-testid="everyone-toggle"
+                  style={{
+                    marginLeft: 'auto',
+                    padding: '0.3rem 0.8rem',
+                    borderRadius: 999,
+                    border: '1px solid var(--border-strong)',
+                    background: 'var(--surface)',
+                    color: 'var(--text-link)',
+                    fontWeight: 600,
+                    fontSize: '0.85rem',
+                    cursor: 'pointer',
+                  }}
+                >
+                  {everyoneOpen ? EVERYONE_WORDS.hide : EVERYONE_WORDS.show}
+                </button>
+              </div>
+              {everyoneOpen && <GcMessages view={listView} problem={host.problem} nowIso={host.nowIso} onOpenThread={(id) => thread.openThread(id)} filters={false} />}
+            </section>
+          )}
+        </>
       )}
 
       {thread.contactId && (

@@ -6,7 +6,7 @@
  * them so Settings → What customers see renders the same emails over the sample. Pure: the
  * wording is the senders' own, moved here verbatim; the company name is passed in.
  */
-import { todayYmdInAppTz } from './appTimeZone.ts'
+import { APP_CALENDAR_TZ, todayYmdInAppTz } from './appTimeZone.ts'
 import { LEGAL_STAGE_LIST } from './legalStages.ts'
 
 type LegalStageKey = (typeof LEGAL_STAGE_LIST)[number]
@@ -69,7 +69,7 @@ export function buildLegalConfirmEmail(i: { companyName: string; email: string; 
  * notes and applied payments email the firm too, and — digest only — a fee or cost the office saw. Closing a
  * matter, moving a step back, the office's undo and a signed-off step send nothing yet (a paralegal entering six costs should not get six emails back).
  */
-export const LEGAL_NOW_TRIGGERS = ['referred', 'answer', 'pulled', 'ask', 'note', 'applied', 'fee_seen'] as const
+export const LEGAL_NOW_TRIGGERS = ['referred', 'answer', 'pulled', 'ask', 'note', 'applied', 'fee_seen', 'step', 'plan', 'event', 'offer', 'statement', 'paper', 'released'] as const
 export type LegalNowTrigger = (typeof LEGAL_NOW_TRIGGERS)[number]
 
 /** A queue row's trigger, or null for one this build does not know (it is skipped, never mislabeled). */
@@ -77,9 +77,10 @@ export function legalNowTriggerOf(raw: unknown): LegalNowTrigger | null {
   return typeof raw === 'string' && (LEGAL_NOW_TRIGGERS as readonly string[]).includes(raw) ? (raw as LegalNowTrigger) : null
 }
 
-/** False for the events that ride the digest only (`fee_seen`). */
+/** The six that send an email of their own; the rest ride the digest only (v2.6283: every office act, so a paralegal entering six things does not get six emails back). */
+const SENDS_NOW: ReadonlySet<LegalNowTrigger> = new Set<LegalNowTrigger>(['referred', 'answer', 'pulled', 'ask', 'note', 'applied'])
 export function legalTriggerSendsNow(t: LegalNowTrigger): boolean {
-  return t !== 'fee_seen'
+  return SENDS_NOW.has(t)
 }
 
 function money(n: unknown): string {
@@ -142,6 +143,11 @@ export function buildLegalNowEmail(i: {
     case 'pulled':
       subject = `${LEGAL_REFERRAL_WITHDRAWN}: ${payer}`
       line = `${legalEsc(i.companyName)} has withdrawn the referral of ${p}.${i.reason ? `<br>Why: <i>${legalEsc(i.reason)}</i>` : ''}<br>Your fees and costs and the conversation stay readable on the portal; the account's records do not.`
+      break
+    default:
+      // v2.6283: the digest-only acts never send on their own; the shape is here so a caller that asks gets the digest's words.
+      subject = `${DIGEST_LABEL[i.trigger]}: ${payer}`
+      line = `${DIGEST_LABEL[i.trigger]} on ${p}${i.amount != null ? ` ${money(i.amount)}` : ''}${said}`
   }
   const html = legalWrapHtml(i.companyName, `<p>${line}</p>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)
   return { subject, text: `${subject}\n\n${i.portalUrl}`, html }
@@ -159,23 +165,68 @@ const DIGEST_LABEL: Record<LegalNowTrigger, string> = {
   note: 'Note from the office',
   applied: 'Payment applied',
   fee_seen: 'Fee seen by the office',
+  // v2.6283: the office's own acts, digest only.
+  step: 'Step by the office',
+  plan: 'Planned step by the office',
+  event: 'What happened, recorded by the office',
+  offer: 'Offer',
+  statement: 'Statement by the office',
+  paper: 'Paper added',
+  released: 'Paper released to you',
 }
 
-/** `legal-notify-dispatch` → the once-a-day digest for recipients on "digest". */
+/** A week's line reads its day short, in the company's zone: *Oct 27*. */
+function shortDayInAppTz(d: Date): string {
+  return new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, month: 'short', day: 'numeric' }).format(d)
+}
+
+/**
+ * `legal-notify-dispatch` → the once-a-week digest for recipients on "digest", read by matter (v2.6281,
+ * punch list #233, the owner on the first sample: the date first, then what happened, then the account
+ * last, was hard to consume). Each matter is a heading with its stage line, and the week's lines sit
+ * under it: the matters with news first, newest news first, then a matter the office withdrew or closed
+ * during the week under its own heading, then the quiet matters, each reading *Nothing new this week*.
+ */
 export function buildLegalDigestEmail(i: { companyName: string; recipientName: string; matters: LegalDigestMatter[]; events: LegalDigestEvent[]; portalUrl: string; unsubscribeUrl: string }): LegalEmail {
-  const matterLines = i.matters.length
-    ? i.matters.map((m) => `<li><b>${legalEsc(m.payerName)}</b> — ${legalEsc(legalFirmStageWords(m.stage))}${m.handlingName ? ` · handling ${legalEsc(m.handlingName)}` : ''}${m.releasedAt ? ` · since ${legalEsc(todayYmdInAppTz(new Date(m.releasedAt)))}` : ''}</li>`).join('')
-    : '<li>No open matters.</li>'
   const detail = (e: LegalDigestEvent): string => {
     if (e.trigger === 'pulled') return e.reason ? ` — ${legalEsc(e.reason)}` : ''
-    const amt = (e.trigger === 'applied' || e.trigger === 'fee_seen') && e.amount != null ? ` ${money(e.amount)}` : ''
+    const amt = (e.trigger === 'applied' || e.trigger === 'fee_seen' || e.trigger === 'offer') && e.amount != null ? ` ${money(e.amount)}` : ''
     return `${amt}${e.body && e.trigger !== 'referred' ? ` — ${legalEsc(e.body)}` : ''}`
   }
-  const eventLines = i.events.length
-    ? i.events.map((e) => `<li>${legalEsc(todayYmdInAppTz(new Date(e.createdAt)))} · ${DIGEST_LABEL[e.trigger] ?? 'Update'}: <b>${legalEsc(e.payer)}</b>${detail(e)}</li>`).join('')
-    : '<li>Nothing new since your last digest.</li>'
+  const keyOf = (payer: string) => payer.trim().toLowerCase()
+  const byMatter = new Map<string, LegalDigestEvent[]>()
+  for (const e of i.events) {
+    const k = keyOf(e.payer)
+    byMatter.set(k, [...(byMatter.get(k) ?? []), e])
+  }
+  const latest = (k: string): number => Math.max(0, ...(byMatter.get(k) ?? []).map((e) => new Date(e.createdAt).getTime()))
+  type Head = { payer: string; key: string; stageLine: string }
+  const open: Head[] = i.matters.map((m) => ({
+    payer: m.payerName,
+    key: keyOf(m.payerName),
+    stageLine: `${legalFirmStageWords(m.stage)}${m.handlingName ? ` · handling ${m.handlingName}` : ''}${m.releasedAt ? ` · since ${todayYmdInAppTz(new Date(m.releasedAt))}` : ''}`,
+  }))
+  const openKeys = new Set(open.map((h) => h.key))
+  const withNews = open.filter((h) => byMatter.has(h.key)).sort((a, b) => latest(b.key) - latest(a.key))
+  const quiet = open.filter((h) => !byMatter.has(h.key))
+  // A matter the office withdrew or closed this week is off the open list; its lines keep their own heading.
+  const gone: Head[] = [...byMatter.keys()]
+    .filter((k) => !openKeys.has(k))
+    .map((k) => {
+      const evs = byMatter.get(k) ?? []
+      return { payer: evs[0]?.payer ?? '', key: k, stageLine: evs.some((e) => e.trigger === 'pulled') ? LEGAL_FIRM_STAGE_WORDS.pulled : 'no longer open' }
+    })
+    .sort((a, b) => latest(b.key) - latest(a.key))
+  const line = (e: LegalDigestEvent): string => `<li>${legalEsc(shortDayInAppTz(new Date(e.createdAt)))} · ${DIGEST_LABEL[e.trigger] ?? 'Update'}${detail(e)}</li>`
+  const block = (h: Head): string => {
+    const evs = [...(byMatter.get(h.key) ?? [])].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime())
+    const lines = evs.length ? evs.map(line).join('') : '<li style="color:#5a6b7e">Nothing new this week.</li>'
+    return `<h3 style="font-size:14px;margin:14px 0 2px"><b>${legalEsc(h.payer)}</b> <span style="font-weight:400;color:#5a6b7e">— ${legalEsc(h.stageLine)}</span></h3><ul style="margin:0 0 4px">${lines}</ul>`
+  }
+  const heads = [...withNews, ...gone, ...quiet]
+  const body = heads.length ? heads.map(block).join('') : '<p>No open matters, and nothing new this week.</p>'
   const subject = `Weekly digest — ${i.matters.length} open matter${i.matters.length === 1 ? '' : 's'} at ${i.companyName}`
-  const html = legalWrapHtml(i.companyName, `<p>Your weekly digest, ${legalEsc(i.recipientName)}.</p><h3 style="font-size:14px;margin:12px 0 4px">Open matters</h3><ul>${matterLines}</ul><h3 style="font-size:14px;margin:12px 0 4px">Since your last digest</h3><ul>${eventLines}</ul>${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)
+  const html = legalWrapHtml(i.companyName, `<p>Your weekly digest, ${legalEsc(i.recipientName)}.</p>${body}${PORTAL_BUTTON(i.portalUrl)}`, i.unsubscribeUrl)
   return { subject, text: `${subject}\n\n${i.portalUrl}`, html }
 }
 

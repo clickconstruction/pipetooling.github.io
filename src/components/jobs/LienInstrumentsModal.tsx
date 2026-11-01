@@ -42,7 +42,8 @@ import { noticeInvoiceDocs, unpaidBilledInvoices } from '../../lib/jobs/noticeIn
 import { liveDemandLetters, type JobDemandLetterRow } from '../../lib/jobs/demandLetterTracking'
 import { parsePaymentPromisesRpc } from '../../lib/jobs/paymentPromises'
 import { computeJobLienClock, type JobLienFilingRow } from '../../lib/jobs/lienDeadlines'
-import { buildLienTimelineFromWindow } from '../../lib/jobs/lienTimelineDesk'
+import { buildLienTimelineFromWindow, lienCourtesyFromItems } from '../../lib/jobs/lienTimelineDesk'
+import type { LienTimelineCourtesy } from '../../lib/jobs/lienTimeline'
 import LienTimelineStrip from './LienTimelineStrip'
 import { LienLastWorkDayLine } from './LienLastWorkDayLine'
 import { isLienOffice } from '../../lib/jobs/lienDesk'
@@ -199,6 +200,8 @@ export default function LienInstrumentsModal({
   const [priorNotices, setPriorNotices] = useState<DemandPriorNotice[]>([])
   const [customerAddress, setCustomerAddress] = useState('')
   const [historyRows, setHistoryRows] = useState<JobDemandLetterRow[]>([])
+  // The courtesy notices sent on the job (punch list #231), off the sent notice's desk item, for the strip's node.
+  const [courtesyRows, setCourtesyRows] = useState<LienTimelineCourtesy[]>([])
   // The last day of work (v2.4735): the timeline's *change ›* opens the All filings line here; a save re-reads the job's five columns.
   const [lastWorkOpen, setLastWorkOpen] = useState(openLastWork)
   const [lastWorkPatch, setLastWorkPatch] = useState<Partial<Pick<JobWithDetails, 'last_work_date' | 'lien_last_work_on' | 'lien_last_work_note' | 'lien_last_work_set_at' | 'lien_last_work_set_by'>> | null>(null)
@@ -253,14 +256,19 @@ export default function LienInstrumentsModal({
       return
     }
     try {
-      const { data } = await supabase
-        .from('job_demand_letters')
-        .select('*')
-        .eq('job_id', job.id)
-        .order('created_at', { ascending: false })
+      const [{ data }, { data: items }] = await Promise.all([
+        supabase
+          .from('job_demand_letters')
+          .select('*')
+          .eq('job_id', job.id)
+          .order('created_at', { ascending: false }),
+        supabase.from('job_lien_desk_items').select('job_id, kind, status, fields, voided_at').eq('job_id', job.id).eq('status', 'sent').is('voided_at', null),
+      ])
       setHistoryRows((data ?? []) as JobDemandLetterRow[])
+      setCourtesyRows(lienCourtesyFromItems((items ?? []) as Array<{ kind: string; status: string; fields: unknown; voided_at: string | null }> as never))
     } catch {
       setHistoryRows([])
+      setCourtesyRows([])
     }
   }, [job?.id])
 
@@ -697,9 +705,10 @@ export default function LienInstrumentsModal({
             openBalance: Math.max(0, Number(job.revenue ?? 0) - Number(job.payments_made ?? 0)),
             todayYmd: todayYmdLocal(),
             demandLetters: historyRows,
+            courtesy: courtesyRows,
           })
         : null,
-    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows],
+    [job, property, lastWorkJob, windowWorkMonths, filings, isSub, propertyKind, historyRows, courtesyRows],
   )
   // The period the affidavit tab swears (v2.6061): the fresh last-day read (a day set by hand reaches the paper the moment it is saved), the job's first day, and the window's months as the fallback.
   const affidavitWorkSpan = useMemo(() => {
@@ -745,6 +754,7 @@ export default function LienInstrumentsModal({
       return { ...none, act: tab('release_record', 'Open the Release tab ›'), note: 'The release of record is made once the job is paid.' }
     }
     if (kind === 'demand') return { ...none, act: { label: 'Open the Demand letter tab ›', onPress: () => { setStopOpen(null); setActiveTab('demand') } }, note: 'The demand letter is sent from this window; its reply day is on the strip.' }
+    if (kind === 'courtesy') return { ...none, note: 'The courtesy notice goes from the Lien desk, on the sent notice’s footer; its record is on the notice and in the job’s History.' }
     return none
   }
   const originalContractorName = isSub

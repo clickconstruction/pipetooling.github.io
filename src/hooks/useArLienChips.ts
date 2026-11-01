@@ -6,6 +6,7 @@ import { chunkIds } from '../lib/supabasePaging'
 import { useLienDeskData } from './useLienDeskData'
 import { useUserDisplayNames } from './useUserDisplayNames'
 import { buildLienNextUp } from '../lib/jobs/lienNextUp'
+import { courtesyByJobFrom } from '../lib/jobs/lienCourtesyDesk'
 import { lienArChipFor, type LienArChip } from '../lib/jobs/lienArChip'
 import { effectiveJobLedgerNumber } from '../lib/ledgerDisplayPrefixes'
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
@@ -86,6 +87,8 @@ export function useArLienChips(
       affidavits: data.affidavits.entries,
       retainage: data.retainage.entries,
       letterTwoByJob: data.letterTwoByJob,
+      // The courtesy notice (punch list #231): the same kernel the desk reads, so the chip and the row agree.
+      courtesyByJob: courtesyByJobFrom({ todayYmd, letterTwoByJob: data.letterTwoByJob, items: data.items, entries: data.queue.entries, jobsById: data.jobsById, addressesById: data.addressesById, affidavits: data.affidavits.entries, filingsByJob: data.filingsByJob }),
       serveDue,
       role,
       todayYmd,

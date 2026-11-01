@@ -10,12 +10,16 @@ covers:
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
 sections: What this surface is; Shared substrate; Master summary table; DashboardTeamActiveClockStrip regions; ClockInOutButton regions; Stage-A pure-logic inventory; Test coverage; Preserve-quirks list; Recommended extraction order
-last_updated: 2026-10-29
+last_updated: 2026-11-01
 ---
 
 ## What this surface is
 
 **Line numbers are exact as of `a05cef4c4` and rot with every commit — search the symbol name, not the number.** Regenerate the fact sheet with `npm run map -- <file>` before trusting any range.
+
+> **v2.6099 (after `mapped_at`) — clock presses through the outbox:** `ClockInOutButton.tsx`'s Clock In, the clock-out review and Job Mode's direct apply (the hourly switch is two presses, the clock-out then the clock-in behind it) go through `pressThroughOutbox` (`lib/offline/pressThroughOutbox.ts`) to the `land_field_press` RPC: online a press is sent at once and kept only when the send fails or times out, offline it is kept with its pressed moment and sent in order by `useOutboxReplay`. A clock-in still on the phone is the open session until it lands (`lib/offline/pendingSession.ts`, its id under `press:`), so the timer runs and Clock out is offered; the line beside the clock is `ClockPressLine` over `clockPressLine.ts` (amber waiting, green sent, red could not be sent with **Fix**) (`docs/recent-features/v2.6099.md`).
+
+> **v2.6198 (after `mapped_at`) — a read with no signal reads as a read:** a `fetchSessions` read that never reached the server draws on `OfflineRetryPanel` with `offlineMessage` (`CLOCK_READ_OFFLINE_WORDS`, read words in place of the write sentence) and reads again on the `online` event; `clockReadsAgain` (`pendingSession.ts`) re-reads only when a known press landed, was refused or is gone, and `clockReadWithKeptPresses` lays the presses still on the phone over every read (a waiting clock-out closes its session at the pressed moment), so a replay racing a read never reopens a session; `showClock` lays them over the view as drawn, so a Dashboard opened with no signal keeps a kept clock-in on the clock (`docs/recent-features/v2.6198.md`).
 
 Two components (not pages) that together are the clock-session UI:
 

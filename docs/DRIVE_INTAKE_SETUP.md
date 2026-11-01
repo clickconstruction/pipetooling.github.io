@@ -5,7 +5,7 @@ file: docs/DRIVE_INTAKE_SETUP.md
 type: Runbook / Setup
 purpose: One-time Google setup for the drive-intake edge function (estimator-twin pipeline Wave 4.4) — a SERVICE ACCOUNT, never a user password. Five minutes in console.cloud.google.com, two supabase secrets, one deploy.
 audience: Owner, Developers
-last_updated: 2026-10-31
+last_updated: 2026-11-01
 ---
 
 Why a service account: the function needs a robot identity that can write ONE shared
@@ -87,9 +87,12 @@ Accounts do not have storage quota", found live 2026-08-29 — SAs cannot own fi
 a My Drive folder) never applies. Live config, end-to-end verified (folder create + PDF
 byte-upload + both stamps through the deployed function):
 
-- Shared Drive **"PipeTooling Jobs"** (`0AI1sqwYSeegpUk9PVA`), created by
-  `bids@douglasmining.com`, with the SA added as a member.
-- `DRIVE_JOBS_FOLDER_ID` = the **Jobs** folder inside it (`11Ul_SuChL_Gq7EVUaDf9DJQwZXJsma30`); since v2.6056 the
+- Shared Drive **"PipeTooling Jobs"** (`0ANSfYqm0sENHUk9PVA`) in the **clickplumbing.com** Workspace, created
+  2026-11-01 by `robert@clickplumbing.com` (v2.6293; the first drive of that name, `0AI1sqwYSeegpUk9PVA` in
+  douglasmining.com, is renamed *PipeTooling Jobs (old, Douglas Mining)* and emptied). Members: the owner and the
+  office manager as Manager, the SA as Content manager. The dev seat's bid-plans filing names the drive by this id
+  (`ROBOT_PLANS_SHARED_DRIVE` in `_shared/bidPlansFolders.ts`), so a new drive is a code change too.
+- `DRIVE_JOBS_FOLDER_ID` = the **Jobs** folder inside it (`1GuDUKC6emyGB5D62eYT3IGHajKmgV3_a`); since v2.6056 the
   office's setting on Documents → Where files go names the root first and the secret is its fallback.
 - `DRIVE_IMPERSONATE_USER` was **unset** at cutover: the domain-wide-delegation grant was
   never made, and with the var set but ungranted, every upload fails at token exchange —

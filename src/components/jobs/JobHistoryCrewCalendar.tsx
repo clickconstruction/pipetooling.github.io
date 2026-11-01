@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
+import { EmptyState } from '../EmptyState'
 import { peopleCountColor } from '../../lib/projectsJobHistoryData'
-import { crewDayLabel, crewHoursWords, crewQuietWords, crewSummaryWords, type CrewCalendar, type CrewRangeMode } from '../../lib/jobs/jobHistoryCalendar'
+import { crewDayLabel, crewEmptyWords, crewHoursWords, crewQuietWords, crewRangeWords, crewSummaryWords, type CrewCalendar, type CrewRangeMode } from '../../lib/jobs/jobHistoryCalendar'
 import type { LienMonthLine, LienMonthLineTone } from '../../lib/jobs/lienMonthLines'
 
 /**
@@ -12,6 +13,9 @@ import type { LienMonthLine, LienMonthLineTone } from '../../lib/jobs/lienMonthL
  * still clocked in a corner mark. Press a day for the day window. Since v2.4707 a sub
  * job's month header carries its § 53.056 line (`monthLines`, from the lien timeline the
  * box above draws) — a work month is a notice month, so the two pictures read as one.
+ * The range is one quiet word on the card's label line, *Whole job ▾*, a menu of four
+ * (the owner, 2026-11-01: the old row of pills read as a second tab bar); the legend
+ * draws only under a calendar, and an empty range says what fills it (`crewEmptyWords`).
  * Presentational; the kernels decide every cell and every line.
  */
 
@@ -36,6 +40,8 @@ function lineColor(tone: LienMonthLineTone): string {
 
 const LABEL: CSSProperties = { fontSize: '0.72rem', fontWeight: 700, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-muted)' }
 
+const RANGE_MODES: CrewRangeMode[] = ['whole', 90, 365, 'custom']
+
 function chip(active: boolean): CSSProperties {
   return {
     padding: '0.2rem 0.6rem',
@@ -51,32 +57,68 @@ function chip(active: boolean): CSSProperties {
   }
 }
 
+const DATE_INPUT: CSSProperties = { font: 'inherit', padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }
+
+/** The range as one word with a chevron: a native select, so a phone opens its own picker. */
+function RangeMenu({ mode, onRangeMode }: { mode: CrewRangeMode; onRangeMode: (mode: CrewRangeMode) => void }) {
+  return (
+    <span data-crew-range style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
+      <select
+        aria-label="Days on the job range"
+        value={String(mode)}
+        onChange={(e) => onRangeMode(RANGE_MODES.find((m) => String(m) === e.target.value) ?? 'whole')}
+        style={{
+          appearance: 'none',
+          WebkitAppearance: 'none',
+          font: 'inherit',
+          fontSize: '0.78rem',
+          fontWeight: 600,
+          lineHeight: 1.3,
+          color: 'var(--text-700)',
+          background: 'var(--bg-subtle)',
+          border: '1px solid var(--border)',
+          borderRadius: 6,
+          padding: '0.15rem 1.25rem 0.15rem 0.5rem',
+          cursor: 'pointer',
+          maxWidth: '100%',
+        }}
+      >
+        {RANGE_MODES.map((m) => (
+          <option key={String(m)} value={String(m)}>{crewRangeWords(m)}</option>
+        ))}
+      </select>
+      <span aria-hidden style={{ position: 'absolute', right: '0.45rem', top: '50%', transform: 'translateY(-55%)', fontSize: '0.6rem', color: 'var(--text-muted)', pointerEvents: 'none' }}>▼</span>
+    </span>
+  )
+}
+
 export default function JobHistoryCrewCalendar({ calendar, namesById, todayYmd, loading = false, range, onRangeMode, onCustomRange, pickedUserId, onPickUser, onOpenDay, monthLines = null }: Props) {
-  const summary = loading && calendar.daysWorked === 0 ? 'Loading…' : crewSummaryWords(calendar, todayYmd)
+  const empty = calendar.daysWorked === 0
+  const summary = loading && empty ? 'Loading…' : crewSummaryWords(calendar, todayYmd)
+  const emptyWords = crewEmptyWords(range.mode)
   return (
     <section data-job-history-crew-calendar aria-label="Days on the job" style={{ border: '1px solid var(--border)', borderRadius: 9, padding: '0.6rem 0.8rem 0.55rem', background: 'var(--surface)', display: 'grid', gap: '0.55rem' }}>
-      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.3rem 0.9rem' }}>
+      <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.3rem 0.9rem' }}>
         <span style={LABEL}>Days on the job</span>
-        <span data-crew-summary style={{ fontSize: '0.875rem', color: 'var(--text-strong)' }}>{summary}</span>
+        {summary ? <span data-crew-summary style={{ fontSize: '0.875rem', color: 'var(--text-strong)' }}>{summary}</span> : null}
         <span style={{ flex: '1 1 auto' }} />
-        <span role="group" aria-label="Days on the job range" style={{ display: 'inline-flex', flexWrap: 'wrap', gap: '0.3rem', alignItems: 'center' }}>
-          <button type="button" aria-pressed={range.mode === 'whole'} onClick={() => onRangeMode('whole')} style={chip(range.mode === 'whole')}>Whole job</button>
-          <button type="button" aria-pressed={range.mode === 90} onClick={() => onRangeMode(90)} style={chip(range.mode === 90)}>Last 90d</button>
-          <button type="button" aria-pressed={range.mode === 365} onClick={() => onRangeMode(365)} style={chip(range.mode === 365)}>Last 365d</button>
-          <button type="button" aria-pressed={range.mode === 'custom'} onClick={() => onRangeMode('custom')} style={chip(range.mode === 'custom')}>Dates…</button>
-        </span>
+        <RangeMenu mode={range.mode} onRangeMode={onRangeMode} />
       </div>
       {range.mode === 'custom' ? (
         <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 0.8rem', alignItems: 'center', fontSize: '0.8125rem', color: 'var(--text-700)' }}>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
             From
-            <input type="date" value={range.start} max={range.end || undefined} aria-label="Days on the job from" onChange={(e) => onCustomRange(e.target.value, range.end)} style={{ font: 'inherit', padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }} />
+            <input type="date" value={range.start} max={range.end || undefined} aria-label="Days on the job from" onChange={(e) => onCustomRange(e.target.value, range.end)} style={DATE_INPUT} />
           </label>
           <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
             To
-            <input type="date" value={range.end} min={range.start || undefined} aria-label="Days on the job to" onChange={(e) => onCustomRange(range.start, e.target.value)} style={{ font: 'inherit', padding: '0.2rem 0.4rem', border: '1px solid var(--border-strong)', borderRadius: 6, background: 'var(--surface)', color: 'var(--text-strong)' }} />
+            <input type="date" value={range.end} min={range.start || undefined} aria-label="Days on the job to" onChange={(e) => onCustomRange(range.start, e.target.value)} style={DATE_INPUT} />
           </label>
         </div>
+      ) : null}
+
+      {empty && !loading ? (
+        <EmptyState compact main={emptyWords.main} next={emptyWords.next ? { label: emptyWords.next, onPress: () => onRangeMode('whole') } : undefined} tail={emptyWords.tail || undefined} />
       ) : null}
 
       {calendar.people.length > 0 ? (
@@ -184,10 +226,12 @@ export default function JobHistoryCrewCalendar({ calendar, namesById, todayYmd, 
         </div>
       ) : null}
 
-      <div style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.2rem 1rem', fontSize: '0.68rem', color: 'var(--text-faint)' }}>
-        <span>the number is how many people clocked in that day · press a day for who, their hours and what it cost</span>
-        <span style={{ whiteSpace: 'nowrap' }}>▢ weekend · ○ today · ◤ still clocked in</span>
-      </div>
+      {calendar.months.length > 0 ? (
+        <div data-crew-legend style={{ display: 'flex', flexWrap: 'wrap', justifyContent: 'space-between', gap: '0.2rem 1rem', fontSize: '0.68rem', color: 'var(--text-faint)' }}>
+          <span>the number is how many people clocked in that day · press a day for who, their hours and what it cost</span>
+          <span style={{ whiteSpace: 'nowrap' }}>▢ weekend · ○ today · ◤ still clocked in</span>
+        </div>
+      ) : null}
     </section>
   )
 }

@@ -1,7 +1,9 @@
 import { useEffect, useMemo, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import { useForecastWorkMonths } from './useForecastWorkMonths'
-import { buildLienTimelineFromWindow } from '../lib/jobs/lienTimelineDesk'
+import { buildLienTimelineFromWindow, lienCourtesyFromItems } from '../lib/jobs/lienTimelineDesk'
+import type { LienDeskItemRow } from '../lib/jobs/lienDesk'
+import type { LienTimelineCourtesy } from '../lib/jobs/lienTimeline'
 import type { LienTimeline } from '../lib/jobs/lienTimeline'
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
@@ -21,6 +23,7 @@ export function useJobLienTimeline(
 ): { timeline: LienTimeline | null; hasPaper: boolean; loading: boolean } {
   const [filings, setFilings] = useState<JobLienFilingRow[] | null>(null)
   const [letters, setLetters] = useState<JobDemandLetterRow[] | null>(null)
+  const [courtesy, setCourtesy] = useState<LienTimelineCourtesy[]>([])
   const [propertyKind, setPropertyKind] = useState<string | null>(null)
   const jobId = enabled ? job?.id ?? null : null
   const addressId = enabled ? job?.customer_address_id ?? null : null
@@ -29,15 +32,19 @@ export function useJobLienTimeline(
     if (!jobId) {
       setFilings(null)
       setLetters(null)
+      setCourtesy([])
       return
     }
     let cancelled = false
     void (async () => {
       try {
-        const [{ data: f }, { data: l }] = await Promise.all([
+        const [{ data: f }, { data: l }, { data: c }] = await Promise.all([
           supabase.from('job_lien_filings').select('*').eq('job_id', jobId).is('voided_at', null),
           supabase.from('job_demand_letters').select('*').eq('job_id', jobId).is('voided_at', null),
+          // The courtesy notices (punch list #231) ride the sent notice's desk item; a read refused (a role outside the office) leaves none.
+          supabase.from('job_lien_desk_items').select('job_id, kind, status, fields, voided_at').eq('job_id', jobId).eq('status', 'sent').is('voided_at', null),
         ])
+        if (!cancelled) setCourtesy(lienCourtesyFromItems(((c ?? []) as Array<Pick<LienDeskItemRow, 'kind' | 'status' | 'fields' | 'voided_at'>>)))
         if (cancelled) return
         setFilings((f ?? []) as JobLienFilingRow[])
         setLetters((l ?? []) as JobDemandLetterRow[])
@@ -88,8 +95,9 @@ export function useJobLienTimeline(
       openBalance: jobOpenBalance(job),
       todayYmd,
       demandLetters: letters,
+      courtesy,
     })
-  }, [job, enabled, filings, letters, propertyKind, byJob, monthsLoading, todayYmd])
+  }, [job, enabled, filings, letters, courtesy, propertyKind, byJob, monthsLoading, todayYmd])
 
   return { timeline, hasPaper: Boolean(filings?.length || letters?.length), loading: timeline == null && Boolean(jobId) }
 }
