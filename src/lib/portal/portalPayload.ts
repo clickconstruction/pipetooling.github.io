@@ -404,6 +404,8 @@ export function parsePortalPayload(raw: unknown): PortalPayload | null {
         claim,
         months: Array.isArray(n.months) ? (n.months as unknown[]).filter((x): x is string => typeof x === 'string' && /^\d{4}-\d{2}$/.test(x)) : [],
         mailedOn,
+        // The courtesy notice (punch list #231): tolerant of the field's absence (a function from before it).
+        courtesyOn: typeof n.courtesyOn === 'string' && /^\d{4}-\d{2}-\d{2}/.test(n.courtesyOn) ? n.courtesyOn.slice(0, 10) : '',
       })
     }
   }

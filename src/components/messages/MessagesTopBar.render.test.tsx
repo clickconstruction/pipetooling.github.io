@@ -2,7 +2,8 @@
 /**
  * Render smoke for Messages' one-row header (punch list #151 PR 2): the bar pinned with the title, the kind picker
  * opening its menu and reading the pick, Show's two radios with their counts, the search glass, the strip inside the
- * bar, 7 days flipping; the phone's split (the controls apart from the strip); a dark render.
+ * bar, 7 days flipping; the phone's split (the controls apart from the strip); a dark render. Since punch list #230
+ * PR 3 the two tabs after the title, drawn while the switch is on, and My email's bar with Follow up's controls out.
  */
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, within } from '@testing-library/react'
@@ -113,6 +114,50 @@ describe('MessagesTopBar', () => {
     cleanup()
     bar()
     expect(screen.queryByRole('button', { name: 'What each lane holds' })).toBeNull()
+  })
+
+  it('draws Follow up · My email after the title while the person’s switch is on, the open tab filled (punch list #230 PR 3)', () => {
+    const onTab = vi.fn()
+    bar({ tabs: { tab: 'followUp', onTab, myMailOn: true } })
+    const tabs = within(screen.getByRole('tablist', { name: 'Follow up or your own mail' }))
+    expect(tabs.getAllByRole('tab').map((t) => `${t.textContent}:${t.getAttribute('aria-selected')}`)).toEqual(['Follow up:true', 'My email:false'])
+    expect(screen.getByRole('heading', { name: 'Messages' }).nextElementSibling?.getAttribute('role')).toBe('tablist')
+    fireEvent.click(tabs.getByRole('tab', { name: 'Follow up' }))
+    expect(onTab).not.toHaveBeenCalled()
+    fireEvent.click(tabs.getByRole('tab', { name: 'My email' }))
+    expect(onTab).toHaveBeenCalledWith('myMail')
+    expect(screen.getByTestId('kind-picker')).toBeTruthy()
+    expect(screen.getAllByTestId('jump-lane').length).toBe(5)
+  })
+
+  it('draws no tabs while the switch is off, the bar as it was', () => {
+    bar({ tabs: { tab: 'followUp', onTab: vi.fn(), myMailOn: false } })
+    expect(screen.queryByRole('tablist')).toBeNull()
+    expect(screen.getByTestId('kind-picker')).toBeTruthy()
+  })
+
+  it('on My email keeps the title, the tabs and the ?, and leaves Follow up’s controls out', () => {
+    const onTab = vi.fn()
+    bar({ tabs: { tab: 'myMail', onTab, myMailOn: true }, legend: { open: false, onToggle: vi.fn() } })
+    const pinned = document.querySelector('[data-messages-pinned]') as HTMLElement
+    expect(within(pinned).getByRole('heading', { name: 'Messages' })).toBeTruthy()
+    expect(within(pinned).getByRole('tab', { name: 'My email' }).getAttribute('aria-selected')).toBe('true')
+    expect(within(pinned).getByRole('button', { name: 'What each lane holds' })).toBeTruthy()
+    for (const id of ['kind-picker', 'search-glass', 'week-fold', 'jump-lane']) expect(screen.queryByTestId(id)).toBeNull()
+    expect(screen.queryByRole('radiogroup', { name: 'Show' })).toBeNull()
+    fireEvent.click(within(pinned).getByRole('tab', { name: 'Follow up' }))
+    expect(onTab).toHaveBeenCalledWith('followUp')
+  })
+
+  it('on a phone the tabs sit in the controls row, and My email draws no strip under it', () => {
+    bar({ phone: true, tabs: { tab: 'followUp', onTab: vi.fn(), myMailOn: true } })
+    const controls = document.querySelector('[data-messages-top-bar]') as HTMLElement
+    expect(within(controls).getByRole('tablist')).toBeTruthy()
+    cleanup()
+    bar({ phone: true, tabs: { tab: 'myMail', onTab: vi.fn(), myMailOn: true } })
+    expect(document.querySelector('[data-messages-top-bar]')?.className).toBe('messagesTopBar isControls')
+    expect(screen.queryByTestId('jump-lane')).toBeNull()
+    expect(screen.getByRole('tab', { name: 'My email' })).toBeTruthy()
   })
 
   it('renders under the dark theme as it does in light', () => {

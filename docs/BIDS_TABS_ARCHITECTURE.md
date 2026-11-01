@@ -8,10 +8,16 @@ covers:
   - src/pages/Bids.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-11-01
 ---
 
 > **v2.5520 (after `mapped_at`) — CountTooling projects on the bid:** `Bids.tsx` reads `bid_count_sources` once for every bid on the board (`useBidCountSourcesByBid`, chunked) and hands the projects to the board's links cluster and to the Counts tab's *From* tile and column (`BidsCountsTab.tsx`, `sheetFromFilter`, `countRowFrom`), both drawn only once the bid has a project (`docs/recent-features/v2.5520.md`).
+
+> **v2.6169 (after `mapped_at`) — plan sets on the board:** `useBidBoardScope` reads `bid_plan_sets` once for every bid on the page (`useBidPlanSetsByBid`, chunked) and `Bids.tsx` hands the map to the Bid Board as `planSetsByBid` (`bidBoardPlanSets`), so the board's plans icon reads `planSetsForBid` and two or more sets open `BidPlanSetsModal` (`docs/recent-features/v2.6169.md`).
+
+> **v2.6225 (after `mapped_at`) — two doors to the robot's fixtures:** `Bids.tsx` keeps a `robotFixturesRequest` counter and `plansPanelPage`; `BidsRobotOverlays` gets `openRobotFixtures`, which selects the bid on the Counts tab and bumps the counter the Counts tab reads as `openRobotFixturesRequest` (the Robot status sheet's **Review them**), and the Counts tab's `onOpenPlansAt` opens `BidPlansPanel` at a page through its `openAtPage` prop (`docs/recent-features/v2.6225.md`).
+
+> **v2.6236 (after `mapped_at`) — the Plans panel knows when fixtures are ready:** the page hands `BidPlansPanel` a `fixturesReady` flag from `robotProgressRowFor(plansBid.id)` through `buildRobotStage` (`lib/bids/robotStage.ts`, `fixturesOpen`), so the panel's footer says the robot's fixtures are on the Counts tab only once a sealed run's pull waits there (`docs/recent-features/v2.6236.md`).
 
 ## Overview
 

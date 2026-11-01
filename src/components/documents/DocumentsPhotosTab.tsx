@@ -129,6 +129,7 @@ export function DocumentsPhotosTab({ io: givenIo, loadReport = loadReportForView
   const openJob = useCallback(
     (row: UploadedPhotoRow) => {
       if (!row.job_id) return
+      setOpen(null)
       if (jobDetail) jobDetail.openJobDetail({ jobId: row.job_id })
       else navigate(jobWindowPath(row.job_id))
     },

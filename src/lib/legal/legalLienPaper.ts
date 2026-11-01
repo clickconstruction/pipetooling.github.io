@@ -34,6 +34,8 @@ import type { LienDeskItemRow } from '../jobs/lienDesk'
 import { parseLienNoticeSentFacts } from '../jobs/lienNoticeDraft'
 import { affidavitPileFor, parseOwnerCall, reservationHoldEndsOn, type AffidavitPile, type OwnerCall } from '../jobs/lienOwnerCall'
 import { LETTER_TWO_FROM_DAY, LETTER_TWO_NONE, letterTwoKindLabel, letterTwoStatus, type LetterTwoKind, type LetterTwoStatus } from '../jobs/lienLetterTwo'
+import { courtesyRecordWords, parseCourtesyRecords, type CourtesyRecord } from '../jobs/lienCourtesyNotice'
+import { lienCourtesyFromItems } from '../jobs/lienTimelineDesk'
 
 // ---------------------------------------------------------------------------
 // Where each job stands
@@ -162,6 +164,8 @@ export function buildLegalJobTimelines(args: {
   propertyKindOf?: (jobId: string) => string
   isSub: boolean
   todayYmd: string
+  /** The notice desk items (punch list #231): the courtesy notices sent on each job draw on its timeline. Absent on an older caller. */
+  items?: ReadonlyArray<LegalDeskItemLike>
 }): LegalJobTimeline[] {
   return args.jobs.map((j) => {
     const openBalance = args.openBalanceOf(j.id)
@@ -174,6 +178,7 @@ export function buildLegalJobTimelines(args: {
       propertyKind,
       openBalance,
       todayYmd: args.todayYmd,
+      courtesy: args.items ? lienCourtesyFromItems(args.items.filter((it) => it.job_id === j.id)) : null,
     })
     return { jobId: j.id, jobLabel: args.labelOf(j.id), lastWorkYmd: args.lastWorkOf(j.id), lastWorkSource: args.lastWorkSourceOf?.(j.id), openBalance, timeline, retainageWords: retainageWordsFor(j, args.todayYmd) }
   })
@@ -419,6 +424,8 @@ export type LegalEnvelopeAnswers = {
   gcAuthorized: { at: string; name: string; note: string } | null
   /** Letter two's clock per job the paper covered — `none` on a job whose first packet is a later paper. */
   letterTwo: Array<{ jobId: string; jobLabel: string; status: LetterTwoStatus }>
+  /** The courtesy notices sent on the paper's items (punch list #231), oldest first; absent until one goes. */
+  courtesy?: CourtesyRecord[]
 }
 
 /**
@@ -455,7 +462,8 @@ export function attachEnvelopeAnswers(envelopes: ReadonlyArray<LegalEnvelope>, a
       const status = letterTwoStatus({ items: byJob.get(sh.jobId) ?? [], openBalance: args.openBalanceOf(sh.jobId), todayYmd: args.todayYmd })
       return { jobId: sh.jobId, jobLabel: sh.jobLabel, status: status.firstItemId && linkedIds.has(status.firstItemId) ? status : LETTER_TWO_NONE }
     })
-    return { ...e, letterTwo: null, answers: { ownerCall: call, pile: affidavitPileFor(call), holdEndsOn: reservationHoldEndsOn(call?.originalContractCompletedOn), gcAuthorized, letterTwo } }
+    const courtesy = linked.flatMap((it) => parseCourtesyRecords((it.fields as { courtesy?: unknown } | null)?.courtesy)).sort((a, b) => a.at.localeCompare(b.at))
+    return { ...e, letterTwo: null, answers: { ownerCall: call, pile: affidavitPileFor(call), holdEndsOn: reservationHoldEndsOn(call?.originalContractCompletedOn), gcAuthorized, letterTwo, ...(courtesy.length ? { courtesy } : {}) } }
   })
 }
 
@@ -471,7 +479,7 @@ const PILE_WORDS: Record<AffidavitPile, string> = {
   C: 'the property lien — file promptly',
 }
 
-export type LegalEnvelopeAnswerWords = { owner: string; letterTwo: string; gcOkay: string }
+export type LegalEnvelopeAnswerWords = { owner: string; letterTwo: string; gcOkay: string; /** The courtesy notices (punch list #231): the newest in words, with the count before it when more than one went. */ courtesy: string }
 
 function letterTwoClockWords(s: LetterTwoStatus, day: (ymd: string) => string): string {
   switch (s.state) {
@@ -514,5 +522,8 @@ export function envelopeAnswersWords(a: LegalEnvelopeAnswers, opts: { todayYmd: 
   const letterTwo = clocks.length === 0 ? '—' : distinct.length === 1 ? distinct[0]! : clocks.map((x) => `${x.label}: ${x.words}`).join(' · ')
   const g = a.gcAuthorized
   const gcOkay = g ? `${day(calendarYmdInAppTzFromIso(g.at))}${g.name ? ` · ${g.name}` : ''}${g.note.trim() ? ` · ${g.note.trim()}` : ''}` : 'none'
-  return { owner, letterTwo, gcOkay }
+  const sent = a.courtesy ?? []
+  const newest = sent[sent.length - 1]
+  const courtesy = newest ? `${sent.length > 1 ? `${sent.length} sent · newest ` : ''}${courtesyRecordWords(newest, day)}` : 'none yet'
+  return { owner, letterTwo, gcOkay, courtesy }
 }

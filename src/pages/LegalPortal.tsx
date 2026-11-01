@@ -11,10 +11,11 @@ import { CARD, COPPER, FAINT, HAIR, INK, MUTED, NOTE_BAND, PAPER, PAPER_GREEN, P
 import { formatLegalMoney, type LegalPacket } from '../lib/legal/legalPacket'
 import { buildFirmPacketPrintHtml } from '../lib/legal/legalFirmPacketPrint'
 import { openHtmlPrintWindow } from '../lib/jobsDocuments/printWindow'
-import { FIRM_EMAIL_MODE_WORDS, firmRecipientStatusWords, firmSavedWords, legalFirmStageWords } from '../lib/legal/legalFirmWords'
+import { FIRM_EMAIL_MODE_WORDS, FIRM_NOTIFICATIONS_WORDS, firmHandlingCountLine, firmRecipientStatusWords, firmSavedWords, firmSendConfirmationLabel, legalFirmStageWords } from '../lib/legal/legalFirmWords'
 import { PORTAL_QUIET_RELOAD_FAILED, portalPayloadIsStale } from '../lib/legal/legalPortalFreshness'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalPulledMatter, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
+import { FIRM_INBOX_WORDS, firmInboxCaption, firmSampleInbox } from '../lib/legal/legalFirmSampleWeek'
 import { legalNotReachingLine } from '../lib/legal/legalNotifyLedger'
 import { FirmMatterView, PortalTable } from '../components/jobs/legal/LegalFirmMatterView'
 import { orderFirmMatters } from '../lib/legal/legalFirmMatterOrder'
@@ -642,23 +643,32 @@ function FirmPlanForm({ matter, act, busy }: { matter: LegalPortalMatter; act: A
   )
 }
 
-/** The firm runs its own inbox (PR 5): people, one rule each — right away or a weekly digest — and only-my-matters. */
+/**
+ * The firm runs its own inbox (PR 5; redrawn in v2.6278, punch list #233). The add card is the row it
+ * becomes: name, email, a typed title that gates nothing, and the same two switches a row carries,
+ * Emails and Matters, so a person is added with the rule they keep. No paragraph explains the tab:
+ * the rows, the presses and the count under Only theirs say it.
+ */
 function NotificationsPanel({ payload, act, busy, notice, noticeWarn, actFailure }: { payload: LegalPortalPayload; act: Act; busy: boolean; notice: string | null; noticeWarn: boolean; actFailure: ActFailure | null }) {
+  const W = FIRM_NOTIFICATIONS_WORDS
   const [name, setName] = useState('')
   const [email, setEmail] = useState('')
-  const [role, setRole] = useState('paralegal')
+  const [title, setTitle] = useState('')
+  const [draft, setDraft] = useState<FirmRule>({ mode: 'now', scope: 'all', digestWeekday: 1, digestTime: '07:00' })
+  const nameRef = useRef<HTMLInputElement>(null)
   const input: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: CARD, color: INK, width: '100%' }
   const lab: CSSProperties = { display: 'grid', gap: 3, fontSize: portalSmall(11.5), color: MUTED }
   const small: CSSProperties = { ...btn, padding: '3px 9px', fontSize: 12 }
-  const ghost: CSSProperties = { ...small, borderColor: HAIR, color: MUTED }
-  const rule = (r: LegalPortalRecipient, patch: Record<string, unknown>) => void act({ kind: 'recipient_rules', recipientId: r.id, mode: r.mode, scope: r.scope, digestWeekday: r.digestWeekday, digestTime: r.digestTime, ...patch })
+  const ghost: CSSProperties = { ...small, border: `1px solid ${HAIR}`, color: MUTED }
+  const rule = (r: LegalPortalRecipient, patch: Partial<FirmRule>) => void act({ kind: 'recipient_rules', recipientId: r.id, mode: r.mode, scope: r.scope, digestWeekday: r.digestWeekday, digestTime: r.digestTime, ...patch })
   const onAdd = async (e: FormEvent) => {
     e.preventDefault()
     const who = name.trim()
     const address = email.trim().toLowerCase()
-    if (await act({ kind: 'recipient_add', name, email, role }, (answer) => confirmationNotice(who, address, answer))) {
+    if (await act({ kind: 'recipient_add', name, email, role: title.trim(), ...draft }, (answer) => confirmationNotice(who, address, answer))) {
       setName('')
       setEmail('')
+      setTitle('')
     }
   }
   return (
@@ -667,54 +677,112 @@ function NotificationsPanel({ payload, act, busy, notice, noticeWarn, actFailure
         {payload.firmPaused ? <div style={{ ...card, borderColor: PAPER_RED, color: PAPER_RED, marginBottom: 12, fontSize: 13 }}>{payload.company.name} has paused all emails to the firm. The portal still works; ask the office to resume.</div> : null}
         {notice ? <div role={noticeWarn ? 'alert' : 'status'} data-legal-notice={noticeWarn ? 'warn' : 'ok'} style={{ fontSize: 12.5, padding: '6px 10px', background: NOTE_BAND, borderRadius: 4, marginBottom: 10, color: noticeWarn ? PAPER_RED : undefined, fontWeight: noticeWarn ? 600 : undefined }}>{notice}</div> : null}
         <PortalFailureNote failure={actFailure?.failure ?? null} doorsOnly onTryAgain={actFailure?.retry} busy={busy} style={{ marginBottom: 10 }} />
-        {payload.recipients.length === 0 ? <div style={card}><b>Nobody at the firm is on the list yet.</b><br /><span style={{ color: MUTED, fontSize: 13 }}>Add the people who should hear from {payload.company.name}. Each gets one confirmation email and nothing else until they click it.</span></div> : null}
+        {payload.recipients.length === 0 ? (
+          <div style={card} data-legal-nobody>
+            <b>{W.emptyTitle}</b>
+            <div style={{ marginTop: 8 }}><button type="button" style={btn} onClick={() => nameRef.current?.focus()}>{W.emptyPress}</button></div>
+          </div>
+        ) : null}
         {payload.recipients.map((r) => (
-          <div key={r.id} style={{ ...card, marginBottom: 10 }}>
+          <div key={r.id} style={{ ...card, marginBottom: 10 }} data-legal-person>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 10, flexWrap: 'wrap' }}>
               <div><b>{r.name}</b> <span style={{ color: MUTED, fontSize: 12.5 }}>{r.email}{r.role ? ` · ${r.role}` : ''}</span></div>
               <span style={{ fontSize: portalSmall(11.5), fontWeight: 700, color: r.paused ? PAPER_RED : r.confirmed ? PAPER_GREEN : COPPER }}>{firmRecipientStatusWords(r)}</span>
             </div>
             {r.failingSince && !r.paused ? <div data-legal-not-reaching style={{ color: PAPER_RED, fontSize: 12.5, marginTop: 6 }}>{legalNotReachingLine({ email: r.email, sinceYmd: r.failingSince, confirmed: r.confirmed, mode: r.mode }, 'firm')}</div> : null}
-            <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 13 }}>
-              <span style={{ color: MUTED }}>Emails</span>
-              <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: portalSmall(11.5), fontWeight: 700 }}>
-                {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} onClick={() => rule(r, { mode: m })} style={{ padding: '3px 10px', border: 'none', background: r.mode === m ? COPPER : 'transparent', color: r.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: portalSmall(11.5), fontWeight: 700 }}>{FIRM_EMAIL_MODE_WORDS[m]}</button>)}
-              </span>
-              {r.mode === 'digest' ? (
-                <>
-                  {[1, 2, 3, 4, 5].map((d) => <button key={d} type="button" disabled={busy} onClick={() => rule(r, { digestWeekday: d })} style={r.digestWeekday === d ? small : ghost}>{WEEKDAY_LABELS[d]}</button>)}
-                  <select value={r.digestTime} disabled={busy} onChange={(e) => rule(r, { digestTime: e.target.value })} style={{ ...input, width: 'auto' }}>
-                    {['06:00', '07:00', '08:00', '09:00', '12:00', '16:00'].map((t) => <option key={t} value={t}>{t} Central</option>)}
-                  </select>
-                </>
-              ) : null}
-              <span className="legalRecipientScope" style={{ marginLeft: 'auto', display: 'inline-flex', gap: 6 }}>
-                <button type="button" disabled={busy} onClick={() => rule(r, { scope: 'mine' })} style={r.scope === 'mine' ? small : ghost}>Only my matters</button>
-                <button type="button" disabled={busy} onClick={() => rule(r, { scope: 'all' })} style={r.scope === 'all' ? small : ghost}>Every matter</button>
-              </span>
-            </div>
+            <FirmRuleRow value={r} name={r.name} matters={payload.matters} busy={busy} onChange={(patch) => rule(r, patch)} />
             <div style={{ display: 'flex', gap: 8, marginTop: 8, flexWrap: 'wrap' }}>
               {!r.confirmed ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resend', recipientId: r.id }, (answer) => confirmationNotice(r.name, r.email, answer, true))} style={ghost}>Resend the confirmation</button> : null}
-              {r.paused ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resume', recipientId: r.id })} style={small}>Turn emails back on</button> : <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_stop', recipientId: r.id })} style={{ ...ghost, color: PAPER_RED, borderColor: PAPER_RED }}>Stop emails to this person</button>}
+              {r.paused ? <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_resume', recipientId: r.id })} style={small}>Turn emails back on</button> : <button type="button" disabled={busy} onClick={() => void act({ kind: 'recipient_stop', recipientId: r.id })} style={{ ...ghost, color: PAPER_RED, border: `1px solid ${PAPER_RED}` }}>Stop emails to this person</button>}
             </div>
           </div>
         ))}
       </div>
       <div>
-        <div style={card}>
-          <div style={cap}>Add a person at the firm</div>
-          <form onSubmit={onAdd} style={{ display: 'grid', gap: 8, marginTop: 8 }}>
-            <label style={lab}>Name<input value={name} onChange={(e) => setName(e.target.value)} required style={input} /></label>
-            <label style={lab}>Email<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={input} /></label>
-            <label style={lab}>Role<select value={role} onChange={(e) => setRole(e.target.value)} style={input}><option value="paralegal">paralegal</option><option value="attorney">attorney</option><option value="billing">billing</option></select></label>
-            <button type="submit" disabled={busy} style={{ ...btn, justifyContent: 'center' }}>Send them a confirmation</button>
-          </form>
-        </div>
-        <div style={{ ...card, marginTop: 12, fontSize: 12.5, color: MUTED }}>
-          <b style={{ color: INK }}>How this behaves</b><br />Each person chooses an email for each event or a weekly digest, and every matter or only the ones they handle. A new address gets one confirmation email and nothing else until they click it. Every email carries a one-click link to stop. {payload.company.name} can pause all emails to the firm or remove a person; you see that here when it happens.<br /><br />
-          <b style={{ color: INK }}>What you hear about</b><br />A new account referred to you, the office answering or asking you something, a note from the office, a payment the office applied, and a referral withdrawn and why: each as its own email or in the digest. A fee or cost the office saw rides the digest only. The digest also lists every open matter.
-        </div>
+        <form onSubmit={onAdd} data-legal-add-person style={{ ...card, borderColor: COPPER, display: 'grid', gap: 8 }}>
+          <div style={cap}>{W.addCaption}</div>
+          <label style={lab}>{W.name}<input ref={nameRef} value={name} onChange={(e) => setName(e.target.value)} required maxLength={120} style={input} /></label>
+          <label style={lab}>{W.email}<input type="email" value={email} onChange={(e) => setEmail(e.target.value)} required style={input} /></label>
+          <label style={lab}>{W.title}<input value={title} onChange={(e) => setTitle(e.target.value)} placeholder={W.titlePlaceholder} maxLength={60} style={input} /><span style={{ fontSize: portalSmall(11.5), color: FAINT }}>{W.titleHint}</span></label>
+          <FirmRuleRow value={draft} name={name} matters={payload.matters} busy={busy} inForm onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))} />
+          <button type="submit" disabled={busy} style={{ ...btn, justifyContent: 'center', marginTop: 4 }}>{firmSendConfirmationLabel(name)}</button>
+          <div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{W.sendLine}</div>
+          <FirmSampleInbox name={name} rule={draft} payload={payload} />
+        </form>
       </div>
+    </div>
+  )
+}
+
+type FirmRule = Pick<LegalPortalRecipient, 'mode' | 'scope' | 'digestWeekday' | 'digestTime'>
+
+/**
+ * What lands in the person's inbox under the rule on the add card (#233, v2.6280): a sample week as
+ * subject lines, the first email opened under them in a sealed frame, any line pressable. The lines
+ * and the emails come from the real builders (`legalFirmSampleWeek.ts`); the fee line sits dim under
+ * Each event because it rides the digest only, and it opens nothing.
+ */
+function FirmSampleInbox({ name, rule, payload }: { name: string; rule: FirmRule; payload: LegalPortalPayload }) {
+  const [pressed, setPressed] = useState<string | null>(null)
+  const inbox = useMemo(
+    () => firmSampleInbox({ companyName: payload.company.name, firmName: payload.firm.name, otherHandling: payload.firm.handling_name || 'another attorney at the firm', name, rule: { mode: rule.mode, scope: rule.scope, digestWeekday: rule.digestWeekday }, preparedOn: payload.preparedOn }),
+    [payload.company.name, payload.firm.name, payload.firm.handling_name, payload.preparedOn, name, rule.mode, rule.scope, rule.digestWeekday],
+  )
+  const openKey = inbox.lines.some((l) => l.key === pressed && !l.dim) ? pressed : inbox.firstKey
+  const mail = openKey ? inbox.email(openKey) : null
+  const tag: CSSProperties = { marginLeft: 6, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: FAINT, border: `1px solid ${HAIR}`, borderRadius: 999, padding: '0 6px', verticalAlign: 1 }
+  return (
+    <div data-legal-sample-inbox style={{ marginTop: 6, paddingTop: 10, borderTop: `1px dotted ${HAIR}` }}>
+      <div style={{ ...cap, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><span>{firmInboxCaption(name)}</span><span style={{ textTransform: 'none', letterSpacing: 0 }}>{FIRM_INBOX_WORDS.sample}</span></div>
+      <div style={{ border: `1px solid ${HAIR}`, borderRadius: 6, overflow: 'hidden', background: CARD, marginTop: 6 }}>
+        {inbox.lines.map((l) => (
+          <button key={l.key} type="button" data-legal-inbox-line={l.dim ? 'dim' : l.key === openKey ? 'open' : 'line'} disabled={l.dim} onClick={() => setPressed(l.key)} style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: 8, width: '100%', textAlign: 'left', padding: '5px 10px', border: 'none', borderBottom: `1px solid ${HAIR}`, background: 'transparent', font: 'inherit', fontSize: 12.5, color: l.dim ? FAINT : l.key === openKey ? COPPER : INK, fontWeight: l.dim ? 500 : 600, cursor: l.dim ? 'default' : 'pointer' }}>
+            <span style={{ color: FAINT, fontSize: portalSmall(11) }}>{l.day}</span>
+            <span>{l.subject}{l.dim ? <span style={tag}>{FIRM_INBOX_WORDS.digestOnly}</span> : null}</span>
+          </button>
+        ))}
+      </div>
+      {mail ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: portalSmall(11), color: FAINT, marginBottom: 4 }}>{FIRM_INBOX_WORDS.opened}: <b style={{ color: INK }}>{mail.subject}</b></div>
+          <iframe title={mail.subject} srcDoc={mail.html} sandbox="" style={{ width: '100%', height: rule.mode === 'digest' ? 440 : 300, border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD }} />
+        </div>
+      ) : null}
+    </div>
+  )
+}
+
+/**
+ * One rule, drawn the same on a person's row and on the add card (#233): Emails with the digest's day
+ * and time, Matters, and under Only theirs the count of open matters that name the person as handling.
+ * On a row Matters sits at the right; on the add card both switches sit at the left under their labels.
+ */
+function FirmRuleRow({ value, name, matters, busy, inForm, onChange }: { value: FirmRule; name: string; matters: ReadonlyArray<{ handling: string }>; busy: boolean; inForm?: boolean; onChange: (patch: Partial<FirmRule>) => void }) {
+  const W = FIRM_NOTIFICATIONS_WORDS
+  const small: CSSProperties = { ...btn, padding: '3px 9px', fontSize: 12 }
+  const ghost: CSSProperties = { ...small, border: `1px solid ${HAIR}`, color: MUTED }
+  const lbl: CSSProperties = { color: MUTED, minWidth: inForm ? 50 : undefined }
+  const select: CSSProperties = { font: 'inherit', fontSize: 13, padding: '5px 8px', border: `1px solid ${HAIR}`, borderRadius: 4, background: CARD, color: INK, width: 'auto' }
+  return (
+    <div data-legal-rule style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginTop: 8, fontSize: 13 }}>
+      <span style={lbl}>{W.emails}</span>
+      <span style={{ display: 'inline-flex', border: `1px solid ${HAIR}`, borderRadius: 999, overflow: 'hidden', fontSize: portalSmall(11.5), fontWeight: 700 }}>
+        {(['now', 'digest'] as const).map((m) => <button key={m} type="button" disabled={busy} aria-pressed={value.mode === m} onClick={() => onChange({ mode: m })} style={{ padding: '3px 10px', border: 'none', background: value.mode === m ? COPPER : 'transparent', color: value.mode === m ? '#fff' : FAINT, cursor: 'pointer', font: 'inherit', fontSize: portalSmall(11.5), fontWeight: 700 }}>{FIRM_EMAIL_MODE_WORDS[m]}</button>)}
+      </span>
+      {value.mode === 'digest' ? (
+        <>
+          {[1, 2, 3, 4, 5].map((d) => <button key={d} type="button" disabled={busy} aria-pressed={value.digestWeekday === d} onClick={() => onChange({ digestWeekday: d })} style={value.digestWeekday === d ? small : ghost}>{WEEKDAY_LABELS[d]}</button>)}
+          <select value={value.digestTime} disabled={busy} onChange={(e) => onChange({ digestTime: e.target.value })} style={select}>
+            {['06:00', '07:00', '08:00', '09:00', '12:00', '16:00'].map((t) => <option key={t} value={t}>{t} Central</option>)}
+          </select>
+        </>
+      ) : null}
+      <span className={inForm ? undefined : 'legalRecipientScope'} style={{ marginLeft: inForm ? 0 : 'auto', flexBasis: inForm ? '100%' : undefined, display: 'inline-flex', gap: 6, alignItems: 'center' }}>
+        <span style={lbl}>{W.matters}</span>
+        <button type="button" disabled={busy} aria-pressed={value.scope === 'all'} onClick={() => onChange({ scope: 'all' })} style={value.scope === 'all' ? small : ghost}>{W.everyMatter}</button>
+        <button type="button" disabled={busy} aria-pressed={value.scope === 'mine'} onClick={() => onChange({ scope: 'mine' })} style={value.scope === 'mine' ? small : ghost}>{W.onlyTheirs}</button>
+      </span>
+      {value.scope === 'mine' ? <div data-legal-handling-count style={{ flexBasis: '100%', fontSize: portalSmall(11.5), color: FAINT }}>{firmHandlingCountLine(name, matters)}</div> : null}
     </div>
   )
 }

@@ -31,6 +31,8 @@ export const SETTINGS_HASH_ANCHOR_TO_TAB: Readonly<Record<string, string>> = {
   'settings-salary-workday': 'settings-account',
   'settings-dev-mcp-keys': 'settings-account',
   'settings-lien-sign-code': 'settings-account',
+  // My email in Messages (punch list #230 PR 3): the My email tab's off line opens the switch here.
+  'settings-my-mail': 'settings-account',
   'settings-recently-deleted': 'settings-data',
   'settings-page-pins': 'settings-dashboard',
   'settings-claim-code': 'settings-advanced-tools',

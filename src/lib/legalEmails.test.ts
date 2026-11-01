@@ -25,9 +25,11 @@ describe('the firm’s emails · punch list #85 item 3 · the firm’s words and
 
   it('the digest lists stages in the firm’s words', () => {
     const html = buildLegalDigestEmail({ companyName: 'Acme Mechanical', recipientName: 'Bo', matters: [{ payerName: 'A', stage: 'referred' }, { payerName: 'B', stage: 'judgment' }], events: [{ createdAt: '2026-10-02T12:00:00Z', trigger: 'pulled', payer: 'C' }], portalUrl: 'https://x.test/legal', unsubscribeUrl: 'https://x.test/stop' }).html
-    expect(html).toContain('<b>A</b> — referred')
-    expect(html).toContain('<b>B</b> — judgment entered')
-    expect(html).toContain('Referral withdrawn: <b>C</b>')
+    expect(html).toContain('<b>A</b> <span style="font-weight:400;color:#5a6b7e">— referred</span>')
+    expect(html).toContain('<b>B</b> <span style="font-weight:400;color:#5a6b7e">— judgment entered</span>')
+    // v2.6281: a matter withdrawn this week is off the open list and keeps its own heading, its lines under it.
+    expect(html).toContain('<b>C</b> <span style="font-weight:400;color:#5a6b7e">— referral withdrawn</span>')
+    expect(html).toContain('<li>Oct 2 · Referral withdrawn</li>')
   })
 })
 
@@ -46,13 +48,14 @@ describe('buildLegalDigestEmail · 2026-10-02 · a matter’s and an event’s d
   it('a matter released and a referral logged at 7:30 pm Central read that day', () => {
     const html = digest('2026-10-03T00:30:00Z', '2026-10-03T00:30:00+00:00')
     expect(html).toContain(' · since 2026-10-02')
-    expect(html).toContain('<li>2026-10-02 · New account referred')
+    expect(html).toContain('<li>Oct 2 · New account referred</li>')
     expect(html).not.toContain('2026-10-03')
+    expect(html).not.toContain('Oct 3')
   })
 
   it('6:30 pm in winter is still that day, and noon UTC reads its own day', () => {
     expect(digest('2026-12-02T00:30:00Z', '2026-12-02T00:30:00Z')).toContain(' · since 2026-12-01')
-    expect(digest('2026-10-02T12:00:00Z', '2026-10-02T12:00:00Z')).toContain('<li>2026-10-02 · New account referred')
+    expect(digest('2026-10-02T12:00:00Z', '2026-10-02T12:00:00Z')).toContain('<li>Oct 2 · New account referred</li>')
   })
 
   it('a matter with no release time prints no since', () => {
@@ -112,5 +115,54 @@ describe('the confirm page’s expired words · v2.4624', () => {
   it('point at Resend the confirmation, not at being added again', () => {
     expect(LEGAL_CONFIRM_EXPIRED_REASON).toContain('Resend the confirmation')
     expect(LEGAL_CONFIRM_EXPIRED_REASON).not.toMatch(/add you again/)
+  })
+})
+
+describe('buildLegalDigestEmail · v2.6281 · the digest reads by matter', () => {
+  const html = buildLegalDigestEmail({
+    companyName: 'Click Plumbing and Electrical',
+    recipientName: 'Dana Whitlock',
+    matters: [
+      { payerName: 'Saltgrass Mechanical', stage: 'payment_plan', handlingName: 'Priya Natarajan', releasedAt: '2026-08-14T18:00:00Z' },
+      { payerName: 'Ridgeway Builders', stage: 'referred', handlingName: 'Dana Whitlock', releasedAt: '2026-10-26T18:00:00Z' },
+      { payerName: 'Cedar Bend Homes', stage: 'demand', handlingName: 'Priya Natarajan', releasedAt: '2026-10-12T18:00:00Z' },
+    ],
+    events: [
+      { createdAt: '2026-10-26T18:00:00Z', trigger: 'referred', payer: 'Ridgeway Builders' },
+      { createdAt: '2026-10-27T18:00:00Z', trigger: 'ask', payer: 'Ridgeway Builders', body: 'Do you have the signed change order?' },
+      { createdAt: '2026-10-28T18:00:00Z', trigger: 'answer', payer: 'cedar bend homes', body: 'Yes, certified mail.' },
+      { createdAt: '2026-10-29T18:00:00Z', trigger: 'note', payer: 'Northline Builders', body: 'The GC called.' },
+      { createdAt: '2026-10-30T18:00:00Z', trigger: 'applied', payer: 'Cedar Bend Homes', amount: 4200 },
+      { createdAt: '2026-10-30T19:00:00Z', trigger: 'pulled', payer: 'Northline Builders', reason: 'paid in full' },
+      { createdAt: '2026-10-30T20:00:00Z', trigger: 'fee_seen', payer: 'Ridgeway Builders', amount: 450 },
+    ],
+    portalUrl: 'https://x.test/legal',
+    unsubscribeUrl: 'https://x.test/stop',
+  }).html
+
+  it('each matter is a heading with its stage line, and its week sits under it in order', () => {
+    const at = (s: string) => html.indexOf(s)
+    const ridgeway = at('<b>Ridgeway Builders</b>')
+    const cedar = at('<b>Cedar Bend Homes</b>')
+    const northline = at('<b>Northline Builders</b>')
+    const saltgrass = at('<b>Saltgrass Mechanical</b>')
+    expect([ridgeway, cedar, northline, saltgrass].every((n) => n >= 0)).toBe(true)
+    // Matters with news first, newest news first (Ridgeway's fee at 20:00 outranks Cedar's payment at 18:00); the withdrawn one after them; the quiet one last.
+    expect(ridgeway).toBeLessThan(cedar)
+    expect(cedar).toBeLessThan(northline)
+    expect(northline).toBeLessThan(saltgrass)
+    expect(html).toContain('<b>Ridgeway Builders</b> <span style="font-weight:400;color:#5a6b7e">— referred · handling Dana Whitlock · since 2026-10-26</span></h3><ul style="margin:0 0 4px"><li>Oct 26 · New account referred</li><li>Oct 27 · The office asks — Do you have the signed change order?</li><li>Oct 30 · Fee seen by the office $450.00</li></ul>')
+    // The payer is matched case and spaces aside, as the dispatcher writes it.
+    expect(html).toContain('<li>Oct 28 · Office answered — Yes, certified mail.</li><li>Oct 30 · Payment applied $4,200.00</li>')
+    expect(html).toContain('<b>Northline Builders</b> <span style="font-weight:400;color:#5a6b7e">— referral withdrawn</span></h3><ul style="margin:0 0 4px"><li>Oct 29 · Note from the office — The GC called.</li><li>Oct 30 · Referral withdrawn — paid in full</li></ul>')
+    expect(html).toContain('<b>Saltgrass Mechanical</b> <span style="font-weight:400;color:#5a6b7e">— payment plan · handling Priya Natarajan · since 2026-08-14</span></h3><ul style="margin:0 0 4px"><li style="color:#5a6b7e">Nothing new this week.</li></ul>')
+    expect(html).not.toContain('Open matters')
+    expect(html).not.toContain('Since your last digest')
+  })
+
+  it('nothing open and nothing new says so in one line; the subject still counts the open matters', () => {
+    const empty = buildLegalDigestEmail({ companyName: 'Acme Mechanical', recipientName: 'Bo', matters: [], events: [], portalUrl: 'https://x.test/legal', unsubscribeUrl: 'https://x.test/stop' })
+    expect(empty.html).toContain('<p>No open matters, and nothing new this week.</p>')
+    expect(empty.subject).toBe('Weekly digest — 0 open matters at Acme Mechanical')
   })
 })

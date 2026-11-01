@@ -103,6 +103,7 @@ function EnvelopeAnswersBand({ e, packet, companyName }: { e: LegalEnvelope; pac
     <div data-legal-envelope-answers={e.key} style={{ background: NOTE_BAND, borderRadius: 6, padding: '6px 10px', fontSize: 12.5, lineHeight: 1.45 }}>
       <div><b>The owner's answers</b> <span style={{ color: MUTED }}>· {w.owner}</span></div>
       <div><b>Letter two</b> <span style={{ color: MUTED }}>· {w.letterTwo}</span> <b style={{ marginLeft: 10 }}>GC's written okay to pay {companyName} directly:</b> <span style={{ color: MUTED }}>{w.gcOkay}</span></div>
+      <div data-legal-envelope-courtesy><b>Courtesy notice</b> <span style={{ color: MUTED }}>· {w.courtesy}</span></div>
     </div>
   )
 }
