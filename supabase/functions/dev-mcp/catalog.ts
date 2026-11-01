@@ -1139,6 +1139,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "job_activity_line_bill_resent": [{"args":{"s":"Database[\"public\"][\"Tables\"][\"sent_documents\"][\"Row\"]"},"returns":"undefined"}],
   "job_activity_line_contract_reminder": [{"args":{"e":"Database[\"public\"][\"Tables\"][\"job_contract_events\"][\"Row\"]"},"returns":"undefined"}],
   "job_activity_line_demand_letter": [{"args":{"d":"Database[\"public\"][\"Tables\"][\"job_demand_letters\"][\"Row\"]"},"returns":"undefined"}],
+  "job_activity_line_lien_courtesy": [{"args":{"it":"Database[\"public\"][\"Tables\"][\"job_lien_desk_items\"][\"Row\"]"},"returns":"undefined"}],
   "job_activity_line_lien_notice": [{"args":{"f":"Database[\"public\"][\"Tables\"][\"job_lien_filings\"][\"Row\"]"},"returns":"undefined"}],
   "job_activity_send_at": [{"args":{"p_day":"string","p_recorded_at":"string"},"returns":"string"}],
   "job_activity_send_words": [{"args":{"p_method":"string"},"returns":"string"}],

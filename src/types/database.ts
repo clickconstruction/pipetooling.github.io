@@ -37633,6 +37633,10 @@ export type Database = {
         Args: { d: Database["public"]["Tables"]["job_demand_letters"]["Row"] }
         Returns: undefined
       }
+      job_activity_line_lien_courtesy: {
+        Args: { it: Database["public"]["Tables"]["job_lien_desk_items"]["Row"] }
+        Returns: undefined
+      }
       job_activity_line_lien_notice: {
         Args: { f: Database["public"]["Tables"]["job_lien_filings"]["Row"] }
         Returns: undefined
