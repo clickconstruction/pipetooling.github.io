@@ -8,6 +8,8 @@ import {
 import { plainWordsFailures } from '../plainWords'
 import {
   bidFolderName,
+  customerFolderName,
+  customerFolderNameApart,
   DEFAULT_BID_FOLDER_PATTERN,
   DEFAULT_JOB_FOLDER_PATTERN,
   DRIVE_BID_FOLDER_PATTERN_KEY,
@@ -16,15 +18,21 @@ import {
   DRIVE_JOBS_ROOT_FOLDER_ID_KEY,
   driveFolderIdFromLinkOrId,
   driveSafeName,
+  driveFailWords,
   driveSettingsFromRows,
   FOLDER_NAME_MAX,
+  folderPathWords,
   folderName,
   folderPatternJson,
   JOB_FOLDER_PIECE_LABELS,
   JOB_FOLDER_PIECES,
+  NO_CUSTOMER_FOLDER_NAME,
+  outsideDriveWords,
   parseBidFolderPattern,
   parseFoldersMade,
   parseJobFolderPattern,
+  placeFolder,
+  tidyOutcomeWords,
   writeCheckWords,
 } from './folderName'
 
@@ -139,7 +147,55 @@ describe('the write check', () => {
   })
 
   it('keeps every answer in plain words', () => {
-    const seen = [{ kind: 'ok' }, { kind: 'no_link' }, { kind: 'not_a_folder' }, { kind: 'cannot_write' }, { kind: 'cannot_open', status: 403, reason: null }] as const
+    const seen = [{ kind: 'ok' }, { kind: 'no_link' }, { kind: 'not_a_folder' }, { kind: 'cannot_write' }, { kind: 'cannot_open', status: 403, reason: null }, { kind: 'outside_drive', owner: 'taunya' }, { kind: 'outside_drive', owner: null }] as const
     for (const s of seen) expect(plainWordsFailures(writeCheckWords(s, 'robot@example.com').words)).toEqual([])
+  })
+
+  it('fails a folder in a My Drive, naming whose, since the app can make folders there but never own a file (J1091, 2026-11-01)', () => {
+    const r = writeCheckWords({ kind: 'outside_drive', owner: 'taunya' }, email)
+    expect(r.ok).toBe(false)
+    expect(r.words).toBe('This folder is in taunya’s My Drive, where the app can make folders but cannot save a file. Move it into the app’s Shared Drive, or clear the link and press Make the job’s Drive folders.')
+    expect(writeCheckWords({ kind: 'outside_drive', owner: null }, email).words).toContain('in a My Drive')
+    expect(outsideDriveWords('taunya')).toBe(r.words)
+  })
+
+  it('reads Drive’s quota refusal as the folder being outside the Shared Drive, and leaves any other reason as it is', () => {
+    const google = 'Upload failed (403): Service Accounts do not have storage quota. Leverage shared drives (https://developers.google.com/workspace/drive/api/guides/about-shareddrives), or use OAuth delegation instead.'
+    expect(driveFailWords(google)).toBe(outsideDriveWords(null))
+    expect(driveFailWords('Our copy of that photo did not read.')).toBe('Our copy of that photo did not read.')
+  })
+})
+
+describe('the tree under the customer (v2.6284)', () => {
+  it('names a customer’s folder by the customer, Drive-safe, or by the id when the name is empty; the apart form adds the id', () => {
+    expect(customerFolderName({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: ' Achilles-  Austin ' })).toBe('Achilles- Austin')
+    expect(customerFolderName({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: '' })).toBe('Customer 30d29df1')
+    expect(customerFolderName({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: null })).toBe('Customer 30d29df1')
+    expect(customerFolderNameApart({ id: '30d29df1-16ca-4834-a47f-5f7baa1617fa', name: 'Smith' })).toBe('Smith · 30d29df1')
+    expect(customerFolderName({ id: 'x'.repeat(36), name: 'a'.repeat(300) })).toHaveLength(FOLDER_NAME_MAX)
+    expect(NO_CUSTOMER_FOLDER_NAME).toBe('No customer yet')
+  })
+
+  it('places a folder: in place, a move, a rename, both, or a hold outside the Shared Drive', () => {
+    const wanted = { parentId: 'customer-folder', name: '972 · Oak Hollow Bldg C' }
+    const seen = { id: 'f', name: '972 · Oak Hollow Bldg C', parentId: 'customer-folder', inDrive: true, owner: null }
+    expect(placeFolder(seen, wanted)).toEqual({ act: 'in_place' })
+    expect(placeFolder({ ...seen, parentId: 'jobs-root' }, wanted)).toEqual({ act: 'move' })
+    expect(placeFolder({ ...seen, name: '_Oak Hollow' }, wanted)).toEqual({ act: 'rename' })
+    expect(placeFolder({ ...seen, parentId: 'jobs-root', name: '_Oak Hollow' }, wanted)).toEqual({ act: 'move_rename' })
+    const held = placeFolder({ ...seen, parentId: 'click-customers', inDrive: false, owner: 'taunya' }, wanted)
+    expect(held).toEqual({ act: 'hold', kind: 'outside_drive', why: outsideDriveWords('taunya') })
+    // Outside the drive, the place and the name do not matter: it is never moved or renamed.
+    expect(placeFolder({ ...seen, inDrive: false }, wanted).act).toBe('hold')
+  })
+
+  it('writes the path and the sweep’s line', () => {
+    expect(folderPathWords(['Jobs', 'Oak Hollow HOA', '972 · Oak Hollow Bldg C'])).toBe('Jobs › Oak Hollow HOA › 972 · Oak Hollow Bldg C')
+    expect(folderPathWords(['Jobs', null, '', '972'])).toBe('Jobs › 972')
+    expect(tidyOutcomeWords({ looked: 25, made: 3, moved: 12, renamed: 4, inPlace: 4, held: 2, left: 410 })).toBe('Looked at 25 jobs: 3 folders made, 12 moved, 4 renamed, 2 held. 410 more to look at.')
+    expect(tidyOutcomeWords({ looked: 1, made: 1, moved: 0, renamed: 0, inPlace: 0, held: 0, left: 0 })).toBe('Looked at 1 job: 1 folder made.')
+    expect(tidyOutcomeWords({ looked: 8, made: 0, moved: 0, renamed: 0, inPlace: 8, held: 0, left: 0 })).toBe('Looked at 8 jobs: every folder already in place.')
+    expect(tidyOutcomeWords({ looked: 0, made: 0, moved: 0, renamed: 0, inPlace: 0, held: 0, left: 0 })).toBe('Looked at 0 jobs: nothing to do.')
+    for (const line of [tidyOutcomeWords({ looked: 25, made: 3, moved: 12, renamed: 4, inPlace: 4, held: 2, left: 410 }), outsideDriveWords('taunya')]) expect(plainWordsFailures(line)).toEqual([])
   })
 })

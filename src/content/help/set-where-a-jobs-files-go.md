@@ -5,7 +5,7 @@ roles: dev, master_technician, assistant, controller
 keywords: where files go, drive, google drive, jobs root, job folder, folder name, pattern, drive folders, check a folder, documents, customer pictures, plans, team only, bid folder
 order: 46
 ---
-Every job's files live in one Drive folder under the jobs root. On the Documents page you set where that root is and how a job's folder is named.
+Every job's files live in one Drive folder under its customer's folder, under the jobs root. On the Documents page you set where that root is and how a job's folder is named.
 
 ## Open the tab
 
@@ -29,15 +29,25 @@ Press a dashed piece under **Add:** to put it at the end of the name. Press a da
 
 The same row sits under *A bid's folder:* for the folder a bid gets when its plans come in.
 
-A new name applies to folders made from then on. Nothing that exists is renamed.
+A new name applies to every job's folder the next time the sweep looks at it. The sweep renames a folder in the app's Shared Drive to the new name. Links to the folder keep working.
 
 ## Choose when the folders are made
 
 The third card draws the tree inside a job's folder. The five names inside stay fixed, because the photo and plan sweeps file by them.
 
+The job's folder sits under its customer's folder. The customer's folder is named by the customer. A job with no customer yet sits under **No customer yet** and moves when you set one.
+
 Under the tree, pick one. **Make all of it when the job is made** makes every folder at once. **Make each folder when something first lands in it** makes the job's folder alone. Customer Pictures is made the first time a photo lands, and the photo files there. The choice saves when you press it.
 
 A bid's folder is named by the bid pattern the same way. A bid that already has a folder keeps it.
+
+## Let the sweep keep the tree
+
+Every ten minutes a sweep looks at the live jobs. It takes the new ones and the ones last looked at over a week ago. It makes the folder a new job is missing. It moves a folder under the right customer. It renames a folder to the pattern. A move or a rename keeps every link working.
+
+A folder in someone's My Drive is never moved. The app can make folders there but cannot save a file there. The job is held, and its words say so with the fix. Move the folder into the app's Shared Drive. Or clear the link on the job and press {{button:blue|Make the job's Drive folders}}.
+
+The first photo on a job with no folder makes the folder itself. A photo does not wait on a press.
 
 ## Make the folders for every job without one
 

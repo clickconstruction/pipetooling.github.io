@@ -7,6 +7,12 @@
  *
  * No imports, so the app's tests import it as the functions do (`src/lib/documents/folderName.ts` re-exports it).
  * The five folder names inside a job's folder stay fixed: the sweeps, the sent-copies path and the plans intake read them.
+ *
+ * One tree, the owner's rule of 2026-11-01 (v2.6284): root › <customer> › <job pattern> › the five. A job's folder is made
+ * under its customer's folder (named by the customer, `customerFolderName`), a job with no customer under *No customer yet*,
+ * and the folder follows the job: a customer set later moves it, a rename of the job or the customer renames it
+ * (`placeFolder` decides; `_shared/jobFolders.ts` does it). Drive keeps a folder's id through a move or a rename, so every
+ * link on the job and in the office's bookmarks keeps working.
  */
 
 /** `app_settings.key` — the Drive folder id of the jobs root; empty = the `DRIVE_JOBS_FOLDER_ID` env. */
@@ -59,6 +65,20 @@ export const JOB_FOLDER_TREE = {
   photos: 'Photos',
   sentByUs: 'Sent by us',
 } as const
+
+/** The folder under the root that holds the jobs with no customer yet; a job moves out of it once its customer is set. */
+export const NO_CUSTOMER_FOLDER_NAME = 'No customer yet'
+
+/** A customer's folder name: the customer's name as Drive takes it, or `Customer <id>` for a customer with no name. */
+export function customerFolderName(customer: { id: string; name?: string | null }): string {
+  const name = driveSafeName(customer.name).slice(0, FOLDER_NAME_MAX).trim()
+  return name || `Customer ${customer.id.slice(0, 8)}`
+}
+
+/** The same name for another customer: the first eight of the id tell them apart, `Smith · 7d759246`. */
+export function customerFolderNameApart(customer: { id: string; name?: string | null }): string {
+  return `${customerFolderName(customer)}${FOLDER_NAME_SEPARATOR}${customer.id.slice(0, 8)}`
+}
 
 /**
  * A pattern as stored: a JSON list of pieces. A piece the tray does not offer and a piece named twice are dropped; a list
@@ -190,7 +210,23 @@ export type WriteCheckSeen =
   | { kind: 'not_a_folder' }
   | { kind: 'cannot_open'; status: number; reason: string | null }
   | { kind: 'cannot_write' }
+  | { kind: 'outside_drive'; owner: string | null }
   | { kind: 'no_link' }
+
+/**
+ * Drive's rule the first app photo on J1091 found (2026-11-01): a service account can make a folder in a person's My Drive
+ * but cannot own a file's bytes there (*Service Accounts do not have storage quota*). Only a folder in a Shared Drive takes
+ * the app's files, so a folder outside one fails the write check even though Drive says it may add children.
+ */
+export function outsideDriveWords(owner: string | null | undefined): string {
+  const whose = owner ? `${owner}’s My Drive` : 'a My Drive'
+  return `This folder is in ${whose}, where the app can make folders but cannot save a file. Move it into the app’s Shared Drive, or clear the link and press Make the job’s Drive folders.`
+}
+
+/** The photo sweep's reason in the app's words: Drive's quota refusal reads as the folder being outside the Shared Drive. */
+export function driveFailWords(raw: string): string {
+  return /storage quota/i.test(raw) ? outsideDriveWords(null) : raw
+}
 
 export const WRITE_OK_WORDS = 'The app can write here.'
 
@@ -208,6 +244,8 @@ export function writeCheckWords(seen: WriteCheckSeen, appEmail: string): { ok: b
       return { ok: false, words: 'This link is not a folder. Paste the link of a Drive folder.' }
     case 'cannot_write':
       return { ok: false, words: `The app can open this folder but cannot add a file to it. Share it with ${appEmail} as an editor.` }
+    case 'outside_drive':
+      return { ok: false, words: outsideDriveWords(seen.owner) }
     case 'cannot_open': {
       // Drive's reason ends in its own period (*File not found: <id>.*); the sentence adds one, so one is dropped.
       const reason = (seen.reason ?? '').trim().replace(/\.+$/, '')
@@ -217,4 +255,73 @@ export function writeCheckWords(seen: WriteCheckSeen, appEmail: string): { ok: b
       }
     }
   }
+}
+
+/** A folder as the app sees it before placing it: where it is, what it is called, whether it is in a Shared Drive. */
+export interface SeenFolder {
+  id: string
+  name: string
+  /** Its parent's id, or null when Drive gave none. */
+  parentId: string | null
+  /** True in a Shared Drive, false in a My Drive. */
+  inDrive: boolean
+  owner: string | null
+}
+
+/** Where a job's folder should be: under this parent, with this name. */
+export interface WantedPlace {
+  parentId: string
+  name: string
+}
+
+/** What to do with a job's folder so it sits in the tree: nothing, a move, a rename, both, or a hold with the reason. */
+export type FolderPlacement =
+  | { act: 'in_place' }
+  | { act: 'move' }
+  | { act: 'rename' }
+  | { act: 'move_rename' }
+  | { act: 'hold'; why: string; kind: 'outside_drive' }
+
+/**
+ * The one decision the press and the sweep share: a folder outside a Shared Drive is held (the app cannot move or own
+ * files there), one in the wrong place moves, one with the wrong name is renamed, and one that is both moves and is renamed.
+ */
+export function placeFolder(seen: SeenFolder, wanted: WantedPlace): FolderPlacement {
+  if (!seen.inDrive) return { act: 'hold', why: outsideDriveWords(seen.owner), kind: 'outside_drive' }
+  const move = seen.parentId !== wanted.parentId
+  const rename = seen.name !== wanted.name
+  if (move && rename) return { act: 'move_rename' }
+  if (move) return { act: 'move' }
+  if (rename) return { act: 'rename' }
+  return { act: 'in_place' }
+}
+
+/** The path the tree gives a job's folder, in words: *Jobs › Oak Hollow LLC › 972 · Oak Hollow Bldg C*. */
+export function folderPathWords(parts: readonly (string | null | undefined)[]): string {
+  return parts.filter((p): p is string => Boolean(p && p.trim())).join(' › ')
+}
+
+/** One run of the folder sweep, counted. */
+export interface TidyCounts {
+  looked: number
+  made: number
+  moved: number
+  renamed: number
+  inPlace: number
+  held: number
+  /** Jobs the sweep did not reach this run. */
+  left: number
+}
+
+/** The sweep's line: *Looked at 25 jobs: 3 folders made, 12 moved, 4 renamed, 2 held.* */
+export function tidyOutcomeWords(c: TidyCounts): string {
+  const jobs = c.looked === 1 ? '1 job' : `${c.looked} jobs`
+  const parts: string[] = []
+  if (c.made) parts.push(`${c.made} ${c.made === 1 ? 'folder' : 'folders'} made`)
+  if (c.moved) parts.push(`${c.moved} moved`)
+  if (c.renamed) parts.push(`${c.renamed} renamed`)
+  if (c.held) parts.push(`${c.held} held`)
+  const did = parts.length > 0 ? parts.join(', ') : c.looked > 0 ? 'every folder already in place' : 'nothing to do'
+  const left = c.left > 0 ? ` ${c.left} more to look at.` : ''
+  return `Looked at ${jobs}: ${did}.${left}`
 }

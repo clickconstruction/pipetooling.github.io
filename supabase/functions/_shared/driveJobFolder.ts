@@ -12,6 +12,7 @@ import { DRIVE, driveFolderIdFromUrl, findExistingFile, findOrCreateFolder } fro
 import { DRIVE_FOLDER_MIME, LINK_TOKEN_BYTES, fileLinkUrl, linkToken, photoLanding, type JobRef } from './driveLink.ts'
 import { readDriveSettings } from './driveSettings.ts'
 import { JOB_FOLDER_TREE } from './whereFilesGo.ts'
+import { FolderTree, JOB_FOLDER_COLUMNS, type JobFolderRow } from './jobFolders.ts'
 import { sha256Hex } from './gcTradeLink.ts'
 
 export type Half = 'plans' | 'team_only'
@@ -70,11 +71,34 @@ export async function landingFolder(token: string, folder: JobFolder, path: read
  * press made it already and a job with none keeps landing in Team only › Photos.
  */
 export async function photoFolderFor(admin: SupabaseClient, token: string, job: JobRef): Promise<string | null> {
+  const r = await photoFolderOrWhy(admin, token, job)
+  return 'id' in r ? r.id : null
+}
+
+/**
+ * The same, with the reason when there is no folder to land in. A Pipeline job with no Drive folder gets one made on its
+ * first photo (v2.6284, the tree under the customer: `FolderTree.placeJob`, the press's own rule), so a photo never waits
+ * on a press; a job whose folder is held (outside the Shared Drive, not a folder, not shared) answers the hold's words.
+ */
+export async function photoFolderOrWhy(admin: SupabaseClient, token: string, job: JobRef): Promise<{ id: string } | { why: string }> {
   let picturesFolderId: string | null = null
   if ('jobs_ledger_id' in job) {
-    const { data } = await admin.from('jobs_ledger').select('job_pictures_link, google_drive_link').eq('id', job.jobs_ledger_id).maybeSingle()
-    const row = data as { job_pictures_link?: string | null; google_drive_link?: string | null } | null
-    picturesFolderId = driveFolderIdFromUrl(row?.job_pictures_link ?? null)
+    const { data } = await admin.from('jobs_ledger').select(`${JOB_FOLDER_COLUMNS}, drive_folder_hold`).eq('id', job.jobs_ledger_id).maybeSingle()
+    let row = data as (JobFolderRow & { drive_folder_hold: string | null }) | null
+    if (!row) return { why: 'That job is gone.' }
+    if (!driveFolderIdFromUrl(row.google_drive_link) || row.drive_folder_hold) {
+      // No folder yet, or one held: the tree places it (or says again why it cannot), with the service account's own settings.
+      const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON') ?? ''
+      const settings = await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))
+      if (!settings.rootFolderId) return { why: 'The jobs root is not set yet. Set it on Documents → Where files go.' }
+      const appEmail = String((JSON.parse(saJson || '{}') as { client_email?: string }).client_email ?? '')
+      const tree = new FolderTree(admin, token, settings, settings.rootFolderId, appEmail)
+      const placed = await tree.placeJob(row)
+      if (placed.hold) return { why: placed.hold.why }
+      const { data: again } = await admin.from('jobs_ledger').select(`${JOB_FOLDER_COLUMNS}, drive_folder_hold`).eq('id', job.jobs_ledger_id).maybeSingle()
+      row = (again as (JobFolderRow & { drive_folder_hold: string | null }) | null) ?? row
+    }
+    picturesFolderId = driveFolderIdFromUrl(row.job_pictures_link ?? null)
     if (!picturesFolderId && !String(row?.job_pictures_link ?? '').trim()) {
       const jobFolderId = driveFolderIdFromUrl(row?.google_drive_link ?? null)
       if (jobFolderId && (await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))).foldersMade === 'as-needed') {
@@ -89,9 +113,9 @@ export async function photoFolderFor(admin: SupabaseClient, token: string, job: 
     }
   }
   const landing = photoLanding(job, picturesFolderId)
-  if (landing.kind === 'pictures') return landing.folderId
+  if (landing.kind === 'pictures') return { id: landing.folderId }
   const folder = await jobFolder(admin, token, job)
-  return folder ? await landingFolder(token, folder, landing.path) : null
+  return folder ? { id: await landingFolder(token, folder, landing.path) } : { why: 'That job has no Drive folder yet.' }
 }
 
 /** The first of a photo's names the folder does not hold yet: `nameFor(taken)` gives the next, *(2)* and on. */

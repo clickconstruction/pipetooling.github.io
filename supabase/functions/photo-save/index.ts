@@ -1,7 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
-import { freeName, photoFolderFor } from '../_shared/driveJobFolder.ts'
+import { freeName, photoFolderOrWhy } from '../_shared/driveJobFolder.ts'
+import { driveFailWords } from '../_shared/whereFilesGo.ts'
 import type { JobRef } from '../_shared/driveLink.ts'
 import {
   PHOTO_ROWS_SELECT,
@@ -120,7 +121,7 @@ async function sweep(admin: SupabaseClient): Promise<Response> {
   const google = await googleAccessToken(saJson)
 
   // One folder a job a run: the first photo makes Team only › Photos when it is not there yet.
-  const folders = new Map<string, string | null>()
+  const folders = new Map<string, { id: string } | { why: string }>()
   let saved = 0
   const failed: { id: string; why: string }[] = []
   for (const row of picked) {
@@ -128,12 +129,13 @@ async function sweep(admin: SupabaseClient): Promise<Response> {
     const job = jobRefOf(row.line)!
     const key = JSON.stringify(job)
     try {
-      if (!folders.has(key)) folders.set(key, await photoFolderFor(admin, google, job))
-      const into = folders.get(key)
-      if (!into) {
-        failed.push({ id: row.id, why: 'That job has no Drive folder yet.' })
+      if (!folders.has(key)) folders.set(key, await photoFolderOrWhy(admin, google, job))
+      const landing = folders.get(key)!
+      if ('why' in landing) {
+        failed.push({ id: row.id, why: landing.why })
         continue
       }
+      const into = landing.id
       const input = photoNameInputOf(a)!
       const { data: blob, error } = await admin.storage.from('message-attachments').download(a.bucket_path!)
       if (error || !blob) {
@@ -150,7 +152,7 @@ async function sweep(admin: SupabaseClient): Promise<Response> {
       }
       saved += 1
     } catch (e) {
-      failed.push({ id: row.id, why: e instanceof Error ? e.message : String(e) })
+      failed.push({ id: row.id, why: driveFailWords(e instanceof Error ? e.message : String(e)) })
     }
   }
   if (failed.length) console.warn('photo-save: some photos were not saved', failed)
@@ -251,16 +253,17 @@ async function sweepWaiting(admin: SupabaseClient, source: WaitingSource): Promi
     for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
     return { saved, failed }
   }
-  const folders = new Map<string, string | null>()
+  const folders = new Map<string, { id: string } | { why: string }>()
   for (const r of rows) {
     try {
       const job: JobRef = { jobs_ledger_id: r.job_id }
-      if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderFor(admin, google, job))
-      const into = folders.get(r.job_id)
-      if (!into) {
-        await fail(r, 'That job has no Drive folder yet.')
+      if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderOrWhy(admin, google, job))
+      const landing = folders.get(r.job_id)!
+      if ('why' in landing) {
+        await fail(r, landing.why)
         continue
       }
+      const into = landing.id
       const { data: blob, error: dl } = await admin.storage.from(source.bucket).download(r.storage_path)
       if (dl || !blob) {
         await fail(r, 'Our copy of that photo did not read.')
@@ -283,7 +286,7 @@ async function sweepWaiting(admin: SupabaseClient, source: WaitingSource): Promi
       await admin.storage.from(source.bucket).remove([r.storage_path])
       saved += 1
     } catch (e) {
-      await fail(r, e instanceof Error ? e.message : String(e))
+      await fail(r, driveFailWords(e instanceof Error ? e.message : String(e)))
     }
   }
   if (failed.length) console.warn(`photo-save: some ${source.kind === 'boxes' ? 'box' : 'checklist'} photos were not filed`, failed)
@@ -330,16 +333,17 @@ async function sweepReportPhotos(admin: SupabaseClient): Promise<{ saved: number
     for (const r of rows) await fail(r, `Drive did not let the app in: ${e instanceof Error ? e.message : String(e)}`)
     return { saved, failed }
   }
-  const folders = new Map<string, string | null>()
+  const folders = new Map<string, { id: string } | { why: string }>()
   for (const r of rows) {
     try {
       const job: JobRef = { jobs_ledger_id: r.job_id }
-      if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderFor(admin, google, job))
-      const into = folders.get(r.job_id)
-      if (!into) {
-        await fail(r, 'That job has no Drive folder yet.')
+      if (!folders.has(r.job_id)) folders.set(r.job_id, await photoFolderOrWhy(admin, google, job))
+      const landing = folders.get(r.job_id)!
+      if ('why' in landing) {
+        await fail(r, landing.why)
         continue
       }
+      const into = landing.id
       const { data: blob, error: dl } = await admin.storage.from(REPORT_PHOTOS_BUCKET).download(r.storage_path)
       if (dl || !blob) {
         await fail(r, 'Our copy of that photo did not read.')
@@ -362,7 +366,7 @@ async function sweepReportPhotos(admin: SupabaseClient): Promise<{ saved: number
       await admin.storage.from(REPORT_PHOTOS_BUCKET).remove([r.storage_path])
       saved += 1
     } catch (e) {
-      await fail(r, e instanceof Error ? e.message : String(e))
+      await fail(r, driveFailWords(e instanceof Error ? e.message : String(e)))
     }
   }
   if (failed.length) console.warn('photo-save: some report photos were not filed', failed)
