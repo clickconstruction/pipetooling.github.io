@@ -29,11 +29,19 @@ The owner, 2026-11-01, after the stage-checklist walk:
 > How can I better differentiate when a job is a service call versus a job being a commercial
 > construction project that we bid?
 
-The thing he wants to separate is how the work was sold and how it is run: a service call is
-dispatched, done in a visit or two, billed as one bill; a project is bid or contracted, run by a
-superintendent through stages, billed by pay application or draw. It is the only kind where an
-hours baseline (#234), a stage checklist and its record (#237), a planned finish or a
-superintendent's score mean anything.
+Later the same day he named the cut himself:
+
+> Service calls, we don't know how much to bill until the very end. While projects coming from
+> bids or estimates or even oral conversations, we know how much they are gonna cost before we
+> start, but we can sometimes add change orders along the way, based on things we find.
+
+So the kind is **when the price is known**. A project is priced before the first hour is worked,
+from a bid, an estimate or a handshake the office typed in, and its price moves only by change
+orders. A service call is priced by the work: the tech finds what is wrong, does it, and the bill
+is the sum at the end, or a price-book line he picks on site, which from the office's chair is
+still known at the end of the visit. Because a project's price is known before, its hours and its
+labor budget can be known before too, which is why #234's baseline at award and #237's checklists
+and records mean something on a project and nothing on a service call.
 
 ## The mock-up
 
@@ -60,13 +68,19 @@ card's one line that says what the kind feeds.
 - `service_type_id` is the trade, Plumbing, HVAC, General contracting. It is not the kind.
 
 **One kind, read from the job's own facts.** A pure kernel, `jobKind(job)`, with precedence: the
-office's explicit kind when set; else `bid_id` or `project_id` set → *project*; else Stage Plan
-rows exist → *project*; else an HCP number with none of those → *service call*; else *not set*.
-One source every reader uses, so a reader never re-derives it from a column of its own.
+office's explicit kind when set; else a contract amount on the job before its first clock
+session → *project* (the owner's own test: the price was known before the work); else `bid_id`
+or `project_id` set → *project*; else Stage Plan rows exist → *project*; else an HCP number with
+none of those, or an amount that first appears at billing → *service call*; else *not set*. The
+bid, the GC project and the stages corroborate the one fact rather than stand as rules of their
+own, and the oral agreement stops being an edge: the office typing the price is what makes it a
+project. One source every reader uses, so a reader never re-derives it from a column of its own.
+The Glossary gives the two kinds their honest names: a project is a **priced job**, a service call
+is **time and materials**; the chips keep the words the crew uses.
 
 **One press to settle it.** A nullable column, `jobs_ledger.kind` (`service` · `project`). The
 New Job form asks it as a two-press control defaulted from the signals with the reason under it
-(*Project, from bid B917*; *Service call, from HCP 9057*), so a T&M commercial job gets its kind
+(*Project · priced $112,000 from bid B917*; *Service call · priced when done*), so a T&M commercial job gets its kind
 by one press at creation and nothing else changes for a job the signals already settle. Edit Job
 carries the same control. A Quickfill deck line, *jobs working with no kind*, lists the jobs the
 kernel reads *not set*, newest first, with the two presses and *Skip*, the way the baseline deck
