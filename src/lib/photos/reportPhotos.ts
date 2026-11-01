@@ -80,6 +80,8 @@ export const REPORT_PHOTO_WORDS = {
   kept: 'Kept on the phone. It goes with the report.',
   /** The desk's New report form on a project or a bid (punch list #229): a report photo is keyed to a ledger job. */
   onJobOnly: 'Photos go on a job’s report. A report on a project or a bid takes none yet.',
+  /** The Edit report form (PR 4): a saved photo is not taken back here. */
+  savedStays: 'A photo already on the report stays. Take one back in the job’s Drive folder.',
 } as const
 
 /** Where the shot sits in the bucket until the sweep files it: `<job_id>/<photo_id>.jpg`, the gate's shape. */
@@ -146,6 +148,19 @@ export function reportSaveWords(input: { jobPct: number | null; tiles: ReadonlyA
   const inFlight = input.tiles.filter((t) => t.status === 'shrinking' || t.status === 'sending').length
   if (inFlight > 0) return inFlight === 1 ? 'Sending 1 photo…' : `Sending ${inFlight} photos…`
   return saveWords({ jobPct: input.jobPct, photos: ridingTiles(input.tiles).length })
+}
+
+/**
+ * The Edit report form's Save (punch list #229, PR 4): the photos added since the report was saved ride with it;
+ * a shot still on its way holds the press.
+ */
+export function reportEditSaveWords(input: { tiles: ReadonlyArray<ReportPhotoTile>; saving: boolean }): string {
+  if (input.saving) return 'Saving…'
+  const inFlight = input.tiles.filter((t) => t.status === 'shrinking' || t.status === 'sending').length
+  if (inFlight > 0) return inFlight === 1 ? 'Sending 1 photo…' : `Sending ${inFlight} photos…`
+  const added = sentTiles(input.tiles).length
+  if (added > 0) return added === 1 ? 'Save · 1 photo added' : `Save · ${added} photos added`
+  return 'Save'
 }
 
 /** The line over the tiles: *New photo · 4.2 MB → 310 KB · saved to the job's folder*. */
