@@ -119,7 +119,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | D | Session side-effects | heartbeat 139, dismissal sync 141–145, localities 168–172, dashboard prefetch 319, 358–371 | ~30 | `authUser.id` only | low | partially extracted (libs + hooks; effects inline) |
 | E | Shell modes | mode hooks + derivations 146–198, `phoneDockModes` 284–308, `exitFarmMode` 352–355 | ~85 | read by F, G, H, I, K, L | med | partially extracted (4 `use*ModeEnabled` hooks, PO kernel); derivations inline |
 | F | Desktop top nav | `renderNavLinks` 641–829, gates 496–528, icons 530–609, nav fit 238–252, desktop branch 1036–1040 | ~335 | role, farm, partner, `isMobile`, prefetch | med | inline (gate kernels: banking; roadmap's gate feeds the gear row, H) |
-| G | Header toolbar | search button 1042, contact row + task buttons 1043–1176, estimator Bid 1177–1193, icon cluster 1194–1285 | ~260 | 3 modal contexts, mode flags, `isMobile`, `phoneDockActive` | low | partially extracted (`HeaderGlobalSearch*`, eligibility kernels) |
+| G | Header toolbar | search button 1042, contact row + task buttons 1043–1176, header Bid 1177–1193, icon cluster 1194–1285 | ~260 | 3 modal contexts, mode flags, `isMobile`, `phoneDockActive` | low | partially extracted (`HeaderGlobalSearch*`, eligibility kernels) |
 | H | Gear menu + View as | `!phoneDockActive` 1286–1977; `ViewAsPanel` mount 1999 | ~695 | ~20 shell values (mode flags + setters, theme, gates, `impersonating`, `forceReload`, `signOutEverywhere`); shared click-outside | med | inline (`ViewAsPanel` extracted) |
 | I | Mobile menu + phone dock + mode footers | hamburger 889–1035, `renderMobileHeaderLinks` 611–639, dock state 253–275, footers/sheet 2268–2291 | ~225 | `renderNavLinks`, mode flags, `signOutEverywhere` | med | dock/footers extracted (`DispatchModeFooter`, `PhoneDockMoreSheet`, `phoneDock.ts`); hamburger inline |
 | J | Impersonation chrome | `impersonating` 200–202, bfcache/popstate 431–449, `handleBackToMyAccount` 469–485, memos 487–494, Exit button 1979–1995, amber nav 882–883, 356 | ~70 | read by F (nav key), H (View-as gate), N | med | partially extracted (`impersonationSession`, `impersonationUiLabels`); handler duplicated in Settings |
@@ -151,7 +151,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 | Search (office / field lookup / doors) | office | office | office | office | doors | doors | doors | field | 340–342 |
 | Task Dispatch · Ask estimating | ✓ | ✓ | ✓ | ✓ | ✓ | — | — | ✓ | 1068–1157 |
 | Task (checklist add) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | 1104–1176 |
-| Bid (`/bids?new=true`) | — | — | — | — | ✓ | — | — | — | 1177–1193 |
+| Bid (`/bids?new=true`; `showHeaderNewBidButton`, v2.6167) | ✓ | ✓ | ✓ | ✓ | ✓ | — | ✓ | — | 1177–1193 |
 | Gear: Job Mode toggle | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 1323 (`canLeaveJobFieldReport`) |
 | Gear: Dispatch Mode · PO tab | D·PO | D·PO | D·PO | D·PO (PO since v2.5011) | — | — | — | — | 1374, 1423 |
 | Gear: Farm · Pin · Dark · Calendar · Help · Settings · Sign out · Hard Reload (Job Parts Tally moved to the Settings rail, v2.4061) | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | ✓ | 1472–1634, 1797–1950 |
@@ -236,7 +236,7 @@ The shell is everything around a page. `App.tsx` decides which of **69 `<Route>`
 
 ### G. Header toolbar
 
-- **Render (1041–1285):** `HeaderGlobalSearchOpenButton` 1042. The Job Mode "Contact:" label 1045–1049 + `tel:` button 1050–1067 (`jobModeContactPhone` from `useFirstAssistantDispatchPhone`). Task Dispatch / Ask estimating / Task buttons as **two copies of three**: labeled when `jobModeContactRowFits` (1068–1121), icon-only otherwise (1122–1176). Estimator **Bid** → `/bids?new=true` 1177–1193. `data-navtrack="icon-cluster"` with Map/Materials/Checklist (desktop only, 1195–1245) and Customers/People (1246–1285). That `<span>` (1194–1978) also wraps H's gear (1286–1977), and the toolbar `<span>` (1041–1996) also holds J's Exit button, so G, H and J share one parent.
+- **Render (1041–1285):** `HeaderGlobalSearchOpenButton` 1042. The Job Mode "Contact:" label 1045–1049 + `tel:` button 1050–1067 (`jobModeContactPhone` from `useFirstAssistantDispatchPhone`). Task Dispatch / Ask estimating / Task buttons as **two copies of three**: labeled when `jobModeContactRowFits` (1068–1121), icon-only otherwise (1122–1176). The header **Bid** → `/bids?new=true` 1177–1193 (`showHeaderNewBidButton` in `lib/headerTaskDispatchEstimatorEligible.ts`: every bid-making role but a primary, off in Farm Mode, v2.6167; estimator-only before). `data-navtrack="icon-cluster"` with Map/Materials/Checklist (desktop only, 1195–1245) and Customers/People (1246–1285). That `<span>` (1194–1978) also wraps H's gear (1286–1977), and the toolbar `<span>` (1041–1996) also holds J's Exit button, so G, H and J share one parent.
 - **Handlers:** `dispatchTaskModal?.openDispatchModal()`, `estimatorTaskModal?.openEstimatorModal()`, `checklistAddModal?.openAddModal()`. No owned state.
 - **Tests:** `headerTaskDispatchEstimatorEligible.test.ts` (4). It **source-scans `Layout.tsx`** and expects exactly 2 `title={HEADER_ASK_ESTIMATING_LABEL}` and 2 `aria-label={…}`, with no "Estimator Inbox" literal. `fieldJobLookup.test.ts` (9).
 - **Approach:** Stage B `HeaderTaskButtons({ labeled })` collapses the 6 copies. **Repoint the source-scan test's path in the same PR.**

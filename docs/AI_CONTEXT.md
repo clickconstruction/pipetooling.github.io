@@ -22,7 +22,7 @@
 
 ## Branch workflow
 
-`main` is protected: every change lands through a PR whose CI `checks` job ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml), run on the PR and again by the merge queue on the merged content, never on `main` itself) and `sql-beds` gate ([`.github/workflows/sql-beds.yml`](../.github/workflows/sql-beds.yml): the whole-schema SQL beds, run only when a bed's file changed) pass, squash-merged (`../AGENTS.md` → Critical constraints §9). Merging deploys the client to GitHub Pages ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), which builds and ships without repeating the checks job; `warm-caches.yml` re-runs typecheck and lint on each merge only to save the cache CI restores); **DB migrations and Edge Functions deploy separately and by hand** (`../CLAUDE.md` → Deploy model).
+`main` is protected: every change lands through a PR whose CI `checks` job ([`.github/workflows/ci.yml`](../.github/workflows/ci.yml), run on the PR and again by the merge queue on the merged content, never on `main` itself) and `sql-beds` gate ([`.github/workflows/sql-beds.yml`](../.github/workflows/sql-beds.yml): the whole-schema SQL beds, run only when a bed's file changed) pass, squash-merged (`../AGENTS.md` → Critical constraints §9). Merging deploys the client to GitHub Pages ([`.github/workflows/deploy.yml`](../.github/workflows/deploy.yml), which builds and ships without repeating the checks job, holding the deploy when `check:calls-ahead --prod` finds the client calling what only an unpushed migration creates, v2.6119; `warm-caches.yml` re-runs typecheck and lint on each merge only to save the cache CI restores); **DB migrations and Edge Functions deploy separately and by hand** (`../CLAUDE.md` → Deploy model).
 
 ---
 
@@ -70,7 +70,7 @@ Customer
 
 ### Backend
 - Supabase: PostgreSQL 17 + RLS, Auth, Edge Functions (Deno), some Realtime
-- ~575 tables; ~170 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
+- ~585 tables; ~170 Edge Functions (`docs/EDGE_FUNCTIONS.md`)
 - Linked prod project: `yewfzhbofbbyvkvtaatw` ("plumbing-stage-manager"); **no staging** — migrations hit prod
 
 ### Deployment (four separate tracks — see `../CLAUDE.md`)
@@ -194,7 +194,7 @@ CREATE FUNCTION create_project_with_template(...)
 ```
 
 ### Pure Logic Kernels
-Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~3,750 test files (~1,000 of them render smokes). A theme or style change is checked on the screens: Settings → What everyone sees (dev) draws every screen as every role on invented data, **Check every screen** runs the lens's checks (`src/lib/lens/lensAudit.ts`, a drawing's SVG words among the text) in each frame, and a PR touching the CSS, the portal's palette or the lens gets the non-gating **lens-report** artifact (`docs/E2E_SMOKE.md`).
+Business logic is extracted into pure `.ts` modules in `src/lib/` with colocated vitest tests (`*.test.ts`) — kernels are the primary test pattern; components stay thin. Component render smokes (`*.render.test.tsx`, jsdom + `renderWithProviders` from `src/test/renderSmokeMocks.tsx`) cover wiring-level behavior; a smoke asserts on something the data load produces (`renderSettled(ui, { loaded })` / `settle()` in the harness), never on the line after `render()` or a container `findBy*`, and never widens a `waitFor` timeout to hide the race. ~3,900 test files (~1,050 of them render smokes). A theme or style change is checked on the screens: Settings → What everyone sees (dev) draws every screen as every role on invented data, **Check every screen** runs the lens's checks (`src/lib/lens/lensAudit.ts`, a drawing's SVG words among the text) in each frame, and a PR touching the CSS, the portal's palette or the lens gets the non-gating **lens-report** artifact (`docs/E2E_SMOKE.md`).
 
 ### Windows (modals)
 A window is a full-screen `position: fixed` backdrop that closes on `onClick` (not `onMouseDown` — `npm run check:backdrop-click` fails CI on one that closes on the press), holding a panel that stops the click (`onClick={(e) => e.stopPropagation()}`). [`modalBackdropGuard.ts`](../src/lib/modalBackdropGuard.ts), installed once in `main.tsx`, stops a backdrop click unless the press and the release were both on the backdrop, so a drag out of a window never closes it — no window needs its own drag guard (a backdrop under three quarters of the screen is not covered). A window drawn inside another window's backdrop but outside its panel, or inside a row that opens on a click, stops its own backdrop click before closing, or a click outside it also closes the window behind or toggles the row; `npm run check:nested-windows` lists any that do not and CI fails on a backdrop one — a `nested-windows: allow — <why>` comment above the inner window lets a meant one through (`-- --rows` lists rows, report only). A window's z-index is above the Dispatch / Job mode dock ([`DISPATCH_MODE_FOOTER_Z_INDEX`](../src/components/dispatchMode/DispatchModeFooter.tsx)) and below whatever opens on top of it — the Job form, the Job window and the Bid window stand at 1000–1010, so a list window that opens them stands under 1000; `npm run check:window-z` fails CI on a window under the dock, and a `window-z: allow — <why>` comment lets a page-level layer that keeps the dock on top through. A window's layer pads its top by `var(--app-top-chrome, 0px)` (the iPhone status bar when the app is on the Home Screen — one `padding` string, or `paddingTop` alone, never both) and a panel whose height is in `vh` is clamped to that padded layer (`min(90vh, 100%)`), so its title and × are never under the clock; `npm run check:status-bar` fails CI on a layer or panel that does not (`node scripts/codemods/window-below-status-bar.mjs` rewrites it), and a `status-bar: allow — <why>` comment lets a layer that is not a window through.
@@ -260,7 +260,7 @@ type Customer = Database['public']['Tables']['customers']['Row']
                            │ Supabase JS client
 ┌──────────────────────────┼──────────────────────────────┐
 │                 Supabase Backend (prod only)             │
-│  PostgreSQL: ~575 tables, RLS everywhere, triggers,      │
+│  PostgreSQL: ~585 tables, RLS everywhere, triggers,      │
 │    SECURITY DEFINER helpers, transaction functions       │
 │  Auth: email/password + magic links (dev-login,          │
 │    login-as-user)                                        │
