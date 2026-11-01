@@ -3,7 +3,8 @@ import type { LienDeskEntry, LienDeskItemRow, LienDeskMonth, LienNoticeMonthRow 
 import { monthFromCreation } from './lienDesk'
 import type { LienAffidavitEntry } from './lienDeskAffidavits'
 import { buildLienMonthHistory } from './lienMonthHistory'
-import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
+import { buildLienTimeline, lienThirtyDayClock, type LienTimeline, type LienTimelineCourtesy, type LienTimelineDemandLetter, type LienTimelineInput, type LienTimelineMonth, type LienTimelineNoticeState } from './lienTimeline'
+import { parseCourtesyRecords } from './lienCourtesyNotice'
 import { liveDemandLetters, type JobDemandLetterRow } from './demandLetterTracking'
 import type { JobLienFilingRow } from './lienDeadlines'
 import { daysBetweenYmd } from './billedExpectedPay'
@@ -126,7 +127,27 @@ export function buildLienTimelineFromDesk(jobId: string, src: LienTimelineDeskSo
     releasedAt: releaseFiling ? (releaseFiling.filed_at ?? calendarYmdInAppTzFromIso(releaseFiling.created_at)) : null,
     paid: src.openBalance <= 0,
     demandLetters: lienDemandLettersFromRows(src.demandLetters, src.openBalance),
+    courtesy: lienCourtesyFromItems(src.items.filter((i) => i.job_id === jobId)),
   })
+}
+
+/**
+ * The courtesy notices sent on a job (punch list #231), read off its sent § 53.056 desk items'
+ * `fields.courtesy` records: when each went, the channels that went, who pressed, the lien's day it named.
+ */
+export function lienCourtesyFromItems(items: ReadonlyArray<Pick<LienDeskItemRow, 'kind' | 'status' | 'fields' | 'voided_at'>>): LienTimelineCourtesy[] {
+  const out: LienTimelineCourtesy[] = []
+  for (const it of items) {
+    if (it.kind !== 'notice_53_056' || it.status !== 'sent' || it.voided_at) continue
+    for (const r of parseCourtesyRecords((it.fields as { courtesy?: unknown } | null)?.courtesy)) {
+      const went = r.to.filter((t) => t.ok)
+      const emails = went.some((t) => t.channel === 'email')
+      const texts = went.some((t) => t.channel === 'text')
+      if (!emails && !texts) continue
+      out.push({ at: r.at, how: emails && texts ? 'by email and text' : emails ? 'by email' : 'by text', by: r.by, lienDay: r.lienDay })
+    }
+  }
+  return out
 }
 
 /**
@@ -165,6 +186,8 @@ export function buildLienTimelineFromWindow(src: {
   todayYmd: string
   /** The job's demand letters (v2.3877) — the Lien window already loads them for its history. */
   demandLetters?: ReadonlyArray<JobDemandLetterRow> | null
+  /** The courtesy notices sent on the job (punch list #231), from its sent notice's record; absent when the caller has not loaded them. */
+  courtesy?: ReadonlyArray<LienTimelineCourtesy> | null
 }): LienTimeline {
   const live = src.filings.filter((f) => f.job_id === src.job.id && f.voided_at == null)
   const sentMonths = new Map<string, string>()
@@ -221,5 +244,6 @@ export function buildLienTimelineFromWindow(src: {
     releasedAt: releaseFiling ? (releaseFiling.filed_at ?? calendarYmdInAppTzFromIso(releaseFiling.created_at)) : null,
     paid: src.openBalance <= 0,
     demandLetters: lienDemandLettersFromRows(src.demandLetters, src.openBalance),
+    courtesy: src.courtesy ?? undefined,
   })
 }
