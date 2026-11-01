@@ -4,8 +4,10 @@
  * guessed and the unguessed mail, the tagged and a box's line out of it and the notices behind one fold line; the
  * words line with the address and its guide; Yes tagging the conversation onto the guess and reading the page again;
  * Tag… opening the job picker with their jobs first; a sender nobody knows asked about at once; the views and their
- * empty words; the search sent to the function; Older › and ‹ Newer; Untag asked once; a refusal as one calm line;
- * a lost signal on the retry panel; the switch off reading nothing. Everything is made up.
+ * empty words; an empty page with older mail behind it offering Older ›, and the true end; the search sent to the
+ * function; Older › and ‹ Newer; Untag asked once; Another job… moving a tagged conversation through the same picker,
+ * and a pick of its own job doing nothing; Put it on the job on a mail no line holds yet; a refusal as one calm line; a
+ * lost signal on the retry panel; the switch off reading nothing. Everything is made up.
  */
 import { FunctionsFetchError } from '@supabase/supabase-js'
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -14,7 +16,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { JobTile } from '../../../lib/messages/jobTiles'
 import type { MyMailView } from '../../../lib/myMail/contract'
 import { renderSettled } from '../../../test/renderSmokeMocks'
-import { CEDAR, ELM, fakeMyMailIo, mailRow, MY_MAIL_NOW, MY_MAIL_PAGE, MY_MAIL_ROWS, TAG_OK, type FakeMyMailIo } from '../../../test/myMailRows'
+import { CEDAR, ELM, fakeMyMailIo, HARBOR, mailRow, MY_MAIL_NOW, MY_MAIL_PAGE, MY_MAIL_ROWS, openedMail, TAG_OK, type FakeMyMailIo } from '../../../test/myMailRows'
 import { MyMailTab, type MyMailTabProps } from './MyMailTab'
 
 vi.mock('../../../lib/supabase', async () => {
@@ -158,6 +160,25 @@ describe('MyMailTab', () => {
     await waitFor(() => expect(second.io.list).toHaveBeenLastCalledWith({ view: 'toTag', pageToken: null }))
   })
 
+  it('says a page the view drew nothing of is not the end while Gmail holds older mail, and keeps Nothing waiting to tag. for the end', async () => {
+    // A tagged conversation, a newsletter and a mail a box holds: To tag draws none of them, and Gmail has an older page.
+    const hidden = [MY_MAIL_ROWS[3]!, MY_MAIL_ROWS[4]!, MY_MAIL_ROWS[5]!]
+    const io = fakeMyMailIo({ list: async ({ pageToken }) => (pageToken === 'tok-2' ? { ...MY_MAIL_PAGE, rows: [], nextPageToken: null } : { ...MY_MAIL_PAGE, rows: hidden, nextPageToken: 'tok-2' }) })
+    await tab(io)
+    const line = (await screen.findByText('Nothing to tag on this page.')).closest('[data-empty-state]') as HTMLElement
+    expect(line.textContent).toBe('Nothing to tag on this page. Older › shows the next fifty mails.')
+    expect(screen.queryByText('Nothing waiting to tag.')).toBeNull()
+    // Older › once, on the line, and not again under the list.
+    expect(screen.getAllByRole('button', { name: 'Older ›' })).toHaveLength(1)
+    fireEvent.click(within(line).getByRole('button', { name: 'Older ›' }))
+    await waitFor(() => expect(io.list).toHaveBeenLastCalledWith({ view: 'toTag', pageToken: 'tok-2' }))
+    const end = (await screen.findByText('Nothing waiting to tag.')).closest('[data-empty-state]') as HTMLElement
+    expect(end.querySelector('button, a')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Older ›' })).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: '‹ Newer' }))
+    expect(await screen.findByText('Nothing to tag on this page.')).toBeTruthy()
+  })
+
   it('sends the search to the function, and an empty search offers to clear it', async () => {
     const spy = { onQ: vi.fn() }
     const io = fakeMyMailIo({ list: async ({ q }) => (q ? { ...MY_MAIL_PAGE, rows: [], nextPageToken: null } : MY_MAIL_PAGE) })
@@ -196,13 +217,79 @@ describe('MyMailTab', () => {
     const reader = await screen.findByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })
     fireEvent.click(await within(reader).findByRole('button', { name: 'Untag' }))
     const ask = await screen.findByRole('alertdialog')
-    expect(ask.textContent).toContain('Untag takes the conversation’s lines, files and copy off the job.')
+    expect(ask.textContent).toContain('Untag takes this conversation off the job.')
+    expect(ask.textContent).toContain('A line the bids@ or team@ reader took goes back to where it was.')
     fireEvent.click(within(ask).getByRole('button', { name: 'Untag' }))
     await waitFor(() => expect(io.untag).toHaveBeenCalledWith({ threadId: 't-dale-old' }))
     expect(await screen.findByText('Untagged. 3 lines came off the job.')).toBeTruthy()
     fireEvent.click(within(screen.getByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })).getByRole('button', { name: 'open the thread ›' }))
     expect(host.onOpenThread).toHaveBeenCalledWith('c-dale', 'm-elm-1')
     expect(screen.queryByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })).toBeNull()
+  })
+
+  it('moves a tagged conversation with Another job…: the same picker, a tag onto the new job, the new job on the bar and the row', async () => {
+    let on = ELM
+    const tagged = () => ({ ...MY_MAIL_ROWS[3]!, tagged: { ...on, messageId: 'm-elm-1' } })
+    const io = fakeMyMailIo({
+      list: async () => ({ ...MY_MAIL_PAGE, rows: [tagged()], nextPageToken: null }),
+      open: async () => openedMail(tagged()),
+      tag: async ({ job }) => {
+        on = job.id === HARBOR.id ? HARBOR : ELM
+        return { ...TAG_OK, jobKey: on.key, lines: 0, tied: 3, files: 0 }
+      },
+    })
+    const theirs = vi.fn(() => [ELM_TILE, HARBOR_TILE])
+    const { host } = await tab(io, { start: 'tagged', jobs: { theirs, search: vi.fn(async () => []) }, lineContact: vi.fn(() => 'c-dale') })
+    await waitFor(() => expect(rowIds()).toEqual(['dale-old']))
+    fireEvent.click(rowOf('dale-old').getByRole('button', { name: 'open the line ›' }))
+    const reader = await screen.findByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })
+    fireEvent.click(await within(reader).findByRole('button', { name: 'Another job…' }))
+    const picker = await screen.findByRole('dialog', { name: 'Move this conversation onto' })
+    expect(theirs).toHaveBeenCalledWith('dale@ridgeway.example')
+    expect(within(picker).getByText('Their jobs')).toBeTruthy()
+    fireEvent.click(within(picker).getByText('19 Harbor Ln'))
+    await waitFor(() => expect(io.tag).toHaveBeenCalledWith({ threadId: 't-dale-old', job: { kind: 'pipeline', id: 'job-harbor' } }))
+    expect(await screen.findByText('Moved to JP1081. 3 lines are on the job now.')).toBeTruthy()
+    expect(await within(reader).findByText('JP1081 · 19 Harbor Ln')).toBeTruthy()
+    expect(within(reader).queryByText('JP1077 · 4 Elm Ct')).toBeNull()
+    // The row reads again in place, on its new job.
+    await waitFor(() => expect(rowOf('dale-old').getByText('✓ JP1081 · 19 Harbor Ln')).toBeTruthy())
+    expect(io.list).toHaveBeenCalledTimes(2)
+    expect(host.onChanged).toHaveBeenCalledTimes(1)
+    // A pick of the job it is on already does nothing.
+    fireEvent.click(within(reader).getByRole('button', { name: 'Another job…' }))
+    fireEvent.click(within(await screen.findByRole('dialog', { name: 'Move this conversation onto' })).getByText('19 Harbor Ln'))
+    expect(screen.queryByRole('dialog', { name: 'Move this conversation onto' })).toBeNull()
+    expect(io.tag).toHaveBeenCalledTimes(1)
+    expect(io.list).toHaveBeenCalledTimes(2)
+  })
+
+  it('puts a mail of a tagged conversation that no line holds yet on its job: the same tag again, and the bar and the row read again', async () => {
+    let held = false
+    const late = () =>
+      mailRow('dale-late', { threadId: 't-dale-old', at: '2026-11-01T18:40:00.000Z', snippet: 'One more thing on the heater.', tagged: { ...ELM, messageId: held ? 'm-elm-9' : null } })
+    const io = fakeMyMailIo({
+      list: async () => ({ ...MY_MAIL_PAGE, rows: [late()], nextPageToken: null }),
+      open: async () => openedMail(late()),
+      tag: async () => {
+        held = true
+        return { ...TAG_OK, lines: 1, tied: 0, files: 0 }
+      },
+    })
+    const { host } = await tab(io, { start: 'all' })
+    await waitFor(() => expect(rowIds()).toEqual(['dale-late']))
+    fireEvent.click(rowOf('dale-late').getByRole('button', { name: 'open the line ›' }))
+    const reader = await screen.findByRole('dialog', { name: 'Re: 4 Elm Ct water heater' })
+    expect(await within(reader).findByText('This mail is not on the job yet.')).toBeTruthy()
+    fireEvent.click(within(reader).getByRole('button', { name: 'Put it on the job' }))
+    await waitFor(() => expect(io.tag).toHaveBeenCalledWith({ threadId: 't-dale-old', job: { kind: 'pipeline', id: 'job-elm' } }))
+    expect(await screen.findByText('Added to JP1077. 1 line is on the job now.')).toBeTruthy()
+    const bar = (await within(reader).findByText('✓ On')).closest('[data-my-mail-bar]') as HTMLElement
+    expect(bar.textContent).toContain('JP1077 · 4 Elm Ct')
+    expect(within(reader).queryByText('This mail is not on the job yet.')).toBeNull()
+    await waitFor(() => expect(io.list).toHaveBeenCalledTimes(2))
+    expect(io.open).toHaveBeenCalledTimes(2)
+    expect(host.onChanged).toHaveBeenCalledTimes(1)
   })
 
   it('draws a refusal as one calm line: off with its door to Your account, off the Workspace in Google’s words', async () => {

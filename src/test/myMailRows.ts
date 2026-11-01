@@ -14,6 +14,8 @@ export const MY_MAIL_NOW = '2026-11-01T20:00:00.000Z'
 
 export const ELM: MyMailJobChip = { kind: 'pipeline', id: 'job-elm', key: 'pipeline:job-elm', num: 'JP1077', name: '4 Elm Ct' }
 export const CEDAR: MyMailJobChip = { kind: 'bid', id: 'bid-cedar', key: 'bid:bid-cedar', num: 'BP523', name: 'Cedar Bend clubhouse' }
+/** The job a wrong tag is moved to, with **Another job…**. */
+export const HARBOR: MyMailJobChip = { kind: 'pipeline', id: 'job-harbor', key: 'pipeline:job-harbor', num: 'JP1081', name: '19 Harbor Ln' }
 
 export function mailRow(gmailId: string, over: Partial<MyMailRow> = {}): MyMailRow {
   return {

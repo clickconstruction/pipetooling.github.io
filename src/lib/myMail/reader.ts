@@ -6,13 +6,15 @@
  * says nothing here replies, archives or marks read.
  *
  * The words are drawn as the thread's email line draws them: an HTML body read as text by the bids@ reader's own
- * `htmlToText` (the one sanitiser the lines go through; no HTML reaches the page), else the plain words. **Untag** is
- * offered on a tagged conversation unless the boxes wrote every line of it, which an untag leaves where they are. Pure.
+ * `htmlToText` (the one sanitiser the lines go through; no HTML reaches the page), else the plain words. **Untag** and
+ * **Another job…** are offered on every tagged conversation, the boxes' own too (`canUntag`), and a mail of one that no
+ * line holds yet says so with **Put it on the job** (`taggedJob`). Pure.
  */
 import type { Contact } from '../contacts/kernel'
 import { htmlToText } from '../emailIn/gmailMessage'
 import { sizeWords } from '../messages/lineFiles'
-import type { MyMailFile, MyMailOpenOk, MyMailParty, MyMailTagOk } from './contract'
+import type { MyMailFile, MyMailJobChip, MyMailOpenOk, MyMailParty, MyMailTagOk } from './contract'
+import type { MyMailTagAct } from './list'
 
 /** The mail as `open` answers it. */
 export type MyMailOpened = MyMailOpenOk['mail']
@@ -52,13 +54,47 @@ export function threadCountWords(n: number): string {
 }
 
 /**
- * Whether **Untag** is offered: the conversation is tagged, and at least one of its mails is not a line the boxes
- * wrote (`inMessages`), so an untag has a line of the tag's own to take off. A conversation the boxes read whole keeps
- * every line where the boxes put it.
+ * Whether **Untag** is offered: on every tagged conversation, the boxes' own too. An untag does real work even when the
+ * bids@ or team@ reader holds every mail of it: it unties the box lines the tag tied, takes off the tag's grey line and
+ * its `email_tag_threads` row, so later mail stops landing on the job, and takes the label off in Gmail. Holding it back
+ * there left a wrong tag on the job for good, with each new box line tied to the wrong job. **Another job…** beside it
+ * moves the tag instead: `gmail-mine`'s `tag` onto the new job.
  */
-export function canUntag(mail: Pick<MyMailOpened, 'tagged' | 'inMessages' | 'threadRows'>): boolean {
-  if (!mail.tagged) return false
-  return [mail, ...mail.threadRows].some((m) => m.inMessages === null)
+export function canUntag(mail: Pick<MyMailOpened, 'tagged'>): boolean {
+  return mail.tagged !== null
+}
+
+/** This sitting's tag of a conversation, as the tab keeps it until an untag. */
+export interface MyMailDone {
+  /** The function's answer. */
+  ok: MyMailTagOk
+  /** The job's chip, when the press knew it. */
+  chip: MyMailJobChip | null
+  /** The press that tagged: a first tag, **Another job…**, or **Put it on the job**. */
+  act: MyMailTagAct
+}
+
+/** A tagged conversation as the bar names it: the job's key and chip, and whether a line holds this mail. */
+export interface MyMailTaggedJob {
+  key: string | null
+  /** Null when the press did not know the job: the bar says *the job*. */
+  chip: MyMailJobChip | null
+  /** False on a mail of the conversation no line holds yet, which **Put it on the job** lands. */
+  onTheJob: boolean
+}
+
+/**
+ * The job a tagged conversation's bar names, and whether this mail is on it. This sitting's tag is newer than a mail
+ * read before it (`fresh` false: a first tag, a move, a mail put on the job), so it names the job until the reader
+ * reads again, the chip the mail read with when it is that job. Otherwise the mail as read: on the job when a line holds
+ * it (`tagged.messageId`), else not yet, as a reply that came after the follow stopped, or before it got there.
+ */
+export function taggedJob(mail: Pick<MyMailOpened, 'tagged'>, done: Pick<MyMailDone, 'ok' | 'chip'> | null, fresh = true): MyMailTaggedJob {
+  if (done && (!fresh || !mail.tagged)) {
+    const same = mail.tagged?.key === done.ok.jobKey ? mail.tagged : null
+    return { key: done.ok.jobKey, chip: same ?? done.chip, onTheJob: true }
+  }
+  return { key: mail.tagged?.key ?? null, chip: mail.tagged, onTheJob: Boolean(mail.tagged?.messageId) }
 }
 
 /** The sender a tag could not place, as *Who is this?* takes a person: a contact with the one address and no record yet. */
@@ -87,7 +123,9 @@ export const MY_MAIL_READER_WORDS = {
   onTheJob: 'the job',
   openThread: 'open the thread ›',
   untag: 'Untag',
-  untagAsk: 'Untag takes the conversation’s lines, files and copy off the job.',
+  untagAsk: 'Untag takes this conversation off the job. The lines the tag wrote go, with their files and the copy of each mail. A line the bids@ or team@ reader took goes back to where it was.',
+  notOnTheJob: 'This mail is not on the job yet.',
+  putOn: 'Put it on the job',
   inMessages: 'Already in Messages ✓',
   inMessagesWhy: 'The bids@ or team@ reader took this mail.',
   tagTheRest: 'Tag the conversation…',
@@ -103,4 +141,5 @@ export const MY_MAIL_READER_WORDS = {
   offline: 'No connection, so the mail could not be read. It reads again when the signal is back.',
   notUntagged: 'The conversation was not untagged.',
   pickTitle: 'Tag this conversation onto',
+  moveTitle: 'Move this conversation onto',
 } as const

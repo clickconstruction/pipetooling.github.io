@@ -1,11 +1,33 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import type { MyMailJobChip, MyMailRow } from './contract'
-import { chipWords, filesWords, FIRST_PAGE, jobWords, MY_MAIL_LIST_WORDS, newerPage, olderPage, onTheJobWords, pageToken, rowDay, rowEnd, taggedWords, untaggedWords, wayOf, whoLine } from './list'
+import {
+  chipWords,
+  doneWords,
+  emptyPageWords,
+  filesWords,
+  FIRST_PAGE,
+  jobWords,
+  MY_MAIL_LIST_WORDS,
+  newerPage,
+  notTaggedWords,
+  olderPage,
+  onTheJobWords,
+  pageToken,
+  rowDay,
+  rowEnd,
+  tagActWords,
+  taggedWords,
+  untaggedWords,
+  wayOf,
+  whoLine,
+} from './list'
+import { MY_MAIL_WORDS } from './view'
 
 // Made-up mail in Marisol Vega's box.
 const elm: MyMailJobChip = { kind: 'pipeline', id: 'job-elm', key: 'pipeline:job-elm', num: 'JP1077', name: '4 Elm Ct' }
 const cedar: MyMailJobChip = { kind: 'bid', id: 'bid-cedar', key: 'bid:bid-cedar', num: 'BP523', name: 'Cedar Bend clubhouse' }
+const harbor: MyMailJobChip = { kind: 'pipeline', id: 'job-harbor', key: 'pipeline:job-harbor', num: 'JP1081', name: '19 Harbor Ln' }
 
 const row = (over: Partial<MyMailRow> = {}): MyMailRow => ({
   gmailId: 'g-1',
@@ -76,6 +98,19 @@ describe('the page of rows', () => {
     expect(newerPage(newerPage(three))).toEqual(FIRST_PAGE)
     expect(newerPage(FIRST_PAGE)).toEqual(FIRST_PAGE)
   })
+
+  it('says an empty page is not the end of the box while Gmail holds older mail, and offers Older ›', () => {
+    expect(emptyPageWords('toTag')).toEqual({ main: 'Nothing to tag on this page.', next: 'Older ›', tail: 'shows the next fifty mails.' })
+    expect(emptyPageWords('tagged')).toEqual({ main: 'No tagged conversations on this page.', next: 'Older ›', tail: 'shows the next fifty mails.' })
+    expect(emptyPageWords('all')).toEqual({ main: 'Only notices and newsletters on this page.', next: 'Older ›', tail: 'shows the next fifty mails.' })
+    // The good state is kept for the true end, with no older page.
+    expect(emptyPageWords('toTag').main).not.toBe(MY_MAIL_WORDS.empty('toTag').main)
+    for (const v of ['toTag', 'tagged', 'all'] as const) {
+      const w = emptyPageWords(v)
+      expect(plainWordsFailures(w.main)).toEqual([])
+      expect(plainWordsFailures(`${w.next} ${w.tail}`)).toEqual([])
+    }
+  })
 })
 
 describe('the words of a tag and an untag', () => {
@@ -85,6 +120,33 @@ describe('the words of a tag and an untag', () => {
     expect(taggedWords({ lines: 0, tied: 0, files: 0 }, elm)).toBe('Tagged onto JP1077. Every mail in it was on the job already.')
     expect(taggedWords({ lines: 2, tied: 0, files: 2 })).toBe('Tagged. 2 lines and 2 files are on the job now.')
     expect(onTheJobWords({ lines: 0, tied: 1, files: 1 })).toBe('1 line and 1 file are on the job now.')
+  })
+
+  it('says a move by its new job, and what came along when anything did', () => {
+    expect(tagActWords('move', { lines: 0, tied: 3, files: 0 }, harbor)).toBe('Moved to JP1081. 3 lines are on the job now.')
+    // A move that brought no line along never says every mail was on the job already.
+    expect(tagActWords('move', { lines: 0, tied: 0, files: 0 }, harbor)).toBe('Moved to JP1081.')
+    expect(tagActWords('move', { lines: 0, tied: 2, files: 0 })).toBe('Moved to the job. 2 lines are on the job now.')
+    expect(tagActWords('tag', { lines: 2, tied: 1, files: 1 }, elm)).toBe(taggedWords({ lines: 2, tied: 1, files: 1 }, elm))
+  })
+
+  it('says a mail put on the job, or that nothing new went on it', () => {
+    expect(tagActWords('put', { lines: 1, tied: 0, files: 0 }, elm)).toBe('Added to JP1077. 1 line is on the job now.')
+    expect(tagActWords('put', { lines: 0, tied: 0, files: 0 }, elm)).toBe('Nothing new went on JP1077.')
+  })
+
+  it('draws what the green bar says a tag put on the job, nothing after a move or a put that brought nothing along', () => {
+    expect(doneWords({ lines: 2, tied: 1, files: 1 })).toBe('3 lines and 1 file are on the job now.')
+    expect(doneWords({ lines: 0, tied: 0, files: 0 })).toBe('Every mail in it was on the job already.')
+    expect(doneWords({ lines: 0, tied: 0, files: 0 }, 'move')).toBeNull()
+    expect(doneWords({ lines: 0, tied: 0, files: 0 }, 'put')).toBeNull()
+    expect(doneWords({ lines: 0, tied: 3, files: 0 }, 'move')).toBe('3 lines are on the job now.')
+  })
+
+  it('says why a press of the tag did not go, by the press', () => {
+    expect(notTaggedWords('tag')).toBe('The conversation was not tagged.')
+    expect(notTaggedWords('move')).toBe('The conversation was not moved.')
+    expect(notTaggedWords('put')).toBe('The mail was not put on the job.')
   })
 
   it('says what came off, and the copy a legal matter keeps', () => {
@@ -99,9 +161,15 @@ describe('the words of a tag and an untag', () => {
       taggedWords({ lines: 0, tied: 0, files: 0 }, elm),
       untaggedWords({ removed: 1, keptForMatter: true }),
       untaggedWords({ removed: 0, keptForMatter: false }),
+      tagActWords('move', { lines: 0, tied: 3, files: 1 }, harbor),
+      tagActWords('move', { lines: 0, tied: 0, files: 0 }, harbor),
+      tagActWords('put', { lines: 1, tied: 0, files: 0 }, elm),
+      tagActWords('put', { lines: 0, tied: 0, files: 0 }, elm),
       MY_MAIL_LIST_WORDS.offline,
       MY_MAIL_LIST_WORDS.notRead,
       MY_MAIL_LIST_WORDS.notTagged,
+      MY_MAIL_LIST_WORDS.notMoved,
+      MY_MAIL_LIST_WORDS.notPutOn,
     ]) {
       expect(plainWordsFailures(text)).toEqual([])
     }
