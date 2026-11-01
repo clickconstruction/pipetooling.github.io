@@ -75,6 +75,8 @@ export const REPORT_PHOTO_WORDS = {
   whatIsNext: 'What is next',
   otherTypes: 'Walk, Note or EOD instead',
   cameraOnStage: 'Take a photo of this stage',
+  /** The desk's New report form on a project or a bid (punch list #229): a report photo is keyed to a ledger job. */
+  onJobOnly: 'Photos go on a job’s report. A report on a project or a bid takes none yet.',
 } as const
 
 /** Where the shot sits in the bucket until the sweep files it: `<job_id>/<photo_id>.jpg`, the gate's shape. */

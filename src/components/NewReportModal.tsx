@@ -34,6 +34,11 @@ import TurnawayModal from './jobMode/TurnawayModal'
 import { denverCalendarDayKey } from '../utils/dateUtils'
 import { TURNAWAY_REPORT_OPTION_LABEL, TURNAWAY_REPORT_OPTION_SUB, shouldOfferTurnawayInReportPicker } from '../lib/turnawayReportOption'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../lib/deadPress'
+import { ReportPhotoTiles, StageRowPhotos, type ReportPhotoStage } from './reports/ReportPhotoTiles'
+import { useReportPhotos } from '../hooks/useReportPhotos'
+import { REPORT_PHOTO_WORDS, newPhotoLine, photosSentence, reportSaveWords } from '../lib/photos/reportPhotos'
+import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
+import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 
 type ReportTemplate = Database['public']['Tables']['report_templates']['Row']
 type ReportTemplateField = Database['public']['Tables']['report_template_fields']['Row']
@@ -88,6 +93,13 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   // Report by line (punch list #130, v2.5663): the job's priced lines from list_job_stage_progress,
   // two or more; null = the plain slider. One hook, shared with the Additional report and the stepper.
   const lineProgress = useJobLineProgress(selectedJob && selectedJob.source === 'job_ledger' ? selectedJob.id : null, open)
+  // The photos (punch list #229, PR 1): the same block as the per-job form, on a ledger job only, since a report
+  // photo is keyed to a job. The camera on a phone for the field roles, the file picker everywhere else.
+  const phone = useNarrowViewport640()
+  const cameraFirst = phone && canLeaveJobFieldReport(userRole)
+  const photoJobId = selectedJob && selectedJob.source === 'job_ledger' ? selectedJob.id : null
+  const photoStages: ReportPhotoStage[] = (lineProgress.lines ?? []).filter((r) => !r.drawPaid).map((r) => ({ fixtureId: r.fixtureId, name: r.name }))
+  const photos = useReportPhotos({ open, jobId: photoJobId, authUserId, byName: profileName?.trim() || '', cameraFirst, stages: photoStages })
   // Talk it through drafts the report (punch list #186, item 1, v2.5916): Notes and the named lines, marked until touched.
   const voiceDraft = useReportVoiceDraft({ fields: templateFields[selectedTemplateId] ?? [], jobName: selectedJob?.display_name ?? '', lineProgress, setFieldValues })
   /** Once the tech taps Change, emptying the search box must not re-auto-select the last job. */
@@ -276,6 +288,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     voiceDraft.reset()
     setError(null)
     setDiscardConfirmOpen(false)
+    photos.drop()
     suppressAutoSelectRef.current = false
   }
 
@@ -290,7 +303,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
    * re-opening the prompt while it is already up. */
   function guardedClose() {
     if (saving || discardConfirmOpen) return
-    if (hasUnsavedReportEntries(fieldValues)) {
+    if (hasUnsavedReportEntries(fieldValues) || photos.tiles.length > 0) {
       setDiscardConfirmOpen(true)
       return
     }
@@ -322,6 +335,9 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         if (val) parts.push(`${f.label}:\n${val}`)
       }
     }
+    // The photos ride in words (punch list #229): a pasted report says what pictures went with it.
+    const copyPhotoWords = photosSentence(photos.riding)
+    if (copyPhotoWords) parts.push(`Photos:\n${copyPhotoWords}`)
     let text = parts.join('\n\n')
     if (!text) return
     // iOS Safari treats text with "Word:" patterns as a URL and URL-encodes it when pasting.
@@ -371,6 +387,10 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
       const moves = lineProgressFieldValue(lineProgress.lines, lineProgress.picks, recordedPctForLines)
       if (moves) fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = moves
     }
+    // The photos' clause beside the moves (punch list #229): the office reads the Stage progress line and knows.
+    const riding = photos.riding
+    const photoWords = photosSentence(riding)
+    if (photoWords) fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = [fv[REPORT_FIELD_LABEL_STAGE_PROGRESS], photoWords].filter(Boolean).join(' · ')
     const jobLedgerId = selectedJob.source === 'job_ledger' ? selectedJob.id : null
     const projectId = selectedJob.source === 'project' ? selectedJob.id : null
     const bidId = selectedJob.source === 'bid' ? selectedJob.id : null
@@ -412,7 +432,10 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
       },
       about: [selectedJob.hcp_number, selectedJob.display_name].filter((x) => x && x !== '—').join(' · '),
       door: '/dashboard',
-    })
+    },
+    // A report with photos is never kept: its shots live on this form, so it stays open with Retry until the
+    // signal is back (the photos' own queue is #229's last PR).
+    riding.length > 0 ? { allowed: false } : undefined)
     setSaving(false)
     if (outcome.kind === 'refused' || outcome.kind === 'failed') {
       // Class-decided (v2.2843): a fetch-layer failure gets Retry; a refused insert says why.
@@ -430,6 +453,12 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
       const id = (outcome.result as { report_id?: string } | null)?.report_id
       return id ? { id } : null
     })()
+    // The photos ride with the report (punch list #229): each sent shot takes the report's id, its stage and the
+    // words it is named by. A shot that did not attach says so; the report itself is saved either way.
+    if (inserted?.id && riding.length > 0) {
+      const firstLong = fields.find((f) => (f.input_type ?? 'long_text') === 'long_text')?.label ?? null
+      await photos.attach(inserted.id, firstLong ? (fv[firstLong] ?? '') : '')
+    }
     // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
     if (inserted?.id) {
       void supabase.functions
@@ -483,7 +512,8 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
   }
 
   const fields = templateFields[selectedTemplateId] ?? []
-  const canSubmit = selectedJob && selectedTemplateId && authUserId
+  // Save waits for a shot still on its way, as the per-job form's does.
+  const canSubmit = selectedJob && selectedTemplateId && authUserId && !photos.inFlight
 
   const missingFields: string[] = []
   if (!selectedJob) missingFields.push('Job, project, or bid')
@@ -515,7 +545,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
         </button>
         <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
           <button type="button" onClick={guardedClose} style={{ padding: '0.5rem 1rem', border: '1px solid var(--border-strong)', background: 'var(--surface)', borderRadius: 4, cursor: 'pointer' }}>Cancel</button>
-          <button type="submit" form="new-report-form" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : DEAD_PRESS_FILL, color: canSubmit && !saving ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : 'Save report'}</button>
+          <button type="submit" form="new-report-form" disabled={!canSubmit || saving} title={!canSubmit ? `Required: ${missingFields.join(', ')}` : undefined} style={{ padding: '0.5rem 1rem', background: canSubmit && !saving ? '#2563eb' : DEAD_PRESS_FILL, color: canSubmit && !saving ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: 4, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>{saving ? 'Saving…' : photos.inFlight || photos.riding.length > 0 ? reportSaveWords({ jobPct: null, tiles: photos.tiles, saving }) : 'Save report'}</button>
         </div>
       </div>
     </>
@@ -681,6 +711,27 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
             ) : null}
           </div>
 
+          {/* The photos (punch list #229, PR 1): the per-job form's block, under the report type, on a ledger job. */}
+          {photoJobId ? (
+            <div style={{ marginBottom: '1rem' }} data-testid="report-photos-block">
+              <input {...photos.inputProps} />
+              {photos.lastShrink ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>{newPhotoLine({ shrinkWords: photos.lastShrink, jobHasFolder: photos.jobHasFolder })}</div> : null}
+              <ReportPhotoTiles
+                tiles={photos.tiles}
+                stages={photoStages}
+                chips={photos.chips}
+                onTake={() => photos.openCamera(null)}
+                onStage={photos.putOnStage}
+                onAnswer={photos.putOnQuestion}
+                onRemove={photos.remove}
+                onRetry={photos.retry}
+                captureWords={cameraFirst ? (photos.tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.take) : REPORT_PHOTO_WORDS.add}
+              />
+            </div>
+          ) : selectedJob ? (
+            <p style={{ margin: '-0.5rem 0 1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="report-photos-job-only">{REPORT_PHOTO_WORDS.onJobOnly}</p>
+          ) : null}
+
           {fields.length > 0 && (
             <div style={{ marginBottom: '1rem' }}>
               {fields.map((f) => {
@@ -697,6 +748,7 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
                         onPct={lineProgress.setPick}
                         recordedPct={recordedPctForLines}
                         onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
+                        rowFoot={(r) => (r.drawPaid ? null : <StageRowPhotos tiles={photos.onStage(r.fixtureId)} stageName={r.name} onCamera={() => photos.openCamera({ fixtureId: r.fixtureId, name: r.name })} />)}
                       />
                     )
                   }

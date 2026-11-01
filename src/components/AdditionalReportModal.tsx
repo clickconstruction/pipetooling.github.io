@@ -1,4 +1,4 @@
-import { useState, useEffect, useLayoutEffect, useRef, type ChangeEvent, type CSSProperties, type ReactNode } from 'react'
+import { useState, useEffect, useLayoutEffect, useRef, type CSSProperties, type ReactNode } from 'react'
 import { Folder, Images } from 'lucide-react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../types/database'
@@ -19,7 +19,7 @@ import { reportSaysJobComplete } from '../lib/reportReadyToBillPrompt'
 import { propagateReportPctToJob } from '../lib/propagateReportPctToJob'
 import { validateReportSignatureDataUrlForSubmit } from '../lib/reportSignatureField'
 import { openInExternalBrowser } from '../lib/openInExternalBrowser'
-import { formatErrorMessage, withSupabaseRetry } from '../utils/errorHandling'
+import { withSupabaseRetry } from '../utils/errorHandling'
 import { ReportTemplatePercentField } from './ReportTemplatePercentField'
 import { ReportLinesProgressField } from './ReportLinesProgressField'
 import { ReportVoiceNote } from './reports/ReportVoiceNote'
@@ -31,24 +31,8 @@ import { fieldPctStartValue } from '../lib/jobs/fieldPctUpdate'
 import { canLeaveJobFieldReport } from '../lib/canLeaveJobFieldReport'
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { ReportPhotoTiles, StageRowPhotos, type ReportPhotoStage } from './reports/ReportPhotoTiles'
-import {
-  REPORT_PHOTO_WORDS,
-  newPhotoId,
-  newPhotoLine,
-  photosInFlight,
-  photosSentence,
-  reportPhotoCaption,
-  reportSaveWords,
-  sentTiles,
-  tilesOnStage,
-  type ReportPhotoTile,
-} from '../lib/photos/reportPhotos'
-import { attachReportPhotos, discardReportPhotos, loadReportPhotoSize, sendReportPhoto } from '../lib/photos/reportPhotosIo'
-import { answerFailWords, checklistAnswerWrites, checklistPhotoChips, tileAnswering, tileOnStage, type ChecklistPhotoChip } from '../lib/photos/reportPhotoChecklist'
-import { loadQuestions } from '../lib/jobs/stageChecklistIo'
-import { answerQuestionsWithReportPhotos } from '../lib/jobs/stageChecklistSheetIo'
-import type { StageChecklistQuestion } from '../lib/jobs/stageChecklist'
-import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
+import { REPORT_PHOTO_WORDS, newPhotoLine, photosSentence, reportSaveWords } from '../lib/photos/reportPhotos'
+import { useReportPhotos } from '../hooks/useReportPhotos'
 import { STAGE_PCT_WORDS } from '../lib/reports/stagePct'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
 import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
@@ -126,23 +110,16 @@ export default function AdditionalReportModal({
   // opens the camera and the shots are tiles over the form; the office's size, and the stage the next shot lands on.
   const phone = useNarrowViewport640()
   const cameraFirst = phone && canLeaveJobFieldReport(userRole)
-  const [tiles, setTiles] = useState<ReportPhotoTile[]>([])
-  const [photoSize, setPhotoSize] = useState<ReportPhotoSize>('medium')
-  const [lastShrink, setLastShrink] = useState<string | null>(null)
-  // A photo answers a checklist question (punch list #189, PR 6): the live questions, so one that asks for a photo
-  // is a chip under a new tile. A failed read offers no chips; the form never waits on it.
-  const [questions, setQuestions] = useState<StageChecklistQuestion[]>([])
   const [showOtherTypes, setShowOtherTypes] = useState(false)
   const [showWhatIsNext, setShowWhatIsNext] = useState(false)
-  const cameraInputRef = useRef<HTMLInputElement>(null)
-  const cameraStageRef = useRef<ReportPhotoStage | null>(null)
   const cameraOpenedRef = useRef(false)
-  const originalsRef = useRef<Map<string, File>>(new Map())
-  const urlsRef = useRef<string[]>([])
-  const attachedRef = useRef(false)
   const [readyToBillJob, setReadyToBillJob] = useState<{ id: string; hcpNumber: string; jobName: string } | null>(null)
   // Report by line (punch list #130, v2.5663): the job's priced lines, two or more; null = the plain slider.
   const lineProgress = useJobLineProgress(jobId, open)
+  /** The stages a photo can sit on: the job's priced lines, a paid one never (its number is locked). */
+  const photoStages: ReportPhotoStage[] = (lineProgress.lines ?? []).filter((r) => !r.drawPaid).map((r) => ({ fixtureId: r.fixtureId, name: r.name }))
+  // The photos (punch list #229, PR 1): the one hook every report form mounts; camera first is this form's own rule.
+  const photos = useReportPhotos({ open, jobId, authUserId, byName: profileName?.trim() || '', cameraFirst, stages: photoStages, jobHasFolder: jobLinksLoading ? null : Boolean(customerFilesUrl || customerPicturesUrl) })
   // Talk it through drafts the report (punch list #186, item 1, v2.5916): Notes and the named lines, marked until touched.
   const voiceDraft = useReportVoiceDraft({ fields: templateFields[selectedTemplateId] ?? [], jobName: jobName, lineProgress, setFieldValues })
   const linesActive = lineProgress.lines != null
@@ -254,25 +231,6 @@ export default function AdditionalReportModal({
       })
   }, [selectedTemplateId])
 
-  useEffect(() => {
-    if (!open) return
-    let live = true
-    void loadReportPhotoSize().then((size) => {
-      if (live) setPhotoSize(size)
-    })
-    loadQuestions().then(
-      (qs) => {
-        if (live) setQuestions(qs)
-      },
-      () => {
-        if (live) setQuestions([])
-      },
-    )
-    return () => {
-      live = false
-    }
-  }, [open])
-
   // The press opens the camera (the mock-up's section 6, frame 1): once per open, in the same task as the press that
   // opened the form, so a phone takes it as the tech's own tap. Cancel on the camera leaves the form with Take a photo.
   useLayoutEffect(() => {
@@ -282,115 +240,16 @@ export default function AdditionalReportModal({
     }
     if (cameraFirst && !cameraOpenedRef.current) {
       cameraOpenedRef.current = true
-      cameraInputRef.current?.click()
+      photos.inputRef.current?.click()
     }
-  }, [open, cameraFirst])
+  }, [open, cameraFirst, photos.inputRef])
 
-  function keepUrl(url: string): string {
-    urlsRef.current.push(url)
-    return url
-  }
-
-  /** The shots of a form that was not saved leave the bucket and the table; every object URL is let go. */
+  /** The shots of a form that was not saved go; the folds close. */
   function dropTiles() {
-    const unsaved = attachedRef.current ? [] : tiles.filter((t) => t.status === 'sent').map((t) => ({ id: t.id, storagePath: t.storagePath }))
-    if (unsaved.length) void discardReportPhotos(unsaved)
-    for (const u of urlsRef.current) URL.revokeObjectURL(u)
-    urlsRef.current = []
-    originalsRef.current.clear()
-    attachedRef.current = false
-    setTiles([])
-    setLastShrink(null)
+    photos.drop()
     setShowOtherTypes(false)
     setShowWhatIsNext(false)
   }
-
-  function openCamera(stage: ReportPhotoStage | null) {
-    cameraStageRef.current = stage
-    cameraInputRef.current?.click()
-  }
-
-  /** Shrink on the phone, then send: the tile reads each step, and a failure keeps the tile with Retry. */
-  async function shrinkAndSend(id: string, file: File, takenAt: string) {
-    try {
-      const shot = await shrinkReportPhoto(file, photoSize)
-      if (!withinCap(shot.blob.size)) throw new Error('The photo is over 2 MB even after the shrink.')
-      const preview = shot.shrunk ? keepUrl(URL.createObjectURL(shot.blob)) : null
-      setTiles((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, status: 'sending', bytes: shot.blob.size, width: shot.width, height: shot.height, shrunk: shot.shrunk, ...(preview ? { previewUrl: preview } : null) } : t)),
-      )
-      setLastShrink(shrinkWords({ before: file.size, after: shot.blob.size, longEdge: edgeFor(photoSize), shrunk: shot.shrunk }))
-      if (!authUserId) throw new Error('Sign in again to send a photo.')
-      const sent = await sendReportPhoto({ id, jobId, blob: shot.blob, byUserId: authUserId, byName: profileName?.trim() || '', takenAt, originalBytes: file.size, width: shot.width, height: shot.height })
-      setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'sent', storagePath: sent.storagePath, failWhy: null } : t)))
-    } catch (err) {
-      setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'failed', failWhy: formatErrorMessage(err, 'The photo did not send.') } : t)))
-    }
-  }
-
-  function onCameraFile(e: ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    e.target.value = ''
-    if (!file) return
-    const stage = cameraStageRef.current
-    cameraStageRef.current = null
-    const id = newPhotoId()
-    const takenAt = new Date().toISOString()
-    originalsRef.current.set(id, file)
-    setTiles((prev) => [
-      ...prev,
-      {
-        id,
-        status: 'shrinking',
-        previewUrl: keepUrl(URL.createObjectURL(file)),
-        originalBytes: file.size,
-        bytes: 0,
-        width: 0,
-        height: 0,
-        longEdge: edgeFor(photoSize),
-        shrunk: false,
-        fixtureId: stage?.fixtureId ?? null,
-        stageName: stage?.name ?? null,
-        questionId: null,
-        questionWords: null,
-        storagePath: null,
-        takenAt,
-        failWhy: null,
-      },
-    ])
-    void shrinkAndSend(id, file, takenAt)
-  }
-
-  function retryTile(id: string) {
-    const file = originalsRef.current.get(id)
-    const tile = tiles.find((t) => t.id === id)
-    if (!file || !tile) return
-    setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'shrinking', failWhy: null } : t)))
-    void shrinkAndSend(id, file, tile.takenAt)
-  }
-
-  function removeTile(id: string) {
-    const tile = tiles.find((t) => t.id === id)
-    if (!tile) return
-    if (tile.status === 'sent') void discardReportPhotos([{ id: tile.id, storagePath: tile.storagePath }])
-    originalsRef.current.delete(id)
-    setTiles((prev) => prev.filter((t) => t.id !== id))
-  }
-
-  function putTileOnStage(tileId: string, stage: ReportPhotoStage) {
-    setTiles((prev) => prev.map((t) => (t.id === tileId ? tileOnStage(t, stage) : t)))
-  }
-
-  /** A question chip (PR 6): the tile goes on the question's stage and is its answer once the report saves. */
-  function putTileOnQuestion(tileId: string, chip: ChecklistPhotoChip) {
-    setTiles((prev) => prev.map((t) => (t.id === tileId ? tileAnswering(t, chip) : t)))
-  }
-
-  /** The stages a photo can sit on: the job's priced lines, a paid one never (its number is locked). */
-  const photoStages: ReportPhotoStage[] = (lineProgress.lines ?? []).filter((r) => !r.drawPaid).map((r) => ({ fixtureId: r.fixtureId, name: r.name }))
-  /** The checklist questions that ask for a photo on those stages, each a chip under a new tile (PR 6). */
-  const photoChips = checklistPhotoChips(photoStages, questions)
-  const jobHasFolder = jobLinksLoading ? null : Boolean(customerFilesUrl || customerPicturesUrl)
 
   function reset() {
     setFieldValues({})
@@ -439,7 +298,7 @@ export default function AdditionalReportModal({
       if (moves) fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = moves
     }
     // The photos' clause beside the moves (punch list #189, PR 5b): the office reads the Stage progress line and knows.
-    const riding = sentTiles(tiles)
+    const riding = photos.riding
     const photoWords = photosSentence(riding)
     if (photoWords) fv[REPORT_FIELD_LABEL_STAGE_PROGRESS] = [fv[REPORT_FIELD_LABEL_STAGE_PROGRESS], photoWords].filter(Boolean).join(' · ')
 
@@ -465,7 +324,7 @@ export default function AdditionalReportModal({
     // The server lands it for an estimator through insert_report and for everyone else under their own policy.
     // A report with photos is never kept: its shots live on this form, so it stays open with Retry until the
     // signal is back (the photos' own queue is #189's PR 7).
-    const hasPhotos = tiles.length > 0
+    const hasPhotos = photos.tiles.length > 0
     const movedLines = linesActive && lineProgress.moved.length > 0 ? lineProgress.moved.map((m) => ({ fixtureId: m.fixtureId, to: m.to })) : undefined
     const outcome = await pressThroughOutbox(
       {
@@ -507,22 +366,7 @@ export default function AdditionalReportModal({
     if (inserted?.id && riding.length > 0) {
       const firstLong = fields.find((f) => (f.input_type ?? 'long_text') === 'long_text')?.label ?? null
       const whatGotDone = firstLong ? (fv[firstLong] ?? '') : ''
-      const attached = await attachReportPhotos(
-        inserted.id,
-        riding.map((t) => ({ id: t.id, fixtureId: t.fixtureId, stageName: t.stageName, caption: reportPhotoCaption({ stageName: t.stageName, whatGotDone, questionWords: t.questionWords }) })),
-      )
-      attachedRef.current = true
-      if (attached.failed.length) {
-        showToast(`Report saved, but ${attached.failed.length === 1 ? 'a photo' : `${attached.failed.length} photos`} did not attach: ${attached.failed[0]}`, 'warning')
-      }
-      // A photo answers a checklist question (PR 6): each attached shot a question chip placed goes onto the
-      // stage checklist's answer row with its report photo id. Best-effort: the report stands saved either way.
-      const failedIds = new Set(attached.failedIds ?? [])
-      const answers = checklistAnswerWrites({ jobId, tiles: riding.filter((t) => !failedIds.has(t.id)) })
-      if (answers.length > 0) {
-        const wrote = await answerQuestionsWithReportPhotos(answers, { userId: authUserId, name: profileName?.trim() || '' })
-        if (wrote.failed.length) showToast(answerFailWords(wrote.failed.length, wrote.failed[0]!), 'warning')
-      }
+      await photos.attach(inserted.id, whatGotDone)
     }
     // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
     if (inserted?.id) {
@@ -570,7 +414,7 @@ export default function AdditionalReportModal({
 
   const fields = templateFields[selectedTemplateId] ?? []
   // Save waits for a shot still on its way (the queue of #163 takes this over in PR 7).
-  const canSubmit = Boolean(selectedTemplateId && authUserId) && !photosInFlight(tiles)
+  const canSubmit = Boolean(selectedTemplateId && authUserId) && !photos.inFlight
   // The percent the report files, for Save's words. A type with no percent field (a Note, a Walk) files none even on a
   // job with stage lines, so Save names none (v2.6126); an untouched field reads the job's own number, the same rule
   // Save files by (v2.6132), so the button never promises what Save will not file.
@@ -791,21 +635,21 @@ export default function AdditionalReportModal({
 
         <form onSubmit={handleSubmit}>
           {/* The camera (punch list #189, PR 5b): the back camera on a phone, the file picker at a desk. One shot a press. */}
-          <input ref={cameraInputRef} type="file" accept="image/*" capture={cameraFirst ? 'environment' : undefined} onChange={onCameraFile} tabIndex={-1} aria-hidden style={{ display: 'none' }} data-testid="report-camera-input" />
+          <input {...photos.inputProps} />
           {(() => {
             const photosBlock = (
               <div style={{ marginBottom: '1rem' }} data-testid="report-photos-block">
-                {lastShrink ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>{newPhotoLine({ shrinkWords: lastShrink, jobHasFolder })}</div> : null}
+                {photos.lastShrink ? <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginBottom: 6 }}>{newPhotoLine({ shrinkWords: photos.lastShrink, jobHasFolder: photos.jobHasFolder })}</div> : null}
                 <ReportPhotoTiles
-                  tiles={tiles}
+                  tiles={photos.tiles}
                   stages={photoStages}
-                  chips={photoChips}
-                  onTake={() => openCamera(null)}
-                  onStage={putTileOnStage}
-                  onAnswer={putTileOnQuestion}
-                  onRemove={removeTile}
-                  onRetry={retryTile}
-                  captureWords={cameraFirst ? (tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.take) : REPORT_PHOTO_WORDS.add}
+                  chips={photos.chips}
+                  onTake={() => photos.openCamera(null)}
+                  onStage={photos.putOnStage}
+                  onAnswer={photos.putOnQuestion}
+                  onRemove={photos.remove}
+                  onRetry={photos.retry}
+                  captureWords={cameraFirst ? (photos.tiles.length ? REPORT_PHOTO_WORDS.another : REPORT_PHOTO_WORDS.take) : REPORT_PHOTO_WORDS.add}
                 />
               </div>
             )
@@ -844,7 +688,7 @@ export default function AdditionalReportModal({
                       onPct={lineProgress.setPick}
                       recordedPct={lineProgress.recordedPct}
                       onSwitchToWholeJob={() => lineProgress.setLinesMode(false)}
-                      rowFoot={(r) => (r.drawPaid ? null : <StageRowPhotos tiles={tilesOnStage(tiles, r.fixtureId)} stageName={r.name} onCamera={() => openCamera({ fixtureId: r.fixtureId, name: r.name })} />)}
+                      rowFoot={(r) => (r.drawPaid ? null : <StageRowPhotos tiles={photos.onStage(r.fixtureId)} stageName={r.name} onCamera={() => photos.openCamera({ fixtureId: r.fixtureId, name: r.name })} />)}
                     />
                   )
                 }
@@ -975,7 +819,7 @@ export default function AdditionalReportModal({
               {cameraFirst ? STAGE_PCT_WORDS.notNow : 'Cancel'}
             </button>
             <button type="submit" disabled={!canSubmit || saving} style={{ marginLeft: 'auto', flex: cameraFirst ? 1 : undefined, minHeight: cameraFirst ? 48 : undefined, padding: '0.5rem 1.25rem', background: canSubmit && !saving ? '#2563eb' : DEAD_PRESS_FILL, color: canSubmit && !saving ? 'white' : DEAD_PRESS_TEXT, border: 'none', borderRadius: cameraFirst ? 10 : 6, fontWeight: 600, fontSize: cameraFirst ? '0.9375rem' : undefined, cursor: canSubmit && !saving ? 'pointer' : 'not-allowed' }}>
-              {cameraFirst ? reportSaveWords({ jobPct: jobPctForSave, tiles, saving }) : saving ? 'Saving…' : photosInFlight(tiles) ? reportSaveWords({ jobPct: jobPctForSave, tiles, saving }) : 'Save report'}
+              {cameraFirst ? reportSaveWords({ jobPct: jobPctForSave, tiles: photos.tiles, saving }) : saving ? 'Saving…' : photos.inFlight ? reportSaveWords({ jobPct: jobPctForSave, tiles: photos.tiles, saving }) : 'Save report'}
             </button>
           </div>
         </form>
