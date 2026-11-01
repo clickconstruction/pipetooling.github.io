@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, type ReactNode } from 'react'
 import { CameraGlyph } from '../materials/PhotoPress'
 import { cardPhotoWords, driveFileUrl, photoCountWords } from '../../lib/photos/reportPhotos'
 import { loadReportPhotos, type ReportPhotoForCard } from '../../lib/photos/reportPhotosIo'
@@ -12,7 +12,17 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
  * no photos, so older cards look as they did. A read that fails draws nothing too: the words of the report matter
  * more than its pictures.
  */
-export function ReportPhotosStrip({ reportId, compact = false }: { reportId: string; /** The thread's row (punch list #229, PR 3): 56 px thumbnails and no words, the count on the row's own badge. */ compact?: boolean }) {
+export function ReportPhotosStrip({
+  reportId,
+  compact = false,
+  foot,
+}: {
+  reportId: string
+  /** The thread's row (punch list #229, PR 3): 56 px thumbnails and no words, the count on the row's own badge. */
+  compact?: boolean
+  /** Drawn under the tiles when there are any (the Edit report form's line, punch list #229, PR 4); not on a compact row. */
+  foot?: ReactNode
+}) {
   const [photos, setPhotos] = useState<ReportPhotoForCard[] | null>(null)
   useEffect(() => {
     let live = true
@@ -109,6 +119,7 @@ export function ReportPhotosStrip({ reportId, compact = false }: { reportId: str
           )
         })}
       </div>
+      {foot ? <div style={{ marginTop: 6 }}>{foot}</div> : null}
     </div>
   )
 }

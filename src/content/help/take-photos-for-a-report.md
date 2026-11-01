@@ -79,6 +79,12 @@ The form shows no photo tile. A line reads *Photos go on a job's report. A repor
 
 The Turnaway form takes a photo too. Press {{button:amber|Turnaway}} on the bar and pick the reason. A camera tile sits under the reasons. Take the shot of the locked gate or the empty lot. The press reads {{button:amber|File Turnaway · 1 photo}} and waits while the shot is on its way. The photo is named by the reason in Drive. Dispatch sees *1 photo on the report* on its line.
 
+## Add a photo to a saved report
+
+Open Settings → **My Reports** and press {{button:blue|Edit}} on the report. The report's photos show under the fields. On a job's report an {{button:outline|Add a photo}} tile sits under them. Add the shot and press {{button:blue|Save · 1 photo added}}.
+
+A photo already on the report stays. Take one back in the job's Drive folder.
+
 ## The size the office picks
 
 The office picks the size once in Settings → Jobs & billing → **Photos**. Small is 1200 px, Medium 1600 px and Large 2400 px on the long edge. Medium is the default. It reads fine on a desktop and goes up on one bar of signal. The app refuses any photo over 2 MB.
