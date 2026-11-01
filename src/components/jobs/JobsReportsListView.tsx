@@ -5,6 +5,9 @@ import { displayReportTemplateName } from '../../lib/reportTemplateDisplayName'
 import { formatReportFieldValueInlineList } from '../../lib/reportSignatureField'
 import { groupReportsByDay, reportDayLabel, reportPreviewLines, reportTimeLabel } from '../../lib/reports/reportsFeed'
 import ReportViewModal, { type ReportForView } from '../ReportViewModal'
+import { ReportPhotosStrip } from '../reports/ReportPhotosStrip'
+import { ReportPhotoCount } from '../reports/ReportPhotoCount'
+import { useReportPhotoCounts } from '../../hooks/useReportPhotoCounts'
 import type { UserRole } from '../../hooks/useAuth'
 
 /**
@@ -73,6 +76,8 @@ function toReportForView(r: ReportsListRow): ReportForView {
 }
 
 export function JobsReportsListView(p: JobsReportsListViewProps) {
+  // The photos (punch list #229, PR 3): one count read for the rows; a badge on each card and row, the strip in an open group's row.
+  const photoCounts = useReportPhotoCounts(p.rows.map((r) => r.id))
   const [expanded, setExpanded] = useState<Set<string>>(() => new Set())
   const [viewing, setViewing] = useState<ReportsListRow | null>(null)
   const now = new Date()
@@ -113,6 +118,7 @@ export function JobsReportsListView(p: JobsReportsListViewProps) {
         <span style={{ display: 'block', fontSize: '0.85rem', color: 'var(--text-700)', marginTop: 2 }}>
           {r.job_hcp_number ? <b style={{ fontWeight: 650 }}>J{r.job_hcp_number}</b> : null}
           <span style={{ color: 'var(--text-muted)' }}>{r.job_hcp_number ? ' · ' : ''}by {r.created_by_name || 'Unknown'}</span>
+          <ReportPhotoCount count={photoCounts.get(r.id)} style={{ marginLeft: 6 }} />
         </span>
         <span style={{ display: 'block', borderTop: '1px solid var(--border)', marginTop: '0.5rem', paddingTop: '0.5rem', fontSize: '0.85rem' }}>
           {preview.length === 0 ? (
@@ -143,6 +149,7 @@ export function JobsReportsListView(p: JobsReportsListViewProps) {
             {reportDayLabel(r.created_at, now)} {reportTimeLabel(r.created_at)} · {r.created_by_name}
             {showJob ? ` · ${jobLabel(r)}${r.job_hcp_number ? ` (J${r.job_hcp_number})` : ''}` : ''}
           </span>
+          <ReportPhotoCount count={photoCounts.get(r.id)} style={{ marginLeft: 6 }} />
         </span>
         {p.isDev ? (
           <button
@@ -166,6 +173,7 @@ export function JobsReportsListView(p: JobsReportsListViewProps) {
           )}
         </div>
       ) : null}
+      {photoCounts.get(r.id) ? <div style={{ marginTop: '0.5rem' }}><ReportPhotosStrip reportId={r.id} /></div> : null}
     </div>
   )
 

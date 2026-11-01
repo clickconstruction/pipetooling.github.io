@@ -81,7 +81,7 @@ The office can file a report from the job's window too. Open the job from the Pi
 
 ## Reviewing reports (office side)
 
-Reports live at **Jobs → Reports**, at `/jobs?tab=reports`. The page opens on **Newest**, a feed of the latest reports. Each card shows what kind, which job, who wrote it, and the first lines. You tap a card, or **Read report ›**, to read it in full. The {{chip:blue|By job}} and {{chip:gray|By person}} chips group the same reports. Inside an open job you'll find labeled buttons: {{button:outline|Files}} {{button:outline|Pictures}} {{button:outline|Edit job}} {{button:outline|Preview}}. A button shown dashed means that link isn't set up yet. Search matches job, number, or person from any view.
+Reports live at **Jobs → Reports**, at `/jobs?tab=reports`. The page opens on **Newest**, a feed of the latest reports. Each card shows what kind, which job, who wrote it, and the first lines. You tap a card, or **Read report ›**, to read it in full. The {{chip:blue|By job}} and {{chip:gray|By person}} chips group the same reports. Inside an open job you'll find labeled buttons: {{button:outline|Files}} {{button:outline|Pictures}} {{button:outline|Edit job}} {{button:outline|Preview}}. A button shown dashed means that link isn't set up yet. Search matches job, number, or person from any view. A card or row with photos carries a badge like 📷 2. An open group's row shows the photos under the words.
 
 Your own reports are available under **My Reports**. You can edit a report within the edit window, which is two days by default.
 

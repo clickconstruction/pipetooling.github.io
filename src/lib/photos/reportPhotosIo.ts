@@ -9,6 +9,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { REPORT_PHOTOS_BUCKET, reportPhotoPath, type ReportPhotoRow } from './reportPhotos'
+import { chunkIds, countPhotosByReport } from './reportPhotoCounts'
 import { REPORT_PHOTO_SIZE_SETTING_KEY, photoSizeFromSetting, type ReportPhotoSize } from './shrink'
 
 const db = supabase as unknown as SupabaseClient
@@ -111,6 +112,21 @@ export async function jobHasDriveFolder(jobId: string): Promise<boolean | null> 
   } catch {
     return null
   }
+}
+
+/**
+ * How many photos each of these reports carries (punch list #229, PR 3): one read per chunk of ids, `report_id`
+ * only, counted on the client. A report with none is absent from the map. Throws with the reason on a failed read;
+ * the hook over it draws no badge then.
+ */
+export async function loadReportPhotoCounts(ids: ReadonlyArray<string>): Promise<Map<string, number>> {
+  const rows: { report_id: string | null }[] = []
+  for (const chunk of chunkIds(ids)) {
+    const { data, error } = await db.from('report_photos').select('report_id').in('report_id', chunk)
+    if (error) throw new Error(formatErrorMessage(error, 'The photo counts did not read.'))
+    rows.push(...((data ?? []) as { report_id: string | null }[]))
+  }
+  return countPhotosByReport(rows)
 }
 
 export type ReportPhotoForCard = ReportPhotoRow & { previewUrl: string | null }

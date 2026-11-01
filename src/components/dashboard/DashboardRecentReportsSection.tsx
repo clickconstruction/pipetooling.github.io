@@ -24,6 +24,9 @@ import { useRecurringReportScopeMasters } from '../../hooks/useRecurringReportSc
 import { useAuth } from '../../hooks/useAuth'
 import { EmptyState } from '../EmptyState'
 import { recentReportsEmptyWords } from '../../lib/dashboard/dashboardEmptyWords'
+import { ReportPhotosStrip } from '../reports/ReportPhotosStrip'
+import { ReportPhotoCount } from '../reports/ReportPhotoCount'
+import { useReportPhotoCounts } from '../../hooks/useReportPhotoCounts'
 
 /**
  * Inbox redesign (v2.1469): read/done state lives in report_reads (read_at /
@@ -79,6 +82,8 @@ export function DashboardRecentReportsSection({
   const [expandedReportId, setExpandedReportId] = useState<string | null>(null)
   const [editReportModalOpen, setEditReportModalOpen] = useState(false)
   const [reportForEdit, setReportForEdit] = useState<ReportForEdit | null>(null)
+  // The photos (punch list #229, PR 3): one count read for the list, a badge on the folded row, the strip when open.
+  const photoCounts = useReportPhotoCounts(recentReports.map((r) => r.id))
   const freshCount = useMemo(() => recentReports.filter((r) => reportRowState(r.id, readReportIds, doneReportIds) === 'new').length, [recentReports, readReportIds, doneReportIds])
   useEffect(() => {
     onCounts?.(recentReportsLoading ? null : { listed: recentReports.length, fresh: freshCount })
@@ -381,6 +386,7 @@ export function DashboardRecentReportsSection({
                                   {r.created_by_name} · {t.day}
                                   {isRead && !isExpanded ? ' · opened' : ''}
                                 </span>
+                                <ReportPhotoCount count={photoCounts.get(r.id)} tone={isRead ? 'quiet' : 'new'} />
                                 {r.job_ledger_id && submitLinkJobPicturesDispatchRequest ? (
                                   <span style={{ display: 'inline-flex' }} onClick={(e) => e.stopPropagation()}>
                                     <DashboardJobPicturesLinkRow
@@ -424,6 +430,8 @@ export function DashboardRecentReportsSection({
                               ) : (
                                 <p style={{ color: 'var(--text-faint)', fontSize: '0.875rem' }}>No content</p>
                               )}
+                              {/* The report's photos (punch list #229, PR 3): in Drive, or not in Drive yet with the reason. */}
+                              <ReportPhotosStrip reportId={r.id} />
                               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap', marginTop: '0.5rem' }}>
                                 {/* Primaries only reach their own Account-Man jobs (v2.2177 scoping),
                                     and reports span every job — so no job-detail door for them (v2.2222). */}
