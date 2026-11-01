@@ -15,6 +15,10 @@ Open a job from the Pipeline, the Dashboard or a schedule card. Under the addres
 
 Press **Photos** with its count, or any tile. The viewer opens with every picture in the folder. The day sits on each one. Press a picture to see it full size. Press {{button:outline|Open in Drive}} to see it in Google Drive. Press {{button:outline|Back to the photos}} to return to the grid.
 
+## The Documents tab
+
+The job window's Documents tab has a Photos line too. It says how many photos are in the folder and the day of the newest. Press the line to open the same viewer. Every photo across every job is on [Documents → Photos](/help/find-every-photo-that-was-uploaded).
+
 ## Where the photos come from
 
 The app reads two places in the job's Drive folder. The first is the Customer Pictures folder. The second is Photos under Team only. A photo taken in the app saves to that folder. A text's photo saves there when the office turns that on for the job. A checklist photo saves there too.
