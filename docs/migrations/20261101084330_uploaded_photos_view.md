@@ -8,3 +8,5 @@ The ground under Documents → Photos (punch list #232, shipped as v2.6264, v2.6
 - **No table is made**, so the three fence calls are not needed; nothing here writes.
 
 Apply order: the client first is harmless. PR 1 ships the kernel and the io with no screen reading them; PR 2's tab reads the view, so push this before PR 2 merges (`npm run check:calls-ahead` holds the deploy otherwise). Then regenerate `src/types/database.ts` (`npm run gen-types:linked`, its own `chore(types)` PR).
+
+**Applied** by 2026-11-01 17:00 UTC, by `scripts/db-push.sh` from the main checkout (`npm run check:migration-drift` then: 1051 local files, 1051 remote versions, fully applied); the types regenerated in the `chore(types)` PR #6707.

@@ -10,7 +10,7 @@ covers:
   - src/hooks/useBidPricingEngine.ts
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-11-01
 sections:
   - What this surface is
   - The shared substrate
@@ -27,6 +27,10 @@ sections:
 ## What this surface is
 
 > **Every line range in this map is as of `a05cef4c4`.** Ranges rot with each commit — search the symbol named beside the range, and regenerate the facts with `npm run map -- <file>` before trusting a number.
+
+> **v2.6225 (after `mapped_at`) — the robot's price beside hers on the Workbench grid:** `BidsPricingTab.tsx` calls `useRobotFixtures` for the open bid, and on every grid row a robot pull landed it draws a grey *robot $412* reference beside her price, a **robot's price** chip (with **Use my book** in its title) on a row her book could not price, and **Price N robot rows at the robot's prices** (`price_robot_fixtures`) above the P0 lock chip when rows landed before a price book was picked (`docs/recent-features/v2.6225.md`).
+
+> **v2.6251 (after `mapped_at`) — the empty Pricing tab says what is missing:** `pricingStartChoices` (`lib/bids/pricingStartChoices.ts`) names the missing piece of a `needs-setup` bid (`version`, `counts` or `cost-estimate`) and `pricingSetupWords` gives `PricingStartPanel`'s compact `EmptyState` its words; the tab passes `setupDoors` (the bid's Counts and Labor tab links and the Adopt window's opener, `setAdoptOpen`), so a bid with no count rows has a door to **Adopt an existing bid** (`docs/recent-features/v2.6251.md`).
 
 Two components that were **Stage-B extractions from `Bids.tsx`** (2026-05-30, cfb1f1982; the parent side is [`BIDS_TABS_ARCHITECTURE.md`](./BIDS_TABS_ARCHITECTURE.md) §`labor`, §`pricing` and §Pricing-engine shared layer), and the engine hook both read:
 
