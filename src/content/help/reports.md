@@ -12,7 +12,7 @@ The office can also subscribe to the report types they care about.
 
 ## Filing a report (field side)
 
-You tap {{button:blue|Leave Report}} on the Job Mode card, or during clock-out. On a phone the camera opens first, and each shot goes with the report into the customer's Drive folder. See [take photos for a report](/help/take-photos-for-a-report). The **Reporting on** card pre-fills the job from your last report. It says so under the name. You tap {{button:outline|Change}} to search for a different job, project, or bid instead. You choose a report type, fill in the fields, and submit. Your location is attached automatically.
+You tap {{button:blue|Leave Report}} on the Job Mode card, or during clock-out. On a phone the camera opens first, and each shot goes with the report into the customer's Drive folder. The New report form on the Reports tab takes photos on a job too. An {{button:outline|Add a photo}} tile sits under the report type. See [take photos for a report](/help/take-photos-for-a-report). The **Reporting on** card pre-fills the job from your last report. It says so under the name. You tap {{button:outline|Change}} to search for a different job, project, or bid instead. You choose a report type, fill in the fields, and submit. Your location is attached automatically.
 
 On a phone the report form opens **full screen** with {{button:blue|Save report}} pinned at the bottom. There is no scrolling to find it. If you close the form with something typed, it asks before discarding your entries. Switching report types keeps what you've typed. You can jump from Status to Note and back without losing anything. Only the fields of the type you save are submitted.
 

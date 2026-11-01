@@ -2,7 +2,7 @@
 title: take photos for a report
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician, primary
-keywords: photo, camera, picture, report, leave report, stage, drive, google drive, folder, shrink, size, take a photo, job mode, checklist, stage checklist, question
+keywords: photo, camera, picture, report, leave report, new report, reports tab, desk, add a photo, stage, drive, google drive, folder, shrink, size, take a photo, job mode, checklist, stage checklist, question
 where: /dashboard
 order: 67
 ---
@@ -52,6 +52,21 @@ The report card shows the photos. One in Drive reads *in Drive* with a link. One
 
 :::fold A job with no Drive folder yet
 The photo stays in the app and the report card reads *not in Drive yet* with the reason. The office makes the folder from the job's window. The next sweep files the photo.
+:::
+
+## At a desk, or from the Reports tab
+
+The New report form takes photos too. Open it from Jobs → Reports → {{button:blue|New report}}. The Stages tab's row report and the Dashboard's Job Report square open it too. Pick the job. An {{button:outline|Add a photo}} tile sits under the report type.
+
+1. Press {{button:outline|Add a photo}}. At a desk the file picker opens. On a phone the camera opens.
+2. The shot comes back as a tile. The line over it says what the app did to the size.
+3. On a job with stages, tap the stage it shows. Each stage row has its own camera press too.
+4. Press {{button:blue|Save report · 1 photo}}.
+
+Copy to Text names the photos at the end, as in *Photos: 1 photo on Rough In*.
+
+:::fold A report on a project or a bid
+The form shows no photo tile. A line reads *Photos go on a job's report. A report on a project or a bid takes none yet.* Pick the job instead when the work has one.
 :::
 
 ## The size the office picks
