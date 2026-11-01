@@ -2,7 +2,9 @@
  * Messages, cut 6 (email in): Gmail's REST API as the bids@ reader (`gmail-sync`) calls it, as the impersonated mailbox
  * (`users/me` under domain-wide delegation). Read the profile and the history since a point, search, read one message
  * and one attachment, find or make a label, and add a label to a message. Nothing here deletes, archives, moves or
- * marks a message read.
+ * marks a message read. Since punch list #230 PR 2 also the My email tab's calls (`gmail-mine`, as the signed-in
+ * person's own mailbox): a page of a search, a message raw, a conversation whole or by its headers, and a label taken
+ * off a message.
  */
 import type { GmailMessage } from './gcKernels/lib/emailIn/gmailMessage.ts'
 import type { GmailThreadMeta } from './gcKernels/lib/emailIn/labelSweep.ts'
@@ -126,4 +128,39 @@ export function gmailThreadsByLabel(token: string, labelId: string, pageToken?: 
 /** One thread's metadata: its messages' ids and dates and the headers From, Subject and Date. Never the words. */
 export function gmailThread(token: string, threadId: string): Promise<GmailThreadMeta> {
   return call(token, `/threads/${encodeURIComponent(threadId)}?format=metadata&metadataHeaders=From&metadataHeaders=Subject&metadataHeaders=Date`)
+}
+
+// ---- the My email tab's calls (gmail-mine, punch list #230 PR 2): the person's own box, under gmail.modify ----
+
+/** A conversation as `users.threads.get` answers it: its messages oldest first, each with Gmail's snippet. */
+export interface GmailThread {
+  id: string
+  historyId?: string
+  messages?: (GmailMessage & { snippet?: string })[]
+}
+
+/** One page of a Gmail search, newest first: up to `maxResults` ids, and the next page's token while there is more. */
+export function gmailMessagePage(token: string, query: string, maxResults: number, pageToken?: string): Promise<{ messages?: { id: string; threadId?: string }[]; nextPageToken?: string; resultSizeEstimate?: number }> {
+  return call(token, `/messages?${q({ q: query, maxResults: String(maxResults), pageToken })}`)
+}
+
+/** One message as sent, the whole RFC 2822 mail in base64url (`format=raw`): the court-ready copy. */
+export function gmailMessageRaw(token: string, id: string): Promise<{ id: string; threadId?: string; raw?: string; sizeEstimate?: number }> {
+  return call(token, `/messages/${encodeURIComponent(id)}?format=raw`)
+}
+
+/** A conversation whole (`format=full`): what `readGmailMessage` reads, mail by mail. */
+export function gmailThreadFull(token: string, threadId: string): Promise<GmailThread> {
+  return call(token, `/threads/${encodeURIComponent(threadId)}?format=full`)
+}
+
+/** A conversation by its headers alone (`format=metadata`), each header named; Gmail sends only those. */
+export function gmailThreadHeaders(token: string, threadId: string, headers: readonly string[]): Promise<GmailThread> {
+  const asked = headers.map((h) => `&metadataHeaders=${encodeURIComponent(h)}`).join('')
+  return call(token, `/threads/${encodeURIComponent(threadId)}?format=metadata${asked}`)
+}
+
+/** Takes a label off a message. Nothing else about the message changes. */
+export async function gmailRemoveLabel(token: string, messageId: string, labelId: string): Promise<void> {
+  await call(token, `/messages/${encodeURIComponent(messageId)}/modify`, { method: 'POST', body: { removeLabelIds: [labelId] } })
 }
