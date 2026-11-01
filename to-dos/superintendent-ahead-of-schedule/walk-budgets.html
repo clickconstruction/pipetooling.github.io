@@ -104,6 +104,42 @@ td.num,th.num{text-align:right;font-variant-numeric:tabular-nums;white-space:now
 .costcard .big div{display:flex;flex-direction:column}
 .costcard .big b{font-size:18px;font-variant-numeric:tabular-nums}
 .costcard .big span{font-size:11px;color:#64748b;letter-spacing:.04em;text-transform:uppercase}
+tr.eat td{background:#fef2f2}
+.budbtn{display:block;width:100%;background:none;border:0;padding:0;text-align:left;cursor:pointer;font-family:inherit;border-radius:6px}
+.budbtn:hover .bud{color:#0f172a}
+.budbtn .bud::after{content:"✎";margin-left:auto;font-size:13px;color:#2563eb}
+.budbtn.ro .bud::after{content:"▾";color:#94a3b8;font-size:11px}
+.budbtn.open .bud::after{content:"▴";font-size:11px}
+/* the editable grid: a cell is a field that looks like text until you tap it */
+.cell{border:0;border-bottom:1px dashed transparent;background:none;font:inherit;color:inherit;padding:2px 3px;min-width:0;border-radius:4px}
+.cell:hover{border-bottom-color:#94a3b8;background:#fff}
+.cell:focus{border-bottom-color:#2563eb;background:#fff;outline:none}
+.cell.w{width:100%;font-weight:600}
+.cell.n{width:92px;text-align:right;font-variant-numeric:tabular-nums}
+.kindchip{font-size:10px;border:1px solid #cbd5e1;border-radius:4px;padding:0 5px;color:#475569;margin-left:6px;vertical-align:middle;background:#fff;cursor:pointer;font-family:inherit}
+.kindchip.guess{border-style:dashed;color:#2563eb;border-color:#93c5fd}
+.rm{background:none;border:0;color:#94a3b8;font-size:16px;padding:0 4px;line-height:1;cursor:pointer}
+.rm:hover{color:#b91c1c}
+tr.draft td{background:#f8fafc}
+tr.draft .cell::placeholder{color:#94a3b8}
+.needs{font-size:11px;color:#94a3b8;font-style:italic}
+.changes{display:flex;flex-direction:column;gap:4px;background:#fff;border:1px solid #e2e8f0;border-radius:10px;padding:8px 12px;font-size:12px}
+.changes .h{display:flex;justify-content:space-between;color:#475569;font-size:11px;letter-spacing:.06em;text-transform:uppercase}
+.changes .e{display:flex;justify-content:space-between;gap:10px;align-items:center;padding:3px 0;border-top:1px solid #f1f5f9}
+.changes .e .u{border:1px solid #cbd5e1;background:#fff;border-radius:6px;padding:3px 10px;font-size:12px;color:#0f172a;min-height:28px;font-family:inherit;white-space:nowrap}
+.phone .changes{background:#1f2937;border-color:#374151;color:#d1d5db}
+.phone .changes .h{color:#9ca3af}.phone .changes .e{border-top-color:#374151}
+.phone .changes .e .u{background:#111827;border-color:#4b5563;color:#f3f4f6;min-height:36px}
+.toast .u{margin-left:10px;background:#ecfdf5;color:#065f46;border:0;border-radius:6px;padding:3px 10px;font-weight:700;font-family:inherit;font-size:12px}
+.fold{background:none;border:1px dashed #4b5563;color:#d1d5db;border-radius:8px;padding:8px 10px;font-size:12px;text-align:left;width:100%;font-family:inherit;cursor:pointer;margin:6px 0}
+.desk .fold{border-color:#cbd5e1;color:#475569}
+.inl{margin:8px 0 2px;padding:10px 12px;border:1px solid #bfdbfe;background:#eff6ff;border-radius:10px;display:flex;flex-direction:column;gap:8px}
+.inl.ro{border-color:#e2e8f0;background:#f8fafc}
+.inl.ro input[type=range]{opacity:.75;pointer-events:none}
+.inl.ro .pct input{pointer-events:none;border-bottom-color:transparent}
+.inl .inlfoot{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:#475569;align-items:center}
+.inl .inlfoot .st{font-weight:600;color:#0f172a}
+.inl .inlfoot .st.saved{color:#15803d}
 .strip{border-left:4px solid #2563eb;background:#fff;border-radius:8px;padding:8px 12px;font-size:12px;color:#475569;border-top:1px solid #e2e8f0;border-right:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
 .strip b{color:#0f172a}
 .card{border:1px solid #e2e8f0;background:#fff;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
@@ -233,32 +269,45 @@ function fresh(){return {
   settings:{rate:45,target:20,splits:{rough_in:[45,35],top_out:[45,35],trim_set:[40,40],any:[45,35]},saved:{rate:45,splits:{rough_in:[45,35],top_out:[45,35],trim_set:[40,40],any:[45,35]}},tunes:{rough_in:[],top_out:[],trim_set:[],any:[52,50,55,51,53,52]},learnTaken:{},exsize:10000},
   jobs:[{id:'J1042',name:'Pruett & Vance',site:'Harbor Lane Offices',bid:'B874',awarded:'Oct 2'},{id:'J1050',name:'Ridgeway Builders',site:'Harbor Lane Offices · Building C',bid:'B917',awarded:'Oct 30'}],
   lines:[
-    {id:'a1',job:'J1042',w:'Rough In',kind:'Order 1',stage:'rough_in',price:52000,l:42,m:31,src:'workbench'},
-    {id:'a2',job:'J1042',w:'Top Out',kind:'Order 2',stage:'top_out',price:36000,l:46,m:28,src:'workbench'},
-    {id:'a3',job:'J1042',w:'Trim Set',kind:'Order 3',stage:'trim_set',price:28000,l:38,m:40,src:'workbench'},
-    {id:'a4',job:'J1042',w:'Water heater, 50 gal, added',kind:'Any',stage:'any',price:4000,l:45,m:35,src:'assumed',addedBy:'asst',addedAt:'Oct 30'},
-    {id:'b1',job:'J1050',w:'Rough In',kind:'Order 1',stage:'rough_in',price:52000,l:44,m:30,src:'workbench'},
-    {id:'b2',job:'J1050',w:'Top Out',kind:'Order 2',stage:'top_out',price:34000,l:45,m:29,src:'workbench'},
-    {id:'b3',job:'J1050',w:'Trim Set',kind:'Order 3',stage:'trim_set',price:26000,l:39,m:38,src:'workbench'},
-    {id:'b4',job:'J1050',w:'Mobilizations',kind:'Any',stage:'any',price:3200,l:45,m:35,src:'assumed',addedBy:'asst',addedAt:'Oct 30'},
-    {id:'b5',job:'J1050',w:'Supplemental crew week',kind:'Any',stage:'any',price:1600,l:45,m:35,src:'assumed',addedBy:'asst',addedAt:'Oct 31'},
-    {id:'b6',job:'J1050',w:'Permit and inspections',kind:'Any',stage:'any',price:600,l:45,m:35,src:'assumed',addedBy:'asst',addedAt:'Oct 31'},
+    {id:'a1',job:'J1042',w:'Rough In',kind:'Order 1',stage:'rough_in',price:52000,l:42,m:31,src:'workbench',pct:100,hrs:196,spent:8900,bought:15800},
+    {id:'a2',job:'J1042',w:'Top Out',kind:'Order 2',stage:'top_out',price:36000,l:46,m:28,src:'workbench',pct:100,hrs:158,spent:7100,bought:9900},
+    {id:'a3',job:'J1042',w:'Trim Set',kind:'Order 3',stage:'trim_set',price:28000,l:38,m:40,src:'workbench',pct:61,hrs:184,spent:8280,bought:7100},
+    {id:'a4',job:'J1042',w:'Water heater, 50 gal, added',kind:'Any',stage:'any',price:4000,l:45,m:35,src:'assumed',addedBy:'asst',addedAt:'Oct 30',pct:0,hrs:0,spent:0,bought:0},
+    {id:'b1',job:'J1050',w:'Rough In',kind:'Order 1',stage:'rough_in',price:52000,l:44,m:30,src:'workbench',pct:40,hrs:290,spent:13050,bought:6100},
+    {id:'b2',job:'J1050',w:'Top Out',kind:'Order 2',stage:'top_out',price:34000,l:45,m:29,src:'workbench',pct:0,hrs:0,spent:0,bought:0},
+    {id:'b3',job:'J1050',w:'Trim Set',kind:'Order 3',stage:'trim_set',price:26000,l:39,m:38,src:'workbench',pct:0,hrs:0,spent:0,bought:0},
+    {id:'b4',job:'J1050',w:'Mobilizations',kind:'Any',stage:'any',price:3200,l:45,m:35,src:'assumed',addedBy:'asst',addedAt:'Oct 30',pct:100,hrs:36,spent:1620,bought:700},
+    {id:'b5',job:'J1050',w:'Supplemental crew week',kind:'Any',stage:'any',price:1600,l:45,m:35,src:'assumed',addedBy:'asst',addedAt:'Oct 31',pct:0,hrs:0,spent:0,bought:0},
+    {id:'b6',job:'J1050',w:'Permit and inspections',kind:'Any',stage:'any',price:600,l:45,m:35,src:'assumed',addedBy:'asst',addedAt:'Oct 31',pct:100,hrs:6,spent:270,bought:450},
   ],
   asst:{tab:'jobs',jobId:null,jobTab:'edit',draft:{w:'',kind:'any',price:''}},
   phone:{screen:'home',tuneJob:null},
-  desk:{tab:'settings',jobId:null,jobTab:'costs',tuneJob:null},
-  tune:{snapshot:null,touched:null},
+  desk:{tab:'settings',jobId:null,jobTab:'costs',tuneJob:null,expand:null},
+  tune:{snapshot:null,touched:null,showWb:false},
+  base:{},
+  undo:[],drafts:{},
   log:[],seen:{asst:true},toast:null,clock:552,nextId:20,
 };}
 let S=fresh();
 
 /* ---------- kernel ---------- */
 function calc(o,price){const p=100-o.l-o.m;const lab=price*o.l/100,mat=price*o.m/100,mar=price*p/100;return {lab,mat,p,mar,hrs:lab/S.settings.rate,under:p<S.settings.target};}
-function jobLines(id){return S.lines.filter(x=>x.job===id);}
-function jobTotals(id){const ls=jobLines(id);const t={price:0,lab:0,mat:0,hrs:0,workbench:0,assumed:0,tuned:0,reviewed:0};ls.forEach(x=>{const c=calc(x,x.price);t.price+=x.price;t.lab+=c.lab;t.mat+=c.mat;t.hrs+=c.hrs;t[x.src]++;if(x.src==='assumed'&&x.reviewed)t.reviewed++;});return t;}
+function jobLines(id){return S.lines.filter(x=>x.job===id&&!x.removed);}
+/* Undo: every change pushes what it did and how to take it back; each screen shows its last five. */
+function pushUndo(scope,words,revert){S.undo.unshift({id:'u'+(S.nextId++),scope,words,revert,who:S.persona});if(S.undo.length>30)S.undo.pop();}
+function undoStrip(scope){const es=S.undo.filter(u=>u.scope===scope).slice(0,5);if(!es.length)return '';
+  return `<div class="changes"><div class="h"><span>Recent changes</span><span>nothing is final: undo any of these</span></div>${es.map(u=>`<div class="e"><span>${u.words}</span><button type="button" class="u" data-a="undo" data-x="${u.id}">Undo</button></div>`).join('')}</div>`;}
+function guessKind(w){const s=(w||'').toLowerCase();if(/rough/.test(s))return 'rough_in';if(/top.?out|stack/.test(s))return 'top_out';if(/trim|finish/.test(s))return 'trim_set';return 'any';}
+function kindLabelFor(stage,jobId){return stage==='any'?'Any':'Order '+(jobLines(jobId).filter(l=>l.stage!=='any').length+1);}
+function toastUndo(t){S.toast=t;S.toastUndo=true;render();clearTimeout(toast.h);toast.h=setTimeout(()=>{S.toast=null;S.toastUndo=false;render();},5000);}
+function jobTotals(id){const ls=jobLines(id);const t={price:0,lab:0,mat:0,hrs:0,workbench:0,assumed:0,tuned:0,reviewed:0,hrsSpent:0,labSpent:0,bought:0,labEarned:0,matEarned:0};ls.forEach(x=>{const c=calc(x,x.price);t.price+=x.price;t.lab+=c.lab;t.mat+=c.mat;t.hrs+=c.hrs;t[x.src]++;if(x.src==='assumed'&&x.reviewed)t.reviewed++;t.hrsSpent+=x.hrs||0;t.labSpent+=x.spent||0;t.bought+=x.bought||0;t.labEarned+=c.lab*(x.pct||0)/100;t.matEarned+=c.mat*(x.pct||0)/100;});return t;}
+/* A line's reading: what its percent has earned of its budget against what has gone in; the stage eating hours is the one whose hours ran ahead of its percent. */
+function lineRead(x){const c=calc(x,x.price);const pct=x.pct||0;const hrsPct=c.hrs?Math.round((x.hrs||0)/c.hrs*100):0;const earnedLab=c.lab*pct/100,earnedMat=c.mat*pct/100;const keptLab=earnedLab-(x.spent||0),keptMat=earnedMat-(x.bought||0);const ahead=pct-hrsPct;return {c,pct,hrsPct,earnedLab,earnedMat,keptLab,keptMat,ahead,eating:pct<100&&(x.hrs||0)>0&&ahead<=-10};}
+function eatingLine(jobId){return jobLines(jobId).map(x=>({x,r:lineRead(x)})).filter(o=>o.r.eating).sort((a,b)=>a.r.ahead-b.r.ahead)[0]||null;}
 function toTune(){return S.lines.filter(x=>x.src==='assumed'&&!x.reviewed);}
 function stamp(){S.clock+=2;const h=Math.floor(S.clock/60),m=S.clock%60;return `Nov 1 · ${(h+11)%12+1}:${String(m).padStart(2,'0')} ${h<12?'am':'pm'}`;}
-function toast(t){S.toast=t;render();clearTimeout(toast.h);toast.h=setTimeout(()=>{S.toast=null;render();},2600);}
+function toast(t){S.toast=t;S.toastUndo=false;render();clearTimeout(toast.h);toast.h=setTimeout(()=>{S.toast=null;render();},2600);}
+function toastHtml(){return S.toast?`<div class="toast">${esc(S.toast)}${S.toastUndo&&S.undo.length?`<button type="button" class="u" data-a="undo" data-x="${S.undo[0].id}">Undo</button>`:''}</div>`:'';}
 function log(who,w){S.log.unshift({who,w});if(S.log.length>40)S.log.pop();}
 function learnFor(stage){const t=S.settings.tunes[stage];if(t.length<5||S.settings.learnTaken[stage])return null;const avg=Math.round(t.reduce((a,b)=>a+b,0)/t.length);const d=S.settings.splits[stage][0];return Math.abs(avg-d)>=3?{l:avg,n:t.length,d}:null;}
 
@@ -270,29 +319,56 @@ function sliderRows(o,price,prefix,scope){
   <div class="readbar"><div class="bar"><i class="l" style="width:${o.l}%"></i><i class="m" style="width:${o.m}%"></i><i class="p ${c.under?'bad':''}" style="width:${c.p}%"></i><span class="target" style="left:${100-S.settings.target}%" title="target margin ${S.settings.target}%"></span></div><div class="mg"><span>Margin, what is left</span><span><b class="${c.under?'bad':''}">${c.p}% · ${fmt(c.mar)}</b>${c.under?' <span style="color:#dc2626">· under the '+S.settings.target+'% target</span>':''}</span></div></div>`;
 }
 function quietLine(x){const c=calc(x,x.price);return `<div class="bud ${x.src}"><span class="g">${GL[x.src]}</span><span class="bar"><i class="l" style="width:${x.l}%"></i><i class="m" style="width:${x.m}%"></i><i class="p" style="width:${c.p}%"></i></span>${Math.round(c.hrs)} h · ${fmt(c.lab)} labor · ${fmt(c.mat)} materials${x.src==='assumed'?(x.reviewed?' · assumed, looks right to the owner':' · assumed'):x.src==='tuned'?' · tuned by the owner':''}</div>`;}
-function lineItemsTable(jobId,withTune){
-  const ls=jobLines(jobId);const t=jobTotals(jobId);
+/* The budget line opened in place on ① Line Items: the owner's two sliders that autosave, or the assistant's read-only figures. */
+function inlineEditor(x,canEdit){
+  const c=calc(x,x.price);const base=S.base[x.id];
+  if(!canEdit)return `<div class="inl ro">${sliderRows(x,x.price,x.w,'data-line="'+x.id+'" disabled')}<div class="inlfoot"><span class="st">${GL[x.src]} ${x.src==='workbench'?'from bid '+S.jobs.find(j=>j.id===x.job).bid+'\'s workbench':x.src==='assumed'?'the company split for '+STAGE_NAME[x.stage]+', until the owner tunes it':'tuned by the owner'}</span><button type="button" class="lk" data-a="collapseLine">Close</button></div></div>`;
+  const changed=base&&(x.l!==base.l||x.m!==base.m);
+  const status=changed?`<span class="st saved">Saved · ✎ tuned by you</span>`:`<span class="st">${GL[x.src]} ${x.src==='workbench'?'from the bid\'s workbench':x.src==='assumed'?'assumed at the company split':'tuned by you'}</span>`;
+  const sp=S.settings.splits[x.stage];
+  const back=base&&changed?`<button type="button" class="lk" data-a="lineReset" data-x="${x.id}">Back to ${GL[base.src]} ${base.l} / ${base.m}</button>`:(x.src==='tuned'&&(x.l!==sp[0]||x.m!==sp[1])?`<button type="button" class="lk" data-a="lineCompany" data-x="${x.id}">Back to ≈ the company split ${sp[0]} / ${sp[1]}</button>`:'');
+  return `<div class="inl" data-inline="${x.id}">${sliderRows(x,x.price,x.w,'data-line="'+x.id+'"')}<div class="inlfoot">${status}<span style="display:flex;gap:12px">${back}<button type="button" class="lk" data-a="collapseLine">Done</button></span></div><div class="mute">Every drag saves by itself, the way the rest of Edit Job does. The Costs tab and the owner's phone read it at once.</div></div>`;
+}
+/* ① Line Items as an editable grid: every cell is a field, every change autosaves with Undo, the last row is the add. */
+function lineItemsTable(jobId,canTune){
+  const ls=jobLines(jobId);const t=jobTotals(jobId);const open=S.desk.expand;const d=S.drafts[jobId]||{w:'',price:''};
+  const guess=guessKind(d.w);const dHas=d.w.trim()&&String(d.price).replace(/[^0-9]/g,'');
+  const rows=ls.map(x=>`<tr><td><input class="cell w" value="${esc(x.w)}" data-a="cell" data-line="${x.id}" data-f="w" aria-label="Line words"><button type="button" class="kindchip" data-a="kindCycle" data-x="${x.id}" title="Tap to change the kind">${x.kind}</button><button type="button" class="budbtn ${canTune?'':'ro'} ${open===x.id?'open':''}" data-a="expandLine" data-x="${x.id}" aria-expanded="${open===x.id}">${quietLine(x)}</button>${open===x.id?inlineEditor(x,canTune):''}</td><td>1</td><td><input class="cell n" value="${fmt(x.price)}" data-a="cell" data-line="${x.id}" data-f="price" inputmode="numeric" aria-label="Unit price"></td><td class="num">${fmt(x.price)}</td><td><button type="button" class="rm" data-a="removeLine" data-x="${x.id}" title="Remove the line (Put it back stays for a while)">×</button></td></tr>`).join('');
+  const draft=`<tr class="draft"><td><input class="cell w" id="draft-${jobId}" placeholder="Add a line: what the customer sees" value="${esc(d.w)}" data-a="draft" data-x="${jobId}" data-f="w"><span class="kindchip guess" title="Guessed from the words; tap a line's chip to change it once it is in">${d.w.trim()?STAGE_NAME[guess].replace(' line',''):'kind by the words'}</span>${d.w.trim()&&!dHas?'<div class="needs">needs a price to count</div>':'<div class="needs">the budget comes by itself when the line is in</div>'}</td><td>1</td><td><input class="cell n" id="draft-${jobId}-price" placeholder="$ price" value="${esc(d.price)}" data-a="draft" data-x="${jobId}" data-f="price" inputmode="numeric"></td><td class="num mute">${dHas?fmt(+String(d.price).replace(/[^0-9]/g,'')):'—'}</td><td></td></tr>`;
   return `<div class="hdr"><h4>① Line Items</h4><span class="tot">Job Total ${fmt(t.price)}</span></div>
-  <table><tr><th>Item</th><th>Count</th><th>Unit price</th><th class="num">Amount</th></tr>${ls.map(x=>`<tr><td><span class="item">${esc(x.w)}</span><span class="kind">${x.kind}</span>${quietLine(x)}</td><td>1</td><td>${fmt(x.price)}</td><td class="num">${fmt(x.price)}</td></tr>`).join('')}</table>
-  <div class="mute">Budgets: ${t.workbench} from the bid's workbench${t.tuned?' · '+t.tuned+' tuned':''} · ${t.assumed} assumed${t.reviewed?' ('+t.reviewed+' looked right)':''} <span class="newtag">new</span>${withTune?` · <button type="button" class="lk" data-a="deskTune" data-x="${jobId}">Tune</button>`:' · the owner tunes them on Needs you review'}</div>`;
+  <table><tr><th>Item</th><th>Count</th><th>Unit price</th><th class="num">Amount</th><th></th></tr>${rows}${draft}</table>
+  <div class="mute">Every cell saves when you leave it, with Undo above. Budgets: ${t.workbench} from the bid's workbench${t.tuned?' · '+t.tuned+' tuned':''} · ${t.assumed} assumed${t.reviewed?' ('+t.reviewed+' looked right)':''} <span class="newtag">new</span> · ${canTune?`the ✎ on a line opens its sliders in place, or <button type="button" class="lk" data-a="deskTune" data-x="${jobId}">tune the whole job</button>`:'the ▾ on a line shows its budget; the owner tunes them'}</div>`;
 }
 function costsTab(jobId,withMoney){
-  const job=S.jobs.find(j=>j.id===jobId);const t=jobTotals(jobId);const ls=jobLines(jobId);
+  const job=S.jobs.find(j=>j.id===jobId);const t=jobTotals(jobId);const ls=jobLines(jobId);const eat=eatingLine(jobId);
+  const keptLab=t.labEarned-t.labSpent,keptMat=t.matEarned-t.bought;const sign=n=>(n<0?'−':'')+fmt(Math.abs(n));
+  const kv=(b,s,u)=>`<b>${b}</b><span>${u}</span><span style="text-transform:none;letter-spacing:0;color:#0f172a">${s}</span>`;
+  const top=withMoney
+    ?`<div><b>${Math.round(t.hrs)} h</b><span>hours budget</span><span style="text-transform:none;letter-spacing:0;color:#0f172a">${Math.round(t.hrsSpent)} h clocked</span></div><div><b>${fmt(t.lab)}</b><span>labor budget</span><span style="text-transform:none;letter-spacing:0;color:#0f172a">${fmt(t.labSpent)} spent</span></div><div><b>${fmt(t.mat)}</b><span>materials budget</span><span style="text-transform:none;letter-spacing:0;color:#0f172a">${fmt(t.bought)} bought</span></div><div><b style="color:${keptLab+keptMat<0?'#b91c1c':'#15803d'}">${sign(keptLab+keptMat)}</b><span>kept so far</span><span style="text-transform:none;letter-spacing:0;color:#0f172a">earned at each line's % minus spent</span></div>`
+    :`<div><b>${Math.round(t.hrs)} h</b><span>hours budget</span><span style="text-transform:none;letter-spacing:0;color:#0f172a">${Math.round(t.hrsSpent)} h clocked</span></div>`;
+  const flag=eat?`<div class="strip" style="border-left-color:#dc2626;background:#fef2f2"><b>${esc(eat.x.w)} is eating hours:</b> ${eat.r.pct}% done, ${eat.r.hrsPct}% of its hours used${withMoney?', '+sign(eat.r.keptLab)+' against its labor budget':''}. The superintendent's card names it as the one move. <span class="newtag">new</span></div>`:`<div class="strip" style="border-left-color:#16a34a"><b>No line is ahead of its percent.</b> Every stage that has hours in is at or under its budget at this point in the work.</div>`;
+  const rows=ls.map(x=>{const r=lineRead(x);const c=r.c;const src=x.src==='workbench'?'◆ workbench':x.src==='assumed'?(x.reviewed?'≈ assumed · looks right':'≈ assumed'):'✎ tuned';
+    const read=!(x.hrs||x.bought)?'<span class="mute">not started</span>':withMoney?`<span style="color:${r.keptLab<0?'#b91c1c':'#15803d'}">${r.keptLab<0?'over by '+fmt(-r.keptLab):'kept '+fmt(r.keptLab)}</span>${r.eating?' · <b style="color:#b91c1c">eating hours</b>':''}`:`<span style="color:${r.ahead<0?'#b91c1c':'#15803d'}">${r.ahead>=0?'+':''}${r.ahead} pts vs hours</span>${r.eating?' · <b style="color:#b91c1c">eating hours</b>':''}`;
+    return `<tr class="${r.eating?'eat':''}"><td>${esc(x.w)}<div class="mute">${src}</div></td><td class="num">${r.pct}%</td><td class="num">${Math.round(c.hrs)} h<div class="mute">${Math.round(x.hrs||0)} h in</div></td>${withMoney?`<td class="num">${fmt(c.lab)}<div class="mute">earned ${fmt(r.earnedLab)} · spent ${fmt(x.spent||0)}</div></td><td class="num">${fmt(c.mat)}<div class="mute">earned ${fmt(r.earnedMat)} · bought ${fmt(x.bought||0)}</div></td>`:''}<td>${read}</td></tr>`;}).join('');
   return `<div class="costcard">
-    <div class="big"><div><b>${Math.round(t.hrs)} h</b><span>hours baseline</span></div>${withMoney?`<div><b>${fmt(t.lab)}</b><span>labor budget</span></div><div><b>${fmt(t.mat)}</b><span>materials budget</span></div><div><b>${fmt(t.price-t.lab-t.mat)}</b><span>margin, what is left</span></div>`:''}</div>
+    <div class="big">${top}</div>
     <div class="strip">◆ <b>Baseline from bid ${job.bid} at award</b> · frozen ${job.awarded} · ${t.workbench} lines from the workbench${t.assumed?', '+t.assumed+' assumed':''}${t.tuned?', '+t.tuned+' tuned':''} · at $${S.settings.rate}/h burdened <span class="newtag">new</span></div>
-    <div class="mute">The sum of the lines. A change order adds lines with their own budgets; Refresh from bid writes a dated sibling and the award row never changes.</div>
+    ${flag}
+    <div class="mute">Budget is the sum of the lines; spent is each clock hour at the person's burdened rate, landed on the stage on site that day, and each purchase on the line it was bought for; earned is the line's budget at the line's percent. A change order adds lines with their own budgets.</div>
   </div>
-  <table><tr><th>Line</th><th class="num">Price</th><th class="num">Hours</th>${withMoney?'<th class="num">Labor</th><th class="num">Materials</th>':''}<th>Source</th></tr>
-  ${ls.map(x=>{const c=calc(x,x.price);return `<tr><td>${esc(x.w)}</td><td class="num">${fmt(x.price)}</td><td class="num">${Math.round(c.hrs)} h</td>${withMoney?`<td class="num">${fmt(c.lab)}</td><td class="num">${fmt(c.mat)}</td>`:''}<td>${GL[x.src]} ${x.src==='workbench'?'workbench':x.src==='assumed'?(x.reviewed?'assumed · looks right':'assumed'):'tuned by the owner'}</td></tr>`;}).join('')}</table>`;
+  <table><tr><th>Line</th><th class="num">Done</th><th class="num">Hours</th>${withMoney?'<th class="num">Labor</th><th class="num">Materials</th>':''}<th>Reads</th></tr>${rows}</table>
+  ${withMoney?'':'<div class="mute">Hours only on this view; the dollars are the owner\'s and the office\'s.</div>'}`;
 }
 function tunePanel(jobId,scope){
-  const ls=jobLines(jobId);const job=S.jobs.find(j=>j.id===jobId);const snap=S.tune.snapshot||{};
-  const changed=ls.filter(x=>snap[x.id]&&(x.l!==snap[x.id].l||x.m!==snap[x.id].m)).length;
-  const touched=S.tune.touched&&ls.find(x=>x.id===S.tune.touched);
-  const others=touched?ls.filter(x=>x.src==='assumed'&&x.id!==touched.id).length:0;
+  const all=jobLines(jobId);const job=S.jobs.find(j=>j.id===jobId);const snap=S.tune.snapshot||{};
+  const wb=all.filter(x=>x.src==='workbench');const ls=S.tune.showWb?all:all.filter(x=>x.src!=='workbench');
+  const foldBtn=wb.length?`<button type="button" class="fold" data-a="toggleWb">${S.tune.showWb?'▴ Hide':'▾ Show'} the ${wb.length} line${wb.length===1?'':'s'} from bid ${job.bid}'s workbench${S.tune.showWb?'':' · they keep the bid\'s split unless you drag one'}</button>`:'';
+  const changed=all.filter(x=>snap[x.id]&&(x.l!==snap[x.id].l||x.m!==snap[x.id].m)).length;
+  const touched=S.tune.touched&&all.find(x=>x.id===S.tune.touched);
+  const others=touched?all.filter(x=>x.src==='assumed'&&x.id!==touched.id).length:0;
   const srcWords=x=>x.src==='workbench'?`◆ from bid ${job.bid}'s workbench`:x.src==='assumed'?`≈ assumed at ${S.settings.splits[x.stage][0]} / ${S.settings.splits[x.stage][1]}${x.reviewed?' · looked right to you':''}`:`✎ tuned by you${snap[x.id]?' · was '+snap[x.id].l+' / '+snap[x.id].m:''}`;
   return ls.map(x=>`<div class="tuneline ${x.src}" data-line="${x.id}"><div class="t"><span class="w">${esc(x.w)}</span><span class="p">${fmt(x.price)}</span></div>${sliderRows(x,x.price,x.w,'data-line="'+x.id+'"')}<div class="src">${srcWords(x)}</div></div>`).join('')
+    +foldBtn
     +`<div class="brush"><div>${touched?`Brush ${esc(touched.w)}'s split onto the other assumed lines on ${jobId}? <span class="hint">${others?others+' line'+(others===1?'':'s')+'.':'None left here.'}</span>`:'Drag a line, then brush its split onto the other assumed lines.'}</div><div class="btns"><button type="button" class="${scope==='phone'?'b sec':'dbtn'}" data-a="brush" data-x="${jobId}" ${others?'':'disabled'}>Brush · ${others}</button><button type="button" class="${scope==='phone'?'b sec':'dbtn'}" data-a="tuneUndo" data-x="${jobId}" ${changed?'':'disabled'}>Undo</button><button type="button" class="${scope==='phone'?'b pri':'dbtn pri'}" data-a="tuneSave" data-x="${jobId}" ${changed?'':'disabled'}>Save · ${changed} ${changed===1?'line':'lines'} tuned</button></div></div>`;
 }
 function settingsCard(){
@@ -314,15 +390,13 @@ function viewAsst(){
     <div class="mute">A service call never shows a budget: its price is known at the end. These are projects, priced before the work.</div>`;
   }else{
     const job=S.jobs.find(j=>j.id===A.jobId);
-    const edit=`${lineItemsTable(job.id,false)}
-      <div class="addline"><div class="hdr"><h4>Add a line</h4><span class="mute">Type it the way you always have. The budget comes by itself.</span></div>
-        <div class="r"><input type="text" class="w" id="draft-w" placeholder="What the customer sees, e.g. Backflow preventer, 2 in" value="${esc(A.draft.w)}" data-a="draftW"><select id="draft-kind" data-a="draftKind"><option value="any" ${A.draft.kind==='any'?'selected':''}>Any line</option><option value="rough_in" ${A.draft.kind==='rough_in'?'selected':''}>Rough In stage</option><option value="top_out" ${A.draft.kind==='top_out'?'selected':''}>Top Out stage</option><option value="trim_set" ${A.draft.kind==='trim_set'?'selected':''}>Trim Set stage</option></select><input type="text" class="pr" id="draft-price" inputmode="numeric" placeholder="$ price" value="${esc(A.draft.price)}" data-a="draftPrice"><button type="button" class="dbtn pri" data-a="addLine" data-x="${job.id}">Add the line</button></div>
-        <div class="mute">A typed line takes the company's split for its kind, ${S.settings.splits[A.draft.kind][0]} / ${S.settings.splits[A.draft.kind][1]}, marked assumed. The owner tunes it on Needs you review. Nothing here asks you for a number you do not have.</div></div>`;
+    const edit=`${undoStrip('edit:'+job.id)}${lineItemsTable(job.id,false)}
+      <div class="mute">A typed line takes the company's split for its kind, marked assumed; the owner tunes it on Needs you review. Nothing here asks you for a number you do not have, and nothing here is final: every change has Undo.</div>`;
     body=`<div class="mbar" style="margin:-16px -20px 0;"><span class="t">${job.id} · ${esc(job.name)} · ${esc(job.site)}</span><span class="chip project">Project</span><span class="mute">from bid ${job.bid}</span><button type="button" class="x" data-a="asstBack">✕</button></div>
       <div class="tabs" style="margin:0 -20px"><button type="button" data-a="asstTab" data-x="edit" aria-pressed="${A.jobTab==='edit'}">Edit</button><button type="button" data-a="asstTab" data-x="costs" aria-pressed="${A.jobTab==='costs'}">Costs</button><button type="button" aria-pressed="false">Stages</button><button type="button" aria-pressed="false">Billing</button><button type="button" aria-pressed="false">Documents</button></div>
       ${A.jobTab==='edit'?edit:costsTab(job.id,false)}`;
   }
-  return `<div class="desk">${S.toast?`<div class="toast">${esc(S.toast)}</div>`:''}
+  return `<div class="desk">${toastHtml()}
     <div class="appbar"><span class="brand">PipeTooling</span><button type="button" data-a="asstBack" aria-pressed="true">Jobs</button><button type="button" aria-pressed="false" title="Line budgets are the owner's card">Settings</button><span class="me">${esc(WHO.asst)} · assistant</span></div>
     <div class="pane">${body}</div></div>`;
 }
@@ -345,21 +419,21 @@ function viewPhone(){
       <div class="sc">${tunePanel(j.id,'phone')}</div>
       <div class="foot"><span class="hint">${learn?`Your Any lines have run ${learn.l}% labor on your last ${learn.n} tunes, against the ${learn.d}% default.`:S.settings.learnTaken.any?'The Any-line default now comes from your tunes.':'After a few more tunes the app will offer to move the default.'}</span>${learn?`<button type="button" class="b sec" style="flex:none;padding:0 12px" data-a="learnTake" data-k="any">Make ${learn.l}% the default</button>`:`<button type="button" class="b sec" style="flex:none;padding:0 12px" data-a="phoneClose">Close</button>`}</div></div>`;}
   return `<div class="phone"><div class="p-top"><div class="p-nav"><span class="ham" aria-hidden="true"></span><span class="on">Home</span><span class="off">Search</span></div></div>
-    <div class="p-body">${S.toast?`<div class="toast">${esc(S.toast)}</div>`:''}<div class="eyebrow">Needs you review</div>${card}<div class="eyebrow">Your projects</div>${projects}</div>
+    <div class="p-body">${toastHtml()}${undoStrip('phone')}<div class="eyebrow">Needs you review</div>${card}<div class="eyebrow">Your projects</div>${projects}</div>
     ${sheet}<div class="tabbar"><span class="on">Dashboard</span><span>Schedule</span><span>Inbox</span><span>Customers</span></div></div>`;
 }
 
 /* ---------- the owner at a desk ---------- */
 function viewDesk(){
   const D=S.desk;let body;
-  if(D.tab==='settings'){body=`<h4>Settings → Jobs &amp; billing → Line budgets <span class="newtag">new</span></h4>${settingsCard()}`;}
+  if(D.tab==='settings'){body=`<h4>Settings → Jobs &amp; billing → Line budgets <span class="newtag">new</span></h4>${undoStrip('settings')}${settingsCard()}`;}
   else if(!D.jobId){body=`<h4>Projects</h4>${S.jobs.map(j=>{const t=jobTotals(j.id);return `<button type="button" class="jobrow" data-a="deskOpen" data-x="${j.id}"><span><span class="n">${j.id} · ${esc(j.name)}</span><span class="chip project">Project</span><div class="m">${esc(j.site)} · from bid ${j.bid}</div></span><span class="m">${Math.round(t.hrs)} h · ${fmt(t.lab)} labor · ${fmt(t.mat)} materials${t.assumed?' · '+t.assumed+' assumed':''}</span></button>`;}).join('')}`;}
   else{const job=S.jobs.find(j=>j.id===D.jobId);
     const tune=D.tuneJob===job.id?`<div class="costcard"><div class="hdr"><h4>Tune the budgets <span class="newtag">new</span></h4><button type="button" class="lk" data-a="deskTuneClose">Close</button></div>${tunePanel(job.id,'desk')}</div>`:'';
     body=`<div class="mbar" style="margin:-16px -20px 0;"><span class="t">${job.id} · ${esc(job.name)} · ${esc(job.site)}</span><span class="chip project">Project</span><button type="button" class="x" data-a="deskBack">✕</button></div>
       <div class="tabs" style="margin:0 -20px"><button type="button" data-a="deskTab" data-x="edit" aria-pressed="${D.jobTab==='edit'}">Edit</button><button type="button" data-a="deskTab" data-x="costs" aria-pressed="${D.jobTab==='costs'}">Costs</button><button type="button" aria-pressed="false">Stages</button><button type="button" aria-pressed="false">Billing</button><button type="button" aria-pressed="false">Documents</button></div>
-      ${D.jobTab==='edit'?lineItemsTable(job.id,true)+tune:costsTab(job.id,true)}`;}
-  return `<div class="desk">${S.toast?`<div class="toast">${esc(S.toast)}</div>`:''}
+      ${D.jobTab==='edit'?undoStrip('edit:'+job.id)+lineItemsTable(job.id,true)+tune:costsTab(job.id,true)}`;}
+  return `<div class="desk">${toastHtml()}
     <div class="appbar"><span class="brand">PipeTooling</span><button type="button" data-a="deskNav" data-x="jobs" aria-pressed="${D.tab==='jobs'}">Jobs</button><button type="button" data-a="deskNav" data-x="settings" aria-pressed="${D.tab==='settings'}">Settings</button><span class="me">the owner · master</span></div>
     <div class="pane">${body}</div></div>`;
 }
@@ -368,9 +442,9 @@ function viewDesk(){
 const sn=k=>!!S.seen[k];
 const STEPS={
   asst:[
-    {w:'Open J1042. Under each price sits one quiet line: the budget and where it came from.',n:true,d:()=>sn('asstJob')},
-    {w:'Add a line: words, kind, price. It gets the company split by itself, grey, marked assumed.',n:true,d:()=>sn('added')},
-    {w:'Open Costs: the hours baseline is the sum of the lines, with its source. No dollars for you.',n:true,d:()=>sn('asstCosts')},
+    {w:'Open J1042. Under each price sits one quiet line: the budget and where it came from. Tap one to see its figures; only the owner tunes it.',n:true,d:()=>sn('asstJob')},
+    {w:'Type in the last row: words, then a price. It becomes a line by itself, the kind read from the words, the budget assumed. Tap a kind chip to change it; × removes; every change has Undo above.',n:true,d:()=>sn('added')},
+    {w:'Open Costs: hours budget against hours clocked, per line, and the line eating hours named. No dollars for you.',n:true,d:()=>sn('asstCosts')},
     {w:'Switch to Owner on a phone: the line you added is waiting there.',d:()=>sn('phone')},
   ],
   phone:[
@@ -386,7 +460,8 @@ const STEPS={
     {w:'Drag a stage past the target: the margin turns red before you save anything.',n:true,d:()=>sn('settingsDrag')},
     {w:'Take the learning line on Any line: the default moves with one press.',n:true,d:()=>sn('learnTaken')},
     {w:'Save. Only lines still assumed take the new split; workbench and tuned lines keep theirs.',n:true,d:()=>sn('settingsSaved')},
-    {w:'Open Jobs → J1050 → Costs: hours, labor, materials and margin, the sum of its lines.',n:true,d:()=>sn('deskCosts')},
+    {w:'Open Jobs → J1050 → Costs: budget, spent, earned and kept per line; Rough In is eating hours.',n:true,d:()=>sn('deskCosts')},
+    {w:'On Edit, tap a line\'s budget: its two sliders open in place and every drag autosaves, like the rest of Edit Job. Back to ◆ 44 / 30 undoes; Done closes.',n:true,d:()=>sn('inlineTuned')},
   ],
 };
 const WHO_LINE={asst:'You are Jo Sample, assistant, at a desk. You add lines; you never type a budget.',phone:'You are the owner, on your phone, between jobs.',desk:'You are the owner, at a desk, with Settings open.'};
@@ -411,6 +486,14 @@ function render(){
 
 /* ---------- actions ---------- */
 function whoNow(){return S.persona;}
+/* Closing an inline editor is where the autosaved drags become one log line and one tune for the learning line. */
+function closeInline(id){
+  const l=S.lines.find(y=>y.id===id);const b=S.base[id];S.desk.expand=null;if(!l||!b)return;
+  if(l.l!==b.l||l.m!==b.m){const at=stamp();l.tunedAt=at;l.reviewed=false;S.settings.tunes[l.stage].push(l.l);S.seen.inlineTuned=true;const was={...b},now={l:l.l,m:l.m};
+    pushUndo('edit:'+l.job,`tuned ${esc(l.w)} ${was.l} / ${was.m} → ${now.l} / ${now.m}`,()=>{l.l=was.l;l.m=was.m;l.src=was.src;S.settings.tunes[l.stage].pop();});
+    log('desk',`tuned ${esc(l.w)} on Edit Job: ${b.l} / ${b.m} → ${l.l} / ${l.m}, autosaved at ${at}. It reads ✎ on Costs and on the phone.`);}
+  delete S.base[id];
+}
 function openTune(jobId){S.tune.snapshot={};jobLines(jobId).forEach(x=>{S.tune.snapshot[x.id]={l:x.l,m:x.m,src:x.src};});S.tune.touched=null;S.seen.tuneOpen=true;}
 function applySlider(o,f,v){v=clamp(v);if(f==='l'){o.l=v;o.m=Math.min(o.m,100-o.l);}else{o.m=Math.min(v,100-o.l);}}
 function applyTyped(o,f,raw){const v=raw.replace(/[^0-9]/g,'');if(v==='')return false;const n=clamp(+v);if(f==='l'){o.l=Math.min(n,100-o.m);}else{o.m=Math.min(n,100-o.l);}return true;}
@@ -420,60 +503,87 @@ document.addEventListener('click',e=>{
   const el=e.target.closest('[data-a]');if(!el)return;if(el.tagName==='INPUT'||el.tagName==='SELECT')return;
   const a=el.dataset.a,x=el.dataset.x;
   switch(a){
-    case 'persona':S.persona=x;S.seen[x]=true;S.toast=null;clearTimeout(toast.h);if(x==='phone'&&S.phone.screen==='tune')S.phone.screen='home';break;
+    case 'persona':if(S.desk.expand)closeInline(S.desk.expand);S.persona=x;S.seen[x]=true;S.toast=null;clearTimeout(toast.h);if(x==='phone'&&S.phone.screen==='tune')S.phone.screen='home';break;
     case 'reset':{const p=S.persona;S=fresh();S.persona=p;S.seen[p]=true;log('system','Started over.');break;}
     case 'asstOpen':S.asst.tab='job';S.asst.jobId=x;S.asst.jobTab='edit';S.seen.asstJob=true;break;
     case 'asstBack':S.asst.tab='jobs';S.asst.jobId=null;break;
     case 'asstTab':S.asst.jobTab=x;break;
-    case 'addLine':{const d=S.asst.draft;const w=d.w.trim();const price=+String(d.price).replace(/[^0-9]/g,'');if(!w||!price){toast('Type the words and a price first.');return;}
-      const sp=S.settings.splits[d.kind];const kindLabel=d.kind==='any'?'Any':'Order '+(jobLines(x).filter(l=>l.stage!=='any').length+1);
-      S.lines.push({id:'n'+(S.nextId++),job:x,w,kind:kindLabel,stage:d.kind,price,l:sp[0],m:sp[1],src:'assumed',addedBy:'asst',addedAt:'Nov 1'});
-      S.asst.draft={w:'',kind:'any',price:''};S.seen.added=true;const c=calc({l:sp[0],m:sp[1]},price);
-      log('asst',`added “${esc(w)}” at ${fmt(price)} to ${x}. The budget came by itself: ${sp[0]} / ${sp[1]} assumed, ${Math.round(c.hrs)} h · ${fmt(c.lab)} labor · ${fmt(c.mat)} materials. It is on the owner's Needs you review card now.`);
-      toast(`Added. Budget assumed at ${sp[0]} / ${sp[1]}; the owner can tune it.`);return;}
+    case 'undo':{const i=S.undo.findIndex(u=>u.id===x);if(i<0)return;const u=S.undo[i];S.undo.splice(i,1);u.revert();log(whoNow(),`undid: ${u.words}.`);S.toast=null;S.toastUndo=false;clearTimeout(toast.h);break;}
+    case 'removeLine':{const l=S.lines.find(y=>y.id===x);if(!l)return;l.removed=true;if(S.desk.expand===x)S.desk.expand=null;
+      pushUndo('edit:'+l.job,`removed ${esc(l.w)} (${fmt(l.price)})`,()=>{l.removed=false;});log(whoNow(),`removed ${esc(l.w)} from ${l.job}. Put it back is one press away.`);toastUndo(`Removed ${l.w}.`);return;}
+    case 'kindCycle':{const l=S.lines.find(y=>y.id===x);if(!l)return;const order=['any','rough_in','top_out','trim_set'];const was=l.stage,wasKind=l.kind,wasL=l.l,wasM=l.m,wasSrc=l.src;
+      l.stage=order[(order.indexOf(l.stage)+1)%order.length];l.kind=kindLabelFor(l.stage,l.job);if(l.src==='assumed'){const sp=S.settings.splits[l.stage];l.l=sp[0];l.m=sp[1];}
+      pushUndo('edit:'+l.job,`${esc(l.w)}: kind ${STAGE_NAME[was]} → ${STAGE_NAME[l.stage]}`,()=>{l.stage=was;l.kind=wasKind;l.l=wasL;l.m=wasM;l.src=wasSrc;});
+      log(whoNow(),`changed ${esc(l.w)}'s kind to ${STAGE_NAME[l.stage]}${l.src==='assumed'?'; its assumed split followed':''}.`);toastUndo(`${l.w} is ${STAGE_NAME[l.stage]} now.`);return;}
+    case 'toggleWb':S.tune.showWb=!S.tune.showWb;break;
     case 'phoneTune':S.phone.screen='tune';S.phone.tuneJob=x;openTune(x);break;
     case 'phoneClose':S.phone.screen='home';S.phone.tuneJob=null;break;
-    case 'stampAll':{const n=toTune();n.forEach(l=>{l.reviewed=true;l.reviewedAt=stamp();});S.seen.stamped=true;log('phone',`pressed Looks right on ${n.length} assumed line${n.length===1?'':'s'}: stamped with the owner's name, still assumed, off the card.`);toast(`Stamped ${n.length}. They stay assumed with your name on them.`);return;}
+    case 'stampAll':{const n=toTune();const ids=n.map(l=>l.id);n.forEach(l=>{l.reviewed=true;l.reviewedAt=stamp();});S.seen.stamped=true;
+      pushUndo('phone',`stamped ${n.length} line${n.length===1?'':'s'} Looks right`,()=>{S.lines.forEach(l=>{if(ids.includes(l.id)){l.reviewed=false;}});});
+      log('phone',`pressed Looks right on ${n.length} assumed line${n.length===1?'':'s'}: stamped with the owner's name, still assumed, off the card.`);toastUndo(`Stamped ${n.length}. They stay assumed with your name on them.`);return;}
     case 'brush':{const src=S.lines.find(l=>l.id===S.tune.touched);if(!src)return;let n=0;jobLines(x).forEach(l=>{if(l.src==='assumed'&&l.id!==src.id){l.l=src.l;l.m=src.m;l.src='tuned';n++;}});log(whoNow(),`brushed ${esc(src.w)}'s ${src.l} / ${src.m} onto ${n} other assumed line${n===1?'':'s'} on ${x}.`);S.seen.brushed=true;break;}
     case 'tuneUndo':{const snap=S.tune.snapshot||{};jobLines(x).forEach(l=>{if(snap[l.id]){l.l=snap[l.id].l;l.m=snap[l.id].m;l.src=snap[l.id].src;}});S.tune.touched=null;break;}
-    case 'tuneSave':{const snap=S.tune.snapshot||{};let n=0;const at=stamp();jobLines(x).forEach(l=>{if(snap[l.id]&&(l.l!==snap[l.id].l||l.m!==snap[l.id].m)){n++;l.src='tuned';l.tunedAt=at;l.reviewed=false;S.settings.tunes[l.stage].push(l.l);}});openTune(x);S.seen.tuneSaved=true;
-      log(whoNow(),`saved ${n} tuned line${n===1?'':'s'} on ${x} at ${at}. Each reads ✎ with the owner's name on Edit Job and Costs; the Any-line tunes now number ${S.settings.tunes.any.length}.`);toast(`Saved · ${n} line${n===1?'':'s'} tuned.`);if(S.persona==='phone'){S.phone.screen='home';S.phone.tuneJob=null;}return;}
+    case 'tuneSave':{const snap=S.tune.snapshot||{};let n=0;const at=stamp();const before=[];jobLines(x).forEach(l=>{if(snap[l.id]&&(l.l!==snap[l.id].l||l.m!==snap[l.id].m)){before.push({l,was:{...snap[l.id]}});n++;l.src='tuned';l.tunedAt=at;l.reviewed=false;S.settings.tunes[l.stage].push(l.l);}});openTune(x);S.seen.tuneSaved=true;
+      pushUndo(S.persona==='phone'?'phone':'edit:'+x,`tuned ${n} line${n===1?'':'s'} on ${x}`,()=>{before.forEach(b=>{b.l.l=b.was.l;b.l.m=b.was.m;b.l.src=b.was.src;S.settings.tunes[b.l.stage].pop();});});
+      log(whoNow(),`saved ${n} tuned line${n===1?'':'s'} on ${x} at ${at}. Each reads ✎ with the owner's name on Edit Job and Costs; the Any-line tunes now number ${S.settings.tunes.any.length}.`);toastUndo(`Saved · ${n} line${n===1?'':'s'} tuned.`);if(S.persona==='phone'){S.phone.screen='home';S.phone.tuneJob=null;}return;}
     case 'deskNav':S.desk.tab=x;if(x==='jobs')S.desk.jobId=null;S.desk.tuneJob=null;break;
     case 'deskOpen':S.desk.jobId=x;S.desk.jobTab='costs';break;
     case 'deskBack':S.desk.jobId=null;S.desk.tuneJob=null;break;
     case 'deskTab':S.desk.jobTab=x;break;
-    case 'deskTune':S.desk.tab='jobs';S.desk.jobId=x;S.desk.jobTab='edit';S.desk.tuneJob=x;openTune(x);break;
+    case 'deskTune':S.desk.tab='jobs';S.desk.jobId=x;S.desk.jobTab='edit';S.desk.tuneJob=x;S.desk.expand=null;openTune(x);break;
     case 'deskTuneClose':S.desk.tuneJob=null;break;
+    case 'expandLine':{if(S.desk.expand===x){closeInline(x);}else{if(S.desk.expand)closeInline(S.desk.expand);S.desk.expand=x;const l=S.lines.find(y=>y.id===x);if(!S.base[x])S.base[x]={l:l.l,m:l.m,src:l.src};S.seen.inline=true;}break;}
+    case 'collapseLine':if(S.desk.expand)closeInline(S.desk.expand);break;
+    case 'lineReset':{const l=S.lines.find(y=>y.id===x);const b=S.base[x];if(!l||!b)return;l.l=b.l;l.m=b.m;l.src=b.src;log('desk',`put ${esc(l.w)} back to ${GL[b.src]} ${b.l} / ${b.m}.`);toast(`Back to ${b.l} / ${b.m}.`);return;}
+    case 'lineCompany':{const l=S.lines.find(y=>y.id===x);if(!l)return;const sp=S.settings.splits[l.stage];l.l=sp[0];l.m=sp[1];l.src='assumed';l.reviewed=false;S.base[x]={l:sp[0],m:sp[1],src:'assumed'};log('desk',`put ${esc(l.w)} back to the company split ${sp[0]} / ${sp[1]}; it reads ≈ assumed again and is back on the Needs you review card.`);toast(`Back to the company split ${sp[0]} / ${sp[1]}.`);return;}
     case 'rateRoster':S.settings.rate=45;break;
     case 'learnTake':{const k=el.dataset.k;const learn=learnFor(k);if(!learn)return;const sp=S.settings.splits[k];const keepP=100-sp[0]-sp[1];sp[0]=learn.l;sp[1]=Math.max(0,Math.min(100-sp[0],100-sp[0]-keepP));S.settings.learnTaken[k]=true;S.seen.learnTaken=true;
       log(whoNow(),`took the learning line: ${STAGE_NAME[k]}'s default is ${sp[0]} / ${sp[1]} now, from the owner's last ${learn.n} tunes. Save on Settings makes it stick.`);toast(`${STAGE_NAME[k]} default: ${sp[0]} / ${sp[1]}. Save to keep it.`);return;}
     case 'settingsUndo':{const sv=S.settings.saved;Object.keys(sv.splits).forEach(k=>{S.settings.splits[k]=[...sv.splits[k]];});S.settings.rate=sv.rate;break;}
-    case 'settingsSave':{const st=S.settings;let moved=0;S.lines.forEach(l=>{if(l.src==='assumed'){const sp=st.splits[l.stage];if(l.l!==sp[0]||l.m!==sp[1]){l.l=sp[0];l.m=sp[1];moved++;}}});
+    case 'settingsSave':{const st=S.settings;let moved=0;const before=[];const prevSaved=JSON.parse(JSON.stringify(st.saved));S.lines.forEach(l=>{if(l.src==='assumed'){const sp=st.splits[l.stage];if(l.l!==sp[0]||l.m!==sp[1]){before.push({l,was:[l.l,l.m]});l.l=sp[0];l.m=sp[1];moved++;}}});
       st.saved={rate:st.rate,splits:Object.fromEntries(Object.keys(st.splits).map(k=>[k,[...st.splits[k]]]))};S.seen.settingsSaved=true;
-      log('desk',`saved the splits and a $${st.rate}/h rate. ${moved} assumed line${moved===1?'':'s'} took the new split; workbench and tuned lines kept theirs.`);toast(`Saved. ${moved} assumed line${moved===1?'':'s'} took the new split.`);return;}
+      pushUndo('settings',`saved the splits; ${moved} assumed line${moved===1?'':'s'} took them`,()=>{before.forEach(b=>{b.l.l=b.was[0];b.l.m=b.was[1];});st.saved=prevSaved;Object.keys(prevSaved.splits).forEach(k=>{st.splits[k]=[...prevSaved.splits[k]];});st.rate=prevSaved.rate;});
+      log('desk',`saved the splits and a $${st.rate}/h rate. ${moved} assumed line${moved===1?'':'s'} took the new split; workbench and tuned lines kept theirs.`);toastUndo(`Saved. ${moved} assumed line${moved===1?'':'s'} took the new split.`);return;}
     default:return;
   }
   render();
 });
+/* A cell saves when you leave it; the draft row becomes a line the moment it has words and a price. */
+function commitCell(el){
+  const a=el.dataset.a,f=el.dataset.f;
+  if(a==='draft'){const jobId=el.dataset.x;const d=S.drafts[jobId]||(S.drafts[jobId]={w:'',price:''});d[f]=el.value;
+    const w=d.w.trim(),price=+String(d.price).replace(/[^0-9]/g,'');
+    if(w&&price){const stage=guessKind(w);const sp=S.settings.splits[stage];const line={id:'n'+(S.nextId++),job:jobId,w,kind:kindLabelFor(stage,jobId),stage,price,l:sp[0],m:sp[1],src:'assumed',addedBy:S.persona,addedAt:'Nov 1',pct:0,hrs:0,spent:0,bought:0};
+      S.lines.push(line);S.drafts[jobId]={w:'',price:''};S.seen.added=true;const c=calc(line,price);
+      pushUndo('edit:'+jobId,`added ${esc(w)} at ${fmt(price)} as ${STAGE_NAME[stage]}`,()=>{line.removed=true;});
+      log(whoNow(),`added “${esc(w)}” at ${fmt(price)} to ${jobId}, read as ${STAGE_NAME[stage]} from its words. The budget came by itself: ${sp[0]} / ${sp[1]} assumed, ${Math.round(c.hrs)} h · ${fmt(c.lab)} labor · ${fmt(c.mat)} materials. It is on the owner's Needs you review card now.`);
+      toastUndo(`Added ${w}. Budget assumed at ${sp[0]} / ${sp[1]}.`);return true;}
+    render();return true;}
+  if(a==='cell'){const l=S.lines.find(y=>y.id===el.dataset.line);if(!l)return false;
+    if(f==='w'){const v=el.value.trim();if(!v||v===l.w){render();return true;}const was=l.w;l.w=v;pushUndo('edit:'+l.job,`renamed “${esc(was)}” to “${esc(v)}”`,()=>{l.w=was;});log(whoNow(),`renamed “${esc(was)}” to “${esc(v)}” on ${l.job}.`);toastUndo(`Saved.`);return true;}
+    if(f==='price'){const v=+el.value.replace(/[^0-9]/g,'');if(!v||v===l.price){render();return true;}const was=l.price;l.price=v;pushUndo('edit:'+l.job,`${esc(l.w)}: price ${fmt(was)} → ${fmt(v)}`,()=>{l.price=was;});log(whoNow(),`changed ${esc(l.w)}'s price ${fmt(was)} → ${fmt(v)}; its budget re-read on the same split.`);toastUndo(`Saved · ${l.w} ${fmt(v)}.`);return true;}}
+  return false;
+}
+document.addEventListener('change',e=>{const el=e.target;if(el.dataset&&(el.dataset.a==='cell'||el.dataset.a==='draft'))commitCell(el);});
+document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.dataset&&(e.target.dataset.a==='cell'||e.target.dataset.a==='draft')){e.preventDefault();e.target.blur();}});
 document.addEventListener('input',e=>{
   const el=e.target;const a=el.dataset.a;const f=el.dataset.f;
-  if(a==='draftW'){S.asst.draft.w=el.value;return;}
-  if(a==='draftPrice'){S.asst.draft.price=el.value;return;}
-  if(a==='draftKind'){S.asst.draft.kind=el.value;render();return;}
+  if(a==='cell')return;
+  if(a==='draft'){const d=S.drafts[el.dataset.x]||(S.drafts[el.dataset.x]={w:'',price:''});d[f]=el.value;const chip=el.closest('tr')&&el.closest('tr').querySelector('.kindchip.guess');if(chip&&f==='w')chip.textContent=el.value.trim()?STAGE_NAME[guessKind(el.value)].replace(' line',''):'kind by the words';return;}
   if(a==='rate'){S.settings.rate=+el.value;render();refocus('#rate');return;}
   if(a==='exsize'){S.settings.exsize=+el.value;render();return;}
   if(!f)return;
   const lineId=el.dataset.line,k=el.dataset.k;
   if(lineId){const x=S.lines.find(l=>l.id===lineId);if(!x)return;
+    const inline=!!el.closest('[data-inline]');
     if(el.type==='range')applySlider(x,f,+el.value);else if(!applyTyped(x,f,el.value))return;
-    const snap=S.tune.snapshot&&S.tune.snapshot[x.id];
+    const snap=inline?S.base[x.id]:(S.tune.snapshot&&S.tune.snapshot[x.id]);
     if(snap){x.src=(x.l!==snap.l||x.m!==snap.m)?'tuned':snap.src;}
-    S.tune.touched=x.id;S.seen.dragged=true;render();refocus(`[data-line="${x.id}"][data-f="${f}"][type="${el.type==='range'?'range':'text'}"]`);return;}
+    if(!inline)S.tune.touched=x.id;S.seen.dragged=true;render();refocus(`${inline?'[data-inline] ':''}[data-line="${x.id}"][data-f="${f}"][type="${el.type==='range'?'range':'text'}"]`);return;}
   if(k){const sp=S.settings.splits[k];const o={l:sp[0],m:sp[1]};
     if(el.type==='range')applySlider(o,f,+el.value);else if(!applyTyped(o,f,el.value))return;
     sp[0]=o.l;sp[1]=o.m;S.seen.settingsDrag=true;render();refocus(`[data-k="${k}"][data-f="${f}"][type="${el.type==='range'?'range':'text'}"]`);}
 });
-document.addEventListener('keydown',e=>{if(e.key==='Enter'&&e.target.id==='draft-price'){const b=document.querySelector('[data-a="addLine"]');if(b)b.click();}});
 render();
 })();
 </script>

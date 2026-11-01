@@ -94,8 +94,17 @@ Four more from the owner's later turns, the budgets:
   two projects, one shared state. The assistant adds lines and never sees a budget field; the
   owner tunes with sliders, brushes a split across a job's assumed lines, stamps the rest *Looks
   right*, moves a default from the learning line, and reads the Costs tab as the sum of the lines.
-  The private artifact the owner clicked through is *Line Budgets Walk* —
-  https://claude.ai/artifact/6tqary9zzv5dzKU168tiHX.
+  Its later passes, after the owner walked it and said it was not intuitive enough for an
+  impulsive assistant who clicks fast and needs to go back: the Costs tab reads budget, spent,
+  earned and kept per line and names the line eating hours; a line's budget opens in place on
+  ① Line Items (the ✎) with two sliders that autosave; the assistant's tap shows the same sliders
+  read-only (show, never tell); ① Line Items is an editable grid whose last row is the add, the
+  kind read from the words, *needs a price to count* instead of an error; × removes with *Put it
+  back*; a *Recent changes* strip on every screen holds the last five changes with Undo, and the
+  three bulk presses (Looks right, the sheet's Save, Settings' Save) undo with their counts; the
+  tune sheet folds the workbench lines. The private artifact the owner clicked through is *Line
+  Budgets Walk* — https://claude.ai/artifact/6tqary9zzv5dzKU168tiHX. These passes are the
+  build's spec for PR 1b: nothing is final, edit where you look, no scolding.
 
 The wider canvas these came from, with the before-and-after boards of the owner's seven changes, is
 *Click Tooling before and after* — https://claude.ai/artifact/3qAyRskDe9gdeQMn8K57g3 (private to the
