@@ -21,9 +21,11 @@ vi.mock('../../contexts/JobDetailModalContext', () => ({ useJobDetailModal: () =
 vi.mock('../../contexts/BidPreviewModalContext', () => ({ useBidPreview: () => null }))
 vi.mock('../../contexts/EditCustomerModalContext', () => ({ useEditCustomerModal: () => ({ openEditCustomerModal: vi.fn() }) }))
 vi.mock('../../lib/fetchJobActivityEventsForJobLedger', () => ({ fetchJobActivityEventsForJobLedger: async () => ({ data: [], error: null }) }))
+const folder = vi.hoisted(() => ({ link: null as string | null, opened: [] as string[] }))
+vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => folder.opened.push(url) }))
 vi.mock('../../lib/customers/fetchCustomerProfile', () => ({
   fetchCustomerProfile: async () => ({
-    customer: { id: 'c1', name: 'Ridgeway Builders', customer_type: 'commercial', archived_at: null, address: '', date_met: null, created_at: '2024-11-12T16:00:00Z', contact_info: null },
+    customer: { id: 'c1', name: 'Ridgeway Builders', customer_type: 'commercial', archived_at: null, address: '', date_met: null, created_at: '2024-11-12T16:00:00Z', contact_info: null, google_drive_link: folder.link },
     contactPersons: [],
     extraAddresses: [],
     primaryAddressNote: null,
@@ -85,6 +87,22 @@ describe('CustomerProfileModal views', () => {
     expect(screen.queryByText('Lifetime collected')).toBeNull()
     expect(screen.queryByText('None yet.')).toBeNull()
     expect(screen.queryByRole('button', { name: 'Timeline' })).toBeNull()
+  })
+
+  it('offers the customer’s Drive folder on the band, or says what makes it (v2.6288)', async () => {
+    auth.role = 'assistant'
+    folder.link = null
+    folder.opened = []
+    const { unmount } = await renderSettled(<CustomerProfileModal customerId="c1" onClose={vi.fn()} initialView="profile" />, { loaded: () => screen.findByText('Open balance') })
+    expect(screen.getByTestId('customer-profile-folder-later').textContent).toContain('The Drive folder is made with the customer’s first job.')
+    expect(screen.queryByTestId('customer-profile-folder')).toBeNull()
+    unmount()
+
+    folder.link = 'https://drive.google.com/drive/folders/1thXqFTZBJttlX4wMz8UFspkp68MMQpUk?usp=sharing'
+    await renderSettled(<CustomerProfileModal customerId="c1" onClose={vi.fn()} initialView="profile" />, { loaded: () => screen.findByText('Open balance') })
+    fireEvent.click(screen.getByTestId('customer-profile-folder'))
+    expect(folder.opened).toEqual(['https://drive.google.com/drive/folders/1thXqFTZBJttlX4wMz8UFspkp68MMQpUk'])
+    expect(screen.queryByTestId('customer-profile-folder-later')).toBeNull()
   })
 
   it('the office still reads the money strip', async () => {

@@ -2,7 +2,7 @@
 title: see a customer's full history and lifetime value
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: customer page, customer hub, lifetime value, LCV, customer profile, open balance, customer history, customer detail, property, additional addresses, county, legal description, owner of record, parcel, lien-ready, appraisal district, CAD
+keywords: customer page, customer hub, drive folder, customer folder, lifetime value, LCV, customer profile, open balance, customer history, customer detail, property, additional addresses, county, legal description, owner of record, parcel, lien-ready, appraisal district, CAD
 order: 41
 ---
 Every customer has a page of their own. Click their name on the Customers page to see who they are, their worth and everything in motion.
@@ -11,6 +11,10 @@ Every customer has a page of their own. Click their name on the Customers page t
 
 1. Go to **Customers**.
 2. Click anywhere on the customer's row. The small ✎ pencil next to the name still opens the quick edit form. You stay on the list.
+
+## Open the customer's Drive folder
+
+The band under the customer's name has a **Drive folder** door. Press it to open the folder in Drive. Every job's folder sits inside it, so the whole customer is one place. Before the first job, the band says the folder is made with it.
 
 ## Rank your top customers
 
