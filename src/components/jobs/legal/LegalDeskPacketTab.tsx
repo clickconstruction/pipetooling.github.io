@@ -78,8 +78,11 @@ function withFirmWait(e: LegalEntryRow, cell: ReactNode): ReactNode {
   )
 }
 
-/** The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. */
-export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; reload: () => void } | null
+/**
+ * The office's documents for the firm on the Evidence tab (v2.4810); null while the account has no matter. `canPull`
+ * (v2.6276, punch list #230 PR 5): the upload's gate on an open matter, which draws **From the job's messages…**.
+ */
+export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatterDocumentRow>; canEdit: boolean; canPull?: boolean; reload: () => void } | null
 /** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
 export type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
@@ -242,7 +245,7 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
       <div>
         {/* v2.6210 (punch list #220): sworn statements, above the documents the scans land in. */}
         {planActs?.acts?.swearStatement || entries.some((e) => e.kind === 'statement') ? <LegalStatementsStrip entries={entries} todayYmd={packet.todayYmd} canEdit={Boolean(planActs?.acts?.swearStatement)} acts={planActs?.acts?.editStatement && planActs.acts.swearStatement ? { swear: () => planActs.acts!.swearStatement!(packet.todayYmd), open: planActs.acts.editStatement, print: (id: string) => planActs.acts!.editStatement!(id, { print: true }), file: (id: string) => planActs.acts!.editStatement!(id, { file: true }), openDocument: documents ? async (id: string) => { const row = documents.list.find((d) => d.id === id); if (!row) throw new Error(EVIDENCE_LANDING_GONE_WORDS); await openLegalMatterDocument(supabase, row) } : undefined } : null} /> : null}
-        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} payerName={selected.name} landOn={evidenceDoc} onLandingDone={onEvidenceLanded} linkedStatements={linkedStatementsOf(entries)} onOpenStatement={planActs?.acts?.editStatement} /> : null}
+        {documents ? <LegalMatterDocumentsPanel matterId={documents.matterId} documents={documents.list} canEdit={documents.canEdit} onChanged={documents.reload} payerName={selected.name} landOn={evidenceDoc} onLandingDone={onEvidenceLanded} linkedStatements={linkedStatementsOf(entries)} onOpenStatement={planActs?.acts?.editStatement} fromMessages={documents.canPull ? { accountName: selected.name, jobs: selected.jobs } : null} /> : null}
         <SectionTitle doors={first ? <><Door label="Reports" onClick={() => props.onOpenReports(first)} /><Door label="Sessions" onClick={() => props.onOpenSessionNotes(first)} /><Door label="Job thread" onClick={() => props.onOpenJobThread(first.id)} /></> : null}>Proof the work happened</SectionTitle>
         <Table head={['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes', 'Links']} numCols={[3]}
           rows={packet.evidence.map((e) => [
