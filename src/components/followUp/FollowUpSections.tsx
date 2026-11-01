@@ -7,6 +7,7 @@
  * line. The queue and its words are the kernels' (`followUp/queue.ts`, `messages/owed.ts`, `messages/promises.ts`);
  * this draws them and hands each press to the page.
  */
+import { PUT_BACK, setAsideLines, setAsideTitle, type SetAsideRow } from '../../lib/followUp/setAsideFold'
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { callFirst, callTitle, CALL_WORDS, dayAfter, type CallTaskRow } from '../../lib/calls/callTasks'
 import { boxForNew } from '../../lib/messages/boxes'
@@ -50,6 +51,8 @@ export interface FollowUpSectionActions {
   /** A lead's doors (punch list #140 PR 8): the row's Book a visit and Start an estimate, with their newest words. Unset: the labels draw dead. */
   bookVisit?: (contactId: string, words: string | null) => void
   startEstimate?: (contactId: string, words: string | null) => void
+  /** **Put back** on a notice the reader set aside (v2.6231). Unset: the fold draws without the press. */
+  putBack?: (id: string) => void
 }
 
 export interface FollowUpSectionsProps<C, N extends { contactId: string }> {
@@ -74,6 +77,8 @@ export interface FollowUpSectionsProps<C, N extends { contactId: string }> {
    * keeps the sentence off the page, since `/messages` says it behind its bar's ?.
    */
   laneLook?: LaneLook
+  /** The notices the reader set aside this week (v2.6231), folded under New with a count. */
+  setAside?: readonly SetAsideRow[]
 }
 
 export type LaneLook = 'plain' | 'bands'
@@ -95,6 +100,7 @@ const clip = (s: string) => (s.length > 220 ? `${s.slice(0, 220).replace(/\s+\S*
 
 export function FollowUpSections<C, N extends { contactId: string }>(props: FollowUpSectionsProps<C, N>) {
   const { queue, contacts, renderClauses, renderNudges, actions, laneLook: look = 'plain' } = props
+  const setAside = props.setAside ?? []
   const byId = new Map(contacts.map((c) => [c.id, c]))
   const youCount = needsYouCount(queue)
   const back = queue.needsYou.filter((r): r is BackRow => r.kind === 'back')
@@ -122,6 +128,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
         ) : (
           queue.newLane.map((r) => byId.get(r.contactId) && <NewRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
         )}
+        {setAside.length > 0 && <SetAsideFold rows={setAside} nowIso={props.nowIso} pressing={props.pressing} onPutBack={actions.putBack} />}
       </Section>
       {youCount > 0 && (
         <Section id="needs-you" name="Needs you" count={youCount} note={LANE_NOTES.needsYou(Boolean(renderClauses))} look={look} color={JUMP_LANE_COLOR.needsYou}>
@@ -347,6 +354,33 @@ const SORT_PRESS: CSSProperties = {
   lineHeight: 1.5,
   whiteSpace: 'nowrap',
   cursor: 'pointer',
+}
+
+/**
+ * The notices the reader set aside this week (v2.6231): a fold under New with the count, each row the sender, the
+ * subject, when, and **Put back**, which marks it for the next read. Never a delete; nothing in Gmail changes.
+ */
+function SetAsideFold({ rows, nowIso, pressing, onPutBack }: { rows: readonly SetAsideRow[]; nowIso: string; pressing?: string | null; onPutBack?: (id: string) => void }) {
+  const lines = setAsideLines(rows, nowIso)
+  return (
+    <details data-set-aside-fold style={{ border: '1px dashed var(--border-strong)', borderRadius: 10, padding: '0.5rem 0.8rem', background: 'var(--bg-subtle)' }}>
+      <summary style={{ cursor: 'pointer', fontWeight: 600, fontSize: '0.875rem' }}>{setAsideTitle(rows.length)}</summary>
+      <div style={{ display: 'grid', gap: '0.35rem', marginTop: '0.4rem' }}>
+        {lines.map((l) => (
+          <div key={l.id} data-set-aside-row={l.id} title={l.why} style={{ display: 'flex', gap: '0.6rem', alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.85rem', color: 'var(--text-600)' }}>
+            <span style={{ flex: 1, minWidth: 160, overflowWrap: 'anywhere' }}>
+              {l.who} · <i>{l.subject}</i> · {l.when}
+            </span>
+            {onPutBack && (
+              <Btn kind="quiet" onClick={() => onPutBack(l.id)} disabled={pressing === `putBack ${l.id}`}>
+                {PUT_BACK}
+              </Btn>
+            )}
+          </div>
+        ))}
+      </div>
+    </details>
+  )
 }
 
 /**
