@@ -6,6 +6,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendPushHonouringHours } from '../_shared/pushHoursSend.ts'
 import { readReportSubject, reportSendSkip } from '../_shared/reportSubject.ts'
 import { webPushSender } from '../_shared/webPushSend.ts'
+import { reportPhotoCountClause } from '../_shared/reportPhotoEmail.ts'
 
 /** Matches client `reportTemplateDisplayName` legacy alias for notification copy. */
 const LEGACY_SUPERINTENDENT_REPORT_TEMPLATE_NAME = 'Superintendent Report'
@@ -132,8 +133,11 @@ serve(async (req) => {
       jobDisplay = subject.projectName?.trim() || subject.gcContactName?.trim() || 'Bid'
     }
 
+    // The report's photos (punch list #229, PR 5): the body counts them, so the phone knows a picture came with it.
+    const { count: photoCount } = await adminClient.from('report_photos').select('id', { count: 'exact', head: true }).eq('report_id', report_id)
+
     const pushTitle = `New ${templateName}`
-    const pushBody = `${creatorName} submitted a ${templateName} for ${jobDisplay}`
+    const pushBody = `${creatorName} submitted a ${templateName} for ${jobDisplay}${reportPhotoCountClause(photoCount ?? 0)}`
     const pushUrl = '/jobs?tab=reports'
     const tag = `report-${report_id}`
 

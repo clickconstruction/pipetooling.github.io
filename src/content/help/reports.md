@@ -89,6 +89,8 @@ Your own reports are available under **My Reports**. You can edit a report withi
 
 Don't poll the Reports tab. Subscribe instead. In **Settings → Your dashboard → Report notifications**, you check the types you want and press {{button:blue|Save report notification preferences}}. You'll get a push the moment one is filed. Enable push notifications first. See Settings Basics.
 
+A report email goes to the people on **Email reports** under Jobs → Reports. The email carries the report's photos as attachments, up to ten. A photo already in the customer's Drive folder comes as a link instead. The push for a new report ends with the photo count.
+
 ## Special reports
 
 Some reports are filed by dedicated buttons rather than the generic picker. For example, **Turnaway** reports come from {{button:amber|Turnaway — not ready / not home}} on the Job Mode card. A turnaway is a visit where the work could not be done. Those reports also alert dispatch for a trip charge. They still appear in the Reports tab like any other report.

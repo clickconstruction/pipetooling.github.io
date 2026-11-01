@@ -5,6 +5,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { buildReportEmail, type ReportContent } from '../_shared/fieldReportEmail.ts'
 import { REAL_ACCOUNT } from '../_shared/realAccount.ts'
 import { readReportSubject, reportSendSkip, type ReportSubject } from '../_shared/reportSubject.ts'
+import { photoBytesBase64, planReportEmailPhotos, type ReportEmailPhoto, type ReportEmailPhotoRow } from '../_shared/reportPhotoEmail.ts'
 
 /**
  * Emails reports to configured recipients (report_email_subscriptions).
@@ -66,6 +67,13 @@ interface SubscriptionRow {
 
 type AdminClient = SupabaseClient
 
+/** The report's email content and the attachments its photos make, read once per report. */
+interface ResolvedReport {
+  content: ReportContent
+  attachments: Array<{ filename: string; content: string }>
+}
+const REPORT_PHOTOS_BUCKET = 'report-photos'
+
 function json(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
@@ -73,7 +81,7 @@ function json(body: unknown, status = 200): Response {
   })
 }
 
-async function resolveReportContent(admin: AdminClient, report: ReportRow, subject: ReportSubject): Promise<ReportContent> {
+async function resolveReportContent(admin: AdminClient, report: ReportRow, subject: ReportSubject): Promise<ResolvedReport> {
   const { data: templateRow } = await admin
     .from('report_templates')
     .select('name')
@@ -100,12 +108,37 @@ async function resolveReportContent(admin: AdminClient, report: ReportRow, subje
     jobDisplay = subject.projectName?.trim() || subject.gcContactName?.trim() || 'Bid'
   }
 
+  // The report's photos (punch list #229, PR 5): a shot still in the bucket rides as an attachment, one the sweep
+  // filed is a link, one past the cap is named. The bytes are read once per report, never once per subscription;
+  // a shot that does not read is named instead, so the words stay true.
+  const { data: photoRows } = await admin
+    .from('report_photos')
+    .select('id, stage_name, caption, by_name, bytes, storage_path, drive_file_id, fail_why')
+    .eq('report_id', report.id)
+    .order('taken_at', { ascending: true })
+  const photos: ReportEmailPhoto[] = planReportEmailPhotos(((photoRows ?? []) as unknown) as ReportEmailPhotoRow[])
+  const attachments: ResolvedReport['attachments'] = []
+  for (const p of photos) {
+    if (p.how !== 'attached' || !p.storagePath) continue
+    const { data: blob, error: dlErr } = await admin.storage.from(REPORT_PHOTOS_BUCKET).download(p.storagePath)
+    if (dlErr || !blob) {
+      console.error('send-report-email photo not read:', p.storagePath, dlErr?.message)
+      p.how = 'named'
+      continue
+    }
+    attachments.push({ filename: p.filename, content: photoBytesBase64(new Uint8Array(await blob.arrayBuffer())) })
+  }
+
   return {
-    templateName,
-    authorName,
-    jobDisplay,
-    createdAt: report.created_at,
-    fieldValues: report.field_values ?? {},
+    content: {
+      templateName,
+      authorName,
+      jobDisplay,
+      createdAt: report.created_at,
+      fieldValues: report.field_values ?? {},
+      photos,
+    },
+    attachments,
   }
 }
 
@@ -130,17 +163,20 @@ async function sendReportToSubscription(
   admin: AdminClient,
   sub: SubscriptionRow,
   report: ReportRow,
-  content: ReportContent,
+  resolved: ResolvedReport,
   resendApiKey: string,
   trigger: 'auto' | 'manual',
 ): Promise<'sent' | 'skipped' | 'failed'> {
   const to = await resolveRecipientEmail(admin, sub)
   if (!to) return 'skipped'
-  const { subject, html, text } = buildReportEmail(content)
+  const { subject, html, text } = buildReportEmail(resolved.content)
   // Sent copies (docs/SENT_COPIES.md): a report that goes to an address outside the company is
   // kept on its job. A subscription that names one of our own users is our own mail.
   const outside = Boolean((sub.recipient_email ?? '').trim())
-  const result = await sendEmailViaResend(to, subject, text, html, resendApiKey, outside ? { file: { kind: 'field_report', jobIds: [report.job_ledger_id], bidId: report.bid_id, source: { table: 'reports', id: report.id } } } : undefined)
+  const result = await sendEmailViaResend(to, subject, text, html, resendApiKey, {
+    ...(resolved.attachments.length > 0 ? { attachments: resolved.attachments } : {}),
+    ...(outside ? { file: { kind: 'field_report' as const, jobIds: [report.job_ledger_id], bidId: report.bid_id, source: { table: 'reports', id: report.id } } } : {}),
+  })
   if (!result.success) {
     console.error('send-report-email Resend error:', result.error)
     return 'failed'
@@ -243,10 +279,10 @@ serve(async (req) => {
       )
       if (matched.length === 0) return json({ ok: true, sent: 0, message: 'No matching subscriptions' })
 
-      const content = await resolveReportContent(admin, report, subject)
+      const resolved = await resolveReportContent(admin, report, subject)
       let sent = 0
       for (const sub of matched) {
-        const outcome = await sendReportToSubscription(admin, sub, report, content, resendApiKey, 'auto')
+        const outcome = await sendReportToSubscription(admin, sub, report, resolved, resendApiKey, 'auto')
         if (outcome === 'sent') sent++
       }
       return json({ ok: true, sent, matched: matched.length })
@@ -313,8 +349,8 @@ serve(async (req) => {
         skippedTestJobs++
         continue
       }
-      const content = await resolveReportContent(admin, report, subject)
-      const outcome = await sendReportToSubscription(admin, sub, report, content, resendApiKey, 'manual')
+      const resolved = await resolveReportContent(admin, report, subject)
+      const outcome = await sendReportToSubscription(admin, sub, report, resolved, resendApiKey, 'manual')
       if (outcome === 'sent') sent++
     }
     return json({ ok: true, sent, candidates: reports.length, alreadySent: dispatched.size, skippedTestJobs })

@@ -3255,6 +3255,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 
 ### send-report-notification
 
+> **v2.6260 — the body counts the photos** (punch list #229, PR 5): one `report_photos` count by `report_id`, and the body ends *· 2 photos* (`reportPhotoCountClause`, [`_shared/reportPhotoEmail.ts`](../supabase/functions/_shared/reportPhotoEmail.ts)); nothing added for a report without. **Redeploy required.**
+
 > **v2.6240 — `deno check` passes again**: handing the service-role client to `readReportSubject` ran TypeScript past its instantiation limit (TS2589), since checking supabase-js's client against [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)'s structural chain resolves its `eq` over a plain string column. The read takes anything with a `from` now (`ReportSubjectDb`) and reads it through the chain inside. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.6217 — through each person's hours** (punch list #141 PR 5): the push goes through [`_shared/pushHoursSend.ts`](../supabase/functions/_shared/pushHoursSend.ts): the people on are pushed through `_shared/webPushSend.ts`, and a person outside their **Push me** hours gets a `notification_history` row with `channel = 'held'` and no push, never pushed later (the Dashboard's **While you were off** line names it by its `template_type`). The answer gains `held`. **Redeploy** once merged.
@@ -3288,6 +3290,8 @@ const response = await supabase.functions.invoke('send-checklist-notification', 
 ---
 
 ### send-report-email
+
+> **v2.6260 — the photos ride** (punch list #229, PR 5): `resolveReportContent` reads the report's `report_photos` rows and plans them with [`_shared/reportPhotoEmail.ts`](../supabase/functions/_shared/reportPhotoEmail.ts): a shot still in the `report-photos` bucket is downloaded once per report with the service role and attached (the shrunk copy, at most ten and under 8 MB in all), one the sweep already filed is a link to its Drive file, one past the cap or that does not read is named and nothing more. `buildReportEmail` draws the **Photos · 2 · attached** block after the fields; a report with no photos reads as before. **Redeploy required.**
 
 > **v2.6240 — `deno check` passes again**: handing the service-role client to `readReportSubject` ran TypeScript past its instantiation limit (TS2589), since checking supabase-js's client against [`_shared/reportSubject.ts`](../supabase/functions/_shared/reportSubject.ts)'s structural chain resolves its `eq` over a plain string column. The read takes anything with a `from` now (`ReportSubjectDb`) and reads it through the chain inside. The emitted JavaScript is the same, so nothing behaves differently. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
