@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { useToastContext } from '../../../../contexts/ToastContext'
 import { pressProblem } from '../../../../lib/followUp/followUpIo'
 import { afterSendDefault, afterSendResult, afterSendTips, afterSendWords, dayKept, owedMarkedToast, readDay, type AfterSendMove } from '../../../../lib/messages/owed'
@@ -13,6 +14,8 @@ import {
   emailRepliesNote,
   EMAIL_SOURCES_NOTE,
   fromHeader,
+  OWN_MAILBOX_GUIDE_HREF,
+  ownMailboxNote,
   replyToHeader,
   optoutBubble,
   optoutHoldNote,
@@ -131,6 +134,7 @@ export function SendWindow({
 
   const greetingName = contact.kind === 'unknown' ? '' : firstName(contact)
   const draft = emailDraft({ company, sender: sender ?? { name: '' }, to, jobName, body, typedSubject })
+  const ownMailbox = ownMailboxNote(company)
   const email = buildPlainMessagesEmail(draft)
 
   const lastText = lastOurTextAt(open?.lines ?? [], to.numberChannelId)
@@ -306,6 +310,14 @@ export function SendWindow({
                   )}
                 </div>
               </div>
+              {/* Ours, not what they see, so under the head and not in it (punch list #230 PR 0): an answer from a
+                  person's own mailbox reaches this thread only when the box is copied. */}
+              <p data-send-own-mailbox style={{ ...note, color: 'var(--text-muted)' }}>
+                {ownMailbox.words}{' '}
+                <Link to={OWN_MAILBOX_GUIDE_HREF} style={{ color: 'var(--text-blue-700)' }}>
+                  {ownMailbox.link}
+                </Link>
+              </p>
               <iframe
                 title="The email as they will read it"
                 data-send-email

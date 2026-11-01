@@ -289,6 +289,20 @@ export const EMAIL_SOURCES_NOTE =
   'The subject comes from the job and your first line after the greeting, unless you change it. ' +
   'The signature is the one on Settings → Your account. Nothing here is typed twice.'
 
+/** The guide the send window's own-mailbox line opens (punch list #230 PR 0). */
+export const OWN_MAILBOX_GUIDE_HREF = '/help?g=tag-an-email-onto-a-job-from-gmail'
+
+/**
+ * The send window's quiet line under the email's head, where the From line is (punch list #230 PR 0, v2.6257): an answer
+ * someone sends from their own mailbox reaches no thread unless a box is copied (`gmail-sync` reads the boxes alone), so
+ * the line names the box this person's answers come to, as Replies to does, else bids@, which the reader always reads.
+ * Then the link's words, to the guide that shows the copy and the forward (`OWN_MAILBOX_GUIDE_HREF`).
+ */
+export function ownMailboxNote(company: Pick<ComposeCompany, 'mailbox'>): { words: string; link: string } {
+  const box = company.mailbox.trim() || 'bids@'
+  return { words: `Answering from your own mailbox? Copy ${box}, and this thread gets it too.`, link: 'How to tag an email onto a job' }
+}
+
 /**
  * An email as they see it, every piece from one place, so the send window and the send never differ. Plain since
  * punch list #207 PR 1: the body as typed, its greeting on the first line when the person kept it, and the signature;

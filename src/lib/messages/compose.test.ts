@@ -3,6 +3,8 @@
  * Click Construction's one number and mailbox, Robert and Rosa sending, Greg, Tom, Elena, Dr. Priya Raman and an
  * unknown number receiving. The prototype's clock is Fri Oct 2, 2026, 11:45 AM.
  */
+import { existsSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import type { Contact } from '../contacts/kernel'
 import { plainWordsFailures } from '../plainWords'
@@ -13,6 +15,7 @@ import {
   NOTE_ASIDE,
   OPTOUT_HOLD_TIP,
   OPTOUT_SILENCE_DAYS,
+  OWN_MAILBOX_GUIDE_HREF,
   REPLY_KINDS,
   SUBJECT_BLANK,
   SUBJECT_MAX,
@@ -39,6 +42,7 @@ import {
   optoutLine,
   optoutReason,
   optoutRecord,
+  ownMailboxNote,
   replyRecipient,
   sendWarnings,
   sentCopyNote,
@@ -164,6 +168,18 @@ describe('the from line', () => {
     expect(fromHeader(blank)).toBe('Click Construction')
     expect(replyToHeader(blank)).toBeNull()
     expect(emailRepliesNote(blank)).toBe(EMAIL_REPLIES_NOTE)
+  })
+
+  it('tells whoever answers from their own mailbox which box to copy, and links the guide (punch list #230 PR 0)', () => {
+    expect(ownMailboxNote(CLICK)).toEqual({
+      words: 'Answering from your own mailbox? Copy bids@clickconstruction.example, and this thread gets it too.',
+      link: 'How to tag an email onto a job',
+    })
+    // No box in Settings: bids@, which the reader always reads.
+    expect(ownMailboxNote({ mailbox: ' ' }).words).toBe('Answering from your own mailbox? Copy bids@, and this thread gets it too.')
+    const slug = new URLSearchParams(OWN_MAILBOX_GUIDE_HREF.split('?')[1]).get('g')
+    expect(slug).toBe('tag-an-email-onto-a-job-from-gmail')
+    expect(existsSync(join(__dirname, '../../content/help', `${slug}.md`)), 'the guide the line links to is in src/content/help').toBe(true)
   })
 })
 
@@ -480,6 +496,8 @@ describe('plain words', () => {
     const sentences = [
       textBoxBlocked('text', GREG_STOPPED) ?? '',
       EMAIL_SOURCES_NOTE,
+      `${ownMailboxNote(CLICK).words} ${ownMailboxNote(CLICK).link}`,
+      ownMailboxNote({ mailbox: '' }).words,
       TEXT_FROM_NOTE,
       SUBJECT_BLANK,
       sentCopyNote(0),
