@@ -325,7 +325,7 @@ A homeowner's debt is a consumer debt. The letter may threaten a suit or a lien.
 
 Threats of a civil suit or a lien are allowed.
 
-**What you do.** Nothing by hand. The lien line is offered only while a lien can still be filed. Every charge names its statute. The letter says it will *seek* fees. It never says they *will be added*. The *§ 31.04* line is off unless you tick it.
+**What you do.** Nothing by hand. The lien line is offered only while a lien can still be filed. Every charge names its statute. The letter says it will *seek* fees. It never says they *will be added*. The *§ 31.04* line is off unless you tick it. The courtesy notice follows the same gate. The reminder's lien day comes from the affidavit's own clock, never typed. When the lien cannot go on, the desk holds the press and says why.
 
 **Cite.** *Fin. Code § 392.001, § 392.301(a)(2), (6), (8), (b)(2), § 392.303(a)(2), § 392.304(a)(8), (12), (13)*
 

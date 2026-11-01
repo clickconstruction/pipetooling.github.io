@@ -187,6 +187,8 @@ Render smoke: [`LienDeskModal.render.test.tsx`](../src/components/jobs/LienDeskM
 
 ### F2. Sent footer — letter two, GC okay, counsel, owner's call
 
+> **v2.6261 (the courtesy notice, punch list #231):** the footer reads *Courtesy notice: …* beside the owner's call and offers **Send a courtesy notice ▸** (amber while due) beside **Send letter two ▸**; `courtesyByJob` comes from [`lienCourtesyDesk.ts`](../src/lib/jobs/lienCourtesyDesk.ts) (shared with `useArLienChips`), the press opens [`LienCourtesyWindow`](../src/components/jobs/LienCourtesyWindow.tsx) over the desk (`courtesyCtx`, `courtesyRecipients`), the send is [`lienCourtesyIo.ts`](../src/lib/jobs/lienCourtesyIo.ts) and the words [`lienCourtesyNotice.ts`](../src/lib/jobs/lienCourtesyNotice.ts). Do now's `courtesy` action rides the same `pane('sent')` target as letter two.
+
 - **Render:** facts row 1898–1907 (sent date, day count, GC paid, GC authorized, letter two, counsel, owner called + pile); GC-okay input 1908–1914; counsel ask 1915–1921; sentence + doors 1923–1951 (Ask counsel…, Record the owner's call…, The GC authorized direct pay…, Send letter two ▸ menu 1931–1950); `LienOwnerCallDialog` IIFE 2194–2223 (outside the card).
 - **Locals:** `lt` 1861, `first` 1863 (first packet's item — **re-derived at 2196**), `call` 1864, **`jobBalance` 1868 = `max(0, revenue − payments_made)`**, `signoff`/`signoffLine` 1871–1872, `startTwo` 1873–1886 (builds letter-two `LienDeskDraftFields` from `jobDefaults`), `noteOkay` 1887–1895.
 - **Owned state:** `signoffOpen` 282, `signoffText` 283, `letterTwoMenu` 359, `gcOkayOpen` 360, `gcOkayNote` 361, `ownerCallOpen` 363.
