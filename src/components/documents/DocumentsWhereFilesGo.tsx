@@ -6,8 +6,11 @@
  * job without one (a batch that acts on what is clean and lists what it held) and a look at one job's folder, plus a look
  * at every pasted folder, whose held jobs the amber line counts. The settings are read and written through the
  * `job-drive-folders` function's three verbs (`whereFilesGoIo.ts`); the rules are `whereFilesGoTab.ts` over
- * `folderName.ts`. The office roles only, never the estimator (`canSetWhereFilesGo`); a change applies to folders made
- * from then on, and the five folder names inside stay fixed.
+ * `folderName.ts`. The office roles only, never the estimator (`canSetWhereFilesGo`); the five folder names inside stay
+ * fixed. Since v2.6287 the tree card draws the customer level (root › customer › job, v2.6284) and the presses carry
+ * **Tidy the folders for N live jobs**, which walks every live job through the sweep a page at a time, tallies what it
+ * made, moved, renamed and held, and lists the held jobs with their reasons; the amber held line reads the holds the rows
+ * already carry (`drive_folder_hold`) before any run.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react'
 import { Link } from 'react-router-dom'
@@ -20,6 +23,7 @@ import { EmptyState } from '../EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../../lib/emptyWords'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
+import { NO_CUSTOMER_FOLDER_NAME } from '../../lib/documents/folderName'
 import { driveFolderBackfillOutcome, driveFoldersMadeWords, jobDriveLinksPatch, planDriveFolderBackfill, type JobDriveLinksPatch } from '../../lib/jobs/jobDriveFolders'
 import {
   BID_FOLDER_PIECE_LABELS,
@@ -43,6 +47,7 @@ import {
   exampleJob,
   FIXED_NAMES_WORDS,
   FOLDERS_MADE_WORDS,
+  heldJobs,
   heldLineWords,
   JOB_HAS_NO_FOLDER_WORDS,
   jobFolderFacts,
@@ -54,13 +59,21 @@ import {
   removePiece,
   rootCardWords,
   samePattern,
+  tidyDoneWords,
+  tidyNextOffset,
+  tidyProgressWords,
+  tidyTotals,
+  tidyWords,
   trayPieces,
+  treeHeldLineWords,
+  UNDER_CUSTOMER_WORDS,
   type FolderCheck,
+  type TidySweep,
   type WhereFilesGo,
   type WhereFilesGoBid,
   type WhereFilesGoJob,
 } from '../../lib/documents/whereFilesGoTab'
-import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereFilesGoJobs, readWhereFilesGo, setWhereFilesGo, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
+import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereFilesGoJobs, readWhereFilesGo, setWhereFilesGo, tidyDriveFolders, type WhereFilesGoSet } from '../../lib/documents/whereFilesGoIo'
 
 // --- looks -----------------------------------------------------------------------------------------------------------
 
@@ -325,7 +338,7 @@ function NameCard({ settings, job, bid, save }: { settings: WhereFilesGo; job: W
 
 // --- what is inside --------------------------------------------------------------------------------------------------
 
-function TreeCard({ settings, exampleName: name, save }: { settings: WhereFilesGo; exampleName: string | null; save: Save }) {
+function TreeCard({ settings, exampleName: name, customerName, save }: { settings: WhereFilesGo; exampleName: string | null; customerName: string | null; save: Save }) {
   const [saving, setSaving] = useState(false)
   const pick = async (made: FoldersMade) => {
     if (made === settings.foldersMade || saving) return
@@ -343,16 +356,23 @@ function TreeCard({ settings, exampleName: name, save }: { settings: WhereFilesG
     <section style={card} aria-label="What is inside" data-testid="wfg-tree-card">
       <h4 style={cardH}>What is inside</h4>
       <ul style={{ margin: 0, padding: 0 }} data-testid="wfg-tree">
-        <li style={{ listStyle: 'none', fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', gap: 6 }}>
+        <li style={{ listStyle: 'none', fontSize: '0.8125rem', color: 'var(--text-700)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <FolderGlyph />
+          {settings.root?.folder?.name || 'The jobs root'}
+        </li>
+        {leaf(1, customerName ?? 'The customer')}
+        <li style={{ paddingLeft: 32, listStyle: 'none', fontWeight: 700, fontSize: '0.8125rem', color: 'var(--text-strong)', display: 'flex', alignItems: 'center', gap: 6 }}>
+          <span aria-hidden="true" style={{ color: 'var(--text-faint)', marginRight: 4 }}>└</span>
           <FolderGlyph />
           {name ?? 'A job’s folder'}
         </li>
-        {leaf(1, JOB_FOLDER_TREE.pictures)}
-        {leaf(1, JOB_FOLDER_TREE.plans)}
-        {leaf(1, JOB_FOLDER_TREE.teamOnly)}
-        {leaf(2, JOB_FOLDER_TREE.photos)}
-        {leaf(2, JOB_FOLDER_TREE.sentByUs)}
+        {leaf(3, JOB_FOLDER_TREE.pictures)}
+        {leaf(3, JOB_FOLDER_TREE.plans)}
+        {leaf(3, JOB_FOLDER_TREE.teamOnly)}
+        {leaf(4, JOB_FOLDER_TREE.photos)}
+        {leaf(4, JOB_FOLDER_TREE.sentByUs)}
       </ul>
+      <p style={{ ...muted, margin: 0 }}>{UNDER_CUSTOMER_WORDS}</p>
       <fieldset style={{ border: 'none', margin: 0, padding: 0, display: 'grid', gap: 5 }} disabled={saving}>
         <legend style={{ ...muted, padding: 0, marginBottom: 4 }}>When the folders are made</legend>
         {(['upfront', 'as-needed'] as const).map((made) => (
@@ -370,23 +390,29 @@ function TreeCard({ settings, exampleName: name, save }: { settings: WhereFilesG
 // --- the presses under the cards -------------------------------------------------------------------------------------
 
 type HeldRow = { job: WhereFilesGoJob; why: string }
+/** A held job by its id and label alone, as the sweep's answer names one the live list may not hold. */
+type HeldByLabel = { jobId: string; label: string; why: string }
 
-function JobRows({ rows }: { rows: HeldRow[] }) {
+function JobRows({ rows }: { rows: (HeldRow | HeldByLabel)[] }) {
   return (
     <ul style={list}>
-      {rows.map(({ job, why }) => (
-        <li key={job.id} style={{ fontSize: '0.8125rem' }}>
-          <span style={{ fontWeight: 600 }}>{jobLabel(job)}</span> <span style={muted}>· {why}</span>{' '}
-          <Link to={`/jobs?edit=${encodeURIComponent(job.id)}`} style={{ ...btnQuiet, textDecoration: 'none', display: 'inline-block' }}>
-            Open the job
-          </Link>
-        </li>
-      ))}
+      {rows.map((row) => {
+        const id = 'job' in row ? row.job.id : row.jobId
+        const label = 'job' in row ? jobLabel(row.job) : row.label
+        return (
+          <li key={id} style={{ fontSize: '0.8125rem' }}>
+            <span style={{ fontWeight: 600 }}>{label}</span> <span style={muted}>· {row.why}</span>{' '}
+            <Link to={`/jobs?edit=${encodeURIComponent(id)}`} style={{ ...btnQuiet, textDecoration: 'none', display: 'inline-block' }}>
+              Open the job
+            </Link>
+          </li>
+        )
+      })}
     </ul>
   )
 }
 
-function Presses({ jobs, onFoldersMade }: { jobs: WhereFilesGoJob[]; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void }) {
+function Presses({ jobs, onFoldersMade, onTidied }: { jobs: WhereFilesGoJob[]; onFoldersMade: (id: string, patch: JobDriveLinksPatch) => void; onTidied: () => void }) {
   const { showToast } = useToastContext()
   const plan = planDriveFolderBackfill(jobs, makeFoldersWords)
 
@@ -416,6 +442,39 @@ function Presses({ jobs, onFoldersMade }: { jobs: WhereFilesGoJob[]; onFoldersMa
     showToast(outcome.line, outcome.tone)
   }
   const outcome = run && !run.running ? driveFolderBackfillOutcome(run.done, run.failed.length) : null
+
+  // The tidy: every live job through the sweep, a page at a time, past a page that fails, tallied as it goes (v2.6287).
+  const tidy = tidyWords(jobs.length)
+  const [walk, setWalk] = useState<{ pages: TidySweep[]; running: boolean; problem: string | null } | null>(null)
+  const walkAll = async () => {
+    if (tidy.dead || walk?.running) return
+    const pages: TidySweep[] = []
+    setWalk({ pages, running: true, problem: null })
+    let offset: number | null = 0
+    let problem: string | null = null
+    while (offset != null) {
+      try {
+        const page: TidySweep = await tidyDriveFolders(offset)
+        pages.push(page)
+        setWalk({ pages: [...pages], running: true, problem: null })
+        offset = tidyNextOffset(page)
+      } catch (e) {
+        problem = formatErrorMessage(e, 'The folders were not tidied.')
+        offset = null
+      }
+    }
+    setWalk({ pages, running: false, problem })
+    const t = tidyTotals(pages)
+    showToast(problem ? `${tidyDoneWords(t)} Then it stopped: ${problem}` : tidyDoneWords(t), problem ? 'error' : t.held > 0 ? 'warning' : 'success')
+    onTidied()
+  }
+  const walkTotals = walk ? tidyTotals(walk.pages) : null
+  const walkTotal = walk?.pages[0]?.total ?? jobs.length
+  const walkHeld = walk ? walk.pages.flatMap((p) => p.held) : []
+  // The holds the rows already carry, read before any run; a walk's own held rows take over once it ran.
+  const rowHolds = heldJobs(jobs)
+  const treeHeldLine = treeHeldLineWords(walk && !walk.running ? walkHeld.length : rowHolds.length)
+  const [treeHeldOpen, setTreeHeldOpen] = useState(false)
 
   // One job's folder: type a number or a name, press the job, read the words.
   const [pickOpen, setPickOpen] = useState(false)
@@ -510,7 +569,17 @@ function Presses({ jobs, onFoldersMade }: { jobs: WhereFilesGoJob[]; onFoldersMa
   return (
     <div style={{ display: 'grid', gap: 10, marginTop: 12 }} data-testid="wfg-presses">
       <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center' }}>
-        <button type="button" style={{ ...btnPrimary, ...(plan.words.dead ? { opacity: 0.45 } : {}) }} disabled={plan.words.dead || !!run?.running} onClick={() => void start()} data-testid="wfg-make-folders">
+        <button type="button" style={{ ...btnPrimary, ...(tidy.dead ? { opacity: 0.45 } : {}) }} disabled={tidy.dead || !!walk?.running || !!run?.running} onClick={() => void walkAll()} data-testid="wfg-tidy">
+          {walk?.running && walkTotals ? tidyProgressWords(walkTotals, walkTotal) : tidy.button}
+        </button>
+        {treeHeldLine ? (
+          <button type="button" style={{ ...btnQuiet, border: 'none', background: 'none', color: 'var(--text-amber-800)', fontWeight: 600, fontSize: '0.8rem' }} aria-expanded={treeHeldOpen} onClick={() => setTreeHeldOpen((v) => !v)} data-testid="wfg-tree-held-line">
+            {treeHeldLine} ›
+          </button>
+        ) : walk && !walk.running && !walk.problem ? (
+          <span style={okLine} data-testid="wfg-tidy-done">✓ {tidyDoneWords(walkTotals!)}</span>
+        ) : null}
+        <button type="button" style={{ ...btn, ...(plan.words.dead ? { opacity: 0.45 } : {}) }} disabled={plan.words.dead || !!run?.running || !!walk?.running} onClick={() => void start()} data-testid="wfg-make-folders">
           {run?.running ? `Making folders… ${run.done + run.failed.length} of ${run.total}` : plan.words.button}
         </button>
         <button type="button" style={btn} aria-expanded={pickOpen} onClick={() => setPickOpen((v) => !v)}>
@@ -527,7 +596,14 @@ function Presses({ jobs, onFoldersMade }: { jobs: WhereFilesGoJob[]; onFoldersMa
           <span style={okLine}>✓ {EVERY_PASTED_OK_WORDS}</span>
         ) : null}
       </div>
-      <p style={{ ...muted, margin: 0 }}>{plan.words.foot ?? 'Each job gets its folder under the root with Customer Pictures, Plans and Team only inside.'}</p>
+      <p style={{ ...muted, margin: 0 }}>{plan.words.foot ?? 'Each job gets its folder under its customer’s folder, with Customer Pictures, Plans and Team only inside. The tidy walks every live job: it makes, moves and renames what Drive lets it and holds the rest with the reason.'}</p>
+      {walk && !walk.running ? (
+        <>
+          {walk.problem ? <p style={warnLine}>{walk.problem}</p> : null}
+          {treeHeldLine && walkTotals ? <p style={warnLine} data-testid="wfg-tidy-line">{tidyDoneWords(walkTotals)}</p> : null}
+        </>
+      ) : null}
+      {treeHeldOpen ? <JobRows rows={walk && !walk.running ? walkHeld : rowHolds} /> : null}
       {plan.held.length > 0 ? <JobRows rows={plan.held} /> : null}
       {outcome?.head && run ? (
         <>
@@ -638,19 +714,19 @@ export function DocumentsWhereFilesGo() {
   return (
     <div data-testid="documents-where-files-go">
       <h2 style={{ margin: '0 0 2px', fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-strong)' }}>Where files go</h2>
-      <p style={{ ...muted, margin: 0, fontSize: '0.8125rem' }}>Every job’s files live in one folder under the root. The app makes the folder and writes its links on the job.</p>
+      <p style={{ ...muted, margin: 0, fontSize: '0.8125rem' }}>Every job’s files live in one folder under its customer’s folder, under the root. The app makes the folder, keeps it in place and writes its links on the job.</p>
       {settingsFailure ? <OfflineRetryPanel failure={settingsFailure} onRetry={readSettings} surface="where-files-go" idempotent busy={reading} style={{ marginTop: 12 }} /> : null}
       {settings ? (
         <div style={cards}>
           <RootCard settings={settings} save={save} />
           <NameCard settings={settings} job={sample} bid={bid} save={save} />
-          <TreeCard settings={settings} exampleName={sampleName} save={save} />
+          <TreeCard settings={settings} exampleName={sampleName} customerName={sample?.customer_name?.trim() || (sample ? NO_CUSTOMER_FOLDER_NAME : null)} save={save} />
         </div>
       ) : !settingsFailure ? (
         <p style={{ ...muted, marginTop: 12 }}>Reading the settings…</p>
       ) : null}
       {jobsFailure ? <OfflineRetryPanel failure={jobsFailure} onRetry={readJobs} surface="where-files-go-jobs" idempotent busy={reading} style={{ marginTop: 12 }} /> : null}
-      {jobs ? <Presses jobs={jobs} onFoldersMade={onFoldersMade} /> : null}
+      {jobs ? <Presses jobs={jobs} onFoldersMade={onFoldersMade} onTidied={() => void readJobs()} /> : null}
     </div>
   )
 }

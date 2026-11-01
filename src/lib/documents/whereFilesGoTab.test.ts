@@ -13,6 +13,7 @@ import {
   FIXED_NAMES_WORDS,
   folderCheckFromAnswer,
   FOLDERS_MADE_WORDS,
+  heldJobs,
   heldLineWords,
   JOB_HAS_NO_FOLDER_WORDS,
   jobFolderFacts,
@@ -26,7 +27,15 @@ import {
   ROOT_FROM_ENV_WORDS,
   rootCardWords,
   samePattern,
+  tidyDoneWords,
+  tidyNextOffset,
+  tidyProgressWords,
+  tidySweepFromAnswer,
+  tidyTotals,
+  tidyWords,
   trayPieces,
+  treeHeldLineWords,
+  UNDER_CUSTOMER_WORDS,
   whereFilesGoFromAnswer,
   type WhereFilesGoJob,
 } from './whereFilesGoTab'
@@ -187,5 +196,65 @@ describe('the presses under the cards', () => {
       makeFoldersWords(3, 1).foot ?? '',
     ]
     for (const s of sentences) expect(plainWordsFailures(s), s).toEqual([])
+  })
+})
+
+describe('the tidy press (v2.6287)', () => {
+  const page = (looked: number, extra: Partial<{ made: number; moved: number; renamed: number; held: number; left: number }> = {}, next: number | null = null, total = 412) => ({
+    success: true,
+    counts: { looked, made: 0, moved: 0, renamed: 0, in_place: looked, held: 0, left: 0, ...extra },
+    held: [] as unknown[],
+    line: '',
+    next_offset: next,
+    total,
+  })
+
+  it('counts the live jobs on the button and is dead at zero', () => {
+    expect(tidyWords(412)).toEqual({ button: 'Tidy the folders for 412 live jobs', dead: false })
+    expect(tidyWords(1)).toEqual({ button: 'Tidy the folders for 1 live job', dead: false })
+    expect(tidyWords(0)).toEqual({ button: 'Tidy the folders for live jobs', dead: true })
+  })
+
+  it('reads a page of the sweep, never throwing on a thin answer, and names a held job by its id when the label is missing', () => {
+    const r = tidySweepFromAnswer({ ...page(25, { made: 3, moved: 12, renamed: 4, held: 2, left: 387 }, 25), held: [{ job_id: 'j9', label: '974 · Mill Creek Lofts', why: 'This folder is in taunya’s My Drive.', kind: 'outside_drive' }, { job_id: 'j10' }, { nope: true }] })
+    expect(r.counts).toEqual({ looked: 25, made: 3, moved: 12, renamed: 4, inPlace: 25, held: 2, left: 387 })
+    expect(r.held).toEqual([
+      { jobId: 'j9', label: '974 · Mill Creek Lofts', why: 'This folder is in taunya’s My Drive.', kind: 'outside_drive' },
+      { jobId: 'j10', label: 'job j10', why: '', kind: '' },
+    ])
+    expect(r.nextOffset).toBe(25)
+    expect(r.total).toBe(412)
+    expect(r.line).toBe('Looked at 25 jobs: 3 folders made, 12 moved, 4 renamed, 2 held. 387 more to look at.')
+    expect(tidySweepFromAnswer(null)).toEqual({ counts: { looked: 0, made: 0, moved: 0, renamed: 0, inPlace: 0, held: 0, left: 0 }, held: [], line: 'Looked at 0 jobs: nothing to do.', nextOffset: null, total: 0 })
+  })
+
+  it('walks page by page from the top and stops once every job was looked at, or on an empty page', () => {
+    expect(tidyNextOffset(null)).toBe(0)
+    expect(tidyNextOffset(tidySweepFromAnswer(page(25, {}, 25)))).toBe(25)
+    expect(tidyNextOffset(tidySweepFromAnswer(page(12, {}, 412)))).toBeNull()
+    expect(tidyNextOffset(tidySweepFromAnswer(page(0, {}, 400)))).toBeNull()
+    expect(tidyNextOffset(tidySweepFromAnswer({ ...page(25, {}, null) }))).toBeNull()
+  })
+
+  it('adds the pages up, writes the running words and the line at the end', () => {
+    const pages = [tidySweepFromAnswer(page(25, { made: 3, moved: 12, left: 387 }, 25)), tidySweepFromAnswer(page(25, { renamed: 4, held: 2, left: 362 }, 50))]
+    const t = tidyTotals(pages)
+    expect(t).toEqual({ looked: 50, made: 3, moved: 12, renamed: 4, inPlace: 50, held: 2, left: 362 })
+    expect(tidyProgressWords(t, 412)).toBe('Tidying… 50 of 412 · 3 made · 12 moved · 4 renamed · 2 held')
+    expect(tidyProgressWords({ ...t, made: 0, moved: 0, renamed: 0, held: 0 }, 412)).toBe('Tidying… 50 of 412')
+    expect(tidyDoneWords(t)).toBe('Looked at 50 jobs: 3 folders made, 12 moved, 4 renamed, 2 held.')
+    expect(tidyTotals([])).toEqual({ looked: 0, made: 0, moved: 0, renamed: 0, inPlace: 0, held: 0, left: 0 })
+  })
+
+  it('reads the holds the rows carry and counts them on the amber line', () => {
+    const rows = [job({ id: 'a' }), job({ id: 'b', drive_folder_hold: ' This folder is in taunya’s My Drive. ' }), job({ id: 'c', drive_folder_hold: '' }), job({ id: 'd', drive_folder_hold: null })]
+    expect(heldJobs(rows)).toEqual([{ job: rows[1], why: 'This folder is in taunya’s My Drive.' }])
+    expect(treeHeldLineWords(0)).toBeNull()
+    expect(treeHeldLineWords(1)).toBe('Held: 1 job whose folder is not in the tree')
+    expect(treeHeldLineWords(3)).toBe('Held: 3 jobs whose folder is not in the tree')
+  })
+
+  it('keeps every word plain', () => {
+    for (const w of [UNDER_CUSTOMER_WORDS, APPLIES_FROM_NOW_WORDS, tidyWords(3).button, treeHeldLineWords(3)!, tidyDoneWords({ looked: 5, made: 1, moved: 1, renamed: 1, inPlace: 2, held: 1, left: 0 })]) expect(plainWordsFailures(w)).toEqual([])
   })
 })

@@ -29,6 +29,8 @@ const io = vi.hoisted(() => ({
   jobs: [] as unknown[],
   everyJob: [] as Array<{ id: string; hcp_number: string | null; job_name: string | null }>,
   lookups: [] as string[],
+  tidied: [] as number[],
+  tidyFails: false,
 }))
 
 vi.mock('../../lib/documents/whereFilesGoIo', async () => {
@@ -67,6 +69,20 @@ vi.mock('../../lib/documents/whereFilesGoIo', async () => {
       return kernel.whereFilesGoFromAnswer(next)
     },
     loadWhereFilesGoJobs: async () => io.jobs,
+    tidyDriveFolders: async (offset: number) => {
+      io.tidied.push(offset)
+      if (io.tidyFails && offset === 25) throw new Error('Drive answered 500 when the app looked at a folder.')
+      const total = 50
+      const looked = Math.min(25, total - offset)
+      return kernel.tidySweepFromAnswer({
+        success: true,
+        counts: { looked, made: offset === 0 ? 2 : 0, moved: offset === 0 ? 1 : 3, renamed: 0, in_place: looked, held: offset === 0 ? 1 : 0, left: total - offset - looked },
+        held: offset === 0 ? [{ job_id: 'j-held', label: '980 · Held Job', why: 'This folder is in taunya’s My Drive, where the app can make folders but cannot save a file.', kind: 'outside_drive' }] : [],
+        line: '',
+        next_offset: offset + looked,
+        total,
+      })
+    },
     findWhereFilesGoJobs: async (typed: string) => {
       io.lookups.push(typed)
       const q = typed.toLowerCase()
@@ -131,6 +147,8 @@ beforeEach(() => {
   io.refuse = null
   io.made = []
   io.lookups = []
+  io.tidied = []
+  io.tidyFails = false
   io.everyJob = [job({ id: 'j-paid', hcp_number: '900', job_name: 'Paid Sample Job', google_drive_link: `https://drive.google.com/drive/folders/${ROOT_ID}` })]
   io.jobs = [
     job({}),
@@ -167,9 +185,11 @@ describe('Documents → Where files go', () => {
     expect(jobRow.getByRole('button', { name: 'Add Customer' })).toBeTruthy()
     expect(screen.getByTestId('wfg-job-pattern').textContent).toContain('Reads 972 · Oak Hollow Bldg C')
     expect(screen.getByTestId('wfg-bid-pattern').textContent).toContain('Reads Oak Hollow Bldg C')
-    expect(name.textContent).toContain('A change applies to folders made from now on.')
+    expect(name.textContent).toContain('A change reaches every live job’s folder the next time the sweep looks at it.')
 
     const tree = screen.getByTestId('wfg-tree')
+    expect(tree.textContent).toContain('Jobs')
+    expect(tree.textContent).toContain('Oak Hollow HOA')
     expect(tree.textContent).toContain('972 · Oak Hollow Bldg C')
     for (const leaf of ['Customer Pictures', 'Plans', 'Team only', 'Photos', 'Sent by us']) expect(tree.textContent).toContain(leaf)
     expect((screen.getByLabelText('Make all of it when the job is made') as HTMLInputElement).checked).toBe(true)
@@ -243,6 +263,34 @@ describe('Documents → Where files go', () => {
     expect(presses.textContent).toContain('974 · Mill Creek Lofts · The app cannot write in this job’s Drive folder.')
     expect(screen.getByTestId('wfg-make-folders').textContent).toBe('Make the folders for 1 job without one · 1 has a link that is not a folder ▸')
     expect(screen.getByRole('button', { name: 'Check 3 pasted folders' })).toBeTruthy()
+  })
+
+  it('tidies every live job a page at a time, tallies as it goes, lists the held job with its reason, and stops at a page that fails (v2.6287)', async () => {
+    await renderTab()
+    expect(screen.getByTestId('wfg-tidy').textContent).toBe('Tidy the folders for 5 live jobs')
+    fireEvent.click(screen.getByTestId('wfg-tidy'))
+    await waitFor(() => expect(io.tidied).toEqual([0, 25]))
+    await waitFor(() => expect(screen.getByTestId('wfg-tidy-line').textContent).toBe('Looked at 50 jobs: 2 folders made, 4 moved, 1 held.'))
+    const heldLine = screen.getByTestId('wfg-tree-held-line')
+    expect(heldLine.textContent).toBe('Held: 1 job whose folder is not in the tree ›')
+    fireEvent.click(heldLine)
+    expect(screen.getByTestId('wfg-presses').textContent).toContain('980 · Held Job · This folder is in taunya’s My Drive, where the app can make folders but cannot save a file.')
+
+    io.tidyFails = true
+    io.tidied = []
+    fireEvent.click(screen.getByTestId('wfg-tidy'))
+    await waitFor(() => expect(io.tidied).toEqual([0, 25]))
+    await waitFor(() => expect(screen.getByTestId('wfg-presses').textContent).toContain('Drive answered 500 when the app looked at a folder.'))
+    expect(screen.getByTestId('wfg-tidy-line').textContent).toBe('Looked at 25 jobs: 2 folders made, 1 moved, 1 held.')
+  })
+
+  it('counts the holds the rows carry before any run (v2.6287)', async () => {
+    io.jobs = [job({ id: 'j-h', hcp_number: '981', job_name: 'Held Before', drive_folder_hold: 'The customer’s folder is in a My Drive.' }), job({ id: 'j-ok', hcp_number: '982', job_name: 'Fine' })]
+    await renderTab()
+    const heldLine = screen.getByTestId('wfg-tree-held-line')
+    expect(heldLine.textContent).toBe('Held: 1 job whose folder is not in the tree ›')
+    fireEvent.click(heldLine)
+    expect(screen.getByTestId('wfg-presses').textContent).toContain('981 · Held Before · The customer’s folder is in a My Drive.')
   })
 
   it('checks one job’s folder from the picker and every pasted folder for the held line', async () => {
