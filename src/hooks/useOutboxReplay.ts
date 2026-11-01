@@ -14,6 +14,7 @@ import {
   type OutboxPress,
 } from '../lib/offline/outbox'
 import { outbox, type OutboxStateStore } from '../lib/offline/outboxState'
+import { KEPT_PHOTO_MAX_AGE_MS, keptPhotos, sendKeptPhotos, unsentKeptPhotos, type SendKeptIo } from '../lib/offline/keptPhotos'
 
 /**
  * The replay (punch list #163 PR 2): the one sender, mounted once in `Layout`. It sends the queue
@@ -56,6 +57,8 @@ export interface OutboxReplayIo {
   health?: AppHealthStore
   online?: () => boolean
   now?: () => number
+  /** The kept photos' send (punch list #229, PR 6); the app's unless a test passes its own. */
+  sendKept?: (press: OutboxPress, store: OutboxStateStore) => Promise<{ ok: true } | { ok: false; error: unknown }>
 }
 
 /**
@@ -73,8 +76,20 @@ export async function replayOutbox(io: OutboxReplayIo = {}): Promise<void> {
     if (!online()) return
     const next = nextToSend(current, now())
     if (!next) return
-    const sending = markSending(next, now())
+    let sending = markSending(next, now())
     store.put(sending)
+    // A kept report's photos go first (punch list #229, PR 6), each marked sent on the press as it lands; a photo
+    // that does not send counts as the press's failed try, and the report waits with it.
+    if (sending.kind === 'field-report' && unsentKeptPhotos(sending).length > 0) {
+      const photosOut = await (io.sendKept ?? ((p, s) => sendKeptPhotos(p, s, {} as SendKeptIo)))(sending, store)
+      const fresh = store.presses().find((p) => p.id === sending.id)
+      if (!fresh) return
+      sending = { ...fresh, state: 'sending' }
+      if (!photosOut.ok) {
+        store.put(markTryFailed(sending, now()))
+        return
+      }
+    }
     const outcome = await land(sending)
     // The press may have been dropped from the list while in flight (a sign-out): nothing to record.
     if (!store.presses().some((p) => p.id === sending.id)) return
@@ -143,6 +158,12 @@ export function useOutboxReplay(userId: string | null | undefined, io: OutboxRep
       if (timer != null) window.clearTimeout(timer)
     }
   }, [store, userId, run])
+
+  // Bytes kept for a photo whose press is long gone leave the device (punch list #229, PR 6), once a sign-in.
+  useEffect(() => {
+    if (!userId) return
+    void keptPhotos.sweep(Date.now() - KEPT_PHOTO_MAX_AGE_MS)
+  }, [userId])
 
   // The signal came back, the app turned fine, the page came to the front: at once.
   useEffect(() => {

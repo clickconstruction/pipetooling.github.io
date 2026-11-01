@@ -322,9 +322,10 @@ export default function AdditionalReportModal({
 
     // Through the outbox (punch list #163 PR 3): sent at once when it can be, kept on the phone when it cannot.
     // The server lands it for an estimator through insert_report and for everyone else under their own policy.
-    // A report with photos is never kept: its shots live on this form, so it stays open with Retry until the
-    // signal is back (the photos' own queue is #189's PR 7).
-    const hasPhotos = photos.tiles.length > 0
+    // The photos ride with the report (punch list #229, PR 6): the sent ones only need the attach, the ones kept on
+    // the phone go out first when the signal is back, so a report with a kept shot always waits in the queue.
+    const firstLong = fields.find((f) => (f.input_type ?? 'long_text') === 'long_text')?.label ?? null
+    const whatGotDone = firstLong ? (fv[firstLong] ?? '') : ''
     const movedLines = linesActive && lineProgress.moved.length > 0 ? lineProgress.moved.map((m) => ({ fixtureId: m.fixtureId, to: m.to })) : undefined
     const outcome = await pressThroughOutbox(
       {
@@ -340,11 +341,12 @@ export default function AdditionalReportModal({
           lat: reportedAtLat != null && reportedAtLng != null ? reportedAtLat : null,
           lng: reportedAtLat != null && reportedAtLng != null ? reportedAtLng : null,
           movedLines,
+          photos: riding.length > 0 ? photos.queuedPhotos(whatGotDone) : undefined,
         },
         about: [hcpNumber, jobName].filter((x) => x && x !== '—').join(' · '),
         door: '/dashboard',
       },
-      hasPhotos ? { allowed: false } : undefined,
+      photos.kept > 0 ? { forceQueue: true } : undefined,
     )
     setSaving(false)
     if (outcome.kind === 'refused' || outcome.kind === 'failed') {
@@ -353,7 +355,8 @@ export default function AdditionalReportModal({
       return
     }
     if (outcome.kind === 'queued') {
-      // The notifications, the moved lines and the job's percent follow when it lands (`afterLanding`).
+      // The notifications, the moved lines, the job's percent and the photos follow when it lands (`afterLanding`).
+      photos.markQueued()
       showToast(KEPT_ON_PHONE_WORDS, 'success')
       onSaved()
       handleClose()
@@ -363,11 +366,7 @@ export default function AdditionalReportModal({
     const inserted: { id: string } | null = landedId ? { id: landedId } : null
     // The photos ride with the report (punch list #189, PR 5b): each sent shot takes the report's id, its stage and
     // the words it is named by. A shot that did not attach says so; the report itself is saved either way.
-    if (inserted?.id && riding.length > 0) {
-      const firstLong = fields.find((f) => (f.input_type ?? 'long_text') === 'long_text')?.label ?? null
-      const whatGotDone = firstLong ? (fv[firstLong] ?? '') : ''
-      await photos.attach(inserted.id, whatGotDone)
-    }
+    if (inserted?.id && riding.length > 0) await photos.attach(inserted.id, whatGotDone)
     // Best-effort report notification + subscriber emails (fire-and-forget; report is already saved).
     if (inserted?.id) {
       void supabase.functions

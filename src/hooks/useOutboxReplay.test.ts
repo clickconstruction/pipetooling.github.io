@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { appTzWallTimeMs } from '../utils/dateUtils'
 import type { LandOutcome } from '../lib/offline/landFieldPress'
-import { DEPENDENCY_REFUSED_MESSAGE, markTryFailed, markSending, newPress, type OutboxPress } from '../lib/offline/outbox'
+import { DEPENDENCY_REFUSED_MESSAGE, markTryFailed, markSending, newPress, type FieldReportPayload, type OutboxPress } from '../lib/offline/outbox'
 import { createOutboxState } from '../lib/offline/outboxState'
 import { replayOutbox } from './useOutboxReplay'
 
@@ -101,5 +101,54 @@ describe('replayOutbox', () => {
     }
     await replayOutbox({ store: s, land, online: () => true, now: () => at(9, 42) })
     expect(s.presses()).toEqual([])
+  })
+})
+
+// Punch list #229, PR 6: a kept report's photos go out before the report.
+describe('replayOutbox, a report with photos', () => {
+  const photo = (id: string, sent = false) => ({ id, sent, fixtureId: null, stageName: null, caption: 'Photo', questionId: null, questionWords: null, takenAt: '2026-11-01T13:00:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: '' })
+  const report = (photos: ReturnType<typeof photo>[]) =>
+    newPress({ id: 'p-rep', seq: 1, kind: 'field-report', userId: 'u1', pressedAt: at(8, 30), payload: { templateId: 't', fieldValues: {}, jobLedgerId: 'j1', projectId: null, bidId: null, lat: null, lng: null, photos } })
+
+  it('sends the kept photos first, then lands the report with its photos marked sent', async () => {
+    const s = store([report([photo('a'), photo('b', true)])])
+    const order: string[] = []
+    const sendKept = async (p: OutboxPress, st: typeof s) => {
+      order.push('photos')
+      const fresh: OutboxPress = { ...p, payload: { ...(p.payload as FieldReportPayload), photos: [photo('a', true), photo('b', true)] } }
+      st.put(fresh)
+      return { ok: true as const }
+    }
+    const land = async (p: OutboxPress): Promise<LandOutcome> => {
+      order.push(`land:${(p.payload as { photos: { sent: boolean }[] }).photos.map((x) => x.sent).join(',')}`)
+      return { kind: 'landed', result: { report_id: 'r1' } }
+    }
+    const after = { invokeFunction: async () => {}, stampMovedLines: async () => {}, propagateReportPct: async () => {} }
+    await replayOutbox({ store: s, land, sendKept, after, online: () => true, now: () => at(9, 42) })
+    expect(order).toEqual(['photos', 'land:true,true'])
+    expect(s.presses()[0]?.state).toBe('sent')
+  })
+
+  it('a photo that does not send counts as the press’s failed try, and the report is not landed', async () => {
+    const s = store([report([photo('a')])])
+    let landed = 0
+    const land = async (): Promise<LandOutcome> => {
+      landed++
+      return { kind: 'landed', result: {} }
+    }
+    await replayOutbox({ store: s, land, sendKept: async () => ({ ok: false as const, error: new TypeError('Failed to fetch') }), online: () => true, now: () => at(9, 42) })
+    expect(landed).toBe(0)
+    expect(s.presses()[0]?.state).toBe('waiting')
+    expect(s.presses()[0]?.attempts).toBe(1)
+  })
+
+  it('a report whose photos all sent already goes straight to the server', async () => {
+    const s = store([report([photo('a', true)])])
+    let kept = 0
+    const land = async (): Promise<LandOutcome> => ({ kind: 'landed', result: { report_id: 'r1' } })
+    const after = { invokeFunction: async () => {}, stampMovedLines: async () => {}, propagateReportPct: async () => {} }
+    await replayOutbox({ store: s, land, after, sendKept: async () => { kept++; return { ok: true as const } }, online: () => true, now: () => at(9, 42) })
+    expect(kept).toBe(0)
+    expect(s.presses()[0]?.state).toBe('sent')
   })
 })

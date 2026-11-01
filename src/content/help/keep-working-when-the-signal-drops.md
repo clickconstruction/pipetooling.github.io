@@ -14,7 +14,7 @@ Four presses can wait on the phone. Each one is kept with the moment you pressed
 
 - Clock In and Clock Out, from the Dashboard or Job Mode.
 - A job note from Job Mode.
-- A field report from {{button:green|Leave Report}}.
+- A field report from {{button:green|Leave Report}}, with its photos. A photo taken with no signal reads *Kept on the phone*. The line at the top counts it, as in *1 photo with it*.
 
 When you press one with no signal, the window closes as it always does. A small message reads *Kept on the phone. It goes out when the signal is back.* The clock shows you clocked in from the moment you pressed. You can go to work. After Clock Out, the clock shows you clocked out the same way.
 
@@ -27,7 +27,6 @@ Some presses never wait on the phone. They fail as they do today, and you press 
 - A payment, a bill or a card split.
 - A text or an email to a customer.
 - A signature.
-- A field report with photos. The report stays open with its photos. Press {{button:outline|Retry}} when the signal is back.
 - A Turnaway report, because it also raises a dispatch alert.
 
 ## The line at the top

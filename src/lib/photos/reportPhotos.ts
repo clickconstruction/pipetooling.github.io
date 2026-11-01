@@ -8,7 +8,8 @@
 import { saveWords } from '../reports/stagePct'
 
 /** Where a shot stands on the form. */
-export type ReportPhotoTileStatus = 'shrinking' | 'sending' | 'sent' | 'failed'
+/** `kept` (punch list #229, PR 6): the shot waits on the phone with no signal and goes out with the report. */
+export type ReportPhotoTileStatus = 'shrinking' | 'sending' | 'sent' | 'kept' | 'failed'
 
 /** A shot on the form, from the shutter to Save. */
 export type ReportPhotoTile = {
@@ -75,6 +76,8 @@ export const REPORT_PHOTO_WORDS = {
   whatIsNext: 'What is next',
   otherTypes: 'Walk, Note or EOD instead',
   cameraOnStage: 'Take a photo of this stage',
+  /** A shot kept on the phone with no signal (PR 6). */
+  kept: 'Kept on the phone. It goes with the report.',
   /** The desk's New report form on a project or a bid (punch list #229): a report photo is keyed to a ledger job. */
   onJobOnly: 'Photos go on a job’s report. A report on a project or a bid takes none yet.',
 } as const
@@ -108,9 +111,14 @@ export function reportPhotoCaption(input: { stageName: string | null; whatGotDon
   return words || 'Report photo'
 }
 
-/** The tiles that ride with the report: sent, never one still shrinking, sending or failed. */
+/** The tiles already in the bucket with their row: only the attach is left for them. */
 export function sentTiles(tiles: ReadonlyArray<ReportPhotoTile>): ReportPhotoTile[] {
   return tiles.filter((t) => t.status === 'sent')
+}
+
+/** The tiles that ride with the report: sent, or kept on the phone (PR 6); never one still shrinking, sending or failed. */
+export function ridingTiles(tiles: ReadonlyArray<ReportPhotoTile>): ReportPhotoTile[] {
+  return tiles.filter((t) => t.status === 'sent' || t.status === 'kept')
 }
 
 /** True while a shot is still on its way: Save waits for it (the queue of #163 takes this over in PR 7). */
@@ -137,7 +145,7 @@ export function reportSaveWords(input: { jobPct: number | null; tiles: ReadonlyA
   if (input.saving) return 'Saving…'
   const inFlight = input.tiles.filter((t) => t.status === 'shrinking' || t.status === 'sending').length
   if (inFlight > 0) return inFlight === 1 ? 'Sending 1 photo…' : `Sending ${inFlight} photos…`
-  return saveWords({ jobPct: input.jobPct, photos: sentTiles(input.tiles).length })
+  return saveWords({ jobPct: input.jobPct, photos: ridingTiles(input.tiles).length })
 }
 
 /** The line over the tiles: *New photo · 4.2 MB → 310 KB · saved to the job's folder*. */

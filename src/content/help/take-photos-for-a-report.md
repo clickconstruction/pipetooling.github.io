@@ -44,6 +44,12 @@ Tap a stage chip instead to let the question go. The photo then shows the stage 
 
 Save sits at the bottom and names what it writes. It reads {{button:blue|Save · job 36% · 2 photos}}. A Note or a Walk files no percent, so its button reads {{button:blue|Save report · 1 photo}}. While a photo is still on its way, the button reads *Sending 1 photo…* and waits. Press Save once. The report and its photos go together.
 
+## With no signal
+
+A shot taken with no signal is kept on the phone. Its tile reads *Kept on the phone. It goes with the report.* Save never waits for it. Press Save as usual. The report and its photos wait in the queue together. The line at the top reads *Field report from 7:58 AM*, then *waiting to send* and *1 photo with it*.
+
+When the signal is back the phone sends the photos first, then the report. The report card then shows them as usual. A photo that fails for another reason still shows why, with {{button:outline|Retry}}.
+
 ## Where the photos go
 
 Within a few minutes the office's sweep copies each photo into the job's Photos folder under the customer's Drive folder. The file is named by the day, by you and by the stage. It reads *2026-10-29 Luis Ortega · Rough In.jpg*. A photo that answers a checklist question adds the question, as in *2026-10-31 Luis Ortega · Rough In · Did the water test hold.jpg*. The copy in the app is then deleted.

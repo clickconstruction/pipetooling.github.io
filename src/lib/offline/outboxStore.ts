@@ -8,8 +8,10 @@ import { parseOutboxPress, type OutboxPress } from './outbox'
  */
 
 export const OUTBOX_DB_NAME = 'pipetooling-outbox'
-const DB_VERSION = 1
+/** 2 since punch list #229, PR 6: the `photos` store beside the presses (a kept report's shrunk shots, by photo id). */
+const DB_VERSION = 2
 export const OUTBOX_STORE_NAME = 'presses'
+export const KEPT_PHOTOS_STORE_NAME = 'photos'
 
 function hasIndexedDb(): boolean {
   try {
@@ -19,7 +21,8 @@ function hasIndexedDb(): boolean {
   }
 }
 
-function openDb(): Promise<IDBDatabase | null> {
+/** The outbox's database, null where there is none; `keptPhotos.ts` opens the same one. The caller closes it. */
+export function openOutboxDb(): Promise<IDBDatabase | null> {
   if (!hasIndexedDb()) return Promise.resolve(null)
   return new Promise((resolve) => {
     try {
@@ -27,6 +30,7 @@ function openDb(): Promise<IDBDatabase | null> {
       req.onupgradeneeded = () => {
         const db = req.result
         if (!db.objectStoreNames.contains(OUTBOX_STORE_NAME)) db.createObjectStore(OUTBOX_STORE_NAME)
+        if (!db.objectStoreNames.contains(KEPT_PHOTOS_STORE_NAME)) db.createObjectStore(KEPT_PHOTOS_STORE_NAME)
       }
       req.onsuccess = () => resolve(req.result)
       req.onerror = () => resolve(null)
@@ -54,7 +58,7 @@ function settled(tx: IDBTransaction): Promise<void> {
 
 /** Every press the device kept, in shape; a press off the shape is dropped. */
 export async function readAllPresses(): Promise<OutboxPress[]> {
-  const db = await openDb()
+  const db = await openOutboxDb()
   if (!db) return []
   try {
     const tx = db.transaction(OUTBOX_STORE_NAME, 'readonly')
@@ -73,7 +77,7 @@ export async function readAllPresses(): Promise<OutboxPress[]> {
 }
 
 export async function writePress(press: OutboxPress): Promise<void> {
-  const db = await openDb()
+  const db = await openOutboxDb()
   if (!db) return
   try {
     const tx = db.transaction(OUTBOX_STORE_NAME, 'readwrite')
@@ -87,7 +91,7 @@ export async function writePress(press: OutboxPress): Promise<void> {
 }
 
 export async function deletePress(id: string): Promise<void> {
-  const db = await openDb()
+  const db = await openOutboxDb()
   if (!db) return
   try {
     const tx = db.transaction(OUTBOX_STORE_NAME, 'readwrite')
@@ -102,7 +106,7 @@ export async function deletePress(id: string): Promise<void> {
 
 /** Sign-out and an account switch drop every press on the device: a press is never sent as someone else. */
 export async function clearOutbox(): Promise<void> {
-  const db = await openDb()
+  const db = await openOutboxDb()
   if (!db) return
   try {
     const tx = db.transaction(OUTBOX_STORE_NAME, 'readwrite')

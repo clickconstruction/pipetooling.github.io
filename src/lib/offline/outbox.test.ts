@@ -1,50 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { appTzWallTimeMs, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { plainWordsFailures } from '../plainWords'
-import {
-  COULD_NOT_BE_SENT_WORDS,
-  DEPENDENCY_REFUSED_MESSAGE,
-  GOT_IT_LABEL,
-  NEVER_QUEUES,
-  NEXT_MORNING_HOUR,
-  OUTBOX_KINDS,
-  OUTBOX_SCHEMA,
-  RETRY_DELAYS_MS,
-  SENT_MARK,
-  TRY_NOW_LABEL,
-  WAITED_TOO_LONG_HELP,
-  WAITED_TOO_LONG_WORDS,
-  WAITING_WORDS,
-  dropPress,
-  failureQueues,
-  inOrder,
-  isOutboxKind,
-  markDueNow,
-  markRefused,
-  markSeen,
-  markSending,
-  markSent,
-  markTryFailed,
-  needsAPerson,
-  newPress,
-  nextDueAt,
-  nextSeq,
-  nextToSend,
-  nextTryAt,
-  oldestWaiting,
-  outboxBarWords,
-  outboxDoorSections,
-  outboxHoldsEverything,
-  parseOutboxPress,
-  pressLead,
-  prune,
-  retryDelayMs,
-  settleDependents,
-  waitLimitAt,
-  waitedTooLong,
-  waitingCountWords,
-  type OutboxPress,
-} from './outbox'
+import { COULD_NOT_BE_SENT_WORDS, DEPENDENCY_REFUSED_MESSAGE, GOT_IT_LABEL, NEVER_QUEUES, NEXT_MORNING_HOUR, OUTBOX_KINDS, OUTBOX_SCHEMA, RETRY_DELAYS_MS, SENT_MARK, TRY_NOW_LABEL, WAITED_TOO_LONG_HELP, WAITED_TOO_LONG_WORDS, WAITING_WORDS, dropPress, failureQueues, inOrder, isOutboxKind, markDueNow, markRefused, markSeen, markSending, markSent, markTryFailed, needsAPerson, newPress, nextDueAt, nextSeq, nextToSend, nextTryAt, oldestWaiting, outboxBarWords, outboxDoorSections, outboxHoldsEverything, parseOutboxPress, pressLead, prune, retryDelayMs, settleDependents, waitLimitAt, waitedTooLong, waitingCountWords, type OutboxPress, keptPhotoCount, photosWaitingLine } from './outbox'
 
 /** Dale's morning: 7:58 AM on a Thursday in the company's calendar. */
 const DAY = '2026-10-29'
@@ -459,5 +416,30 @@ describe('outbox · the list behind the bar', () => {
   it('Sent today reads newest first', () => {
     const sections = outboxDoorSections([markSent(clockIn(), {}, at(9, 42)), markSent(note(), {}, at(9, 43))], at(9, 50))
     expect(sections.sentToday.map((r) => r.id)).toEqual(['p-note', 'p-in'])
+  })
+})
+
+// Punch list #229, PR 6: the photos riding with a kept report, on the bar.
+describe('the photos on the bar', () => {
+  const T0 = 1_780_000_000_000
+  const photo = (id: string, sent = false) => ({ id, sent, fixtureId: null, stageName: null, caption: 'Photo', questionId: null, questionWords: null, takenAt: '2026-11-01T13:00:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: '' })
+  const withPhotos = (id: string, n: number, seq: number) =>
+    newPress({ id, seq, kind: 'field-report', userId: 'u1', pressedAt: T0, payload: { templateId: 't', fieldValues: {}, jobLedgerId: 'j1', projectId: null, bidId: null, lat: null, lng: null, photos: Array.from({ length: n }, (_, i) => photo(`${id}-${i}`, i === 0)) } })
+  const plain = newPress({ id: 'p-note', seq: 9, kind: 'job-note', userId: 'u1', pressedAt: T0, payload: { jobId: 'j1', body: 'x' } })
+
+  it('counts every photo on a waiting or sending report, and none on a note or a landed one', () => {
+    expect(keptPhotoCount([withPhotos('a', 2, 1), plain])).toBe(2)
+    expect(keptPhotoCount([{ ...withPhotos('a', 2, 1), state: 'sent' }])).toBe(0)
+    expect(keptPhotoCount([plain])).toBe(0)
+  })
+
+  it('reads one photo with it, several with them, and nothing with none', () => {
+    expect(photosWaitingLine([withPhotos('a', 1, 1)])).toEqual(['1 photo with it'])
+    expect(photosWaitingLine([withPhotos('a', 2, 1)])).toEqual(['2 photos with it'])
+    expect(photosWaitingLine([withPhotos('a', 1, 1), withPhotos('b', 2, 2)])).toEqual(['3 photos with them'])
+    expect(photosWaitingLine([plain])).toEqual([])
+    const words = outboxBarWords([withPhotos('a', 2, 1)], T0 + 1_000)
+    expect(words?.lines[0]).toBe(WAITING_WORDS)
+    expect(words?.lines[1]).toBe('2 photos with it')
   })
 })
