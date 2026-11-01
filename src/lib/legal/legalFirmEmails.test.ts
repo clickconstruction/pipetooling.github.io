@@ -33,8 +33,10 @@ describe('every office event emails the firm (#85 item 17, PR 2)', () => {
       { createdAt: '2026-10-05T16:00:00Z', trigger: 'ask', payer: 'Lenox Builders', body: 'Which form?' },
       { createdAt: '2026-10-05T17:00:00Z', trigger: 'applied', payer: 'Lenox Builders', amount: 14000 },
     ] })
-    expect(d.html).toContain('Fee seen by the office: <b>Lenox Builders</b> $450.00 — Demand letter')
-    expect(d.html).toContain('The office asks: <b>Lenox Builders</b> — Which form?')
-    expect(d.html).toContain('Payment applied: <b>Lenox Builders</b> $14,000.00')
+    // v2.6281: the digest reads by matter, the week's lines under the account's heading.
+    expect(d.html).toContain('<b>Lenox Builders</b> <span style="font-weight:400;color:#5a6b7e">— no longer open</span>')
+    expect(d.html).toContain('<li>Oct 5 · Fee seen by the office $450.00 — Demand letter</li>')
+    expect(d.html).toContain('<li>Oct 5 · The office asks — Which form?</li>')
+    expect(d.html).toContain('<li>Oct 5 · Payment applied $14,000.00</li>')
   })
 })
