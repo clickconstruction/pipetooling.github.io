@@ -9688,6 +9688,62 @@ export type Database = {
         }
         Relationships: []
       }
+      email_set_aside: {
+        Row: {
+          at: string
+          from_address: string
+          from_name: string | null
+          gmail_id: string
+          id: string
+          mailbox: string
+          put_back_at: string | null
+          put_back_by: string | null
+          reason: string
+          rfc_message_id: string | null
+          set_aside_at: string
+          subject: string | null
+          taken_at: string | null
+        }
+        Insert: {
+          at?: string
+          from_address: string
+          from_name?: string | null
+          gmail_id: string
+          id?: string
+          mailbox: string
+          put_back_at?: string | null
+          put_back_by?: string | null
+          reason: string
+          rfc_message_id?: string | null
+          set_aside_at?: string
+          subject?: string | null
+          taken_at?: string | null
+        }
+        Update: {
+          at?: string
+          from_address?: string
+          from_name?: string | null
+          gmail_id?: string
+          id?: string
+          mailbox?: string
+          put_back_at?: string | null
+          put_back_by?: string | null
+          reason?: string
+          rfc_message_id?: string | null
+          set_aside_at?: string
+          subject?: string | null
+          taken_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_set_aside_put_back_by_fkey"
+            columns: ["put_back_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       email_tag_threads: {
         Row: {
           bid_id: string | null
@@ -21857,6 +21913,7 @@ export type Database = {
           sent_to: string
           shows: string
           size_bytes: number
+          source_message_id: string | null
           state: string
           storage_path: string
           title: string
@@ -21880,6 +21937,7 @@ export type Database = {
           sent_to?: string
           shows: string
           size_bytes?: number
+          source_message_id?: string | null
           state?: string
           storage_path: string
           title: string
@@ -21903,6 +21961,7 @@ export type Database = {
           sent_to?: string
           shows?: string
           size_bytes?: number
+          source_message_id?: string | null
           state?: string
           storage_path?: string
           title?: string
@@ -21930,6 +21989,13 @@ export type Database = {
             columns: ["proof_document_id"]
             isOneToOne: false
             referencedRelation: "legal_matter_documents"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "legal_matter_documents_source_message_id_fkey"
+            columns: ["source_message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
             referencedColumns: ["id"]
           },
           {
@@ -34997,6 +35063,41 @@ export type Database = {
           },
         ]
       }
+      uploaded_photos: {
+        Row: {
+          bid_id: string | null
+          bid_number: string | null
+          bucket: string | null
+          by_name: string | null
+          by_user_id: string | null
+          bytes: number | null
+          caption: string | null
+          channel: string | null
+          contact_id: string | null
+          container_id: string | null
+          customer_name: string | null
+          direction: string | null
+          drive_file_id: string | null
+          fail_why: string | null
+          filed_at: string | null
+          id: string | null
+          job_click_number: string | null
+          job_hcp_number: string | null
+          job_id: string | null
+          job_name: string | null
+          message_id: string | null
+          original_bytes: number | null
+          project_id: string | null
+          question_id: string | null
+          report_id: string | null
+          source: string | null
+          stage_name: string | null
+          status: string | null
+          storage_path: string | null
+          taken_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       _ar_close_label_undo: {
@@ -36087,6 +36188,7 @@ export type Database = {
           placed_name: string
         }[]
       }
+      email_put_back: { Args: { p_id: string }; Returns: undefined }
       email_write_line: {
         Args: { p_files?: Json; p_gmail_id: string; p_note?: Json; p_row: Json }
         Returns: {

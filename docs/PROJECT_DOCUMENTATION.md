@@ -2851,7 +2851,7 @@ The page behind any modal, sheet, or dialog is frozen **app-wide without per-mod
 - `RESEND_API_KEY` - Resend API key (set as Supabase secret for Edge Functions)
 
 ### Edge Functions
-There are **~170** Edge Functions in `supabase/functions/` (172 function folders on 2026-11-01; `npm run check:edge-drift` counts them) — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
+There are **~170** Edge Functions in `supabase/functions/` (173 function folders on 2026-11-01; `npm run check:edge-drift` counts them) — see [EDGE_FUNCTIONS.md](./EDGE_FUNCTIONS.md) for the full annotated reference (an inline list here goes stale). Frequently referenced examples:
 - `create-user` - Manually create user; **role** must be one of the 9 valid roles: `dev`, `master_technician`, `assistant`, `subcontractor`, `helpers`, `estimator`, `primary`, `superintendent`, `controller`
 - `invite-user`, `archive-user`, `restore-user`, `set-user-password`, `login-as-user` - Account lifecycle
 - `claim-dev` - Break-glass dev promotion (audited; see Security Considerations)

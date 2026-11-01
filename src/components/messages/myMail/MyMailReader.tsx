@@ -2,17 +2,19 @@
  * Messages → My email (punch list #230 PR 3): the reader, one mail of the person's own box read whole for this screen
  * and kept nowhere (the mock-up's section 2). A window on a desk and a sheet from the bottom on a phone (`PhoneSheet`).
  * The bar at the top says what the conversation is to the app: the guess with **Yes**, **Another job…** and why; no
- * guess and **Tag…**; *Already in Messages ✓* for a mail a box holds on a job; or, once tagged, the green bar with the
- * job, what the tag put on it, *open the thread ›* and **Untag**. Then how many mails the conversation holds, From, To,
- * Cc and When, the words as the thread's email line draws them (`myMail/reader.ts`'s `readerBody`: the HTML read as
- * text, never drawn as HTML), the files, and the foot: *Reply in Gmail ↗* and *Nothing here replies, archives or marks
- * read.* The presses are the tab's (`MyMailTab`): this window only says what to do.
+ * guess and **Tag…**; *Already in Messages ✓* for a mail a box holds on a job; or, on every tagged conversation, the
+ * boxes' own too, the green bar with the job, what the tag put on it, *open the thread ›*, **Another job…** to move it
+ * and **Untag**. A mail of a tagged conversation that no line holds yet says so instead, with **Put it on the job**
+ * (`myMail/reader.ts`'s `taggedJob`). Then how many mails the conversation holds, From, To, Cc and When, the words as
+ * the thread's email line draws them (`readerBody`: the HTML read as text, never drawn as HTML), the files, and the
+ * foot: *Reply in Gmail ↗* and *Nothing here replies, archives or marks read.* The presses are the tab's (`MyMailTab`):
+ * this window only says what to do.
  */
 import { useEffect, useState, type CSSProperties, type ReactNode } from 'react'
-import type { MyMailJobChip, MyMailRefusal, MyMailRow, MyMailTagOk } from '../../../lib/myMail/contract'
-import { chipWords, MY_MAIL_LIST_WORDS, onTheJobWords } from '../../../lib/myMail/list'
+import type { MyMailJobChip, MyMailRefusal, MyMailRow } from '../../../lib/myMail/contract'
+import { chipWords, doneWords, MY_MAIL_LIST_WORDS } from '../../../lib/myMail/list'
 import type { MyMailIo } from '../../../lib/myMail/myMailIo'
-import { canUntag, fileWords, fromWords, MY_MAIL_READER_WORDS, partiesWords, readerBody, threadCountWords, type MyMailOpened } from '../../../lib/myMail/reader'
+import { canUntag, fileWords, fromWords, MY_MAIL_READER_WORDS, partiesWords, readerBody, taggedJob, threadCountWords, type MyMailDone, type MyMailOpened } from '../../../lib/myMail/reader'
 import { gmailThreadHref } from '../../../lib/myMail/tab'
 import { fullWhen } from '../../../lib/messages/thread'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../../lib/offlineRecoveryState'
@@ -32,14 +34,18 @@ export interface MyMailReaderProps {
   phone: boolean
   /** Read the mail again when this changes: the tab bumps it after a tag or an untag. */
   readKey: number
-  /** This sitting's tag of the conversation: the answer, and the job's chip when the press knew it. */
-  done: { ok: MyMailTagOk; chip: MyMailJobChip | null } | null
+  /** This sitting's tag of the conversation: the answer, the job's chip when the press knew it, and the press. */
+  done: MyMailDone | null
   /** The conversation is being tagged or untagged. */
   busy: boolean
   /** Why the last tag or untag did not go, in words. */
   problem: string | null
   onYes: (guess: MyMailJobChip) => void
   onPick: () => void
+  /** **Another job…** on a tagged conversation: the job picker, to move it off `onJob`, the job it is on. */
+  onMove: (onJob: string | null) => void
+  /** **Put it on the job**: a mail of a tagged conversation no line holds yet, tagged onto the same job again. */
+  onPutOn: (job: MyMailJobChip) => void
   onUntag: () => void
   /** The person a line sits on, from the page's view of Messages. */
   lineContact: (messageId: string) => string | null
@@ -60,29 +66,67 @@ const barStyle = (background: string): CSSProperties => ({
 })
 
 /** What the conversation is to the app, with its presses. */
-function Bar({ mail, done, busy, phone, contactId, lineId, onYes, onPick, onUntag, onOpenThread }: Pick<MyMailReaderProps, 'done' | 'busy' | 'phone' | 'onYes' | 'onPick' | 'onUntag' | 'onOpenThread'> & { mail: MyMailOpened; contactId: string | null; lineId: string | null }) {
+function Bar({
+  mail,
+  done,
+  fresh,
+  busy,
+  phone,
+  contactId,
+  lineId,
+  onYes,
+  onPick,
+  onMove,
+  onPutOn,
+  onUntag,
+  onOpenThread,
+}: Pick<MyMailReaderProps, 'done' | 'busy' | 'phone' | 'onYes' | 'onPick' | 'onMove' | 'onPutOn' | 'onUntag' | 'onOpenThread'> & { mail: MyMailOpened; fresh: boolean; contactId: string | null; lineId: string | null }) {
   const presses = (nodes: ReactNode) => (busy ? <span style={mutedSmall}>{MY_MAIL_LIST_WORDS.tagging}</span> : nodes)
   const thread = contactId ? (
     <Btn kind="quiet" onClick={() => onOpenThread(contactId, lineId)}>
       {W.openThread}
     </Btn>
   ) : null
-  if (mail.tagged || done) {
-    const chip = mail.tagged ?? done?.chip ?? null
-    const untag = mail.tagged ? canUntag(mail) : true
+  // Every tagged conversation (`canUntag`), and this sitting's tag before the mail reads again: the job, Another job…
+  // to move it and Untag, on the green bar, or beside Put it on the job on a mail no line holds yet.
+  if (canUntag(mail) || done) {
+    const job = taggedJob(mail, done, fresh)
+    const tagged = (
+      <>
+        <Btn kind="quiet" onClick={() => onMove(job.key)}>
+          {W.another}
+        </Btn>
+        <Btn kind="quiet" onClick={onUntag}>
+          {W.untag}
+        </Btn>
+      </>
+    )
+    const putOn = job.onTheJob ? null : job.chip
+    if (putOn) {
+      return (
+        <div data-my-mail-bar="not-on-job" style={barStyle('var(--bg-blue-tint)')}>
+          <span style={chipStyle(putOn)}>{chipWords(putOn)}</span>
+          <span>{W.notOnTheJob}</span>
+          {thread}
+          {presses(
+            <>
+              <Btn kind="primary" onClick={() => onPutOn(putOn)}>
+                {W.putOn}
+              </Btn>
+              {tagged}
+            </>,
+          )}
+        </div>
+      )
+    }
+    const put = done ? doneWords(done.ok, done.act) : null
     return (
       <div data-my-mail-bar="tagged" style={barStyle('var(--bg-green-tint)')}>
         <span style={{ fontWeight: 700, color: 'var(--text-green-700)' }}>{W.on}</span>
-        <span style={chipStyle(chip, true)}>{chip ? chipWords(chip) : W.onTheJob}</span>
-        {done ? <span style={mutedSmall}>{onTheJobWords(done.ok)}</span> : null}
+        <span style={chipStyle(job.chip, true)}>{job.chip ? chipWords(job.chip) : W.onTheJob}</span>
+        {put ? <span style={mutedSmall}>{put}</span> : null}
         {thread}
-        {untag
-          ? presses(
-              <Btn kind="quiet" onClick={onUntag}>
-                {W.untag}
-              </Btn>,
-            )
-          : null}
+        {presses(tagged)}
       </div>
     )
   }
@@ -129,8 +173,10 @@ function Bar({ mail, done, busy, phone, contactId, lineId, onYes, onPick, onUnta
   )
 }
 
-export function MyMailReader({ io, row, address, phone, readKey, done, busy, problem, onYes, onPick, onUntag, lineContact, onOpenThread, onClose }: MyMailReaderProps) {
+export function MyMailReader({ io, row, address, phone, readKey, done, busy, problem, onYes, onPick, onMove, onPutOn, onUntag, lineContact, onOpenThread, onClose }: MyMailReaderProps) {
   const [mail, setMail] = useState<MyMailOpened | null>(null)
+  // The `readKey` the mail was read at: an older one means a tag or an untag came since, and this sitting's is newer.
+  const [readAt, setReadAt] = useState<number | null>(null)
   const [refusal, setRefusal] = useState<MyMailRefusal | null>(null)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [reading, setReading] = useState(true)
@@ -145,6 +191,7 @@ export function MyMailReader({ io, row, address, phone, readKey, done, busy, pro
         setFailure(null)
         if (answer.ok) {
           setMail(answer.mail)
+          setReadAt(readKey)
           setRefusal(null)
         } else setRefusal(answer)
       })
@@ -165,7 +212,23 @@ export function MyMailReader({ io, row, address, phone, readKey, done, busy, pro
 
   return (
     <PhoneSheet label={subject} title={subject} width={720} dataAttrs={{ 'data-my-mail-reader': row.gmailId }} onClose={onClose}>
-      {mail ? <Bar mail={mail} done={done} busy={busy} phone={phone} contactId={contactId} lineId={lineId} onYes={onYes} onPick={onPick} onUntag={onUntag} onOpenThread={onOpenThread} /> : null}
+      {mail ? (
+        <Bar
+          mail={mail}
+          done={done}
+          fresh={readAt === readKey}
+          busy={busy}
+          phone={phone}
+          contactId={contactId}
+          lineId={lineId}
+          onYes={onYes}
+          onPick={onPick}
+          onMove={onMove}
+          onPutOn={onPutOn}
+          onUntag={onUntag}
+          onOpenThread={onOpenThread}
+        />
+      ) : null}
       {problem ? (
         <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.85rem', padding: '0.45rem 1rem 0', flex: 'none' }}>
           {problem}

@@ -135,7 +135,7 @@ function Node({ s, size }: { s: LienTimelineStep; size: number }) {
       style={{
         width: size,
         height: size,
-        borderRadius: s.kind === 'demand' ? 3 : '50%',
+        borderRadius: s.kind === 'demand' || s.kind === 'courtesy' ? 3 : '50%',
         border: `2px ${s.state === 'undated' ? 'dashed' : 'solid'} ${t.ring}`,
         background: t.fill,
         color: t.ink,
@@ -595,7 +595,7 @@ function windowRows(timeline: LienTimeline): { rows: WindowRow[]; after: string 
       }
       continue
     }
-    if (s.kind === 'demand') {
+    if (s.kind === 'demand' || s.kind === 'courtesy') {
       rows.push({ key: s.key, label: s.label, sub: s.dateWords, kind: 'text', words: s.words, tone: s.state === 'done' ? 'green' : s.state === 'missed' ? 'red' : 'muted', door: null, undated: false })
       continue
     }

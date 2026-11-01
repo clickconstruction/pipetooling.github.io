@@ -22,7 +22,7 @@
 // then walk too.
 import { ASSIGN_RULE_KEY, parseAssignSeats } from './gcKernels/lib/followUp/assignSeats.ts'
 import { OFFICE_HOURS_KEY, parseOfficeHours } from './gcKernels/lib/messages/hasRule.ts'
-import { legalSendsFromDemandLetters, legalSendsFromFilings, type LegalSend } from './gcKernels/lib/messages/legalRoute.ts'
+import { legalSendsFromCourtesy, legalSendsFromDemandLetters, legalSendsFromFilings, type LegalSend } from './gcKernels/lib/messages/legalRoute.ts'
 import { NOTIFY_LINES_MAX, planReplyPushes, PUSH_KINDS, REPLY_PUSH_ON_KEY, sweepSince, type PlanContact, type PlanLine, type PlanOut, type PlanUser } from './gcKernels/lib/messages/notifyPlan.ts'
 import { OFFICE_WAIT_KEY, PUSH_CHANNELS, pushHeldRows, pushSentRow, type Push, type PushTemplate } from './gcKernels/lib/messages/notifyRule.ts'
 import { parsePushHours, type PushHoursByUser } from './gcKernels/lib/messages/pushHours.ts'
@@ -234,7 +234,7 @@ async function legalSendsFor(admin: any, contacts: any[]): Promise<Record<string
   ])
   const filings = (filingData ?? []) as any[]
   const { data: itemData } = filings.length
-    ? await admin.from('job_lien_desk_items').select('sent_filing_id, fields, voided_at').in('sent_filing_id', filings.map((f) => f.id))
+    ? await admin.from('job_lien_desk_items').select('job_id, kind, status, sent_filing_id, fields, voided_at').in('sent_filing_id', filings.map((f) => f.id))
     : { data: [] }
   const items = (itemData ?? []) as any[]
   const letters = (letterData ?? []) as any[]
@@ -249,6 +249,8 @@ async function legalSendsFor(admin: any, contacts: any[]): Promise<Record<string
         { items, recipient: 'owner' },
       ),
       ...legalSendsFromDemandLetters(letters.filter((d) => theirJobs.has(d.job_id))),
+      // The courtesy notice (punch list #231): the owner's copy, when one went to them.
+      ...legalSendsFromCourtesy(items.filter((it) => theirJobs.has(it.job_id)), { recipient: 'owner' }),
     ]
   }
   return out

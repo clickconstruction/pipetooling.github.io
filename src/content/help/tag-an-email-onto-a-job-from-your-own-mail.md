@@ -86,7 +86,9 @@ Press **Reply in Gmail ↗** at the foot to answer. You reply in Gmail as always
 - A mail our bids or team inbox already took is never copied twice. The tag ties it to the job, unless the office tied it to another job already.
 - In your Gmail, a tagged mail gets the label **Tagged in ClickTooling**.
 
-After the tag, the bar on the mail turns green. Press **open the thread ›** to see the lines on the person's thread.
+After the tag, the bar on the mail turns green. Press **open the thread ›** to see the lines on the person's thread. The green bar also holds **Another job…** and **Untag**.
+
+A mail that came after the tag may say *This mail is not on the job yet.* Press {{button:blue|Put it on the job}} to bring it along.
 
 ## Name a sender nobody knows
 
@@ -98,15 +100,25 @@ A tag may meet a sender the app does not know yet. **Who is this?** then opens r
 
 Press **Not now** to name them later. The tag stays on the job either way.
 
-## Untag a conversation
+## Untag a conversation or move it
 
 1. Open a tagged mail. The bar on top is green.
 2. Press **Untag**.
 3. Press {{button:red|Untag}} to say yes.
 
-Untag takes the conversation's lines, files and copy off the job. A conversation the office already put on a legal matter keeps the matter's own copy.
+Untag takes the conversation off the job. The lines the tag wrote go, with their files and the copy of each mail. A line our bids or team inbox took goes back to where it was. In your Gmail, the label comes off.
 
-A conversation the bids or team inbox read in full has no **Untag**. Those lines stay where the inbox put them.
+Every tagged conversation has **Untag**. A conversation our bids or team inbox read in full has it too.
+
+A conversation the office already put on a legal matter keeps the matter's own copy.
+
+Tagged the wrong job? Move the conversation instead.
+
+1. Press **Another job…** on the green bar.
+2. The job picker opens. The jobs of the person who wrote come first.
+3. Press the right job. The conversation moves to that job.
+
+Pressing the job the conversation is on already changes nothing.
 
 ## Turn the tab off or leave a label out
 

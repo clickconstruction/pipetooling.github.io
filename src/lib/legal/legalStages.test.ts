@@ -67,6 +67,8 @@ describe('the pull-back email carries the reason (#85 item 16)', () => {
     expect(mail.html).toContain('Why: <i>Paid in full on 10-03</i>')
     expect(mail.html).toContain('stay readable on the portal')
     const digest = buildLegalDigestEmail({ companyName: 'Click', recipientName: 'Dana', matters: [], events: [{ createdAt: '2026-10-04T15:00:00Z', trigger: 'pulled', payer: 'Ridgeway Dental', reason: 'Paid in full' }], portalUrl: 'https://x', unsubscribeUrl: 'https://y' })
-    expect(digest.html).toContain('Ridgeway Dental</b> — Paid in full')
+    // v2.6281: a matter withdrawn that week keeps its own heading, the line with its reason under it.
+    expect(digest.html).toContain('<b>Ridgeway Dental</b> <span style="font-weight:400;color:#5a6b7e">— referral withdrawn</span>')
+    expect(digest.html).toContain('<li>Oct 4 · Referral withdrawn — Paid in full</li>')
   })
 })

@@ -15,13 +15,18 @@
  * - `open` ({ gmailId }): one mail whole, its row filled as above, its addresses, words, HTML and files, and the rest of
  *   its conversation as rows (`format=metadata`). Nothing is kept.
  * - `tag` ({ threadId, job }): the conversation whole, planned by `planTag`, then step by step: a line the boxes or an
- *   earlier tag hold is tied through `tie_message` as the caller (it stamps `tied_by`); any other mail is placed
- *   (`email_place_address`), its files copied into `message-attachments` under `mine/`, its line written through
- *   `email_write_line` (the same Message-ID fence the boxes use, so nothing is written twice) and its raw mail kept as
- *   `mine/<line id>.eml`. Then the `email_tag_threads` row, and the Gmail label *Tagged in ClickTooling* on its mail. A
- *   step the database refuses stops the tag with its words; what was written stays, and a second tag finishes it.
- * - `untag` ({ threadId }): the person's own lines of the conversation go, with their files and raw copies; a line the
- *   boxes wrote stays, untied when the tag tied it; the `email_tag_threads` row goes, and the label comes off.
+ *   earlier tag hold is tied through `tie_message` as the caller (it stamps `tied_by`); any other mail lands through
+ *   `landMail`, the one place that knows how a mail becomes a line: placed (`email_place_address`), its files copied
+ *   into `message-attachments` under `mine/`, its line written through `email_write_line` (the same Message-ID fence the
+ *   boxes use, so nothing is written twice) and its raw mail kept as `mine/<line id>.eml`. Then the `email_tag_threads`
+ *   row (its follow's place cleared, so the next run reads it first), the grey line in the other party's thread (the
+ *   app's own event, keyed `mytag:<row id>`, moved with a tag onto another job), and the Gmail label *Tagged in
+ *   ClickTooling* on its mail. A step the database refuses stops the tag with its words; what was written stays, and a
+ *   second tag finishes it.
+ * - `untag` ({ threadId }): the person's own lines of the conversation go, with their files and raw copies, once the
+ *   live documents a legal matter made from them are counted (`keptForMatter`: the matter keeps its own copy); a line the
+ *   boxes wrote stays, untied when the tag or the follow tied it; the grey line and the `email_tag_threads` row go, and
+ *   the label comes off.
  *
  * The caller, as `messages-email` gates one: signed in (`auth.getUser()`), a real account (never a sample, a twin or the
  * walk tester, who has no mailbox), on the office team (`gc_office_team()` asked as them), with their switch on
@@ -29,9 +34,18 @@
  * contract's, with the CORS headers; a refusal's status is its kind's (`MY_MAIL_REFUSAL_STATUS`), and a step the
  * database refused mid-way answers 500. Each call logs one line of counts, never a subject, an address or a body.
  *
+ * The cron's door (PR 4): `gmail-mine-follow`, every five minutes, posts `{ action: 'follow' }` with `X-Cron-Secret`
+ * equal to CRON_SECRET, as `gmail-count` checks it; no signed-in caller may ask for it. The follow reads the tagged
+ * conversations of each person whose switch is on and who is a real account on the office team, read (or tagged and
+ * not yet read) in the last 60 days, the oldest read first and one whose last read failed after the rest, 100 a run,
+ * as that person with one Google token each: a mail no line holds yet lands through `landMail` as a tag lands it, a
+ * box's line on no job that nobody placed by hand is tied to the tag's job as the service role with the tagger stamped,
+ * and what landed or was tied gets the label. Then the row's `last_read_at` is now, or its `last_error` the reason and
+ * the next row still runs; a person whose token fails has their rows' `last_error` written and is skipped for the run.
+ *
  * Secrets: SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, SUPABASE_ANON_KEY, GOOGLE_SERVICE_ACCOUNT_JSON (the reader's),
- * GMAIL_IMPERSONATE_USER (bids@, so a copy from the box reads as ours), EMAIL_FROM. config.toml keeps verify_jwt =
- * false: the caller's session is checked here.
+ * GMAIL_IMPERSONATE_USER (bids@, so a copy from the box reads as ours), EMAIL_FROM, CRON_SECRET (the follow's door).
+ * config.toml keeps verify_jwt = false: the caller's session is checked here, and the cron sends none.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
@@ -81,21 +95,29 @@ import {
 import { MY_MAIL_NOT_SIGN_IN_WORDS, imitationsSince, isSignInAddress, openedByImitation, sessionLinkAt } from '../_shared/gcKernels/lib/myMail/imitation.ts'
 import { guessJob } from '../_shared/gcKernels/lib/myMail/mailGuess.ts'
 import { MY_MAIL_METADATA_HEADERS, readMyMail, type MyMailGmailMessage, type MyMailRead, type MyMailReader } from '../_shared/gcKernels/lib/myMail/rows.ts'
-import { MY_MAIL_MAILBOX, planTag } from '../_shared/gcKernels/lib/myMail/tagPlan.ts'
+import { MY_MAIL_MAILBOX, planTag, type MyMailKnown, type MyMailTagPlan, type MyMailTagStep } from '../_shared/gcKernels/lib/myMail/tagPlan.ts'
 import { viewRows } from '../_shared/gcKernels/lib/myMail/view.ts'
 import {
+  FOLLOW_ROWS_PER_RUN,
   MY_MAIL_BUCKET,
   MY_MAIL_EML_MIME,
+  MY_MAIL_FOLLOW_GONE,
+  MY_MAIL_OFFICE_ROLES,
   MY_MAIL_READ_CHUNK,
   MY_MAIL_REFUSAL_STATUS,
   MY_MAIL_STOPPED_STATUS,
+  columnNotPushed,
   contactJobsOf,
   contactsByAddress,
   customerOpenJobs,
   domainCustomers,
   domainFilter,
   filledRow,
+  followPeople,
+  followSince,
+  followWindow,
   gmailRefusal,
+  isFollowRequest,
   knownLines,
   myMailAddressKey,
   myMailBodyHtml,
@@ -110,16 +132,24 @@ import {
   myMailOurDomains,
   myMailParties,
   myMailQuery,
+  myMailTagEventKey,
+  myMailTagEventRow,
   myMailTeam,
   neverRead,
   parseMyMailRequest,
+  planFollow,
   planUntag,
   stoppedRefusal,
+  tagRowJob,
   tokenRefusal,
   wantsGuess,
   type MyMailBidRow,
   type MyMailCustomerPersonRow,
   type MyMailCustomerRow,
+  type MyMailFollowLine,
+  type MyMailFollowOk,
+  type MyMailFollowPerson,
+  type MyMailFollowUserRow,
   type MyMailHeldLine,
   type MyMailLine,
   type MyMailPageFacts,
@@ -133,6 +163,9 @@ const USER_COLUMNS = 'id, name, email, read_only, is_sample, is_digital_twin, is
 const LINE_COLUMNS = 'id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mail_user_id'
 const HELD_COLUMNS = 'id, contact_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mailbox, mail_user_id'
 const BID_COLUMNS = 'id, bid_number, project_name, service_type_id, outcome'
+const FOLLOW_USER_COLUMNS = 'id, name, email, role, read_only, is_sample, is_digital_twin, is_walk_tester, my_mail_on, archived_at'
+const FOLLOW_TAG_COLUMNS = 'id, user_id, gmail_thread_id, bid_id, project_id, jobs_ledger_id, tagged_by'
+const FOLLOW_LINE_COLUMNS = 'id, gmail_id, rfc_message_id, bid_id, project_id, jobs_ledger_id, mail_user_id, tied_by'
 const PIPELINE_COLUMNS = 'id, hcp_number, click_number, job_name, service_type_id, status, customer_id, gc_customer_id'
 /** How many values one `in` filter carries: a page's Message-IDs run long. */
 const IN_CHUNK = 40
@@ -151,10 +184,16 @@ interface Me {
   hiddenLabels: string[]
 }
 
-interface Ctx {
+/** Whose box a write reads and lands as: the service role's client, that person's own Gmail token, and the person. */
+interface AsPerson {
   admin: Admin
-  caller: Admin
   token: string
+  me: Pick<Me, 'id' | 'name' | 'email'>
+}
+
+/** A signed-in call: the person as `AsPerson`, with their own client for what runs as them (`tie_message`). */
+interface Ctx extends AsPerson {
+  caller: Admin
   me: Me
 }
 
@@ -229,17 +268,29 @@ async function gmail<T>(call: () => Promise<T>, missing = false): Promise<T> {
 
 // ---------- what every read needs ----------
 
-/** The boxes, the app's sender and the office's notice list: what a row folds by, as the bids@ reader leaves mail out. */
-async function loadBox(admin: Admin, me: Me): Promise<Box> {
-  const [{ data: setting }, notices] = await Promise.all([
-    admin.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle(),
-    rows<LeftOutSenderRow>(admin.from('email_left_out_senders').select('value, kind, mailbox'), 'the senders marked a notice'),
-  ])
+/** The boxes' own addresses and the app's sender: a mail from one is a copy of ours, never a line of its own. */
+async function loadOurBoxes(admin: Admin): Promise<string[]> {
+  const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', BOXES_SETTINGS_KEY).maybeSingle()
   const settings = parseBoxSettings(setting?.value_text)
   const appFrom = parseAddress(EMAIL_FROM)?.address ?? null
   const read = readerBoxes(settings, Deno.env.get('GMAIL_IMPERSONATE_USER')).map((b) => b.address)
-  const boxes = [...ownChannels(settings, appFrom, read).addresses]
+  return [...ownChannels(settings, appFrom, read).addresses]
+}
+
+/** The boxes, the app's sender and the office's notice list: what a row folds by, as the bids@ reader leaves mail out. */
+async function loadBox(admin: Admin, me: Me): Promise<Box> {
+  const [boxes, notices] = await Promise.all([
+    loadOurBoxes(admin),
+    rows<LeftOutSenderRow>(admin.from('email_left_out_senders').select('value, kind, mailbox'), 'the senders marked a notice'),
+  ])
   return { reader: { address: me.email, boxes, isNotice: leftOutSenders(notices, MY_MAIL_MAILBOX) }, boxes }
+}
+
+/** The team's addresses, as the bids@ reader's `loadTeam` reads them: a teammate's mail on a conversation is ours. */
+async function loadTeam(admin: Admin): Promise<NonNullable<MyMailKnown['team']>> {
+  return myMailTeam(
+    await rows<{ id: string; name: string | null; email: string | null }>(admin.from('users').select('id, name, email').in('role', STAFF_ROLES).not('email', 'is', null).eq('is_walk_tester', false), 'the team'),
+  )
 }
 
 async function loadPrefixes(admin: Admin): Promise<LedgerPrefixMap> {
@@ -505,7 +556,7 @@ interface TagCounts {
 }
 
 /** A mail's raw copy as received, beside its line: the court-ready record. A miss is logged, and a later tag keeps it. */
-async function keepRaw(ctx: Ctx, gmailId: string, lineId: string, done: TagCounts): Promise<void> {
+async function keepRaw(ctx: AsPerson, gmailId: string, lineId: string, done: TagCounts): Promise<void> {
   try {
     const raw = await gmailMessageRaw(ctx.token, gmailId)
     const bytes = base64UrlBytes(raw.raw ?? '')
@@ -521,7 +572,7 @@ async function keepRaw(ctx: Ctx, gmailId: string, lineId: string, done: TagCount
 }
 
 /** The raw copy of a line an earlier tag wrote, kept now when that tag missed it. */
-async function keepRawIfMissing(ctx: Ctx, gmailId: string, lineId: string, done: TagCounts): Promise<void> {
+async function keepRawIfMissing(ctx: AsPerson, gmailId: string, lineId: string, done: TagCounts): Promise<void> {
   const name = `${lineId}.eml`
   const { data, error } = await ctx.admin.storage.from(MY_MAIL_BUCKET).list('mine', { limit: 2, search: name })
   if (!error && ((data ?? []) as { name: string }[]).some((f) => f.name === name)) return
@@ -529,7 +580,7 @@ async function keepRawIfMissing(ctx: Ctx, gmailId: string, lineId: string, done:
 }
 
 /** A written mail's files, copied into the bucket as `takeOne` copies them; one that will not copy stays in Gmail, named. */
-async function copyFiles(ctx: Ctx, email: EmailIn, senderKind: string | null, done: TagCounts): Promise<Record<string, unknown>[]> {
+async function copyFiles(ctx: AsPerson, email: EmailIn, senderKind: string | null, done: TagCounts): Promise<Record<string, unknown>[]> {
   const out: Record<string, unknown>[] = []
   for (const f of emailFileRows(email, senderKind)) {
     if (f.kind === 'link' || f.keep === 'tooBig') {
@@ -554,7 +605,7 @@ async function copyFiles(ctx: Ctx, email: EmailIn, senderKind: string | null, do
 }
 
 /** The tag's label on each mail of the conversation that is on the job now; one that will not take it is logged. */
-async function labelMails(ctx: Ctx, ids: readonly string[]): Promise<{ labelled: number; missed: number }> {
+async function labelMails(ctx: AsPerson, ids: readonly string[]): Promise<{ labelled: number; missed: number }> {
   if (ids.length === 0) return { labelled: 0, missed: 0 }
   let labelId: string
   try {
@@ -577,6 +628,67 @@ async function labelMails(ctx: Ctx, ids: readonly string[]): Promise<{ labelled:
   return { labelled, missed }
 }
 
+type WriteStep = Extract<MyMailTagStep, { kind: 'write' }>
+
+/** What landing one mail did: its line, whether it was written now, the contact it went on, and whether that contact was made for it. */
+interface Landed {
+  lineId: string | null
+  written: boolean
+  contactId: string
+  /** `email_place_address` made the contact now, of kind unknown: the tab asks *Who is this?*. */
+  madeUnknown: boolean
+}
+
+/**
+ * One mail of a tagged conversation onto the job: the one place that knows how a mail becomes a line, which `tag` and
+ * `follow` both call, as the service role with the person's own token. Its party is placed (`email_place_address`), its
+ * files copied, its line written through `email_write_line` with the row `takeOne` builds plus `mailbox` mine,
+ * `mail_user_id` and the job (the Message-ID fence the boxes use, so a mail a box, a tag or a run wrote a moment ago is
+ * never doubled), and its raw mail kept as `mine/<line id>.eml`. A step the database refuses stops with `who`'s words
+ * (`The tag`, `Reading later mail`); what was written stays.
+ */
+async function landMail(as: AsPerson, email: EmailIn, step: WriteStep, plan: Pick<MyMailTagPlan, 'mailbox' | 'mailUserId' | 'jobColumns'>, done: TagCounts, who: string): Promise<Landed> {
+  const { admin } = as
+  const placed = await admin.rpc('email_place_address', { p_value: step.party.address, p_name: step.party.name }).single()
+  if (placed.error || !placed.data) throw stopped(`${who} stopped partway. A sender's address could not be placed.`, placed.error?.message ?? 'no answer')
+  const contactId = String(placed.data.placed_contact)
+  const kind = typeof placed.data.placed_kind === 'string' ? placed.data.placed_kind : null
+  const madeUnknown = placed.data.made === true && kind === 'unknown'
+  const files = await copyFiles(as, email, kind, done)
+  // An invitation to bid (v2.6222) rides on a line in, as the bids@ reader writes it.
+  const invite = step.direction === 'in' ? invitation({ subject: step.subject ?? '', text: step.body, links: email.links, at: step.at ?? email.at ?? nowIso() }) : null
+  const row = myMailLineRow(step, plan, { contactId, channelId: placed.data.placed_channel ?? null }, invite)
+  const wrote = await admin.rpc('email_write_line', { p_gmail_id: step.gmailId, p_row: row, p_files: files, p_note: null })
+  if (wrote.error) throw stopped(`${who} stopped partway. A line could not be written.`, wrote.error.message)
+  const answer = (wrote.data as { written: boolean; id: string }[] | null)?.[0]
+  if (answer?.written === false) {
+    // The same mail, written a moment ago by another tag, a run of the follow or a box: nothing twice.
+    done.already++
+    return { lineId: answer.id ?? null, written: false, contactId, madeUnknown }
+  }
+  done.lines++
+  done.files += files.filter((f) => f.kind === 'file').length
+  if (answer?.id) await keepRaw(as, step.gmailId, answer.id, done)
+  return { lineId: answer?.id ?? null, written: true, contactId, madeUnknown }
+}
+
+/**
+ * The tag's grey line in the other party's thread (`myMailTagEventRow`): written once, `ignoreDuplicates` on its key as
+ * `_shared/estimateThreadLine.ts` writes one, and moved onto the new job when a second tag moved the conversation. Best
+ * effort: a miss is logged and the tag stands.
+ */
+async function writeTagEvent(ctx: AsPerson, input: { tagRowId: string; contactId: string; jobColumns: MyMailTagPlan['jobColumns']; moved: boolean }): Promise<boolean> {
+  try {
+    const row = myMailTagEventRow({ tagRowId: input.tagRowId, who: ctx.me, contactId: input.contactId, jobColumns: input.jobColumns })
+    const { error } = await ctx.admin.from('messages').upsert(row, { onConflict: 'quo_id', ignoreDuplicates: !input.moved })
+    if (error) throw new Error(error.message)
+    return true
+  } catch (e) {
+    console.warn(JSON.stringify({ event: 'gmail_mine_event_line_missed', user: ctx.me.id, reason: words(e).slice(0, 300) }))
+    return false
+  }
+}
+
 async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   const { admin, caller, me } = ctx
   const chip = await jobChip(admin, ask.job)
@@ -584,14 +696,18 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
   const thread = await gmail(() => gmailThreadFull(ctx.token, ask.threadId), true)
   const emails = (thread.messages ?? []).map((m) => readGmailMessage(m))
   if (emails.length === 0) return refuse(myMailRefusal('notFound'), MY_MAIL_REFUSAL_STATUS.notFound, 'tag')
-  const [held, team, box] = await Promise.all([
+  const [held, team, box, before] = await Promise.all([
     rowsIn<MyMailHeldLine>(unique(emails.map((e) => rfcMessageId(e))), (c) => admin.from('messages').select(HELD_COLUMNS).in('rfc_message_id', c), 'the lines'),
-    rows<{ id: string; name: string | null; email: string | null }>(admin.from('users').select('id, name, email').in('role', STAFF_ROLES).not('email', 'is', null).eq('is_walk_tester', false), 'the team'),
+    loadTeam(admin),
     loadBox(admin, me),
+    admin.from('email_tag_threads').select('id, bid_id, project_id, jobs_ledger_id').eq('user_id', me.id).eq('gmail_thread_id', ask.threadId).maybeSingle(),
   ])
+  if (before.error) throw stopped('Reading the tag failed.', before.error.message)
+  // The job the conversation was on before this tag: a tag onto another job moves the grey line with it.
+  const wasOn: string | null = before.data ? jobKeyOfRow(before.data) : null
   const plan = planTag({ threadId: ask.threadId, messages: emails }, { userId: me.id, address: me.email, name: me.name }, chip, {
     byMessageId: knownLines(held, me.id),
-    team: myMailTeam(team),
+    team,
     boxes: box.boxes,
   })
   const heldById = new Map(held.map((l) => [l.id, l]))
@@ -619,40 +735,49 @@ async function tag(ctx: Ctx, ask: MyMailTagRequest): Promise<Response> {
     }
     const email = emailById.get(step.gmailId)
     if (!email) continue
-    const placed = await admin.rpc('email_place_address', { p_value: step.party.address, p_name: step.party.name }).single()
-    if (placed.error || !placed.data) throw stopped("The tag stopped partway. A sender's address could not be placed.", placed.error?.message ?? 'no answer')
-    const placedContact = String(placed.data.placed_contact)
-    contactId = contactId ?? placedContact
-    if (placed.data.made === true && placed.data.placed_kind === 'unknown' && !unknownSender) {
-      unknownSender = { contactId: placedContact, address: step.party.address, name: step.party.name?.trim() ?? '' }
-    }
-    const files = await copyFiles(ctx, email, typeof placed.data.placed_kind === 'string' ? placed.data.placed_kind : null, done)
-    // An invitation to bid (v2.6222) rides on a line in, as the bids@ reader writes it.
-    const invite = step.direction === 'in' ? invitation({ subject: step.subject ?? '', text: step.body, links: email.links, at: step.at ?? email.at ?? nowIso() }) : null
-    const row = myMailLineRow(step, plan, { contactId: placedContact, channelId: placed.data.placed_channel ?? null }, invite)
-    const wrote = await admin.rpc('email_write_line', { p_gmail_id: step.gmailId, p_row: row, p_files: files, p_note: null })
-    if (wrote.error) throw stopped('The tag stopped partway. A line could not be written.', wrote.error.message)
-    const answer = (wrote.data as { written: boolean; id: string }[] | null)?.[0]
-    if (answer?.written === false) {
-      // The same mail, written a moment ago by another tag or a box: nothing twice.
-      done.already++
-      continue
-    }
-    done.lines++
-    done.files += files.filter((f) => f.kind === 'file').length
-    if (answer?.id) await keepRaw(ctx, step.gmailId, answer.id, done)
+    const landed = await landMail(ctx, email, step, plan, done, 'The tag')
+    contactId = contactId ?? landed.contactId
+    if (landed.madeUnknown && !unknownSender) unknownSender = { contactId: landed.contactId, address: step.party.address, name: step.party.name?.trim() ?? '' }
   }
 
-  // A second tag onto another job moves the row with it; its own lines moved with their tie steps above.
-  const saved = await admin.from('email_tag_threads').upsert({ ...plan.threadRow, tagged_at: nowIso() }, { onConflict: 'user_id,gmail_thread_id' })
+  // A second tag onto another job moves the row with it; its own lines moved with their tie steps above. The follow's
+  // place is cleared, so its next run reads the conversation first and the window starts again from the tag.
+  const saved = await admin
+    .from('email_tag_threads')
+    .upsert({ ...plan.threadRow, tagged_at: nowIso(), last_read_at: null, last_error: null }, { onConflict: 'user_id,gmail_thread_id' })
+    .select('id')
+    .single()
   if (saved.error) throw stopped('The tag stopped before it was kept. Its lines are written.', saved.error.message)
+  const moved = wasOn !== null && wasOn !== plan.jobKey
+  const tagRowId = (saved.data as { id?: string } | null)?.id ?? null
+  const eventLine = contactId && tagRowId ? await writeTagEvent(ctx, { tagRowId, contactId, jobColumns: plan.jobColumns, moved }) : false
   const label = await labelMails(ctx, unique(plan.steps.filter((s) => s.kind !== 'skip').map((s) => s.gmailId)))
   const answer: MyMailTagOk = { ok: true, jobKey: plan.jobKey, lines: done.lines, tied: done.tied, files: done.files, contactId, unknownSender }
-  log({ event: 'gmail_mine_tag', user: me.id, job_kind: chip.kind, mails: plan.steps.length, ...done, unknown_sender: Boolean(unknownSender), ...label })
+  log({ event: 'gmail_mine_tag', user: me.id, job_kind: chip.kind, mails: plan.steps.length, ...done, unknown_sender: Boolean(unknownSender), event_line: eventLine, moved, ...label })
   return json(answer)
 }
 
 // ---------- untag ----------
+
+/**
+ * How many live documents on a legal matter the Legal desk made from these lines (`legal_matter_documents
+ * .source_message_id`, PR 5): the matter keeps its own copy when the lines go (`ON DELETE SET NULL`). Read as the service
+ * role, before the lines are deleted. Fail-soft: before PR 5's column is pushed (`columnNotPushed`) or on any other
+ * failure it reads none and the untag goes on, logged.
+ */
+async function mattersHolding(admin: Admin, me: Pick<Me, 'id'>, lineIds: readonly string[]): Promise<number> {
+  let n = 0
+  for (let i = 0; i < lineIds.length; i += IN_CHUNK) {
+    const { data, error } = await admin.from('legal_matter_documents').select('id').in('source_message_id', lineIds.slice(i, i + IN_CHUNK)).is('voided_at', null)
+    if (error) {
+      const code = typeof error.code === 'string' ? error.code : null
+      console.warn(JSON.stringify({ event: 'gmail_mine_matters_unread', user: me.id, code, reason: columnNotPushed(code) ? 'the column is not pushed yet' : String(error.message).slice(0, 300) }))
+      return 0
+    }
+    n += ((data ?? []) as unknown[]).length
+  }
+  return n
+}
 
 async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   const { admin, caller, me } = ctx
@@ -671,7 +796,10 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
   const rfcs = unique(mails.map((m) => rfcMessageId(readGmailMessage(m))))
   const box = await rowsIn<MyMailLine>(rfcs, (c) => admin.from('messages').select('id, bid_id, project_id, jobs_ledger_id, mail_user_id, tied_by').in('rfc_message_id', c).is('mail_user_id', null), "the boxes' lines")
   const plan = planUntag({ userId: me.id, tagJobKey: tagRow ? jobKeyOfRow(tagRow) : null, own, box })
-  const files = await rowsIn<{ message_id: string; bucket_path: string | null }>(plan.remove, (c) => admin.from('message_attachments').select('message_id, bucket_path').in('message_id', c), 'the files')
+  const [files, kept] = await Promise.all([
+    rowsIn<{ message_id: string; bucket_path: string | null }>(plan.remove, (c) => admin.from('message_attachments').select('message_id, bucket_path').in('message_id', c), 'the files'),
+    mattersHolding(admin, me, plan.remove),
+  ])
 
   let removed = 0
   let held = 0
@@ -700,6 +828,13 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
     if (error) throw stopped('The untag stopped partway. A line could not be untied.', error.message)
     untied++
   }
+  // The tag's grey line goes with it, before the row whose id keys it. One that will not go is logged and left.
+  let eventGone = false
+  if (tagRow) {
+    const event = await admin.from('messages').delete().eq('quo_id', myMailTagEventKey(tagRow.id)).eq('channel', 'event')
+    if (event.error) console.warn(JSON.stringify({ event: 'gmail_mine_event_line_left', user: me.id, reason: String(event.error.message).slice(0, 300) }))
+    else eventGone = true
+  }
   // The row goes last, so an untag that stopped before here finds the tag again and finishes.
   if (tagRow) {
     const gone = await admin.from('email_tag_threads').delete().eq('id', tagRow.id)
@@ -716,8 +851,166 @@ async function untag(ctx: Ctx, ask: MyMailUntagRequest): Promise<Response> {
       console.warn(JSON.stringify({ event: 'gmail_mine_label_left', user: me.id, reason: words(e).slice(0, 300) }))
     }
   }
-  const answer: MyMailUntagOk = { ok: true, removed, keptForMatter: false }
-  log({ event: 'gmail_mine_untag', user: me.id, had_tag: Boolean(tagRow), removed, held, orphaned, untied, unlabelled })
+  const answer: MyMailUntagOk = { ok: true, removed, keptForMatter: kept > 0 }
+  log({ event: 'gmail_mine_untag', user: me.id, had_tag: Boolean(tagRow), removed, held, orphaned, untied, unlabelled, kept_for_matter: kept, event_line: eventGone })
+  return json(answer)
+}
+
+// ---------- follow: later mail in a tagged conversation, the cron's ----------
+
+/** A tagged conversation as the follow reads its row. */
+interface FollowTag {
+  id: string
+  user_id: string
+  gmail_thread_id: string
+  bid_id: string | null
+  project_id: string | null
+  jobs_ledger_id: string | null
+  tagged_by: string | null
+}
+
+/** The run's marks on the rows it read: the read's time and no error, or the reason with the time left where it was. */
+async function markFollowed(admin: Admin, ids: readonly string[], error: string | null): Promise<void> {
+  const patch = error === null ? { last_read_at: nowIso(), last_error: null } : { last_error: error.slice(0, 1000) }
+  for (let i = 0; i < ids.length; i += IN_CHUNK) {
+    const chunk = ids.slice(i, i + IN_CHUNK)
+    const { error: failed } = await admin.from('email_tag_threads').update(patch).in('id', chunk)
+    if (failed) console.warn(JSON.stringify({ event: 'gmail_mine_follow_unmarked', rows: chunk.length, reason: String(failed.message).slice(0, 300) }))
+  }
+}
+
+/** Why a row's read failed, in the words its `last_error` keeps. */
+function followReason(e: unknown): string {
+  if (e instanceof Stop) return e.refusal.words
+  if (e instanceof GmailError) return e.status === 404 ? MY_MAIL_FOLLOW_GONE : gmailRefusal(e).words
+  return stoppedRefusal('Reading later mail stopped.', words(e), 'The reason').words
+}
+
+/**
+ * A box's line the follow ties to the tag's job, as a tag's tie step ties one: through `tie_message` (the job on the
+ * line, the job on the person's jobs), as the service role since the cron has no caller, then stamped with who tagged
+ * the conversation, as the caller's tie would have stamped them.
+ */
+async function tieAsTagger(admin: Admin, lineId: string, tag: FollowTag, job: MyMailJobChip): Promise<void> {
+  const { error } = await admin.rpc('tie_message', { p_message_id: lineId, p_job_kind: job.kind, p_job_id: job.id })
+  if (error) throw stopped('Reading later mail stopped partway. A line could not be tied to the job.', error.message)
+  if (!tag.tagged_by) return
+  const stamp = await admin.from('messages').update({ tied_by: tag.tagged_by }).eq('id', lineId)
+  if (stamp.error) throw stopped('Reading later mail stopped partway. A tied line could not name who tagged it.', stamp.error.message)
+}
+
+/**
+ * One tagged conversation, read as its person: its mail by the headers (`threads.get`, `format=metadata`), the lines that
+ * hold it, then `planFollow`: a box's loose line is tied, each mail no line holds is read whole and lands through
+ * `landMail` as a tag lands it, and what landed or was tied gets the label. Throws what stopped it; what was done stays.
+ */
+async function followOne(as: AsPerson, tag: FollowTag, job: MyMailJobChip, known: Pick<MyMailKnown, 'team' | 'boxes'>, done: TagCounts, labels: { labelled: number; missed: number }): Promise<void> {
+  const { admin, me } = as
+  const person = { userId: me.id, address: me.email, name: me.name }
+  const thread = await gmailThreadHeaders(as.token, tag.gmail_thread_id, MY_MAIL_METADATA_HEADERS)
+  const mails = (thread.messages ?? []).map((m) => readGmailMessage(m))
+  const [byRfc, byId] = await Promise.all([
+    rowsIn<MyMailFollowLine>(unique(mails.map((m) => rfcMessageId(m))), (c) => admin.from('messages').select(FOLLOW_LINE_COLUMNS).in('rfc_message_id', c), 'the lines'),
+    // A line a tag wrote for a mail with no Message-ID is found by its Gmail id, in this person's box alone.
+    rowsIn<MyMailFollowLine>(
+      unique(mails.filter((m) => !rfcMessageId(m)).map((m) => m.gmailId)),
+      (c) => admin.from('messages').select(FOLLOW_LINE_COLUMNS).eq('mail_user_id', me.id).in('gmail_id', c),
+      'the lines',
+    ),
+  ])
+  const steps = planFollow({ threadId: tag.gmail_thread_id, messages: mails }, person, job, { lines: [...byRfc, ...byId], ...known })
+  const landed: string[] = []
+  for (const step of steps) {
+    if (step.kind !== 'tie') continue
+    await tieAsTagger(admin, step.messageId, tag, job)
+    done.tied++
+    landed.push(step.gmailId)
+  }
+  const fresh = steps.filter((s) => s.kind === 'write').map((s) => s.gmailId)
+  if (fresh.length > 0) {
+    const emails = (await readAll(as.token, fresh)).map((m) => readGmailMessage(m))
+    const emailById = new Map(emails.map((e) => [e.gmailId, e]))
+    const plan = planTag({ threadId: tag.gmail_thread_id, messages: emails }, person, job, { byMessageId: {}, ...known })
+    for (const step of plan.steps) {
+      const email = step.kind === 'write' ? emailById.get(step.gmailId) : undefined
+      if (step.kind !== 'write' || !email) {
+        done.skipped++
+        continue
+      }
+      const line = await landMail(as, email, step, plan, done, 'Reading later mail')
+      if (line.written) landed.push(step.gmailId)
+    }
+  }
+  const label = await labelMails(as, landed)
+  labels.labelled += label.labelled
+  labels.missed += label.missed
+}
+
+/**
+ * The follow: the tagged conversations worth reading, oldest read first and one whose last read failed after the rest,
+ * at most `FOLLOW_ROWS_PER_RUN`, each read as its person with one Google token per person per run. A row read in full
+ * moves its `last_read_at` and clears its `last_error`; a row that failed keeps its time and records the reason, and the
+ * next row still runs. A person whose token fails (off the Workspace, or switched off at Google since) has their rows'
+ * `last_error` written and is skipped for the run. One line of counts, never a subject or an address.
+ */
+async function follow(admin: Admin, saJson: string): Promise<Response> {
+  const users = await rows<MyMailFollowUserRow>(admin.from('users').select(FOLLOW_USER_COLUMNS).eq('my_mail_on', true).in('role', [...MY_MAIL_OFFICE_ROLES]), 'the people who tag')
+  const people = new Map<string, MyMailFollowPerson>(followPeople(users).map((p) => [p.id, p]))
+  const tags =
+    people.size === 0
+      ? []
+      : await rows<FollowTag>(
+          admin
+            .from('email_tag_threads')
+            .select(FOLLOW_TAG_COLUMNS)
+            .in('user_id', [...people.keys()])
+            .or(followWindow(followSince(Date.now())))
+            .order('last_error', { ascending: true, nullsFirst: true })
+            .order('last_read_at', { ascending: true, nullsFirst: true })
+            .order('tagged_at', { ascending: true })
+            .limit(FOLLOW_ROWS_PER_RUN),
+          'the tagged conversations',
+        )
+  const byPerson = new Map<string, FollowTag[]>()
+  for (const t of tags) {
+    const list = byPerson.get(t.user_id) ?? []
+    list.push(t)
+    byPerson.set(t.user_id, list)
+  }
+  const done: TagCounts = { lines: 0, tied: 0, files: 0, notCopied: 0, already: 0, skipped: 0, emlKept: 0, emlMissed: 0 }
+  const labels = { labelled: 0, missed: 0 }
+  let failed = 0
+  let refusedPeople = 0
+  if (tags.length > 0) {
+    const [team, boxes] = await Promise.all([loadTeam(admin), loadOurBoxes(admin)])
+    for (const [userId, theirs] of byPerson) {
+      const me = people.get(userId)
+      if (!me) continue
+      let token: string
+      try {
+        token = await googleServiceToken(saJson, GMAIL_SCOPES, me.email)
+      } catch (e) {
+        failed += theirs.length
+        refusedPeople++
+        await markFollowed(admin, theirs.map((t) => t.id), tokenRefusal(words(e)).words)
+        continue
+      }
+      const as: AsPerson = { admin, token, me }
+      for (const tag of theirs) {
+        try {
+          const job = tagRowJob(tag)
+          if (!job) throw stopped('Reading later mail stopped. The tag names no job.', 'no job column is set')
+          await followOne(as, tag, job, { team, boxes }, done, labels)
+          await markFollowed(admin, [tag.id], null)
+        } catch (e) {
+          failed++
+          await markFollowed(admin, [tag.id], followReason(e))
+        }
+      }
+    }
+  }
+  const answer: MyMailFollowOk = { ok: true, rows: tags.length, lines: done.lines, tied: done.tied, failed }
+  log({ event: 'gmail_mine_follow', rows: tags.length, people: byPerson.size, lines: done.lines, tied: done.tied, failed, refused_people: refusedPeople, files: done.files, not_copied: done.notCopied, already: done.already, skipped: done.skipped, eml_missed: done.emlMissed, ...labels })
   return json(answer)
 }
 
@@ -734,6 +1027,16 @@ serve(async (req) => {
     const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
     if (!supabaseUrl || !serviceRoleKey || !anonKey || !saJson) return refuse(stoppedRefusal('Reading mail is not set up yet.', 'a secret is missing', 'The reason'), MY_MAIL_STOPPED_STATUS)
     const admin = createClient(supabaseUrl, serviceRoleKey)
+
+    // The cron's door (`gmail-mine-follow`): its secret, and the follow alone. A wrong or missing secret is no secret, so
+    // the call is a person's, and the signed-in door below never runs the follow (`parseMyMailRequest` refuses it).
+    const cronSecret = Deno.env.get('CRON_SECRET')
+    if (cronSecret && req.headers.get('X-Cron-Secret') === cronSecret) {
+      action = 'follow'
+      if (!isFollowRequest(await req.json().catch(() => null))) return refuse(myMailRefusal('badRequest'), MY_MAIL_REFUSAL_STATUS.badRequest, action)
+      return await follow(admin, saJson)
+    }
+
     const caller = createClient(supabaseUrl, anonKey, { global: { headers: { Authorization: req.headers.get('Authorization') ?? '' } } })
 
     const { data: u } = await caller.auth.getUser()

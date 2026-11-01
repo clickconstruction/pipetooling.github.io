@@ -5,12 +5,17 @@
  * (`?view=`), the search box (`?q=`, Gmail's own search), the line that says what is read and kept, the rows
  * (`MyMailListRow`), the notices folded behind one line, and **Older ›** for the next page. A row's **Yes** tags its
  * conversation onto the guess; *other…* and **Tag…** open the job picker (`JobPickerWindow`, their jobs first, then a
- * search); the rest of the row opens the reader (`MyMailReader`), whose bar does the same and, once tagged, **Untag**.
- * A tag that met a sender nobody knows opens *Who is this?* for them at once; closing it leaves the tag standing.
+ * search); the rest of the row opens the reader (`MyMailReader`), whose bar does the same and, on every tagged
+ * conversation, offers **Another job…**, the same picker, whose pick tags the conversation onto the new job, which
+ * `gmail-mine` treats as the move (a pick of the job it is on does nothing), and **Untag**. A mail of a tagged
+ * conversation that no line holds yet offers **Put it on the job**, the same tag again, which lands the missing mail and
+ * writes nothing twice. A tag that met a sender nobody knows opens *Who is this?* for them at once; closing it leaves
+ * the tag standing.
  *
- * No badge, no count, no unread, no reply, no archive: the reply is made in Gmail. An empty To tag is the good state.
- * A refusal is one calm line with the function's words; a read that fails draws on `OfflineRetryPanel` and reads again
- * by itself when the signal comes back.
+ * No badge, no count, no unread, no reply, no archive: the reply is made in Gmail. An empty To tag is the good state at
+ * the end of the box only: a page the view drew nothing of while Gmail holds older mail says so and offers **Older ›**
+ * (`list.ts`'s `emptyPageWords`). A refusal is one calm line with the function's words; a read that fails draws on
+ * `OfflineRetryPanel` and reads again by itself when the signal comes back.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
@@ -20,12 +25,12 @@ import type { Contact } from '../../../lib/contacts/kernel'
 import { emptyWordsWithPress } from '../../../lib/emptyWords'
 import { helpGuideHref } from '../../../lib/helpGuideAnchors'
 import type { JobTile } from '../../../lib/messages/jobTiles'
-import { jobRefOf } from '../../../lib/messages/jobKeys'
-import type { MyMailJobChip, MyMailJobRef, MyMailListOk, MyMailRefusal, MyMailRow, MyMailTagOk, MyMailView } from '../../../lib/myMail/contract'
+import type { MyMailJobChip, MyMailJobRef, MyMailListOk, MyMailRefusal, MyMailRow, MyMailView } from '../../../lib/myMail/contract'
 import { MY_MAIL_REFUSAL_WORDS } from '../../../lib/myMail/contract'
-import { FIRST_PAGE, MY_MAIL_LIST_WORDS, newerPage, olderPage, pageToken, taggedWords, untaggedWords, type MyMailPages } from '../../../lib/myMail/list'
+import { emptyPageWords, FIRST_PAGE, MY_MAIL_LIST_WORDS, newerPage, notTaggedWords, olderPage, pageToken, tagActWords, untaggedWords, type MyMailPages, type MyMailTagAct } from '../../../lib/myMail/list'
 import { supabaseMyMailIo, type MyMailIo } from '../../../lib/myMail/myMailIo'
-import { MY_MAIL_READER_WORDS, unknownSenderContact } from '../../../lib/myMail/reader'
+import { pickedJob } from '../../../lib/myMail/picker'
+import { MY_MAIL_READER_WORDS, unknownSenderContact, type MyMailDone } from '../../../lib/myMail/reader'
 import { MY_MAIL_GUIDE, MY_MAIL_GUIDE_READS, MY_MAIL_SETTINGS_HREF, MY_MAIL_VIEWS } from '../../../lib/myMail/tab'
 import { MY_MAIL_WORDS, viewRows } from '../../../lib/myMail/view'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../../lib/offlineRecoveryState'
@@ -166,13 +171,14 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
   const [showFolded, setShowFolded] = useState(false)
   const [readerRow, setReader] = useState<MyMailRow | null>(null)
   const [readKey, setReadKey] = useState(0)
-  const [picker, setPicker] = useState<{ threadId: string; address: string } | null>(null)
+  // The job picker: `onJob` is the job a tagged conversation is on, when Another job… moves it off that job.
+  const [picker, setPicker] = useState<{ threadId: string; address: string; onJob: string | null } | null>(null)
   const [who, setWho] = useState<Contact | null>(null)
   const [busyThread, setBusyThread] = useState<string | null>(null)
   // One tag or untag at a time: a second press in the same moment waits on the first, not on the next render.
   const busy = useRef(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [done, setDone] = useState<Readonly<Record<string, { ok: MyMailTagOk; chip: MyMailJobChip | null }>>>({})
+  const [done, setDone] = useState<Readonly<Record<string, MyMailDone>>>({})
 
   const changed = () => {
     reread()
@@ -180,7 +186,8 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
     onChanged?.()
   }
 
-  const tagOnto = async (threadId: string, job: MyMailJobRef, chip: MyMailJobChip | null) => {
+  // A first tag, a move (Another job…) and a mail put on the job are one door, gmail-mine's tag, safe to run again.
+  const tagOnto = async (threadId: string, job: MyMailJobRef, chip: MyMailJobChip | null, act: MyMailTagAct = 'tag') => {
     if (busy.current) return
     busy.current = true
     setBusyThread(threadId)
@@ -191,12 +198,12 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
         setProblem(a.words)
         return
       }
-      setDone((d) => ({ ...d, [threadId]: { ok: a, chip } }))
-      showToast(taggedWords(a, chip), 'success')
+      setDone((d) => ({ ...d, [threadId]: { ok: a, chip, act } }))
+      showToast(tagActWords(act, a, chip), 'success')
       if (a.unknownSender) setWho(unknownSenderContact(a.unknownSender))
       changed()
     } catch (e) {
-      setProblem(formatErrorMessage(e, W.notTagged))
+      setProblem(formatErrorMessage(e, notTaggedWords(act)))
     } finally {
       busy.current = false
       setBusyThread(null)
@@ -228,7 +235,7 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
   }
 
   const yes = (row: Pick<MyMailRow, 'threadId'>, guess: MyMailJobChip) => void tagOnto(row.threadId, { kind: guess.kind, id: guess.id }, guess)
-  const pick = (row: Pick<MyMailRow, 'threadId' | 'who'>) => setPicker({ threadId: row.threadId, address: row.who.address })
+  const pick = (row: Pick<MyMailRow, 'threadId' | 'who'>, onJob: string | null = null) => setPicker({ threadId: row.threadId, address: row.who.address, onJob })
   const openThread = (contactId: string, messageId: string | null) => {
     setReader(null)
     onOpenThread(contactId, messageId)
@@ -248,8 +255,15 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
 
   const page = answer?.kind === 'page' ? answer.page : null
   const shown = page ? viewRows(page.rows, view) : null
-  const empty = MY_MAIL_WORDS.empty(view, q)
-  const emptyPress = q.trim() ? { onPress: clearSearch } : view === 'tagged' ? { onPress: () => onView('toTag') } : { to: MY_MAIL_SETTINGS_HREF }
+  const next = page?.nextPageToken ?? null
+  const older = () => {
+    if (next) setPaging({ key, pages: olderPage(pages, next) })
+  }
+  // A page the view drew nothing of while Gmail holds older mail is not the end of the box: its line offers Older ›,
+  // and the pager under the list does not offer it twice.
+  const emptyPage = Boolean(next && shown && shown.rows.length === 0)
+  const empty = next ? emptyPageWords(view) : MY_MAIL_WORDS.empty(view, q)
+  const emptyPress = next ? { onPress: older } : q.trim() ? { onPress: clearSearch } : view === 'tagged' ? { onPress: () => onView('toTag') } : { to: MY_MAIL_SETTINGS_HREF }
   const row = (r: MyMailRow, dim = false) => (
     <MyMailListRow
       key={r.gmailId}
@@ -325,15 +339,15 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
         </div>
       ) : null}
 
-      {!failure && page && (pages.length > 1 || page.nextPageToken) ? (
+      {!failure && page && (pages.length > 1 || (next && !emptyPage)) ? (
         <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', fontSize: '0.85rem' }}>
           {pages.length > 1 ? (
             <button type="button" onClick={() => setPaging({ key, pages: newerPage(pages) })} style={quietPress}>
               {W.newer}
             </button>
           ) : null}
-          {page.nextPageToken ? (
-            <button type="button" onClick={() => page.nextPageToken && setPaging({ key, pages: olderPage(pages, page.nextPageToken) })} style={quietPress}>
+          {next && !emptyPage ? (
+            <button type="button" onClick={older} style={quietPress}>
               {W.older}
             </button>
           ) : null}
@@ -352,6 +366,8 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
           problem={problem}
           onYes={(guess) => yes(readerRow, guess)}
           onPick={() => pick(readerRow)}
+          onMove={(onJob) => pick(readerRow, onJob)}
+          onPutOn={(job) => void tagOnto(readerRow.threadId, { kind: job.kind, id: job.id }, job, 'put')}
           onUntag={() => void untag(readerRow.threadId)}
           lineContact={lineContact}
           onOpenThread={openThread}
@@ -363,16 +379,17 @@ export function MyMailTab({ io: ioProp, view, onView, q, onQ, on, phone, jobs, w
       ) : null}
       {picker ? (
         <JobPickerWindow
-          title={MY_MAIL_READER_WORDS.pickTitle}
+          title={picker.onJob ? MY_MAIL_READER_WORDS.moveTitle : MY_MAIL_READER_WORDS.pickTitle}
           theirs={jobs.theirs(picker.address)}
           searchJobs={jobs.search}
           onPick={(jobKey) => {
             const p = picker
             setPicker(null)
-            const ref = jobRefOf(jobKey)
+            // Another job…'s pick of the job the conversation is on already does nothing.
+            const ref = pickedJob(jobKey, p.onJob)
             if (!ref) return
             const tile = jobs.theirs(p.address).find((t) => t.key === jobKey)
-            void tagOnto(p.threadId, ref, tile ? { ...ref, key: tile.key, num: tile.num, name: tile.name } : null)
+            void tagOnto(p.threadId, ref, tile ? { ...ref, key: tile.key, num: tile.num, name: tile.name } : null, p.onJob ? 'move' : 'tag')
           }}
           onClose={() => setPicker(null)}
         />

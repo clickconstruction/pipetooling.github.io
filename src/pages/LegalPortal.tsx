@@ -15,6 +15,7 @@ import { FIRM_EMAIL_MODE_WORDS, FIRM_NOTIFICATIONS_WORDS, firmHandlingCountLine,
 import { PORTAL_QUIET_RELOAD_FAILED, portalPayloadIsStale } from '../lib/legal/legalPortalFreshness'
 import { buildMatterPacket, parseLegalPortalPayload, portalFeeModel, type LegalPortalMatter, type LegalPortalPayload, type LegalPortalPulledMatter, type LegalPortalRecipient } from '../lib/legal/legalPortalPayload'
 import { WEEKDAY_LABELS } from '../lib/legal/legalMatters'
+import { FIRM_INBOX_WORDS, firmInboxCaption, firmSampleInbox } from '../lib/legal/legalFirmSampleWeek'
 import { legalNotReachingLine } from '../lib/legal/legalNotifyLedger'
 import { FirmMatterView, PortalTable } from '../components/jobs/legal/LegalFirmMatterView'
 import { orderFirmMatters } from '../lib/legal/legalFirmMatterOrder'
@@ -706,6 +707,7 @@ function NotificationsPanel({ payload, act, busy, notice, noticeWarn, actFailure
           <FirmRuleRow value={draft} name={name} matters={payload.matters} busy={busy} inForm onChange={(patch) => setDraft((d) => ({ ...d, ...patch }))} />
           <button type="submit" disabled={busy} style={{ ...btn, justifyContent: 'center', marginTop: 4 }}>{firmSendConfirmationLabel(name)}</button>
           <div style={{ fontSize: portalSmall(11.5), color: FAINT }}>{W.sendLine}</div>
+          <FirmSampleInbox name={name} rule={draft} payload={payload} />
         </form>
       </div>
     </div>
@@ -713,6 +715,42 @@ function NotificationsPanel({ payload, act, busy, notice, noticeWarn, actFailure
 }
 
 type FirmRule = Pick<LegalPortalRecipient, 'mode' | 'scope' | 'digestWeekday' | 'digestTime'>
+
+/**
+ * What lands in the person's inbox under the rule on the add card (#233, v2.6280): a sample week as
+ * subject lines, the first email opened under them in a sealed frame, any line pressable. The lines
+ * and the emails come from the real builders (`legalFirmSampleWeek.ts`); the fee line sits dim under
+ * Each event because it rides the digest only, and it opens nothing.
+ */
+function FirmSampleInbox({ name, rule, payload }: { name: string; rule: FirmRule; payload: LegalPortalPayload }) {
+  const [pressed, setPressed] = useState<string | null>(null)
+  const inbox = useMemo(
+    () => firmSampleInbox({ companyName: payload.company.name, firmName: payload.firm.name, otherHandling: payload.firm.handling_name || 'another attorney at the firm', name, rule: { mode: rule.mode, scope: rule.scope, digestWeekday: rule.digestWeekday }, preparedOn: payload.preparedOn }),
+    [payload.company.name, payload.firm.name, payload.firm.handling_name, payload.preparedOn, name, rule.mode, rule.scope, rule.digestWeekday],
+  )
+  const openKey = inbox.lines.some((l) => l.key === pressed && !l.dim) ? pressed : inbox.firstKey
+  const mail = openKey ? inbox.email(openKey) : null
+  const tag: CSSProperties = { marginLeft: 6, fontSize: 10, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: FAINT, border: `1px solid ${HAIR}`, borderRadius: 999, padding: '0 6px', verticalAlign: 1 }
+  return (
+    <div data-legal-sample-inbox style={{ marginTop: 6, paddingTop: 10, borderTop: `1px dotted ${HAIR}` }}>
+      <div style={{ ...cap, display: 'flex', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}><span>{firmInboxCaption(name)}</span><span style={{ textTransform: 'none', letterSpacing: 0 }}>{FIRM_INBOX_WORDS.sample}</span></div>
+      <div style={{ border: `1px solid ${HAIR}`, borderRadius: 6, overflow: 'hidden', background: CARD, marginTop: 6 }}>
+        {inbox.lines.map((l) => (
+          <button key={l.key} type="button" data-legal-inbox-line={l.dim ? 'dim' : l.key === openKey ? 'open' : 'line'} disabled={l.dim} onClick={() => setPressed(l.key)} style={{ display: 'grid', gridTemplateColumns: '44px minmax(0, 1fr)', gap: 8, width: '100%', textAlign: 'left', padding: '5px 10px', border: 'none', borderBottom: `1px solid ${HAIR}`, background: 'transparent', font: 'inherit', fontSize: 12.5, color: l.dim ? FAINT : l.key === openKey ? COPPER : INK, fontWeight: l.dim ? 500 : 600, cursor: l.dim ? 'default' : 'pointer' }}>
+            <span style={{ color: FAINT, fontSize: portalSmall(11) }}>{l.day}</span>
+            <span>{l.subject}{l.dim ? <span style={tag}>{FIRM_INBOX_WORDS.digestOnly}</span> : null}</span>
+          </button>
+        ))}
+      </div>
+      {mail ? (
+        <div style={{ marginTop: 8 }}>
+          <div style={{ fontSize: portalSmall(11), color: FAINT, marginBottom: 4 }}>{FIRM_INBOX_WORDS.opened}: <b style={{ color: INK }}>{mail.subject}</b></div>
+          <iframe title={mail.subject} srcDoc={mail.html} sandbox="" style={{ width: '100%', height: rule.mode === 'digest' ? 440 : 300, border: `1px solid ${HAIR}`, borderRadius: 6, background: CARD }} />
+        </div>
+      ) : null}
+    </div>
+  )
+}
 
 /**
  * One rule, drawn the same on a person's row and on the add card (#233): Emails with the digest's day
