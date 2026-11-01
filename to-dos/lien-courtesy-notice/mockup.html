@@ -1,0 +1,309 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Courtesy notice before a lien</title>
+<style>
+  /* Layout: four boards down one page. 1 the Lien desk's Do now row and the sent footer with the new press, its send window and its held state; 2 the message as the GC reads it on a phone, as a text and as an email, and the owner's copy; 3 what the record looks like afterwards, on the Timeline, in the job's History, on the Legal desk; 4 the rules of the day and the words it never says. Every name, address, amount and link is made up. */
+  :root {
+    --bg: #f6f6f4; --fg: #1f2328; --muted: #656d76; --surface: #ffffff; --subtle: #f0f1f3;
+    --border: #d9dde2; --border-strong: #b9c0c8; --accent: #2563eb; --accent-tint: #e8f0fb;
+    --amber: #9a5b00; --amber-tint: #fff4dc; --amber-border: #e7c36a; --green: #1f6f3f; --green-tint: #e6f4ea;
+    --red: #b42318; --red-tint: #fde8e6; --desk: #15181c; --desk-fg: #e6e8eb; --desk-muted: #9aa3ad; --desk-line: #2b3137; --desk-row: #1c2026;
+    --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { --bg: #141618; --fg: #e6e8eb; --muted: #9aa3ad; --surface: #1e2124; --subtle: #25292d; --border: #353b41; --border-strong: #4a525a; --accent: #7fb0ff; --accent-tint: #1d2a3f; --amber: #f0c36a; --amber-tint: #3a2e12; --amber-border: #7a5a1a; --green: #8fd4a8; --green-tint: #1b3324; --red: #ff8a80; --red-tint: #3a1a18; color-scheme: dark } }
+  :root[data-theme="dark"] { --bg: #141618; --fg: #e6e8eb; --muted: #9aa3ad; --surface: #1e2124; --subtle: #25292d; --border: #353b41; --border-strong: #4a525a; --accent: #7fb0ff; --accent-tint: #1d2a3f; --amber: #f0c36a; --amber-tint: #3a2e12; --amber-border: #7a5a1a; --green: #8fd4a8; --green-tint: #1b3324; --red: #ff8a80; --red-tint: #3a1a18; color-scheme: dark }
+  * { box-sizing: border-box }
+  body { margin: 0; background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.5; }
+  .page { max-width: 1180px; margin: 0 auto; padding: 28px 16px 60px; display: grid; gap: 34px; }
+  h1 { font-size: 22px; margin: 0 0 4px; text-wrap: balance; }
+  .lede { color: var(--muted); margin: 0; max-width: 78ch; }
+  h2 { font-size: 13px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 0 0 10px; }
+  h3 { font-size: 15px; margin: 18px 0 8px; }
+  .note { color: var(--muted); font-size: 13px; max-width: 80ch; margin: 8px 0 0; }
+  .note b { color: var(--fg); }
+  .chip { display: inline-block; border-radius: 5px; padding: 0 7px; font-size: 11.5px; font-weight: 700; line-height: 20px; white-space: nowrap; }
+  .chip.blue { background: var(--accent-tint); color: var(--accent); border: 1px solid var(--accent); }
+  .chip.amber { background: var(--amber-tint); color: var(--amber); border: 1px solid var(--amber-border); }
+  .chip.green { background: var(--green-tint); color: var(--green); border: 1px solid var(--green); }
+  .chip.red { background: var(--red-tint); color: var(--red); border: 1px solid var(--red); }
+  .chip.grey { background: var(--subtle); color: var(--muted); border: 1px solid var(--border-strong); }
+  .btn { display: inline-block; border-radius: 7px; padding: 4px 11px; font-size: 12.5px; font-weight: 700; border: 1px solid var(--border-strong); background: var(--surface); color: var(--fg); white-space: nowrap; }
+  .btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .btn.quiet { color: var(--muted); font-weight: 600; }
+  .btn.dead { color: #8a9099; border-color: #cfd4da; background: #f3f4f6; }
+  /* The desk, drawn dark the way the office sees it */
+  .desk { background: var(--desk); color: var(--desk-fg); border: 1px solid var(--desk-line); border-radius: 10px; overflow: hidden; max-width: 900px; font-size: 13.5px; box-shadow: 0 12px 40px rgba(0,0,0,.25); }
+  .desk .head { display: flex; align-items: center; gap: 10px; padding: 9px 14px; border-bottom: 1px solid var(--desk-line); font-weight: 700; }
+  .desk .head .tab { font-weight: 600; color: var(--desk-muted); padding: 2px 8px; border-radius: 6px; }
+  .desk .head .tab.on { background: #2563eb; color: #fff; }
+  .desk .group { padding: 10px 14px 4px; font-size: 11px; letter-spacing: .08em; text-transform: uppercase; color: #f0c36a; font-weight: 700; }
+  .desk .row { display: grid; grid-template-columns: 72px minmax(0, 1fr) auto auto; gap: 12px; align-items: center; margin: 0 14px 8px; padding: 9px 12px; background: var(--desk-row); border: 1px solid var(--desk-line); border-radius: 8px; }
+  .desk .row .state { color: var(--desk-muted); }
+  .desk .row .job { font-weight: 600; }
+  .desk .row .job small { color: var(--desk-muted); font-weight: 400; }
+  .desk .row.lit { outline: 2px solid #2563eb; }
+  .desk .foot { margin: 6px 14px 14px; border: 1px solid var(--desk-line); border-radius: 8px; padding: 12px 14px; background: #101317; }
+  .desk .foot .facts { display: flex; flex-wrap: wrap; gap: 6px 14px; font-size: 12.5px; color: var(--desk-muted); margin-bottom: 8px; }
+  .desk .foot .facts b { color: var(--desk-fg); font-weight: 600; }
+  .desk .foot p { margin: 0 0 10px; }
+  .desk .foot .doors { display: flex; flex-wrap: wrap; gap: 8px; }
+  .desk .btn { background: #1c2026; border-color: #3a4149; color: var(--desk-fg); }
+  .desk .btn.primary { background: #2563eb; border-color: #2563eb; color: #fff; }
+  .desk .btn.quiet { color: var(--desk-muted); }
+  .desk .btn.dead { background: #1c2026; border-color: #2b3137; color: #6b7280; }
+  .desk .chipd { display: inline-block; border-radius: 5px; padding: 0 7px; font-size: 11.5px; font-weight: 700; line-height: 20px; border: 1px solid; }
+  .desk .chipd.blue { color: #93c5fd; border-color: #2563eb; background: #172554; }
+  .desk .chipd.amber { color: #f0c36a; border-color: #7a5a1a; background: #3a2e12; }
+  .desk .chipd.red { color: #fca5a5; border-color: #7f1d1d; background: #3a1a18; }
+  .desk .chipd.green { color: #8fd4a8; border-color: #1f6f3f; background: #1b3324; }
+  .desk .held { color: #fca5a5; }
+  /* The send window over the desk */
+  .win { background: var(--surface); color: var(--fg); border: 1px solid var(--border-strong); border-radius: 10px; max-width: 760px; overflow: hidden; box-shadow: 0 12px 40px rgba(0,0,0,.18); }
+  .win .wh { display: flex; justify-content: space-between; align-items: center; padding: 10px 16px; border-bottom: 1px solid var(--border); }
+  .win .wh h4 { margin: 0; font-size: 15px; }
+  .win .wh .sub { color: var(--muted); font-size: 12px; }
+  .win .wb { padding: 12px 16px; }
+  .win table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .win th { text-align: left; font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); padding: 4px 6px; border-bottom: 1px solid var(--border); }
+  .win td { padding: 7px 6px; border-bottom: 1px dotted var(--border); vertical-align: top; }
+  .win td.m { color: var(--muted); }
+  .win .wf { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 10px 16px; border-top: 1px solid var(--border); background: var(--subtle); flex-wrap: wrap; }
+  .win .wf .hint { color: var(--muted); font-size: 12px; }
+  .letter { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--surface); font-size: 13px; line-height: 1.55; }
+  .letter p { margin: 0 0 9px; }
+  .letter .edit { background: var(--amber-tint); border-bottom: 1px dashed var(--amber-border); }
+  .letter .from { background: var(--accent-tint); border-bottom: 1px dashed var(--accent); }
+  .key { display: flex; gap: 14px; flex-wrap: wrap; font-size: 12px; color: var(--muted); margin: 6px 0 0; }
+  .key span::before { content: ""; display: inline-block; width: 12px; height: 12px; border-radius: 3px; margin-right: 5px; vertical-align: -2px; }
+  .key .k1::before { background: var(--accent-tint); border: 1px solid var(--accent); }
+  .key .k2::before { background: var(--amber-tint); border: 1px solid var(--amber-border); }
+  /* Phone frames */
+  .phones { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 22px; align-items: start; }
+  .phone { width: 100%; max-width: 360px; background: #0c0d10; border-radius: 34px; padding: 12px; box-shadow: 0 16px 40px rgba(0,0,0,.35); }
+  .phone .screen { background: #fff; color: #111; border-radius: 24px; overflow: hidden; min-height: 560px; font-size: 13px; line-height: 1.45; }
+  .phone .bar { display: flex; justify-content: space-between; padding: 10px 16px 6px; font-size: 12px; color: #666; }
+  .phone .title { padding: 2px 16px 10px; font-weight: 700; font-size: 15px; border-bottom: 1px solid #e5e7eb; }
+  .phone .title small { display: block; font-weight: 400; color: #666; font-size: 11.5px; }
+  .sms { padding: 12px 14px; }
+  .sms .when { text-align: center; color: #888; font-size: 11px; margin: 4px 0 8px; }
+  .sms .bubble { background: #e9e9eb; color: #111; border-radius: 18px; padding: 9px 12px; max-width: 86%; margin: 0 0 8px; }
+  .sms .bubble a { color: #1d4ed8; word-break: break-all; }
+  .mail { padding: 12px 16px; }
+  .mail .subject { font-weight: 700; font-size: 15px; margin: 0 0 6px; }
+  .mail .meta { font-size: 11.5px; color: #666; margin: 0 0 10px; }
+  .mail p { margin: 0 0 9px; }
+  .mail a { color: #1d4ed8; }
+  .mail .pay { display: block; text-align: center; background: #111; color: #fff; text-decoration: none; padding: 9px; border-radius: 6px; font-weight: 700; margin: 10px 0; }
+  /* After */
+  .strip { background: var(--surface); border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; max-width: 900px; }
+  .band { border-radius: 8px; padding: 10px 12px; border: 1px solid; margin-bottom: 12px; }
+  .band.amber { background: var(--amber-tint); border-color: var(--amber-border); }
+  .band .k { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; }
+  .band b { display: block; font-size: 14px; }
+  .rail { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 6px; position: relative; padding-top: 14px; }
+  .rail::before { content: ""; position: absolute; left: 4%; right: 4%; top: 22px; border-top: 2px solid var(--border-strong); }
+  .node { position: relative; text-align: center; font-size: 11.5px; }
+  .node .dot { width: 16px; height: 16px; border-radius: 50%; margin: 0 auto 6px; background: var(--surface); border: 2px solid var(--border-strong); position: relative; z-index: 1; }
+  .node .dot.done { background: var(--green); border-color: var(--green); }
+  .node .dot.sq { border-radius: 3px; background: var(--accent); border-color: var(--accent); }
+  .node .dot.due { border-color: var(--amber); background: var(--amber-tint); }
+  .node .dot.later { border-style: dashed; }
+  .node .name { font-weight: 700; }
+  .node .date { color: var(--muted); }
+  .node .move { display: inline-block; margin-top: 3px; font-size: 10px; letter-spacing: .08em; text-transform: uppercase; color: var(--accent); background: var(--accent-tint); border-radius: 4px; padding: 0 5px; }
+  .trail { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); max-width: 900px; font-size: 13px; }
+  .trail .line { display: grid; grid-template-columns: 76px 90px minmax(0, 1fr); gap: 10px; padding: 8px 12px; border-bottom: 1px dotted var(--border); }
+  .trail .line:last-child { border-bottom: 0; }
+  .trail .d { color: var(--muted); }
+  .trail .lit { background: var(--accent-tint); }
+  .legal { border: 1px solid var(--border); border-radius: 8px; background: var(--surface); padding: 10px 14px; max-width: 900px; font-size: 13px; }
+  .legal .kk { font-size: 10.5px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); font-weight: 700; margin-bottom: 4px; }
+  .legal .r { display: grid; grid-template-columns: 170px minmax(0, 1fr); gap: 10px; padding: 5px 0; border-bottom: 1px dotted var(--border); }
+  .legal .r:last-child { border-bottom: 0; }
+  .legal .r .l { color: var(--muted); }
+  .never { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; font-size: 13px; }
+  .card h4 { margin: 0 0 8px; font-size: 13px; }
+  .card ul { margin: 0; padding-left: 18px; }
+  .card li { margin-bottom: 5px; }
+  table.rules { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; max-width: 900px; }
+  table.rules th, table.rules td { text-align: left; padding: 7px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.rules th { font-size: 11px; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); }
+  table.rules tr:last-child td { border-bottom: 0; }
+  @media (max-width: 720px) {
+    .desk .row { grid-template-columns: 1fr; gap: 6px; }
+    .rail { grid-template-columns: repeat(3, minmax(0, 1fr)); row-gap: 16px; }
+    .rail::before { display: none; }
+    .trail .line { grid-template-columns: 1fr; gap: 2px; }
+    .legal .r { grid-template-columns: 1fr; gap: 2px; }
+  }
+</style>
+</head>
+<body>
+<div class="page">
+
+<header>
+  <h1>A courtesy notice between the § 53.056 notice and the lien</h1>
+  <p class="lede">Punch list #231. One press on a sent notice, from day 7: an email and a text in plain words that say the notice we mailed stands, nothing has come, the lien goes on by this day unless it is paid, here is where to pay, here is who to call. Four boards: the press on the desk, the message on a phone, the record afterwards, the rules it keeps. Every name, number and link here is made up.</p>
+</header>
+
+<!-- Board 1 -->
+<section>
+  <h2>1 · On the Lien desk — the row, the sent footer, the press</h2>
+  <div class="desk">
+    <div class="head">⏱ Lien desk <span class="tab on">Do now · 37</span><span class="tab">Deadlines</span><span class="tab">All filings</span></div>
+    <div class="group">Needs you now · 16</div>
+    <div class="row lit">
+      <span class="chipd blue">Notice ✓</span>
+      <span class="job">741 · Ridgeway Builders — Riverbend Dental <small>· GC Ridgeway Builders</small></span>
+      <span class="state">day 9 · nothing since the packet</span>
+      <span class="btn primary">Send a courtesy notice</span>
+    </div>
+    <div class="row">
+      <span class="chipd blue">Notice 1</span>
+      <span class="job">733 · Harlan Homes — 14 Quail Run <small>· GC Harlan Homes</small></span>
+      <span class="state">day 16 · courtesy sent day 8 · letter two overdue</span>
+      <span class="btn">Send letter two</span>
+    </div>
+    <div class="row">
+      <span class="chipd blue">Notice ✓</span>
+      <span class="job">729 · Pecan Grove Dental <small>· GC Castell Construction</small></span>
+      <span class="state held">Courtesy held · the lien window closed Oct 15 — nothing to warn of</span>
+      <span class="btn dead">Send a courtesy notice</span>
+    </div>
+    <div class="foot">
+      <div class="facts"><span>Sent <b>October 14, 2026</b> · certified mail, delivered Oct 16</span><span>Day <b>9</b> · from delivery</span><span>GC paid: <b>no</b></span><span>GC authorized direct pay: <b>no</b></span><span>Owner called: <b>not yet</b></span><span>Courtesy notice: <b>not yet</b></span></div>
+      <p>Nothing has come since the packet. A courtesy notice goes by email and text in a minute: the notice stands, the lien goes on by <b>Nov 16</b> unless the $4,850.00 is paid, the pay link, your number. Letter two is counsel's certified second letter, from day 10.</p>
+      <div class="doors"><span class="btn primary">Send a courtesy notice ▸</span><span class="btn quiet">Send letter two ▸</span><span class="btn quiet">Record the owner’s call…</span><span class="btn quiet">The GC authorized direct pay…</span></div>
+    </div>
+  </div>
+  <p class="note"><b>What changed on the desk.</b> The row's state line and its one button name the courtesy notice from day 7. Letter two keeps its day 10 and its button, so the desk still shows both. A job whose affidavit cannot go on (the window closed, a homestead, no approved work month) holds the button with the reason, the way the run holds an envelope. The second row shows the two living together: the courtesy went on day 8 and letter two is now overdue on day 16.</p>
+
+  <h3>The send window, over the desk</h3>
+  <div class="win">
+    <div class="wh"><h4>Courtesy notice · 741 Riverbend Dental</h4><span class="sub">nothing is sent until you press Send</span></div>
+    <div class="wb">
+      <table>
+        <tr><th>Who</th><th>Email</th><th>Text</th><th></th></tr>
+        <tr><td><b>Ridgeway Builders</b><br><span class="m">the GC · Dana Ortiz, estimating</span></td><td>dortiz@ridgewaybuilders.example ✓<br><span class="m">the address the courtesy PDF went to</span></td><td>(512) 555-0193 ✓<br><span class="m">their card says we may text</span></td><td><span class="chip green">goes</span></td></tr>
+        <tr><td><b>Cibolo Crossing Ltd</b><br><span class="m">the owner of record · a copy</span></td><td>office@cibolocrossing.example ✓<br><span class="m">from the property record</span></td><td class="m">— no number on the record</td><td><span class="chip green">email only</span></td></tr>
+      </table>
+      <h3 style="margin-top:14px">The words, as the GC gets them</h3>
+      <div class="letter">
+        <p><span class="edit">Dana,</span></p>
+        <p>On <span class="from">October 14</span> we mailed you and the owner of <span class="from">2200 Riverbend Dr, Austin</span> the Notice of Claim for Unpaid Labor or Materials (Tex. Prop. Code § 53.056) on job <span class="from">741, Riverbend Dental</span>: <span class="from">$4,850.00</span> for work in <span class="from">August 2026</span>. That notice stands. This is a reminder, not a new notice.</p>
+        <p>Nothing has come in since. Unless the <span class="from">$4,850.00</span> is paid, we will file the lien affidavit in <span class="from">Travis County</span> by <span class="from">November 16, 2026</span>. A recorded affidavit is harder to take off than the notice, and we would rather pick up a check.</p>
+        <p>Pay it here: <span class="from">clicktooling.com/pay/8f3a-2c…</span> (card or bank transfer; the page shows the bill and says so once it is paid). Or a check or wire payable only to Click Plumbing and Electrical. We cannot deposit a joint check.</p>
+        <p>If something on the bill is wrong, or a payment is already on its way, reply to this email or call and tell us.</p>
+        <p><span class="from">R. Douglas, Master Plumber · (512) 555-0147</span> · office@clickplumbing.com<br>Click Plumbing and Electrical · Job 741</p>
+      </div>
+      <div class="key"><span class="k1">filled from the sent notice, the timeline and the pay page — not typed</span><span class="k2">the one line the office may change</span></div>
+    </div>
+    <div class="wf"><span class="hint">The owner's copy adds the pay page's rule: pay only with Ridgeway Builders' written okay, otherwise hold the amount back and call. The record names who pressed, each address, and the lien day the message carried.</span><span class="btn primary">Send · 2 emails · 1 text ▸</span></div>
+  </div>
+</section>
+
+<!-- Board 2 -->
+<section>
+  <h2>2 · On a phone — the text, the email, the owner's copy</h2>
+  <div class="phones">
+    <div class="phone"><div class="screen">
+      <div class="bar"><span>9:41</span><span>●●●</span></div>
+      <div class="title">Click Plumbing <small>(512) 555-0180 · texts from the office</small></div>
+      <div class="sms">
+        <div class="when">Today 9:41 AM</div>
+        <div class="bubble">Click Plumbing: on Oct 14 we mailed you and the owner the notice of claim on Riverbend Dental (job 741), $4,850 for August. Nothing has come. Unless it is paid, the lien affidavit is filed by Nov 16. Pay here: <a href="#">clicktooling.com/pay/8f3a-2c…</a> Questions: R. Douglas (512) 555-0147. This is a reminder, not a new notice.</div>
+        <div class="bubble" style="font-size:11.5px;color:#555">Reply STOP to end texts from this number.</div>
+      </div>
+    </div></div>
+    <div class="phone"><div class="screen">
+      <div class="bar"><span>9:41</span><span>●●●</span></div>
+      <div class="title">Inbox <small>Click Plumbing and Electrical · replies to office@clickplumbing.com</small></div>
+      <div class="mail">
+        <p class="subject">Before we file: Riverbend Dental, $4,850 — paid by Nov 16, no lien</p>
+        <p class="meta">To Dana Ortiz · Nov 2, 2026</p>
+        <p>Dana,</p>
+        <p>On October 14 we mailed you and the owner of 2200 Riverbend Dr, Austin the Notice of Claim for Unpaid Labor or Materials (Tex. Prop. Code § 53.056) on job 741, Riverbend Dental: $4,850.00 for work in August 2026. That notice stands. This is a reminder, not a new notice.</p>
+        <p>Nothing has come in since. Unless the $4,850.00 is paid, we will file the lien affidavit in Travis County by November 16, 2026. A recorded affidavit is harder to take off than the notice, and we would rather pick up a check.</p>
+        <a class="pay" href="#">Pay $4,850.00 · clicktooling.com/pay/8f3a-2c…</a>
+        <p>Card or bank transfer on that page, or a check or wire payable only to Click Plumbing and Electrical. We cannot deposit a joint check.</p>
+        <p>If something on the bill is wrong, or a payment is already on its way, reply to this email or call and tell us.</p>
+        <p>R. Douglas, Master Plumber · (512) 555-0147<br>Click Plumbing and Electrical · Job 741</p>
+      </div>
+    </div></div>
+    <div class="phone"><div class="screen">
+      <div class="bar"><span>9:41</span><span>●●●</span></div>
+      <div class="title">Inbox <small>the owner's copy · Cibolo Crossing Ltd</small></div>
+      <div class="mail">
+        <p class="subject">A reminder on the notice we mailed Oct 14 · 2200 Riverbend Dr</p>
+        <p class="meta">To Cibolo Crossing Ltd · Nov 2, 2026</p>
+        <p>To the owner of 2200 Riverbend Dr,</p>
+        <p>On October 14 we mailed you the notice of claim under Tex. Prop. Code § 53.056 on Riverbend Dental: Ridgeway Builders has not paid us $4,850.00 for work in August 2026. That notice stands. This is a reminder, not a new notice. You did not hire us, and nothing here is billed to you.</p>
+        <p>Nothing has come in since. Unless the $4,850.00 is paid, we will file the lien affidavit in Travis County by November 16, 2026. We would rather pick up a check than put an affidavit on your property.</p>
+        <p>Please pay us only if Ridgeway Builders has told you in writing that you may pay us directly. Otherwise hold $4,850.00 back from your next payment to Ridgeway Builders, as the cover letter asked, and call us so we know it is held. We cannot deposit a joint check.</p>
+        <p>R. Douglas, Master Plumber · (512) 555-0147<br>Click Plumbing and Electrical · Job 741</p>
+      </div>
+    </div></div>
+  </div>
+  <p class="note"><b>Why the words are these.</b> The first line names the notice and says it stands, so nobody reads this as a new statutory notice. The lien's day is the timeline's own affidavit day, never typed. The three ways to end it are the cover letter's, shortened. The pay link is the pay page's, good until the bill is paid. The owner's copy keeps counsel's owner rule word for word. Nothing about interest, fees, default or other jobs.</p>
+</section>
+
+<!-- Board 3 -->
+<section>
+  <h2>3 · Afterwards — the Timeline, the job's History, the Legal desk</h2>
+  <div class="strip">
+    <div class="band amber"><span class="k">Next on the path</span><b>File the affidavit — 14 days.</b><span style="font-size:12.5px;color:var(--muted)">Courtesy notice sent Nov 2 by email and text · the GC's day 9. Letter two from day 10 if nothing comes.</span></div>
+    <div class="rail">
+      <div class="node"><div class="dot done"></div><div class="name">Last work</div><div class="date">Aug 2026</div></div>
+      <div class="node"><div class="dot done"></div><div class="name">§ 53.056 · Aug</div><div class="date">sent Oct 14</div></div>
+      <div class="node"><div class="dot sq"></div><div class="name">Courtesy</div><div class="date">sent Nov 2 · email + text</div><span class="move">ours</span></div>
+      <div class="node"><div class="dot due"></div><div class="name">§ 53.052 affidavit</div><div class="date">Nov 16 · 14 days</div><span class="move">ours</span></div>
+      <div class="node"><div class="dot later"></div><div class="name">§ 53.055 serve</div><div class="date">+5 days</div></div>
+      <div class="node"><div class="dot later"></div><div class="name">§ 53.158 suit</div><div class="date">Nov 17, 2027</div></div>
+    </div>
+  </div>
+  <p class="note">A square node, the demand letter's shape: our paper, not a Chapter 53 step. Press it and the stop window shows the message as sent, to whom, by which channel, and the email id.</p>
+
+  <h3>The job's History</h3>
+  <div class="trail">
+    <div class="line"><span class="d">Oct 14</span><span class="chip blue">Notice</span><span>§ 53.056 notice for August mailed to the owner of record and Ridgeway Builders · certified · courtesy PDF emailed</span></div>
+    <div class="line lit"><span class="d">Nov 2</span><span class="chip blue">Courtesy</span><span>Courtesy notice sent by Grace · email to Dana Ortiz (Ridgeway Builders) and Cibolo Crossing Ltd, text to (512) 555-0193 · named Nov 16 as the lien's day · $4,850.00</span></div>
+    <div class="line"><span class="d">Nov 5</span><span class="chip green">Payment</span><span>$4,850.00 by card on the pay page · the notice's claim is paid · courtesy closed</span></div>
+  </div>
+
+  <h3>The Legal desk's Paper tab · under the notice</h3>
+  <div class="legal">
+    <div class="kk">Under the Oct 14 notice · 741</div>
+    <div class="r"><span class="l">Courtesy notice</span><span>sent Nov 2 by Grace · email to the GC and the owner, text to the GC · named Nov 16 · the record has each address and the email id</span></div>
+    <div class="r"><span class="l">Letter two</span><span>day 9 from delivery · due from day 10 · not sent</span></div>
+    <div class="r"><span class="l">The owner's answers</span><span>no call yet</span></div>
+    <div class="r"><span class="l">GC's written okay to pay Click direct</span><span>none</span></div>
+  </div>
+  <p class="note">The same row reaches the firm's portal, Messages (a grey legal line in Dana's thread, the reply box routed to the office) and the owner's portal card (<i>we also emailed you on Nov 2</i>). The affidavit's packet can then show the reminder went before the filing.</p>
+</section>
+
+<!-- Board 4 -->
+<section>
+  <h2>4 · The rules it keeps</h2>
+  <table class="rules">
+    <tr><th>When</th><th>The row reads</th><th>The button</th></tr>
+    <tr><td>Day 0 to 6 after the packet</td><td>day 4 · in the mail</td><td>none for this</td></tr>
+    <tr><td>Day 7 and on, nothing came</td><td>day 9 · nothing since the packet</td><td><b>Send a courtesy notice</b></td></tr>
+    <tr><td>Day 10 and on, courtesy sent, nothing came</td><td>day 16 · courtesy sent day 8 · letter two overdue</td><td><b>Send letter two</b>, the courtesy press beside it</td></tr>
+    <tr><td>The lien's day inside 7 days</td><td>file the affidavit · 5 days</td><td><b>Draft affidavit</b>; the courtesy press is gone</td></tr>
+    <tr><td>The affidavit cannot go on: the window closed, a homestead, no approved month</td><td>Courtesy held · the reason</td><td>dead, with the reason</td></tr>
+    <tr><td>Paid, the owner called, the GC's written okay, a reply in Messages, the affidavit filed</td><td>paid · owner called Nov 4 · …</td><td>gone</td></tr>
+  </table>
+  <div class="never" style="margin-top:14px">
+    <div class="card"><h4>It always says</h4><ul><li>The notice we mailed on this day stands; this is a reminder.</li><li>One number: the notice's claim, or what is still owed on it.</li><li>The lien's day, from the live affidavit step only.</li><li>Where to pay, in one line, and that we cannot take a joint check.</li><li>A person's name and number, and that a wrong bill should be answered.</li></ul></div>
+    <div class="card"><h4>It never says</h4><ul><li>"Notice of intent to lien" as if it were a statutory step. Texas has none.</li><li>Interest, fees, theft of service, or "you are in default".</li><li>"The law makes you pay us", or a joint check.</li><li>Anything about the GC's other jobs.</li><li>A lien day the gate refused. The message is held instead.</li></ul></div>
+    <div class="card"><h4>What a supply house's letter does that ours copies</h4><ul><li>Short, one page, one number, one day.</li><li>Signed by a person with a phone number.</li><li>Arrives by a channel the reader checks today.</li><li>Says plainly that paying ends it.</li></ul></div>
+  </div>
+</section>
+
+</div>
+</body>
+</html>
