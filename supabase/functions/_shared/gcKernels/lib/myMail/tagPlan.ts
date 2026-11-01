@@ -12,9 +12,11 @@
  * customer as ours, going out, under whoever sent it; a note to self, or a mail between teammates with nobody outside,
  * lands on its sender's own thread, coming in, as a teammate's mail to the box does. A forward inside the
  * conversation is read as the mail it is: the reader unwraps only a forward sent to its box. Drafts, Spam, Trash and
- * Chats are never written, and a mail from a box or the app is a copy of ours, as the reader leaves it.
+ * Chats are never written, and a mail from a box or the app is a copy of ours, as the reader leaves it. A mail in the
+ * person's Sent is theirs whatever address it went out from (an alias, a send-as), and a mail under a label the person
+ * leaves out (`users.my_mail_hidden_labels`) is never written or tied.
  */
-import { emailParty, fileKeep, rfcMessageId, type OurAddresses } from '../emailIn/emailLine.ts'
+import { emailParty, fileKeep, rfcMessageId, type EmailParty, type OurAddresses } from '../emailIn/emailLine.ts'
 import { fileLinks, type FileHost } from '../emailIn/fileLinks.ts'
 import type { EmailAddress, EmailIn } from '../emailIn/gmailMessage.ts'
 import { jobKey } from '../messages/jobKeys.ts'
@@ -37,7 +39,7 @@ export interface MyMailPerson {
   name: string
 }
 
-/** A line the database already holds for a mail, by its Message-ID. */
+/** A line the database already holds for a mail, by its Message-ID (or, for a mail with none, by its Gmail id in the person's box). */
 export interface MyMailKnownLine {
   messageId: string
   /** The job it is tied to (`messages/jobKeys.ts`'s key), or null when it sits on the person. */
@@ -47,16 +49,26 @@ export interface MyMailKnownLine {
    * tag onto another job moves their own lines with it, and leaves the office's ties where the office put them.
    */
   mine?: boolean
+  /**
+   * A line of the boxes this conversation's tag tied before, as its row records it (`email_tag_threads.tied_line_ids`),
+   * still on the job the tag put it on and as the tag stamped it: a tag onto another job moves it with the person's own
+   * lines. A line someone placed by hand since is theirs, and stays where they put it.
+   */
+  tagTie?: boolean
 }
 
 /** What the database already knows, read by the function before the plan. */
 export interface MyMailKnown {
   /** The lines the boxes or an earlier tag wrote, by the mail's trimmed Message-ID (`rfcMessageId`). */
   byMessageId: Readonly<Record<string, MyMailKnownLine>>
+  /** The person's own lines by Gmail id, for a mail with no Message-ID: an earlier tag wrote it, in their box alone. */
+  byGmailId?: Readonly<Record<string, MyMailKnownLine>>
   /** The team's addresses, lower-case, to who they are: a teammate's mail on the conversation is theirs, and ours. */
   team?: Readonly<Record<string, { userId: string; name: string }>>
   /** The boxes' own addresses and the app's sender: a mail from one is a copy of ours and is not written. */
   boxes?: readonly string[]
+  /** Gmail's ids of the labels the person leaves out (`users.my_mail_hidden_labels`, by name): a mail under one is never written or tied. */
+  hidden?: readonly string[]
 }
 
 /** A file on a written line: copied into the bucket up to 25 MB, else left in Gmail and named (`fileKeep`). */
@@ -76,8 +88,8 @@ export interface MyMailTagLink {
   host: FileHost
 }
 
-/** Why a mail of the conversation is not written. */
-export type MyMailTagSkip = 'draft' | 'spamOrTrash' | 'chat' | 'noParty' | 'twice'
+/** Why a mail of the conversation is not written: a draft, Spam or Trash, a chat, a label the person leaves out, no party, or twice. */
+export type MyMailTagSkip = 'draft' | 'spamOrTrash' | 'chat' | 'hidden' | 'noParty' | 'twice'
 
 /** The Gmail labels a tag never writes a mail from, by Gmail's ids, each with its reason, the first that a mail carries winning. */
 export const MY_MAIL_NEVER_LABELS: Readonly<Record<string, MyMailTagSkip>> = { DRAFT: 'draft', SPAM: 'spamOrTrash', TRASH: 'spamOrTrash', CHAT: 'chat' }
@@ -88,11 +100,15 @@ export type MyMailTagStep =
       /** A line already holds this mail: tie it to the job when `tie`, never write it again. */
       kind: 'tie'
       gmailId: string
-      rfcMessageId: string
+      /** The mail's Message-ID, or null when it has none and the person's own line was found by its Gmail id. */
+      rfcMessageId: string | null
       messageId: string
       /** The job the line is on now, or null. */
       onJob: string | null
-      /** True when the line sits on the person, or is the person's own on another job. False: on this job already, or the office's tie elsewhere, left there. */
+      /**
+       * True when the line sits on the person, or is the person's own or the tag's own tie (`tagTie`) on another job.
+       * False: on this job already, or the office's tie elsewhere, left there.
+       */
       tie: boolean
     }
   | {
@@ -167,6 +183,27 @@ function neverWritten(email: Pick<EmailIn, 'labels'>): MyMailTagSkip | null {
   return null
 }
 
+/** Gmail's own label on a mail the person sent: in their Sent, whatever address it went out from. */
+export const MY_MAIL_SENT_LABEL = 'SENT'
+
+/**
+ * Whose thread a mail lands on, and which way (`emailParty`). A mail in the person's Sent is theirs whatever address it
+ * went out from (an alias, a send-as): its From counts as ours and never as a box's copy, so the line lands on the first
+ * To or Cc outside, going out. With nobody outside, a mail from an address the office does not know as a person's (an
+ * alias, a box sent as) is the person's own note, on their own thread, coming in.
+ */
+function partyOf(email: EmailIn, ours: OurAddresses, isPerson: (address: string) => boolean, person: MyMailPerson): EmailParty | null {
+  if (!email.labels.includes(MY_MAIL_SENT_LABEL) || !email.from) return emailParty(email, null, ours)
+  const from = clean(email.from.address)
+  const sent: OurAddresses = {
+    isOurs: (address) => clean(address) === from || ours.isOurs(address),
+    isTheBox: (address) => clean(address) !== from && ours.isTheBox(address),
+  }
+  const party = emailParty(email, null, sent)
+  if (party?.direction === 'in' && !isPerson(from)) return { address: { name: person.name.trim() || null, address: person.address.trim() }, direction: 'in' }
+  return party
+}
+
 /**
  * The plan for tagging one conversation onto `job`, as `person`, over what the database already holds (`known`). The
  * mails keep the conversation's order; one Message-ID is planned once.
@@ -182,6 +219,11 @@ export function planTag(thread: MyMailThread, person: MyMailPerson, job: MyMailJ
     },
     isTheBox: (address) => boxes.has(clean(address)),
   }
+  const isPerson = (address: string) => {
+    const a = clean(address)
+    return a === me || team.has(a)
+  }
+  const hidden = new Set(known.hidden ?? [])
   const box = `${person.name.trim() || person.address.trim()}'s mail`
   const key = jobKey(job)
   const seen = new Set<string>()
@@ -193,25 +235,31 @@ export function planTag(thread: MyMailThread, person: MyMailPerson, job: MyMailJ
       steps.push({ kind: 'skip', gmailId: email.gmailId, why: never })
       continue
     }
+    if (email.labels.some((l) => hidden.has(l))) {
+      steps.push({ kind: 'skip', gmailId: email.gmailId, why: 'hidden' })
+      continue
+    }
     const rfc = rfcMessageId(email)
     if (rfc && seen.has(rfc)) {
       steps.push({ kind: 'skip', gmailId: email.gmailId, why: 'twice' })
       continue
     }
     if (rfc) seen.add(rfc)
-    const line = rfc ? known.byMessageId[rfc] : undefined
-    if (rfc && line) {
-      const tie = line.jobKey === null || (line.jobKey !== key && line.mine === true)
+    // By the Message-ID in any box; a mail with none by its Gmail id, in this person's box alone.
+    const line = rfc ? known.byMessageId[rfc] : known.byGmailId?.[email.gmailId]
+    if (line) {
+      const tie = line.jobKey === null || (line.jobKey !== key && (line.mine === true || line.tagTie === true))
       steps.push({ kind: 'tie', gmailId: email.gmailId, rfcMessageId: rfc, messageId: line.messageId, onJob: line.jobKey, tie })
       continue
     }
-    const party = emailParty(email, null, ours)
+    const party = partyOf(email, ours, isPerson, person)
     if (!party) {
       steps.push({ kind: 'skip', gmailId: email.gmailId, why: 'noParty' })
       continue
     }
     const from = clean(email.from?.address)
-    const whoUserId = party.direction === 'out' ? (from === me ? person.userId : (team.get(from)?.userId ?? null)) : null
+    const sent = email.labels.includes(MY_MAIL_SENT_LABEL)
+    const whoUserId = party.direction === 'out' ? (from === me || sent ? person.userId : (team.get(from)?.userId ?? null)) : null
     const sender = email.from ?? party.address
     steps.push({
       kind: 'write',

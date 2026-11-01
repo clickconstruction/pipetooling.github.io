@@ -235,15 +235,16 @@ export const ENTRIES = {
       'MyMailView',
     ],
   },
-  'lib/myMail/rows.ts': { values: ['MY_MAIL_METADATA_HEADERS', 'MY_MAIL_SNIPPET_MAX', 'isTheirs', 'myMailFold', 'myMailRow', 'readMyMail'], types: ['MyMailGmailMessage', 'MyMailRead', 'MyMailReader'] },
+  'lib/myMail/rows.ts': { values: ['MY_MAIL_METADATA_HEADERS', 'MY_MAIL_SNIPPET_MAX', 'isOwnMail', 'isTheirs', 'myMailFold', 'myMailRow', 'readMyMail'], types: ['MyMailGmailMessage', 'MyMailRead', 'MyMailReader'] },
   'lib/myMail/mailGuess.ts': { values: ['guessJob', 'subjectJobChip'], types: ['MyMailGuess', 'MyMailGuessFacts'] },
   'lib/myMail/tagPlan.ts': {
-    values: ['MY_MAIL_MAILBOX', 'MY_MAIL_NEVER_LABELS', 'planTag'],
+    values: ['MY_MAIL_MAILBOX', 'MY_MAIL_NEVER_LABELS', 'MY_MAIL_SENT_LABEL', 'planTag'],
     types: ['MyMailKnown', 'MyMailKnownLine', 'MyMailPerson', 'MyMailTagFile', 'MyMailTagLink', 'MyMailTagPlan', 'MyMailTagSkip', 'MyMailTagStep', 'MyMailThread', 'MyMailThreadRow'],
   },
   'lib/myMail/view.ts': { values: ['MY_MAIL_WORDS', 'foldedCount', 'rowsForView', 'viewRows'], types: ['MyMailViewRows'] },
   // Since PR 4 (v2.6279) also the follow, the cron's action: whose tagged conversations it reads, the window and the
-  // newest mail it keys on (v2.6289), what it does with each mail, and the tag's grey line on the thread.
+  // newest mail it keys on (v2.6289), what it does with each mail, and the tag's grey line on the thread. Since v2.6292
+  // the hidden labels by Gmail's ids, the row's record of the tag's ties, and what an untag keeps for the office.
   'lib/myMail/mineFunction.ts': {
     values: [
       'FOLLOW_ROWS_PER_RUN',
@@ -271,8 +272,11 @@ export const ENTRIES = {
       'followWindow',
       'gcProjectIsOpen',
       'gmailRefusal',
+      'isDuplicateKey',
       'isFollowRequest',
+      'isTagTie',
       'knownLines',
+      'knownOwnLines',
       'myMailAddressKey',
       'myMailBodyHtml',
       'myMailEmlPath',
@@ -281,6 +285,8 @@ export const ENTRIES = {
       'myMailFileRow',
       'myMailGuessAsks',
       'myMailGuessFacts',
+      'myMailHiddenLabelIds',
+      'myMailHiddenLabels',
       'myMailJobs',
       'myMailLineRow',
       'myMailOurDomains',
@@ -289,9 +295,11 @@ export const ENTRIES = {
       'myMailTagEventKey',
       'myMailTagEventRow',
       'myMailTagEventWords',
+      'myMailTagRecord',
       'myMailTeam',
       'neverRead',
       'newestMailAt',
+      'orphanCopies',
       'parseMyMailRequest',
       'pipelineIsOpen',
       'planFollow',
@@ -301,6 +309,7 @@ export const ENTRIES = {
       'tagRowJob',
       'tokenRefusal',
       'wantsGuess',
+      'withTies',
     ],
     types: [
       'MyMailBidRow',
@@ -318,6 +327,7 @@ export const ENTRIES = {
       'MyMailPageFacts',
       'MyMailPipelineRow',
       'MyMailProjectRow',
+      'MyMailTagRecord',
     ],
   },
 }

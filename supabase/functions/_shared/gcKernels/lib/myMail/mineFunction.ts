@@ -8,8 +8,9 @@
  * says no, the mail's HTML for the reader, which jobs are open, the facts the guess reads, the line a tagged mail writes,
  * where its files and its raw copy go in the bucket, the tag's grey line on the thread, and what an untag removes. Since
  * PR 4 also the follow, the cron's action: whose tagged conversations it reads, which (each one until 60 days after its
- * newest mail, or after its tag when that is later), and what it does with each mail of one. Pure; mirrored to the
- * edge by `scripts/edge-kernels.mjs`.
+ * newest mail, or after its tag when that is later), and what it does with each mail of one. Since v2.6292 the labels a
+ * person leaves out by Gmail's ids, the lines a tag tied as its row records them, and which lines an untag keeps for
+ * the office. Pure; mirrored to the edge by `scripts/edge-kernels.mjs`.
  */
 import { fileKeep, rfcMessageId, type EmailFileRow } from '../emailIn/emailLine.ts'
 import { base64UrlBytes, type EmailAddress, type EmailIn, type GmailMessage, type GmailPart } from '../emailIn/gmailMessage.ts'
@@ -123,7 +124,9 @@ export function fencedQuery(q: string): string {
  * The Gmail search one page of the list reads: the Inbox and the Sent box, or the one asked for; never Drafts, Spam,
  * Trash or Chats; never a label the person left out (`users.my_mail_hidden_labels`, by name); and the person's own search
  * as one group. Tagged reads only mail carrying the tag's label (`MY_MAIL_GMAIL_LABEL`, which a tag puts on every mail it
- * lands) and To tag never does, so neither page fills with mail its view hides; `viewRows` still decides what is drawn.
+ * lands), so its page never fills with mail it hides. To tag reads past the label (v2.6292): a label left behind (an
+ * untag that could not take it off, a job deleted with its tag) would hide that mail from To tag for good, and
+ * `viewRows` already hides a tagged conversation by the database's own record.
  */
 export function myMailQuery(input: { view: MyMailView; labels?: readonly MyMailLabel[]; hidden?: readonly string[]; q?: string }): string {
   const asked = input.labels && input.labels.length > 0 ? LABELS.filter((l) => input.labels!.includes(l)) : LABELS
@@ -137,7 +140,6 @@ export function myMailQuery(input: { view: MyMailView; labels?: readonly MyMailL
     parts.push(`-label:"${label}"`)
   }
   if (input.view === 'tagged') parts.push(`label:"${MY_MAIL_GMAIL_LABEL}"`)
-  if (input.view === 'toTag') parts.push(`-label:"${MY_MAIL_GMAIL_LABEL}"`)
   const own = fencedQuery(input.q ?? '')
   if (own) parts.push(own)
   return parts.join(' ')
@@ -149,6 +151,22 @@ export const MY_MAIL_READ_CHUNK = 10
 /** A message Gmail files as a draft, in Spam or Trash, or a chat: never read for the tab, never written by a tag. */
 export function neverRead(labels: readonly string[] | undefined): boolean {
   return (labels ?? []).some((l) => Object.prototype.hasOwnProperty.call(MY_MAIL_NEVER_LABELS, l))
+}
+
+/** The labels a person leaves out as `users.my_mail_hidden_labels` holds them: the names, trimmed, the empty ones dropped. */
+export function myMailHiddenLabels(raw: unknown): string[] {
+  return Array.isArray(raw) ? raw.flatMap((l) => (typeof l === 'string' && l.trim() ? [l.trim()] : [])) : []
+}
+
+/**
+ * Gmail's ids of the labels a person leaves out, from their box's labels (`users.labels.list`): each label whose name is
+ * one they named, trimmed and case-blind, the name whole. A tag and the follow skip a mail carrying one, so a mail the
+ * list never reads is never copied onto a job either. None when they named none.
+ */
+export function myMailHiddenLabelIds(labels: readonly { id: string; name?: string | null }[] | null | undefined, hidden: readonly string[]): string[] {
+  const named = new Set(hidden.map((h) => h.trim().toLowerCase()).filter((h) => h !== ''))
+  if (named.size === 0) return []
+  return [...new Set((labels ?? []).filter((l) => l.id && named.has((l.name ?? '').trim().toLowerCase())).map((l) => l.id))]
 }
 
 // ---------- how a refusal answers ----------
@@ -529,13 +547,63 @@ export interface MyMailHeldLine extends MyMailLine {
   mailbox?: string | null
 }
 
-/** `planTag`'s `known.byMessageId`: each line by its Message-ID, `mine` when this person's own box wrote it. */
-export function knownLines(lines: readonly MyMailHeldLine[], userId: string): Record<string, MyMailKnownLine> {
+/**
+ * What a conversation's `email_tag_threads` row records of the lines its tag and its follow tied (`tied_line_ids`), the
+ * job it put them on, and who it stamped as tying them (the row's `tagged_by`). An untag unties these and no others,
+ * and a tag onto another job moves them; a line someone placed by hand since is left where they put it.
+ */
+export interface MyMailTagRecord {
+  tied: readonly string[]
+  jobKey: string | null
+  taggedBy: string | null
+}
+
+/** A tag row's record of its ties, or null when there is no row. A row read before the column was pushed records none. */
+export function myMailTagRecord(row: { tied_line_ids?: readonly string[] | null; bid_id: string | null; project_id: string | null; jobs_ledger_id: string | null; tagged_by?: string | null } | null | undefined): MyMailTagRecord | null {
+  if (!row) return null
+  return { tied: [...new Set((row.tied_line_ids ?? []).filter((id) => typeof id === 'string' && id !== ''))], jobKey: jobKeyOfRow(row), taggedBy: row.tagged_by ?? null }
+}
+
+/** The record after more ties: the old ids first, each once. */
+export function withTies(record: readonly string[] | null | undefined, more: readonly string[]): string[] {
+  return [...new Set([...(record ?? []), ...more].filter((id) => typeof id === 'string' && id !== ''))]
+}
+
+/**
+ * Whether a line is still the tag's own tie: recorded on its row, not the person's own, still on the job the tag put it
+ * on, and last tied by whom the tag stamped (`tied_by`). A line someone moved, untied or tied again by hand is theirs.
+ */
+export function isTagTie(line: Pick<MyMailLine, 'id' | 'bid_id' | 'project_id' | 'jobs_ledger_id' | 'mail_user_id' | 'tied_by'>, record: MyMailTagRecord | null, userId: string): boolean {
+  if (!record || record.jobKey === null || !record.tied.includes(line.id)) return false
+  if (line.mail_user_id === userId) return false
+  return jobKeyOfRow(line) === record.jobKey && (line.tied_by ?? null) === (record.taggedBy ?? userId)
+}
+
+/**
+ * `planTag`'s `known.byMessageId`: each line by its Message-ID, `mine` when this person's own box wrote it, and
+ * `tagTie` when the conversation's row records it as the tag's own tie and it is still where the tag put it.
+ */
+export function knownLines(lines: readonly MyMailHeldLine[], userId: string, record: MyMailTagRecord | null = null): Record<string, MyMailKnownLine> {
   const out: Record<string, MyMailKnownLine> = {}
   for (const l of lines) {
     const rfc = (l.rfc_message_id ?? '').trim()
     if (!rfc || out[rfc]) continue
-    out[rfc] = { messageId: l.id, jobKey: jobKeyOfRow(l), mine: l.mail_user_id === userId && l.mailbox === MY_MAIL_MAILBOX }
+    const mine = l.mail_user_id === userId && l.mailbox === MY_MAIL_MAILBOX
+    out[rfc] = { messageId: l.id, jobKey: jobKeyOfRow(l), mine, ...(!mine && isTagTie(l, record, userId) ? { tagTie: true } : {}) }
+  }
+  return out
+}
+
+/**
+ * `planTag`'s `known.byGmailId`: the person's own lines by the mail's Gmail id, for a mail with no Message-ID, as `list`
+ * finds one. A Gmail id is one box's own, so only a line from this person's box counts.
+ */
+export function knownOwnLines(lines: readonly (MyMailLine & { gmail_id?: string | null; mailbox?: string | null })[], userId: string): Record<string, MyMailKnownLine> {
+  const out: Record<string, MyMailKnownLine> = {}
+  for (const l of lines) {
+    const id = (l.gmail_id ?? '').trim()
+    if (!id || out[id] || l.mail_user_id !== userId) continue
+    out[id] = { messageId: l.id, jobKey: jobKeyOfRow(l), mine: true }
   }
   return out
 }
@@ -648,17 +716,40 @@ export function myMailTagEventRow(input: {
 // ---------- what an untag removes ----------
 
 /**
- * What an untag does: every line the person's own box wrote for the conversation goes, with its files and its raw copy;
- * a line the boxes wrote stays, and is untied only when the tag tied it (on the tag's job, last tied by this person).
+ * What an untag does. Every line the person's own box wrote for the conversation goes, with its files and its raw
+ * copy, but for one the office keeps something on (`kept`: a promise written down on it, `message_promises`, or a
+ * highlight, `message_highlights`, which would go with it), which stays with its files. A line the boxes wrote stays,
+ * and is untied only when the conversation's row records it as the tag's own tie (`record`, `isTagTie`): never a line
+ * the person or the office tied by hand, whoever tied it.
  */
-export function planUntag(input: { userId: string; tagJobKey: string | null; own: readonly Pick<MyMailLine, 'id'>[]; box: readonly MyMailLine[] }): { remove: string[]; untie: string[] } {
-  const remove = [...new Set(input.own.map((l) => l.id))]
-  const gone = new Set(remove)
-  const untie =
-    input.tagJobKey === null
-      ? []
-      : input.box.filter((l) => !gone.has(l.id) && !l.mail_user_id && l.tied_by === input.userId && jobKeyOfRow(l) === input.tagJobKey).map((l) => l.id)
-  return { remove, untie: [...new Set(untie)] }
+export function planUntag(input: {
+  userId: string
+  record: MyMailTagRecord | null
+  own: readonly Pick<MyMailLine, 'id'>[]
+  kept?: readonly string[]
+  /** The lines the record names, as read now. */
+  tied?: readonly MyMailLine[]
+}): { remove: string[]; keep: string[]; untie: string[] } {
+  const kept = new Set(input.kept ?? [])
+  const own = [...new Set(input.own.map((l) => l.id))]
+  const remove = own.filter((id) => !kept.has(id))
+  const keep = own.filter((id) => kept.has(id))
+  const mine = new Set(own)
+  const untie = (input.tied ?? []).filter((l) => !mine.has(l.id) && isTagTie(l, input.record, input.userId)).map((l) => l.id)
+  return { remove, keep, untie: [...new Set(untie)] }
+}
+
+/** Postgres's unique violation (`23505`): a row the insert would double is already there, as `ON CONFLICT DO NOTHING` would leave it. */
+export const isDuplicateKey = (code: string | null | undefined): boolean => code === '23505'
+
+/**
+ * The copies a write made that no line names, once `email_write_line` stood back on a line written first (another
+ * reader's, another person's, or this person's own a moment ago): the paths uploaded, less every path a
+ * `message_attachments` row holds. Those go, so the bucket keeps no file no line shows.
+ */
+export function orphanCopies(uploaded: readonly string[], named: readonly (string | null | undefined)[]): string[] {
+  const held = new Set(named.filter((p): p is string => typeof p === 'string' && p !== ''))
+  return [...new Set(uploaded.filter((p) => p !== '' && !held.has(p)))]
 }
 
 /**
@@ -747,6 +838,8 @@ export interface MyMailFollowUserRow {
   is_walk_tester?: boolean | null
   my_mail_on?: boolean | null
   archived_at?: string | null
+  /** The labels they leave out, by name (`myMailHiddenLabels` reads them): the follow never copies a mail under one. */
+  my_mail_hidden_labels?: unknown
 }
 
 /** A person whose tagged conversations the follow reads, as that person: their id, their name and their own address. */
@@ -812,18 +905,21 @@ function neverWhy(labels: readonly string[]): MyMailTagSkip | null {
 /**
  * The follow's plan for one tagged conversation, read by its headers (`format=metadata`), over the lines that hold its
  * mail: by Message-ID in any box, else by Gmail id in this person's box, as `list` finds them. A draft, a mail in Spam
- * or Trash and a chat are left out, as a tag leaves them. A mail a line holds is left where its line is, but for a box's
- * line that sits on no job and that no person has tied or untied (`tied_by` null), which is tied to the tag's job: the
- * follow never moves a line a person placed. Every other mail goes through `planTag` as the tag plans one, so a copy of
- * ours (from a box or the app's sender) and a Message-ID twice are left as the tag leaves them, never read whole run
- * after run, and the rest are read whole and written. In the conversation's order. Pure.
+ * or Trash, a chat and a mail under a label the person leaves out (`known.hidden`, Gmail's ids) are left out, as a tag
+ * leaves them. A mail a line holds is left where its line is, but for a box's line that sits on no job and that no
+ * person has tied or untied (`tied_by` null), which is tied to the tag's job: the follow never moves a line a person
+ * placed. Every other mail goes through `planTag` as the tag plans one, so a copy of ours (from a box or the app's
+ * sender) and a Message-ID twice are left as the tag leaves them, never read whole run after run, and the rest are read
+ * whole and written. In the conversation's order. Pure.
  */
 export function planFollow(
   thread: MyMailThread,
   person: MyMailPerson,
   job: MyMailJobChip,
-  known: { lines: readonly MyMailFollowLine[]; team?: MyMailKnown['team']; boxes?: MyMailKnown['boxes'] },
+  known: { lines: readonly MyMailFollowLine[]; team?: MyMailKnown['team']; boxes?: MyMailKnown['boxes']; hidden?: MyMailKnown['hidden'] },
 ): MyMailFollowStep[] {
+  const hidden = new Set(known.hidden ?? [])
+  const leftOut = (labels: readonly string[]): MyMailTagSkip | null => neverWhy(labels) ?? (labels.some((l) => hidden.has(l)) ? 'hidden' : null)
   const byRfc = new Map<string, MyMailFollowLine>()
   const byId = new Map<string, MyMailFollowLine>()
   for (const l of known.lines) {
@@ -834,7 +930,7 @@ export function planFollow(
   const lineOf = new Map<string, MyMailFollowLine>()
   const free: EmailIn[] = []
   for (const email of thread.messages) {
-    if (neverWhy(email.labels)) continue
+    if (leftOut(email.labels)) continue
     const rfc = rfcMessageId(email)
     const line = rfc ? byRfc.get(rfc) : byId.get(email.gmailId)
     if (line) lineOf.set(email.gmailId, line)
@@ -843,7 +939,7 @@ export function planFollow(
   const planned = new Map(planTag({ threadId: thread.threadId, messages: free }, person, job, { byMessageId: {}, team: known.team, boxes: known.boxes }).steps.map((s) => [s.gmailId, s]))
   const seen = new Set<string>()
   return thread.messages.map((email): MyMailFollowStep => {
-    const never = neverWhy(email.labels)
+    const never = leftOut(email.labels)
     if (never) return { kind: 'skip', gmailId: email.gmailId, why: never }
     const line = lineOf.get(email.gmailId)
     if (!line) {
