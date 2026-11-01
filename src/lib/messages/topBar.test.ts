@@ -29,7 +29,7 @@ describe('the one-row header (punch list #151 PR 2)', () => {
   })
 
   it('says its tips in plain words', () => {
-    for (const words of [TOP_BAR_WORDS.pickerTip, TOP_BAR_WORDS.search, TOP_BAR_WORDS.searchClose, TOP_BAR_WORDS.weekTip, TOP_BAR_WORDS.weekCloseTip]) {
+    for (const words of [TOP_BAR_WORDS.pickerTip, TOP_BAR_WORDS.search, TOP_BAR_WORDS.searchClose, TOP_BAR_WORDS.weekTip, TOP_BAR_WORDS.weekCloseTip, TOP_BAR_WORDS.followUpTip, TOP_BAR_WORDS.myMailTip]) {
       expect(plainWordsFailures(words)).toEqual([])
     }
   })
