@@ -1724,7 +1724,7 @@ user_id = auth.uid()
 2. Frontend calls `login-as-user` Edge Function with `redirectTo`:
    - **Settings**: `http://localhost:5173/dashboard` (for local dev)
    - **People → Users**: `https://pipetooling.com/dashboard` (for production)
-3. Edge Function generates magic link for target user
+3. Edge Function records the imitation in `user_imitations` (v2.6290: it opens none it cannot record, and My email refuses the session it opens), then generates magic link for target user
 4. Frontend stores original session in `localStorage` (key: `'impersonation_original'`) so it survives reloads
 5. Browser redirects to magic link URL with tokens in hash
 6. AuthHandler component processes tokens and sets session

@@ -169,11 +169,13 @@ export type MyMailRequest = MyMailListRequest | MyMailOpenRequest | MyMailTagReq
 
 /**
  * Why the function refused: not signed in (`signIn`); a training account, a sample account or a digital twin
- * (`readOnly`); not on the office team (`officeOnly`); the person's switch is off (`off`); an address off the company's
- * Workspace, which Google refuses at its token exchange (`offWorkspace`); Google's own failure (`google`); a request the
- * function cannot read (`badRequest`); a mail, a conversation or a job that is not there (`notFound`).
+ * (`readOnly`); not on the office team (`officeOnly`); the person's switch is off (`off`); a session Imitate or View as
+ * opened, whose JWT is the person's own (`imitated`, v2.6290, `myMail/imitation.ts`); an address the app will not read
+ * for them: off the company's Workspace, which Google refuses at its token exchange, none at all, or not the one they
+ * sign in with (`offWorkspace`); Google's own failure (`google`); a request the function cannot read (`badRequest`); a
+ * mail, a conversation or a job that is not there (`notFound`).
  */
-export type MyMailRefusalError = 'signIn' | 'readOnly' | 'officeOnly' | 'off' | 'offWorkspace' | 'google' | 'badRequest' | 'notFound'
+export type MyMailRefusalError = 'signIn' | 'readOnly' | 'officeOnly' | 'off' | 'imitated' | 'offWorkspace' | 'google' | 'badRequest' | 'notFound'
 
 /** A refusal: its reason and the office's sentence for it, which the tab shows as it comes. */
 export interface MyMailRefusal {
@@ -188,6 +190,7 @@ export const MY_MAIL_REFUSAL_WORDS: Readonly<Record<MyMailRefusalError, string>>
   readOnly: 'A training, sample or robot account cannot read mail here.',
   officeOnly: 'My email is for the office team.',
   off: 'Your mail is not shown here. Turn on Show my mail on the My email tab in Settings, under Your account.',
+  imitated: 'This session was opened with Imitate or View as. Sign in as yourself to read your own mail here.',
   offWorkspace: 'Google will not read this address for the app: it is not on the company Workspace.',
   google: 'Google did not answer the app. Try again in a minute.',
   badRequest: 'The app asked for something it cannot do. Reload the page and try again.',
