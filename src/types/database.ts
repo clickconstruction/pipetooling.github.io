@@ -24480,6 +24480,7 @@ export type Database = {
           gmail_thread_id: string | null
           id: string
           introduces_user_id: string | null
+          invitation: Json | null
           jobs_ledger_id: string | null
           mailbox: string | null
           office_only: boolean
@@ -24519,6 +24520,7 @@ export type Database = {
           gmail_thread_id?: string | null
           id?: string
           introduces_user_id?: string | null
+          invitation?: Json | null
           jobs_ledger_id?: string | null
           mailbox?: string | null
           office_only?: boolean
@@ -24558,6 +24560,7 @@ export type Database = {
           gmail_thread_id?: string | null
           id?: string
           introduces_user_id?: string | null
+          invitation?: Json | null
           jobs_ledger_id?: string | null
           mailbox?: string | null
           office_only?: boolean
@@ -35060,6 +35063,20 @@ export type Database = {
         }
         Returns: string
       }
+      adopt_logs_both_bids: {
+        Args: {
+          p_moved: string
+          p_new_version_id: string
+          p_source_bid_id: string
+          p_target_bid_id: string
+          p_version_name: string
+        }
+        Returns: number
+      }
+      answer_invitation: {
+        Args: { p_answer: string; p_message_id: string; p_reason?: string }
+        Returns: undefined
+      }
       app_today: { Args: never; Returns: string }
       apply_agreed_write_down_to_billed_invoice: {
         Args: { p_invoice_id: string; p_new_amount: number; p_note: string }
@@ -40346,6 +40363,17 @@ export type Database = {
           p_rate_set: boolean
           p_revenue_usd: number
           p_uncosted_usd: number
+        }
+        Returns: Json
+      }
+      start_bid_from_message: {
+        Args: {
+          p_customer_id: string
+          p_due_date?: string
+          p_due_time?: string
+          p_links?: Json
+          p_message_id: string
+          p_project_name: string
         }
         Returns: Json
       }
