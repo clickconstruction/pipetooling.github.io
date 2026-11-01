@@ -1,8 +1,8 @@
 ---
 name: "Every photo uploaded, one list: a Photos tab on the Documents page"
 number: 232
-group: gated
-status: proposed 2026-11-01 from the owner's ask of the same day; the sources and the Documents screens read in the code the same morning; nothing built
+group: close
+status: proposed 2026-11-01 and answered the same day, all five calls as recommended, with the owner's go to build it all and test along the way · PR 1 the view and the kernel (migration 20261101084330, #6694) · PR 2 the Photos tab (#6697) · PR 3 the job window's line (#6698, walked on the dev server) · left: the merges, the migration push, the live walk on clicktooling.com
 mockup: to-dos/all-photos-view/mockup.html
 summary: >
   Photos reach the app from four doors, each with its own table and bucket, and the only way
@@ -16,10 +16,10 @@ summary: >
   report, the box, the thread and the job. The job window's Documents tab gains a one-line door
   to the strip it already has. Photos dropped straight into a Drive folder have no row of ours
   and stay out of the list at first; the job's own folder is the door to them.
-next: the owner's five calls under The owner's calls; then PR 1, the view and the kernel, in a session of its own
+next: merge PR 1 and push its migration before PR 2 deploys, walk the tab live on the ZZ Test jobs, then delete the folder
 size: S · M · XS as a train of three PRs, one migration (a view, no table)
-blocker: the owner's calls; #229's PRs 1 to 6 touch the report forms and readers, never the Documents page, so the two trains do not meet
-opinion: build the recommended shape; the one call worth the owner's eye is whether the primary's list follows the ledger's scope, since the report photos' own gate is wider today
+blocker: none; #229's PRs 1 to 6 touch the report forms and readers, never the Documents page, so the two trains do not meet
+opinion: built as recommended; the report photos' own gate still lets a primary read every job's rows outside this list, a one-line migration if the owner wants it narrowed
 ---
 
 # Every photo uploaded, one list (#232)
@@ -169,6 +169,9 @@ kept rows, has no row of ours. Three ways to show it were weighed:
 The third is recommended. The list is for photos the app took in; the strip is for the folder.
 
 ## The owner's calls
+
+Answered 2026-11-01, through the parent session: **take all recommended**, and in this session the same day, *build it all, testing along the way, and let me know when it is live*. So: the Photos tab on the Documents page across every job plus the one-line door on the job window's Documents tab (1); one `security_invoker` view uniting the four photo tables, newest first (2); texts' and email pictures in the list for the office and the estimator (3); a primary's and a superintendent's list follows the jobs ledger's scope (4); Drive-only photos left out at first with the job's strip as the door (5). Still for the owner's eye, unbuilt: the report photos' own gate (`can_report_stage_progress`) names a primary and a superintendent on every job, so outside this list a primary may read any job's report and checklist photo rows; narrowing it is a one-line migration apart from this card.
+
 
 1. **Where the list lives.** Recommended: a Photos tab on the Documents page across every job,
    and a one-line door on the job window's Documents tab to the strip it has. The alternative, a
