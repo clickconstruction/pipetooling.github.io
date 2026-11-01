@@ -145,6 +145,7 @@ export const MY_MAIL_REFUSAL_STATUS: Readonly<Record<MyMailRefusalError, number>
   readOnly: 403,
   officeOnly: 403,
   off: 403,
+  imitated: 403,
   offWorkspace: 403,
   badRequest: 400,
   notFound: 404,

@@ -239,7 +239,8 @@ helpers) may message a customer from Job Mode (`canMessageCustomersFromJobMode`)
 reads through the kinds' doors; a tech reads a contact and its lines only on a job they were dispatched to or clocked
 on, Monday of last week through Sunday (`messages_tech_can_read`, the `messages_tech_read` and `contacts_tech_read`
 policies, migration `20261013190000`), never a phone number or an address, and nothing marked `office_only`. Sample
-accounts and digital twins are hidden from every picker (`activeUsersQuery`'s predicates). The role matrices are
+accounts and digital twins are hidden from every picker (`activeUsersQuery`'s predicates), and My email reads a
+person's own box only in their own session, never in one Imitate or View as opened (v2.6290, `user_imitations`). The role matrices are
 `docs/ACCESS_CONTROL.md`; the page sections are `docs/PROJECT_DOCUMENTATION.md`.
 
 ## The switches, the settings and the crons

@@ -6,6 +6,7 @@
  * the real `_shared/googleToken.ts` with a key made for the run; Google answers from the fake behind `fetch`.
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MY_MAIL_NOT_SIGN_IN_WORDS } from './imitation'
 import { MY_MAIL_REFUSAL_WORDS } from './contract'
 import { FakeDb, FakeGoogle, fakeServiceAccountJson, type FakeMail, type Row } from './gmailMineFakes'
 
@@ -215,6 +216,78 @@ describe('gmail-mine: the caller', () => {
     expect(await post('trainee-jwt', { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } })).toMatchObject({ status: 403, body: { error: 'readOnly' } })
     expect(await post('trainee-jwt', { action: 'untag', threadId: 't-elm' })).toMatchObject({ status: 403, body: { error: 'readOnly' } })
     expect(google.subs).toEqual(['tam@clickplumbing.example'])
+  })
+})
+
+describe('gmail-mine: a session Imitate or View as opened, and the address it reads', () => {
+  // A magic-link sign-in at 16:10:06 on 2026-11-01, as GoTrue stamps it in the token's amr, in seconds.
+  const SIGNED_IN = Math.floor(Date.parse('2026-11-01T16:10:06.000Z') / 1000)
+  const at = (seconds: number) => new Date(seconds * 1000).toISOString()
+  const part = (o: unknown) => btoa(JSON.stringify(o)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
+  /** A session's token shaped as GoTrue signs one, refreshed after the sign-in, its amr saying how it signed in. */
+  const session = (userId: string, amr: unknown): string => {
+    const token = `${part({ alg: 'HS256', typ: 'JWT' })}.${part({ sub: userId, role: 'authenticated', aal: 'aal1', amr, iat: SIGNED_IN + 600, exp: SIGNED_IN + 36600 })}.signature`
+    db.sessions[token] = userId
+    return token
+  }
+  /** An imitation login-as-user recorded: Rosa's by default. */
+  const imitated = (target: string, createdAt: string, operator = 'u-rosa') => db.rows('user_imitations').push({ id: `imitation-${db.nextId++}`, operator_id: operator, target_id: target, created_at: createdAt })
+
+  it('refuses a magic-link session that follows an imitation of the person, on every action, before Google is asked for a token', async () => {
+    imitated('u-marisol', at(SIGNED_IN - 20))
+    for (const method of ['otp', 'magiclink']) {
+      expect(await post(session('u-marisol', [{ method, timestamp: SIGNED_IN }]), { action: 'list', view: 'toTag' }), method).toMatchObject({
+        status: 403,
+        body: { ok: false, error: 'imitated', words: MY_MAIL_REFUSAL_WORDS.imitated },
+      })
+    }
+    const token = session('u-marisol', [{ method: 'otp', timestamp: SIGNED_IN }])
+    for (const body of [{ action: 'open', gmailId: 'g-ana-1' }, { action: 'tag', threadId: 't-elm', job: { kind: 'pipeline', id: ELM } }, { action: 'untag', threadId: 't-elm' }]) {
+      expect(await post(token, body), body.action).toMatchObject({ status: 403, body: { error: 'imitated' } })
+    }
+    expect(google.subs).toEqual([])
+    expect(google.calls).toEqual([])
+    expect(writes()).toEqual([])
+    // The record is read as the service role: nobody signed in reads it but a dev.
+    expect(db.calls).toContain('admin select user_imitations')
+    expect(db.calls).not.toContain('caller select user_imitations')
+    expect(logged.some((l) => l.includes('"event":"gmail_mine_refused"') && l.includes('"error":"imitated"'))).toBe(true)
+  })
+
+  it('lets the same magic-link session through when no imitation of the person is in the window', async () => {
+    imitated('u-marisol', at(SIGNED_IN - 86400 - 60)) // more than a day before the sign-in
+    imitated('u-marisol', at(SIGNED_IN + 3600)) // an hour after it, so not the one that opened it
+    imitated('u-rosa', at(SIGNED_IN - 20), 'u-dev') // someone else's
+    const res = await post(session('u-marisol', [{ method: 'otp', timestamp: SIGNED_IN }]), { action: 'list', view: 'toTag' })
+    expect(res).toMatchObject({ status: 200, body: { ok: true, address: MARISOL } })
+    expect(google.subs).toEqual([MARISOL])
+  })
+
+  it('lets a password session through with an imitation of the person on record, and never reads the record for it', async () => {
+    imitated('u-marisol', at(SIGNED_IN - 20))
+    const res = await post(session('u-marisol', [{ method: 'password', timestamp: SIGNED_IN }]), { action: 'list', view: 'toTag' })
+    expect(res).toMatchObject({ status: 200, body: { ok: true, address: MARISOL } })
+    expect(db.calls.some((c) => c.includes('user_imitations'))).toBe(false)
+  })
+
+  it('refuses when the record cannot be read, and logs why', async () => {
+    db.refuse['admin select user_imitations'] = 'relation "public.user_imitations" does not exist'
+    const res = await post(session('u-marisol', [{ method: 'otp', timestamp: SIGNED_IN }]), { action: 'list', view: 'toTag' })
+    expect(res).toMatchObject({ status: 403, body: { ok: false, error: 'imitated', words: MY_MAIL_REFUSAL_WORDS.imitated } })
+    expect(google.subs).toEqual([])
+    expect(logged.some((l) => l.includes('"event":"gmail_mine_imitations_unread"'))).toBe(true)
+  })
+
+  it('reads only the address the person signs in with: a users.email that is not it is refused before Google', async () => {
+    db.authEmails['u-marisol'] = 'marisol.vega@clickplumbing.example'
+    expect(await post('marisol-jwt', { action: 'list', view: 'toTag' })).toMatchObject({ status: 403, body: { ok: false, error: 'offWorkspace', words: MY_MAIL_NOT_SIGN_IN_WORDS } })
+    db.authEmails['u-marisol'] = null
+    expect(await post('marisol-jwt', { action: 'list' })).toMatchObject({ status: 403, body: { error: 'offWorkspace', words: MY_MAIL_NOT_SIGN_IN_WORDS } })
+    expect(google.subs).toEqual([])
+    // The same address in another case, with a space around it, is the same address.
+    db.authEmails['u-marisol'] = '  Marisol@ClickPlumbing.example '
+    expect(await post('marisol-jwt', { action: 'list', view: 'toTag' })).toMatchObject({ status: 200, body: { ok: true, address: MARISOL } })
+    expect(google.subs).toEqual([MARISOL])
   })
 })
 

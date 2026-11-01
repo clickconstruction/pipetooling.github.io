@@ -29,6 +29,7 @@ Press **Follow up** to go back to everyone waiting on us.
 - The tab never replies, archives or marks a mail read.
 - Nothing counts here, and nothing nags you.
 - Only you see your tab. Nobody on the team reads your mail through the app.
+- A session started with **Imitate** or **View as…** never shows your mail.
 
 ## Pick what to see
 

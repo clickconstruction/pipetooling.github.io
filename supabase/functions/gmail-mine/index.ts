@@ -78,6 +78,7 @@ import {
   type MyMailUntagOk,
   type MyMailUntagRequest,
 } from '../_shared/gcKernels/lib/myMail/contract.ts'
+import { MY_MAIL_NOT_SIGN_IN_WORDS, imitationsSince, isSignInAddress, openedByImitation, sessionLinkAt } from '../_shared/gcKernels/lib/myMail/imitation.ts'
 import { guessJob } from '../_shared/gcKernels/lib/myMail/mailGuess.ts'
 import { MY_MAIL_METADATA_HEADERS, readMyMail, type MyMailGmailMessage, type MyMailRead, type MyMailReader } from '../_shared/gcKernels/lib/myMail/rows.ts'
 import { MY_MAIL_MAILBOX, planTag } from '../_shared/gcKernels/lib/myMail/tagPlan.ts'
@@ -752,6 +753,17 @@ serve(async (req) => {
     if ((ask.action === 'tag' || ask.action === 'untag') && who.read_only === true) return refuse(myMailRefusal('readOnly'), MY_MAIL_REFUSAL_STATUS.readOnly, action)
     const email = String(who.email ?? '').trim()
     if (!myMailAddressKey(email)) return refuse(myMailRefusal('offWorkspace', 'Your account has no email address for Google to read.'), MY_MAIL_REFUSAL_STATUS.offWorkspace, action)
+    // The address they sign in with and no other, so a users.email changed by hand never points the read at another box.
+    if (!isSignInAddress(email, u.user.email)) return refuse(myMailRefusal('offWorkspace', MY_MAIL_NOT_SIGN_IN_WORDS), MY_MAIL_REFUSAL_STATUS.offWorkspace, action)
+    // Never a session Imitate or View as opened (v2.6290): its JWT is the person's own, so nothing above tells it apart.
+    // login-as-user records each imitation before it hands out the link, and a magic-link sign-in that follows an
+    // imitation of this person is refused (`myMail/imitation.ts`). A read of the record that fails refuses too.
+    const linkAt = sessionLinkAt((req.headers.get('Authorization') ?? '').replace(/^Bearer\s+/i, ''))
+    if (linkAt !== null) {
+      const { data: imitations, error: imitationsError } = await admin.from('user_imitations').select('created_at').eq('target_id', who.id).gte('created_at', imitationsSince(linkAt))
+      if (imitationsError) console.warn(JSON.stringify({ event: 'gmail_mine_imitations_unread', user: who.id, reason: String(imitationsError.message).slice(0, 300) }))
+      if (imitationsError || openedByImitation(linkAt, imitations ?? [])) return refuse(myMailRefusal('imitated'), MY_MAIL_REFUSAL_STATUS.imitated, action)
+    }
 
     // The person's own address and no other: the delegation reads as them, and refuses an address off the Workspace.
     let token: string
