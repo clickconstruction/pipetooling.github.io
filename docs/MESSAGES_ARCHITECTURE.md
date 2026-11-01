@@ -183,7 +183,8 @@ seat holder on a phone, the first press opens a sheet with the two ways, Quo's o
 **Email out** is `messages-email` from the reply box to one of the person's addresses, a plain email since v2.6038 (`buildPlainMessagesEmail`: the words as typed with the greeting the box pre-types, the signature kept on Settings → Your account with two lines of the person's own, nothing after it; the From the company's name on `EMAIL_FROM`, the Reply-To the box); the GC senders (`gc-trade-email`,
 `gc-customer-email`, `gc-architect-email`) and the notify and send functions already keep every copy in
 `sent_documents`, which the thread reads back as lines. **Email in** is `gmail-sync` (cut 6): the bids@ reader, under a
-service account's delegation, every minute (v2.5719) while **Read bids@** is on (`gmail_sync_on_v1`, `gmail_sync_state`);
+service account's delegation, every minute (v2.5719) while **Read bids@** is on (`gmail_sync_on_v1`, `gmail_sync_state`),
+and since v2.6275 (punch list #230) `gmail-mine`, which reads a person's own Inbox and Sent live for the My email tab under the same delegation and writes a Gmail conversation's lines (`mailbox` `mine`, the `.eml` beside each) only when they tag it onto a job;
 each email lands in its sender's thread with its files as `message_attachments` (a copy one of us forwards, on its first sender's, with the forwarder's note as a team note and the job from the forwarded mail's own subject, not the forward's: `emailIn/forwarded.ts`, taught since v2.6257 by the guide *tag an email onto a job from Gmail*), and a file that reads as a trade
 partner's paper is offered under its line (`PaperOffers.tsx`) until someone answers it. A teammate's mail lands too
 since v2.5722: on their Our team thread, or, copied to the box on a mail to a customer, on the customer's thread as
@@ -265,7 +266,7 @@ The reads and the one write of each card are a pair of files, `<card>.ts` (pure)
 
 ## The edge, and the copy of the kernels
 
-The functions of the system: `quo-webhook`, `quo-send`, `quo-config` (v2.5718, the key in Vault and Quo's lists), `gmail-sync`, `messages-email`, `messages-notify`,
+The functions of the system: `quo-webhook`, `quo-send`, `quo-config` (v2.5718, the key in Vault and Quo's lists), `gmail-sync`, `gmail-mine` (v2.6275, the My email tab's), `messages-email`, `messages-notify`,
 `messages-nudge-dispatch`, `photo-save`, `drive-link`, `customer-portal`, `gc-trade-portal`, since v2.5705 `get-estimate-for-customer` and `accept-estimate` for the estimate's event lines, since v2.5934 `job-rating` for the rating's, with `dev-login` for the
 test recipe below. Each has its section in `docs/EDGE_FUNCTIONS.md`, and each is deployed by hand after its PR merges
 (`supabase functions deploy <name>`; `npm run check:edge-drift` says what is behind). A function cannot import
