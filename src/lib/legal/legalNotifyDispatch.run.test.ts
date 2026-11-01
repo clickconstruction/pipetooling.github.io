@@ -7,6 +7,7 @@
  */
 import { beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { LEGAL_NOTIFY_MAX_TRIES } from './legalNotifyLedger'
+import { APP_CALENDAR_TZ } from '../../utils/dateUtils'
 
 type Handler = (req: Request) => Promise<Response>
 type Row = Record<string, unknown>
@@ -191,7 +192,7 @@ describe('legal-notify-dispatch · the now lane per person (v2.4662)', () => {
 /** v2.6283 (punch list #233 PR 4): the digest reads each person's own week and leaves out what the office held back or undid. */
 describe('legal-notify-dispatch · the digest lane (v2.6283)', () => {
   const ago = (days: number) => new Date(Date.now() - days * 86_400_000).toISOString()
-  const todayWeekday = ({ Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 } as Record<string, number>)[new Intl.DateTimeFormat('en-US', { timeZone: 'America/Chicago', weekday: 'short' }).format(new Date())] ?? 1
+  const todayWeekday = ({ Mon: 1, Tue: 2, Wed: 3, Thu: 4, Fri: 5, Sat: 6, Sun: 7 } as Record<string, number>)[new Intl.DateTimeFormat('en-US', { timeZone: APP_CALENDAR_TZ, weekday: 'short' }).format(new Date())] ?? 1
   const line = (id: string, trigger: string, payload: Row, extra: Row = {}): Row => event(id, { trigger, payload: { payer: 'Sample Contracting', ...payload }, created_at: ago(3), sent_now_at: ago(3), ...extra })
 
   beforeEach(() => {
