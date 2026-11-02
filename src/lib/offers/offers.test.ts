@@ -90,10 +90,10 @@ describe('withAnsweredHolds: a review offer on a job answered already', () => {
 
 // v2.6385: a press refused with the flow's `stepUnknown` code names the step, the person and the door.
 describe('offerRefusalWords: a press on a step the flow does not have', () => {
-  const row = { step: 'Booked', who: 'Gayle Hester' }
+  const row = { step: 'Booked', who: 'Dana Whitfield' }
   it('turns the bare code into the step, the person and the door, in plain words', () => {
     const words = offerRefusalWords('Failed to stop the reminders: stepUnknown', row)
-    expect(words).toBe('The step Booked is not on Gayle Hester’s flow, so there is nothing to stop or hold. Put this text away with Not this one.')
+    expect(words).toBe('The step Booked is not on Dana Whitfield’s flow, so there is nothing to stop or hold. Put this text away with Not this one.')
     expect(plainWordsFailures(words)).toEqual([])
   })
   it('leaves every other failure its own words', () => {

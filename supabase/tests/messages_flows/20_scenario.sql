@@ -31,7 +31,7 @@ INSERT INTO public.customers (id, name, master_user_id) VALUES
 -- A residential customer's own contact (v2.6385): kind customer, as contact_find_or_make writes every customer's, the
 -- customers row saying residential, so the residential flow's steps are theirs too.
 INSERT INTO public.customers (id, name, master_user_id, customer_type) VALUES
-  ('00000000-0000-0000-0000-0000000006c2', 'Flows Gayle Hester', '00000000-0000-0000-0000-0000000006d1', 'residential');
+  ('00000000-0000-0000-0000-0000000006c2', 'Flows Dana Whitfield', '00000000-0000-0000-0000-0000000006d1', 'residential');
 INSERT INTO public.contacts (id, kind, customer_id) VALUES ('00000000-0000-0000-0000-000000006006', 'customer', '00000000-0000-0000-0000-0000000006c2');
 INSERT INTO public.projects (id, name, customer_id) VALUES
   ('00000000-0000-0000-0000-0000000006f1', 'Flows Clinic', '00000000-0000-0000-0000-0000000006c1');
