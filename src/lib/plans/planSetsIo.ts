@@ -43,10 +43,10 @@ export interface JobPlansIo {
 const PART_COLS = 'id, development_id, job_id, name, position, current_set_id, current_set_by, current_set_at, created_by, created_at, updated_at'
 const SET_COLS = 'id, part_id, name, kind, source, dated, came_at, memo, link, replaces_set_id, marks_up_set_id, job_id, file_name, file_size, file_count, checked_at, check_note, created_by, created_at, updated_at'
 
-function taken<T>(r: { data: T | null; error: { message: string } | null }, what: string): T {
+function taken<T>(r: { data: T; error: { message: string } | null }, what: string): NonNullable<T> {
   if (r.error) throw r.error
   if (r.data == null) throw new Error(`Could not ${what}.`)
-  return r.data
+  return r.data as NonNullable<T>
 }
 
 export function supabaseJobPlansIo(): JobPlansIo {
@@ -91,7 +91,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
       const made = taken(await supabase.from('plan_parts').insert(row).select(PART_COLS).single(), 'make the part')
       const named = await supabase.from('jobs_ledger').update({ plan_part_id: made.id }).eq('id', jobId)
       if (named.error) throw named.error
-      return made as PlanPartRow
+      return made as unknown as PlanPartRow
     },
     async pickPart(jobId, partId) {
       const r = await supabase.from('jobs_ledger').update({ plan_part_id: partId }).eq('id', jobId)
@@ -122,7 +122,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
         const r = await supabase.from('plan_parts').update({ current_set_id: made.id, current_set_by: userId, current_set_at: new Date().toISOString() }).eq('id', partId)
         if (r.error) throw r.error
       }
-      return made as PlanSetRow
+      return made as unknown as PlanSetRow
     },
     async makeCurrent(partId, setId, userId) {
       const r = await supabase.from('plan_parts').update({ current_set_id: setId, current_set_by: userId, current_set_at: new Date().toISOString() }).eq('id', partId)
