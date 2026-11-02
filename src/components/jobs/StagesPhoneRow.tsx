@@ -4,6 +4,8 @@ import { useLongPress } from '../../hooks/useLongPress'
 import { classifySwipe } from '../../lib/people/usersTabPhone'
 import type { JobNextChip, JobNextLine, JobNextTone } from '../../lib/jobs/jobNextLine'
 import { renderStagesJobHcpChip } from './jobsStagesRowShared'
+import JobKindChip from './JobKindChip'
+import { jobKindOfRow } from '../../lib/jobs/jobKind'
 import { Link } from 'react-router-dom'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 
@@ -187,6 +189,8 @@ export function StagesPhoneRow({
               <span style={{ fontWeight: 700, fontSize: '0.9375rem', color: 'var(--text-strong)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{title}</span>
             </div>
             <div style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', display: 'flex', alignItems: 'center', gap: '0.35rem', minWidth: 0 }}>
+              {/* The job's kind (punch list #238): on the second line, so the first keeps the job's name. */}
+              <JobKindChip read={jobKindOfRow(job)} size="sm" style={{ flexShrink: 0 }} />
               {developmentName && developmentId ? (
                 // The development's house line (v2.6204): a door to its page, as the desk row's is. It is marked
                 // as a chip so the row's tap stays the job's; the name gives way to the next line when both are long.

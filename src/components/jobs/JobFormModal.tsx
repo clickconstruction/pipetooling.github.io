@@ -98,6 +98,8 @@ import { billTabFigures, billTabLines, wholeRestAction } from '../../lib/jobs/bi
 import { useJobStagePlanInputs } from '../../hooks/useJobStagePlanInputs'
 import { drawLabelsByInvoiceId, stagePlanFromForm } from '../../lib/jobs/stagePlanForm'
 import { fixtureRowsFromDb } from '../../lib/jobs/jobFormFixtureHydrate'
+import { jobKind, jobKindFacts, jobKindForNewJob, normalizeJobKind, type JobKind, type JobKindFacts } from '../../lib/jobs/jobKind'
+import { saveJobKind } from '../../lib/jobs/jobKindWrite'
 import { applyTargetJobTotal, discountRowIsLocked, isDiscountRow, newDiscountFixtureRow, syncDiscountRows } from '../../lib/jobs/discountLine'
 import { discountSnapshot } from '../../lib/jobs/discountActivity'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../../utils/dateUtils'
@@ -467,6 +469,10 @@ export default function JobFormModal({
   const [serviceTypes, setServiceTypes] = useState<JobFormServiceType[]>([])
   const [meServiceTypeColumns, setMeServiceTypeColumns] = useState<MeServiceTypeColumns | null>(null)
   const [formServiceTypeId, setFormServiceTypeId] = useState('')
+  // The job's kind (punch list #238): New Job holds the office's press until the insert; Edit Job
+  // holds the saved column and writes a press at once, like the status strip.
+  const [kindPress, setKindPress] = useState<JobKind | null>(null)
+  const [kindBusy, setKindBusy] = useState(false)
   const [jobBidLinkChoiceOpen, setJobBidLinkChoiceOpen] = useState(false)
   const [jobImportSourceOpen, setJobImportSourceOpen] = useState(false)
   // Per-GC Phase 3 (docs/PER_GC_BID_PLAN.md): a multi-GC bid becoming a job asks which GC gave it.
@@ -573,6 +579,44 @@ export default function JobFormModal({
   const hazmatFeesDollars = useMemo(() => sumHazmatRiderFees(hazmatIncidents), [hazmatIncidents])
   const riderFeesDollars = useMemo(() => jobFormRiderFeesDollars(hazmatFeesDollars, editing?.invoices), [hazmatFeesDollars, editing?.invoices])
   const jobTotalWithRidersDollars = useMemo(() => jobFormRevenueDollars(fixtures, riderFeesDollars), [fixtures, riderFeesDollars])
+  // The kind the form's facts give (punch list #238): the press when there is one, else a price
+  // before any work, the bid, the GC project, the stages, the HCP number. A new job has no work
+  // yet; an edited job's first day of work and its status ride on its row.
+  const kindFacts = useMemo<JobKindFacts>(
+    () => ({
+      ...jobKindFacts(editing ?? { first_work_date: null }),
+      kind: kindPress,
+      hcp_number: hcpNumber,
+      click_number: clickNumber,
+      bid_id: bidId,
+      project_id: projectId,
+      bidNumber: linkedBidSummary?.bid_number ?? null,
+      fixtures: fixtures.map((f, i) => ({ id: f.id, name: f.name, count: f.count, line_unit_price: f.line_unit_price, sequence_order: i, stage_kind: f.stage_kind === undefined ? 'any' : f.stage_kind })),
+      revenue: jobTotalWithRidersDollars,
+    }),
+    [kindPress, hcpNumber, clickNumber, bidId, projectId, linkedBidSummary, fixtures, jobTotalWithRidersDollars, editing],
+  )
+  const kindRead = useMemo(() => jobKind(kindFacts), [kindFacts])
+  const onKindPress = useCallback(
+    async (k: JobKind) => {
+      if (k === kindPress) return
+      if (!editing) {
+        setKindPress(k)
+        return
+      }
+      setKindBusy(true)
+      try {
+        await saveJobKind(editing.id, k)
+        setKindPress(k)
+        onSavedRef.current?.()
+      } catch (e) {
+        showToast(`Could not save the job's kind: ${formatErrorMessage(e)}`, 'error')
+      } finally {
+        setKindBusy(false)
+      }
+    },
+    [editing, kindPress, showToast],
+  )
   /** Live money-lifecycle figures for the billing header bar (fixtures total + this form's payments + the job's invoices). */
   const billingBar = useMemo(
     () =>
@@ -1544,6 +1588,7 @@ export default function JobFormModal({
           : null,
     )
     setFormServiceTypeId(job.service_type_id ?? '')
+    setKindPress(normalizeJobKind((job as { kind?: string | null }).kind))
     setCustomerSearch('')
     setCustomerExpanded(picturesGate || (billingGate && !jobLedgerHasCustomerForBilling(job.customer_id)))
     setGoogleDriveLink(job.google_drive_link ?? '')
@@ -1621,6 +1666,7 @@ export default function JobFormModal({
     setUnlinkMercuryConfirmRowId(null)
     setDeleteJobConfirmOpen(false)
     setFormServiceTypeId('')
+    setKindPress(null)
     setJobImportSourceOpen(false)
   }
 
@@ -2326,6 +2372,17 @@ export default function JobFormModal({
       const jobId = inserted?.id
       if (jobId) {
         placeJobFolderSoon(jobId)
+        // The kind goes on after the row, never in the insert (punch list #238): a kind the database
+        // refuses says so and the job stands, like the bid's budget below. Nothing is written when the
+        // office pressed nothing and the signals will keep reading (`jobKindForNewJob`).
+        const kindToSave = jobKindForNewJob(kindFacts)
+        if (kindToSave) {
+          try {
+            await saveJobKind(jobId, kindToSave)
+          } catch (kindErr) {
+            showToast(`Job saved, but its kind could not be saved: ${formatErrorMessage(kindErr)}`, 'error')
+          }
+        }
         // v2.4031: a row the database refused is said, not dropped in silence. The job is saved
         // either way, so the form still closes — staying open would invite a second Create.
         const childRowFailures = await writeNewJobChildRows(supabase, { jobId, payments, materials, fixtures, teamMemberIds })
@@ -2625,6 +2682,7 @@ export default function JobFormModal({
             formServiceTypeId={formServiceTypeId}
             setFormServiceTypeId={setFormServiceTypeId}
             serviceTypeOptions={jobFormServiceTypeSelectOptions}
+            kind={{ read: kindRead, onPress: (k) => void onKindPress(k), busy: kindBusy }}
             tradePill={headerTradePill}
             onTradePillClick={() => {
               if (!editing) return

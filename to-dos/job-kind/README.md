@@ -2,7 +2,7 @@
 name: "A job's kind: service call or project, read from the job's own facts and settled by one press, so the baseline, the checklists, the line and the reports stop guessing from the customer"
 number: 238
 group: ready
-status: thought through 2026-11-01 with the owner, read against jobs_ledger's columns, the Stage Plan, the customer's Res/Comm and the service types; one mock-up; nothing built
+status: building, PR 1 on claude/job-kind-238-pr1 (v2.6329) · the kernel, the column (migration 20261102043000), the New Job and Edit Job control, the chip on the job window and the Pipeline rows, the board filter and the guide · PR 2 follows on claude/job-kind-238-pr2 once PR 1 lands and its migration is pushed
 summary: >
   The app has no job kind. It has four signals that each say part of it: an HCP number against a
   Click number, a bid or a GC project behind the job, Stage Plan rows, and the customer's
@@ -12,10 +12,10 @@ summary: >
   service call or project, read from the job's own facts by one kernel, settled by one press on
   the New Job form, backfilled by a Quickfill deck line, and shown as a chip; and points #234's
   gate and #237's "projects only" at it.
-next: PR 1, the kernel and the column with the form's press and the chip. Useful on its own; nothing waits on a call.
+next: PR 2, the Quickfill deck line *Jobs working with no kind* with its presses and Needs you review's stamp, once PR 1 is on main and 20261102043000 is pushed; then the one-line PRs where the readers gate (#234's baseline once #6745 lands, #237's checklists, the reports).
 size: S as a train of two (S · S); one migration; no edge function
-blocker: none
-ver: v2.3297 · 3417 · 2927 · 4958 · 6072 · 6077 · 2145 · 5837 · 3055
+blocker: none; PR 1's migration is pushed right after its merge, before PR 2 lands
+ver: v2.6329 · 3297 · 3417 · 2927 · 4958 · 6072 · 6077 · 2145 · 5837 · 3055
 opinion: now, before #234's PR 1 and #237's PR 1 build their gates on the customer's kind
 mockup: to-dos/job-kind/mockup.html
 ---
@@ -151,5 +151,7 @@ number and nothing else and read *Service call*; make one with neither, read *no
 Delete every ZZ Test row after.
 
 ## Where it stands
+
+2026-11-02: PR 1 built on `claude/job-kind-238-pr1` (v2.6329): the kernel `src/lib/jobs/jobKind.ts` with a test on every rule, the column `jobs_ledger.kind` (migration `20261102043000_job_kind`), the **Kind** control on New Job and Edit Job, the chip on the job window's header and the Pipeline rows, the ⋯ menu's kind filter with counts, the guide *say whether a job is a service call or a project*. Where the build read closer than the card: New Job saves a press, and leaves a job no one pressed to the signals, except a price it saw before any work that no other signal would keep; a billing-only job reads as a project; a blank first day on a job already billed skips the price rule. The migration is pushed right after the merge. PR 2, the deck line, follows.
 
 2026-11-01: thought through with the owner and mocked up; nothing built. PR 1 waits on nothing.
