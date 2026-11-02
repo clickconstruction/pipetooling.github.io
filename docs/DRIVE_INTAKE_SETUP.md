@@ -70,14 +70,19 @@ deleting the key). Never wire a human Google password into anything.
   P5b-2 (v2.5225) a trade's insurance certificate, which is its own and on no job, goes under the jobs
   root itself (`DRIVE_JOBS_FOLDER_ID`, the same secret) to **GC trade partners → <company>**; a missing
   root fails the upload, logged.
-- **A Pipeline job's folders (Materials on site, v2.6054)**: `job-drive-folders` makes
-  `<job number> · <job name>` under the same jobs root with **Customer Pictures**, **Plans** and
-  **Team only** (Photos, Sent by us) inside, behind the office's **Make the job's Drive folders**
-  press and the Materials desk's backfill; the same SA and secrets, nothing new to set up. A folder
-  the office made by hand is kept and must be shared with the SA as an **Editor** before the sweeps
-  can write there; the press says so, with the SA's address. Since v2.6056 the folder is named by the
-  office's pattern (Documents → Where files go, `_shared/whereFilesGo.ts`), `<job number> · <job name>`
-  as it ships.
+- **A Pipeline job's folders (Materials on site, v2.6054; under the customer since v2.6284)**:
+  `job-drive-folders` keeps root › `<customer>` › `<job number> · <job name>`, with **Customer Pictures**,
+  **Plans** and **Team only** (Photos, Sent by us) inside, behind the office's **Make the job's Drive
+  folders** press, the Materials desk's backfill, **Tidy the folders** on Where files go and the cron
+  `job-drive-folders-sweep` (every 10 minutes, `_shared/jobFolders.ts`); the same SA and secrets, nothing
+  new to set up. A folder the office made by hand inside the Shared Drive is kept, then moved and renamed
+  into place; Drive keeps its id, so every link holds. One the SA cannot open or add to must be shared
+  with the SA as an **Editor**; the press says so, with the SA's address. One in a person's My Drive is
+  never moved, and sharing it does not help, since the SA can make folders there but cannot own a file:
+  the job is held with the reason (`jobs_ledger.drive_folder_hold`) until someone moves the folder into the
+  Shared Drive, and the sweep adopts it within a week, or at once on **Tidy the folders**. Since v2.6056
+  the folder is named by the office's pattern (Documents → Where files go, `_shared/whereFilesGo.ts`),
+  `<job number> · <job name>` as it ships.
 
 ## The upload leg: RESOLVED — Shared Drive (live since 2026-08-29)
 
@@ -91,7 +96,10 @@ byte-upload + both stamps through the deployed function):
   2026-11-01 by `robert@clickplumbing.com` (v2.6293; the first drive of that name, `0AI1sqwYSeegpUk9PVA` in
   douglasmining.com, is renamed *PipeTooling Jobs (old, Douglas Mining)* and emptied). Members: the owner and the
   office manager as Manager, the SA as Content manager. The dev seat's bid-plans filing names the drive by this id
-  (`ROBOT_PLANS_SHARED_DRIVE` in `_shared/bidPlansFolders.ts`), so a new drive is a code change too.
+  (`ROBOT_PLANS_SHARED_DRIVE` in `_shared/bidPlansFolders.ts`), so a new drive is a code change too. The SA, its
+  key and the Maps key did not move: an SA is a GCP identity and sits in any organization's drive as a member.
+  Left for another day: the GCP project `pipetooling-drive` into clickplumbing.com's Cloud organization, and the
+  bids reader onto bids@clickplumbing.com (`GMAIL_IMPERSONATE_USER`).
 - `DRIVE_JOBS_FOLDER_ID` = the **Jobs** folder inside it (`1GuDUKC6emyGB5D62eYT3IGHajKmgV3_a`); since v2.6056 the
   office's setting on Documents → Where files go names the root first and the secret is its fallback.
 - `DRIVE_IMPERSONATE_USER` was **unset** at cutover: the domain-wide-delegation grant was

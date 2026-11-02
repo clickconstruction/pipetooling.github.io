@@ -1,8 +1,8 @@
 ---
 name: "Messages → My email: a person's own @clickplumbing.com mail beside the threads, one press to tag a conversation onto a job or a bid"
 number: 230
-group: gated
-status: proposed 2026-11-01 from the owner's ask, read against the code and the live switches; a mock-up at phone and desk widths; nothing built; the owner's seven calls at the foot, a recommendation on each
+group: close
+status: built 2026-11-01: PR 0 the guide v2.6257, PR 1 v2.6266, PR 2 v2.6275, PR 3 v2.6274, PR 4 v2.6279, PR 5 v2.6276, the reviews' fixes v2.6289–v2.6292 and v2.6295 · the migrations pushed and gmail-mine deployed · left: #6738 (open) and an office member's live walk on the clickplumbing.com Workspace
 summary: >
   The owner asked for a tab in Messages that shows a person their own @clickplumbing.com email, in and
   out, so tagging an email onto a job or a bid becomes easy, and the team later reads a job's full
@@ -15,9 +15,9 @@ summary: >
   lines in Messages with the files and a court-ready .eml, and later mail in it lands by itself; the Legal
   desk pulls a tagged conversation onto a matter's Evidence. Five PRs, one migration, one edge function,
   nothing to do at Google on the recommended path.
-next: The owner's seven calls at the foot (1, 4 and 7 decide the shape; the rest can take the recommendation), then PR 0, the guide, the same day, and PR 1.
+next: An office member on the clickplumbing.com Workspace walks it on a ZZ Test customer (`docs/recent-features/v2.6292.md` → Verify). Then the month of use the opinion below asks for.
 size: M as a train of five (S · M · M · S · S) after a docs-only PR 0; one migration, one new edge function; no Workspace admin step on the recommended path
-blocker: The owner's calls. Nothing at Google: the delegation already covers the read. The first live person must be on the clickplumbing.com Workspace, which the dev account is not.
+blocker: A person on the clickplumbing.com Workspace for the walk; the dev account is not on it.
 ver: v2.5354 · 5466 · 5494 · 5504 · 5722 · 5814 · 5820 · 6004 · 6038 · 6095 · 6202
 opinion: build — read through and keep nothing until a press, the guess with a Yes, the conversation as the unit, the desk pulls Evidence; ship the forward guide first either way, and retire the tab after a month if nobody tags
 mockup: to-dos/messages-my-email/mockup.html
@@ -307,3 +307,7 @@ components under `src/components/messages/myMail/`, the two guides, the Evidence
   and healthy; the counter off with an empty list and its admin step not done). The mock-up draws the
   tab, a mail with the tag press on a desk and a phone, the job's story afterwards and the switch
   card. Nothing built. Waiting on the seven calls.
+- 2026-11-01, later the same day: built, PR 0 to PR 5 and the reviews' fixes as the status lists them. The
+  calls on the unit of a tag, on Evidence and on the key stand as built. The migrations are pushed and
+  `gmail-mine` is deployed (`npm run check:migration-drift`, `npm run check:edge-drift`). No live walk is
+  recorded here.

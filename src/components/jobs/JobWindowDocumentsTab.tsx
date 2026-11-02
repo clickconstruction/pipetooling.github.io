@@ -22,6 +22,7 @@ import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 import { HoursStatementsSection } from './HoursStatementsSection'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
+import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
 import { JobDocumentsAddFile } from './JobDocumentsAddFile'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
@@ -38,7 +39,9 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
  * **Hours statements** section sits after the lien paper: every signed hours statement on the job with its record id and
  * where it stands, and the press that opens the Hours statement window, for the payroll roles and assistants. Since
  * v2.6272 (punch list #232, PR 3) a **Photos** section after the folders reads the folder's count line as the door to the
- * strip's viewer, and says so on a job with no folder; every photo across every job is Documents → Photos.
+ * strip's viewer, and says so on a job with no folder; every photo across every job is Documents → Photos. Since v2.6299
+ * an **In the folders** section between them lists what is in the job's five folders, read live from Drive each time
+ * the tab opens, each file with where it came from (the app's own record, or a hand in Drive).
  */
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
@@ -381,6 +384,8 @@ export function JobWindowDocumentsTab({
           </p>
         ) : null}
       </section>
+
+      <JobDocumentsFolderFiles job={job} />
 
       <JobDocumentsPhotos jobId={job.id} driveLink={job.google_drive_link} picturesLink={job.job_pictures_link} />
 
