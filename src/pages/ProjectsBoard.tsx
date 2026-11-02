@@ -1,21 +1,13 @@
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { useMemo, type CSSProperties } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
-import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { pageGate } from '../lib/roleGate'
-import { withSupabaseRetry } from '../utils/errorHandling'
-import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { EmptyState } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
-import { useBidVsActualBurnInputs } from '../hooks/useBidVsActualBurnInputs'
-import { useJobBudgetRows } from '../hooks/useJobBudgetRows'
-import { useStageChecklistStates } from '../hooks/useStageChecklistStates'
-import { useExpectedHours } from '../hooks/useExpectedHours'
-import { DEFAULT_LINE_BUDGET_SETTINGS } from '../lib/jobs/lineBudgets'
-import { readTargetMarginPct } from '../lib/jobs/jobBurnForVerdict'
+import { useProjectsBoard } from '../hooks/useProjectsBoard'
 import { changeWords } from '../lib/jobs/expectedHours'
-import { canSeeProjectsBoard, canSetExpectedHours, checklistCountOf, isWorkingProject, projectLabel, projectPace, sortByPace, type ProjectRow } from '../lib/jobs/projectsBoard'
+import { canSeeProjectsBoard, canSetExpectedHours, projectLabel } from '../lib/jobs/projectsBoard'
 import { ProjectCard } from '../components/projectsBoard/ProjectCard'
 
 /**
@@ -23,85 +15,28 @@ import { ProjectCard } from '../components/projectsBoard/ProjectCard'
  * card for the leader, the superintendents and the office — the pace strip as the labor budget
  * filled by the job's real days and divided by its stages, the expected hours as a slider in the
  * budget's range with its reason, the Recent changes strip with Undo, and the card large on a
- * press. The door is the Projects press beside Forecast on the Pipeline. The numbers are
- * `projectPace` (`lib/jobs/projectsBoard.ts`), the same the superintendent's phone reads.
+ * press. The door is the Projects press beside Forecast on the Pipeline. The read and the cards
+ * are `useProjectsBoard` (PR 6), the same the Dashboard's Projects strip draws.
  */
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }
-
-// The five budget columns of #234's PR 1 ride the fixture read (punch list #242, PR 5), so a line the owner tuned moves its stage's share.
-const SELECT = 'id, hcp_number, click_number, job_name, job_address, status, pct_complete, revenue, fixtures:jobs_ledger_fixtures(id, name, stage_kind, line_kind, line_unit_price, count, progress_pct, sequence_order, budget_labor_pct, budget_materials_pct, budget_source, budget_tuned_at, budget_rate_usd)'
-
-async function loadWorkingProjects(): Promise<ProjectRow[]> {
-  const rows = await withSupabaseRetry(
-    () => supabase.from('jobs_ledger').select(SELECT).eq('status', 'working').order('hcp_number', { ascending: false }).limit(300),
-    'load project list',
-  )
-  return ((rows ?? []) as unknown as ProjectRow[]).filter(isWorkingProject)
-}
 
 export default function ProjectsBoard() {
   const { loading: authLoading, user, role } = useAuth()
   // `?job=<id>` from the Costs tab's Where we are card: that project opens large on arrival (PR 5).
   const [params] = useSearchParams()
   const focusJob = params.get('job')
-  const [rows, setRows] = useState<ProjectRow[] | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
-  const [tick, setTick] = useState(0)
-  const reload = useCallback(() => setTick((t) => t + 1), [])
-
-  useEffect(() => {
-    let gone = false
-    setLoading(true)
-    loadWorkingProjects()
-      .then((r) => {
-        if (gone) return
-        setRows(r)
-        setFailure(null)
-      })
-      .catch((e: unknown) => {
-        if (!gone) setFailure(recoveryFailureFromError(e, 'The projects could not be read.'))
-      })
-      .finally(() => {
-        if (!gone) setLoading(false)
-      })
-    return () => {
-      gone = true
-    }
-  }, [tick])
-
-  const ids = useMemo(() => (rows ?? []).map((r) => r.id), [rows])
-  const burn = useBidVsActualBurnInputs(ids.length > 0, ids)
-  const budgets = useJobBudgetRows(ids, ids.length > 0)
-  const checklists = useStageChecklistStates(ids, ids.length > 0)
-  const targets = useExpectedHours(ids, ids.length > 0)
+  const board = useProjectsBoard()
+  const { rows, cards, targets, loading, failure, reload } = board
 
   const gate = pageGate({ loading: authLoading, user, role }, canSeeProjectsBoard)
+  const canEdit = canSetExpectedHours(role)
+  const rowsById = useMemo(() => new Map((rows ?? []).map((r) => [r.id, r])), [rows])
   if (gate === 'wait') return null
   if (gate === 'away') return <Navigate to="/dashboard" replace />
-  const canEdit = canSetExpectedHours(role)
 
-  const settings = DEFAULT_LINE_BUDGET_SETTINGS
-  const margin = readTargetMarginPct()
-  const cards = sortByPace(
-    (rows ?? []).map((row) => {
-      const inputs = burn.inputsByJob.get(row.id)
-      const ready = inputs && inputs !== 'error' ? inputs : null
-      const pace = projectPace({
-        row,
-        budgetRow: budgets.get(row.id),
-        burn: ready ? { chargeEvents: ready.chargeEvents, teamHours: ready.teamHours, revenue: ready.revenue } : null,
-        target: targets.byJob.get(row.id) ?? null,
-        checklist: checklistCountOf(row.fixtures ?? [], checklists.questions, checklists.answersByFixture),
-        settings,
-        targetMarginPct: margin,
-      })
-      return { row, pace, line: pace.line, loading: inputs == null, failed: inputs === 'error', events: ready?.chargeEvents ?? [], valueEvents: ready?.valueEvents ?? [] }
-    }),
-  )
   const nameOf = (jobId: string) => {
-    const r = rows?.find((x) => x.id === jobId)
+    const r = rowsById.get(jobId)
     return r ? projectLabel(r) : 'a project'
   }
 
@@ -139,8 +74,7 @@ export default function ProjectsBoard() {
               target={targets.byJob.get(c.row.id) ?? null}
               events={c.events}
               valueEvents={c.valueEvents}
-              loading={c.loading}
-              failed={c.failed}
+              dollars={c.dollars}
               canEdit={canEdit}
               initiallyOpen={c.row.id === focusJob}
               onSetTarget={(hours, from, why) => targets.setTarget(c.row.id, hours, from, why)}
