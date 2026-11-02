@@ -38,13 +38,18 @@ function pr(createdAt: string, mergedAt: string | null, draft = false): PacePr {
   return { number: n, createdAt, mergedAt, closedAt: mergedAt, draft }
 }
 
-/** Monday 3:37 PM: three merges in the last 24 hours (2, 4 and 9 hours), three opened today (the 00:00Z one is Sunday 6 PM Central), one draft open. */
+/**
+ * Monday 3:37 PM: five merges in the last 24 hours (2, 4, 9, 4 and 2.5 hours; the last two inside the last six hours),
+ * five opened today (the 00:00Z one is Sunday 6 PM Central), one draft open.
+ */
 const PICTURE: ShipPacePicture = shipPacePicture({
   now: NOW,
   prs: [
     pr('2026-11-02T10:00:00Z', '2026-11-02T14:00:00Z'),
     pr('2026-11-02T10:00:00Z', '2026-11-02T12:00:00Z'),
     pr('2026-11-02T00:00:00Z', '2026-11-02T09:00:00Z'),
+    pr('2026-11-02T16:00:00Z', '2026-11-02T20:00:00Z'),
+    pr('2026-11-02T18:30:00Z', '2026-11-02T21:00:00Z'),
     pr('2026-11-02T18:00:00Z', null, true),
     pr('2026-11-01T18:00:00Z', null),
   ],
@@ -66,20 +71,32 @@ describe('SettingsShipPaceSection', () => {
     expect(screen.getByText(W.chartTitle)).toBeTruthy()
     expect(screen.getByText(W.gaps)).toBeTruthy()
     const today = text('[data-ship-pace-today]') ?? ''
-    expect(today).toContain(`${W.openedToday}3`)
-    expect(today).toContain(`${W.mergedToday}3`)
+    expect(today).toContain(`${W.openedToday}5`)
+    expect(today).toContain(`${W.mergedToday}5`)
     expect(today).toContain(`${W.openNow}21 draft among them`)
     expect(today).toContain(`${W.inQueue}3`)
     expect(text('[data-ship-pace-meaning]')).toBe(W.meaning)
     expect(document.querySelector('[data-ship-pace-chart]')).toBeTruthy()
+    // The solid number: the median of the two merges in the last six hours, 4 and 2.5 hours.
+    expect(text('[data-ship-pace-now-figure]')).toBe('3.3')
+    expect(text('[data-ship-pace-now]')).toContain(`${W.nowLabel}3.3hours`)
+    expect(text('[data-ship-pace-now-words]')).toBe('right now, the middle of the 2 merges in the last 6 hours, since 2:00 PM')
+    expect(text('[data-ship-pace-now]')).toContain('mean 3.3 h · nine in ten inside 4 h')
     expect(screen.queryByRole('button', { name: W.readNow })).toBeNull()
   })
 
-  it('says the reader may be stuck when the row is more than an hour old, and that the queue was not read', async () => {
-    const old: ShipPacePicture = { ...PICTURE, asOf: '2026-11-02T20:10:00.000Z', now: { ...PICTURE.now, queue: null } }
+  it('says the reader may be stuck when the row is more than an hour old, that the queue was not read, and that nothing merged in six hours', async () => {
+    const old: ShipPacePicture = {
+      ...PICTURE,
+      asOf: '2026-11-02T20:10:00.000Z',
+      now: { ...PICTURE.now, queue: null },
+      recent: { hours: 6, merged: 0, medianH: null, meanH: null, p90H: null, since: null },
+    }
     renderWithProviders(<SettingsShipPaceSection role="estimator" io={fakeIo({ load: vi.fn(async () => old) })} now={nowMs} />)
     await waitFor(() => expect(text('[data-ship-pace-as-of]')).toBe('The last read was at 2:10 PM, more than an hour ago. The reader may be stuck. Ask a dev.'))
     expect(text('[data-ship-pace-today]')).toContain(`${W.inQueue}${W.queueNotRead}`)
+    expect(text('[data-ship-pace-now-figure]')).toBe('—')
+    expect(text('[data-ship-pace-now-words]')).toBe('Nothing merged in the last 6 hours, so there is no number right now.')
   })
 
   it('with no row yet, the empty state names what fills it', async () => {

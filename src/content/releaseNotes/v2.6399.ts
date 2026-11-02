@@ -8,7 +8,8 @@ const note: ReleaseNote = {
   roles: ['dev', 'master_technician', 'assistant', 'controller', 'estimator'],
   highlights: [
     'A new tab beside Release notes answers “can I have X” with a number: a headline like A change asked for today has been taking about 4 hours to reach the app, and where nine in ten land, from every change that merged in the last 24 hours.',
-    'Under it, a chart of the last three days by the hour: the typical hours from a change’s pull request opening to its merge, with a gap where nothing merged. Four tiles say what opened and merged today, what is open now and what is in the merge queue.',
+    'Under it, a chart of the last three days by the hour: the typical hours from a change’s pull request opening to its merge, with a gap where nothing merged. Beside the chart, Merges are taking shows the one number to say out loud, the middle of the merges in the last six hours, with how many merges it stands on and since when.',
+    'Four tiles say what opened and merged today, what is open now and what is in the merge queue.',
     'The hours count from the pull request opening, not from when you asked, and the app updates a few minutes after a merge. The numbers come from GitHub every 15 minutes; no office screen reads GitHub itself. A dev can press Read GitHub now.',
   ],
 }

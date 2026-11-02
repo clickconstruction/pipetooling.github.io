@@ -10,12 +10,16 @@ import {
   paceAsOfWords,
   paceFreshness,
   paceHeadlineWords,
+  paceNowFigure,
+  paceNowSmallWords,
+  paceNowWords,
   paceTicks,
   paceYMax,
   parseShipPacePicture,
   percentile,
   type PacePr,
   SHIP_PACE_KEY,
+  SHIP_PACE_NOW_HOURS,
   shipPacePicture,
 } from '../../../supabase/functions/_shared/shipPace'
 
@@ -159,6 +163,34 @@ describe('shipPace — the headline', () => {
   })
 })
 
+describe('shipPace — the solid number, the last six hours', () => {
+  it('stands on the merges of the last 6 hours alone, with the oldest of them as its since', () => {
+    expect(SHIP_PACE_NOW_HOURS).toBe(6)
+    const p = picture([
+      pr('2026-11-02T14:00:00Z', '2026-11-02T18:00:00Z'), // 4 h, merged 3.6 h ago: inside
+      pr('2026-11-02T18:00:00Z', '2026-11-02T20:00:00Z'), // 2 h, inside
+      pr('2026-11-02T12:00:00Z', '2026-11-02T21:00:00Z'), // 9 h, inside
+      pr('2026-11-02T10:00:00Z', '2026-11-02T15:00:00Z'), // 5 h, merged 6.6 h ago: outside, still in the headline
+      pr('2026-11-02T21:00:00Z', null),
+    ])
+    expect(p.recent).toEqual({ hours: 6, merged: 3, medianH: 4, meanH: 5, p90H: 9, since: '2026-11-02T18:00:00.000Z' })
+    expect(p.last24h.merged).toBe(4)
+  })
+
+  it('says the figure, what it stands on and the small line; under an hour it says minutes', () => {
+    const r = { hours: 6, merged: 21, medianH: 4.2, meanH: 4.3, p90H: 5.3, since: '2026-11-02T17:40:00Z' }
+    expect(paceNowFigure(r)).toEqual({ value: '4.2', unit: 'hours' })
+    expect(paceNowWords(r)).toBe('right now, the middle of the 21 merges in the last 6 hours, since 11:40 AM')
+    expect(paceNowSmallWords(r)).toBe('mean 4.3 h · nine in ten inside 5.3 h')
+    expect(paceNowFigure({ ...r, medianH: 0.9 })).toEqual({ value: '54', unit: 'minutes' })
+    expect(paceNowWords({ ...r, merged: 1 })).toBe('right now, the middle of the one merge in the last 6 hours, since 11:40 AM')
+    const none = { hours: 6, merged: 0, medianH: null, meanH: null, p90H: null, since: null }
+    expect(paceNowFigure(none)).toBeNull()
+    expect(paceNowWords(none)).toBe('Nothing merged in the last 6 hours, so there is no number right now.')
+    expect(paceNowSmallWords(none)).toBe('')
+  })
+})
+
 describe('shipPace — the queue, the row and the words around the chart', () => {
   it('the queue’s builds count in the hour they started, failures apart; null when Actions was not read', () => {
     const runs = [
@@ -181,6 +213,7 @@ describe('shipPace — the queue, the row and the words around the chart', () =>
     expect(parseShipPacePicture(null)).toBeNull()
     expect(parseShipPacePicture('')).toBeNull()
     expect(parseShipPacePicture('{"v":0}')).toBeNull()
+    expect(parseShipPacePicture(JSON.stringify({ ...p, recent: undefined }))).toBeNull()
     expect(parseShipPacePicture('not json')).toBeNull()
     expect(SHIP_PACE_KEY).toBe('ship_pace_v1')
   })

@@ -5,6 +5,9 @@ import {
   paceAsOfWords,
   paceFreshness,
   paceHeadlineWords,
+  paceNowFigure,
+  paceNowSmallWords,
+  paceNowWords,
   paceTicks,
   paceYMax,
   type PaceHour,
@@ -18,8 +21,8 @@ import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 
 
-/** The line's blue: the app's press blue, which reads on both surfaces. */
-const LINE = '#2563eb'
+/** The line's blue: the app's link blue, lighter on the dark surface. */
+const LINE = 'var(--text-link)'
 
 type Props = {
   /** The viewer's role: a dev sees Read GitHub now. */
@@ -98,10 +101,13 @@ export default function SettingsShipPaceSection({ role = null, io = shipPaceIo, 
             {paceAsOfWords(picture.asOf, nowMs)}
           </p>
 
-          <div style={{ border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)', padding: '0.75rem 1rem 0.5rem' }}>
-            <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{SHIP_PACE_WORDS.chartTitle}</div>
-            <PaceChart hours={picture.hours} />
-            <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{SHIP_PACE_WORDS.gaps}</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.75rem', alignItems: 'stretch' }}>
+            <div style={{ flex: '1 1 520px', minWidth: 0, border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)', padding: '0.75rem 1rem 0.5rem' }}>
+              <div style={{ fontWeight: 600, marginBottom: '0.5rem' }}>{SHIP_PACE_WORDS.chartTitle}</div>
+              <PaceChart hours={picture.hours} />
+              <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', marginTop: '0.25rem' }}>{SHIP_PACE_WORDS.gaps}</div>
+            </div>
+            <NowTile recent={picture.recent} />
           </div>
 
           <div data-ship-pace-today style={{ display: 'flex', flexWrap: 'wrap', gap: '0.6rem', marginTop: '1rem' }}>
@@ -144,6 +150,29 @@ export default function SettingsShipPaceSection({ role = null, io = shipPaceIo, 
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+/** The solid number beside the chart (the owner's pick, 2026-11-02): the median of the last six hours' merges, said as *Merges are taking 4.2 hours right now*. */
+function NowTile({ recent }: { recent: ShipPacePicture['recent'] }) {
+  const figure = paceNowFigure(recent)
+  return (
+    <div
+      data-ship-pace-now
+      style={{ flex: '0 1 280px', minWidth: '14rem', display: 'flex', flexDirection: 'column', gap: '0.3rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)', padding: '0.75rem 1rem 0.85rem' }}
+    >
+      <div style={{ fontSize: '0.78rem', textTransform: 'uppercase', letterSpacing: '0.04em', color: 'var(--text-muted)', fontWeight: 600 }}>{SHIP_PACE_WORDS.nowLabel}</div>
+      {figure ? (
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.4rem', color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>
+          <span data-ship-pace-now-figure style={{ fontSize: '3rem', fontWeight: 700, lineHeight: 1, letterSpacing: '-0.02em' }}>{figure.value}</span>
+          <span style={{ fontSize: '1.1rem', fontWeight: 500, color: 'var(--text-muted)' }}>{figure.unit}</span>
+        </div>
+      ) : (
+        <div data-ship-pace-now-figure style={{ fontSize: '3rem', fontWeight: 700, lineHeight: 1, color: 'var(--text-muted)' }}>—</div>
+      )}
+      <div data-ship-pace-now-words style={{ fontSize: '0.9rem' }}>{paceNowWords(recent)}</div>
+      {paceNowSmallWords(recent) && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{paceNowSmallWords(recent)}</div>}
     </div>
   )
 }

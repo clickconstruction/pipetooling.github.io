@@ -24,6 +24,8 @@ export const SHIP_PACE_KEY = 'ship_pace_v1' as const
 export const SHIP_PACE_WINDOW_HOURS = 72
 /** The headline's reach, in hours. */
 export const SHIP_PACE_HEADLINE_HOURS = 24
+/** The solid number's reach, in hours: *Merges are taking X right now* is the median of the merges in the last 6 hours (the owner's pick, 2026-11-02). */
+export const SHIP_PACE_NOW_HOURS = 6
 /** How often the cron reads GitHub, in minutes; a row older than four reads is called stale. */
 export const SHIP_PACE_READ_MINUTES = 15
 export const SHIP_PACE_STALE_MINUTES = SHIP_PACE_READ_MINUTES * 4
@@ -84,6 +86,18 @@ export type PaceHeadline = {
   p90H: number | null
 }
 
+/** The solid number beside the chart: the merges of the last `hours` hours and their hours from opening to merge. */
+export type PaceRecent = {
+  hours: number
+  merged: number
+  /** Hours from opening to merge over those merges, to a tenth; null when nothing merged. */
+  medianH: number | null
+  meanH: number | null
+  p90H: number | null
+  /** When the oldest of those merges landed; null when nothing merged. */
+  since: string | null
+}
+
 export type ShipPacePicture = {
   v: 1
   /** When GitHub was read. */
@@ -92,6 +106,8 @@ export type ShipPacePicture = {
   windowStart: string
   hours: PaceHour[]
   last24h: PaceHeadline
+  /** *Merges are taking X right now*: the last `SHIP_PACE_NOW_HOURS` hours. */
+  recent: PaceRecent
   /** The app calendar's day and what opened and merged in it. */
   today: { ymd: string; created: number; merged: number }
   /** Open now, how many of those are drafts, and the merge queue's count (null when not read). */
@@ -132,6 +148,12 @@ export function percentile(values: number[], p: number): number | null {
   const sorted = [...values].sort((a, b) => a - b)
   const rank = Math.min(sorted.length, Math.max(1, Math.ceil((p / 100) * sorted.length)))
   return sorted[rank - 1] ?? null
+}
+
+/** The mean of a list of numbers; null for an empty list. */
+export function mean(values: number[]): number | null {
+  if (values.length === 0) return null
+  return values.reduce((a, b) => a + b, 0) / values.length
 }
 
 const tenth = (h: number | null): number | null => (h == null ? null : Math.round(h * 10) / 10)
@@ -182,6 +204,10 @@ export function shipPacePicture(input: PaceInput): ShipPacePicture {
   const dayAgo = nowMs - SHIP_PACE_HEADLINE_HOURS * HOUR_MS
   const merged24 = prs.filter((p) => p.mergedMs != null && p.mergedMs > dayAgo && p.mergedMs <= nowMs)
   const cycles24 = merged24.map(cycleH)
+  const recentAgo = nowMs - SHIP_PACE_NOW_HOURS * HOUR_MS
+  const mergedRecent = prs.filter((p) => p.mergedMs != null && p.mergedMs > recentAgo && p.mergedMs <= nowMs)
+  const cyclesRecent = mergedRecent.map(cycleH)
+  const oldestRecent = mergedRecent.reduce<number | null>((min, p) => (min == null || (p.mergedMs as number) < min ? (p.mergedMs as number) : min), null)
   const todayYmd = ymdOf(nowMs)
   const openNow = prs.filter((p) => p.closedMs == null && p.mergedMs == null)
 
@@ -195,6 +221,14 @@ export function shipPacePicture(input: PaceInput): ShipPacePicture {
       created: prs.filter((p) => p.createdMs > dayAgo && p.createdMs <= nowMs).length,
       medianH: tenth(median(cycles24)),
       p90H: tenth(percentile(cycles24, 90)),
+    },
+    recent: {
+      hours: SHIP_PACE_NOW_HOURS,
+      merged: mergedRecent.length,
+      medianH: tenth(median(cyclesRecent)),
+      meanH: tenth(mean(cyclesRecent)),
+      p90H: tenth(percentile(cyclesRecent, 90)),
+      since: oldestRecent == null ? null : new Date(oldestRecent).toISOString(),
     },
     today: {
       ymd: todayYmd,
@@ -210,7 +244,7 @@ export function parseShipPacePicture(valueText: string | null | undefined): Ship
   if (!valueText) return null
   try {
     const raw = JSON.parse(valueText) as Partial<ShipPacePicture> | null
-    if (!raw || raw.v !== 1 || typeof raw.asOf !== 'string' || !Array.isArray(raw.hours) || !raw.last24h || !raw.today || !raw.now) return null
+    if (!raw || raw.v !== 1 || typeof raw.asOf !== 'string' || !Array.isArray(raw.hours) || !raw.last24h || !raw.recent || !raw.today || !raw.now) return null
     return raw as ShipPacePicture
   } catch {
     return null
@@ -237,6 +271,26 @@ export function insideWords(h: number): string {
 export function paceHeadlineWords(h: PaceHeadline): string {
   if (h.medianH == null || h.p90H == null) return 'Nothing has merged in the last 24 hours, so there is no number for today yet.'
   return `A change asked for today has been taking ${hoursWords(h.medianH)} to reach the app. Nine in ten land ${insideWords(h.p90H)}.`
+}
+
+/** The solid number as the tile draws it: `4.2` + `hours`, or `54` + `minutes` under an hour; null when nothing merged. */
+export function paceNowFigure(r: PaceRecent): { value: string; unit: string } | null {
+  if (r.medianH == null) return null
+  if (r.medianH < 1) return { value: String(Math.round(r.medianH * 60)), unit: 'minutes' }
+  return { value: r.medianH.toFixed(1), unit: 'hours' }
+}
+
+/** Under the figure: what it stands on. *right now, the middle of the 21 merges in the last 6 hours, since 11:40 AM*. */
+export function paceNowWords(r: PaceRecent): string {
+  if (r.medianH == null || r.since == null) return `Nothing merged in the last ${r.hours} hours, so there is no number right now.`
+  const merges = r.merged === 1 ? 'the one merge' : `the ${r.merged.toLocaleString('en-US')} merges`
+  return `right now, the middle of ${merges} in the last ${r.hours} hours, since ${clockWords(r.since)}`
+}
+
+/** The small line: *mean 4.3 h · nine in ten inside 5.3 h*; empty when nothing merged. */
+export function paceNowSmallWords(r: PaceRecent): string {
+  if (r.meanH == null || r.p90H == null) return ''
+  return `mean ${r.meanH} h · nine in ten inside ${r.p90H} h`
 }
 
 /** The clock time of an instant in the app calendar: `3:37 PM`. */

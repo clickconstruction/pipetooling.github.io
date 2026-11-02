@@ -15,6 +15,7 @@ export const SHIP_PACE_WORDS = {
   loading: 'Reading…',
   readNow: 'Read GitHub now',
   reading: 'Reading GitHub…',
+  nowLabel: 'Merges are taking',
   openedToday: 'Opened today',
   mergedToday: 'Merged today',
   openNow: 'Open now',

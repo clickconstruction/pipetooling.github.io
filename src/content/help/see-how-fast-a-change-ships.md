@@ -2,7 +2,7 @@
 title: see how fast a change ships
 category: Getting Started
 roles: dev, master_technician, assistant, controller, estimator
-keywords: ship pace, how long does a change take, feature request, pull request, merge, github, turnaround, how fast
+keywords: ship pace, how long does a change take, feature request, pull request, merge, github, turnaround, how fast, merges are taking
 order: 10
 ---
 When you ask for a change, the first question is how long it will take. This page answers it with real numbers from the last three days.
@@ -23,6 +23,10 @@ Under the headline, *As of 3:37 PM* says when GitHub was last read. The app read
 ## What the chart shows
 
 Each dot is one hour of the last three days. The dot's height is the typical hours from a change's pull request opening to its merge in that hour. A pull request is the bundle of code a change ships in. A gap is an hour with no merge. Hover a dot to see that hour's merges and openings.
+
+## The number to say out loud
+
+Beside the chart, **Merges are taking** shows one number, like *4.2 hours*. The number is the middle of the merges in the last 6 hours. The line under it says how many merges it stands on and when the oldest of them landed. A quiet night can leave it standing on two or three merges, so read that count. Under an hour, the number shows in minutes. The small line gives the mean and where nine in ten of those merges landed.
 
 ## What landed today
 
