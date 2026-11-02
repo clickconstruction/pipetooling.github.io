@@ -15,6 +15,12 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The day headings read Today and Yesterday against the app's today, so today is pinned to the fixtures' Sunday:
+// left on the real clock, this smoke failed every tree from midnight Central on 2026-11-02.
+vi.mock('../../utils/dateUtils', async (orig) => ({
+  ...(await orig<typeof import('../../utils/dateUtils')>()),
+  todayYmdInAppTz: () => '2026-11-01',
+}))
 const auth = vi.hoisted(() => ({ role: 'assistant' as string }))
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: auth.role, user: { id: 'u-office' } }), useOptionalAuth: () => ({ role: auth.role, user: { id: 'u-office' } }) }))
 

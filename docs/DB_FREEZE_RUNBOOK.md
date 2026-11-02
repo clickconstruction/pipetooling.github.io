@@ -5,7 +5,7 @@ file: DB_FREEZE_RUNBOOK.md
 type: Runbook
 purpose: What to do (and what Claude does via /db-freeze) when the app looks "database down"
 audience: Devs + AI agents
-last_updated: 2026-09-20
+last_updated: 2026-11-01
 ---
 
 The app going "database down" office-wide has (so far) **never been a crash** —
@@ -176,7 +176,12 @@ spiked 40–350× *before* both 2026-07-31 outages. **A sampler consistently ove
 
 ## Step 3 — Postgres logs (narrow window only)
 
-> No MCP? `scripts/pg-logs.sh <iso_start> <iso_end> [regex]` reads `postgres_logs` through the Management API with `SUPABASE_MGMT_TOKEN` from `.env.local` (added 2026-09-07).
+> No MCP? `scripts/pg-logs.sh <iso_start> <iso_end> [regex]` reads the Postgres lines
+> (`source = 'postgres_logs'`) of the Management API's unified `logs` table with
+> `SUPABASE_MGMT_TOKEN` from `.env.local` (added 2026-09-07; moved to the unified
+> endpoint 2026-11-01, when `logs.all` went away). Times are UTC and end in `Z`; the
+> endpoint reads at most 24 hours from `<iso_start>` and 1000 rows without saying so,
+> so the script refuses a longer window or limit.
 
 Dashboard → Logs → Postgres, or MCP `get_logs` (returns only the last few
 minutes in practice, despite claiming 24h — for anything older use the Dashboard
@@ -482,8 +487,9 @@ Nobody was in the office (04:41 UTC = 23:41 CDT).
   ACTIVE_HEALTHY — a usable no-password triage line; project status stayed
   ACTIVE_HEALTHY throughout. status.supabase.com: nothing relevant.
 - **CLI**: `inspect db blocking` never connected → Mode B by definition.
-- **Mgmt logs endpoint** (`/v1/projects/<ref>/analytics/endpoints/logs.all`)
-  was flaky during the stall: regex `~*` queries returned
+- **Mgmt logs endpoint** (`/v1/projects/<ref>/analytics/endpoints/logs.all`; Supabase
+  has since removed it for `.../analytics/endpoints/logs`, see Step 3) was flaky
+  during the stall: regex `~*` queries returned
   `Backend error! Retry your query`; a `LIKE` query for terminated / shutdown /
   starting up / out of memory over the previous 2 hours returned **no rows**,
   and the last visible lines were the 04:05 cron batch. Kill reason still
