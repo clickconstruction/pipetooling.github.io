@@ -50,6 +50,9 @@ export async function indexContext(admin: SupabaseClient, google: string): Promi
   const rootId = await jobsRootFolderId(admin)
   if (!rootId) return { noRoot: true }
   const root = await driveFolderMeta(google, rootId)
+  // The root's drive scopes every listing; without it a sweep would list every drive the account sees and move its
+  // stamp on that, so a root Drive does not answer for is this request's failure, never a wider listing.
+  if (root.status < 200 || root.status >= 300) throw new Error(`Drive answered ${root.status} for the jobs root folder.`)
   const homes = await folderHomes(admin)
   return { admin, google, rootId, driveId: root.body.driveId ?? null, homes, metaOf: folderMetaReader(google) }
 }
@@ -101,8 +104,8 @@ export async function filesUnder(google: string, folderId: string, out: DriveFil
 }
 
 /** Files changed in the Shared Drive since a time, oldest first, folders left out, up to the cap. */
-export async function filesChangedSince(ctx: IndexContext, sinceIso: string, max: number): Promise<{ files: DriveFileMeta[]; more: boolean }> {
-  const q = encodeURIComponent(`modifiedTime > '${sinceIso}' and trashed = false and mimeType != '${DRIVE_FOLDER_KIND}'`)
+export async function filesChangedSince(ctx: IndexContext, sinceIso: string, max: number, inclusive = false): Promise<{ files: DriveFileMeta[]; more: boolean }> {
+  const q = encodeURIComponent(`modifiedTime ${inclusive ? '>=' : '>'} '${sinceIso}' and trashed = false and mimeType != '${DRIVE_FOLDER_KIND}'`)
   const scope = ctx.driveId ? `&corpora=drive&driveId=${encodeURIComponent(ctx.driveId)}` : '&corpora=allDrives'
   const files: DriveFileMeta[] = []
   let pageToken = ''
@@ -117,7 +120,8 @@ export async function filesChangedSince(ctx: IndexContext, sinceIso: string, max
     }
     pageToken = page.nextPageToken ?? ''
   } while (pageToken && files.length < max)
-  return { files, more: false }
+  // A page that fills the cap exactly with a next page behind it is more too, else the stamp would jump past that page.
+  return { files, more: Boolean(pageToken) }
 }
 
 /** One file into the table: walked up to its home, stamped `reading`, its text read, the row written. */

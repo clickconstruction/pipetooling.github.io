@@ -42,6 +42,17 @@ export type FindSource = 'index' | 'drive'
 
 export type FindAFileRead = { hits: FoundFile[]; more: boolean; noRoot: boolean; source: FindSource }
 
+/**
+ * Drive's search fills in behind the index, as the hint promises: the index's hits first, then Drive's hits the index
+ * did not name, with Drive's `more`. While the index is only part full (the backfill running, a file not yet swept) a
+ * hit from the index must never hide the file Drive would have found.
+ */
+export function driveBehindIndex(index: FindAFileRead, drive: FindAFileRead): FindAFileRead {
+  if (drive.hits.length === 0) return index
+  const named = new Set(index.hits.map((h) => h.id))
+  return { ...index, hits: [...index.hits, ...drive.hits.filter((h) => !named.has(h.id))], more: drive.more, noRoot: index.noRoot || drive.noRoot }
+}
+
 /** How many hits the index answers; Drive's search answers its own 30. */
 export const FIND_MAX_HITS = 30
 

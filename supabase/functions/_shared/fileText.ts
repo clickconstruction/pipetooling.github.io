@@ -7,7 +7,7 @@
  */
 import { DRIVE } from './driveUpload.ts'
 import { driveMedia } from './driveJobFolder.ts'
-import { EXCERPT_READ_MS, PDF_SCAN_MAX_CHARS, TEXT_PDF_MAX_BYTES, TEXT_PDF_MAX_PAGES, TEXT_PLAIN_MAX_BYTES, textKindOf, type DriveFileMeta, type FileTextRead } from './fileIndexKernel.ts'
+import { EXCERPT_READ_MS, PDF_SCAN_MAX_CHARS, TEXT_PDF_MAX_BYTES, TEXT_PDF_MAX_PAGES, TEXT_PLAIN_MAX_BYTES, exportMimeOf, textKindOf, type DriveFileMeta, type FileTextRead } from './fileIndexKernel.ts'
 
 export type { FileTextRead }
 
@@ -15,8 +15,14 @@ export async function fileText(google: string, f: Pick<DriveFileMeta, 'id' | 'na
   const bytes = f.size == null || f.size === '' ? null : Number(f.size)
   const kind = textKindOf(f)
   if (kind === 'export') {
-    const res = await fetch(`${DRIVE}/files/${encodeURIComponent(f.id)}/export?mimeType=text/plain`, { headers: { Authorization: `Bearer ${google}` } })
-    return res.ok ? { text: await res.text(), source: 'export', pages: null } : { why: 'kind' }
+    const res = await fetch(`${DRIVE}/files/${encodeURIComponent(f.id)}/export?mimeType=${encodeURIComponent(exportMimeOf(f.mimeType))}`, { headers: { Authorization: `Bearer ${google}` } })
+    if (res.ok) return { text: await res.text(), source: 'export', pages: null }
+    // A kind Drive will not export is `kind` for good; one too big to export is `big`; anything else (a rate limit, a
+    // 5xx) is `error`, which a retry takes again, never a `kind` that no retry reads.
+    const reason = await res.text().catch(() => '')
+    if (res.status === 400) return { why: 'kind' }
+    if (res.status === 403 && /exportSizeLimitExceeded/.test(reason)) return { why: 'big' }
+    return { why: 'error' }
   }
   if (kind === 'pdf') {
     if (bytes != null && bytes > TEXT_PDF_MAX_BYTES) return { why: 'big' }

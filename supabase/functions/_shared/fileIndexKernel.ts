@@ -28,11 +28,29 @@ export const SWEEP_MAX_FILES = 40
 export const SWEEP_RECHECK_ROWS = 20
 /** The sweep lists files changed since its stamp less this, so a file that landed as the last run listed is not missed. */
 export const SWEEP_OVERLAP_MS = 2 * 60 * 1000
+/** The mark a stamp carries when it is a listed file's modified time (exact, listed from inclusively, no overlap) and not a wall clock. */
+export const SWEEP_CURSOR_MARK = '#cursor'
 /** The `app_settings` key the sweep stamps with the last modified time it has taken whole. */
 export const SWEEP_STAMP_KEY = 'file_index_sweep_last_at'
 
 export const GOOGLE_TEXT_KINDS = new Set(['application/vnd.google-apps.document', 'application/vnd.google-apps.spreadsheet', 'application/vnd.google-apps.presentation'])
 export const DRIVE_FOLDER_KIND = 'application/vnd.google-apps.folder'
+
+/** The kind a Google file exports as: a Sheet as CSV (Drive refuses text/plain for one), a Doc or Slides as plain text. */
+export function exportMimeOf(mimeType: string): string {
+  return mimeType === 'application/vnd.google-apps.spreadsheet' ? 'text/csv' : 'text/plain'
+}
+
+/**
+ * Whether two time strings name the same instant: Drive lists `2026-10-14T15:00:00.000Z` and PostgREST reads the row's
+ * `modified_at` back as `2026-10-14T15:00:00+00:00`, so a string compare calls every known row changed.
+ */
+export function sameInstant(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return !a && !b
+  const ta = Date.parse(a)
+  const tb = Date.parse(b)
+  return Number.isFinite(ta) && Number.isFinite(tb) ? ta === tb : a === b
+}
 
 /** A file as Drive lists it to the functions, the fields every list asks for. */
 export interface DriveFileMeta {
@@ -158,7 +176,7 @@ export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via:
     mime: (f.mimeType || 'application/octet-stream').slice(0, 200),
     bytes: bytes != null && Number.isFinite(bytes) ? bytes : null,
     modified_at: f.modifiedTime ?? null,
-    text: 'text' in read ? read.text.replace(/\u0000/g, '').slice(0, INDEX_TEXT_MAX_CHARS) : null,
+    text: 'text' in read ? cutText(read.text.replace(/\u0000/g, ''), INDEX_TEXT_MAX_CHARS) : null,
     text_source: 'text' in read ? read.source : null,
     text_why: 'text' in read ? null : read.why,
     pages: 'text' in read ? read.pages : null,
@@ -200,7 +218,7 @@ export function indexPlan(listed: readonly DriveFileMeta[], known: ReadonlyMap<s
       toIndex.push(f)
       continue
     }
-    const changed = (f.modifiedTime ?? null) !== (row.modified_at ?? null)
+    const changed = !sameInstant(f.modifiedTime, row.modified_at)
     if (changed) {
       toIndex.push(f)
       continue
@@ -260,6 +278,13 @@ export function settledWhy(why: TextWhy | null): Exclude<TextWhy, 'reading'> | n
   return why === 'reading' ? 'slow' : why
 }
 
+/** The text cut to the cap on a whole character: a cut inside a surrogate pair leaves a half no JSON carries, and the row's write fails. */
+export function cutText(text: string, max: number): string {
+  if (text.length <= max) return text
+  const last = text.charCodeAt(max - 1)
+  return text.slice(0, last >= 0xd800 && last <= 0xdbff ? max - 1 : max)
+}
+
 /**
  * The sweep's next stamp. The sweep lists files modified after the stamp (less the overlap), oldest first, and takes up
  * to its cap: when it handled them all and Drive had no more, the stamp is now; when files were left, the stamp is the
@@ -268,14 +293,19 @@ export function settledWhy(why: TextWhy | null): Exclude<TextWhy, 'reading'> | n
  */
 export function sweepStamp(now: Date, cursorModified: string | null, left: number): string | null {
   if (left <= 0) return now.toISOString()
-  return cursorModified
+  return cursorModified ? `${cursorModified}${SWEEP_CURSOR_MARK}` : null
 }
 
 /** The ISO time the sweep lists from: the stamp less the overlap, or the dawn of the drive when there is no stamp. */
-export function sweepSince(stamp: string | null, overlapMs = SWEEP_OVERLAP_MS): string {
-  const t = stamp ? Date.parse(stamp) : NaN
-  if (!Number.isFinite(t)) return '1970-01-01T00:00:00.000Z'
-  return new Date(t - overlapMs).toISOString()
+export function sweepSince(stamp: string | null, overlapMs = SWEEP_OVERLAP_MS): { since: string; inclusive: boolean } {
+  const cursor = Boolean(stamp && stamp.endsWith(SWEEP_CURSOR_MARK))
+  const bare = stamp && cursor ? stamp.slice(0, -SWEEP_CURSOR_MARK.length) : stamp
+  const t = bare ? Date.parse(bare) : NaN
+  if (!Number.isFinite(t)) return { since: '1970-01-01T00:00:00.000Z', inclusive: false }
+  // A cursor is a file's own modified time: listed from inclusively (the file itself is current and skipped, a file
+  // stamped alike is not lost) with no overlap, so a dense minute of uploads can never hold the stamp still. A wall
+  // clock is listed from two minutes back, since Drive lists a file a little after it lands.
+  return cursor ? { since: new Date(t).toISOString(), inclusive: true } : { since: new Date(t - overlapMs).toISOString(), inclusive: false }
 }
 
 /** A query term as Drive's `q` takes it: backslashes and quotes escaped. */

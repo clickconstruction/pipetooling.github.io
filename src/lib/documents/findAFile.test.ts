@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { FIND_MIN_CHARS, emptyFindWords, excerptNote, excerptParts, findAFileFromAnswer, findAFileFromIndexRows, foundWords, groupByHome, hitMetaWords, homeWords, pathWords, sourceWords, type FoundFile } from './findAFile'
+import {
+  driveBehindIndex,
+  emptyFindWords,
+  excerptNote,
+  excerptParts,
+  FIND_MIN_CHARS,
+  findAFileFromAnswer,
+  findAFileFromIndexRows,
+  type FoundFile,
+  foundWords,
+  groupByHome,
+  hitMetaWords,
+  homeWords,
+  pathWords,
+  sourceWords,
+} from './findAFile'
 
 const hit = (over: Partial<FoundFile>): FoundFile => ({
   id: '1AbCdEfGhIjKlMnOpQrSt',
@@ -135,5 +150,17 @@ describe('findAFile (v2.6305)', () => {
     // A headline with no marks is no excerpt; a read the platform stopped reads as slow, which the box keeps quiet about.
     expect(read.hits[2]).toMatchObject({ home: null, excerpt: null, excerptWhy: 'slow' })
     expect(findAFileFromIndexRows(null)).toEqual({ hits: [], more: false, noRoot: false, source: 'index' })
+  })
+})
+
+describe('Drive fills in behind the index (PR 1, hardened in review)', () => {
+  const hit = (id: string) => ({ id, name: `${id}.pdf`, mime: 'application/pdf', bytes: 1, modified: null, url: `https://drive.google.com/file/d/${id}/view`, home: null, path: '', excerpt: null, excerptWhy: null })
+  it('keeps the index’s hits first, adds Drive’s the index did not name, takes Drive’s more; Drive empty leaves the index as it was', () => {
+    const index = { hits: [hit('i1'), hit('both')], more: false, noRoot: false, source: 'index' as const }
+    const drive = { hits: [hit('both'), hit('d1')], more: true, noRoot: false, source: 'drive' as const }
+    const merged = driveBehindIndex(index, drive)
+    expect(merged.hits.map((h) => h.id)).toEqual(['i1', 'both', 'd1'])
+    expect(merged).toMatchObject({ source: 'index', more: true })
+    expect(driveBehindIndex(index, { ...drive, hits: [], more: false })).toBe(index)
   })
 })

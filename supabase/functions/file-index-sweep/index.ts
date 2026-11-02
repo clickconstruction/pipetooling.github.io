@@ -2,7 +2,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, googleAccessToken } from '../_shared/driveUpload.ts'
 import { filesChangedSince, indexContext, indexFiles, type IndexContext } from '../_shared/fileIndex.ts'
-import { SWEEP_MAX_FILES, SWEEP_RECHECK_ROWS, SWEEP_STAMP_KEY, indexPassWords, sweepSince, sweepStamp, type HeldFile } from '../_shared/fileIndexKernel.ts'
+import { type HeldFile, indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_RECHECK_ROWS, SWEEP_STAMP_KEY, sweepSince, sweepStamp } from '../_shared/fileIndexKernel.ts'
 
 /**
  * file-index-sweep — Search every file deeply (punch list #240, PR 1, v2.6319): the cron that keeps our own text index
@@ -50,6 +50,9 @@ async function recheckRows(ctx: IndexContext, n: number): Promise<{ rechecked: n
   for (const r of rows) {
     const res = await fetch(`${DRIVE}/files/${encodeURIComponent(r.drive_file_id)}?fields=id,name,mimeType,size,modifiedTime,parents,trashed&supportsAllDrives=true`, { headers: { Authorization: `Bearer ${ctx.google}` } })
     if (res.status === 404 || res.status === 403) {
+      // A 403 is also how Drive says a rate limit: that row stays, asked again another run; gone or forbidden goes.
+      const reason = await res.text().catch(() => '')
+      if (res.status === 403 && /RateLimitExceeded|rateLimitExceeded|quotaExceeded/.test(reason)) continue
       await ctx.admin.from('file_index').delete().eq('drive_file_id', r.drive_file_id)
       dropped += 1
       continue
@@ -61,7 +64,7 @@ async function recheckRows(ctx: IndexContext, n: number): Promise<{ rechecked: n
       dropped += 1
       continue
     }
-    if ((meta.modifiedTime ?? null) !== (r.modified_at ?? null)) {
+    if (!sameInstant(meta.modifiedTime, r.modified_at)) {
       const pass = await indexFiles(ctx, [meta], { max: 1 })
       changed += pass.indexed
       held.push(...pass.held)
@@ -92,8 +95,8 @@ serve(async (req) => {
 
     const { data: setting } = await admin.from('app_settings').select('value_text').eq('key', SWEEP_STAMP_KEY).maybeSingle()
     const stamp = (setting as { value_text?: string | null } | null)?.value_text ?? null
-    const since = sweepSince(stamp)
-    const listed = await filesChangedSince(ctx, since, limit)
+    const { since, inclusive } = sweepSince(stamp)
+    const listed = await filesChangedSince(ctx, since, limit, inclusive)
     const pass = await indexFiles(ctx, listed.files, { max: limit, startedMs: started })
     const left = pass.remaining + (listed.more ? 1 : 0)
     const next = sweepStamp(new Date(), pass.cursorModified, left)

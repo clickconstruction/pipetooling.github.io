@@ -1,25 +1,29 @@
 import { describe, expect, it } from 'vitest'
 import {
-  INDEX_TEXT_MAX_CHARS,
   budgetAllows,
+  cutText,
+  type DriveFileMeta,
   driveQueryTerm,
+  exportMimeOf,
+  type FileHome,
   folderKindOf,
   headlineToExcerpt,
   heldWhyWords,
+  type HomeAt,
+  INDEX_TEXT_MAX_CHARS,
   indexPassWords,
   indexPlan,
   indexRowOf,
+  type KnownRow,
   passCursor,
   readingRowOf,
+  sameInstant,
   settledWhy,
+  SWEEP_CURSOR_MARK,
   sweepSince,
   sweepStamp,
   textKindOf,
   walkUp,
-  type DriveFileMeta,
-  type FileHome,
-  type HomeAt,
-  type KnownRow,
 } from '../../../supabase/functions/_shared/fileIndexKernel'
 
 /**
@@ -99,7 +103,8 @@ describe('walkUp and folderKindOf', () => {
 
 describe('indexPlan', () => {
   const known = new Map<string, KnownRow>([
-    ['same', { drive_file_id: 'same', modified_at: '2026-10-14T15:00:00Z', text_why: null, text_source: 'pdf_layer' }],
+    // The row's time as PostgREST reads it back: the same instant as the file's 2026-10-14T15:00:00Z, spelled otherwise.
+    ['same', { drive_file_id: 'same', modified_at: '2026-10-14T15:00:00+00:00', text_why: null, text_source: 'pdf_layer' }],
     ['moved', { drive_file_id: 'moved', modified_at: '2026-10-01T00:00:00Z', text_why: null, text_source: 'pdf_layer' }],
     ['slow', { drive_file_id: 'slow', modified_at: '2026-10-14T15:00:00Z', text_why: 'slow', text_source: null }],
     ['stopped', { drive_file_id: 'stopped', modified_at: '2026-10-14T15:00:00Z', text_why: 'reading', text_source: null }],
@@ -158,13 +163,33 @@ describe('the budget, the sweep’s cursor and the words', () => {
     expect(passCursor([], new Set(), new Set())).toBeNull()
   })
 
-  it('the stamp is now when nothing is left, the cursor when some is, and kept when the pass handled nothing', () => {
+  it('the stamp is now when nothing is left, the cursor (marked) when some is, and kept when the pass handled nothing', () => {
     expect(sweepStamp(NOW, '2026-11-02T03:50:00Z', 0)).toBe(NOW.toISOString())
-    expect(sweepStamp(NOW, '2026-11-02T03:50:00Z', 3)).toBe('2026-11-02T03:50:00Z')
+    expect(sweepStamp(NOW, '2026-11-02T03:50:00Z', 3)).toBe(`2026-11-02T03:50:00Z${SWEEP_CURSOR_MARK}`)
     expect(sweepStamp(NOW, null, 3)).toBeNull()
-    expect(sweepSince('2026-11-02T03:50:00.000Z')).toBe('2026-11-02T03:48:00.000Z')
-    expect(sweepSince(null)).toBe('1970-01-01T00:00:00.000Z')
-    expect(sweepSince('not a time')).toBe('1970-01-01T00:00:00.000Z')
+    // A wall-clock stamp is listed from two minutes back; a cursor from its own instant, inclusively, with no overlap,
+    // so a dense minute of uploads (forty files inside the overlap, all current) can never hold the stamp still.
+    expect(sweepSince('2026-11-02T03:50:00.000Z')).toEqual({ since: '2026-11-02T03:48:00.000Z', inclusive: false })
+    expect(sweepSince(`2026-11-02T03:50:00.000Z${SWEEP_CURSOR_MARK}`)).toEqual({ since: '2026-11-02T03:50:00.000Z', inclusive: true })
+    expect(sweepSince(null)).toEqual({ since: '1970-01-01T00:00:00.000Z', inclusive: false })
+    expect(sweepSince('not a time')).toEqual({ since: '1970-01-01T00:00:00.000Z', inclusive: false })
+  })
+
+  it('sameInstant reads Drive’s and PostgREST’s spellings of one time as the same, and two nulls as the same', () => {
+    expect(sameInstant('2026-10-14T15:00:00.000Z', '2026-10-14T15:00:00+00:00')).toBe(true)
+    expect(sameInstant('2026-10-14T15:00:00.123Z', '2026-10-14T15:00:00.123+00:00')).toBe(true)
+    expect(sameInstant('2026-10-14T15:00:00.000Z', '2026-10-14T15:00:01+00:00')).toBe(false)
+    expect(sameInstant(null, null)).toBe(true)
+    expect(sameInstant('2026-10-14T15:00:00.000Z', null)).toBe(false)
+    expect(sameInstant('not a time', 'not a time')).toBe(true)
+  })
+
+  it('cuts text on a whole character, and names a Sheet’s export kind', () => {
+    expect(cutText('abc', 5)).toBe('abc')
+    expect(cutText('abcdef', 3)).toBe('abc')
+    expect(cutText('ab😀', 3)).toBe('ab')
+    expect(exportMimeOf('application/vnd.google-apps.spreadsheet')).toBe('text/csv')
+    expect(exportMimeOf('application/vnd.google-apps.document')).toBe('text/plain')
   })
 
   it('escapes a Drive query term', () => {

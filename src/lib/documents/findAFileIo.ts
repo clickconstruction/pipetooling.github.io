@@ -7,7 +7,7 @@
  */
 import { supabase } from '../supabase'
 import { fnProblem, type FnResult } from '../gc/gcIo'
-import { FIND_MAX_HITS, FIND_WORDS, findAFileFromAnswer, findAFileFromIndexRows, type FindAFileRead } from './findAFile'
+import { driveBehindIndex, FIND_MAX_HITS, FIND_WORDS, findAFileFromAnswer, findAFileFromIndexRows, type FindAFileRead } from './findAFile'
 
 export type FindAFileIo = {
   search: (words: string) => Promise<FindAFileRead>
@@ -31,10 +31,19 @@ export async function searchDrive(words: string): Promise<FindAFileRead> {
   return findAFileFromAnswer(r.data)
 }
 
+/** Both at once: the index's hits lead and Drive's fill in behind; Drive refusing costs the floor alone while the index answered. */
 export async function searchJobFiles(words: string): Promise<FindAFileRead> {
-  const index = await searchIndex(words)
-  if (index && index.hits.length > 0) return index
-  return searchDrive(words)
+  const [index, drive] = await Promise.all([
+    searchIndex(words),
+    searchDrive(words).then(
+      (read) => ({ ok: true as const, read }),
+      (error: unknown) => ({ ok: false as const, error }),
+    ),
+  ])
+  if (index && index.hits.length > 0) return drive.ok ? driveBehindIndex(index, drive.read) : index
+  if (drive.ok) return drive.read
+  if (index) return index
+  throw drive.error
 }
 
 export const supabaseFindAFileIo: FindAFileIo = { search: searchJobFiles }

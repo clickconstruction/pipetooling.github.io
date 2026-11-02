@@ -67,6 +67,7 @@ CREATE INDEX IF NOT EXISTS file_index_bid_idx ON public.file_index (bid_id) WHER
 CREATE INDEX IF NOT EXISTS file_index_modified_idx ON public.file_index (modified_at DESC NULLS LAST);
 CREATE INDEX IF NOT EXISTS file_index_text_why_idx ON public.file_index (text_why) WHERE text_why IS NOT NULL;
 CREATE INDEX IF NOT EXISTS file_index_checked_idx ON public.file_index (checked_at);
+CREATE INDEX IF NOT EXISTS file_index_customer_idx ON public.file_index (customer_id) WHERE customer_id IS NOT NULL;
 
 -- ── who reads, who writes ─────────────────────────────────────────────────────────────────────────────────────────
 -- The office and the estimators read (the roles drive-link's door takes); nobody writes through the API: the three
@@ -144,6 +145,15 @@ COMMENT ON FUNCTION public.search_file_index(text, integer) IS
 
 REVOKE EXECUTE ON FUNCTION public.search_file_index(text, integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.search_file_index(text, integer) TO authenticated, service_role;
+
+-- ── the sweep's stamp ─────────────────────────────────────────────────────────────────────────────────────────────
+-- Seeded at now: the sweep keeps the index current from the first run (a file that lands is indexed within ten
+-- minutes), and the history is the backfill's (index_job over every job and bid). Without a seed the first run
+-- would start at the dawn of the drive, forty files a run, oldest first, and a new upload would wait days. To walk
+-- the whole drive once anyway, set the value to 1970-01-01T00:00:00.000Z.
+INSERT INTO public.app_settings (key, value_text)
+VALUES ('file_index_sweep_last_at', to_char(now() AT TIME ZONE 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'))
+ON CONFLICT (key) DO NOTHING;
 
 -- ── the sweep's cron ──────────────────────────────────────────────────────────────────────────────────────────────
 -- Every ten minutes, three minutes past the folder sweep's slot so the two never share a minute: POST
