@@ -80,6 +80,7 @@ function data(): DevelopmentPageData {
     teamMembers: [],
     names: new Map([['u-est', 'Dana']]),
     paySpeed: null,
+    twinUserIds: new Set<string>(),
   }
 }
 

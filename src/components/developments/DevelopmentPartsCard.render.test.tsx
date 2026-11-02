@@ -15,6 +15,9 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The screen's width: the desk by default, a phone where a test says so (the Gun Dog spike, 2026-11-02).
+const screenState = vi.hoisted(() => ({ phone: false }))
+vi.mock('../../hooks/useMatchMedia', () => ({ useMatchMedia: () => screenState.phone }))
 const opened: string[] = []
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
 
@@ -22,6 +25,7 @@ beforeAll(installDomShims)
 afterEach(() => {
   cleanup()
   opened.length = 0
+  screenState.phone = false
 })
 
 function part(over: Partial<PlanPartRow> & { id: string; name: string }): PlanPartRow {
@@ -104,6 +108,19 @@ describe('DevelopmentPartsCard', () => {
     fireEvent.change(screen.getByLabelText("The part's name"), { target: { value: 'Pool house' } })
     fireEvent.click(screen.getByRole('button', { name: 'Make the part' }))
     await waitFor(() => expect(w.addPart).toHaveBeenCalledWith('Pool house'))
+  })
+
+  it('on a phone draws each part as a card with the same facts, and no table', () => {
+    screenState.phone = true
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{ u1: 'Taunya' }} canWrite openCarrier={() => {}} askAbout={() => {}} writes={writes()} />)
+    expect(screen.queryByTestId('site-plans-table')).toBeNull()
+    const cards = screen.getByTestId('site-plans-cards')
+    expect(cards.querySelectorAll('[data-testid^="site-part-"]').length).toBe(3)
+    const bunker = screen.getByTestId('site-part-p2')
+    expect(bunker.textContent).toContain('Bunker addendum 1')
+    expect(bunker.textContent).toContain('P-201 redrawn')
+    expect(bunker.textContent).toContain('JP991')
+    expect(screen.getByTestId('site-older-p2')).toBeTruthy()
   })
 
   it('says what fills an empty site and offers + Part to a writer', () => {
