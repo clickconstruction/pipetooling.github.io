@@ -9,7 +9,7 @@ Projects is one page for every working project. Each project is a card. The stri
 
 ## Open the board
 
-Open **Jobs** and press {{button:blue|Projects}} beside {{button:green|Forecast}}. The page also opens at [/projects-board](/projects-board). A job lands here when it is Working and has a stage In order. A Working job priced at $25,000 and up lands here too. Service calls stay out.
+Open **Jobs** and press {{button:blue|Projects}} beside {{button:green|Forecast}}. The page also opens at [/projects-board](/projects-board). On a job's Costs tab, the Where we are card has a door, **On the Projects board ›**. The door opens that project's card large. A job lands here when it is Working and has a stage In order. A Working job priced at $25,000 and up lands here too. Service calls stay out.
 
 ## Read a card
 
