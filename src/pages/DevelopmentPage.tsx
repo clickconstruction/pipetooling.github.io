@@ -190,7 +190,7 @@ export default function DevelopmentPage() {
         ? buildSitePlansView({
             parts: siteRead.parts,
             sets: siteRead.sets,
-            jobs: shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), plan_part_id: j.plan_part_id ?? null })),
+            jobs: shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), plan_part_id: j.plan_part_id ?? null, kind: j.kind ?? null, hcp_number: j.hcp_number, click_number: j.click_number, bid_id: j.bid_id, revenue: j.revenue, status: j.status, billing_only: j.billing_only ?? null })),
             bids: shown.bids.map((b) => ({ id: b.id, label: bidLabel(b), plans_link: b.plans_link })),
           })
         : null,
