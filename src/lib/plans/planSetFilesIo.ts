@@ -6,12 +6,12 @@
  */
 import { supabase } from '../supabase'
 import { fnProblem, type FnResult } from '../gc/gcIo'
+import { checkSupabaseError } from '../../utils/errorHandling'
+import type { MailFile } from './planSetFiles'
 import { base64OfBytes } from '../../../supabase/functions/_shared/messagesEmailFiles'
 
 export type SetFolder = { folderId: string; url: string; made: boolean }
 export type FiledFile = { driveFileId: string; url: string; folderUrl: string }
-export type MailFile = { id: string; name: string; mime: string | null }
-
 export type PlanSetFilesIo = {
   /** The set's folder under the job's Plans folder, made as needed; a set with no link takes the folder's. */
   folder(setId: string): Promise<SetFolder>
@@ -19,7 +19,7 @@ export type PlanSetFilesIo = {
   put(setId: string, file: File, name?: string): Promise<FiledFile>
   /** Our copy of a mail's attachment into the set's folder. */
   saveAttachment(setId: string, attachmentId: string): Promise<FiledFile>
-  /** The files kept on a mail's line, for the mail door; fail-soft. */
+  /** The files on a mail's line, for the mail door. A read that fails throws: a failure must not read as no file. */
   attachmentsOf(messageId: string): Promise<MailFile[]>
 }
 
@@ -53,12 +53,10 @@ export const supabasePlanSetFilesIo: PlanSetFilesIo = {
     return answer(r, FAILED, filed)
   },
   async attachmentsOf(messageId) {
-    try {
-      const r = await supabase.from('message_attachments').select('id, name, mime, kind').eq('message_id', messageId).order('sort_order')
-      if (r.error) return []
-      return ((r.data ?? []) as Array<{ id: string; name: string; mime: string | null; kind: string }>).filter((a) => a.kind === 'file').map((a) => ({ id: a.id, name: a.name, mime: a.mime }))
-    } catch {
-      return []
-    }
+    const r = await supabase.from('message_attachments').select('id, name, mime, kind, bucket_path, left_in_gmail').eq('message_id', messageId).order('sort_order')
+    checkSupabaseError(r, 'read mail files')
+    return (r.data as Array<{ id: string; name: string; mime: string | null; kind: string; bucket_path: string | null; left_in_gmail: string | null }>)
+      .filter((a) => a.kind === 'file')
+      .map((a) => ({ id: a.id, name: a.name, mime: a.mime, copied: Boolean(a.bucket_path), leftWhy: a.left_in_gmail }))
   },
 }

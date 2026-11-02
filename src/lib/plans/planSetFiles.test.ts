@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { asBuiltFileName, asBuiltPressWords, filedWords, fileHoldWhy, filingWords, pickedFilesWords, planSetFileKind, splitReadyFiles } from './planSetFiles'
+import { addPickedFiles, asBuiltFileName, asBuiltPressWords, fileAgainLabel, filedWords, fileHoldWhy, filingWords, heldBehindLine, mailFilesWords, pickedFilesWords, planSetFileKind, splitMailFiles, splitReadyFiles, type MailFilesResult } from './planSetFiles'
 
 const photo = (name: string, size = 2_400_000) => ({ name, size, type: 'image/jpeg' })
 const pdf = (name: string, size = 900_000) => ({ name, size, type: 'application/pdf' })
@@ -49,5 +49,61 @@ describe('words', () => {
     expect(filedWords(3, 0)).toEqual({ line: 'Filed 3 files.', head: null, tone: 'success' })
     expect(filedWords(2, 1).line).toBe('Filed 2 files. 1 did not file.')
     expect(filedWords(0, 2).tone).toBe('error')
+  })
+  it('names the press that files again and a file held back', () => {
+    expect(fileAgainLabel(1)).toBe('File 1 file again')
+    expect(fileAgainLabel(3)).toBe('File 3 files again')
+    expect(heldBehindLine('huge.jpg', 'over 10 MB (11 MB)')).toBe('huge.jpg stayed behind · over 10 MB (11 MB)')
+  })
+})
+
+describe('addPickedFiles', () => {
+  it('a second pick adds to the first, as a phone’s camera hands back one shot a press', () => {
+    const one = { ...photo('image.jpg'), lastModified: 1 }
+    const two = { ...photo('image.jpg'), lastModified: 2 }
+    const three = pdf('sheets.pdf')
+    expect(addPickedFiles(addPickedFiles(addPickedFiles([], [one]), [two]), [three])).toEqual([one, two, three])
+  })
+  it('the same file picked twice counts once', () => {
+    const one = { ...photo('image.jpg'), lastModified: 1 }
+    expect(addPickedFiles([one], [{ ...one }, one])).toEqual([one])
+  })
+})
+
+describe('a mail’s files', () => {
+  const none: MailFilesResult = { readFailed: null, landed: 0, failed: [], left: [], linkTyped: false, noLineFiles: 0 }
+
+  it('splits the files we hold a copy of from the ones that stayed in Gmail', () => {
+    const kept = { id: 'a1', name: 'spec.pdf', mime: null, copied: true, leftWhy: null }
+    const big = { id: 'a2', name: 'full-set.zip', mime: null, copied: false, leftWhy: 'too_big' }
+    expect(splitMailFiles([kept, big])).toEqual({ ready: [kept], left: [big] })
+  })
+
+  it('no file says only what is true: it holds a link only when someone typed one', () => {
+    expect(mailFilesWords(none)).toEqual({ words: 'The mail had no file to keep.', tone: 'success' })
+    expect(mailFilesWords({ ...none, linkTyped: true })).toEqual({ words: 'The mail had no file to keep. The paper holds its link.', tone: 'success' })
+  })
+
+  it('green only when every file landed', () => {
+    expect(mailFilesWords({ ...none, landed: 1 })).toEqual({ words: 'The mail’s file is in the paper’s folder.', tone: 'success' })
+    expect(mailFilesWords({ ...none, landed: 2 }).words).toBe('The mail’s 2 files are in the paper’s folder.')
+    const part = mailFilesWords({ ...none, landed: 1, failed: [{ name: 'loads.xlsx', why: 'Drive answered 500' }] })
+    expect(part).toEqual({ words: 'The mail’s file is in the paper’s folder. One file did not land: loads.xlsx: Drive answered 500.', tone: 'warning' })
+    expect(mailFilesWords({ ...none, failed: [{ name: 'a', why: 'One.' }, { name: 'b', why: 'Two.' }] }).words).toBe('2 files did not land: a: One. b: Two.')
+  })
+
+  it('names a file that stayed in Gmail and why', () => {
+    const left = mailFilesWords({ ...none, landed: 1, left: [{ name: 'full-set.zip', leftWhy: 'too_big' }, { name: 'old.pdf', leftWhy: 'not_copied' }] })
+    expect(left.words).toBe('The mail’s file is in the paper’s folder. full-set.zip stays in Gmail, too big for us to keep. old.pdf stays in Gmail, never copied here.')
+    expect(left.tone).toBe('warning')
+  })
+
+  it('a read that failed says so and never reads as a mail with no file', () => {
+    expect(mailFilesWords({ ...none, readFailed: 'No connection' })).toEqual({ words: 'The mail’s files did not read: No connection. The paper is kept.', tone: 'warning' })
+  })
+
+  it('a mail no line holds says its files stayed behind', () => {
+    expect(mailFilesWords({ ...none, noLineFiles: 1 })).toEqual({ words: 'The mail’s file stayed in Gmail, since no line on the job holds this mail.', tone: 'warning' })
+    expect(mailFilesWords({ ...none, noLineFiles: 3 }).words).toBe('The mail’s 3 files stayed in Gmail, since no line on the job holds this mail.')
   })
 })

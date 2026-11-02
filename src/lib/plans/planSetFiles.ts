@@ -3,9 +3,10 @@
  * the crew's as-built taken as photos of the marked sheets or a PDF. The folder is Plans › <set name> under the
  * job's folder, made by `plan-set-files` as needed; a set with no link takes the folder's link, so the register
  * mirrors Drive. A batch of photos acts on what is clean and names what it held (`batchWords`), and after the
- * filing says what took and what did not (`batchOutcomeWords`). Pure.
+ * filing says what took and what did not (`batchOutcomeWords`). A mail's files follow its paper the same way, and a
+ * file that stayed in Gmail is named instead of sent. Pure.
  */
-import { batchOutcomeWords, batchWords, type BatchOutcome, type BatchWords } from '../batchWords'
+import { batchOutcomeWords, batchWords, countedLabel, type BatchOutcome, type BatchWords } from '../batchWords'
 import { addFileSizeWords } from '../jobs/jobFolderAddFile'
 
 /** The function's cap: a file from the phone or this computer comes in as base64, up to 10 MB. */
@@ -14,7 +15,7 @@ export const PLAN_SET_FILE_MAX_BYTES = 10 * 1024 * 1024
 /** What the as-built press takes: photos of the marked sheets, or a PDF. */
 export const AS_BUILT_ACCEPT = 'image/*,application/pdf'
 
-export type PickedFile = { name: string; size: number; type: string }
+export type PickedFile = { name: string; size: number; type: string; lastModified?: number }
 
 export type FileKind = 'photo' | 'pdf' | 'other'
 
@@ -44,6 +45,22 @@ export function splitReadyFiles<F extends PickedFile>(files: ReadonlyArray<F>): 
     else ready.push(f)
   }
   return { ready, held }
+}
+
+/**
+ * A second pick adds to the first: a phone's camera hands back one shot a press, so three shots of the marked sheets
+ * take three presses. The same file picked twice counts once.
+ */
+export function addPickedFiles<F extends PickedFile>(have: ReadonlyArray<F>, more: ReadonlyArray<F>): F[] {
+  const key = (f: PickedFile) => `${f.name}|${f.size}|${f.lastModified ?? ''}`
+  const seen = new Set(have.map(key))
+  const out = [...have]
+  for (const f of more) {
+    if (seen.has(key(f))) continue
+    seen.add(key(f))
+    out.push(f)
+  }
+  return out
 }
 
 /** *3 photos and 1 PDF · 4.2 MB*; *1 photo · 860 KB*; '' for none. */
@@ -100,12 +117,62 @@ export function filedWords(done: number, failed: number): BatchOutcome {
   return batchOutcomeWords({ verb: 'file', past: 'Filed', done, failed, noun: ['file', 'files'] })
 }
 
+/** The press that tries the files that did not land: *File 1 file again*. */
+export function fileAgainLabel(n: number): string {
+  return `${countedLabel('File', n, ['file', 'files'])} again`
+}
+
+/** A file held back when it was picked, still named once the form has closed. */
+export function heldBehindLine(name: string, why: string): string {
+  return `${name} stayed behind · ${why}`
+}
+
 export const PLAN_SET_FILES_WORDS = {
   pick: 'Photos or a PDF',
   pickTitle: 'Take photos of the marked sheets, or pick a PDF',
-  change: 'Pick different files',
+  change: 'Add more',
   clear: 'Not these',
-  folderMade: (name: string) => `${name} has its own folder under Plans in Drive.`,
+  addToSet: 'Add photos or a PDF',
+  addToSetTitle: 'Take photos of the marked sheets, or pick a PDF, and file them in this as-built’s folder',
+  makeFolder: 'Make its folder',
+  makeFolderTitle: 'Make this set’s own folder under the job’s Plans folder in Drive, and give the set its link',
   mailFiled: (n: number) => (n === 1 ? 'The mail’s file is in the paper’s folder.' : `The mail’s ${n} files are in the paper’s folder.`),
-  mailNoFiles: 'The mail had no file to keep; the paper holds its link.',
+  mailReadAgain: 'Read the mail’s files again',
+  /** Said in the form, while the person can still press Put it on the job. */
+  mailNoLineAhead: (n: number) =>
+    n === 1 ? 'This mail’s file stays in Gmail for now. Press Put it on the job first and it follows the paper.' : `This mail’s ${n} files stay in Gmail for now. Press Put it on the job first and they follow the paper.`,
 } as const
+
+/** A file on a mail's line in Messages: our copy of it, or why it stayed in Gmail. */
+export type MailFile = { id: string; name: string; mime: string | null; copied: boolean; leftWhy: string | null }
+
+/** The files we hold a copy of go; the others stay in Gmail and are named. */
+export function splitMailFiles(files: ReadonlyArray<MailFile>): { ready: MailFile[]; left: MailFile[] } {
+  return { ready: files.filter((f) => f.copied), left: files.filter((f) => !f.copied) }
+}
+
+export type MailFilesResult = {
+  /** The read of the mail's files failed, with its reason. Nothing else is known then. */
+  readFailed: string | null
+  landed: number
+  failed: ReadonlyArray<{ name: string; why: string }>
+  left: ReadonlyArray<Pick<MailFile, 'name' | 'leftWhy'>>
+  /** The person typed a link on the paper. */
+  linkTyped: boolean
+  /** The mail shows this many files, and no line on the job holds it, so none of them could follow. */
+  noLineFiles: number
+}
+
+const sentence = (s: string): string => (/[.!?]$/.test(s.trim()) ? s.trim() : `${s.trim()}.`)
+
+/** What became of a mail's files once its paper is kept. Green only when nothing stayed behind. */
+export function mailFilesWords(r: MailFilesResult): { words: string; tone: 'success' | 'warning' } {
+  if (r.readFailed) return { words: `The mail’s files did not read: ${sentence(r.readFailed)} The paper is kept.`, tone: 'warning' }
+  if (r.noLineFiles > 0) return { words: r.noLineFiles === 1 ? 'The mail’s file stayed in Gmail, since no line on the job holds this mail.' : `The mail’s ${r.noLineFiles} files stayed in Gmail, since no line on the job holds this mail.`, tone: 'warning' }
+  const bits: string[] = []
+  if (r.landed > 0) bits.push(PLAN_SET_FILES_WORDS.mailFiled(r.landed))
+  for (const f of r.left) bits.push(`${f.name} stays in Gmail, ${f.leftWhy === 'too_big' ? 'too big for us to keep' : 'never copied here'}.`)
+  if (r.failed.length > 0) bits.push(`${r.failed.length === 1 ? 'One file did not land' : `${r.failed.length} files did not land`}: ${r.failed.map((f) => sentence(`${f.name}: ${f.why}`)).join(' ')}`)
+  if (bits.length === 0) return { words: r.linkTyped ? 'The mail had no file to keep. The paper holds its link.' : 'The mail had no file to keep.', tone: 'success' }
+  return { words: bits.join(' '), tone: r.failed.length > 0 || r.left.length > 0 ? 'warning' : 'success' }
+}

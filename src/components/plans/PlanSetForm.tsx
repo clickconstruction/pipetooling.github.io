@@ -2,13 +2,13 @@
  * The one form a new set of plans is typed into (punch list #239): on a job's Documents tab (PR 2) and
  * on the Development page's Plans look (PR 3). Name · Kind · From · Dated · Memo · Link for a set; Name ·
  * Memo · Link for an as-built, which also takes **Photos or a PDF** from the phone or this computer (punch list
- * #239, PR 5): the picked files are listed, a file over 10 MB or of another kind is held with its reason and the
+ * #239, PR 5): each pick adds to the list, a file over 10 MB or of another kind is held with its reason and the
  * rest still go, and the press names its count. The presses name what they do: *Add the set and build from it*,
  * *Add it, keep <set> current*, *Add the as-built with 3 files*. Pure over its props; the caller writes.
  */
 import { useRef, type CSSProperties } from 'react'
 import { PLAN_SET_KINDS, PLAN_SET_SOURCES, addSetPressWords, defaultSetName, type NewSetDraft, type PlanSetKind, type PlanSetRow, type PlanSetSource } from '../../lib/plans/planSets'
-import { AS_BUILT_ACCEPT, PLAN_SET_FILES_WORDS, asBuiltPressWords, fileHoldWhy, filingWords, pickedFilesWords, splitReadyFiles } from '../../lib/plans/planSetFiles'
+import { AS_BUILT_ACCEPT, PLAN_SET_FILES_WORDS, addPickedFiles, asBuiltPressWords, filingWords, pickedFilesWords, splitReadyFiles } from '../../lib/plans/planSetFiles'
 import { addFileSizeWords } from '../../lib/jobs/jobFolderAddFile'
 
 const field: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(5.5rem, 7rem) 1fr', gap: '0.3rem 0.6rem', alignItems: 'center', fontSize: '0.8125rem' }
@@ -106,7 +106,7 @@ export function PlanSetForm({
               aria-label={PLAN_SET_FILES_WORDS.pick}
               style={{ display: 'none' }}
               onChange={(e) => {
-                onFiles(Array.from(e.target.files ?? []))
+                onFiles(addPickedFiles(picked, Array.from(e.target.files ?? [])))
                 e.target.value = ''
               }}
             />
@@ -125,9 +125,9 @@ export function PlanSetForm({
             </div>
             {split.held.length ? (
               <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }} data-testid="job-plans-as-built-held">
-                {split.held.map((h) => (
-                  <li key={h.file.name}>
-                    {h.file.name} · {addFileSizeWords(h.file.size)} · {fileHoldWhy(h.file)}
+                {split.held.map((h, i) => (
+                  <li key={`${h.file.name}-${i}`}>
+                    {h.file.name} · {addFileSizeWords(h.file.size)} · {h.why}
                   </li>
                 ))}
               </ul>
