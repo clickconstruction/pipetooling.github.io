@@ -18422,6 +18422,8 @@ export type Database = {
           first_viewed_at: string | null
           id: string
           job_id: string
+          initials: Json | null
+          kind: string
           last_sent_at: string | null
           last_viewed_at: string | null
           minted_pdf_path: string | null
@@ -18481,6 +18483,8 @@ export type Database = {
           first_viewed_at?: string | null
           id?: string
           job_id: string
+          initials?: Json | null
+          kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
           minted_pdf_path?: string | null
@@ -18540,6 +18544,8 @@ export type Database = {
           first_viewed_at?: string | null
           id?: string
           job_id?: string
+          initials?: Json | null
+          kind?: string
           last_sent_at?: string | null
           last_viewed_at?: string | null
           minted_pdf_path?: string | null

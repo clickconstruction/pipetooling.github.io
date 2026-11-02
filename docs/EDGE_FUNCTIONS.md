@@ -2286,6 +2286,8 @@ on Quickfill sends the same ask one charge at a time.
 
 **v2.3510 (What customers see PR 2):** the email's subject, text and HTML are built by `_shared/jobContractEmail.ts` → `buildJobContractSendEmail` (wording moved verbatim), which `src/lib/jobContractEmail.ts` re-exports so Settings → What customers see renders the same email over the sample. Send path unchanged.
 
+**v2.6398 (the warranty in place of a contract, 2026-11-02)**: the row's `kind` is read; a warranty's refusals and its *Please sign* email say *warranty* (*Here is our warranty for … initial each line and sign*), its amount line *Price*; every send writes the customer's thread line *The warranty went to Dana to initial and sign: …* (`_shared/jobContractThreadLine.ts`, keyed on the send; a contract gets its line too, which it never had).
+
 ### get-job-contract
 
 > **v2.5312 — the sample skips the flows' papers**: the sample's terms are the newest customer document in the Contract Book that is not a flow paper (`.is('flow_kind', null)`). A paper the flow editor adds (`flow_paper_create`, v2.5306) is filed under the customer audience and dated the day it is made, so it would otherwise be the newest. Deploy only after migration `20261013140000_flow_papers` is on prod, since the filter names its column. **Redeploy required.**
@@ -2307,6 +2309,8 @@ on Quickfill sends the same ask one charge at a time.
 ---
 
 **v2.3510 (What customers see PR 2):** the sample tokens (`sample` out for signature, `sample-done` signed) answer from `sampleJobContractResponse` in `_shared/customerSampleFixtures.ts` before any database read — no row, no view stamp, no event. The signing page shows the Sample banner and saves nothing.
+
+**v2.6398 (the warranty in place of a contract, 2026-11-02)**: the payload gains `kind` (`contract` | `warranty`) and `initials` (the lines as the customer initialled them, `[{line, initials}]`, once signed); `heading` follows the kind (*Warranty for 407 E 6th St*, `agreementHeading`). The page draws a warranty's *Price*, its lines to initial with a box each, and the words by kind.
 
 ### sign-job-contract
 
@@ -2334,6 +2338,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 
 ---
 
+**v2.6398 (the warranty in place of a contract, 2026-11-02)**: the body gains `initials` (the initials typed on each of the warranty's lines, in the order of `fields.initial_lines`); a warranty's first signer must initial every line, two to four letters each (`initialsForLines`), else `400 { code: 'initials_missing' }` with the line named; the initials are kept on the row with the signature and printed in the PDF (a box per line); the file is *Signed-warranty-J….pdf*, the office notice *✍ Warranty signed*, the customer's copy *Your warranty is signed and on file with us*; the thread line *Dana signed the warranty: … Each line is initialled.* is written once per agreement, for a contract too.
+
 ### remind-job-contracts
 
 > **v2.4574 — each reminder is kept**: a reminder email is filed (`job_contract_reminder`, the job, the contract), with no sender since it sends itself. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
@@ -2351,6 +2357,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 ---
 
 **v2.3510 (What customers see PR 2):** the reminder's subject, text and HTML come from `_shared/jobContractEmail.ts` → `buildJobContractReminderEmail`; the cron path is otherwise unchanged.
+
+**v2.6398 (the warranty in place of a contract, 2026-11-02)**: the row's `kind` is read and the reminder worded by it (*our warranty is waiting for your initials and signature*, *Price:*).
 
 ### remind-bid-followups
 
@@ -2393,6 +2401,8 @@ The customer's signed-copy email (subject *Signed: … — Job #…*, PDF attach
 **Behavior**: Contracts must be `signed`; the PDF is `signed_pdf_path` from `job-contract-documents` (rebuilt once with `_shared/jobContractPdf.ts` and stored when missing; a record with a frame filed from the paper sends `paper_upload_path`, else its document link). Estimates must be `customer_accepted` with a consent stamp; their PDF is built once from the frozen line items / option / terms / acceptor fields and cached at `estimates/<id>/signed.pdf`. `pdf_url` → 1-hour signed URL. `email` → Resend with the attachment, reply-to = the sender, the durable link for contracts, optional note; then a `shared` `job_contract_events` row (contracts) and a `contract_shared` `job_activity_events` row (both, when a job is known) carrying `to`.
 
 ---
+
+**v2.6398 (the warranty in place of a contract, 2026-11-02)**: `draft_pdf` and `send_to_sign` read the row's `kind` (or `draft.kind` for a job with no row yet) and print a warranty with *Price*, its lines to initial as empty boxes and the file *Warranty-J…-to-sign.pdf*; the paper email says *our warranty*. The signed copy's rebuild prints the kept initials and names the file *Signed-warranty-J….pdf*.
 
 ### send-submittal-reply-email
 
