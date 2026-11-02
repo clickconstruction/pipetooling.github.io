@@ -356,7 +356,7 @@ offered while any of the job's three links is missing, not only the job folder).
 the test: clear the hand-made pictures link or share it with the app's account, press Make the
 job's Drive folders, and the waiting box photo files on the sweep's next run. Then a week of use.
 
-**The manifest print** (v2.6366, 2026-11-02, the owner's ask that morning): **Print the manifest** beside Print labels prints one Letter page per container picked, to laminate and hang on the box — the stencil, the job and the site, the day printed, the day something was last recorded in it, what is in it with each number, and ruled lines for what is added on site by hand; the phone's box links to it. A plain print like the label (no sent copy); the fragment lists the calls. The same PR found that the body scroll lock clips a print to its first sheet; the manifest lets it go under print, the labels window does not yet.
+**The manifest print** (v2.6366, 2026-11-02, the owner's ask that morning): **Print the manifest** beside Print labels prints one Letter page per container picked, to laminate and hang on the box — the stencil, the job and the site, the box's QR code, the day printed, the day something was last recorded in it, what is in it with each number, and ruled lines for what is added on site by hand; the phone's box links to it. A plain print like the label (no sent copy); the fragment lists the calls. The same PR found that the body scroll lock clips a print to its first sheet; the manifest lets it go under print, the labels window does not yet.
 
 **Left, each one small PR** (the fragments' own lists):
 

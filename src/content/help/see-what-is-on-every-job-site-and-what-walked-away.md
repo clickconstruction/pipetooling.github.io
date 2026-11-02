@@ -45,7 +45,7 @@ Press **Label** on a box to print that box alone, or **Print labels** for every 
 
 A manifest is the paper that hangs on a box and says what is in it. Press **Print the manifest** on a job's page. The window opens on every box. Press a stencil to leave that box out. **None** clears them and **Every box** picks them all again. The press names its count, such as {{button:blue|Print 2 manifests}}.
 
-Each box prints on its own Letter page in large plain type. The page carries the stencil, the job and the site. The page shows the day the manifest was printed. The page also shows the day something was last recorded in the box, and by whom. Under the dates it lists what is in the box with each number. Ruled lines at the foot take what is added on site by hand. Each line has room for the item, the quantity, who added it and the day.
+Each box prints on its own Letter page in large plain type. The page carries the stencil, the job and the site. It carries the same code the label has, so the crew's camera opens the box from the manifest. The page shows the day the manifest was printed. The page also shows the day something was last recorded in the box, and by whom. Under the dates it lists what is in the box with each number. Ruled lines at the foot take what is added on site by hand. Each line has room for the item, the quantity, who added it and the day.
 
 Laminate the page and hang it on the box in a document holder. The manifest is a plain print and files no copy. When someone writes a line on it, press the same thing in the app so the count stays true.
 

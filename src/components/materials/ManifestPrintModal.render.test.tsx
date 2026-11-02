@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 /**
  * Render smoke for Print the manifest (punch list #209): one page per box picked, each with the two
- * dates and the items; a chip unpicks a box and the press names its new count; an empty box gets a
+ * dates, the items and the box's QR; a chip unpicks a box and the press names its new count; an empty box gets a
  * page of ruled lines; the press calls print with the pages picked.
  */
 import { describe, expect, it, vi } from 'vitest'
@@ -49,6 +49,10 @@ describe('ManifestPrintModal', () => {
     expect(within(a1).getByTestId('manifest-printed-on').textContent).toMatch(/^[A-Z][a-z]+ \d{1,2}, \d{4}$/)
     expect(within(a1).getByTestId('manifest-last-recorded').textContent).toBe('October 28, 2026 by Jordan')
     expect(within(a1).getAllByTestId('manifest-item').map((r) => r.textContent)).toEqual(['1/2" ball valve12', '3/4" copper 9050'])
+    const qr = within(a1).getByTestId('manifest-qr')
+    expect(qr.querySelector('svg')).toBeTruthy()
+    expect(qr.textContent).toBe('7D759246')
+    expect(a1.textContent).toContain('go to prts.co/b/7D759246')
     expect(within(a1).getAllByTestId('manifest-blank-row')).toHaveLength(MANIFEST_MIN_ROWS - 2)
     expect(within(a1).getByTestId('manifest-added').textContent).toContain('Item')
     expect(a1.textContent).toContain('Added on site')

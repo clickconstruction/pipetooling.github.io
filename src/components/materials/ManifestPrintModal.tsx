@@ -3,13 +3,16 @@
  * on the job or some of them, and prints one Letter page per container to laminate and hang on it:
  * the job and the site, the stencil, the day the manifest was printed, the day something was last
  * recorded in the container, every item with its number as the ledger reads it, and ruled lines at
- * the foot for what is added on site by hand. Always light, large plain type, no colour the page
+ * the foot for what is added on site by hand, and the box's QR code, the same the label carries,
+ * so the camera opens the box from the paper. Always light, large plain type, no colour the page
  * needs; printing draws the pages alone, as the labels do. A plain print: the labels file no sent
  * copy, and neither does this.
  *
  * The page model is `lib/materials/containerManifest.ts`.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
+import { QRCodeSVG } from 'qrcode.react'
+import { boxAddress, boxUrl } from '../../lib/materials/labels'
 import { lastRecordedWords, manifestContainers, manifestDateWords, manifestPages, manifestPickWords, manifestPressWords, MANIFEST_ADDED_COLUMNS, MANIFEST_ADDED_HEADER, type ManifestPage } from '../../lib/materials/containerManifest'
 import type { Container, ContainerLine, Movement, Place } from '../../lib/materials/onSite'
 
@@ -93,13 +96,18 @@ function ManifestSheet({ page: p }: { page: ManifestPage }) {
   const noun = p.kind
   return (
     <section className="on-site-manifest-page" aria-label={`Manifest for ${p.stencil}`} data-testid="manifest-page" style={{ border: `2px solid ${RULE}`, borderRadius: 10, padding: '1rem 1.1rem', display: 'grid', gap: '0.9rem', color: 'var(--text-strong)', background: 'var(--surface)' }}>
-      <header style={{ display: 'grid', gridTemplateColumns: 'auto 1fr', gap: '0.5rem 1.25rem', alignItems: 'end', borderBottom: `3px solid ${RULE}`, paddingBottom: '0.75rem' }}>
+      <header style={{ display: 'grid', gridTemplateColumns: 'auto 1fr auto', gap: '0.5rem 1.25rem', alignItems: 'end', borderBottom: `3px solid ${RULE}`, paddingBottom: '0.75rem' }}>
         <div style={{ fontSize: '4rem', fontWeight: 900, lineHeight: 1, letterSpacing: '0.02em' }}>{p.stencil}</div>
         <div style={{ minWidth: 0, display: 'grid', gap: '0.15rem' }}>
           <div style={{ fontSize: '0.8rem', fontWeight: 700, letterSpacing: '0.12em', textTransform: 'uppercase' }}>Manifest · what is in this {noun}</div>
           <div style={{ fontSize: '1.25rem', fontWeight: 800, lineHeight: 1.2 }}>{p.job}</div>
           {p.site ? <div style={{ fontSize: '1rem' }}>{p.site}</div> : null}
-          <div style={{ fontSize: '0.95rem' }}>{noun}{p.place ? ` · ${p.place}` : ''}{p.where ? ` · ${p.where}` : ''}<span style={{ fontWeight: 700, letterSpacing: '0.06em', marginLeft: '0.75rem' }}>{p.code}</span></div>
+          <div style={{ fontSize: '0.95rem' }}>{noun}{p.place ? ` · ${p.place}` : ''}{p.where ? ` · ${p.where}` : ''}</div>
+        </div>
+        {/* The same code the label carries: the camera opens this box on the phone from the paper. */}
+        <div style={{ display: 'grid', justifyItems: 'center', gap: 2 }} data-testid="manifest-qr">
+          <QRCodeSVG value={boxUrl(p.containerId)} size={112} level="M" bgColor="#ffffff" fgColor="#111111" marginSize={1} />
+          <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.06em' }}>{p.code}</div>
         </div>
       </header>
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem' }}>
@@ -146,7 +154,7 @@ function ManifestSheet({ page: p }: { page: ManifestPage }) {
             ))}
           </tbody>
         </table>
-        <div style={{ fontSize: '0.85rem', color: 'var(--text-700)' }}>Write what you add on a line with your name and the day. Press it in the app too, so the count stays true.</div>
+        <div style={{ fontSize: '0.85rem', color: 'var(--text-700)' }}>Write what you add on a line with your name and the day. Scan the code to open this {noun} on your phone, or go to {boxAddress(p.containerId)}, and press it there too, so the count stays true.</div>
       </div>
     </section>
   )
