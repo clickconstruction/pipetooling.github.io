@@ -43,29 +43,6 @@ The same card sits at the top of the rail beside the map. On a phone the rail is
 
 On a desktop, the mouse wheel scrolls the page when the pointer crosses the map. So you can scroll past it without the map zooming out. **Click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start.
 
-## Cluster the piles
-
-Around San Antonio the pins sit on top of each other. {{button:outline|Cluster}} sits beside {{button:outline|Fit all}}. Cluster groups pins that overlap at the current zoom into one disc with a count on it.
-
-- The disc takes the color most of its pins have. The disc wears a **red** or **amber** ring when any pin inside is in Collections, overdue or due soon. So nothing urgent hides in a pile.
-- **Click a disc** to zoom the map onto its pins. If you zoom in on your own, the discs break back into pins as soon as they have room.
-- Clustering is **off unless you turn it on**. The choice is remembered on that device. The button reads **Clustered ✓** while it is on.
-
-## Opening a record from a pin
-
-Click a pin for its card. The card shows the record and its number, its kind and stage, and the address. Then come two buttons.
-
-- {{button:outline|Open}} opens the record. A job opens in its window. A bid or an estimate opens on its page.
-- {{button:outline|Directions}} opens the address in Google Maps, ready to navigate.
-
-On a phone, tapping a pin shows the record as a bar under the map instead of a pop-up. So the buttons stay big and the pin stays in view.
-
-On a desktop, the mouse wheel scrolls the page when the pointer crosses the map. So you can scroll past it without the map zooming out. **Click the map once** and the wheel zooms it from then on. The **+** and **−** buttons, dragging and the pins work from the start.
-
-:::example Where is the work this month
-Turn off Estimates and the Lost stage. What is left is every job and every live bid, on one map.
-:::
-
 ## The rail beside the map
 
 On a desktop the map takes the left and a rail takes the right. The rail says what the map knows.

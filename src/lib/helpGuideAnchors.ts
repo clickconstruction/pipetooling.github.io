@@ -25,6 +25,27 @@ export function helpGuideHref(slug: string, headingText?: string | null, door?: 
   return anchor ? `${base}#${anchor}` : base
 }
 
+/**
+ * The `##` / `###` headings a guide's body writes a second time (v2.6339): the text of each
+ * line whose anchor an earlier heading already took. The page numbers a repeat `-2`, so
+ * nothing breaks, but a heading's text is its address (`helpGuideHref`) — a door built from
+ * it lands on the first copy and the reader meets the section twice. The merge queue's squash
+ * of a stack of PRs has put a whole section in twice (v2.6305).
+ */
+export function repeatedHeadings(body: string): string[] {
+  const seen = new Set<string>()
+  const repeats: string[] = []
+  for (const line of body.split('\n')) {
+    const m = /^#{2,3} (.+)$/.exec(line)
+    if (!m) continue
+    const anchor = headingAnchor(m[1]!)
+    if (!anchor) continue
+    if (seen.has(anchor)) repeats.push(m[1]!)
+    else seen.add(anchor)
+  }
+  return repeats
+}
+
 /** Stamp ids on the article's headings; returns the ids in document order. */
 export function applyHeadingAnchors(root: ParentNode): string[] {
   const ids: string[] = []
