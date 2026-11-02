@@ -47,13 +47,13 @@ const sets = [
 ]
 const jobs = [
   { id: 'j1', label: 'JP991', plan_part_id: 'p2' },
-  { id: 'j2', label: 'JP957', plan_part_id: null },
+  { id: 'j2', label: 'JP957', plan_part_id: null, name: 'Mobilizations Feb-Mar 2026' },
 ]
 const bids = [{ id: 'b1', label: 'BP340', plans_link: 'https://drive.google.com/robot' }]
 const view = buildSitePlansView({ parts, sets, jobs, bids })
 
 function writes(over: Partial<SitePlansWrites> = {}): SitePlansWrites {
-  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), ...over }
+  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), putJobsOnPart: vi.fn(async () => true), ...over }
 }
 
 describe('DevelopmentPartsCard', () => {
@@ -78,7 +78,7 @@ describe('DevelopmentPartsCard', () => {
     expect(screen.getByTestId('site-list-no-set').textContent).toContain('ATV building')
     fireEvent.click(screen.getByTestId('site-chip-no-part'))
     fireEvent.click(screen.getByText('JP957'))
-    expect(open).toHaveBeenCalledWith({ kind: 'job', id: 'j2', label: 'JP957' })
+    expect(open).toHaveBeenCalledWith({ kind: 'job', id: 'j2', label: 'JP957', name: 'Mobilizations Feb-Mar 2026' })
     fireEvent.click(screen.getByRole('button', { name: 'Ask the estimators about the 2' }))
     expect(ask).toHaveBeenCalledWith(2)
   })
@@ -129,5 +129,29 @@ describe('DevelopmentPartsCard', () => {
     expect(screen.getByText('No part of the site has plans yet.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '+ Part' }))
     expect(screen.getByTestId('site-part-form')).toBeTruthy()
+  })
+
+  it('a writer ticks the jobs on no part, names the part, and one press puts them on it', async () => {
+    const w = writes()
+    const many = buildSitePlansView({ parts, sets, jobs: [...jobs, { id: 'j3', label: 'JP960', plan_part_id: null, name: 'ATV building fans' }], bids })
+    renderWithProviders(<DevelopmentPartsCard view={many} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
+    fireEvent.click(screen.getByTestId('site-chip-no-part'))
+    // Each row carries the job's name, by name: the ATV building job before the mobilizations.
+    const rows = screen.getByTestId('site-list-no-part').querySelectorAll('.developmentPickRow')
+    expect([...rows].map((r) => r.textContent)).toEqual(['JP960ATV building fans', 'JP957Mobilizations Feb-Mar 2026'])
+    expect(screen.getByText('Put jobs on a part').closest('button')!.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByText('Tick all 2'))
+    fireEvent.change(screen.getByTestId('site-part-for-jobs'), { target: { value: 'p1' } })
+    const press = screen.getByText('Put 2 jobs on Lodge').closest('button')!
+    expect(press.hasAttribute('disabled')).toBe(false)
+    fireEvent.click(press)
+    await waitFor(() => expect(w.putJobsOnPart).toHaveBeenCalledWith('p1', ['j2', 'j3']))
+  })
+
+  it('a reader sees the jobs on no part as doors and no press', () => {
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    fireEvent.click(screen.getByTestId('site-chip-no-part'))
+    expect(screen.getByTestId('site-list-no-part').textContent).toContain('JP957')
+    expect(screen.queryByTestId('site-part-for-jobs')).toBeNull()
   })
 })

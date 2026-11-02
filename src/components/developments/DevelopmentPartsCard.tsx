@@ -10,11 +10,12 @@
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem, setLineWords, shortDayWords, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
-import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
+import { olderSetsFor, orderForPicking, sitePlansAskCount, sitePlansChipWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
+import { countedLabel } from '../../lib/batchWords'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { DEVELOPMENT_PHONE_QUERY } from './DevelopmentJumpStrip'
 
@@ -24,6 +25,7 @@ export type SitePlansWrites = {
   buildFrom: (partId: string, setId: string) => Promise<boolean>
   removeSet: (setId: string) => Promise<boolean>
   /** Many jobs onto one part in one press (the Gun Dog spike, 2026-11-02); true when any took it. */
+  putJobsOnPart: (partId: string, jobIds: string[]) => Promise<boolean>
 }
 
 const th: CSSProperties = { textAlign: 'left', padding: '4px 8px', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', borderBottom: '1px solid var(--border)' }
@@ -59,6 +61,9 @@ export function DevelopmentPartsCard({
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
+  // The jobs ticked for a part and the part picked, under the *N jobs on no part* chip.
+  const [picked, setPicked] = useState<Set<string>>(() => new Set())
+  const [partForJobs, setPartForJobs] = useState<string>('')
 
   if (!view) return <p style={{ ...muted, margin: 0 }}>Reading the plans…</p>
 
@@ -355,9 +360,74 @@ export function DevelopmentPartsCard({
         </div>
       ) : null}
       {openChip === 'noPart' && view.jobsWithNoPart.length ? (
-        <div style={{ fontSize: '0.8rem' }} data-testid="site-list-no-part">
-          {carriers(view.jobsWithNoPart)} <span style={muted}>· a job names its part on its Documents tab, under Plans</span>
-        </div>
+        canWrite && writes && view.parts.length > 0 ? (
+          // A writer ticks the jobs and names the part; one press puts them all on it (the Gun Dog spike, 2026-11-02: 24 jobs on no part, one at a time before).
+          <div style={{ fontSize: '0.8rem', display: 'grid', gap: 8 }} data-testid="site-list-no-part">
+            {/* One row per job with its name (the owner, 2026-11-02: a person picks the part by the name, not the number), by name so a building's jobs sit together; the row ticks, the number opens. */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 330px), 1fr))', gap: '2px 18px' }}>
+              {orderForPicking(view.jobsWithNoPart).map((c) => (
+                <label key={c.id} className={`developmentPickRow${picked.has(c.id) ? ' isOn' : ''}`} data-testid={`site-pick-${c.id}`}>
+                  <input
+                    type="checkbox"
+                    checked={picked.has(c.id)}
+                    onChange={(e) =>
+                      setPicked((prev) => {
+                        const next = new Set(prev)
+                        if (e.target.checked) next.add(c.id)
+                        else next.delete(c.id)
+                        return next
+                      })
+                    }
+                    aria-label={`Put ${c.label} on the part`}
+                  />
+                  <span className="developmentPickNumber">
+                    <LinkButton onClick={() => openCarrier(c)}>{c.label}</LinkButton>
+                  </span>
+                  <span className="developmentPickName" title={c.name ?? undefined}>
+                    {c.name ?? <span style={muted}>no name</span>}
+                  </span>
+                </label>
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+              <LinkButton onClick={() => setPicked(new Set(view.jobsWithNoPart.map((c) => c.id)))} nowrap>
+                Tick all {view.jobsWithNoPart.length}
+              </LinkButton>
+              {picked.size ? (
+                <LinkButton onClick={() => setPicked(new Set())} nowrap>
+                  Clear
+                </LinkButton>
+              ) : null}
+              <select value={partForJobs} onChange={(e) => setPartForJobs(e.target.value)} aria-label="The part the ticked jobs go on" style={{ ...input, minWidth: '10rem' }} data-testid="site-part-for-jobs">
+                <option value="">on which part…</option>
+                {view.parts.map((r) => (
+                  <option key={r.part.id} value={r.part.id}>
+                    {r.part.name}
+                  </option>
+                ))}
+              </select>
+              <SmallButton
+                primary
+                disabled={busy || picked.size === 0 || !partForJobs}
+                onClick={() =>
+                  void run(async () => {
+                    const ok = await writes.putJobsOnPart(partForJobs, [...picked])
+                    if (ok) setPicked(new Set())
+                    return ok
+                  })
+                }
+                title="Names the part on each ticked job, as its Documents tab would, one write per job; a job that will not take it is named afterwards"
+              >
+                {countedLabel('Put', picked.size, 'job')}
+                {partForJobs ? ` on ${view.parts.find((r) => r.part.id === partForJobs)?.part.name ?? 'the part'}` : ' on a part'}
+              </SmallButton>
+            </div>
+          </div>
+        ) : (
+          <div style={{ fontSize: '0.8rem' }} data-testid="site-list-no-part">
+            {carriers(view.jobsWithNoPart)} <span style={muted}>· a job names its part on its Documents tab, under Plans</span>
+          </div>
+        )
       ) : null}
       {partName !== null && canWrite && writes ? (
         <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }} data-testid="site-part-form">

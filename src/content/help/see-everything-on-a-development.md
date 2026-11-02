@@ -116,7 +116,7 @@ Plans lists each part of the site, such as the Lodge or the Bunker. Each row nam
 
 Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Build from this set}} on an older set to go back to it.
 
-Two chips sit under the table. One counts the parts with no set. One counts the jobs on no part. Press a chip to see them. A job names its part on its Documents tab, under Plans. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes. Bids keep their own set and are listed under the table.
+Two chips sit under the table. One counts the parts with no set. One counts the jobs on no part. Press a chip to see them. Under the jobs on no part, each job is a row with its number and its name. Tick the jobs that belong on one part. Pick the part in the box. Press {{button:blue|Put 3 jobs on Lodge}}. The button counts the ticked jobs and names the part. A job can also name its part on its Documents tab, under Plans. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes. Bids keep their own set and are listed under the table.
 
 Questions starts with two presses, {{button:outline|Ask the estimators}} and {{button:outline|Ask Dispatch}}. Under them sits one table for each lane with questions. Open questions come first, oldest first. Each shows how long it has waited, what it is about, the words and the answer so far. The answered ones fold under a count. With no question at all, the look says nothing is waiting.
 

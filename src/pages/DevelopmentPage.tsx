@@ -199,13 +199,20 @@ export default function DevelopmentPage() {
         ? buildSitePlansView({
             parts: siteRead.parts,
             sets: siteRead.sets,
-            jobs: shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), plan_part_id: j.plan_part_id ?? null })),
+            jobs: shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), plan_part_id: j.plan_part_id ?? null, name: j.job_name?.trim() || j.job_address?.trim() || null })),
             bids: shown.bids.map((b) => ({ id: b.id, label: bidLabel(b), plans_link: b.plans_link })),
           })
         : null,
     [shown, siteRead, jobLabel, bidLabel],
   )
   const canWritePlans = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'estimator'
+  const labelOfJobId = useCallback(
+    (id: string) => {
+      const j = shown?.jobs.find((x) => x.id === id)
+      return j ? jobLabel(j) : 'the job'
+    },
+    [shown, jobLabel],
+  )
   const siteWrites = useMemo<SitePlansWrites | undefined>(() => {
     if (!canWritePlans || !developmentIdForParts) return undefined
     const after = (fallback: string) => async (act: () => Promise<unknown>): Promise<boolean> => {
@@ -223,8 +230,18 @@ export default function DevelopmentPage() {
       addSet: (partId, draft, makeCurrent, replacesSetId) => after('The set did not save.')(() => siteIo.addSet({ partId, draft, makeCurrent, replacesSetId, marksUpSetId: null, jobId: null, userId: authUser?.id ?? null })),
       buildFrom: (partId, setId) => after('The set did not switch.')(() => siteIo.makeCurrent(partId, setId, authUser?.id ?? null)),
       removeSet: (setId) => after('The set did not come off.')(() => siteIo.removeSet(setId)),
+      // Many jobs onto one part (the Gun Dog spike, 2026-11-02): one write per job, the ones that will not take it named afterwards, the page read again.
+      putJobsOnPart: async (partId, jobIds) => {
+        const results = await Promise.allSettled(jobIds.map((id) => siteIo.pickPart(id, partId)))
+        const failed = results.map((r, i) => (r.status === 'rejected' ? { id: jobIds[i]!, reason: formatErrorMessage(r.reason, 'the write did not take') } : null)).filter((x): x is { id: string; reason: string } => x !== null)
+        const words = batchOutcomeWords({ verb: 'put on the part', past: 'put on the part', done: jobIds.length - failed.length, failed: failed.length, noun: 'job' })
+        showToast(failed.length ? `${words.line} ${failed.map((f) => `${labelOfJobId(f.id)}: ${f.reason}`).join(' ')}` : words.line, words.tone, 7000)
+        setSiteGen((n) => n + 1)
+        void load()
+        return failed.length < jobIds.length
+      },
     }
-  }, [canWritePlans, developmentIdForParts, siteIo, siteRead?.parts.length, authUser?.id, showToast])
+  }, [canWritePlans, developmentIdForParts, siteIo, siteRead?.parts.length, authUser?.id, showToast, load, labelOfJobId])
   // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.
   const shownJobIds = useMemo(() => (shown ? shown.jobs.map((j) => j.id) : []), [shown])
   const costsByJobId = useSiteCosts(shownJobIds, canSeeSiteCosts(role))
