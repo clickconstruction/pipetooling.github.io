@@ -4,9 +4,10 @@
  * together; `jobStageChecklists` reads each stage against its own. A failed read gives no rows, so the strip draws
  * nothing and the window stands as before: the checklists are an addition, never a gate on the screen. An answer the
  * sheet saves lands in the map at once, so the strip's count moves with the press. The questions read are the
- * company's and the items added on this job (#237), and an item added or taken off lands the same way. The job
- * window holds two readers at once, the strip above its tabs and the Documents section inside them, so a press that
- * lands on one lands on every reader of the same job.
+ * company's and the items added on this job (#237), and an item added, skipped, moved or taken off lands the same way
+ * (PR 1b). The job window holds two readers at once, the strip above its tabs and the Documents section inside them, so
+ * a press that lands on one lands on every reader of the same job. Whether this person authors on the job is asked apart
+ * from the read, only for the roles it can answer yes for, so no one's list waits on it.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { jobStageChecklists, type JobStageChecklist, type JobStageRef, type StageChecklistQuestion } from '../lib/jobs/stageChecklist'
@@ -27,8 +28,14 @@ export interface JobStageChecklistsRead {
   putAnswer: (answer: JobAnswer) => void
   /** Put a check added for one of the job's stages in place (#237), so the count moves at once. */
   putQuestion: (question: StageChecklistQuestion) => void
+  /** Put changed questions in place: a skip, a put back or a new order (PR 1b). */
+  putQuestions: (questions: readonly StageChecklistQuestion[]) => void
   /** Take a retired item out of the list. */
   dropQuestion: (questionId: string) => void
+  /** A job item now on the company's list: the company's row replaces it, and its answer follows (PR 1b). */
+  promoteQuestion: (fromId: string, company: StageChecklistQuestion) => void
+  /** The database's answer to who authors on this job; false until it answers, and for anyone it was not asked for. */
+  mayAuthor: boolean
   reload: () => void
   /** The io the sheet writes through, the one this read came through. */
   io: StageChecklistSheetIo
@@ -39,19 +46,30 @@ const EMPTY: ReadonlyMap<string, JobAnswer[]> = new Map()
 type Loaded = { jobId: string; stages: JobStageRef[]; questions: StageChecklistQuestion[]; answers: JobAnswer[] }
 
 /** A press that landed on a job's checklists. */
-type ChecklistChange = { answer: JobAnswer } | { question: StageChecklistQuestion } | { droppedId: string }
+type ChecklistChange = { answer: JobAnswer } | { questions: readonly StageChecklistQuestion[] } | { droppedId: string } | { promotedFromId: string; company: StageChecklistQuestion }
 
 function withChange(loaded: Loaded, change: ChecklistChange): Loaded {
   if ('answer' in change) return { ...loaded, answers: [...loaded.answers.filter((a) => a.id !== change.answer.id), change.answer] }
-  if ('question' in change) return { ...loaded, questions: [...loaded.questions.filter((q) => q.id !== change.question.id), change.question] }
+  if ('questions' in change) {
+    const landed = new Set(change.questions.map((q) => q.id))
+    return { ...loaded, questions: [...loaded.questions.filter((q) => !landed.has(q.id)), ...change.questions] }
+  }
+  if ('promotedFromId' in change) {
+    return {
+      ...loaded,
+      questions: [...loaded.questions.filter((q) => q.id !== change.promotedFromId), change.company],
+      answers: loaded.answers.map((a) => (a.questionId === change.promotedFromId ? { ...a, questionId: change.company.id } : a)),
+    }
+  }
   return { ...loaded, questions: loaded.questions.filter((q) => q.id !== change.droppedId) }
 }
 
 /** The mounted readers of each job, so a press that lands on one lands on them all. */
 const readers = new Map<string, Set<(change: ChecklistChange) => void>>()
 
-export function useJobStageChecklists(jobId: string | null | undefined, io?: StageChecklistSheetIo, rev = 0): JobStageChecklistsRead {
+export function useJobStageChecklists(jobId: string | null | undefined, io?: StageChecklistSheetIo, rev = 0, askMayAuthor = false): JobStageChecklistsRead {
   const sheetIo = useMemo(() => io ?? supabaseStageChecklistSheetIo(), [io])
+  const [mayAuthor, setMayAuthor] = useState(false)
   const [loaded, setLoaded] = useState<Loaded | null>(null)
   const [loading, setLoading] = useState(false)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
@@ -84,6 +102,23 @@ export function useJobStageChecklists(jobId: string | null | undefined, io?: Sta
   }, [jobId, sheetIo, rev, tick])
 
   useEffect(() => {
+    let live = true
+    setMayAuthor(false)
+    if (!jobId || !askMayAuthor) return
+    sheetIo.mayAuthor(jobId).then(
+      (yes) => {
+        if (live) setMayAuthor(yes)
+      },
+      () => {
+        if (live) setMayAuthor(false)
+      },
+    )
+    return () => {
+      live = false
+    }
+  }, [jobId, sheetIo, askMayAuthor])
+
+  useEffect(() => {
     if (!jobId) return
     const take = (change: ChecklistChange) => setLoaded((prev) => (prev && prev.jobId === jobId ? withChange(prev, change) : prev))
     const here = readers.get(jobId) ?? new Set<(change: ChecklistChange) => void>()
@@ -110,9 +145,11 @@ export function useJobStageChecklists(jobId: string | null | undefined, io?: Sta
     [jobId],
   )
   const putAnswer = useCallback((answer: JobAnswer) => announce({ answer }), [announce])
-  const putQuestion = useCallback((question: StageChecklistQuestion) => announce({ question }), [announce])
+  const putQuestion = useCallback((question: StageChecklistQuestion) => announce({ questions: [question] }), [announce])
+  const putQuestions = useCallback((questions: readonly StageChecklistQuestion[]) => announce({ questions }), [announce])
   const dropQuestion = useCallback((questionId: string) => announce({ droppedId: questionId }), [announce])
+  const promoteQuestion = useCallback((fromId: string, company: StageChecklistQuestion) => announce({ promotedFromId: fromId, company }), [announce])
   const reload = useCallback(() => setTick((t) => t + 1), [])
 
-  return { rows, stages: current?.stages ?? [], questions: current?.questions ?? [], answersByFixture, loading, error: failure?.message ?? null, failure, putAnswer, putQuestion, dropQuestion, reload, io: sheetIo }
+  return { rows, stages: current?.stages ?? [], questions: current?.questions ?? [], answersByFixture, loading, error: failure?.message ?? null, failure, putAnswer, putQuestion, putQuestions, dropQuestion, promoteQuestion, mayAuthor, reload, io: sheetIo }
 }

@@ -12,7 +12,7 @@ import { checkSupabaseError, formatErrorMessage } from '../../utils/errorHandlin
 import { REPORT_PHOTOS_BUCKET, reportPhotoPath } from '../photos/reportPhotos'
 import { stageProgressRowsFromRpc } from '../reports/stageProgressReport'
 import { type JobStageRef, type StageChecklistAnswer, type StageChecklistPick, type StageChecklistQuestion } from './stageChecklist'
-import { addJobItem, loadQuestionsForJob, retireJobItem, type AddJobItemInput } from './stageChecklistIo'
+import { addJobItem, loadQuestionsForJob, mayAuthorOnJob, promoteJobItem, putBackQuestion, reorderJobItems, retireJobItem, skipQuestion, type AddJobItemInput, type QuestionSkip, type SkipQuestionInput } from './stageChecklistIo'
 
 // The tables are younger than the generated types; the types PR after the push removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -253,8 +253,18 @@ export interface StageChecklistSheetIo {
   addItem: (input: AddJobItemInput, who: AnswerWho) => Promise<StageChecklistQuestion>
   /** A job item taken off; its answer stays. */
   retireItem: (itemId: string, who: AnswerWho) => Promise<void>
+  /** The database's answer to who authors on this job (PR 1b). */
+  mayAuthor: (jobId: string) => Promise<boolean>
+  /** A company question left off this job's stage, with its reason. */
+  skip: (input: SkipQuestionInput, who: AnswerWho) => Promise<QuestionSkip>
+  /** A skipped question put back. */
+  putBack: (skipId: string, who: AnswerWho) => Promise<void>
+  /** A stage's own checks in the order given. */
+  reorder: (fixtureId: string, ids: readonly string[]) => Promise<void>
+  /** One job item added to the company's list; returns the company's row. */
+  promote: (itemId: string) => Promise<StageChecklistQuestion>
 }
 
 export function supabaseStageChecklistSheetIo(): StageChecklistSheetIo {
-  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, addItem: addJobItem, retireItem: retireJobItem }
+  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, addItem: addJobItem, retireItem: retireJobItem, mayAuthor: mayAuthorOnJob, skip: skipQuestion, putBack: putBackQuestion, reorder: reorderJobItems, promote: promoteJobItem }
 }
