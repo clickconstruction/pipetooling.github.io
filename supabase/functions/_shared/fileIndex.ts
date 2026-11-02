@@ -22,6 +22,7 @@ import {
   budgetAllows,
   indexPlan,
   indexRowOf,
+  passCursor,
   readingRowOf,
   settledWhy,
   walkUp,
@@ -143,11 +144,11 @@ export async function indexFiles(ctx: IndexContext, listed: readonly DriveFileMe
   const held: HeldFile[] = []
   let indexed = 0
   let taken = 0
-  let lastTakenModified: string | null = null
+  const takenIds = new Set<string>()
   for (const f of plan.toIndex) {
     if (taken >= max || !budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS)) break
     taken += 1
-    lastTakenModified = f.modifiedTime ?? lastTakenModified
+    takenIds.add(f.id)
     const r = await indexOneFile(ctx, f)
     if (!r.ok) {
       console.warn('file index write failed', f.id, r.error)
@@ -157,7 +158,7 @@ export async function indexFiles(ctx: IndexContext, listed: readonly DriveFileMe
     indexed += 1
     if (r.held) held.push(r.held)
   }
-  return { indexed, held, remaining: plan.toIndex.length - taken, planned: plan.toIndex.length, skipped: plan.skipped.length, lastTakenModified }
+  return { indexed, held, remaining: plan.toIndex.length - taken, planned: plan.toIndex.length, skipped: plan.skipped.length, cursorModified: passCursor(listed, new Set(plan.toIndex.map((f) => f.id)), takenIds) }
 }
 
 /** The held files a job's rows name, for a report: every row with no text and its reason, `reading` read as `slow`. */

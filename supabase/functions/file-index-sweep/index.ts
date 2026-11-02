@@ -17,8 +17,10 @@ import { SWEEP_MAX_FILES, SWEEP_RECHECK_ROWS, SWEEP_STAMP_KEY, indexPassWords, s
  *        indexed at the same modified time is skipped as current.
  *     2. Asks Drive about `recheck` (20) rows with the oldest check, so a file trashed or moved out of the drive loses
  *        its row within days, and a file changed under the sweep's nose is indexed again.
- *     3. Stamps the setting: now when it took everything, else the last taken file's modified time, so the next run
- *        starts where this one stopped. A quiet drive costs one Drive list, the rechecks and no writes.
+ *     3. Stamps the setting: now when it handled everything and Drive had no more, else the modified time of the last
+ *        listed file it handled (taken, or passed over as current), so the next run starts where this one stopped and a
+ *        page of files the backfill already indexed never holds the stamp. A quiet drive costs one Drive list, the
+ *        rechecks and no writes.
  *
  *   → { success, since, listed, more, indexed, held: [{ id, name, why }], remaining, rechecked, dropped, stamp, line }
  *
@@ -94,7 +96,7 @@ serve(async (req) => {
     const listed = await filesChangedSince(ctx, since, limit)
     const pass = await indexFiles(ctx, listed.files, { max: limit, startedMs: started })
     const left = pass.remaining + (listed.more ? 1 : 0)
-    const next = sweepStamp(new Date(), pass.lastTakenModified, left)
+    const next = sweepStamp(new Date(), pass.cursorModified, left)
     if (next) await admin.from('app_settings').upsert({ key: SWEEP_STAMP_KEY, value_text: next }, { onConflict: 'key' })
     const re = recheck > 0 ? await recheckRows(ctx, recheck) : { rechecked: 0, dropped: 0, changed: 0, held: [] as HeldFile[] }
     const answer = { indexed: pass.indexed + re.changed, held: [...pass.held, ...re.held], remaining: pass.remaining }

@@ -9,6 +9,7 @@ import {
   indexPassWords,
   indexPlan,
   indexRowOf,
+  passCursor,
   readingRowOf,
   settledWhy,
   sweepSince,
@@ -146,7 +147,18 @@ describe('the budget, the sweep’s cursor and the words', () => {
     expect(budgetAllows(0, 5, 10)).toBe(true)
   })
 
-  it('the stamp is now when nothing is left, the last taken file’s time when some is, and kept when none was taken', () => {
+  it('the cursor is the last listed file handled, taken or passed over, and stops at the first file left untaken', () => {
+    const listed = [file({ id: 'a', modifiedTime: '2026-11-02T01:00:00Z' }), file({ id: 'b', modifiedTime: '2026-11-02T02:00:00Z' }), file({ id: 'c', modifiedTime: '2026-11-02T03:00:00Z' }), file({ id: 'd', modifiedTime: '2026-11-02T04:00:00Z' })]
+    // Every file current (a backfill ran): nothing to take, the cursor still reaches the last file.
+    expect(passCursor(listed, new Set(), new Set())).toBe('2026-11-02T04:00:00Z')
+    // b and d need indexing; b was taken, d was left: the cursor stops before d, past c which was current.
+    expect(passCursor(listed, new Set(['b', 'd']), new Set(['b']))).toBe('2026-11-02T03:00:00Z')
+    // The budget ran out before the first file that needed indexing.
+    expect(passCursor(listed, new Set(['a']), new Set())).toBeNull()
+    expect(passCursor([], new Set(), new Set())).toBeNull()
+  })
+
+  it('the stamp is now when nothing is left, the cursor when some is, and kept when the pass handled nothing', () => {
     expect(sweepStamp(NOW, '2026-11-02T03:50:00Z', 0)).toBe(NOW.toISOString())
     expect(sweepStamp(NOW, '2026-11-02T03:50:00Z', 3)).toBe('2026-11-02T03:50:00Z')
     expect(sweepStamp(NOW, null, 3)).toBeNull()

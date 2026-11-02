@@ -228,11 +228,26 @@ export interface IndexPassAnswer {
   remaining: number
 }
 
-/** The pass's answer with what the sweep's cursor needs: the modified time of the last file the pass took, if any. */
+/** The pass's answer with what the sweep's cursor needs: the modified time of the last listed file the pass handled, if any. */
 export interface IndexPassResult extends IndexPassAnswer {
   planned: number
   skipped: number
-  lastTakenModified: string | null
+  cursorModified: string | null
+}
+
+/**
+ * The sweep's cursor after a pass: the modified time of the last file, in the list's order, that the pass handled
+ * (taken, or passed over as current or held), stopping at the first file the pass left untaken. So a run whose listed
+ * files are all current still moves on, and the stamp never passes a file that is still waiting. Null when the pass
+ * handled nothing.
+ */
+export function passCursor(listed: readonly DriveFileMeta[], toIndex: ReadonlySet<string>, taken: ReadonlySet<string>): string | null {
+  let cursor: string | null = null
+  for (const f of listed) {
+    if (toIndex.has(f.id) && !taken.has(f.id)) break
+    cursor = f.modifiedTime ?? cursor
+  }
+  return cursor
 }
 
 /** Whether a pass has time for one more file inside its budget. */
@@ -247,13 +262,13 @@ export function settledWhy(why: TextWhy | null): Exclude<TextWhy, 'reading'> | n
 
 /**
  * The sweep's next stamp. The sweep lists files modified after the stamp (less the overlap), oldest first, and takes up
- * to its cap: when it took them all the stamp is now; when files were left, the stamp is the last taken file's modified
- * time, so the next run starts there; when files were left and none was taken (the budget ran out first), null keeps
- * the old stamp.
+ * to its cap: when it handled them all and Drive had no more, the stamp is now; when files were left, the stamp is the
+ * pass's cursor (`passCursor`: the last listed file handled, taken or passed over), so the next run starts there; when
+ * the pass handled nothing (the budget ran out before the first file), null keeps the old stamp.
  */
-export function sweepStamp(now: Date, lastTakenModified: string | null, left: number): string | null {
+export function sweepStamp(now: Date, cursorModified: string | null, left: number): string | null {
   if (left <= 0) return now.toISOString()
-  return lastTakenModified
+  return cursorModified
 }
 
 /** The ISO time the sweep lists from: the stamp less the overlap, or the dawn of the drive when there is no stamp. */
