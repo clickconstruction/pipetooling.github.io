@@ -132,6 +132,8 @@ export type OfficeAsk =
   | { action: 'link'; job: JobRef; driveFileId: string; messageId: string | null }
   | { action: 'save'; attachmentId: string; half: 'plans' | 'team_only' }
   | { action: 'open'; job: JobRef; driveFileId: string }
+  /** Find a file (v2.6305): Drive's full-text index over the jobs Shared Drive, two letters or more. */
+  | { action: 'search'; words: string }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
@@ -175,6 +177,10 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
       const job = jobOf(b.job)
       const driveFileId = typeof b.driveFileId === 'string' && DRIVE_ID.test(b.driveFileId) ? b.driveFileId : null
       return job && driveFileId ? { action: 'open', job, driveFileId } : null
+    }
+    case 'search': {
+      const words = str(b.words, 200)
+      return words && words.length >= 2 ? { action: 'search', words } : null
     }
     default:
       return null

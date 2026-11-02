@@ -127,6 +127,9 @@ describe('a file from this computer', () => {
 describe('the office’s door', () => {
   it('lists a job’s folder, one job by one of its three ids', () => {
     expect(parseOfficeAsk({ action: 'list', job: { project_id: PROJECT } })).toEqual({ action: 'list', job: { project_id: PROJECT } })
+    // v2.6305: Find a file's ask parses trimmed; one letter is refused.
+    expect(parseOfficeAsk({ action: 'search', words: ' rock clause ' })).toEqual({ action: 'search', words: 'rock clause' })
+    expect(parseOfficeAsk({ action: 'search', words: 'r' })).toBeNull()
     expect(parseOfficeAsk({ action: 'list', job: { project_id: PROJECT, bid_id: PROJECT } })).toBeNull()
     expect(parseOfficeAsk({ action: 'list', job: {} })).toBeNull()
     expect(parseOfficeAsk({ action: 'list', job: { project_id: 'B482' } })).toBeNull()

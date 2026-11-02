@@ -3,6 +3,8 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { DRIVE, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
+import { driveFolderMeta, jobsRootFolderId } from '../_shared/driveSettings.ts'
+import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import {
@@ -45,6 +47,10 @@ import {
  *                                                        since v2.6303 `where` also takes 'top' (the job's folder itself),
  *                                                        'plans' (its Plans folder) and 'pictures' (its photo folder), the
  *                                                        Documents tab's Add a file
+ *   POST { action: 'search', words }                    → Find a file (v2.6305): Drive's own full-text index over the jobs Shared
+ *                                                        Drive, folders left out, at most 30 hits, each walked up to the job or
+ *                                                        bid whose folder holds it → { hits: [{ id, name, mime, bytes, modified,
+ *                                                        url, home, path }], more, noRoot }; a read a training account may run
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -175,6 +181,122 @@ async function putFolderFor(admin: SupabaseClient, google: string, job: JobRef, 
   return folder.plansId ?? landingFolder(google, folder, ['Plans'])
 }
 
+/** A hit of Find a file, as Drive lists it. */
+interface SearchListed {
+  id: string
+  name: string
+  mimeType: string
+  size?: string
+  modifiedTime?: string
+  webViewLink?: string
+  parents?: string[]
+}
+
+/** The job or bid whose folder holds a hit, as the box names it. */
+type FileHome =
+  | { kind: 'job'; id: string; hcpNumber: string | null; clickNumber: string | null; name: string | null }
+  | { kind: 'bid'; id: string; number: string | null; name: string | null }
+
+/** A home keyed by one of its folders; `via` names the folder when it is not the home's own (Plans, Customer Pictures). */
+type HomeAt = { home: FileHome; via: string | null }
+
+/** How many hits Find a file answers, and how many folders up it climbs before giving up on a home. */
+const SEARCH_MAX = 30
+const WALK_MAX = 8
+
+/** Every folder the app knows a job or bid by, keyed by its Drive id: a job's three links, a bid's one. */
+async function folderHomes(admin: SupabaseClient): Promise<Map<string, HomeAt>> {
+  const homes = new Map<string, HomeAt>()
+  const [jobs, bids] = await Promise.all([
+    admin
+      .from('jobs_ledger')
+      .select('id, hcp_number, click_number, job_name, google_drive_link, job_plans_link, job_pictures_link')
+      .or('google_drive_link.not.is.null,job_plans_link.not.is.null,job_pictures_link.not.is.null')
+      .limit(5000),
+    admin.from('bids').select('id, bid_number, project_name, drive_link').not('drive_link', 'is', null).limit(5000),
+  ])
+  type JobRow = { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; google_drive_link: string | null; job_plans_link: string | null; job_pictures_link: string | null }
+  for (const j of (jobs.data ?? []) as JobRow[]) {
+    const home: FileHome = { kind: 'job', id: j.id, hcpNumber: j.hcp_number, clickNumber: j.click_number, name: j.job_name }
+    const links: [string | null, string | null][] = [
+      [j.google_drive_link, null],
+      [j.job_plans_link, JOB_FOLDER_TREE.plans],
+      [j.job_pictures_link, JOB_FOLDER_TREE.pictures],
+    ]
+    for (const [link, via] of links) {
+      const id = driveFolderIdFromUrl(link)
+      if (id && !homes.has(id)) homes.set(id, { home, via })
+    }
+  }
+  type BidRow = { id: string; bid_number: string | null; project_name: string | null; drive_link: string | null }
+  for (const b of (bids.data ?? []) as BidRow[]) {
+    const id = driveFolderIdFromUrl(b.drive_link)
+    if (id && !homes.has(id)) homes.set(id, { home: { kind: 'bid', id: b.id, number: b.bid_number, name: b.project_name }, via: null })
+  }
+  return homes
+}
+
+/** Climbs a hit's folders until one is a home or the jobs root, naming the folders between (top down). */
+async function walkUp(
+  startId: string | null,
+  homes: Map<string, HomeAt>,
+  rootId: string,
+  metaOf: (id: string) => Promise<{ name: string; parent: string | null }>,
+): Promise<{ home: FileHome | null; path: string }> {
+  const names: string[] = []
+  let id = startId
+  for (let i = 0; id && i < WALK_MAX; i++) {
+    const at = homes.get(id)
+    if (at) return { home: at.home, path: [at.via, ...names.reverse()].filter((n): n is string => Boolean(n)).join(' › ') }
+    if (id === rootId) break
+    const m = await metaOf(id)
+    names.push(m.name)
+    id = m.parent
+  }
+  return { home: null, path: names.reverse().filter(Boolean).join(' › ') }
+}
+
+/**
+ * Find a file (v2.6305): Drive's own full-text index, which already reads the words inside PDFs and OCR'd scans, asked
+ * over the jobs root's Shared Drive (the whole of every Shared Drive when the root is not in one), folders left out.
+ * Each hit is walked up to the job or bid whose folder holds it, in parallel over one shared cache of folder lookups.
+ */
+async function searchFiles(admin: SupabaseClient, google: string, words: string): Promise<Record<string, unknown>> {
+  const rootId = await jobsRootFolderId(admin)
+  if (!rootId) return { hits: [], more: false, noRoot: true }
+  const root = await driveFolderMeta(google, rootId)
+  const driveId = root.body.driveId ?? null
+  const term = words.replace(/\\/g, '\\\\').replace(/'/g, "\\'")
+  const q = encodeURIComponent(`fullText contains '${term}' and trashed = false and mimeType != '${DRIVE_FOLDER_MIME}'`)
+  const scope = driveId ? `&corpora=drive&driveId=${encodeURIComponent(driveId)}` : '&corpora=allDrives'
+  const page = await driveGet<{ files?: SearchListed[]; nextPageToken?: string }>(
+    google,
+    `${DRIVE}/files?q=${q}${scope}&pageSize=${SEARCH_MAX}&fields=nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink,parents)&supportsAllDrives=true&includeItemsFromAllDrives=true`,
+  )
+  const files = page.files ?? []
+  if (files.length === 0) return { hits: [], more: false, noRoot: false }
+  const homes = await folderHomes(admin)
+  const cache = new Map<string, Promise<{ name: string; parent: string | null }>>()
+  const metaOf = (id: string) => {
+    let p = cache.get(id)
+    if (!p) {
+      p = driveGet<{ name?: string; parents?: string[] }>(google, `${DRIVE}/files/${encodeURIComponent(id)}?fields=name,parents&supportsAllDrives=true`).then((m) => ({
+        name: m.name ?? '',
+        parent: m.parents?.[0] ?? null,
+      }))
+      cache.set(id, p)
+    }
+    return p
+  }
+  const hits = await Promise.all(
+    files.map(async (f) => {
+      const { home, path } = await walkUp(f.parents?.[0] ?? null, homes, rootId, metaOf)
+      return { id: f.id, name: f.name, mime: f.mimeType, bytes: f.size == null ? null : Number(f.size), modified: f.modifiedTime ?? null, url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType), home, path }
+    }),
+  )
+  return { hits, more: Boolean(page.nextPageToken), noRoot: false }
+}
+
 async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const auth = req.headers.get('Authorization') ?? ''
@@ -189,7 +311,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
-  if (who.read_only && ask.action !== 'list' && ask.action !== 'open') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search') return json({ error: 'A training account cannot change Drive.' }, 403)
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
   const google = await googleAccessToken(saJson)
@@ -227,6 +349,8 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     if (kept) return json({ error: 'Saved to Drive, but the row did not keep it.' }, 500)
     return json({ driveFileId: put.id, url: driveViewUrl(put.id) })
   }
+
+  if (ask.action === 'search') return json(await searchFiles(admin, google, ask.words))
 
   const folder = await jobFolder(admin, google, ask.job)
   if (!folder) return json({ error: 'That job has no Drive folder yet.' }, 409)
