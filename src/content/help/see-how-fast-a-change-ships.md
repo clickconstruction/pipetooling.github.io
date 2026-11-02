@@ -16,13 +16,13 @@ The tab sits beside [Release notes](/help/release-notes), the list of what alrea
 
 ## What the headline says
 
-The first line is the answer you can say out loud. It reads like *A change asked for today has been taking about 4 hours to reach the app.* The second sentence says where nine in ten changes land. Both come from every change that merged in the last 24 hours.
+The first line is the answer you can say out loud. The line reads like *A change asked for today has been taking about 4 hours to reach the app.* The second sentence says where nine in ten changes land. The two numbers come from every change that merged in the last 24 hours.
 
-Under it, *As of 3:37 PM* says when GitHub was last read. The app reads GitHub every 15 minutes.
+Under the headline, *As of 3:37 PM* says when GitHub was last read. The app reads GitHub every 15 minutes.
 
 ## What the chart shows
 
-Each dot is one hour of the last three days. Its height is the typical hours from a change's pull request opening to its merge in that hour. A pull request is the bundle of code a change ships in. A gap is an hour with no merge. Hover a dot to see that hour's merges and openings.
+Each dot is one hour of the last three days. The dot's height is the typical hours from a change's pull request opening to its merge in that hour. A pull request is the bundle of code a change ships in. A gap is an hour with no merge. Hover a dot to see that hour's merges and openings.
 
 ## What landed today
 
@@ -36,4 +36,4 @@ The hours count from the pull request opening, not from when you asked. Writing 
 The as-of line turns amber when the last read is more than an hour old. Ask a dev. A dev can press **Read GitHub now** on the same page.
 :::
 
-A dev sees one more press, {{button:outline|Read GitHub now}}. It reads GitHub at once instead of waiting for the next quarter hour.
+A dev sees one more press, {{button:outline|Read GitHub now}}. The press reads GitHub at once instead of waiting for the next quarter hour.
