@@ -10,7 +10,7 @@ Every stage with a checklist reads on the Pipeline row. One icon under **Edit** 
 
 ## Read the icon
 
-The icon sits in the row's icon strip under **Edit**, after the plans icon. Its color says where the job stands.
+The icon sits in the row's icon strip under **Edit**, after the plans icon. The icon's color says where the job stands.
 
 - Amber with a count, like **3/6**, means a stage has a question left. The count is what is left to answer across the open stages.
 - Green means every stage with a list is filled.
@@ -20,7 +20,7 @@ A job with no Rough In, Top Out or Trim Set has no icon. A service call is one s
 
 Rest on the icon to read each stage. The words say *Trim Set 3 of 6* for a stage with a question left and *Rough In filled* for a filled one.
 
-The amber stage name under the bar is a press too. It opens the same sheet.
+The amber stage name under the bar is a press too. The name opens the same sheet.
 
 ## Open the checklists
 
@@ -48,7 +48,7 @@ A stage with a question left shows its rows. The next open question is the big r
 
 Each press saves by itself, under your name. The stage's chip moves at once. The list moves to the next question on its own.
 
-To change an answer, press the answered row. It opens again with its three presses.
+To change an answer, press the answered row. The row opens again with its three presses.
 
 ## Add a check, skip a question, take one off
 
