@@ -2,15 +2,18 @@
  * The Development page's Plans look by part (punch list #239, PR 3). One row per part of the site: what it
  * builds from today with Open ↗, the date on the sheets, the day it came, the memo, the jobs that name the
  * part, and the older sets folded under a count with *Build from this set*; our as-builts under the row.
- * Under the table, the only two things left for a person: the parts with no set and the jobs on no part, as
- * chips that open their lists, with **Ask the estimators about the N**; **+ Part** names a new part; **+ New
+ * Under the table, the only two things left for a person: the parts with no set and the jobs that build from
+ * plans and follow none yet, as chips that open their lists (a job that bills only or a service call is left out
+ * of the count and named under the chips with its reason, v2.6351), with **Ask the estimators about the N**;
+ * **+ Part** names a new part; **+ New
  * set** on a row adds a set through the one form (`PlanSetForm`). Bids keep their own pinned sets and are
  * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set".
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { JobChip } from './JobChip'
 import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem, setLineWords, shortDayWords, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
-import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
+import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, sitePlansLeftOutWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
 import { setRowDayWords, setRowLineWords } from '../../lib/plans/planSets'
@@ -92,14 +95,21 @@ export function DevelopmentPartsCard({
     void run(() => writes!.addSet(row.part.id, draft, makeCurrent, makeCurrent && row.current ? row.current.id : null))
   }
   const chips = sitePlansChipWords(view)
+  const leftOut = sitePlansLeftOutWords(view)
   const askCount = sitePlansAskCount(view)
   const carriers = (list: SiteCarrier[]) => (
     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-      {list.map((c) => (
-        <LinkButton key={`${c.kind}:${c.id}`} onClick={() => openCarrier(c)}>
-          {c.label}
-        </LinkButton>
-      ))}
+      {list.map((c) =>
+        c.kind === 'job' ? (
+          <JobChip key={`${c.kind}:${c.id}`} jobId={c.id} onOpen={() => openCarrier(c)}>
+            {c.label}
+          </JobChip>
+        ) : (
+          <LinkButton key={`${c.kind}:${c.id}`} onClick={() => openCarrier(c)}>
+            {c.label}
+          </LinkButton>
+        ),
+      )}
     </span>
   )
   const openLink = (s: Pick<PlanSetRow, 'link'>) =>
@@ -346,6 +356,11 @@ export function DevelopmentPartsCard({
           </span>
         ) : null}
       </div>
+      {leftOut ? (
+        <div style={{ ...muted, fontSize: '0.78rem' }} data-testid="site-left-out">
+          {leftOut}
+        </div>
+      ) : null}
       {askOnRecord && !askOnRecord.open ? (
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="plans-ask-answered">
           <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{plansAskLine(askOnRecord, shortDay).split(' · ')[0]}</span>
