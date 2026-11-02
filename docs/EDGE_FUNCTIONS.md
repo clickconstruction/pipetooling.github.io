@@ -1133,7 +1133,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Doors**: `makeJobDriveFolders` in `src/lib/jobs/jobDriveFoldersIo.ts`; the words, the roles and the batch over every live job without a folder in `src/lib/jobs/jobDriveFolders.ts` (`planDriveFolderBackfill` over `batchWords`, the desk's words or the tab's); the tab's three verbs in `src/lib/documents/whereFilesGoIo.ts` (`readWhereFilesGo`, `checkDriveFolder`, `setWhereFilesGo`) behind Documents → Where files go (`DocumentsWhereFilesGo.tsx`, v2.6057), which also runs the press job by job and the check over every pasted folder.
 
-**Status**: v2.6054, deployed 2026-10-29 right after the merge. v2.6309 (the company folder on `settings` and `set`) redeploys right after the merge. v2.6056 (the three verbs and the settings' root) and v2.6058 (the as-needed choice) wait for a deploy from main once each merges. v2.6284 (the tree under the customer, the `sweep` verb and its cron) deployed 2026-11-01 after the migration's push, and it and [photo-save](#photo-save) then answered 503 BOOT_ERROR: `_shared/jobFolders.ts` imported `driveFolderMeta`, `FOLDER_MIME` and `metaOwner` from `_shared/driveSettings.ts`, which exported none of them, and Deno refuses a missing named export when a module loads. v2.6294 exported them and both run it (`npm run check:edge-drift` reads them current). [drive-link](#drive-link), `job-photos` and `messages-email` bundle `jobFolders.ts` too, so none of them deploys from a tree older than v2.6294. **CI does not link the functions**: it typechecks the app alone, so a missing export between two `_shared` modules passes every check; `esbuild --bundle --packages=external` on each `index.ts` fails on one as Deno's loader does, and the dev seat's `check_edge_boot` finds one already deployed.
+**Status**: v2.6054, deployed 2026-10-29 right after the merge. v2.6309 (the company folder on `settings` and `set`) redeploys right after the merge. v2.6056 (the three verbs and the settings' root) and v2.6058 (the as-needed choice) wait for a deploy from main once each merges. v2.6284 (the tree under the customer, the `sweep` verb and its cron) deployed 2026-11-01 after the migration's push, and it and [photo-save](#photo-save) then answered 503 BOOT_ERROR: `_shared/jobFolders.ts` imported `driveFolderMeta`, `FOLDER_MIME` and `metaOwner` from `_shared/driveSettings.ts`, which exported none of them, and Deno refuses a missing named export when a module loads. v2.6294 exported them and both run it (`npm run check:edge-drift` reads them current). [drive-link](#drive-link), `job-photos` and `messages-email` bundle `jobFolders.ts` too, so none of them deploys from a tree older than v2.6294. **CI links every function since v2.6315** (`npm run check:edge-bundles`, `scripts/check-edge-bundles.mjs`, on every PR): until then it typechecked the app alone, so a missing export between two `_shared` modules passed every check; the check bundles each `index.ts` with esbuild (`bundle`, `packages: 'external'`), which fails on one as Deno's loader does, and the dev seat's `check_edge_boot` finds one already deployed.
 
 ---
 
@@ -6170,6 +6170,11 @@ supabase functions logs create-user
 # imports, _shared included (scripts/check-edge-function-drift.mjs)
 npm run check:edge-drift             # reads the functions whose code changed since their deploy
 npm run check:edge-drift -- --full   # reads every deployed function (the daily CI run)
+
+# Every function links as Deno's loader will at boot: esbuild bundles each index.ts, remote imports
+# external, and a missing named export fails here instead of as a 503 BOOT_ERROR after the deploy
+# (scripts/check-edge-bundles.mjs; ci.yml runs it on every PR, v2.6315)
+npm run check:edge-bundles
 ```
 
 ### Local Testing

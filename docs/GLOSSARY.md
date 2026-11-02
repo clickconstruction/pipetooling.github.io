@@ -1895,7 +1895,7 @@ CI/CD automation running workflows on GitHub events.
 
 **Triggers**: `ci.yml` on a pull request and again in the merge queue on the merged content, never on a push to `main`; `deploy.yml` and `warm-caches.yml` on a push to `main`
 
-**Steps**: `ci.yml` typechecks, lints and tests from the `.cache` main saved; `deploy.yml` installs, builds (`tsc -b && vite build`) and deploys to GitHub Pages; `warm-caches.yml` re-runs typecheck and lint only to save the cache
+**Steps**: `ci.yml` typechecks, lints, links every edge function with esbuild (`check:edge-bundles`, v2.6315: a missing named export fails the PR, not the boot) and tests from the `.cache` main saved; `deploy.yml` installs, builds (`tsc -b && vite build`) and deploys to GitHub Pages; `warm-caches.yml` re-runs typecheck and lint only to save the cache
 
 ### Go anywhere (the header search's doors)
 The header's search box (the magnifier, ⌘K or Ctrl+K) opens a page, a tab, a window, a Settings card, a guide or a to-do by name, under the office's jobs, bids, estimates and customers (punch list #181, v2.5900 to v2.5933).
