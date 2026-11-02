@@ -5,9 +5,11 @@ name: SQL beds
 # so any migration can break any bed: when a ready (not draft) PR touches a migration, a bed's test
 # folder, a bed script or this workflow (in its own commits, diffed from where it left main, so a
 # migration main gained after the branch point does not count), every bed in scripts/sql-beds.txt runs;
-# a draft's pushes run none until it is marked ready, and the merge queue's build always runs them. The one job
+# a draft's pushes run none until it is marked ready. A merge-queue entry takes the same test on its own
+# diff, from the group ahead of it, so one with no bed's file behind a migration runs none and leans on
+# that entry's beds: the queue's "Only merge non-failing pull requests" stays on. The one job
 # branch protection requires is `sql-beds`, the gate at the bottom: it reports on every pull request
-# and every merge-queue build (a required check that never reports would block the merge), passes
+# and every merge-queue build (a required check that never reports would block the merge), is skipped
 # when the beds passed or were not needed, and fails when any bed failed or was cancelled
 # (2026-10-09, the owner's call after a red bed could have merged).
 #
@@ -47,12 +49,14 @@ jobs:
           fi
           BASE="${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
           HEAD="${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}"
+          # Read first: a diff that fails inside the loop's redirect would say no bed's file changed.
+          CHANGED=$(git diff --name-only "$(git merge-base "$BASE" "$HEAD")" "$HEAD")
           BEDS=false
           while IFS= read -r f; do
             case "$f" in
               supabase/migrations/*|supabase/tests/*|scripts/pgtest-*|scripts/sql-beds.txt|.github/workflows/sql-beds.yml) BEDS=true ;;
             esac
-          done < <(git diff --name-only "$(git merge-base "$BASE" "$HEAD")" "$HEAD")
+          done <<< "$CHANGED"
           echo "beds=$BEDS" >> "$GITHUB_OUTPUT"
           echo "beds=$BEDS ($BASE...$HEAD) $MATRIX"
 
@@ -73,20 +77,20 @@ jobs:
       - name: ${{ matrix.bed }} against every migration
         run: bash scripts/pgtest-${{ matrix.bed }}.sh
 
-  # The one check branch protection requires.
+  # The one check branch protection requires. It runs only to fail: a skipped job takes no runner and
+  # counts as passing, so a clean build never waits behind the backlog for a job of seconds (2026-11-02).
   sql-beds:
     needs: [changes, bed]
-    if: always()
+    # always() is what holds a red bed out: without a status function GitHub adds success(), a failed
+    # bed then skips this job, and a skip passes. !cancelled() would pass a cancelled run the same way.
+    if: >-
+      always() && !(needs.changes.result == 'success' &&
+      (needs.bed.result == 'success' ||
+      (needs.bed.result == 'skipped' && (needs.changes.outputs.beds == 'false' || github.event.pull_request.draft == true))))
     runs-on: ubuntu-latest
     steps:
-      - name: Every bed passed or was not needed
+      - name: A bed or the changes job did not pass
         shell: bash
         run: |
-          echo 'bed: ${{ needs.bed.result }} · changes: ${{ needs.changes.result }}'
-          case '${{ needs.bed.result }}' in
-            failure|cancelled) echo "a bed failed or was cancelled"; exit 1 ;;
-          esac
-          case '${{ needs.changes.result }}' in
-            failure|cancelled) echo "the changes job failed"; exit 1 ;;
-          esac
-          echo ok
+          echo 'bed: ${{ needs.bed.result }} · changes: ${{ needs.changes.result }} · beds wanted: ${{ needs.changes.outputs.beds }}'
+          exit 1
