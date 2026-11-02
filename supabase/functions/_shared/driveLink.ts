@@ -132,6 +132,11 @@ export type OfficeAsk =
   | { action: 'link'; job: JobRef; driveFileId: string; messageId: string | null }
   | { action: 'save'; attachmentId: string; half: 'plans' | 'team_only' }
   | { action: 'open'; job: JobRef; driveFileId: string }
+  /** The company papers folder (the Documents spike of 2026-11-01): its files, and a file from this computer into it. */
+  | { action: 'list_company' }
+  | { action: 'put_company'; name: string; mime: string }
+  /** Find a file (v2.6305): Drive's full-text index over the jobs Shared Drive, two letters or more. */
+  | { action: 'search'; words: string }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
@@ -175,6 +180,17 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
       const job = jobOf(b.job)
       const driveFileId = typeof b.driveFileId === 'string' && DRIVE_ID.test(b.driveFileId) ? b.driveFileId : null
       return job && driveFileId ? { action: 'open', job, driveFileId } : null
+    }
+    case 'list_company':
+      return { action: 'list_company' }
+    case 'put_company': {
+      const name = str(b.name, 300)
+      const mime = typeof b.mime === 'string' && b.mime.length <= 200 ? b.mime : 'application/octet-stream'
+      return name ? { action: 'put_company', name, mime } : null
+    }
+    case 'search': {
+      const words = str(b.words, 200)
+      return words && words.length >= 2 ? { action: 'search', words } : null
     }
     default:
       return null

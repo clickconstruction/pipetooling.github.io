@@ -2,20 +2,20 @@
 name: "One Drive folder per job, under its customer"
 number: 236
 group: close
-status: built 2026-11-01 as v2.6284 (#6719), v2.6287 (#6720) and v2.6288 (#6721), with the boot fix v2.6294 (#6736) · migration 20261101163412 pushed, job-drive-folders and photo-save deployed · the drive moved into clickplumbing.com's Workspace the same day (v2.6293, #6731) · left: the office manager's move of the hand-made folders, the live walk, two casts
+status: built 2026-11-01 as v2.6284 (#6719), v2.6287 (#6720) and v2.6288 (#6721), with the boot fix v2.6294 (#6736) · migration 20261101163412 pushed, job-drive-folders and photo-save deployed · the drive moved into clickplumbing.com's Workspace the same day (v2.6293, #6731) · by that evening the hand-made folders were in the Shared Drive and all 101 live jobs placed, none held · left: a look at the customer's door on test data, and what to do with the test folders
 summary: >
   Every job gets a Google Drive folder the moment it exists, the folder sits under its customer's
   folder, the back catalogue is brought into the same shape, and the app links straight to the
   customer's folder, the job's folder and its photos. The server rule, the Where files go tab and
-  the customer's door are on main and deployed. What is left is the 188 jobs that point at folders
-  the office manager made by hand in a My Drive, where the app can make folders but never save a
-  photo; those stay held until the folders are dragged into the app's Shared Drive, which since
-  v2.6293 sits in the office manager's own Workspace with the office manager as Manager.
-next: The office manager drags Click Customers from the My Drive onto the Shared Drive's top level, then the live walk below, on test data.
+  the customer's door are on main and deployed. The folders the office manager made by hand in a
+  My Drive reached the app's Shared Drive the same evening, and the sweep has placed every live
+  job's folder under its customer, with none held. What is left is a look at the customer's door
+  on test data and a choice about the test folders.
+next: Open ZZ Split Test Claude's customer profile and press Drive folder; it should open the customer's folder with ZZ TEST Riders Walk's folder inside. Then settle the ZZ folders as below.
 size: S
-blocker: The office manager's drag, which only a person in that account can press; Google's ownership rule may still refuse part of it.
-opinion: build — the code is on main; the Drive move and the live walk are what is left
-mockup: not required — the screens are built; what is left is a Drive move and a live walk
+blocker: None.
+opinion: your call — built, deployed and every live job placed; a look at the customer's door on test data is all that is left
+mockup: not required — the screens are built; what is left is a look on test data
 ---
 
 # One Drive folder per job, under its customer
@@ -57,31 +57,26 @@ Two customers carried a folder link of their own.
 | [#6720](https://github.com/clickconstruction/pipetooling.github.io/pull/6720) | `claude/folders-tab` | Documents → Where files go: the tree card with the customer level, **Tidy the folders for N live jobs**, the held line read from the rows | merged, v2.6287 |
 | [#6721](https://github.com/clickconstruction/pipetooling.github.io/pull/6721) | `claude/folders-customer-window` | The customer profile's *Drive folder* door (`src/lib/customers/customerFolderWords.ts`) and the job form's press (`placeJobFolderSoon` in `JobFormModal.tsx`) | merged, v2.6288 |
 
-Migration `20261101163412` is pushed (the types in #6735) and `job-drive-folders` and `photo-save` are deployed (`npm run check:migration-drift`, `npm run check:edge-drift`). Neither function could start after the first deploy, until v2.6294 exported what `_shared/jobFolders.ts` imports; `docs/EDGE_FUNCTIONS.md` → job-drive-folders → Status has it. Whether the sweep has stamped rows since, and whether the 188 have moved, was not read for this card: the dev seat's key is refused.
+Migration `20261101163412` is pushed (the types in #6735) and `job-drive-folders` and `photo-save` are deployed (`npm run check:migration-drift`, `npm run check:edge-drift`). Neither function could start after the first deploy, until v2.6294 exported what `_shared/jobFolders.ts` imports; `docs/EDGE_FUNCTIONS.md` → job-drive-folders → Status has it. A read of `jobs_ledger` and `customers` late on 2026-11-01 found all 101 live jobs placed and none held, and each of the 52 customers with a live job carrying its folder's link; the 16 live jobs with no customer sit under *No customer yet*. The sweep reads live jobs only, so it has not looked at the 775 paid jobs, 181 of them with a folder link, and where those folders sit was not checked.
 
 ## What is left, in order
 
-1. **The hand-made folders**, below.
-2. **The live walk**, on test data only: ZZ job 1088 *ZZ TEST Riders Walk*, whose customer is *ZZ Split Test Claude* and which had no folder. Press **Make the job's Drive folders** on its job window's Documents tab: the folder should appear under the customer's folder in PipeTooling Jobs › Jobs, the line should say *under ZZ Split Test Claude*, and the row should carry `drive_folder_tidied_at`. Open the customer's profile: *Drive folder* should open that folder. On Documents → Where files go, the held line should count the jobs whose folder sits in a My Drive, each with the reason. Afterwards, trash the ZZ folders the walk made and clear the links on the two ZZ rows.
-3. **Two casts**: the generated types know the two columns since #6735, so the two `as unknown as WhereFilesGoJob[]` casts in `src/lib/documents/whereFilesGoIo.ts` can go.
+1. **The live walk's last look**, on test data only: ZZ job 1088 *ZZ TEST Riders Walk*, whose customer is *ZZ Split Test Claude*, got its folder from the Tidy press on 2026-11-01, under the customer's folder in PipeTooling Jobs › Jobs, and its row carries `drive_folder_tidied_at`. Open the customer's profile: *Drive folder* should open that folder, with the job's inside. On Documents → Where files go, no held line should show beside **Tidy the folders**.
+2. **The ZZ folders**: the job is live, so the sweep makes its folder again within a week of its links being cleared. Either leave the ZZ folders in the tree, or trash them and clear the links on the two ZZ rows once the ZZ job is no longer live.
 
 ## The office manager's hand-made folders (the 188)
 
-Until they are in the Shared Drive, those jobs stay held and their photos wait (Documents → Photos → *Not in Drive yet* lists them with the reason). The plan is for the office manager to drag **Click Customers** from that My Drive onto the drive's top level, beside *Bid plans* and *Jobs*, not inside *Jobs*. After that the sweep adopts each job's folder by its link, renames it and moves it under the customer, with no further step. v2.6293 settled two of Google's three rules by moving the drive into clickplumbing.com's Workspace with the office manager as Manager: a folder leaves a My Drive only under a Manager, and a move inside one organization needs no *Distributing content outside* setting. The third stands:
+They reached the Shared Drive on the evening of 2026-11-01, and the sweep took them from there with no further step. The cron's first runs that afternoon held the live jobs whose folders were still in the My Drive. J1091's photo, the one Google had refused, filed that evening, and a **Tidy the folders** press soon after placed the about 60 live jobs the cron had held or not yet reached. Each folder was adopted by its link, renamed and moved under its customer, its id and so every link to it kept. Who dragged them was not read.
 
-**Ownership.** A person can move only what they own. A folder holding 25 items, or 10% of its items, that they cannot move will not move at all. Photos someone else put in those folders, and folders the app's service account made inside that tree, count against that.
-
-If the drag is still refused, one way out, not built:
-
-- **The app copies instead of moving**: the service account copies each held job's folder into the job's tree under its customer and rewrites the links; the originals stay where they are. It sidesteps the rule. It is a build of its own.
+v2.6293 had settled two of Google's three rules by moving the drive into clickplumbing.com's Workspace with the office manager as Manager: a folder leaves a My Drive only under a Manager, and a move inside one organization needs no *Distributing content outside* setting. The third, that a person can move only what they own, stopped no live job's folder. The way out kept in case the drag was refused, the app copying each held job's folder instead of moving it, was not needed and is not built.
 
 ## The drive today (2026-11-01)
 
-PipeTooling Jobs, in clickplumbing.com's Workspace since v2.6293, holds *Bid plans* and *Jobs* at its top level. Members: the owner and the office manager (Manager) and the app's service account (Content manager). The old drive in douglasmining.com is renamed and holds an empty Jobs folder. The ids are in `docs/DRIVE_INTAKE_SETUP.md`.
+PipeTooling Jobs, in clickplumbing.com's Workspace since v2.6293, holds *Bid plans* and *Jobs* at its top level; whether the drag left anything beside them, such as what **Click Customers** held besides live jobs' folders, was not checked. Members: the owner and the office manager (Manager) and the app's service account (Content manager). The old drive in douglasmining.com is renamed and holds an empty Jobs folder. The ids are in `docs/DRIVE_INTAKE_SETUP.md`.
 
 ## Gotchas met along the way
 
-- The generated database types do not know the two new columns until the types chore, so #6720's first CI run failed its typecheck; its jobs reads now cast through `unknown`.
+- The generated database types did not know the two new columns until the types chore (#6735), so #6720's first CI run failed its typecheck; its jobs reads cast through `unknown` until the chore, and the casts went after it.
 - The Mac it was built on has no Deno, so the function files were checked for syntax with esbuild and by eye; their types are checked at deploy. That is how a missing export between two `_shared` modules reached prod (v2.6294); since v2.6315 CI links every function (`npm run check:edge-bundles`), so the next one fails the PR.
 - A customer changed by typing on an existing job's form (the identity autosave) is left to the sweep, which places it within a week or on the Tidy press; the form's two link buttons place it at once.
 

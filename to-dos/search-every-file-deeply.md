@@ -1,0 +1,329 @@
+---
+name: "Search every file deeply: our own index, OCR and meaning, backfilled once by an agent"
+number: 240
+group: ready
+status: designed 2026-11-02 in the session that shipped Find a file (v2.6305); nothing of this card is built; the owner is handing it to another session on another computer
+summary: >
+  Find a file (Documents → Search, v2.6305) asks Drive's own full-text index and lands each hit on its job; PR #6752
+  adds the line around the words. That finds a file by words Google has indexed, and nothing more. The owner wants
+  search that reaches "deeply into every file" and never loses a file that is somewhere: a text index we own in
+  Postgres (one row per Drive file, full-text ranked), fed by the sweep as files land and filled once by a backfill,
+  our own OCR for scanned paper, and embeddings so a search by meaning finds the letter that never used the word.
+  The backfill is to be run one time by a Claude agent session after the features land, not by a cron.
+next: PR 1 — the `file_index` table with its `tsvector`, drive-link's `index` action, and Find a file reading the index first; no decision is needed to start it.
+size: L
+blocker: PRs 3 and 4 wait on two owner decisions (the OCR provider, the embeddings provider and its key); PR 2's agent door needs a fresh dev-mcp key, the old one was revoked 2026-10-26. PR 1 is unblocked.
+opinion: build — the owner asked for it twice and chose the shape; Drive's index is kept as the floor, so every PR here adds reach without taking anything away
+mockup: not required — the box is the shipped Find a file; the index changes what it finds and how fast, not the screen, and PR #6752 already draws the excerpt line the index will feed
+---
+
+# Search every file deeply: our own index, OCR and meaning, backfilled once by an agent
+
+## The ask, in the owner's words (2026-11-02)
+
+The day every job's files landed in one Drive folder under its customer (punch list #236) and the Pipeline, the
+Documents tab and Documents → Search got their doors to those files (v2.6299, v2.6301, v2.6303, v2.6305), the
+owner asked what would make search "next level":
+
+> What is a good way to make our search in the app extremely robust where we can search deep deeply into every
+> file. Does that look like indexing the files as they go in with a one-time backfill where we convert all of the
+> text into a markdown file per customer that says what is where. Or perhaps instead of a markdown file at JSON.
+> What do you think we could do to make our search next level? 'Cause there's often situations where we need to
+> search for files and we just can't find them, but they are somewhere.
+
+The answer was the five-step plan below. The owner took it with one change:
+
+> I like your five step plan for search and embeddings and indexing with one change, which is I would like for
+> the work to be done by a Claude agent like yourself. And I would like for it to be done one time by a session
+> like this after we build those features. Would you be able to help me build those features and backfill with
+> this session?
+
+Then: *Save this all in full detail to the punch list and I'm gonna let another session of another user take care
+of it for me.* This card is that hand-over. Everything a cold session needs is here or linked from here.
+
+## The decision
+
+**An index in Postgres, not a markdown or JSON file per customer.** A `file_index` table: one row per Drive file
+with its job, bid or customer, its folder path, name, kind, modified time, the **extracted text**, a `tsvector`
+over name and text with a GIN index, and later an embedding. Postgres full-text search ranks, stems (*trench*
+finds *trenching*), takes phrases and prefixes, and answers in tens of milliseconds, and the hit already knows its
+job. A file per customer is a worse copy of the same thing: no ranking, no stemming, a second artefact to keep in
+step, and nowhere to hang per-file facts. The table *is* the "what is where" file, queryable.
+
+**Drive's own index stays as the floor.** Google indexes the text of every PDF, Doc and Sheet in the Shared Drive
+and OCRs scans and pictures of paper for its own search. v2.6305 asks it through `drive-link`'s `search`. Every PR
+here adds reach on top; the box falls back to Drive's index when ours has nothing, so nothing is ever lost by
+building this.
+
+**Our own OCR only where Drive's text is not ours to read.** Drive OCRs scans for its index but never hands the
+text back through the API, so a scanned permit matches in Drive's search and shows no excerpt in ours. The one place
+a robot earns its keep is reading those scans into our text. Google Docs export as text and text-layer PDFs read
+with `unpdf` for free (PR #6752 does both today for the excerpt line).
+
+**Meaning on top.** An embedding per file (per page for long PDFs) with `pgvector`, ranked together with the
+full-text score, so *the letter where the GC agreed to the extra rock* finds the rock-clause letter when it never
+says *agreed*.
+
+**The backfill is an agent's job, run once.** Not a cron that must be right the first time: a Claude session walks
+the jobs through a door built for it, reads each file, decides what deserves OCR, watches the counts, lists what it
+held with the reason, and writes the report. After that the ten-minute sweep keeps the index current.
+
+Rejected: a markdown or JSON corpus (above); Drive's *Open with Google Docs* to OCR a scan (it makes a second copy of
+every file searched, and the repo's rule is one copy, in Drive); indexing in the client (the service account is
+the only identity that reads every folder).
+
+## What exists today (2026-11-02), and the ids
+
+- **The folders.** Every job's files live in one folder under its customer in the Shared Drive **PipeTooling Jobs**
+  (`0ANSfYqm0sENHUk9PVA`, clickplumbing.com's Workspace; the jobs root is the setting on Documents → Where files
+  go, today the *Jobs* folder `1GuDUKC6emyGB5D62eYT3IGHajKmgV3_a`). Inside a job's folder the five names are fixed
+  (`JOB_FOLDER_TREE` in `supabase/functions/_shared/whereFilesGo.ts`): *Customer Pictures*, *Plans*, *Team only* ›
+  *Photos* and *Sent by us*. A job carries three links: `jobs_ledger.google_drive_link`, `job_plans_link`,
+  `job_pictures_link`; a bid carries `bids.drive_link`. On 2026-11-02 all 101 live jobs (every stage but Paid in
+  Full) pass Where files go's *Check pasted folders*; the app writes Drive as the service account
+  `drive-intake@pipetooling-drive.iam.gserviceaccount.com` (`googleAccessToken` in `_shared/driveUpload.ts`).
+- **Find a file** (v2.6305, `src/components/documents/FindAFile.tsx`, kernel `src/lib/documents/findAFile.ts`, io
+  `findAFileIo.ts`): the box under the job and bid search on Documents → Search; two letters, a pause, then
+  `drive-link`'s `search` — Drive `files.list` with `fullText contains`, `corpora=drive` on the root's `driveId`,
+  folders left out, 30 hits, each walked up its parents to a folder the app knows a job by (the three links) or a
+  bid by (`bids.drive_link`), the folders between named. Hits group under their job with folder, day, size,
+  **Open in Drive**, **Open the job**. Guide: `src/content/help/find-a-file-when-you-do-not-know-where-it-is.md`.
+- **The excerpt line** (PR #6752, `claude/find-a-file-excerpts`, in the merge queue as this is written):
+  `supabase/functions/_shared/excerpt.ts` (`excerptOf(text, words)`, pure: the earliest place where every word
+  occurs within 240 characters, about 160 characters around it on word boundaries, every occurrence marked,
+  one-space neighbours merged so *rock clause* bolds as one) and `fileText` in `drive-link/index.ts` (a Google Doc,
+  Sheet or Slides exported as `text/plain`; a PDF under 8 MB and 40 pages through `npm:unpdf@2.1.0` by a **dynamic
+  import** so a runtime that cannot load it costs an excerpt and never the boot; a text file under 2 MB as bytes;
+  each read raced against 3 s; under 20 characters of PDF text is a scan). **PR 1 lifts `fileText` into
+  `_shared/fileText.ts` and reuses it; do not write a second reader.**
+- **The other doors** (all shipped and deployed): *In the folders* on the job window's Documents tab (v2.6299,
+  `job-photos` action `files`, `JobDocumentsFolderFiles.tsx`); the folder icon on every Pipeline row (v2.6301,
+  `StagesJobFolderButton`); **Add a file** per folder on the Documents tab (v2.6303, `drive-link` `put` with
+  `where: top | plans | pictures`).
+- **`drive-link`** (`supabase/functions/drive-link/index.ts`, `_shared/driveLink.ts`, `_shared/driveJobFolder.ts`):
+  the office door's actions are `list`, `put`, `link`, `save`, `open`, `search`; office roles only (dev,
+  master_technician, assistant, controller, estimator), never a twin; a training account may `list`, `open` and
+  `search`. Deploy with `supabase functions deploy drive-link --no-verify-jwt --project-ref yewfzhbofbbyvkvtaatw
+  --use-api` (the build Mac has no Docker), then a bare `POST` must answer `{"error":"Sign in first."}` 401 and
+  never a 503 boot error. `npm run check:edge-drift` says what is behind.
+- **The sweep.** `job-drive-folders` runs every ten minutes (cron `job-drive-folders-sweep`, migration
+  `20261101163412`) over the live jobs, making, moving and renaming folders. PR 1 adds the index's own sweep beside
+  it rather than inside it (one job each).
+- **dev-mcp** (`supabase/functions/dev-mcp`, `docs/DEV_MCP.md` if present, else the function's header): the
+  agent's read-only seat plus plan/apply write verbs. The key this session held was revoked 2026-10-26; the owner
+  mints a new one for the session that builds PR 2.
+
+## The plan — four PRs, then the agent's backfill
+
+Ship small, one PR at a time, each with its release note, fragment, guide line and docs as `CLAUDE.md` asks. Every
+PR here changes `drive-link` or a new function, so **deploy right after each merge**. The queue squashes, so do not
+stack these branches on one another (the lesson of #6752): cut each from fresh `main` once the one before has landed.
+
+### PR 1 — the index, and Find a file reads it first (no decision needed)
+
+**Migration** (`supabase db push` only, after merge; `SET lock_timeout = '3s';` first; idempotent):
+
+```sql
+create table if not exists public.file_index (
+  drive_file_id text primary key,
+  jobs_ledger_id uuid references public.jobs_ledger(id) on delete set null,
+  bid_id uuid references public.bids(id) on delete set null,
+  customer_id uuid references public.customers(id) on delete set null,
+  folder_kind text,                 -- 'top' | 'plans' | 'pictures' | 'photos' | 'sent' | 'other'
+  path text not null default '',    -- the folders between the home and the file, ' › ' joined
+  name text not null,
+  mime text not null,
+  bytes bigint,
+  modified_at timestamptz,
+  text text,                        -- extracted, capped (200k chars is plenty for ranking)
+  text_source text,                 -- 'export' | 'pdf_layer' | 'plain' | 'ocr' | null
+  text_why text,                    -- when text is null: 'scan' | 'kind' | 'big' | 'slow' | 'error'
+  indexed_at timestamptz not null default now(),
+  search tsvector generated always as (
+    setweight(to_tsvector('english', coalesce(name, '')), 'A') ||
+    setweight(to_tsvector('english', coalesce(path, '')), 'B') ||
+    setweight(to_tsvector('english', left(coalesce(text, ''), 200000)), 'C')
+  ) stored
+);
+create index if not exists file_index_search_idx on public.file_index using gin (search);
+create index if not exists file_index_job_idx on public.file_index (jobs_ledger_id);
+create index if not exists file_index_modified_idx on public.file_index (modified_at desc);
+-- the three fences every CREATE TABLE ends with (CLAUDE.md):
+select public.apply_read_only_write_blocks();
+select public.apply_read_only_stmt_blocks();
+select public.apply_digital_twin_write_blocks();
+```
+
+RLS: the office roles read (`using (public.is_office_role())` or the predicate the sibling tables use — copy from
+`uploaded_photos`); only the service role writes. An RPC `search_file_index(words text, max int default 30)`
+(`security invoker`, so RLS decides) ranks with `websearch_to_tsquery('english', words)` and `ts_rank_cd`, returns
+the row plus `ts_headline('english', coalesce(text, name), query, 'MaxWords=35, MinWords=20, StartSel=<mark>,
+StopSel=</mark>')` as the excerpt, and the job's `hcp_number`, `click_number`, `job_name` joined in. Migration doc:
+`docs/migrations/<version>_file_index.md`.
+
+**Function.** Move `fileText` out of `drive-link/index.ts` into `supabase/functions/_shared/fileText.ts` (keep its
+caps and the dynamic `unpdf` import) and add to `drive-link`:
+
+- `{ action: 'index', driveFileId }` → reads the file's meta (`parents`, `name`, `mimeType`, `size`,
+  `modifiedTime`), walks it up to its home with the `walkUp` / `folderHomes` already in `searchFiles`, reads the
+  text with `fileText`, upserts one `file_index` row → `{ row }`. A read of Drive and a write of our table; the
+  office may press it, a training account may not (a write).
+- `{ action: 'index_job', job }` → every file under the job's folder tree (`filesUnder` already lists three levels
+  deep for `list`), each indexed as above, in parallel with a cap of 8 at a time → `{ indexed, held: [{ id, name,
+  why }] }`.
+
+A new function `file-index-sweep` (cron, every 10 minutes like the folder sweep; `CRON_SECRET` as the others): one
+Drive `files.list` over the Shared Drive with `modifiedTime > <last run − 2 min>` and `trashed = false`, folders
+left out, each hit indexed; plus a trashed check for rows whose file no longer answers (`404` → delete the row). The
+run stamps `app_settings` key `file_index_sweep_last_at`. `docs/EDGE_FUNCTIONS.md` gets its section and TOC line.
+
+**Client.** `findAFileIo.searchJobFiles(words)` calls the RPC first; when it answers rows, the box shows them
+(their `ts_headline` as the excerpt, the `<mark>` spans mapped to the existing `marks`); when it answers none, it
+falls back to `drive-link` `search` exactly as today, and the count line says which answered (*from the index* /
+*from Drive*). The kernel's `FoundFile` already carries `excerpt`. A tiny *Index this folder* press on the job
+window's Documents tab (beside Add a file) calls `index_job` for one job, which is also how a tester fills the table
+before PR 2. Guide: a short *What the search reads* section in `find-a-file-when-you-do-not-know-where-it-is.md`.
+
+**Tests.** The RPC's ranking in a SQL bed if one exists (`supabase/tests/`), else the kernel: `findAFile.test.ts`
+reads an index row into `FoundFile`; `FindAFile.render.test.tsx` shows *from the index* and the fallback; the
+function's `_shared/fileText.ts` gets a vitest file for the kind routing (mime → source) with the Drive calls faked.
+
+### PR 2 — the agent's door (needs a dev-mcp key)
+
+In `supabase/functions/dev-mcp` (plan-then-apply like `plan_file_plans` → `apply_file_plans`):
+
+- `read_file_index_status` → counts by `text_source` and `text_why`, rows per job, the newest `indexed_at`, the
+  jobs with no rows, the sweep's last stamp.
+- `plan_index_backfill { scope: 'live' | 'paid' | 'job', job_id?, since?, limit }` → the list of jobs and files it
+  would index (files not in the table or modified since their row), the estimated Drive reads and seconds, and a
+  `plan_hash`.
+- `apply_index_backfill { plan_hash, batch: 25 }` → indexes that batch through the same code as `index_job`,
+  answers `{ indexed, held, remaining }`; the agent loops.
+
+Twin fence: a digital twin never gets these (as the other write verbs). Document the three in the function's
+catalog and `docs/EDGE_FUNCTIONS.md`.
+
+### PR 3 — our own OCR for scans (decision: provider)
+
+When `fileText` answers `why: 'scan'` (a PDF with under 20 characters of text) or the file is an image
+(`image/*`, `.heic` first converted by Drive's export is not available — send the bytes as they are), send it to the
+OCR provider and store the text with `text_source = 'ocr'`. Recommended: **Google Document AI** (Document OCR
+processor) in the `pipetooling-drive` GCP project, which now sits under the pipetexas.com organisation since the
+2026-11-01 move; the service account the app already holds gets `roles/documentai.apiUser`, and the processor id
+goes in a secret `GOOGLE_DOCAI_PROCESSOR` (`projects/<n>/locations/us/processors/<id>`). Alternative: Cloud Vision
+`DOCUMENT_TEXT_DETECTION` (same account, simpler, no layout). Pricing (2026): Document AI OCR about $1.50 per
+1,000 pages, Vision about the same; a few thousand pages in the backfill is tens of dollars. Cap: 30 pages per file in
+the backfill, the rest on request. Store `ocr_pages`, and never OCR a file twice (`text_source = 'ocr'` and the same
+`modified_at` skips).
+
+### PR 4 — meaning (decision: embeddings provider and key)
+
+`create extension if not exists vector;` (Supabase ships pgvector) and a `file_index_chunks` table (`drive_file_id`,
+`chunk_no`, `page_from`, `page_to`, `text`, `embedding vector(<dim>)`, an HNSW index with cosine distance). Chunk a
+file's text at about 800 tokens with 100 of overlap, one chunk per page for PDFs. Recommended provider: **Gemini
+text embeddings** through the same GCP project (`gemini-embedding-001`, choose `outputDimensionality: 768`), one
+API key in a secret `GEMINI_API_KEY`; alternatives Voyage `voyage-3` (1024) or OpenAI `text-embedding-3-small`
+(1536) — the dimension is fixed at table creation, so decide first. `search_file_index` becomes hybrid: the
+full-text rank and the cosine similarity of the query's embedding, reciprocal-rank fused (k = 60), top 30 files by
+best chunk. The box needs no change; the count line can say *by meaning* when the top hit came from the vector side.
+
+### The backfill — one run, by an agent session
+
+After PRs 1 and 2 (and 3 if OCR is wanted in the first pass), a Claude session with a dev-mcp key:
+
+1. `read_file_index_status` → the baseline (expect ~0 rows).
+2. `plan_index_backfill { scope: 'live' }` → read the plan: how many files, how many Drive reads, the seconds.
+3. Loop `apply_index_backfill { batch: 25 }` until `remaining = 0`, printing `indexed / held / remaining` each
+   batch and sleeping a few seconds between batches (Drive allows about 12,000 reads a minute for one service
+   account; stay far under it). The 101 live jobs are a few thousand files: one sitting.
+4. `plan_index_backfill { scope: 'paid' }` → the back catalogue, oldest last, in the same loop over an evening.
+5. Read the held list: a `why` of `big` or `slow` is left with its reason; `scan` becomes the OCR pass (PR 3) or a
+   count in the report; `error` is retried once.
+6. Write the report into this card's *Where it stands* (counts by source and why, the held files by job, the time
+   it took, the cost of any OCR) and a one-paragraph note to the owner.
+
+The sweep keeps the table current from then on; nothing is scheduled for the agent again.
+
+## Decisions still open (the owner's)
+
+1. **OCR provider** (PR 3): Document AI (recommended) or Cloud Vision.
+2. **Embeddings provider and key** (PR 4): Gemini embeddings in the existing GCP project (recommended, one key, no
+   new vendor), Voyage, or OpenAI. The dimension is set when the table is made.
+3. **A dev-mcp key** for the session that builds PR 2 and runs the backfill (the Settings → Developer door, or
+   however keys are minted today; the old one is revoked).
+4. **The estimators' bid folders.** Every plumbing bid's folder sits in the owner's **My Drive**, in a folder of
+   the estimators' own (40-plus bid folders for Aug–Oct 2026 alone, with HVAC and electrical siblings), outside the
+   Shared Drive. The search here is scoped to the Shared Drive, so those files are not searched, and the folder
+   maker holds every bid that becomes a job until its folder is moved (job 523 on 2026-11-02). The fix is one Drive
+   move of the whole folder into PipeTooling Jobs **after the estimators are made members of the Shared Drive**
+   (else they lose edit access when ownership moves). Owner's call; not part of this card's code.
+
+## Where it plugs in
+
+| Exists | New |
+|---|---|
+| `supabase/functions/drive-link/index.ts` — `searchFiles`, `folderHomes`, `walkUp`, `fileText`, `excerptFor` | `_shared/fileText.ts` (moved), actions `index` and `index_job`, the fallback order |
+| `supabase/functions/_shared/excerpt.ts` — the cut and the marks | reused for OCR text; `ts_headline` for index hits |
+| `_shared/driveJobFolder.ts` — `driveGet`, `driveMedia`, `childFolder`, `jobFolder` | — |
+| `_shared/driveSettings.ts` — `jobsRootFolderId`, `driveFolderMeta` (the `driveId`) | the sweep's stamp key |
+| `src/lib/documents/findAFile.ts`, `findAFileIo.ts`, `src/components/documents/FindAFile.tsx` | index-first io, the *from the index* words |
+| `jobs_ledger` (three links), `bids.drive_link`, `uploaded_photos`, `drive_links` | `file_index`, `file_index_chunks`, RPC `search_file_index`, `file-index-sweep` function, dev-mcp verbs |
+| `docs/EDGE_FUNCTIONS.md` drive-link section; the guide *find a file when you do not know where it is* | the sweep's section; the guide's *What the search reads* |
+
+## How to verify
+
+- **Unit and render**: `npx vitest run src/lib/documents src/components/documents` (the suites above) plus
+  `src/lib/releaseNotes.test.ts`, `helpGuideContent.test.ts`, `helpGuidePlainWords.test.ts`,
+  `helpGuideLinks.guides.test.ts`, `helpShareCard.guides.test.ts`; `npx eslint` on the changed files;
+  `node scripts/theme-tokenize.mjs --check src`, `npm run check:dead-press`, `npm run check:empty-words`,
+  `npm run check:error-words`. The function files are not under `tsc`'s `tsconfig.json` (it includes `src` only)
+  and the build Mac has no Deno: check them by eye and by the boot probe after deploy.
+- **Migration**: `npm run check:migration-drift` before and after `supabase db push` (from a clean `main`
+  checkout; list pending first).
+- **Live, on test data only** (the repo and its pages are public; no customer rows in docs or fixtures): the ZZ
+  test jobs (Pipeline tools → *ZZ test jobs*); put a small PDF with a known phrase into a ZZ job's Plans with the
+  Documents tab's **Add a file**, press *Index this folder*, then search the phrase on Documents → Search: the hit
+  must say *from the index*, land on the ZZ job, and show the phrase bold. Then search a phrase from a scanned PDF
+  before PR 3 (expect Drive's fallback hit with *Matched inside the scan*) and after it (expect the index hit with
+  the OCR'd line).
+- **Timing**: the index RPC should answer under 100 ms; Drive's `search` answers in 1–3 s (measured 2026-11-02 at
+  about 1.6 s per `job-photos` call on the same path). In the browser pane the network list misses edge-function
+  calls; wrap `window.fetch` in-page to log them, or read `performance.getEntriesByType('resource')` after
+  `performance.setResourceTimingBufferSize(3000)`.
+
+## Gotchas met on the way here
+
+- **Drive's API cannot move a folder into a Shared Drive** (`teamDrivesFolderMoveInNotSupported`); only the Drive
+  UI can, by a member of the destination (robert@clickplumbing is a Manager). Files can be moved by the API.
+- **Drive's search API returns which files match, never the passage**; `fullText contains` with two words is both
+  words, not a phrase (quote inside the term for a phrase). It does not expose OCR text.
+- **`npm:` imports in an edge function**: `npm:unpdf@2.1.0` works when imported dynamically inside the read; a
+  static import at the top is a boot risk the probe would catch too late. `getDocumentProxy` then `extractText(pdf,
+  { mergePages: true })`; check `pdf.numPages` against the cap first; race every read against a timer (the
+  serverless build has no worker).
+- **The merge queue squashes**, so a PR stacked on another is dropped when the first lands (add/add conflicts on
+  every file the first PR added). Cut each PR from fresh `main`; if a stack is unavoidable, after the first lands
+  merge `main` in and keep yours on every conflicted file (`git checkout --ours -- <file>`; in zsh iterate with
+  `while read`, an unquoted `$var` does not split), never rebase or force-push.
+- **Edge functions and the client deploy on different tracks**: the client is live on the next Pages deploy, the
+  function only when you deploy it. A client calling a function action the deployed function lacks gets *That is
+  not an ask this door takes.* (400), a refusal, not a lost signal — deploy right after the merge.
+- **`form_input` into the Edit tab's url fields does autosave** (confirmed by a full reload); the job maker's 409
+  body is readable only in-page (see Timing above).
+- Every new guide sentence obeys `src/lib/plainWords.ts` (one idea, under 20 words, no dashes or parentheses);
+  every new table ends with the three fence calls; stage files by name, never `git add -A`.
+
+## Sources
+
+- [Drive API: search for files and folders](https://developers.google.com/workspace/drive/api/guides/search-files)
+  (`fullText`, `corpora`, `driveId`)
+- [Postgres full text search: controlling text search](https://www.postgresql.org/docs/current/textsearch-controls.html)
+  (`websearch_to_tsquery`, `ts_rank_cd`, `ts_headline`)
+- [pgvector](https://github.com/pgvector/pgvector) (HNSW, cosine) and
+  [Supabase: pgvector](https://supabase.com/docs/guides/database/extensions/pgvector)
+- [Document AI pricing](https://cloud.google.com/document-ai/pricing) ·
+  [Cloud Vision pricing](https://cloud.google.com/vision/pricing)
+- [Gemini embeddings](https://ai.google.dev/gemini-api/docs/embeddings) (`outputDimensionality`)
+- [unpdf](https://github.com/unjs/unpdf) (serverless PDF.js build)
+- Punch list #236 (`to-dos/job-folders-under-customers.md`) for the folder tree, the Shared Drive move and the
+  service account; `docs/recent-features/v2.6299.md`, `v2.6301.md`, `v2.6303.md`, `v2.6305.md` for the doors.
