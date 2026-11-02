@@ -10,6 +10,7 @@
 import type { CSSProperties, ReactNode } from 'react'
 import type { CountCard, CountDoor, CountFootDoor, CountKey, CountPress } from '../../lib/developments/countCards'
 import { capStyle, LinkButton, SmallButton } from './developmentPageBits'
+import { JobChip } from './JobChip'
 import { useHoverCards } from './useHoverCards'
 
 export type CountTileSpec = { key: CountKey; cap: string; value: ReactNode; sub: ReactNode; tone?: 'amber' | 'green' }
@@ -52,7 +53,11 @@ export function CountCardBody({ card, sheet, bare, onRow, onFoot, onPress, onClo
                   </div>
                 ) : (
                   <div key={r.key} className="developmentCountRow" style={row}>
-                    {r.door ? (
+                    {r.door?.kind === 'job' ? (
+                      <JobChip jobId={r.door.id} onOpen={() => onRow(r.door!)} strong nowrap>
+                        {r.number}
+                      </JobChip>
+                    ) : r.door ? (
                       <LinkButton onClick={() => onRow(r.door!)} strong nowrap>
                         {r.number}
                       </LinkButton>

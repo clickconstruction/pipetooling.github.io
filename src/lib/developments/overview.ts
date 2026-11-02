@@ -66,6 +66,10 @@ export type MemberJob = {
   job_plans_link: string | null
   /** The part of the site the job builds from (punch list #239); absent on an older read. */
   plan_part_id?: string | null
+  /** GC mode's billing job, which carries a project's bills and nothing else: it never builds from plans (v2.6351). */
+  billing_only?: boolean | null
+  /** The office's explicit kind, service or project (punch list #238); the Plans look leaves a service call out of its count (v2.6351). */
+  kind?: string | null
   created_at: string | null
   updated_at: string | null
   service_type_id: string | null
