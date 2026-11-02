@@ -23,7 +23,7 @@ const job = (p: Partial<PipelineJobRow> & Pick<PipelineJobRow, 'id'>): PipelineJ
 
 /** Dana's water heater job: booked, visited, the estimate out since Saturday. */
 const VISITED: ResidentialRows = {
-  contact: { id: 'c-dana', kind: 'residential', off_since: null, off_why: null, off_by: null },
+  contact: { id: 'c-dana', kind: 'customer', off_since: null, off_why: null, off_by: null },
   firstName: 'Dana',
   jobs: [job({ id: 'job-1312' })],
   userNames: { 'u-luis': 'Luis', 'u-rosa': 'Rosa' },

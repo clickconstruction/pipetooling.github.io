@@ -49,9 +49,9 @@ import { loadWalkKit } from '../_shared/walkKit.ts'
 import { mintRatingLink, needsRatingLink, ratingAnswered } from '../_shared/ratingMint.ts'
 // The kernels straight from the copy, not its index, as quoLines.ts reads them.
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_LAST_RUN_V1 } from '../_shared/gcKernels/lib/appSettingsKeys.ts'
-import { FLOW_KINDS } from '../_shared/gcKernels/lib/flows/facts.ts'
+import { FLOW_KINDS, contactFlowKindOf } from '../_shared/gcKernels/lib/flows/facts.ts'
 import { notSentWords, planNudgeRun, type NudgeKept, type NudgeOffer } from '../_shared/gcKernels/lib/flows/nudgeDispatch.ts'
-import { APP_SENDS_SETTING_KEY, nudgeRunReads, type NudgeRunRows, type RunBillRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
+import { APP_SENDS_SETTING_KEY, nudgeRunReads, runContactsOf, type NudgeRunRows, type RunBillRows, type RunOfferRow } from '../_shared/gcKernels/lib/flows/nudgeRunInputs.ts'
 import { runHourNow, runSummary, type RunRefused } from '../_shared/gcKernels/lib/flows/nudgeRunLog.ts'
 import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, type PipelineRows } from '../_shared/gcKernels/lib/flows/residentialRows.ts'
 import { boxForReply, sendBox, stoppedOn, type Mailbox } from '../_shared/gcKernels/lib/messages/boxes.ts'
@@ -71,8 +71,13 @@ const json = (body: Record<string, unknown>, status = 200) =>
 const PAGE = 1000
 const CHUNK = 100
 
-/** The kinds the run reads: every flow's kind but the customer's, whose page it cannot read yet. */
-const RUN_KINDS = FLOW_KINDS.filter((k) => k !== 'customer')
+/**
+ * The contacts' kinds the run reads: every flow's kind that is a contact's kind. `residential` is not one (v2.6394): a
+ * homeowner's contact is kind `customer`, and the kernel's `runContactsOf` tells their flow from the card's
+ * `customer_type` once `flow_rows_for` has answered, holding the GC customers back (`customersHeld`), whose page the run
+ * cannot read yet.
+ */
+const RUN_KINDS = FLOW_KINDS.filter((k) => k !== 'residential')
 
 type Answer<T> = { data: T[] | null; error: { message: string } | null }
 
@@ -98,16 +103,14 @@ const jobAtOf = (o: OfferRow): JobAt | null =>
 
 /** The morning's rows, read as the service role. */
 async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld: number; offers: OfferRow[] }> {
-  const contacts = await all<NudgeRunRows['contacts'][number]>(
+  const everyone = await all<NudgeRunRows['contacts'][number]>(
     (a, b) => admin.from('contacts').select('id, kind, name, goes_by, snoozed_until, prefers, customer_id').in('kind', RUN_KINDS).order('id').range(a, b),
     'contacts',
   )
-  const { count: customersHeld, error: heldError } = await admin.from('contacts').select('id', { count: 'exact', head: true }).eq('kind', 'customer')
-  if (heldError) throw new Error(`contacts: ${heldError.message}`)
 
   const flowRows: Record<string, unknown> = {}
   const got = { holds: [] as any[], sent: [] as any[], notes: [] as any[], lines: [] as any[], owed: [] as any[], channels: [] as any[] }
-  for (const ids of chunks(contacts.map((c) => c.id), CHUNK)) {
+  for (const ids of chunks(everyone.map((c) => c.id), CHUNK)) {
     const { data, error } = await admin.rpc('flow_rows_for', { p_ids: ids })
     if (error) throw new Error(`flow_rows_for: ${error.message}`)
     Object.assign(flowRows, data ?? {})
@@ -127,13 +130,18 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     got.channels.push(...channels)
   }
 
-  const pipeline = await readPipeline(admin, contacts.filter((c) => c.kind === 'residential'))
+  // The GC customers are held, by the card `flow_rows_for` carries (v2.6394); the homeowners among the customer contacts run.
+  const cards = flowRows as Readonly<Partial<Record<string, { card?: { customer_id?: string | null; customer_type?: string | null } }>>>
+  const { run: contacts, customersHeld } = runContactsOf(everyone, cards)
+  const cardOf = (id: string) => cards[id]?.card
+  const residential = contacts.filter((c) => contactFlowKindOf(c.kind, cardOf(c.id)?.customer_type) === 'residential')
+  const pipeline = await readPipeline(admin, residential)
 
   // The residential customers' bills (punch list #124, v2.6224): their Pipeline jobs, bills and payments, the columns the
   // reply box's paper read selects (`messages/papersIo.ts`), so the kernel fills {amount}, {bill} and {number} from the
   // job's newest open bill as the box does at a press. The customer id is the contact's, else the card's (`flow_rows_for` names it on the card for a customer and an architect only, v2.6232).
   const customerIds = [
-    ...new Set(contacts.flatMap((c) => (c.kind === 'residential' ? [c.customer_id ?? (flowRows[c.id] as { card?: { customer_id?: string | null } } | undefined)?.card?.customer_id ?? null] : [])).filter((id): id is string => Boolean(id))),
+    ...new Set(residential.map((c) => c.customer_id ?? cardOf(c.id)?.customer_id ?? null).filter((id): id is string => Boolean(id))),
   ]
   const bills: RunBillRows = { jobs: [], invoices: [], payments: [] }
   for (const ids of chunks(customerIds, CHUNK)) {
@@ -183,7 +191,7 @@ async function readRows(admin: any): Promise<{ rows: NudgeRunRows; customersHeld
     pipeline,
     bills,
   }
-  return { rows, customersHeld: customersHeld ?? 0, offers }
+  return { rows, customersHeld, offers }
 }
 
 /**

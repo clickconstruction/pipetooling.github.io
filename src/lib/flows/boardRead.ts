@@ -7,7 +7,7 @@
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdDaysBetween } from '../../utils/dateUtils'
 import { firstName } from '../contacts/kernel'
 import type { BoardCompany } from './board'
-import type { FlowKind } from './facts'
+import { contactFlowKindOf, type FlowKind } from './facts'
 import { gridColumns, type JobPaperCompany } from './jobPapers'
 import { flowStampsFor, type FlowRows, type ProjectRow } from './load'
 import { flat, paperRead, perJobJobs, placesOf, readFlow, stepReading, type FlowDef, type FlowReading } from './state'
@@ -24,6 +24,8 @@ export type ContactCard = {
   /** The records the person's own windows open by: a trade's company, a customer's or an architect's customer. */
   gc_company_id: string | null
   customer_id: string | null
+  /** `customers.customer_type` for a customer's or an architect's contact (v2.6394): residential puts a customer contact on the residential flow. */
+  customer_type: string | null
 }
 
 /** One contact's entry in `flow_rows_kind`: `flow_rows`' rows, the names, and each project's name. */
@@ -54,6 +56,7 @@ export function parseFlowRowsKind(raw: unknown): FlowRowsKindAnswer {
         trades: Array.isArray(card.trades) ? card.trades.filter((t): t is string => typeof t === 'string' && !!t.trim()) : [],
         gc_company_id: str(card.gc_company_id) ?? (isObject(v.company) ? str(v.company.id) : null),
         customer_id: str(card.customer_id),
+        customer_type: str(card.customer_type),
       },
     }
   }
@@ -109,7 +112,8 @@ export function readBoard(flow: FlowDef, answer: FlowRowsKindAnswer, now: Date):
   const firstNames: Record<string, string> = {}
   const refs: Record<string, { companyId: string | null; customerId: string | null }> = {}
   for (const [id, entry] of Object.entries(answer)) {
-    if (entry.contact.kind !== flow.kind) continue
+    // A homeowner's contact is kind customer and their flow the residential one (v2.6394), so the customer board leaves them off.
+    if (contactFlowKindOf(entry.contact.kind, entry.card.customer_type) !== flow.kind) continue
     refs[id] = { companyId: entry.card.gc_company_id, customerId: entry.card.customer_id }
     for (const p of entry.projects ?? []) jobs[p.project_id] = { name: str(p.name) ?? jobs[p.project_id]?.name ?? 'A job with no name' }
     const reading = readFlow(flow, flowStampsFor(flow.kind, entry as FlowRows, now), now)
