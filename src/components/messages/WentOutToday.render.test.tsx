@@ -3,7 +3,7 @@
  * Went out today (v2.5686, punch list #133 PR 3) over a fake read: the rows newest first with the time and who
  * pressed, a row opens the thread, the empty lane says so, and a read that fails says so instead of hiding.
  */
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { WentOutToday } from './WentOutToday'
@@ -88,6 +88,6 @@ describe('WentOutToday', { timeout: 15_000 }, () => {
     renderWithProviders(<WentOutToday pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => [])} onCount={onCount} />)
     await screen.findByTestId('went-out-empty')
     expect(band()).toBe('0')
-    expect(onCount).toHaveBeenLastCalledWith(0)
+    await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(0))
   })
 })

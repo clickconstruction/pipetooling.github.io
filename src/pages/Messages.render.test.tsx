@@ -500,9 +500,10 @@ describe('/messages: the kept queue (punch list #183 PR 5)', () => {
     const land = holdTheRead()
     at('/messages')
     await waitFor(() => expect(document.querySelector(STAMP)).not.toBeNull())
+    // The page hears the kept count and the kept time in the render after the stamp; read the fold once it has both.
+    await waitFor(() => expect(document.querySelector('[data-messages-top-bar]')!.hasAttribute('data-kept-read')).toBe(true))
     expect(screen.queryByTestId('queues-fold')).toBeNull()
     expect((screen.getByTestId('queues') as HTMLElement).style.display).not.toBe('none')
-    expect(document.querySelector('[data-messages-top-bar]')!.hasAttribute('data-kept-read')).toBe(true)
     land(nobody)
     await screen.findByTestId('queues-fold')
     expect(document.querySelector(STAMP)).toBeNull()

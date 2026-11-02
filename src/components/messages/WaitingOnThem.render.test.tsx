@@ -5,7 +5,7 @@
  * last text Quo could not deliver draws the row red with Call them and Send it as an email (#140 PR 4); the empty lane
  * and a failed read say so.
  */
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { WaitingOnThem } from './WaitingOnThem'
@@ -72,6 +72,6 @@ describe('WaitingOnThem', { timeout: 15_000 }, () => {
     renderWithProviders(<WaitingOnThem pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => [])} now={() => NOW} onCount={onCount} />)
     await screen.findByTestId('waiting-empty')
     expect(band()).toBe('0')
-    expect(onCount).toHaveBeenLastCalledWith(0)
+    await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(0))
   })
 })
