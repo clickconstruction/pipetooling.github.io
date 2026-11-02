@@ -23,6 +23,7 @@ import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 import { HoursStatementsSection } from './HoursStatementsSection'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
 import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
+import { JobPlansSection } from './JobPlansSection'
 import { JobDocumentsAddFile } from './JobDocumentsAddFile'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
@@ -39,7 +40,10 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
  * **Hours statements** section sits after the lien paper: every signed hours statement on the job with its record id and
  * where it stands, and the press that opens the Hours statement window, for the payroll roles and assistants. Since
  * v2.6272 (punch list #232, PR 3) a **Photos** section after the folders reads the folder's count line as the door to the
- * strip's viewer, and says so on a job with no folder; every photo across every job is Documents → Photos. Since v2.6299
+ * strip's viewer, and says so on a job with no folder; every photo across every job is Documents → Photos. Since v2.6298
+ * (punch list #239, PR 2) a **Plans** section before the folders names the set the job builds from, the older sets and our
+ * as-builts, and adds a set or an as-built (`JobPlansSection`).
+ * Since v2.6299
  * an **In the folders** section between them lists what is in the job's five folders, read live from Drive each time
  * the tab opens, each file with where it came from (the app's own record, or a hand in Drive).
  */
@@ -58,13 +62,16 @@ export function JobWindowDocumentsTab({
   onOverlayOpenChange,
   onRequestTab,
   onFoldersMade,
+  onLeave,
 }: {
   job: JobWithDetails
   onOverlayOpenChange?: (open: boolean) => void
   /** The window's own tab switch: an empty bills or folders list names the tab that fills it (punch list #184). */
   onRequestTab?: (tab: JobWindowTabKey) => void
-  /** The links the Drive-folders press wrote (v2.6054): the window patches the job it holds. */
+  /** The links the Drive-folders press wrote (v2.6054), or the plans link a set switch mirrored (#239): the window patches the job it holds. */
   onFoldersMade?: (patch: JobDriveLinksPatch) => void
+  /** Called before a door leaves the window for another page (the Plans section's site door, #239). */
+  onLeave?: () => void
 }) {
   const { role } = useAuth()
   const { showToast } = useToastContext()
@@ -337,6 +344,8 @@ export function JobWindowDocumentsTab({
       <HoursStatementsSection scope={{ kind: 'job', job }} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
 
       {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
+
+      <JobPlansSection job={job} onPlansLinkChanged={(link) => onFoldersMade?.({ job_plans_link: link })} onLeave={onLeave} />
 
       <section aria-labelledby="job-documents-folders" style={{ display: 'flex', flexDirection: 'column', gap: '0.4rem' }}>
         <h3 id="job-documents-folders" style={heading}>

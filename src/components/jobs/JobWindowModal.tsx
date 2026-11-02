@@ -417,6 +417,7 @@ export function JobWindowModal({
                 job={fullJob}
                 onOverlayOpenChange={setDocumentsEscBlocked}
                 onRequestTab={setTab}
+                onLeave={onClose}
                 onFoldersMade={(patch) => {
                   // The folders press wrote links on the job (v2.6054): the window's copy, the Job pane and the page's list follow.
                   setFullJob((prev) => (prev ? { ...prev, ...patch } : prev))
