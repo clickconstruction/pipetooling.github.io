@@ -1,8 +1,8 @@
 ---
 name: "Job photos: a camera icon on the Pipeline row and on the Job Mode card opens one window that adds a photo with its description and browses every photo on the job"
 number: 244
-group: gated
-status: planned 2026-11-02 — the card, the self-critique and the mock-up; nothing built; waiting on the owner's eight calls
+group: ready
+status: planned 2026-11-02 — the card, the self-critique and the mock-up; the owner took all eight calls as recommended the same day; nothing built yet
 mockup: to-dos/job-photos/mockup.html
 summary: >
   The owner likes the Pipeline row's Job folder icon and wants a photos icon beside it: a window
@@ -15,9 +15,9 @@ summary: >
   Mode card for the field, and from the job window's Photos section; a new `job_photo_notes` row
   per photo (the job, the stage, the description, who, when) filed by the same sweep into the
   same Drive folder as a report's photo, listed on Documents → Photos as a fifth source.
-next: The owner reads the mock-up and makes the eight calls under The owner's calls; then PR 1.
+next: PR 1, the ground: the migration, the kernel and the io, the shot-tile hook lifted from the report form.
 size: M as a train of five PRs (S · S · M · S · XS); one migration (a table, a bucket, a view branch, a cron clause); two edge functions redeployed (photo-save, job-photos)
-blocker: The owner's calls, above all where the icon opens (its own window, or the job window's Photos) and whether a photo's description is free words, a stage chip, or both.
+blocker: None. The calls are made; the train starts with PR 1.
 opinion: build it as one window with two faces, not a modal that only uploads; put the field's door on the Job Mode card, not the Pipeline; keep a job photo quiet (a thread line, no push) so it never competes with Leave report
 ---
 
@@ -240,6 +240,8 @@ and it is the last PR of the train, as it was for #229, so the window ships firs
 honest rule (the tile stays with Retry) and the queue follows.
 
 ## The owner's calls
+
+**Made 2026-11-02: the owner took all eight as recommended** (*Take all defaults*). The alternatives stay listed so the next reader knows what was weighed.
 
 1. **Where the Pipeline icon opens.** Recommended: the Job photos window of its own, with the job
    window's Photos section opening the same window. Alternative: the job window's Documents tab
