@@ -428,6 +428,11 @@ export const PAPER_WORDS: Record<PortalPaperId, Record<PortalLang, PaperWords>> 
     en: { label: 'Estimate', onIt: 'We are writing up your estimate.', why: 'Read it and approve it here.', button: 'See the estimate' },
     es: { label: 'Presupuesto', onIt: 'Estamos preparando su presupuesto.', why: 'Léalo y apruébelo aquí.', button: 'Ver el presupuesto' },
   },
+  // The warranty in place of a contract (2026-11-02): the residential flow's aside paper; the customer's page shows it only while one is out.
+  warranty: {
+    en: { label: 'Warranty', yours: 'Your warranty', why: 'Initial each line and sign it here. It takes a minute.', button: 'Initial and sign your warranty' },
+    es: { label: 'Garantía', yours: 'Su garantía', why: 'Ponga sus iniciales en cada línea y fírmela aquí. Toma un minuto.', button: 'Firme su garantía' },
+  },
   bill: {
     en: { label: 'Bill', onIt: 'We are getting your bill ready.', why: 'Pay it here.', button: 'See the bill' },
     es: { label: 'Factura', onIt: 'Estamos preparando su factura.', why: 'Páguela aquí.', button: 'Ver la factura' },
