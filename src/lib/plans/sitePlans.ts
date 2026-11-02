@@ -5,7 +5,7 @@
  * for a person to settle. A job can never be "on an older set" here, because a job follows its part.
  * Bids pin their own sets (`bids.plans_link`, `bid_plan_sets`) and are listed as pinned. Pure.
  */
-import { buildJobPlansView, compareSets, type PlanPartRow, type PlanSetRow } from './planSets'
+import { buildJobPlansView, compareSets, isDrawingSet, type PlanPartRow, type PlanSetRow } from './planSets'
 
 export type SiteCarrier = { kind: 'job' | 'bid'; id: string; label: string }
 
@@ -51,7 +51,7 @@ export function buildSitePlansView(args: {
   const partIds = new Set(ordered.map((p) => p.id))
   const jobsWithNoPart = args.jobs.filter((j) => !j.plan_part_id || !partIds.has(j.plan_part_id)).map((j) => ({ kind: 'job' as const, id: j.id, label: j.label }))
   const partsWithNoSet = parts.filter((r) => !r.current)
-  const setCount = args.sets.filter((s) => partIds.has(s.part_id)).length
+  const setCount = args.sets.filter((s) => partIds.has(s.part_id) && isDrawingSet(s)).length
   const bidsPinned = args.bids
     .filter((b) => (b.plans_link ?? '').trim())
     .map((b) => ({ kind: 'bid' as const, id: b.id, label: b.label, link: (b.plans_link ?? '').trim() }))

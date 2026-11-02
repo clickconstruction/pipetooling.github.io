@@ -8,7 +8,7 @@ order: 61
 ---
 A set of plans never comes alone. A spec book, a schedule, the owner's task list or a soil report comes with it. Each one lands beside the set it goes with, on the job's **Documents** tab under **Plans**.
 
-Keeping a paper does three things at once. It files the paper under its set. It writes one line on the site's History for that day. It can hand the question the paper raised to the people who answer it.
+Keeping a paper does three things at once. The paper lands under its set. The site's History gets one line for that day. The question the paper raised can go to the people who answer it.
 
 ## Read the papers on a job
 
@@ -34,7 +34,7 @@ An amber chip on a paper means it asked us something and the answer has not come
 8. Paste the Drive link under **Link**. You can leave it empty and add it later.
 9. Press {{button:blue|Keep the paper}}.
 
-The form shows the History line before you press. It starts with *Kept*, names the paper and the set, and ends with your memo.
+The form shows the History line before you press. The line starts with *Kept*, names the paper and the set, and ends with your memo.
 
 When a new copy of a paper comes, pick the old one under **Replaces**. The old one folds away and the History line says what it replaced.
 
@@ -65,7 +65,7 @@ Some papers never come. The owner promised a soil report and the crew is still w
 4. Pick **Who answers** and type **Who owes it**, such as *The owner owes the soil report*.
 5. Press {{button:blue|Keep it as owed}}.
 
-The paper reads under **Owed to us** in amber. When it arrives, press {{button:outline|It came}} on its line, paste the link, and press {{button:outline|It came}} again. The paper moves under its set and the History gets a second line.
+The paper reads under **Owed to us** in amber. When the paper arrives, press {{button:outline|It came}} on its line, paste the link, and press {{button:outline|It came}} again. The paper moves under its set and the History gets a second line.
 
 ## Keep a paper straight from the mail
 

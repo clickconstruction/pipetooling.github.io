@@ -41,6 +41,17 @@ When the facts settle nothing, neither side is pressed. The line reads *No price
 
 Your press wins from then on. A later import or a new bid link never changes it back.
 
+## Clear the working jobs with no kind
+
+The Needs You card counts the jobs working with no kind. The line reads *7 jobs working have no kind*. On Quickfill it opens **Fill them in**.
+
+1. Open Quickfill's **Today's lines** station.
+2. Read the card. The card shows the job's money and what the app read. The card also shows the clock time and the bills.
+3. Press {{button:blue|Project}} or {{button:outline|Service call}}. That one press saves the kind and shows the next job.
+4. Press {{button:outline|Skip}} if you are not sure. The job waits at the back of the deck.
+
+A press you got wrong has **Undo** under the card. The hours may lean one way. A blue press is the app's lean, and the choice is still yours.
+
 ## Find the jobs with no kind
 
 1. On the Pipeline, open the {{button:outline|⋯}} tools menu.

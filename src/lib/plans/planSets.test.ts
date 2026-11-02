@@ -2,20 +2,21 @@ import { describe, expect, it } from 'vitest'
 import {
   addSetPressWords,
   asBuiltLineWords,
-  buildJobPlansView,
   buildingFromLine,
+  buildJobPlansView,
   compareSets,
   defaultAsBuiltName,
   defaultSetName,
   emptyNewSetDraft,
+  isDrawingSet,
   jobShortLabel,
   newSetDraftProblem,
   otherPlansNotice,
   partNameForJob,
-  setLineWords,
-  shortDayWords,
   type PlanPartRow,
   type PlanSetRow,
+  setLineWords,
+  shortDayWords,
 } from './planSets'
 
 function set(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
@@ -57,6 +58,15 @@ describe('buildJobPlansView', () => {
     expect(v.replaced?.id).toBe('s1')
     expect(v.older.map((s) => s.id)).toEqual(['s1'])
     expect(v.asBuilts.map((s) => s.id)).toEqual(['s3'])
+  })
+
+  it('never reads a paper on the part as a set', () => {
+    const spec = set({ id: 'p-spec', name: 'Spec book', kind: 'spec', source: 'supplier', marks_up_set_id: 's2' })
+    const v = buildJobPlansView(part, [issued, permit, spec])
+    expect(v.current?.id).toBe('s2')
+    expect(v.older.map((s) => s.id)).toEqual(['s1'])
+    expect(v.asBuilts).toEqual([])
+    expect([isDrawingSet({ kind: 'as_built' }), isDrawingSet({ kind: 'addendum' }), isDrawingSet({ kind: 'spec' }), isDrawingSet({ kind: 'task_list' })]).toEqual([true, true, false, false])
   })
 
   it('reads as nothing with no part, and with no current set lists every plain set as older', () => {

@@ -24,7 +24,7 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
     for (const kind of Object.keys(FILL_IN_KIND_ITEM) as Array<keyof typeof FILL_IN_KIND_ITEM>) {
       expect(NEEDS_YOU_RANK[FILL_IN_KIND_ITEM[kind]]).toBeTypeOf('number')
     }
-    expect(FILL_IN_KINDS_BUILT).toEqual(['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase', 'move-window', 'work-order'])
+    expect(FILL_IN_KINDS_BUILT).toEqual(['lost-bid', 'vehicle', 'job-account', 'contract', 'contract-missing', 'purchase', 'move-window', 'work-order', 'job-kind'])
     expect(fillInKindOfItem('lost-bids')).toBe('lost-bid')
     expect(fillInKindOfItem('vehicle-records-missing')).toBe('vehicle')
     expect(fillInKindOfItem('job-account-missing')).toBe('job-account')
@@ -33,6 +33,7 @@ describe('fillIn · the deck’s shell (punch list #146)', () => {
     expect(fillInKindOfItem('tally-self')).toBe('purchase')
     expect(fillInKindOfItem('job-account-window')).toBe('move-window')
     expect(fillInKindOfItem('work-orders-unpriced')).toBe('work-order')
+    expect(fillInKindOfItem('jobs-no-kind')).toBe('job-kind')
     expect(fillInKindOfItem('statement-round')).toBeNull()
   })
 
