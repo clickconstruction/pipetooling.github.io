@@ -837,7 +837,7 @@ export function BidFormModal(props: BidFormModalProps) {
                 </div>
                 {/* v2.6169: every set of plans on the bid, each with its name, date, memo and link; Robot reads this
                     set copies a set's link into the Plans link above. Saved bids only: a set needs a bid id. */}
-                {editingBid?.id ? <BidPlanSetsField bidId={editingBid.id} plansLink={plansLink} onRobotSetChange={setPlansLink} /> : null}
+                {editingBid?.id ? <BidPlanSetsField bidId={editingBid.id} plansLink={plansLink} onRobotSetChange={setPlansLink} pricedOnSetId={editingBid.priced_on_set_id ?? null} /> : null}
                 {/* v2.3142: will the robots shadow this bid? Green with the facts, amber
                     with the fix, or neutral when opted out. Same probe the dispatcher uses. */}
                 <RobotReadinessLine

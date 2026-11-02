@@ -10,18 +10,25 @@ import {
   planSetDraftProblem,
   planSetFileFromProbe,
   planSetFileWords,
+  planSetsForBid,
   samePlanLink,
   versionChipWords,
   type BidPlanSetRow,
 } from '../../lib/bids/bidPlanSets'
 import { fetchBidVersionNames } from '../../lib/bids/bidVersionNames'
+import { partMovedOnNotes, PRICED_ON_WORDS, pricedOnItem, pricedOnLine, type BidJobPlanState } from '../../lib/bids/bidPricedOn'
+import { supabaseBidPricedOnIo, type BidPricedOnIo } from '../../lib/bids/bidPricedOnIo'
+import { useJobFormModal } from '../../contexts/JobFormModalContext'
 
 /**
  * Edit Bid → Plans → Plan sets (v2.6169): one row per set of plans on the bid — its name, date, memo
  * and what stands behind its link (read by `plan-fetch`'s probe the moment the set saves) — with Open,
  * Check the link, Robot reads this set and ×. The Plans link field above stays the one set the robot
  * reads and the Plans panel searches: **Robot reads this set** copies a set's link into it, and the
- * set carrying that link wears the chip. Saved bids only — a set needs a bid id.
+ * set carrying that link wears the chip. Saved bids only — a set needs a bid id. **Priced on this set** (punch
+ * list #239, PR 4) pins the row the price stands on (`bids.priced_on_set_id`; with no pin, the robot's set); a
+ * job opened from the bid starts building from it, and when that job's part later moves on to a newer set an
+ * amber note under the list says so, with a door to the job's Documents tab.
  */
 export type BidPlanSetsFieldProps = {
   bidId: string
@@ -29,6 +36,10 @@ export type BidPlanSetsFieldProps = {
   plansLink: string
   /** Robot reads this set: the form's Plans link takes the set's link. */
   onRobotSetChange: (link: string) => void
+  /** The bid's pin, `bids.priced_on_set_id`, as the form read it; null or undefined for none. */
+  pricedOnSetId?: string | null
+  /** The pin's reads and write; the real one by default, a fake in tests. */
+  pricedOnIo?: BidPricedOnIo
 }
 
 type Draft = { name: string; planDate: string; memo: string; link: string }
@@ -47,9 +58,12 @@ async function probeLink(link: string): Promise<ProbeAnswer | null> {
   }
 }
 
-export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlanSetsFieldProps) {
+export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange, pricedOnSetId = null, pricedOnIo = supabaseBidPricedOnIo }: BidPlanSetsFieldProps) {
   const { user } = useAuth()
+  const jobFormModal = useJobFormModal()
   const [rows, setRows] = useState<BidPlanSetRow[]>([])
+  const [pricedOn, setPricedOn] = useState<string | null>(pricedOnSetId)
+  const [jobStates, setJobStates] = useState<BidJobPlanState[]>([])
   const [versionNames, setVersionNames] = useState<ReadonlyMap<string, string>>(new Map())
   const [loaded, setLoaded] = useState(false)
   const [gen, setGen] = useState(0)
@@ -69,6 +83,9 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
         if (cancelled) return
         setRows(((data ?? []) as BidPlanSetRow[]).sort(comparePlanSets))
         if ((data ?? []).some((r) => (r as BidPlanSetRow).bid_version_id)) setVersionNames(await fetchBidVersionNames(bidId))
+        // What the bid's jobs build from today, for the note when a part moved on; fail-soft, a courtesy.
+        const states = await pricedOnIo.loadJobsPlanState(bidId)
+        if (!cancelled) setJobStates(states)
       } catch (e) {
         if (!cancelled) setError(formatErrorMessage(e, 'Could not read the plan sets'))
       } finally {
@@ -78,7 +95,24 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
     return () => {
       cancelled = true
     }
-  }, [bidId, gen])
+  }, [bidId, gen, pricedOnIo])
+
+  /** Pin the set the price stands on (punch list #239, PR 4); a job opened from the bid starts building from it. */
+  const pin = useCallback(
+    async (row: BidPlanSetRow) => {
+      setBusy(row.id)
+      setError(null)
+      try {
+        await pricedOnIo.setPricedOn(bidId, row.id)
+        setPricedOn(row.id)
+      } catch (e) {
+        setError(formatErrorMessage(e, 'Could not pin the set'))
+      } finally {
+        setBusy(null)
+      }
+    },
+    [bidId, pricedOnIo],
+  )
 
   /** Read the file name and size behind a set's link and keep them on the row. */
   const checkLink = useCallback(async (row: Pick<BidPlanSetRow, 'id' | 'link'>) => {
@@ -182,6 +216,10 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
   }
 
   const btn: CSSProperties = { font: 'inherit', fontSize: '0.78rem', padding: '0.25rem 0.6rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text-700)', cursor: 'pointer', whiteSpace: 'nowrap' }
+  const items = planSetsForBid(rows, { plans_link: plansLink })
+  const priced = pricedOnItem(items, pricedOn)
+  const pricedWords = pricedOnLine(items, pricedOn)
+  const movedOn = partMovedOnNotes(priced, jobStates)
   const input: CSSProperties = { font: 'inherit', fontSize: '0.85rem', padding: '0.4rem 0.5rem', border: '1px solid var(--border-strong)', borderRadius: 4, minWidth: 0, width: '100%', boxSizing: 'border-box', background: 'var(--surface)', color: 'inherit' }
   const lab: CSSProperties = { display: 'block', fontSize: '0.74rem', color: 'var(--text-muted)', marginBottom: '0.2rem' }
 
@@ -199,6 +237,7 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
         <ul style={{ listStyle: 'none', margin: '0.4rem 0 0', padding: 0, display: 'grid', gap: '0.4rem' }}>
           {rows.map((row) => {
             const robotReads = samePlanLink(row.link, plansLink)
+            const pricedHere = priced?.id === row.id
             const date = planSetDateWords(row.plan_date)
             const rowBusy = busy === row.id
             return (
@@ -215,6 +254,11 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
                     {robotReads ? (
                       <span data-testid="bid-plan-set-robot" style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-blue-tint)', border: '1px solid var(--border-blue)', color: 'var(--text-blue-800)' }}>
                         Robot reads this
+                      </span>
+                    ) : null}
+                    {pricedHere ? (
+                      <span data-testid="bid-plan-set-priced" title="The set this bid’s price stands on; a job opened from the bid starts building from it" style={{ fontSize: '0.64rem', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em', padding: '0 0.4rem', borderRadius: 999, background: 'var(--bg-green-100)', border: '1px solid var(--border-green)', color: 'var(--text-green-700)' }}>
+                        {PRICED_ON_WORDS.chip}
                       </span>
                     ) : null}
                   </div>
@@ -264,6 +308,11 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
                       Robot reads this set
                     </button>
                   ) : null}
+                  {!pricedHere ? (
+                    <button type="button" disabled={rowBusy} onClick={() => void pin(row)} title={PRICED_ON_WORDS.pressTitle} style={btn}>
+                      {PRICED_ON_WORDS.press}
+                    </button>
+                  ) : null}
                   {pendingRemove === row.id ? (
                     <>
                       <button type="button" disabled={rowBusy} onClick={() => void remove(row)} style={{ ...btn, borderColor: 'var(--border-red)', color: 'var(--text-red-700)' }}>
@@ -284,6 +333,26 @@ export function BidPlanSetsField({ bidId, plansLink, onRobotSetChange }: BidPlan
           })}
         </ul>
       )}
+      {pricedWords ? (
+        <div data-testid="bid-plan-sets-priced-on" style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginTop: '0.35rem' }}>
+          {pricedWords}
+        </div>
+      ) : null}
+      {movedOn.map((n) => (
+        <div key={n.partId} role="status" data-testid="bid-plan-sets-moved-on" style={{ marginTop: '0.4rem', fontSize: '0.8rem', color: 'var(--text-amber-800)', background: 'var(--bg-amber-100)', border: '1px solid var(--border-amber)', borderRadius: 6, padding: '0.45rem 0.6rem', display: 'flex', flexWrap: 'wrap', gap: '0.25rem 0.75rem', alignItems: 'baseline' }}>
+          <span>{n.words}</span>
+          <button type="button" onClick={() => openInExternalBrowser(n.setLink)} style={{ ...btn, fontSize: '0.76rem' }}>
+            Open the set ↗
+          </button>
+          {jobFormModal
+            ? n.jobs.map((j) => (
+                <button key={j.id} type="button" onClick={() => jobFormModal.openEditJob(j.id, { initialTab: 'documents' })} style={{ font: 'inherit', fontSize: '0.78rem', fontWeight: 600, color: 'inherit', background: 'none', border: 'none', padding: 0, cursor: 'pointer', textDecoration: 'underline' }}>
+                  {PRICED_ON_WORDS.openJob(j.label)}
+                </button>
+              ))
+            : null}
+        </div>
+      ))}
       {adding ? (
         <div data-testid="bid-plan-set-draft" style={{ marginTop: '0.5rem', padding: '0.6rem 0.7rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--surface)', display: 'grid', gap: '0.5rem' }}>
           <div className="bid-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>

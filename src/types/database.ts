@@ -4000,6 +4000,7 @@ export type Database = {
           priced_by: string | null
           priced_cost_usd: number | null
           priced_margin_pct: number | null
+          priced_on_set_id: string | null
           priced_rate_set: boolean | null
           priced_revenue_usd: number | null
           priced_uncosted_usd: number | null
@@ -4104,6 +4105,7 @@ export type Database = {
           priced_by?: string | null
           priced_cost_usd?: number | null
           priced_margin_pct?: number | null
+          priced_on_set_id?: string | null
           priced_rate_set?: boolean | null
           priced_revenue_usd?: number | null
           priced_uncosted_usd?: number | null
@@ -4208,6 +4210,7 @@ export type Database = {
           priced_by?: string | null
           priced_cost_usd?: number | null
           priced_margin_pct?: number | null
+          priced_on_set_id?: string | null
           priced_rate_set?: boolean | null
           priced_revenue_usd?: number | null
           priced_uncosted_usd?: number | null
@@ -4342,6 +4345,13 @@ export type Database = {
             columns: ["priced_by"]
             isOneToOne: false
             referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "bids_priced_on_set_id_fkey"
+            columns: ["priced_on_set_id"]
+            isOneToOne: false
+            referencedRelation: "bid_plan_sets"
             referencedColumns: ["id"]
           },
           {
@@ -38587,6 +38597,24 @@ export type Database = {
           hcp_number: string
           job_id: string
           job_name: string
+        }[]
+      }
+      list_bid_jobs_plan_state: {
+        Args: { p_bid_ids: string[] }
+        Returns: {
+          bid_id: string
+          job_id: string
+          hcp_number: string
+          click_number: string
+          job_name: string
+          part_id: string
+          part_name: string
+          set_id: string
+          set_name: string
+          set_kind: string
+          set_dated: string
+          set_link: string
+          set_came_at: string
         }[]
       }
       list_bid_money_strip: { Args: { p_bid_ids: string[] }; Returns: Json }

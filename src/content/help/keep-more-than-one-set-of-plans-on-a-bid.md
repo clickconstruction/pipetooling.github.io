@@ -2,7 +2,7 @@
 title: keep more than one set of plans on a bid
 category: Bids & Estimating
 roles: dev, master_technician, assistant, controller, estimator
-keywords: plans, plan set, sets of plans, addendum, permit set, issued set, marked copy, drive link, memo, plan date, file name, file size, bid board, plans icon, robot reads this set, check the link
+keywords: plans, plan set, sets of plans, addendum, permit set, issued set, marked copy, drive link, memo, plan date, file name, file size, bid board, plans icon, robot reads this set, check the link, priced on, priced on this set, job from bid, moved on
 where: /bids?tab=bid-board
 order: 96
 ---
@@ -38,6 +38,20 @@ The robot reads one set, the one in the **Plans link** box above the list. The P
 1. Press {{button:outline|Robot reads this set}} on another set to switch.
 2. The Plans link box takes that set's link.
 3. Save the bid as you always do.
+
+## Pin the set the price stands on
+
+A bid is priced on one set. Pin that set, so everyone knows which one the number came from.
+
+1. Press {{button:outline|Priced on this set}} on the set you priced.
+2. The set wears {{chip:green|Priced on}}.
+3. The line under the list names the set and its date.
+
+With no pin, the robot's set stands in. The line under the list says so.
+
+A job opened from this bid starts building from the pinned set. Open the job and press **Documents**. **Building from** names the set. See [keep the plans on a job](/help/keep-the-plans-on-a-job#a-job-opened-from-a-bid).
+
+Sometimes the job's part moves on to a newer set after the bid was priced. An amber note under the list then says which set, and that the bid was priced on the old one. Press {{button:outline|Open the set ↗}} to read the newer set. Press **Open JP972 ›** to open the job's Documents tab.
 
 ## Check or change a set
 
