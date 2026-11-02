@@ -133,8 +133,11 @@ export function lineBudgetEntryOf(row: LineBudgetColumns | null | undefined): Li
   return { laborPct: clamp(l), materialsPct: clamp(Math.min(m, 100 - clamp(l))), source: row.budget_source, tunedAt: row.budget_tuned_at ?? null }
 }
 
+/** The five columns as the form writes them: numbers and the source narrowed. */
+export type LineBudgetWrite = { budget_labor_pct: number | null; budget_materials_pct: number | null; budget_source: LineBudgetSource | null; budget_tuned_at: string | null; budget_rate_usd: number | null }
+
 /** The columns a row takes for an entry (null = back to nothing stored, the company split). */
-export function lineBudgetColumnsFor(entry: LineBudgetEntry | null, settings: LineBudgetSettings): Required<Pick<LineBudgetColumns, 'budget_labor_pct' | 'budget_materials_pct' | 'budget_source' | 'budget_tuned_at' | 'budget_rate_usd'>> {
+export function lineBudgetColumnsFor(entry: LineBudgetEntry | null, settings: LineBudgetSettings): LineBudgetWrite {
   if (!entry) return { budget_labor_pct: null, budget_materials_pct: null, budget_source: null, budget_tuned_at: null, budget_rate_usd: null }
   return {
     budget_labor_pct: clamp(entry.laborPct),
