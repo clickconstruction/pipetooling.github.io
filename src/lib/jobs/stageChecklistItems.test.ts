@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { JobStageChecklist, StageChecklistAnswer, StageChecklistQuestion } from './stageChecklist'
-import { GROUP_WORDS, READOUT_FOOT, TAKE_OFF_WORDS, addCheckWords, addedWords, canAddJobItem, canTakeOffJobItem, checklistsSummary, cleanItemWords, jobItemProblem, noJobItemsWords, rowAsksPhotoTag, rowGlyph, rowMetaWords, rowPickWords, stageStandingChip, stripListsEmptyStage, takenOffWords } from './stageChecklistItems'
+import { GROUP_WORDS, READOUT_FOOT, TAKE_OFF_WORDS, addCheckWords, addedWords, asksMayAuthor, canAuthorOnJob, canTakeOffJobItem, checklistsSummary, cleanItemWords, jobItemProblem, noJobItemsWords, rowAsksPhotoTag, rowGlyph, rowMetaWords, rowPickWords, stageStandingChip, stripListsEmptyStage, takenOffWords } from './stageChecklistItems'
 
 // Made-up people and checks on a made-up job.
 const company: StageChecklistQuestion = { id: 'q1', kind: 'trim_set', order: 1, words: 'Did the final water test hold?', asksPhoto: true }
@@ -8,23 +8,31 @@ const item: StageChecklistQuestion = { id: 'j1', kind: 'trim_set', order: 0, wor
 const a = (over: Partial<StageChecklistAnswer>): StageChecklistAnswer => ({ questionId: 'q1', pick: 'yes', note: '', photo: null, answeredBy: 'Luis Ortega', answeredAt: '2026-11-01T15:14:00.000Z', ...over })
 
 describe('who adds and who takes off', () => {
-  it('the office and the superintendent add; the technician does not', () => {
-    expect(canAddJobItem('dev')).toBe(true)
-    expect(canAddJobItem('assistant')).toBe(true)
-    expect(canAddJobItem('controller')).toBe(true)
-    expect(canAddJobItem('superintendent')).toBe(true)
-    expect(canAddJobItem('helpers')).toBe(false)
-    expect(canAddJobItem('subcontractor')).toBe(false)
-    expect(canAddJobItem('estimator')).toBe(false)
-    expect(canAddJobItem('primary')).toBe(false)
-    expect(canAddJobItem(null)).toBe(false)
+  it('the office authors anywhere, whatever the job answers; a superintendent and an estimator author where the database says; the technician never', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller'] as const) {
+      expect(canAuthorOnJob(role, false)).toBe(true)
+      expect(asksMayAuthor(role)).toBe(false)
+    }
+    for (const role of ['superintendent', 'estimator'] as const) {
+      expect(canAuthorOnJob(role, true)).toBe(true)
+      expect(canAuthorOnJob(role, false)).toBe(false)
+      expect(asksMayAuthor(role)).toBe(true)
+    }
+    for (const role of ['helpers', 'subcontractor', 'primary'] as const) {
+      expect(canAuthorOnJob(role, true)).toBe(false)
+      expect(asksMayAuthor(role)).toBe(false)
+    }
+    expect(canAuthorOnJob(null, true)).toBe(false)
   })
-  it('the strip lists a stage with no question for the superintendent alone, whose one door is the sheet', () => {
-    expect(stripListsEmptyStage('superintendent')).toBe(true)
-    expect(stripListsEmptyStage('assistant')).toBe(false)
-    expect(stripListsEmptyStage('dev')).toBe(false)
-    expect(stripListsEmptyStage('helpers')).toBe(false)
-    expect(stripListsEmptyStage(null)).toBe(false)
+  it('the strip lists a stage with no question for a superintendent or an estimator who authors on this job, whose one door is the sheet', () => {
+    expect(stripListsEmptyStage('superintendent', true)).toBe(true)
+    expect(stripListsEmptyStage('estimator', true)).toBe(true)
+    expect(stripListsEmptyStage('superintendent', false)).toBe(false)
+    expect(stripListsEmptyStage('estimator', false)).toBe(false)
+    expect(stripListsEmptyStage('assistant', true)).toBe(false)
+    expect(stripListsEmptyStage('dev', true)).toBe(false)
+    expect(stripListsEmptyStage('helpers', true)).toBe(false)
+    expect(stripListsEmptyStage(null, true)).toBe(false)
   })
   it('the adder or the office takes off, and never a company question', () => {
     expect(canTakeOffJobItem('superintendent', item, 'u-pat')).toBe(true)

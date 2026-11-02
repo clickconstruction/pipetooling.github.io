@@ -24,6 +24,8 @@ type CustomerContact = {
   /** For the customer's lines (v2.5527): which of them the job takes. */
   status?: string | null
   created_at?: string | null
+  /** The job's Plans folder, the door a checklist's plan-sheet chip opens (#237 PR 1b). */
+  job_plans_link?: string | null
 }
 
 const sectionLabel: CSSProperties = {
@@ -82,7 +84,7 @@ export default function JobModeDetailsSection({
           async () =>
             supabase
               .from('jobs_ledger')
-              .select('customer_name, customer_phone, customer_email, status, created_at')
+              .select('customer_name, customer_phone, customer_email, status, created_at, job_plans_link')
               .eq('id', jobId)
               .maybeSingle(),
           'job mode load customer contact',
@@ -196,7 +198,7 @@ export default function JobModeDetailsSection({
       }}
     >
       {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet. */}
-      <JobStageChecklistStrip jobId={jobId} rev={updatesRev} />
+      <JobStageChecklistStrip jobId={jobId} rev={updatesRev} plansUrl={contact?.job_plans_link} />
       <div
         style={{
           display: 'flex',

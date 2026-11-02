@@ -553,6 +553,11 @@ vi.mock('../../lib/jobs/stageChecklistSheetIo', () => ({
     photoUrl: () => Promise.resolve(null),
     addItem: () => Promise.reject(new Error('not here')),
     retireItem: () => Promise.reject(new Error('not here')),
+    mayAuthor: () => Promise.resolve(false),
+    skip: () => Promise.reject(new Error('not here')),
+    putBack: () => Promise.reject(new Error('not here')),
+    reorder: () => Promise.reject(new Error('not here')),
+    promote: () => Promise.reject(new Error('not here')),
   }),
 }))
 

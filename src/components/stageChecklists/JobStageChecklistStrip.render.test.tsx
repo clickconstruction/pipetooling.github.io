@@ -5,8 +5,9 @@
  * with questions lists each stage with its standing; the sheet keeps one row open at a time, labelled Next, answers
  * it with one press and moves on, stamps the answered row with the name and the time, waits on a photo, and lights
  * Done once every question is answered. A superintendent adds a check under *Added for this job* and takes it off;
- * a helper sees the group and no add press. A stage with no question is listed for the superintendent alone. A read
- * that fails draws nothing. Made-up questions and a made-up job.
+ * a helper sees the group and no add press. A stage with no question is listed for a superintendent who authors on the
+ * job. A read that fails draws nothing. What the walks added is in `StageChecklistSheet.walks.render.test.tsx`. Made-up
+ * questions and a made-up job.
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -75,6 +76,15 @@ function fakeIo(over: Partial<StageChecklistSheetIo> = {}, answers: JobAnswer[] 
     retireItem: vi.fn(async (id) => {
       const i = live.findIndex((q) => q.id === id)
       if (i >= 0) live.splice(i, 1)
+    }),
+    mayAuthor: vi.fn(async () => true),
+    skip: vi.fn(async () => {
+      throw new Error('not here')
+    }),
+    putBack: vi.fn(async () => undefined),
+    reorder: vi.fn(async () => undefined),
+    promote: vi.fn(async () => {
+      throw new Error('not here')
     }),
     ...over,
   }
@@ -209,7 +219,7 @@ describe('JobStageChecklistStrip', () => {
     fireEvent.change(box, { target: { value: 'Is the water heater pan drain run to the hub?' } })
     fireEvent.click(screen.getByLabelText('Asks for a photo'))
     fireEvent.click(screen.getByRole('button', { name: 'Add the check' }))
-    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB, fixtureId: 'f1', kind: 'rough_in', words: 'Is the water heater pan drain run to the hub?', asksPhoto: true }, { userId: 'u-pat', name: 'Pat Sample' }))
+    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB, fixtureId: 'f1', kind: 'rough_in', order: 1, words: 'Is the water heater pan drain run to the hub?', asksPhoto: true, sheet: '', why: '' }, { userId: 'u-pat', name: 'Pat Sample' }))
     expect(await screen.findByText('Added. Rough In is now 0 of 3.')).toBeTruthy()
     expect(screen.getByText('0 of 3 answered · 3 left')).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Rough In checklist: 0 of 3 answered, not ready' })).toBeTruthy()
@@ -229,7 +239,7 @@ describe('JobStageChecklistStrip', () => {
     authRole = 'superintendent'
     const io = fakeIo({}, [], [])
     renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={io} />)
-    const row = await screen.findByRole('button', { name: 'Rough In checklist: No questions yet' })
+    const row = await screen.findByRole('button', { name: 'Rough In checklist: No questions yet. Add a check for this job.' })
     expect(row.getAttribute('data-stage-checklist-row')).toBe('none')
     fireEvent.click(row)
     expect(await screen.findByRole('button', { name: '+ Add a check for Rough In' })).toBeTruthy()
@@ -242,7 +252,7 @@ describe('JobStageChecklistStrip', () => {
     renderWithProviders(<JobStageChecklistStrip jobId={JOB} io={io} />)
     await waitFor(() => expect(io.answers).toHaveBeenCalled())
     await waitFor(() => expect(document.querySelector('[data-job-stage-checklists]')).toBeNull())
-    expect(screen.queryByRole('button', { name: 'Rough In checklist: No questions yet' })).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Rough In checklist: No questions yet. Add a check for this job.' })).toBeNull()
   })
 
   it('still offers the office the add press on a stage that has a question', async () => {

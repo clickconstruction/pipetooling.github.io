@@ -1,14 +1,15 @@
 #!/usr/bin/env bash
-# Runs supabase/tests/stage_checklist_items against a throwaway copy of the WHOLE schema (punch list #237 PR 1: who may
-# add, read and take off a stage checklist item on a job).
+# Runs supabase/tests/stage_checklist_items against a throwaway copy of the WHOLE schema (punch list #237 PR 1 and PR 1b:
+# who may add, read, take off, order and promote a stage checklist item on a job, and skip a company question on one).
 #
 #   npm run test:pg:stage-checklist-items
 #
 # The same bed as scripts/pgtest-messages-tech-send.sh: the Supabase Postgres image with every file in
-# supabase/migrations applied in order, then this migration a second time, which must change nothing. The scenario,
-# inside one transaction that rolls back: who adds, a stage that is not on the job, who reads, who takes off and what
-# the adder may write, the answer kept, the company's rows, and the training and twin fences. It raises on its first
-# failed assertion and ends with "stage_checklist_items PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker;
+# supabase/migrations applied in order, then these two migrations a second time, in their order, which must change nothing.
+# The scenario, inside one transaction that rolls back: who adds, a stage that is not on the job, who reads, who takes off
+# and what the adder may write, the answer kept, the company's rows, the training and twin fences, who authors, the order
+# of a stage's own checks, the skip and its put back, and the promote. It raises on its first failed assertion and ends
+# with "stage_checklist_items PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker;
 # the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -16,7 +17,9 @@ cd "$(dirname "$0")/.."
 PORT="${PGTEST_PORT:-55547}"
 NAME="pgtest-stage-checklist-items"
 IMAGE="${PGTEST_SUPABASE_IMAGE:-public.ecr.aws/supabase/postgres:17.6.1.071}"
-WRITES="$(ls supabase/migrations/*_stage_checklist_job_items.sql)"
+# In their order: the later one replaces the add gate the earlier one writes, so a re-run of the earlier alone would put
+# the old gate back and the scenario would pin the wrong one.
+WRITES="$(ls supabase/migrations/*_stage_checklist_job_items.sql supabase/migrations/*_stage_checklist_skips_and_authors.sql)"
 
 command -v docker >/dev/null || { echo "docker not on PATH"; exit 2; }
 docker info >/dev/null 2>&1 || { echo "docker is not running"; exit 2; }
@@ -36,8 +39,10 @@ psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql 
 for f in supabase/migrations/*.sql; do
   psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 done
-# A second run must change nothing: the columns, the trigger and the three gates as they were.
-psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+# A second run must change nothing: the columns, the table, the triggers, the functions and the gates as they were.
+for f in $WRITES; do
+  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+done
 out="$(psql_as postgres -f - < supabase/tests/stage_checklist_items/20_scenario.sql 2>&1 || true)"
 if ! grep -q "stage_checklist_items PASSED" <<<"$out"; then echo "$out" | tail -40; exit 1; fi
 grep -o "ok: .*" <<<"$out"
