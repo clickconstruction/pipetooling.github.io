@@ -277,6 +277,14 @@ export function paperHistoryLine(p: { kind: string; name: string; from: string; 
   return `Kept ${p.kind.replace(/_/g, ' ')} ${p.name}, ${paperFromWords(p.from)}${goesWith ? `, on ${goesWith}` : ''}${p.memo ? `: ${p.memo}` : ''}${replaces ? ` · replaces ${replaces}` : ''}`
 }
 
+/**
+ * The History line a development part's switch writes, one per job on the part or one for the site when none
+ * (plan_part_switch_words, migration 20261102063000, v2.6344): the same words, so the plan shows the line first.
+ */
+export function partSwitchLine(partName: string, set: { name: string; dated: string | null }, oldName: string | null): string {
+  return `Plans · ${partName} now builds from ${set.name}${set.dated ? `, dated ${datedWords(set.dated)}` : ''}${oldName && oldName !== set.name ? ` · replaces ${oldName}` : ''}`
+}
+
 // ── the dry run ──────────────────────────────────────────────────────────────────────────────────────────────────
 
 export type DryRun = { ok: true; reply: Json } | { ok: false; refused: string }
@@ -367,7 +375,12 @@ export function planPartDryRun(p: PlanPartPayload, world: PlanPartWorld, todayYm
         after: makeCurrent
           ? { builds_from: p.name, replaced: current ? current.name : null, job_plans_link: p.link ? 'every job on the part mirrors this link' : 'unchanged until the set has a link' }
           : { builds_from: current ? current.name : null, note: asBuilt ? 'an as-built sits under Our as-builts; the part keeps building from its set' : current ? `the part keeps building from ${current.name}; pass make_current: true to switch` : 'the part builds from nothing yet' },
-        history: 'A set of drawings writes no History line; it reads on the job\'s Plans section and the site\'s Plans look.',
+        history_line: makeCurrent && part.development_id ? partSwitchLine(part.name, { name: p.name, dated: p.dated ?? null }, current?.name ?? null) : null,
+        history: makeCurrent && part.development_id
+          ? `Making it current writes this line on ${world.development?.name ?? 'the site'}'s History by the database's trigger (v2.6344): one per job on the part, or one for the site when no job names it, as you, at the moment of apply.`
+          : makeCurrent
+            ? 'A part of a job outside any development has no site History to write on; the job\'s Plans section reads the switch.'
+            : 'A set that does not become current writes no History line; it reads on the job\'s Plans section and the site\'s Plans look.',
       },
     }
   }
@@ -533,6 +546,15 @@ export async function planPartApply(writes: PartWrites, p: PlanPartPayload, repl
 }
 
 // ── a filed plan set lands on the bid's job's part too (plan_file_plans / apply_file_plans, twin-mcp file_plans) ──
+
+/**
+ * Two links are the same set when they differ only by space, a trailing slash or Drive's ?usp= tail: the database's
+ * plan_set_link_key (migration 20261102060000) and the client's samePlanLink. A part that already holds the filed
+ * link (a re-filing into the same project folder, or the set a job took from its bid) keeps its row.
+ */
+export function planLinkKey(link: string | null | undefined): string {
+  return (link ?? '').trim().replace(/[?&]usp=[^&#]*/g, '').replace(/\?$/, '').replace(/\/+$/, '')
+}
 
 export type FiledPlansJob = { id: string; job_name: string | null; click_number: string | null; hcp_number: string | null; plan_part_id: string | null }
 export type FiledPlansPart = { id: string; name: string; current_set_id: string | null }

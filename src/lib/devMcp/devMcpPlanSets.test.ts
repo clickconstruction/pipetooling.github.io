@@ -13,6 +13,8 @@ import {
   isPlanPartVerb,
   jobLabel,
   paperHistoryLine,
+  partSwitchLine,
+  planLinkKey,
   planPartApply,
   planPartDryRun,
   planPartInput,
@@ -29,6 +31,8 @@ import { PLAN_SET_KINDS, PLAN_SET_SOURCES } from '../plans/planSets'
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const TWIN = readFileSync('supabase/functions/twin-mcp/index.ts', 'utf8')
 const PAPERS_MIGRATION = readFileSync('supabase/migrations/20261102010000_plan_sets_papers.sql', 'utf8')
+const PRICED_MIGRATION = readFileSync('supabase/migrations/20261102060000_bid_priced_on_set.sql', 'utf8')
+const SWITCH_MIGRATION = readFileSync('supabase/migrations/20261102063000_plan_part_switch_history.sql', 'utf8')
 
 const PART = 'aaaaaaaa-1111-4111-8111-111111111111'
 const PART2 = 'aaaaaaaa-2222-4222-8222-222222222222'
@@ -216,15 +220,17 @@ describe('the dry run — the part as it stands and the row as it will be writte
       make_current: true,
       after: { builds_from: 'Addendum 1', replaced: 'Issued set' },
     })
-    expect(String(dry.reply.history)).toContain('no History line')
+    // The switch writes the site's History by trigger (v2.6344); the plan shows the line.
+    expect(dry.reply.history_line).toBe('Plans · North Wing now builds from Addendum 1, dated Nov 1, 2026 · replaces Issued set')
+    expect(String(dry.reply.history)).toContain("ZZ Test Meadows's History")
   })
   it('left out, make_current is true only when the part builds from nothing; an undated set reads the day it came', () => {
     const built = addSet()
     if (!built.ok) throw new Error(built.error)
     const kept = planPartDryRun(built.p, world(), TODAY)
-    expect(kept).toMatchObject({ ok: true, reply: { make_current: false, set: { replaces: null }, after: { builds_from: 'Issued set', note: expect.stringContaining('make_current: true') } } })
+    expect(kept).toMatchObject({ ok: true, reply: { make_current: false, history_line: null, set: { replaces: null }, after: { builds_from: 'Issued set', note: expect.stringContaining('make_current: true') } } })
     const empty = planPartDryRun(built.p, world({ part: { id: PART, development_id: DEV, job_id: null, name: 'North Wing', current_set_id: null }, sets: [] }), TODAY)
-    expect(empty).toMatchObject({ ok: true, reply: { make_current: true, part: { builds_from: null, sets_on_part: 0 }, set: { replaces: null }, after: { builds_from: 'Addendum 1', replaced: null } } })
+    expect(empty).toMatchObject({ ok: true, reply: { make_current: true, history_line: 'Plans · North Wing now builds from Addendum 1, dated Nov 1, 2026', part: { builds_from: null, sets_on_part: 0 }, set: { replaces: null }, after: { builds_from: 'Addendum 1', replaced: null } } })
     const undated = addSet({ dated: undefined })
     if (!undated.ok) throw new Error(undated.error)
     expect(planPartDryRun(undated.p, world(), TODAY)).toMatchObject({ ok: true, reply: { set: { line: 'Addendum · the GC · came Nov 2' } } })
@@ -234,6 +240,17 @@ describe('the dry run — the part as it stands and the row as it will be writte
     if (!built.ok) throw new Error(built.error)
     const dry = planPartDryRun(built.p, world(), TODAY)
     expect(dry).toMatchObject({ ok: true, reply: { make_current: false, set: { marks_up: { id: ISSUED }, job: { id: JOB, label: 'JP9001' }, source_words: 'ours' }, after: { builds_from: 'Issued set', note: expect.stringContaining('Our as-builts') } } })
+  })
+  it('a job outside any development switches with no History line, and the switch words are the trigger’s', () => {
+    const own = world({ part: { id: PART, development_id: null, job_id: JOB, name: 'ZZ North plumbing', current_set_id: ISSUED }, development: null, job: { id: JOB, job_name: 'ZZ North plumbing', click_number: '9001', hcp_number: null, plan_part_id: PART, development_id: null } })
+    const built = addSet({ make_current: true })
+    if (!built.ok) throw new Error(built.error)
+    expect(planPartDryRun(built.p, own, TODAY)).toMatchObject({ ok: true, reply: { make_current: true, history_line: null, history: expect.stringContaining('no site History') } })
+    expect(partSwitchLine('North Wing', { name: 'Permit set', dated: null }, 'Permit set')).toBe('Plans · North Wing now builds from Permit set')
+    expect(SWITCH_MIGRATION).toContain("SELECT 'Plans · ' || p_part || ' now builds from ' || p_set.name")
+    expect(SWITCH_MIGRATION).toContain("CASE WHEN p_set.dated IS NOT NULL THEN ', dated ' || to_char(p_set.dated, 'Mon FMDD, YYYY') ELSE '' END")
+    expect(SWITCH_MIGRATION).toContain("CASE WHEN p_old IS NOT NULL AND p_old <> p_set.name THEN ' · replaces ' || p_old ELSE '' END")
+    expect(SWITCH_MIGRATION).toContain('IF NEW.development_id IS NULL THEN RETURN NEW; END IF;')
   })
   it('refuses in words: no job, a job with no part, a part the job does not build from, a set that is not on the part, a paper where a drawing goes', () => {
     const built = addSet()
@@ -463,6 +480,17 @@ describe('a filed plan set lands on the bid’s job’s part too (plan_file_plan
   it('the words say where it landed, or that the bid’s row is alone', () => {
     expect(filedPlansWords(filedPlansTargets(jobs, parts))).toBe('North Wing (JP9001, JP9002) — under Older sets; the part keeps its current set; South Wing (JP9100) — builds from it now')
     expect(filedPlansWords([])).toContain('bid_plan_sets')
+  })
+  it('two links are the same set across space, a trailing slash and Drive’s ?usp= tail, as the database’s plan_set_link_key reads them', () => {
+    const folder = 'https://drive.google.com/drive/folders/abc123'
+    expect(planLinkKey(` ${folder}/ `)).toBe(folder)
+    expect(planLinkKey(`${folder}?usp=sharing`)).toBe(folder)
+    expect(planLinkKey(null)).toBe('')
+    expect(PRICED_MIGRATION).toContain("regexp_replace(regexp_replace(regexp_replace(btrim(COALESCE(p_link, '')), '[?&]usp=[^&#]*', '', 'g'), '\\?$', ''), '/+$', '')")
+    // Both seats skip a part that already holds the filed link.
+    expect(SERVER).toContain("const onPart = await restGet(session, 'plan_sets', `select=id,link&part_id=eq.${t.part_id}`)")
+    expect(SERVER).toContain('planLinkKey(r.link) === planLinkKey(folderLink)')
+    expect(TWIN).toContain('planLinkKey(r.link) === planLinkKey(plansLink)')
   })
   it('the dev seat commits the parts into the plan hash and writes them after the RPC; the twin seat lands the rows after drive-intake, at 1.11.0', () => {
     expect(SERVER).toContain("const jobsRes = await restGet(session, 'jobs_ledger', `select=id,job_name,click_number,hcp_number,plan_part_id&bid_id=eq.${plans.bid_id}&plan_part_id=not.is.null`)")

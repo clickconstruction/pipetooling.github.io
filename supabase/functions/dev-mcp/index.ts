@@ -6,7 +6,7 @@ import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_share
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
-import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planPartApply, planPartDryRun, readPlanPartWorld, type FiledPlansJob, type FiledPlansPart, type PartReads, type PartWrites, type PlanPartPayload } from '../_shared/devMcpPlanSets.ts'
+import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, planPartApply, planPartDryRun, readPlanPartWorld, type FiledPlansJob, type FiledPlansPart, type PartReads, type PartWrites, type PlanPartPayload } from '../_shared/devMcpPlanSets.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
@@ -930,8 +930,16 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       if (!res.ok) return errored(`${restError(res.status, res.body)} — the set IS in Drive at ${fileLink} (folder ${folderLink}): paste the folder link on the bid form, or plan again with replace: true.`)
       // v2.6317: the same set as a plan_sets row on each part the plan named, current where the part had none. A part
       // that refuses is named with its reason and the rest go on (the bid's own row is already written).
-      const partSets: Array<{ part: string; set_id: string | null; builds_from: boolean; error?: string }> = []
+      const partSets: Array<{ part: string; set_id: string | null; builds_from: boolean; existing?: boolean; error?: string }> = []
       for (const t of targets) {
+        // A part that already holds this link keeps its row (planLinkKey, the database's plan_set_link_key): a re-filing
+        // lands in the same project folder, and a job opened from the bid took the bid's set by trigger (v2.6342).
+        const onPart = await restGet(session, 'plan_sets', `select=id,link&part_id=eq.${t.part_id}`)
+        const same = onPart.ok && Array.isArray(onPart.body) ? (onPart.body as Array<{ id: string; link: string }>).find((r) => planLinkKey(r.link) === planLinkKey(folderLink)) : undefined
+        if (same) {
+          partSets.push({ part: t.part_name, set_id: same.id, builds_from: false, existing: true })
+          continue
+        }
         const row = filedPlansSetRow(t, { name: String(after.set_name ?? plans.file_name.replace(/\.pdf$/i, '')).slice(0, 200), link: folderLink, memo: String(after.memo ?? 'Filed by the dev seat'), file_name: plans.file_name, file_size: bytes.length, pages, createdBy: who.userId }, new Date().toISOString())
         const ins = await restRows(session, 'POST', 'plan_sets', '', row)
         const made = ins.ok && Array.isArray(ins.body) ? (ins.body[0] as { id?: string } | undefined) : undefined

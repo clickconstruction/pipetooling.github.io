@@ -13,7 +13,7 @@ import { checkEstimatorQuestionShape, matchRecommended, normalizeTwinQuestionCho
 import { HEARTBEAT_STATES, HEARTBEAT_STEPS, normalizeHeartbeatProgress, type HeartbeatHeld, type HeartbeatProgress } from '../_shared/twinHeartbeat.ts'
 import { bidRef, buildShadowQueue, HELD_ON_CHECK_IN, isShadowShellName, shadowHold, shellHold, shellHoldWords, type ShadowCandidateBid, type ShadowHoldReason, type ShadowQueue, type ShadowRunStatus } from '../_shared/shadowEligibility.ts'
 import { PLANS_ASK_DEFAULT_CHOICES, PLANS_ASK_DEFAULT_RECOMMENDED, answerRequestsRerun, classifyTwinQuestionKind, effectiveTwinQuestionKind, isTwinQuestionKind } from '../_shared/twinQuestionKind.ts'
-import { filedPlansSetRow, filedPlansTargets, filedPlansWords, type FiledPlansJob, type FiledPlansPart } from '../_shared/devMcpPlanSets.ts'
+import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, type FiledPlansJob, type FiledPlansPart } from '../_shared/devMcpPlanSets.ts'
 
 // Digital twins MCP server (docs/DIGITAL_TWINS_PLAN.md; owner-approved 2026-08-28).
 // A minimal, dependency-free Model Context Protocol server over streamable HTTP
@@ -894,11 +894,10 @@ async function landFiledPlans(admin: SupabaseClient, twin: { twinUserId: string 
   if (error || !bid) return { note: `The set is in Drive, but the bid could not be read back for its rows: ${error?.message ?? 'no bid'}` }
   const setName = (fileName ?? '').replace(/\.pdf$/i, '').trim().slice(0, 120) || 'Plans'
   const nowIso = new Date().toISOString()
-  const norm = (l: string | null | undefined) => (l ?? '').trim().replace(/[?&]usp=[^&#]*/g, '').replace(/\?$/, '').replace(/\/+$/, '')
   const out: Record<string, unknown> = {}
   // The bid's own row, once per link.
   const { data: bidSets } = await admin.from('bid_plan_sets').select('id, link').eq('bid_id', bid.id)
-  const have = (bidSets ?? []).find((r) => norm(r.link) === norm(plansLink))
+  const have = (bidSets ?? []).find((r) => planLinkKey(r.link) === planLinkKey(plansLink))
   if (have) out.bid_plan_set = { id: have.id, existing: true }
   else {
     const { data: made, error: insErr } = await admin.from('bid_plan_sets').insert({ bid_id: bid.id, name: setName, link: plansLink, memo: 'Filed by the robot (file_plans)', file_name: fileName, created_by: twin.twinUserId }).select('id').single()
@@ -916,7 +915,7 @@ async function landFiledPlans(admin: SupabaseClient, twin: { twinUserId: string 
   const partSets: Array<{ part: string; set_id: string | null; builds_from: boolean; existing?: boolean; error?: string }> = []
   for (const t of targets) {
     const { data: onPart } = await admin.from('plan_sets').select('id, link').eq('part_id', t.part_id)
-    const same = (onPart ?? []).find((r) => norm(r.link) === norm(plansLink))
+    const same = (onPart ?? []).find((r) => planLinkKey(r.link) === planLinkKey(plansLink))
     if (same) {
       partSets.push({ part: t.part_name, set_id: same.id, builds_from: false, existing: true })
       continue
