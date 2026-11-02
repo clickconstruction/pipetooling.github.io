@@ -18607,6 +18607,70 @@ export type Database = {
           },
         ]
       }
+      job_expected_hours: {
+        Row: {
+          cleared_at: string | null
+          cleared_by: string | null
+          cleared_by_name: string
+          from_hours: number | null
+          hours: number
+          id: string
+          job_id: string
+          set_at: string
+          set_by: string | null
+          set_by_name: string
+          why: string
+        }
+        Insert: {
+          cleared_at?: string | null
+          cleared_by?: string | null
+          cleared_by_name?: string
+          from_hours?: number | null
+          hours: number
+          id?: string
+          job_id: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          why: string
+        }
+        Update: {
+          cleared_at?: string | null
+          cleared_by?: string | null
+          cleared_by_name?: string
+          from_hours?: number | null
+          hours?: number
+          id?: string
+          job_id?: string
+          set_at?: string
+          set_by?: string | null
+          set_by_name?: string
+          why?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_expected_hours_cleared_by_fkey"
+            columns: ["cleared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_expected_hours_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_expected_hours_set_by_fkey"
+            columns: ["set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_followup_reviews: {
         Row: {
           id: string
@@ -20514,6 +20578,7 @@ export type Database = {
           job_name: string
           job_pictures_link: string | null
           job_plans_link: string | null
+          kind: string | null
           last_bill_date: string | null
           last_work_date: string | null
           lien_contract_ended_how: string | null
@@ -20586,6 +20651,7 @@ export type Database = {
           job_name?: string
           job_pictures_link?: string | null
           job_plans_link?: string | null
+          kind?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
@@ -20658,6 +20724,7 @@ export type Database = {
           job_name?: string
           job_pictures_link?: string | null
           job_plans_link?: string | null
+          kind?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
@@ -20694,13 +20761,6 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
-          {
-            foreignKeyName: "jobs_ledger_plan_part_id_fkey"
-            columns: ["plan_part_id"]
-            isOneToOne: false
-            referencedRelation: "plan_parts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "jobs_ledger_account_manager_user_id_fkey"
             columns: ["account_manager_user_id"]
@@ -20797,6 +20857,13 @@ export type Database = {
             columns: ["partner_person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "jobs_ledger_plan_part_id_fkey"
+            columns: ["plan_part_id"]
+            isOneToOne: false
+            referencedRelation: "plan_parts"
             referencedColumns: ["id"]
           },
           {
@@ -30637,8 +30704,12 @@ export type Database = {
           asks_photo: boolean
           created_at: string
           created_by: string | null
+          created_by_name: string
+          fixture_id: string | null
           id: string
+          job_id: string | null
           retired_at: string | null
+          retired_by: string | null
           sort_order: number
           stage_kind: string
           updated_at: string
@@ -30648,8 +30719,12 @@ export type Database = {
           asks_photo?: boolean
           created_at?: string
           created_by?: string | null
+          created_by_name?: string
+          fixture_id?: string | null
           id?: string
+          job_id?: string | null
           retired_at?: string | null
+          retired_by?: string | null
           sort_order?: number
           stage_kind: string
           updated_at?: string
@@ -30659,8 +30734,12 @@ export type Database = {
           asks_photo?: boolean
           created_at?: string
           created_by?: string | null
+          created_by_name?: string
+          fixture_id?: string | null
           id?: string
+          job_id?: string | null
           retired_at?: string | null
+          retired_by?: string | null
           sort_order?: number
           stage_kind?: string
           updated_at?: string
@@ -30670,6 +30749,27 @@ export type Database = {
           {
             foreignKeyName: "stage_checklist_templates_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_retired_by_fkey"
+            columns: ["retired_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -35852,6 +35952,7 @@ export type Database = {
         Args: { p_roadmap_id: string }
         Returns: boolean
       }
+      can_set_job_expected_hours: { Args: never; Returns: boolean }
       can_touch_hours_statement: {
         Args: { p_with_pay: boolean }
         Returns: boolean
@@ -35878,6 +35979,10 @@ export type Database = {
         Returns: Json
       }
       clear_job_budget: { Args: { p_job_id: string }; Returns: undefined }
+      clear_job_expected_hours: {
+        Args: { p_job_id: string }
+        Returns: undefined
+      }
       clear_lien_sign_code: { Args: never; Returns: undefined }
       clear_mercury_transaction_duplicate: {
         Args: { p_id: string }
@@ -39923,6 +40028,12 @@ export type Database = {
           work: string
         }[]
       }
+      plan_part_can_see: { Args: { p_part_id: string }; Returns: boolean }
+      plan_part_can_write: { Args: { p_part_id: string }; Returns: boolean }
+      plan_part_mirror_job_links: {
+        Args: { p_part_id: string }
+        Returns: undefined
+      }
       portal_opens_since: {
         Args: { p_entity_id: string; p_since: string; p_surface: string }
         Returns: {
@@ -40341,6 +40452,14 @@ export type Database = {
         Args: { p_bid_id: string; p_pull_id: string; p_user: string }
         Returns: string
       }
+      robot_fixtures_fold_adopt: {
+        Args: {
+          p_new_version_id: string
+          p_source_bid_id: string
+          p_target_bid_id: string
+        }
+        Returns: number
+      }
       robot_fixtures_follow_adopt: {
         Args: {
           p_new_version_id: string
@@ -40618,6 +40737,15 @@ export type Database = {
       set_job_collections_flag: {
         Args: { p_flagged: boolean; p_job_id: string; p_note?: string }
         Returns: Json
+      }
+      set_job_expected_hours: {
+        Args: {
+          p_from_hours: number
+          p_hours: number
+          p_job_id: string
+          p_why: string
+        }
+        Returns: string
       }
       set_job_partner_majority: {
         Args: { p_auto_pct?: number; p_job_id: string; p_person_id?: string }
