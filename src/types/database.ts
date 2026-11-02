@@ -25315,6 +25315,7 @@ export type Database = {
       }
       nudge_offers: {
         Row: {
+          about_on: string | null
           bid_id: string | null
           body: string
           by_user_id: string | null
@@ -25337,6 +25338,7 @@ export type Database = {
           step_key: string
         }
         Insert: {
+          about_on?: string | null
           bid_id?: string | null
           body: string
           by_user_id?: string | null
@@ -25359,6 +25361,7 @@ export type Database = {
           step_key: string
         }
         Update: {
+          about_on?: string | null
           bid_id?: string | null
           body?: string
           by_user_id?: string | null
@@ -39995,6 +39998,7 @@ export type Database = {
       }
       nudge_offer_make: {
         Args: {
+          p_about_on?: string
           p_body: string
           p_channel: string
           p_contact: string
