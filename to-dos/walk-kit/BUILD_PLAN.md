@@ -418,8 +418,9 @@ after its limit with what it saw. Cleanup runs in a `finally`.
 
 **Docs.** `docs/WALK_KIT.md` (what it is, how to run it, what it touches and leaves, the fallback,
 § 5's SQL); `docs/MESSAGES_ARCHITECTURE.md` § Testing it, the live bullet points to the kit; one row
-in `docs/README.md`'s index; `to-dos/messages-desk/BUILD_PLAN.md` § 0.5's last bullet and § 3's
-opening say the walk now runs with the kit (Route B stays the fallback). Then **the first run** is
+in `docs/README.md`'s index; punch list #140's BUILD_PLAN § 0.5's last bullet and § 3's opening
+said the walk now runs with the kit (Route B stays the fallback; that card retired 2026-11-01).
+Then **the first run** is
 the done test. Delete this folder in the PR after the first green run, or in a small follow-up.
 
 ---
