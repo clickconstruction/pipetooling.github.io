@@ -2,24 +2,22 @@
 name: "Messages → My email: a person's own @clickplumbing.com mail beside the threads, one press to tag a conversation onto a job or a bid"
 number: 230
 group: close
-status: built 2026-11-01: PR 0 the guide v2.6257, PR 1 v2.6266, PR 2 v2.6275, PR 3 v2.6274, PR 4 v2.6279, PR 5 v2.6276, the reviews' fixes v2.6289–v2.6292 and v2.6295 · the migrations pushed and gmail-mine deployed · left: #6738 (open) and an office member's live walk on the clickplumbing.com Workspace
+status: built 2026-11-01 after the owner's "build all of this", every call taken as recommended and the switch on by default; twelve PRs, six migrations pushed, gmail-mine and login-as-user deployed; left: a clickplumbing.com person's first live tag, then a month of use
 summary: >
-  The owner asked for a tab in Messages that shows a person their own @clickplumbing.com email, in and
-  out, so tagging an email onto a job or a bid becomes easy, and the team later reads a job's full
-  story from what was tagged, without making extra work for the person. Today the app reads only the
-  two shared boxes' Inboxes; a person's own mail reaches a job only by forwarding it to bids@ with the
-  job number in the subject, which works and which nobody does. The plan is a tagging desk, never a
-  second inbox: the tab reads the person's Inbox and Sent live from Gmail under the delegation the
-  bids@ reader already holds and keeps nothing; the app guesses the job from the subject, the sender and
-  the conversation and the person presses Yes; a tag copies that conversation, in and out, onto the job as
-  lines in Messages with the files and a court-ready .eml, and later mail in it lands by itself; the Legal
-  desk pulls a tagged conversation onto a matter's Evidence. Five PRs, one migration, one edge function,
-  nothing to do at Google on the recommended path.
-next: An office member on the clickplumbing.com Workspace walks it on a ZZ Test customer (`docs/recent-features/v2.6292.md` → Verify). Then the month of use the opinion below asks for.
-size: M as a train of five (S · M · M · S · S) after a docs-only PR 0; one migration, one new edge function; no Workspace admin step on the recommended path
-blocker: A person on the clickplumbing.com Workspace for the walk; the dev account is not on it.
-ver: v2.5354 · 5466 · 5494 · 5504 · 5722 · 5814 · 5820 · 6004 · 6038 · 6095 · 6202
-opinion: build — read through and keep nothing until a press, the guess with a Yes, the conversation as the unit, the desk pulls Evidence; ship the forward guide first either way, and retire the tab after a month if nobody tags
+  Built 2026-11-01. Messages has a second tab, My email, beside Follow up: each office member's own
+  @clickplumbing.com Inbox and Sent, read live from Gmail under the delegation the bids@ reader holds,
+  kept nowhere until a tag. The app guesses the job from the subject, the sender and the conversation,
+  and the person presses Yes. A tag copies the whole conversation onto the job as lines with the files
+  and a court-ready .eml, adds the job to the person's jobs, labels the mail in their Gmail, and later
+  mail in it lands by itself until 60 days past its newest mail. Untag and Another job undo or move it.
+  The Legal desk puts a tagged conversation on a matter's Evidence. The switch on Your account is on by
+  default. An independent review found ten defects, the worst a teammate's mail readable through
+  Imitate; all ten are fixed, and two more the lead found after it.
+next: A clickplumbing.com office member walks it on a ZZ Test customer (`docs/recent-features/v2.6292.md` → Verify), opening Messages → My email and tagging one conversation onto the ZZ Test job. The dev account is off the Workspace, so the live test proved the gate, the refusal and the screens, not a read. Then a month of use, counting conversations tagged per person; the tab retires if nobody tags.
+size: M, built as twelve PRs on 2026-11-01: the five planned, the forward guide, four from the review (the imitation refusal, the follow's window, the tab's Untag, the function's untag and ties) and two the lead found after it (the row's words, hidden labels in an open conversation)
+blocker: Nothing in the code. The first live read and tag needs a clickplumbing.com session, which no agent may open.
+ver: v2.6257 · 6266 · 6274 · 6275 · 6276 · 6279 · 6289 · 6290 · 6291 · 6292 · 6295 · 6296
+opinion: built — watch whether people tag; retire the tab after a month if nobody does, and the forward guide stays
 mockup: to-dos/messages-my-email/mockup.html
 ---
 
@@ -58,13 +56,17 @@ door the builder goes through, not around.
 - **How a mail is tied to a job today.** The reader ties the line from the subject: a job's number as
   the app shows it (`JP1077`, `BP523`, `#42`) standing in the subject, or a job's whole name among the
   sender's own jobs (`jobInSubject.ts`, `subjectJobs.ts`); else the person's starred job; else the line
-  sits on the person. The office moves a line with **Tie to** on the reply box, the press-and-hold
-  **Tie this message to** sheet on a phone (`tieSheet.ts`) and the job picker (`JobPickerWindow`, their
-  own jobs first, then a search), all through `tie_message(message, kind, job)`, which also adds the
-  job to the person's `contact_jobs`.
+  sits on the person. The office moves a line with its job chip (*no job*, or **change** beside
+  *Tied to* in the opened message) and the press-and-hold **Tie this message to** sheet on a phone
+  (`tieSheet.ts`), over the job picker (`JobPickerWindow`, their own jobs first, then a search), all
+  through `tie_message(message, kind, job)`, which also adds the job to the person's `contact_jobs`.
+  The reply box's **Tie to** sets the job a reply lands on, not a line's (corrected 2026-11-01).
 - **A forwarded copy already works.** A mail one of us forwards to bids@ lands on its first sender with
-  the forwarder's note as a team note (`forwarded.ts`), and the subject's job number ties it. That is
-  the one way a person's own mail reaches a job today. Nobody has been told, and six weeks of the
+  the forwarder's note as a team note (`forwarded.ts`). Its job comes from the forwarded mail's own
+  subject, not from what the forwarder types into the forward's subject (`emailLine.ts` reads the
+  forwarded block's `Subject:` first), so a typed job number does nothing; the habit that works is a
+  job number in the subject of a mail we start, which every reply carries (corrected 2026-11-01). That
+  is the one way a person's own mail reaches a job today. Nobody has been told, and six weeks of the
   reader being live show nobody does it.
 - **What a tagged mail already gives the team.** The sender's thread (one per person, every channel),
   the job's lines in Job activity with the orange **Customer** pill, the job window's **Where it
@@ -126,7 +128,7 @@ door the builder goes through, not around.
 | **A · Read through, keep nothing until a tag** (recommended) | An edge function lists the signed-in person's Inbox and Sent from Gmail, metadata and snippets, 50 at a time, and reads one mail whole when opened. The app stores nothing until the person tags, and then only that conversation. | Opening the tab. One press per conversation worth keeping. | One function, one small migration. No new scope: `gmail.readonly` is on the delegation row. |
 | **B · Copy every person's mail in** (#207 PR 4 widened to Inbox) | `gmail-sync` reads each person's box as it reads bids@, every mail a line in `messages`. | Nothing, and that is the trouble: their vendor mail, their newsletters and their personal threads become rows in a table the office team reads, and every unknown sender a Sort all row. | A per-person reader state, a per-person fence on every read, and a second inbox inside the app. |
 | **C · Copy in only what matches a known contact** (#207 PR 4 as written) | The reader lists metadata and reads whole only a mail to or from an address `contact_channels` holds. | Nothing. | The same reader change. Clean for the Sent side; it never sees a new customer's first mail, and it still tags without anyone's say, so a mis-tie is nobody's to notice. |
-| **0 · Nothing but the guide** | The forward to bids@ with the job number in the subject, documented. | A forward per mail and a typed number. Never the Sent side. | A guide. |
+| **0 · Nothing but the guide** | The forward to bids@, documented. | A forward per mail; the job only when the mail's own subject names it. Never the Sent side. | A guide. |
 
 A is the tab. C is the right shape for #207's finding 1 if the owner wants the Sent side with no
 press at all, and it can sit under A later as a second guess source. Ship 0 in any case, the same day.
@@ -212,7 +214,7 @@ both land, so a tagged conversation never reads as a false *Needs a reply*.
 
 | PR | What | Size | Migration · function · Google |
 |---|---|---|---|
-| **0 · The guide** | *tag an email onto a job from Gmail*: the forward to bids@ with the job number in the subject, as it works today; one grey line in the reply box's send window pointing at it. | XS, docs and words | none |
+| **0 · The guide** | *tag an email onto a job from Gmail*: the forward to bids@, the job from the mail's own subject, as it works today; one grey line in the reply box's send window pointing at it. | XS, docs and words | none |
 | **1 · Kernels and the migration** | `src/lib/myMail/rows.ts` (a Gmail metadata listing to rows: who, subject, snippet, day, direction, files, the fold), `mailGuess.ts` (the guess, in order, over `jobInSubject` and the contact's jobs), `tagPlan.ts` (what a tag writes, line by line), each with its test on made-up mail. Migration `SET lock_timeout = '3s'`: `users.my_mail_on boolean default false` and `users.my_mail_hidden_labels text[]`; `messages.mailbox` takes `mine` beside `team` and `bids` (`messages_mailbox_known`), and `messages.mail_user_id uuid` names whose box it came from; `email_tag_threads` (the Gmail thread id, the person, the job keys, tagged by and at, last read at, the fences), read by the office team and written by the function; types regenerated as its own `chore(types)` PR after the push. | S | one migration |
 | **2 · `gmail-mine`** | One function, four actions as the signed-in person: `list` (Inbox and Sent by label id, `format=metadata` with the snippet, 50 a page, a `q` search), `open` (one mail whole, the body as the thread's email line draws it), `tag` (the conversation: `threads.get`, each mail's raw kept as `.eml` in `message-attachments` under `mine/<line>/`, the files copied, `email_place_address`, `email_write_line` with the `Message-ID` fence so a mail the boxes already took is tied and not doubled, `tie_message`, the `email_tag_threads` row, the Gmail label if call 6 says so), `untag`. Reads as `users.email` only; refuses an address off the Workspace with Google's words on the tab; refuses a training account, a sample and a twin. Its `docs/EDGE_FUNCTIONS.md` section; `check:calls-ahead` on the PR since it names the new table. | M | deployed after PR 1's push; nothing at Google |
 | **3 · The tab** | `/messages?tab=my-email` beside Follow up in `MessagesTopBar` (the pill drawn while the person's switch is on), the list with *To tag · Tagged · All*, the search, the fold, the guess column, the reader with the guess bar, the job picker (the existing `JobPickerWindow`), the Yes, Untag, the phone's sheet; the card on Settings → Your account; the owner's line on Phone and texts; the grey line on the thread; the guide *tag an email onto a job from your own mail*; `docs/MESSAGES_ARCHITECTURE.md`, `ACCESS_CONTROL.md`, `PROJECT_DOCUMENTATION.md`, `twins/APP_DIRECTORY.md`. | M | none |
@@ -226,13 +228,13 @@ month of use. The whole train touches `gmail-sync` nowhere, so #207's PR 3 and P
 
 | # | The call | Options | Recommended | Owner's answer |
 |---|---|---|---|---|
-| 1 | How the app sees a person's mail | A read through with a tag. B copy every person's box in. C copy in mail to known addresses only (#207 PR 4). 0 the forward guide alone. | **A**, with 0 shipped the same day. C later as a guess source if Wendi wants the Sent side with no press. | |
-| 2 | Where it lives | A tab on `/messages`. A lane in Follow up. A Quickfill station. | **A tab**, the person's own, no count anywhere. | |
-| 3 | Who may turn it on | Every office member, their own switch. The owner's list of people. | **Their own switch**; the owner sees who has it on. | |
-| 4 | The unit of a tag | The conversation, and later mail follows (PR 4). One mail at a time. | **The conversation.** It is the unit a person thinks in, and it keeps the court honest. | |
-| 5 | Evidence | The Legal desk pulls from the job's messages (PR 5). The tag pushes with a second press. | **The desk pulls.** One press stays one press. | |
-| 6 | A label in the person's Gmail (*Tagged in ClickTooling*) | Yes, as the reader labels the boxes. Never write to a person's box. | **Yes**: the person sees in Gmail what is on a job, and `gmail.modify` is granted already. | |
-| 7 | The key | The delegation as the person, as today. Each person's own Connect Gmail (#159 way 2). | **The delegation**, with the honest sentence on the card. Way 2 swaps PR 2's token source if the owner wants Google's own yes. | |
+| 1 | How the app sees a person's mail | A read through with a tag. B copy every person's box in. C copy in mail to known addresses only (#207 PR 4). 0 the forward guide alone. | **A**, with 0 shipped the same day. C later as a guess source if Wendi wants the Sent side with no press. | A, with the guide the same day (2026-11-01, *build all of this*). |
+| 2 | Where it lives | A tab on `/messages`. A lane in Follow up. A Quickfill station. | **A tab**, the person's own, no count anywhere. | A tab. |
+| 3 | Who may turn it on | Every office member, their own switch. The owner's list of people. | **Their own switch**; the owner sees who has it on. | Their own switch, **on by default** (the owner's word, 2026-11-01). |
+| 4 | The unit of a tag | The conversation, and later mail follows (PR 4). One mail at a time. | **The conversation.** It is the unit a person thinks in, and it keeps the court honest. | The conversation. |
+| 5 | Evidence | The Legal desk pulls from the job's messages (PR 5). The tag pushes with a second press. | **The desk pulls.** One press stays one press. | The desk pulls. |
+| 6 | A label in the person's Gmail (*Tagged in ClickTooling*) | Yes, as the reader labels the boxes. Never write to a person's box. | **Yes**: the person sees in Gmail what is on a job, and `gmail.modify` is granted already. | Yes. |
+| 7 | The key | The delegation as the person, as today. Each person's own Connect Gmail (#159 way 2). | **The delegation**, with the honest sentence on the card. Way 2 swaps PR 2's token source if the owner wants Google's own yes. | The delegation. |
 
 ## Where it plugs in
 
@@ -262,7 +264,7 @@ components under `src/components/messages/myMail/`, the two guides, the Evidence
 
 ## How to verify, once built
 
-- PR 0: the guide renders; a forward to bids@ with `JP1077` in the subject lands on the sender's
+- PR 0: the guide renders; a forward to bids@ of a mail whose own subject carries `JP1077` lands on the sender's
   thread tied to the job within a minute (this works today and is the baseline).
 - PR 1: `npm test` on the kernels with made-up mail: the guess order, the fold, a tag plan for a
   three-mail conversation with one file.
@@ -307,7 +309,39 @@ components under `src/components/messages/myMail/`, the two guides, the Evidence
   and healthy; the counter off with an empty list and its admin step not done). The mock-up draws the
   tab, a mail with the tag press on a desk and a phone, the job's story afterwards and the switch
   card. Nothing built. Waiting on the seven calls.
-- 2026-11-01, later the same day: built, PR 0 to PR 5 and the reviews' fixes as the status lists them. The
-  calls on the unit of a tag, on Evidence and on the key stand as built. The migrations are pushed and
-  `gmail-mine` is deployed (`npm run check:migration-drift`, `npm run check:edge-drift`). No live walk is
-  recorded here.
+- 2026-11-01, later: the owner took every call as recommended, with the switch **on by default**, and
+  asked for all of it built. Built the same day as twelve PRs, each with its own tests:
+
+  | PR | Version | What it built |
+  | --- | --- | --- |
+  | #6692 | v2.6257 | PR 0, the forward guide |
+  | #6696 | v2.6266 | PR 1, the kernels, the contract and migration `20261101083844` |
+  | #6701 | v2.6275 | PR 2, the `gmail-mine` function |
+  | #6705 | v2.6274 | PR 3, the tab on Messages and the card on Your account |
+  | #6706 | v2.6276 | PR 5, the Legal desk's Evidence door, migration `20261101130407` |
+  | #6715 | v2.6279 | PR 4, the follow and its cron, migration `20261101154949` |
+  | #6725 | v2.6289 | Review fix: the follow stops 60 days after a conversation's newest mail and reads in turn, migration `20261101172319` |
+  | #6727 | v2.6290 | Review fix: My email never opens in a session Imitate or View as opened, migration `20261101175329` |
+  | #6728 | v2.6291 | Review fix: Untag on every tagged conversation, Another job…, a mail not on the job yet, the empty page |
+  | #6729 | v2.6292 | Review fix: an untag keeps the office's promises and highlights, the tag records its own ties, hidden labels stay out, and seven more, migration `20261101183219` |
+  | #6737 | v2.6295 | The lead's fix: a mail not on the job yet says so in the list |
+  | #6738 | v2.6296 | The lead's fix: a label left out stays out of an open conversation too |
+
+- Live: all six migrations pushed with `supabase db push`, and the ledger matches the repo. `gmail-mine`
+  and `login-as-user` are deployed, and the Pages deploy is green. Checked live as the dev: the bar shows
+  Follow up · My email, and Follow up is unchanged. The tab draws Google's refusal as one calm line,
+  because the dev's address is off the Workspace. The card on Your account shows the switch on. A phone
+  width has no sideways scroll. Both functions refuse a call with no session, and the guide's share page
+  is up.
+- An independent review of the build found ten defects, and the four review PRs fixed all ten. The worst:
+  Imitate and View as open a real session as the person, and My email read that person's mail. Now each
+  imitation is recorded first, and a session that follows one is refused. The lead found two more after
+  it and fixed both: the row said *open the line ›* on a mail no line holds yet, and opening a mail
+  listed the mails of its conversation under a label the person leaves out.
+- No tag was made before the fixes went live: the function's logs show only refusals, the dev's and the
+  lead's probes. So no tag lacks the ties v2.6292 records.
+- Known and left as it is: a person's own magic link in the 24 hours after someone imitated them is
+  refused, so they sign in again a day later. That is the safe side of telling the two apart.
+- Left: a clickplumbing.com office member's first real tag, which no agent may sign in to do. The
+  importers that `npm run check:edge-drift` names, whose drift is the kernel copy alone. Then a month of
+  use, counting conversations tagged per person; the tab retires if nobody tags.
