@@ -27782,6 +27782,7 @@ export type Database = {
       plan_sets: {
         Row: {
           came_at: string
+          changes: string
           check_note: string | null
           checked_at: string | null
           created_at: string
@@ -27804,6 +27805,7 @@ export type Database = {
         }
         Insert: {
           came_at?: string
+          changes?: string
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -27826,6 +27828,7 @@ export type Database = {
         }
         Update: {
           came_at?: string
+          changes?: string
           check_note?: string | null
           checked_at?: string | null
           created_at?: string

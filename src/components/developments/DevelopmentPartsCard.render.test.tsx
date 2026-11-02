@@ -29,7 +29,7 @@ function part(over: Partial<PlanPartRow> & { id: string; name: string }): PlanPa
 }
 function set(over: Partial<PlanSetRow> & { id: string; part_id: string }): PlanSetRow {
   return {
-    name: 'Issued set', kind: 'issued', source: 'gc', dated: null, came_at: '2026-10-01T12:00:00Z', memo: '', link: 'https://drive.google.com/x',
+    name: 'Issued set', kind: 'issued', source: 'gc', dated: null, came_at: '2026-10-01T12:00:00Z', memo: '', changes: '', link: 'https://drive.google.com/x',
     replaces_set_id: null, marks_up_set_id: null, job_id: null, file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null,
     created_by: 'u1', created_at: '2026-10-01T12:00:00Z', updated_at: '2026-10-01T12:00:00Z', ...over,
   }
@@ -49,7 +49,7 @@ const bids = [{ id: 'b1', label: 'BP340', plans_link: 'https://drive.google.com/
 const view = buildSitePlansView({ parts, sets, jobs, bids })
 
 function writes(over: Partial<SitePlansWrites> = {}): SitePlansWrites {
-  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), ...over }
+  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), writeChanges: vi.fn(async () => true), ...over }
 }
 
 describe('DevelopmentPartsCard', () => {
@@ -88,6 +88,29 @@ describe('DevelopmentPartsCard', () => {
     await waitFor(() => expect(w.buildFrom).toHaveBeenCalledWith('p2', 's1'))
     fireEvent.click(screen.getAllByRole('button', { name: 'Open ↗' })[0]!)
     expect(opened.length).toBe(1)
+  })
+
+  it('reads the change line under a set, offers Write what changed on one that followed another with none, and saves it', async () => {
+    const w = writes()
+    const told = buildSitePlansView({ parts, sets: sets.map((s) => (s.id === 's2' ? { ...s, changes: 'P-201: the riser moved to the north wall.' } : s)), jobs, bids })
+    const { unmount } = renderWithProviders(<DevelopmentPartsCard view={told} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
+    expect(screen.getByTestId('plan-set-changes-s2').textContent).toContain('What changed from Bunker issued set: P-201: the riser moved to the north wall.')
+    expect(screen.getByRole('button', { name: 'Edit what changed' })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('site-older-p2'))
+    expect(screen.queryByTestId('plan-set-changes-s1')).toBeNull()
+    expect(screen.queryByRole('button', { name: 'Write what changed' })).toBeNull()
+    unmount()
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Write what changed' }))
+    fireEvent.change(screen.getByLabelText('What changed in Bunker addendum 1'), { target: { value: 'P-201: the riser moved to the north wall.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save what changed' }))
+    await waitFor(() => expect(w.writeChanges).toHaveBeenCalledWith('s2', 'P-201: the riser moved to the north wall.'))
+    await waitFor(() => expect(screen.queryByTestId('plan-set-changes-editor-s2')).toBeNull())
+  })
+
+  it('shows no change press to a reader', () => {
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    expect(screen.queryByRole('button', { name: 'Write what changed' })).toBeNull()
   })
 
   it('adds a set on a part through the form, replacing the current one, and names a new part', async () => {

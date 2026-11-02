@@ -214,6 +214,7 @@ export default function DevelopmentPage() {
       addSet: (partId, draft, makeCurrent, replacesSetId) => after('The set did not save.')(() => siteIo.addSet({ partId, draft, makeCurrent, replacesSetId, marksUpSetId: null, jobId: null, userId: authUser?.id ?? null })),
       buildFrom: (partId, setId) => after('The set did not switch.')(() => siteIo.makeCurrent(partId, setId, authUser?.id ?? null)),
       removeSet: (setId) => after('The set did not come off.')(() => siteIo.removeSet(setId)),
+      writeChanges: (setId, changes) => after('What changed did not save.')(() => siteIo.updateChanges(setId, changes)),
     }
   }, [canWritePlans, developmentIdForParts, siteIo, siteRead?.parts.length, authUser?.id, showToast])
   // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.

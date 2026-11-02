@@ -5,14 +5,16 @@
  * Under the table, the only two things left for a person: the parts with no set and the jobs on no part, as
  * chips that open their lists, with **Ask the estimators about the N**; **+ Part** names a new part; **+ New
  * set** on a row adds a set through the one form (`PlanSetForm`). Bids keep their own pinned sets and are
- * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set".
+ * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set". Each set
+ * carries its change line (v2.6356, `PlanSetChangesLine`): what moved from the set before it, or *Write what changed*.
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
-import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem, setLineWords, shortDayWords, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
+import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem, partTimeline, setLineWords, shortDayWords, timelineEntryFor, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
 import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
+import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 
@@ -21,6 +23,8 @@ export type SitePlansWrites = {
   addSet: (partId: string, draft: NewSetDraft, makeCurrent: boolean, replacesSetId: string | null) => Promise<boolean>
   buildFrom: (partId: string, setId: string) => Promise<boolean>
   removeSet: (setId: string) => Promise<boolean>
+  /** What changed from the set before it, written on a set already on the part (v2.6356). */
+  writeChanges: (setId: string, changes: string) => Promise<boolean>
 }
 
 const th: CSSProperties = { textAlign: 'left', padding: '4px 8px', fontSize: '0.66rem', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', borderBottom: '1px solid var(--border)' }
@@ -69,6 +73,14 @@ export function DevelopmentPartsCard({
       setPartName(null)
       setPendingRemove(null)
     }
+  }
+  const saveChanges = async (setId: string, changes: string): Promise<boolean> => {
+    if (!writes || busy) return false
+    setBusy(true)
+    setProblem(null)
+    const ok = await writes.writeChanges(setId, changes)
+    setBusy(false)
+    return ok
   }
   const openSetForm = (row: SitePartRow) => {
     const kind = row.current ? 'addendum' : 'issued'
@@ -147,6 +159,7 @@ export function DevelopmentPartsCard({
           <tbody>
             {view.parts.map((row) => {
               const older = olderSetsFor(row)
+              const timeline = partTimeline([...(row.current ? [row.current] : []), ...row.older])
               const setBy = row.part.current_set_by ? (names[row.part.current_set_by] ?? null) : null
               const replacedLine = [row.replaced ? `replaced ${row.replaced.name}${row.part.current_set_at ? ` on ${shortDayWords(row.part.current_set_at)}` : ''}` : '', setBy ? `set by ${setBy}` : ''].filter(Boolean).join(' · ')
               return (
@@ -167,7 +180,10 @@ export function DevelopmentPartsCard({
                     </td>
                     <td style={td}>{row.current?.dated ? shortDay(row.current.dated) : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
                     <td style={td}>{row.current ? shortDay(row.current.came_at) : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
-                    <td style={{ ...td, minWidth: 160 }}>{row.current?.memo ? row.current.memo : <span style={{ color: 'var(--text-faint)' }}>—</span>}</td>
+                    <td style={{ ...td, minWidth: 160 }}>
+                      {row.current?.memo ? row.current.memo : <span style={{ color: 'var(--text-faint)' }}>—</span>}
+                      {row.current ? <PlanSetChangesLine entry={timelineEntryFor(timeline, row.current)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex', marginTop: 2 }} /> : null}
+                    </td>
                     <td style={td}>{row.jobs.length ? carriers(row.jobs) : <span style={muted}>none yet</span>}</td>
                     <td style={td}>
                       <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline' }}>
@@ -196,6 +212,7 @@ export function DevelopmentPartsCard({
                               <span>{s.name}</span>
                               <span style={muted}>{setLineWords(s)}</span>
                               {s.memo ? <span style={muted}>{s.memo}</span> : null}
+                              <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ flexBasis: '100%' }} />
                               {openLink(s)}
                               {canWrite && writes ? (
                                 <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>

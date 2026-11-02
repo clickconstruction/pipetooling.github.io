@@ -24,15 +24,20 @@ The Job tab's **Open plans** press opens the same set as **Building from**. The 
 2. Type the set's **Name**, such as *Addendum 2*. The app starts the name for you.
 3. Pick the **Kind** and who it is **From**.
 4. Pick the **Dated** day. Use the date printed on the sheets.
-5. Type a **Memo**. Say what changed in a line.
-6. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
-7. Press {{button:blue|Add the set and build from it}}.
+5. Type a **Memo**. Say who sent the set and where the file is.
+6. Under **What changed**, say what moved from the old set. Name the sheets or areas that moved. Say what it means for our work.
+7. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
+8. Press {{button:blue|Add the set and build from it}}.
 
 The job now builds from the new set. The old one moves under **Older sets**. Press {{button:outline|Add it, keep Issued set current}} instead to add the set without switching.
 
-On a development, the switch writes one line in the site's **History** for every job on the part. The line reads *Plans · the Bunker now builds from Addendum 1, dated Oct 2, 2026 · replaces Issued set*. Nobody types it.
+On a development, the switch writes one line in the site's **History** for every job on the part. The line reads *Plans · the Bunker now builds from Addendum 1, dated Oct 2, 2026 · replaces Issued set · what changed: the riser moved to the north wall*. Nobody types it.
 
 To switch later, press {{button:outline|Build from this set}} on any older set.
+
+## Say what changed on an older set
+
+Each set shows its change line under its memo. The line names the set before it. An older set with no line shows {{button:outline|Write what changed}} to the office. Press it, write what moved from the set before, and press {{button:blue|Save what changed}}. The site's **Plans** look shows the same line between its sets.
 
 ## Save the crew's as-built
 

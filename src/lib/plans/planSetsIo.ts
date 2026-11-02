@@ -44,10 +44,12 @@ export interface JobPlansIo {
   makeCurrent(partId: string, setId: string, userId: string | null): Promise<void>
   removeSet(setId: string): Promise<void>
   updateMemo(setId: string, memo: string): Promise<void>
+  /** What changed from the set before it, written or rewritten on a set already on the part (v2.6356). */
+  updateChanges(setId: string, changes: string): Promise<void>
 }
 
 const PART_COLS = 'id, development_id, job_id, name, position, current_set_id, current_set_by, current_set_at, created_by, created_at, updated_at'
-const SET_COLS = 'id, part_id, name, kind, source, dated, came_at, memo, link, replaces_set_id, marks_up_set_id, job_id, file_name, file_size, file_count, checked_at, check_note, created_by, created_at, updated_at'
+const SET_COLS = 'id, part_id, name, kind, source, dated, came_at, memo, changes, link, replaces_set_id, marks_up_set_id, job_id, file_name, file_size, file_count, checked_at, check_note, created_by, created_at, updated_at'
 
 function taken<T>(r: { data: T; error: { message: string } | null }, what: string): NonNullable<T> {
   if (r.error) throw r.error
@@ -138,6 +140,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
             source: draft.source,
             dated: draft.dated || null,
             memo: draft.memo.trim(),
+            changes: draft.changes.trim(),
             link: draft.link.trim(),
             replaces_set_id: replacesSetId,
             marks_up_set_id: marksUpSetId,
@@ -164,6 +167,10 @@ export function supabaseJobPlansIo(): JobPlansIo {
     },
     async updateMemo(setId, memo) {
       const r = await supabase.from('plan_sets').update({ memo }).eq('id', setId)
+      if (r.error) throw r.error
+    },
+    async updateChanges(setId, changes) {
+      const r = await supabase.from('plan_sets').update({ changes: changes.trim() }).eq('id', setId)
       if (r.error) throw r.error
     },
   }
