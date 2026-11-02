@@ -7,7 +7,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -117,7 +117,9 @@ describe('DashboardMyScheduleSection, the kept day (#183 PR 3)', () => {
     await settle()
     expect(document.getElementById('dash-my-schedule')!.hasAttribute('data-kept-read')).toBe(false)
     expect(screen.queryByRole('status')).toBeNull()
-    expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy()
+    // The hook carries the formatter's write sentence; the read panel draws the read sentence (#224).
+    expect(screen.getByText(OFFLINE_READ_MESSAGE)).toBeTruthy()
+    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
     expect(screen.queryByText(/Nothing scheduled/)).toBeNull()
     expect(document.querySelector('[data-empty-state]')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))

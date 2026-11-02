@@ -10,7 +10,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastProvider } from '../contexts/ToastContext'
 import { installDomShims, settle } from '../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../lib/networkErrorMessage'
 import Training from './Training'
 
 vi.mock('../lib/supabase', async () => {
@@ -240,7 +240,7 @@ describe('Training page', () => {
   it('a lost signal reads the offline sentence with Retry beside the Dashboard door; Retry opens the course', async () => {
     io.catalogFailure = new Error('TypeError: Failed to fetch')
     open()
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    await screen.findByText(OFFLINE_READ_MESSAGE)
     expect(screen.getByText('‹ Dashboard')).toBeTruthy()
     io.catalogFailure = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))

@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 type RpcResult = { data: unknown; error: { message?: string; code?: string } | null; status?: number }
 const H = vi.hoisted(() => ({ rpc: vi.fn(async (_name?: unknown, _args?: unknown): Promise<RpcResult> => ({ data: null, error: null })) }))
@@ -102,13 +102,13 @@ describe('DashboardSupervisorSection', () => {
           : { data: null, error: { message: 'TypeError: Failed to fetch', code: '' }, status: 0 },
     )
     renderWithProviders(<DashboardSupervisorSection authUserId="u1" role="master_technician" onLeaveReport={() => {}} />)
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    await screen.findByText(OFFLINE_READ_MESSAGE)
     expect(screen.getByRole('region', { name: 'My crew' })).toBeTruthy()
     expect(screen.queryByText('Nothing owed.')).toBeNull()
     online = true
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await screen.findByText('no report yet')
-    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
+    expect(screen.queryByText(OFFLINE_READ_MESSAGE)).toBeNull()
   })
 
   it('a refused read names its reason under the section, with no Retry', async () => {

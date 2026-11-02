@@ -1,5 +1,5 @@
 import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../utils/errorHandling'
-import { OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from './networkErrorMessage'
 
 /**
  * Offline recovery state (J2-F3, journey-map Tier-1 #6b).
@@ -44,11 +44,14 @@ export type OfflineRecoveryInput = {
   attempts: number
   /** An `online` event arrived AFTER this failure — the signal actually came back, not merely "the browser says online". */
   reconnected?: boolean
-  /** Re-running the action is safe (a read). Writes must leave `false` (the default). */
+  /**
+   * Re-running the action is safe (a read). Writes must leave `false` (the default). A read's lost signal
+   * reads `OFFLINE_READ_MESSAGE` (punch list #224), never the write sentence's *nothing was saved*.
+   */
   idempotent?: boolean
   /**
-   * What a lost signal reads in place of the write sentence's *nothing was saved*: a read's own words (the clock's,
-   * v2.6198, where the write sentence under a press kept on the phone read as the press failing).
+   * A caller's own words for a lost signal, in place of the shared sentence for its kind: the clock's
+   * (v2.6198, where the write sentence under a press kept on the phone read as the press failing).
    */
   offlineMessage?: string
 }
@@ -84,7 +87,8 @@ export function offlineRecoveryState(input: OfflineRecoveryInput): OfflineRecove
   // flag said "online" (dead wifi, unreachable server) is still offline until
   // an `online` event says the signal came back.
   if (!online || !reconnected) {
-    const offline = input.offlineMessage ?? OFFLINE_ERROR_MESSAGE
+    // A read saved nothing, so it never says *nothing was saved* (#224); a caller's own words still win.
+    const offline = input.offlineMessage ?? (idempotent ? OFFLINE_READ_MESSAGE : OFFLINE_ERROR_MESSAGE)
     return {
       phase: 'offline',
       message: attempts > 0 ? `${offline}${STILL_OFFLINE_SUFFIX}` : offline,

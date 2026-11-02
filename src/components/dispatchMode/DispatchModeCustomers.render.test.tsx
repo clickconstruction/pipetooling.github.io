@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 const H = vi.hoisted(() => ({ customersError: null as unknown, reads: 0 }))
 vi.mock('../../lib/supabase', () => {
@@ -42,7 +42,7 @@ describe('DispatchModeCustomers', () => {
     H.customersError = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
     H.reads = 0
     renderWithProviders(<DispatchModeCustomers />)
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    await screen.findByText(OFFLINE_READ_MESSAGE)
     expect(screen.queryByText('No customers match.')).toBeNull()
     H.customersError = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))

@@ -63,7 +63,7 @@ vi.mock('../ReportViewModal', () => ({ default: () => null }))
 
 import CustomerSummaryModal from './CustomerSummaryModal'
 import { renderSettled } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 async function mount(role: string) {
   mockRole = role
@@ -122,7 +122,9 @@ describe('CustomerSummaryModal header (v2.5831)', () => {
     feed.failure = { error: OFFLINE_ERROR_MESSAGE, errorKind: 'network' }
     feed.reads = 0
     await mount('estimator')
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    // The feed carries the formatter's write sentence; the read panel draws the read sentence (#224).
+    await screen.findByText(OFFLINE_READ_MESSAGE)
+    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
     feed.failure = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await screen.findByText('No interactions yet. Notes, reports and changes on their jobs land here.')

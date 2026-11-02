@@ -11,7 +11,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import JobModeMyRequests from './JobModeMyRequests'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 // Mutable result so one stub serves the empty and the populated case.
 let rows: unknown[] = []
@@ -85,7 +85,7 @@ describe('JobModeMyRequests', () => {
     rows = []
     failure = { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' }
     renderWithProviders(<JobModeMyRequests userId="tech-1" />)
-    await waitFor(() => expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(OFFLINE_READ_MESSAGE)).toBeTruthy())
     const before = reads
     failure = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))

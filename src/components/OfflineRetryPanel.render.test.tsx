@@ -20,7 +20,7 @@ vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: (...a: unknown[]) =
 
 import OfflineRetryPanel from './OfflineRetryPanel'
 import { renderWithProviders, settle } from '../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from '../lib/networkErrorMessage'
 import { BACK_ONLINE_AUTO_MESSAGE, BACK_ONLINE_MESSAGE } from '../lib/offlineRecoveryState'
 
 const NETWORK = { kind: 'network' as const, message: OFFLINE_ERROR_MESSAGE }
@@ -55,10 +55,25 @@ describe('OfflineRetryPanel', () => {
 
   it('the browser flag alone never flips the copy — a failed fetch while "online" is still offline', async () => {
     setOnLine(true)
-    renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="clock-in" idempotent />)
+    renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="clock-in" />)
     await settle()
     expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+  })
+
+  it('a read (idempotent) says the read sentence with Retry, never nothing was saved, whatever sentence the failure carries (punch list #224)', async () => {
+    const { unmount } = renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="crew-day" idempotent />)
+    await settle()
+    expect(screen.getByText(OFFLINE_READ_MESSAGE)).toBeTruthy()
+    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
+    expect(document.body.textContent).not.toMatch(/nothing was saved/i)
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeTruthy()
+    unmount()
+    // A read's own words still win (the clock's, v2.6198).
+    renderWithProviders(<OfflineRetryPanel failure={NETWORK} onRetry={() => {}} surface="clock-read" idempotent offlineMessage="No connection, so the clock could not load today's time." />)
+    await settle()
+    expect(screen.getByText("No connection, so the clock could not load today's time.")).toBeTruthy()
+    expect(screen.queryByText(OFFLINE_READ_MESSAGE)).toBeNull()
   })
 
   it('a write: the online event flips to "Back online" but does NOT retry by itself', () => {

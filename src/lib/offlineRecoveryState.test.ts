@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from './networkErrorMessage'
 import { DatabaseError, OperationTimeoutError } from '../utils/errorHandling'
 import {
   BACK_ONLINE_AUTO_MESSAGE,
@@ -20,11 +20,34 @@ describe('offlineRecoveryState', () => {
   })
 
   it('offline + network failure: the offline copy with a Retry button, never automatic', () => {
-    const s = offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 0, idempotent: true })
+    const s = offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 0 })
     expect(s.phase).toBe('offline')
     expect(s.message).toBe(OFFLINE_ERROR_MESSAGE)
     expect(s.showRetry).toBe(true)
     expect(s.autoRetry).toBe(false)
+  })
+
+  it('a read (idempotent) says the read sentence, never nothing was saved; a write keeps the write sentence (punch list #224)', () => {
+    const read = offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 0, idempotent: true })
+    expect(read.phase).toBe('offline')
+    expect(read.message).toBe(OFFLINE_READ_MESSAGE)
+    expect(read.message).not.toMatch(/saved/i)
+    expect(read.showRetry).toBe(true)
+    expect(read.autoRetry).toBe(false)
+    // A second failure while still offline says so, on the read sentence.
+    expect(offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 1, idempotent: true }).message).toBe(`${OFFLINE_READ_MESSAGE}${STILL_OFFLINE_SUFFIX}`)
+    // The browser flag alone never flips a read either.
+    expect(offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0, idempotent: true }).message).toBe(OFFLINE_READ_MESSAGE)
+    // A write, with or without the flag, keeps the write sentence: the person re-sends it.
+    expect(offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 0 }).message).toBe(OFFLINE_ERROR_MESSAGE)
+    expect(offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0, idempotent: false }).message).toBe(OFFLINE_ERROR_MESSAGE)
+    // Back online reads as before for both.
+    expect(offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0, idempotent: true, reconnected: true }).message).toBe(BACK_ONLINE_AUTO_MESSAGE)
+    expect(offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0, reconnected: true }).message).toBe(BACK_ONLINE_MESSAGE)
+    // A refusal on a read keeps its own sentence with no Retry.
+    const refused = offlineRecoveryState({ online: false, lastError: REFUSED, attempts: 0, idempotent: true })
+    expect(refused.message).toBe(REFUSED.message)
+    expect(refused.showRetry).toBe(false)
   })
 
   it('a second failure while still offline says so', () => {
@@ -33,7 +56,7 @@ describe('offlineRecoveryState', () => {
   })
 
   it('browser says online but no online event arrived since the failure: still the offline copy + Retry', () => {
-    const s = offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0, idempotent: true })
+    const s = offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0 })
     expect(s.phase).toBe('offline')
     expect(s.message).toBe(OFFLINE_ERROR_MESSAGE)
     expect(s.showRetry).toBe(true)
@@ -80,11 +103,12 @@ describe('offlineRecoveryState', () => {
     expect(s.showRetry).toBe(false)
   })
 
-  it('a read may say a lost signal in its own words, never the write sentence; Back online reads as before (v2.6198)', () => {
+  it('a read may say a lost signal in its own words, which win over the shared read sentence; Back online reads as before (v2.6198)', () => {
     const words = 'No connection, so the clock could not load. It loads again when the signal is back.'
     const first = offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 0, idempotent: true, offlineMessage: words })
     expect(first.phase).toBe('offline')
     expect(first.message).toBe(words)
+    expect(first.message).not.toBe(OFFLINE_READ_MESSAGE)
     expect(first.showRetry).toBe(true)
     expect(offlineRecoveryState({ online: false, lastError: NETWORK, attempts: 1, idempotent: true, offlineMessage: words }).message).toBe(`${words}${STILL_OFFLINE_SUFFIX}`)
     expect(offlineRecoveryState({ online: true, lastError: NETWORK, attempts: 0, idempotent: true, reconnected: true, offlineMessage: words }).message).toBe(BACK_ONLINE_AUTO_MESSAGE)

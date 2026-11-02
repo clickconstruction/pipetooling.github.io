@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 const H = vi.hoisted(() => ({ fetch: vi.fn() }))
 vi.mock('../../lib/supabase', async () => {
@@ -49,7 +49,9 @@ describe('DispatchModeHome → Job Pipeline', () => {
     H.fetch.mockResolvedValueOnce({ ok: false, error: OFFLINE_ERROR_MESSAGE, errorKind: 'network' })
     H.fetch.mockResolvedValue({ ok: true, jobs: [] })
     renderWithProviders(<DispatchModeHome />)
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    // The fetcher carries the formatter's write sentence; the read panel draws the read sentence (#224).
+    await screen.findByText(OFFLINE_READ_MESSAGE)
+    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(document.querySelector('[data-empty-state]')?.textContent ?? '').toContain('No open jobs.'))
     expect(H.fetch).toHaveBeenCalledTimes(2)

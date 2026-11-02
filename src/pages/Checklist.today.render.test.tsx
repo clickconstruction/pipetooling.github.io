@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../lib/networkErrorMessage'
 
 const H = vi.hoisted(() => ({ dayError: null as unknown, reads: 0 }))
 
@@ -49,11 +49,11 @@ describe('Checklist → Today', () => {
     H.dayError = { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' }
     H.reads = 0
     renderWithProviders(<Checklist />)
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    await screen.findByText(OFFLINE_READ_MESSAGE)
     expect(document.querySelector('[data-empty-state]')?.textContent ?? '').not.toContain('Nothing due today.')
     H.dayError = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(document.querySelector('[data-empty-state]')?.textContent ?? '').toContain('Nothing due today.'))
-    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
+    expect(screen.queryByText(OFFLINE_READ_MESSAGE)).toBeNull()
   })
 })

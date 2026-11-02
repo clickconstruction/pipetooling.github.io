@@ -6,7 +6,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 type RpcResult = { data: unknown; error: { message: string; code?: string } | null; status?: number }
 const H = vi.hoisted(() => ({
@@ -83,7 +83,7 @@ describe('RateMyCrewDeck', () => {
     H.rpc.mockResolvedValueOnce({ data: null, error: { message: 'TypeError: Failed to fetch', code: '' }, status: 0 })
     H.rpc.mockResolvedValue({ data: { supervisor: true, month: '2026-09-01', people: [] }, error: null })
     renderWithProviders(<RateMyCrewDeck open onClose={() => {}} userId="mike" reviewMonth="2026-09-01" />)
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    await screen.findByText(OFFLINE_READ_MESSAGE)
     expect(screen.queryByText(/Nobody you supervised/)).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await screen.findByText(/Nobody you supervised on two or more days/)

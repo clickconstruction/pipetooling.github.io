@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, waitFor } from '@testing-library/react'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 const JOB_A = '00000000-0000-0000-0000-00000000aaaa'
 const JOB_B = '00000000-0000-0000-0000-00000000bbbb'
@@ -175,7 +175,7 @@ describe('DashboardJobModeCard when the day will not read (v2.5962)', () => {
     scenario.visited = []
     scenario.blocksError = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
     const { getByText, getByRole } = renderCard()
-    await waitFor(() => expect(getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy())
+    await waitFor(() => expect(getByText(OFFLINE_READ_MESSAGE)).toBeTruthy())
     scenario.blocksError = undefined
     fireEvent.click(getByRole('button', { name: 'Retry' }))
     await waitFor(() => expect(getByText(/Today · 0 of 3 done/)).toBeTruthy())

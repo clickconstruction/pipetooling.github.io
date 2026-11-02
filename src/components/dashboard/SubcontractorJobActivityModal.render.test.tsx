@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
 
 const H = vi.hoisted(() => ({ error: null as unknown, reads: 0 }))
 vi.mock('../../lib/supabase', () => ({
@@ -40,7 +40,7 @@ describe('SubcontractorJobActivityModal', () => {
     H.error = { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' }
     H.reads = 0
     open()
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    await screen.findByText(OFFLINE_READ_MESSAGE)
     H.error = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await screen.findByText(/No activity of these types appears for you yet/)
