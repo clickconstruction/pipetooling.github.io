@@ -61,4 +61,4 @@ Tap **Map** to see the pinned boxes on the site. On a box, tap **Pin on map** an
 
 A printed label carries a code. Point your camera at it and the box opens. The office prints labels from Jobs → Materials.
 
-A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, press **Print the manifest for A1**, where A1 is the box's stencil. The press opens the office page on that box's manifest. Write what you add on the page's ruled lines, and press it in the app too.
+A box can also carry a manifest, a laminated page that lists what is in it. Under a box's parts, under the words Paper for A1, press **Print the manifest**. The press opens the office page on that box's manifest. Write what you add on the page's ruled lines, and press it in the app too.
