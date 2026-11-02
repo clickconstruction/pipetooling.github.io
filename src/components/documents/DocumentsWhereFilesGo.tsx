@@ -43,6 +43,7 @@ import {
   APPLIES_FROM_NOW_WORDS,
   bidFolderFacts,
   checkPastedWords,
+  companyCardWords,
   EVERY_PASTED_OK_WORDS,
   exampleJob,
   FIXED_NAMES_WORDS,
@@ -79,7 +80,8 @@ import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereF
 
 const cards: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 12, marginTop: 12 }
 const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, alignContent: 'start', minWidth: 0 }
-const cardH: CSSProperties = { margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-strong)' }
+/** A card's title reads above its pieces (the owner, 2026-11-01): a size up from the chips, which sit a size down. */
+const cardH: CSSProperties = { margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.25 }
 const muted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 const okLine: CSSProperties = { fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-green-700)', margin: 0 }
 const warnLine: CSSProperties = { fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-amber-800)', margin: 0 }
@@ -88,11 +90,11 @@ const btn: CSSProperties = { padding: '0.4rem 0.8rem', background: 'var(--surfac
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 const btnQuiet: CSSProperties = { ...btn, fontSize: '0.75rem', fontWeight: 500, padding: '0.2rem 0.55rem' }
 const chips: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }
-const chipOn: CSSProperties = { border: '1px solid var(--text-strong)', borderRadius: 999, background: 'var(--text-strong)', color: 'var(--surface)', fontSize: '0.78rem', fontWeight: 600, padding: '4px 10px', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }
+const chipOn: CSSProperties = { border: '1px solid var(--text-strong)', borderRadius: 999, background: 'var(--text-strong)', color: 'var(--surface)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '3px 9px', cursor: 'pointer', whiteSpace: 'nowrap' }
 const chipAdd: CSSProperties = { ...chipOn, border: '1px dashed var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)' }
 const dot: CSSProperties = { color: 'var(--text-muted)', fontWeight: 700 }
 const exampleLine: CSSProperties = { ...muted, margin: 0 }
-const exampleName: CSSProperties = { fontSize: '0.9rem', color: 'var(--text-strong)', fontWeight: 700 }
+const exampleName: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-strong)', fontWeight: 700 }
 const list: CSSProperties = { margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: '0.25rem' }
 
 /** The folder glyph the mock-up draws beside a folder's name. */
@@ -215,6 +217,109 @@ function RootCard({ settings, save }: { settings: WhereFilesGo; save: Save }) {
             <div>
               <button type="button" style={btnPrimary} disabled={saving} onClick={() => void move()}>
                 {saving ? 'Moving…' : 'Move the jobs root here'}
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  )
+}
+
+// --- the company folder (the Documents spike of 2026-11-01) ---------------------------------------------------------
+
+/** The company papers folder: the W-9, the insurance, the licenses. Documents → Company lists it and uploads into it. */
+function CompanyCard({ settings, save }: { settings: WhereFilesGo; save: Save }) {
+  const words = companyCardWords(settings.company)
+  const [pasted, setPasted] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [checked, setChecked] = useState<{ link: string; check: FolderCheck } | null>(null)
+  const [checkProblem, setCheckProblem] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const confirmDialog = useConfirmDialog()
+  const check = async () => {
+    const link = pasted.trim()
+    if (!link || checking) return
+    setChecking(true)
+    setCheckProblem(null)
+    setChecked(null)
+    try {
+      setChecked({ link, check: await checkDriveFolder(link) })
+    } catch (e) {
+      setCheckProblem(formatErrorMessage(e, 'The folder was not checked.'))
+    } finally {
+      setChecking(false)
+    }
+  }
+  const checkedId = checked ? driveFolderIdFromLinkOrId(checked.link) : null
+  const isNew = Boolean(checked?.check.ok && checkedId && checkedId !== settings.company?.id)
+  const use = async () => {
+    if (!checked || saving) return
+    const name = checked.check.folder?.name || 'this folder'
+    const ok = await confirmDialog({
+      title: 'Use this folder for company papers',
+      message: `Documents → Company will list ${name} and put uploads there. The files that exist stay where they are.`,
+      confirmLabel: 'Use this folder',
+    })
+    if (!ok) return
+    setSaving(true)
+    const saved = await save({ company: checked.link }, `Company papers now live in ${name}.`)
+    setSaving(false)
+    if (saved) {
+      setChecked(null)
+      setPasted('')
+    }
+  }
+  return (
+    <section style={card} aria-label="The company folder" data-testid="wfg-company-card">
+      <h4 style={cardH}>The company folder</h4>
+      <p style={{ ...muted, margin: 0 }}>The W-9, the insurance and the licenses. Documents → Company lists this folder and its Upload press fills it.</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.95rem' }}>
+        <FolderGlyph />
+        <span style={{ minWidth: 0 }}>
+          <span data-testid="wfg-company-name">{words.name}</span>
+          {words.path ? <span style={{ ...muted, display: 'block', fontWeight: 500 }}>{words.path}</span> : null}
+        </span>
+      </div>
+      {words.owner ? <p style={{ ...muted, margin: 0 }}>{words.owner}</p> : null}
+      {words.from ? <p style={{ ...muted, margin: 0 }}>{words.from}</p> : null}
+      {settings.company ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <CheckWords ok={settings.company.ok} words={settings.company.words} testId="wfg-company-check" />
+          <button type="button" style={btnQuiet} onClick={() => openInExternalBrowser(settings.company!.url)}>
+            Open in Drive
+          </button>
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input
+          aria-label="A Drive folder link for the company papers"
+          placeholder={settings.company ? 'Paste a Drive folder link to move it' : 'Paste a Drive folder link'}
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void check()
+          }}
+          style={input}
+        />
+        <button type="button" style={btn} aria-label="Check the company folder link" disabled={checking || !pasted.trim()} onClick={() => void check()}>
+          {checking ? 'Checking…' : 'Check'}
+        </button>
+      </div>
+      {checkProblem ? <p style={warnLine}>{checkProblem}</p> : null}
+      {checked ? (
+        <>
+          <CheckWords ok={checked.check.ok} words={checked.check.words} testId="wfg-company-pasted-check" />
+          {checked.check.folder ? (
+            <p style={{ ...muted, margin: 0 }}>
+              {checked.check.folder.name}
+              {checked.check.folder.path.length > 0 ? ` · ${[...checked.check.folder.path, checked.check.folder.name].join(' › ')}` : ''}
+            </p>
+          ) : null}
+          {isNew ? (
+            <div>
+              <button type="button" style={btnPrimary} disabled={saving} onClick={() => void use()}>
+                {saving ? 'Saving…' : 'Use this folder for company papers'}
               </button>
             </div>
           ) : null}
@@ -719,6 +824,7 @@ export function DocumentsWhereFilesGo() {
       {settings ? (
         <div style={cards}>
           <RootCard settings={settings} save={save} />
+          <CompanyCard settings={settings} save={save} />
           <NameCard settings={settings} job={sample} bid={bid} save={save} />
           <TreeCard settings={settings} exampleName={sampleName} customerName={sample?.customer_name?.trim() || (sample ? NO_CUSTOMER_FOLDER_NAME : null)} save={save} />
         </div>

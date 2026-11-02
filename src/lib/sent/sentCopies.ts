@@ -123,7 +123,28 @@ export type SentCopy = {
   sentByName: string
   /** The source record's figures as filed with the copy (v2.4714), or null. */
   sourceSnapshot: Record<string, unknown> | null
+  /** The jobs the copy is about and the bid it is on (the Documents spike of 2026-11-01); absent on a row read without them. */
+  jobIds?: string[]
+  bidId?: string | null
 }
+
+/**
+ * A copy's kind as a person reads it: `invoice_email` → *Invoice email*, `test_report` → *Test report*. The code's
+ * name, lower case with underscores, is never changed once rows exist, so the words are made, not stored.
+ */
+export function sentKindWords(kind: string): string {
+  const words = kind
+    .trim()
+    .split(/_+/)
+    .filter(Boolean)
+    .map((w) => (KIND_ACRONYMS.has(w) ? w.toUpperCase() : w))
+    .join(' ')
+  if (!words) return ''
+  return words.charAt(0).toUpperCase() + words.slice(1)
+}
+
+/** The short words a kind's name carries that read as letters, not a word. */
+const KIND_ACRONYMS: ReadonlySet<string> = new Set(['gc', 'pdf', 'aia', 'rfq', 'coi', 'hr'])
 
 const text = (v: unknown): string => (typeof v === 'string' ? v : '')
 
@@ -154,6 +175,8 @@ export function parseSentCopy(raw: unknown): SentCopy | null {
     sentAt: text(r.sent_at),
     sentByName: text(r.sent_by_name).trim(),
     sourceSnapshot: r.source_snapshot && typeof r.source_snapshot === 'object' && !Array.isArray(r.source_snapshot) ? (r.source_snapshot as Record<string, unknown>) : null,
+    ...(Array.isArray(r.job_ids) ? { jobIds: r.job_ids.map(text).filter(Boolean) } : {}),
+    ...('bid_id' in r ? { bidId: text(r.bid_id) || null } : {}),
   }
 }
 
@@ -253,6 +276,25 @@ export const SENT_KIND_GROUPS: ReadonlyArray<{ key: SentKindGroup | 'all'; label
   { key: 'statements', label: 'Statements and reports' },
   { key: 'other', label: 'Other' },
 ]
+
+/**
+ * The tag's colour by kind group (the owner's ask, 2026-11-01): bills green as money in, lien and legal red, contracts
+ * and estimates blue, bids and suppliers the estimator's violet, statements and reports amber, the rest grey. Theme
+ * tokens, so the pairs hold in dark.
+ */
+export const SENT_GROUP_COLORS: Readonly<Record<SentKindGroup, { background: string; color: string }>> = {
+  bills: { background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' },
+  lien: { background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' },
+  contracts: { background: 'var(--bg-blue-tint)', color: 'var(--text-blue-700)' },
+  bids: { background: 'var(--bg-violet-tint)', color: 'var(--text-violet-700)' },
+  statements: { background: 'var(--bg-amber-tint)', color: 'var(--text-amber-800)' },
+  other: { background: 'var(--bg-muted)', color: 'var(--text-muted)' },
+}
+
+/** The tag a line wears: its kind in words and its group's colours. */
+export function sentKindTag(kind: string): { words: string; background: string; color: string } {
+  return { words: sentKindWords(kind), ...SENT_GROUP_COLORS[sentKindGroup(kind)] }
+}
 
 export function sentKindGroup(kind: string): SentKindGroup {
   for (const [group, prefixes] of Object.entries(SENT_GROUP_PREFIXES) as Array<[Exclude<SentKindGroup, 'other'>, ReadonlyArray<string>]>) {

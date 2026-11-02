@@ -94,7 +94,11 @@ Money shows the site's progress as one bar, then every job by stage with what is
 
 ## Check the plans and the questions
 
-Plans lists every plan set, newest first, with its memo and the jobs and bids on it. Press the memo to change it, or press {{button:outline|Add a memo}} to write what changed on the plans. A robot that reads the plans can write the memo too. A chip counts the jobs and bids without plans. Press it to see them. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes.
+Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part.
+
+Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Build from this set}} on an older set to go back to it.
+
+Two chips sit under the table. One counts the parts with no set. One counts the jobs on no part. Press a chip to see them. A job names its part on its Documents tab, under Plans. Ask the estimators about them from the card. The card keeps the question in view while it waits, and shows the answer when it comes. Bids keep their own set and are listed under the table.
 
 Questions starts with two presses, {{button:outline|Ask the estimators}} and {{button:outline|Ask Dispatch}}. Under them sits one table for each lane with questions. Open questions come first, oldest first. Each shows how long it has waited, what it is about, the words and the answer so far. The answered ones fold under a count. With no question at all, the look says nothing is waiting.
 

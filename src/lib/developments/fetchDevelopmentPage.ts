@@ -21,7 +21,7 @@ const BID_COLUMNS_NO_MONEY = BID_COLUMNS.split(', ')
   .filter((c) => c !== 'bid_value' && c !== 'agreed_value' && c !== 'priced_revenue_usd')
   .join(', ')
 const JOB_COLUMNS =
-  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete, collections_note'
+  'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, development_id, bid_id, status, revenue, payments_made, last_work_date, last_bill_date, job_plans_link, plan_part_id, created_at, updated_at, service_type_id, account_manager_user_id, pct_complete, collections_note'
 const REQUEST_COLUMNS = 'id, title, status, priority, created_at, closed_at, closed_note, from_user_id, bid_id, job_ledger_id, development_id, reference_summary'
 
 export type DevelopmentRow = {
