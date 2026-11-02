@@ -10,6 +10,8 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
 import { checkSupabaseError } from '../../utils/errorHandling'
 import { isNotThereYetError } from '../gcWordAskIo'
+import type { ContactKind } from '../contacts/kernel'
+import { contactFlowKindOf } from '../flows/facts'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
 import { SEED_FLOWS } from '../flows/seed'
 import { flat } from '../flows/state'
@@ -100,15 +102,18 @@ export function supabaseOffersIo(client: unknown = supabase, ratingLinks: Rating
       const contactIds = [...new Set(rows.map((o) => o.contact_id))]
       const channelIds = rows.flatMap((o) => (o.channel_id ? [o.channel_id] : []))
       const [contacts, channels, steps] = await Promise.all([
-        contactIds.length ? db.from('contacts').select('id, kind, name, goes_by').in('id', contactIds) : Promise.resolve({ data: [], error: null }),
+        // The person's record beside the contact (v2.6385): a residential customer's own contact is kind `customer` with no
+        // name of its own, so their flow and their name are read from the customers row.
+        contactIds.length ? db.from('contacts').select('id, kind, name, goes_by, customers(name, customer_type)').in('id', contactIds) : Promise.resolve({ data: [], error: null }),
         channelIds.length ? db.from('contact_channels').select('id, value').in('id', channelIds) : Promise.resolve({ data: [], error: null }),
         db.from('flow_steps').select('step_key, name, flows!inner(kind)'),
       ])
       const kinds: Record<string, string> = {}
       const names: Record<string, string | null> = {}
-      for (const c of (contacts.data ?? []) as Array<{ id: string; kind: string; name: string | null; goes_by: string | null }>) {
-        kinds[c.id] = c.kind
-        names[c.id] = c.goes_by?.trim() || c.name
+      type ContactRead = { id: string; kind: string; name: string | null; goes_by: string | null; customers: { name: string | null; customer_type: string | null } | null }
+      for (const c of (contacts.data ?? []) as unknown as ContactRead[]) {
+        kinds[c.id] = contactFlowKindOf(c.kind as ContactKind, c.customers?.customer_type)
+        names[c.id] = c.goes_by?.trim() || c.name || c.customers?.name || null
       }
       const numbers: Record<string, string> = {}
       for (const ch of (channels.data ?? []) as Array<{ id: string; value: string }>) numbers[ch.id] = ch.value
