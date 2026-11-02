@@ -1822,6 +1822,7 @@ export default function LienDeskModal({
     county: property.county ?? '',
     monthLabels: (selected?.months ?? []).map((m) => workMonthShort(m.key)),
     pickedMonthsCount: monthsList.length,
+    monthsOnJob: selected?.months.length ?? 0,
     pendingSessions: wm?.pendingSessions ?? 0,
     datedFromCreation: selected?.datedFromCreation ?? false,
     billedOpen: selected ? openBalance : undefined,
@@ -2272,7 +2273,7 @@ export default function LienDeskModal({
             <>
               {gateByKey.months.tone !== 'ok' ? (
                 <div className="lienGateFact">
-                  <span>Tick at least one month below — the notice has to name the work it covers.</span>
+                  <span>{gateByKey.months.value === 'No month open' ? 'No month is open to notice — every window has closed. The notice that went out is in the grid below.' : 'Tick at least one month below — the notice has to name the work it covers.'}</span>
                   <span className="lienGateFactActions">
                     <button type="button" style={linkBtn} onClick={() => paneRef.current?.querySelector('[data-lien-desk-months]')?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })}>
                       Months and deadlines ↓
