@@ -7,6 +7,7 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { EmptyState } from '../EmptyState'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { PAPER_FROMS, PAPER_KINDS, askChipWords, buildPapersView, emptyPaperDraft, historyLineForPaper, isPaperKind, kindLabel, paperDraftProblem, paperLineWords, papersFromRows, type Paper, type PaperAskLane, type PaperDraft, type PaperFrom, type PaperKind } from '../../lib/papers/papers'
 import type { JobPlansIo } from '../../lib/plans/planSetsIo'
@@ -207,7 +208,12 @@ export function JobPapersSection({
         </p>
       ) : null}
       {papers && view.bySet.length === 0 && view.owed.length === 0 && !form ? (
-        <p style={line}>Nothing is kept with {partName}’s plans yet. {canWrite ? 'Keep a paper puts a spec, a schedule or the owner’s list beside the set it goes with.' : 'The office keeps a spec, a schedule or the owner’s list beside the set it goes with.'}</p>
+        <EmptyState
+          compact
+          main={`Nothing is kept with ${partName}’s plans yet.`}
+          next={canWrite ? { label: 'Keep a paper', onPress: () => open(false) } : undefined}
+          tail={canWrite ? 'puts a spec, a schedule or the owner’s list beside the set it goes with.' : 'The office keeps a spec, a schedule or the owner’s list beside the set it goes with.'}
+        />
       ) : null}
       {view.bySet.map((g) => (
         <div key={g.setId || 'part'} style={{ display: 'grid', gap: 2 }}>
