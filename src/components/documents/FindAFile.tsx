@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type CSSProperties } from 'react'
+import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Link } from 'react-router-dom'
 import { useJobDetailModal } from '../../contexts/JobDetailModalContext'
 import {
@@ -6,6 +6,8 @@ import {
   FIND_MIN_CHARS,
   FIND_WORDS,
   emptyFindWords,
+  excerptNote,
+  excerptParts,
   findFailedWords,
   foundWords,
   groupByHome,
@@ -29,6 +31,8 @@ const small: CSSProperties = { fontSize: '0.8125rem' }
 const inputStyle: CSSProperties = { font: 'inherit', padding: '0.5rem 0.7rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', width: '100%', maxWidth: '32rem' }
 const quiet: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
 const linkStyle: CSSProperties = { color: 'var(--text-link)', fontWeight: 600, textDecoration: 'none' }
+/** The searched words inside the excerpt (v2.6306): bold on the amber token, the text's own colour. */
+const markStyle: CSSProperties = { background: 'var(--bg-amber-100)', color: 'inherit', fontWeight: 700, borderRadius: 3, padding: '0 0.1em' }
 
 /**
  * Find a file (v2.6305): the box on the Documents page's Search tab that searches every job's Drive files by their
@@ -118,6 +122,21 @@ export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE
                       {f.name}
                     </a>
                     {hitMetaWords(f) ? <span style={{ ...small, ...muted }}>{hitMetaWords(f)}</span> : null}
+                    {f.excerpt ? (
+                      <span data-excerpt="" style={{ ...small, color: 'var(--text-700)' }}>
+                        {excerptParts(f.excerpt).map((p, i) =>
+                          p.mark ? (
+                            <mark key={i} style={markStyle}>
+                              {p.text}
+                            </mark>
+                          ) : (
+                            <Fragment key={i}>{p.text}</Fragment>
+                          ),
+                        )}
+                      </span>
+                    ) : excerptNote(f.excerptWhy) ? (
+                      <span style={{ ...small, ...muted, fontStyle: 'italic' }}>{excerptNote(f.excerptWhy)}</span>
+                    ) : null}
                   </li>
                 ))}
               </ul>
