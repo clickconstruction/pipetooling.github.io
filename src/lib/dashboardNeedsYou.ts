@@ -140,6 +140,7 @@ export type NeedsYouItem = {
     | 'contract-missing'
     | 'contract-stale'
     | 'work-orders-unpriced'
+    | 'jobs-no-kind'
     | 'jobs-stale-open'
     | 'capacity-under'
     | 'dispatch-requests-aged'
@@ -251,6 +252,8 @@ export const NEEDS_YOU_RANK: Record<NeedsYouItem['key'], number> = {
   'contract-missing': 40,
   'contract-stale': 50,
   'work-orders-unpriced': 40,
+  // Hygiene tier: a fact to settle, and the readers that gate on a project wait on it (punch list #238, PR 2).
+  'jobs-no-kind': 60,
   'jobs-stale-open': 40,
   // People/planning tier: a crew running light for three weeks is a scheduling question, not a bill.
   'capacity-under': 50,
@@ -426,6 +429,9 @@ export type NeedsYouInputs = {
   myMoney?: { open: number; rollup: string; pastWord: number; stale: number } | null
   unpricedWorkOrdersEnabled?: boolean
   unpricedWorkOrders?: { count: number; subNames: string[]; oldestDays: number | null } | null
+  /** Working jobs `jobKind` reads as not set (punch list #238, PR 2). */
+  jobKindGapsEnabled?: boolean
+  jobKindGaps?: { count: number } | null
   jobFollowupCount: number | null
   jobFollowupStageCounts: Record<JobFollowupStage, number> | null
   /**
@@ -978,6 +984,19 @@ export function buildNeedsYouItems(inputs: NeedsYouInputs): NeedsYouItem[] {
       detail: `Drafted${who} without a subcontract amount${oldestDays != null && oldestDays > 0 ? ` — the oldest ${oldestDays} day${oldestDays === 1 ? '' : 's'} ago` : ''}. Next: price it and send.`,
       figure: String(n),
       actionLabel: n === 1 ? 'Price it' : 'Price them',
+    })
+  }
+
+  if (inputs.jobKindGapsEnabled && (inputs.jobKindGaps?.count ?? 0) > 0) {
+    const n = inputs.jobKindGaps!.count
+    items.push({
+      key: 'jobs-no-kind',
+      severity: 'gray',
+      kicker: 'Jobs',
+      title: n === 1 ? 'A job working has no kind' : `${n} jobs working have no kind`,
+      detail: 'No price before the work, no bid and no stages, so the app cannot read it. Say whether each is a service call or a project.',
+      figure: String(n),
+      actionLabel: n === 1 ? 'See it' : 'See them',
     })
   }
 

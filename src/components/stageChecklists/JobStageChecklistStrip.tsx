@@ -3,14 +3,15 @@
  * window's address. Each stage with a checklist is one press, *Rough In · 2 of 3 answered, not ready* or *Checklist
  * filled*, opening its sheet. A stage with no question is not listed, and a job with none draws nothing, so the
  * window stands exactly as before until the office types the questions or adds a check. Since #237 PR 1 the sheet it
- * opens carries the items added for the job's stage, and the office or the superintendent adds one from it; a
- * superintendent, who has no Documents tab, also sees a stage with no question yet, so the first check has a door.
+ * opens carries the items added for the job's stage, and whoever authors on the job adds one from it: the office, a
+ * superintendent on their own job, an estimator on a job they priced (PR 1b). Those last two have no Documents tab, so
+ * on those jobs they also see a stage with no question yet, and the first check has a door.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useJobStageChecklists } from '../../hooks/useJobStageChecklists'
-import { stageChecklistLine, standingWords, type JobStageChecklist } from '../../lib/jobs/stageChecklist'
-import { stripListsEmptyStage } from '../../lib/jobs/stageChecklistItems'
+import { skippedFor, stageChecklistLine, standingWords, type JobStageChecklist } from '../../lib/jobs/stageChecklist'
+import { asksMayAuthor, canAuthorOnJob, stripEmptyStageWords, stripListsEmptyStage } from '../../lib/jobs/stageChecklistItems'
 import type { StageChecklistSheetIo } from '../../lib/jobs/stageChecklistSheetIo'
 import { StageChecklistSheet } from './StageChecklistSheet'
 
@@ -37,25 +38,28 @@ const tag: Record<'ready' | 'not_ready' | 'none', CSSProperties> = {
   none: { fontSize: '0.75rem', fontWeight: 700, padding: '0 0.5rem', borderRadius: 999, background: 'var(--bg-subtle)', color: 'var(--text-muted)', whiteSpace: 'nowrap' },
 }
 
-export function JobStageChecklistStrip({ jobId, io, rev = 0 }: { jobId: string | null | undefined; io?: StageChecklistSheetIo; rev?: number }) {
+export function JobStageChecklistStrip({ jobId, io, rev = 0, plansUrl = null }: { jobId: string | null | undefined; io?: StageChecklistSheetIo; rev?: number; plansUrl?: string | null }) {
   const { user, profileName, role } = useAuth()
-  const read = useJobStageChecklists(jobId, io, rev)
+  const read = useJobStageChecklists(jobId, io, rev, asksMayAuthor(role))
   const [open, setOpen] = useState<JobStageChecklist | null>(null)
   const who = useMemo(() => ({ userId: user?.id ?? null, name: profileName ?? '' }), [user?.id, profileName])
   const rows = read.rows
   // A stage with a checklist is listed for everyone; one that takes a checklist but has no question yet is listed for
-  // the superintendent (#237), whose one door is the sheet. The office adds from the Documents tab.
-  const listed = (rows ?? []).filter((r) => r.state.standing !== 'none' || (r.state.kind != null && stripListsEmptyStage(role)))
+  // a superintendent or an estimator who authors on this job (#237), whose one door is the sheet. The office adds from
+  // the Documents tab.
+  const listed = (rows ?? []).filter((r) => r.state.standing !== 'none' || (r.state.kind != null && stripListsEmptyStage(role, read.mayAuthor)))
+  const skippedCount = (r: JobStageChecklist) => (r.state.kind ? skippedFor(read.questions, r.state.kind, r.fixtureId).length : 0)
+  const emptyWords = (r: JobStageChecklist) => stripEmptyStageWords(skippedCount(r))
   if (!jobId || !rows || listed.length === 0) return null
   const current = open ? rows.find((r) => r.fixtureId === open.fixtureId) ?? open : null
   return (
     <div data-job-stage-checklists style={{ display: 'flex', flexDirection: 'column', gap: '0.35rem', minWidth: 0 }}>
       <span style={label}>Stage checklists</span>
       {listed.map((r) => (
-        <button key={r.fixtureId} type="button" style={row} onClick={() => setOpen(r)} aria-label={`${r.name} checklist: ${stageChecklistLine(r.state) || 'No questions yet'}`} data-stage-checklist-row={r.state.standing}>
+        <button key={r.fixtureId} type="button" style={row} onClick={() => setOpen(r)} aria-label={`${r.name} checklist: ${stageChecklistLine(r.state) || emptyWords(r)}`} data-stage-checklist-row={r.state.standing}>
           <span style={{ fontWeight: 600, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{r.name}</span>
-          <span style={tag[r.state.standing]}>{standingWords(r.state) || 'none yet'}</span>
-          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>{stageChecklistLine(r.state) || 'No questions yet. Add a check for this job.'}</span>
+          <span style={tag[r.state.standing]}>{standingWords(r.state) || (skippedCount(r) > 0 ? 'skipped' : 'none yet')}</span>
+          <span style={{ fontSize: '0.8125rem', color: 'var(--text-muted)', gridColumn: '1 / -1' }}>{stageChecklistLine(r.state) || emptyWords(r)}</span>
         </button>
       ))}
       {current ? (
@@ -66,10 +70,13 @@ export function JobStageChecklistStrip({ jobId, io, rev = 0 }: { jobId: string |
           answers={read.answersByFixture.get(current.fixtureId) ?? []}
           who={who}
           role={role}
+          canAuthor={canAuthorOnJob(role, read.mayAuthor)}
+          plansUrl={plansUrl}
           io={read.io}
           onAnswer={read.putAnswer}
           onQuestionAdded={read.putQuestion}
           onQuestionRetired={read.dropQuestion}
+          onQuestionsChanged={read.putQuestions}
           onClose={() => setOpen(null)}
         />
       ) : null}

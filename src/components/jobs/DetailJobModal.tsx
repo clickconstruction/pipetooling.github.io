@@ -2136,7 +2136,7 @@ export default function DetailJobModal({
             opening its sheet. Nothing is drawn until the office types the questions. */}
         {open && jobId ? (
           <div style={{ marginTop: '0.75rem' }}>
-            <JobStageChecklistStrip jobId={jobId} />
+            <JobStageChecklistStrip jobId={jobId} plansUrl={(fullJob ?? limitedJob)?.job_plans_link} />
           </div>
         ) : null}
 

@@ -10,7 +10,6 @@
  * object the menu's selects do, so the bar can never show a filter the menu does not have.
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
-import { Link } from 'react-router-dom'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import AccountManIcon from '../icons/AccountManIcon'
@@ -29,8 +28,9 @@ export type JobsStagesCommandBarProps = {
   onOpenFollowups: () => void
   canSeeForecast: boolean
   onOpenForecast: () => void
-  /** The Projects board's door (punch list #242): shown to the roles that may open it. */
+  /** The Projects board's door (punch list #242): shown to the roles that may open it, a button like Forecast's. */
   canSeeProjects?: boolean
+  onOpenProjects?: () => void
   /** Brings the hidden Jobs on a map card back (v2.4518; right of the search box since v2.4522). Null while the card is showing: no button. */
   onShowMap: (() => void) | null
   query: string
@@ -79,6 +79,7 @@ export function JobsStagesCommandBar({
   canSeeForecast,
   onOpenForecast,
   canSeeProjects = false,
+  onOpenProjects,
   onShowMap,
   query,
   onQueryChange,
@@ -202,23 +203,24 @@ export function JobsStagesCommandBar({
         </button>
       )}
       {canSeeProjects && (
-        <Link
-          to="/projects-board"
+        <button
+          type="button"
+          onClick={() => onOpenProjects?.()}
           title="Every working project as one picture: ahead or behind at this pace, with the expected hours set in the open"
           aria-label="Projects board"
           style={{
             padding: '0.5rem 0.9rem',
             background: 'var(--bg-blue-tint)',
-            color: 'var(--text-link)',
-            border: '1px solid var(--border)',
+            color: 'var(--text-blue-700)',
+            border: '1px solid var(--border-blue)',
             borderRadius: 4,
+            cursor: 'pointer',
             fontWeight: 600,
             whiteSpace: 'nowrap',
-            textDecoration: 'none',
           }}
         >
           Projects
-        </Link>
+        </button>
       )}
       {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
       <div

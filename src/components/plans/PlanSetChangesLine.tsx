@@ -33,7 +33,7 @@ export function PlanSetChangesLine({
   if (draft !== null) {
     const same = draft.trim() === entry.set.changes.trim()
     return (
-      <span style={{ display: 'grid', gap: 4, width: '100%', ...style }} data-testid={`plan-set-changes-editor-${entry.set.id}`}>
+      <span style={{ ...style, display: 'grid', gap: 4, width: '100%' }} data-testid={`plan-set-changes-editor-${entry.set.id}`}>
         <textarea style={area} rows={2} value={draft} placeholder={changesPlaceholder(entry.previous)} aria-label={`What changed in ${entry.set.name}`} onChange={(e) => setDraft(e.target.value)} />
         <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
           <button type="button" style={blue} disabled={busy || same} onClick={() => void onSave(entry.set.id, draft).then((ok) => ok && setDraft(null))}>

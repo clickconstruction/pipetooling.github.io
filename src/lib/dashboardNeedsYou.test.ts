@@ -213,6 +213,18 @@ describe('buildNeedsYouItems', () => {
     expect(buildNeedsYouItems(inputs({ unpricedWorkOrdersEnabled: true, unpricedWorkOrders: null }))).toEqual([])
   })
 
+  it('working jobs with no kind (punch list #238): one gray hygiene line, gated by the flag', () => {
+    const one = buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 1 } }))
+    expect(one.map((i) => i.key)).toEqual(['jobs-no-kind'])
+    expect(one[0]).toMatchObject({ severity: 'gray', title: 'A job working has no kind', figure: '1', actionLabel: 'See it' })
+    const many = buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 7 } }))
+    expect(many[0]).toMatchObject({ title: '7 jobs working have no kind', figure: '7', actionLabel: 'See them' })
+    expect(NEEDS_YOU_RANK['jobs-no-kind']).toBe(60)
+    expect(buildNeedsYouItems(inputs({ jobKindGapsEnabled: false, jobKindGaps: { count: 7 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: { count: 0 } }))).toEqual([])
+    expect(buildNeedsYouItems(inputs({ jobKindGapsEnabled: true, jobKindGaps: null }))).toEqual([])
+  })
+
   it('returns nothing when every source is quiet', () => {
     expect(buildNeedsYouItems(inputs())).toEqual([])
   })

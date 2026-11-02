@@ -10,8 +10,8 @@ import { walkBundle } from '../../../scripts/lib/edgeBundle.mjs'
  * The schedule's PR 14b, calls 1 and 2: the kernels the portals' reads run on the edge are a generated copy of `src`
  * (`scripts/edge-kernels.mjs` into `supabase/functions/_shared/gcKernels/`). The copy on disk must equal a regenerate,
  * so a change to any file in it is a regenerate in the same PR; its list of importers must match the functions whose
- * bundles reach it, so `check:edge-drift` and the header name the same functions; and what the edge cannot run is
- * refused by file.
+ * bundles reach it, so `check:edge-drift` and `IMPORTERS` name the same functions; no file in it names them, so a new
+ * importer asks for no redeploy (v2.6348); and what the edge cannot run is refused by file.
  */
 type Io = { readFile: (p: string) => string; exists: (p: string) => boolean }
 const g = generator as {
@@ -45,7 +45,16 @@ describe('the copy of the kernels', () => {
       .map((e) => e.name)
     const reaching = slugs.filter((slug) => walk(ROOT, `supabase/functions/${slug}/index.ts`, disk).files.some((f) => f.startsWith(`${g.OUT_DIR}/`))).sort()
     expect(reaching).toEqual([...g.IMPORTERS].sort())
-    for (const [path, content] of files) expect(content, path).toContain(`Imported by ${g.IMPORTERS.join(', ')}`)
+  })
+
+  it('names no importer, so a function joining IMPORTERS changes no file in the copy and no deployed bundle (v2.6348)', () => {
+    g.IMPORTERS.push('zz-one-more-importer')
+    try {
+      const again = g.generateEdgeKernels(ROOT).files
+      expect([...again].filter(([path, content]) => files.get(path) !== content).map(([path]) => path)).toEqual([])
+    } finally {
+      g.IMPORTERS.pop()
+    }
   })
 
   it('loads on the edge: every relative value import ends in .ts and resolves inside the copy or at a kernel already on the edge, the files of types aside', () => {

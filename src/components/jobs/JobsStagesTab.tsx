@@ -3238,6 +3238,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             }}
             canSeeForecast={canSeeBilledExpectedPay}
             canSeeProjects={canSeeProjectsBoard(authRole)}
+            onOpenProjects={() => navigate('/projects-board')}
             onOpenForecast={() => setBilledPaymentForecastOpen(true)}
             onShowMap={!phoneBoard && jobsMapHidden ? toggleJobsMapHidden : null}
             query={stagesSearchQuery}
