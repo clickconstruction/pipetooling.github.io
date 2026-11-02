@@ -95,6 +95,7 @@ export type FactId =
   | 'found'
   | 'estimate_sent'
   | 'estimate_approved'
+  | 'warranty_signed'
   | 'working'
   | 'done'
   | 'billed'
@@ -136,6 +137,7 @@ export type PaperId =
   | 'submittal'
   | 'certificate'
   | 'estimate'
+  | 'warranty'
   | 'bill'
 
 /** The fact picker's groups, in the order the picker lists them. */
@@ -613,6 +615,18 @@ export const FLOW_FACTS: readonly FlowFact[] = [
     gap: null,
   },
   {
+    id: 'warranty_signed',
+    text: 'they signed the warranty',
+    small: 'the warranty we sent in place of a contract, initialled and signed on their phone. Each warranty sent is a round',
+    group: 'Papers',
+    reads: "job_contracts.signed_at where kind = 'warranty' and voided_at is null (the Contract Desk's row); sent_at while it waits. One round per warranty sent",
+    scope: 'round',
+    kept: 'yes',
+    gap: null,
+    paper: 'warranty',
+    ours: true,
+  },
+  {
     id: 'working',
     text: 'the work started',
     small: 'the job moved to Working',
@@ -864,6 +878,7 @@ export const FLOW_PAPERS: Readonly<Record<PaperId, FlowPaper>> = {
   submittal: { id: 'submittal', name: 'the submittal', short: 'submittal', label: 'Submittal', aName: 'A submittal' },
   certificate: { id: 'certificate', name: 'the certificate', short: 'certificate', label: "Architect's certificate", aName: 'A certificate' },
   estimate: { id: 'estimate', name: 'the estimate', short: 'estimate', label: 'Estimate', aName: 'An estimate' },
+  warranty: { id: 'warranty', name: 'the warranty', short: 'warranty', label: 'Warranty', aName: 'A warranty' },
   bill: { id: 'bill', name: 'the bill', short: 'bill', label: 'Bill', aName: 'A bill' },
 }
 

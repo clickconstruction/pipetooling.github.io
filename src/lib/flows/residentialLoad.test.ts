@@ -11,7 +11,7 @@ import type {
 } from './residentialLoad'
 import { fillLine } from '../quickReplies/blanks'
 import { nudgeLine } from './nudgeDispatch'
-import { billedRounds, estimateStamps, isOnOurWayText, isReviewAskText, paidRounds, residentialStampsFor, statusStamps, visitStamps } from './residentialLoad'
+import { billedRounds, estimateStamps, isOnOurWayText, isReviewAskText, paidRounds, residentialStampsFor, statusStamps, visitStamps, warrantyRounds, type JobAgreementRow } from './residentialLoad'
 import { SEED_FLOWS } from './seed'
 import type { FlowReading } from './state'
 import { readFlow, stepById } from './state'
@@ -231,7 +231,7 @@ describe('residentialStampsFor', () => {
     const r = read(dana('review'))
     expect(where(r)).toBe('null@null')
     expect(laneOn(r, 'job-1312')).toBe(
-      'head null · booked:done onway:done arrived:done found:done estimate:done approved:done working:done done:done billed:done paid:done review:done',
+      'head null · booked:done onway:done arrived:done found:done estimate:done approved:done working:done done:done billed:done paid:done review:done warranty_paper:later',
     )
   })
 
@@ -254,7 +254,7 @@ describe('residentialStampsFor', () => {
       blocks: [{ job_id: 'job-1400', work_date: '2026-10-14', created_at: '2026-10-12T15:00:00Z', created_by: 'u-rosa' }],
     }
     expect(laneOn(read(rows), 'job-1400')).toBe(
-      'head onway · booked:done onway:now arrived:next found:later estimate:later approved:later working:later done:later billed:later paid:later review:later',
+      'head onway · booked:done onway:now arrived:next found:later estimate:later approved:later working:later done:later billed:later paid:later review:later warranty_paper:later',
     )
   })
 
@@ -336,5 +336,72 @@ describe('the visit and the board', () => {
   it('a job past Working with no moves kept still reads working and done, with no day', () => {
     const rows: ResidentialRows = { ...base(), jobs: [job({ id: 'job-1400', status: 'billed' })] }
     expect(statusStamps(rows, 'job-1400').map((x) => `${x.fact} ${x.at}`)).toEqual(['working null', 'done null'])
+  })
+})
+
+describe('the warranty in place of a contract', () => {
+  const warranty = (p: Partial<JobAgreementRow> & Pick<JobAgreementRow, 'id'>): JobAgreementRow => ({
+    job_id: 'job-1312',
+    kind: 'warranty',
+    status: 'sent',
+    sent_at: '2026-10-06T15:00:00Z',
+    signed_at: null,
+    voided_at: null,
+    ...p,
+  })
+  const warrantyStep = (r: FlowReading) => r.lanes.find((l) => l.jobId === 'job-1312')!.steps.find((s) => s.stepId === 'warranty_paper')!
+
+  it('with no warranty the step stands aside, later, and holds nobody', () => {
+    const r = read(dana('approved'))
+    expect(where(r)).toBe('working@job-1312')
+    expect(warrantyStep(r).state).toBe('later')
+    expect(warrantyRounds(dana('approved'), 'job-1312')).toEqual([])
+  })
+
+  it('a warranty out to sign is one round waiting on her, and the lane still moves on', () => {
+    const rows = { ...dana('approved'), agreements: [warranty({ id: 'w-1' })] }
+    expect(warrantyRounds(rows, 'job-1312').map((x) => `${x.key} ${x.name} ${x.opened} ${x.stamps.map((s) => `${s.fact} ${s.mark} ${s.at}`)}`)).toEqual([
+      'w-1 Warranty 2026-10-06T15:00:00Z warranty_signed wait 2026-10-06T15:00:00Z',
+    ])
+    const r = read(rows)
+    expect(where(r)).toBe('working@job-1312')
+    expect(warrantyStep(r).state).toBe('now')
+    expect(warrantyStep(r).rounds.map((x) => `${x.key} ${x.state}`)).toEqual(['w-1 now'])
+  })
+
+  it('signed, the round is done on the day she signed, and the step reads done', () => {
+    const rows = { ...dana('working'), agreements: [warranty({ id: 'w-1', status: 'signed', signed_at: '2026-10-06T17:30:00Z' })] }
+    expect(warrantyRounds(rows, 'job-1312').map((x) => `${x.stamps.map((s) => `${s.fact} ${s.mark} ${s.at}`)}`)).toEqual(['warranty_signed ok 2026-10-06T17:30:00Z'])
+    const r = read(rows)
+    expect(warrantyStep(r).state).toBe('done')
+    expect(where(r)).toBe('done@job-1312')
+  })
+
+  it('a draft, a voided warranty and a contract are no round; two sent are numbered; one signed on our device opens on its signing day', () => {
+    const rows = {
+      ...dana('approved'),
+      agreements: [
+        warranty({ id: 'w-draft', status: 'draft', sent_at: null }),
+        warranty({ id: 'w-void', voided_at: '2026-10-06T16:00:00Z' }),
+        warranty({ id: 'c-1', kind: 'contract', status: 'signed', signed_at: '2026-10-06T16:00:00Z' }),
+        warranty({ id: 'w-other', job_id: 'job-1290' }),
+        warranty({ id: 'w-2', sent_at: '2026-10-07T15:00:00Z' }),
+        warranty({ id: 'w-1', status: 'signed', signed_at: '2026-10-06T17:30:00Z' }),
+        warranty({ id: 'w-3', status: 'signed', sent_at: null, signed_at: '2026-10-08T15:00:00Z' }),
+      ],
+    }
+    expect(warrantyRounds(rows, 'job-1312').map((x) => `${x.key} ${x.name} ${x.opened} ${x.stamps.map((s) => `${s.mark}`)}`)).toEqual([
+      'w-1 Warranty 1 2026-10-06T15:00:00Z ok',
+      'w-2 Warranty 2 2026-10-07T15:00:00Z wait',
+      'w-3 Warranty 3 2026-10-08T15:00:00Z ok',
+    ])
+    expect(warrantyRounds(rows, 'job-1290').map((x) => x.key)).toEqual(['w-other'])
+  })
+
+  it('a warranty on a job with nothing else yet starts the lane, since a paper went', () => {
+    const rows: ResidentialRows = { ...base(), jobs: [job({ id: 'job-1400' })], agreements: [warranty({ id: 'w-1', job_id: 'job-1400' })] }
+    const r = read(rows)
+    expect(where(r)).toBe('booked@job-1400')
+    expect(r.lanes.find((l) => l.jobId === 'job-1400')!.steps.find((s) => s.stepId === 'warranty_paper')!.state).toBe('now')
   })
 })

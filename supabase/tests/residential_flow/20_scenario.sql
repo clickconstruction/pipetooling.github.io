@@ -1,5 +1,6 @@
 -- The residential customer's flow (migration *_residential_flow, residential R4 · 1 of 4, after Messages cut 4): six
 -- flows (the sub's seeded by *_sub_flow), the residential one with its eleven steps in one Per job lane as SEED_FLOWS.residential draws them
+-- (and, since *_job_warranty, the Warranty step aside at the end of the lane, which that migration's own bed reads step by step)
 -- (src/lib/flows/seed.ts); Approved and Paid carry the app's reminders and no other step has one; the eleven facts come
 -- last in flow_fact_ids() and the estimate and the bill last in flow_paper_ids(); a sub flow is allowed and an unknown
 -- kind refused; the migration once more at the -- @rerun line (the bed script streams it in there, as a second push
@@ -48,8 +49,8 @@ $$;
 SELECT rfl.same('seven flows, the residential one among them',
   (SELECT string_agg(kind || ':' || name, ', ' ORDER BY kind COLLATE "C") FROM public.flows),
   'arch:Architect flow, candidate:Candidate flow, customer:Customer flow, residential:Residential customer flow, sub:Sub flow, trade:Trade partner flow, unknown:The flow');
-SELECT rfl.same('eleven steps in one Per job lane', rfl.order(),
-  'per_job.booked per_job.onway per_job.arrived per_job.found per_job.estimate per_job.approved per_job.working per_job.done per_job.billed per_job.paid per_job.review');
+SELECT rfl.same('eleven steps in one Per job lane, the warranty aside after them', rfl.order(),
+  'per_job.booked per_job.onway per_job.arrived per_job.found per_job.estimate per_job.approved per_job.working per_job.done per_job.billed per_job.paid per_job.review per_job.warranty_paper');
 SELECT rfl.same('Booked: ours, the day we come',
   rfl.step('booked'), '0|setup|us|booked||-|-|-|-|-|-|1|the day we come|Booked|Agendado');
 SELECT rfl.same('Estimate sent: ours, the estimate, no reminder',
@@ -62,9 +63,9 @@ SELECT rfl.same('Paid: theirs, once per bill, the app''s text at pay by',
   rfl.step('paid'), '9|building|them|paid||each bill|rounds|0|text|app|pay_by|14|-|Paid|Pagado');
 SELECT rfl.same('Review asked: ours, last, the app''s text the morning after Paid (v2.5943)',
   rfl.step('review'), '10|building|us|review_asked||-|-|1|text|app|-|1|a review link|Review asked|Reseña pedida');
-SELECT rfl.same('Approved, Paid and the review ask carry a reminder',
+SELECT rfl.same('Approved, Paid, the review ask and the warranty carry a reminder',
   (SELECT string_agg(s.step_key, ',' ORDER BY s.position) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id
-   WHERE f.kind = 'residential' AND s.nudge_days IS NOT NULL), 'approved,paid,review');
+   WHERE f.kind = 'residential' AND s.nudge_days IS NOT NULL), 'approved,paid,review,warranty_paper');
 SELECT rfl.same('the seats are the office''s to set',
   (SELECT count(*) FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'residential' AND s.seat_user_id IS NOT NULL)::text, '0');
 
@@ -86,7 +87,7 @@ SELECT rfl.refused('a kind the app does not know', $q$INSERT INTO public.flows (
 UPDATE public.flow_steps s SET usual = 5 FROM public.flows f WHERE f.id = s.flow_id AND f.kind = 'residential' AND s.step_key = 'booked';
 -- @rerun
 SELECT rfl.same('an office edit stays', split_part(rfl.step('booked'), '|', 12), '5');
-SELECT rfl.same('still eleven steps', rfl.steps(), '11');
+SELECT rfl.same('still twelve steps, the warranty among them', rfl.steps(), '12');
 
 -- 5 · A flow seeded afresh adds the eleven steps once.
 DELETE FROM public.flows WHERE kind = 'residential';
