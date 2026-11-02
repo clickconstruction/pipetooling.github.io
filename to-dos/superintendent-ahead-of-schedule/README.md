@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: gated
-status: thought through 2026-11-01 with the owner, read against the Costs tab, the Labor tab, the Build desk and People → Review; later the same day his four turns folded in (the kind by when the price is known, a labor budget in dollars beside the hours, budgets born on each line, the owner tuning what the assistant never types), with three more boards and the Line Budgets Walk; seven mock-up files; nothing built; three decisions are the owner's and he is not ready to make them
+status: thought through 2026-11-01 with the owner, read against the Costs tab, the Labor tab, the Build desk and People → Review; later the same day his four turns folded in (the kind by when the price is known, a labor budget in dollars beside the hours, budgets born on each line, the owner tuning what the assistant never types), with three more boards and the Line Budgets Walk; seven mock-up files; a design spike in the real app the same evening proved the sliders in place and settled that the budget is columns on the line row, and carries the owner's two grid asks (the badge as the press, small cents) into PR 1; nothing merged; three decisions are the owner's and he is not ready to make them
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -280,7 +280,15 @@ kernel and card; the Schedule column and the bonus setting; the certified-percen
    states; the quiet line under each price on ① Line Items and the Pricing tab, never on a
    customer's paper (the lens's What customers see check proves it); the Quickfill deck line
    *projects working with no hours baseline*. Useful on its own: the Pipeline's burning card and
-   the Build desk read it at once.
+   the Build desk read it at once. The spike (below) settled three things PR 1 carries: the
+   budget is columns on the line item row itself (`budget_labor_pct`, `budget_materials_pct`,
+   `budget_source`, `budget_tuned_at`, `budget_rate_usd` on `jobs_ledger_fixtures`), written by
+   the same autosave that writes the price, never a store keyed on the grid's row id; and two
+   grid changes the owner asked for on the same screen ride with it: the stage badge is the
+   press (tap the number or the diamond to flip In order / Any time, the kind in very small
+   words under it, the two-button strip under each line gone), and the cents read small in the
+   Unit price boxes and the Job Total (`MoneyDecimalAmountInput`'s `smallCents`, the overlay the
+   Other charges box uses).
 2. **PR 1b · the owner tunes** (S). The tuning sheet with two sliders per line, the brush, Undo and
    Save with the owner's name; the weekly Needs you review card with *Looks right* and *Tune*;
    Settings → Jobs & billing → Line budgets with the splits per kind, the burdened cost rate and
@@ -310,3 +318,20 @@ before his three calls; PR 3 and PR 4 are not. Later the same day his four turns
 (dollars beside hours, born on the line, tuned by him alone, gated by #238's kind) were folded
 in with their boards and the Line Budgets Walk; PR 1 is now the budgets at award and PR 1b the
 tuning, and the four new calls carry the drawn defaults until he flips them.
+
+Same evening, a design spike in the real app (worktree `spike-line-budgets`, nothing committed):
+the quiet line under each line item on Bill → ① Line Items, the two sliders opening as a row
+under the line with *Back to* and autosave, and a Costs tab card reading the sum of the lines
+and a row per line, walked on a ZZ Test project of four lines. The sliders and the one-press
+Back to are right; the margin line in red under target is the thing the owner wants. The spike
+kept its budgets in a store keyed on the grid's row id, and a reload lost the tuning while the
+line stayed, because the form mints that id and the save hands back other ids — so PR 1 keeps
+the budget on the row. Also found: the ✎ press collides with the name box's ✎ (the source glyph
+becomes the press); the Costs tab's amber *No baseline* strip must give way to the card; *Kept so
+far* reads as profit with nothing spent; a line with no percent of its own must not borrow the
+job's. The owner's two grid asks from the same walk (the badge as the press, small cents) are
+built in the spike and fold into PR 1. His third ask, the per-line table on the Costs card,
+is redrawn in the spike as one row per line with the same reading as the quiet line (glyph,
+name, price; the labor | materials bar with the line's own percent as a mark across it; the
+words under it), *Kept so far* reading "—, nothing spent yet" until something is spent, and no
+line borrowing the job's percent; PR 1 draws it that way.

@@ -26,6 +26,13 @@ import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
  *                                                  checklist and box photos still in a bucket on their way to the folder
  *   POST { action: 'thumb', job_id, file_id }   → the file's thumbnail bytes (Drive's, fetched with our token), image/*
  *   POST { action: 'full', job_id, file_id }    → the file's bytes, streamed, up to 25 MB
+ *   POST { action: 'files', job_id }           → { job: { folderId, url, hold }, sections: [{ key, name, folderId, url,
+ *                                                  files: [{ id, name, mime, bytes, modified, by, url, from }], more }] }
+ *                                                  (v2.6299): what is in the job's five folders and the job folder's own
+ *                                                  loose files, newest first, up to 100 a folder, read live from Drive;
+ *                                                  `from` names a file the app filed itself (a photo by its source, a
+ *                                                  file the app linked), null for one put there by hand; a folder not
+ *                                                  made yet has folderId null; `hold` is the row's `drive_folder_hold`.
  *
  * A thumb or a full read is answered only for a file whose parent is one of the job's two photo folders.
  *
@@ -48,13 +55,13 @@ const FULL_CAP_BYTES = 25 * 1024 * 1024
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
 
-type Ask = { action: 'list'; jobId: string } | { action: 'thumb' | 'full'; jobId: string; fileId: string }
+type Ask = { action: 'list' | 'files'; jobId: string } | { action: 'thumb' | 'full'; jobId: string; fileId: string }
 
 function parseAsk(body: Record<string, unknown> | null): Ask | null {
   if (!body) return null
   const jobId = typeof body.job_id === 'string' && UUID.test(body.job_id) ? body.job_id : null
   if (!jobId) return null
-  if (body.action === 'list') return { action: 'list', jobId }
+  if (body.action === 'list' || body.action === 'files') return { action: body.action, jobId }
   if (body.action === 'thumb' || body.action === 'full') {
     const fileId = typeof body.file_id === 'string' && DRIVE_ID.test(body.file_id) ? body.file_id : null
     return fileId ? { action: body.action, jobId, fileId } : null
@@ -118,6 +125,100 @@ async function waitingCount(admin: SupabaseClient, jobId: string): Promise<numbe
   return (a.count ?? 0) + (b.count ?? 0)
 }
 
+// ---- the folder listing (v2.6299): what is in the five folders, read live, with what the app filed itself named ----
+
+const FILES_CAP = 100
+
+type SectionKey = 'job' | 'pictures' | 'plans' | 'photos' | 'sentByUs'
+
+interface ListedFile {
+  id: string
+  name: string
+  mime: string | null
+  bytes: number | null
+  modified: string | null
+  by: string | null
+  url: string | null
+  from: { kind: 'photo' | 'link'; source: string | null } | null
+}
+
+interface DriveListedFull extends DriveListed {
+  webViewLink?: string
+  lastModifyingUser?: { displayName?: string; emailAddress?: string }
+}
+
+/** A folder's files (never the folders inside), newest first, up to the cap; `more` when the folder holds more. */
+async function filesIn(token: string, folderId: string, from: Map<string, ListedFile['from']>): Promise<{ files: ListedFile[]; more: boolean }> {
+  const files: ListedFile[] = []
+  let pageToken = ''
+  do {
+    const q = encodeURIComponent(`'${folderId}' in parents and trashed = false`)
+    const page = await driveGet<{ files?: DriveListedFull[]; nextPageToken?: string }>(
+      token,
+      `${DRIVE}/files?q=${q}&pageSize=100&orderBy=modifiedTime desc&fields=nextPageToken,files(id,name,mimeType,size,modifiedTime,webViewLink,lastModifyingUser(displayName,emailAddress))&supportsAllDrives=true&includeItemsFromAllDrives=true${pageToken ? `&pageToken=${encodeURIComponent(pageToken)}` : ''}`,
+    )
+    for (const f of page.files ?? []) {
+      if (f.mimeType === DRIVE_FOLDER_MIME) continue
+      if (files.length >= FILES_CAP) return { files, more: true }
+      files.push({
+        id: f.id,
+        name: f.name,
+        mime: f.mimeType ?? null,
+        bytes: f.size == null ? null : Number(f.size),
+        modified: f.modifiedTime ?? null,
+        by: f.lastModifyingUser?.displayName ?? f.lastModifyingUser?.emailAddress ?? null,
+        url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType ?? null),
+        from: from.get(f.id) ?? null,
+      })
+    }
+    pageToken = page.nextPageToken ?? ''
+  } while (pageToken)
+  return { files, more: false }
+}
+
+/** The Drive file ids the app filed itself for this job, with what each was: the photo views' and the app's links. */
+async function filedByApp(admin: SupabaseClient, jobId: string): Promise<Map<string, ListedFile['from']>> {
+  const out = new Map<string, ListedFile['from']>()
+  const [photos, links] = await Promise.all([
+    admin.from('uploaded_photos').select('drive_file_id, source').eq('job_id', jobId).not('drive_file_id', 'is', null),
+    admin.from('drive_links').select('drive_file_id').eq('jobs_ledger_id', jobId),
+  ])
+  for (const r of (links.data ?? []) as { drive_file_id: string }[]) out.set(r.drive_file_id, { kind: 'link', source: null })
+  for (const r of (photos.data ?? []) as { drive_file_id: string; source: string | null }[]) out.set(r.drive_file_id, { kind: 'photo', source: r.source ?? null })
+  return out
+}
+
+/** The job's five folders and its own loose files, each read live; a folder not made yet is listed with folderId null. */
+async function filesAnswer(admin: SupabaseClient, token: string, jobId: string): Promise<Record<string, unknown>> {
+  const { data } = await admin.from('jobs_ledger').select('google_drive_link, job_pictures_link, job_plans_link, drive_folder_hold').eq('id', jobId).maybeSingle()
+  const row = data as { google_drive_link?: string | null; job_pictures_link?: string | null; job_plans_link?: string | null; drive_folder_hold?: string | null } | null
+  const jobFolderId = driveFolderIdFromUrl(row?.google_drive_link ?? null)
+  const child = async (parent: string | null, name: string) => (parent ? await childFolder(token, parent, name) : null)
+  const picturesId = driveFolderIdFromUrl(row?.job_pictures_link ?? null) ?? (await child(jobFolderId, JOB_FOLDER_TREE.pictures))
+  const plansId = driveFolderIdFromUrl(row?.job_plans_link ?? null) ?? (await child(jobFolderId, JOB_FOLDER_TREE.plans))
+  const teamId = await child(jobFolderId, JOB_FOLDER_TREE.teamOnly)
+  const photosId = await child(teamId, JOB_FOLDER_TREE.photos)
+  const sentId = await child(teamId, JOB_FOLDER_TREE.sentByUs)
+  const from = await filedByApp(admin, jobId)
+  const plan: { key: SectionKey; name: string; folderId: string | null }[] = [
+    { key: 'pictures', name: JOB_FOLDER_TREE.pictures, folderId: picturesId },
+    { key: 'plans', name: JOB_FOLDER_TREE.plans, folderId: plansId },
+    { key: 'photos', name: `${JOB_FOLDER_TREE.teamOnly} › ${JOB_FOLDER_TREE.photos}`, folderId: photosId },
+    { key: 'sentByUs', name: `${JOB_FOLDER_TREE.teamOnly} › ${JOB_FOLDER_TREE.sentByUs}`, folderId: sentId },
+    { key: 'job', name: 'Job folder', folderId: jobFolderId },
+  ]
+  const sections = await Promise.all(
+    plan.map(async (p) => {
+      const listed = p.folderId ? await filesIn(token, p.folderId, from) : { files: [], more: false }
+      return { key: p.key, name: p.name, folderId: p.folderId, url: p.folderId ? driveViewUrl(p.folderId, DRIVE_FOLDER_MIME) : null, files: listed.files, more: listed.more }
+    }),
+  )
+  return {
+    job: { folderId: jobFolderId, url: jobFolderId ? driveViewUrl(jobFolderId, DRIVE_FOLDER_MIME) : null, hold: row?.drive_folder_hold ?? null },
+    sections,
+  }
+}
+
 async function fileInside(token: string, folders: JobFolders, fileId: string): Promise<{ mime: string; name: string; thumb: string | null } | null> {
   const meta = await driveGet<{ parents?: string[]; mimeType: string; name: string; thumbnailLink?: string }>(
     token,
@@ -148,6 +249,7 @@ serve(async (req) => {
     if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 503)
     const admin = createClient(supabaseUrl, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!, { auth: { persistSession: false } })
     const token = await googleAccessToken(saJson)
+    if (ask.action === 'files') return json(await filesAnswer(admin, token, ask.jobId))
     const folders = await jobPhotoFolders(admin, token, ask.jobId)
 
     if (ask.action === 'list') {

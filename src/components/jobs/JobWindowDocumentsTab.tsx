@@ -22,6 +22,7 @@ import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 import { HoursStatementsSection } from './HoursStatementsSection'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
+import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
 import { JobPlansSection } from './JobPlansSection'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
@@ -41,6 +42,9 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
  * strip's viewer, and says so on a job with no folder; every photo across every job is Documents → Photos. Since v2.6298
  * (punch list #239, PR 2) a **Plans** section before the folders names the set the job builds from, the older sets and our
  * as-builts, and adds a set or an as-built (`JobPlansSection`).
+ * Since v2.6299
+ * an **In the folders** section between them lists what is in the job's five folders, read live from Drive each time
+ * the tab opens, each file with where it came from (the app's own record, or a hand in Drive).
  */
 
 /** One step above the job window's overlay (1010) and its form's nested overlays. */
@@ -386,6 +390,8 @@ export function JobWindowDocumentsTab({
           </p>
         ) : null}
       </section>
+
+      <JobDocumentsFolderFiles job={job} />
 
       <JobDocumentsPhotos jobId={job.id} driveLink={job.google_drive_link} picturesLink={job.job_pictures_link} />
 
