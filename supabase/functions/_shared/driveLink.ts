@@ -187,6 +187,7 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
       const name = str(b.name, 300)
       const mime = typeof b.mime === 'string' && b.mime.length <= 200 ? b.mime : 'application/octet-stream'
       return name ? { action: 'put_company', name, mime } : null
+    }
     case 'search': {
       const words = str(b.words, 200)
       return words && words.length >= 2 ? { action: 'search', words } : null
