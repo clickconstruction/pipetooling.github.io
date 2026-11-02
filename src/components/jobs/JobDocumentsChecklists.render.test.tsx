@@ -2,9 +2,9 @@
 /**
  * The Documents tab's Stage checklists read-out over a fake io (punch list #237, PR 1): each stage with its standing
  * chip, every row with its pick, stamp, note and photo, *open* for what is unanswered, an item added for the job
- * with its tag and adder, the office's inline add and two-press take off, a job with no stage that takes a
- * checklist, a read that fails with its reason and Retry, and the strip above the tabs moving with the section.
- * Made-up names and questions on a made-up job.
+ * with its adder, the office's inline add and two-press take off, a job with no stage that takes a checklist, a read
+ * that fails with its reason and Retry, and the strip above the tabs moving with the section. What the walks added is
+ * in `JobDocumentsChecklists.walks.render.test.tsx`. Made-up names and questions on a made-up job.
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
@@ -64,6 +64,15 @@ function fakeIo(over: Partial<StageChecklistSheetIo> = {}, questions: StageCheck
       const i = live.findIndex((q) => q.id === id)
       if (i >= 0) live.splice(i, 1)
     }),
+    mayAuthor: vi.fn(async () => false),
+    skip: vi.fn(async () => {
+      throw new Error('not here')
+    }),
+    putBack: vi.fn(async () => undefined),
+    reorder: vi.fn(async () => undefined),
+    promote: vi.fn(async () => {
+      throw new Error('not here')
+    }),
     ...over,
   }
 }
@@ -93,7 +102,6 @@ describe('JobDocumentsChecklists', () => {
     expect(rows[0]!.textContent).toContain('Yes · Luis Ortega · Nov 1 · 9:14 am · photo in Drive')
     expect(rows[1]!.textContent).toContain('No · Luis Ortega · Nov 1 · 9:20 am · “Roofer not here until Mon”')
     expect(rows[2]!.textContent).toContain('open · 3. Are the carriers in units 7 and 8 set?')
-    expect(within(rows[2]!).getByText('this job')).toBeTruthy()
     expect(rows[2]!.textContent).toContain('Added by Pat Sample · Nov 1')
     expect(screen.getByText(/A No or a Not here is an answer\./)).toBeTruthy()
   })
@@ -117,7 +125,7 @@ describe('JobDocumentsChecklists', () => {
     fireEvent.change(await screen.findByLabelText('Add a check for Trim Set on this job'), { target: { value: 'Photo of the ADA lav rough heights before the wall closes' } })
     fireEvent.click(screen.getByLabelText('Asks for a photo'))
     fireEvent.click(screen.getByRole('button', { name: 'Add the check' }))
-    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB.id, fixtureId: 'f3', kind: 'trim_set', words: 'Photo of the ADA lav rough heights before the wall closes', asksPhoto: true }, { userId: 'u-jo', name: 'Jo Sample' }))
+    await waitFor(() => expect(io.addItem).toHaveBeenCalledWith({ jobId: JOB.id, fixtureId: 'f3', kind: 'trim_set', order: 1, words: 'Photo of the ADA lav rough heights before the wall closes', asksPhoto: true, sheet: '', why: '' }, { userId: 'u-jo', name: 'Jo Sample' }))
     expect(await screen.findByText('Added. Trim Set is now 2 of 4.')).toBeTruthy()
     expect(within(trim()).getByText('Not ready · 2 of 4')).toBeTruthy()
     expect(screen.getByTestId('job-documents-checklists-summary').textContent).toBe('1 of 2 stages ready · 2 items added on this job')

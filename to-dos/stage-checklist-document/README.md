@@ -2,7 +2,7 @@
 name: "Stage checklists as documents on the job: items anyone on the job can add, a stamp on every answer, a signature where the author asks for one, and a record that files itself"
 number: 237
 group: ready
-status: building, PR 1 on claude/checklist-items-237-pr1-385119 (v2.6328) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · what the spike's walks added to PR 1 (Skip on this job, the per-item promote, the plan-sheet chip, reorder, the add box staying open, the estimator as author) is not in it and follows as PR 1b · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
+status: building, PR 1 on claude/checklist-items-237-pr1-385119 (v2.6328) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b on claude/checklist-items-237-pr1b (v2.6347, a draft stacked on PR 1, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
 summary: >
   The stage checklists of punch list #164 live in Settings, hold only the company's questions,
   and show the office nothing per job. The owner wants them moved onto the job's Documents tab as
@@ -12,10 +12,10 @@ summary: >
   with a number and a PDF in the job's Drive folder. The company's standard lists are made in the
   same place and promoted from a job, so Settings becomes a read-only mirror. The superintendent's
   line of #234 reads the same count as its proof.
-next: PR 1b, what the walks added (Skip on this job with its reason, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼ to reorder, the add box staying open, the estimator as author), once PR 1 is on main and 20261102050000 is pushed; then PR 2, needs a signature.
+next: land PR 1b once PR 1 is on main and 20261102050000 is pushed (rebase --onto, mark ready, arm, push 20261102084500 right after the merge); then PR 2, needs a signature.
 size: L as a train of six (M · M · M · M · S · S); four migrations; no edge function beyond the PDF renderer the hours statement already has
 blocker: none for PR 1b and PR 4. PR 2 takes "Not here signs" and PR 3 takes "files itself at the last answer" as the owner's defaults; he can change either before they build.
-ver: v2.6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
+ver: v2.6347 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
 opinion: now — the office has typed no questions yet because there was nowhere good to read the answers; this gives them the place, and the signature is what makes a checklist worth more than a report
 mockup: to-dos/stage-checklist-document/mockup-document-and-signature.html
 ---
@@ -256,8 +256,9 @@ stay out of the repo.
    job's stage checklist*. Useful on its own.
    **PR 1b · what the walks added** (M). The named groups with *Skip on this job* and the per-item
    *Add to the company's list* (a `job_id`-scoped skip row with its reason; a promote copies the
-   row to the null scope and retires the job one), the plan-sheet chip, ▲ ▼ to reorder, the add box
-   staying open, the estimator as author on the jobs he priced.
+   words and the photo ask to the null scope, retires the job one and moves its answer to the copy),
+   the plan-sheet chip, ▲ ▼ to reorder the job's own checks, the add box staying open, the estimator
+   as author on the jobs he priced, from the strip's sheet, since his job pane has no Documents tab.
 2. **PR 2 · needs a signature** (M). The toggle on every add box, the signature columns on the
    answer (one migration), the signature sheet with the gravity words and the agreed line over
    `SignatureTypeOrDrawInput`, the lock, *Take it back*, the outbox ride, the guide *sign a
@@ -267,8 +268,9 @@ stay out of the repo.
    *Print the checklists* on the pay application's paper, the Documents section reading filed and
    open.
 4. **PR 4 · authoring on Documents** (S). Make a list for a stage with none, *Use as the company's
-   list*, the Settings card read-only with the source line; the guide *write the questions for a
-   stage checklist* rewritten to the new door.
+   list*, taking a question off the company's list with a reason, the add box's company scope, ▲ ▼ on
+   the company's order, the Settings card read-only with the source line (`promoted_from` holds it);
+   the guide *write the questions for a stage checklist* rewritten to the new door.
 5. **PR 5 · the line's proof** (S). The superintendent's line of #234 reads this count; lands
    with #234's PR 3 or after it.
 
@@ -307,3 +309,20 @@ superintendent alone, who has no Documents tab, so the first check has a door; t
 Documents. A technician sees no add press, and a company question has no take off anywhere. This
 card's PR 1 widened (*The spike*) while the build was running, so what the walks added is split out
 as PR 1b rather than held back on a PR already built; the owner can change that. Not merged yet.
+
+2026-11-02, later: PR 1b built on `claude/checklist-items-237-pr1b` (v2.6347,
+`docs/recent-features/v2.6347.md`), a draft stacked on PR 1, with migration `20261102084500`. What the
+walks added is in it, with four calls the walks did not make. The estimator authors from the strip's
+sheet, since `resolveJobWindowMode` gives him the read-only pane and the spike's Documents tab is one he
+does not have, so the arrows are on the sheet too. A superintendent or an estimator sees the presses only
+where `stage_checklist_may_author` says yes. ▲ ▼ move the job's own checks, and the company's order waits
+for PR 4. A promote moves the job's answer to the company's row and leaves the plan sheet and the why
+behind. The owner can change any of them. Not merged yet: it lands after PR 1.
+
+A gap this build found and did not close, older than it: splitting or combining a job moves a stage line
+to another job (`jobs_ledger_fixtures.job_id`) and its checklist rows keep the old `job_id`. The answers
+have done this since #164, the job items since PR 1, the skips since PR 1b. The new job's sheet reads by
+`job_id`, so it loses them, and a combine deletes the source job, whose cascade takes them. This card last
+recorded no questions typed on prod, so little should be at stake yet; nobody has read prod for this note. The
+likely fix is an `AFTER UPDATE OF job_id` trigger on the stage lines that carries `job_id` to the three tables,
+before the office starts typing questions.

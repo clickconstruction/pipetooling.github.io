@@ -16,6 +16,10 @@
  * shows them under *Added for this job*; they count toward ready like a company question, so an item added after a
  * stage read ready flips it back, which is the point. Every answer stamps its row with the name and the time.
  *
+ * Since PR 1b (v2.6347) a company question can be skipped on one job's stage with a reason: the question carries its
+ * skips, so `templateFor` leaves it off that stage's list and off its count, on every surface, and the company's list
+ * stays whole. A check can also name the plan sheet it came from and why it is there.
+ *
  * Pure. The tables are `stage_checklist_templates` and `stage_checklist_answers` (PR 2); the sheet, the Pipeline's
  * mark and the gallery come after.
  */
@@ -65,6 +69,23 @@ export interface StageChecklistQuestion {
   addedBy?: string
   /** When it was added, ISO. */
   addedAt?: string | null
+  /** The plan sheet or detail a check came from, as typed: *P-201 detail 4*. */
+  sheet?: string | null
+  /** Why the check is here, in one line, as typed. */
+  why?: string | null
+  /** The stages of the job or jobs read where this company question is skipped. */
+  skips?: readonly StageChecklistSkip[]
+}
+
+/** A company question left off one job's stage (#237 PR 1b): who, when and why. */
+export interface StageChecklistSkip {
+  id: string
+  fixtureId: string
+  why: string
+  /** The name as the row keeps it. */
+  by: string
+  byId?: string | null
+  at?: string | null
 }
 
 /** True for an item added for one job's stage; false for the company's question. */
@@ -72,18 +93,52 @@ export function isJobItem(q: Pick<StageChecklistQuestion, 'fixtureId'>): boolean
   return Boolean(q.fixtureId)
 }
 
+/** The skip that leaves this question off this stage, or null. */
+export function skipOn(q: Pick<StageChecklistQuestion, 'skips'>, fixtureId: string | null | undefined): StageChecklistSkip | null {
+  if (!fixtureId) return null
+  return q.skips?.find((s) => s.fixtureId === fixtureId) ?? null
+}
+
+/** The question with this skip on it, as a skip lands. */
+export function addSkip(q: StageChecklistQuestion, skip: StageChecklistSkip): StageChecklistQuestion {
+  return { ...q, skips: [...(q.skips ?? []).filter((s) => s.fixtureId !== skip.fixtureId), skip] }
+}
+
+/** The question with this skip off it, as a put back lands. */
+export function dropSkip(q: StageChecklistQuestion, skipId: string): StageChecklistQuestion {
+  return { ...q, skips: (q.skips ?? []).filter((s) => s.id !== skipId) }
+}
+
+/** The questions with each one's skips on it, as the reads hand them to every surface. */
+export function withSkips(questions: readonly StageChecklistQuestion[], skips: ReadonlyArray<StageChecklistSkip & { questionId: string }>): StageChecklistQuestion[] {
+  const byQuestion = new Map<string, StageChecklistSkip[]>()
+  for (const { questionId, ...skip } of skips) byQuestion.set(questionId, [...(byQuestion.get(questionId) ?? []), skip])
+  return questions.map((q) => {
+    const on = byQuestion.get(q.id)
+    return on ? { ...q, skips: on } : q
+  })
+}
+
 const byPlace = (a: StageChecklistQuestion, b: StageChecklistQuestion) => a.order - b.order || (a.addedAt ?? '').localeCompare(b.addedAt ?? '') || a.words.localeCompare(b.words) || a.id.localeCompare(b.id)
 
 /**
- * The questions of one kind, in the office's order, then the items added for the stage named by `fixtureId` in the
- * order they were added. Without a stage, the company's rows alone. Every question given is taken as live; a
- * retired one is left out upstream.
+ * The questions of one kind, in the office's order, less any skipped on this stage, then the items added for the stage
+ * named by `fixtureId` in the order they were put. Without a stage, the company's rows alone. Every question given is
+ * taken as live; a retired one is left out upstream.
  */
 export function templateFor(questions: readonly StageChecklistQuestion[], kind: StageChecklistKind, fixtureId?: string | null): StageChecklistQuestion[] {
   const ofKind = questions.filter((q) => q.kind === kind)
-  const company = ofKind.filter((q) => !isJobItem(q)).sort(byPlace)
+  const company = ofKind.filter((q) => !isJobItem(q) && !skipOn(q, fixtureId)).sort(byPlace)
   const job = fixtureId ? ofKind.filter((q) => q.fixtureId === fixtureId).sort(byPlace) : []
   return [...company, ...job]
+}
+
+/** The company's questions skipped on this stage, in the office's order, each with its skip: the *Skipped on this job* line. */
+export function skippedFor(questions: readonly StageChecklistQuestion[], kind: StageChecklistKind, fixtureId: string): Array<{ question: StageChecklistQuestion; skip: StageChecklistSkip }> {
+  return questions
+    .filter((q) => q.kind === kind && !isJobItem(q) && skipOn(q, fixtureId) != null)
+    .sort(byPlace)
+    .map((question) => ({ question, skip: skipOn(question, fixtureId)! }))
 }
 
 /** A stage's template split into its two groups, as the sheet and the read-out draw them. */
@@ -148,7 +203,7 @@ export type StageChecklistStanding = 'none' | 'ready' | 'not_ready'
 
 export interface StageChecklistState {
   kind: StageChecklistKind | null
-  /** The live questions for the stage's kind. 0 when the stage has no checklist. */
+  /** The live questions for the stage's kind, less any skipped on it. 0 when the stage has no checklist. */
   asked: number
   answered: number
   standing: StageChecklistStanding
