@@ -12,7 +12,7 @@ import DashboardProjectsStrip, { PROJECTS_STRIP_OPEN_KEY } from './DashboardProj
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { projectPace, type ProjectRow } from '../../lib/jobs/projectsBoard'
 import { DEFAULT_LINE_BUDGET_SETTINGS } from '../../lib/jobs/lineBudgets'
-import type { JobChargeEvent } from '../../lib/jobChargesTimeline'
+import { laborEventsOf } from '../../lib/jobs/projectBoardRead'
 
 const fixtures = [
   { id: 'r', name: 'Rough In', stage_kind: 'order', line_kind: 'fixture', line_unit_price: 9000, count: 1, progress_pct: 100, sequence_order: 1 },
@@ -20,14 +20,15 @@ const fixtures = [
   { id: 's', name: 'Trim Set', stage_kind: 'order', line_kind: 'fixture', line_unit_price: 9000, count: 1, progress_pct: null, sequence_order: 3 },
 ]
 const row = (id: string, no: string, name: string, pct: number | null): ProjectRow => ({ id, hcp_number: no, click_number: null, job_name: name, job_address: '', status: 'working', pct_complete: pct, revenue: 27000, fixtures })
-const days = (hours: number): JobChargeEvent[] => [{ source: 'team_labor', dateKey: '2026-10-20', amount: hours * 45, label: 'a', who: 'Ana', hours }]
-const card = (r: ProjectRow, hours: number, loading = false) => {
-  const pace = projectPace({ row: r, budgetRow: null, burn: loading ? null : { chargeEvents: days(hours), teamHours: hours, revenue: 27000 }, target: null, checklist: { answered: 0, asked: 0 }, settings: DEFAULT_LINE_BUDGET_SETTINGS, targetMarginPct: null })
-  return { row: r, pace, line: pace.line, loading, failed: false, events: loading ? [] : days(hours), valueEvents: [] }
+const card = (r: ProjectRow, hours: number) => {
+  const job = { ...r, budgetKind: null, budgetHours: null, labor: [{ ymd: '2026-10-20', who: 'Ana', hours }], values: [], spentPct: null }
+  const pace = projectPace({ job, target: null, checklist: { answered: 0, asked: 0 }, settings: DEFAULT_LINE_BUDGET_SETTINGS })
+  return { row: job, pace, line: pace.line, dollars: false, events: laborEventsOf(job), valueEvents: [] }
 }
 // Worst first, as the hook sorts them: 200 h in at 30% is behind; 48 h at 50% is ahead; no percent is early.
-let cards = [card(row('b', '1050', 'The Bunker', 30), 200), card(row('a', '1044', 'The Lodge', 50), 48), card(row('c', '1060', 'The Barn', null), 10)]
-let rows: ProjectRow[] | null = cards.map((c) => c.row)
+const cards = [card(row('b', '1050', 'The Bunker', 30), 200), card(row('a', '1044', 'The Lodge', 50), 48), card(row('c', '1060', 'The Barn', null), 10)]
+let rows: unknown[] | null = cards.map((c) => c.row)
+let lastDayDetail: boolean | undefined
 let failure: { kind: string; message: string } | null = null
 
 vi.mock('../../hooks/useAuth', async () => {
@@ -35,7 +36,7 @@ vi.mock('../../hooks/useAuth', async () => {
   return useAuthModuleMock({ role: 'master_technician' })
 })
 vi.mock('../../hooks/useProjectsBoard', () => ({
-  useProjectsBoard: () => ({ rows, cards, targets: { byJob: new Map(), history: [], undo: null, loading: false, error: null, setTarget: vi.fn(), clearTarget: vi.fn(), undoLatest: vi.fn(), reload: () => {} }, loading: rows == null, failure, reload: () => {} }),
+  useProjectsBoard: (o: { dayDetail?: boolean }) => (lastDayDetail = o.dayDetail, { rows, cards, targets: { byJob: new Map(), history: [], undo: null, loading: false, error: null, setTarget: vi.fn(), clearTarget: vi.fn(), undoLatest: vi.fn(), reload: () => {} }, loading: rows == null, failure, reload: () => {} }),
 }))
 
 describe('DashboardProjectsStrip', () => {
@@ -57,12 +58,15 @@ describe('DashboardProjectsStrip', () => {
     expect(screen.getByTestId('dashboard-projects-worst').textContent).toContain('J1050 · The Bunker')
     expect(strip.textContent).toContain('Open ▾')
     expect(screen.queryByTestId('project-card')).toBeNull()
+    // Closed, the Dashboard asks for no day's detail: the one server read carries the line.
+    expect(lastDayDetail).toBe(false)
   })
 
   it('opens to the board\'s cards with the door to the board, and remembers the choice', () => {
     renderWithProviders(<DashboardProjectsStrip />)
     fireEvent.click(screen.getByTestId('dashboard-projects-strip'))
     expect(screen.getAllByTestId('project-card')).toHaveLength(3)
+    expect(lastDayDetail).toBe(true)
     expect(screen.getByRole('link', { name: 'Open the board →' }).getAttribute('href')).toBe('/projects-board')
     expect(localStorage.getItem(PROJECTS_STRIP_OPEN_KEY)).toBe('1')
     fireEvent.click(screen.getByRole('button', { name: 'Close ▴' }))

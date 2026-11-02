@@ -1808,7 +1808,7 @@ export default function DashboardFinancialsSection({ overheadCard = null }: { ov
           Dashboard and Dispatch Mode home) carry it, and so it reuses the cards' AR items. */}
       {!loading && !error && data ? <DashboardMoneyInStrip ar={data.ar.items} collections={data.arCollections.items} /> : null}
       {/* Projects (punch list #242, PR 6): the leader's one line under Money in, pressed open to the board's cards. */}
-      {role === 'dev' || role === 'master_technician' ? <DashboardProjectsStrip /> : null}
+      {!loading && (role === 'dev' || role === 'master_technician') ? <DashboardProjectsStrip /> : null}
       {openCard && data ? (
         <ItemsModal
           cardKey={openCard}

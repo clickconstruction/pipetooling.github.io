@@ -1,50 +1,48 @@
 /**
- * The Projects board's one read (punch list #242, PR 6): every Working job with its lines,
- * filtered by the gate, with the Costs tab's bulk cost read, the budget rows, the stage
- * checklists' count and the expected hours, assembled into cards worst first through
- * `projectPace`. The board page and the Dashboard's Projects strip both call this, so the two
- * never disagree about a project. Lifted out of `pages/ProjectsBoard.tsx` (v2.6330).
+ * The Projects board's read (punch list #242): `list_project_board`, the one server read the
+ * board, the leader's Dashboard line and the superintendent's phone card all stand on, so no
+ * role's own RLS can make its number differ from another's. Narrowed by the gate, then the
+ * stage checklists' count and the expected hours, assembled into cards worst first through
+ * `projectPace`. `dayDetail` adds a payroll viewer's own read of each job's cost events, for the
+ * dollars on a day's card; it is off while the Dashboard's line is closed, and every other viewer's
+ * day reads the hours the server read already carries.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
 import { useBidVsActualBurnInputs } from './useBidVsActualBurnInputs'
-import { useJobBudgetRows } from './useJobBudgetRows'
 import { useStageChecklistStates } from './useStageChecklistStates'
 import { useExpectedHours, type ExpectedHoursApi } from './useExpectedHours'
 import { DEFAULT_LINE_BUDGET_SETTINGS } from '../lib/jobs/lineBudgets'
-import { readTargetMarginPct } from '../lib/jobs/jobBurnForVerdict'
-import { checklistCountOf, isWorkingProject, projectPace, sortByPace, type ProjectPace, type ProjectRow } from '../lib/jobs/projectsBoard'
+import { checklistCountOf, isWorkingProject, projectPace, sortByPace, type ProjectPace } from '../lib/jobs/projectsBoard'
+import { laborEventsOf, parseProjectBoardRead, valueEventsOf, type ProjectBoardJob, type ProjectBoardRead } from '../lib/jobs/projectBoardRead'
 import type { SuperintendentLine } from '../lib/jobs/superintendentLine'
 import type { JobChargeEvent, JobValueEvent } from '../lib/jobChargesTimeline'
 
-// The five budget columns of #234's PR 1 ride the fixture read (PR 5), so a line the owner tuned moves its stage's share.
-const SELECT = 'id, hcp_number, click_number, job_name, job_address, status, pct_complete, revenue, fixtures:jobs_ledger_fixtures(id, name, stage_kind, line_kind, line_unit_price, count, progress_pct, sequence_order, budget_labor_pct, budget_materials_pct, budget_source, budget_tuned_at, budget_rate_usd)'
+// The function is younger than the generated types; the types PR after the push removes this cast.
+const db = supabase as unknown as SupabaseClient
 
-async function loadWorkingProjects(): Promise<ProjectRow[]> {
-  const rows = await withSupabaseRetry(
-    () => supabase.from('jobs_ledger').select(SELECT).eq('status', 'working').order('hcp_number', { ascending: false }).limit(300),
-    'load project list',
-  )
-  return ((rows ?? []) as unknown as ProjectRow[]).filter(isWorkingProject)
+/** The server's read: every Working job, or just these ids (the phone's one job). Throws its reason. */
+export async function loadProjectBoardRead(jobIds?: readonly string[]): Promise<ProjectBoardRead> {
+  const raw = await withSupabaseRetry(() => db.rpc('list_project_board', { p_job_ids: jobIds ? [...jobIds] : null }), 'load project list')
+  return parseProjectBoardRead(raw)
 }
 
 export type ProjectsBoardCard = {
-  row: ProjectRow
+  row: ProjectBoardJob
   pace: ProjectPace
   line: SuperintendentLine
-  /** The job's cost events are still loading. */
-  loading: boolean
-  /** The job's cost read failed. */
-  failed: boolean
+  /** This viewer's day cards carry dollars: a payroll viewer whose read of this job has landed. */
+  dollars: boolean
   events: readonly JobChargeEvent[]
   valueEvents: readonly JobValueEvent[]
 }
 
 export type ProjectsBoardState = {
   /** The projects, or null before the first read lands. */
-  rows: ProjectRow[] | null
+  rows: ProjectBoardJob[] | null
   /** One card per project, worst first. */
   cards: ProjectsBoardCard[]
   targets: ExpectedHoursApi
@@ -55,21 +53,20 @@ export type ProjectsBoardState = {
   reload: () => void
 }
 
-export function useProjectsBoard(enabled = true): ProjectsBoardState {
-  const [rows, setRows] = useState<ProjectRow[] | null>(null)
-  const [loading, setLoading] = useState(enabled)
+export function useProjectsBoard({ dayDetail = true }: { dayDetail?: boolean } = {}): ProjectsBoardState {
+  const [read, setRead] = useState<ProjectBoardRead | null>(null)
+  const [loading, setLoading] = useState(true)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
   const [tick, setTick] = useState(0)
   const reload = useCallback(() => setTick((t) => t + 1), [])
 
   useEffect(() => {
-    if (!enabled) return
     let gone = false
     setLoading(true)
-    loadWorkingProjects()
+    loadProjectBoardRead()
       .then((r) => {
         if (gone) return
-        setRows(r)
+        setRead(r)
         setFailure(null)
       })
       .catch((e: unknown) => {
@@ -81,34 +78,38 @@ export function useProjectsBoard(enabled = true): ProjectsBoardState {
     return () => {
       gone = true
     }
-  }, [tick, enabled])
+  }, [tick])
 
+  const rows = useMemo(() => (read ? read.jobs.filter(isWorkingProject) : null), [read])
   const ids = useMemo(() => (rows ?? []).map((r) => r.id), [rows])
-  const burn = useBidVsActualBurnInputs(enabled && ids.length > 0, ids)
-  const budgets = useJobBudgetRows(ids, enabled && ids.length > 0)
-  const checklists = useStageChecklistStates(ids, enabled && ids.length > 0)
-  const targets = useExpectedHours(ids, enabled && ids.length > 0)
+  const wantsDollars = Boolean(read?.readsWages) && dayDetail
+  const burn = useBidVsActualBurnInputs(wantsDollars && ids.length > 0, ids)
+  const checklists = useStageChecklistStates(ids, ids.length > 0)
+  const targets = useExpectedHours(ids, ids.length > 0)
 
   const cards = useMemo(() => {
     const settings = DEFAULT_LINE_BUDGET_SETTINGS
-    const margin = readTargetMarginPct()
     return sortByPace(
       (rows ?? []).map((row) => {
         const inputs = burn.inputsByJob.get(row.id)
-        const ready = inputs && inputs !== 'error' ? inputs : null
+        const ready = wantsDollars && inputs && inputs !== 'error' ? inputs : null
         const pace = projectPace({
-          row,
-          budgetRow: budgets.get(row.id),
-          burn: ready ? { chargeEvents: ready.chargeEvents, teamHours: ready.teamHours, revenue: ready.revenue } : null,
+          job: row,
           target: targets.byJob.get(row.id) ?? null,
           checklist: checklistCountOf(row.fixtures ?? [], checklists.questions, checklists.answersByFixture),
           settings,
-          targetMarginPct: margin,
         })
-        return { row, pace, line: pace.line, loading: inputs == null, failed: inputs === 'error', events: ready?.chargeEvents ?? [], valueEvents: ready?.valueEvents ?? [] }
+        return {
+          row,
+          pace,
+          line: pace.line,
+          dollars: ready != null,
+          events: ready ? ready.chargeEvents : laborEventsOf(row),
+          valueEvents: ready ? ready.valueEvents : valueEventsOf(row),
+        }
       }),
     )
-  }, [rows, burn.inputsByJob, budgets, targets.byJob, checklists.questions, checklists.answersByFixture])
+  }, [rows, burn.inputsByJob, wantsDollars, targets.byJob, checklists.questions, checklists.answersByFixture])
 
   return { rows, cards, targets, loading, failure, reload }
 }

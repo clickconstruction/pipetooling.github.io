@@ -51,12 +51,12 @@ const doorWords: CSSProperties = { fontSize: '0.75rem', fontWeight: 600, color: 
 export default function DashboardProjectsStrip() {
   const { role } = useAuth()
   const [open, setOpen] = useState(readOpenPref)
-  const board = useProjectsBoard()
+  // Closed, the strip reads the one server read and no day's detail, so the Dashboard stays quick.
+  const board = useProjectsBoard({ dayDetail: open })
   const { rows, cards, targets, loading, failure, reload } = board
   const canEdit = canSetExpectedHours(role)
   const counts = useMemo(() => paceCounts(cards.map((c) => c.line)), [cards])
   const worst = cards[0] && cards[0].line.tone === 'behind' ? cards[0] : null
-  const reading = cards.some((c) => c.loading)
   const toggle = () => {
     const next = !open
     writeOpenPref(next)
@@ -109,7 +109,6 @@ export default function DashboardProjectsStrip() {
             {projectLabel(worst.row)} · <span style={{ fontWeight: 700 }}>{worstWords(worst.line)}</span>
           </span>
         ) : null}
-        {reading ? <span style={{ ...seg, color: 'var(--text-faint)' }}>reading the days…</span> : null}
         <span style={{ ...doorWords, marginLeft: 'auto' }}>Open ▾</span>
       </button>
     )
@@ -120,7 +119,7 @@ export default function DashboardProjectsStrip() {
       <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.5rem', padding: '0.625rem 1rem 0.5rem', flexWrap: 'wrap' }}>
         <span style={quiet}>Projects</span>
         <span style={{ fontSize: '0.75rem', color: 'var(--text-faint)', whiteSpace: 'nowrap' }}>
-          · {counts.total} working, worst first{reading ? ' · reading the days…' : ''}
+          · {counts.total} working, worst first
         </span>
         <Link to="/projects-board" style={{ ...doorWords, marginLeft: 'auto', textDecoration: 'none' }}>
           Open the board →
@@ -142,8 +141,7 @@ export default function DashboardProjectsStrip() {
               target={targets.byJob.get(c.row.id) ?? null}
               events={c.events}
               valueEvents={c.valueEvents}
-              loading={c.loading}
-              failed={c.failed}
+              dollars={c.dollars}
               canEdit={canEdit}
               onSetTarget={(hours, from, why) => targets.setTarget(c.row.id, hours, from, why)}
               onClearTarget={() => targets.clearTarget(c.row.id)}

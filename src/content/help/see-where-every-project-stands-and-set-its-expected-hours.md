@@ -54,3 +54,5 @@ The leader also sees Projects on the Dashboard, as one line under Money in. The 
 ## Who sees what
 
 The leader, the assistant and the controller set the expected hours. A superintendent sees the whole board and reads every number, and sets nothing. The point is that someone else moved the number.
+
+Everyone on the board reads the same hours and the same money percent. Only a dev, the leader and the controller see dollars on a day. Everyone else reads each person's hours and the report.

@@ -74,8 +74,7 @@ export default function ProjectsBoard() {
               target={targets.byJob.get(c.row.id) ?? null}
               events={c.events}
               valueEvents={c.valueEvents}
-              loading={c.loading}
-              failed={c.failed}
+              dollars={c.dollars}
               canEdit={canEdit}
               initiallyOpen={c.row.id === focusJob}
               onSetTarget={(hours, from, why) => targets.setTarget(c.row.id, hours, from, why)}
