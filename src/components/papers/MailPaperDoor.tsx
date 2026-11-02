@@ -285,6 +285,7 @@ export function MailPaperDoor({
         <span>Link</span>
         <input style={input} value={draft.link} placeholder="A Drive link, or leave it empty for now" onChange={(e) => put({ link: e.target.value })} />
       </label>
+      {!messageId && mailFileCount > 0 ? <p style={muted}>{PLAN_SET_FILES_WORDS.mailNoLineAhead(mailFileCount)}</p> : null}
       <label style={field}>
         <span>Asks us</span>
         <span>
@@ -307,7 +308,6 @@ export function MailPaperDoor({
         </>
       ) : null}
       <p style={hist}>Will write on the site’s History: {historyLineForPaper({ kind: draft.kind, name: draft.name || '…', source: draft.from, memo: draft.memo, owed: false, askWords: draft.asks ? draft.askWords || '…' : null, askLane: draft.askLane }, goesWithName, null)}</p>
-      {!messageId && mailFileCount > 0 ? <p style={muted}>{PLAN_SET_FILES_WORDS.mailNoLineAhead(mailFileCount)}</p> : null}
       {problem ? <p style={{ ...muted, color: 'var(--text-amber-800)' }}>{problem}</p> : null}
       <div style={{ display: 'flex', gap: '0.5rem' }}>
         <button type="button" style={blue} disabled={busy || !draft.name.trim()} onClick={() => void keep()}>
