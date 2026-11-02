@@ -4,7 +4,7 @@
  * older sets folded, the as-builts, the jobs on no part and the parts with no set as chips, + Part and + New
  * set through the writes, Build from this set, and the bids' pinned sets. Made-up names only.
  */
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { PlanPartRow, PlanSetRow } from '../../lib/plans/planSets'
@@ -40,6 +40,7 @@ const sets = [
   set({ id: 's2', part_id: 'p2', name: 'Bunker addendum 1', kind: 'addendum', dated: '2026-10-02', replaces_set_id: 's1', memo: 'P-201 redrawn', link: 'https://drive.google.com/addendum' }),
   set({ id: 's3', part_id: 'p1', name: 'Lodge issued set', dated: '2026-08-11' }),
   set({ id: 's4', part_id: 'p2', name: 'As-built · JP991 · 2026-11-01', kind: 'as_built', source: 'ours', job_id: 'j1', marks_up_set_id: 's2', came_at: '2026-11-01T00:00:00Z' }),
+  set({ id: 's0', part_id: 'p2', name: 'Bunker permit set', kind: 'permit', dated: null, came_at: '2026-07-01T12:00:00Z', memo: 'The first set, before the issued one', link: '' }),
 ]
 const jobs = [
   { id: 'j1', label: 'JP991', plan_part_id: 'p2' },
@@ -84,10 +85,30 @@ describe('DevelopmentPartsCard', () => {
     renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
     fireEvent.click(screen.getByTestId('site-older-p2'))
     expect(screen.getByTestId('site-older-list-p2').textContent).toContain('Bunker issued set')
-    fireEvent.click(screen.getByRole('button', { name: 'Build from this set' }))
+    fireEvent.click(screen.getAllByRole('button', { name: 'Build from this set' })[0]!)
     await waitFor(() => expect(w.buildFrom).toHaveBeenCalledWith('p2', 's1'))
     fireEvent.click(screen.getAllByRole('button', { name: 'Open ↗' })[0]!)
     expect(opened.length).toBe(1)
+  })
+
+  it('reads each older set date first, draws a dashed rule between sets, and groups the presses at the right', () => {
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={writes()} />)
+    fireEvent.click(screen.getByTestId('site-older-p2'))
+    const rows = within(screen.getByTestId('site-older-list-p2')).getAllByTestId('site-older-set')
+    expect(rows.map((r) => within(r).getByTestId('site-older-day').textContent)).toEqual(['Aug 11, 2026', 'came Jul 1, 2026'])
+    expect(rows[0]!.textContent!.startsWith('Aug 11, 2026')).toBe(true)
+    expect(rows[0]!.textContent).toContain('Bunker issued set Issued set · the GC')
+    expect(rows[0]!.textContent).not.toContain('dated')
+    expect(rows[1]!.textContent).toContain('The first set, before the issued one')
+    expect(rows[0]!.getAttribute('style')).not.toContain('dashed')
+    expect(rows[1]!.getAttribute('style')).toContain('border-top: 1px dashed var(--border)')
+    const presses = within(rows[0]!).getByTestId('site-older-presses')
+    expect(within(presses).getByRole('button', { name: 'Open ↗' })).toBeTruthy()
+    expect(within(presses).getByRole('button', { name: 'Build from this set' })).toBeTruthy()
+    expect(within(presses).getByRole('button', { name: 'Remove Bunker issued set' })).toBeTruthy()
+    expect(presses.style.marginLeft).toBe('auto')
+    expect(presses.style.whiteSpace).toBe('nowrap')
+    expect(within(rows[1]!).getByText('link still to come')).toBeTruthy()
   })
 
   it('adds a set on a part through the form, replacing the current one, and names a new part', async () => {

@@ -131,6 +131,32 @@ export function setLineWords(s: Pick<PlanSetRow, 'kind' | 'source' | 'dated' | '
 }
 
 /**
+ * The day an older-sets row leads with (the Development page's fold, v2.6355): the date on the sheets with its
+ * year, *Aug 11, 2026*, else the day it came as *came Oct 30, 2026* — undated sets sort last, so the word marks
+ * them. Empty only when neither reads as a day.
+ */
+export function setRowDayWords(s: Pick<PlanSetRow, 'dated' | 'came_at'>): string {
+  const onSheets = s.dated ? planSetDateWords(s.dated) : null
+  if (onSheets) return onSheets
+  const came = dayWithYearWords(s.came_at)
+  return came ? `came ${came}` : ''
+}
+
+/** The rest of that row's line, with no date in it: *Revised set · the architect*. */
+export function setRowLineWords(s: Pick<PlanSetRow, 'kind' | 'source'>): string {
+  return `${kindLabel(s.kind)} · ${sourceWords(s.source)}`
+}
+
+/** *Oct 30, 2026* from a stamp or a civil date, read as `shortDayWords` reads it; empty when it is not a day. */
+function dayWithYearWords(iso: string | null | undefined): string {
+  if (!iso) return ''
+  const civil = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso)
+  const d = civil ? new Date(Number(civil[1]), Number(civil[2]) - 1, Number(civil[3])) : new Date(iso)
+  if (Number.isNaN(d.getTime())) return ''
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+}
+
+/**
  * The line under *Building from*: *replaced Issued set on Oct 20 · set by Taunya*. `setByName` is the
  * name of whoever made it current; null when nothing recorded one.
  */
