@@ -263,10 +263,11 @@ SELECT mfl.refused('a second skip of the same step', $q$SELECT public.flow_skip_
 SELECT mfl.refused('a skip says why', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'who', 'project', '00000000-0000-0000-0000-0000000006f1', '')$q$, 'whyEmpty');
 -- v2.6385 · A residential customer's contact is kind customer; the residential flow's steps are theirs too, and a step on
 -- neither flow is still refused, with the step named.
-INSERT INTO pressed SELECT 'skip-res', public.flow_skip_step('00000000-0000-0000-0000-000000006006', 'booked', NULL, NULL, 'They called to move it.');
+-- (Kept out of `pressed`: the assertion below the holds joins it expecting the one skip of 6004.)
+SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006006', 'booked', NULL, NULL, 'They called to move it.');
 SELECT mfl.same('a residential customer''s skip of Booked stands, though their contact is kind customer',
-  (SELECT concat_ws('|', k.step_key, k.why) FROM public.contact_step_skips k JOIN pressed p ON p.id = k.id AND p.what = 'skip-res'),
-  'booked|They called to move it.');
+  (SELECT concat_ws('|', k.step_key, k.why, k.by_name) FROM public.contact_step_skips k WHERE k.contact_id = '00000000-0000-0000-0000-000000006006'),
+  'booked|They called to move it.|Flows Estimator');
 SELECT mfl.refused('a residential customer has no Portal opened', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006006', 'portal', NULL, NULL, 'x')$q$, 'stepUnknown');
 SELECT mfl.refused('a commercial customer''s contact has no Booked', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'booked', NULL, NULL, 'x')$q$, 'stepUnknown');
 SELECT public.flow_unskip_step(id) FROM pressed WHERE what = 'skip';
