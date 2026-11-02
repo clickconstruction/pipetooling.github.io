@@ -433,6 +433,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
         <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
           {/* The label prints from the office page, which opens on this box's label (#209). */}
           <a href={`/jobs?tab=materials&job=${jobId}&label=${container.id}`} target="_blank" rel="noopener" style={{ ...quiet, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}>Print the label for {container.label}</a>
+          <a href={`/jobs?tab=materials&job=${jobId}&manifest=${container.id}`} target="_blank" rel="noopener" style={{ ...quiet, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}>Print the manifest for {container.label}</a>
           <button type="button" style={{ ...quiet, color: 'var(--text-muted)' }} onClick={() => setSheet({ kind: 'retire', container })}>Retire {container.label}</button>
         </div>
       ) : null}
