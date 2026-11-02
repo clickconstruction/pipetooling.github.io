@@ -23,7 +23,10 @@ const pOf = (built: ReturnType<typeof writeRpcBody>): Record<string, unknown> =>
 
 describe('devMcpWrites — the allowlist', () => {
   it('names only RPCs a migration creates, each gated is_dev() inside and closed to anon', () => {
-    const rpcs = new Set(Object.values(WRITE_VERBS).map((v) => v.rpc))
+    // v2.6317: the four plan-part verbs name no RPC — they write the rows the Plans section writes, under RLS (devMcpPlanSets.test.ts).
+    const tableVerbs = Object.entries(WRITE_VERBS).filter(([, v]) => v.rpc === null).map(([k]) => k)
+    expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper'])
+    const rpcs = new Set(Object.values(WRITE_VERBS).flatMap((v) => (v.rpc === null ? [] : [v.rpc])))
     expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
@@ -235,7 +238,7 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.14.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.15.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -297,7 +300,7 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.14.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.15.0'")
   })
 })
 
@@ -346,8 +349,8 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.14.0'")
-    expect(SERVER).toContain('Writes are twenty-nine verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.15.0'")
+    expect(SERVER).toContain('Writes are thirty-three verbs and nothing else')
   })
 })
 
@@ -520,7 +523,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     expect(h1).not.toBe(await planHash('plan_count', pOf(built), { ...reply, container_rows: 5 }))
     expect(planCommitment('plan_count', reply)).not.toHaveProperty('dry_run')
   })
-  it('the plan replies point at their apply verbs, a repeat apply says the rows are on the job, and the server declares the nine verbs and reports 0.14.0', () => {
+  it('the plan replies point at their apply verbs, a repeat apply says the rows are on the job, and the server declares the nine verbs and reports 0.15.0', () => {
     expect(String(planReply('plan_container', { after: { container: 'A2' } }, 'e'.repeat(64)).next)).toContain('apply_container')
     expect(String(planReply('plan_delivery', {}, 'e'.repeat(64)).next)).toContain('apply_delivery')
     expect(String(planReply('plan_movement', {}, 'e'.repeat(64)).next)).toContain('apply_movement')
@@ -531,8 +534,8 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.14.0'")
-    expect(SERVER).toContain('Writes are twenty-nine verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.15.0'")
+    expect(SERVER).toContain('Writes are thirty-three verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
 })

@@ -12,6 +12,12 @@
 // under the dev's own RLS. The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
 // hash uses the platform's crypto.subtle, which Deno and Node both have.
+//
+// v2.6317 (punch list #239's MCP leg): the four plan-part verbs name no RPC — rpc is null — because the rows they
+// write (plan_sets, plan_parts, a lane's request) are the ones the job window's Plans section writes as rows under
+// RLS, and no RPC exists for them. Their dry run and write live in devMcpPlanSets.ts; the grammar is the same.
+
+import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
 
 export const WRITE_VERBS = {
   plan_cost_batch: { rpc: 'cost_batch_apply', step: 'plan' },
@@ -50,6 +56,13 @@ export const WRITE_VERBS = {
   // dry run and the real run, which takes the Drive links as p_link.
   plan_file_plans: { rpc: 'dev_bid_write', step: 'plan' },
   apply_file_plans: { rpc: 'dev_bid_write', step: 'apply' },
+  // v2.6317 / 0.14.0 (punch list #239): a set of drawings, or a paper, on a plan part — the rows the job window's
+  // Plans section writes (src/lib/plans/planSetsIo.ts addSet / keepPaper / markPaperCame), as the dev under RLS.
+  // The dry run is the server's own read of the part (devMcpPlanSets.ts); no RPC, so rpc is null.
+  plan_plan_set: { rpc: null, step: 'plan' },
+  apply_plan_set: { rpc: null, step: 'apply' },
+  plan_paper: { rpc: null, step: 'plan' },
+  apply_paper: { rpc: null, step: 'apply' },
   // v2.6367 (punch list #209): Materials on site — what the phone's On site tab and the office's Materials tab write, as
   // one RPC with an action each (dev_on_site_write, SECURITY INVOKER: the gate, the CHECKs, training mode and the twin
   // fence apply as on the screen). A cage or box (add, move, retire), a delivery into Unsorted or a box, one press on a
@@ -105,7 +118,7 @@ const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/
 const HASH_RE = /^[0-9a-f]{64}$/
 
 export type WriteBody =
-  | { ok: true; rpc: string; step: WriteStep; body: Json; dryRunBody: Json | null; target: string | null; planHash: string | null }
+  | { ok: true; rpc: string | null; step: WriteStep; body: Json; dryRunBody: Json | null; target: string | null; planHash: string | null }
   | { ok: false; error: string }
 
 /**
@@ -118,6 +131,12 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   const planHash = typeof input.plan_hash === 'string' ? input.plan_hash.trim().toLowerCase() : null
   if (step === 'apply' && !(planHash && HASH_RE.test(planHash))) {
     return { ok: false, error: `${verb} needs plan_hash — the value ${planVerbFor(verb)} replied with. Plan first, read the plan, then apply it.` }
+  }
+  if (isPlanPartVerb(verb)) {
+    // v2.6317: the shape check is devMcpPlanSets'; the dry run is the server's read of the part, not an RPC's.
+    const built = planPartInput(verb, input)
+    if (!built.ok) return built
+    return { ok: true, rpc: null, step, body: { p: built.p }, dryRunBody: null, target: built.target, planHash }
   }
   if (verb === 'revert_cost_batch') {
     const batchId = typeof input.batch_id === 'string' ? input.batch_id.trim() : ''
@@ -631,8 +650,10 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
     const again = verb === 'apply_container' ? 'read_on_site shows the box. To add another, plan one with a different stencil.' : verb === 'apply_delivery' ? 'read_on_site shows the lines in Unsorted (or the box named). A second delivery of the same lines is a new plan — give it its own source.' : verb === 'apply_movement' ? 'read_on_site shows the line\'s new number. A wrong press gets a correcting row: plan the opposite movement, or a count.' : 'read_on_site shows the count. To correct it, plan another count with the right number.'
     return `Nothing written: this plan was already applied on this job's materials${box}${when}. ${again}`
   }
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const planSet = verb === 'apply_plan_set'
+  const paper = verb === 'apply_paper'
+  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : `on this person${when}`
+  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 

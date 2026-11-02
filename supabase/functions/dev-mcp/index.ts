@@ -6,6 +6,7 @@ import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_share
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
+import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, planPartApply, planPartDryRun, readPlanPartWorld, type FiledPlansJob, type FiledPlansPart, type PartReads, type PartWrites, type PlanPartPayload } from '../_shared/devMcpPlanSets.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
@@ -27,17 +28,21 @@ import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robot
 // Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
 // on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0;
 // a new bid v2.6183 / 0.10.0; its plan set into Drive and onto the bid v2.6185 / 0.11.0; a sworn statement drafted onto a
-// matter's Timeline v2.6244 / 0.13.0; Materials on site's presses v2.6367 / 0.14.0, punch list #209) are a SECOND path, not a
-// loosening of the first: twenty-nine verbs (_shared/devMcpWrites.ts) POST one of eleven hard-coded, dev-gated RPCs as the dev —
+// matter's Timeline v2.6244 / 0.13.0; a set of drawings or a paper on a plan part v2.6317 / 0.14.0; Materials on site's
+// presses v2.6367 / 0.15.0, punch list #209) are a SECOND path, not a loosening of the first: thirty-three verbs
+// (_shared/devMcpWrites.ts) — twenty-nine POST one of eleven hard-coded, dev-gated RPCs as the dev (dev_on_site_write the
+// one SECURITY INVOKER wrapper, so the rows land under the dev's own RLS); the four plan-part verbs (v2.6317) write the rows
+// the job window's Plans section writes (plan_sets, plan_parts, a lane's request) as the dev under the same RLS, since no
+// RPC exists for them —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
-// plan's hash. Never a generic POST, never a table write, never through view_as. One more
+// plan's hash. Never a generic POST, never a table the agent names, never through view_as. One more
 // (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
 // dev — the key it leads to never crosses this door.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.14.0'
+const SERVER_VERSION = '0.15.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -264,6 +269,26 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { plans: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['plans', 'plan_hash'] },
   },
   {
+    name: 'plan_plan_set',
+    description: "Dry-run a set of drawings onto a plan part (v2.6317, punch list #239): what the job window's Plans section adds — an issued, addendum, bulletin, revised, permit, construction or assembled set, or our as-built — on the part a job builds from (part_id, or job_id for the job's own part), with its name, its source (the GC, the architect, us), the date on the sheets, a memo and its Drive link, the set it replaces and, for an as-built, the set it marks up. make_current says the part builds from it: true when the part has no set yet, false otherwise unless you pass it; never for an as-built. The dry run reads the part as you and replies with the part as it stands (its sets, what it builds from), the set as its line will read and what the part builds from after, under a plan_hash; nothing is written. A paper (a spec, a submittal, a schedule, a task list) is plan_paper.",
+    inputSchema: { type: 'object', properties: { set: { type: 'object', description: '{ part_id? | job_id?, name, kind, source, dated?, memo?, link?, replaces_set_id?, marks_up_set_id?, make_current? }' } }, required: ['set'] },
+  },
+  {
+    name: 'apply_plan_set',
+    description: "Add the set you planned: the same set plus the plan_hash from plan_plan_set. Reads the part again first and writes only when it still matches — a set added to the part or a switch of what it builds from since refuses it: plan again. Written as you, under the same RLS as the Plans section: the plan_sets row and, when make_current, the part's current set (the job's old plans link follows by the database's trigger). The job's Plans section and the site's Plans look show it at once.",
+    inputSchema: { type: 'object', properties: { set: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['set', 'plan_hash'] },
+  },
+  {
+    name: 'plan_paper',
+    description: "Dry-run a paper onto a plan part (v2.6317, punch list #239's papers): a spec, submittal, schedule, scope, change order, meeting notes, task list, report, sheet or other, kept beside the set it goes with (goes_with_set_id) on the part a job builds from (part_id, or job_id for the job's part, which the paper is then kept on), from the owner/GC, the architect, the engineer, a supplier or us, with the day it came (today when left out), a memo, its link, the paper it replaces, and the question it asks of us — ask { lane: estimators | dispatch, words } lands in that inbox as the Development page's Ask does. owed: true keeps a paper we are waiting on: no link, and the ask says who owes it. action came marks an owed paper landed: paper_id and its link. The dry run reads the part as you and replies with the paper as its line will read, the ask as it will land and the History line the database will write, under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { paper: { type: 'object', description: '{ action?: keep | came; keep: part_id? | job_id?, kind, name, from, came_on?, memo?, link?, goes_with_set_id?, replaces_paper_id?, owed?, ask? { lane, words }; came: paper_id, link }' } }, required: ['paper'] },
+  },
+  {
+    name: 'apply_paper',
+    description: "Keep the paper you planned: the same paper plus the plan_hash from plan_paper. Reads the part again first and writes only when it still matches. Written as you, as the Plans section writes it: the question first into its lane's inbox (estimator_requests or dispatch_requests, then the lane's push), then the plan_sets row naming it; the site's History line is the database's own trigger. For action came: owed clears, the link lands and came_at is now.",
+    inputSchema: { type: 'object', properties: { paper: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['paper', 'plan_hash'] },
+  },
+  {
     name: 'read_on_site',
     description: "Materials on site (v2.6367, punch list #209): what is in a job's stencilled cages and boxes as the phone's On site tab and the office's Jobs → Materials read it — every live box with its stencil, kind, place, QR code and lines (part, on hand, last touched, the last count's difference), Unsorted (what a delivery landed that nobody put away), the boxes due a count (14 days), the last 30 days' shortfalls and Can't find presses, and the newest 15 ledger rows. The numbers come from the screens' own kernel over the whole ledger (a count resets a line; on hand is the sum). `job` is an id, or text that matches exactly one job. Read it before any plan_ verb here: a box is named by its stencil as listed.",
     inputSchema: { type: 'object', properties: { job: { type: 'string', description: "Job id, or a number like 'J1032'" } }, required: ['job'] },
@@ -330,7 +355,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are twenty-nine verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are thirty-three verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -410,6 +435,25 @@ async function restPost(jwt: string, path: string, body: Record<string, unknown>
   const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${path}`, {
     method: 'POST',
     headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, Accept: 'application/json', 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  })
+  const text = await res.text()
+  let parsed: unknown = text
+  try {
+    parsed = text ? JSON.parse(text) : null
+  } catch { /* a non-JSON reply is reported as text */ }
+  return { ok: res.ok, status: res.status, body: parsed }
+}
+
+/**
+ * The plan-part verbs' table writes (v2.6317): a POST that returns the row, or a PATCH by query — plan_sets,
+ * plan_parts, a lane's requests table — as the dev, the rows the job window's Plans section writes under the same
+ * RLS. Reached only from that branch and apply_file_plans' part leg; every other write is restPost to a named RPC.
+ */
+async function restRows(jwt: string, method: 'POST' | 'PATCH', table: string, query: string, body: Record<string, unknown>): Promise<{ ok: boolean; status: number; body: unknown }> {
+  const res = await fetch(`${env('SUPABASE_URL')}/rest/v1/${table}${query ? `?${query}` : ''}`, {
+    method,
+    headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, Accept: 'application/json', 'Content-Type': 'application/json', Prefer: method === 'POST' ? 'return=representation' : 'return=minimal' },
     body: JSON.stringify(body),
   })
   const text = await res.text()
@@ -632,7 +676,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       return ok({
         reads_as: { name: who.name, email: who.email, role: who.role },
         door: { method: 'GET only — the database runs it in a read-only transaction', row_limit: ROWS_MAX_LIMIT, secrets: 'token / hash / password columns are redacted', never_read: [...DENIED_TABLES] },
-        writes: { verbs: Object.keys(WRITE_VERBS), rule: 'plan_ first (a dry run), then apply_ quoting the plan_hash; apply re-runs the dry run and writes only when it still matches. Each is one dev-gated RPC, as you, audited with your name. Never through view_as.' },
+        writes: { verbs: Object.keys(WRITE_VERBS), rule: 'plan_ first (a dry run), then apply_ quoting the plan_hash; apply re-runs the dry run and writes only when it still matches. Each is one dev-gated RPC as you — or, for a set of drawings and a paper on a plan part, the rows the Plans section writes under the same RLS — audited with your name. Never through view_as.' },
         catalog: { tables_and_views: Object.keys(CATALOG_TABLES).length, rpcs: Object.keys(CATALOG_RPCS).length },
         server: `pipetooling-dev-mcp ${SERVER_VERSION}`,
       })
@@ -772,6 +816,64 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         then: 'The script mints the key server-side, writes it to ~/pt-twin-digest/twin.token (mode 600) and saves the kickoff beside it; it prints the twin, the label and the connector, never the key. After it, python3 scripts/twin/twin.py get_brief answers, /bid bNNN runs, and bash scripts/twin-session.sh starts a Code session with the twin-mcp connector live. The code is single-use and lasts ten minutes. Revoke the key by its label at Settings → Digital twins.',
       }, { target: twinEmail ?? twinUserId })
     }
+    case 'plan_plan_set':
+    case 'apply_plan_set':
+    case 'plan_paper':
+    case 'apply_paper': {
+      // v2.6317 (punch list #239): a set of drawings or a paper on a plan part — the rows the job window's Plans
+      // section writes (planSetsIo addSet / keepPaper / markPaperCame), as the dev under RLS, in the seat's own
+      // grammar. No RPC: the dry run is this server's read of the part (devMcpPlanSets.ts), hashed with the payload;
+      // apply reads again and writes only when the hash still matches. Never as anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as PlanPartPayload
+      const reads: PartReads = {
+        rows: async (table, query) => {
+          const res = await restGet(session, table, query)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          return Array.isArray(res.body) ? (res.body as Record<string, unknown>[]) : []
+        },
+      }
+      const world = await readPlanPartWorld(reads, p)
+      const dry = planPartDryRun(p, world, todayYmdInAppTz())
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const writes: PartWrites = {
+        insert: async (table, row) => {
+          const res = await restRows(session, 'POST', table, '', row)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+          const made = Array.isArray(res.body) ? res.body[0] : res.body
+          if (!made || typeof made !== 'object') throw new Error(`${table} returned no row`)
+          return made as Record<string, unknown>
+        },
+        update: async (table, query, patch) => {
+          const res = await restRows(session, 'PATCH', table, query, patch)
+          if (!res.ok) throw new Error(restError(res.status, res.body))
+        },
+        invoke: async (fn, body) => {
+          // The lane's push, as the app's sendAsk invokes it: a push that does not go never fails the keep.
+          try {
+            const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/${fn}`, { method: 'POST', headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${session}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+            return { ok: res.ok, error: res.ok ? null : `${fn} answered ${res.status}: ${(await res.text()).slice(0, 200)}` }
+          } catch (e) {
+            return { ok: false, error: `${fn} could not be reached: ${e instanceof Error ? e.message : String(e)}` }
+          }
+        },
+      }
+      try {
+        const reply = await planPartApply(writes, p, dry.reply, { userId: who.userId }, new Date().toISOString())
+        return ok(reply, { target: typeof reply.part_id === 'string' ? reply.part_id : built.target })
+      } catch (e) {
+        const message = e instanceof Error ? e.message : String(e)
+        return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
+      }
+    }
     case 'plan_file_plans':
     case 'apply_file_plans': {
       // v2.6185: the plan set into Drive and onto the bid — the same grammar as every write
@@ -793,12 +895,26 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const stagePath = robotPlansStagePath(plans.bid_id, plans.sha256)
       const dry = await restPost(session, rpcPath, built.dryRunBody ?? built.body)
       if (!dry.ok) return fail(dry.status, dry.body)
-      const fresh = await planHash(name, built.body.p, dry.body)
+      // v2.6317 (punch list #239): the set lands on the plan part of each job the bid has too, when the job names one
+      // (filedPlansTargets); the plan commits to the parts it saw, so a part made or switched since refuses the apply.
+      const jobsRes = await restGet(session, 'jobs_ledger', `select=id,job_name,click_number,hcp_number,plan_part_id&bid_id=eq.${plans.bid_id}&plan_part_id=not.is.null`)
+      if (!jobsRes.ok) return fail(jobsRes.status, jobsRes.body)
+      const partJobs = (Array.isArray(jobsRes.body) ? jobsRes.body : []) as FiledPlansJob[]
+      let parts: FiledPlansPart[] = []
+      if (partJobs.length) {
+        const partsRes = await restGet(session, 'plan_parts', `select=id,name,current_set_id&id=in.(${[...new Set(partJobs.map((j) => j.plan_part_id))].join(',')})`)
+        if (!partsRes.ok) return fail(partsRes.status, partsRes.body)
+        parts = (Array.isArray(partsRes.body) ? partsRes.body : []) as FiledPlansPart[]
+      }
+      const targets = filedPlansTargets(partJobs, parts)
+      const committed = { ...((dry.body as Record<string, unknown> | null) ?? {}), job_parts: targets }
+      const fresh = await planHash(name, built.body.p, committed)
       if (built.step === 'plan') {
         const upload = await stagedUploadUrl(session, stagePath)
         if ('error' in upload) return errored(upload.error)
         return ok({
-          ...planReply(name, redactSecrets(dry.body), fresh),
+          ...planReply(name, redactSecrets(committed), fresh),
+          lands_on_parts: filedPlansWords(targets),
           upload_url: upload.url,
           staged_path: `${ROBOT_PLANS_BUCKET}/${stagePath}`,
           upload_expires_in: '2 hours',
@@ -862,6 +978,32 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       }
       const res = await restPost(session, rpcPath, { ...built.body, p_link: { folder_link: folderLink, file_link: fileLink, pages } })
       if (!res.ok) return errored(`${restError(res.status, res.body)} — the set IS in Drive at ${fileLink} (folder ${folderLink}): paste the folder link on the bid form, or plan again with replace: true.`)
+      // v2.6317: the same set as a plan_sets row on each part the plan named, current where the part had none. A part
+      // that refuses is named with its reason and the rest go on (the bid's own row is already written).
+      const partSets: Array<{ part: string; set_id: string | null; builds_from: boolean; existing?: boolean; error?: string }> = []
+      for (const t of targets) {
+        // A part that already holds this link keeps its row (planLinkKey, the database's plan_set_link_key): a re-filing
+        // lands in the same project folder, and a job opened from the bid took the bid's set by trigger (v2.6342).
+        const onPart = await restGet(session, 'plan_sets', `select=id,link&part_id=eq.${t.part_id}`)
+        const same = onPart.ok && Array.isArray(onPart.body) ? (onPart.body as Array<{ id: string; link: string }>).find((r) => planLinkKey(r.link) === planLinkKey(folderLink)) : undefined
+        if (same) {
+          partSets.push({ part: t.part_name, set_id: same.id, builds_from: false, existing: true })
+          continue
+        }
+        const row = filedPlansSetRow(t, { name: String(after.set_name ?? plans.file_name.replace(/\.pdf$/i, '')).slice(0, 200), link: folderLink, memo: String(after.memo ?? 'Filed by the dev seat'), file_name: plans.file_name, file_size: bytes.length, pages, createdBy: who.userId }, new Date().toISOString())
+        const ins = await restRows(session, 'POST', 'plan_sets', '', row)
+        const made = ins.ok && Array.isArray(ins.body) ? (ins.body[0] as { id?: string } | undefined) : undefined
+        if (!ins.ok || !made?.id) {
+          partSets.push({ part: t.part_name, set_id: null, builds_from: false, error: restError(ins.status, ins.body) })
+          continue
+        }
+        let current = false
+        if (t.make_current) {
+          const up = await restRows(session, 'PATCH', 'plan_parts', `id=eq.${t.part_id}`, { current_set_id: made.id, current_set_by: who.userId, current_set_at: new Date().toISOString() })
+          current = up.ok
+        }
+        partSets.push({ part: t.part_name, set_id: made.id, builds_from: current })
+      }
       const stagedRemoved = await stagedRemove(session, stagePath)
       const probe = await probePlans(session, plans.bid_id)
       const reply = (redactSecrets(res.body) ?? {}) as Record<string, unknown>
@@ -871,6 +1013,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         drive: { folder_link: folderLink, file_link: fileLink, folder_name: folderName, path: robotPlansPathWords(division.key, folderName), division: division.key, file_reused: reused },
         pages,
         bytes: bytes.length,
+        plan_parts: { words: filedPlansWords(targets), sets: partSets },
         staged_removed: stagedRemoved,
         probe,
         next: probe.readable === true
