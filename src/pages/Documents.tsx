@@ -55,6 +55,7 @@ import { supplyInvoicePaidWordMatches } from '../lib/supplyInvoicePaidSearch'
 import { EmptyState } from '../components/EmptyState'
 import { documentsLedgerEmptyWords } from '../lib/documents/documentsEmptyWords'
 import { DocumentsWhereFilesGo } from '../components/documents/DocumentsWhereFilesGo'
+import { DocumentsCompanyFolder } from '../components/documents/DocumentsCompanyFolder'
 import { canSetWhereFilesGo } from '../lib/documents/whereFilesGoTab'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
@@ -1859,7 +1860,10 @@ export default function Documents() {
       </div>
 
       {documentsTab === 'company' && companyTabVisible ? (
-        <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} showManage />
+        <>
+          <DocumentsCompanyFolder />
+          <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} showManage />
+        </>
       ) : null}
       {documentsTab === 'search' ? <DocumentsUnifiedSearchTab /> : null}
       {documentsTab === 'estimates' ? <DocumentsEstimatesLedger /> : null}

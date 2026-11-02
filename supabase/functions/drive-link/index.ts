@@ -1,6 +1,8 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { readDriveSettings } from '../_shared/driveSettings.ts'
+import { NO_COMPANY_FOLDER_WORDS } from '../_shared/whereFilesGo.ts'
 import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
@@ -51,6 +53,11 @@ import {
  *                                                        to the job's photos named by day, sender and caption (cut 10)
  *   POST { action: 'open', job, driveFileId }            → Drive's own viewer for a file inside the job's folder, for
  *                                                        the office's /files/drive/<id> page → { url }
+ *   POST { action: 'list_company' }                      → the company papers folder's files (the office's setting
+ *                                                        `drive_company_folder_id`, Documents → Where files go) → { files,
+ *                                                        capped, folder: { id, url } }; 409 while no folder is set
+ *   POST { action: 'put_company', name, mime, base64 }   → a file from this computer into the company folder, up to 10 MB,
+ *                                                        for the four office roles without the estimator → { driveFileId, url }
  *
  * A job is one of the spine's three: a GC project (gc_projects.drive_folder_url, with its Plans and Team only halves), a
  * bid (bids.drive_link) or a Pipeline job (jobs_ledger.google_drive_link). A bid's or a Pipeline job's folder has no
@@ -70,6 +77,8 @@ function json(body: unknown, status = 200): Response {
 }
 
 const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']
+/** Who puts a paper in the company folder: the office, not the estimators (the owner's word, 2026-11-01). */
+const COMPANY_PUT_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
 /** A file from this computer comes in as base64, up to the trade portal's cap. */
 const PUT_MAX_BYTES = 10 * 1024 * 1024
 /** How many of a job's files a list reads, and how deep into its folders. */
@@ -189,7 +198,8 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
-  if (who.read_only && ask.action !== 'list' && ask.action !== 'open') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'list_company') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (ask.action === 'put_company' && !COMPANY_PUT_ROLES.includes(String(who.role))) return json({ error: 'The office puts papers in the company folder.' }, 403)
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
   const google = await googleAccessToken(saJson)
@@ -225,6 +235,23 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     const put = await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, a.mime || 'application/octet-stream')
     const { error: kept } = await admin.from('message_attachments').update({ drive_file_id: put.id }).eq('id', ask.attachmentId)
     if (kept) return json({ error: 'Saved to Drive, but the row did not keep it.' }, 500)
+    return json({ driveFileId: put.id, url: driveViewUrl(put.id) })
+  }
+
+  if (ask.action === 'list_company' || ask.action === 'put_company') {
+    const companyId = (await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))).companyFolderId
+    if (!companyId) return json({ error: NO_COMPANY_FOLDER_WORDS, why: 'no_company_folder' }, 409)
+    if (ask.action === 'list_company') {
+      const out: Record<string, unknown>[] = []
+      await filesUnder(google, companyId, 'team_only', out)
+      return json({ files: out, capped: out.length >= LIST_MAX_FILES, folder: { id: companyId, url: driveViewUrl(companyId, DRIVE_FOLDER_MIME) } })
+    }
+    const raw = typeof body?.base64 === 'string' ? body.base64 : ''
+    if (raw.length > Math.ceil((PUT_MAX_BYTES * 4) / 3) + 200) return json({ error: 'Over 10 MB. Put it in the company folder in Drive instead.' }, 413)
+    const bytes = bytesOfBase64(raw)
+    if (!bytes || bytes.length === 0) return json({ error: 'That file did not come through.' }, 400)
+    if (bytes.length > PUT_MAX_BYTES) return json({ error: 'Over 10 MB. Put it in the company folder in Drive instead.' }, 413)
+    const put = await uploadBytes(google, companyId, bytes, ask.name, ask.mime)
     return json({ driveFileId: put.id, url: driveViewUrl(put.id) })
   }
 

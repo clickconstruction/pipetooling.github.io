@@ -49,10 +49,21 @@ export interface WhereFilesGoRoot {
   folder: RootFolderFacts | null
 }
 
+/** The company papers folder as the `settings` verb answers it (the Documents spike of 2026-11-01). */
+export interface WhereFilesGoCompany {
+  id: string
+  url: string
+  ok: boolean
+  words: string
+  folder: RootFolderFacts | null
+}
+
 /** The tab's settings, as the page holds them. */
 export interface WhereFilesGo {
   appEmail: string
   root: WhereFilesGoRoot | null
+  /** The company papers folder, or null while none is set. */
+  company: WhereFilesGoCompany | null
   jobPattern: JobFolderPiece[]
   bidPattern: BidFolderPiece[]
   foldersMade: FoldersMade
@@ -88,6 +99,7 @@ export function whereFilesGoFromAnswer(data: unknown): WhereFilesGo {
   const r = (data && typeof data === 'object' ? data : {}) as {
     app_email?: unknown
     root?: { id?: unknown; url?: unknown; from?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
+    company?: { id?: unknown; url?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
     job_pattern?: unknown
     bid_pattern?: unknown
     folders_made?: unknown
@@ -103,9 +115,13 @@ export function whereFilesGoFromAnswer(data: unknown): WhereFilesGo {
         folder: factsOf(r.root.folder),
       }
     : null
+  const company = r.company && typeof r.company === 'object' && str(r.company.id)
+    ? { id: str(r.company.id), url: str(r.company.url), ok: r.company.ok === true, words: str(r.company.words), folder: factsOf(r.company.folder) }
+    : null
   return {
     appEmail: str(r.app_email),
     root,
+    company,
     jobPattern: parseFolderPattern(JSON.stringify(r.job_pattern ?? null), JOB_FOLDER_PIECES, DEFAULT_JOB_FOLDER_PATTERN),
     bidPattern: parseFolderPattern(JSON.stringify(r.bid_pattern ?? null), BID_FOLDER_PIECES, DEFAULT_BID_FOLDER_PATTERN),
     foldersMade: parseFoldersMade(str(r.folders_made)),
@@ -142,6 +158,18 @@ export function rootCardWords(root: WhereFilesGoRoot | null): RootCardWords {
   const owner = f?.drive ? `In the Shared Drive ${f.drive}.` : f?.owner ? `Owned by ${f.owner}.` : null
   const count = f && f.folders != null ? (f.folders === 1 ? '1 job folder inside.' : `${f.folders} job folders inside.`) : null
   return { name, path, owner, count, from: root.from === 'env' ? ROOT_FROM_ENV_WORDS : null }
+}
+
+export const NO_COMPANY_FOLDER_YET_WORDS = 'No company folder yet. Paste a folder link and press Check.'
+
+/** The Company card's lines: the folder's name, its path, where it sits and how many files the office put there is not counted here. */
+export function companyCardWords(company: WhereFilesGoCompany | null): { name: string; path: string | null; owner: string | null; from: string | null } {
+  if (!company) return { name: 'The company folder', path: null, owner: null, from: NO_COMPANY_FOLDER_YET_WORDS }
+  const f = company.folder
+  const name = f?.name || 'The company folder'
+  const path = f && f.path.length > 0 ? [...f.path, f.name].filter(Boolean).join(' › ') : null
+  const owner = f?.drive ? `In the Shared Drive ${f.drive}.` : f?.owner ? `Owned by ${f.owner}.` : null
+  return { name, path, owner, from: null }
 }
 
 /** A live job as the tab reads it from `jobs_ledger`. */

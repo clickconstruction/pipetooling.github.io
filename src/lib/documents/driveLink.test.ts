@@ -174,6 +174,13 @@ describe('the office’s door', () => {
     expect(parseOfficeAsk({ action: 'delete', job: { project_id: PROJECT } })).toBeNull()
     expect(parseOfficeAsk(null)).toBeNull()
   })
+
+  it('lists the company folder with no job, and puts a file from this computer in it by name', () => {
+    expect(parseOfficeAsk({ action: 'list_company' })).toEqual({ action: 'list_company' })
+    expect(parseOfficeAsk({ action: 'put_company', name: 'W-9 2026.pdf', mime: 'application/pdf', base64: 'AAAA' })).toEqual({ action: 'put_company', name: 'W-9 2026.pdf', mime: 'application/pdf' })
+    expect(parseOfficeAsk({ action: 'put_company', name: 'COI.pdf' })).toEqual({ action: 'put_company', name: 'COI.pdf', mime: 'application/octet-stream' })
+    expect(parseOfficeAsk({ action: 'put_company', name: '' })).toBeNull()
+  })
 })
 
 describe('a photo’s landing (Messages, cut 10)', () => {
