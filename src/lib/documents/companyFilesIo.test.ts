@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
- * The company folder's io over the answer supabase-js really hands back (v2.6315): a refusal is `{ data: null, error }`
+ * The company folder's io over the answer supabase-js really hands back (v2.6331): a refusal is `{ data: null, error }`
  * whose `error.context` is the function's Response, and a Response's body can be read once. v2.6309 read it twice, once
  * for the words and once for the reason, so the reason was always lost and the Company tab drew *no folder yet* as a
  * failed read, in red, with no way to Where files go.

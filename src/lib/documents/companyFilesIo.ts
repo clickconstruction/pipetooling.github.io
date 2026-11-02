@@ -4,7 +4,7 @@
  * this computer into it, as base64, up to 10 MB). The function's own words come back as the error; a read with no
  * folder set carries `why: 'no_company_folder'`, which the tab reads as its empty state. A refusal's body is read once
  * (`fnRefusal`), for the words and the reason together: supabase-js hands back the function's Response, whose body can be
- * read only once, and v2.6309 read it twice, so the reason was always lost (v2.6315).
+ * read only once, and v2.6309 read it twice, so the reason was always lost (v2.6331).
  */
 import { supabase } from '../supabase'
 import { base64OfBytes } from '../../../supabase/functions/_shared/messagesEmailFiles'
