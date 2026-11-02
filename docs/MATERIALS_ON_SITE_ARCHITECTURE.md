@@ -98,6 +98,19 @@ All four pairs POST one RPC, `dev_on_site_write(p, p_dry_run)` ([`20261102100000
 
 twin-mcp has no materials verb and should not: it is the estimator's seat (`docs/TWIN_MCP_SERVER_ARCHITECTURE.md`), and a twin is fenced from these tables.
 
+## What is on prod (read 2026-11-02)
+
+Read as a dev through the seat (`read_rows` on the five tables, two pages of the ledger by `at`), four days after the surface shipped. Numbers are that day's.
+
+- **Two jobs hold containers**, 100 rows between them. JP972 holds 98, every one a cage, 6 retired, 90 at a place named *Arena*, 5 at *Gun dog*, 3 at no place; its stencils are a yard's — `G6` to `G88` with the cage's contents on some (`G76 TOILETS`, `G84 GAS VALVES`), `T`-numbers, `PVC COUNT`, `MISL PILE OF JUNK PIPE`. **The company's own stock is being kept on a paid job**, because the surface has no home for a yard that is not a job; that is a gap the card did not name. JP1091 holds a cage at its own *Arena* and a box at no place.
+- **The ledger is 282 rows**, 2026-10-29 to 2026-11-02, two people writing. By reason: 159 `counted`, 121 `delivered`, 1 `used`, 1 `cannot_find`; no `moved`, `returned`, `taken` or `damaged` yet. Every `delivered` row carries `to`, every `counted` row `from`, as the CHECKs require; one count is 0.
+- **No Unsorted row exists on any job.** Every delivery so far reads `added on site`: the phone's Add a part straight into a cage. The office's Deliveries panel has landed nothing, so `source` is null on every row and no delivery names an invoice.
+- **Typed names outnumber book parts**: 18 of 282 rows carry a `part_id`; the newest 200 rows name 81 distinct parts by text. The kernel's name fold (`partKey`) is doing the matching on this job, not the book.
+- **4 container moves, 92 box photos**, all 92 `filed` with words, 90 containers photographed, no `fail_why`.
+- **`created_by` is null on all 100 containers.** No screen writes it (the column has no default); only `dev_on_site_write` stamps it, so the row says who made a cage only when an agent did. A small fix: the column defaults to `auth.uid()`, which covers every screen at once.
+- **`code` is the id's first eight characters upper-cased** on every row, as the generated column promises; `prts.co/b/<code>` resolves each.
+- **Reading the ledger through the seat**: `read_rows` returns at most 200 rows and cuts its text at 80,000 characters, so a full ledger read pages by `at` with a narrow `select`; `read_on_site` pages 200 at a time inside the server up to the store's 5,000 cap, so an agent reads a job whole in one call.
+
 ## The gaps
 
 From the card's Left list and this reading, each one small PR:
@@ -110,4 +123,6 @@ From the card's Left list and this reading, each one small PR:
 - **Photos**: `fail_why` is on the row but the office page has no place to read and clear it; the Drive thumbnail waits on the bucket copy being gone.
 - **The real-phone checks**: the camera scan of a printed label and the share sheet on iPhone and Android.
 - **Offline writes**: a press that writes waits for signal until #163's queue exists (call 6 went the other way for now).
+- **A yard that is not a job**: the company's own stock sits on a paid job today (the reading above); the surface wants a home for it — a job of its own kind, or a company place — so a count there is not a count against a customer.
+- **`created_by` on a cage or a place**: no screen writes it; a default of `auth.uid()` on both columns fills it for every screen and the wrapper alike.
 - **V2 and V3 as drawn**: the takeoff-based *should be left* guess, loss by week with money, engraved items on `item_id`.
