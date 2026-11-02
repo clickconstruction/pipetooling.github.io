@@ -24,6 +24,7 @@ import { type DocumentsPageTab, parseDocumentsPageTabFromSearch } from '../lib/d
 import { canReadSentCopies } from '../lib/sent/sentCopies'
 import { DocumentsSentLedger } from '../components/documents/DocumentsSentLedger'
 import { DocumentsPhotosTab } from '../components/documents/DocumentsPhotosTab'
+import { FindAFile } from '../components/documents/FindAFile'
 import { labelJobsLedgerStatus, normalizeJobsLedgerStatus } from '../lib/jobsLedgerStatusPipeline'
 import DocumentsJobBilledInvoiceModal from '../components/documents/DocumentsJobBilledInvoiceModal'
 import {
@@ -1865,7 +1866,13 @@ export default function Documents() {
           <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} showManage />
         </>
       ) : null}
-      {documentsTab === 'search' ? <DocumentsUnifiedSearchTab /> : null}
+      {documentsTab === 'search' ? (
+        <Fragment>
+          <DocumentsUnifiedSearchTab />
+          {/* Find a file (v2.6305): every job's Drive files by their words, under the job and bid search. */}
+          <FindAFile />
+        </Fragment>
+      ) : null}
       {documentsTab === 'estimates' ? <DocumentsEstimatesLedger /> : null}
       {documentsTab === 'bid-proposals' ? <DocumentsBidProposalsLedger /> : null}
       {documentsTab === 'jobs' ? <DocumentsJobsLedger /> : null}

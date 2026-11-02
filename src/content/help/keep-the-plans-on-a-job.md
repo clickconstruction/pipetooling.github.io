@@ -1,0 +1,53 @@
+---
+title: keep the plans on a job
+category: Jobs & Scheduling
+roles: dev, master_technician, assistant, controller, estimator
+keywords: plans, plan set, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans
+where: /jobs
+order: 60
+---
+A job keeps every set of plans it has seen, and says which one it builds from today. Open the job and press the **Documents** tab. The **Plans** section is there.
+
+An updated set often comes in halfway through a job. The crew also marks up the drawings as it builds. Both have a place here.
+
+## Read what the job builds from
+
+**Building from** names the set the job builds from today. The line under it says what kind of set it is, who sent it and the date on the sheets. Press {{button:outline|Open ↗}} to open the set in Drive.
+
+**Older sets** lists every set that came before. **Our as-builts** lists the drawings the crew marked up.
+
+The Job tab's **Open plans** press opens the same set as **Building from**. The app keeps the two the same.
+
+## Add an updated set
+
+1. Press {{button:outline|+ New set}}.
+2. Type the set's **Name**, such as *Addendum 2*. The app starts the name for you.
+3. Pick the **Kind** and who it is **From**.
+4. Pick the **Dated** day. Use the date printed on the sheets.
+5. Type a **Memo**. Say what changed in a line.
+6. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
+7. Press {{button:blue|Add the set and build from it}}.
+
+The job now builds from the new set. The old one moves under **Older sets**. Press {{button:outline|Add it, keep Issued set current}} instead to add the set without switching.
+
+To switch later, press {{button:outline|Build from this set}} on any older set.
+
+## Save the crew's as-built
+
+1. Press {{button:outline|Add our as-built}}.
+2. Keep the name or change it.
+3. Type a **Memo** that says what the crew changed.
+4. Paste the Drive link to the marked sheets.
+5. Press {{button:blue|Add the as-built}}.
+
+The as-built lands under **Our as-builts** with the day and who added it. The line says which set it marks up.
+
+## A job on a site with other plans
+
+A job inside a development builds from one part of the site, such as the Bunker or the Lodge. The first set on the job asks which part. Pick one the site already has, or make a new part named after the job.
+
+When another part of the site has its own set, an amber note says so. A set on another part may touch this job. Press {{button:outline|Open the site’s plans ›}} to see every set on the site.
+
+## Take a set off
+
+Press **×** on a set, then {{button:outline|Remove}}. Removing a set never deletes the files in Drive.

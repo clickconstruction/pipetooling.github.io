@@ -43,6 +43,20 @@ Job folder is the job's own folder. Plans is for the drawings and anything trade
 
 A file over 10 MB is too big for the press. Put it in the folder in Drive instead. A training account cannot add a file.
 
+## Add a file to a job's folder
+
+Open the job's **Documents** tab and find **Job folders**. Each folder has a small {{button:outline|Add a file}} press beside its name.
+
+1. Press **Add a file** on the folder you want. Your computer's file picker opens.
+2. Pick the file. The tab shows its name and size, and says where it goes.
+3. Press {{button:blue|Add it to Plans}}. The press names the folder you chose.
+
+The app puts the file in that folder in Drive. A line then says it is there, with **Open in Drive**. Press **Add another** to put in one more.
+
+Job folder is the job's own folder. Plans is for the drawings and anything trades should see. Pictures is Customer Pictures, with the job's photos.
+
+A file over 10 MB is too big for the press. Put it in the folder in Drive instead. A training account cannot add a file.
+
 ## Where is the team labor number?
 
 Owners, controllers and master techs see **Team labor** as the first line of the Job tab's Costs card. It is also the first row of the cost block on the **Costs** tab. It shows the total, then *8.0 h · Malachi* or *277.5 h · 7 people* under it. You tap it for the per-person split. That row is the same number the Cost Timeline's 👷 markers add up to. It is the same one Job Summary's **Labor** column shows. So the three always agree. A salaried day counts as 8 h on whichever job the person was clocked to. Hourly people count their recorded session hours. Other roles see just the Parts line on the card. They see the block as **Parts Cost** on the Costs tab, without the row. The dollars come from wages.
