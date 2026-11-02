@@ -48,7 +48,7 @@ Every job on the page shows as a blue number, such as *JP1091*. The number opens
 
 The details are the customer, the stage, the crew, the last work day and the money on the job. A job that came from a bid names the bid. An estimator sees no money on the card.
 
-On a phone, press and hold the number for a moment. The card opens under the number. Tap anywhere else to close it. A plain tap still opens the job.
+On a phone, press and hold the number for half a second, then lift your finger. The card opens under the number. Tap anywhere else to close it. A plain tap still opens the job.
 
 The card also opens when you reach the number with the Tab key. Press Escape to close it.
 

@@ -89,6 +89,12 @@ describe('buildJobHoverCard', () => {
     ])
   })
 
+  it('a job whose crew the page did not read says nothing about a crew, rather than not scheduled', () => {
+    const atAddress = job({ id: 'j7', status: 'waiting' })
+    expect(buildJobHoverCard(atAddress, inputs({ crewRead: new Set(['j1091']) })).lines.map((l) => l.label)).toEqual(['Stage'])
+    expect(buildJobHoverCard(atAddress, inputs({ crewRead: new Set(['j7']) })).lines).toContainEqual({ label: 'Crew', value: 'not scheduled' })
+  })
+
   it('blank names and addresses are blanks, not spaces', () => {
     const card = buildJobHoverCard(job({ id: 'j4', job_name: '   ', job_address: ' ', customer_name: '  ' }), inputs())
     expect(card.name).toBe(NO_NAME_WORDS)

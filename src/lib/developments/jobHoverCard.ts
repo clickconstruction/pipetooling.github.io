@@ -15,6 +15,8 @@ import { parsePriorNumber } from '../jobs/priorNumbers'
 export type JobHoverCardInputs = {
   names: ReadonlyMap<string, string>
   teamMembers: ReadonlyArray<{ job_id: string; user_id: string }>
+  /** The jobs whose crew the page read; absent, all of them. A job at the address, not in the development, has none read, so its card says nothing about a crew. */
+  crewRead?: ReadonlySet<string>
   /** The bids on the site, for the *From bid* line; a job whose bid is not among them shows none. */
   bids: ReadonlyArray<MemberBid>
   jobLabel: (job: MemberJob) => string
@@ -61,9 +63,11 @@ export function buildJobHoverCard(job: MemberJob, inp: JobHoverCardInputs): JobH
   lines.push({ label: 'Stage', value: inp.stageLabel(job.status) })
   if (job.pct_complete != null && job.pct_complete > 0 && (job.status ?? '').toLowerCase() !== 'paid') lines.push({ label: 'Progress', value: `${Math.round(job.pct_complete)}% done` })
 
-  const crew = jobCrewNames(job.id, inp)
-  if (crew.length) lines.push({ label: 'Crew', value: crew.join(', ') })
-  else if ((job.status ?? '').toLowerCase() === 'waiting') lines.push({ label: 'Crew', value: 'not scheduled' })
+  if (!inp.crewRead || inp.crewRead.has(job.id)) {
+    const crew = jobCrewNames(job.id, inp)
+    if (crew.length) lines.push({ label: 'Crew', value: crew.join(', ') })
+    else if ((job.status ?? '').toLowerCase() === 'waiting') lines.push({ label: 'Crew', value: 'not scheduled' })
+  }
 
   if (job.last_work_date) lines.push({ label: 'Last work', value: inp.shortDay(job.last_work_date) })
 

@@ -168,8 +168,8 @@ export default function DevelopmentPage() {
 
   const counts = useMemo(() => (shown && data ? headCounts(shown, data.requests, nowMs) : null), [shown, data, nowMs])
   const people = useMemo(() => (shown && data ? sitePeople({ members: shown, names: data.names, teamMembers: data.teamMembers, jobLabel }) : null), [shown, data, jobLabel])
-  // The job chips' hover cards (v2.6353): the words for every job the page holds, from the rows it read; a chip asks by id, and nothing is fetched on a hover.
-  const jobCardFor = useMemo(() => (shown && data ? jobHoverCardLookup(shown.jobs, { names: data.names, teamMembers: data.teamMembers, bids: shown.bids, jobLabel, bidLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, moneyShown }) : () => null), [shown, data, jobLabel, bidLabel, moneyShown])
+  // The job chips' hover cards (v2.6353): the words for every job the page holds, the ones at the address too, from the rows it read; a chip asks by id, and nothing is fetched on a hover.
+  const jobCardFor = useMemo(() => (shown && data ? jobHoverCardLookup([...shown.jobs, ...data.atAddress.jobs], { names: data.names, teamMembers: data.teamMembers, crewRead: new Set(shown.jobs.map((j) => j.id)), bids: [...shown.bids, ...data.atAddress.bids], jobLabel, bidLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, moneyShown }) : () => null), [shown, data, jobLabel, bidLabel, moneyShown])
   // The link-grouped view feeds the Jobs & bids table's Plans cell and History; the Plans look itself reads by part (v2.6302).
   const plans = useMemo(() => (shown && data ? buildPlansView({ members: shown, bidChanges: data.bidChanges, names: data.names, bidLabel, jobLabel }) : null), [shown, data, bidLabel, jobLabel])
   // The site's parts and their sets (punch list #239, PR 3): one read, again after every write.
