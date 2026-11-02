@@ -42,6 +42,8 @@ A strip under the counts names six looks: History, Jobs & bids, Money, Plans, Qu
 
 History is one dated list, newest first. It holds what the records did and what people wrote. A send, a stage move, a bill or a payment draws a line. So does a note on a job or a bid, a plan set filed, and the customer's contact log.
 
+The crews' photos draw lines too, at the time they were taken. Photos on one job by one person within an hour read as one line with up to four small pictures. A **+ N** tile stands for the rest. Press a picture to open it at full size. Press {{chip:blue|Photos}} under the search box to see the photo lines alone. The search finds a photo by its caption.
+
 1. Press a chip under the search box to narrow the list. Press {{chip:blue|Plans}} to see every plan set filed, newest first. On a phone the chips sit in one row. Slide the row sideways to reach the rest.
 2. Type a name, a number or a word into the search box, marked with a spyglass, to find a line.
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
