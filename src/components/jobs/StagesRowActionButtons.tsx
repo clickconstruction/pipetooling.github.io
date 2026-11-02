@@ -5,7 +5,7 @@
  * still decides when it shows and what its click does, exactly as before.
  */
 import { Children, type ReactNode } from 'react'
-import { FileCheck2, FileSpreadsheet, Folder, PencilRuler } from 'lucide-react'
+import { Camera, FileCheck2, FileSpreadsheet, Folder, PencilRuler } from 'lucide-react'
 import type { JobPlansPress } from '../../lib/plans/jobPlanSetsIcon'
 import { stagesRowIconsPerRow } from '../../lib/jobs/stagesRowIconGrid'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
@@ -144,6 +144,35 @@ export function StagesJobFolderButton({ folderUrl, onOpenTab }: { folderUrl: str
       style={{ ...iconButtonStyle, color: hasFolder ? '#d97706' : 'var(--text-muted)' }}
     >
       <Folder size={16} aria-hidden />
+    </button>
+  )
+}
+
+/**
+ * The job's photos (punch list #244, PR 3, the owner's ask after v2.6301): opens the Job photos window, where the job's
+ * photos are browsed with their words and one is added with a description. ⌘-click (Ctrl on Windows) opens the job's
+ * photo folder in Drive, the Customer Pictures folder when the job has one, else the job's own folder. Amber like the
+ * folder icon while the job has a Drive folder, grey while it has none; the grey one still opens the window, since the
+ * first photo makes the folder.
+ */
+export function StagesPhotosButton({ picturesUrl, folderUrl, onOpen }: { picturesUrl?: string | null; folderUrl: string | null | undefined; onOpen: () => void }) {
+  const driveUrl = (picturesUrl ?? '').trim() || (folderUrl ?? '').trim() || null
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        if (driveUrl && (e.metaKey || e.ctrlKey)) {
+          openInExternalBrowser(driveUrl)
+          return
+        }
+        onOpen()
+      }}
+      title={driveUrl ? 'Photos — the job’s photos, and add one with a description; ⌘-click opens the photo folder in Drive' : 'Photos — the job’s photos, and add one with a description; the first photo makes the job’s Drive folder'}
+      aria-label="Open the job’s photos"
+      data-stages-photos={driveUrl ? 'folder' : 'no-folder'}
+      style={{ ...iconButtonStyle, color: driveUrl ? '#d97706' : 'var(--text-muted)' }}
+    >
+      <Camera size={16} aria-hidden />
     </button>
   )
 }

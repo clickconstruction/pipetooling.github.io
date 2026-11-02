@@ -16,7 +16,8 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesHazmatFeeButton, StagesJobFolderButton, StagesPlansButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesHazmatFeeButton, StagesJobFolderButton, StagesPhotosButton, StagesPlansButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { JobPhotosWindow } from '../photos/JobPhotosWindow'
 import { JobPlanSetsModal } from './JobPlanSetsModal'
 import { usePlanSetsByJob } from '../../hooks/usePlanSetsByJob'
 import { jobPlansPress } from '../../lib/plans/jobPlanSetsIcon'
@@ -230,6 +231,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
   // the picker, and a job with no part keeps opening its old plans link.
   const planSetsByJob = usePlanSetsByJob(jobList, true)
   const [plansPickerJob, setPlansPickerJob] = useState<JobWithDetails | null>(null)
+  // The Job photos window (punch list #244): the row's camera icon opens it on that job.
+  const [photosJob, setPhotosJob] = useState<JobWithDetails | null>(null)
   const plansPressFor = (j: JobWithDetails) => jobPlansPress(planSetsByJob.get(j.id), j.job_plans_link)
   const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
@@ -534,6 +537,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                               fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
                             />
                             <StagesJobFolderButton folderUrl={j.google_drive_link} onOpenTab={() => openEdit(j, { initialTab: 'documents' })} />
+                            <StagesPhotosButton picturesUrl={j.job_pictures_link} folderUrl={j.google_drive_link} onOpen={() => setPhotosJob(j)} />
                             {plansPressFor(j).kind !== 'none' ? <StagesPlansButton press={plansPressFor(j)} onPick={() => setPlansPickerJob(j)} /> : null}
                             <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                             {showAiaG702G703(authRole, j) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(j)} /> : null}
@@ -550,6 +554,17 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
           )}
         </tbody>
       </table>
+      {photosJob ? (
+        <JobPhotosWindow
+          job={photosJob}
+          onClose={() => setPhotosJob(null)}
+          onOpenJob={() => {
+            const j = photosJob
+            setPhotosJob(null)
+            openEdit(j)
+          }}
+        />
+      ) : null}
       {plansPickerJob && planSetsByJob.get(plansPickerJob.id) ? (
         <JobPlanSetsModal
           job={{ id: plansPickerJob.id, label: jobShortLabel(plansPickerJob) }}

@@ -11,6 +11,7 @@ import {
   StagesJobFolderButton,
   StagesLienInstrumentsButton,
   StagesLienReleaseButton,
+  StagesPhotosButton,
   StagesRowIcons,
   StagesTestReportButton,
 } from './StagesRowActionButtons'
@@ -96,6 +97,38 @@ describe('StagesRowActionButtons', () => {
     fireEvent.click(bare, { metaKey: true })
     expect(onOpenTabBare).toHaveBeenCalledTimes(1)
     expect(open).toHaveBeenCalledTimes(1)
+    open.mockRestore()
+  })
+
+  it('the Photos icon opens the window on a click, the photo folder on a ⌘-click, and greys out without a folder (punch list #244)', () => {
+    const onOpen = vi.fn()
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const pictures = 'https://drive.google.com/drive/folders/1PicturesFolderIdAbCdEf'
+    const folder = 'https://drive.google.com/drive/folders/1JobFolderIdAbCdEfGhIj'
+    const { unmount } = render(<StagesPhotosButton picturesUrl={pictures} folderUrl={folder} onOpen={onOpen} />)
+    const made = screen.getByLabelText('Open the job’s photos')
+    expect(made.getAttribute('title')).toMatch(/⌘-click opens the photo folder in Drive/)
+    expect(made.style.color).toBe('rgb(217, 119, 6)')
+    fireEvent.click(made)
+    expect(onOpen).toHaveBeenCalledTimes(1)
+    fireEvent.click(made, { metaKey: true })
+    expect(open).toHaveBeenCalledWith(pictures, '_blank', 'noopener,noreferrer')
+    unmount()
+
+    const onOpenFolderOnly = vi.fn()
+    const second = render(<StagesPhotosButton picturesUrl={null} folderUrl={folder} onOpen={onOpenFolderOnly} />)
+    fireEvent.click(screen.getByLabelText('Open the job’s photos'), { ctrlKey: true })
+    expect(open).toHaveBeenLastCalledWith(folder, '_blank', 'noopener,noreferrer')
+    second.unmount()
+
+    const onOpenBare = vi.fn()
+    render(<StagesPhotosButton picturesUrl={null} folderUrl={null} onOpen={onOpenBare} />)
+    const bare = screen.getByLabelText('Open the job’s photos')
+    expect(bare.getAttribute('title')).toMatch(/the first photo makes the job’s Drive folder/)
+    expect(bare.style.color).toBe('var(--text-muted)')
+    fireEvent.click(bare, { metaKey: true })
+    expect(onOpenBare).toHaveBeenCalledTimes(1)
+    expect(open).toHaveBeenCalledTimes(2)
     open.mockRestore()
   })
 })
