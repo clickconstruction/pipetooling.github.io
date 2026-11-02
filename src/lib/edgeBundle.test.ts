@@ -1,4 +1,8 @@
-import { describe, expect, it } from 'vitest'
+import { afterAll, describe, expect, it } from 'vitest'
+import * as esbuild from 'esbuild'
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { dirname, join } from 'node:path'
 // @ts-expect-error — the drift check runs on bare Node in CI, so its kernel is plain JS with no types
 import * as kernel from '../../scripts/lib/edgeBundle.mjs'
 
@@ -22,7 +26,11 @@ const k = kernel as {
   gitBlobId: (bytes: string | Uint8Array) => string
   compareBundles: (repo: Map<string, string>, deployed: Map<string, string>, historyBlobs: Set<string>) => Verdict
   configVerifyJwt: (configToml: string, slugs: string[]) => Map<string, boolean>
+  linkFunctions: (root: string, dir: string, slugs: string[], esbuild: unknown) => Promise<LinkResult[]>
+  linkReport: (results: LinkResult[], dir: string) => { failed: string[]; lines: string[]; warnings: string[] }
 }
+type LinkMessage = { file: string | null; line: number | null; text: string }
+type LinkResult = { slug: string; errors: LinkMessage[]; warnings: LinkMessage[] }
 
 describe('runtimeImportSpecifiers', () => {
   it.each([
@@ -49,6 +57,92 @@ describe('runtimeImportSpecifiers', () => {
   it('does not let a type alias swallow the import after it', () => {
     const source = "export type Row = {\n  a: number\n}\nimport { x } from './x.ts'\n"
     expect(k.runtimeImportSpecifiers(source)).toEqual(['./x.ts'])
+  })
+})
+
+/**
+ * linkFunctions is the check behind `npm run check:edge-bundles` (ci.yml, every PR): esbuild links each
+ * function as Deno's loader will at boot. The fixture is a functions folder in a temp directory, with a
+ * `_shared` module two functions import; v2.6294 is the break it must catch.
+ */
+describe('linkFunctions', () => {
+  const root = mkdtempSync(join(tmpdir(), 'edge-link-'))
+  const dir = 'supabase/functions'
+  const write = (path: string, source: string) => {
+    mkdirSync(dirname(join(root, path)), { recursive: true })
+    writeFileSync(join(root, path), source)
+  }
+  write(`${dir}/_shared/settings.ts`, 'export const meta = 1\nexport type Meta = { id: string }\n')
+  write(
+    `${dir}/folders/index.ts`,
+    [
+      "import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'",
+      "import { meta, metaOwner } from '../_shared/settings.ts'",
+      'serve(() => new Response(String(meta) + String(metaOwner)))',
+      '',
+    ].join('\n'),
+  )
+  write(
+    `${dir}/clean/index.ts`,
+    [
+      "import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'",
+      "import webpush from 'npm:web-push@3.6.7'",
+      "import { meta, type Nope } from '../_shared/settings.ts'",
+      "import type { Gone } from '../_shared/settings.ts'",
+      'const a: Nope | Gone | null = null',
+      'export default { meta, createClient, webpush, a }',
+      '',
+    ].join('\n'),
+  )
+  afterAll(() => rmSync(root, { recursive: true, force: true }))
+  const one = (results: LinkResult[], slug: string): LinkResult => {
+    const r = results.find((x) => x.slug === slug)
+    if (!r) throw new Error(`no result for ${slug}`)
+    return r
+  }
+
+  it('fails a value import of a name the module does not export, at the importer’s line', async () => {
+    const folders = one(await k.linkFunctions(root, dir, ['folders'], esbuild), 'folders')
+    expect(folders.errors).toEqual([
+      {
+        file: `${dir}/folders/index.ts`,
+        line: 2,
+        text: expect.stringMatching(/No matching export .*settings\.ts.* for import "metaOwner"/),
+      },
+    ])
+  })
+
+  it('passes a clean function: remote and npm: imports stay external, a type-only import of a missing name is stripped as Deno strips it', async () => {
+    const clean = one(await k.linkFunctions(root, dir, ['clean'], esbuild), 'clean')
+    expect(clean.errors).toEqual([])
+    expect(clean.warnings).toEqual([])
+  })
+
+  it('linkReport names each failing function once per distinct message, paths shortened past the folder', async () => {
+    const results = await k.linkFunctions(root, dir, ['clean', 'folders'], esbuild)
+    const report = k.linkReport(results, dir)
+    expect(report.failed).toEqual(['folders'])
+    expect(report.lines).toEqual([
+      expect.stringMatching(/^ {2}- folders\n {6}folders\/index\.ts:2 No matching export in "_shared\/settings\.ts" for import "metaOwner"$/),
+    ])
+    expect(report.warnings).toEqual([])
+  })
+
+  it('linkReport folds a repeated message and keeps a message with no location', () => {
+    const m = { file: `${dir}/_shared/a.ts`, line: 4, text: 'No matching export in "x" for import "y"' }
+    const report = k.linkReport(
+      [
+        { slug: 'one', errors: [m, { ...m }], warnings: [{ file: null, line: null, text: 'odd' }] },
+        { slug: 'two', errors: [{ file: null, line: null, text: 'Could not resolve "./gone.ts"' }], warnings: [] },
+      ],
+      dir,
+    )
+    expect(report.failed).toEqual(['one', 'two'])
+    expect(report.lines).toEqual([
+      '  - one\n      _shared/a.ts:4 No matching export in "x" for import "y"',
+      '  - two\n      Could not resolve "./gone.ts"',
+    ])
+    expect(report.warnings).toEqual(['one: odd'])
   })
 })
 

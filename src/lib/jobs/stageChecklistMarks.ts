@@ -2,8 +2,9 @@
  * A checklist per stage (punch list #164, PR 4): the Pipeline's one more state. On a job drawn as stages, a stage
  * whose checklist is not filled reads *not ready* under the bar: an amber mark before its name, and the words in the
  * name's title, *Rough In · checklist 2 of 3 answered · not ready*. A stage whose kind has no questions carries no
- * mark, so the row reads as before until the office types the questions. Pure; `useStageChecklistStates` reads the
- * rows the board needs and each row calls `stageChecklistMarks` over its own line items.
+ * mark, so the row reads as before until the office types the questions or adds a check for the stage (#237). Pure;
+ * `useStageChecklistStates` reads the rows the board needs and each row calls `stageChecklistMarks` over its own line
+ * items.
  */
 import { stageChecklistState, type StageChecklistAnswer, type StageChecklistQuestion, type StageChecklistState } from './stageChecklist'
 
@@ -19,7 +20,7 @@ export function stageChecklistMarks(
   if (questions.length === 0) return null
   const out = new Map<string, StageChecklistState>()
   for (const f of fixtures) {
-    const state = stageChecklistState({ stageName: f.name, questions, answers: answersByFixture.get(f.id) ?? [] })
+    const state = stageChecklistState({ stageName: f.name, fixtureId: f.id, questions, answers: answersByFixture.get(f.id) ?? [] })
     if (state.standing !== 'none') out.set(f.id, state)
   }
   return out

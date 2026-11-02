@@ -2,21 +2,21 @@
 title: split a job into stages and bill stage by stage
 category: Billing & Money
 roles: assistant, master_technician
-keywords: stages, segments, line items, reorder, partial invoice, break off, bill by stage, rough in, top out, trim set, money card, make a bill, in order, any time, permit, change order, draw, stage kind, bill it, which kind
+keywords: stages, segments, line items, reorder, partial invoice, break off, bill by stage, rough in, top out, trim set, money card, make a bill, in order, any time, permit, change order, draw, stage kind, bill it, which kind, badge, diamond
 order: 11
 ---
 A job's line items are its stages. Each line says whether it waits its turn. The bills follow from that. Everything happens on the job's Bill tab.
 
-You set each line under its name in **① Line Items**. You pick **In order** or **Any time**. The draws in **② Bills and payments** follow from that choice.
+You set each line with the badge at its left in **① Line Items**. Tap the badge and the line flips between **In order** and **Any time**. The kind is written in small words under the badge. The draws in **② Bills and payments** follow from that choice.
 
 Often you do not have to set anything. The line items may already read like a plan. An example is **Rough In**, **Top Out** and **Trim Set** in order. That is the way the Multiple Segment Generator's preset writes them. The Pipeline row and the crew's report picker then recognize the stages by name. Setting **In order** here is what makes the **draws** follow the stages too. A draw waits on the stage above it. Recognition alone never changes how a job bills. Some jobs have lines the board cannot read as stages, like *Phase A* or *Beginning of Job*. Those show a small **Set stages** link under their bar on the Pipeline. It opens this tab with ① Line Items lit.
 
 ## The two kinds
 
-- {{button:gray|In order}} is a numbered stage in the sequence. It waits for the stage above it to pass inspection. It becomes a **draw**, its own invoice, when it passes its own. Rough-in, top-out, trim and final are in order.
-- {{button:amber|Any time}} is a stage with its own dates and no place in the line. A change order, an extra or a repair added mid-job is any time. It bills the day its work is done, without waiting on the sequence.
+- **In order**, a numbered circle, is a stage in the sequence. It waits for the stage above it to pass inspection. It becomes a **draw**, its own invoice, when it passes its own. Rough-in, top-out, trim and final are in order.
+- **Any time**, an orange diamond, is a stage with its own dates and no place in the line. A change order, an extra or a repair added mid-job is any time. It bills the day its work is done, without waiting on the sequence.
 
-Every line item starts as **Any time**. That covers the ones you add by hand and the ones a change order brings in. It also covers every line item from before this feature. Nothing is in order until you say so. A **discount** row is neither kind. It has no switch and follows the work it applies to. See *give a customer a discount*.
+Every line item starts as **Any time**. That covers the ones you add by hand and the ones a change order brings in. It also covers every line item from before this feature. Nothing is in order until you say so. A **discount** row is neither kind. Its badge is a dashed circle that does not flip. It follows the work it applies to. See *give a customer a discount*.
 
 ## Which kind do I pick?
 
@@ -39,25 +39,25 @@ How it bills over the job: Rough-in passes → *draw 1* is ready → {{button:gr
 
 ## Set up the stages in ① Line Items
 
-:::example Under one line in ① Line Items, before and after you press In order
+:::example The badge beside one line in ① Line Items, before and after you tap it
 ◆ **Top-out** $3,000
-{{button:outline|In order}} {{button:amber|Any time}}
+*Any time* under the diamond
 
 ② **Top-out** $3,000
-{{button:dark|In order}} {{button:outline|Any time}}
+*In order* under the number
 :::
 
 1. Open the job from Jobs → Pipeline → {{button:outline|Edit}} → **Bill**. Find **① Line Items**.
 2. Enter one line per stage of work, with its price.
-3. Under each stage's name, press **In order**. The badge at the left of the row turns into its number. In-order rows are numbered top to bottom.
+3. Tap the badge at the left of each stage's row. The diamond turns into its number. In-order rows are numbered top to bottom.
 4. Use the **▲▼ arrows** to put them in work order. The numbers follow.
-5. Leave change orders, extras and fee lines on **Any time**.
+5. Leave change orders, extras and fee lines on **Any time**. Tap a number to put a line back to any time.
 
 :::example A staged plumbing job
 ① Rough-in $3,000 → ② Top-out $3,000 → ③ Trim set $3,000 → ④ Final $1,000 · ◆ Relocate water heater $1,850 (Any time) · ◆ Permit & misc $600 (Any time)
 :::
 
-The badge fills in as the job moves. A hollow number is a stage still ahead. A dark number is the stage the job is on. A green check means its draw is paid. Where each stage stands is said once, on its row in the money card below. Press **ⓘ How stages work** under the lines for a short reminder of the two kinds.
+The badge fills in as the job moves. A hollow number is a stage still ahead. A dark number is the stage the job is on. A green check means its draw is paid. A line on a bill keeps its badge but it no longer flips. Where each stage stands is said once, on its row in the money card below. Press **ⓘ How stages work** under the lines for a short reminder of the two kinds.
 
 ## Or generate the stages in one go
 
@@ -65,7 +65,7 @@ Click the blue **Multiple Segment Generator** link in the ① Line Items caption
 
 1. Set the **total amount** at the top. It starts at the current Job Total.
 2. Press a preset. **Commercial 30/30/30/10** makes Rough In, Top Out, Trim Set and Final. **Residential 40/40/20** makes Rough In, Top Out and Trim Set. Every preset row is **In order**, numbered top to bottom. Its dollar value is its share of the total.
-3. Or name each segment yourself and give it a **%**. The **Stage** column on every row is the same **In order / Any time** switch as the line items. A row you flip to **Any time** leaves the split. It gets its own price box instead of a percentage.
+3. Or name each segment yourself and give it a **%**. The **Stage** column on every row is an **In order / Any time** switch. It sets the same kind the badge sets on a line item. A row you flip to **Any time** leaves the split. It gets its own price box instead of a percentage.
 4. Press {{button:amber|+ Change order}} to add an **Any time** row with its own price. It sits outside the percentage split. The line under the list then reads *100% allocated · $41,550 in order · $1,850 outside the split*. The summary counts *4 in order · 1 any time · Job total $43,400*.
 5. Re-arrange with **▲▼** and the numbers follow. Then press {{button:blue|Add to Job}}. The segments join your line items with their stage already set. Nothing more to flip.
 

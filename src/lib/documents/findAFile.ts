@@ -5,8 +5,15 @@
  * service account over the jobs Shared Drive; each hit comes back walked up to the job or bid whose folder holds it,
  * with the folder path under that job. This file is the words and the shapes, pure; the io is `findAFileIo.ts`.
  */
+import type { Excerpt } from '../../../supabase/functions/_shared/excerpt'
 import { fileDayWords, fileSizeWords } from '../jobs/jobFolderFiles'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
+
+export type { Excerpt }
+
+/** Why a hit has no excerpt (v2.6306): a scan with no text layer, a kind we do not read, a file past the cap, a read past the timer. */
+export type ExcerptWhy = 'scan' | 'kind' | 'big' | 'slow'
+const WHYS: readonly ExcerptWhy[] = ['scan', 'kind', 'big', 'slow']
 
 /** The job or bid whose folder holds a hit. */
 export type FileHome =
@@ -23,6 +30,9 @@ export type FoundFile = {
   home: FileHome | null
   /** The folders between the home and the file, joined with ›; empty at the top of the home's folder. */
   path: string
+  /** The line around the words, with the spans to bold (v2.6306), or null with `excerptWhy` saying why. */
+  excerpt: Excerpt | null
+  excerptWhy: ExcerptWhy | null
 }
 
 export type FindAFileRead = { hits: FoundFile[]; more: boolean; noRoot: boolean }
@@ -42,6 +52,20 @@ function homeOf(v: unknown): FileHome | null {
   return null
 }
 
+function excerptOfAnswer(v: unknown): Excerpt | null {
+  const o = (v ?? null) as Record<string, unknown> | null
+  if (!o || typeof o.text !== 'string') return null
+  const marks: [number, number][] = []
+  for (const m of Array.isArray(o.marks) ? o.marks : []) {
+    if (Array.isArray(m) && typeof m[0] === 'number' && typeof m[1] === 'number' && m[0] >= 0 && m[1] > m[0] && m[1] <= o.text.length) marks.push([m[0], m[1]])
+  }
+  return { text: o.text, marks }
+}
+
+function whyOf(v: unknown): ExcerptWhy | null {
+  return WHYS.find((w) => w === v) ?? null
+}
+
 /** The function's answer as the box reads it; a shape it does not know reads as no hits. */
 export function findAFileFromAnswer(d: unknown): FindAFileRead {
   const o = (d ?? {}) as Record<string, unknown>
@@ -58,6 +82,8 @@ export function findAFileFromAnswer(d: unknown): FindAFileRead {
       url: str(h.url) ?? `https://drive.google.com/file/d/${h.id}/view`,
       home: homeOf(h.home),
       path: str(h.path) ?? '',
+      excerpt: excerptOfAnswer(h.excerpt),
+      excerptWhy: whyOf(h.excerptWhy),
     })
   }
   return { hits, more: o.more === true, noRoot: o.noRoot === true }
@@ -129,6 +155,26 @@ export function foundWords(read: Pick<FindAFileRead, 'hits' | 'more'>, words: st
 /** The empty state's one unit. */
 export function emptyFindWords(words: string): { main: string } {
   return { main: `Nothing in the job folders says “${words}”. Try other words, or Drive’s own search.` }
+}
+
+/** The excerpt as the line draws it: plain runs and marked runs, in order (v2.6306). */
+export function excerptParts(ex: Excerpt): { text: string; mark: boolean }[] {
+  const parts: { text: string; mark: boolean }[] = []
+  let at = 0
+  for (const [a, b] of ex.marks) {
+    if (a > at) parts.push({ text: ex.text.slice(at, a), mark: false })
+    parts.push({ text: ex.text.slice(a, b), mark: true })
+    at = b
+  }
+  if (at < ex.text.length) parts.push({ text: ex.text.slice(at), mark: false })
+  return parts
+}
+
+/** The quiet note under a hit with no excerpt, or null when there is nothing to say. */
+export function excerptNote(why: ExcerptWhy | null): string | null {
+  if (why === 'scan') return 'Matched inside the scan.'
+  if (why === 'big') return 'Too big to read here.'
+  return null
 }
 
 /** A read that failed, with the function's own reason. */

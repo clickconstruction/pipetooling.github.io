@@ -50,6 +50,10 @@ Below the tiles: **daily spend bars** for the last 14 working days with a 7-day 
 
 A job under three field days or under 10% reads *too early to call* instead of guessing.
 
+## Where we are: the line budgets
+
+A project's line items each carry a budget. Then a **Where we are** card sits above the chart. It reads spent of the whole budget and the job's percent done. Under that come a **Labor** bar and a **Materials** bar. Each fills with what was spent against its budget. A dashed mark on each bar is the job's percent done. A bar turns red when its spend runs ten points past the work. Then comes one row per line with its own bar. See *see what a line should cost and tune it*.
+
 The same verdict shows up in two more places. One is Job Summary's **Burn** and **Proj. margin** columns. The other is the Pipeline's *jobs burning ahead of progress* card under Today's money opportunities.
 
 :::example Reading a hot job

@@ -13,11 +13,14 @@ type Props = {
   onRetry: () => void | Promise<void>
   /** Telemetry surface key (`dispatch-schedule`, `clock-in`, …). */
   surface: string
-  /** Re-running is safe (a read) → retries by itself when the signal returns. Writes leave this off. */
+  /**
+   * Re-running is safe (a read) → retries by itself when the signal returns, and a lost signal reads the read
+   * sentence (`OFFLINE_READ_MESSAGE`, punch list #224), never *nothing was saved*. Writes leave this off.
+   */
   idempotent?: boolean
   /** The action is in flight — hides the button and holds auto-retry. */
   busy?: boolean
-  /** A read's own words for a lost signal, in place of the write sentence's *nothing was saved* (v2.6198). */
+  /** A caller's own words for a lost signal, in place of the shared sentence for its kind (the clock's, v2.6198). */
   offlineMessage?: string
   style?: CSSProperties
   messageStyle?: CSSProperties

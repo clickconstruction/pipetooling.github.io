@@ -12,7 +12,7 @@ import { checkSupabaseError, formatErrorMessage } from '../../utils/errorHandlin
 import { REPORT_PHOTOS_BUCKET, reportPhotoPath } from '../photos/reportPhotos'
 import { stageProgressRowsFromRpc } from '../reports/stageProgressReport'
 import { type JobStageRef, type StageChecklistAnswer, type StageChecklistPick, type StageChecklistQuestion } from './stageChecklist'
-import { loadQuestions } from './stageChecklistIo'
+import { addJobItem, loadQuestionsForJob, retireJobItem, type AddJobItemInput } from './stageChecklistIo'
 
 // The tables are younger than the generated types; the types PR after the push removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -26,6 +26,8 @@ export interface AnswerRow {
   question_id: string
   pick: string | null
   note: string | null
+  answered_by_name?: string | null
+  answered_at?: string | null
   photo_file_name: string | null
   photo_taken_at: string | null
   photo_storage_path: string | null
@@ -48,7 +50,7 @@ export function answerFromRow(r: AnswerRow): StageChecklistAnswer & { id: string
         failWhy: r.photo_fail_why,
       }
     : null
-  return { id: r.id, fixtureId: r.fixture_id, questionId: r.question_id, pick, note: r.note ?? '', photo, storagePath: r.photo_storage_path, reportPhotoId: r.report_photo_id ?? null }
+  return { id: r.id, fixtureId: r.fixture_id, questionId: r.question_id, pick, note: r.note ?? '', photo, answeredBy: r.answered_by_name ?? '', answeredAt: r.answered_at ?? null, storagePath: r.photo_storage_path, reportPhotoId: r.report_photo_id ?? null }
 }
 
 export type JobAnswer = ReturnType<typeof answerFromRow>
@@ -94,6 +96,12 @@ async function ensureAnswerRow(key: AnswerKey, who: AnswerWho): Promise<JobAnswe
     .insert({ job_id: key.jobId, fixture_id: key.fixtureId, question_id: key.questionId, answered_by: who.userId, answered_by_name: who.name })
     .select(ANSWER_COLS)
     .single()
+  // Another press made the row first, a note saving as a pick lands or a second phone: the row is there, so read it.
+  if (made.error?.code === '23505') {
+    const again = await db.from('stage_checklist_answers').select(ANSWER_COLS).eq('fixture_id', key.fixtureId).eq('question_id', key.questionId).single()
+    checkSupabaseError(again, 'read the answer')
+    return answerFromRow(again.data as AnswerRow)
+  }
   checkSupabaseError(made, 'save the answer')
   return answerFromRow(made.data as AnswerRow)
 }
@@ -231,17 +239,22 @@ export async function waitingPhotoUrl(photo: WaitingPhotoRef): Promise<string | 
   return null
 }
 
-/** The sheet's and the strip's io. */
+/** The sheet's, the strip's and the Documents read-out's io. */
 export interface StageChecklistSheetIo {
   stages: (jobId: string) => Promise<JobStageRef[]>
-  questions: () => Promise<StageChecklistQuestion[]>
+  /** The company's questions and the items added on this job (#237). */
+  questions: (jobId: string) => Promise<StageChecklistQuestion[]>
   answers: (jobId: string) => Promise<JobAnswer[]>
   pick: (key: AnswerKey, pick: StageChecklistPick, who: AnswerWho) => Promise<JobAnswer>
   note: (key: AnswerKey, note: string, who: AnswerWho) => Promise<JobAnswer>
   photo: (input: AttachPhotoInput, who: AnswerWho) => Promise<JobAnswer>
   photoUrl: (photo: WaitingPhotoRef) => Promise<string | null>
+  /** A check added for one of the job's stages (#237). */
+  addItem: (input: AddJobItemInput, who: AnswerWho) => Promise<StageChecklistQuestion>
+  /** A job item taken off; its answer stays. */
+  retireItem: (itemId: string, who: AnswerWho) => Promise<void>
 }
 
 export function supabaseStageChecklistSheetIo(): StageChecklistSheetIo {
-  return { stages: loadJobStages, questions: loadQuestions, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl }
+  return { stages: loadJobStages, questions: loadQuestionsForJob, answers: loadJobAnswers, pick: saveAnswerPick, note: saveAnswerNote, photo: attachAnswerPhoto, photoUrl: waitingPhotoUrl, addItem: addJobItem, retireItem: retireJobItem }
 }

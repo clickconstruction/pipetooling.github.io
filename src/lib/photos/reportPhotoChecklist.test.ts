@@ -48,6 +48,12 @@ const tile = (over: Partial<ReportPhotoTile>): ReportPhotoTile => ({
 })
 
 describe('reportPhotoChecklist', () => {
+  it('offers a chip for an item added for a stage that asks for a photo, on that stage alone (punch list #237)', () => {
+    const item = q({ id: 'j1', order: 0, words: 'Photo of the ADA lav rough heights before the wall closes', fixtureId: 'r', addedBy: 'Jo Sample', addedAt: '2026-11-01T15:00:00.000Z' })
+    const chips = checklistPhotoChips(stages, [...questions, item])
+    expect(chips.filter((c) => c.questionId === 'j1').map((c) => c.fixtureId)).toEqual(['r'])
+    expect(chips.find((c) => c.questionId === 'j1')!.label).toBe('Rough In · Photo of the ADA lav rough heights before the wall closes')
+  })
   it('offers a chip per photo question of each stage’s kind, in stage order then the office’s, and none for a kind with no checklist', () => {
     const chips = checklistPhotoChips(stages, questions)
     expect(chips.map((c) => [c.fixtureId, c.questionId])).toEqual([

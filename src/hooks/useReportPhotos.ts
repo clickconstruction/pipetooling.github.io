@@ -7,7 +7,7 @@ import { type ReportPhotoSendError, attachReportPhotos, discardReportPhotos, job
 import { keptPhotos } from '../lib/offline/keptPhotos'
 import type { KeptReportPhoto } from '../lib/offline/outbox'
 import { answerFailWords, checklistAnswerWrites, checklistPhotoChips, tileAnswering, tileOnStage, type ChecklistPhotoChip } from '../lib/photos/reportPhotoChecklist'
-import { loadQuestions } from '../lib/jobs/stageChecklistIo'
+import { loadQuestionsForJob } from '../lib/jobs/stageChecklistIo'
 import { answerQuestionsWithReportPhotos } from '../lib/jobs/stageChecklistSheetIo'
 import type { StageChecklistQuestion } from '../lib/jobs/stageChecklist'
 import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
@@ -117,7 +117,7 @@ export function useReportPhotos(input: UseReportPhotosInput): ReportPhotosHost {
     void loadReportPhotoSize().then((size) => {
       if (live) setPhotoSize(size)
     })
-    loadQuestions().then(
+    loadQuestionsForJob(jobId).then(
       (qs) => {
         if (live) setQuestions(qs)
       },

@@ -1,9 +1,10 @@
 /**
  * The folder listing's words (v2.6299): the function's answer parsed defensively and ordered, counts, sizes, days, who,
- * where a file came from, the empty words of a folder made and not made, and the *more* line. Made-up names only.
+ * where a file came from (the app's own Drive account as the app, v2.6334), the empty words of a folder made and not
+ * made, and the *more* line. Made-up names only.
  */
 import { describe, expect, it } from 'vitest'
-import { SHOW_FIRST, fileDayWords, fileMetaWords, fileSizeWords, fromWords, hasAnyFolder, jobFolderFilesFromAnswer, moreWords, sectionCountWords, sectionEmptyWords, type JobFolderFile } from './jobFolderFiles'
+import { SHOW_FIRST, byTheApp, fileDayWords, fileMetaWords, fileSizeWords, fromWords, hasAnyFolder, jobFolderFilesFromAnswer, moreWords, sectionCountWords, sectionEmptyWords, type JobFolderFile } from './jobFolderFiles'
 
 const NOW = new Date('2026-11-02T01:00:00Z')
 const file = (id: string, over: Partial<JobFolderFile> = {}): JobFolderFile => ({ id, name: `${id}.pdf`, mime: 'application/pdf', bytes: 2_200_000, modified: '2026-11-01T20:00:00Z', by: 'Dana Example', url: `https://drive.google.com/file/d/${id}/view`, from: null, ...over })
@@ -68,6 +69,22 @@ describe('the words', () => {
     expect(fromWords(file('a', { from: { kind: 'photo', source: 'message' } })).text).toBe('From the app · a photo from a text or an email')
     expect(fromWords(file('a', { from: { kind: 'photo', source: 'something new' } })).text).toBe('From the app · a photo the app filed')
     expect(fromWords(file('a', { from: { kind: 'link', source: null } })).text).toBe('From the app · a file the app linked')
+  })
+
+  it('reads the app’s own Drive account as the app, never as a person (v2.6334)', () => {
+    const app = 'drive-intake@example-drive.iam.gserviceaccount.com'
+    expect(byTheApp(app)).toBe(true)
+    expect(byTheApp(' Drive-Intake@Example-Drive.IAM.GServiceAccount.com ')).toBe(true)
+    expect(byTheApp('Dana Example')).toBe(false)
+    expect(byTheApp('dana@example.com')).toBe(false)
+    expect(byTheApp('iam.gserviceaccount.com fan club')).toBe(false)
+    expect(byTheApp(null)).toBe(false)
+    expect(fromWords(file('a', { by: app }))).toEqual({ text: 'From the app · a file the app put there', tone: 'app' })
+    // The app's own record still says what the file is.
+    expect(fromWords(file('a', { by: app, from: { kind: 'photo', source: 'report' } })).text).toBe('From the app · a report photo')
+    expect(fromWords(file('a', { by: app, from: { kind: 'link', source: null } })).text).toBe('From the app · a file the app linked')
+    expect(fileMetaWords(file('a', { by: app, bytes: 1024 }), NOW)).toBe('Nov 1 · 1 KB')
+    expect(fileMetaWords(file('a', { by: app, modified: null, bytes: null }), NOW)).toBe('')
   })
 
   it('writes the empty words for a folder made and one not made', () => {
