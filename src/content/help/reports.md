@@ -2,7 +2,7 @@
 title: file and review field reports
 category: Office
 roles: assistant, master_technician, primary, estimator
-keywords: photo, camera, stage, stage progress, each stage, each line, how far along, mark each line, precise number, typed number, weighted percent, reports, job complete, status report, leave report, job window, review, notifications, talk it through, voice, speech, dictate, microphone, draft, drafted, what you said
+keywords: photo, camera, stage, stage progress, each stage, each line, how far along, mark each line, precise number, typed number, weighted percent, not started, counts as, reports, job complete, status report, leave report, job window, review, notifications, talk it through, voice, speech, dictate, microphone, draft, drafted, what you said
 where: /jobs?tab=reports
 order: 20
 ---
@@ -67,12 +67,16 @@ The open stage takes a precise number three ways:
 
 A stage you moved shows the old number and the new one. A stage nobody has reported reads *not started*. A stage whose draw is already paid reads {{chip:green|✓ Paid}} and cannot be moved. A stage set as **In order** on the Bill tab carries its number. Any other line carries a diamond.
 
-The app works out the job's percent from the stages. Each stage counts by its share of the job. The **Job** line under the list shows the job's new percent. Tap **how?** to see each stage's share and points. No prices are shown. The job's percent is what the report saves as *How complete is the job?*. So the Pipeline, the Dashboard cards and the activity feed read the same number as before. The report also lists each stage you moved under **Stage progress**. The office reads it on the report card.
+The app works out the job's percent from the stages. Each stage counts by its share of the job. A stage nobody has reported is not counted as 0. The app fills it in from the job's own percent, less what the reported stages already cover. So a job the office set to 100% stays at 100% when you mark one stage done. Only the stages you move change the job's number. The **Job** line under the list shows the job's new percent. Tap **how?** to see each stage's share and points. A filled-in stage reads *counts as 60%* there. No prices are shown. The job's percent is what the report saves as *How complete is the job?*. So the Pipeline, the Dashboard cards and the activity feed read the same number as before. The report also lists each stage you moved under **Stage progress**. The office reads it on the report card.
 
 {{button:outline-blue|Set the whole-job % instead}} brings back the plain slider. Use it when you would rather call the whole job. Jobs with one priced line never see the list. They report with one percent for the job. That percent opens on the job's number, not on 0. The line under it says so. Leave it, and the report files the same number. The **Additional report** window on a job's reports list asks the same way.
 
 :::example Halfway through rough-in
 Job: Underground ✓ Paid · Rough In 35% · Top Out not started · Trim Set not started · Water heater not started. You tap **Rough In**, then **+5** twice. Rough In reads 35% → 45%. The Job line reads 32% → 36%. You tap the water heater's line and **Done ✓**. The Job line reads 32% → 56%. Save. The office sees Rough In at 45% on the Bill tab and the job at 56% everywhere else. The report card reads *Rough In 35% → 45% · Water heater — → 100% · job 32% → 56%*.
+:::
+
+:::example The office already set the job to 100%
+Job: Rough In not started · Top Out not started · Trim Set not started. The office billed the job in full and set it to 100%. You tap **Rough In**, then **Done ✓**. Rough In reads — → ✓ Done. The Job line reads 100% → 100%. Top Out and Trim Set still count as done until someone moves them. Tap **how?** and each of them reads *counts as 100%*. Save. The job stays at 100% everywhere. The report card reads *Rough In — → 100% · job 100% → 100%*.
 :::
 
 ## From a job's window
