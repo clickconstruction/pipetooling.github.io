@@ -13,6 +13,7 @@ import type {
   PersonTimelineSource,
   PersonTimelineWriteup,
 } from './personTimeline'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Gathers the person file's sources under the viewer's own RLS, each read on its own and
@@ -76,7 +77,7 @@ export async function loadPersonFileSources(args: {
       }
       return r.data ?? []
     } catch (e) {
-      held.push({ source, reason: e instanceof Error ? e.message : String(e) })
+      held.push({ source, reason: formatErrorMessage(e) })
       return []
     }
   }

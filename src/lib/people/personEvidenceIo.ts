@@ -1,5 +1,6 @@
 import { supabase } from '../supabase'
 import { evidenceMime, evidenceStoragePath, type PersonEvidenceDraft, type PersonEvidenceFile, type PersonEvidenceRecord } from './personEvidence'
+import { formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * Evidence records on a person's file: the reads and the one write. A record is inserted first, then each file is
@@ -122,6 +123,6 @@ export async function fileEvidenceToDrive(recordId: string): Promise<{ ok: boole
     if (d.error) return { ok: false, why: d.error }
     return { ok: !d.fail_why, why: d.fail_why ?? null }
   } catch (e) {
-    return { ok: false, why: e instanceof Error ? e.message : String(e) }
+    return { ok: false, why: formatErrorMessage(e) }
   }
 }
