@@ -277,7 +277,6 @@ describe('the chip in the page’s other places', () => {
     groups: [
       {
         label: 'Working',
-        state: null,
         rows: [
           { key: 'job:j1091', door: { kind: 'job', id: 'j1091' }, number: 'JP1091', name: 'Lot 3 rough-in', value: null, meta: null, press: null },
           { key: 'bid:b1', door: { kind: 'bid', id: 'b1' }, number: 'BP401', name: 'Phase 2 water', value: null, meta: null, press: null },
