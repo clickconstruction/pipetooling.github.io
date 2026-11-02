@@ -10,6 +10,7 @@ const note: ReleaseNote = {
     'A line the owner tuned on the Costs tab now moves its stage’s piece of the strip on the Projects board. The track still reads the labor budget; the pieces follow the per-line budgets.',
     'The Costs tab’s Where we are card has a door to the project’s card on the board, which opens large on arrival.',
     'A door to a job that is not on the board says so, and why.',
+    'The Projects press on the Pipeline sits in line with Follow-ups and Forecast, a button in its own blue.',
   ],
 }
 
