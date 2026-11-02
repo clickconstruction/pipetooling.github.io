@@ -25,6 +25,8 @@ const hit = (over: Partial<FoundFile>): FoundFile => ({
   url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view',
   home: { kind: 'job', id: 'job-1', hcpNumber: '1187', clickNumber: null, name: 'Maple Court townhomes' },
   path: 'Plans',
+  excerpt: null,
+  excerptWhy: null,
   ...over,
 })
 
@@ -60,6 +62,24 @@ describe('FindAFile', () => {
     expect(screen.getByText('Click Customers › Example Builders · Oct 14 · 410 KB')).toBeTruthy()
     // No job window provider in this tree: Open the job is the Jobs page's own door.
     expect((screen.getByRole('link', { name: 'Open the job' }) as HTMLAnchorElement).getAttribute('href')).toBe('/jobs?edit=job-1')
+  })
+
+  it('draws the line where the words appear with the words bold, a note for a scan, and nothing for a plain hit (v2.6306)', async () => {
+    const io = fakeIo({
+      hits: [
+        hit({ excerpt: { text: '…agreed to the rock clause as written…', marks: [[15, 26]] } }),
+        hit({ id: '2BcDeFgHiJkLmNoPqRsTu', name: 'Scan.pdf', excerptWhy: 'scan' }),
+        hit({ id: '3CdEfGhIjKlMnOpQrStUv', name: 'Plain.pdf' }),
+      ],
+    })
+    renderWithProviders(<FindAFile io={io} debounceMs={0} />)
+    type('rock clause')
+    await screen.findByText('3 files say “rock clause”.')
+    const mark = screen.getByText('rock clause', { selector: 'mark' })
+    expect(mark.closest('[data-excerpt]')!.textContent).toBe('…agreed to the rock clause as written…')
+    expect(screen.getByText('Matched inside the scan.')).toBeTruthy()
+    expect(screen.queryByText('Too big to read here.')).toBeNull()
+    expect(document.querySelectorAll('[data-excerpt]')).toHaveLength(1)
   })
 
   it('one letter searches nothing', async () => {
