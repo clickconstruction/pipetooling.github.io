@@ -2,7 +2,7 @@
 name: "Lien desk: two fixes the courtesy notice's live test found"
 number: 243
 group: ready
-status: found 2026-11-01 in the courtesy notice's live test (#231) · confirmed in code 2026-11-02 · PR 1 built 2026-11-02, v2.6340 · PR 2 open as #6800 · left: the data fix on three live items, on the owner's word
+status: found 2026-11-01 in the courtesy notice's live test (#231) · confirmed in code 2026-11-02 · PR 1 built 2026-11-02, v2.6340 · PR 2 built 2026-11-02, v2.6341 (#6800) · left: the data fix on three live items, on the owner's word
 summary: >
   The session that built the courtesy notice (#231) found two defects during its live test. Opening
   the courtesy send window makes the GC a Messages contact before anything is sent, so a window
@@ -14,7 +14,7 @@ next: >
   three live items read 2026-09-22. Then this card goes.
 size: S (two PRs, XS and S; no migration expected)
 blocker: None for the code, which is built. The data fix on three live items waits on the owner's word.
-ver: v2.3770 · 6259 · 6261 · 6269 · 6271 · 6340
+ver: v2.3770 · 6259 · 6261 · 6269 · 6271 · 6340 · 6341
 opinion: build — both are small, and both fix what the office reads, a stray contact in Messages and lien clocks that read short
 mockup: not required — no new screen; the fixes remove a stray contact and correct a day count
 ---
@@ -62,7 +62,7 @@ Each PR follows CLAUDE.md: `npm run claim` for the version, a release note and i
 ## Where it stands (2026-11-02)
 
 - **PR 1, v2.6340 (#6788).** The window reads the GC's own contact, or the number and address on their record when there is none, and makes nothing. The press makes the contact through `contact_for_customer`, only when a text goes, and texts the channel on it. A refusal or a contact with no number is the text's reason, and the email still goes. Kernel `lienCourtesyContact.ts`; tests on the kernel and the IO.
-- **PR 2 (#6800).** `markLienDeskItemSent` takes the day it went. The by-hand door passes the typed day as noon in the app's calendar when it is before today, and so do the Lien window's *Save & record sends…* path and a run recorded in a later sitting, each from the filing's `sends[].sent_on`. A notice recorded the day it goes out keeps the trigger's stamp. Kernel `lienSentAt.ts`; tests on the kernel, the by-hand IO and the run.
+- **PR 2, v2.6341 (#6800).** `markLienDeskItemSent` takes the day it went. The by-hand door passes the typed day as noon in the app's calendar when it is before today, and so do the Lien window's *Save & record sends…* path and a run recorded in a later sitting, each from the filing's `sends[].sent_on`. A notice recorded the day it goes out keeps the trigger's stamp. Kernel `lienSentAt.ts`; tests on the kernel, the by-hand IO and the run.
 - **The data fix** below waits on the owner.
 
 ## The data fix
