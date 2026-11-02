@@ -22,6 +22,9 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
+// The panel's kept read (#183 PR 5) asks whether the account is a twin; this desk's smoke has no auth provider.
+vi.mock('../../hooks/useIsDigitalTwin', () => ({ useIsDigitalTwin: () => false }))
+
 afterEach(cleanup)
 
 const TODAY = '2026-10-02'

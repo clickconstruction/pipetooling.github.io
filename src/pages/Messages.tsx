@@ -15,6 +15,9 @@
  * draws `components/messages/myMail/MyMailTab` in place of every Follow up section, with its own view (`?view=`) and
  * its own reading of `?q=`; the thread window still opens over it, and `useMessagesHost` reads the view while it is
  * open, as for Everyone, for the job picker's jobs and the line a tagged conversation sits on.
+ *
+ * Punch list #183 PR 5: the panel keeps the queue on the device (`keptRead`), and says through `onKept` when the lanes
+ * on screen are that kept read; the bar then mutes its counts (`kept`), and the queues never fold over a kept read.
  */
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { Navigate, useSearchParams } from 'react-router-dom'
@@ -41,7 +44,7 @@ import { needsYouCount } from '../lib/followUp/queue'
 import { JUMP_LANE_ANCHOR, QUEUE_LANES, type JumpCounts, type JumpLane } from '../lib/messages/jumpStrip'
 import { keepWeekOpen, readWeekOpen } from '../lib/messages/topBar'
 import { EVERYONE_WORDS } from '../lib/messages/everyone'
-import { QUEUES_FOLD_WORDS } from '../lib/messages/queuesFold'
+import { QUEUES_FOLD_WORDS, queuesFolded } from '../lib/messages/queuesFold'
 import { queryOf, searchLines, SEARCH_MIN, SEARCH_WORDS, withQuery } from '../lib/messages/searchLines'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { peopleForPill, pillOf, pillOnFollowUp, queueForPill, withPill, type KindPill } from '../lib/messages/kindPills'
@@ -100,7 +103,9 @@ export default function Messages() {
   const phone = useMatchMedia('(max-width: 760px)')
   const [queueCount, setQueueCount] = useState<number | null>(null)
   const [queuesOpen, setQueuesOpen] = useState(false)
-  const foldQueues = phone && queueCount === 0 && !queuesOpen
+  // The kept read (#183 PR 5): when the panel's lanes are the device's kept read, the bar mutes its counts and the fold holds.
+  const [keptAt, setKeptAt] = useState<number | null>(null)
+  const foldQueues = queuesFolded({ phone, count: queueCount, open: queuesOpen, kept: keptAt != null })
   // Answer all (punch list #140 PR 6): the desk over Needs a reply; while it is open the host's view is read, since the
   // desk's reply box sends as the thread would.
   // A link may open it (`?answer=all`, v2.5816, from Quickfill's Texts station); closing the desk takes that off the address.
@@ -243,6 +248,7 @@ export default function Messages() {
         phone={phone}
         legend={{ open: legendOpen, onToggle: setLegendOpen }}
         tabs={{ tab, onTab: pickTab, myMailOn: myMailOn === true || myMailOpen }}
+        kept={keptAt != null}
       />
       {legendOpen && !searching && <LaneLegend onClose={() => setLegendOpen(false)} />}
       {myMailOpen ? (
@@ -356,6 +362,8 @@ export default function Messages() {
                 narrow={narrow}
                 onCount={setQueueCount}
                 onQueue={onQueue}
+                onKept={setKeptAt}
+                keptRead
                 laneLook="bands"
                 answerAll={{ on: answering, onChange: answerAllOnChange, thread: { view: host.view, nowIso: host.nowIso, searchJobs: host.writes.searchJobs } }}
               />

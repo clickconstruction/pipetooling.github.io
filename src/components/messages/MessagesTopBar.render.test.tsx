@@ -160,6 +160,24 @@ describe('MessagesTopBar', () => {
     expect(screen.getByRole('tab', { name: 'My email' })).toBeTruthy()
   })
 
+  it('mutes its counts under the kept read (punch list #183 PR 5): the bar and the strip carry data-kept-read and every count the keptCount class', () => {
+    bar({ kept: true })
+    const pinned = document.querySelector('[data-messages-pinned]')!
+    expect(pinned.hasAttribute('data-kept-read')).toBe(true)
+    expect(document.querySelector('[data-messages-jump-strip]')!.hasAttribute('data-kept-read')).toBe(true)
+    const show = document.querySelector('[data-messages-show]')!
+    expect([...show.querySelectorAll('.keptCount')].map((el) => el.textContent)).toEqual([' · 1', ' · 4'])
+    for (const seg of within(pinned as HTMLElement).getAllByTestId('jump-lane')) expect(seg.querySelector('.stagesStageSegMeta')!.classList.contains('keptCount')).toBe(true)
+    cleanup()
+    bar({ kept: true, phone: true })
+    expect(document.querySelector('[data-messages-top-bar]')!.hasAttribute('data-kept-read')).toBe(true)
+    expect(document.querySelector('[data-messages-jump-strip]')!.hasAttribute('data-kept-read')).toBe(true)
+    cleanup()
+    bar()
+    expect(document.querySelector('[data-messages-pinned]')!.hasAttribute('data-kept-read')).toBe(false)
+    expect(document.querySelector('[data-messages-jump-strip]')!.hasAttribute('data-kept-read')).toBe(false)
+  })
+
   it('renders under the dark theme as it does in light', () => {
     document.documentElement.dataset.theme = 'dark'
     bar()

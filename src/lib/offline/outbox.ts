@@ -491,7 +491,7 @@ export interface OutboxBarOptions {
 /**
  * What the bar reads, or null when it is gone. Red first (a press needs a person), then the send
  * in flight, then what waits with its countdown, then what landed until Got it. The owner's words
- * of 2026-10-24 and 2026-10-26 (`to-dos/honest-and-fast/README.md`, part 3).
+ * of 2026-10-24 and 2026-10-26 (`docs/recent-features/v2.6099.md`).
  */
 export function outboxBarWords(presses: readonly OutboxPress[], now: number, opts: OutboxBarOptions = {}): OutboxBarWords | null {
   const fmt = opts.formatTime ?? formatDenverTimeOnly

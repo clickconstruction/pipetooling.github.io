@@ -10,8 +10,12 @@ import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ConfirmDialogProvider } from '../contexts/ConfirmDialogContext'
 import { ToastProvider } from '../contexts/ToastContext'
+import { supabaseFollowUpIo } from '../lib/followUp/followUpIo'
+import type { FollowUpRows } from '../lib/followUp/followUpRows'
+import { KEPT_READ_SCHEMA } from '../lib/keptRead'
+import { messagesKeptKey, type MessagesKeptQueue } from '../lib/messages/keptQueue'
 import { loadMessagesView } from '../lib/messages/messagesIo'
-import { installDomShims } from '../test/renderSmokeMocks'
+import { installDomShims, SMOKE_AUTH_USER_ID } from '../test/renderSmokeMocks'
 import Messages from './Messages'
 
 vi.mock('../lib/supabase', async () => {
@@ -37,6 +41,14 @@ vi.mock('../hooks/useAuth', async () => {
 
 // The thread window's later cuts read their own tables; here the window draws with none of them.
 vi.mock('../components/gc/messages/threadSlots', () => ({ useThreadSlots: () => ({}) }))
+
+// The device's kept read (punch list #183 PR 5): nothing kept unless a case says so.
+const keptStore = vi.hoisted(() => ({ read: vi.fn(async (_key: string): Promise<unknown> => null), write: vi.fn(async (_kept: unknown) => {}) }))
+vi.mock('../lib/keptReadStore', () => ({
+  readKeptRead: (key: string) => keptStore.read(key),
+  writeKeptRead: (kept: unknown) => keptStore.write(kept),
+  clearKeptReads: vi.fn(async () => {}),
+}))
 
 // The last 7 days (punch list #140 PR 5): an empty fortnight; the longest wait comes from the queue below, not this read.
 vi.mock('../lib/messages/weekStripIo', () => ({ loadWeekStrip: vi.fn(() => Promise.resolve({ lines: [], estimates: [] })) }))
@@ -409,6 +421,91 @@ describe('/messages: Answer all (punch list #140 PR 6)', () => {
     await waitFor(() => expect(screen.queryByRole('dialog', { name: 'Answer all' })).toBeNull())
     await waitFor(() => expect(where()).not.toContain('answer=all'))
     expect(where()).toContain('/messages')
+  })
+})
+
+describe('/messages: the kept queue (punch list #183 PR 5)', () => {
+  const STAMP = '[data-kept-read-stamp]'
+  /** What the device kept: Kay waiting on a reply, held by the signed-in person. Made up. */
+  const stored = (lane: MessagesKeptQueue['lanes']['needsReply'], people: MessagesKeptQueue['people']) => ({
+    key: messagesKeptKey(SMOKE_AUTH_USER_ID),
+    schema: KEPT_READ_SCHEMA,
+    scopes: ['queue'],
+    readAt: Date.now() - 5 * 60_000,
+    rows: [{ lanes: { newLane: [], needsYou: [], needsReply: lane, weOwe: [], calls: [] }, count: lane.length, people, lines: [], setAside: [] } satisfies MessagesKeptQueue],
+  })
+  const KAY: MessagesKeptQueue['people'][number] = { id: 'c-kay', kind: 'customer', name: 'Kay Winters', state: 'waiting', has: 'You', hasUserId: SMOKE_AUTH_USER_ID, hasSince: '2026-10-01T15:00:00.000Z', hasHow: 'took' }
+  const KAY_ROW: MessagesKeptQueue['lanes']['needsReply'][number] = { contactId: 'c-kay', landOnId: null, waitingSince: '2026-10-01T15:00:00.000Z', callBack: false, offers: [], acts: ['Reply', 'No reply needed', 'Remind me Monday'] }
+  const queueIo = supabaseFollowUpIo()
+  /** The queue's read hangs until the case lands it; the read every other case makes comes back after. */
+  const holdTheRead = () => {
+    let land: (rows: FollowUpRows) => void = () => {}
+    vi.mocked(queueIo.loadQueue).mockImplementationOnce(() => new Promise<FollowUpRows>((resolve) => (land = resolve)))
+    return (rows: FollowUpRows) => land(rows)
+  }
+  const nobody: FollowUpRows = { contacts: [], channels: [], records: {}, messages: [], heard: [], owed: [] }
+  const realMatchMedia = window.matchMedia
+
+  beforeEach(() => {
+    localStorage.removeItem('messages_week_open')
+    localStorage.removeItem('messages_show_lens')
+    keptStore.read.mockReset()
+    keptStore.read.mockResolvedValue(null)
+    keptStore.write.mockClear()
+  })
+  afterEach(() => {
+    window.matchMedia = realMatchMedia
+    keptStore.read.mockReset()
+    keptStore.read.mockResolvedValue(null)
+  })
+
+  it('while the read hangs, the bar counts the device’s kept read and mutes it, and the live read lands over it', async () => {
+    keptStore.read.mockResolvedValue(stored([KAY_ROW], [KAY]))
+    const land = holdTheRead()
+    at('/messages')
+    await screen.findByText('Kay Winters')
+    expect(keptStore.read).toHaveBeenCalledWith(messagesKeptKey(SMOKE_AUTH_USER_ID))
+    expect(document.querySelector(STAMP)!.textContent).toMatch(/^Who was waiting at .+ · reading again…$/)
+    expect(screen.queryByText('Loading who is waiting on us…')).toBeNull()
+    const pinned = document.querySelector('[data-messages-pinned]') as HTMLElement
+    await waitFor(() => expect(pinned.hasAttribute('data-kept-read')).toBe(true))
+    expect(document.querySelector('[data-messages-jump-strip]')!.hasAttribute('data-kept-read')).toBe(true)
+    // The bar's counts are the kept read's: one waiting, held by me.
+    const lane = within(pinned).getAllByTestId('jump-lane').find((b) => b.dataset.lane === 'needsReply')!
+    expect(lane.querySelector('.stagesStageSegMeta')!.textContent).toBe('1')
+    expect(lane.querySelector('.stagesStageSegMeta')!.classList.contains('keptCount')).toBe(true)
+    const show = within(screen.getByRole('radiogroup', { name: 'Show' }))
+    expect(show.getByRole('radio', { name: 'Mine · 1' })).toBeTruthy()
+    expect(show.getByRole('radio', { name: 'Everyone · 1' })).toBeTruthy()
+    expect((screen.getByRole('button', { name: 'Answer all' }) as HTMLButtonElement).disabled).toBe(true)
+    // A kind pill narrows the kept queue as it does the live one.
+    fireEvent.click(pill('Trade partners'))
+    await waitFor(() => expect(screen.queryByText('Kay Winters')).toBeNull())
+    expect(document.querySelector(STAMP)).not.toBeNull()
+    fireEvent.click(pill('All'))
+    await screen.findByText('Kay Winters')
+
+    land(nobody)
+    await waitFor(() => expect(document.querySelector(STAMP)).toBeNull())
+    expect(screen.queryByText('Kay Winters')).toBeNull()
+    await waitFor(() => expect(pinned.hasAttribute('data-kept-read')).toBe(false))
+    expect(document.querySelector('[data-messages-jump-strip]')!.hasAttribute('data-kept-read')).toBe(false)
+    await waitFor(() => expect(keptStore.write).toHaveBeenCalledTimes(1))
+    expect(keptStore.write.mock.calls[0]![0]).toMatchObject({ key: messagesKeptKey(SMOKE_AUTH_USER_ID), scopes: ['queue'] })
+  })
+
+  it('a phone never folds a kept queue, whose stamp must show, even one with nobody waiting; it folds once the live read says so', async () => {
+    window.matchMedia = ((query: string) => ({ matches: query.includes('760px'), media: query, onchange: null, addListener: () => {}, removeListener: () => {}, addEventListener: () => {}, removeEventListener: () => {}, dispatchEvent: () => false })) as typeof window.matchMedia
+    keptStore.read.mockResolvedValue(stored([], []))
+    const land = holdTheRead()
+    at('/messages')
+    await waitFor(() => expect(document.querySelector(STAMP)).not.toBeNull())
+    expect(screen.queryByTestId('queues-fold')).toBeNull()
+    expect((screen.getByTestId('queues') as HTMLElement).style.display).not.toBe('none')
+    expect(document.querySelector('[data-messages-top-bar]')!.hasAttribute('data-kept-read')).toBe(true)
+    land(nobody)
+    await screen.findByTestId('queues-fold')
+    expect(document.querySelector(STAMP)).toBeNull()
   })
 })
 

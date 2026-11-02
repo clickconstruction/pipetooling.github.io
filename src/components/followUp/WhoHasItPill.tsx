@@ -7,10 +7,14 @@
  * Punch list #141 PR 4 (v2.6060): with the team's Push me hours (`pushHours`), the pill says when whoever has it is off,
  * *Rosa has this · off until 6 AM*, and when nobody has it and every office member is, *the office is off until 6 AM*;
  * the hover says what that means (`messages/whoIsOff.ts`). Without the hours, or with nobody off, it reads as before.
+ *
+ * On a kept row (punch list #183 PR 5, `held`) the pill is inert under `keptPress` with the hover *reading again…*:
+ * Take it and a hand-off act on who has it now, which the device's kept read cannot say.
  */
 import { useEffect, useRef, useState } from 'react'
 import type { FollowUpContact } from '../../lib/followUp/followUpRows'
 import { hasPillWords, hasSinceWords, holdCount, takeItWords, whoPickerHead, type QueueContact } from '../../lib/followUp/queue'
+import { READING_AGAIN_WORDS } from '../../lib/keptRead'
 import { exactStamp } from '../../lib/messages/owed'
 import { whenWords } from '../../lib/messages/thread'
 import type { PushHoursByUser } from '../../lib/messages/pushHours'
@@ -30,6 +34,8 @@ export interface WhoHasItPillProps {
   /** Hands it to someone, or puts it back (null). Taking it is handing it to me. */
   onHand: (userId: string | null) => void
   busy?: boolean
+  /** The row is a kept read (#183 PR 5): the pill waits, inert, with *reading again…* as its hover, until the live read lands. */
+  held?: boolean
   /** In the thread's header (v2.5542): the header's control class in place of the border, one 28px height; the tint still says it is yours. */
   bare?: boolean
   /** The team's Push me hours (v2.6060), for the off words; none reads as nobody off. */
@@ -53,7 +59,7 @@ const ROLE_WORDS: Readonly<Record<string, string>> = {
   superintendent: 'superintendent',
 }
 
-export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy, bare, pushHours }: WhoHasItPillProps) {
+export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, onHand, busy, held, bare, pushHours }: WhoHasItPillProps) {
   const [open, setOpen] = useState(false)
   const box = useRef<HTMLSpanElement>(null)
   useEffect(() => {
@@ -84,17 +90,19 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
     if (userId !== contact.hasUserId) onHand(userId)
   }
   const sinceShort = contact.hasSince ? exactStamp(contact.hasSince) : null
+  const className = [bare ? 'thread-head-control' : '', held ? 'keptPress' : ''].filter(Boolean).join(' ') || undefined
 
   return (
     <span ref={box} style={{ position: 'relative', display: 'inline-block' }}>
       <button
         type="button"
-        title={tip}
+        title={held ? READING_AGAIN_WORDS : tip}
         aria-haspopup="menu"
         aria-expanded={open}
-        disabled={busy}
+        disabled={busy || held}
+        data-held={held ? '' : undefined}
         onClick={() => setOpen((o) => !o)}
-        className={bare ? 'thread-head-control' : undefined}
+        className={className}
         style={{
           display: 'inline-flex',
           alignItems: 'center',
@@ -105,8 +113,11 @@ export function WhoHasItPill({ contact, me, team, everyone, todayYmd, nowIso, on
           background: mine ? 'var(--bg-blue-tint)' : bare ? undefined : 'var(--surface)',
           color: 'var(--text-base)',
           fontSize: '0.8rem',
-          cursor: busy ? 'wait' : 'pointer',
+          cursor: busy ? 'wait' : held ? 'not-allowed' : 'pointer',
           whiteSpace: 'nowrap',
+          // `keptPress` mutes it and would switch its pointer events off. They stay on: the hover must show, and a press
+          // on the dead pill must not fall through to the row, which would open the thread.
+          ...(held ? { pointerEvents: 'auto' as const } : {}),
         }}
       >
         <span
