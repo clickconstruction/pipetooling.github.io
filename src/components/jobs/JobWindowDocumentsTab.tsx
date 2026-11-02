@@ -21,6 +21,7 @@ import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 import { HoursStatementsSection } from './HoursStatementsSection'
+import { JobDocumentsChecklists } from './JobDocumentsChecklists'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
 import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
 import { EmptyState } from '../EmptyState'
@@ -334,6 +335,7 @@ export function JobWindowDocumentsTab({
       <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} />
 
       <HoursStatementsSection scope={{ kind: 'job', job }} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
+      <JobDocumentsChecklists job={job} />
 
       {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
 

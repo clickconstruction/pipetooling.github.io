@@ -193,6 +193,26 @@ export function JobsStagesCommandBar({
           Forecast
         </button>
       )}
+      {/* Design spike (punch list #234): the projects board — every working project at this pace, the expected hours set in the open. */}
+      {canSeeForecast && (
+        <a
+          href="/dev/projects-board"
+          title="Every working project at this pace, with the expected hours set in the open"
+          aria-label="Projects board"
+          style={{
+            padding: '0.5rem 0.9rem',
+            background: 'var(--bg-blue-100)',
+            color: 'var(--text-blue-700)',
+            border: '1px solid var(--border)',
+            borderRadius: 4,
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            textDecoration: 'none',
+          }}
+        >
+          Projects
+        </a>
+      )}
       {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
       <div
         style={{

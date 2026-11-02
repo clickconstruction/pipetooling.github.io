@@ -38,6 +38,9 @@ const Banking = lazy(() => import('./pages/Banking'))
 const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
 const Bridge = lazy(() => import('./pages/Bridge'))
+// Design spike (punch list #234 PR 3 / #237 PR 5): a dev-only look at job mode for any job and teammate.
+const DevJobModePreview = lazy(() => import('./pages/DevJobModePreview'))
+const DevProjectsBoard = lazy(() => import('./pages/DevProjectsBoard'))
 const GcProjects = lazy(() => import('./pages/GcProjects'))
 const Messages = lazy(() => import('./pages/Messages'))
 const Training = lazy(() => import('./pages/Training'))
@@ -371,6 +374,8 @@ function AppContent() {
           <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />
           <Route path="bridge" element={<ErrorBoundary><Bridge /></ErrorBoundary>} />
+          <Route path="dev/job-mode-preview" element={<ErrorBoundary><DevJobModePreview /></ErrorBoundary>} />
+          <Route path="dev/projects-board" element={<ErrorBoundary><DevProjectsBoard /></ErrorBoundary>} />
           <Route path="gc" element={<ErrorBoundary><GcProjects /></ErrorBoundary>} />
           <Route path="messages" element={<ErrorBoundary><Messages /></ErrorBoundary>} />
           {/* A training course, read at the person's own pace (punch list #111): the lessons ride in this lazy chunk. */}
