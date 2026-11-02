@@ -45,6 +45,8 @@ export async function checkDriveFolder(folder: string): Promise<FolderCheck> {
 
 export interface WhereFilesGoSet {
   root?: string
+  /** The company papers folder's link or id (the Documents spike of 2026-11-01); refused as `company_unwritable`. */
+  company?: string
   job_pattern?: readonly JobFolderPiece[]
   bid_pattern?: readonly BidFolderPiece[]
   folders_made?: FoldersMade

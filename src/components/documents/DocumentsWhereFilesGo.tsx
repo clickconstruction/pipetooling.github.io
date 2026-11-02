@@ -43,6 +43,7 @@ import {
   APPLIES_FROM_NOW_WORDS,
   bidFolderFacts,
   checkPastedWords,
+  companyCardWords,
   EVERY_PASTED_OK_WORDS,
   exampleJob,
   FIXED_NAMES_WORDS,
@@ -216,6 +217,109 @@ function RootCard({ settings, save }: { settings: WhereFilesGo; save: Save }) {
             <div>
               <button type="button" style={btnPrimary} disabled={saving} onClick={() => void move()}>
                 {saving ? 'Moving…' : 'Move the jobs root here'}
+              </button>
+            </div>
+          ) : null}
+        </>
+      ) : null}
+    </section>
+  )
+}
+
+// --- the company folder (the Documents spike of 2026-11-01) ---------------------------------------------------------
+
+/** The company papers folder: the W-9, the insurance, the licenses. Documents → Company lists it and uploads into it. */
+function CompanyCard({ settings, save }: { settings: WhereFilesGo; save: Save }) {
+  const words = companyCardWords(settings.company)
+  const [pasted, setPasted] = useState('')
+  const [checking, setChecking] = useState(false)
+  const [checked, setChecked] = useState<{ link: string; check: FolderCheck } | null>(null)
+  const [checkProblem, setCheckProblem] = useState<string | null>(null)
+  const [saving, setSaving] = useState(false)
+  const confirmDialog = useConfirmDialog()
+  const check = async () => {
+    const link = pasted.trim()
+    if (!link || checking) return
+    setChecking(true)
+    setCheckProblem(null)
+    setChecked(null)
+    try {
+      setChecked({ link, check: await checkDriveFolder(link) })
+    } catch (e) {
+      setCheckProblem(formatErrorMessage(e, 'The folder was not checked.'))
+    } finally {
+      setChecking(false)
+    }
+  }
+  const checkedId = checked ? driveFolderIdFromLinkOrId(checked.link) : null
+  const isNew = Boolean(checked?.check.ok && checkedId && checkedId !== settings.company?.id)
+  const use = async () => {
+    if (!checked || saving) return
+    const name = checked.check.folder?.name || 'this folder'
+    const ok = await confirmDialog({
+      title: 'Use this folder for company papers',
+      message: `Documents → Company will list ${name} and put uploads there. The files that exist stay where they are.`,
+      confirmLabel: 'Use this folder',
+    })
+    if (!ok) return
+    setSaving(true)
+    const saved = await save({ company: checked.link }, `Company papers now live in ${name}.`)
+    setSaving(false)
+    if (saved) {
+      setChecked(null)
+      setPasted('')
+    }
+  }
+  return (
+    <section style={card} aria-label="The company folder" data-testid="wfg-company-card">
+      <h4 style={cardH}>The company folder</h4>
+      <p style={{ ...muted, margin: 0 }}>The W-9, the insurance and the licenses. Documents → Company lists this folder and its Upload press fills it.</p>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontWeight: 700, color: 'var(--text-strong)', fontSize: '0.95rem' }}>
+        <FolderGlyph />
+        <span style={{ minWidth: 0 }}>
+          <span data-testid="wfg-company-name">{words.name}</span>
+          {words.path ? <span style={{ ...muted, display: 'block', fontWeight: 500 }}>{words.path}</span> : null}
+        </span>
+      </div>
+      {words.owner ? <p style={{ ...muted, margin: 0 }}>{words.owner}</p> : null}
+      {words.from ? <p style={{ ...muted, margin: 0 }}>{words.from}</p> : null}
+      {settings.company ? (
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+          <CheckWords ok={settings.company.ok} words={settings.company.words} testId="wfg-company-check" />
+          <button type="button" style={btnQuiet} onClick={() => openInExternalBrowser(settings.company!.url)}>
+            Open in Drive
+          </button>
+        </div>
+      ) : null}
+      <div style={{ display: 'flex', gap: 6, alignItems: 'center' }}>
+        <input
+          aria-label="A Drive folder link for the company papers"
+          placeholder={settings.company ? 'Paste a Drive folder link to move it' : 'Paste a Drive folder link'}
+          value={pasted}
+          onChange={(e) => setPasted(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') void check()
+          }}
+          style={input}
+        />
+        <button type="button" style={btn} aria-label="Check the company folder link" disabled={checking || !pasted.trim()} onClick={() => void check()}>
+          {checking ? 'Checking…' : 'Check'}
+        </button>
+      </div>
+      {checkProblem ? <p style={warnLine}>{checkProblem}</p> : null}
+      {checked ? (
+        <>
+          <CheckWords ok={checked.check.ok} words={checked.check.words} testId="wfg-company-pasted-check" />
+          {checked.check.folder ? (
+            <p style={{ ...muted, margin: 0 }}>
+              {checked.check.folder.name}
+              {checked.check.folder.path.length > 0 ? ` · ${[...checked.check.folder.path, checked.check.folder.name].join(' › ')}` : ''}
+            </p>
+          ) : null}
+          {isNew ? (
+            <div>
+              <button type="button" style={btnPrimary} disabled={saving} onClick={() => void use()}>
+                {saving ? 'Saving…' : 'Use this folder for company papers'}
               </button>
             </div>
           ) : null}
@@ -720,6 +824,7 @@ export function DocumentsWhereFilesGo() {
       {settings ? (
         <div style={cards}>
           <RootCard settings={settings} save={save} />
+          <CompanyCard settings={settings} save={save} />
           <NameCard settings={settings} job={sample} bid={bid} save={save} />
           <TreeCard settings={settings} exampleName={sampleName} customerName={sample?.customer_name?.trim() || (sample ? NO_CUSTOMER_FOLDER_NAME : null)} save={save} />
         </div>
