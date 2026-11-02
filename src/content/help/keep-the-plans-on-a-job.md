@@ -2,7 +2,7 @@
 title: keep the plans on a job
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: plans, plan set, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans
+keywords: plans, plan set, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans
 where: /jobs
 order: 60
 ---
@@ -47,6 +47,10 @@ The as-built lands under **Our as-builts** with the day and who added it. The li
 A job inside a development builds from one part of the site, such as the Bunker or the Lodge. The first set on the job asks which part. Pick one the site already has, or make a new part named after the job.
 
 When another part of the site has its own set, an amber note says so. A set on another part may touch this job. Press {{button:outline|Open the site’s plans ›}} to see every set on the site.
+
+## Keep the papers that come with a set
+
+A spec book, a schedule or the owner's task list comes with a set. Keep each one beside the set it goes with. The **Papers with the plans** block sits under the sets. See [keep the papers with the plans](/help/keep-the-papers-with-the-plans).
 
 ## Take a set off
 

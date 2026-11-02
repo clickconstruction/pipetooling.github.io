@@ -49,6 +49,10 @@ export type PlanSetRow = {
   file_count: number | null
   checked_at: string | null
   check_note: string | null
+  /** The papers train (migration 20261102010000): a paper we are waiting on, the lane and id of the question it raised. */
+  owed: boolean
+  ask_lane: string | null
+  ask_request_id: string | null
   created_by: string | null
   created_at: string
   updated_at: string

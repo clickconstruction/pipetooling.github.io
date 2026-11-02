@@ -15,6 +15,7 @@ import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
+import { buildPapersView, kindLabel, paperChipWords, paperLineWords, type Paper } from '../../lib/papers/papers'
 
 export type SitePlansWrites = {
   addPart: (name: string) => Promise<boolean>
@@ -37,9 +38,12 @@ export function DevelopmentPartsCard({
   askOnRecord,
   openQuestions,
   writes,
+  papers,
 }: {
   /** Null while the parts read. */
   view: SitePlansView | null
+  /** The papers on the site's parts, with their asks resolved; undefined hides the column. */
+  papers?: ReadonlyArray<Paper>
   names: Record<string, string>
   canWrite: boolean
   openCarrier: (c: SiteCarrier) => void
@@ -55,6 +59,9 @@ export function DevelopmentPartsCard({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [openPapers, setOpenPapers] = useState<Record<string, boolean>>({})
+  // The papers on the site's parts (the papers train): the column draws only when the page hands them in.
+  const hasPapers = papers !== undefined
 
   if (!view) return <p style={{ ...muted, margin: 0 }}>Reading the plans…</p>
 
@@ -142,6 +149,7 @@ export function DevelopmentPartsCard({
               <th style={th}>Memo</th>
               <th style={th}>Jobs</th>
               <th style={th}>Older sets</th>
+              {hasPapers ? <th style={th}>Papers</th> : null}
             </tr>
           </thead>
           <tbody>
@@ -185,7 +193,56 @@ export function DevelopmentPartsCard({
                         ) : null}
                       </span>
                     </td>
+                    {hasPapers ? (
+                      <td style={td}>
+                        {(() => {
+                          const pv = buildPapersView(papers ?? [], row.part.id)
+                          const w = paperChipWords(pv)
+                          return (
+                            <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                              {w.papers ? (
+                                <button type="button" className={`developmentChipPress${openPapers[row.part.id] ? ' isOn' : ''}`} onClick={() => setOpenPapers((o) => ({ ...o, [row.part.id]: !o[row.part.id] }))}>
+                                  {w.papers} <span aria-hidden>{openPapers[row.part.id] ? '▾' : '▸'}</span>
+                                </button>
+                              ) : (
+                                <span style={muted}>—</span>
+                              )}
+                              {w.asks ? <Chip label={w.asks} color="#b45309" soft /> : null}
+                              {w.owed ? <Chip label={w.owed} color="#b45309" soft /> : null}
+                            </span>
+                          )
+                        })()}
+                      </td>
+                    ) : null}
                   </tr>
+                  {hasPapers && openPapers[row.part.id] ? (
+                    <tr>
+                      <td style={{ ...td, borderBottom: 'none' }} />
+                      <td style={td} colSpan={7}>
+                        {buildPapersView(papers ?? [], row.part.id).bySet.map((g) => (
+                          <div key={g.setId || 'part'} style={{ marginBottom: 6 }}>
+                            <div style={{ ...muted, fontWeight: 600 }}>{g.setId ? `With ${[...row.older, ...(row.current ? [row.current] : [])].find((s) => s.id === g.setId)?.name ?? 'a set'}` : `On ${row.part.name}`}</div>
+                            {g.papers.map((p) => (
+                              <div key={p.id} style={{ fontSize: '0.82rem' }}>
+                                <Chip label={kindLabel(p.kind)} color="#64748b" soft /> {p.name} <span style={muted}>· {paperLineWords(p)}</span>
+                                {p.ask && !p.ask.answeredAt ? <Chip label="asks" color="#b45309" soft /> : null}
+                                {p.link ? (
+                                  <LinkButton onClick={() => openInExternalBrowser(p.link)} nowrap>
+                                    Open ↗
+                                  </LinkButton>
+                                ) : null}
+                              </div>
+                            ))}
+                          </div>
+                        ))}
+                        {buildPapersView(papers ?? [], row.part.id).owed.map((p) => (
+                          <div key={p.id} style={{ fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>
+                            <Chip label="owed" color="#b45309" soft /> {p.name} <span style={muted}>· {paperLineWords(p)}</span> {p.ask ? <span style={muted}>· {p.ask.words}</span> : null}
+                          </div>
+                        ))}
+                      </td>
+                    </tr>
+                  ) : null}
                   {openOlder[row.part.id] && older.length ? (
                     <tr>
                       <td style={{ ...td, borderBottom: 'none' }} />

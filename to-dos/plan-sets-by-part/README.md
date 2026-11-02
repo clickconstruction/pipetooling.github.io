@@ -73,6 +73,16 @@ The one call the owner still makes, in PR 3: when a lone job is put into a devel
 5. **PR 5 — Drive and photos**: one subfolder per set under the job's Plans folder, the register mirrored; the crew's *Add our as-built* takes photos of the marked sheets or a PDF and files them.
 6. **PR 6 — the row and History**: the Pipeline row's plans icon opens the current set or the picker; a History line on every job of a part when the part switches.
 
+## The papers train (added 2026-11-01)
+
+The owner, sorting the documents that came with a real site's sets: *I feel like each one needs either an action item or an event description. They all seem important to save to a job.* Mock-up (`papers-on-a-job.html` in the session's notes), critique, spike behind `?papers=1`, then: *I think this is pretty good. Let's build it right here and right now.*
+
+A paper is a document on a part, kept in the same register as the sets (a `plan_sets` row with a paper kind), beside the set it goes with (`marks_up_set_id`), carrying the question it raised (`ask_lane` + `ask_request_id`, the lane's own inbox) and an *owed* state for one that has not come. Keeping one writes the History line by trigger. A paper can never be what a part builds from.
+
+- **PR A — the ground** (v2.6312, migration `20261102010000`): kinds, sources, the three columns, the two triggers, the crew's insert.
+- **PR B — the doors** (v2.6313): `src/lib/papers/papers.ts`; *Papers with the plans* under the job's Plans (`JobPapersSection.tsx`); *Keep this mail as a paper on JP…* in My Mail (`MailPaperDoor.tsx`); the Plans look's *Papers* column. Guide *keep the papers with the plans*.
+- **Later**: dev-mcp verbs `plan_paper → apply_paper` and `plan_plan_set → apply_plan_set`, and `file_plans` onto parts (a card of its own); the mail door filing the attachment into Drive (with PR 5).
+
 ## How to verify
 
 PR 2: as the dev on a ZZ Test job with no development, Documents → Plans: add an issued set, then an addendum that replaces it and becomes current; *Open plans* on the Job tab now opens the addendum's link (the mirror); add an as-built; remove it. Then on a ZZ Test job inside a ZZ Test development with a second part carrying a set: the notice reads and its door opens the site's Plans look. Delete every ZZ Test row after.

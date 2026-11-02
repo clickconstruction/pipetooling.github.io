@@ -35,7 +35,7 @@ function set(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
     file_size: null,
     file_count: null,
     checked_at: null,
-    check_note: null,
+    check_note: null, owed: false, ask_lane: null, ask_request_id: null,
     created_by: null,
     created_at: '2026-10-01T12:00:00Z',
     updated_at: '2026-10-01T12:00:00Z',

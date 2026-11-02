@@ -8,7 +8,7 @@ function part(over: Partial<PlanPartRow> & { id: string; name: string }): PlanPa
 function set(over: Partial<PlanSetRow> & { id: string; part_id: string }): PlanSetRow {
   return {
     name: 'Issued set', kind: 'issued', source: 'gc', dated: null, came_at: '2026-10-01T12:00:00Z', memo: '', link: 'https://drive.google.com/x',
-    replaces_set_id: null, marks_up_set_id: null, job_id: null, file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null,
+    replaces_set_id: null, marks_up_set_id: null, job_id: null, file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null, owed: false, ask_lane: null, ask_request_id: null,
     created_by: null, created_at: '2026-10-01T12:00:00Z', updated_at: '2026-10-01T12:00:00Z', ...over,
   }
 }
