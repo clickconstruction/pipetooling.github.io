@@ -28,6 +28,8 @@ The Job tab's **Open plans** press opens the same set as **Building from**. The 
 6. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
 7. Press {{button:blue|Add the set and build from it}}.
 
+A set with no link gets its own folder under the job's **Plans** folder in Drive. The link fills in by itself.
+
 The job now builds from the new set. The old one moves under **Older sets**. Press {{button:outline|Add it, keep Issued set current}} instead to add the set without switching.
 
 To switch later, press {{button:outline|Build from this set}} on any older set.
@@ -37,8 +39,12 @@ To switch later, press {{button:outline|Build from this set}} on any older set.
 1. Press {{button:outline|Add our as-built}}.
 2. Keep the name or change it.
 3. Type a **Memo** that says what the crew changed.
-4. Paste the Drive link to the marked sheets.
-5. Press {{button:blue|Add the as-built}}.
+4. Press {{button:outline|Photos or a PDF}}. Take photos of the marked sheets on the phone, or pick a PDF.
+5. Press {{button:blue|Add the as-built with 3 files}}. The press counts the files you picked.
+
+The as-built gets its own folder under the job's **Plans** folder in Drive. The photos land in it one by one, named by the job and the day. A file over 10 MB stays behind with its reason. The rest still go.
+
+You can paste a Drive link under **Link** instead of picking files. An as-built with no link and no files still gets its folder.
 
 The as-built lands under **Our as-builts** with the day and who added it. The line says which set it marks up.
 

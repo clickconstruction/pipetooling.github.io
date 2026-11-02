@@ -3,8 +3,9 @@
  * mail as a paper on JP…** opens the one form with the kind, the sender and the day guessed from the mail, so the
  * spec book, the task list or the schedule lands beside the set it goes with the day it arrives, with its History
  * line and its ask. The job's part is read when the press opens: the job's own part, or one of its development's
- * parts to pick; a job outside any development with no part gets its own part made. The attachment itself stays in
- * the mail until the Drive filing lands; the link field takes a Drive link when there is one.
+ * parts to pick; a job outside any development with no part gets its own part made. The mail's files follow the
+ * paper into its own folder under the job's Plans folder (punch list #239, PR 5, `plan-set-files`), one by one past
+ * any that fails; the link field still takes a Drive link when the paper lives somewhere else.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,6 +13,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { PAPER_FROMS, PAPER_KINDS, fromGuess, historyLineForPaper, isPaperKind, kindGuess, nameFromSubject, type PaperAskLane, type PaperDraft, type PaperFrom, type PaperKind } from '../../lib/papers/papers'
 import { supabaseJobPlansIo, type JobPlansIo } from '../../lib/plans/planSetsIo'
 import { jobShortLabel, partNameForJob, type PlanSetRow } from '../../lib/plans/planSets'
+import { PLAN_SET_FILES_WORDS } from '../../lib/plans/planSetFiles'
+import { supabasePlanSetFilesIo, type PlanSetFilesIo } from '../../lib/plans/planSetFilesIo'
 
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
 const quiet: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
@@ -32,7 +35,26 @@ type Opened = {
   makeOwnPart: boolean
 }
 
-export function MailPaperDoor({ jobId, jobLabel, subject, senderAddress, at, io: ioProp }: { jobId: string; jobLabel: string; subject: string; senderAddress: string | null; at: string; io?: JobPlansIo }) {
+export function MailPaperDoor({
+  jobId,
+  jobLabel,
+  subject,
+  senderAddress,
+  at,
+  messageId = null,
+  io: ioProp,
+  filesIo = supabasePlanSetFilesIo,
+}: {
+  jobId: string
+  jobLabel: string
+  subject: string
+  senderAddress: string | null
+  at: string
+  /** The mail's line in Messages when the conversation is tagged: its files follow the paper into Drive. */
+  messageId?: string | null
+  io?: JobPlansIo
+  filesIo?: PlanSetFilesIo
+}) {
   const io = useMemo(() => ioProp ?? supabaseJobPlansIo(), [ioProp])
   const { user } = useAuth()
   const [opened, setOpened] = useState<Opened | null>(null)
@@ -94,8 +116,26 @@ export function MailPaperDoor({ jobId, jobLabel, subject, senderAddress, at, io:
       }
       if (!partId) throw new Error('Pick the part of the site the paper goes on.')
       if (opened.developmentId && !opened.jobPartId) await io.pickPart(jobId, partId)
-      await io.keepPaper({ partId, draft, owed: false, jobId, jobLabel, developmentId: opened.developmentId, siteName: opened.siteName, userId: user?.id ?? null })
-      setKept(`Kept on ${opened.parts.find((p) => p.id === partId)?.name ?? jobShortLabel({ job_name: jobLabel })}: ${draft.name.trim()}. It reads under Plans on ${jobLabel}${opened.developmentId ? ' and on the site' : ''}.`)
+      const made = await io.keepPaper({ partId, draft, owed: false, jobId, jobLabel, developmentId: opened.developmentId, siteName: opened.siteName, userId: user?.id ?? null })
+      // The mail's files follow the paper into its folder; one that fails is named, the rest still go.
+      let filedWords = ''
+      if (messageId && made?.id) {
+        const files = await filesIo.attachmentsOf(messageId)
+        if (files.length === 0) filedWords = ` ${PLAN_SET_FILES_WORDS.mailNoFiles}`
+        else {
+          const failed: string[] = []
+          for (const f of files) {
+            try {
+              await filesIo.saveAttachment(made.id, f.id)
+            } catch (e) {
+              failed.push(`${f.name}: ${formatErrorMessage(e, 'it did not land')}`)
+            }
+          }
+          const n = files.length - failed.length
+          filedWords = `${n > 0 ? ` ${PLAN_SET_FILES_WORDS.mailFiled(n)}` : ''}${failed.length ? ` ${failed.length === 1 ? 'One file did not land' : `${failed.length} files did not land`}: ${failed.join('; ')}.` : ''}`
+        }
+      }
+      setKept(`Kept on ${opened.parts.find((p) => p.id === partId)?.name ?? jobShortLabel({ job_name: jobLabel })}: ${draft.name.trim()}. It reads under Plans on ${jobLabel}${opened.developmentId ? ' and on the site' : ''}.${filedWords}`)
       setDraft(null)
     } catch (e) {
       setProblem(formatErrorMessage(e, 'The paper did not keep.'))

@@ -4,7 +4,9 @@
  * its own part, made with its first set; a job inside a development names one of the site's parts, or makes one
  * named after itself. When another part of the site carries a set, a notice says so (the owner, 2026-11-01), with
  * a door to the site's Plans look. The job's old plans link follows the current set by the database's own mirror,
- * so *Open plans* on the Job tab opens the new set the moment the part switches.
+ * so *Open plans* on the Job tab opens the new set the moment the part switches. A set or as-built added with no
+ * link gets its own folder under the job's Plans folder in Drive (punch list #239, PR 5, `plan-set-files`), and the
+ * crew's as-built takes photos or a PDF, filed one by one past any that fails.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -29,6 +31,9 @@ import {
   type PlanSetRow,
 } from '../../lib/plans/planSets'
 import { supabaseJobPlansIo, type JobPlansIo, type JobPlansRead } from '../../lib/plans/planSetsIo'
+import { asBuiltFileName, filedWords, splitReadyFiles } from '../../lib/plans/planSetFiles'
+import { supabasePlanSetFilesIo, type PlanSetFilesIo } from '../../lib/plans/planSetFilesIo'
+import type { BatchOutcome } from '../../lib/batchWords'
 import { EmptyState } from '../EmptyState'
 import { JobPapersSection } from '../papers/JobPapersSection'
 import { PlanSetForm } from '../plans/PlanSetForm'
@@ -53,11 +58,14 @@ type Form = { kind: 'set'; draft: NewSetDraft } | { kind: 'as_built'; draft: New
 export function JobPlansSection({
   job,
   io: ioProp,
+  filesIo = supabasePlanSetFilesIo,
   onPlansLinkChanged,
   onLeave,
 }: {
   job: { id: string; job_name?: string | null; click_number?: string | null; hcp_number?: string | null }
   io?: JobPlansIo
+  /** The set's Drive folder and the files in it; the real one by default, a fake in tests. */
+  filesIo?: PlanSetFilesIo
   /** The current set's link, after a press that changed what the job builds from: the window patches its copy of the job. */
   onPlansLinkChanged?: (link: string) => void
   /** Called before the notice's door leaves for the site's page, so the window closes first. */
@@ -74,6 +82,10 @@ export function JobPlansSection({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  // The as-built's photos or PDF (PR 5): picked here, filed after the row saves, one by one past any that fails.
+  const [asBuiltFiles, setAsBuiltFiles] = useState<File[]>([])
+  const [filing, setFiling] = useState<{ done: number; total: number } | null>(null)
+  const [filed, setFiled] = useState<{ outcome: BatchOutcome; failed: Array<{ name: string; why: string }>; folderUrl: string | null } | null>(null)
 
   useEffect(() => {
     let live = true
@@ -133,6 +145,8 @@ export function JobPlansSection({
     const draft = emptyNewSetDraft('as_built')
     draft.name = defaultAsBuiltName(jobShortLabel(job), todayYmd())
     setProblem(null)
+    setFiled(null)
+    setAsBuiltFiles([])
     setForm({ kind: 'as_built', draft })
   }
   const openPartForm = () => {
@@ -154,7 +168,36 @@ export function JobPlansSection({
         jobId: draft.kind === 'as_built' ? job.id : null,
         userId: user?.id ?? null,
       })
-      if (makeCurrent && made.link) onPlansLinkChanged?.(made.link)
+      let link = made.link
+      // The as-built's files go up one by one into the set's own folder; a file that fails is named, the rest still go.
+      const files = draft.kind === 'as_built' ? splitReadyFiles(asBuiltFiles).ready : []
+      if (files.length) {
+        const ymd = todayYmd()
+        const failed: Array<{ name: string; why: string }> = []
+        let folderUrl: string | null = null
+        for (let i = 0; i < files.length; i += 1) {
+          setFiling({ done: i, total: files.length })
+          try {
+            const r = await filesIo.put(made.id, files[i]!, asBuiltFileName(jobShortLabel(job), ymd, i + 1, files.length, files[i]!))
+            folderUrl = r.folderUrl
+          } catch (e) {
+            failed.push({ name: files[i]!.name, why: formatErrorMessage(e, 'It did not land.') })
+          }
+        }
+        setFiling(null)
+        setFiled({ outcome: filedWords(files.length - failed.length, failed.length), failed, folderUrl })
+        if (folderUrl && !link) link = folderUrl
+      } else if (!draft.link.trim()) {
+        // A set with no link gets its own folder under Plans; the register mirrors Drive. A hold here is said, not fatal.
+        try {
+          const f = await filesIo.folder(made.id)
+          link = f.url
+        } catch (e) {
+          setFiled({ outcome: { line: formatErrorMessage(e, 'The set’s folder was not made.'), head: null, tone: 'warning' }, failed: [], folderUrl: null })
+        }
+      }
+      setAsBuiltFiles([])
+      if (makeCurrent && link) onPlansLinkChanged?.(link)
     }, 'The set did not save.')
 
   const buildFrom = (s: PlanSetRow) =>
@@ -229,6 +272,7 @@ export function JobPlansSection({
       problem={problem}
       onAdd={(makeCurrent) => void addSet(f.draft, makeCurrent)}
       onCancel={() => setForm(null)}
+      {...(f.kind === 'as_built' ? { files: asBuiltFiles, onFiles: setAsBuiltFiles, filing } : {})}
     />
   )
 
@@ -399,6 +443,24 @@ export function JobPlansSection({
             />
           ) : null}
           {problem && !form ? <p style={{ ...muted, color: 'var(--text-amber-800)' }}>{problem}</p> : null}
+          {filed ? (
+            <div data-testid="job-plans-filed" data-tone={filed.outcome.tone} style={{ ...muted, color: filed.outcome.tone === 'success' ? 'var(--text-green-700)' : 'var(--text-amber-800)', display: 'grid', gap: '0.2rem' }}>
+              <span>
+                {filed.outcome.line}{' '}
+                {filed.folderUrl ? (
+                  <button type="button" style={smallLinkBtn} onClick={() => openInExternalBrowser(filed.folderUrl!)}>
+                    Open the folder ↗
+                  </button>
+                ) : null}
+              </span>
+              {filed.outcome.head ? <span>{filed.outcome.head}</span> : null}
+              {filed.failed.map((f) => (
+                <span key={f.name}>
+                  {f.name} · {f.why}
+                </span>
+              ))}
+            </div>
+          ) : null}
         </>
       )}
     </section>

@@ -8,6 +8,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { PlanPartRow, PlanSetRow } from '../../lib/plans/planSets'
 import type { JobPlansIo, JobPlansRead } from '../../lib/plans/planSetsIo'
+import type { PlanSetFilesIo } from '../../lib/plans/planSetFilesIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { JobPlansSection } from './JobPlansSection'
 
@@ -80,6 +81,16 @@ afterEach(() => {
   cleanup()
   opened.length = 0
 })
+
+function fakeFilesIo(over: Partial<PlanSetFilesIo> = {}): PlanSetFilesIo {
+  return {
+    folder: vi.fn(async (setId: string) => ({ folderId: `folder-${setId}`, url: `https://drive.google.com/drive/folders/folder-${setId}`, made: true })),
+    put: vi.fn(async (_setId: string, file: File) => ({ driveFileId: `drive-${file.name}`, url: `https://drive.google.com/file/d/${file.name}/view`, folderUrl: 'https://drive.google.com/drive/folders/asbuilt' })),
+    saveAttachment: vi.fn(),
+    attachmentsOf: vi.fn(async () => []),
+    ...over,
+  }
+}
 
 describe('JobPlansSection', () => {
   it('says what fills an empty job and offers the press', async () => {
@@ -154,5 +165,48 @@ describe('JobPlansSection', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Add the set' }))
     expect(await screen.findByText('Give the set a name.')).toBeTruthy()
     expect(io.addSet).not.toHaveBeenCalled()
+  })
+
+  it('the as-built takes photos: the press counts them, a file over 10 MB is held with its reason, the rest file one by one past a failure, and the folder is the set’s link', async () => {
+    const io = fakeIo({ job: { id: 'j1', plan_part_id: 'p1', development_id: null, development_name: null, job_plans_link: null }, part, sets: [set({ id: 's2', name: 'Permit set', kind: 'permit' })] })
+    const filesIo = fakeFilesIo({
+      put: vi.fn(async (_setId: string, file: File, name?: string) => {
+        if (file.name === 'IMG_2.jpg') throw new Error('Drive answered 500')
+        return { driveFileId: `drive-${name}`, url: `https://drive.google.com/file/d/${name}/view`, folderUrl: 'https://drive.google.com/drive/folders/asbuilt' }
+      }),
+    })
+    const onPlansLinkChanged = vi.fn()
+    renderWithProviders(<JobPlansSection job={job} io={io} filesIo={filesIo} onPlansLinkChanged={onPlansLinkChanged} />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Add our as-built' }))
+    const input = screen.getByLabelText('Photos or a PDF') as HTMLInputElement
+    const f1 = new File(['a'], 'IMG_1.jpg', { type: 'image/jpeg' })
+    const f2 = new File(['b'], 'IMG_2.jpg', { type: 'image/jpeg' })
+    const big = new File(['c'], 'huge.jpg', { type: 'image/jpeg' })
+    Object.defineProperty(big, 'size', { value: 11 * 1024 * 1024 })
+    const doc = new File(['d'], 'notes.docx', { type: 'application/msword' })
+    fireEvent.change(input, { target: { files: [f1, f2, big, doc] } })
+    expect(screen.getByTestId('job-plans-as-built-held').textContent).toContain('huge.jpg · 11 MB · over 10 MB (11 MB)')
+    expect(screen.getByTestId('job-plans-as-built-held').textContent).toContain('notes.docx · 1 B · not a photo or a PDF')
+    const press = screen.getByRole('button', { name: 'Add the as-built with 2 files · 2 held ▸' })
+    fireEvent.click(press)
+    await waitFor(() => expect(filesIo.put).toHaveBeenCalledTimes(2))
+    const names = (filesIo.put as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[2])
+    expect(names[0]).toMatch(/^As-built · JP972 · \d{4}-\d{2}-\d{2} · 1 of 2\.jpg$/)
+    expect(names[1]).toMatch(/^As-built · JP972 · \d{4}-\d{2}-\d{2} · 2 of 2\.jpg$/)
+    const filed = await screen.findByTestId('job-plans-filed')
+    expect(filed.textContent).toContain('Filed 1 file. 1 did not file.')
+    expect(filed.textContent).toContain('IMG_2.jpg · Drive answered 500')
+    expect(filesIo.folder).not.toHaveBeenCalled()
+  })
+
+  it('a new set with no link gets its own folder under Plans, and the job builds from it', async () => {
+    const io = fakeIo({ job: { id: 'j1', plan_part_id: 'p1', development_id: null, development_name: null, job_plans_link: null }, part: { ...part, current_set_id: null }, sets: [] })
+    const filesIo = fakeFilesIo()
+    const onPlansLinkChanged = vi.fn()
+    renderWithProviders(<JobPlansSection job={job} io={io} filesIo={filesIo} onPlansLinkChanged={onPlansLinkChanged} />)
+    fireEvent.click((await screen.findAllByRole('button', { name: '+ New set' }))[0]!)
+    fireEvent.click(screen.getByRole('button', { name: 'Add the set' }))
+    await waitFor(() => expect(filesIo.folder).toHaveBeenCalledWith('s-new'))
+    await waitFor(() => expect(onPlansLinkChanged).toHaveBeenCalledWith('https://drive.google.com/drive/folders/folder-s-new'))
   })
 })

@@ -98,6 +98,7 @@ when_to_read:
    - [drive-link](#drive-link)
    - [photo-save](#photo-save)
    - [job-photos](#job-photos)
+   - [plan-set-files](#plan-set-files)
    - [gc-plan-question-email](#gc-plan-question-email)
    - [gc-architect-email](#gc-architect-email)
    - [gc-trade-portal](#gc-trade-portal)
@@ -1199,6 +1200,23 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Doors**: `src/lib/photos/jobPhotosIo.ts` (`listJobPhotos` through `functions.invoke`; `jobPhotoThumb` and `jobPhotoFull` by a plain fetch under the caller's sign-in, since invoke reads an `image/jpeg` answer as text (v2.6128); object URLs the tiles revoke) behind `JobPhotosStrip.tsx` and `JobPhotosViewer.tsx` on the job window; the rules in `src/lib/photos/jobPhotos.ts`; the guide *see a job's photos*.
 
 **Status**: v2.6090 deployed; v2.6299 (the `files` action) deploys from main once it merges.
+
+### plan-set-files
+
+**Purpose**: One Drive subfolder per set of plans, and the files that land in it (punch list #239, PR 5, v2.6345). The folder is **Plans › <set name>** under the Drive folder of the set's job — the job that made the set (an as-built's, a paper kept on a job), else the job that owns the part, else the first job naming the part — made as needed (`findOrCreateFolder`). The register is mirrored: a set with no link yet takes its folder's link the moment the folder is made (`plan_sets.link`, and from there the job's `job_plans_link` by the mirror trigger), so Open ↗ on the set, the job's Open plans and the site's Plans look open the same folder. A set whose link already points inside that Plans folder keeps it; a set whose link is elsewhere (the GC's Drive) keeps it too and still gets its own subfolder here for what we file.
+
+- `{ action: 'folder', set_id }` → `{ folderId, url, made }`.
+- `{ action: 'put', set_id, name, mime, base64 }` → `{ driveFileId, url, folderUrl }`: one file from the phone or this computer, up to 10 MB, as the crew's as-built photos or PDF land (`PlanSetForm` → `JobPlansSection`, one call per file, the batch going past a file that fails).
+- `{ action: 'save_attachment', set_id, attachment_id }` → `{ driveFileId, url, folderUrl }`: our copy of a mail's file (`message_attachments`, the `message-attachments` bucket) into the set's folder, for **Keep this mail as a paper** in My Mail; refused unless the mail is tagged to a job on the set's part.
+- A set on a site part no job names (409 `no_job`), or a job with no Drive folder yet (409 `no_folder`, the hold's words when the folder is held), is told so in words and nothing is made.
+
+**Endpoint**: `POST /functions/v1/plan-set-files` · **Auth**: `verify_jwt = false` in `config.toml`; the JWT is checked in-body; the set row is read through the caller's client, so the part's RLS decides who sees it (404 otherwise); a write needs `plan_part_can_write(part)` (the office) or the set's own author (a crew member's as-built or paper), 403 otherwise; a training account and a digital twin change nothing (403). The Drive work runs as the service account.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)). Helpers from `_shared/driveUpload.ts`, `_shared/driveLink.ts` (`bytesOfBase64`, `driveViewUrl`), `_shared/driveJobFolder.ts` (`driveGet`) and `_shared/whereFilesGo.ts` (`JOB_FOLDER_TREE.plans`).
+
+**Doors**: `src/lib/plans/planSetFilesIo.ts` (`folder`, `put`, `saveAttachment`, `attachmentsOf`) behind `JobPlansSection.tsx` (a new set or as-built on a job with no link gets its folder; the as-built's photos or PDF go up one by one, named `As-built · JP972 · 2026-11-02 · 1 of 3.jpg` by `src/lib/plans/planSetFiles.ts`) and `MailPaperDoor.tsx` (the mail's files follow the paper into its folder). Guides *keep the plans on a job* and *keep the papers with the plans*.
+
+**Status**: v2.6345 deploys from main right after the merge (`supabase functions deploy plan-set-files`).
 
 ### gc-plan-question-email
 

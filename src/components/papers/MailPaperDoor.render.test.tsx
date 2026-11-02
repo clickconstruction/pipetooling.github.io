@@ -7,6 +7,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { JobPlansIo } from '../../lib/plans/planSetsIo'
+import type { PlanSetFilesIo } from '../../lib/plans/planSetFilesIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { MailPaperDoor } from './MailPaperDoor'
 
@@ -65,5 +66,42 @@ describe('MailPaperDoor', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Keep the paper' }))
     await waitFor(() => expect(io.pickPart).toHaveBeenCalledWith('j1', 'p2'))
     expect((io.keepPaper as ReturnType<typeof vi.fn>).mock.calls[0]![0].draft.from).toBe('supplier')
+  })
+
+  it('the mail’s files follow the paper into its folder, one that fails named, the rest still landing', async () => {
+    const io = fakeIo({ keepPaper: vi.fn(async () => ({ id: 'paper-1' }) as never) })
+    const filesIo: PlanSetFilesIo = {
+      folder: vi.fn(),
+      put: vi.fn(),
+      attachmentsOf: vi.fn(async () => [
+        { id: 'a1', name: 'spec-book.pdf', mime: 'application/pdf' },
+        { id: 'a2', name: 'loads.xlsx', mime: null },
+      ]),
+      saveAttachment: vi.fn(async (_setId: string, attachmentId: string) => {
+        if (attachmentId === 'a2') throw new Error('Over 10 MB. Put it in the set’s folder in Drive instead.')
+        return { driveFileId: 'f1', url: 'https://drive.google.com/file/d/f1/view', folderUrl: 'https://drive.google.com/drive/folders/paper' }
+      }),
+    }
+    renderWithProviders(<MailPaperDoor io={io} filesIo={filesIo} messageId="m1" jobId="j1" jobLabel="JP991" subject="Spec book" senderAddress="eddie@example.com" at="2025-07-07T15:00:00Z" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this mail as a paper on JP991' }))
+    await screen.findByTestId('mail-paper-form')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep the paper' }))
+    await waitFor(() => expect(filesIo.saveAttachment).toHaveBeenCalledTimes(2))
+    expect(filesIo.attachmentsOf).toHaveBeenCalledWith('m1')
+    expect((filesIo.saveAttachment as ReturnType<typeof vi.fn>).mock.calls.map((c) => c[0])).toEqual(['paper-1', 'paper-1'])
+    const kept = await screen.findByText(/Kept on Bunker: Spec book\./)
+    expect(kept.textContent).toContain('The mail’s file is in the paper’s folder.')
+    expect(kept.textContent).toContain('One file did not land: loads.xlsx: Over 10 MB. Put it in the set’s folder in Drive instead.')
+  })
+
+  it('a mail with no line in Messages keeps the paper as before and files nothing', async () => {
+    const io = fakeIo({ keepPaper: vi.fn(async () => ({ id: 'paper-1' }) as never) })
+    const filesIo: PlanSetFilesIo = { folder: vi.fn(), put: vi.fn(), attachmentsOf: vi.fn(async () => []), saveAttachment: vi.fn() }
+    renderWithProviders(<MailPaperDoor io={io} filesIo={filesIo} jobId="j1" jobLabel="JP991" subject="Spec book" senderAddress="eddie@example.com" at="2025-07-07T15:00:00Z" />)
+    fireEvent.click(screen.getByRole('button', { name: 'Keep this mail as a paper on JP991' }))
+    await screen.findByTestId('mail-paper-form')
+    fireEvent.click(screen.getByRole('button', { name: 'Keep the paper' }))
+    expect(await screen.findByText(/Kept on Bunker: Spec book\./)).toBeTruthy()
+    expect(filesIo.attachmentsOf).not.toHaveBeenCalled()
   })
 })

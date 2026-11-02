@@ -812,6 +812,11 @@ verify_jwt = false
 [functions.plan-fetch]
 verify_jwt = false
 
+# plan-set-files: one Drive subfolder per set of plans and the files in it (punch list #239, PR 5); the JWT is
+# checked in-function so a refusal has words, the set row read under the caller's RLS.
+[functions.plan-set-files]
+verify_jwt = false
+
 # Public supply house quote page (RFQ Phase 2) — the RFQ token IS the credential
 # (match get-bid-proposal-room); service role in-function, scope-validated writes.
 [functions.get-rfq-quote-page]
