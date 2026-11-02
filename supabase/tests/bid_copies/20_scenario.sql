@@ -119,6 +119,24 @@ CREATE FUNCTION copt.logs(p_bid uuid) RETURNS text LANGUAGE sql STABLE SECURITY 
   SELECT COALESCE(string_agg(COALESCE(u.name, '?') || ': ' || regexp_replace(e.notes, 'B[0-9?]+', 'B#', 'g'), E'\n' ORDER BY e.created_at, e.id), '(none)')
   FROM public.bids_submission_entries e LEFT JOIN public.users u ON u.id = e.created_by
   WHERE e.bid_id = p_bid AND e.notes LIKE '% adopted %' $$;
+-- The robot's pull on a bid, one row left for the estimator to take through the real door (v2.6326, punch list #226), so the
+-- bid gets its robot count source and the share the way the window makes them. Returns the row's id. As the owner: the pull
+-- tables take no write from authenticated.
+CREATE FUNCTION copt.robot_pull(p_bid uuid, p_tag text, p_name text, p_seq integer) RETURNS uuid LANGUAGE plpgsql SECURITY DEFINER AS $$
+DECLARE pull uuid; row_id uuid;
+BEGIN
+  INSERT INTO public.bid_fixture_pulls (bid_id, sheet_count) VALUES (p_bid, 2) RETURNING id INTO pull;
+  INSERT INTO public.bid_fixture_pull_rows (pull_id, bid_id, tag, name, count, sequence_order) VALUES (pull, p_bid, p_tag, p_name, 4, p_seq) RETURNING id INTO row_id;
+  RETURN row_id;
+END $$;
+-- A bid's robot sources, counted, and the rows they shade (v2.6326): each row carrying a share, STRAY when a key names a
+-- source the bid does not have — the shade the fold prevents.
+CREATE FUNCTION copt.robot(p_bid uuid) RETURNS text LANGUAGE sql STABLE AS $$
+  WITH ids AS (SELECT COALESCE(array_agg(id::text), ARRAY[]::text[]) AS robot FROM public.bid_count_sources WHERE bid_id = p_bid AND source_kind = 'robot'),
+       shaded AS (SELECT c.fixture, c.count, c.sequence_order, (SELECT array_agg(k ORDER BY k) FROM jsonb_object_keys(c.source_shares) k) AS keys
+                    FROM public.bids_count_rows c WHERE c.bid_id = p_bid AND COALESCE(c.source_shares, '{}'::jsonb) <> '{}'::jsonb)
+  SELECT cardinality(ids.robot)::text || ' robot: ' || COALESCE((SELECT string_agg(s.fixture || ' x' || s.count::float8 || CASE WHEN s.keys <@ ids.robot THEN '' ELSE ' STRAY' END, ', ' ORDER BY s.sequence_order, s.fixture) FROM shaded s), '(none)')
+    FROM ids $$;
 GRANT USAGE ON SCHEMA copt TO authenticated;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA copt TO authenticated;
 
@@ -257,6 +275,41 @@ SELECT copt.same('a primary''s adopt: the retired bid''s log', copt.logs('000000
   'Copies Primary: Copies Primary adopted this bid into B# "Copies: a primary''s package" as the version "By a primary". Moved there: 3 count rows, 1 price scenario, 0 plan sets, 0 CountTooling projects. The cost estimate and this log stay here.');
 SELECT copt.same('a primary''s adopt: the package''s log', copt.logs('00000000-0000-0000-0000-0000000009d8'),
   'Copies Primary: Copies Primary adopted B# "Copies: a primary adopts this" as the version "By a primary". Moved here: 3 count rows, 1 price scenario, 0 plan sets, 0 CountTooling projects. The old bid left the board and stays searchable by its number.');
+
+
+-- v2.6326 (punch list #226) · both bids took robot fixtures. The adopt moves the adopted bid's robot count source onto the
+-- package (no token, so the same-token guard never held it) and folds it into the package's own: one robot row, every moved
+-- share keyed to it, the duplicate gone, the log line counting no project arriving; Set aside then Undo find the one source
+-- and leave no row shaded. The takes go through the real door as the estimator; the pulls are written as the owner.
+SELECT set_config('request.jwt.claims', '{"sub":"00000000-0000-0000-0000-0000000009e1","role":"authenticated"}', true);
+SELECT set_config('request.jwt.claim.sub', '00000000-0000-0000-0000-0000000009e1', true);
+SET LOCAL ROLE authenticated;
+SELECT copt.seed('00000000-0000-0000-0000-0000000009d9', 'Copies: robot package');
+SELECT copt.seed('00000000-0000-0000-0000-0000000009da', 'Copies: robot adopted');
+CREATE TEMP TABLE rb ON COMMIT DROP AS SELECT
+  copt.robot_pull('00000000-0000-0000-0000-0000000009d9', 'RB-1', 'Copies robot WC', 1) AS row9,
+  copt.robot_pull('00000000-0000-0000-0000-0000000009da', 'RB-2', 'Copies robot LAV', 2) AS rowa,
+  NULL::uuid AS keep, NULL::uuid AS adopted;
+SELECT copt.same('robot fold: the package takes its row', (SELECT (r->>'added') FROM (SELECT public.take_robot_fixtures(ARRAY[(SELECT row9 FROM rb)]::uuid[], NULL, '[]'::jsonb) AS r) t), '1');
+SELECT copt.same('robot fold: the adopted bid takes its row', (SELECT (r->>'added') FROM (SELECT public.take_robot_fixtures(ARRAY[(SELECT rowa FROM rb)]::uuid[], NULL, '[]'::jsonb) AS r) t), '1');
+UPDATE rb SET keep = (SELECT id FROM public.bid_count_sources WHERE bid_id = '00000000-0000-0000-0000-0000000009d9' AND source_kind = 'robot');
+SELECT copt.same('robot fold: a robot source each before the adopt', copt.robot('00000000-0000-0000-0000-0000000009d9') || ' / ' || copt.robot('00000000-0000-0000-0000-0000000009da'), '1 robot: Copies robot WC x4 / 1 robot: Copies robot LAV x4');
+UPDATE rb SET adopted = public.adopt_bid_as_version('00000000-0000-0000-0000-0000000009d9', '00000000-0000-0000-0000-0000000009da', 'Robot adopted', 'To Plans');
+SELECT copt.same('robot fold: the package keeps its own robot source and the moved share is keyed to it',
+  copt.robot('00000000-0000-0000-0000-0000000009d9') || ' · ' || (SELECT ((SELECT id FROM public.bid_count_sources WHERE bid_id = '00000000-0000-0000-0000-0000000009d9' AND source_kind = 'robot') = keep)::text FROM rb),
+  '1 robot: Copies robot LAV x4, Copies robot WC x4 · true');
+SELECT copt.same('robot fold: none left under the retired bid', copt.robot('00000000-0000-0000-0000-0000000009da'), '0 robot: (none)');
+SELECT copt.same('robot fold: both pulls are the package''s', copt.pulls('00000000-0000-0000-0000-0000000009d9'),
+  'RB-1 -> Copies: robot package / To Plans, taken on -, RB-2 -> Copies: robot package / Robot adopted, taken on Robot adopted');
+SELECT copt.same('robot fold: the package''s log counts no project arriving', copt.logs('00000000-0000-0000-0000-0000000009d9'),
+  'Copies Estimator: Copies Estimator adopted B# "Copies: robot adopted" as the version "Robot adopted". Moved here: 4 count rows, 1 price scenario, 0 plan sets, 0 CountTooling projects. The old bid left the board and stays searchable by its number.');
+SELECT copt.same('robot fold: set aside the moved row', (SELECT (r->>'set_aside') FROM (SELECT public.set_aside_robot_fixtures(ARRAY[(SELECT rowa FROM rb)]::uuid[], 'not_sure') AS r) t), '1');
+SELECT copt.same('robot fold: the package''s own row still shades, by the one source', copt.robot('00000000-0000-0000-0000-0000000009d9'), '1 robot: Copies robot WC x4');
+SELECT copt.same('robot fold: undo the package''s own take',
+  (SELECT (r->>'removed') FROM (SELECT public.untake_robot_fixtures((SELECT x.pull_id FROM public.bid_fixture_pull_rows x WHERE x.id = (SELECT row9 FROM rb))) AS r) t), '1');
+SELECT copt.same('robot fold: no row shaded, no robot source', copt.robot('00000000-0000-0000-0000-0000000009d9'), '0 robot: (none)');
+SELECT copt.same('robot fold: the adopted rows are the package''s, hers alone', copt.rows('00000000-0000-0000-0000-0000000009d9', (SELECT adopted FROM rb)), 'WC-1 x3, LAV-1 x2, UR-1 x1');
+RESET ROLE;
 
 SELECT 'bid_copies PASSED' AS result;
 ROLLBACK;

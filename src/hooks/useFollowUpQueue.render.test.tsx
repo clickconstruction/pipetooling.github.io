@@ -3,6 +3,9 @@ import { act, cleanup, renderHook, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { FollowUpIo } from '../lib/followUp/followUpIo'
 import type { FollowUpRows } from '../lib/followUp/followUpRows'
+import { QUEUE_READ_OFFLINE_WORDS } from '../lib/followUp/queue'
+import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
+import { plainWordsFailures } from '../lib/plainWords'
 import { DatabaseError } from '../utils/errorHandling'
 import { useFollowUpQueue } from './useFollowUpQueue'
 
@@ -94,6 +97,85 @@ function fakeIo(overrides: Partial<FollowUpIo> = {}): FollowUpIo {
 }
 
 describe('useFollowUpQueue', () => {
+  it('a failed read keeps its failure by class in readFailure, and a landed read clears it (punch list #183 PR 5)', async () => {
+    const timedOut = new DatabaseError('Failed to read Follow up: canceling statement due to statement timeout', '57014', null, { serverMessage: 'canceling statement due to statement timeout' })
+    const io = fakeIo({ loadQueue: vi.fn(async () => Promise.reject(timedOut)) })
+    const { result } = renderHook(() => useFollowUpQueue({ io, userNames: {}, todayYmd: '2026-10-02' }))
+    await waitFor(() => expect(result.current.readFailure).not.toBeNull())
+    expect(result.current.readFailure).toEqual({ kind: timedOut.kind, message: expect.stringContaining('statement timeout') })
+    expect(result.current.problem).toContain('statement timeout')
+    expect(result.current.queue).toBeNull()
+    ;(io.loadQueue as ReturnType<typeof vi.fn>).mockImplementation(async () => ROWS)
+    await act(async () => {
+      await result.current.reload()
+    })
+    expect(result.current.readFailure).toBeNull()
+    expect(result.current.problem).toBeNull()
+    expect(result.current.queue).not.toBeNull()
+  })
+
+  it('a lost signal on a read says a read’s words, never the write’s nothing was saved; a press that fails on one keeps its own (punch list #183 PR 5)', async () => {
+    const lost = new DatabaseError(OFFLINE_ERROR_MESSAGE, undefined, undefined, { kind: 'network' })
+    const io = fakeIo({ loadQueue: vi.fn(async () => Promise.reject(lost)) })
+    const { result } = renderHook(() => useFollowUpQueue({ io, userNames: {}, todayYmd: '2026-10-02' }))
+    await waitFor(() => expect(result.current.readFailure).not.toBeNull())
+    expect(result.current.readFailure!.kind).toBe('network')
+    expect(result.current.problem).toBe(QUEUE_READ_OFFLINE_WORDS)
+    expect(plainWordsFailures(QUEUE_READ_OFFLINE_WORDS)).toEqual([])
+    ;(io.loadQueue as ReturnType<typeof vi.fn>).mockImplementation(async () => ROWS)
+    await act(async () => {
+      await result.current.reload()
+    })
+    ;(io.takeIt as ReturnType<typeof vi.fn>).mockImplementation(async () => Promise.reject(lost))
+    await act(async () => {
+      await result.current.press('take it', (x) => x.takeIt('greg'))
+    })
+    expect(result.current.problem).toMatch(/nothing was saved/)
+    expect(result.current.readFailure).toBeNull()
+  })
+
+  it('a read that fails while another is out leaves loading on, so the later read that lands ends it; the last failure ends it too (punch list #183 PR 5)', async () => {
+    const timedOut = new DatabaseError('Failed to read Follow up: canceling statement due to statement timeout', '57014', null, { serverMessage: 'canceling statement due to statement timeout' })
+    const reads: Array<{ resolve: (rows: FollowUpRows) => void; reject: (e: unknown) => void }> = []
+    const io = fakeIo({ loadQueue: vi.fn(() => new Promise<FollowUpRows>((resolve, reject) => reads.push({ resolve, reject }))) })
+    const { result } = renderHook(() => useFollowUpQueue({ io, userNames: {}, todayYmd: '2026-10-02' }))
+    await waitFor(() => expect(reads).toHaveLength(1))
+    act(() => {
+      void result.current.reload()
+    })
+    expect(reads).toHaveLength(2)
+    await act(async () => reads[0]!.reject(timedOut))
+    expect(result.current.readFailure).not.toBeNull()
+    expect(result.current.loading).toBe(true)
+    await act(async () => reads[1]!.resolve(ROWS))
+    expect(result.current.loading).toBe(false)
+    expect(result.current.readFailure).toBeNull()
+    expect(result.current.queue).not.toBeNull()
+
+    // Two out, both fail: the first leaves loading on, the second ends it with the failure kept.
+    act(() => {
+      void result.current.reload()
+      void result.current.reload()
+    })
+    expect(reads).toHaveLength(4)
+    await act(async () => reads[2]!.reject(timedOut))
+    expect(result.current.loading).toBe(true)
+    await act(async () => reads[3]!.reject(timedOut))
+    expect(result.current.loading).toBe(false)
+    expect(result.current.readFailure).not.toBeNull()
+
+    // Two out, the first lands: that read is what the page shows now, with the other still out.
+    act(() => {
+      void result.current.reload()
+      void result.current.reload()
+    })
+    await act(async () => reads[4]!.resolve(ROWS))
+    expect(result.current.loading).toBe(false)
+    expect(result.current.readFailure).toBeNull()
+    await act(async () => reads[5]!.resolve(ROWS))
+    expect(result.current.loading).toBe(false)
+  })
+
   it('loads the rows and builds the queue with today', async () => {
     const io = fakeIo()
     const { result } = renderHook(() => useFollowUpQueue({ io, userNames: {}, todayYmd: '2026-10-02' }))

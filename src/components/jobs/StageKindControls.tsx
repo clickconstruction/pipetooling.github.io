@@ -112,6 +112,50 @@ export function StageKindSelector({ value, onChange, disabled = false, rowName }
   )
 }
 
+/**
+ * The badge as the press (spike, 2026-11-01): tap the number or the diamond and
+ * the line flips between In order and Any time, the kind written in very small
+ * words under the badge. Replaces the two-button strip on the row's second
+ * line, so each line is one row shorter. A discount row (null kind) keeps the
+ * plain badge and no press.
+ */
+export function StageKindBadgePress({ row, kind, onChange, disabled = false, rowName }: { row: StagePlanRow | null; kind: StageKind | null; onChange: (kind: StageKind) => void; disabled?: boolean; rowName?: string }) {
+  if (kind === null) return <StageKindBadge row={row} />
+  const next: StageKind = kind === 'order' ? 'any' : 'order'
+  const words = kind === 'order' ? 'In order' : 'Any time'
+  const nextWords = next === 'order' ? 'In order' : 'Any time'
+  const color = kind === 'order' ? 'var(--text-700)' : ANY_FILL
+  return (
+    <button
+      type="button"
+      data-testid="stage-kind-press"
+      data-kind={kind}
+      disabled={disabled}
+      aria-label={`${rowName ? `Stage kind for ${rowName}: ` : ''}${words}. Tap for ${nextWords}`}
+      title={disabled ? 'On an invoice — send it back or delete the draft to change the kind' : kind === 'order' ? 'In order: numbered, waits for the stage above it to pass inspection, draws when it passes. Tap for Any time' : 'Any time: its own dates, bills when its work is done. Tap for In order'}
+      onClick={() => onChange(next)}
+      style={{
+        display: 'inline-flex',
+        flexDirection: 'column',
+        alignItems: 'center',
+        gap: 2,
+        padding: '2px 2px 1px',
+        margin: 0,
+        border: 'none',
+        borderRadius: 6,
+        background: 'transparent',
+        cursor: disabled ? 'default' : 'pointer',
+        opacity: disabled ? 0.6 : 1,
+        fontFamily: 'inherit',
+        flexShrink: 0,
+      }}
+    >
+      <StageKindBadge row={row} />
+      <span style={{ fontSize: '0.5rem', lineHeight: 1.1, fontWeight: 600, letterSpacing: '0.01em', color, whiteSpace: 'nowrap' }}>{words}</span>
+    </button>
+  )
+}
+
 const TONE_COLOR: Record<StageTone, string> = {
   plain: 'var(--text-700)',
   muted: 'var(--text-muted)',

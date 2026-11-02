@@ -2,19 +2,22 @@ import { Fragment, useEffect, useRef, useState, type CSSProperties, type Dispatc
 import AutosizeTextarea from '../AutosizeTextarea'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { MoneyDecimalAmountInput } from '../MoneyDecimalAmountInput'
+import { MoneyWithSmallCents } from './MoneySmallCents'
 import { formatCurrency } from '../../lib/jobs/jobFormMoney'
 import type { FixtureRow } from '../../lib/jobs/jobFormTypes'
 import { normalizeFixtureDisplayName } from '../../lib/jobs/jobFormRows'
 import { fixtureInvoiceLinkChip, fixtureRowIsLocked } from '../../lib/jobs/jobFormFixtureLinks'
 import type { StagePlan } from '../../lib/jobs/stagePlan'
 import { formFixtureKind } from '../../lib/jobs/stagePlanForm'
-import { StageKindBadge, StageKindSelector } from './StageKindControls'
+import { StageKindBadgePress } from './StageKindControls'
 import {
   STRIPE_INVOICE_LINE_DESCRIPTION_MAX,
   stripeInvoiceFixtureLineLength,
 } from '../../lib/stripeInvoiceLineDescription'
 import { isDiscountRow, totalDiscountDollars, totalWorkDollars, type StandingDiscountOffer } from '../../lib/jobs/discountLine'
 import { JobFormDiscountRow } from './JobFormDiscountRow'
+import { LineBudgetPanel, LineBudgetQuietLine } from './LineBudgetQuietLine'
+import { useLineBudgets } from '../../hooks/useLineBudgets'
 
 const FIXTURE_SCOPE_FIELD_LABEL_VISUALLY_HIDDEN: CSSProperties = {
   position: 'absolute',
@@ -127,6 +130,11 @@ export function JobFormFixturesSection({
   // On touch every control in the row is 44 px (`.jobLineItems--stacked` in
   // index.css).
   const narrowViewport = useNarrowViewport640()
+  // Line budgets (design spike, punch list #234): only a project carries them — a job
+  // priced before the work. Until #238's kind lands, a Stage Plan with an ordered stage
+  // stands in for it; a service call's single line shows nothing.
+  const { openId: lineBudgetOpenId } = useLineBudgets()
+  const lineBudgetsOn = fixtures.some((r) => r.stage_kind === 'order')
   // The stacked ×/$ boxes are as wide as the longest value, the same on every
   // row so they line up down the list. commitOnType on the price input means
   // the box widens live as the user types; the caps keep a runaway number in
@@ -146,6 +154,8 @@ export function JobFormFixturesSection({
   // past the ▲▼ column: 22 px on a desktop, wider on a touch phone, where
   // index.css sets --job-line-move.
   const moveColumnIndent = fixtures.length > 1 ? ' + var(--job-line-move, 22px)' : ''
+  // The badge column holds the press and its words ("In order" at 0.5rem).
+  const STAGE_BADGE_COLUMN_PX = 40
   // "Make the Job Total $X" (v2.3265): tap the total, type the number you agreed.
   const [totalEditing, setTotalEditing] = useState(false)
   const [totalDraft, setTotalDraft] = useState('')
@@ -350,6 +360,7 @@ export function JobFormFixturesSection({
                         onChange={(n) => updateFixtureRow(row.id, { line_unit_price: n === 0 ? null : n })}
                         readOnly={locked}
                         commitOnType
+                        smallCents
                         placeholder="—"
                         aria-label="Unit price"
                         style={{
@@ -417,8 +428,14 @@ export function JobFormFixturesSection({
                           </label>
                           <div style={{ display: 'flex', alignItems: 'stretch', gap: 4 }}>
                             {plan && (
-                              <div data-testid="stage-badge" style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', width: 30, flexShrink: 0 }}>
-                                <StageKindBadge row={planRow} />
+                              <div data-testid="stage-badge" style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'center', width: STAGE_BADGE_COLUMN_PX, flexShrink: 0 }}>
+                                <StageKindBadgePress
+                                  row={planRow}
+                                  kind={planRow ? formFixtureKind(row) : null}
+                                  disabled={locked}
+                                  rowName={row.name}
+                                  onChange={(kind) => updateFixtureRow(row.id, { stage_kind: kind })}
+                                />
                               </div>
                             )}
                             {fixtures.length > 1 && (
@@ -582,6 +599,7 @@ export function JobFormFixturesSection({
                                   {linkChip.label}
                                 </span>
                               )}
+                              {lineBudgetsOn && !isDiscountRow(row) && <LineBudgetQuietLine fixtureId={row.id} name={row.name} priceUsd={(row.line_unit_price ?? 0) * (row.count || 1)} row={row} />}
                               {narrowViewport && (
                                 <div data-testid="line-numbers" className="jobLineNumbers">
                                   {countGroup}
@@ -638,6 +656,13 @@ export function JobFormFixturesSection({
                           </>
                         )}
                       </tr>
+                      {lineBudgetsOn && lineBudgetOpenId === row.id && !isDiscountRow(row) && (
+                        <tr style={{ borderBottom: 'none' }}>
+                          <td colSpan={narrowViewport ? 3 : 3} style={{ padding: '0 0.75rem 0.25rem' }}>
+                            <LineBudgetPanel fixtureId={row.id} name={row.name} priceUsd={(row.line_unit_price ?? 0) * (row.count || 1)} row={row} onChange={(columns) => updateFixtureRow(row.id, columns)} />
+                          </td>
+                        </tr>
+                      )}
                       <tr
                         style={{
                           borderBottom: idx < fixtures.length - 1 ? '1px solid var(--border)' : 'none',
@@ -659,7 +684,7 @@ export function JobFormFixturesSection({
                                 alignItems: 'center',
                                 gap: '0.5rem',
                                 flexWrap: 'wrap',
-                                padding: `0 0.75rem 0.35rem calc(0.75rem + ${plan ? 34 : 0}px${moveColumnIndent})`,
+                                padding: `0 0.75rem 0.35rem calc(0.75rem + ${plan ? STAGE_BADGE_COLUMN_PX + 4 : 0}px${moveColumnIndent})`,
                                 fontSize: '0.75rem',
                               }}
                             >
@@ -702,30 +727,6 @@ export function JobFormFixturesSection({
                               </span>
                             </div>
                           ) : null}
-                          {plan && planRow && (
-                            /* Stage Plan (PR 2): the second line IS the stage — the
-                               In order / Any time selector. Where the work and its money
-                               stand is said once, on the line's row in the ② money card
-                               (v2.4307). Indented past the badge and the ▲▼ column so it
-                               reads under the name field. */
-                            <div
-                              data-testid="stage-line"
-                              style={{
-                                display: 'flex',
-                                alignItems: 'center',
-                                gap: '0.5rem',
-                                flexWrap: 'wrap',
-                                padding: `0 0.75rem 0.4rem calc(0.75rem + 34px${moveColumnIndent})`,
-                              }}
-                            >
-                              <StageKindSelector
-                                value={formFixtureKind(row)}
-                                disabled={locked}
-                                rowName={row.name}
-                                onChange={(kind) => updateFixtureRow(row.id, { stage_kind: kind })}
-                              />
-                            </div>
-                          )}
                           {scopeExpanded ? (
                             <>
                               {/* The counter earns its space only near the Stripe line limit
@@ -897,7 +898,7 @@ export function JobFormFixturesSection({
                 </button>
                 {hasDiscount && discountDollars > 0 && (
                   <span data-testid="job-total-equation" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }}>
-                    ${formatCurrency(workDollars)} work − ${formatCurrency(discountDollars)} discount
+                    $<MoneyWithSmallCents value={workDollars} /> work − $<MoneyWithSmallCents value={discountDollars} /> discount
                   </span>
                 )}
                 {totalEditing && onSetJobTotal ? (
@@ -959,10 +960,10 @@ export function JobFormFixturesSection({
                       textUnderlineOffset: 3,
                     }}
                   >
-                    Job Total: ${formatCurrency(jobTotalDollars + riderFeesDollars)}
+                    Job Total: $<MoneyWithSmallCents value={jobTotalDollars + riderFeesDollars} />
                     {riderFeesDollars > 0 ? (
                       <span style={{ fontWeight: 400, color: 'var(--text-muted)', fontSize: '0.75rem' }}>
-                        {' '}(${formatCurrency(jobTotalDollars)} work + ${formatCurrency(riderFeesDollars)} riders)
+                        {' '}($<MoneyWithSmallCents value={jobTotalDollars} /> work + $<MoneyWithSmallCents value={riderFeesDollars} /> riders)
                       </span>
                     ) : null}
                   </button>
@@ -986,7 +987,7 @@ export function JobFormFixturesSection({
                 </button>
                 {stagesNoteOpen ? (
                   <p data-testid="stages-note" style={{ margin: '0.35rem 0 0', fontSize: '0.75rem', lineHeight: 1.5, color: 'var(--text-muted)' }}>
-                    The switch under each line sets its stage. In order lines are numbered from the top, and each one waits for the line above it. Any time lines can
+                    Tap the badge beside a line to flip it between In order and Any time. In order lines are numbered from the top, and each one waits for the line above it. Any time lines can
                     happen whenever. ▲▼ sets the order, and the number follows.
                     {hasDiscount ? <> A discount is never a stage. It follows the work it takes money off, onto every bill.</> : null}
                   </p>

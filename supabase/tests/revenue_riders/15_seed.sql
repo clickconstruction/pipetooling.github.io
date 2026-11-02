@@ -59,9 +59,11 @@ INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, status, sequence_or
 -- b-split: a part of a split bill, its memo renamed.
 INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, stripe_invoice_memo) VALUES
   ('bbbbbbbb-1111-0000-0000-000000000006', 'bbbbbbbb-0000-0000-0000-000000000001', 45, 'ready_to_bill', 12, false, 'Trip charge — client not home (1 of 2)');
--- b-yesterday: made yesterday; the matching note was closed today.
+-- b-yesterday: made yesterday, on the Chicago calendar the backfill reads dates by (noon the day before, never
+-- now() - 24 h: on the fall-back day the last hour of the night is still the same Chicago date as 24 hours earlier,
+-- and the bill would be marked as today's); the matching note was closed today.
 INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, stripe_invoice_memo, created_at) VALUES
-  ('bbbbbbbb-1111-0000-0000-000000000007', 'bbbbbbbb-0000-0000-0000-000000000001', 35, 'ready_to_bill', 13, false, 'Trip charge — site not ready', now() - interval '1 day');
+  ('bbbbbbbb-1111-0000-0000-000000000007', 'bbbbbbbb-0000-0000-0000-000000000001', 35, 'ready_to_bill', 13, false, 'Trip charge — site not ready', ((now() AT TIME ZONE 'America/Chicago')::date - 1 + time '12:00') AT TIME ZONE 'America/Chicago');
 -- b-no-note: no dispatch request names it.
 INSERT INTO public.jobs_ledger_invoices (id, job_id, amount, status, sequence_order, is_primary_rtb_bundle, stripe_invoice_memo) VALUES
   ('bbbbbbbb-1111-0000-0000-000000000008', 'bbbbbbbb-0000-0000-0000-000000000001', 400, 'ready_to_bill', 14, false, 'Trip charge — site not ready');

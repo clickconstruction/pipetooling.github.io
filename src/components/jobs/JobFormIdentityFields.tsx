@@ -7,6 +7,8 @@ import JobAddressSuggestions from './JobAddressSuggestions'
 import { titleCaseAddress } from '../../lib/addressTitleCase'
 import { suggestionSavedAddress, type AddressSuggestion } from '../../lib/addressAutocomplete'
 import { prewarmAddressGeocode, useAddressSuggestions } from '../../hooks/useAddressSuggestions'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
+import { JOB_KINDS, JOB_KIND_CONTROL_HELP, JOB_KIND_WORDS, type JobKind, type JobKindRead } from '../../lib/jobs/jobKind'
 
 /* height 36 = the SearchableSelect trigger's rendered height — Job Name and
    Job Address sit flush with Service type and the number boxes (v2.1702). */
@@ -84,6 +86,12 @@ type JobFormIdentityFieldsProps = {
    * label's width instead of flexing across the row.
    */
   embedded?: boolean
+  /**
+   * The job's kind (punch list #238): the kernel's read with its default and reason, and the
+   * press. New Job holds the press as form state and writes it with the job; Edit Job saves it
+   * at once. Absent = no control (the harnesses that only test the address).
+   */
+  kind?: { read: JobKindRead; onPress: (kind: JobKind) => void; busy?: boolean }
 }
 
 /**
@@ -110,6 +118,7 @@ export function JobFormIdentityFields({
   tradePill,
   onTradePillClick,
   embedded = false,
+  kind,
 }: JobFormIdentityFieldsProps) {
   const jobNameInputRef = useRef<HTMLInputElement | null>(null)
   const jobAddressInputRef = useRef<HTMLInputElement | null>(null)
@@ -254,6 +263,47 @@ export function JobFormIdentityFields({
       {clickNumberSuggesting ? (
         <div id="job-form-click-number-hint" role="status" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', marginTop: '-0.25rem' }}>
           C# — finding the next number… (type your own if you already know it)
+        </div>
+      ) : null}
+      {/* The job's kind (punch list #238): two presses, defaulted from the signals, the reason under them.
+          The pressed side is the app's blue under white words; the other side waits on the surface. */}
+      {kind ? (
+        <div data-testid="job-form-kind" style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
+          <span id="job-form-kind-label" style={{ fontWeight: 500, fontSize: '0.875rem' }}>
+            Kind
+          </span>
+          <div role="group" aria-labelledby="job-form-kind-label" style={{ display: 'inline-flex', alignSelf: 'flex-start', border: '1px solid var(--border-strong)', borderRadius: 8, overflow: 'hidden' }}>
+            {JOB_KINDS.map((k) => {
+              const on = kind.read.kind === k
+              return (
+                <button
+                  key={k}
+                  type="button"
+                  aria-pressed={on}
+                  disabled={kind.busy}
+                  onClick={() => kind.onPress(k)}
+                  title={on && kind.read.settled ? `${JOB_KIND_WORDS[k]}, set by the office` : `Mark this job a ${JOB_KIND_WORDS[k].toLowerCase()}`}
+                  style={{
+                    minHeight: 40,
+                    minWidth: 110,
+                    padding: '0 0.9rem',
+                    border: 'none',
+                    borderLeft: k === 'project' ? '1px solid var(--border-strong)' : 'none',
+                    fontSize: '0.875rem',
+                    fontWeight: 600,
+                    cursor: kind.busy ? 'default' : 'pointer',
+                    background: kind.busy ? DEAD_PRESS_FILL : on ? '#2563eb' : 'var(--surface)',
+                    color: kind.busy ? DEAD_PRESS_TEXT : on ? '#fff' : 'var(--text-700)',
+                  }}
+                >
+                  {JOB_KIND_WORDS[k]}
+                </button>
+              )
+            })}
+          </div>
+          <span data-testid="job-form-kind-reason" style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>
+            {kind.read.kind ? `${kind.read.reason} Change it if that is wrong.` : `${kind.read.reason} ${JOB_KIND_CONTROL_HELP}`}
+          </span>
         </div>
       ) : null}
       <div style={{ display: 'flex', gap: '1rem', flexWrap: 'wrap', alignItems: 'flex-end' }}>

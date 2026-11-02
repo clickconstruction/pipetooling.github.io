@@ -21,8 +21,10 @@ import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 import { HoursStatementsSection } from './HoursStatementsSection'
+import { JobDocumentsChecklists } from './JobDocumentsChecklists'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
 import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
+import { JobDocumentsIndexFolder } from './JobDocumentsIndexFolder'
 import { JobPlansSection } from './JobPlansSection'
 import { JobDocumentsAddFile } from './JobDocumentsAddFile'
 import { EmptyState } from '../EmptyState'
@@ -42,7 +44,9 @@ import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
  * v2.6272 (punch list #232, PR 3) a **Photos** section after the folders reads the folder's count line as the door to the
  * strip's viewer, and says so on a job with no folder; every photo across every job is Documents → Photos. Since v2.6298
  * (punch list #239, PR 2) a **Plans** section before the folders names the set the job builds from, the older sets and our
- * as-builts, and adds a set or an as-built (`JobPlansSection`).
+ * as-builts, and adds a set or an as-built (`JobPlansSection`). Since v2.6328 (punch list #237, PR 1) a **Stage
+ * checklists** section after the hours statements reads each stage's checklist with every answer's name and time,
+ * and adds a check for this job inline (`JobDocumentsChecklists`).
  * Since v2.6299
  * an **In the folders** section between them lists what is in the job's five folders, read live from Drive each time
  * the tab opens, each file with where it came from (the app's own record, or a hand in Drive).
@@ -343,6 +347,9 @@ export function JobWindowDocumentsTab({
 
       <HoursStatementsSection scope={{ kind: 'job', job }} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
 
+      {/* Stage checklists as documents (punch list #237, PR 1): each stage's standing and every answer with its stamp; the office adds a check for this job inline. */}
+      <JobDocumentsChecklists job={job} onRequestTab={onRequestTab} />
+
       {canReadSentCopies(role) ? <JobDocumentsSent job={job} rows={otherSent} /> : null}
 
       <JobPlansSection job={job} onPlansLinkChanged={(link) => onFoldersMade?.({ job_plans_link: link })} onLeave={onLeave} />
@@ -395,6 +402,9 @@ export function JobWindowDocumentsTab({
       </section>
 
       <JobDocumentsFolderFiles job={job} />
+
+      {/* Index this job's files into our own search index (punch list #240, PR 1); the office roles the folder press names. */}
+      {canMakeJobDriveFolders(role) ? <JobDocumentsIndexFolder job={job} /> : null}
 
       <JobDocumentsPhotos jobId={job.id} driveLink={job.google_drive_link} picturesLink={job.job_pictures_link} />
 

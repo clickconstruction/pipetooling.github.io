@@ -10,6 +10,7 @@ import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { JobFormIdentityFields } from './JobFormIdentityFields'
+import { jobKind } from '../../lib/jobs/jobKind'
 
 const invoke = vi.fn()
 vi.mock('../../lib/supabase', () => ({
@@ -107,5 +108,62 @@ describe('JobFormIdentityFields address autocomplete', () => {
     await typeAddress('1207 king')
     await new Promise((r) => setTimeout(r, 450))
     expect(screen.queryByRole('listbox')).toBeNull()
+  })
+})
+
+describe('JobFormIdentityFields kind control (punch list #238)', () => {
+  function KindHarness({ onPress, read, busy }: { onPress: (k: 'service' | 'project') => void; read: ReturnType<typeof jobKind>; busy?: boolean }) {
+    return (
+      <JobFormIdentityFields
+        hcpNumber=""
+        setHcpNumber={() => {}}
+        clickNumber="1031"
+        setClickNumber={() => {}}
+        jobName="Harbor Lane Offices"
+        setJobName={() => {}}
+        jobAddress=""
+        setJobAddress={() => {}}
+        formServiceTypeId=""
+        setFormServiceTypeId={() => {}}
+        serviceTypeOptions={[{ id: 'p', name: 'Plumbing' }]}
+        tradePill={null}
+        onTradePillClick={() => {}}
+        kind={{ read, onPress, busy }}
+      />
+    )
+  }
+
+  it('draws no control without the kind prop', () => {
+    render(<Harness />)
+    expect(screen.queryByTestId('job-form-kind')).toBeNull()
+  })
+
+  it('defaults to Project from the bid with the reason under it, and a press hands back the other kind', () => {
+    const onPress = vi.fn()
+    render(<KindHarness onPress={onPress} read={jobKind({ bid_id: 'b1', bidNumber: 'B917', revenue: 112000, firstWorkDate: null })} />)
+    const project = screen.getByRole('button', { name: 'Project' })
+    const service = screen.getByRole('button', { name: 'Service call' })
+    expect(project.getAttribute('aria-pressed')).toBe('true')
+    expect(service.getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByTestId('job-form-kind-reason').textContent).toBe('Project · priced $112,000 from bid B917. Change it if that is wrong.')
+    fireEvent.click(service)
+    expect(onPress).toHaveBeenCalledWith('service')
+  })
+
+  it('waits for the press when the signals settle nothing, and says what each kind means', () => {
+    const onPress = vi.fn()
+    render(<KindHarness onPress={onPress} read={jobKind({ click_number: '1031', firstWorkDate: null })} />)
+    expect(screen.getByRole('button', { name: 'Project' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByRole('button', { name: 'Service call' }).getAttribute('aria-pressed')).toBe('false')
+    expect(screen.getByTestId('job-form-kind-reason').textContent).toContain('your call')
+    expect(screen.getByTestId('job-form-kind-reason').textContent).toContain('A project is priced before it starts')
+    fireEvent.click(screen.getByRole('button', { name: 'Project' }))
+    expect(onPress).toHaveBeenCalledWith('project')
+  })
+
+  it('both presses wait while a save is on its way', () => {
+    render(<KindHarness onPress={() => {}} read={jobKind({ kind: 'service' })} busy />)
+    expect((screen.getByRole('button', { name: 'Project' }) as HTMLButtonElement).disabled).toBe(true)
+    expect((screen.getByRole('button', { name: 'Service call' }) as HTMLButtonElement).disabled).toBe(true)
   })
 })

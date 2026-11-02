@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import DashboardMyVehicleCard from './DashboardMyVehicleCard'
 import { renderWithProviders } from '../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../lib/offlineRecoveryState'
 
 const now = new Date()
 const TODAY = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
@@ -102,12 +102,12 @@ describe('DashboardMyVehicleCard', () => {
   it('a lost signal draws the card with the offline sentence and Retry, never an empty card; Retry reads it again', async () => {
     TABLE_ERRORS.vehicle_possessions = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
     renderWithProviders(<DashboardMyVehicleCard userId="u2" />)
-    expect(await screen.findByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy()
+    expect(await screen.findByText(OFFLINE_READ_MESSAGE)).toBeTruthy()
     expect(screen.getByRole('region', { name: 'My vehicle' })).toBeTruthy()
     delete TABLE_ERRORS.vehicle_possessions
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     expect(await screen.findByText('2019 Ram ProMaster')).toBeTruthy()
-    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
+    expect(screen.queryByText(OFFLINE_READ_MESSAGE)).toBeNull()
   })
 
   it('a refused reading names its reason and shows no vehicle rows that would guess "No reading yet"', async () => {

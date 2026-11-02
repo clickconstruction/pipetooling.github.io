@@ -2,7 +2,7 @@
 title: fill a stage checklist on the phone
 category: Field Work
 roles: helpers, subcontractor, master_technician, superintendent, primary
-keywords: stage checklist, checklist, rough in, top out, trim set, yes no not here, photo, not ready, pipeline, job mode, job window, crew
+keywords: stage checklist, checklist, rough in, top out, trim set, yes no not here, photo, not ready, pipeline, job mode, job window, crew, next, stamp, added for this job
 where: /dashboard
 order: 12
 ---
@@ -14,9 +14,19 @@ In Job Mode, scroll to the job's details. Under **Stage checklists**, press the 
 
 ## Answer each question
 
-Each question has three presses. Press {{chip:green|Yes}}, {{chip:red|No}} or {{chip:gray|Not here}}. Not here means the thing is not on this job. Every press saves by itself. You can close the sheet and come back.
+The sheet keeps one question open at a time. The open one is marked **Next**. A line under the title counts the answers, like *2 of 5 answered · 3 left*.
 
-Type a note under a question when there is something to say. The note saves when you leave the box.
+Each open question has three presses. Press {{chip:green|Yes}}, {{chip:red|No}} or {{chip:gray|Not here}}. Not here means the thing is not on this job. Every press saves by itself. The sheet moves to the next question on its own. You can close the sheet and come back.
+
+Every answer stamps its row with your name and the time. The office reads the stamp on the job's Documents tab.
+
+Press **Add a note** under the open question when there is something to say. The note saves when you leave the box.
+
+To change an answer, tap its row. The row opens again with its three presses. Press **Close this one** when you are done.
+
+## Checks added for this job
+
+Some questions sit under **Added for this job**. The office or the superintendent added them for this job alone. Until it is answered, the row says who added it and when. Answer them like any other question. They count toward ready the same way.
 
 ## Take the photo a question asks for
 
@@ -28,6 +38,6 @@ A photo from a field report can answer the question too. Under a new photo on th
 
 ## When the stage reads ready
 
-The bottom of the sheet counts the answers. A stage reads **not ready** on the Pipeline until every question is answered. A question that asks for a photo needs its photo too. Once every question is answered, press {{button:green|Done}}.
+The bottom of the sheet counts what is left. A stage reads **not ready** on the Pipeline until every question is answered. A question that asks for a photo needs its photo too. Once every question is answered, press {{button:green|Done}}.
 
 The answers never change the stage's percent or its bill. A test report does not count as a checklist.

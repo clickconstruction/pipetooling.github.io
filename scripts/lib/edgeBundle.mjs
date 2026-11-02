@@ -125,3 +125,60 @@ export function configVerifyJwt(configToml, slugs) {
   }
   return new Map(slugs.map((slug) => [slug, explicit.get(slug) ?? true]))
 }
+
+/**
+ * Link every function the way Deno's loader will when it boots: esbuild bundles `<dir>/<slug>/index.ts`,
+ * following relative imports and leaving every remote or bare import (`https:`, `npm:`, `jsr:`, `node:`)
+ * external, writing nothing. A name imported from a module that does not export it fails here as it fails
+ * at boot (v2.6294: job-drive-folders and photo-save answered 503 BOOT_ERROR for three `_shared` exports
+ * that never landed); a type-only import of a missing name passes, as Deno strips it. `esbuild` is handed
+ * in so this file stays dependency-free for the drift workflow's bare Node. `dir` is relative to `root`,
+ * and so is every path in a message.
+ */
+export async function linkFunctions(root, dir, slugs, esbuild) {
+  const note = (m) => ({ file: m.location?.file ?? null, line: m.location?.line ?? null, text: m.text })
+  return Promise.all(
+    slugs.map(async (slug) => {
+      try {
+        const { warnings } = await esbuild.build({
+          entryPoints: [`${dir}/${slug}/index.ts`],
+          absWorkingDir: root,
+          bundle: true,
+          write: false,
+          format: 'esm',
+          platform: 'neutral',
+          packages: 'external',
+          logLevel: 'silent',
+        })
+        return { slug, errors: [], warnings: warnings.map(note) }
+      } catch (e) {
+        const errors = Array.isArray(e.errors) && e.errors.length > 0 ? e.errors : [{ text: String(e.message ?? e) }]
+        return { slug, errors: errors.map(note), warnings: (e.warnings ?? []).map(note) }
+      }
+    }),
+  )
+}
+
+/**
+ * The words for linkFunctions' results: each failing function with its messages, one line per distinct
+ * message (a `_shared` break repeats the same line under every importer, which is the point), paths
+ * shortened past `dir`; the warnings as one flat list.
+ */
+export function linkReport(results, dir) {
+  const short = (s) => (s ? s.split(`${dir}/`).join('') : s)
+  const where = (m) => (m.file ? `${short(m.file)}:${m.line} ` : '')
+  const failing = results.filter((r) => r.errors.length > 0)
+  const lines = failing.map((r) => {
+    const seen = new Set()
+    const own = []
+    for (const m of r.errors) {
+      const key = `${m.file}:${m.line}:${m.text}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      own.push(`      ${where(m)}${short(m.text)}`)
+    }
+    return `  - ${r.slug}\n${own.join('\n')}`
+  })
+  const warnings = results.flatMap((r) => r.warnings.map((m) => `${r.slug}: ${where(m)}${short(m.text)}`))
+  return { failed: failing.map((r) => r.slug), lines, warnings }
+}

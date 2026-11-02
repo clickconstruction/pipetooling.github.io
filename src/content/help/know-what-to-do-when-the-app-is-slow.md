@@ -2,7 +2,7 @@
 title: know what to do when the app is slow
 category: Getting Started
 roles: all
-keywords: slow, the app is slow right now, could not reach the app, retry, freeze, loading, keep this open, no signal, spinner, blank page, signed out, read at, kept, stamp, faded, the page you see, your day as read at, my schedule, job mode, no blocks scheduled, counts from, quickfill, roller, round
+keywords: slow, the app is slow right now, could not reach the app, retry, freeze, loading, keep this open, no signal, spinner, blank page, signed out, read at, kept, stamp, faded, the page you see, your day as read at, my schedule, job mode, no blocks scheduled, counts from, quickfill, roller, round, messages, who was waiting, reading again, take it
 ---
 A slow morning used to look like a dead app. Now one line at the top of every screen says so.
 
@@ -51,6 +51,28 @@ Each day is kept under its own date. Yesterday's day is never shown as today's.
 ## The office's round
 
 Quickfill's Roller and the phone's round keep the deck you last read on your device. On a slow morning the round draws at once. A line above it reads *Counts from 7:52 AM · counting again…*. Each station's count and Next line are from that read. {{button:green|Done}} and {{button:blue|Worked it}} wait until the live count lands. {{button:outline|Skip}} and {{button:outline|Not sure what to do}} stay live. Read [run the office day with Quickfill](/help/quickfill#when-the-app-is-slow) for the whole of it.
+
+## Who is waiting on us
+
+Messages keeps the lists you last read on your device. On a slow morning, or with no signal, the lists draw at once. A line above them reads *Who was waiting at 7:52 AM · reading again…*. The time is when your device last read them. The counts on the bar and on each list come from that read and sit faded. The line goes when the live read lands.
+
+:::example A slow morning on Messages
+
+**Who was waiting at 7:52 AM · reading again…**
+
+**Needs a reply** 2
+
+Dale Ferris · Ridgeway Builders
+
+Marisol Pena
+
+:::
+
+The presses that write on a row wait until the live read lands. {{button:outline|Nobody has it · Take it}}, {{button:outline|No reply needed}} and {{button:outline|Remind me Monday}} sit faded. {{button:blue|Sort all}} and {{button:blue|Answer all}} wait too. Hover over a press and it says *reading again…*. You can still press a row to read the thread. {{button:blue|Reply}} still opens it and {{button:green|Call}} still dials.
+
+When the live read fails, the lists stay. The line reads *Who was waiting at 7:52 AM · could not read again · Retry*. Press {{button:outline|Retry}} to read them again. With no signal, the page reads again by itself when the signal is back. With nothing kept, the page says what went wrong.
+
+**Waiting on them** and **Went out** have reads of their own. Each shows … until its read lands. When its read fails, it says so. Open the page again once the app answers.
 
 ## Could not reach the app
 

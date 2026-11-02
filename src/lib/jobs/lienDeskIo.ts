@@ -5,6 +5,8 @@ import type { LienDeskItemRow, LienNoticePolicy, LienSubmitOutcome } from './lie
 import type { LienWordChannel } from './lienWord'
 import { canTakeBackItem, fieldsWithTakeBack } from './lienRunTakeBack'
 import { LIEN_DESK_SIGNATURE_CLEAR } from './lienNoticeSignature'
+import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /** The desk's three kinds — one live row per (job, kind). */
 export type LienDeskItemKind = 'notice_53_056' | 'affidavit' | 'retainage_53_057'
@@ -208,7 +210,6 @@ export async function startLetterTwo(input: { first: Pick<LienDeskItemRow, 'id' 
   return saveLienDeskDraft({ itemId: null, jobId: input.first.job_id, months: input.first.months, fields: input.fields, coverNote: true, userId: input.userId })
 }
 
-/** The run recorded a filing for this item. */
 /** The run printed these items' notices (v2.4119): they sit in "In the mail · tracking owed" until recorded. Best-effort — a failure only leaves them in Ready to send. */
 export async function markLienDeskItemsPrinted(itemIds: ReadonlyArray<string>, userId: string | null): Promise<void> {
   if (itemIds.length === 0) return
@@ -253,9 +254,15 @@ export async function takeBackLienDeskItems(itemIds: ReadonlyArray<string>, by: 
   return live.length
 }
 
-export async function markLienDeskItemSent(itemId: string, filingId: string): Promise<void> {
+/**
+ * The run or a door recorded a filing for this item. `sentAt` is the day it went when that day is
+ * not today (punch list #243, `sentAtForTypedDay`), so letter two, the courtesy notice and the desk's
+ * day count run from the mailing day; null leaves the stamp to the trigger, which writes the moment
+ * of the record, as a notice recorded the day it goes out always has.
+ */
+export async function markLienDeskItemSent(itemId: string, filingId: string, sentAt: string | null = null): Promise<void> {
   await withSupabaseRetry(
-    () => supabase.from('job_lien_desk_items').update({ status: 'sent', sent_filing_id: filingId } as never).eq('id', itemId),
+    () => supabase.from('job_lien_desk_items').update({ status: 'sent', sent_filing_id: filingId, ...(sentAt ? { sent_at: sentAt } : {}) } as never).eq('id', itemId),
     'lien desk: mark sent',
   )
 }
@@ -270,9 +277,10 @@ export async function setCustomerLienNoticePolicy(customerId: string, policy: Li
 /**
  * After the Lien window records a notice: if the job's live desk item is
  * approved and a live notice now names every month it carries, the item is
- * sent. Returns true when it moved.
+ * sent — on the day the filing says it went (punch list #243), when that day
+ * is before today. Returns true when it moved.
  */
-export async function syncLienDeskAfterRecord(jobId: string): Promise<boolean> {
+export async function syncLienDeskAfterRecord(jobId: string, todayYmd: string = todayYmdInAppTz()): Promise<boolean> {
   const items = await withSupabaseRetry<LienDeskItemRow[]>(
     () => supabase.from('job_lien_desk_items').select('*').eq('job_id', jobId).is('voided_at', null).in('status', ['approved', 'drafted', 'awaiting_approval', 'held']),
     'lien desk: sync items',
@@ -281,19 +289,20 @@ export async function syncLienDeskAfterRecord(jobId: string): Promise<boolean> {
   // Affidavits (v2.3412): a filed affidavit (filed_at set) sends the item.
   const affidavitItem = (items ?? []).find((i) => i.kind === 'affidavit')
   if (affidavitItem) {
-    const filed = await withSupabaseRetry<{ id: string }[]>(
-      () => supabase.from('job_lien_filings').select('id').eq('job_id', jobId).eq('kind', 'affidavit').is('voided_at', null).not('filed_at', 'is', null).order('created_at', { ascending: false }).limit(1),
+    const filed = await withSupabaseRetry<{ id: string; filed_at: string | null }[]>(
+      () => supabase.from('job_lien_filings').select('id, filed_at').eq('job_id', jobId).eq('kind', 'affidavit').is('voided_at', null).not('filed_at', 'is', null).order('created_at', { ascending: false }).limit(1),
       'lien desk: sync affidavit',
     )
     if (filed?.[0]) {
-      await markLienDeskItemSent(affidavitItem.id, filed[0].id)
+      // `filed_at` is a date column: the day the county recorded it.
+      await markLienDeskItemSent(affidavitItem.id, filed[0].id, sentAtForTypedDay(filed[0].filed_at, todayYmd))
       moved = true
     }
   }
   const item = (items ?? []).find((i) => i.kind === 'notice_53_056')
   if (!item) return moved
-  const filings = await withSupabaseRetry<{ id: string; months_covered: string[] | null; created_at: string }[]>(
-    () => supabase.from('job_lien_filings').select('id, months_covered, created_at').eq('job_id', jobId).eq('kind', 'notice_53_056').is('voided_at', null).order('created_at', { ascending: false }),
+  const filings = await withSupabaseRetry<{ id: string; months_covered: string[] | null; created_at: string; sends: unknown }[]>(
+    () => supabase.from('job_lien_filings').select('id, months_covered, created_at, sends').eq('job_id', jobId).eq('kind', 'notice_53_056').is('voided_at', null).order('created_at', { ascending: false }),
     'lien desk: sync filings',
   )
   const covered = new Set<string>()
@@ -302,7 +311,7 @@ export async function syncLienDeskAfterRecord(jobId: string): Promise<boolean> {
   if (months.length === 0 || !months.every((m) => covered.has(m))) return false
   const filing = (filings ?? []).find((f) => months.every((m) => (f.months_covered ?? []).includes(m))) ?? (filings ?? [])[0]
   if (!filing) return false
-  await markLienDeskItemSent(item.id, filing.id)
+  await markLienDeskItemSent(item.id, filing.id, sentAtForTypedDay(earliestSendDay(filing.sends), todayYmd))
   return true
 }
 
