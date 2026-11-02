@@ -46,6 +46,11 @@ export function askRow(draft: AskDraft, developmentId: string | null, siteName: 
 }
 
 /** The Plans card's ask, pre-written: which set the pieces on an older set or none build from. */
+/** The Plans look's ask since the look reads by part (punch list #239, PR 3): the jobs on no part and the parts with no set. */
+export function askTitleForSitePlans(n: number): string {
+  return `${n} ${n === 1 ? 'piece of the site has' : 'pieces of the site have'} no plans to build from: which set goes on which part?`
+}
+
 export function askTitleForPlans(n: number): string {
   return `${n} ${n === 1 ? 'job or bid is' : 'jobs and bids are'} on an older plan set or none: which set do we build from?`
 }

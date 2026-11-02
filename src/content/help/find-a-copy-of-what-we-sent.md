@@ -20,7 +20,7 @@ The newest send is on top. Each line says what went, how, when, to whom and by w
 ## Find a copy from the Documents page
 
 1. Open [Documents](/documents?tab=sent).
-2. Press the **Sent** tab.
+2. Press the **Sent copies** tab.
 3. Pick a kind of paper, or type a name, an address or a subject.
 
 This list holds everything sent, for every job. It also holds papers that name no job. A statement to a GC is one. A price request to a supply house is another.

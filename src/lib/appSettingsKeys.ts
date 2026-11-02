@@ -27,6 +27,8 @@ export const APP_SETTINGS_KEY_DRIVE_JOB_FOLDER_PATTERN = 'drive_job_folder_patte
 export const APP_SETTINGS_KEY_DRIVE_BID_FOLDER_PATTERN = 'drive_bid_folder_pattern' as const
 /** `value_text` — `upfront` (every folder when the job's is made) or `as-needed` (each when something first lands in it); missing = upfront. */
 export const APP_SETTINGS_KEY_DRIVE_FOLDERS_MADE = 'drive_folders_made' as const
+/** `value_text` — the Drive folder id of the company's papers, listed on Documents → Company and filled by its Upload press; missing = no folder yet. */
+export const APP_SETTINGS_KEY_DRIVE_COMPANY_FOLDER_ID = 'drive_company_folder_id' as const
 
 /** JSON map in `value_text`: Mercury kind → `{ nickname, color }` for Jobs → Bank Payments. Dev writes; all authenticated read. */
 export const APP_SETTINGS_KEY_BANK_PAYMENTS_KIND_BADGES = 'bank_payments_kind_badges_v1' as const
