@@ -79,7 +79,8 @@ import { checkDriveFolder, findWhereFilesGoJobs, loadWhereFilesGoBid, loadWhereF
 
 const cards: CSSProperties = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(290px, 1fr))', gap: 12, marginTop: 12 }
 const card: CSSProperties = { background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, padding: '12px 14px', display: 'grid', gap: 8, alignContent: 'start', minWidth: 0 }
-const cardH: CSSProperties = { margin: 0, fontSize: '0.85rem', fontWeight: 800, color: 'var(--text-strong)' }
+/** A card's title reads above its pieces (the owner, 2026-11-01): a size up from the chips, which sit a size down. */
+const cardH: CSSProperties = { margin: 0, fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-strong)', lineHeight: 1.25 }
 const muted: CSSProperties = { fontSize: '0.75rem', color: 'var(--text-muted)' }
 const okLine: CSSProperties = { fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-green-700)', margin: 0 }
 const warnLine: CSSProperties = { fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-amber-800)', margin: 0 }
@@ -88,11 +89,11 @@ const btn: CSSProperties = { padding: '0.4rem 0.8rem', background: 'var(--surfac
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
 const btnQuiet: CSSProperties = { ...btn, fontSize: '0.75rem', fontWeight: 500, padding: '0.2rem 0.55rem' }
 const chips: CSSProperties = { display: 'flex', flexWrap: 'wrap', gap: 5, alignItems: 'center' }
-const chipOn: CSSProperties = { border: '1px solid var(--text-strong)', borderRadius: 999, background: 'var(--text-strong)', color: 'var(--surface)', fontSize: '0.78rem', fontWeight: 600, padding: '4px 10px', cursor: 'pointer', font: 'inherit', whiteSpace: 'nowrap' }
+const chipOn: CSSProperties = { border: '1px solid var(--text-strong)', borderRadius: 999, background: 'var(--text-strong)', color: 'var(--surface)', font: 'inherit', fontSize: '0.75rem', fontWeight: 600, padding: '3px 9px', cursor: 'pointer', whiteSpace: 'nowrap' }
 const chipAdd: CSSProperties = { ...chipOn, border: '1px dashed var(--border-strong)', background: 'var(--surface)', color: 'var(--text-muted)' }
 const dot: CSSProperties = { color: 'var(--text-muted)', fontWeight: 700 }
 const exampleLine: CSSProperties = { ...muted, margin: 0 }
-const exampleName: CSSProperties = { fontSize: '0.9rem', color: 'var(--text-strong)', fontWeight: 700 }
+const exampleName: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-strong)', fontWeight: 700 }
 const list: CSSProperties = { margin: 0, paddingLeft: '1.1rem', display: 'grid', gap: '0.25rem' }
 
 /** The folder glyph the mock-up draws beside a folder's name. */
