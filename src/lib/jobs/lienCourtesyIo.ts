@@ -1,9 +1,9 @@
 import { supabase } from '../supabase'
 import type { Json } from '../../types/database'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'
-import { contactForCustomer, loadContact } from '../messages/messagesIo'
+import { contactForCustomer, findCustomerContactId, loadContact } from '../messages/messagesIo'
+import { courtesyGcChannels, textChannelFor } from './lienCourtesyContact'
 import { supabaseTextsSwitchIo } from '../quo/textsSwitchIo'
-import { TEXTS_OFF } from '../quo/textsSwitch'
 import type { LienDeskItemRow } from './lienDesk'
 import {
   courtesyEmailText,
@@ -23,10 +23,12 @@ import {
  * says who gets it and what it says; this file finds the addresses, sends, and writes the record.
  *
  * - The GC's email is the one the sent notice's draft carries (the courtesy PDF went there), else
- *   the one on their Messages contact. Their number is their Messages contact's phone channel
- *   (`contact_for_customer` makes the contact when there is none, the office's own door), and a
- *   text goes only while Send texts is on and the number has not sent STOP. `quo-send` adds the
- *   opt-out line itself.
+ *   the one on their Messages contact or their customer record. Their number is their Messages
+ *   contact's phone channel, or, while they have no contact, the number on their customer record —
+ *   read, never made (punch list #243): the window used to open the thread with `contact_for_customer`,
+ *   which makes the contact, so a window opened and cancelled left one behind. Now the press makes
+ *   it, and only when a text goes. A text goes only while Send texts is on and the number has not
+ *   sent STOP. `quo-send` adds the opt-out line itself.
  * - The owner's email is the property record's (`job_property_owners.owner_email`). The owner is
  *   not a Messages contact, so the owner gets no text.
  * - The email goes through `send-lien-filing-email` with `email_type: 'lien_courtesy'` and no
@@ -40,9 +42,9 @@ import {
  */
 
 export type CourtesyRecipient = CourtesyRecipientPlan & {
-  /** The Messages contact the text goes to; null when there is none. */
+  /** The Messages contact the text goes from; null when the GC has none yet — the press makes it when the text goes. */
   contactId: string | null
-  /** The phone channel's row; null when the text cannot go. */
+  /** The phone channel's row; null when the text cannot go, or while there is no contact yet. */
   textChannelId: string | null
 }
 
@@ -55,7 +57,17 @@ export type CourtesyRecipientsInput = {
   ownerEmail: string
 }
 
-/** Each recipient with their channels found: the GC's from the notice and their Messages contact, the owner's from the property record. */
+/** The number and address on the GC's customer record — what `contact_find_or_make` copies onto the contact it makes. */
+async function customerContactInfo(customerId: string): Promise<{ phone: string; email: string }> {
+  const row = await withSupabaseRetry<{ contact_info: unknown } | null>(
+    () => supabase.from('customers').select('contact_info').eq('id', customerId).maybeSingle(),
+    'lien desk: read the GC’s number',
+  )
+  const ci = (row?.contact_info ?? null) as { phone?: unknown; email?: unknown } | null
+  return { phone: typeof ci?.phone === 'string' ? ci.phone.trim() : '', email: typeof ci?.email === 'string' ? ci.email.trim() : '' }
+}
+
+/** Each recipient with their channels found: the GC's from the notice, their Messages contact or their record (nothing made), the owner's from the property record. */
 export async function loadCourtesyRecipients(input: CourtesyRecipientsInput): Promise<CourtesyRecipient[]> {
   const textsOn = await supabaseTextsSwitchIo()
     .load()
@@ -67,19 +79,15 @@ export async function loadCourtesyRecipients(input: CourtesyRecipientsInput): Pr
   let gcEmail = input.gcEmail.trim()
   if (input.gcCustomerId) {
     try {
-      contactId = await contactForCustomer(input.gcCustomerId)
-      const contact = await loadContact(contactId)
-      const phones = (contact?.channels ?? []).filter((c) => c.kind === 'phone' && c.value.trim())
-      const live = phones.find((c) => !c.optedOutAt) ?? null
-      if (live) {
-        phone = live.value.trim()
-        if (!textsOn) textHold = TEXTS_OFF
-        else textChannelId = live.id
-      } else if (phones.length) {
-        phone = phones[0]!.value.trim()
-        textHold = 'they sent STOP'
-      }
-      if (!gcEmail) gcEmail = (contact?.channels ?? []).find((c) => c.kind === 'email' && c.value.trim())?.value.trim() ?? ''
+      const foundId = await findCustomerContactId(input.gcCustomerId)
+      const contact = foundId ? await loadContact(foundId) : null
+      const record = contact ? { phone: '', email: '' } : await customerContactInfo(input.gcCustomerId)
+      const found = courtesyGcChannels({ contact: contact ? { id: contact.id, channels: contact.channels } : null, customerPhone: record.phone, customerEmail: record.email, textsOn })
+      contactId = found.contactId
+      textChannelId = found.textChannelId
+      phone = found.phone
+      textHold = found.textHold
+      if (!gcEmail) gcEmail = found.email
     } catch (e) {
       textHold = `their Messages contact could not be opened: ${formatErrorMessage(e)}`
     }
@@ -125,6 +133,8 @@ async function sendCourtesyText(input: { jobId: string; contactId: string; chann
 export type CourtesySendInput = {
   item: Pick<LienDeskItemRow, 'id' | 'fields'>
   jobId: string
+  /** The GC's customer: the press makes their Messages contact from it when a text goes and they have none yet. */
+  gcCustomerId: string | null
   facts: CourtesyFacts
   /** The one line the office may change on the GC's email. */
   greeting: string
@@ -133,6 +143,21 @@ export type CourtesySendInput = {
 }
 
 export type CourtesySendResult = { record: CourtesyRecord | null; to: CourtesySent[] }
+
+/**
+ * The text's door: the recipient's Messages contact and the channel the number sits on. A GC with no
+ * contact yet gets one here, at the press and only because a text goes (punch list #243) — the
+ * office's own door, `contact_for_customer`, which copies the record's number onto it.
+ */
+async function textDoorFor(r: CourtesyRecipient, gcCustomerId: string | null): Promise<{ contactId: string; channelId: string }> {
+  if (r.contactId && r.textChannelId) return { contactId: r.contactId, channelId: r.textChannelId }
+  if (r.who !== 'original_contractor' || !gcCustomerId) throw new Error('no Messages contact to text from')
+  const contactId = await contactForCustomer(gcCustomerId)
+  const contact = await loadContact(contactId)
+  const channel = textChannelFor(contact?.channels ?? [], r.text.address)
+  if (!channel) throw new Error('their Messages contact holds no number that can be texted')
+  return { contactId, channelId: channel.id }
+}
 
 /**
  * Press: each channel that goes is sent in turn, a failure recorded as its reason and the rest
@@ -152,9 +177,10 @@ export async function sendCourtesyNotice(input: CourtesySendInput): Promise<Cour
         to.push({ who: r.who, name: r.name, channel: 'email', address: r.email.address, ok: false, id: null, reason: formatErrorMessage(e, 'the email did not go') })
       }
     }
-    if (r.text.goes && r.contactId && r.textChannelId) {
+    if (r.text.goes) {
       try {
-        const id = await sendCourtesyText({ jobId: input.jobId, contactId: r.contactId, channelId: r.textChannelId, body: courtesyTextBody(input.facts, r.who) })
+        const door = await textDoorFor(r, input.gcCustomerId)
+        const id = await sendCourtesyText({ jobId: input.jobId, contactId: door.contactId, channelId: door.channelId, body: courtesyTextBody(input.facts, r.who) })
         to.push({ who: r.who, name: r.name, channel: 'text', address: r.text.address, ok: true, id, reason: '' })
       } catch (e) {
         to.push({ who: r.who, name: r.name, channel: 'text', address: r.text.address, ok: false, id: null, reason: formatErrorMessage(e, 'the text did not go') })

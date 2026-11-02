@@ -35,6 +35,10 @@ A stage reads **not ready** on the Pipeline until every question is answered. On
 
 A question you take off stays on the answers the crew already gave. The crew sees the new list on the next stage they open.
 
+## A check for one job alone
+
+A check for one job is added on the job, not here. Open the job window and press **Documents**. The guide [add a check to a job's stage checklist](/help/add-a-check-to-a-jobs-stage-checklist) has the steps. The same tab reads every answer with the person's name and the time.
+
 ## What does not count
 
 A test report does not count as a stage's checklist. The checklist stands on its own. The crew's answers never change the stage's percent or its bill.

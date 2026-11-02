@@ -2,7 +2,7 @@
 name: "Plan sets by part: an updated set mid-project, and our own as-builts kept with the build"
 number: 239
 group: ready
-status: building 2026-11-01 on claude/plan-sets-parts-ground · PR 1 the tables (v2.6297, migration 20261101210000) · PR 2 the Plans section in the job window's Documents tab follows on the same branch
+status: building 2026-11-01 · PR 1 the tables merged as v2.6297 (#6743), migration 20261101210000 pushed · PR 2 the Plans section in the job window's Documents tab merged as v2.6298 (#6744) · PR 3 the Development page's Plans look by part merged as v2.6302 (#6749)
 summary: >
   The owner, 2026-11-01, after a read-only assessment of a development's Plans look: on a project they
   often get an updated set of plans halfway through, or the crew makes its own as-builts and wants them
@@ -13,10 +13,10 @@ summary: >
   site (the Lodge, the Bunker, the whole site), each part has one set it builds from, a job names its
   part and follows it, a bid pins what it was priced on, and an as-built is ours, on the job, marking up
   the set it built from. A job outside any development owns its own part, so it gets the same thing.
-next: PR 2 the job window's Plans section, then PR 3 the Development page's Plans look by part, PR 4 the bid's priced-on and the hand-off to the job, PR 5 the Drive subfolder per set and the crew's Add our as-built with photos, PR 6 the Pipeline row's picker and the History lines.
+next: A live pass on a ZZ Test job by How to verify; then PR 4 the bid's priced-on and the hand-off to the job, PR 5 the Drive subfolder per set and the crew's Add our as-built with photos, PR 6 the Pipeline row's picker and the History lines.
 size: S (PR 1 the tables) + M (PR 2 the job section) + M (PR 3 the site look) + S (PR 4 the bid) + M (PR 5 Drive and photos) + S (PR 6 the row and History)
-blocker: None. The migration is pushed after PR 1 merges, before PR 2 lands.
-ver: v2.6297
+blocker: None. The migration is pushed (check:migration-drift read fully applied on 2026-11-01); the types stay hand-carried until the next chore(types).
+ver: v2.6297 · 6298 · 6302
 opinion: build the train as ordered; the one judgement call left to the owner is PR 3's "join an existing part" when a lone job is put into a development
 ---
 

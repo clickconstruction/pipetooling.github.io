@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { FIND_MIN_CHARS, emptyFindWords, findAFileFromAnswer, foundWords, groupByHome, hitMetaWords, homeWords, pathWords, type FoundFile } from './findAFile'
+import { FIND_MIN_CHARS, emptyFindWords, excerptNote, excerptParts, findAFileFromAnswer, foundWords, groupByHome, hitMetaWords, homeWords, pathWords, type FoundFile } from './findAFile'
 
 const hit = (over: Partial<FoundFile>): FoundFile => ({
   id: '1AbCdEfGhIjKlMnOpQrSt',
@@ -10,6 +10,8 @@ const hit = (over: Partial<FoundFile>): FoundFile => ({
   url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view',
   home: { kind: 'job', id: 'job-1', hcpNumber: '1187', clickNumber: null, name: 'Maple Court townhomes' },
   path: 'Plans',
+  excerpt: null,
+  excerptWhy: null,
   ...over,
 })
 
@@ -58,6 +60,29 @@ describe('findAFile (v2.6305)', () => {
     expect(pathWords(hit({ path: '', home: null }))).toBeNull()
     expect(hitMetaWords(hit({}), now)).toBe('Plans · Oct 14 · 410 KB')
     expect(hitMetaWords(hit({ path: '', home: null, modified: null, bytes: null }), now)).toBe('')
+  })
+
+  it('reads an excerpt and its marks, drops a mark outside the text, and draws the parts and the notes (v2.6306)', () => {
+    const read = findAFileFromAnswer({
+      hits: [
+        { id: 'a1234567890', name: 'x.pdf', excerpt: { text: '…agreed to the rock clause as written…', marks: [[15, 26], [90, 99]] } },
+        { id: 'b1234567890', name: 'scan.pdf', excerptWhy: 'scan' },
+        { id: 'c1234567890', name: 'y.pdf', excerptWhy: 'elsewhere' },
+      ],
+    })
+    expect(read.hits[0]!.excerpt).toEqual({ text: '…agreed to the rock clause as written…', marks: [[15, 26]] })
+    expect(excerptParts(read.hits[0]!.excerpt!)).toEqual([
+      { text: '…agreed to the ', mark: false },
+      { text: 'rock clause', mark: true },
+      { text: ' as written…', mark: false },
+    ])
+    expect(read.hits[1]!.excerpt).toBeNull()
+    expect(read.hits[1]!.excerptWhy).toBe('scan')
+    expect(read.hits[2]!.excerptWhy).toBeNull()
+    expect(excerptNote('scan')).toBe('Matched inside the scan.')
+    expect(excerptNote('big')).toBe('Too big to read here.')
+    expect(excerptNote('kind')).toBeNull()
+    expect(excerptNote(null)).toBeNull()
   })
 
   it('counts the finds and says when there is nothing', () => {

@@ -29,9 +29,27 @@ export type DbFixtureRowLike = {
   shared_with_gc?: unknown
   /** Who pays this line (v2.3349): customer | gc | null. */
   bill_to_party?: unknown
+  /** Line budgets (v2.6300): the stored split, or nulls. */
+  budget_labor_pct?: number | string | null
+  budget_materials_pct?: number | string | null
+  budget_source?: unknown
+  budget_tuned_at?: string | null
+  budget_rate_usd?: number | string | null
 }
 
 const num = (v: unknown): number | null => (v != null && Number.isFinite(Number(v)) ? Number(v) : null)
+
+/** The budget columns of a work row, as the form carries them (v2.6300). */
+function fixtureBudgetFields(f: DbFixtureRowLike): Pick<FixtureRow, 'budget_labor_pct' | 'budget_materials_pct' | 'budget_source' | 'budget_tuned_at' | 'budget_rate_usd'> {
+  const source = f.budget_source === 'workbench' || f.budget_source === 'assumed' || f.budget_source === 'tuned' ? f.budget_source : null
+  return {
+    budget_labor_pct: num(f.budget_labor_pct),
+    budget_materials_pct: num(f.budget_materials_pct),
+    budget_source: source,
+    budget_tuned_at: f.budget_tuned_at ?? null,
+    budget_rate_usd: num(f.budget_rate_usd),
+  }
+}
 
 export function fixtureRowsFromDb(rows: readonly DbFixtureRowLike[]): FixtureRow[] {
   const mapped: FixtureRow[] = rows.map((f) => {
@@ -62,6 +80,7 @@ export function fixtureRowsFromDb(rows: readonly DbFixtureRowLike[]): FixtureRow
       line_kind: 'work',
       ...fixtureStageFields(f),
       bill_to_party: f.bill_to_party === 'gc' || f.bill_to_party === 'customer' ? f.bill_to_party : null,
+      ...fixtureBudgetFields(f),
     }
   })
   return syncDiscountRows(mapped)

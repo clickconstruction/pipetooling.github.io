@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from 'vitest'
-import { applyHeadingAnchors, headingAnchor, helpGuideHref } from './helpGuideAnchors'
+import { applyHeadingAnchors, headingAnchor, helpGuideHref, repeatedHeadings } from './helpGuideAnchors'
 
 describe('helpGuideAnchors (v2.3594)', () => {
   it('turns a heading into a stable anchor, section signs included', () => {
@@ -25,5 +25,16 @@ describe('helpGuideAnchors (v2.3594)', () => {
     expect(applyHeadingAnchors(root)).toEqual(['the-month-rule', 'delivery', 'delivery-2'])
     expect(root.querySelector('h3')?.id).toBe('delivery')
     expect(root.querySelectorAll('h2')[1]?.id).toBe('delivery-2')
+  })
+
+  it('names a heading a guide writes twice, at either level and whatever its case or punctuation (v2.6339)', () => {
+    // The shape a squashed stack leaves: the whole section again, word for word.
+    const body = ['Intro.', '', '## Add a file', 'Press it.', '### Sizes', 'Small.', '', '## Add a file', 'Press it.', '### SIZES!', 'Small.', ''].join('\n')
+    expect(repeatedHeadings(body)).toEqual(['Add a file', 'SIZES!'])
+  })
+
+  it('passes a guide with one of each heading; h1, h4 and a heading with no letters are no anchors', () => {
+    const body = ['# Page', '## One', '### Two', '#### Two', '#### Two', '## ?', '## ?!', ''].join('\n')
+    expect(repeatedHeadings(body)).toEqual([])
   })
 })

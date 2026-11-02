@@ -2,7 +2,7 @@
 title: keep the plans on a job
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: plans, plan set, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans
+keywords: plans, plan set, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history
 where: /jobs
 order: 60
 ---
@@ -30,6 +30,8 @@ The Job tab's **Open plans** press opens the same set as **Building from**. The 
 
 The job now builds from the new set. The old one moves under **Older sets**. Press {{button:outline|Add it, keep Issued set current}} instead to add the set without switching.
 
+On a development, the switch writes one line in the site's **History** for every job on the part. The line reads *Plans · the Bunker now builds from Addendum 1, dated Oct 2, 2026 · replaces Issued set*. Nobody types it.
+
 To switch later, press {{button:outline|Build from this set}} on any older set.
 
 ## Save the crew's as-built
@@ -41,6 +43,16 @@ To switch later, press {{button:outline|Build from this set}} on any older set.
 5. Press {{button:blue|Add the as-built}}.
 
 The as-built lands under **Our as-builts** with the day and who added it. The line says which set it marks up.
+
+## Open a job's plans from the Pipeline
+
+Every row on the **Pipeline** has a plans icon beside the job folder. A job with one set opens it. A job with two or more sets opens a window that lists them.
+
+1. Press the plans icon on the job's row. The number on it counts the sets.
+2. Read each set's name, kind and date. The set the job builds from wears {{chip:green|building from}}.
+3. Press {{button:outline|Open ↗}} on the set you want.
+
+Press {{button:outline|Open the Documents tab}} at the bottom of the window to add or switch a set. A job with no set yet opens its old plans link from the same icon.
 
 ## A job on a site with other plans
 

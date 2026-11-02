@@ -27,7 +27,7 @@ function table(rows: () => unknown[], filterKey?: string) {
   const pick = () => (filterKey && kept !== undefined ? rows().filter((r) => (r as Record<string, unknown>)[filterKey] === kept) : rows())
   const make = (single: boolean): Record<string, unknown> => {
     const b: Record<string, unknown> = {}
-    for (const m of ['select', 'order', 'limit', 'in', 'is', 'not', 'gte', 'update', 'delete']) b[m] = () => b
+    for (const m of ['select', 'order', 'limit', 'in', 'is', 'not', 'or', 'gte', 'update', 'delete']) b[m] = () => b
     b.eq = (col: string, v: unknown) => {
       if (col === filterKey) kept = v
       return b

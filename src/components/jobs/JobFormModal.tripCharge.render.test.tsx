@@ -102,7 +102,8 @@ describe("Edit Job keeps a turnaway trip charge in the job's total (v2.5129)", (
 
   it('the Job Total counts the trip charge as a rider before anything is saved', async () => {
     await openHawthorne(vi.fn())
-    expect(await screen.findByRole('button', { name: 'Job Total: $2,099.00 ($2,000.00 work + $99.00 riders)' })).toBeTruthy()
+    // The cents read small since v2.6300, so the total is read whole off the button's text.
+    expect(await screen.findByText((_, el) => el?.tagName === 'BUTTON' && el.textContent === 'Job Total: $2,099.00 ($2,000.00 work + $99.00 riders)')).toBeTruthy()
     expect(db.jobWrites).toEqual([])
   })
 

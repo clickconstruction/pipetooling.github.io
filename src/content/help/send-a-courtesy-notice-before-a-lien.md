@@ -30,11 +30,13 @@ A reminder may not name a lien that cannot go on. The desk holds the button and 
 
 1. Open the notice under **Sent** on the Lien desk.
 2. Press {{button:blue|Send a courtesy notice ▸}} on the footer.
-3. Read who gets it. The GC's email comes from the sent notice. The GC's number comes from the GC's Messages contact when we may text that number. The owner's email comes from the property record.
+3. Read who gets it. The GC's email comes from the sent notice. The GC's number comes from the GC's Messages contact when we may text that number. A GC with no Messages contact yet shows the number on the GC's record. The owner's email comes from the property record.
 4. Change the greeting if you want. Nothing else on the message can be typed.
 5. Press {{button:blue|Send 3 messages ▸}}. The button counts what will go.
 
 The toast says what went and what did not, with the reason. A refusal on one channel never stops the others.
+
+Opening the window makes nothing. A send by email alone makes nothing either. A text makes the GC a Messages contact when it goes, and the text lands in Messages.
 
 ## What the message says
 

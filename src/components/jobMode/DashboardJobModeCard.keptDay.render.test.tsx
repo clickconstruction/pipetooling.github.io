@@ -11,7 +11,7 @@ import { act, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { KEPT_READ_SCHEMA, type KeptRead } from '../../lib/keptRead'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { jobModeKeptKey, type JobModeKeptRow } from '../../lib/jobMode/keptDay'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 const JOB_A = '00000000-0000-0000-0000-00000000aaaa'
 const JOB_B = '00000000-0000-0000-0000-00000000bbbb'
@@ -221,7 +221,7 @@ describe('DashboardJobModeCard, the kept day (#183 PR 3)', () => {
     await waitFor(() => expect(getByRole('status').textContent).toMatch(/could not read again · Retry$/))
     expect(getByText(/Today · 1 of 3 done/)).toBeTruthy()
     // The stamp carries the retry; the panel is not drawn over a kept day.
-    expect(queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
+    expect(queryByText(OFFLINE_READ_MESSAGE)).toBeNull()
     expect(writeKept).not.toHaveBeenCalled()
 
     blocksAnswer = { data: liveBlocks(), error: null }
@@ -238,7 +238,7 @@ describe('DashboardJobModeCard, the kept day (#183 PR 3)', () => {
     expect(getByText('Loading Job Mode…')).toBeTruthy()
     expect(getByTestId('job-mode-card').hasAttribute('data-kept-read')).toBe(false)
     await release()
-    await waitFor(() => expect(getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy())
+    await waitFor(() => expect(getByText(OFFLINE_READ_MESSAGE)).toBeTruthy())
     expect(queryByRole('status')).toBeNull()
   })
 })

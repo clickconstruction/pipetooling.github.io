@@ -32,6 +32,12 @@ vi.mock('../supabase', () => {
         ids = list
         return builder
       },
+      eq: (_column: string, value: unknown) => {
+        ids = value
+        return builder
+      },
+      is: () => builder,
+      limit: () => builder,
       then: (resolve: (v: unknown) => void) => {
         calls.selected.push({ table, cols, ids })
         resolve({ data: calls.byTable[table] ?? [], error: null })
@@ -61,7 +67,7 @@ vi.mock('../supabase', () => {
 })
 
 import type { ContactRow } from '../contacts/load'
-import { addContactJob, answerPaper, contactForCustomer, loadLineFiles, loadRecords, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
+import { addContactJob, answerPaper, contactForCustomer, findCustomerContactId, loadLineFiles, loadRecords, nameContact, removeContactJob, setDefaultJob, tieMessage } from './messagesIo'
 
 beforeEach(() => {
   calls.rpc.length = 0
@@ -106,6 +112,16 @@ describe('the presses (the spine’s functions)', () => {
     expect(calls.rpc).toEqual([['contact_for_customer', { p_customer_id: 'cu-dana' }]])
     calls.next = { data: null, error: { code: '42501', message: 'Only the office opens a customer’s messages.' } }
     await expect(contactForCustomer('cu-dana')).rejects.toThrow()
+  })
+
+  it('findCustomerContactId reads the customer’s own contact and makes nothing (punch list #243)', async () => {
+    calls.byTable.contacts = [{ id: 'c-dana' }]
+    await expect(findCustomerContactId('cu-dana')).resolves.toBe('c-dana')
+    calls.byTable.contacts = []
+    await expect(findCustomerContactId('cu-nobody')).resolves.toBeNull()
+    expect(calls.selected.filter((s) => s.table === 'contacts').map((s) => s.ids)).toEqual(['cu-dana', 'cu-nobody'])
+    expect(calls.rpc).toEqual([])
+    expect(calls.writes).toEqual([])
   })
 
   it('a refusal keeps its words', async () => {

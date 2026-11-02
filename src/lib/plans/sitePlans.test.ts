@@ -54,6 +54,14 @@ describe('buildSitePlansView', () => {
     expect(v.bidsPinned).toEqual([{ kind: 'bid', id: 'b1', label: 'BP340', link: 'https://drive.google.com/file/d/robot/view' }])
   })
 
+  it('counts no paper as a set, on the strip or on its part', () => {
+    const spec = set({ id: 'spec-1', part_id: bunker.id, name: 'Spec book', kind: 'spec', source: 'supplier', marks_up_set_id: 's2' })
+    const w = buildSitePlansView({ parts: [bunker, lodge, atv], sets: [...sets, spec], jobs, bids })
+    expect(w.setCount).toBe(4)
+    expect(olderSetsFor(w.parts[1]!).map((s) => s.id)).toEqual(['s1'])
+    expect(sitePlansCountWords(w)).toBe('4 sets on 3 parts')
+  })
+
   it('writes the strip and the chips', () => {
     expect(sitePlansCountWords(v)).toBe('4 sets on 3 parts')
     expect(sitePlansNeedWords(v)).toBe('1 part with no set · 2 jobs on no part')
