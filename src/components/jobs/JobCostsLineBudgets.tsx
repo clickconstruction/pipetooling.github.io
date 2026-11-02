@@ -112,7 +112,7 @@ export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone }: 
         ) : (
           <span>
             The budget is the sum of the lines ({sums.bySource.workbench} ◆ from the workbench · {sums.bySource.assumed} ≈ assumed · {sums.bySource.tuned} ✎ tuned) at ${settings.rateUsd}/h; the dashed mark is the job's percent done.{' '}
-            {ownPctLines === 0 ? 'No line has a percent of its own yet.' : 'Spent per line waits on hours landing on a stage.'}
+            {ownPctLines === 0 ? "Each line's percent comes from the crew's report on that stage." : 'Spent per line waits on hours landing on a stage.'}
           </span>
         )}
       </div>
