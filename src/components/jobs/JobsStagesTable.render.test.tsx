@@ -17,6 +17,7 @@ vi.mock('../../lib/supabase', async () => {
 })
 
 import JobsStagesTable, { type JobsStagesTableProps } from './JobsStagesTable'
+import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
 import { makeJob, makeTeamMember, renderWithProviders, settle } from '../../test/renderSmokeMocks'
 
 function makeProps(overrides: Partial<JobsStagesTableProps> = {}): JobsStagesTableProps {
@@ -333,5 +334,56 @@ describe('JobsStagesTable render smoke', () => {
     expect(icons[1]!.style.color).toBe('var(--text-muted)')
     fireEvent.click(icons[1]!)
     expect(openEdit).toHaveBeenCalledWith(bare, { initialTab: 'documents' })
+  })
+
+  it('the checklist door sits in the strip with the job’s standing, opens the row’s sheet, and the marked stage name is a press too; a job with no stage that takes a checklist draws neither (#246)', async () => {
+    const openChecklistDoor = vi.fn()
+    const stages = makeJob({
+      job_name: 'Has stages',
+      revenue: 18400,
+      pct_complete: 20,
+      fixtures: [
+        { id: 'f1', name: 'Rough In', count: 1, line_unit_price: 8400, sequence_order: 1, invoice_id: null, stage_kind: 'any' },
+        { id: 'f2', name: 'Top Out', count: 1, line_unit_price: 5900, sequence_order: 2, invoice_id: null, stage_kind: 'any' },
+        { id: 'f3', name: 'Trim Set', count: 1, line_unit_price: 4100, sequence_order: 3, invoice_id: null, stage_kind: 'any' },
+      ],
+    })
+    const service = makeJob({ job_name: 'Service call', fixtures: [{ id: 's1', name: 'Water heater', count: 1, line_unit_price: 900, sequence_order: 1 }] })
+    const notReady: StageChecklistState = { kind: 'trim_set', asked: 6, answered: 3, standing: 'not_ready', ready: false }
+    const filled: StageChecklistState = { kind: 'rough_in', asked: 4, answered: 4, standing: 'ready', ready: true }
+    const checklistMarksFor = (job: { fixtures?: ReadonlyArray<{ id: string }> | null }) => (job.fixtures?.some((f) => f.id === 'f3') ? new Map([['f1', filled], ['f3', notReady]]) : null)
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [stages, service], openChecklistDoor, checklistMarksFor })} />)
+    await settle()
+    const doors = screen.getAllByLabelText(/Checklists on this job/)
+    expect(doors).toHaveLength(1)
+    expect(doors[0]!.getAttribute('title')).toBe('Checklists · Trim Set 3 of 6 · Rough In filled · Top Out has no questions yet')
+    expect(doors[0]!.getAttribute('data-stages-checklist-door')).toBe('open')
+    fireEvent.click(doors[0]!)
+    expect(openChecklistDoor).toHaveBeenCalledWith(stages)
+    // The amber name under the bar opens the same sheet.
+    const press = document.querySelector('[data-stage-checklist-press]') as HTMLElement
+    expect(press).toBeTruthy()
+    fireEvent.click(press)
+    expect(openChecklistDoor).toHaveBeenCalledTimes(2)
+    expect(openChecklistDoor).toHaveBeenLastCalledWith(stages)
+  })
+
+  it('without the opener the door and the press are not drawn, and the mark stays words (#246)', async () => {
+    const job = makeJob({
+      job_name: 'Has stages',
+      revenue: 18400,
+      pct_complete: 20,
+      fixtures: [
+        { id: 'f1', name: 'Rough In', count: 1, line_unit_price: 8400, sequence_order: 1, invoice_id: null, stage_kind: 'any' },
+        { id: 'f2', name: 'Top Out', count: 1, line_unit_price: 5900, sequence_order: 2, invoice_id: null, stage_kind: 'any' },
+        { id: 'f3', name: 'Trim Set', count: 1, line_unit_price: 4100, sequence_order: 3, invoice_id: null, stage_kind: 'any' },
+      ],
+    })
+    const notReady: StageChecklistState = { kind: 'trim_set', asked: 6, answered: 3, standing: 'not_ready', ready: false }
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [job], checklistMarksFor: () => new Map([['f3', notReady]]) })} />)
+    await settle()
+    expect(screen.queryByLabelText(/Checklists on this job/)).toBeNull()
+    expect(document.querySelector('[data-stage-checklist-press]')).toBeNull()
+    expect(document.querySelector('[data-stage-checklist="not_ready"]')).toBeTruthy()
   })
 })

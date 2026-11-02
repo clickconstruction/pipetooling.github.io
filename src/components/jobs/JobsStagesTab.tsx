@@ -89,6 +89,8 @@ import { useJobContractsNudge } from '../../hooks/useJobContractsNudge'
 import { useJobCrewPositions } from '../../hooks/useJobCrewPositions'
 import { useStageChecklistStates } from '../../hooks/useStageChecklistStates'
 import { stageChecklistMarks, type MarkFixture } from '../../lib/jobs/stageChecklistMarks'
+import { doorJobLabel } from '../../lib/jobs/pipelineChecklistDoor'
+import { PipelineChecklistSheet } from '../stageChecklists/PipelineChecklistSheet'
 import type { ContractStage } from '../../lib/jobs/jobContractNudge'
 import JobsContractSweepModal from './JobsContractSweepModal'
 import {
@@ -923,6 +925,13 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   })
   const stagesKindCounts = useMemo(() => jobKindCounts(jobs), [jobs])
   const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
+  // The checklist door (punch list #246): the row whose checklists sheet is open beside it; the board re-reads its marks when it closes.
+  const [checklistDoorJob, setChecklistDoorJob] = useState<JobWithDetails | null>(null)
+  const reloadChecklistStates = checklistStates.reload
+  const closeChecklistDoor = useCallback(() => {
+    setChecklistDoorJob(null)
+    reloadChecklistStates()
+  }, [reloadChecklistStates])
   /** Release of lien (v2.2579): in-app waiver-and-release modal — same office set as the hazmat gate. */
   const [lienReleaseModal, setLienReleaseModal] = useState<{
     job: JobWithDetails
@@ -2520,6 +2529,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     stagesManHoursLoading,
     crewByJobId,
     checklistMarksFor,
+    openChecklistDoor: setChecklistDoorJob,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded: (id: string) => setExpandedJobThreadId((prev) => (prev === id ? null : id)),
@@ -4797,6 +4807,17 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
           setStagesContractFilter('missing')
         }}
       />
+      {checklistDoorJob ? (
+        <PipelineChecklistSheet
+          job={{ id: checklistDoorJob.id, label: doorJobLabel(checklistDoorJob), job_plans_link: checklistDoorJob.job_plans_link }}
+          onClose={closeChecklistDoor}
+          onOpenDocuments={() => {
+            const j = checklistDoorJob
+            closeChecklistDoor()
+            openEdit(j, { initialTab: 'documents' })
+          }}
+        />
+      ) : null}
       <AiaG702G703Modal
         open={aiaG702StagesJob != null}
         onClose={() => setAiaG702StagesJob(null)}
