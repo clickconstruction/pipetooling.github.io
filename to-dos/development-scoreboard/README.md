@@ -2,7 +2,7 @@
 name: "A scoreboard for a development: its jobs, their money, and who put what in"
 number: 250
 group: gated
-status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · waits on the owner's read and seven calls · nothing built
+status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way* · waits on the seven calls, then the Gun Dog stack landing · nothing built
 summary: >
   The owner saw the game Squad's end-of-match scoreboard and asked for its shape on the Development
   page: one grid where the same columns mean the same thing at every level, a team banner with the
@@ -16,7 +16,7 @@ summary: >
   Draft 2 holds one rule at four levels: the site, a part, a job and a member each fold to three
   figures and open to nine and their children, and every member fills Cost, so a job is the sum of
   the rows under it.
-next: The owner reads draft 2 and takes the seven calls, then PR 1 is cut from fresh main once the Gun Dog stack (#6846 to #6849) and the photos PRs (#6839, #6840) are on it.
+next: The owner takes the seven calls (the defaults stand unless he says otherwise), then PR 1 is cut from fresh main once the Gun Dog stack (#6846 to #6849) and the photos PRs (#6839, #6840) are on it.
 size: M (PR 1 the board by job) + M (PR 2 the people under each job, the gold row) + S (PR 3 the view chips, the lead's tier, the headline) + M (PR 4 the cuts and the window)
 blocker: The owner's seven calls. The Development page is a hot surface today; PR 1 waits for the stack on it to land.
 opinion: build — it is the owner's own pattern, every column already exists for one job in Job Summary, and the board turns the page's Money look into the site's P&L with the people under it; the one new weight is the day ledger read for Overhead, which opens lazily with the view
