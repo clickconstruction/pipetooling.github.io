@@ -8,7 +8,7 @@ import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { buildHelpGuideRegistry } from './helpGuides'
 import { BLOCK_KINDS, BUTTON_VARIANTS, CHIP_VARIANTS } from './helpGuideIllustrations'
-import { headingAnchor } from './helpGuideAnchors'
+import { headingAnchor, repeatedHeadings } from './helpGuideAnchors'
 
 const CONTENT_DIR = join(__dirname, '../content/help')
 
@@ -57,6 +57,14 @@ describe('help guide content', () => {
     const guides = buildHelpGuideRegistry(loadContent())
     for (const g of guides) {
       expect(/^# /m.test(g.body), `guide "${g.slug}" uses a top-level # heading`).toBe(false)
+    }
+  })
+
+  it('no guide writes a heading twice (v2.6339): a squashed stack of PRs once put a whole section in again', () => {
+    const guides = buildHelpGuideRegistry(loadContent())
+    for (const g of guides) {
+      const twice = repeatedHeadings(g.body)
+      expect(twice, `guide "${g.slug}" writes ${twice.map((t) => `"${t}"`).join(', ')} twice — keep one copy of each section`).toEqual([])
     }
   })
 

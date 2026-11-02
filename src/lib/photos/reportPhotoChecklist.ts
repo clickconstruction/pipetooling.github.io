@@ -55,15 +55,15 @@ export function chipLabel(stageName: string, words: string): string {
 
 /**
  * The question chips a new tile offers: for each of the job's stages, in stage order, the live questions of its kind
- * that ask for a photo, in the office's order. A stage whose kind has no checklist offers none; a job with no stages
- * offers none.
+ * that ask for a photo, in the office's order, then the items added for that stage (#237) that ask for one. A stage
+ * whose kind has no checklist offers none; a job with no stages offers none.
  */
 export function checklistPhotoChips(stages: ReadonlyArray<PhotoStageRef>, questions: ReadonlyArray<StageChecklistQuestion>): ChecklistPhotoChip[] {
   const out: ChecklistPhotoChip[] = []
   for (const s of stages) {
     const kind = stageChecklistKindOf(s.name)
     if (!kind) continue
-    for (const q of templateFor(questions, kind)) {
+    for (const q of templateFor(questions, kind, s.fixtureId)) {
       if (!q.asksPhoto) continue
       out.push({ questionId: q.id, fixtureId: s.fixtureId, stageName: s.name, words: q.words, label: chipLabel(s.name, q.words) })
     }

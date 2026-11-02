@@ -21,6 +21,23 @@ describe('stageChecklistMarks: the Pipeline’s one more state', () => {
     expect(stageNotReady(marks.get('f1'))).toBe(true)
     expect(stageNotReady(marks.get('f2'))).toBe(false)
   })
+  it('counts an item added for the stage, on that stage alone (#237)', () => {
+    const item: StageChecklistQuestion = { id: 'j1', kind: 'rough_in', order: 0, words: 'Are the carriers in units 7 and 8 set?', asksPhoto: false, fixtureId: 'f1' }
+    const other = { id: 'f4', name: 'Rough In' }
+    const filled = new Map([
+      ['f1', [a('q1', 'yes'), a('q2', 'yes')]],
+      ['f4', [a('q1', 'yes'), a('q2', 'yes')]],
+    ])
+    const marks = stageChecklistMarks([...FIXTURES, other], [...Q, item], filled)!
+    // The stage that read filled reads not ready again, which is the point; another job's Rough In is not touched.
+    expect(checklistMarkWords(marks.get('f1'))).toBe('checklist 2 of 3 answered · not ready')
+    expect(stageNotReady(marks.get('f1'))).toBe(true)
+    expect(checklistMarkWords(marks.get('f4'))).toBe('checklist filled')
+    // No company question at all: the item alone gives its stage a mark, and only that stage.
+    const alone = stageChecklistMarks([...FIXTURES, other], [item], new Map())!
+    expect([...alone.keys()]).toEqual(['f1'])
+    expect(checklistMarkWords(alone.get('f1'))).toBe('checklist 0 of 1 answered · not ready')
+  })
   it('is null while no question exists, so the row reads as before', () => {
     expect(stageChecklistMarks(FIXTURES, [], new Map())).toBeNull()
   })

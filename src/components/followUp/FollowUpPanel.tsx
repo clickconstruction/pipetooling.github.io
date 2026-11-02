@@ -6,6 +6,14 @@
  * nudges fill their slot when their screen lands. *Ask the architect* puts the question on the job's plan questions,
  * marks the line asked and emails the architect, through the page's GC writes (`planQuestions`, `followUp/askArchitect.ts`).
  * **Sort all** on New's header opens the desk (`SortAllDesk`, residential R7's mockup C) over the New this panel draws.
+ *
+ * On `/messages` (`keptRead`, punch list #183 PR 5) the queue is kept on the device through `useKeptRead`
+ * (`lib/messages/keptQueue.ts`): while the live read runs, the lanes, the count the page hears and the fold's rows are
+ * the device's kept read under the stamp *Who was waiting at 7:52 AM · reading again…*, the root carries
+ * `data-kept-read` so the counts mute, every press that writes on a row is held, and the two desks wait; once every
+ * read landed the live queue replaces it and is written back for next time. A failed read over a kept queue keeps it
+ * with the stamp's Retry; with nothing kept, `OfflineRetryPanel` names the failure by its class. Either way a lost
+ * signal reads again by itself when it is back, and a refusal shows its reason with no read of its own.
  */
 import { PUT_BACK_WORDS } from '../../lib/followUp/setAsideFold'
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
@@ -15,9 +23,14 @@ import { pressProblem, supabaseFollowUpIo, type FollowUpIo } from '../../lib/fol
 import { supabaseNewLaneCardIo, type NewLaneCardIo } from '../../lib/followUp/newLaneCardIo'
 import type { FollowUpContact } from '../../lib/followUp/followUpRows'
 import { CALL_WORDS } from '../../lib/calls/callTasks'
-import { anotherDay, BACK_CLEARED_TOAST, hasToast, stateToast, type FollowUpQueue, type OnPortal } from '../../lib/followUp/queue'
+import { anotherDay, BACK_CLEARED_TOAST, hasToast, QUEUE_READ_OFFLINE_WORDS, stateToast, type FollowUpQueue, type OnPortal } from '../../lib/followUp/queue'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { useFollowUpQueue } from '../../hooks/useFollowUpQueue'
+import { useKeptRead } from '../../hooks/useKeptRead'
+import { MESSAGES_KEPT_LEAD } from '../../lib/keptRead'
+import { buildMessagesKeptQueue, MESSAGES_KEPT_SCOPES, messagesKeptKey, messagesKeptRowIsValid, unpackMessagesKeptQueue, type MessagesKeptQueue, type MessagesQueueSource } from '../../lib/messages/keptQueue'
+import { KeptReadStamp } from '../KeptReadStamp'
+import OfflineRetryPanel from '../OfflineRetryPanel'
 import { Card } from '../gc/gcUi'
 import { FollowUpSections, type FollowUpSectionActions, type LaneLook } from './FollowUpSections'
 import type { LeadDoorsIo } from '../../lib/messages/leadDoorsIo'
@@ -87,10 +100,17 @@ export interface FollowUpPanelProps<C, N extends { contactId: string }> {
   }
   /** A lead's doors (punch list #140 PR 8): the writes behind Book a visit and Start an estimate; a smoke hands its own. */
   leadIo?: LeadDoorsIo
+  /**
+   * Keep the queue on the device (punch list #183 PR 5): `/messages` passes it, so a slow morning draws who was waiting
+   * as the device last read it; GC projects' tab leaves it out and keeps nothing. The key is the signed-in person's (`me.id`).
+   */
+  keptRead?: boolean
+  /** Hears when the lanes on screen are the kept read (its `readAt`) and when they are live again (null), so the page can mute the bar's counts and hold the fold. */
+  onKept?: (readAt: number | null) => void
 }
 
 export function FollowUpPanel<C = never, N extends { contactId: string } = never>(props: FollowUpPanelProps<C, N>) {
-  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, answerAll, leadIo, laneLook } = props
+  const { me, team, onOpenThread, say, io = DEFAULT_IO, enabled = true, clauses, nudges, seeTheirPage, planQuestions, onCount, narrow, onQueue, sortIo = DEFAULT_SORT_IO, answerAll, leadIo, laneLook, keptRead = false, onKept } = props
   const leadDoors = useLeadDoors(leadIo)
   // Start a bid on the Sort all desk (v2.6222) leaves the desk for the Bid Board, open on the new bid.
   const navigate = useNavigate()
@@ -99,20 +119,46 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
   const userNames = useMemo(() => Object.fromEntries([...team, me].map((t) => [t.id, t.name])), [team, me])
   const passThrough = useMemo(() => ({ ...(clauses ? { clauses: clauses.rows } : {}), ...(nudges ? { nudges: nudges.build } : {}) }), [clauses, nudges])
   const q = useFollowUpQueue<C, N>({ io, userNames, enabled, passThrough, todayYmd, ...(props.nowIso ? { nowIso: props.nowIso } : {}) })
-  const count = q.queue?.count
+  // The kept read (#183 PR 5): the live queue as one record, written once the read lands; the device's record while it runs.
+  const liveSource = useMemo<MessagesQueueSource<C, N> | null>(() => (q.queue ? { queue: q.queue, contacts: q.contacts, lines: q.lines, setAside: q.setAside } : null), [q.queue, q.contacts, q.lines, q.setAside])
+  const keptKey = keptRead && me.id ? messagesKeptKey(me.id) : null
+  const toKeep = useMemo(() => (keptKey && liveSource ? buildMessagesKeptQueue(liveSource) : null), [keptKey, liveSource])
+  const kept = useKeptRead<MessagesKeptQueue>(keptKey, toKeep, { loading: q.loading, scopes: MESSAGES_KEPT_SCOPES, failed: q.readFailure != null, rowIsValid: messagesKeptRowIsValid })
+  const keptRows = kept.rows
+  const keptAt = kept.readAt
+  const keptNow = props.nowIso
+  const keptSource = useMemo(() => (keptAt != null && keptRows ? unpackMessagesKeptQueue<C, N>(keptRows, { todayYmd, nowIso: keptNow ?? new Date().toISOString() }) : null), [keptAt, keptRows, todayYmd, keptNow])
+  const held = keptSource != null
+  const source = keptSource ?? liveSource
+  const count = source?.queue.count
+  const reload = () => void q.reload()
   // v2.5572: a new line or a teammate's press elsewhere re-reads the queue, one read after the settle.
-  useMessagesLive(enabled, () => void q.reload())
+  useMessagesLive(enabled, reload)
+  // A lost signal reads again by itself once it is back. With nothing on screen `OfflineRetryPanel` does that; this is the same over rows already drawn.
+  const lostSignal = q.readFailure?.kind === 'network' && source != null
+  const readAgain = q.reload
+  useEffect(() => {
+    if (!lostSignal) return
+    const back = () => void readAgain()
+    window.addEventListener('online', back)
+    return () => window.removeEventListener('online', back)
+  }, [lostSignal, readAgain])
   const [sorting, setSorting] = useState(false)
   // The queue as drawn: the kind pills' narrowing when the page has one. The desk walks the New this draws.
-  const drawn = q.queue ? (narrow ? narrow(q.queue, q.contacts) : q.queue) : null
+  const drawn = source ? (narrow ? narrow(source.queue, source.contacts) : source.queue) : null
   useEffect(() => {
     if (count !== undefined) onCount?.(count)
   }, [count, onCount])
+  const heardQueue = source?.queue
+  const heardContacts = source?.contacts
   useEffect(() => {
-    if (q.queue) onQueue?.(q.queue, q.contacts)
-  }, [q.queue, q.contacts, onQueue])
+    if (heardQueue && heardContacts) onQueue?.(heardQueue, heardContacts)
+  }, [heardQueue, heardContacts, onQueue])
+  useEffect(() => {
+    onKept?.(held && keptAt != null ? keptAt : null)
+  }, [held, keptAt, onKept])
 
-  const nameOf = (contactId: string) => q.contacts.find((c) => c.id === contactId)?.name ?? 'them'
+  const nameOf = (contactId: string) => source?.contacts.find((c) => c.id === contactId)?.name ?? 'them'
   const run = async (name: string, press: (x: FollowUpIo) => Promise<unknown>, done: string | null) => {
     const ok = await q.press(name, press)
     if (ok && done) say(done, 'success')
@@ -169,33 +215,42 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
     ...(answerAll ? { answerAll: () => answerAll.onChange(true) } : {}),
   }
 
+  // The read failed with nothing kept: the failure by its class, with Retry when the signal was the trouble.
+  const readBroken = q.readFailure != null && !drawn
   return (
-    <div style={{ display: 'grid', gap: '0.6rem' }}>
-      {q.problem && (
-        <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
-          {q.problem}
-        </div>
+    <div style={{ display: 'grid', gap: '0.6rem' }} data-kept-read={held ? '' : undefined} data-follow-up-panel>
+      {held && keptAt != null && <KeptReadStamp readAt={keptAt} lead={MESSAGES_KEPT_LEAD} failed={kept.failed} onRetry={reload} className="keptReadStampTight" />}
+      {readBroken && q.readFailure ? (
+        <OfflineRetryPanel failure={q.readFailure} onRetry={reload} surface="messages-queue" idempotent busy={q.loading} offlineMessage={QUEUE_READ_OFFLINE_WORDS} />
+      ) : (
+        // Over a kept queue a lost signal needs no line of its own: the stamp and the strip say it. Any other failure keeps its reason.
+        q.problem && !(held && q.readFailure?.kind === 'network') && (
+          <div role="alert" style={{ color: 'var(--text-red-700)', fontSize: '0.875rem' }}>
+            {q.problem}
+          </div>
+        )
       )}
-      {drawn ? (
+      {drawn && source ? (
         <FollowUpSections<C, N>
           queue={drawn}
-          contacts={q.contacts}
-          lines={q.lines}
+          contacts={source.contacts}
+          lines={source.lines}
           me={me}
           team={team}
           todayYmd={todayYmd}
           nowIso={nowIso}
           actions={actions}
-          setAside={q.setAside}
+          setAside={source.setAside}
           pressing={q.pressing}
           laneLook={laneLook}
+          held={held}
           {...(clauses ? { renderClauses: clauses.render } : {})}
           {...(nudges ? { renderNudges: nudges.render } : {})}
         />
       ) : (
         !q.problem && <Card style={{ color: 'var(--text-muted)' }}>Loading who is waiting on us…</Card>
       )}
-      {answerAll?.on && drawn && (
+      {answerAll?.on && drawn && !held && (
         <AnswerAllDesk
           lane={drawn.needsReply}
           weOwe={drawn.weOwe}
@@ -213,7 +268,7 @@ export function FollowUpPanel<C = never, N extends { contactId: string } = never
           {...(answerAll.quietIo ? { quietIo: answerAll.quietIo } : {})}
         />
       )}
-      {sorting && drawn && (
+      {sorting && drawn && !held && (
         <SortAllDesk
           lane={drawn.newLane}
           contacts={q.contacts}

@@ -1,6 +1,6 @@
 import { StagesCrewLine } from './StagesCrewLine'
 import type { StagesPhoneRowsMode } from './stagesPhoneRowsMode'
-import { Fragment, type ReactNode } from 'react'
+import { Fragment, useState, type ReactNode } from 'react'
 import { useCustomerProfileModal } from '../../contexts/CustomerProfileModalContext'
 import { useJobHoursStoryModal } from '../../contexts/JobHoursStoryModalContext'
 import { useNavigate } from 'react-router-dom'
@@ -16,7 +16,11 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesHazmatFeeButton, StagesJobFolderButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesHazmatFeeButton, StagesJobFolderButton, StagesPlansButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { JobPlanSetsModal } from './JobPlanSetsModal'
+import { usePlanSetsByJob } from '../../hooks/usePlanSetsByJob'
+import { jobPlansPress } from '../../lib/plans/jobPlanSetsIcon'
+import { jobShortLabel } from '../../lib/plans/planSets'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
@@ -222,6 +226,11 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     onOpenCustomerDoor,
     boardDotByJobId,
   } = props
+  // The job's plans (punch list #239, PR 6): one read for every row that names a part; the icon opens the one set or
+  // the picker, and a job with no part keeps opening its old plans link.
+  const planSetsByJob = usePlanSetsByJob(jobList, true)
+  const [plansPickerJob, setPlansPickerJob] = useState<JobWithDetails | null>(null)
+  const plansPressFor = (j: JobWithDetails) => jobPlansPress(planSetsByJob.get(j.id), j.job_plans_link)
   const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
@@ -525,6 +534,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                               fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
                             />
                             <StagesJobFolderButton folderUrl={j.google_drive_link} onOpenTab={() => openEdit(j, { initialTab: 'documents' })} />
+                            {plansPressFor(j).kind !== 'none' ? <StagesPlansButton press={plansPressFor(j)} onPick={() => setPlansPickerJob(j)} /> : null}
                             <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                             {showAiaG702G703(authRole, j) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(j)} /> : null}
                             {canCreateHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}
@@ -540,6 +550,14 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
           )}
         </tbody>
       </table>
+      {plansPickerJob && planSetsByJob.get(plansPickerJob.id) ? (
+        <JobPlanSetsModal
+          job={{ id: plansPickerJob.id, label: jobShortLabel(plansPickerJob) }}
+          entry={planSetsByJob.get(plansPickerJob.id)!}
+          onClose={() => setPlansPickerJob(null)}
+          onOpenDocuments={() => openEdit(plansPickerJob, { initialTab: 'documents' })}
+        />
+      ) : null}
     </div>
   )
 }

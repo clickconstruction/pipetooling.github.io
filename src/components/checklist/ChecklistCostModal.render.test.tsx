@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 const H = vi.hoisted(() => ({ usersError: null as unknown, reads: 0 }))
 vi.mock('../../lib/supabase', () => {
@@ -47,12 +47,12 @@ describe('ChecklistCostModal', () => {
     H.usersError = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
     H.reads = 0
     renderWithProviders(<ChecklistCostModal open costKey="k1" taskTitle="Snake the main" onClose={() => {}} />)
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    await screen.findByText(OFFLINE_READ_MESSAGE)
     expect(screen.getByRole('button', { name: 'Cancel' })).toBeTruthy()
     H.usersError = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
     await screen.findByRole('option', { name: 'Bryan Ortiz' })
-    expect(screen.queryByText(OFFLINE_ERROR_MESSAGE)).toBeNull()
+    expect(screen.queryByText(OFFLINE_READ_MESSAGE)).toBeNull()
     expect(H.reads).toBe(2)
   })
 })

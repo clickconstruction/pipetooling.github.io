@@ -34,6 +34,8 @@ const People = lazy(() => import('./pages/People'))
 const Jobs = lazy(() => import('./pages/Jobs'))
 const JobsAccountsReceivable = lazy(() => import('./pages/JobsAccountsReceivable'))
 const LegalDeskPage = lazy(() => import('./pages/LegalDeskPage'))
+// The Projects board (punch list #242): every working project as one picture, beside the Pipeline's Forecast.
+const ProjectsBoard = lazy(() => import('./pages/ProjectsBoard'))
 const Banking = lazy(() => import('./pages/Banking'))
 const Materials = lazy(() => import('./pages/Materials'))
 const Quickfill = lazy(() => import('./pages/Quickfill'))
@@ -367,6 +369,7 @@ function AppContent() {
           <Route path="jobs" element={<Jobs />} />
           <Route path="accounts-receivable" element={<JobsAccountsReceivable />} />
           <Route path="legal-desk" element={<LegalDeskPage />} />
+          <Route path="projects-board" element={<ErrorBoundary><ProjectsBoard /></ErrorBoundary>} />
           <Route path="schedule-dispatch" element={<ScheduleDispatch />} />
           <Route path="banking" element={<Banking />} />
           <Route path="quickfill" element={<ErrorBoundary><Quickfill /></ErrorBoundary>} />

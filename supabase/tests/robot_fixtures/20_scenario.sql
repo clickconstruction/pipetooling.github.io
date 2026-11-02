@@ -3,7 +3,9 @@
 -- price lands as a custom price on the one it does not, the run reads assisted); sets a row aside and puts it back
 -- at her number; Undo takes the untouched rows off and leaves the assisted stamp; the send writes the fixtures score
 -- with her change, her set-aside and the row the robot missed. A superintendent outside the bid reads none and is
--- refused the doors; a reason off the list and a door on a sent bid are refused. Everything rolls back. Raises on
+-- refused the doors; a reason off the list and a door on a sent bid are refused. Then (v2.6326, punch list #226) a bid
+-- with a robot pull is adopted into a package that took robot fixtures too: the package keeps one robot source, every
+-- moved share is keyed to it, and Set aside then Undo leave no row shaded. Everything rolls back. Raises on
 -- the first failed assertion; ends with "robot_fixtures PASSED". See scripts/pgtest-robot-fixtures.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
@@ -82,6 +84,18 @@ CREATE FUNCTION rft.robot_source() RETURNS uuid LANGUAGE sql AS $$
 CREATE FUNCTION rft.run_words() RETURNS text LANGUAGE sql SECURITY DEFINER AS $$
   SELECT COALESCE((assisted_at IS NOT NULL)::text, 'null') || ' ' || COALESCE(assist_kind, 'none') || ' ' || status
     FROM public.twin_shadow_runs WHERE id = '00000000-0000-0000-0000-00000000e001' $$;
+-- v2.6326 (punch list #226): a bid's robot sources, counted and the first by its stamp, and the rows they shade — each
+-- row carrying a share, with STRAY when a key names a source the bid does not have (the shade the fold prevents).
+CREATE FUNCTION rft.robot_sources(p_bid uuid) RETURNS text LANGUAGE sql AS $$
+  SELECT count(*)::text FROM public.bid_count_sources WHERE bid_id = p_bid AND source_kind = 'robot' $$;
+CREATE FUNCTION rft.robot_source_of(p_bid uuid) RETURNS uuid LANGUAGE sql AS $$
+  SELECT id FROM public.bid_count_sources WHERE bid_id = p_bid AND source_kind = 'robot' ORDER BY first_imported_at, id LIMIT 1 $$;
+CREATE FUNCTION rft.shaded(p_bid uuid) RETURNS text LANGUAGE sql AS $$
+  WITH ids AS (SELECT COALESCE(array_agg(id::text), ARRAY[]::text[]) AS robot FROM public.bid_count_sources WHERE bid_id = p_bid AND source_kind = 'robot'),
+       marked AS (SELECT c.fixture, c.count, c.sequence_order, (SELECT array_agg(k ORDER BY k) FROM jsonb_object_keys(c.source_shares) k) AS keys
+                    FROM public.bids_count_rows c WHERE c.bid_id = p_bid AND COALESCE(c.source_shares, '{}'::jsonb) <> '{}'::jsonb)
+  SELECT COALESCE((SELECT string_agg(s.fixture || ':' || s.count::text || CASE WHEN s.keys <@ ids.robot THEN '' ELSE ' STRAY' END, ', ' ORDER BY s.sequence_order, s.fixture) FROM marked s), '(none)')
+    FROM ids $$;
 GRANT USAGE ON SCHEMA rft TO anon, authenticated, service_role;
 GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA rft TO anon, authenticated, service_role;
 
@@ -180,6 +194,54 @@ SELECT rft.same('the score is on both ledgers',
 SET LOCAL ROLE authenticated;
 SELECT rft.as_user('00000000-0000-0000-0000-0000000000e1');
 SELECT rft.refused('a door on a sent bid', $q$SELECT public.set_aside_robot_fixtures(ARRAY['00000000-0000-0000-0000-00000000ff01']::uuid[], 'other')$q$);
+RESET ROLE;
+
+
+-- v2.6326 (punch list #226): both bids took robot fixtures, then one is adopted into the other. The adopt moves the
+-- adopted bid's robot count source onto the package (it carries no token, so the same-token guard never held it), and
+-- before the fold the package carried two robot rows: the LIMIT 1 lookups could strip the wrong share and the From tile
+-- read two Robot chips. Now the package keeps its own robot row, every moved share is re-keyed to it, the duplicate
+-- goes, and the log line counts no project arriving. The pulls are written as the owner; the rest as the estimator.
+INSERT INTO public.bids (id, created_by, estimator_id, service_type_id, project_name, materials_model) VALUES
+  ('00000000-0000-0000-0000-00000000b1d3', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-00000000a001', 'Fold Package', 'rough'),
+  ('00000000-0000-0000-0000-00000000b1d4', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-0000000000e1', '00000000-0000-0000-0000-00000000a001', 'Fold Adopted', 'rough');
+INSERT INTO public.bid_versions (id, bid_id, name) VALUES ('00000000-0000-0000-0000-00000000ae03', '00000000-0000-0000-0000-00000000b1d3', 'Base');
+INSERT INTO public.bids_count_rows (id, bid_id, bid_version_id, fixture, count, sequence_order, unit) VALUES
+  ('00000000-0000-0000-0000-00000000c031', '00000000-0000-0000-0000-00000000b1d3', '00000000-0000-0000-0000-00000000ae03', 'Lav', 2, 1, 'ea'),
+  ('00000000-0000-0000-0000-00000000c041', '00000000-0000-0000-0000-00000000b1d4', NULL, 'Floor drain', 6, 1, 'ea');
+INSERT INTO public.bid_fixture_pulls (id, bid_id, sheet_count) VALUES
+  ('00000000-0000-0000-0000-00000000dd03', '00000000-0000-0000-0000-00000000b1d3', 4),
+  ('00000000-0000-0000-0000-00000000dd04', '00000000-0000-0000-0000-00000000b1d4', 4);
+INSERT INTO public.bid_fixture_pull_rows (id, pull_id, bid_id, tag, name, count, robot_unit_price, sequence_order) VALUES
+  ('00000000-0000-0000-0000-00000000ff31', '00000000-0000-0000-0000-00000000dd03', '00000000-0000-0000-0000-00000000b1d3', 'WC-1', 'Water closet', 3, 412, 1),
+  ('00000000-0000-0000-0000-00000000ff41', '00000000-0000-0000-0000-00000000dd04', '00000000-0000-0000-0000-00000000b1d4', 'MS-1', 'Mop sink', 1, 386, 1),
+  ('00000000-0000-0000-0000-00000000ff42', '00000000-0000-0000-0000-00000000dd04', '00000000-0000-0000-0000-00000000b1d4', 'FD-1', 'Floor drain', 8, 212, 2);
+SET LOCAL ROLE authenticated;
+SELECT rft.as_user('00000000-0000-0000-0000-0000000000e1');
+SELECT rft.same('fold: the package takes its water closet', (SELECT (r->>'added') FROM (SELECT public.take_robot_fixtures(ARRAY['00000000-0000-0000-0000-00000000ff31']::uuid[], '00000000-0000-0000-0000-00000000ae03', '[]'::jsonb) AS r) t), '1');
+SELECT rft.same('fold: the adopted bid takes its mop sink and updates its floor drain',
+  (SELECT (r->>'added') || ' ' || (r->>'updated') FROM (SELECT public.take_robot_fixtures(ARRAY['00000000-0000-0000-0000-00000000ff41']::uuid[], NULL,
+          '[{"row_id": "00000000-0000-0000-0000-00000000ff42", "count_row_id": "00000000-0000-0000-0000-00000000c041"}]'::jsonb) AS r) t),
+  '1 1');
+CREATE TEMP TABLE fold ON COMMIT DROP AS SELECT rft.robot_source_of('00000000-0000-0000-0000-00000000b1d3') AS keep, NULL::uuid AS v;
+SELECT rft.same('fold: a robot source each before the adopt', rft.robot_sources('00000000-0000-0000-0000-00000000b1d3') || ' ' || rft.robot_sources('00000000-0000-0000-0000-00000000b1d4'), '1 1');
+UPDATE fold SET v = public.adopt_bid_as_version('00000000-0000-0000-0000-00000000b1d3', '00000000-0000-0000-0000-00000000b1d4', 'Adopted', NULL);
+SELECT rft.same('fold: the package has one robot source, its own, and the retired bid none',
+  (SELECT rft.robot_sources('00000000-0000-0000-0000-00000000b1d3') || ' ' || (rft.robot_source_of('00000000-0000-0000-0000-00000000b1d3') = keep)::text || ' ' || rft.robot_sources('00000000-0000-0000-0000-00000000b1d4') FROM fold),
+  '1 true 0');
+SELECT rft.same('fold: every moved share is keyed to it', rft.shaded('00000000-0000-0000-0000-00000000b1d3'), 'Floor drain:8.00, Mop sink:1.00, Water closet:3.00');
+SELECT rft.same('fold: the adopted pull''s rows are the package''s, on the new version',
+  (SELECT count(*)::text FROM public.bid_fixture_pull_rows x, fold WHERE x.pull_id = '00000000-0000-0000-0000-00000000dd04' AND x.bid_id = '00000000-0000-0000-0000-00000000b1d3' AND x.taken_version_id = fold.v), '2');
+SELECT rft.same('fold: the log counts no project arriving',
+  (SELECT count(*)::text FROM public.bids_submission_entries WHERE bid_id = '00000000-0000-0000-0000-00000000b1d3' AND notes LIKE '%Moved here: 2 count rows, 0 price scenarios, 0 plan sets, 0 CountTooling projects.%'), '1');
+-- Set aside and Undo find the one source: the share they strip is the one the row carries.
+SELECT rft.same('fold: set aside the updated floor drain', (SELECT (r->>'set_aside') FROM (SELECT public.set_aside_robot_fixtures(ARRAY['00000000-0000-0000-0000-00000000ff42']::uuid[], 'wrong_count') AS r) t), '1');
+SELECT rft.same('fold: her floor drain is back at her number with no share', (SELECT count::text || ' ' || (source_shares IS NULL)::text FROM public.bids_count_rows WHERE id = '00000000-0000-0000-0000-00000000c041'), '6.00 true');
+SELECT rft.same('fold: undo on the package''s own pull', (SELECT (r->>'removed') || ' ' || (r->>'restored') || ' ' || (r->>'kept') FROM (SELECT public.untake_robot_fixtures('00000000-0000-0000-0000-00000000dd03') AS r) t), '1 0 0');
+SELECT rft.same('fold: the source stays for the moved row it still shades', rft.robot_sources('00000000-0000-0000-0000-00000000b1d3') || ' · ' || rft.shaded('00000000-0000-0000-0000-00000000b1d3'), '1 · Mop sink:1.00');
+SELECT rft.same('fold: undo on the adopted pull', (SELECT (r->>'removed') || ' ' || (r->>'restored') || ' ' || (r->>'kept') FROM (SELECT public.untake_robot_fixtures('00000000-0000-0000-0000-00000000dd04') AS r) t), '1 0 0');
+SELECT rft.same('fold: no row shaded, no robot source', rft.robot_sources('00000000-0000-0000-0000-00000000b1d3') || ' · ' || rft.shaded('00000000-0000-0000-0000-00000000b1d3'), '0 · (none)');
+SELECT rft.same('fold: her rows are all that is left', (SELECT string_agg(fixture || ':' || count::text, ' ' ORDER BY sequence_order, fixture) FROM public.bids_count_rows WHERE bid_id = '00000000-0000-0000-0000-00000000b1d3'), 'Floor drain:6.00 Lav:2.00');
 RESET ROLE;
 
 DO $$ BEGIN RAISE NOTICE 'robot_fixtures PASSED'; END $$;

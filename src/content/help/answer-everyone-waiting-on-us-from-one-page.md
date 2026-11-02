@@ -2,7 +2,7 @@
 title: answer everyone waiting on us from one page
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, ratings, score, how did we do, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band
+keywords: messages, follow up, header, speech bubble, customer name, customers, trade partners, architects, leads, subs, supply houses, candidates, needs you, needs a reply, we owe them, thread, kind, pill, filter, waiting on us, switch, switches, finish switching on, owner, show, mine, everyone, what I hold, nudge, reminder, went quiet, not sent, not delivered, send it as an email, call them, last 7 days, the week, answered within an hour, longest wait, texts not delivered, estimates, ratings, score, how did we do, numbers, answer all, one at a time, desk, no reply needed, skip for now, next, jump, bar, strip, lanes, scroll, table of contents, all kinds, picker, glass, 7 days, top, what each lane holds, band, slow, kept, who was waiting, reading again, could not read again
 where: /messages
 order: 117
 ---
@@ -121,6 +121,10 @@ On a phone, three empty lists fold to one line that shows each count at zero. Th
 Press a row to open the person's thread over the page. The thread works as [Find every message with a person in one place](/help/find-every-message-with-a-person-in-one-place) shows.
 
 Press Escape or {{button:outline|×}} to close the thread. The pill you picked stays.
+
+## When the app is slow
+
+The page keeps the lists you last read on your device. On a slow morning they draw at once under *Who was waiting at 7:52 AM · reading again…*. The counts sit faded. {{button:outline|Nobody has it · Take it}} and the other presses that write wait until the live read lands. You can still press a row to read the thread. Read [what to do when the app is slow](/help/know-what-to-do-when-the-app-is-slow#who-is-waiting-on-us) for the whole of it.
 
 ## Open a customer's messages from their name
 

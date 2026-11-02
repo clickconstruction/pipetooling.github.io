@@ -88,6 +88,19 @@ export type FixtureRow = {
   discount_basis_ids?: string[] | null
   /** The preset chip that named the row, or null. */
   discount_reason?: string | null
+  /**
+   * Line budgets (v2.6300, punch list #234): the split of this line's price the
+   * company expects to spend — labor %, materials % — with where it came from
+   * (`workbench` | `assumed` | `tuned`), when the owner last moved it and the
+   * cost rate the hours were read at. All null / undefined = nothing stored, the
+   * line reads the company's split for its kind. Rides the save engine's
+   * delete+reinsert like `stage_kind`; never on a discount row.
+   */
+  budget_labor_pct?: number | null
+  budget_materials_pct?: number | null
+  budget_source?: 'workbench' | 'assumed' | 'tuned' | null
+  budget_tuned_at?: string | null
+  budget_rate_usd?: number | null
 }
 
 export type JobsLedgerInvoiceRow = Database['public']['Tables']['jobs_ledger_invoices']['Row']

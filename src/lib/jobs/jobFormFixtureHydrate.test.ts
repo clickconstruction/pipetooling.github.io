@@ -14,6 +14,17 @@ const db = (o: Partial<DbFixtureRowLike> & { id: string; sequence_order: number 
 })
 
 describe('fixtureRowsFromDb', () => {
+  it('reads the five budget columns onto a work row and leaves them off a discount row (v2.6300)', () => {
+    const rows = fixtureRowsFromDb([
+      db({ id: 'a', sequence_order: 0, budget_labor_pct: '52', budget_materials_pct: 35, budget_source: 'tuned', budget_tuned_at: '2026-11-01T00:00:00Z', budget_rate_usd: '45' }),
+      db({ id: 'b', sequence_order: 1, name: 'Top Out' }),
+      db({ id: 'd', sequence_order: 2, name: 'Negotiated discount', line_kind: 'discount', line_unit_price: -100, discount_pct: 10, discount_basis_positions: [1], budget_source: 'tuned' }),
+    ])
+    expect(rows[0]).toMatchObject({ budget_labor_pct: 52, budget_materials_pct: 35, budget_source: 'tuned', budget_tuned_at: '2026-11-01T00:00:00Z', budget_rate_usd: 45 })
+    expect(rows[1]).toMatchObject({ budget_labor_pct: null, budget_materials_pct: null, budget_source: null, budget_tuned_at: null, budget_rate_usd: null })
+    expect('budget_source' in rows[2]!).toBe(false)
+  })
+
   it('reads a discount row: kind, live percent, basis positions → ids, reason; the price re-derives', () => {
     const rows = fixtureRowsFromDb([
       db({ id: 'a', sequence_order: 0 }),

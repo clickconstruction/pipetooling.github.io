@@ -38,6 +38,7 @@ function props(overrides: Partial<JobsStagesCommandBarProps> = {}): JobsStagesCo
     },
     onClearSort: vi.fn(),
     onClearContract: vi.fn(),
+    onClearKind: vi.fn(),
     onClearGc: vi.fn(),
     onClearDevelopment: vi.fn(),
     onClearAccountMan: vi.fn(),
@@ -124,6 +125,14 @@ describe('JobsStagesCommandBar', () => {
     expect(screen.queryByLabelText(/^Clear Account Man filter/)).toBeNull()
     fireEvent.click(screen.getByLabelText('2 groups hidden from the board — review'))
     expect(p.onOpenHideGroups).toHaveBeenCalledTimes(1)
+  })
+
+  it('the job-kind filter reads as a chip that clears on tap (punch list #238)', () => {
+    const p = props()
+    p.filters = { ...p.filters, kind: 'unset' }
+    render(<JobsStagesCommandBar {...p} />)
+    fireEvent.click(screen.getByLabelText('Clear kind filter: Kind not set'))
+    expect(p.onClearKind).toHaveBeenCalledTimes(1)
   })
 
   it('renders no chips at all on the default filters', () => {

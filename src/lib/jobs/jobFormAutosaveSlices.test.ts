@@ -247,6 +247,20 @@ describe('discount rows (v2.3252+)', () => {
     expect(rows[2]).toMatchObject({ name: 'Negotiated discount', count: 1, line_unit_price: -100, line_kind: 'discount', discount_pct: 10, discount_basis_positions: [1], discount_reason: 'Negotiated', stage_kind: null, shared_with_gc: false })
     expect(rows[3]).toMatchObject({ line_unit_price: -2000, discount_pct: null, discount_basis_positions: null })
   })
+  it('fixtureInsertRows writes the five budget columns only on a row with a stored split (v2.6300)', () => {
+    const rows = fixtureInsertRows('job1', [
+      { id: 'a', name: 'Rough In', count: 1, line_unit_price: 24000, line_description: '', invoice_id: null, stage_kind: 'order' },
+      { id: 'b', name: 'Top Out', count: 1, line_unit_price: 16000, line_description: '', invoice_id: null, stage_kind: 'order', budget_labor_pct: 52, budget_materials_pct: 35, budget_source: 'tuned', budget_tuned_at: '2026-11-01T00:00:00Z', budget_rate_usd: 45 },
+    ])
+    expect('budget_source' in rows[0]!).toBe(false)
+    expect(rows[1]).toMatchObject({ budget_labor_pct: 52, budget_materials_pct: 35, budget_source: 'tuned', budget_tuned_at: '2026-11-01T00:00:00Z', budget_rate_usd: 45 })
+  })
+  it('the billing slice JSON changes when only a budget column changes, so a tune alone saves (v2.6300)', () => {
+    const base = { id: 'a', name: 'Rough In', count: 1, line_unit_price: 24000, line_description: '', invoice_id: null, stage_kind: 'order' as const }
+    const a = buildBillingSliceJson([base], [])
+    const b = buildBillingSliceJson([{ ...base, budget_labor_pct: 52, budget_materials_pct: 35, budget_source: 'tuned' as const }], [])
+    expect(a).not.toBe(b)
+  })
   it('the billing slice JSON changes when a discount field changes', () => {
     const base = { id: 'd', name: 'Disc', count: 1, line_unit_price: -10, line_description: '', invoice_id: null, line_kind: 'discount' as const, discount_pct: 10, discount_basis_ids: null, discount_reason: null }
     const a = buildBillingSliceJson([base], [])

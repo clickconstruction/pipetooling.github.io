@@ -51,6 +51,10 @@ export function buildBillingSliceJson(fixtures: FixtureRow[], payments: PaymentR
       dp: f.line_kind === 'discount' ? (f.discount_pct ?? null) : null,
       db: f.line_kind === 'discount' ? (f.discount_basis_ids ? [...f.discount_basis_ids].sort() : null) : null,
       dr: f.line_kind === 'discount' ? (f.discount_reason ?? null) : null,
+      // Line budgets (v2.6300): a tune alone starts a save.
+      bl: f.budget_labor_pct ?? null,
+      bm: f.budget_materials_pct ?? null,
+      bs: f.budget_source ?? null,
     })),
     p: payments.map((p) => ({
       a: p.amount,
@@ -207,6 +211,18 @@ export function fixtureInsertRows(jobId: string, fixtures: FixtureRow[]) {
         shared_with_gc: f.shared_with_gc ?? false,
         // Who pays this line (v2.3349): the split-job tag rides the reinsert.
         bill_to_party: f.bill_to_party ?? null,
+        // Line budgets (v2.6300): the stored split rides the reinsert too. The
+        // keys go only when something is stored, so a row with nothing stored
+        // writes no budget column at all.
+        ...(f.budget_source != null
+          ? {
+              budget_labor_pct: f.budget_labor_pct ?? null,
+              budget_materials_pct: f.budget_materials_pct ?? null,
+              budget_source: f.budget_source,
+              budget_tuned_at: f.budget_tuned_at ?? null,
+              budget_rate_usd: f.budget_rate_usd ?? null,
+            }
+          : null),
       }
     })
 }
