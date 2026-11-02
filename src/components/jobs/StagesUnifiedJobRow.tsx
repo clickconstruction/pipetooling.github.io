@@ -16,7 +16,7 @@ import { Fragment } from 'react'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
 import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesJobHcpSubline, renderStagesProjectBannerRow, renderStagesSeeAllButton, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesRowHasProjectBanner, stagesActionMoveStackStyle } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesHazmatFeeButton, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesHazmatFeeButton, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesJobFolderButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
 import { StagesCrewLine } from './StagesCrewLine'
 import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
 import { formatCurrency, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -369,6 +369,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                   jobId={j.id}
                   fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
                 />
+                <StagesJobFolderButton folderUrl={j.google_drive_link} onOpenTab={() => openEdit(j, { initialTab: 'documents' })} />
                 {showClickTooling && (
                   <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                 )}

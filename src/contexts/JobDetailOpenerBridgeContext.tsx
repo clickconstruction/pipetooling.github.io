@@ -22,7 +22,7 @@ export type JobWindowEditOpenOptions = {
   paymentsReceivedHighlight?: boolean
   jobPicturesLinkHighlight?: boolean
   alsoOpenCreateCustomerModal?: boolean
-  initialTab?: 'edit' | 'bill' | 'costs'
+  initialTab?: 'edit' | 'bill' | 'costs' | 'documents'
   propertyRecordFocus?: boolean
   focusRow?: JobFormFocusRow | null
 }

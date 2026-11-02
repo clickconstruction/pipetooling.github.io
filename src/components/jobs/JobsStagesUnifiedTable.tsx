@@ -109,7 +109,7 @@ export type JobsStagesUnifiedTableProps = {
   commitStagesPctWithNote: ReturnType<typeof useJobsStagesMutations>['commitStagesPctWithNote']
   setCreatePartialInvoiceAmount: (v: string) => void
   setCreatePartialInvoiceJob: (j: JobWithDetails | null) => void
-  openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean; fixturesSectionHighlight?: boolean }) => void
+  openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean; fixturesSectionHighlight?: boolean; initialTab?: 'documents' }) => void
   openStagesDetailJobModal: (j: JobWithDetails) => void
   setAiaG702StagesJob: (j: JobWithDetails | null) => void
   canCreateHazmatFee: boolean
