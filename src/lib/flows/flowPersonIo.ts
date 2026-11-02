@@ -194,7 +194,10 @@ async function residentialOf(contact: FlowContact, rows: FlowRows): Promise<Resi
   const ids = jobs.map((j) => j.id)
   const on = <T>(name: string, select: string, column: string, what: string): Promise<T[]> =>
     ids.length ? (table(name).select(select).in(column, ids) as unknown as Promise<Answer<T[]>>).then((a) => check(a, what) ?? []) : Promise.resolve([])
-  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments] = await Promise.all([
+  // Soft: a table the reader's role cannot read (a tech on Job Mode cannot read job_contracts) reads as empty, not as a failure.
+  const soft = <T>(name: string, select: string, column: string): Promise<T[]> =>
+    ids.length ? (table(name).select(select).in(column, ids) as unknown as Promise<Answer<T[]>>).then((a) => (a.error ? [] : a.data ?? [])).catch(() => []) : Promise.resolve([])
+  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements] = await Promise.all([
     on<PipelineRows['blocks'][number]>('job_schedule_blocks', PIPELINE_SELECTS.blocks, 'job_id', 'Their visits'),
     on<PipelineRows['clockSessions'][number]>('clock_sessions', PIPELINE_SELECTS.clockSessions, 'job_ledger_id', 'Their visits'),
     on<PipelineRows['reports'][number]>('reports', PIPELINE_SELECTS.reports, 'job_ledger_id', 'Their reports'),
@@ -202,9 +205,11 @@ async function residentialOf(contact: FlowContact, rows: FlowRows): Promise<Resi
     on<PipelineRows['statusEvents'][number]>('job_status_events', PIPELINE_SELECTS.statusEvents, 'job_id', 'Their jobs'),
     on<PipelineRows['invoices'][number]>('jobs_ledger_invoices', PIPELINE_SELECTS.invoices, 'job_id', 'Their bills'),
     on<PipelineRows['payments'][number]>('jobs_ledger_payments', PIPELINE_SELECTS.payments, 'job_id', 'Their payments'),
+    // The warranty in place of a contract (2026-11-02): the Warranty step's rounds, from the Contract Desk's rows.
+    soft<NonNullable<PipelineRows['agreements']>[number]>('job_contracts', PIPELINE_SELECTS.agreements, 'job_id'),
   ])
   return residentialRowsOf(
-    { ...NO_PIPELINE_ROWS, jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, texts: check(textsA, 'Their texts') ?? [], paySpeeds, promisedPay },
+    { ...NO_PIPELINE_ROWS, jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, agreements, texts: check(textsA, 'Their texts') ?? [], paySpeeds, promisedPay },
     { contact: rows.contact, firstName: flowFirst(contact, rows.card), customerId, userNames: rows.userNames, skips: rows.skips },
   )
 }
