@@ -1772,7 +1772,7 @@ function DocumentsUnifiedSearchTab() {
         <DocumentsEstimatesLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
       <div>
-        <h2 style={documentsUnifiedSectionHeadingStyle}>Bid proposals</h2>
+        <h2 style={documentsUnifiedSectionHeadingStyle}>Bids</h2>
         <DocumentsBidProposalsLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
       <div>
@@ -1820,74 +1820,46 @@ export default function Documents() {
     <div style={{ position: 'relative', padding: '0.35rem 1.25rem 1rem', maxWidth: 1200, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <h1 style={documentsPageVisuallyHiddenH1Style}>Documents</h1>
 
+      {/* Spike candidate — the tab row: Search first, the four ledgers in the order money moves, what went out and came
+          in, then the office's reference and setup tabs last. The address ids are unchanged, so old links still land. */}
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        {companyTabVisible ? (
-          <button
-            type="button"
-            style={pageTabStyle(documentsTab === 'company')}
-            onClick={() => setDocumentsTab('company')}
-          >
-            Company
-          </button>
-        ) : null}
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'search')}
-          onClick={() => setDocumentsTab('search')}
-        >
+        <button type="button" style={pageTabStyle(documentsTab === 'search')} onClick={() => setDocumentsTab('search')}>
           Search
         </button>
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'estimates')}
-          onClick={() => setDocumentsTab('estimates')}
-        >
+        <button type="button" style={pageTabStyle(documentsTab === 'estimates')} onClick={() => setDocumentsTab('estimates')}>
           Estimates
         </button>
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'bid-proposals')}
-          onClick={() => setDocumentsTab('bid-proposals')}
-        >
-          Bid proposals
+        <button type="button" style={pageTabStyle(documentsTab === 'bid-proposals')} onClick={() => setDocumentsTab('bid-proposals')}>
+          Bids
         </button>
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'jobs')}
-          onClick={() => setDocumentsTab('jobs')}
-        >
+        <button type="button" style={pageTabStyle(documentsTab === 'jobs')} onClick={() => setDocumentsTab('jobs')}>
           Jobs
         </button>
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'supply-invoices')}
-          onClick={() => setDocumentsTab('supply-invoices')}
-        >
+        <button type="button" style={pageTabStyle(documentsTab === 'supply-invoices')} onClick={() => setDocumentsTab('supply-invoices')}>
           Supply invoices
         </button>
         {sentTabVisible ? (
           <button type="button" style={pageTabStyle(documentsTab === 'sent')} onClick={() => setDocumentsTab('sent')}>
-            Sent
+            Sent copies
           </button>
         ) : null}
         <button type="button" style={pageTabStyle(documentsTab === 'photos')} onClick={() => setDocumentsTab('photos')}>
           Photos
         </button>
+        {companyTabVisible ? (
+          <button type="button" style={pageTabStyle(documentsTab === 'company')} onClick={() => setDocumentsTab('company')}>
+            Company
+          </button>
+        ) : null}
         {whereFilesGoVisible ? (
           <button type="button" style={pageTabStyle(documentsTab === 'where-files-go')} onClick={() => setDocumentsTab('where-files-go')}>
             Where files go
           </button>
         ) : null}
-        <button type="button" style={pageTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
-          Upload
-        </button>
       </div>
 
       {documentsTab === 'company' && companyTabVisible ? (
         <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} showManage />
-      ) : null}
-      {documentsTab === 'upload' ? (
-        <p style={{ color: 'var(--text-muted)', margin: 0 }}>Upload coming soon.</p>
       ) : null}
       {documentsTab === 'search' ? <DocumentsUnifiedSearchTab /> : null}
       {documentsTab === 'estimates' ? <DocumentsEstimatesLedger /> : null}
