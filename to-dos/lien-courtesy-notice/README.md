@@ -2,7 +2,7 @@
 name: "A courtesy notice between the § 53.056 notice and the lien"
 number: 231
 group: close
-status: built 2026-11-01 in four PRs, v2.6259 (#6686), v2.6261 (#6704), v2.6269 (#6713) and v2.6271 · send-lien-filing-email redeployed the same day · migration 20261101092703 pushed, customer-portal, legal-portal and messages-notify redeployed · left: counsel's read of the words, then delete the folder
+status: built 2026-11-01 in four PRs, v2.6259 (#6686), v2.6261 (#6704), v2.6269 (#6713) and v2.6271 · send-lien-filing-email redeployed the same day · migration 20261101092703 pushed, customer-portal, legal-portal and messages-notify redeployed · the owner kept the press live on 2026-11-01 · two defects its live test found are on their own card (#243) · left: counsel's read of the words, then delete the folder
 summary: >
   Supply houses send a plain letter a week or two before they lien: we already sent you the notice,
   nothing has come, here is the day the lien goes on unless it is paid, here is where to pay, here is
@@ -13,9 +13,9 @@ summary: >
   own facts, naming the lien's day, carrying the pay link and the office's number, recorded on the
   Timeline so the affidavit's packet shows it went. No new statutory paper, no certified mail, no new
   claim.
-next: Counsel reads the courtesy words before the first real send. Then this folder goes.
+next: Counsel reads the courtesy words. The press stays live meanwhile. Then this folder goes.
 size: M (four PRs: S, M, S, XS; one migration; four function redeploys)
-blocker: Counsel's read of the words before the first real send.
+blocker: Counsel's read of the words. The press does not wait on it.
 opinion: build — the gap is real and visible on the desk today; the shape reuses the sent notice, the pay page and the cover letter's three doors, so the words are already counsel's
 ---
 
@@ -131,5 +131,5 @@ The owner, 2026-11-01, on the six calls below: *"Take all recommended."* Each is
 2. **The owner too.** Send the owner a copy when their email is on file (the recommendation, **picked**, with counsel's rule to copy the GC on every owner letter kept the other way round), or the GC only.
 3. **Texts.** Text the GC's contact when their card allows it (the recommendation, **picked**), or email only.
 4. **Day 7.** Offer it from day 7 and let letter two keep day 10 (the recommendation, **picked**), or offer both on day 10.
-5. **Counsel first.** Counsel reads the words before the first real send (the recommendation, **picked**), or the office goes ahead and counsel reads the record.
+5. **Counsel first.** Counsel reads the words before the first real send (the recommendation, **picked**), or the office goes ahead and counsel reads the record. Once the press was live, the owner was asked on 2026-11-01 whether to hold it until counsel reads the words, and answered *"Leave it live."*
 6. **The pay offer.** When a discount offer is live on the notice, the courtesy notice repeats its sentence (the recommendation, **picked**), or stays silent on it.
