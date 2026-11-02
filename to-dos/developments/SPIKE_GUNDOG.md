@@ -118,9 +118,18 @@ decisions*. Both redrawn, below as **I** and the second cut of **G**.
 Tests: `historyFolds.test.ts`, `gcContact.test.ts`, `lookFigure.test.ts`, `DevelopmentGcContactSheet.render.test.tsx` new;
 `pieces`, `overview`, `siteMoney`, `countCards`, `supabasePaging`, `sitePlans`, `DevelopmentPartsCard.render` extended.
 
-## Still to do at the wrap-up
+## Shipped (2026-11-02, the owner: *Ship all nine*)
 
-Versions claimed, a release note and fragment per PR, the guide `see-everything-on-a-development`,
-`GLOSSARY.md` / `PROJECT_DOCUMENTATION.md` / `docs/twins/APP_DIRECTORY.md` if a surface is named, the card
-`to-dos/developments/README.md`. Likely cut: PR 1 the phone and the read (A + I + B), PR 2 the table and the
-History (C + D + E), PR 3 the head's tile and contact (F + H), PR 4 jobs onto parts (G).
+Four stacked PRs cut from fresh `main`, each with its release note, fragment, guide words and glossary
+clause; PR 1 armed, each next one retargets to `main` when the one under it merges and is armed then.
+
+| PR | Version | Carries |
+| --- | --- | --- |
+| #6846 | v2.6377 | A the phone's Plans cards, I the strip as one row, B the read (four round trips, `raw` off the costs read, parallel id chunks) |
+| #6847 | v2.6378 | C the Archived fold and the live order, D History's folded runs, E the shadow chip |
+| #6848 | v2.6379 | F the Not yet billed tile and its card group, H the GC contact sheet |
+| #6849 | v2.6381 | G jobs onto a part in one press, each row with its name; these notes |
+
+Left for later, not in the stack: a pay-speed read by one customer (`get_customer_pay_speed` returns every
+customer; an RPC is a migration) and a slimmer history-entries read (279 KB of mail bodies the page
+shows folded). No migration and no edge function in the stack.
