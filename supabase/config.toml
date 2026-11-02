@@ -678,6 +678,9 @@ verify_jwt = false
 [functions.drive-link]
 verify_jwt = false
 
+[functions.file-index-sweep]
+verify_jwt = false
+
 # A job's Drive photos in the app (punch list #164, PR 5): the JWT is checked in-body, so the refusal has words.
 [functions.job-photos]
 verify_jwt = false

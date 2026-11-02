@@ -24,6 +24,7 @@ import { HoursStatementsSection } from './HoursStatementsSection'
 import { JobDocumentsChecklists } from './JobDocumentsChecklists'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
 import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
+import { JobDocumentsIndexFolder } from './JobDocumentsIndexFolder'
 import { JobPlansSection } from './JobPlansSection'
 import { JobDocumentsAddFile } from './JobDocumentsAddFile'
 import { EmptyState } from '../EmptyState'
@@ -401,6 +402,9 @@ export function JobWindowDocumentsTab({
       </section>
 
       <JobDocumentsFolderFiles job={job} />
+
+      {/* Index this job's files into our own search index (punch list #240, PR 1); the office roles the folder press names. */}
+      {canMakeJobDriveFolders(role) ? <JobDocumentsIndexFolder job={job} /> : null}
 
       <JobDocumentsPhotos jobId={job.id} driveLink={job.google_drive_link} picturesLink={job.job_pictures_link} />
 

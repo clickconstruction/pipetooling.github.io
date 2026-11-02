@@ -25,6 +25,7 @@ import {
   type StagesContractFilter,
 } from '../../lib/jobs/jobContractCoverage'
 import { STAGES_SORT_MODE_LABELS, STAGES_SORT_MODES, type StagesBoardSortMode } from '../../lib/jobsStagesSortMode'
+import { parseStagesKindFilter, STAGES_KIND_FILTERS, stagesKindFilterOptionLabel, type StagesKindFilter } from '../../lib/jobs/jobKind'
 import {
   STAGES_ACCOUNT_MAN_FILTER_NONE,
   STAGES_DEVELOPMENT_FILTER_NONE,
@@ -37,6 +38,10 @@ type FilterOption = { id: string; name: string }
 export type StagesToolsFilters = {
   sortMode: StagesBoardSortMode
   contract: StagesContractFilter | ''
+  /** The job's kind (punch list #238): projects, service calls, or the ones nobody has settled; '' = every kind. */
+  kind?: StagesKindFilter | ''
+  /** How many rows each kind filter would show, for the option words ("Kind not set · 7"). */
+  kindCounts?: Record<StagesKindFilter, number> | null
   gc: string
   gcOptions: readonly FilterOption[]
   development: string
@@ -77,6 +82,7 @@ export type JobsStagesToolsMenuProps = {
   filters: StagesToolsFilters
   onSortModeChange: (mode: StagesBoardSortMode) => void
   onContractFilterChange: (value: StagesContractFilter | '') => void
+  onKindFilterChange?: (value: StagesKindFilter | '') => void
   onGcFilterChange: (value: string) => void
   onDevelopmentFilterChange: (value: string) => void
   onAccountManFilterChange: (value: string) => void
@@ -137,6 +143,7 @@ export function JobsStagesToolsMenu({
   filters,
   onSortModeChange,
   onContractFilterChange,
+  onKindFilterChange,
   onGcFilterChange,
   onDevelopmentFilterChange,
   onAccountManFilterChange,
@@ -185,12 +192,12 @@ export function JobsStagesToolsMenu({
         border: 'none',
         borderRadius: 8,
         background:
-          open || filters.gc || filters.development || filters.accountMan || filters.exclusionCount > 0 || filters.sortMode !== 'number'
+          open || filters.kind || filters.gc || filters.development || filters.accountMan || filters.exclusionCount > 0 || filters.sortMode !== 'number'
             ? 'var(--bg-blue-tint)'
             : 'transparent',
         cursor: 'pointer',
         color:
-          open || filters.gc || filters.development || filters.accountMan || filters.exclusionCount > 0 || filters.sortMode !== 'number'
+          open || filters.kind || filters.gc || filters.development || filters.accountMan || filters.exclusionCount > 0 || filters.sortMode !== 'number'
             ? 'var(--text-link)'
             : 'var(--text-muted)',
         fontSize: '1.2rem',
@@ -314,6 +321,30 @@ export function JobsStagesToolsMenu({
           <div style={{ fontSize: '0.6875rem', color: 'var(--text-muted)', padding: '0.35rem 0.75rem 0.1rem', borderTop: '1px solid var(--border)', marginTop: 2 }}>
             Filters
           </div>
+              {/* The job's kind (punch list #238): projects, service calls, or the rows nobody has settled, each with its count. */}
+              {onKindFilterChange ? (
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem' }}>
+                  <span aria-hidden style={{ color: 'var(--text-muted)', flexShrink: 0, width: 15, textAlign: 'center' }}>◐</span>
+                  <select
+                    value={filters.kind ?? ''}
+                    onChange={(e) => onKindFilterChange(parseStagesKindFilter(e.target.value))}
+                    aria-label="Filter the Pipeline board by job kind"
+                    title="Filter the Pipeline board by job kind: projects, service calls, or the jobs with no kind set"
+                    style={{
+                      ...stagesToolsMenuFilterSelectStyle,
+                      background: filters.kind ? 'var(--bg-blue-tint)' : 'var(--surface)',
+                      color: filters.kind ? 'var(--text-link)' : 'inherit',
+                    }}
+                  >
+                    <option value="">All kinds</option>
+                    {STAGES_KIND_FILTERS.map((f) => (
+                      <option key={f} value={f}>
+                        {stagesKindFilterOptionLabel(f, filters.kindCounts)}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              ) : null}
               {gates.jobContracts ? (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.2rem 0.75rem' }}>
                   <span aria-hidden style={{ color: 'var(--text-muted)', flexShrink: 0, width: 15, textAlign: 'center' }}>✍</span>

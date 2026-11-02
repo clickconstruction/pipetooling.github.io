@@ -6,6 +6,11 @@
  * from the flow fill after them. Each row is one person; a press anywhere off its buttons opens their thread at its
  * line. The queue and its words are the kernels' (`followUp/queue.ts`, `messages/owed.ts`, `messages/promises.ts`);
  * this draws them and hands each press to the page.
+ *
+ * On a kept read (punch list #183 PR 5, `held`) every press that writes on a row waits with the hover *reading
+ * again…*: Take it and a hand-off, No reply needed, Remind me Monday, Done with it, Another day, I called, Tomorrow,
+ * Skip, Put back, Book a visit, Start an estimate, the plans question, and the headers' Sort all and Answer all. A row
+ * still opens its thread, Reply and Open the thread still open it, and Call still dials.
  */
 import { PUT_BACK, setAsideLines, setAsideTitle, type SetAsideRow } from '../../lib/followUp/setAsideFold'
 import { useState, type CSSProperties, type ReactNode } from 'react'
@@ -19,6 +24,7 @@ import { ANSWER_ALL, canAnswerAll } from '../../lib/followUp/answerDesk'
 import { needsYouCount, type BackRow, type FollowUpQueue, type NeedsReplyRow, type OwedRow, type PortalRow } from '../../lib/followUp/queue'
 import { LANE_NOTES } from '../../lib/followUp/laneNotes'
 import { JUMP_LANE_COLOR } from '../../lib/messages/jumpStrip'
+import { READING_AGAIN_WORDS } from '../../lib/keptRead'
 import { markedByWords } from '../../lib/messages/owed'
 import { agoWords, channelWord, lineWhen, snippetOf } from '../../lib/messages/thread'
 import { Btn, Card, Chip } from '../gc/gcUi'
@@ -79,9 +85,14 @@ export interface FollowUpSectionsProps<C, N extends { contactId: string }> {
   laneLook?: LaneLook
   /** The notices the reader set aside this week (v2.6231), folded under New with a count. */
   setAside?: readonly SetAsideRow[]
+  /** The rows are the device's kept read (#183 PR 5): every press that writes on a row waits, with *reading again…* as its hover. */
+  held?: boolean
 }
 
 export type LaneLook = 'plain' | 'bands'
+
+/** A press that writes on a row: held with the stamp's hint on a kept read, else busy while its own press runs. */
+const heldOr = (held: boolean | undefined, busy: boolean, title?: string): { disabled: boolean; title?: string } => (held ? { disabled: true, title: READING_AGAIN_WORDS } : { disabled: busy, title })
 
 const KIND_WORDS: Readonly<Record<string, string>> = { customer: 'customer', trade: 'trade partner', arch: 'architect', lead: 'lead', unknown: 'who is this?' }
 
@@ -99,7 +110,7 @@ const initials = (c: FollowUpContact) =>
 const clip = (s: string) => (s.length > 220 ? `${s.slice(0, 220).replace(/\s+\S*$/, '')}…` : s)
 
 export function FollowUpSections<C, N extends { contactId: string }>(props: FollowUpSectionsProps<C, N>) {
-  const { queue, contacts, renderClauses, renderNudges, actions, laneLook: look = 'plain' } = props
+  const { queue, contacts, renderClauses, renderNudges, actions, laneLook: look = 'plain', held } = props
   const setAside = props.setAside ?? []
   const byId = new Map(contacts.map((c) => [c.id, c]))
   const youCount = needsYouCount(queue)
@@ -117,7 +128,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
         color={JUMP_LANE_COLOR.new}
         action={
           actions.sortAll && canSortAll(queue.newLane.length) ? (
-            <Btn kind="primary" onClick={actions.sortAll}>
+            <Btn kind="primary" onClick={actions.sortAll} {...heldOr(held, false)}>
               {SORT_ALL}
             </Btn>
           ) : undefined
@@ -128,7 +139,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
         ) : (
           queue.newLane.map((r) => byId.get(r.contactId) && <NewRowView key={r.contactId} row={r} contact={byId.get(r.contactId)!} {...props} />)
         )}
-        {setAside.length > 0 && <SetAsideFold rows={setAside} nowIso={props.nowIso} pressing={props.pressing} onPutBack={actions.putBack} />}
+        {setAside.length > 0 && <SetAsideFold rows={setAside} nowIso={props.nowIso} pressing={props.pressing} held={held} onPutBack={actions.putBack} />}
       </Section>
       {youCount > 0 && (
         <Section id="needs-you" name="Needs you" count={youCount} note={LANE_NOTES.needsYou(Boolean(renderClauses))} look={look} color={JUMP_LANE_COLOR.needsYou}>
@@ -146,7 +157,7 @@ export function FollowUpSections<C, N extends { contactId: string }>(props: Foll
         color={JUMP_LANE_COLOR.needsReply}
         action={
           actions.answerAll && canAnswerAll(queue.needsReply.length) ? (
-            <Btn kind="primary" onClick={actions.answerAll}>
+            <Btn kind="primary" onClick={actions.answerAll} {...heldOr(held, false)}>
               {ANSWER_ALL}
             </Btn>
           ) : undefined
@@ -187,7 +198,7 @@ function Section({ id, name, count, note, look, color, action, children }: { id:
         <div className="stagesSectionBand messagesLaneBand" style={{ '--stage-color': color } as CSSProperties} data-testid="lane-band">
           <h3 className="stagesBandTitle" aria-label={title}>
             {name}{' '}
-            <span className="stagesBandCount" aria-hidden>
+            <span className="stagesBandCount keptCount" aria-hidden>
               {count}
             </span>
           </h3>
@@ -227,7 +238,7 @@ function Row<C, N extends { contactId: string }>({
   acts?: ReactNode
   props: FollowUpSectionsProps<C, N>
 }) {
-  const { me, team, contacts, todayYmd, nowIso, actions, pressing } = props
+  const { me, team, contacts, todayYmd, nowIso, actions, pressing, held } = props
   return (
     <Card style={{ padding: '0.6rem 0.8rem' }}>
       <div
@@ -268,6 +279,7 @@ function Row<C, N extends { contactId: string }>({
             todayYmd={todayYmd}
             nowIso={nowIso}
             busy={pressing === `hand ${contact.id}`}
+            held={held}
             onHand={(userId) => actions.hand(contact.id, userId)}
           />
         </div>
@@ -281,7 +293,7 @@ function Row<C, N extends { contactId: string }>({
 const companyOf = (c: FollowUpContact) => c.company || KIND_WORDS[c.kind] || ''
 
 function BackRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: BackRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
-  const { actions, pressing } = props
+  const { actions, pressing, held } = props
   return (
     <Row
       contact={contact}
@@ -298,10 +310,10 @@ function BackRowView<C, N extends { contactId: string }>({ row, contact, ...prop
           <Btn kind="primary" onClick={() => actions.openThread(contact.id, row.noteId)}>
             Open the thread
           </Btn>
-          <Btn onClick={() => actions.backDone(row.noteId)} disabled={pressing === `back ${row.noteId}`} title="Clears the day. The note stays in the thread.">
+          <Btn onClick={() => actions.backDone(row.noteId)} {...heldOr(held, pressing === `back ${row.noteId}`, 'Clears the day. The note stays in the thread.')}>
             Done with it
           </Btn>
-          <Btn onClick={() => actions.anotherDay(row.noteId)} disabled={pressing === `back ${row.noteId}`} title="Brings it back on the next working day.">
+          <Btn onClick={() => actions.anotherDay(row.noteId)} {...heldOr(held, pressing === `back ${row.noteId}`, 'Brings it back on the next working day.')}>
             Another day
           </Btn>
         </>
@@ -360,7 +372,7 @@ const SORT_PRESS: CSSProperties = {
  * The notices the reader set aside this week (v2.6231): a fold under New with the count, each row the sender, the
  * subject, when, and **Put back**, which marks it for the next read. Never a delete; nothing in Gmail changes.
  */
-function SetAsideFold({ rows, nowIso, pressing, onPutBack }: { rows: readonly SetAsideRow[]; nowIso: string; pressing?: string | null; onPutBack?: (id: string) => void }) {
+function SetAsideFold({ rows, nowIso, pressing, held, onPutBack }: { rows: readonly SetAsideRow[]; nowIso: string; pressing?: string | null; held?: boolean; onPutBack?: (id: string) => void }) {
   const lines = setAsideLines(rows, nowIso)
   return (
     <details data-set-aside-fold style={{ border: '1px dashed var(--border-strong)', borderRadius: 10, padding: '0.5rem 0.8rem', background: 'var(--bg-subtle)' }}>
@@ -372,7 +384,7 @@ function SetAsideFold({ rows, nowIso, pressing, onPutBack }: { rows: readonly Se
               {l.who} · <i>{l.subject}</i> · {l.when}
             </span>
             {onPutBack && (
-              <Btn kind="quiet" onClick={() => onPutBack(l.id)} disabled={pressing === `putBack ${l.id}`}>
+              <Btn kind="quiet" onClick={() => onPutBack(l.id)} {...heldOr(held, pressing === `putBack ${l.id}`)}>
                 {PUT_BACK}
               </Btn>
             )}
@@ -423,7 +435,7 @@ function NewRowView<C, N extends { contactId: string }>({ row, contact, ...props
 }
 
 function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: NeedsReplyRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
-  const { actions, pressing, nowIso, lines } = props
+  const { actions, pressing, nowIso, lines, held } = props
   const line = row.landOnId ? lines.get(row.landOnId) : undefined
   const busy = pressing === `state ${contact.id}`
   return (
@@ -456,12 +468,7 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
                 {o.label}
               </Btn>
             ) : actions.askArchitect && lineGcProject(lines.get(o.messageId)) ? (
-              <Btn
-                key={o.messageId}
-                onClick={() => actions.askArchitect!(o.messageId)}
-                disabled={pressing === `ask ${o.messageId}`}
-                title="Puts it on the job's questions about the plans and emails it to the architect."
-              >
+              <Btn key={o.messageId} onClick={() => actions.askArchitect!(o.messageId)} {...heldOr(held, pressing === `ask ${o.messageId}`, "Puts it on the job's questions about the plans and emails it to the architect.")}>
                 {o.label}
               </Btn>
             ) : null,
@@ -480,19 +487,19 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
                 </Btn>
               )
             ) : label === 'Book a visit' ? (
-              <Btn key={label} onClick={() => actions.bookVisit?.(contact.id, line ? snippetOf(line) : null)} disabled={busy || !actions.bookVisit} title="Makes them a customer and opens Add Job with their name, number and words filled in.">
+              <Btn key={label} onClick={() => actions.bookVisit?.(contact.id, line ? snippetOf(line) : null)} {...heldOr(held, busy || !actions.bookVisit, 'Makes them a customer and opens Add Job with their name, number and words filled in.')}>
                 {label}
               </Btn>
             ) : label === 'Start an estimate' ? (
-              <Btn key={label} onClick={() => actions.startEstimate?.(contact.id, line ? snippetOf(line) : null)} disabled={busy || !actions.startEstimate} title="Makes them a customer and opens a new estimate on them. The thread comes with them.">
+              <Btn key={label} onClick={() => actions.startEstimate?.(contact.id, line ? snippetOf(line) : null)} {...heldOr(held, busy || !actions.startEstimate, 'Makes them a customer and opens a new estimate on them. The thread comes with them.')}>
                 {label}
               </Btn>
             ) : label === 'No reply needed' ? (
-              <Btn key={label} onClick={() => actions.noReplyNeeded(contact.id)} disabled={busy}>
+              <Btn key={label} onClick={() => actions.noReplyNeeded(contact.id)} {...heldOr(held, busy)}>
                 {label}
               </Btn>
             ) : (
-              <Btn key={label} onClick={() => actions.remindMonday(contact.id)} disabled={busy}>
+              <Btn key={label} onClick={() => actions.remindMonday(contact.id)} {...heldOr(held, busy)}>
                 {label}
               </Btn>
             ),
@@ -506,7 +513,7 @@ function ReplyRowView<C, N extends { contactId: string }>({ row, contact, ...pro
 
 /** A call to make (v2.5596): who, about what, its day; the script to read; Call, I called, Tomorrow and Skip. */
 function CallRowView<C, N extends { contactId: string }>({ row, contact, ...props }: { row: CallTaskRow; contact: FollowUpContact } & FollowUpSectionsProps<C, N>) {
-  const { actions, pressing, todayYmd, nowIso } = props
+  const { actions, pressing, todayYmd, nowIso, held } = props
   const [open, setOpen] = useState(false)
   const first = callFirst(contact)
   const number = contact.phone?.trim() || null
@@ -540,17 +547,17 @@ function CallRowView<C, N extends { contactId: string }>({ row, contact, ...prop
             />
           ) : null}
           {actions.callDone ? (
-            <Btn onClick={() => actions.callDone?.(row.id, 'called')} disabled={busy} title="Closes the call with a note in the thread.">
+            <Btn onClick={() => actions.callDone?.(row.id, 'called')} {...heldOr(held, busy, 'Closes the call with a note in the thread.')}>
               {CALL_WORDS.iCalled}
             </Btn>
           ) : null}
           {actions.callMove ? (
-            <Btn onClick={() => actions.callMove?.(row.id, dayAfter(todayYmd))} disabled={busy} title="Moves the call to tomorrow.">
+            <Btn onClick={() => actions.callMove?.(row.id, dayAfter(todayYmd))} {...heldOr(held, busy, 'Moves the call to tomorrow.')}>
               {CALL_WORDS.tomorrow}
             </Btn>
           ) : null}
           {actions.callDone ? (
-            <Btn onClick={() => actions.callDone?.(row.id, 'skipped')} disabled={busy} title="Closes the call with no note. A gray line says so.">
+            <Btn onClick={() => actions.callDone?.(row.id, 'skipped')} {...heldOr(held, busy, 'Closes the call with no note. A gray line says so.')}>
               {CALL_WORDS.skip}
             </Btn>
           ) : null}

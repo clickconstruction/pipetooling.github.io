@@ -115,6 +115,8 @@ export const PHONE_DAY_KEPT_LEAD = 'Your day as read at'
 /** Quickfill's deck (#183 PR 4): *Counts from 7:52 AM · counting again…*, the page's own word for its read. */
 export const QUICKFILL_KEPT_LEAD = 'Counts from'
 export const QUICKFILL_COUNTING_AGAIN_WORDS = 'counting again…'
+/** Messages' queue (#183 PR 5): *Who was waiting at 7:52 AM · reading again…*. */
+export const MESSAGES_KEPT_LEAD = 'Who was waiting at'
 export const READING_AGAIN_WORDS = 'reading again…'
 export const COULD_NOT_READ_AGAIN_WORDS = 'could not read again'
 export const KEPT_READ_RETRY_LABEL = 'Retry'

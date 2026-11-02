@@ -23,6 +23,8 @@ import { ACCOUNT_MAN_RELATIONSHIP_LABELS, ACCOUNT_MAN_RELATIONSHIP_SHORT, buildA
 import { formatAddressTwoLines, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { JobAddressText } from './JobAddressText'
 import PropertyKindBadge from './PropertyKindBadge'
+import JobKindChip from './JobKindChip'
+import { jobKindOfRow } from '../../lib/jobs/jobKind'
 import { StagesSearchMark } from './StagesSearchMark'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -339,9 +341,11 @@ export function renderStagesJobHcpSubline(job: JobWithDetails, extraWrap?: CSSPr
       {addedStamp}
     </span>
   ) : null
-  if (chip) return <div style={extraWrap}>{chip}{stamp}</div>
+  // The job's kind after the number (punch list #238): Project, Service call, or Kind not set until the office presses.
+  const kind = <JobKindChip read={jobKindOfRow(job)} size="sm" style={{ marginLeft: 6 }} />
+  if (chip) return <div style={extraWrap}>{chip}{stamp}{kind}</div>
   return (
-    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...extraWrap }}>—{stamp}</div>
+    <div style={{ fontSize: '0.75rem', color: 'var(--text-muted)', ...extraWrap }}>—{stamp}{kind}</div>
   )
 }
 

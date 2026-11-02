@@ -5,7 +5,7 @@
  * last text Quo could not deliver draws the row red with Call them and Send it as an email (#140 PR 4); the empty lane
  * and a failed read say so.
  */
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { WaitingOnThem } from './WaitingOnThem'
@@ -55,5 +55,23 @@ describe('WaitingOnThem', { timeout: 15_000 }, () => {
     cleanup()
     renderWithProviders(<WaitingOnThem pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => Promise.reject(new Error('down')))} now={() => NOW} />)
     expect(await screen.findByText('Who went quiet could not be read.')).toBeTruthy()
+  })
+  it('counts nothing until a read lands: the band says … while it hangs and after it fails, and the bar hears no false 0 (punch list #183 PR 5)', async () => {
+    const onCount = vi.fn()
+    renderWithProviders(<WaitingOnThem pill="all" onOpenThread={vi.fn()} io={vi.fn(() => new Promise<WaitLine[]>(() => {}))} now={() => NOW} onCount={onCount} />)
+    const band = () => document.querySelector('[data-testid="waiting-on-them"] .stagesBandCount')!.textContent
+    expect(band()).toBe('…')
+    expect(screen.getByRole('heading', { name: 'Waiting on them' })).toBeTruthy()
+    expect(onCount).not.toHaveBeenCalled()
+    cleanup()
+    renderWithProviders(<WaitingOnThem pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => Promise.reject(new Error('down')))} now={() => NOW} onCount={onCount} />)
+    await screen.findByText('Who went quiet could not be read.')
+    expect(band()).toBe('…')
+    expect(onCount).not.toHaveBeenCalled()
+    cleanup()
+    renderWithProviders(<WaitingOnThem pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => [])} now={() => NOW} onCount={onCount} />)
+    await screen.findByTestId('waiting-empty')
+    expect(band()).toBe('0')
+    await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(0))
   })
 })

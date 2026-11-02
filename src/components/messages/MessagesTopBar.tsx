@@ -10,6 +10,9 @@
  * pressed one filled), drawn while the person's own switch is on. While My email is open the bar keeps the title, the
  * tabs and the ?, and leaves out the kind picker, Show, the glass, the strip and 7 days: those are Follow up's, and
  * the tab has its own search.
+ *
+ * While the queue on screen is the device's kept read (`kept`, punch list #183 PR 5) the bar carries `data-kept-read`
+ * and hands it to the strip, so Show's counts and each lane's count mute (`keptCount`) as the lanes' headings do.
  */
 import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { Search } from 'lucide-react'
@@ -42,6 +45,8 @@ export interface MessagesTopBarProps {
    * is while the person's own switch is on. Left out, or with `myMailOn` false: no tabs, the bar as it was.
    */
   tabs?: { tab: MessagesTab; onTab: (tab: MessagesTab) => void; myMailOn: boolean }
+  /** The counts on the bar are the device's kept read (#183 PR 5): they mute until the live read lands. */
+  kept?: boolean
 }
 
 const pillStyle = (on: boolean): CSSProperties => ({
@@ -182,7 +187,8 @@ function TabRow({ tab, onTab }: { tab: MessagesTab; onTab: (tab: MessagesTab) =>
   )
 }
 
-export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOpen, onSearch, weekOpen, onWeek, strip, phone, legend, tabs }: MessagesTopBarProps) {
+export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOpen, onSearch, weekOpen, onWeek, strip, phone, legend, tabs, kept = false }: MessagesTopBarProps) {
+  const keptAttr = kept ? { 'data-kept-read': '' } : {}
   const title = <h1 className="messagesTopTitle">{TOP_BAR_WORDS.title}</h1>
   const tabRow = tabs?.myMailOn ? <TabRow tab={tabs.tab} onTab={tabs.onTab} /> : null
   const myMailOpen = Boolean(tabRow) && tabs?.tab === 'myMail'
@@ -195,7 +201,7 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
         return (
           <button key={v} type="button" role="radio" aria-checked={on} title={v === 'mine' ? SHOW_WORDS.mineTip : SHOW_WORDS.everyoneTip} onClick={() => onLens(v)} style={segStyle(on, i === 0)}>
             {v === 'mine' ? SHOW_WORDS.mine : SHOW_WORDS.everyone}
-            {n !== null && ` · ${n}`}
+            {n !== null && <span className="keptCount"> · {n}</span>}
           </button>
         )
       })}
@@ -211,7 +217,7 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
       {TOP_BAR_WORDS.week} <span aria-hidden>{weekOpen ? '▴' : '▾'}</span>
     </button>
   )
-  const lanes = strip ? <MessagesJumpStrip counts={strip.counts} onJump={strip.onJump} /> : null
+  const lanes = strip ? <MessagesJumpStrip counts={strip.counts} onJump={strip.onJump} kept={kept} /> : null
   const help = legend ? (
     <button type="button" aria-pressed={legend.open} aria-expanded={legend.open} aria-label={LEGEND_WORDS.label} title={legend.open ? LEGEND_WORDS.closeTip : LEGEND_WORDS.tip} onClick={() => legend.onToggle(!legend.open)} data-testid="lane-help" style={{ ...glassStyle(legend.open), fontFamily: 'inherit', fontSize: '0.8rem', fontWeight: 700 }}>
       {LEGEND_WORDS.button}
@@ -221,7 +227,7 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
   if (myMailOpen) {
     // My email (punch list #230 PR 3): the title, the tabs and the ?; the rest is Follow up's.
     return (
-      <div className={phone ? 'messagesTopBar isControls' : 'messagesTopBar'} {...(phone ? {} : { 'data-messages-pinned': '' })} data-messages-top-bar>
+      <div className={phone ? 'messagesTopBar isControls' : 'messagesTopBar'} {...(phone ? {} : { 'data-messages-pinned': '' })} {...keptAttr} data-messages-top-bar>
         {title}
         {tabRow}
         {help ? <span style={{ marginLeft: 'auto', display: 'inline-flex' }}>{help}</span> : null}
@@ -231,7 +237,7 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
   if (phone) {
     return (
       <>
-        <div className="messagesTopBar isControls" data-messages-top-bar>
+        <div className="messagesTopBar isControls" {...keptAttr} data-messages-top-bar>
           {title}
           {tabRow}
           {picker}
@@ -245,7 +251,7 @@ export function MessagesTopBar({ pill, onPick, lens, lensCount, onLens, searchOp
     )
   }
   return (
-    <div className="messagesTopBar" data-messages-pinned data-messages-top-bar>
+    <div className="messagesTopBar" data-messages-pinned {...keptAttr} data-messages-top-bar>
       {title}
       {tabRow}
       {picker}

@@ -2,7 +2,7 @@
 name: "Lien desk: two fixes the courtesy notice's live test found"
 number: 243
 group: ready
-status: found 2026-11-01 in the courtesy notice's live test (#231) · confirmed in code 2026-11-02 · not started
+status: found 2026-11-01 in the courtesy notice's live test (#231) · confirmed in code 2026-11-02 · PR 1 built 2026-11-02, v2.6340 · PR 2 open as #6800 · left: the data fix on three live items, on the owner's word
 summary: >
   The session that built the courtesy notice (#231) found two defects during its live test. Opening
   the courtesy send window makes the GC a Messages contact before anything is sent, so a window
@@ -10,12 +10,11 @@ summary: >
   sent on the day it is entered, not the mailing day the office typed, so letter two and the
   courtesy notice start their clocks late. Three live desk items read 14 days short today.
 next: >
-  PR 1, the send window makes no Messages contact until a text goes. PR 2, a notice recorded by
-  hand is marked sent on its typed day. Then the three live items get their typed day, on the
-  owner's word.
+  Once #6800 is deployed, the owner runs the guarded statement under *The data fix* once, and the
+  three live items read 2026-09-22. Then this card goes.
 size: S (two PRs, XS and S; no migration expected)
-blocker: None for the code. The data fix on three live items waits on the owner's word.
-ver: v2.3770 · 6259 · 6261 · 6269 · 6271
+blocker: None for the code, which is built. The data fix on three live items waits on the owner's word.
+ver: v2.3770 · 6259 · 6261 · 6269 · 6271 · 6340
 opinion: build — both are small, and both fix what the office reads, a stray contact in Messages and lien clocks that read short
 mockup: not required — no new screen; the fixes remove a stray contact and correct a day count
 ---
@@ -58,7 +57,40 @@ The live test left two such contacts. Both are unnamed *ZZ Test Builder Co* cont
 | 2 | The by-hand door gives `sent_at` the typed day, and the other doors that mark an item sent after the fact are checked. A test records a notice ten days back and reads day 10 on every clock. | S |
 | After | The three live items get their typed day, in one line the owner runs once the owner says so. | — |
 
-Each PR follows CLAUDE.md: `npm run claim` for the version, a release note and its fragment, and `gh pr merge --auto`. No migration is expected, since the trigger already keeps a `sent_at` it is given. If a column grant or a policy refuses the client's `sent_at`, PR 2 needs one. It starts with `SET lock_timeout = '3s';`, takes a stamp numbered from `origin/main`, and is pushed after the merge.
+Each PR follows CLAUDE.md: `npm run claim` for the version, a release note and its fragment, and `gh pr merge --auto`. No migration was needed: `sent_at` is an ordinary column the office's update policy covers, and the trigger keeps a value it is given.
+
+## Where it stands (2026-11-02)
+
+- **PR 1, v2.6340 (#6788).** The window reads the GC's own contact, or the number and address on their record when there is none, and makes nothing. The press makes the contact through `contact_for_customer`, only when a text goes, and texts the channel on it. A refusal or a contact with no number is the text's reason, and the email still goes. Kernel `lienCourtesyContact.ts`; tests on the kernel and the IO.
+- **PR 2 (#6800).** `markLienDeskItemSent` takes the day it went. The by-hand door passes the typed day as noon in the app's calendar when it is before today, and so do the Lien window's *Save & record sends…* path and a run recorded in a later sitting, each from the filing's `sends[].sent_on`. A notice recorded the day it goes out keeps the trigger's stamp. Kernel `lienSentAt.ts`; tests on the kernel, the by-hand IO and the run.
+- **The data fix** below waits on the owner.
+
+## The data fix
+
+The three live items were mailed 2026-09-22 and recorded 2026-10-06, each on a filing recorded by hand. Run the read first and expect three rows, then the one update. Both name no customer and touch only an item whose by-hand filing says 2026-09-22 and whose stamp reads 2026-10-06. Nothing else moves. Run them in the dashboard's SQL editor as data, not DDL, after PR 2 is deployed.
+
+```sql
+-- Read first: expect 3 rows.
+SELECT i.id, i.sent_at, f.sends -> 0 ->> 'sent_on' AS typed_day
+FROM public.job_lien_desk_items i
+JOIN public.job_lien_filings f ON f.id = i.sent_filing_id
+WHERE i.kind = 'notice_53_056' AND i.status = 'sent' AND i.voided_at IS NULL
+  AND f.by_hand AND f.voided_at IS NULL
+  AND f.sends -> 0 ->> 'sent_on' = '2026-09-22'
+  AND (i.sent_at AT TIME ZONE 'America/Chicago')::date = '2026-10-06';
+
+-- Then the one line: noon on the mailing day in the app's calendar, 3 rows.
+UPDATE public.job_lien_desk_items i
+SET sent_at = ('2026-09-22 12:00'::timestamp AT TIME ZONE 'America/Chicago')
+FROM public.job_lien_filings f
+WHERE f.id = i.sent_filing_id
+  AND i.kind = 'notice_53_056' AND i.status = 'sent' AND i.voided_at IS NULL
+  AND f.by_hand AND f.voided_at IS NULL
+  AND f.sends -> 0 ->> 'sent_on' = '2026-09-22'
+  AND (i.sent_at AT TIME ZONE 'America/Chicago')::date = '2026-10-06';
+```
+
+Afterwards the desk's Sent footer on each reads *Sent Sep 22* and the day count moves 14 days forward.
 
 ## How to verify
 

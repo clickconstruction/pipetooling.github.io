@@ -2,7 +2,7 @@
 title: clock in and out with Job Mode
 category: Field Work
 roles: subcontractor, helpers, superintendent, master_technician
-keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb
+keywords: write up a change, change order, clock in, clock out, job mode, time tracking, leave report, next job, on my way, i'm here, drive, arrive, text the customer, bio, edit bio, first time, my requests, dispatch answered, training, course, press bar, percent done, turnaway, thumb, no signal, kept on the phone, waiting to send
 where: /dashboard
 order: 10
 ---
@@ -106,13 +106,19 @@ Your new helper taps {{button:green|Clock In}}. No jobs appear, so the sheet say
 
 ### When you have no signal
 
-The punch may not reach the server in a crawlspace, a basement, or a dead zone. Then the sheet says ***No connection — the app couldn't reach the server, so nothing was saved***. It shows a {{button:outline|Retry}} button. Nothing was recorded. So it is safe to tap it as soon as you have a bar. When your signal comes back on its own, the message changes to ***Back online — tap Retry to try again***. The punch still waits for your tap. So it is never sent twice.
+The punch may not reach the server in a crawlspace, a basement, or a dead zone. The phone keeps it with the moment you pressed. The sheet closes as it always does. You do not need to press again. The line at the top of the screen shows your press waiting.
+
+The phone sends the press on its own when the signal returns. Then the line turns green until you press {{button:green|Got it}}. Your time counts from the moment you pressed. The card draws your day as it was last read until the press lands. Then the card reads your day again. A punch that reaches the office late is filed like typed hours. Read [keep working when the signal drops](/help/keep-working-when-the-signal-drops) for the line, the list behind it and what needs a signal.
 
 :::example Clocking in from a basement
-You tap {{button:green|Clock In}}, the sheet shows **No connection** and {{button:outline|Retry}}. You climb the stairs, the line flips to **Back online**, you tap {{button:outline|Retry}} — the timer starts.
+
+You tap {{button:green|Clock In}} in the basement and the sheet closes. The line at the top reads **Clock in from 7:58 AM** · waiting to send. You go to work. An hour later you climb the stairs. The line turns green: **Clock in from 7:58 AM sent ✓**. You tap {{button:green|Got it}}. Your time counts from 7:58.
+
 :::
 
-The same Retry appears when you save a report offline. A screen that only shows you things is different. Your **Schedule** tab, the Job Mode card, **My requests**, **Customers** and your **My crew** list each show the same Retry. Each one also reloads by itself the moment the signal returns, no tap needed. A message may say something else, for example that you do not have permission. Then Retry will not appear, because trying again would not change the answer.
+A job note and a field report wait on the phone the same way. A report's photos go with it. A Turnaway report needs a signal, since it also raises a dispatch alert.
+
+A screen that only shows you things works another way. The Job Mode card draws your day as it was last read. A stamp above the day says when. Your **Schedule** tab, **My requests**, **Customers** and your **My crew** list show a No connection line with {{button:outline|Retry}}. Each one reads again by itself the moment the signal returns. A message may say something else, for example that you do not have permission. Then Retry will not appear, because trying again would not change the answer.
 
 ## Tell the customer you are on the way
 
@@ -178,7 +184,7 @@ All three doors run the same short stack. Most days you see one screen. The othe
 3. ***Missing reports from today (click to make report)*** appears only when a job on today's schedule has no report yet. It shows one red button per job. Tap one to file the report right there. Or finish clocking out and file it later with **Job Report** on your Dashboard. Why? A report filed the same day beats a phone call tomorrow.
 4. **Team feedback** is a short card about how your teammates did. It comes on a cadence the office sets, days or weeks apart, not daily. {{button:blue|Start}} answers it now. {{button:outline|Not now · remind me in N days}} puts it off. Left alone, it closes itself in 30 seconds and comes back when it is due again.
 
-Then {{button:red|Complete clock out}} ends the session. If it fails to reach the server, the same {{button:outline|Retry}} panel as Clock In appears. Nothing is recorded until it succeeds.
+Then {{button:red|Complete clock out}} ends the session. With no signal the window closes the same way. A small message reads *Kept on the phone. It goes out when the signal is back.* Your time ends at the moment you pressed. The press goes out when the signal returns. See [When you have no signal](#when-you-have-no-signal).
 
 :::example A normal Tuesday
 Tap {{button:outline|Clock out}} on the bar → *Clock out* → the note already reads your report's words → the job already shows {{chip:green|You are here}} → {{button:red|Complete clock out}}. One screen, five seconds.

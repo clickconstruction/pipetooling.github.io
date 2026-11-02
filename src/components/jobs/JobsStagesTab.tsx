@@ -97,6 +97,7 @@ import {
   parseStagesContractFilter,
   type StagesContractFilter,
 } from '../../lib/jobs/jobContractCoverage'
+import { filterJobsByKind, jobKindCounts, parseStagesKindFilter, type StagesKindFilter } from '../../lib/jobs/jobKind'
 import { PipelineOverview } from './PipelineOverview'
 import { isLienLeader, type LienDeskPile } from '../../lib/jobs/lienDesk'
 import { pipelineOverviewHiddenBySearch } from '../../lib/jobs/pipelineOverview'
@@ -286,6 +287,7 @@ import {
   stagesSectionElementId,
 } from '../../lib/jobs/stagesSectionPrefs'
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
+import { canSeeProjectsBoard } from '../../lib/jobs/projectsBoard'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, useZzTestJobsHidden, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
@@ -910,6 +912,16 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
       return ''
     }
   })
+  // The job's kind (punch list #238): ?kind=project|service|unset deep-links the board to one kind, the way
+  // ?contract= does; the ⋯ menu's select and the bar's chip hold it from then on.
+  const [stagesKindFilter, setStagesKindFilter] = useState<StagesKindFilter | ''>(() => {
+    try {
+      return parseStagesKindFilter(new URLSearchParams(window.location.search).get('kind'))
+    } catch {
+      return ''
+    }
+  })
+  const stagesKindCounts = useMemo(() => jobKindCounts(jobs), [jobs])
   const [aiaG702StagesJob, setAiaG702StagesJob] = useState<JobWithDetails | null>(null)
   /** Release of lien (v2.2579): in-app waiver-and-release modal — same office set as the hazmat gate. */
   const [lienReleaseModal, setLienReleaseModal] = useState<{
@@ -1411,6 +1423,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     Boolean(stagesDevelopmentFilter) ||
     Boolean(stagesAccountManFilter) ||
     Boolean(stagesContractFilter) ||
+    Boolean(stagesKindFilter) ||
     contractSweepOpen ||
     // Billed aging / no-line filter (v2.2155): billed lines hang on working
     // and waiting jobs too, and the board routes them into Billed only once
@@ -1474,17 +1487,20 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const stagesBoardLists = useMemo(
     () =>
       buildJobsStagesBoardLists(
-        filterJobsByContractCoverage(
-          filterJobsByAccountMan(
-            filterJobsByDevelopment(
-              filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
-              stagesDevelopmentFilter || null,
+        filterJobsByKind(
+          filterJobsByContractCoverage(
+            filterJobsByAccountMan(
+              filterJobsByDevelopment(
+                filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
+                stagesDevelopmentFilter || null,
+              ),
+              stagesAccountManFilter || null,
             ),
-            stagesAccountManFilter || null,
+            jobContractCoverageByJobId,
+            stagesContractFilter,
+            contractFloorCents,
           ),
-          jobContractCoverageByJobId,
-          stagesContractFilter,
-          contractFloorCents,
+          stagesKindFilter,
         ),
         stagesSearchQuery,
         stagesCombinedExtraJobIds,
@@ -1492,7 +1508,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
         // v2.3788: the next-first order reads the same upcoming map the strip draws.
         stagesSortMode === 'next' ? makeStagesNextFirstComparator(stagesUpcomingByJobId, sortStagesJobsByEffectiveNumberDesc) : null,
       ),
-    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode, stagesUpcomingByJobId],
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesKindFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode, stagesUpcomingByJobId],
   )
   // v2.3788: the Working header's schedule pills — All / Not scheduled / This week / Later,
   // counted from the strip's own "when" state; the pick filters the Working rows only.
@@ -2611,7 +2627,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
    * its Clear, and whether a board filter is on. Working adds its schedule pill; Paid in Full is a finished group.
    */
   const stagesBoardFiltered =
-    stagesExclusionCount > 0 || Boolean(stagesGcFilter) || Boolean(stagesDevelopmentFilter) || Boolean(stagesAccountManFilter) || Boolean(stagesContractFilter)
+    stagesExclusionCount > 0 || Boolean(stagesGcFilter) || Boolean(stagesDevelopmentFilter) || Boolean(stagesAccountManFilter) || Boolean(stagesContractFilter) || Boolean(stagesKindFilter)
   const groupEmptyFor = (group: string, opts?: { filtered?: boolean; done?: boolean }): StagesGroupEmptyContext => ({
     group,
     search: stagesSearchQuery,
@@ -2921,6 +2937,8 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const stagesToolsFilters: StagesToolsFilters = {
     sortMode: stagesSortMode,
     contract: stagesContractFilter,
+    kind: stagesKindFilter,
+    kindCounts: stagesKindCounts,
     gc: stagesGcFilter,
     gcOptions: stagesGcFilterOptions,
     development: stagesDevelopmentFilter,
@@ -3219,6 +3237,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               setFollowupOpen(true)
             }}
             canSeeForecast={canSeeBilledExpectedPay}
+            canSeeProjects={canSeeProjectsBoard(authRole)}
             onOpenForecast={() => setBilledPaymentForecastOpen(true)}
             onShowMap={!phoneBoard && jobsMapHidden ? toggleJobsMapHidden : null}
             query={stagesSearchQuery}
@@ -3231,6 +3250,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
             filters={stagesToolsFilters}
             onClearSort={() => setStagesSortMode('number')}
             onClearContract={() => setStagesContractFilter('')}
+            onClearKind={() => setStagesKindFilter('')}
             onClearGc={() => setStagesGcFilter('')}
             onClearDevelopment={() => setStagesDevelopmentFilter('')}
             onClearAccountMan={() => setStagesAccountManFilter('')}
@@ -3242,6 +3262,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                       filters={stagesToolsFilters}
                       onSortModeChange={setStagesSortMode}
                       onContractFilterChange={setStagesContractFilter}
+                      onKindFilterChange={setStagesKindFilter}
                       onGcFilterChange={setStagesGcFilter}
                       onDevelopmentFilterChange={setStagesDevelopmentFilter}
                       onAccountManFilterChange={setStagesAccountManFilter}
