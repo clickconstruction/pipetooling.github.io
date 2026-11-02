@@ -10,7 +10,8 @@
 # that rolls back: the estimator takes two rows and updates one of hers (her book prices the one it knows, the robot's
 # price lands as a custom price on the other, the run reads assisted), sets a row aside and puts it back at her
 # number, undoes the take, and the send writes the fixtures score; a superintendent outside the bid reads none and is
-# refused the doors; a reason off the list and a door on a sent bid are refused. It raises on its first failed
+# refused the doors; a reason off the list and a door on a sent bid are refused; a bid with a robot pull adopted into a
+# package that took robot fixtures too leaves one robot source, every moved share keyed to it (v2.6326). It raises on its first failed
 # assertion and ends with "robot_fixtures PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker; the SQL beds
 # workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
