@@ -8,6 +8,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import {
   StagesAiaG702Button,
   StagesHazmatFeeButton,
+  StagesJobFolderButton,
   StagesLienInstrumentsButton,
   StagesLienReleaseButton,
   StagesRowIcons,
@@ -69,5 +70,32 @@ describe('StagesRowActionButtons', () => {
   it('an empty icon block draws nothing', () => {
     const { container } = render(<StagesRowIcons>{null}</StagesRowIcons>)
     expect(container.querySelector('[data-stages-row-icons]')).toBeNull()
+  })
+
+  it('the Job folder icon opens the tab on a click, Drive on a ⌘-click, and greys out without a folder (v2.6301)', () => {
+    const onOpenTab = vi.fn()
+    const open = vi.spyOn(window, 'open').mockImplementation(() => null)
+    const url = 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUv'
+    const { unmount } = render(<StagesJobFolderButton folderUrl={url} onOpenTab={onOpenTab} />)
+    const made = screen.getByLabelText('Open the job’s folders')
+    expect(made.getAttribute('title')).toMatch(/⌘-click opens the folder in Drive/)
+    expect(made.style.color).toBe('rgb(217, 119, 6)')
+    fireEvent.click(made)
+    expect(onOpenTab).toHaveBeenCalledTimes(1)
+    expect(open).not.toHaveBeenCalled()
+    fireEvent.click(made, { metaKey: true })
+    expect(open).toHaveBeenCalledWith(url, '_blank', 'noopener,noreferrer')
+    expect(onOpenTab).toHaveBeenCalledTimes(1)
+    unmount()
+
+    const onOpenTabBare = vi.fn()
+    render(<StagesJobFolderButton folderUrl={null} onOpenTab={onOpenTabBare} />)
+    const bare = screen.getByLabelText('Open the job’s folders')
+    expect(bare.getAttribute('title')).toMatch(/no Drive folder yet/)
+    expect(bare.style.color).toBe('var(--text-muted)')
+    fireEvent.click(bare, { metaKey: true })
+    expect(onOpenTabBare).toHaveBeenCalledTimes(1)
+    expect(open).toHaveBeenCalledTimes(1)
+    open.mockRestore()
   })
 })

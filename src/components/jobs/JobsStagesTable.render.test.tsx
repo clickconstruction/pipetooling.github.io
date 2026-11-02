@@ -320,4 +320,18 @@ describe('JobsStagesTable render smoke', () => {
     expect(within(rowOf('j-q')).getByRole('button', { name: /No contract/ }).textContent).toBe('No contract')
     expect(within(rowOf('j-p')).queryByRole('button', { name: /contract/i })).toBeNull()
   })
+
+  it('every row carries the Job folder icon, amber with a folder and grey without; a click opens the Documents tab (v2.6301)', async () => {
+    const openEdit = vi.fn()
+    const made = makeJob({ job_name: 'Has a folder', google_drive_link: 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUv' })
+    const bare = makeJob({ job_name: 'No folder yet' })
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [made, bare], openEdit })} />)
+    await settle()
+    const icons = screen.getAllByLabelText('Open the job’s folders')
+    expect(icons).toHaveLength(2)
+    expect(icons[0]!.style.color).toBe('rgb(217, 119, 6)')
+    expect(icons[1]!.style.color).toBe('var(--text-muted)')
+    fireEvent.click(icons[1]!)
+    expect(openEdit).toHaveBeenCalledWith(bare, { initialTab: 'documents' })
+  })
 })

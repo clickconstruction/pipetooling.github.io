@@ -169,6 +169,17 @@ export function myMailHiddenLabelIds(labels: readonly { id: string; name?: strin
   return [...new Set((labels ?? []).filter((l) => l.id && named.has((l.name ?? '').trim().toLowerCase())).map((l) => l.id))]
 }
 
+/**
+ * A mail the tab never shows (v2.6296): a draft, Spam, Trash or a chat (`neverRead`), or a mail under a label the person
+ * leaves out (`hidden`, Gmail's ids from `myMailHiddenLabelIds`). The list's search asks Gmail to leave both out by name
+ * (`myMailQuery`); this holds by id whatever the search lets past, and keeps `open` from showing one, as the mail asked
+ * for or as a row of its conversation, which until v2.6296 it did. The guide promises a label left out is never read.
+ */
+export function leftOutOfTab(labels: readonly string[] | undefined, hidden: readonly string[]): boolean {
+  if (neverRead(labels)) return true
+  return hidden.length > 0 && (labels ?? []).some((l) => hidden.includes(l))
+}
+
 // ---------- how a refusal answers ----------
 
 /** The HTTP status each refusal answers with (`docs/EDGE_FUNCTIONS.md` → gmail-mine). */

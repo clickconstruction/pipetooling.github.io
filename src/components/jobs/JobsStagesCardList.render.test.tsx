@@ -46,11 +46,24 @@ describe('JobsStagesCardList more-actions sheet', () => {
     expect(screen.getByText('Edit job')).toBeTruthy()
     expect(screen.getByText('Activity and notes')).toBeTruthy()
     expect(screen.getByText('Test report')).toBeTruthy()
+    expect(screen.getByText('Job folder')).toBeTruthy()
     expect(screen.queryByText('Hazmat fee')).toBeNull()
     expect(screen.queryByText('Send back')).toBeNull()
     fireEvent.click(screen.getByText('View job'))
     expect(openStagesDetailJobModal).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('View job')).toBeNull()
+  })
+
+  it('the sheet’s Job folder opens the Documents tab and says when the folder is not made yet (v2.6301)', async () => {
+    const openEdit = vi.fn()
+    const job = makeJob({ job_name: 'Card Folder' })
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job], openEdit })} />)
+    await settle()
+    fireEvent.click(screen.getByTitle('More actions'))
+    expect(screen.getByText('not made yet')).toBeTruthy()
+    fireEvent.click(screen.getByText('Job folder'))
+    expect(openEdit).toHaveBeenCalledWith(job, { initialTab: 'documents' })
+    expect(screen.queryByText('Job folder')).toBeNull()
   })
 
   it('gates hazmat and send-back rows on their props', async () => {
