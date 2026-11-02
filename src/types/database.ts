@@ -20588,6 +20588,7 @@ export type Database = {
           job_name: string
           job_pictures_link: string | null
           job_plans_link: string | null
+          kind: string | null
           last_bill_date: string | null
           last_work_date: string | null
           lien_contract_ended_how: string | null
@@ -20660,6 +20661,7 @@ export type Database = {
           job_name?: string
           job_pictures_link?: string | null
           job_plans_link?: string | null
+          kind?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
@@ -20732,6 +20734,7 @@ export type Database = {
           job_name?: string
           job_pictures_link?: string | null
           job_plans_link?: string | null
+          kind?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
@@ -30711,8 +30714,12 @@ export type Database = {
           asks_photo: boolean
           created_at: string
           created_by: string | null
+          created_by_name: string
+          fixture_id: string | null
           id: string
+          job_id: string | null
           retired_at: string | null
+          retired_by: string | null
           sort_order: number
           stage_kind: string
           updated_at: string
@@ -30722,8 +30729,12 @@ export type Database = {
           asks_photo?: boolean
           created_at?: string
           created_by?: string | null
+          created_by_name?: string
+          fixture_id?: string | null
           id?: string
+          job_id?: string | null
           retired_at?: string | null
+          retired_by?: string | null
           sort_order?: number
           stage_kind: string
           updated_at?: string
@@ -30733,8 +30744,12 @@ export type Database = {
           asks_photo?: boolean
           created_at?: string
           created_by?: string | null
+          created_by_name?: string
+          fixture_id?: string | null
           id?: string
+          job_id?: string | null
           retired_at?: string | null
+          retired_by?: string | null
           sort_order?: number
           stage_kind?: string
           updated_at?: string
@@ -30744,6 +30759,27 @@ export type Database = {
           {
             foreignKeyName: "stage_checklist_templates_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_retired_by_fkey"
+            columns: ["retired_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -40443,6 +40479,14 @@ export type Database = {
       robot_fixture_source: {
         Args: { p_bid_id: string; p_pull_id: string; p_user: string }
         Returns: string
+      }
+      robot_fixtures_fold_adopt: {
+        Args: {
+          p_new_version_id: string
+          p_source_bid_id: string
+          p_target_bid_id: string
+        }
+        Returns: number
       }
       robot_fixtures_follow_adopt: {
         Args: {
