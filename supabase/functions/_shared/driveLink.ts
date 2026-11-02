@@ -139,8 +139,8 @@ export type OfficeAsk =
   | { action: 'search'; words: string }
   /** The index (punch list #240, PR 1): one file by its Drive id, or a job's folder tree, into file_index; `retry` takes held rows again. */
   | { action: 'index'; driveFileId: string }
-  /** The index check (v2.6364): every file in the Shared Drive against every row; `max` caps the listing. */
-  | { action: 'index_check'; max: number | null }
+  /** The index check (v2.6364): every file in the Shared Drive against every row; `max` caps the listing, `sample` how many files with no row it names. */
+  | { action: 'index_check'; max: number | null; sample: number | null }
   | { action: 'index_job'; job: JobRef; retry: boolean }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
@@ -199,7 +199,7 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
     }
     case 'index_check': {
       const max = typeof b.max === 'number' && Number.isFinite(b.max) && b.max >= 1 ? Math.floor(b.max) : null
-      return { action: 'index_check', max }
+      return { action: 'index_check', max, sample: typeof b.sample === 'number' ? b.sample : null }
     }
     case 'index': {
       const driveFileId = typeof b.driveFileId === 'string' && DRIVE_ID.test(b.driveFileId) ? b.driveFileId : null

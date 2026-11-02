@@ -12,9 +12,9 @@ import { fileTextWithin } from '../_shared/fileText.ts'
 import { folderHomes, folderMetaReader } from '../_shared/fileHomes.ts'
 import { filesUnder as indexFilesUnder, heldRowsFor, indexContext, indexFiles, fileMeta } from '../_shared/fileIndex.ts'
 import { EXCERPT_READ_MS, INDEX_JOB_MAX_FILES, walkUp, type DriveFileMeta, type FileHome } from '../_shared/fileIndexKernel.ts'
-import { indexCheck } from '../_shared/fileIndexCheck.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
+import { indexCheck } from '../_shared/fileIndexCheck.ts'
 import {
   DRIVE_FOLDER_MIME,
   STREAM_CAP_BYTES,
@@ -70,10 +70,10 @@ import {
  *                                                        call → { indexed, held, remaining, total }; the Documents tab's Index
  *                                                        this job's files presses it until remaining is 0; `retry` takes the
  *                                                        held rows again
- *   POST { action: 'index_check', max? }             → every file in the Shared Drive against every file_index row (v2.6364):
- *                                                        counts of files with no row, files changed since their row, rows for a
- *                                                        file gone, rows with and without text by reason, and the first files with
- *                                                        no row → IndexCheck; a read, a dev's door
+ *   POST { action: 'index_check', max?, sample? }    → every file in the Shared Drive against every file_index row (v2.6364):
+ *                                                        counts of files with no row, files changed since their row, rows the
+ *                                                        listing did not show, rows with and without text by reason, and the
+ *                                                        first `sample` files with no row → IndexCheck; a read, a dev's door
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -360,7 +360,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     if (String(who.role) !== 'dev') return json({ error: 'The index check is a dev’s door.' }, 403)
     const ctx = await indexContext(admin, google)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
-    return json(await indexCheck(ctx, ask.max ?? undefined))
+    return json(await indexCheck(ctx, { max: ask.max, sample: ask.sample }))
   }
 
   if (ask.action === 'index') {
