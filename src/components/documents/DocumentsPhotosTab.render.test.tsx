@@ -15,6 +15,12 @@ vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The rows are taken on Sun, Nov 1 and the headings read Today / Yesterday against the company's day, so the day is
+// pinned: on Nov 2 the real clock read the same rows as *Yesterday · Sun, Nov 1* and every tree failed.
+vi.mock('../../utils/dateUtils', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../../utils/dateUtils')>()
+  return { ...actual, todayYmdInAppTz: () => '2026-11-01' }
+})
 const auth = vi.hoisted(() => ({ role: 'assistant' as string }))
 vi.mock('../../hooks/useAuth', () => ({ useAuth: () => ({ role: auth.role, user: { id: 'u-office' } }), useOptionalAuth: () => ({ role: auth.role, user: { id: 'u-office' } }) }))
 
