@@ -10724,6 +10724,88 @@ export type Database = {
           },
         ]
       }
+      file_index: {
+        Row: {
+          bid_id: string | null
+          bytes: number | null
+          checked_at: string
+          customer_id: string | null
+          drive_file_id: string
+          folder_kind: string
+          indexed_at: string
+          jobs_ledger_id: string | null
+          mime: string
+          modified_at: string | null
+          name: string
+          pages: number | null
+          path: string
+          search: unknown
+          text: string | null
+          text_source: string | null
+          text_why: string | null
+        }
+        Insert: {
+          bid_id?: string | null
+          bytes?: number | null
+          checked_at?: string
+          customer_id?: string | null
+          drive_file_id: string
+          folder_kind?: string
+          indexed_at?: string
+          jobs_ledger_id?: string | null
+          mime: string
+          modified_at?: string | null
+          name: string
+          pages?: number | null
+          path?: string
+          search?: unknown
+          text?: string | null
+          text_source?: string | null
+          text_why?: string | null
+        }
+        Update: {
+          bid_id?: string | null
+          bytes?: number | null
+          checked_at?: string
+          customer_id?: string | null
+          drive_file_id?: string
+          folder_kind?: string
+          indexed_at?: string
+          jobs_ledger_id?: string | null
+          mime?: string
+          modified_at?: string | null
+          name?: string
+          pages?: number | null
+          path?: string
+          search?: unknown
+          text?: string | null
+          text_source?: string | null
+          text_why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_index_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_jobs_ledger_id_fkey"
+            columns: ["jobs_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fixture_component_corrections: {
         Row: {
           action: string
@@ -20578,6 +20660,7 @@ export type Database = {
           job_name: string
           job_pictures_link: string | null
           job_plans_link: string | null
+          kind: string | null
           last_bill_date: string | null
           last_work_date: string | null
           lien_contract_ended_how: string | null
@@ -20650,6 +20733,7 @@ export type Database = {
           job_name?: string
           job_pictures_link?: string | null
           job_plans_link?: string | null
+          kind?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
@@ -20722,6 +20806,7 @@ export type Database = {
           job_name?: string
           job_pictures_link?: string | null
           job_plans_link?: string | null
+          kind?: string | null
           last_bill_date?: string | null
           last_work_date?: string | null
           lien_contract_ended_how?: string | null
@@ -30701,8 +30786,12 @@ export type Database = {
           asks_photo: boolean
           created_at: string
           created_by: string | null
+          created_by_name: string
+          fixture_id: string | null
           id: string
+          job_id: string | null
           retired_at: string | null
+          retired_by: string | null
           sort_order: number
           stage_kind: string
           updated_at: string
@@ -30712,8 +30801,12 @@ export type Database = {
           asks_photo?: boolean
           created_at?: string
           created_by?: string | null
+          created_by_name?: string
+          fixture_id?: string | null
           id?: string
+          job_id?: string | null
           retired_at?: string | null
+          retired_by?: string | null
           sort_order?: number
           stage_kind: string
           updated_at?: string
@@ -30723,8 +30816,12 @@ export type Database = {
           asks_photo?: boolean
           created_at?: string
           created_by?: string | null
+          created_by_name?: string
+          fixture_id?: string | null
           id?: string
+          job_id?: string | null
           retired_at?: string | null
+          retired_by?: string | null
           sort_order?: number
           stage_kind?: string
           updated_at?: string
@@ -30734,6 +30831,27 @@ export type Database = {
           {
             foreignKeyName: "stage_checklist_templates_created_by_fkey"
             columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_fixture_id_fkey"
+            columns: ["fixture_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger_fixtures"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stage_checklist_templates_retired_by_fkey"
+            columns: ["retired_by"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]
@@ -39998,6 +40116,14 @@ export type Database = {
         Args: { p_part_id: string }
         Returns: undefined
       }
+      plan_part_switch_words: {
+        Args: {
+          p_old: string
+          p_part: string
+          p_set: Database["public"]["Tables"]["plan_sets"]["Row"]
+        }
+        Returns: string
+      }
       portal_opens_since: {
         Args: { p_entity_id: string; p_since: string; p_surface: string }
         Returns: {
@@ -40416,6 +40542,14 @@ export type Database = {
         Args: { p_bid_id: string; p_pull_id: string; p_user: string }
         Returns: string
       }
+      robot_fixtures_fold_adopt: {
+        Args: {
+          p_new_version_id: string
+          p_source_bid_id: string
+          p_target_bid_id: string
+        }
+        Returns: number
+      }
       robot_fixtures_follow_adopt: {
         Args: {
           p_new_version_id: string
@@ -40542,6 +40676,30 @@ export type Database = {
           id: string
           subtitle: string
           title: string
+        }[]
+      }
+      search_file_index: {
+        Args: { max_hits?: number; words: string }
+        Returns: {
+          bid_id: string
+          bid_number: string
+          bytes: number
+          click_number: string
+          customer_id: string
+          drive_file_id: string
+          folder_kind: string
+          hcp_number: string
+          headline: string
+          job_name: string
+          jobs_ledger_id: string
+          mime: string
+          modified_at: string
+          name: string
+          path: string
+          project_name: string
+          rank: number
+          text_source: string
+          text_why: string
         }[]
       }
       search_job_ids_matching_schedule_or_clock: {
