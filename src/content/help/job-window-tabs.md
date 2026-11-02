@@ -27,7 +27,21 @@ The status shows as a chip beside the job's name. ***Job total · Billed · Paid
 
 - {{chip:blue|History}} is the day grid. It has one row per day worked, coloured by how many people were on site. It is the same view Projects → Job History shows. Now it is there for every job, project or not.
 
-- {{chip:blue|Documents}} is the job's paperwork. It lists the job's pay applications, each with its number, its period and the payment due. You press **Open the file** to see the file that was sent. You press **Open** to change the application. See *fill out an AIA G702-G703*. Under them come the job's **Bills**. You press a bill's name to open it, or **PDF** to get the invoice in a new tab. Then comes the job's **Contract**. A signed contract opens the Contract window. Then come the job's **Test reports**. A sent report opens the PDF the GC received. A draft opens the Test report window. Then comes the job's **Lien paper**. That is its lien notices, demand letters and releases of lien. A release opens the page as it was signed. A notice or a letter opens the Lien window. The tab ends with the job's folders.
+- {{chip:blue|Documents}} is the job's paperwork. It lists the job's pay applications, each with its number, its period and the payment due. You press **Open the file** to see the file that was sent. You press **Open** to change the application. See *fill out an AIA G702-G703*. Under them come the job's **Bills**. You press a bill's name to open it, or **PDF** to get the invoice in a new tab. Then comes the job's **Contract**. A signed contract opens the Contract window. Then come the job's **Test reports**. A sent report opens the PDF the GC received. A draft opens the Test report window. Then comes the job's **Lien paper**. That is its lien notices, demand letters and releases of lien. A release opens the page as it was signed. A notice or a letter opens the Lien window. The tab ends with the job's folders. On a Pipeline row, the folder icon under **Edit** opens this tab. Hold the Command key and press it to open the job's folder in Drive.
+
+## Add a file to a job's folder
+
+Open the job's **Documents** tab and find **Job folders**. Each folder has a small {{button:outline|Add a file}} press beside its name.
+
+1. Press **Add a file** on the folder you want. Your computer's file picker opens.
+2. Pick the file. The tab shows its name and size, and says where it goes.
+3. Press {{button:blue|Add it to Plans}}. The press names the folder you chose.
+
+The app puts the file in that folder in Drive. A line then says it is there, with **Open in Drive**. Press **Add another** to put in one more.
+
+Job folder is the job's own folder. Plans is for the drawings and anything trades should see. Pictures is Customer Pictures, with the job's photos.
+
+A file over 10 MB is too big for the press. Put it in the folder in Drive instead. A training account cannot add a file.
 
 ## Add a file to a job's folder
 

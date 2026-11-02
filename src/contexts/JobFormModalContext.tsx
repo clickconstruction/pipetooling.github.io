@@ -22,7 +22,7 @@ export type OpenEditJobOptions = {
   /** After opening edit, open "Create customer from job" when customer name is present (billing flow). */
   alsoOpenCreateCustomerModal?: boolean
   /** Which Job-window tab to land on (v2.1675). Default 'edit'. */
-  initialTab?: 'edit' | 'bill' | 'costs'
+  initialTab?: 'edit' | 'bill' | 'costs' | 'documents'
   /** Open on the Property record row, expanded and flashed (the lien screens' property-kind door, v2.3667). */
   propertyRecordFocus?: boolean
   /** Open on this fact row, expanded and ringed for a moment (v2.3697: the Lien desk's plain-value doors — 'gc'). */
