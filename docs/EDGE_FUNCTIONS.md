@@ -3,7 +3,7 @@
 ---
 file: EDGE_FUNCTIONS.md
 type: API Reference
-purpose: Complete API documentation for all 173 Supabase Edge Functions
+purpose: Complete API documentation for all 175 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
 last_updated: 2026-11-02
 estimated_read_time: 20-25 minutes
@@ -11,7 +11,7 @@ difficulty: Intermediate
 
 runtime: "Deno (TypeScript)"
 authentication: "In-function JWT / signature / cron-secret validation for most functions (see Overview for the two gateway-verified exceptions)"
-total_functions: 173
+total_functions: 175
 
 key_sections:
   - name: "Functions"
@@ -97,6 +97,7 @@ when_to_read:
    - [job-drive-folders](#job-drive-folders)
    - [drive-link](#drive-link)
    - [file-index-sweep](#file-index-sweep)
+   - [ship-pace](#ship-pace)
    - [photo-save](#photo-save)
    - [job-photos](#job-photos)
    - [gc-plan-question-email](#gc-plan-question-email)
@@ -1176,6 +1177,16 @@ The function reads and writes with the service role, so every bid-scoped verb en
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)).
 
 **Status**: v2.6319; deploy after `20261102040500` is pushed (`supabase functions deploy file-index-sweep --no-verify-jwt --project-ref yewfzhbofbbyvkvtaatw --use-api`).
+
+### ship-pace
+
+**Purpose**: How fast a change ships (v2.6399): the cron that feeds Settings → How fast a change ships, the office's answer to *can I have X*. Every 15 minutes with the cron secret it reads the repository's pull requests from GitHub (every open one, and the closed ones by last update, newest first, until a page falls before the 72-hour window less an hour; REST, 100 a page, ten pages at most), the merge queue's builds (Actions runs of the `merge_group` event since the window's day) and how many pull requests sit in the queue (GraphQL `mergeQueue`), hands them to the pure kernel `_shared/shipPace.ts` (the series by the app calendar's hour, a pull request counted in the hour it merged, the median over that hour's merges and `null` where none, the headline's median and 90th percentile over the last 24 hours, today's counts, what is open now; tested from `src/lib/settings/shipPace.test.ts`) and upserts one `app_settings` row, `ship_pace_v1`, as the service role. The client reads that row and never GitHub: the repository is public, but a browser would hit GitHub's unauthenticated rate limit and spread the load across every office screen. Actions or the queue refused (the token lacks them) leaves those fields null; the picture stands on the pull requests.
+
+**Endpoint**: `POST /functions/v1/ship-pace` with `{}` · **Auth**: `X-Cron-Secret` equal to `CRON_SECRET` (the cron; `cron_secret` in the body serves too), or a signed-in dev's JWT, `is_dev()` asked as the caller (the section's **Read GitHub now**, for the first read after the deploy and for a screenshot); 401 otherwise; `verify_jwt = false` in `config.toml`. The cron is `ship-pace` (`9,24,39,54 * * * *`, a slot no other cron uses), scheduled by migration [`20261102233000`](./migrations/20261102233000_ship_pace_cron.md) with the Vault `PROJECT_URL` and `CRON_SECRET` as [file-index-sweep](#file-index-sweep)'s is. Answers `{ success, door, asOf, prs, queueRuns, queueNow, last24h, today, now, ms }`; 503 `{ noToken, line }` while the token is unset (nothing written, so the section's empty state stands); 502 `{ github, line }` when GitHub refuses the pull requests (nothing written, so the row keeps the last good read and the section's stamp shows it ageing); 405 for anything but POST.
+
+**Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY` (the dev's check), `CRON_SECRET`, **`GITHUB_PACE_TOKEN`** — a fine-grained personal access token the owner mints on `clickconstruction/pipetooling.github.io` alone, permissions **Pull requests: Read-only**, **Actions: Read-only** and **Metadata: Read-only** (when the queue tile reads *not read*, add **Contents: Read-only** for GraphQL's `mergeQueue`); optional `GITHUB_PACE_REPO` (`owner/name`, the app's own repository when unset). About ten requests a run against the token's 5,000 an hour.
+
+**Status**: v2.6399; deploy after the merge (`supabase functions deploy ship-pace --no-verify-jwt --project-ref yewfzhbofbbyvkvtaatw --use-api`), set the token, then push the cron migration; redeploy `dev-mcp` (its catalog names the function).
 
 ### photo-save
 
@@ -6125,6 +6136,10 @@ VAPID_PRIVATE_KEY=...
 # Cron-driven functions (send-scheduled-reminders, sync-salary-sessions, recurring-job-report-dispatch,
 # schedule-day-email-dispatch, schedule-share-dispatch, sync-mercury-transactions); must equal Vault cron_secret
 CRON_SECRET=...
+
+# How fast a change ships (ship-pace, v2.6399): a fine-grained token on the repository — Pull requests read, Actions read, Metadata read
+GITHUB_PACE_TOKEN=github_pat_...
+# GITHUB_PACE_REPO=owner/name   # the app's own repository when unset
 
 # Mercury banking (sync-mercury-transactions, mercury-webhook, get-mercury-account-balances, mercury-reconcile)
 MERCURY_API_KEY=...
