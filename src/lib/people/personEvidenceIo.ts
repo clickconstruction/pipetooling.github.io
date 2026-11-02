@@ -1,0 +1,127 @@
+import { supabase } from '../supabase'
+import { evidenceMime, evidenceStoragePath, type PersonEvidenceDraft, type PersonEvidenceFile, type PersonEvidenceRecord } from './personEvidence'
+
+/**
+ * Evidence records on a person's file: the reads and the one write. A record is inserted first, then each file is
+ * staged in the private `hr-files` bucket with a `person_file_attachments` row that names the record, then
+ * `hr-evidence-drive` is asked to move the bytes into Drive — fail-soft: a function not deployed yet or a Drive refusal
+ * leaves the record standing as *on its way* / *not in Drive*, and the sweep tries again. Nothing here updates or deletes.
+ *
+ * Until the migration `20261102210000_person_file_evidence.sql` is pushed, the table does not exist: `loadPersonEvidence`
+ * reads that as no records (42P01), so the rest of the file still draws; a save says why it could not.
+ */
+
+const HR_FILES_BUCKET = 'hr-files'
+/** The table and the new columns are not in `database.ts` until the migration is pushed and the types regenerated. */
+const db = supabase as unknown as import('@supabase/supabase-js').SupabaseClient
+
+
+type RecordRow = Omit<PersonEvidenceRecord, 'files'>
+
+const RECORD_COLUMNS = 'id, person_id, entry_id, dated_on, title, memo, created_by, author_label, created_at, drive_folder_id, drive_folder_url, filed_at, fail_why'
+const FILE_COLUMNS = 'id, evidence_id, entry_id, filename, mime_type, size_bytes, storage_path, drive_file_id, drive_url, filed_at, fail_why, created_at'
+
+export type PersonEvidenceLoad = { records: PersonEvidenceRecord[]; /** Why the table could not be read, or null; a missing table reads as no records. */ heldWhy: string | null }
+
+export async function loadPersonEvidence(personId: string): Promise<PersonEvidenceLoad> {
+  const res = await db.from('person_file_evidence').select(RECORD_COLUMNS).eq('person_id', personId)
+  if (res.error) {
+    // 42P01: the migration is not pushed yet — nothing to show, nothing to say.
+    if (res.error.code === '42P01' || /does not exist/i.test(res.error.message)) return { records: [], heldWhy: null }
+    return { records: [], heldWhy: res.error.message }
+  }
+  const rows = (res.data ?? []) as unknown as RecordRow[]
+  if (rows.length === 0) return { records: [], heldWhy: null }
+  const filesRes = await db.from('person_file_attachments').select(FILE_COLUMNS).in('evidence_id', rows.map((r) => r.id))
+  const files = (filesRes.error ? [] : ((filesRes.data ?? []) as unknown as PersonEvidenceFile[]))
+  const byRecord = new Map<string, PersonEvidenceFile[]>()
+  for (const f of files) {
+    if (!f.evidence_id) continue
+    const list = byRecord.get(f.evidence_id) ?? []
+    list.push(f)
+    byRecord.set(f.evidence_id, list)
+  }
+  return { records: rows.map((r) => ({ ...r, files: byRecord.get(r.id) ?? [] })), heldWhy: null }
+}
+
+export type SaveEvidenceArgs = {
+  personId: string
+  draft: PersonEvidenceDraft
+  files: File[]
+  /** The entry it proves, when it was attached to one. */
+  entryId?: string | null
+  authUserId: string | null
+}
+
+export type SaveEvidenceOutcome =
+  | { ok: true; recordId: string; staged: number; drive: { filed: number; remaining: number; failWhy: string | null } | null }
+  | { ok: false; why: string }
+
+/** Insert the record, stage each file, ask Drive. The record stands even when a file or Drive fails; the words say which. */
+export async function savePersonEvidence(args: SaveEvidenceArgs): Promise<SaveEvidenceOutcome> {
+  const { personId, draft, files, entryId = null, authUserId } = args
+  const ins = await db
+    .from('person_file_evidence')
+    .insert({ person_id: personId, entry_id: entryId, dated_on: draft.datedOn, title: draft.title.trim(), memo: draft.memo.trim(), created_by: authUserId })
+    .select('id')
+    .single()
+  if (ins.error) {
+    if (ins.error.code === '42P01' || /does not exist/i.test(ins.error.message)) return { ok: false, why: 'Evidence records are not on this database yet: the migration has not been pushed.' }
+    return { ok: false, why: ins.error.message }
+  }
+  const recordId = (ins.data as { id: string }).id
+  let staged = 0
+  const failures: string[] = []
+  for (const file of files) {
+    const fileId = crypto.randomUUID()
+    const path = evidenceStoragePath(personId, recordId, fileId, file.name)
+    const mime = evidenceMime(file)
+    const up = await supabase.storage.from(HR_FILES_BUCKET).upload(path, file, { contentType: mime, upsert: false })
+    if (up.error) {
+      failures.push(`${file.name}: ${up.error.message}`)
+      continue
+    }
+    const row = await db.from('person_file_attachments').insert({
+      id: fileId,
+      person_id: personId,
+      entry_id: entryId,
+      evidence_id: recordId,
+      storage_path: path,
+      filename: file.name,
+      mime_type: mime,
+      size_bytes: file.size,
+      uploaded_by: authUserId,
+    })
+    if (row.error) {
+      failures.push(`${file.name}: ${row.error.message}`)
+      continue
+    }
+    staged += 1
+  }
+  if (staged === 0 && files.length > 0) return { ok: false, why: `The record was kept but no file could be staged. ${failures.join(' ')}` }
+  // Drive: fail-soft. A function not deployed, or a refusal, leaves the record waiting for the sweep.
+  let drive: { filed: number; remaining: number; failWhy: string | null } | null = null
+  try {
+    const { data, error } = await supabase.functions.invoke('hr-evidence-drive', { body: { evidence_id: recordId } })
+    if (!error && data && typeof data === 'object') {
+      const d = data as { filed?: number; remaining?: number; fail_why?: string | null }
+      drive = { filed: d.filed ?? 0, remaining: d.remaining ?? staged, failWhy: d.fail_why ?? null }
+    }
+  } catch {
+    drive = null
+  }
+  return { ok: true, recordId, staged, drive }
+}
+
+/** Ask Drive again for one record (the foot's *Try Drive again*). */
+export async function fileEvidenceToDrive(recordId: string): Promise<{ ok: boolean; why: string | null }> {
+  try {
+    const { data, error } = await supabase.functions.invoke('hr-evidence-drive', { body: { evidence_id: recordId } })
+    if (error) return { ok: false, why: error.message }
+    const d = (data ?? {}) as { fail_why?: string | null; error?: string }
+    if (d.error) return { ok: false, why: d.error }
+    return { ok: !d.fail_why, why: d.fail_why ?? null }
+  } catch (e) {
+    return { ok: false, why: e instanceof Error ? e.message : String(e) }
+  }
+}
