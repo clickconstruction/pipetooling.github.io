@@ -475,7 +475,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
             <p style={{ margin: 0 }}>{sheet.container.label} still has parts in it. Move them or mark them used first, then retire it.</p>
           ) : (
             <>
-              <p style={{ margin: 0, ...muted }}>The cage leaves this job. The next job gets its own {sheet.container.label}.</p>
+              <p style={{ margin: 0, ...muted }}>The {sheet.container.kind === 'cage' ? 'cage' : 'box'} leaves this job. The next job gets its own {sheet.container.label}.</p>
               <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => { retireContainer(sheet.container.id); setSheet(null); setView({ kind: 'containers' }); showToast(`${sheet.container.label} retired.`, 'success') }}>Retire {sheet.container.label}</button>
             </>
           )}
