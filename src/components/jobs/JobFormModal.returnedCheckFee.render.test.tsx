@@ -99,7 +99,8 @@ describe("Edit Job keeps a returned check's $30 fee in the job's total", () => {
 
   it('the Job Total counts the fee as a rider before anything is saved', async () => {
     await openSouthernPost(vi.fn())
-    expect(await screen.findByRole('button', { name: 'Job Total: $15,710.00 ($15,680.00 work + $30.00 riders)' })).toBeTruthy()
+    // The cents read small since v2.6300, so the total is read whole off the button's text.
+    expect(await screen.findByText((_, el) => el?.tagName === 'BUTTON' && el.textContent === 'Job Total: $15,710.00 ($15,680.00 work + $30.00 riders)')).toBeTruthy()
     expect(db.jobWrites).toEqual([])
   })
 

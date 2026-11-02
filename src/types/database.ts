@@ -20825,6 +20825,11 @@ export type Database = {
       jobs_ledger_fixtures: {
         Row: {
           bill_to_party: string | null
+          budget_labor_pct: number | null
+          budget_materials_pct: number | null
+          budget_rate_usd: number | null
+          budget_source: string | null
+          budget_tuned_at: string | null
           count: number
           created_at: string | null
           discount_basis_positions: number[] | null
@@ -20847,6 +20852,11 @@ export type Database = {
         }
         Insert: {
           bill_to_party?: string | null
+          budget_labor_pct?: number | null
+          budget_materials_pct?: number | null
+          budget_rate_usd?: number | null
+          budget_source?: string | null
+          budget_tuned_at?: string | null
           count?: number
           created_at?: string | null
           discount_basis_positions?: number[] | null
@@ -20869,6 +20879,11 @@ export type Database = {
         }
         Update: {
           bill_to_party?: string | null
+          budget_labor_pct?: number | null
+          budget_materials_pct?: number | null
+          budget_rate_usd?: number | null
+          budget_source?: string | null
+          budget_tuned_at?: string | null
           count?: number
           created_at?: string | null
           discount_basis_positions?: number[] | null
