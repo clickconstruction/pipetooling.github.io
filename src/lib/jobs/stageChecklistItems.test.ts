@@ -1,0 +1,94 @@
+import { describe, expect, it } from 'vitest'
+import type { JobStageChecklist, StageChecklistAnswer, StageChecklistQuestion } from './stageChecklist'
+import { GROUP_WORDS, READOUT_FOOT, TAKE_OFF_WORDS, addCheckWords, addedWords, canAddJobItem, canTakeOffJobItem, checklistsSummary, cleanItemWords, jobItemProblem, noJobItemsWords, rowAsksPhotoTag, rowGlyph, rowMetaWords, rowPickWords, stageStandingChip, stripListsEmptyStage, takenOffWords } from './stageChecklistItems'
+
+// Made-up people and checks on a made-up job.
+const company: StageChecklistQuestion = { id: 'q1', kind: 'trim_set', order: 1, words: 'Did the final water test hold?', asksPhoto: true }
+const item: StageChecklistQuestion = { id: 'j1', kind: 'trim_set', order: 0, words: 'Are the carriers in units 7 and 8 set?', asksPhoto: false, fixtureId: 'f3', addedById: 'u-pat', addedBy: 'Pat Sample', addedAt: '2026-11-01T15:00:00.000Z' }
+const a = (over: Partial<StageChecklistAnswer>): StageChecklistAnswer => ({ questionId: 'q1', pick: 'yes', note: '', photo: null, answeredBy: 'Luis Ortega', answeredAt: '2026-11-01T15:14:00.000Z', ...over })
+
+describe('who adds and who takes off', () => {
+  it('the office and the superintendent add; the technician does not', () => {
+    expect(canAddJobItem('dev')).toBe(true)
+    expect(canAddJobItem('assistant')).toBe(true)
+    expect(canAddJobItem('controller')).toBe(true)
+    expect(canAddJobItem('superintendent')).toBe(true)
+    expect(canAddJobItem('helpers')).toBe(false)
+    expect(canAddJobItem('subcontractor')).toBe(false)
+    expect(canAddJobItem('estimator')).toBe(false)
+    expect(canAddJobItem('primary')).toBe(false)
+    expect(canAddJobItem(null)).toBe(false)
+  })
+  it('the strip lists a stage with no question for the superintendent alone, whose one door is the sheet', () => {
+    expect(stripListsEmptyStage('superintendent')).toBe(true)
+    expect(stripListsEmptyStage('assistant')).toBe(false)
+    expect(stripListsEmptyStage('dev')).toBe(false)
+    expect(stripListsEmptyStage('helpers')).toBe(false)
+    expect(stripListsEmptyStage(null)).toBe(false)
+  })
+  it('the adder or the office takes off, and never a company question', () => {
+    expect(canTakeOffJobItem('superintendent', item, 'u-pat')).toBe(true)
+    expect(canTakeOffJobItem('superintendent', item, 'u-other')).toBe(false)
+    expect(canTakeOffJobItem('assistant', item, 'u-other')).toBe(true)
+    // The adder takes off whatever their role; a helper who did not add it cannot.
+    expect(canTakeOffJobItem('helpers', item, 'u-pat')).toBe(true)
+    expect(canTakeOffJobItem('helpers', item, 'u-luis')).toBe(false)
+    expect(canTakeOffJobItem('dev', company, 'u-pat')).toBe(false)
+  })
+})
+
+describe('the add box', () => {
+  it('stops an empty or over-long check with its reason', () => {
+    expect(jobItemProblem('   ')).toBe('Type the check as a question the crew answers with Yes, No or Not here.')
+    expect(jobItemProblem('x'.repeat(201))).toBe('The check is over 200 characters. Shorten it.')
+    expect(jobItemProblem('Is the pan drain run to the hub?')).toBeNull()
+    expect(cleanItemWords('  Is the  pan drain   run? ')).toBe('Is the pan drain run?')
+  })
+  it('names the stage in its words', () => {
+    const w = addCheckWords('Trim Set')
+    expect(w.press).toBe('+ Add a check for Trim Set')
+    expect(w.title).toBe('Add a check for Trim Set on this job')
+    expect(w.hint).toBe("The crew sees it on this job's Trim Set sheet now. It counts toward ready like the company's questions. You can take it off later, and an answer it already has stays.")
+    expect(w.confirm).toBe('Add the check')
+    expect(addedWords('Trim Set', { asked: 6, answered: 3 })).toBe('Added. Trim Set is now 3 of 6.')
+    expect(takenOffWords('Trim Set', { asked: 5, answered: 3 })).toBe('Taken off. Trim Set is now 3 of 5.')
+    expect(TAKE_OFF_WORDS.confirm).toBe('Take it off')
+    expect(GROUP_WORDS.job).toBe('Added for this job')
+    expect(noJobItemsWords('Trim Set', true)).toBe("Nothing added for this job's Trim Set.")
+    expect(noJobItemsWords('Trim Set', false)).toBe("Nothing added for this job's Trim Set. The superintendent or the office adds one.")
+  })
+})
+
+describe('the Documents read-out', () => {
+  const row = (fixtureId: string, name: string, standing: 'none' | 'ready' | 'not_ready', asked: number, answered: number): JobStageChecklist => ({ fixtureId, name, sequenceOrder: 1, state: { kind: 'trim_set', asked, answered, standing, ready: standing !== 'not_ready' } })
+  it('chips each stage by its standing', () => {
+    expect(stageStandingChip({ standing: 'ready', asked: 4, answered: 4 })).toEqual({ words: 'Ready · 4 of 4', tone: 'green' })
+    expect(stageStandingChip({ standing: 'not_ready', asked: 6, answered: 3 })).toEqual({ words: 'Not ready · 3 of 6', tone: 'amber' })
+    expect(stageStandingChip({ standing: 'none', asked: 0, answered: 0 })).toEqual({ words: 'No questions yet', tone: 'muted' })
+  })
+  it('sums the stages and the items added on the job', () => {
+    const rows = [row('f1', 'Rough In', 'ready', 4, 4), row('f2', 'Top Out', 'ready', 3, 3), row('f3', 'Trim Set', 'not_ready', 6, 3)]
+    expect(checklistsSummary(rows, [company, item, { ...item, id: 'j2' }, { ...item, id: 'j-other', fixtureId: 'f-other-job' }])).toBe('2 of 3 stages ready · 2 items added on this job')
+    expect(checklistsSummary(rows, [company, item])).toBe('2 of 3 stages ready · 1 item added on this job')
+    expect(checklistsSummary([row('f3', 'Trim Set', 'not_ready', 1, 0)], [company])).toBe('0 of 1 stage ready · nothing added on this job')
+    expect(checklistsSummary([row('f3', 'Trim Set', 'none', 0, 0)], [])).toBe('')
+  })
+  it('words a row: the pick, the stamp, the note and the photo', () => {
+    expect(rowPickWords(company, null)).toBe('open')
+    expect(rowPickWords(company, a({ pick: 'yes' }))).toBe('Yes, no photo yet')
+    expect(rowPickWords(item, a({ pick: 'not_here' }))).toBe('Not here')
+    expect(rowAsksPhotoTag(company, null)).toBe(true)
+    expect(rowAsksPhotoTag(company, a({ pick: 'yes' }))).toBe(true)
+    expect(rowAsksPhotoTag(company, a({ pick: 'not_here' }))).toBe(false)
+    expect(rowAsksPhotoTag(company, a({ photo: { fileName: 'x.jpg', takenAt: '', state: 'filed', driveFileId: 'd', failWhy: null } }))).toBe(false)
+    expect(rowAsksPhotoTag(item, null)).toBe(false)
+    expect(rowGlyph(null)).toBe('☐')
+    expect(rowGlyph(a({ pick: 'no' }))).toBe('✗')
+    expect(rowGlyph(a({ pick: 'not_here' }))).toBe('—')
+    expect(rowMetaWords(null)).toBe('')
+    expect(rowMetaWords(a({ note: 'Roofer not here until Mon' }))).toBe('Luis Ortega · Nov 1 · 9:14 am · “Roofer not here until Mon”')
+    expect(rowMetaWords(a({ photo: { fileName: 'x.jpg', takenAt: '', state: 'filed', driveFileId: 'd', failWhy: null } }))).toBe('Luis Ortega · Nov 1 · 9:14 am · photo in Drive')
+    expect(rowMetaWords(a({ photo: { fileName: 'x.jpg', takenAt: '', state: 'waiting', driveFileId: null, failWhy: null } }))).toBe('Luis Ortega · Nov 1 · 9:14 am · photo on its way to Drive')
+    expect(READOUT_FOOT.startsWith('A No or a Not here is an answer.')).toBe(true)
+  })
+})

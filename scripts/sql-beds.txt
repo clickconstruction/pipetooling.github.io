@@ -55,6 +55,7 @@ customer-portal-papers
 merge-customers
 contact-for-customer
 photo-saves
+stage-checklist-items
 running-late-move
 contacts-kinds
 portal-opens-since
