@@ -148,25 +148,25 @@ export function PressChip({ label, color, title, onClick, disabled, testId }: { 
   )
 }
 
+/** The LinkButton's look, shared with the job chip (`JobChip.tsx`, v2.6353), which draws the same press with a hover card. */
+export function linkButtonStyle(strong?: boolean, nowrap?: boolean): CSSProperties {
+  return {
+    border: 'none',
+    background: 'none',
+    padding: 0,
+    margin: 0,
+    font: 'inherit',
+    color: 'var(--text-link)',
+    fontWeight: strong ? 600 : 500,
+    cursor: 'pointer',
+    textAlign: 'left',
+    whiteSpace: nowrap ? 'nowrap' : undefined,
+  }
+}
+
 export function LinkButton({ onClick, children, title, strong, nowrap }: { onClick: () => void; children: ReactNode; title?: string; strong?: boolean; nowrap?: boolean }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      title={title}
-      style={{
-        border: 'none',
-        background: 'none',
-        padding: 0,
-        margin: 0,
-        font: 'inherit',
-        color: 'var(--text-link)',
-        fontWeight: strong ? 600 : 500,
-        cursor: 'pointer',
-        textAlign: 'left',
-        whiteSpace: nowrap ? 'nowrap' : undefined,
-      }}
-    >
+    <button type="button" onClick={onClick} title={title} style={linkButtonStyle(strong, nowrap)}>
       {children}
     </button>
   )

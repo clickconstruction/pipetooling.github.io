@@ -341,8 +341,8 @@ describe('whoGuesses', () => {
     })
 
     it('companyFromDomain spells the company from the domain’s first label', () => {
-      expect(['maxxbuilders.com', 'bexar-steel.example', 'zz-ridgeway.example', 'ferguson.co.uk', '', 'gmail.com'].map(companyFromDomain)).toEqual([
-        'Maxxbuilders',
+      expect(['ridgewaybuilders.example', 'bexar-steel.example', 'zz-ridgeway.example', 'ferguson.co.uk', '', 'gmail.com'].map(companyFromDomain)).toEqual([
+        'Ridgewaybuilders',
         'Bexar Steel',
         'Zz Ridgeway',
         'Ferguson',
