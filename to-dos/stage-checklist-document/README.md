@@ -2,7 +2,7 @@
 name: "Stage checklists as documents on the job: items anyone on the job can add, a stamp on every answer, a signature where the author asks for one, and a record that files itself"
 number: 237
 group: ready
-status: building, PR 1 on claude/checklist-items-237-pr1-385119 (v2.6328) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b on claude/checklist-items-237-pr1b (v2.6347, a draft stacked on PR 1, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
+status: building, PR 1 on claude/checklist-items-237-pr1-385119 (v2.6328) · the job-scoped rows (migration 20261102050000), the kernel's grouping, the sheet's second pass, + Add a check, the Documents read-out with the stamps, the guide · PR 1b on claude/checklist-items-237-pr1b (#6798, v2.6347, a draft stacked on PR 1, migration 20261102084500): the named groups on Documents, Skip on this job, the per-item Add to the company's list, the plan-sheet chip, ▲ ▼, the add box staying open, the estimator as author · the spike stays on origin/spike/projects-board-242 and never merges · five calls carry the owner's recommendations as defaults until he says otherwise
 summary: >
   The stage checklists of punch list #164 live in Settings, hold only the company's questions,
   and show the office nothing per job. The owner wants them moved onto the job's Documents tab as
@@ -12,7 +12,7 @@ summary: >
   with a number and a PDF in the job's Drive folder. The company's standard lists are made in the
   same place and promoted from a job, so Settings becomes a read-only mirror. The superintendent's
   line of #234 reads the same count as its proof.
-next: land PR 1b once PR 1 is on main and 20261102050000 is pushed (rebase --onto, mark ready, arm, push 20261102084500 right after the merge); then PR 2, needs a signature.
+next: land PR 1b (#6798) once PR 1 is on main and 20261102050000 is pushed (rebase --onto, mark ready, arm, push 20261102084500 right after the merge); then PR 2, needs a signature.
 size: L as a train of six (M · M · M · M · S · S); four migrations; no edge function beyond the PDF renderer the hours statement already has
 blocker: none for PR 1b and PR 4. PR 2 takes "Not here signs" and PR 3 takes "files itself at the last answer" as the owner's defaults; he can change either before they build.
 ver: v2.6347 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
@@ -310,7 +310,7 @@ Documents. A technician sees no add press, and a company question has no take of
 card's PR 1 widened (*The spike*) while the build was running, so what the walks added is split out
 as PR 1b rather than held back on a PR already built; the owner can change that. Not merged yet.
 
-2026-11-02, later: PR 1b built on `claude/checklist-items-237-pr1b` (v2.6347,
+2026-11-02, later: PR 1b built on `claude/checklist-items-237-pr1b` (#6798, v2.6347,
 `docs/recent-features/v2.6347.md`), a draft stacked on PR 1, with migration `20261102084500`. What the
 walks added is in it, with four calls the walks did not make. The estimator authors from the strip's
 sheet, since `resolveJobWindowMode` gives him the read-only pane and the spike's Documents tab is one he
