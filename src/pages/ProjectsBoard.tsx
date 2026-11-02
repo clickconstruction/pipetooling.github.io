@@ -34,7 +34,7 @@ const SELECT = 'id, hcp_number, click_number, job_name, job_address, status, pct
 async function loadWorkingProjects(): Promise<ProjectRow[]> {
   const rows = await withSupabaseRetry(
     () => supabase.from('jobs_ledger').select(SELECT).eq('status', 'working').order('hcp_number', { ascending: false }).limit(300),
-    'projectsBoard.load',
+    'load the projects',
   )
   return ((rows ?? []) as unknown as ProjectRow[]).filter(isWorkingProject)
 }
