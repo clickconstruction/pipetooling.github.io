@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { canSeeProjectsBoard, canSetExpectedHours, checklistCountOf, isWorkingProject, paceRank, projectLabel, projectPace, sortByPace, type ProjectFixture, type ProjectRow } from './projectsBoard'
+import { canSeeProjectsBoard, canSetExpectedHours, checklistCountOf, isWorkingProject, paceCounts, paceRank, projectLabel, projectPace, sortByPace, worstWords, type ProjectFixture, type ProjectRow } from './projectsBoard'
 import { DEFAULT_LINE_BUDGET_SETTINGS } from './lineBudgets'
 import { JOB_BURN_DEFAULT_TARGET_MARGIN_PCT } from './jobBurn'
 import type { JobChargeEvent } from '../jobChargesTimeline'
@@ -139,5 +139,20 @@ describe('checklistCountOf', () => {
     const answers = new Map([['r', [{ questionId: 'q1', pick: 'yes' as const, note: '', photo: null }]]])
     expect(checklistCountOf(staged, questions, answers)).toEqual({ answered: 1, asked: 3 })
     expect(checklistCountOf(staged, [], new Map())).toEqual({ answered: 0, asked: 0 })
+  })
+})
+
+describe('the Dashboard strip\'s counts and the worst project\'s words (PR 6)', () => {
+  const line = (tone: 'ahead' | 'behind' | 'even' | 'early', days: number, money: { leads: boolean; wrong?: boolean } | null = null) => ({ tone, days, money } as unknown as SuperintendentLine)
+  it('counts the projects by tone, the money leaders inside behind', () => {
+    expect(paceCounts([line('behind', -3), line('behind', 0, { leads: true }), line('ahead', 2), line('even', 0), line('early', 0)])).toEqual({ total: 5, behind: 2, moneyLeading: 1, even: 1, ahead: 1, early: 1 })
+    expect(paceCounts([])).toEqual({ total: 0, behind: 0, moneyLeading: 0, even: 0, ahead: 0, early: 0 })
+  })
+  it('names the worst in three words, or none when it is not behind', () => {
+    expect(worstWords(line('behind', -3))).toBe('3 d behind')
+    expect(worstWords(line('behind', 0, { leads: true }))).toBe('money ahead')
+    expect(worstWords(line('behind', 0, { leads: true, wrong: true }))).toBe('budget?')
+    expect(worstWords(line('ahead', 2))).toBeNull()
+    expect(worstWords(line('early', 0))).toBeNull()
   })
 })

@@ -185,3 +185,27 @@ export function checklistCountOf(
     .map((f) => ({ fixtureId: f.id, name: f.name ?? '', sequenceOrder: num(f.sequence_order) }))
   return jobStageChecklists(refs, questions, answersByFixture).reduce((s, x) => ({ answered: s.answered + x.state.answered, asked: s.asked + x.state.asked }), { answered: 0, asked: 0 })
 }
+
+/** How the board's projects stand, counted for the Dashboard's one-line strip (punch list #242, PR 6). */
+export type PaceCounts = { total: number; behind: number; moneyLeading: number; even: number; ahead: number; early: number }
+
+export function paceCounts(lines: ReadonlyArray<SuperintendentLine>): PaceCounts {
+  const c: PaceCounts = { total: lines.length, behind: 0, moneyLeading: 0, even: 0, ahead: 0, early: 0 }
+  for (const l of lines) {
+    if (l.tone === 'behind') {
+      c.behind += 1
+      if (l.money?.leads) c.moneyLeading += 1
+    } else if (l.tone === 'even') c.even += 1
+    else if (l.tone === 'ahead') c.ahead += 1
+    else c.early += 1
+  }
+  return c
+}
+
+/** The worst project's short words for the strip: *money ahead* or *N d behind*; null when it is not behind. */
+export function worstWords(line: SuperintendentLine): string | null {
+  if (line.tone !== 'behind') return null
+  if (line.money?.wrong) return 'budget?'
+  if (line.money?.leads && line.days >= 0) return 'money ahead'
+  return `${-line.days} d behind`
+}
