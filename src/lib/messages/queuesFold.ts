@@ -9,3 +9,11 @@ export const QUEUES_FOLD_WORDS = {
   tail: 'Nothing waiting.',
   open: 'Show the lists',
 }
+
+/**
+ * Whether the lists fold: a phone, nothing waiting, and nobody has opened them. A kept read (#183 PR 5) never folds,
+ * whatever its count: the stamp over the lanes must show, and *Nothing waiting.* is a claim a kept read cannot make.
+ */
+export function queuesFolded(args: { phone: boolean; count: number | null; open: boolean; kept: boolean }): boolean {
+  return args.phone && args.count === 0 && !args.open && !args.kept
+}

@@ -112,6 +112,31 @@ describe('useKeptRead', () => {
     await waitFor(() => expect(writeKept).toHaveBeenCalledTimes(1))
   })
 
+  it('a live read that fails before the store answers still brings the kept rows up, failed, and a retry reads the same rows (a lost signal fails in a moment)', async () => {
+    let release: (v: KeptRead | null) => void = () => {}
+    readKept.mockImplementation(() => new Promise((r) => (release = r)))
+    const { result, rerender } = render({ key: KEY, rows: [], loading: true })
+    await waitFor(() => expect(readKept).toHaveBeenCalled())
+    rerender({ key: KEY, rows: [], loading: false, failed: true })
+    expect(result.current.readAt).toBeNull()
+    await act(async () => release(stored()))
+    expect(result.current.rows).toEqual(keptRows)
+    expect(result.current.readAt).toBe(KEPT_AT)
+    expect(result.current.failed).toBe(true)
+    expect(onScreen.read()).toBe(KEPT_AT)
+    expect(writeKept).not.toHaveBeenCalled()
+
+    readKept.mockClear()
+    rerender({ key: KEY, rows: [], loading: true })
+    expect(result.current.rows).toEqual(keptRows)
+    expect(result.current.failed).toBe(false)
+    expect(readKept).not.toHaveBeenCalled()
+    rerender({ key: KEY, rows: liveRows, loading: false })
+    expect(result.current.rows).toEqual(liveRows)
+    expect(result.current.readAt).toBeNull()
+    await waitFor(() => expect(writeKept).toHaveBeenCalledTimes(1))
+  })
+
   it('a failed first read with nothing kept hands back the live rows as they are', () => {
     readKept.mockResolvedValue(null)
     const { result, rerender } = render({ key: KEY, rows: [], loading: true })
