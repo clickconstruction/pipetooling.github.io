@@ -17,7 +17,7 @@ const contacts: LedgerContact[] = [
   { id: 'priya', name: 'Priya Natarajan', kind: 'customer' },
   { id: 'alvarez', name: '', kind: 'trade', company: 'Alvarez Mechanical' },
   { id: 'hill', name: 'Hill Country Electric', kind: 'trade' },
-  { id: 'glenn', name: 'Glenn Geling', kind: 'customer' },
+  { id: 'nolan', name: 'Nolan Tressler', kind: 'customer' },
   { id: 'unknown1', name: '', kind: 'unknown' },
   { id: 'unknown2', name: '', kind: 'unknown' },
 ]
@@ -27,7 +27,7 @@ const lines = new Map<string, LedgerLine>(
     [
       { id: 'l-marcus', contactId: 'marcus', channel: 'text', direction: 'in', body: 'Running late, there by 9:30.\nIs the water still off?', at: '2026-10-24T11:55:00Z' },
       { id: 'l-dana', contactId: 'dana', channel: 'text', direction: 'in', body: 'Can the tech come after 2 instead of 11?', at: '2026-10-24T13:12:00Z' },
-      { id: 'l-glenn', contactId: 'glenn', channel: 'email', direction: 'in', body: 'Invitation to bid', at: '2026-10-23T15:00:00Z' },
+      { id: 'l-nolan', contactId: 'nolan', channel: 'email', direction: 'in', body: 'Invitation to bid', at: '2026-10-23T15:00:00Z' },
       { id: 'l-lena', contactId: 'lena', channel: 'missed', direction: 'in', body: 'rang the company number', at: '2026-10-24T13:30:00Z' },
       { id: 'l-unknown1', contactId: 'unknown1', channel: 'text', direction: 'in', body: 'Hi, do you do water heaters?', at: '2026-10-24T13:40:00Z' },
       { id: 'l-unknown1-old', contactId: 'unknown1', channel: 'email', direction: 'in', body: 'older', at: '2026-10-20T13:40:00Z' },
@@ -37,7 +37,7 @@ const lines = new Map<string, LedgerLine>(
 )
 
 const reply = (contactId: string, landOnId: string, waitingSince: string): NeedsReplyRow => ({ contactId, landOnId, waitingSince, callBack: false, offers: [], acts: ['Reply'] })
-const needsReply: NeedsReplyRow[] = [reply('marcus', 'l-marcus', '2026-10-24T11:55:00Z'), reply('dana', 'l-dana', '2026-10-24T13:12:00Z'), reply('glenn', 'l-glenn', '2026-10-23T15:00:00Z'), reply('lena', 'l-lena', '2026-10-24T13:30:00Z')]
+const needsReply: NeedsReplyRow[] = [reply('marcus', 'l-marcus', '2026-10-24T11:55:00Z'), reply('dana', 'l-dana', '2026-10-24T13:12:00Z'), reply('nolan', 'l-nolan', '2026-10-23T15:00:00Z'), reply('lena', 'l-lena', '2026-10-24T13:30:00Z')]
 
 const sent = (set: Partial<WentOutLine> & { id: string; contactId: string; name: string | null; atMs: number }): WentOutLine => ({ kind: 'customer', body: 'Hello', who: 'Taunya', delivery: 'delivered', number: '(830) 555-0121', ...set })
 const wentOut: WentOutLine[] = [
