@@ -13,6 +13,7 @@ import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem,
 import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
+import { setRowDayWords, setRowLineWords } from '../../lib/plans/planSets'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -178,19 +179,29 @@ export function DevelopmentPartsCard({
             )
             const olderList =
               openOlder[row.part.id] && older.length ? (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 4 }} data-testid={`site-older-list-${row.part.id}`}>
-                  {older.map((s) => (
-                    <li key={s.id} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                      <span>{s.name}</span>
-                      <span style={muted}>{setLineWords(s)}</span>
-                      {s.memo ? <span style={muted}>{s.memo}</span> : null}
-                      {openLink(s)}
-                      {canWrite && writes ? (
-                        <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
-                          Build from this set
-                        </LinkButton>
-                      ) : null}
-                      {removePress(s)}
+                <ul style={{ margin: 0, padding: 0, listStyle: 'none' }} data-testid={`site-older-list-${row.part.id}`}>
+                  {/* Each set reads date first, as people sort them; a dashed rule between neighbours; Open ↗, Build
+                      from this set and × as one group at the right edge that wraps as a unit (the owner, 2026-11-02). */}
+                  {older.map((s, i) => (
+                    <li key={s.id} style={{ display: 'grid', gridTemplateColumns: '7rem minmax(0, 1fr)', columnGap: 10, alignItems: 'baseline', padding: '5px 0', borderTop: i ? '1px dashed var(--border)' : 'none' }} data-testid="site-older-set">
+                      <span style={muted} data-testid="site-older-day">
+                        {setRowDayWords(s)}
+                      </span>
+                      <div style={{ display: 'flex', columnGap: 10, rowGap: 2, flexWrap: 'wrap', alignItems: 'baseline', minWidth: 0 }}>
+                        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+                          <span>{s.name}</span> <span style={muted}>{setRowLineWords(s)}</span>
+                          {s.memo ? <div style={muted}>{s.memo}</div> : null}
+                        </div>
+                        <span style={{ display: 'inline-flex', gap: 10, alignItems: 'baseline', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }} data-testid="site-older-presses">
+                          {openLink(s)}
+                          {canWrite && writes ? (
+                            <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
+                              Build from this set
+                            </LinkButton>
+                          ) : null}
+                          {removePress(s)}
+                        </span>
+                      </div>
                     </li>
                   ))}
                 </ul>
