@@ -8,12 +8,14 @@ covers:
   - src/components/jobs/LienDeskModal.tsx
 mapped_at: f423bd6e5
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-02
 ---
 
 > **Line numbers are as of `f423bd6e5`** (the `mapped_at` commit; re-anchored 2026-10-05 from `a05cef4c4` through the file's diff, 2,002 → 2,251 lines) and drift with every edit — search the symbol named beside each range. The file is 3,510 lines at `2ba1fb9c0` (v2.5462), so ranges after the first few hundred lines sit up to a thousand lines lower now. Regenerate the fact sheet with `npm run map -- src/components/jobs/LienDeskModal.tsx`. The file is one of the busiest components (119 commits in the 90 days to v2.5087); re-check ranges before any move. The dated notes below say what each version added; the regions under them carry the same facts by line.
 
 ## What this surface is
+
+> **v2.6376 (a sent notice keeps the job's GC, Taunya's report on job 890):** `buildLienDeskQueue` took every entry fact — `gcCustomerId`, `customerId`, `openBalance`, `hasOwner`, `propertyKind` — from the job's first `list_lien_notice_months` row, so a job the RPC no longer lists (every window closed more than a week ago, nothing billed, paid, or uncollectible) that stays on the desk through its sent item alone had no GC, and region E's gate 2 read *No GC on the job* with **Set the GC ›** while Edit Job showed one. The kernel now takes `jobs` (the `jobs_ledger` rows by id, `LienDeskQueueJob`) and falls back to the job row's `gc_customer_id` and `customer_id` when there is no month row; a month row still wins. `useLienDeskData` builds `jobsById` before the queue and passes it; `useGcOnNoticeData` passes its own. Left: on such an entry gate 4 still reads *No month picked* and gate 5 *Nothing billed*, and the list row's money is $0 — the months and the billed-open figure are the RPC's alone (the sweep's list, 2026-11-02).
 
 > **v2.6261 (the courtesy notice before a lien, punch list #231 PR 2):** region F2's sent footer reads *Courtesy notice: …* beside the owner's call, swaps letter two's sentence for the courtesy's while it is due, and offers **Send a courtesy notice ▸** (amber while due) beside **Send letter two ▸**. `courtesyByJob` comes from `lib/jobs/lienCourtesyDesk.ts` (letter two's clock, the sent item's `fields.courtesy`, the balance, the affidavit's day from the desk's entry else `filingDeadlineForMonth`, the homestead flag, the filed affidavit) over v2.6259's `lienCourtesyNotice.ts`; the press opens `LienCourtesyWindow.tsx` (who gets it by which channel, each held one with its reason, the greeting as the one line the office may change, the counted button from `courtesySendButton`), whose send runs through `lib/jobs/lienCourtesyIo.ts` (`send-lien-filing-email` with `email_type: 'lien_courtesy'`, then `quo-send`; a failure recorded as its reason) and writes the record on the sent item with `withCourtesyRecord`. `lienNextUp.ts` leads a sent notice's row with the `courtesy` action until one went, then letter two from day 10 with the courtesy's state in its words.
 
@@ -242,7 +244,7 @@ What the run records also reaches Messages (v2.5404): [`messages/legalLines.ts`]
 
 | Kernel | Lines | Tests | Used here for |
 |---|---|---|---|
-| [`lienDesk.ts`](../src/lib/jobs/lienDesk.ts) | 545 | 21 | piles, policies, role helpers, `draftReadiness`, `submitOutcome`, `holdUntilFor`, `ruleWaitsOnFirstNotice` |
+| [`lienDesk.ts`](../src/lib/jobs/lienDesk.ts) | 545 | 21 | piles, policies, role helpers, `draftReadiness`, `submitOutcome`, `holdUntilFor`, `ruleWaitsOnFirstNotice`; since v2.6376 an entry with no month row reads its GC and customer from the job row (`jobs`) |
 | [`lienDeskIo.ts`](../src/lib/jobs/lienDeskIo.ts) | 305 | **0** (spied in smoke) | 16 of its 19 exports — all but `undoLienDeskApprovals` (the GC run's undo), `markLienDeskItemSent` and `syncLienDeskAfterRecord`; `skipLienDeskItem` left in v2.4743, `takeBackLienDeskItems` came in v2.4983 and `clearLienDeskItemPrinted` goes through it |
 | `lienDeskGcPicker.ts` | 99 | 8 | picker rows |
 | `lienNoticePreview.ts` | 315 | 13 | wording edits/diff, preview HTML + messages |
