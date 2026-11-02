@@ -105,7 +105,9 @@ export function JobDocumentsChecklists({ job, io, onRequestTab }: { job: { id: s
     if (folded || !read.rows) return
     const first: Record<string, boolean> = {}
     for (const r of stages) first[r.fixtureId] = isMobile && r.state.standing === 'ready'
-    setFolded(first)
+    // A tap on a stage's name can land before this runs (the rows paint, the tap lands, then React runs the
+    // effect), so the first fold goes under what is there instead of replacing it: a tap is never undone.
+    setFolded((f) => ({ ...first, ...(f ?? {}) }))
   }, [folded, read.rows, stages, isMobile])
 
   const failure = read.failure

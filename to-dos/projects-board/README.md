@@ -1,8 +1,8 @@
 ---
 name: "Projects board: every working project as one picture, the expected hours as a slider inside the labor budget, the days and the stages on the strip, and the same line on the superintendent's phone"
 number: 242
-group: ready
-status: building 2026-11-02 as the card's train, each PR cut from main: PR 1 the kernels and the strip (#6769) and PR 2 the job_expected_hours table and hook (#6771) are in the merge queue; PR 3 the board at /projects-board beside Forecast is open; PR 4 the phone card and PR 5 the shares on the per-line budgets follow, PRs 3 to 5 waiting on #234's PR 1 (#6745) for lineBudgets.ts; the spike's code is on origin/spike/projects-board-242, never to merge
+group: close
+status: built 2026-11-02 as the card's train of five, each cut from main: v2.6320 the kernels and the strip, v2.6321 the job_expected_hours ledger and hook, v2.6330 the board at /projects-board beside Forecast, the superintendent's phone card (#6776, in the merge queue), v2.6337 the shares on #234's per-line budgets and the Costs tab's door; the spike's code stays on origin/spike/projects-board-242, never to merge · left: the owner's first morning read against live projects
 summary: >
   Punch list #234 gives every project a labor budget and the superintendent a line that says
   ahead or behind. This is the office's side of that line and its lever: one page off the
@@ -14,9 +14,9 @@ summary: >
   strip answers "what was that day", "what does this stage cost to reach" and "which stage is
   this". The superintendent's phone draws the same strip from the same kernel, so the office and
   the field read one number. The spike proved it on eleven live projects and settled the shape.
-next: PR 3 lands once #6745 is on main, then PR 4 the superintendent's phone card from the same projectPace, then PR 5 the five budget columns on the board's fixture read; the migration of PR 2 is pushed right after #6771 merges.
+next: The owner reads the board one morning against live projects and moves one number; then delete the folder. #238's job kind replaces the gate's guess when it ships.
 size: L as a train of five (M · S · M · M · S); one migration (expected hours); no edge function
-blocker: #6745 (#234 PR 1) for PRs 3 to 5, which import lineBudgets.ts; it is in the merge queue. The bonus and what counts as certified stay on #234; this card stops at the line and the lever.
+blocker: none. The bonus and what counts as certified stay on #234; this card stops at the line and the lever.
 ver: v2.3297 · 3299 · 5245 · 6077 · 5929 · 2145 · 5837
 opinion: now — the owner read every pass and said "this is so great"; the ground it stands on (#234's PR 1) is in the merge queue, and the card is where a leader will actually look every morning
 mockup: not required — the design is live code on origin/spike/projects-board-242 (routes /dev/projects-board and /dev/job-mode-preview), walked against real projects; a drawing would say less

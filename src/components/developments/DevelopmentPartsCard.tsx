@@ -2,17 +2,20 @@
  * The Development page's Plans look by part (punch list #239, PR 3). One row per part of the site: what it
  * builds from today with Open ↗, the date on the sheets, the day it came, the memo, the jobs that name the
  * part, and the older sets folded under a count with *Build from this set*; our as-builts under the row.
- * Under the table, the only two things left for a person: the parts with no set and the jobs on no part, as
- * chips that open their lists, with **Ask the estimators about the N**; **+ Part** names a new part; **+ New
+ * Under the table, the only two things left for a person: the parts with no set and the jobs that build from
+ * plans and follow none yet, as chips that open their lists (a job that bills only or a service call is left out
+ * of the count and named under the chips with its reason, v2.6351), with **Ask the estimators about the N**;
+ * **+ Part** names a new part; **+ New
  * set** on a row adds a set through the one form (`PlanSetForm`). Bids keep their own pinned sets and are
  * listed as such. A job's empty Plans folder is no longer a set, and no job can be "on an older set".
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem, setLineWords, shortDayWords, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
-import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
+import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, sitePlansLeftOutWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
 import { EmptyState } from '../EmptyState'
+import { setRowDayWords, setRowLineWords } from '../../lib/plans/planSets'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
 import { buildPapersView, kindLabel, paperChipWords, paperLineWords, type Paper } from '../../lib/papers/papers'
@@ -94,6 +97,7 @@ export function DevelopmentPartsCard({
     void run(() => writes!.addSet(row.part.id, draft, makeCurrent, makeCurrent && row.current ? row.current.id : null))
   }
   const chips = sitePlansChipWords(view)
+  const leftOut = sitePlansLeftOutWords(view)
   const askCount = sitePlansAskCount(view)
   const carriers = (list: SiteCarrier[]) => (
     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
@@ -247,19 +251,29 @@ export function DevelopmentPartsCard({
                     <tr>
                       <td style={{ ...td, borderBottom: 'none' }} />
                       <td style={td} colSpan={6}>
-                        <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'grid', gap: 4 }} data-testid={`site-older-list-${row.part.id}`}>
-                          {older.map((s) => (
-                            <li key={s.id} style={{ display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'baseline' }}>
-                              <span>{s.name}</span>
-                              <span style={muted}>{setLineWords(s)}</span>
-                              {s.memo ? <span style={muted}>{s.memo}</span> : null}
-                              {openLink(s)}
-                              {canWrite && writes ? (
-                                <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
-                                  Build from this set
-                                </LinkButton>
-                              ) : null}
-                              {removePress(s)}
+                        <ul style={{ margin: 0, padding: 0, listStyle: 'none' }} data-testid={`site-older-list-${row.part.id}`}>
+                          {/* Each set reads date first, as people sort them; a dashed rule between neighbours; Open ↗, Build
+                              from this set and × as one group at the right edge that wraps as a unit (the owner, 2026-11-02). */}
+                          {older.map((s, i) => (
+                            <li key={s.id} style={{ display: 'grid', gridTemplateColumns: '7rem minmax(0, 1fr)', columnGap: 10, alignItems: 'baseline', padding: '5px 0', borderTop: i ? '1px dashed var(--border)' : 'none' }} data-testid="site-older-set">
+                              <span style={muted} data-testid="site-older-day">
+                                {setRowDayWords(s)}
+                              </span>
+                              <div style={{ display: 'flex', columnGap: 10, rowGap: 2, flexWrap: 'wrap', alignItems: 'baseline', minWidth: 0 }}>
+                                <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+                                  <span>{s.name}</span> <span style={muted}>{setRowLineWords(s)}</span>
+                                  {s.memo ? <div style={muted}>{s.memo}</div> : null}
+                                </div>
+                                <span style={{ display: 'inline-flex', gap: 10, alignItems: 'baseline', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }} data-testid="site-older-presses">
+                                  {openLink(s)}
+                                  {canWrite && writes ? (
+                                    <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
+                                      Build from this set
+                                    </LinkButton>
+                                  ) : null}
+                                  {removePress(s)}
+                                </span>
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -335,6 +349,11 @@ export function DevelopmentPartsCard({
           </span>
         ) : null}
       </div>
+      {leftOut ? (
+        <div style={{ ...muted, fontSize: '0.78rem' }} data-testid="site-left-out">
+          {leftOut}
+        </div>
+      ) : null}
       {askOnRecord && !askOnRecord.open ? (
         <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }} data-testid="plans-ask-answered">
           <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{plansAskLine(askOnRecord, shortDay).split(' · ')[0]}</span>

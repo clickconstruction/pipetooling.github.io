@@ -2,7 +2,7 @@
 name: "Superintendent ahead of schedule: hours on every commercial job, a line that says ahead or behind, and a reward paid at the certified pay app"
 number: 234
 group: gated
-status: thought through 2026-11-01 with the owner, read against the Costs tab, the Labor tab, the Build desk and People → Review; later the same day his four turns folded in (the kind by when the price is known, a labor budget in dollars beside the hours, budgets born on each line, the owner tuning what the assistant never types), with three more boards and the Line Budgets Walk; seven mock-up files; a design spike in the real app the same evening proved the sliders in place and settled that the budget is columns on the line row, and carries the owner's two grid asks (the badge as the press, small cents) into PR 1; nothing merged; three decisions are the owner's and he is not ready to make them
+status: thought through 2026-11-01 with the owner, read against the Costs tab, the Labor tab, the Build desk and People → Review; later the same day his four turns folded in (the kind by when the price is known, a labor budget in dollars beside the hours, budgets born on each line, the owner tuning what the assistant never types), with three more boards and the Line Budgets Walk; seven mock-up files; a design spike in the real app the same evening proved the sliders in place and settled that the budget is columns on the line row, and carries the owner's two grid asks (the badge as the press, small cents) into PR 1; PR 1 merged 2026-11-02 as v2.6300 and is live with its migration pushed, and the superintendent's line moved to #242's build; three decisions are the owner's and he is not ready to make them
 summary: >
   The owner's long-term aim: associate hours with commercial work so a superintendent can see
   whether he is on track or ahead of schedule, and so the company can reward superintendents for
@@ -19,11 +19,11 @@ summary: >
   what the bid's workbench priced it from, assumed by a company split when the line was typed,
   tuned only by the owner, frozen at award as the sum of the lines; and the gate became #238's
   kind, a job priced before the work.
-next: The owner's three calls under *Open questions*. Then PR 1, the budgets at award, which is useful on its own.
-size: L as a train of five (M · S · S · M · M); two migrations, the line budgets at award and the planned dates; no edge function
+next: PR 1a, the budgets at award: the workbench writes ◆ on the lines it priced, the award window writes one baseline with its source, the Costs strip's states, the Quickfill deck line. Useful on its own; the owner's three calls gate only the reward.
+size: L as a train of six (M · M · S · S · M · M), PR 1 shipped; two migrations, the line budgets (pushed with PR 1) and the planned dates; no edge function
 blocker: The owner's three calls. He said on 2026-11-01 he is not ready to answer them yet; the card holds the thinking until he is.
-ver: v2.3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837
-opinion: later — the thinking is sound and PR 1 is safe to build before the calls, but the reward is the point and the reward waits on what counts as certified
+ver: v2.6300 · 3297 · 3299 · 3361 · 3360 · 3598 · 4781 · 5216 · 5244 · 5245 · 5929 · 6077 · 6090 · 2145 · 5837
+opinion: later — PR 1 shipped and PR 1a is safe to build before the calls, but the reward is the point and the reward waits on what counts as certified
 mockup: to-dos/superintendent-ahead-of-schedule/mockup-phone.html
 ---
 
@@ -273,32 +273,34 @@ kernel and card; the Schedule column and the bonus setting; the certified-percen
 
 ## The plan
 
-1. **PR 1 · the budgets at award** (M). The gate on #238's `jobKind`; the line columns (one
-   migration): a workbench line keeps the hours and parts it was priced from, a typed line takes
-   the company split for its kind, marked assumed; the award window that writes one baseline every
-   time with its source (bid → book → typed), the job's footings as the sum; the Costs strip's four
-   states; the quiet line under each price on ① Line Items and the Pricing tab, never on a
-   customer's paper (the lens's What customers see check proves it); the Quickfill deck line
-   *projects working with no hours baseline*. Useful on its own: the Pipeline's burning card and
-   the Build desk read it at once. The spike (below) settled three things PR 1 carries: the
-   budget is columns on the line item row itself (`budget_labor_pct`, `budget_materials_pct`,
-   `budget_source`, `budget_tuned_at`, `budget_rate_usd` on `jobs_ledger_fixtures`), written by
-   the same autosave that writes the price, never a store keyed on the grid's row id; and two
-   grid changes the owner asked for on the same screen ride with it: the stage badge is the
-   press (tap the number or the diamond to flip In order / Any time, the kind in very small
-   words under it, the two-button strip under each line gone), and the cents read small in the
-   Unit price boxes and the Job Total (`MoneyDecimalAmountInput`'s `smallCents`, the overlay the
-   Other charges box uses).
-2. **PR 1b · the owner tunes** (S). The tuning sheet with two sliders per line, the brush, Undo and
-   Save with the owner's name; the weekly Needs you review card with *Looks right* and *Tune*;
-   Settings → Jobs & billing → Line budgets with the splits per kind, the burdened cost rate and
-   the learning line, Save moving only lines still assumed.
-3. **PR 2 · the planned finish** (S). Carry the rough schedule's stage weeks onto the job at award as
+1. **PR 1 · the line budgets** (M), shipped 2026-11-02 as v2.6300 (#6745) with its migration
+   pushed. The budget is columns on the line item row (`budget_labor_pct`, `budget_materials_pct`,
+   `budget_source`, `budget_tuned_at`, `budget_rate_usd` on `jobs_ledger_fixtures`), written by the
+   same autosave that writes the price; the quiet line under each line on ① Line Items, with the
+   owner's two sliders opening in place; the Costs tab's *Where we are* card, spent of the whole
+   budget with a row per line; and the owner's two grid asks, the stage badge as the press and the
+   cents small. What shipped and how is `docs/recent-features/v2.6300.md`.
+2. **PR 1a · the budgets at award** (M), what PR 1 left. The gate on #238's `jobKind` (a line In
+   order stands in until it lands); a workbench line writing ◆ with the hours and parts it was
+   priced from; the award window that writes one baseline every time with its source (bid → book
+   → typed), the job's footings as the sum; the Costs strip's four states, its amber *No baseline*
+   giving way to the card; the quiet line on the Pricing tab, never on a customer's paper (the
+   lens's What customers see check proves it); the Quickfill deck line *projects working with no
+   hours baseline*. Useful on its own: the Pipeline's burning card and the Build desk read it at
+   once.
+3. **PR 1b · the owner tunes** (S). The two sliders per line shipped in place with PR 1; left: the
+   brush that carries one line's split to the job's other assumed lines, with Undo; the weekly
+   Needs you review card with *Looks right* and *Tune*; Settings → Jobs & billing → Line budgets
+   with the splits per kind, the burdened cost rate and the learning line, Save moving only lines
+   still assumed; and spent per line on the Costs card once hours land on a stage.
+4. **PR 2 · the planned finish** (S). Carry the rough schedule's stage weeks onto the job at award as
    planned dates; one migration with the award snapshot's freeze.
-4. **PR 3 · the superintendent's line** (M). The kernel (ahead-of-the-work, days vs plan, the proof
-   sources, the one move), the card on his Dashboard and job window, the guide. Hours and days
-   only; no money on his phone.
-5. **PR 4 · the scoreboard** (M). The Schedule column on People → Review with labor kept in dollars
+5. **PR 3 · the superintendent's line** (M), moved to punch list #242, the Projects board, which
+   builds the line with the office's board from the same kernel; its card is the spec. Its kernel
+   and pace strip (#6769) and the expected hours (#6771) merged 2026-11-02; the board and the phone
+   card were in review. What stays here is the line's ground: days against the planned finish once
+   PR 2 lands, and the certified percent as the proof.
+6. **PR 4 · the scoreboard** (M). The Schedule column on People → Review with labor kept in dollars
    and hours under baseline side by side, the superintendent's own row on his phone, the bonus rule
    in Settings → People, paid at the certified pay app.
 
@@ -319,7 +321,8 @@ before his three calls; PR 3 and PR 4 are not. Later the same day his four turns
 in with their boards and the Line Budgets Walk; PR 1 is now the budgets at award and PR 1b the
 tuning, and the four new calls carry the drawn defaults until he flips them.
 
-Same evening, a design spike in the real app (worktree `spike-line-budgets`, nothing committed):
+Same evening, a design spike in the real app (worktree `spike-line-budgets`; its code is kept on
+`origin/spike/projects-board-242`, a branch that never merges):
 the quiet line under each line item on Bill → ① Line Items, the two sliders opening as a row
 under the line with *Back to* and autosave, and a Costs tab card reading the sum of the lines
 and a row per line, walked on a ZZ Test project of four lines. The sliders and the one-press
@@ -335,3 +338,8 @@ is redrawn in the spike as one row per line with the same reading as the quiet l
 name, price; the labor | materials bar with the line's own percent as a mark across it; the
 words under it), *Kept so far* reading "—, nothing spent yet" until something is spent, and no
 line borrowing the job's percent; PR 1 draws it that way.
+
+2026-11-02: PR 1 merged as v2.6300 (#6745). Its migration `20261102003938` is on prod, the five
+columns read back in the live schema, and the Pages deploy of the merge went out. The
+superintendent's line moved to #242, whose build started from the same spike. Next is PR 1a;
+PR 3's ground and PR 4's reward still wait on the owner's three calls.

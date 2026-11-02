@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
-import { Navigate } from 'react-router-dom'
+import { Navigate, useSearchParams } from 'react-router-dom'
 import { supabase } from '../lib/supabase'
 import { useAuth } from '../hooks/useAuth'
 import { pageGate } from '../lib/roleGate'
@@ -29,7 +29,8 @@ import { ProjectCard } from '../components/projectsBoard/ProjectCard'
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.8rem' }
 const link: CSSProperties = { background: 'none', border: 'none', padding: 0, color: 'var(--text-link)', cursor: 'pointer', font: 'inherit', fontSize: '0.8rem' }
 
-const SELECT = 'id, hcp_number, click_number, job_name, job_address, status, pct_complete, revenue, fixtures:jobs_ledger_fixtures(id, name, stage_kind, line_kind, line_unit_price, count, progress_pct, sequence_order)'
+// The five budget columns of #234's PR 1 ride the fixture read (punch list #242, PR 5), so a line the owner tuned moves its stage's share.
+const SELECT = 'id, hcp_number, click_number, job_name, job_address, status, pct_complete, revenue, fixtures:jobs_ledger_fixtures(id, name, stage_kind, line_kind, line_unit_price, count, progress_pct, sequence_order, budget_labor_pct, budget_materials_pct, budget_source, budget_tuned_at, budget_rate_usd)'
 
 async function loadWorkingProjects(): Promise<ProjectRow[]> {
   const rows = await withSupabaseRetry(
@@ -41,6 +42,9 @@ async function loadWorkingProjects(): Promise<ProjectRow[]> {
 
 export default function ProjectsBoard() {
   const { loading: authLoading, user, role } = useAuth()
+  // `?job=<id>` from the Costs tab's Where we are card: that project opens large on arrival (PR 5).
+  const [params] = useSearchParams()
+  const focusJob = params.get('job')
   const [rows, setRows] = useState<ProjectRow[] | null>(null)
   const [loading, setLoading] = useState(true)
   const [failure, setFailure] = useState<OfflineRecoveryLastError | null>(null)
@@ -123,6 +127,7 @@ export default function ProjectsBoard() {
       ) : null}
       {targets.error ? <p role="alert" style={{ color: 'var(--text-red-700)', margin: 0, fontSize: '0.85rem' }}>{targets.error}</p> : null}
       {failure ? <OfflineRetryPanel failure={failure} onRetry={reload} surface="projects-board" idempotent busy={loading} /> : null}
+      {focusJob && rows && !rows.some((r) => r.id === focusJob) ? <p data-testid="focus-missing" style={{ ...muted, margin: 0 }}>The job you came from is not on the board. A job lands here when it is Working with a stage In order, or priced at $25,000 and up.</p> : null}
       {rows && rows.length === 0 ? <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'working projects', page: { label: 'Open the Pipeline', tail: 'and set a job Working with its stages.' } }), { to: '/jobs?tab=stages' })} /> : null}
       {cards.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '0.75rem' }} data-testid="project-cards">
@@ -137,6 +142,7 @@ export default function ProjectsBoard() {
               loading={c.loading}
               failed={c.failed}
               canEdit={canEdit}
+              initiallyOpen={c.row.id === focusJob}
               onSetTarget={(hours, from, why) => targets.setTarget(c.row.id, hours, from, why)}
               onClearTarget={() => targets.clearTarget(c.row.id)}
             />

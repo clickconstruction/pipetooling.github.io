@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-11-01
+last_updated: 2026-11-02
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -65,7 +65,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Contracts and document packets → `/documents`
 - Set where a job's Drive files go, move the jobs root, name a job's folder, or make the folders for every job without one → `/documents?tab=where-files-go` (the office; guide `set-where-a-jobs-files-go`)
 - See every photo uploaded to the app, newest first, with its job, who took it and whether it is in Drive, and open the report, the box, the thread or the job it came with → `/documents?tab=photos` (v2.6270, punch list #232; guide `find-every-photo-that-was-uploaded`)
-- Find a file by the words inside it when you know it exists but not which job holds it → `/documents?tab=search`, the **Find a file** box under the job and bid search (v2.6305; the office; guide `find-a-file-when-you-do-not-know-where-it-is`)
+- Find a file by the words inside it when you know it exists but not which job holds it → `/documents?tab=search`, the **Find a file** box under the job and bid search (v2.6305; since v2.6319 our own file index answers first, Drive's search behind it; the office; guide `find-a-file-when-you-do-not-know-where-it-is`)
 
 **Everything else**
 - Your day, pins, nudges → `/dashboard`
@@ -300,7 +300,7 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
 - `?tab=inspections`, `?tab=billed` — inspection tracking; billed-jobs list.
 
 ### /projects-board — Projects board
-Every working project (a job Working with a stage In order, or priced at $25,000 and up) as one card, worst first (punch list #242, v2.6330). The card's strip is the labor budget filled by the job's real days and divided by its stages, the work done as a blue mark with its chip, the money as a thin line; hover a day or a stage's end bar for its card, press the title to open the card large. The slider under the strip is the expected hours, bounded by the hours in and the budget's edge, kept with a reason; **Recent changes** lists the last ones with **Undo the last change**; **back to the budget** clears a target. Roles: dev, master, assistant, controller and superintendent open it (`canSeeProjectsBoard`); dev, master, assistant and controller set the hours (`canSetExpectedHours`); a superintendent reads. Door: the **Projects** press beside Forecast on the Pipeline. Guide `see-where-every-project-stands-and-set-its-expected-hours`.
+Every working project (a job Working with a stage In order, or priced at $25,000 and up) as one card, worst first (punch list #242, v2.6330). The card's strip is the labor budget filled by the job's real days and divided by its stages, the work done as a blue mark with its chip, the money as a thin line; hover a day or a stage's end bar for its card, press the title to open the card large. The slider under the strip is the expected hours, bounded by the hours in and the budget's edge, kept with a reason; **Recent changes** lists the last ones with **Undo the last change**; **back to the budget** clears a target. Roles: dev, master, assistant, controller and superintendent open it (`canSeeProjectsBoard`); dev, master, assistant and controller set the hours (`canSetExpectedHours`); a superintendent reads. Doors: the **Projects** press beside Forecast on the Pipeline, and **On the Projects board ›** on the job window's Costs tab (the *Where we are* card, v2.6337), which lands with `?job=<id>` and opens that project's card large. Since v2.6337 the fixture read carries #234's five budget columns, so a line the owner tuned moves its stage's piece of the strip. Guide `see-where-every-project-stands-and-set-its-expected-hours`.
 
 ### /schedule-dispatch — Dispatch
 Week grid scheduling crews/subs onto jobs (and bid-anchored blocks). Drag to assign. A job's first visit saved asks before it texts the customer, and a moved first visit's Rescheduled text waits on Today's sends (guide `schedule-a-job-and-tell-the-customer`).

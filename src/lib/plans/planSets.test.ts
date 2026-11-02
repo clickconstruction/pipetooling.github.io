@@ -19,6 +19,8 @@ import {
   shortDayWords,
 } from './planSets'
 
+import { setRowDayWords, setRowLineWords } from './planSets'
+
 function set(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
   return {
     part_id: 'p1',
@@ -129,6 +131,17 @@ describe('the words', () => {
     expect(shortDayWords('2026-10-20')).toBe('Oct 20')
     expect(shortDayWords(null)).toBe('')
     expect(shortDayWords('not a day')).toBe('')
+  })
+
+  it("leads an older-sets row with the date on the sheets, else the day it came, and keeps the date out of its line", () => {
+    const dated = set({ id: 's', kind: 'revised', source: 'architect', dated: '2026-08-11', came_at: '2026-08-28T12:00:00Z' })
+    expect(setRowDayWords(dated)).toBe('Aug 11, 2026')
+    expect(setRowLineWords(dated)).toBe('Revised set · the architect')
+    const undated = set({ id: 's', kind: 'assembled', source: 'ours', dated: null, came_at: '2026-10-30T12:00:00Z' })
+    expect(setRowDayWords(undated)).toBe('came Oct 30, 2026')
+    expect(setRowLineWords(undated)).toBe('Assembled set · ours')
+    expect(setRowDayWords(set({ id: 's', dated: 'not a day', came_at: 'nor this' }))).toBe('')
+    expect(setRowDayWords(set({ id: 's', dated: null, came_at: '2025-12-30' }))).toBe('came Dec 30, 2025')
   })
 })
 
