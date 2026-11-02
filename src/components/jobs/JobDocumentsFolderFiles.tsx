@@ -4,7 +4,7 @@
  * its name, its count and *Open in Drive*, then the newest rows, each with its name as the door to the file, when and
  * how big and who, and where it came from, *From the app · a report photo* or *Added in Drive*. An empty folder says
  * what fills it; a folder not made yet says when the app makes it; a held job shows the hold's words instead; a read
- * that fails says why with Try again. Nothing is kept: the app stores only what it filed itself.
+ * that fails says why with Try again. The rows sit indented under their folder's name, so the names read as titles. Nothing is kept: the app stores only what it filed itself.
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
@@ -83,7 +83,7 @@ export function JobDocumentsFolderFiles({ job, io: ioProp }: { job: Pick<JobWith
               {shown.length === 0 ? (
                 <EmptyState compact main={empty.main} tail={empty.tail} />
               ) : (
-                <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.35rem' }}>
+                <ul style={{ margin: 0, padding: '0 0 0 0.85rem', listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.35rem', borderLeft: '2px solid var(--border)' }}>
                   {shown.map((f) => {
                     const from = fromWords(f)
                     const meta = fileMetaWords(f)
@@ -106,7 +106,7 @@ export function JobDocumentsFolderFiles({ job, io: ioProp }: { job: Pick<JobWith
                 </ul>
               )}
               {more ? (
-                <p style={muted}>
+                <p style={{ ...muted, paddingLeft: '0.85rem' }}>
                   {more}
                   {s.url ? (
                     <>
