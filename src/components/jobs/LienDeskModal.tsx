@@ -505,7 +505,7 @@ export default function LienDeskModal({
   // The owner's call (v2.3767): the three questions, recorded on the first packet.
   const [ownerCallOpen, setOwnerCallOpen] = useState(false)
   // The courtesy notice (punch list #231): the window over the sent footer, with the facts it was opened on, and the addresses it finds.
-  const [courtesyCtx, setCourtesyCtx] = useState<{ first: LienDeskItemRow; facts: CourtesyFacts; jobId: string; jobLabel: string } | null>(null)
+  const [courtesyCtx, setCourtesyCtx] = useState<{ first: LienDeskItemRow; facts: CourtesyFacts; jobId: string; jobLabel: string; gcCustomerId: string | null } | null>(null)
   const [courtesyRecipients, setCourtesyRecipients] = useState<CourtesyRecipient[] | null>(null)
   // ☎ Someone's calling (v2.3854): the door's pick — the call sheet opens on that job without selecting it.
   const [callerJobId, setCallerJobId] = useState<string | null>(null)
@@ -3138,7 +3138,7 @@ export default function LienDeskModal({
       const openCourtesy = () => {
         if (!first || !courtesyFacts || !courtesyDraft) return
         setCourtesyRecipients(null)
-        setCourtesyCtx({ first, facts: courtesyFacts, jobId: selected.jobId, jobLabel: jobLabel(job, selected.jobId) })
+        setCourtesyCtx({ first, facts: courtesyFacts, jobId: selected.jobId, jobLabel: jobLabel(job, selected.jobId), gcCustomerId: job?.gc_customer_id ?? null })
         void loadCourtesyRecipients({ gcCustomerId: job?.gc_customer_id ?? null, gcName: gc?.name || courtesyDraft.notice.originalContractorName, gcEmail: courtesyDraft.gcEmail || gc?.email || '', ownerName, ownerEmail: (ownerRow?.owner_email ?? '').trim() }).then(setCourtesyRecipients, (e) => {
           showToast(formatErrorMessage(e, 'Their addresses could not be found.'), 'error')
           setCourtesyRecipients([])
@@ -3610,7 +3610,7 @@ export default function LienDeskModal({
           onClose={() => setCourtesyCtx(null)}
           onSend={(greeting) =>
             void run('Send the courtesy notice', async () => {
-              const r = await sendCourtesyNotice({ item: courtesyCtx.first, jobId: courtesyCtx.jobId, facts: courtesyCtx.facts, greeting, recipients: courtesyRecipients ?? [], by: { userId: authUserId, name: authName } })
+              const r = await sendCourtesyNotice({ item: courtesyCtx.first, jobId: courtesyCtx.jobId, gcCustomerId: courtesyCtx.gcCustomerId, facts: courtesyCtx.facts, greeting, recipients: courtesyRecipients ?? [], by: { userId: authUserId, name: authName } })
               if (!r.record) throw new Error(courtesyOutcomeWords(r.to))
               showToast(courtesyOutcomeWords(r.to), r.to.every((t) => t.ok) ? 'success' : 'error')
             }).then((ok) => {
