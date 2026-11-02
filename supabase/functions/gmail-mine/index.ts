@@ -135,6 +135,7 @@ import {
   isFollowRequest,
   knownLines,
   knownOwnLines,
+  leftOutOfTab,
   myMailAddressKey,
   myMailBodyHtml,
   myMailEmlPath,
@@ -510,10 +511,15 @@ async function loadDomains(admin: Admin, domains: readonly string[]): Promise<{ 
 
 async function list(ctx: Ctx, ask: MyMailListRequest): Promise<Response> {
   const query = myMailQuery({ view: ask.view, labels: ask.labels, hidden: ctx.me.hiddenLabels, q: ask.q })
-  const [page, box] = await Promise.all([gmail(() => gmailMessagePage(ctx.token, query, MY_MAIL_PAGE, ask.pageToken ?? undefined)), loadBox(ctx.admin, ctx.me)])
+  const [page, box, hidden] = await Promise.all([
+    gmail(() => gmailMessagePage(ctx.token, query, MY_MAIL_PAGE, ask.pageToken ?? undefined)),
+    loadBox(ctx.admin, ctx.me),
+    hiddenLabelIds(ctx.token, ctx.me.hiddenLabels),
+  ])
   const messages = await readAll(ctx.token, unique((page.messages ?? []).map((m) => m.id)))
-  // The search keeps Drafts, Spam, Trash and Chats out; a mail that reached the page anyway is never drawn.
-  const reads = messages.filter((m) => !neverRead(m.labelIds)).map((m) => readMyMail(m, box.reader))
+  // The search keeps Drafts, Spam, Trash, Chats and the labels the person leaves out away, by name; a mail that reached
+  // the page anyway is never drawn, held by Gmail's ids (v2.6296).
+  const reads = messages.filter((m) => !leftOutOfTab(m.labelIds, hidden)).map((m) => readMyMail(m, box.reader))
   const filled = await fillRows(ctx, box, reads, 'all')
   const view = viewRows(filled, ask.view)
   // The rows the view draws, then the ones behind its fold line, each part newest first as `viewRows` sorts it and each
@@ -540,15 +546,16 @@ async function list(ctx: Ctx, ask: MyMailListRequest): Promise<Response> {
 // ---------- open ----------
 
 async function open(ctx: Ctx, ask: MyMailOpenRequest): Promise<Response> {
-  const [m, box] = await Promise.all([gmail(() => gmailMessage(ctx.token, ask.gmailId), true), loadBox(ctx.admin, ctx.me)])
+  const [m, box, hidden] = await Promise.all([gmail(() => gmailMessage(ctx.token, ask.gmailId), true), loadBox(ctx.admin, ctx.me), hiddenLabelIds(ctx.token, ctx.me.hiddenLabels)])
   const message = m as MyMailGmailMessage
-  if (neverRead(message.labelIds)) return refuse(myMailRefusal('notFound'), MY_MAIL_REFUSAL_STATUS.notFound, 'open')
+  // Never a mail the list would not show (v2.6296): a draft, Spam, Trash, a chat, or one under a label left out.
+  if (leftOutOfTab(message.labelIds, hidden)) return refuse(myMailRefusal('notFound'), MY_MAIL_REFUSAL_STATUS.notFound, 'open')
   const read = readMyMail(message, box.reader)
   let others: MyMailGmailMessage[] = []
   if (read.row.threadId) {
     try {
       const thread = await gmailThreadHeaders(ctx.token, read.row.threadId, MY_MAIL_METADATA_HEADERS)
-      others = (thread.messages ?? []).filter((x) => x.id !== message.id && !neverRead(x.labelIds))
+      others = (thread.messages ?? []).filter((x) => x.id !== message.id && !leftOutOfTab(x.labelIds, hidden))
     } catch (e) {
       if (!(e instanceof GmailError && e.status === 404)) throw e instanceof GmailError ? asGoogle(e) : e
     }
