@@ -5,7 +5,7 @@ file: BIDS_SYSTEM.md
 type: System Documentation
 purpose: Complete documentation of the 14-tab Bids system including workflows, book systems, and integrations
 audience: Developers, Estimators, AI Agents
-last_updated: 2026-10-28
+last_updated: 2026-11-01
 estimated_read_time: 30-40 minutes
 difficulty: Intermediate to Advanced
 
@@ -1751,7 +1751,7 @@ For a held assistant or estimator (`bidLienWaiverCodeDoorShown`), the hold gains
 
 ## Bid history
 
-Punch list #73 ([`to-dos/bid-history`](../to-dos/bid-history/README.md)). **The ledger** `bid_changes` (v2.4598): one row per insert, real change or delete on the tables that hold what people type on a bid (`bid_changes_tables()`, eighteen since v2.4864), written by one trigger, `record_bid_change()`, so no save path can miss it. Each row holds the row's name at write time, its bid, version and count row, the changed columns' old and new values, the author, and the request's `x-bid-action` tag with whether the write was the app's own (v2.4736, `bidActionHeader.ts`). Kept three years, then purged (`purge-bid-changes`).
+Punch list #73 (its card retired 2026-11-01; the fragments [v2.4598](recent-features/v2.4598.md) to [v2.5863](recent-features/v2.5863.md) carry the record). **The ledger** `bid_changes` (v2.4598): one row per insert, real change or delete on the tables that hold what people type on a bid (`bid_changes_tables()`, eighteen since v2.4864), written by one trigger, `record_bid_change()`, so no save path can miss it. Each row holds the row's name at write time, its bid, version and count row, the changed columns' old and new values, the author, and the request's `x-bid-action` tag with whether the write was the app's own (v2.4736, `bidActionHeader.ts`). Kept three years, then purged (`purge-bid-changes`).
 
 **The reader** (v2.4948; paged since v2.4963): `list_bid_history(p_bid_id)` (SECURITY INVOKER, a total order, read 1,000 rows a page with *Show older changes*; `latest_bid_cell_history` is read whole, page by page) returns the ledger for the bid and every bid adopted into it, each row with its bid number, plus the delete archive's removed rows the ledger lacks. Under the archive's own rule those reach a dev only; since v2.5079 the window also reads the bid's own removed rows for its editors (`list_bid_removed_rows`, under Put back below). The kernel `bidHistory.ts` groups rows into actions (same bid, author, tag and source, five seconds apart at most) and words them. A **History** button after the mark controls on every bid tab's title (`BidHistoryDoor`) opens a window (`BidHistoryWindow`): actions newest first under each day, each opening to its rows, with tab and person chips and a search. Edit Bid changes show `BID_HISTORY_DEFAULT_BID_COLUMNS` and count the rest.
 

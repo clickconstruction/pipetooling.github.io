@@ -2,7 +2,7 @@
 name: "Subs: the board by trade, built for the moment a set of plans lands"
 number: 153
 group: close
-status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing); the run's first text starts the sub's Messages thread v2.6032 (2026-10-28, migration 20261028220000 to push after the merge)
+status: built 2026-10-24 on the owner's yes of 2026-10-23 ("Build it all and push any migrations"); all four PRs merged: PR 1 v2.5807 (the strip, the list by trade, For, the row press, the from-Prospects line), PR 2 v2.5808 (the Board, the run), PR 3 v2.5809 (the migration, pushed to prod 2026-10-24; the drag; the priority), PR 4 v2.5810 (the ask on landing); the run's first text starts the sub's Messages thread v2.6032 (2026-10-28; its migration 20261028220000 is on prod, the drift check reading fully applied on 2026-11-01)
 summary: >
   Prospects → Subs holds 104 trade companies found on 2026-10-23, one card at a time on the deck
   and a table on the Prospect List sorted by how long since a touch. Nothing on the page says how
@@ -16,7 +16,7 @@ summary: >
   callback and a text offer when one does not answer; a yes lands on the bench and is asked on
   the job in one press. A's stage strip, sentence and press per card and C's record and priority
   (the rank's reason and the column's default order, a drag pinning a card over it) are folded in.
-next: use the board on the next set of plans; delete the ZZ Test Sprinkler Co company the walk left on the bench (no screen removes one); push 20261028220000_contact_for_prospect.sql after v2.6032 merges, then walk one real first text (Where it stands)
+next: use the board on the next set of plans; delete the ZZ Test Sprinkler Co company the walk left on the bench (no screen removes one), then walk one real first text (Where it stands)
 size: built: PR 1 S · PR 2 M · PR 3 M · PR 4 S
 blocker: none; the owner said build it all on 2026-10-23
 ver: v2.5807, v2.5808, v2.5809, v2.5810, v2.6032
