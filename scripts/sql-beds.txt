@@ -1,2 +1,2 @@
 gatetest-pass
-gatetest-fail
+gatetest-once
