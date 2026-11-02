@@ -27,6 +27,8 @@ This list holds everything sent, for every job. It also holds papers that name n
 
 ## Open a copy
 
+The list sits under one band per day. Today and Yesterday say so, then the day alone, each with a count. Each line is the paper's name, then how it went, the time, to whom and by whom. Under that is the job or bid it is for, as a green link. The subject follows when it says more than the name. A tag before the name says the kind of paper in its group's colour. Bills are green, lien and legal red, contracts and estimates blue, bids and suppliers violet, statements and reports amber. The chips at the top wear the same colours.
+
 Press the name on a line. The copy opens in its own window, as it was that day.
 
 Press {{button:outline|Print}} in that window to print the same page again. Printing from there does not file another copy.
