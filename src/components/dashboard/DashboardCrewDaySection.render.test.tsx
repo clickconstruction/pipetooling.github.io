@@ -8,7 +8,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { DashboardCrewDaySection } from './DashboardCrewDaySection'
 import type { CrewDayPayload } from '../../lib/crewDay'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 // The section always opens on today; the Day book fixture must sit on that day.
 const TODAY = toLocalDateString(new Date())
@@ -148,7 +148,7 @@ describe('DashboardCrewDaySection', () => {
   it('a lost signal reads the offline sentence with Retry; Retry reads the day (v2.5962)', async () => {
     rpcMock.mockResolvedValue({ data: null, error: { message: 'TypeError: Failed to fetch', code: '' }, status: 0 })
     render(<DashboardCrewDaySection authUserId="u9" role="superintendent" />)
-    await waitFor(() => expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy())
+    await waitFor(() => expect(screen.getByText(OFFLINE_READ_MESSAGE)).toBeTruthy())
     expect(screen.queryByText(/try again in a moment/)).toBeNull()
     rpcMock.mockResolvedValue({ data: PAYLOAD, error: null })
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))

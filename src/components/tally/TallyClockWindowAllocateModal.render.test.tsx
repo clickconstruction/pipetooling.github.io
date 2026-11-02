@@ -7,7 +7,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 const H = vi.hoisted(() => ({ sessionsError: null as unknown, reads: 0 }))
 vi.mock('../../lib/supabase', () => {
@@ -55,7 +55,7 @@ describe('TallyClockWindowAllocateModal', () => {
     H.sessionsError = { message: 'TypeError: Failed to fetch', details: '', hint: '', code: '' }
     H.reads = 0
     open()
-    await screen.findByText(OFFLINE_ERROR_MESSAGE)
+    await screen.findByText(OFFLINE_READ_MESSAGE)
     expect(screen.queryByText(/No clock sessions with a job or bid/)).toBeNull()
     H.sessionsError = null
     fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
