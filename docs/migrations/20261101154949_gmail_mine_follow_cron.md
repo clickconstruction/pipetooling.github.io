@@ -11,3 +11,5 @@
 **Apply**: `supabase db push` from a clean checkout of `main` after this merges, and redeploy `gmail-mine` (`supabase functions deploy gmail-mine --no-verify-jwt`). Either order is harmless: before the redeploy the function refuses the cron's post as a call with no session (401) and nothing follows; before the push nothing posts.
 
 **Check**: `select schedule from cron.job where jobname = 'gmail-mine-follow'` reads `*/5 * * * *`; once a conversation is tagged, its `email_tag_threads.last_read_at` moves every five minutes and `last_error` stays null, and the function's log carries one `gmail_mine_follow` line a run.
+
+**Applied** by 2026-11-01 (`npm run check:migration-drift` then: 1058 local files, 1058 remote versions, fully applied); the types and the dev-mcp catalog regenerated in #6732; `gmail-mine` deployed (`npm run check:edge-drift` does not name them).

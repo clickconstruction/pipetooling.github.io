@@ -2,7 +2,7 @@
 name: "A courtesy notice between the § 53.056 notice and the lien"
 number: 231
 group: close
-status: built 2026-11-01 in four PRs, v2.6259 (#6686), v2.6261 (#6704), v2.6269 (#6713) and v2.6271 · send-lien-filing-email redeployed the same day · left: the migration push, three redeploys and counsel's read of the words, then delete the folder
+status: built 2026-11-01 in four PRs, v2.6259 (#6686), v2.6261 (#6704), v2.6269 (#6713) and v2.6271 · send-lien-filing-email redeployed the same day · migration 20261101092703 pushed, customer-portal, legal-portal and messages-notify redeployed · left: counsel's read of the words, then delete the folder
 summary: >
   Supply houses send a plain letter a week or two before they lien: we already sent you the notice,
   nothing has come, here is the day the lien goes on unless it is paid, here is where to pay, here is
@@ -13,9 +13,9 @@ summary: >
   own facts, naming the lien's day, carrying the pay link and the office's number, recorded on the
   Timeline so the affidavit's packet shows it went. No new statutory paper, no certified mail, no new
   claim.
-next: The lead pushes migration 20261101092703_lien_courtesy_to_activity (it sorts below the applied 20261101130407, so the push takes --include-all) and redeploys customer-portal, legal-portal and messages-notify. Counsel reads the courtesy words before the first real send. Then this folder goes.
+next: Counsel reads the courtesy words before the first real send. Then this folder goes.
 size: M (four PRs: S, M, S, XS; one migration; four function redeploys)
-blocker: The lead's migration push and three redeploys; counsel's read of the words before the first real send.
+blocker: Counsel's read of the words before the first real send.
 opinion: build — the gap is real and visible on the desk today; the shape reuses the sent notice, the pay page and the cover letter's three doors, so the words are already counsel's
 ---
 
