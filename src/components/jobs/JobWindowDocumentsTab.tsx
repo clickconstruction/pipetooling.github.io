@@ -22,6 +22,7 @@ import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 import { HoursStatementsSection } from './HoursStatementsSection'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
+import { JobDocumentsAddFile } from './JobDocumentsAddFile'
 import { EmptyState } from '../EmptyState'
 import type { JobWindowTabKey } from '../../lib/jobs/jobHistoryTab'
 
@@ -355,10 +356,12 @@ export function JobWindowDocumentsTab({
         ) : (
           <ul style={{ margin: 0, padding: 0, listStyle: 'none', display: 'flex', flexDirection: 'column', gap: '0.3rem' }}>
             {folders.map((f) => (
-              <li key={f.label} style={{ fontSize: '0.875rem' }}>
+              <li key={f.label} style={{ fontSize: '0.875rem', display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', gap: '0.6rem' }}>
                 <a href={f.url} target="_blank" rel="noopener noreferrer">
                   {f.label}
                 </a>
+                {/* Add a file from this computer into this folder, as the app (v2.6303); the office roles the folder press names. */}
+                {canMakeJobDriveFolders(role) ? <JobDocumentsAddFile jobId={job.id} folder={f} /> : null}
               </li>
             ))}
           </ul>
