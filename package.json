@@ -111,6 +111,7 @@
     "test:pg:stripe-email-sends-trail": "bash scripts/pgtest-stripe-email-sends-trail.sh",
     "test:pg:contact-for-customer": "bash scripts/pgtest-contact-for-customer.sh",
     "test:pg:messages-tech-send": "bash scripts/pgtest-messages-tech-send.sh",
+    "test:pg:stage-checklist-items": "bash scripts/pgtest-stage-checklist-items.sh",
     "test:pg:helper-on-job": "bash scripts/pgtest-helper-on-job.sh",
     "test:pg:photo-saves": "bash scripts/pgtest-photo-saves.sh",
     "test:pg:portal-opens-since": "bash scripts/pgtest-portal-opens-since.sh",

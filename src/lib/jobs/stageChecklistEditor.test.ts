@@ -57,6 +57,13 @@ describe('planQuestionSave: the diff the io writes', () => {
     expect(planIsEmpty(plan)).toBe(true)
     expect(plan.retires).toEqual([])
   })
+  it('never lists or retires an item added for a job (punch list #237)', () => {
+    const item: StageChecklistQuestion = { id: 'j1', kind: 'rough_in', order: 0, words: 'Are the carriers in units 7 and 8 set?', asksPhoto: false, fixtureId: 'f1', addedById: 'u-pat', addedBy: 'Pat Sample', addedAt: '2026-11-01T15:00:00.000Z' }
+    const live = [...LIVE, item]
+    expect(draftsOf(live, 'rough_in').map((d) => d.id)).toEqual(['q1', 'q2'])
+    const plan = planQuestionSave('rough_in', live, draftsOf(live, 'rough_in'))
+    expect(planIsEmpty(plan)).toBe(true)
+  })
   it('treats a draft whose row is no longer live as new', () => {
     const plan = planQuestionSave('trim_set', LIVE, [{ id: 'gone', words: 'Is the water heater strapped?', asksPhoto: false }])
     expect(plan.inserts).toHaveLength(1)

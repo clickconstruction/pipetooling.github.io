@@ -11,10 +11,15 @@
  * rows, and any other line, have no checklist. The photo a question asks for files in the customer's Drive folder
  * through the photo-save sweep, like a box photo (v2.6045): the bucket is a waiting room and Drive the home.
  *
+ * Since punch list #237 PR 1 (v2.6328) a question has a second scope: beside the company's rows, an item added for
+ * one job's stage (`job_id` + `fixture_id` on the same table) by the office or the job's superintendent. The sheet
+ * shows them under *Added for this job*; they count toward ready like a company question, so an item added after a
+ * stage read ready flips it back, which is the point. Every answer stamps its row with the name and the time.
+ *
  * Pure. The tables are `stage_checklist_templates` and `stage_checklist_answers` (PR 2); the sheet, the Pipeline's
  * mark and the gallery come after.
  */
-import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, formatDenverCalendarDayShort, formatDenverTimeOnly } from '../../utils/dateUtils'
 import { driveSafe } from '../photos/photoName'
 import { stageRank } from './stageRecognition'
 
@@ -42,18 +47,53 @@ export function stageChecklistKindOf(stageName: string | null | undefined): Stag
 /** The longest question the office may write, in characters. */
 export const QUESTION_MAX_CHARS = 200
 
-/** One question, as the office wrote it: the words, its place in the list, and whether it asks for a photo. */
+/**
+ * One question, as the office wrote it: the words, its place in the list, and whether it asks for a photo. An item
+ * added for one job's stage (#237) names its stage in `fixtureId` and who added it; the company's rows name neither.
+ */
 export interface StageChecklistQuestion {
   id: string
   kind: StageChecklistKind
   order: number
   words: string
   asksPhoto: boolean
+  /** The job stage an item was added for; null or absent on the company's questions. */
+  fixtureId?: string | null
+  /** The adder's login, for *Take off* (the adder or the office). */
+  addedById?: string | null
+  /** The adder's name, as the sheet stamps it. */
+  addedBy?: string
+  /** When it was added, ISO. */
+  addedAt?: string | null
 }
 
-/** The questions of one kind, in the office's order. Every question given is taken as live; a retired one is left out upstream. */
-export function templateFor(questions: readonly StageChecklistQuestion[], kind: StageChecklistKind): StageChecklistQuestion[] {
-  return questions.filter((q) => q.kind === kind).sort((a, b) => a.order - b.order || a.words.localeCompare(b.words) || a.id.localeCompare(b.id))
+/** True for an item added for one job's stage; false for the company's question. */
+export function isJobItem(q: Pick<StageChecklistQuestion, 'fixtureId'>): boolean {
+  return Boolean(q.fixtureId)
+}
+
+const byPlace = (a: StageChecklistQuestion, b: StageChecklistQuestion) => a.order - b.order || (a.addedAt ?? '').localeCompare(b.addedAt ?? '') || a.words.localeCompare(b.words) || a.id.localeCompare(b.id)
+
+/**
+ * The questions of one kind, in the office's order, then the items added for the stage named by `fixtureId` in the
+ * order they were added. Without a stage, the company's rows alone. Every question given is taken as live; a
+ * retired one is left out upstream.
+ */
+export function templateFor(questions: readonly StageChecklistQuestion[], kind: StageChecklistKind, fixtureId?: string | null): StageChecklistQuestion[] {
+  const ofKind = questions.filter((q) => q.kind === kind)
+  const company = ofKind.filter((q) => !isJobItem(q)).sort(byPlace)
+  const job = fixtureId ? ofKind.filter((q) => q.fixtureId === fixtureId).sort(byPlace) : []
+  return [...company, ...job]
+}
+
+/** A stage's template split into its two groups, as the sheet and the read-out draw them. */
+export interface TemplateGroups {
+  company: StageChecklistQuestion[]
+  job: StageChecklistQuestion[]
+}
+
+export function templateGroups(template: readonly StageChecklistQuestion[]): TemplateGroups {
+  return { company: template.filter((q) => !isJobItem(q)), job: template.filter(isJobItem) }
 }
 
 /** The crew's pick on a question. Not here means the thing the question asks about is not on this job. */
@@ -73,12 +113,17 @@ export interface StageChecklistPhoto {
   failWhy: string | null
 }
 
-/** The crew's answer on one question, as its row keeps it. A row with no pick is a note or a photo left before the pick. */
+/**
+ * The crew's answer on one question, as its row keeps it. A row with no pick is a note or a photo left before the
+ * pick. The stamp (#237): who pressed, and when, ISO.
+ */
 export interface StageChecklistAnswer {
   questionId: string
   pick: StageChecklistPick | null
   note: string
   photo: StageChecklistPhoto | null
+  answeredBy?: string
+  answeredAt?: string | null
 }
 
 /** What a question still waits on: the crew's pick, the photo it asks for, or nothing. */
@@ -113,7 +158,9 @@ export interface StageChecklistState {
 
 export interface StageChecklistStateInput {
   stageName: string | null | undefined
-  /** Every live question, any kind; the stage's own are picked out by its kind. */
+  /** The stage's id, so the items added for it count (#237); without it the company's questions alone. */
+  fixtureId?: string | null
+  /** Every live question, any kind; the stage's own are picked out by its kind and its id. */
   questions: readonly StageChecklistQuestion[]
   /** The stage's answers, by question id. */
   answers: ReadonlyMap<string, StageChecklistAnswer> | readonly StageChecklistAnswer[]
@@ -126,7 +173,7 @@ function answersById(answers: StageChecklistStateInput['answers']): ReadonlyMap<
 
 export function stageChecklistState(input: StageChecklistStateInput): StageChecklistState {
   const kind = stageChecklistKindOf(input.stageName)
-  const template = kind ? templateFor(input.questions, kind) : []
+  const template = kind ? templateFor(input.questions, kind, input.fixtureId) : []
   if (template.length === 0) return { kind, asked: 0, answered: 0, standing: 'none', ready: true }
   const byId = answersById(input.answers)
   const answered = template.filter((q) => questionAnswered(q, byId.get(q.id))).length
@@ -153,12 +200,70 @@ export function jobStageChecklists(
 ): JobStageChecklist[] {
   return [...stages]
     .sort((a, b) => a.sequenceOrder - b.sequenceOrder || a.name.localeCompare(b.name))
-    .map((s) => ({ ...s, state: stageChecklistState({ stageName: s.name, questions, answers: answersByFixture.get(s.fixtureId) ?? [] }) }))
+    .map((s) => ({ ...s, state: stageChecklistState({ stageName: s.name, fixtureId: s.fixtureId, questions, answers: answersByFixture.get(s.fixtureId) ?? [] }) }))
 }
 
 /** True when any of the job's stages has a checklist, filled or not: the strip has something to show. */
 export function jobHasChecklists(stages: readonly JobStageChecklist[]): boolean {
   return stages.some((s) => s.state.standing !== 'none')
+}
+
+// ── The sheet's second pass (#237): one row open at a time ───────────────────
+
+/** Where a stage's list stands: the counts, what is left, and the next question to answer. */
+export interface ChecklistProgress {
+  asked: number
+  answered: number
+  left: number
+  /** The first question not yet answered, the sheet's one open row; null when every row is answered or none is asked. */
+  next: StageChecklistQuestion | null
+  /** True when the list has questions and every one is answered. */
+  complete: boolean
+}
+
+export function checklistProgress(template: readonly StageChecklistQuestion[], answers: ReadonlyMap<string, StageChecklistAnswer> | readonly StageChecklistAnswer[]): ChecklistProgress {
+  const byId = answersById(answers)
+  const answered = template.filter((q) => questionAnswered(q, byId.get(q.id))).length
+  const next = template.find((q) => !questionAnswered(q, byId.get(q.id))) ?? null
+  return { asked: template.length, answered, left: template.length - answered, next, complete: template.length > 0 && next == null }
+}
+
+/** The line under the sheet's title: *2 of 5 answered · 3 left*, *5 of 5 answered*, or *No questions yet*. */
+export function progressWords(p: Pick<ChecklistProgress, 'asked' | 'answered' | 'left'>): string {
+  if (p.asked === 0) return 'No questions yet'
+  if (p.left === 0) return `${p.asked} of ${p.asked} answered`
+  return `${p.answered} of ${p.asked} answered · ${p.left} left`
+}
+
+/** *2 of 2* or *none*, after a group's heading. */
+export function groupCountWords(p: Pick<ChecklistProgress, 'asked' | 'answered'>): string {
+  return p.asked === 0 ? 'none' : `${p.answered} of ${p.asked}`
+}
+
+// ── The stamp (#237): the name and the time on every row ─────────────────────
+
+/** *Luis Ortega · Nov 1 · 9:14 am*, the company's day and clock; the name alone without a time; *someone* without a name. */
+export function stampWords(name: string | null | undefined, atIso: string | null | undefined): string {
+  const who = (name ?? '').trim() || 'someone'
+  const ms = atIso ? Date.parse(atIso) : NaN
+  if (!Number.isFinite(ms)) return who
+  return `${who} · ${formatDenverCalendarDayShort(ms)} · ${formatDenverTimeOnly(ms).toLowerCase()}`
+}
+
+/** The stamp on an answered row, or '' while the row has no pick. */
+export function answerStampWords(answer: Pick<StageChecklistAnswer, 'pick' | 'answeredBy' | 'answeredAt'> | null | undefined): string {
+  if (!answer?.pick) return ''
+  return stampWords(answer.answeredBy, answer.answeredAt)
+}
+
+/** Under an item added for the job: *Added by Pat Sample · Nov 1*; *You added this · Nov 1* for the adder; '' on a company question. */
+export function addedByWords(q: Pick<StageChecklistQuestion, 'fixtureId' | 'addedBy' | 'addedAt' | 'addedById'>, viewerId?: string | null): string {
+  if (!isJobItem(q)) return ''
+  const ms = q.addedAt ? Date.parse(q.addedAt) : NaN
+  const day = Number.isFinite(ms) ? ` · ${formatDenverCalendarDayShort(ms)}` : ''
+  if (viewerId && q.addedById === viewerId) return `You added this${day}`
+  const name = (q.addedBy ?? '').trim()
+  return name ? `Added by ${name}${day}` : `Added for this job${day}`
 }
 
 // ── The words ────────────────────────────────────────────────────────────────
@@ -186,7 +291,7 @@ export function sheetFootWords(stageName: string, state: StageChecklistState): s
   return `${stageName} reads not ready on the Pipeline until every question is answered.`
 }
 
-/** What the sheet says for a stage whose kind has no questions yet. */
+/** What the sheet says for a stage whose kind has no questions yet and no item added for it. */
 export function noQuestionsWords(stageName: string): string {
   const kind = stageChecklistKindOf(stageName)
   if (!kind) return `${stageName} has no checklist. Checklists are for Rough In, Top Out and Trim Set.`
