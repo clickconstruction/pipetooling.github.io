@@ -6,6 +6,7 @@ import { FolderTree, JOB_FOLDER_COLUMNS, folderUrl, type FolderHold, type JobFol
 import {
   BID_FOLDER_PIECES,
   DRIVE_BID_FOLDER_PATTERN_KEY,
+  DRIVE_COMPANY_FOLDER_ID_KEY,
   DRIVE_FOLDERS_MADE_KEY,
   DRIVE_JOB_FOLDER_PATTERN_KEY,
   DRIVE_JOBS_ROOT_FOLDER_ID_KEY,
@@ -55,12 +56,13 @@ import {
  *     folder's name, path, owner or Shared Drive and the count of folders inside. Nothing is written by the check.
  *
  *   POST { settings: true }                                              — the tab's read (#211)
- *     The four settings, where the root came from (the setting or the env), the root's live check, the pieces a
- *     pattern may hold and the account's address.
+ *     The five settings, where the root came from (the setting or the env), the root's live check, the company
+ *     folder with its own check (the Documents spike of 2026-11-01), the pieces a pattern may hold and the account's
+ *     address.
  *
- *   POST { set: { root?, job_pattern?, bid_pattern?, folders_made? } }  — the tab's write (#211)
- *     Saves what is given. A new root is checked first and refused (409) when the app cannot write there, so the
- *     root never points where the sweeps would fail. Written with the service role: the office roles write here
+ *   POST { set: { root?, company?, job_pattern?, bid_pattern?, folders_made? } }  — the tab's write (#211)
+ *     Saves what is given. A new root or company folder is checked first and refused (409) when the app cannot write
+ *     there, so neither points where an upload would fail. Written with the service role: the office roles write here
  *     without a key-scoped policy on app_settings. A change applies to folders made from then on; nothing is moved.
  *
  * Refusals in words, each with a `why` the page reads: a Drive link on the job that is not a folder
@@ -92,10 +94,13 @@ const SETTINGS_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
 async function settingsAnswer(token: string, appEmail: string, settings: DriveSettings) {
   const root = settings.rootFolderId
   const check = root ? await checkFolderWrite(token, root, appEmail) : null
+  const company = settings.companyFolderId
+  const companyCheck = company ? await checkFolderWrite(token, company, appEmail) : null
   return {
     success: true,
     app_email: appEmail,
     root: root ? { id: root, url: folderUrl(root), from: settings.rootFrom, ok: check?.ok ?? false, words: check?.words ?? NO_ROOT_WORDS, folder: check?.folder ?? null } : null,
+    company: company ? { id: company, url: folderUrl(company), ok: companyCheck?.ok ?? false, words: companyCheck?.words ?? '', folder: companyCheck?.folder ?? null } : null,
     job_pattern: settings.jobPattern,
     bid_pattern: settings.bidPattern,
     folders_made: settings.foldersMade,
@@ -119,7 +124,7 @@ serve(async (req) => {
       job_id?: string
       check?: { folder?: string }
       settings?: boolean
-      set?: { root?: string | null; job_pattern?: unknown; bid_pattern?: unknown; folders_made?: unknown }
+      set?: { root?: string | null; company?: string | null; job_pattern?: unknown; bid_pattern?: unknown; folders_made?: unknown }
       sweep?: { limit?: unknown; all?: unknown; offset?: unknown }
     }
 
@@ -165,6 +170,14 @@ serve(async (req) => {
         if (!r.ok) return json({ error: r.words, why: 'root_unwritable', app_email: appEmail, folder: r.folder }, 409)
         rootFacts = r.folder
         rows.push({ key: DRIVE_JOBS_ROOT_FOLDER_ID_KEY, value_text: id })
+      }
+      if (body.set.company !== undefined) {
+        // The company papers folder: checked the same way, so an upload never finds out the app cannot write there.
+        const id = driveFolderIdFromLinkOrId(body.set.company)
+        if (!id) return json({ error: 'Paste the link of a Drive folder to hold the company’s papers.', why: 'not_a_folder' }, 400)
+        const r = await checkFolderWrite(token, id, appEmail)
+        if (!r.ok) return json({ error: r.words, why: 'company_unwritable', app_email: appEmail, folder: r.folder }, 409)
+        rows.push({ key: DRIVE_COMPANY_FOLDER_ID_KEY, value_text: id })
       }
       if (body.set.job_pattern !== undefined) {
         const pattern = parseFolderPattern(JSON.stringify(body.set.job_pattern), JOB_FOLDER_PIECES, [])

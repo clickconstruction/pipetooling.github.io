@@ -23,6 +23,8 @@ export const DRIVE_JOB_FOLDER_PATTERN_KEY = 'drive_job_folder_pattern'
 export const DRIVE_BID_FOLDER_PATTERN_KEY = 'drive_bid_folder_pattern'
 /** `app_settings.key` — `upfront` (every folder when the job's is made) or `as-needed` (each when something first lands). */
 export const DRIVE_FOLDERS_MADE_KEY = 'drive_folders_made'
+/** `app_settings.key` — the Drive folder id of the company's papers (the W-9, the insurance, the licenses); empty = none set yet. */
+export const DRIVE_COMPANY_FOLDER_ID_KEY = 'drive_company_folder_id'
 
 /** The pieces a job's folder name is built from, in the order the tray offers them. */
 export type JobFolderPiece = 'number' | 'name' | 'customer' | 'address' | 'year'
@@ -179,9 +181,11 @@ export interface DriveSettings {
   jobPattern: JobFolderPiece[]
   bidPattern: BidFolderPiece[]
   foldersMade: FoldersMade
+  /** The company papers folder, or null while the office has not set one; nothing fills in for it. */
+  companyFolderId: string | null
 }
 
-/** The four rows (any missing) and the env's root → the settings. The setting wins; the env fills in while it is empty. */
+/** The five rows (any missing) and the env's root → the settings. The setting wins; the env fills in while it is empty. */
 export function driveSettingsFromRows(rows: readonly { key: string; value_text: string | null }[], envRoot: string | null | undefined): DriveSettings {
   const text = (key: string) => rows.find((r) => r.key === key)?.value_text ?? null
   const setRoot = (text(DRIVE_JOBS_ROOT_FOLDER_ID_KEY) ?? '').trim()
@@ -192,8 +196,12 @@ export function driveSettingsFromRows(rows: readonly { key: string; value_text: 
     jobPattern: parseJobFolderPattern(text(DRIVE_JOB_FOLDER_PATTERN_KEY)),
     bidPattern: parseBidFolderPattern(text(DRIVE_BID_FOLDER_PATTERN_KEY)),
     foldersMade: parseFoldersMade(text(DRIVE_FOLDERS_MADE_KEY)),
+    companyFolderId: (text(DRIVE_COMPANY_FOLDER_ID_KEY) ?? '').trim() || null,
   }
 }
+
+/** The words the Company tab and the Drive door answer while no company folder is set. */
+export const NO_COMPANY_FOLDER_WORDS = 'No company folder yet. Set it on Documents → Where files go.'
 
 /** drive.google.com/drive/folders/<id> or a bare id → the folder id; null for anything else. */
 export function driveFolderIdFromLinkOrId(s: string | null | undefined): string | null {

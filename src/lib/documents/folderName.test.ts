@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import {
   APP_SETTINGS_KEY_DRIVE_BID_FOLDER_PATTERN,
+  APP_SETTINGS_KEY_DRIVE_COMPANY_FOLDER_ID,
   APP_SETTINGS_KEY_DRIVE_FOLDERS_MADE,
   APP_SETTINGS_KEY_DRIVE_JOB_FOLDER_PATTERN,
   APP_SETTINGS_KEY_DRIVE_JOBS_ROOT_FOLDER_ID,
@@ -13,6 +14,7 @@ import {
   DEFAULT_BID_FOLDER_PATTERN,
   DEFAULT_JOB_FOLDER_PATTERN,
   DRIVE_BID_FOLDER_PATTERN_KEY,
+  DRIVE_COMPANY_FOLDER_ID_KEY,
   DRIVE_FOLDERS_MADE_KEY,
   DRIVE_JOB_FOLDER_PATTERN_KEY,
   DRIVE_JOBS_ROOT_FOLDER_ID_KEY,
@@ -109,7 +111,9 @@ describe('driveSettingsFromRows', () => {
       jobPattern: ['year', 'number'],
       bidPattern: [...DEFAULT_BID_FOLDER_PATTERN],
       foldersMade: 'as-needed',
+      companyFolderId: null,
     })
+    expect(driveSettingsFromRows([{ key: DRIVE_COMPANY_FOLDER_ID_KEY, value_text: ' 1CCCCCCCCCCCCCCCCCCCCCCCCCCC ' }], undefined)).toMatchObject({ companyFolderId: '1CCCCCCCCCCCCCCCCCCCCCCCCCCC' })
     expect(driveSettingsFromRows([], '1EEEEEEEEEEEEEEEEEEEEEEEEEEE')).toMatchObject({ rootFolderId: '1EEEEEEEEEEEEEEEEEEEEEEEEEEE', rootFrom: 'env', jobPattern: ['number', 'name'], foldersMade: 'upfront' })
     expect(driveSettingsFromRows([{ key: DRIVE_JOBS_ROOT_FOLDER_ID_KEY, value_text: '  ' }], undefined)).toMatchObject({ rootFolderId: null, rootFrom: null })
   })
@@ -119,6 +123,7 @@ describe('driveSettingsFromRows', () => {
     expect(DRIVE_JOB_FOLDER_PATTERN_KEY).toBe(APP_SETTINGS_KEY_DRIVE_JOB_FOLDER_PATTERN)
     expect(DRIVE_BID_FOLDER_PATTERN_KEY).toBe(APP_SETTINGS_KEY_DRIVE_BID_FOLDER_PATTERN)
     expect(DRIVE_FOLDERS_MADE_KEY).toBe(APP_SETTINGS_KEY_DRIVE_FOLDERS_MADE)
+    expect(DRIVE_COMPANY_FOLDER_ID_KEY).toBe(APP_SETTINGS_KEY_DRIVE_COMPANY_FOLDER_ID)
   })
 })
 

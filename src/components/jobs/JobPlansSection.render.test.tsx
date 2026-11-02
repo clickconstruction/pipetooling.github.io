@@ -58,6 +58,8 @@ function fakeIo(read: Partial<JobPlansRead> = {}, over: Partial<JobPlansIo> = {}
   }
   return {
     read: vi.fn(async () => full),
+    readSite: vi.fn(async () => ({ parts: [], sets: [], names: {} })),
+    makeSitePart: vi.fn(async () => ({ ...part, id: 'p-site', job_id: null, development_id: 'd1', current_set_id: null })),
     makePart: vi.fn(async () => ({ ...part, id: 'p-new', current_set_id: null })),
     pickPart: vi.fn(async () => undefined),
     addSet: vi.fn(async (a) => set({ id: 's-new', name: a.draft.name, link: a.draft.link })),
