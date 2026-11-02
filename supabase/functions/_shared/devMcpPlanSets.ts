@@ -11,8 +11,9 @@
 // set by trigger (20261101210000). Pure: no env reads, no network; the reads and writes come in through two small
 // interfaces so the tests run over a recording fake (src/lib/devMcp/devMcpPlanSets.test.ts).
 //
-// The kinds and sources here mirror src/lib/plans/planSets.ts (PLAN_SET_KINDS, PLAN_SET_SOURCES) and
-// src/lib/papers/papers.ts (PAPER_KINDS, PAPER_FROMS); the test holds them equal.
+// The kinds and sources here are the papers migration's CHECKs (20261102010000) and the Plans section's picker
+// (src/lib/plans/planSets.ts PLAN_SET_KINDS, PLAN_SET_SOURCES), which the test holds them to; the paper kinds'
+// labels follow the client's src/lib/papers/papers.ts (PAPER_KINDS, PAPER_FROMS).
 
 export const PLAN_PART_VERBS = ['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper'] as const
 export type PlanPartVerb = (typeof PLAN_PART_VERBS)[number]

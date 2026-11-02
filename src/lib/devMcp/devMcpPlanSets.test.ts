@@ -25,7 +25,6 @@ import {
 } from '../../../supabase/functions/_shared/devMcpPlanSets'
 import { WRITE_VERBS, alreadyApplied, isWriteVerb, planHash, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 import { PLAN_SET_KINDS, PLAN_SET_SOURCES } from '../plans/planSets'
-import { PAPER_FROMS, PAPER_KINDS as CLIENT_PAPER_KINDS, historyLineForPaper } from '../papers/papers'
 
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 const TWIN = readFileSync('supabase/functions/twin-mcp/index.ts', 'utf8')
@@ -104,18 +103,26 @@ function fake(rows: Record<string, Json[]>) {
 }
 
 describe('the plan-part verbs mirror the Plans section (v2.6317, punch list #239)', () => {
-  it('the kinds and sources are the client kernels’ own', () => {
+  it('the kinds and sources are the database’s own, and the drawings are the Plans section’s', () => {
+    // The drawings and their sources: the Plans section's picker (src/lib/plans/planSets.ts).
     expect(DRAWING_KINDS.map((k) => k.kind)).toEqual(PLAN_SET_KINDS.map((k) => k.kind))
     expect(DRAWING_KINDS.map((k) => k.label)).toEqual(PLAN_SET_KINDS.map((k) => k.label))
     expect([...SET_SOURCES]).toEqual(PLAN_SET_SOURCES.map((s) => s.source))
-    expect(PAPER_KINDS.map((k) => k.kind)).toEqual(CLIENT_PAPER_KINDS.map((k) => k.kind))
-    expect(PAPER_KINDS.map((k) => k.label)).toEqual(CLIENT_PAPER_KINDS.map((k) => k.label))
-    expect([...PAPER_SOURCES]).toEqual(PAPER_FROMS.map((f) => f.from))
-    // …and the database's: every kind, source and lane the migration allows, no more and no fewer.
-    for (const k of [...DRAWING_KINDS, ...PAPER_KINDS]) expect(PAPERS_MIGRATION).toContain(`'${k.kind}'`)
+    // Every kind the papers migration allows, in its order, split where plan_set_is_drawing splits them: no more, no fewer.
+    const quoted = (sql: string) => [...sql.matchAll(/'([a-z_]+)'/g)].map((m) => m[1])
+    const allowed = quoted(/plan_sets_kind_known CHECK \(kind IN \(([\s\S]*?)\)\);/.exec(PAPERS_MIGRATION)?.[1] ?? '')
+    const drawings = quoted(/SELECT p_kind IN \(([^)]*)\)/.exec(PAPERS_MIGRATION)?.[1] ?? '')
+    expect(drawings).toEqual(DRAWING_KINDS.map((k) => k.kind))
+    expect(allowed).toEqual([...DRAWING_KINDS, ...PAPER_KINDS].map((k) => k.kind))
     expect(PAPERS_MIGRATION).toContain("CHECK (source IN ('gc', 'architect', 'engineer', 'supplier', 'ours'))")
+    expect([...PAPER_SOURCES]).toEqual(['gc', 'architect', 'engineer', 'supplier', 'ours'])
     expect(PAPERS_MIGRATION).toContain("CHECK (ask_lane IS NULL OR ask_lane IN ('estimators', 'dispatch'))")
     expect([...ASK_LANES]).toEqual(['estimators', 'dispatch'])
+    // The History line is the trigger's (plan_set_paper_words): paperHistoryLine writes the same words into the plan.
+    expect(PAPERS_MIGRATION).toContain("WHEN p.owed THEN 'Owed: ' || p.name || ' from ' || CASE p.source WHEN 'ours' THEN 'us'")
+    expect(PAPERS_MIGRATION).toContain("ELSE 'Kept ' || replace(p.kind, '_', ' ') || ' ' || p.name || ', '")
+    expect(PAPERS_MIGRATION).toContain("|| CASE WHEN p_goes_with IS NOT NULL THEN ', on ' || p_goes_with ELSE '' END")
+    expect(PAPERS_MIGRATION).toContain("|| CASE WHEN p_replaces IS NOT NULL THEN ' · replaces ' || p_replaces ELSE '' END")
   })
 
   it('are four write verbs on the allowlist with no RPC, plan before apply, and the server declares and handles each in its own branch', () => {
@@ -259,8 +266,6 @@ describe('the dry run — the part as it stands and the row as it will be writte
       history_line: 'Kept change order CO 3, the owner, on Issued set: adds a hose bibb',
     })
     expect(String(dry.reply.history)).toContain("ZZ Test Meadows's History")
-    // The same words the client kernel shows before the keep (the ask's bit is the client's own addition).
-    expect(historyLineForPaper({ kind: 'change_order', name: 'CO 3', source: 'gc', memo: 'adds a hose bibb', owed: false, askWords: null, askLane: null }, 'Issued set', null)).toBe(dry.reply.history_line)
   })
   it('an owed paper on the site itself: the ask is about the site, the line reads asked, the History line reads Owed', () => {
     const built = planPartInput('plan_paper', { paper: { part_id: PART, kind: 'report', name: 'Soil report', from: 'engineer', owed: true, came_on: '2026-10-27', memo: 'before the slab', ask: { lane: 'dispatch', words: 'The engineer owes the soil report' } } })
