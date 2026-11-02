@@ -2,7 +2,7 @@
 name: "Search every file deeply: our own index, OCR and meaning, backfilled once by an agent"
 number: 240
 group: ready
-status: designed 2026-11-02 in the session that shipped Find a file (v2.6305); nothing of this card is built; the owner is handing it to another session on another computer
+status: designed 2026-11-02 in the session that shipped Find a file (v2.6305) · PR 1 shipped v2.6319 (#6773, the index, the sweep and Find a file reading it first) · the backfill runner shipped v2.6343 (`scripts/file-index-backfill.mjs`) · left: the backfill run (counts in Where it stands), PR 2 (a dev-mcp key), PRs 3 and 4 (the owner's two decisions)
 summary: >
   Find a file (Documents → Search, v2.6305) asks Drive's own full-text index and lands each hit on its job; PR #6752
   adds the line around the words. That finds a file by words Google has indexed, and nothing more. The owner wants
@@ -10,9 +10,9 @@ summary: >
   Postgres (one row per Drive file, full-text ranked), fed by the sweep as files land and filled once by a backfill,
   our own OCR for scanned paper, and embeddings so a search by meaning finds the letter that never used the word.
   The backfill is to be run one time by a Claude agent session after the features land, not by a cron.
-next: PR 1 — the `file_index` table with its `tsvector`, drive-link's `index` action, and Find a file reading the index first; no decision is needed to start it.
+next: the backfill run — `node scripts/file-index-backfill.mjs --scope zz` on the ZZ test homes, then `--scope live`, `--scope bids`, `--scope paid`, counts into Where it stands; then the owner's choice of how new files are indexed (Where it stands) and PRs 2 to 4.
 size: L
-blocker: PRs 3 and 4 wait on two owner decisions (the OCR provider, the embeddings provider and its key); PR 2's agent door needs a fresh dev-mcp key, the old one was revoked 2026-10-26. PR 1 is unblocked.
+blocker: PRs 3 and 4 wait on two owner decisions (the OCR provider, the embeddings provider and its key); PR 2's agent door needs a fresh dev-mcp key, the old one was revoked 2026-10-26. PR 1 and the backfill runner need nothing.
 opinion: build — the owner asked for it twice and chose the shape; Drive's index is kept as the floor, so every PR here adds reach without taking anything away
 mockup: not required — the box is the shipped Find a file; the index changes what it finds and how fast, not the screen, and PR #6752 already draws the excerpt line the index will feed
 ---
@@ -243,6 +243,35 @@ After PRs 1 and 2 (and 3 if OCR is wanted in the first pass), a Claude session w
    it took, the cost of any OCR) and a one-paragraph note to the owner.
 
 The sweep keeps the table current from then on; nothing is scheduled for the agent again.
+
+## Where it stands
+
+PR 1 landed as v2.6319 (#6773, 2026-11-02): `file_index`, `search_file_index`, drive-link's `index` and `index_job`, the
+`file-index-sweep` cron, Find a file reading the index first, and *Index this job's files* on the Documents tab. The
+backfill runner landed as v2.6343 (`scripts/file-index-backfill.mjs`, `docs/recent-features/v2.6343.md`): it walks every
+job's and bid's folders through `index_job` as the dev, the ZZ test homes first, then the live jobs, the bids and the paid
+jobs, resumes from a state file and keeps a local log; the counts below are its, never a file's name.
+
+### The run (counts only)
+
+_Filled in as each scope finishes._
+
+### New files from here on: the owner's choice
+
+Three ways the card and the code allow, each with what it costs and what it misses:
+
+1. **The sweep PR 1 ships** (recommended, nothing new to build): every ten minutes `file-index-sweep` lists what changed in
+   the Shared Drive since its stamp and indexes forty files a run; it costs one Drive list and the reads, a file dropped
+   in by hand is found within minutes, a deleted file loses its row within days by the rechecks. It misses nothing inside
+   the Shared Drive and everything outside it (the estimators' bid folders in a My Drive, open decision 4). Its stamp
+   moves past files already current (`passCursor` in the kernel, found on the night of the backfill and fixed inside
+   PR 1), so a backfill run before the sweep catches up leaves nothing stuck.
+2. **Drive's change feed** (`changes.list` with a page token kept as the stamp): one call tells exactly what was added,
+   changed, moved or deleted since the last run, deletes included at once, inside the same sweep function and the same
+   cron; worth it when the drive grows past tens of thousands of files or the office wants a deleted file gone from the
+   search at once.
+3. **Index when the app files something itself** (Add a file, the photo sweep, sent copies, plan sets): instant for those
+   files, but it misses every file put in Drive by hand, which is the owner's case; an addition to 1 or 2, never alone.
 
 ## Decisions still open (the owner's)
 
