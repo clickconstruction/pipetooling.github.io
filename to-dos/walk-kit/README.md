@@ -49,9 +49,9 @@ while planning; the walk reads the same either way.
 
 ## Why the walk needs the owner today
 
-- **Prod sends are the owner's presses.** The desk train's live test is Route B
-  (`to-dos/messages-desk/BUILD_PLAN.md` § 0.5 and § 3): a session sets up and reads, a human
-  presses every Send.
+- **Prod sends are the owner's presses.** The desk train's live test was Route B (punch list
+  #140's plan, § 0.5 and § 3; that card retired 2026-11-01 and `docs/WALK_KIT.md` carries the
+  walk now): a session sets up and reads, a human presses every Send.
 - **No test account may send.** `quo-send` and `messages-email` look the caller up with
   `.match(REAL_ACCOUNT)` (`supabase/functions/_shared/realAccount.ts`: not a sample, not a twin),
   then refuse `read_only`, then ask `gc_office_team()`.
