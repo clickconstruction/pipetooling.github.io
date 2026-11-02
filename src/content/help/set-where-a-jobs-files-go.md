@@ -73,7 +73,7 @@ Press **Check 41 pasted folders** to look at every live job's pasted folder in o
 
 Open a job and press its **Documents** tab. Under **Job folders** a section called **In the folders** lists each of the five folders. Each folder shows its count and its newest files. Press a file's name to open it in Drive. Press **Open in Drive** to open the folder.
 
-Each file says where it came from. {{chip:blue|From the app · a report photo}} means the app filed it and knows what it is. {{chip:gray|Added in Drive}} means someone put it in the folder by hand.
+Each file says where it came from. {{chip:blue|From the app · a report photo}} means the app filed it and knows what it is. {{chip:blue|From the app · a file the app put there}} means the app saved it there. A file you add with **Add a file** shows this chip. {{chip:gray|Added in Drive}} means someone put it in the folder by hand.
 
 The list is read from Drive each time the tab opens. Nothing is copied. A file dropped into a folder by hand shows the next time anyone looks.
 
