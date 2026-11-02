@@ -16,6 +16,7 @@ import { readsCustomerLinesInJobUpdates } from '../../lib/gc/access'
 import { useJobMessages } from '../../hooks/useJobMessages'
 import { customerLinesForJobUpdates } from '../../lib/jobs/jobUpdatesCustomerLines'
 import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
+import { JobModePhotosLine } from './JobModePhotosLine'
 
 type CustomerContact = {
   customer_name: string | null
@@ -62,10 +63,15 @@ function googleMapsSearchUrlForAddress(address: string): string {
 export default function JobModeDetailsSection({
   jobId,
   jobAddress,
+  hcpNumber,
+  jobName,
   updatesRev = 0,
 }: {
   jobId: string
   jobAddress: string
+  /** The job's number and name, for the Job photos window's head (punch list #244); absent on the next job's card. */
+  hcpNumber?: string | null
+  jobName?: string | null
   /** Goes up when the card wrote to the job (Message the customer's note or text): Job updates reads again. */
   updatesRev?: number
 }) {
@@ -199,6 +205,8 @@ export default function JobModeDetailsSection({
     >
       {/* A checklist per stage (punch list #164, PR 3): the job's stages with a checklist, each opening its sheet. */}
       <JobStageChecklistStrip jobId={jobId} rev={updatesRev} plansUrl={contact?.job_plans_link} />
+      {/* The field's door to the job's photos (punch list #244, PR 4): the same window the Pipeline row's camera opens. */}
+      <JobModePhotosLine jobId={jobId} hcpNumber={hcpNumber} jobName={jobName} jobAddress={jobAddress} />
       <div
         style={{
           display: 'flex',

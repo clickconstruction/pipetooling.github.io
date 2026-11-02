@@ -329,3 +329,24 @@ export function canEditJobPhotoWords(input: { role: string | null | undefined; b
   const r = input.role
   return r === 'dev' || r === 'master_technician' || r === 'assistant' || r === 'controller' || r === 'estimator'
 }
+
+// ---------------------------------------------------------------------------
+// The field's doors and the thread (PR 4).
+// ---------------------------------------------------------------------------
+
+/**
+ * The one line on the job's thread after the press (the author is the thread's own): *Added 2 photos: Cracked flange
+ * under the second lav; Water heater serial plate*; a photo with no words is counted and not named; '' with none.
+ */
+export function threadLineWords(writes: ReadonlyArray<Pick<JobPhotoAddWrite, 'caption' | 'description' | 'stageName'>>): string {
+  if (writes.length === 0) return ''
+  const head = writes.length === 1 ? 'Added 1 photo' : `Added ${writes.length} photos`
+  const named = writes.map((w) => (descriptionTrimmed(w.description) ? w.caption : (w.stageName ?? '').trim())).filter(Boolean)
+  return named.length ? `${head}: ${named.join('; ')}` : head
+}
+
+/** The Job Mode card's line: *Photos · 14*, *Photos · add the first*, *Photos* while the count is unread. */
+export function jobModePhotosLineWords(count: number | null): string {
+  if (count == null) return 'Photos'
+  return count > 0 ? `Photos · ${count}` : 'Photos · add the first'
+}

@@ -44,15 +44,17 @@ const base: UploadedPhotoRow = {
 }
 const report: UploadedPhotoRow = { ...base, source: 'report', id: 'r1', caption: 'Rough In', by_name: 'Mateo Ruiz', taken_at: '2026-10-29T20:15:00.000Z', drive_file_id: 'd-2', report_id: 'rep-1' }
 
-function makeIo(over: Partial<JobPhotosWindowIo> & { rowsAnswer?: UploadedPhotoRow[] | Error } = {}): JobPhotosWindowIo & { added: unknown[]; sent: string[]; edited: unknown[] } {
+function makeIo(over: Partial<JobPhotosWindowIo> & { rowsAnswer?: UploadedPhotoRow[] | Error } = {}): JobPhotosWindowIo & { added: unknown[]; sent: string[]; edited: unknown[]; threads: string[] } {
   const added: unknown[] = []
   const sent: string[] = []
   const edited: unknown[] = []
+  const threads: string[] = []
   let answer = over.rowsAnswer ?? []
-  const io: JobPhotosWindowIo & { added: unknown[]; sent: string[]; edited: unknown[] } = {
+  const io: JobPhotosWindowIo & { added: unknown[]; sent: string[]; edited: unknown[]; threads: string[] } = {
     added,
     sent,
     edited,
+    threads,
     rows: () => (answer instanceof Error ? Promise.reject(answer) : Promise.resolve(answer)),
     drive: {
       list: () => Promise.resolve({ folder: { kind: 'pictures' as const, url: 'https://drive.google.com/drive/folders/1Pics' }, photos: [{ id: 'd-9', name: 'IMG_4471.jpg', mime: 'image/jpeg', bytes: 2_000_000, modified: '2026-11-01T13:48:00.000Z', from: 'pictures' as const }], capped: false, waiting: 0 }),
@@ -75,6 +77,11 @@ function makeIo(over: Partial<JobPhotosWindowIo> & { rowsAnswer?: UploadedPhotoR
     editWords: (id, input) => {
       edited.push({ id, ...input })
       return Promise.resolve()
+    },
+    links: () => Promise.resolve({ google_drive_link: job.google_drive_link, job_pictures_link: null }),
+    thread: (_jobId, _by, body) => {
+      threads.push(body)
+      return Promise.resolve(true)
     },
     ...over,
   }
@@ -140,6 +147,7 @@ describe('JobPhotosWindow', () => {
     expect(io.added[0]).toMatchObject({ description: 'Meter location, behind the east fence gate', fixtureId: 'f1', stageName: 'Rough In', caption: 'Meter location, behind the east fence gate' })
     expect(io.added[1]).toMatchObject({ description: 'Meter location, behind the east fence gate', fixtureId: null })
     expect(await screen.findByText('2 photos added to the job')).toBeTruthy()
+    await waitFor(() => expect(io.threads).toEqual(['Added 2 photos: Meter location, behind the east fence gate; Meter location, behind the east fence gate']))
     await waitFor(() => expect(document.querySelectorAll('[data-job-photo-tile]')).toHaveLength(3))
     expect(document.querySelectorAll('textarea[data-shot-words]')).toHaveLength(0)
   })
