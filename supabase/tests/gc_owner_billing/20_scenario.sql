@@ -289,6 +289,20 @@ SELECT gob.same('the crew searches leave it out, the office''s finds it',
   (SELECT count(*) FROM public.search_jobs_ledger('Billing test P', true))::text || ' ' ||
   (SELECT count(*) FROM public.search_jobs_for_self_schedule('Billing test P'))::text,
   '0 1 0');
+-- The job's development names it in the office's search (20261102170000): a development the owner made,
+-- the billing job put in it as the fixture; the whole name finds the job, part of it in any case finds it,
+-- another development's name does not, and the crew's search still leaves the billing-only job out.
+RESET ROLE;
+INSERT INTO public.developments (id, name, master_user_id) VALUES
+  ('00000000-0000-0000-0000-0000000004f1', 'Billing Test Oaks Phase 2', '00000000-0000-0000-0000-0000000004d5');
+UPDATE public.jobs_ledger SET development_id = '00000000-0000-0000-0000-0000000004f1' WHERE id = (SELECT id FROM ids WHERE k = 'job');
+SET LOCAL ROLE authenticated;
+SELECT gob.same('the development''s name finds the job in the office''s search, not the crew''s',
+  (SELECT count(*) FROM public.search_jobs_ledger('Billing Test Oaks Phase 2', true))::text || ' ' ||
+  (SELECT count(*) FROM public.search_jobs_ledger('oaks phase', true))::text || ' ' ||
+  (SELECT count(*) FROM public.search_jobs_ledger('Oaks Phase 9', true))::text || ' ' ||
+  (SELECT count(*) FROM public.search_jobs_ledger('oaks phase'))::text,
+  '1 1 0 0');
 
 -- 5 · The certificate on pay application 1: every refusal in its words, then what they certified.
 SELECT gob.refused('a certificate above what we asked',
