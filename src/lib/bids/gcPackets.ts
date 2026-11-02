@@ -100,10 +100,20 @@ export function groupVersionsByGc<V extends GcVersionLike>(
   return groups
 }
 
-/** Bid-level roll-up from the packets: won if any won; lost if every packet that was sent lost; else null (leave as is). */
-export function rollUpOutcome(packets: ReadonlyArray<{ outcome: string | null; sentOn: string | null }>): 'won' | 'lost' | null {
-  if (packets.some((p) => p.outcome === 'won')) return 'won'
-  const sent = packets.filter((p) => p.sentOn || p.outcome)
+/**
+ * Bid-level roll-up from the packets: won if any won; lost if every packet that was sent lost;
+ * else null (leave as is). A shared-letter GC (on "Also sent to" with no version of its own)
+ * rides the bid: with no answer of its own it is NOT a GC still waiting, so it never holds the
+ * roll-up open — v2.6390, BP391: every GC marked lost and the bid sat in Not yet won or lost,
+ * because the same-letter recipient carried the bid's sent date and no outcome of its own. An
+ * answer set ON a shared-letter packet (the writer's in-memory `packetsAfter`; no card offers it)
+ * is the bid's answer and counts as before. The bid room's `roomRollUpOutcome`
+ * (supabase/functions/_shared/bidRoomOutcome.ts) mirrors this.
+ */
+export function rollUpOutcome(packets: ReadonlyArray<{ outcome: string | null; sentOn: string | null; sharedLetter?: boolean }>): 'won' | 'lost' | null {
+  const counted = packets.filter((p) => !p.sharedLetter || p.outcome)
+  if (counted.some((p) => p.outcome === 'won')) return 'won'
+  const sent = counted.filter((p) => p.sentOn || p.outcome)
   if (sent.length > 0 && sent.every((p) => p.outcome === 'lost')) return 'lost'
   return null
 }
