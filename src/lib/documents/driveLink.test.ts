@@ -141,8 +141,12 @@ describe('the office’s door', () => {
       where: 'sent',
     })
     expect(parseOfficeAsk({ action: 'put', job: { project_id: PROJECT }, name: 'IMG_2041.jpg', where: 'photos' })).toMatchObject({ mime: 'application/octet-stream', where: 'photos' })
+    // v2.6303: the Documents tab's three destinations parse; an unknown one is refused.
+    for (const where of ['top', 'plans', 'pictures'] as const) {
+      expect(parseOfficeAsk({ action: 'put', job: { jobs_ledger_id: PROJECT }, name: 'Permit.pdf', where })).toMatchObject({ action: 'put', where })
+    }
+    expect(parseOfficeAsk({ action: 'put', job: { jobs_ledger_id: PROJECT }, name: 'Permit.pdf', where: 'elsewhere' })).toBeNull()
     expect(parseOfficeAsk({ action: 'put', job: { project_id: PROJECT }, name: '', where: 'sent' })).toBeNull()
-    expect(parseOfficeAsk({ action: 'put', job: { project_id: PROJECT }, name: 'x.pdf', where: 'plans' })).toBeNull()
     expect(landingPath('sent')).toEqual(['Team only', 'Sent by us'])
     expect(landingPath('photos')).toEqual(['Team only', 'Photos'])
   })

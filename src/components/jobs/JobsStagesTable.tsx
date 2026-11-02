@@ -16,7 +16,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesHazmatFeeButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesHazmatFeeButton, StagesJobFolderButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
 import { showAiaG702G703 } from '../../lib/aiaG702G703Eligibility'
 import { useChecklistAddModal } from '../../contexts/ChecklistAddModalContext'
 import { useDispatchTaskModal } from '../../contexts/DispatchTaskModalContext'
@@ -91,7 +91,7 @@ export type JobsStagesTableProps = {
   commitStagesPctWithNote: ReturnType<typeof useJobsStagesMutations>['commitStagesPctWithNote']
   setCreatePartialInvoiceAmount: (v: string) => void
   setCreatePartialInvoiceJob: (j: JobWithDetails | null) => void
-  openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean; fixturesSectionHighlight?: boolean }) => void
+  openEdit: (job: JobWithDetails, opts?: { billingCustomerHighlight?: boolean; fixturesSectionHighlight?: boolean; initialTab?: 'documents' }) => void
   openStagesDetailJobModal: (j: JobWithDetails) => void
   setAiaG702StagesJob: (j: JobWithDetails | null) => void
   canCreateHazmatFee: boolean
@@ -524,6 +524,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                               jobId={j.id}
                               fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
                             />
+                            <StagesJobFolderButton folderUrl={j.google_drive_link} onOpenTab={() => openEdit(j, { initialTab: 'documents' })} />
                             <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                             {showAiaG702G703(authRole, j) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(j)} /> : null}
                             {canCreateHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}

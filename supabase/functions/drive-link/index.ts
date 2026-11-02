@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DRIVE, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
-import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half } from '../_shared/driveJobFolder.ts'
+import { DRIVE, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
@@ -19,6 +19,7 @@ import {
   streamUrl,
   type JobRef,
   type LinkRow,
+  type PutWhere,
 } from '../_shared/driveLink.ts'
 
 /**
@@ -40,7 +41,10 @@ import {
  *
  *   POST { action: 'list', job }                       → the job's folder in its two halves (`DriveFileRow`s)
  *   POST { action: 'put', job, name, mime, where, base64 } → a file from this computer into Team only → Sent by us, or a
- *                                                        photo into Team only → Photos, up to 10 MB → { driveFileId, url }
+ *                                                        photo into Team only → Photos, up to 10 MB → { driveFileId, url };
+ *                                                        since v2.6303 `where` also takes 'top' (the job's folder itself),
+ *                                                        'plans' (its Plans folder) and 'pictures' (its photo folder), the
+ *                                                        Documents tab's Add a file
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -153,6 +157,24 @@ async function openDoor(req: Request, admin: SupabaseClient, url: URL): Promise<
   })
 }
 
+/**
+ * Where a `put` lands (v2.6303, the Documents tab's Add a file): 'sent' and 'photos' as before, under Team only; 'top'
+ * is the job's folder itself; 'plans' is a Pipeline job's own Plans folder when its link is set, else Plans made under
+ * the folder (a GC project's Plans half the same way); 'pictures' is the job's photo folder, Customer Pictures made as
+ * needed, as the photo sweep lands them. Null when the job has no folder for it.
+ */
+async function putFolderFor(admin: SupabaseClient, google: string, job: JobRef, folder: JobFolder, where: PutWhere): Promise<string | null> {
+  if (where === 'sent' || where === 'photos') return landingFolder(google, folder, landingPath(where))
+  if (where === 'top') return folder.folderId
+  if (where === 'pictures') return photoFolderFor(admin, google, job)
+  if ('jobs_ledger_id' in job) {
+    const { data } = await admin.from('jobs_ledger').select('job_plans_link').eq('id', job.jobs_ledger_id).maybeSingle()
+    const linked = driveFolderIdFromUrl((data as { job_plans_link?: string | null } | null)?.job_plans_link ?? null)
+    if (linked) return linked
+  }
+  return folder.plansId ?? landingFolder(google, folder, ['Plans'])
+}
+
 async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response> {
   const supabaseUrl = Deno.env.get('SUPABASE_URL')!
   const auth = req.headers.get('Authorization') ?? ''
@@ -226,7 +248,8 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     const bytes = bytesOfBase64(raw)
     if (!bytes || bytes.length === 0) return json({ error: 'That file did not come through.' }, 400)
     if (bytes.length > PUT_MAX_BYTES) return json({ error: 'Over 10 MB. Put it in the job’s Drive folder, then pick it from the job’s files.' }, 413)
-    const into = await landingFolder(google, folder, landingPath(ask.where))
+    const into = await putFolderFor(admin, google, ask.job, folder, ask.where)
+    if (!into) return json({ error: 'That job has no folder for that yet.' }, 409)
     const put = await uploadBytes(google, into, bytes, ask.name, ask.mime)
     return json({ driveFileId: put.id, url: driveViewUrl(put.id) })
   }
