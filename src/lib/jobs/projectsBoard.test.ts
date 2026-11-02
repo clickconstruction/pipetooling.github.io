@@ -98,6 +98,17 @@ describe('projectPace', () => {
     expect(pace.line.tone).toBe('early')
   })
 
+  it('reads a tuned line\'s own split from the five budget columns, so its stage\'s share moves (PR 5)', () => {
+    // Rough In tuned to 60% labor: $5,400 at $45/h is 120 h, where the company split read 90.
+    const tuned = staged.map((f) => (f.id === 'r' ? { ...f, budget_labor_pct: 60, budget_materials_pct: 25, budget_source: 'tuned', budget_tuned_at: '2026-11-01T20:00:00Z', budget_rate_usd: 45 } : f))
+    const pace = projectPace({ row: row({ id: 'a', fixtures: tuned }), budgetRow: null, burn: null, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: null })
+    expect(pace.baseHours).toBe(290)
+    expect(pace.stages.map((s) => Math.round(s.hours))).toEqual([120, 90, 80])
+    // A split with no source stored reads the company split, as before.
+    const unsourced = staged.map((f) => (f.id === 'r' ? { ...f, budget_labor_pct: 60, budget_materials_pct: 25, budget_source: null } : f))
+    expect(projectPace({ row: row({ id: 'a', fixtures: unsourced }), budgetRow: null, burn: null, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: null }).baseHours).toBe(260)
+  })
+
   it('leaves a discount line out of the budget and the shares', () => {
     const pace = projectPace({ row: row({ id: 'a', fixtures: [...staged, fixture({ id: 'd', name: 'Discount', line_kind: 'discount', line_unit_price: -5000 })] }), budgetRow: null, burn: null, target: null, checklist: { answered: 0, asked: 0 }, settings, targetMarginPct: null })
     expect(pace.baseHours).toBe(260)
