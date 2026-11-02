@@ -1,6 +1,7 @@
 import type { CSSProperties } from 'react'
 import ResponsiveModalShell from '../ResponsiveModalShell'
 import type { JobChargeEvent, JobValueEvent } from '../../lib/jobChargesTimeline'
+import { EmptyState } from '../EmptyState'
 
 /**
  * One day on a job (punch list #242, PR 1): hover a day's slice on the
@@ -38,7 +39,7 @@ export function DayDetailsBody({ ymd, events, valueEvents }: { ymd: string; even
       {/* The day's size first: the hours and the money, before who and what. */}
       <div style={{ fontSize: '1rem', fontWeight: 700, fontVariantNumeric: 'tabular-nums', marginTop: '0.15rem' }}>{Math.round(d.teamHours * 10) / 10} h · {usd(d.total)}</div>
       <div style={head}>Who was on it</div>
-      {d.team.length === 0 ? <div style={muted}>Nobody clocked on this job that day.</div> : null}
+      {d.team.length === 0 ? <EmptyState compact main="Nobody clocked on this job that day." /> : null}
       {d.team.map((e, i) => (
         <div key={i} style={row}>
           <span>{e.who ?? e.label}</span>
@@ -53,7 +54,7 @@ export function DayDetailsBody({ ymd, events, valueEvents }: { ymd: string; even
         </div>
       ))}
       <div style={head}>Bought that day</div>
-      {d.bought.length === 0 ? <div style={muted}>Nothing bought or charged that day.</div> : null}
+      {d.bought.length === 0 ? <EmptyState compact main="Nothing bought or charged that day." /> : null}
       {d.bought.map((e, i) => (
         <div key={i} style={row}>
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.label}</span>
@@ -61,7 +62,7 @@ export function DayDetailsBody({ ymd, events, valueEvents }: { ymd: string; even
         </div>
       ))}
       <div style={head}>The report</div>
-      {d.reports.length === 0 ? <div style={muted}>No field report that day.</div> : null}
+      {d.reports.length === 0 ? <EmptyState compact main="No field report that day." /> : null}
       {d.reports.map((v, i) => (
         <div key={i} style={row}>
           <span>{v.kind === 'manual' ? 'Percent set by the office' : 'Field report'}{v.label ? <span style={muted}> · {v.label}</span> : null}</span>
