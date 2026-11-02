@@ -20,8 +20,8 @@ concurrency:
 jobs:
   checks:
     runs-on: ubuntu-latest
-    # Normally 15 to 25 minutes (2026-10-27, the tests 14 of them); a stalled check fails instead of hanging the queue.
-    timeout-minutes: 30
+    # Normally 20 to 30 minutes (2026-11-01, the tests 18 to 21 of them); a stalled check fails instead of hanging the queue.
+    timeout-minutes: 40
     # pull-requests: write lets check:calls-ahead label a PR whose client calls ahead of its migration.
     permissions:
       contents: read
