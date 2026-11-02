@@ -1,4 +1,5 @@
 import { useState, type CSSProperties } from 'react'
+import { MoneyWithSmallCents } from './jobs/MoneySmallCents'
 
 function formatCurrency(n: number): string {
   return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -40,6 +41,13 @@ export type MoneyDecimalAmountInputProps = {
    * consumers whose onChange is pure client state — never one that persists.
    */
   commitOnType?: boolean
+  /**
+   * At rest, draw the cents smaller than the dollars the way the app's other
+   * money reads (`MoneyWithSmallCents`, v2.6110's Other charges box): the box
+   * stays one real `<input>` — its label, tab stop and click target — and the
+   * reading is an overlay that lifts while the box is focused or empty.
+   */
+  smallCents?: boolean
 }
 
 export function MoneyDecimalAmountInput({
@@ -51,9 +59,11 @@ export function MoneyDecimalAmountInput({
   style,
   readOnly = false,
   commitOnType = false,
+  smallCents = false,
 }: MoneyDecimalAmountInputProps) {
   const [focused, setFocused] = useState(false)
   const [draft, setDraft] = useState('')
+  const overlay = smallCents && !focused && value !== 0
 
   const displayValue =
     readOnly
@@ -66,7 +76,7 @@ export function MoneyDecimalAmountInput({
           ? formatCurrency(value)
           : ''
 
-  return (
+  const input = (
     <input
       id={id}
       type="text"
@@ -92,16 +102,46 @@ export function MoneyDecimalAmountInput({
         setDraft(next)
         if (commitOnType) onChange(parseMoneyInputToNumber(next))
       }}
-      style={
-        readOnly
+      style={{
+        ...(readOnly
           ? {
               ...style,
               cursor: 'not-allowed',
               background: 'var(--bg-muted)',
               color: 'var(--text-700)',
             }
-          : style
-      }
+          : style),
+        ...(overlay ? { color: 'transparent' } : null),
+      }}
     />
+  )
+  if (!smallCents) return input
+  // The overlay takes the box's own padding, size and alignment so the reading
+  // sits exactly where the typed digits do.
+  return (
+    <span style={{ position: 'relative', display: 'inline-flex', minWidth: 0 }}>
+      {input}
+      {overlay ? (
+        <span
+          aria-hidden
+          data-testid="money-input-reading"
+          style={{
+            position: 'absolute',
+            inset: 0,
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: style?.textAlign === 'right' ? 'flex-end' : 'flex-start',
+            boxSizing: 'border-box',
+            padding: style?.padding,
+            fontSize: style?.fontSize,
+            fontWeight: style?.fontWeight,
+            color: readOnly ? 'var(--text-700)' : undefined,
+            pointerEvents: 'none',
+          }}
+        >
+          <MoneyWithSmallCents value={value} />
+        </span>
+      ) : null}
+    </span>
   )
 }

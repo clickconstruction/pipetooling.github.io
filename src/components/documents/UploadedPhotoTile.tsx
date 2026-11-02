@@ -1,9 +1,10 @@
 /**
  * One thumbnail on Documents → Photos (punch list #232): its bytes come from the shot's bucket while it waits or from
  * Drive through `job-photos` once filed (`thumbSource`), as an object URL the tile revokes when it goes, or a signed URL
- * that needs no revoking. A photo with no copy we can read draws the camera glyph.
+ * that needs no revoking. A photo with no copy we can read draws the camera glyph. A tile asks for its bytes only once it
+ * is near the screen (the Documents spike of 2026-11-01), so a page of a hundred rows asks for the dozen in view, not all.
  */
-import { useEffect, useState, type CSSProperties } from 'react'
+import { useEffect, useRef, useState, type CSSProperties } from 'react'
 import { CameraGlyph } from '../materials/PhotoPress'
 import type { UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
 import type { UploadedPhotosIo } from '../../lib/photos/uploadedPhotosIo'
@@ -12,7 +13,25 @@ const box: CSSProperties = { width: 72, height: 72, borderRadius: 8, border: '1p
 
 export function UploadedPhotoTile({ row, io, size = 72 }: { row: UploadedPhotoRow; io: UploadedPhotosIo; size?: number }) {
   const [url, setUrl] = useState<string | null>(null)
+  const host = useRef<HTMLSpanElement | null>(null)
+  const [near, setNear] = useState(false)
   useEffect(() => {
+    const el = host.current
+    if (!el || typeof IntersectionObserver === 'undefined') {
+      setNear(true)
+      return
+    }
+    const obs = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((e) => e.isIntersecting)) setNear(true)
+      },
+      { rootMargin: '300px 0px' },
+    )
+    obs.observe(el)
+    return () => obs.disconnect()
+  }, [])
+  useEffect(() => {
+    if (!near) return
     let live = true
     let made: string | null = null
     setUrl(null)
@@ -31,9 +50,9 @@ export function UploadedPhotoTile({ row, io, size = 72 }: { row: UploadedPhotoRo
       live = false
       if (made && made.startsWith('blob:')) URL.revokeObjectURL(made)
     }
-  }, [io, row])
+  }, [io, row, near])
   return (
-    <span style={{ ...box, width: size, height: size }} data-testid="uploaded-photo-tile">
+    <span ref={host} style={{ ...box, width: size, height: size }} data-testid="uploaded-photo-tile">
       {url ? <img src={url} alt="" style={{ width: '100%', height: '100%', objectFit: 'cover', display: 'block' }} /> : <CameraGlyph size={22} />}
     </span>
   )

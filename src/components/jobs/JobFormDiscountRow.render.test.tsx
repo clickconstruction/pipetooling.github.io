@@ -72,6 +72,9 @@ function renderSection(fixtures: FixtureRow[], update = vi.fn(), addDiscountRow:
   return { update }
 }
 
+/** The Job Total press, read whole off its text: the cents are their own span since v2.6300. */
+const jobTotal = () => screen.getByText((_, el) => el?.tagName === 'BUTTON' && el.textContent === 'Job Total: $33,970.50') as HTMLButtonElement
+
 describe('JobFormDiscountRow', () => {
   it('shows the percent, its dollar twin, the readout, the bill line, and the footer equation', () => {
     renderSection([...work, discount()])
@@ -82,7 +85,7 @@ describe('JobFormDiscountRow', () => {
     expect(screen.getByTestId('discount-bill-line').textContent).toContain('Negotiated discount (10%)')
     expect(screen.getByTestId('discount-bill-line').textContent).toContain('−$1,509.80 with Rough In')
     expect(screen.getByTestId('job-total-equation').textContent).toBe('$37,745.00 work − $3,774.50 discount')
-    expect(screen.getByText('Job Total: $33,970.50')).toBeTruthy()
+    expect(jobTotal()).toBeTruthy()
     expect(screen.getByText('− Add discount')).toBeTruthy()
   })
 
@@ -145,7 +148,7 @@ describe('JobFormDiscountRow', () => {
   it('the Job Total is an input (v2.3265): tap, type, Enter → the shell gets the number and the footer says what happened', () => {
     const onSet = vi.fn(() => 'ok' as const)
     renderSection(work, vi.fn(), vi.fn(), onSet)
-    fireEvent.click(screen.getByText('Job Total: $33,970.50'))
+    fireEvent.click(jobTotal())
     const input = screen.getByLabelText(/Job Total — type the total/) as HTMLInputElement
     expect(input.value).toBe('33,970.50')
     fireEvent.change(input, { target: { value: '33,500' } })
@@ -155,7 +158,7 @@ describe('JobFormDiscountRow', () => {
   })
   it('without a handler the Job Total is plain text', () => {
     renderSection(work, vi.fn(), vi.fn(), undefined)
-    const btn = screen.getByText('Job Total: $33,970.50') as HTMLButtonElement
+    const btn = jobTotal()
     expect(btn.disabled).toBe(true)
   })
 

@@ -7,7 +7,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 let jobRow: { pct_complete: number | null; status: string | null } | null = {
   pct_complete: 45,
@@ -150,7 +150,7 @@ describe('FieldPctUpdateModal', () => {
     jobError = { message: 'TypeError: Load failed', details: '', hint: '', code: '' }
     try {
       renderWithProviders(<FieldPctUpdateModal job={JOB} onClose={vi.fn()} onSaved={vi.fn()} />)
-      await waitFor(() => expect(screen.getByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy())
+      await waitFor(() => expect(screen.getByText(OFFLINE_READ_MESSAGE)).toBeTruthy())
       jobError = null
       fireEvent.click(screen.getByRole('button', { name: 'Retry' }))
       await waitFor(() => expect(screen.getByText('Save 45%')).toBeTruthy())

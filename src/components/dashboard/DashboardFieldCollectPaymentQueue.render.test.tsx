@@ -8,7 +8,7 @@
 import { FunctionsFetchError } from '@supabase/supabase-js'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { FieldQueueLineItemsSection } from './DashboardFieldCollectPaymentQueue'
 
@@ -49,7 +49,7 @@ describe('FieldQueueLineItemsSection', () => {
       .mockResolvedValueOnce({ data: { error: 'This invoice is not on Stripe yet.' }, error: null })
     renderSection()
 
-    expect(await screen.findByText(OFFLINE_ERROR_MESSAGE)).toBeTruthy()
+    expect(await screen.findByText(OFFLINE_READ_MESSAGE)).toBeTruthy()
     expect(screen.queryByText(/Failed to send a request to the Edge Function/)).toBeNull()
     expect(screen.getByText('Saved total: $1,250.00.')).toBeTruthy()
 

@@ -27,3 +27,5 @@ The file is idempotent (`IF NOT EXISTS`, `DROP … IF EXISTS` before each policy
 ## After the push
 
 Run `npm run gen:types` in a `chore(types)` PR when convenient; the two tables and the job column are hand-carried in `src/types/database.ts` so PR 2 typechecks before then. The client starts reading and writing parts in PR 2 (the Plans section of the job window's Documents tab); until then the tables stay empty.
+
+**Applied** by 2026-11-01 (`npm run check:migration-drift` then: 1059 local files, 1059 remote versions, fully applied); the two tables and the job column stay hand-carried in `src/types/database.ts` until the next `chore(types)`; PR 2 (v2.6298, #6744) reads and writes them from the job window's Documents tab.

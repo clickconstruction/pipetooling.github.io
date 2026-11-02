@@ -21,6 +21,11 @@ type Row = Database['public']['Tables']['jobs_ledger_fixtures']['Row']
 const row = (o: Partial<Row> & { id: string; sequence_order: number }): Row => ({
   job_id: 'job',
   bill_to_party: null,
+  budget_labor_pct: null,
+  budget_materials_pct: null,
+  budget_rate_usd: null,
+  budget_source: null,
+  budget_tuned_at: null,
   name: 'Rough In',
   count: 1,
   line_unit_price: 15098,
