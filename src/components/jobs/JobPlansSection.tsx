@@ -4,8 +4,7 @@
  * its own part, made with its first set; a job inside a development names one of the site's parts, or makes one
  * named after itself. When another part of the site carries a set, a notice says so (the owner, 2026-11-01), with
  * a door to the site's Plans look. The job's old plans link follows the current set by the database's own mirror,
- * so *Open plans* on the Job tab opens the new set the moment the part switches. Each set carries its change line
- * (v2.6356, `PlanSetChangesLine`): what moved from the set before it, or *Write what changed* to the office.
+ * so *Open plans* on the Job tab opens the new set the moment the part switches.
  */
 import { useCallback, useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { useNavigate } from 'react-router-dom'
@@ -161,16 +160,6 @@ export function JobPlansSection({
       if (makeCurrent && made.link) onPlansLinkChanged?.(made.link)
     }, 'The set did not save.')
 
-  /** The change line written on a set already on the part; true when it took, so the editor closes. */
-  const saveChanges = async (setId: string, changes: string): Promise<boolean> => {
-    let ok = false
-    await run(async () => {
-      await io.updateChanges(setId, changes)
-      ok = true
-    }, 'What changed did not save.')
-    return ok
-  }
-
   const buildFrom = (s: PlanSetRow) =>
     run(async () => {
       if (!view.part) return
@@ -183,6 +172,16 @@ export function JobPlansSection({
       await io.removeSet(s.id)
       setPendingRemove(null)
     }, 'The set did not come off.')
+
+  /** The change line written on a set already on the part; true when it took, so the editor closes. */
+  const saveChanges = async (setId: string, changes: string): Promise<boolean> => {
+    let ok = false
+    await run(async () => {
+      await io.updateChanges(setId, changes)
+      ok = true
+    }, 'What changed did not save.')
+    return ok
+  }
 
   const goToSite = () => {
     if (!read?.job.development_id) return

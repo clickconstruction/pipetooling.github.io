@@ -32,8 +32,8 @@ The bid keeps its own sets. See [keep more than one set of plans on a bid](/help
 2. Type the set's **Name**, such as *Addendum 2*. The app starts the name for you.
 3. Pick the **Kind** and who it is **From**.
 4. Pick the **Dated** day. Use the date printed on the sheets.
-5. Type a **Memo**. Say who sent the set and where the file is.
-6. Under **What changed**, say what moved from the old set. Name the sheets or areas that moved. Say what it means for our work.
+5. Under **What changed**, say what moved from the old set. Name the sheets or areas that moved. Say what it means for our work.
+6. Type a **Memo**. Say who sent the set and where the file is.
 7. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
 8. Press {{button:blue|Add the set and build from it}}.
 

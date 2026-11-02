@@ -1,12 +1,13 @@
 /**
  * The one form a new set of plans is typed into (punch list #239): on a job's Documents tab (PR 2) and
  * on the Development page's Plans look (PR 3). Name · Kind · From · Dated · Memo · Link for a set; Name ·
- * Memo · Link for an as-built. *What changed* (v2.6356) asks what moved from the set the new one replaces, apart
- * from the memo, which keeps who sent it and where the file is. The presses name what they do: *Add the set and
- * build from it*, *Add it, keep <set> current*, *Add the as-built*. Pure over its props; the caller writes.
+ * Memo · Link for an as-built. The presses name what they do: *Add the set and build from it*, *Add it,
+ * keep <set> current*, *Add the as-built*. Pure over its props; the caller writes.
  */
 import type { CSSProperties } from 'react'
-import { PLAN_SET_KINDS, PLAN_SET_SOURCES, addSetPressWords, changesPlaceholder, defaultSetName, type NewSetDraft, type PlanSetKind, type PlanSetRow, type PlanSetSource } from '../../lib/plans/planSets'
+import { PLAN_SET_KINDS, PLAN_SET_SOURCES, addSetPressWords, defaultSetName, type NewSetDraft, type PlanSetKind, type PlanSetRow, type PlanSetSource } from '../../lib/plans/planSets'
+
+import { changesPlaceholder } from '../../lib/plans/planSets'
 
 const field: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(5.5rem, 7rem) 1fr', gap: '0.3rem 0.6rem', alignItems: 'center', fontSize: '0.8125rem' }
 const input: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.45rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }
@@ -73,18 +74,16 @@ export function PlanSetForm({
             <span>Dated</span>
             <input style={input} type="date" value={draft.dated} onChange={(e) => put({ dated: e.target.value })} title="The date printed on the sheets" />
           </label>
+          <label style={{ ...field, alignItems: 'start' }}>
+            <span>What changed</span>
+            <textarea style={{ ...input, minHeight: '3.4rem', resize: 'vertical' }} rows={2} value={draft.changes ?? ''} placeholder={changesPlaceholder(current)} onChange={(e) => put({ changes: e.target.value })} data-testid="plan-set-changes" />
+          </label>
         </>
       )}
       <label style={field}>
         <span>Memo</span>
         <input style={input} value={draft.memo} placeholder={asBuilt ? 'What the crew changed, in a line' : 'Who sent it, when, and where the file is'} onChange={(e) => put({ memo: e.target.value })} />
       </label>
-      {asBuilt ? null : (
-        <label style={{ ...field, alignItems: 'start' }}>
-          <span>What changed</span>
-          <textarea style={{ ...input, minHeight: '3.4rem', resize: 'vertical' }} rows={2} value={draft.changes ?? ''} placeholder={changesPlaceholder(current)} onChange={(e) => put({ changes: e.target.value })} data-testid="plan-set-changes" />
-        </label>
-      )}
       <label style={field}>
         <span>Link</span>
         <input style={input} value={draft.link} placeholder="A Drive folder or file link, or leave it empty for now" onChange={(e) => put({ link: e.target.value })} />
