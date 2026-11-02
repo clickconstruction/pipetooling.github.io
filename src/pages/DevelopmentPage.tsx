@@ -21,13 +21,13 @@ import { DevelopmentBackfillSheet, type BackfillSheetValues } from '../component
 import { makeBidFromJob, undoBackfill } from '../lib/developments/backfillWrites'
 import { hideFromBoardAgain, putAllInDevelopment, putBackOnBoard, putInDevelopment, takeOutOfDevelopment } from '../lib/developments/chipWrites'
 import { putInConfirmRows, putInLabel, putInOutcomeWords, putInPreviewLines } from '../lib/developments/putIn'
-import { askRow, askSentWords, askTitleForPlans, type AskDraft } from '../lib/developments/ask'
+import { askRow, askSentWords, askTitleForSitePlans, type AskDraft } from '../lib/developments/ask'
 import { sendAsk } from '../lib/developments/askWrites'
 import { DevelopmentAskSheet, type AskAboutOption, type AskPreset } from '../components/developments/DevelopmentAskSheet'
 import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/developments/DevelopmentChipConfirm'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
-import { DevelopmentPlansCard } from '../components/developments/DevelopmentSideCards'
+import { DevelopmentPartsCard, type SitePlansWrites } from '../components/developments/DevelopmentPartsCard'
 import { DevelopmentQuestionsLook } from '../components/developments/DevelopmentQuestionsLook'
 import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import { DevelopmentCounts, type CountTileSpec } from '../components/developments/DevelopmentCounts'
@@ -47,8 +47,9 @@ import { useMatchMedia } from '../hooks/useMatchMedia'
 import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
 import { bidMoney, bidStatusWord, bidUndecided, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
-import { buildPlansView, planSetMemoWrite, plansAskOnRecord, plansNeedWords, type PlanCarrier, type PlanSet } from '../lib/developments/plans'
-import { useBidPlanSetsByBid } from '../hooks/useBidPlanSetsByBid'
+import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
+import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../lib/plans/sitePlans'
+import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
 import { supabase } from '../lib/supabase'
 import { canSeeSiteCosts } from '../lib/developments/siteCosts'
 import { useSiteCosts } from '../hooks/useSiteCosts'
@@ -166,37 +167,56 @@ export default function DevelopmentPage() {
 
   const counts = useMemo(() => (shown && data ? headCounts(shown, data.requests, nowMs) : null), [shown, data, nowMs])
   const people = useMemo(() => (shown && data ? sitePeople({ members: shown, names: data.names, teamMembers: data.teamMembers, jobLabel }) : null), [shown, data, jobLabel])
-  // The sets' memo lines (v2.6207): the shown bids' `bid_plan_sets` rows, re-read after a memo is kept.
-  const [planSetGen, setPlanSetGen] = useState(0)
-  const shownBidIds = useMemo(() => (shown ? shown.bids.map((b) => b.id) : []), [shown])
-  const planSetsByBid = useBidPlanSetsByBid(shownBidIds, shownBidIds.length > 0, planSetGen)
-  const planSetRows = useMemo(() => [...planSetsByBid.values()].flat(), [planSetsByBid])
-  const plans = useMemo(() => (shown && data ? buildPlansView({ members: shown, bidChanges: data.bidChanges, names: data.names, bidLabel, jobLabel, planSetRows }) : null), [shown, data, bidLabel, jobLabel, planSetRows])
-  const canWritePlanMemo = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'estimator'
-  const planMemoWriter = useMemo(
+  // The link-grouped view feeds the Jobs & bids table's Plans cell and History; the Plans look itself reads by part (v2.6302).
+  const plans = useMemo(() => (shown && data ? buildPlansView({ members: shown, bidChanges: data.bidChanges, names: data.names, bidLabel, jobLabel }) : null), [shown, data, bidLabel, jobLabel])
+  // The site's parts and their sets (punch list #239, PR 3): one read, again after every write.
+  const siteIo = useMemo(() => supabaseJobPlansIo(), [])
+  const [siteRead, setSiteRead] = useState<SitePlansRead | null>(null)
+  const [siteGen, setSiteGen] = useState(0)
+  const developmentIdForParts = data?.development.id ?? null
+  useEffect(() => {
+    let live = true
+    if (!developmentIdForParts) return
+    siteIo.readSite(developmentIdForParts).then(
+      (r) => live && setSiteRead(r),
+      () => live && setSiteRead({ parts: [], sets: [], names: {} }),
+    )
+    return () => {
+      live = false
+    }
+  }, [siteIo, developmentIdForParts, siteGen])
+  const siteView = useMemo(
     () =>
-      canWritePlanMemo
-        ? async (set: PlanSet, memo: string): Promise<boolean> => {
-            const w = planSetMemoWrite(set)
-            if (!w) return false
-            try {
-              if (w.kind === 'update') {
-                const { error } = await supabase.from('bid_plan_sets').update({ memo }).eq('id', w.id)
-                if (error) throw error
-              } else {
-                const { error } = await supabase.from('bid_plan_sets').insert({ bid_id: w.bidId, name: w.name, link: w.link, memo, created_by: authUser?.id ?? null })
-                if (error) throw error
-              }
-              setPlanSetGen((n) => n + 1)
-              return true
-            } catch (e) {
-              showToast(formatErrorMessage(e, 'The memo did not keep.'), 'error')
-              return false
-            }
-          }
-        : undefined,
-    [canWritePlanMemo, authUser?.id, showToast],
+      shown && siteRead
+        ? buildSitePlansView({
+            parts: siteRead.parts,
+            sets: siteRead.sets,
+            jobs: shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j), plan_part_id: j.plan_part_id ?? null })),
+            bids: shown.bids.map((b) => ({ id: b.id, label: bidLabel(b), plans_link: b.plans_link })),
+          })
+        : null,
+    [shown, siteRead, jobLabel, bidLabel],
   )
+  const canWritePlans = role === 'dev' || role === 'master_technician' || role === 'assistant' || role === 'controller' || role === 'estimator'
+  const siteWrites = useMemo<SitePlansWrites | undefined>(() => {
+    if (!canWritePlans || !developmentIdForParts) return undefined
+    const after = (fallback: string) => async (act: () => Promise<unknown>): Promise<boolean> => {
+      try {
+        await act()
+        setSiteGen((n) => n + 1)
+        return true
+      } catch (e) {
+        showToast(formatErrorMessage(e, fallback), 'error')
+        return false
+      }
+    }
+    return {
+      addPart: (name) => after('The part did not save.')(() => siteIo.makeSitePart({ developmentId: developmentIdForParts, name, position: (siteRead?.parts.length ?? 0) + 1, userId: authUser?.id ?? null })),
+      addSet: (partId, draft, makeCurrent, replacesSetId) => after('The set did not save.')(() => siteIo.addSet({ partId, draft, makeCurrent, replacesSetId, marksUpSetId: null, jobId: null, userId: authUser?.id ?? null })),
+      buildFrom: (partId, setId) => after('The set did not switch.')(() => siteIo.makeCurrent(partId, setId, authUser?.id ?? null)),
+      removeSet: (setId) => after('The set did not come off.')(() => siteIo.removeSet(setId)),
+    }
+  }, [canWritePlans, developmentIdForParts, siteIo, siteRead?.parts.length, authUser?.id, showToast])
   // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.
   const shownJobIds = useMemo(() => (shown ? shown.jobs.map((j) => j.id) : []), [shown])
   const costsByJobId = useSiteCosts(shownJobIds, canSeeSiteCosts(role))
@@ -732,7 +752,7 @@ export default function DevelopmentPage() {
     changed: { n: since.newCount, count: `${since.newCount} new`, need: since.newCount > 0 ? `${since.newCount} new` : null },
     pieces: { n: activePieces, count: String(activePieces), need: suggestions.length > 0 ? `${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : null },
     money: moneyShown ? { n: siteMoney.band.jobs, count: moneyWords.count, need: moneyWords.need } : { n: 0, count: OFFICE_READS_MONEY_CHIP, need: null },
-    plans: { n: plans.sets.length, count: `${plans.sets.length} ${plans.sets.length === 1 ? 'set' : 'sets'}`, need: plansNeedWords(plans) },
+    plans: siteView ? { n: siteView.setCount, count: sitePlansCountWords(siteView), need: sitePlansNeedWords(siteView) } : { n: 0, count: '…', need: null },
     questions: {
       n: data.requests.length,
       count: openQuestions > 0 && openQuestions === data.requests.length ? `${openQuestions} waiting` : String(data.requests.length),
@@ -1137,8 +1157,8 @@ export default function DevelopmentPage() {
           </Card>
         )}
 
-        <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="every set on the site, newest first">
-          <DevelopmentPlansCard view={plans} memoWriter={planMemoWriter} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForPlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} />
+        <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="what each part of the site builds from">
+          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} />
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>
