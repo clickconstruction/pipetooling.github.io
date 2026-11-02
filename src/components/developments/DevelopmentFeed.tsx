@@ -8,6 +8,7 @@ import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } fr
 import { historyMark, type MarkTone } from '../../lib/developments/historyLegend'
 import { EmptyState } from '../EmptyState'
 import { ageWords, LinkButton, shortDay, timeOfDay } from './developmentPageBits'
+import { JobChip } from './JobChip'
 
 /** A line's badge: its kind's mark from the legend's one table (`historyLegend.ts`), toned by family. */
 function badge(line: ChangeLine): { glyph: string; bg: string; fg: string } {
@@ -116,7 +117,11 @@ export function DevelopmentFeed({
             <Lit text={line.verb} words={words} />
           </strong>
           {' · '}
-          {line.about.id && line.about.kind !== 'customer' ? (
+          {line.about.id && line.about.kind === 'job' ? (
+            <JobChip jobId={line.about.id} onOpen={() => openAbout(line.about)}>
+              <Lit text={line.about.label} words={words} />
+            </JobChip>
+          ) : line.about.id && line.about.kind !== 'customer' ? (
             <LinkButton onClick={() => openAbout(line.about)}>
               <Lit text={line.about.label} words={words} />
             </LinkButton>

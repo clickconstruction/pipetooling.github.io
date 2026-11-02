@@ -11,6 +11,7 @@ import { EmptyState } from '../EmptyState'
 import { requestIsOpen, type MemberRequest } from '../../lib/developments/overview'
 import { answeredFoldLabel, NO_QUESTIONS_WORDS, QUESTION_LANES, questionAnswer, questionTableMeta, questionTables, type QuestionLane, type QuestionTable } from '../../lib/developments/questionsLook'
 import { ageWords, FoldButton, LinkButton, shortDay, SmallButton } from './developmentPageBits'
+import { JobChip } from './JobChip'
 import { QuestionRow } from './DevelopmentSideCards'
 
 export function DevelopmentQuestionsLook({
@@ -83,7 +84,7 @@ function LaneTable({ table: t, names, aboutLabel, openAbout, phone }: { table: Q
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{shortDay(r.created_at)}</td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>{open ? <strong style={{ color: 'var(--text-amber-800)' }}>{ageWords(r.created_at)}</strong> : <span style={{ color: 'var(--text-green-700)' }}>answered{r.closed_at ? ` ${shortDay(r.closed_at)}` : ''}</span>}</td>
                   <td style={{ ...td, whiteSpace: 'nowrap' }}>
-                    <LinkButton onClick={() => openAbout(r)}>{aboutLabel(r)}</LinkButton>
+                    {r.job_ledger_id && !r.bid_id ? <JobChip jobId={r.job_ledger_id} onOpen={() => openAbout(r)}>{aboutLabel(r)}</JobChip> : <LinkButton onClick={() => openAbout(r)}>{aboutLabel(r)}</LinkButton>}
                   </td>
                   <td style={td}>{r.title}</td>
                   <td style={{ ...td, color: a ? 'inherit' : 'var(--text-faint)' }}>
