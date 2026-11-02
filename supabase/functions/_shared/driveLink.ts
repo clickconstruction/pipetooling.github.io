@@ -117,10 +117,18 @@ export function bytesOfBase64(b64: string): Uint8Array | null {
 /** A job, as the spine ties a line: a bid, a GC project or a Pipeline job. */
 export type JobRef = { bid_id: string } | { project_id: string } | { jobs_ledger_id: string }
 
+/**
+ * Where a `put` lands: `sent` and `photos` under Team only, as the trade portal's files go; since v2.6303 the Documents
+ * tab's Add a file also sends `top` (the job's folder itself), `plans` (the job's Plans folder) and `pictures` (its
+ * photo folder, Customer Pictures made as needed).
+ */
+export type PutWhere = 'sent' | 'photos' | 'top' | 'plans' | 'pictures'
+const PUT_WHERES: readonly PutWhere[] = ['sent', 'photos', 'top', 'plans', 'pictures']
+
 /** What the office's door was asked. */
 export type OfficeAsk =
   | { action: 'list'; job: JobRef }
-  | { action: 'put'; job: JobRef; name: string; mime: string; where: 'sent' | 'photos' }
+  | { action: 'put'; job: JobRef; name: string; mime: string; where: PutWhere }
   | { action: 'link'; job: JobRef; driveFileId: string; messageId: string | null }
   | { action: 'save'; attachmentId: string; half: 'plans' | 'team_only' }
   | { action: 'open'; job: JobRef; driveFileId: string }
@@ -149,7 +157,7 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
       const job = jobOf(b.job)
       const name = str(b.name, 300)
       const mime = typeof b.mime === 'string' && b.mime.length <= 200 ? b.mime : 'application/octet-stream'
-      const where = b.where === 'photos' ? 'photos' : b.where === 'sent' ? 'sent' : null
+      const where = PUT_WHERES.find((w) => w === b.where) ?? null
       return job && name && where ? { action: 'put', job, name, mime, where } : null
     }
     case 'link': {
