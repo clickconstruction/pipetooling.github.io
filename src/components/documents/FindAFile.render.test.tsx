@@ -35,6 +35,7 @@ function fakeIo(read: Partial<FindAFileRead> = {}, over: Partial<FindAFileIo> = 
     hits: [hit({}), hit({ id: '2BcDeFgHiJkLmNoPqRsTu', name: 'Rock clause letter.pdf', path: '' }), hit({ id: '3CdEfGhIjKlMnOpQrStUv', name: 'Loose scan.pdf', home: null, path: 'Click Customers › Example Builders' })],
     more: false,
     noRoot: false,
+    source: 'drive',
     ...read,
   }
   return { search: vi.fn(async () => full), ...over }
@@ -54,7 +55,7 @@ describe('FindAFile', () => {
     await screen.findByText(/^Job .*1187 · Maple Court townhomes$/)
     expect(io.search).toHaveBeenCalledTimes(1)
     expect(io.search).toHaveBeenCalledWith('rock clause')
-    expect(screen.getByText('3 files say “rock clause”.')).toBeTruthy()
+    expect(screen.getByText('3 files say “rock clause”, from Drive.')).toBeTruthy()
     expect((screen.getByRole('link', { name: 'Permit 2026-0412.pdf' }) as HTMLAnchorElement).href).toBe('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view')
     expect(screen.getByText('Plans · Oct 14 · 410 KB')).toBeTruthy()
     expect(screen.getByText('the job’s folder · Oct 14 · 410 KB')).toBeTruthy()
@@ -74,12 +75,20 @@ describe('FindAFile', () => {
     })
     renderWithProviders(<FindAFile io={io} debounceMs={0} />)
     type('rock clause')
-    await screen.findByText('3 files say “rock clause”.')
+    await screen.findByText('3 files say “rock clause”, from Drive.')
     const mark = screen.getByText('rock clause', { selector: 'mark' })
     expect(mark.closest('[data-excerpt]')!.textContent).toBe('…agreed to the rock clause as written…')
     expect(screen.getByText('Matched inside the scan.')).toBeTruthy()
     expect(screen.queryByText('Too big to read here.')).toBeNull()
     expect(document.querySelectorAll('[data-excerpt]')).toHaveLength(1)
+  })
+
+  it('says when our own index answered (punch list #240, PR 1)', async () => {
+    const io = fakeIo({ hits: [hit({ excerpt: { text: 'the rock clause as written', marks: [[4, 15]] } })], source: 'index' })
+    renderWithProviders(<FindAFile io={io} debounceMs={0} />)
+    type('rock clause')
+    await screen.findByText('1 file says “rock clause”, from our index.')
+    expect(document.querySelector('[data-find-source="index"]')).toBeTruthy()
   })
 
   it('one letter searches nothing', async () => {
@@ -99,7 +108,7 @@ describe('FindAFile', () => {
     cleanup()
     renderWithProviders(<FindAFile io={fakeIo({ hits: [hit({}), hit({ id: '2BcDeFgHiJkLmNoPqRsTu' })], more: true })} debounceMs={0} />)
     type('permit')
-    await screen.findByText('2 files say “permit”, and Drive has more. Add a word to narrow it.')
+    await screen.findByText('2 files say “permit”, from Drive. Drive has more. Add a word to narrow it.')
   })
 
   it('a refusal shows its reason with Try again, and no jobs root says where to set it', async () => {
@@ -107,7 +116,7 @@ describe('FindAFile', () => {
     renderWithProviders(<FindAFile io={{ search }} debounceMs={0} />)
     type('permit')
     await screen.findByText('The search did not run. Office only.')
-    search.mockResolvedValueOnce({ hits: [], more: false, noRoot: true })
+    search.mockResolvedValueOnce({ hits: [], more: false, noRoot: true, source: 'drive' })
     fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
     await waitFor(() => expect(screen.getByText(/The jobs root is not set yet/)).toBeTruthy())
     expect(search).toHaveBeenCalledTimes(2)

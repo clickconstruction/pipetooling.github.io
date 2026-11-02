@@ -223,6 +223,11 @@ export function standingBackNote(messages: ReadonlyArray<QueueMessage>, contactI
   return note && !note.backDoneAt ? note : null
 }
 
+/** A note brought back, on its row: "back today", or "back since Thu Oct 1" for a day already gone by. */
+export function backRowPill(dayYmd: string, todayYmd: string): string {
+  return dayYmd === todayYmd ? 'back today' : `back since ${dayLabel(dayYmd)}`
+}
+
 /**
  * The notes whose day has come, one per person, oldest day first. A note with only words for a day has no morning to
  * come back on.
@@ -235,7 +240,7 @@ export function backToday(messages: ReadonlyArray<QueueMessage>, todayYmd: strin
       kind: 'back' as const,
       contactId: m.contactId,
       noteId: m.id,
-      pill: m.backOn === todayYmd ? 'back today' : `back since ${dayLabel(m.backOn!)}`,
+      pill: backRowPill(m.backOn!, todayYmd),
       noteBy: `the note by ${m.backBy || 'the team'}, ${dayLabel(m.backOn!)}`,
       note: m.body,
       dayYmd: m.backOn!,
@@ -349,6 +354,11 @@ export interface OwedRow {
   late: boolean
 }
 
+/** Whether what we owe has gone past its day. */
+export function owedLate(owed: Pick<Owed, 'byYmd'>, todayYmd: string): boolean {
+  return !!owed.byYmd && owed.byYmd < todayYmd
+}
+
 /** Each person's open record: one per person, the newest marked when more than one is open. */
 function openByPerson(owed: ReadonlyArray<OwedRecord>): OwedRecord[] {
   const out = new Map<string, OwedRecord>()
@@ -373,7 +383,7 @@ export function weOwe(owed: ReadonlyArray<OwedRecord>, todayYmd: string): OwedRo
     })
     .map((o) => {
       const owed: Owed = { what: o.what, byYmd: o.byYmd, byWords: o.byWords, markedBy: o.markedBy, markedAt: o.markedAt }
-      return { contactId: o.contactId, owed, pill: owedPill(owed), late: !!o.byYmd && o.byYmd < todayYmd }
+      return { contactId: o.contactId, owed, pill: owedPill(owed), late: owedLate(owed, todayYmd) }
     })
 }
 
@@ -508,6 +518,12 @@ export function anotherDay(todayYmd: string): { backOn: string; toast: string } 
 
 /** What the office reads after *Done with it*. */
 export const BACK_CLEARED_TOAST = 'Cleared. The note stays in the thread.'
+
+/** What a failed read of the queue says when the error carries no words of its own (#183 PR 5). */
+export const QUEUE_READ_FAILED_WORDS = 'Could not read who is waiting on us.'
+
+/** What a lost signal says on a read of the queue: a read's own words, never the write's *nothing was saved*. */
+export const QUEUE_READ_OFFLINE_WORDS = 'No connection, so who is waiting could not be read. Nothing was lost. It reads again when the signal is back.'
 
 /** What moves the state: their message, our reply, a team note, or a press in the row or the ⋯. */
 export type StateMove = 'inbound' | 'reply' | 'note' | 'noReplyNeeded' | 'remindMonday' | 'reopen'

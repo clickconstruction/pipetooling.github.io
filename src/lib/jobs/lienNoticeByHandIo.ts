@@ -3,11 +3,14 @@ import { withSupabaseRetry } from '../../utils/errorHandling'
 import type { LienNoticeFields } from '../jobsDocuments/lienFilingDocuments'
 import { markLienDeskItemSent, syncLienDeskAfterRecord } from './lienDeskIo'
 import { byHandFilingPayloads, otherJobsAtProperty, type ByHandInput, type PropertyJobLike } from './lienNoticeByHand'
+import { sentAtForTypedDay } from './lienSentAt'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 
 /**
  * Recording a notice that went out by hand (#35 PR 2): one filing per covered
- * job on one packet, the live desk items marked sent, the desk re-read by the
- * caller. Pure rules live in `lienNoticeByHand.ts`.
+ * job on one packet, the live desk items marked sent — on the mailing day the
+ * office typed (punch list #243), so the clocks run from it — the desk re-read
+ * by the caller. Pure rules live in `lienNoticeByHand.ts` and `lienSentAt.ts`.
  */
 
 export type PropertyJobCandidate = PropertyJobLike & {
@@ -51,8 +54,10 @@ export async function loadJobsAtProperty(primary: PropertyJobLike & { id: string
 
 export type ByHandRecordResult = { packetId: string; filingIds: string[] }
 
-/** Write the filings, mark every covered job's live item sent, and let the desk sync the rest. */
-export async function recordLienNoticeByHand(input: ByHandInput, opts: { userId: string | null; fields: LienNoticeFields }): Promise<ByHandRecordResult> {
+/** Write the filings, mark every covered job's live item sent on the typed day, and let the desk sync the rest. */
+export async function recordLienNoticeByHand(input: ByHandInput, opts: { userId: string | null; fields: LienNoticeFields; todayYmd?: string }): Promise<ByHandRecordResult> {
+  const todayYmd = opts.todayYmd ?? todayYmdInAppTz()
+  const sentAt = sentAtForTypedDay(input.sentOn, todayYmd)
   const packetId = typeof crypto !== 'undefined' && 'randomUUID' in crypto ? crypto.randomUUID() : `${Date.now()}-${Math.random().toString(16).slice(2)}`
   const fields: LienNoticeFields = { ...opts.fields, claimAmount: input.printedClaim.toFixed(2) }
   const payloads = byHandFilingPayloads(input, { userId: opts.userId, packetId, fieldsFor: () => fields })
@@ -64,8 +69,8 @@ export async function recordLienNoticeByHand(input: ByHandInput, opts: { userId:
   for (const r of rows ?? []) filingByJob.set(r.job_id, r.id)
   for (const job of input.jobs) {
     const filingId = filingByJob.get(job.jobId)
-    if (job.itemId && filingId) await markLienDeskItemSent(job.itemId, filingId).catch(() => undefined)
-    else await syncLienDeskAfterRecord(job.jobId).catch(() => undefined)
+    if (job.itemId && filingId) await markLienDeskItemSent(job.itemId, filingId, sentAt).catch(() => undefined)
+    else await syncLienDeskAfterRecord(job.jobId, todayYmd).catch(() => undefined)
   }
   return { packetId, filingIds: [...filingByJob.values()] }
 }

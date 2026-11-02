@@ -47,7 +47,8 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
   }, [io, now])
 
   const rows = waitingOnThem(lines ?? [], pill, new Date(now()))
-  const count = lines === undefined ? null : rows.length
+  // Unread or failed is no count at all: the bar and the band say … until a read lands, never a false 0 (#183 PR 5).
+  const count = lines == null ? null : rows.length
   useEffect(() => {
     if (count !== null) onCount?.(count)
   }, [count, onCount])
@@ -55,10 +56,10 @@ export function WaitingOnThem({ pill, onOpenThread, io = loadWaitingOnThem, now 
     <section id="waiting-on-them" className="messagesLane" aria-label="Waiting on them" data-testid="waiting-on-them">
       {/* The band (v2.5802, punch list #151 PR 3): the lane's color, the count in a pill; the sentence sits behind the bar's ?. */}
       <div className="stagesSectionBand messagesLaneBand" style={{ '--stage-color': JUMP_LANE_COLOR.waiting } as CSSProperties} data-testid="lane-band">
-        <h3 className="stagesBandTitle" aria-label={WAITING_WORDS.title(rows.length)}>
+        <h3 className="stagesBandTitle" aria-label={count === null ? JUMP_LANE_LABEL.waiting : WAITING_WORDS.title(count)}>
           {JUMP_LANE_LABEL.waiting}{' '}
           <span className="stagesBandCount" aria-hidden>
-            {rows.length}
+            {count ?? '…'}
           </span>
         </h3>
       </div>

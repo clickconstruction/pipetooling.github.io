@@ -33,6 +33,8 @@ import {
 } from '../../lib/jobDetailModalRole'
 import { buildJobProfitSummary } from '../../lib/jobs/jobProfitSummary'
 import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
+import { jobKindOfRow } from '../../lib/jobs/jobKind'
+import JobKindChip from './JobKindChip'
 import { jobCardChargesCountedFromLines, tallyPartsTotalFromLines } from '../../lib/fetchJobMaterialsCostSnapshot'
 import {
   scheduleFormatDateLongNoWeekday,
@@ -1618,6 +1620,8 @@ export default function DetailJobModal({
                 {priorWords}
               </span>
             ) : null}
+            {/* The job's kind (punch list #238): Project, Service call, or Kind not set until the office presses on the Edit tab. */}
+            {fullJob ? <JobKindChip read={jobKindOfRow(fullJob)} style={{ marginLeft: '0.45rem' }} /> : null}
             {phonePane && fullJob?.status ? (
               <span
                 style={{
@@ -2132,7 +2136,7 @@ export default function DetailJobModal({
             opening its sheet. Nothing is drawn until the office types the questions. */}
         {open && jobId ? (
           <div style={{ marginTop: '0.75rem' }}>
-            <JobStageChecklistStrip jobId={jobId} />
+            <JobStageChecklistStrip jobId={jobId} plansUrl={(fullJob ?? limitedJob)?.job_plans_link} />
           </div>
         ) : null}
 

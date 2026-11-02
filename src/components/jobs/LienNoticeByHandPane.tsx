@@ -107,7 +107,7 @@ export default function LienNoticeByHandPane({
     if (busy || problems.length) return
     setBusy(true)
     try {
-      const result = await recordLienNoticeByHand(byHand, { userId, fields })
+      const result = await recordLienNoticeByHand(byHand, { userId, fields, todayYmd })
       showToast(`Recorded on ${jobs.length} ${jobs.length === 1 ? 'job' : 'jobs'} — the desk reads ${jobs.length === 1 ? 'it' : 'them'} as sent.`, 'success')
       onRecorded({ filingIds: result.filingIds, jobs: jobs.length })
     } catch (e) {

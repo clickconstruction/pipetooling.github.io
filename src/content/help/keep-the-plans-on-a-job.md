@@ -2,7 +2,7 @@
 title: keep the plans on a job
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: plans, plan set, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history
+keywords: plans, plan set, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history, job from bid, priced on
 where: /jobs
 order: 60
 ---
@@ -17,6 +17,14 @@ An updated set often comes in halfway through a job. The crew also marks up the 
 **Older sets** lists every set that came before. **Our as-builts** lists the drawings the crew marked up.
 
 The Job tab's **Open plans** press opens the same set as **Building from**. The app keeps the two the same.
+
+## A job opened from a bid
+
+A job opened from a bid starts with the bid's plans. The set the bid was priced on becomes **Building from** the moment the job is made. Nothing to press.
+
+On a development, the job joins the part that already builds from that set. When no part does, the job gets a part named after itself. The office can fold it into another part later.
+
+The bid keeps its own sets. See [keep more than one set of plans on a bid](/help/keep-more-than-one-set-of-plans-on-a-bid#pin-the-set-the-price-stands-on).
 
 ## Add an updated set
 

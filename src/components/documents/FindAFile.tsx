@@ -36,8 +36,9 @@ const markStyle: CSSProperties = { background: 'var(--bg-amber-100)', color: 'in
 
 /**
  * Find a file (v2.6305): the box on the Documents page's Search tab that searches every job's Drive files by their
- * words. It waits for the typing to pause, asks `drive-link`'s `search` (Drive's own full-text index, which already
- * reads the words inside PDFs and OCR'd scans, scoped to the jobs Shared Drive), and lists the hits under the job or
+ * words. It waits for the typing to pause, asks our own index first (`search_file_index`, punch list #240, PR 1) and
+ * falls back to `drive-link`'s `search` (Drive's own full-text index, which already reads the words inside PDFs and
+ * OCR'd scans, scoped to the jobs Shared Drive) when the index has nothing, and lists the hits under the job or
  * bid whose folder holds each, with the folder, the day and the size under the name. A hit opens in Drive; a job's
  * group offers Open the job. Nothing found says so in the empty state; a refusal shows its reason with Try again.
  */
@@ -98,7 +99,9 @@ export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE
 
       {state.kind === 'done' && state.read.hits.length > 0 ? (
         <>
-          <p style={{ margin: 0, ...small, ...muted }}>{foundWords(state.read, state.words)}</p>
+          <p data-find-source={state.read.source} style={{ margin: 0, ...small, ...muted }}>
+            {foundWords(state.read, state.words)}
+          </p>
           {groupByHome(state.read.hits).map((g) => (
             <div key={g.key} data-find-group={g.key} style={{ display: 'grid', gap: '0.35rem' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>

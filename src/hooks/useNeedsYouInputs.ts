@@ -28,6 +28,7 @@ import { useStatementRoundNudge } from './useStatementRoundNudge'
 import { useDemandDeadlinesNudge } from './useDemandDeadlinesNudge'
 import { useJobContractsNudge } from './useJobContractsNudge'
 import { useUnpricedWorkOrders } from './useUnpricedWorkOrders'
+import { useJobKindGaps } from './useJobKindGaps'
 import { useCapacityUnderNudge } from './useCapacityUnderNudge'
 import { useJobAccountEvidenceGapsNudge } from './useJobAccountEvidenceGapsNudge'
 import { useSupplyMoveWindowNudge } from './useSupplyMoveWindowNudge'
@@ -160,6 +161,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
   const { nudge: contractNudge } = useJobContractsNudge(contractNudgeEnabled)
   const unpricedWorkOrdersEnabled = on('unpricedWorkOrders')
   const { unpriced: unpricedWorkOrders } = useUnpricedWorkOrders(unpricedWorkOrdersEnabled)
+  const jobKindGapsEnabled = on('jobKindGaps')
+  const { gaps: jobKindGaps } = useJobKindGaps(jobKindGapsEnabled)
   // The quiet jobs (v2.2487) and the idle ones (v2.5512): one fetch, the deck's kernel. Quickfill's own
   // station carries the quiet jobs; the idle line is the deck's and rides the same read.
   const jobFollowupsEnabled = on('jobFollowups')
@@ -251,6 +254,8 @@ export function useNeedsYouInputs(opts: NeedsYouInputsOptions) {
     contractNudge,
     unpricedWorkOrdersEnabled,
     unpricedWorkOrders,
+    jobKindGapsEnabled,
+    jobKindGaps,
     staleOpenEnabled,
     staleOpen,
     capacityUnderEnabled,

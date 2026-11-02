@@ -3,7 +3,7 @@
  * Went out today (v2.5686, punch list #133 PR 3) over a fake read: the rows newest first with the time and who
  * pressed, a row opens the thread, the empty lane says so, and a read that fails says so instead of hiding.
  */
-import { cleanup, fireEvent, screen } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { WentOutToday } from './WentOutToday'
@@ -71,5 +71,23 @@ describe('WentOutToday', { timeout: 15_000 }, () => {
     cleanup()
     renderWithProviders(<WentOutToday pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => Promise.reject(new Error('down')))} />)
     expect((await screen.findByText('What went out could not be read.')).textContent).toBeTruthy()
+  })
+  it('counts nothing until a read lands: the band says … while it hangs and after it fails, and the bar hears no false 0 (punch list #183 PR 5)', async () => {
+    const onCount = vi.fn()
+    renderWithProviders(<WentOutToday pill="all" onOpenThread={vi.fn()} io={vi.fn(() => new Promise<WentOutLine[]>(() => {}))} onCount={onCount} />)
+    const band = () => document.querySelector('[data-testid="went-out-today"] .stagesBandCount')!.textContent
+    expect(band()).toBe('…')
+    expect(screen.getByRole('heading', { name: 'Went out' })).toBeTruthy()
+    expect(onCount).not.toHaveBeenCalled()
+    cleanup()
+    renderWithProviders(<WentOutToday pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => Promise.reject(new Error('down')))} onCount={onCount} />)
+    await screen.findByText('What went out could not be read.')
+    expect(band()).toBe('…')
+    expect(onCount).not.toHaveBeenCalled()
+    cleanup()
+    renderWithProviders(<WentOutToday pill="all" onOpenThread={vi.fn()} io={vi.fn(async () => [])} onCount={onCount} />)
+    await screen.findByTestId('went-out-empty')
+    expect(band()).toBe('0')
+    await waitFor(() => expect(onCount).toHaveBeenLastCalledWith(0))
   })
 })

@@ -10,10 +10,12 @@
  * object the menu's selects do, so the bar can never show a filter the menu does not have.
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
+import { Link } from 'react-router-dom'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import AccountManIcon from '../icons/AccountManIcon'
 import { STAGES_CONTRACT_FILTER_LABELS } from '../../lib/jobs/jobContractCoverage'
+import { STAGES_KIND_FILTER_LABELS } from '../../lib/jobs/jobKind'
 import { STAGES_SORT_MODE_ACTIVE_CHIP_LABELS } from '../../lib/jobsStagesSortMode'
 import { STAGES_ACCOUNT_MAN_FILTER_NONE, STAGES_DEVELOPMENT_FILTER_NONE, STAGES_GC_FILTER_NO_GC } from '../../lib/jobsStagesBoard'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
@@ -27,6 +29,8 @@ export type JobsStagesCommandBarProps = {
   onOpenFollowups: () => void
   canSeeForecast: boolean
   onOpenForecast: () => void
+  /** The Projects board's door (punch list #242): shown to the roles that may open it. */
+  canSeeProjects?: boolean
   /** Brings the hidden Jobs on a map card back (v2.4518; right of the search box since v2.4522). Null while the card is showing: no button. */
   onShowMap: (() => void) | null
   query: string
@@ -40,6 +44,8 @@ export type JobsStagesCommandBarProps = {
   filters: StagesToolsFilters
   onClearSort: () => void
   onClearContract: () => void
+  /** The job-kind filter's chip (punch list #238); absent where the board has no kind filter. */
+  onClearKind?: () => void
   onClearGc: () => void
   onClearDevelopment: () => void
   onClearAccountMan: () => void
@@ -72,6 +78,7 @@ export function JobsStagesCommandBar({
   onOpenFollowups,
   canSeeForecast,
   onOpenForecast,
+  canSeeProjects = false,
   onShowMap,
   query,
   onQueryChange,
@@ -83,6 +90,7 @@ export function JobsStagesCommandBar({
   filters,
   onClearSort,
   onClearContract,
+  onClearKind,
   onClearGc,
   onClearDevelopment,
   onClearAccountMan,
@@ -192,6 +200,25 @@ export function JobsStagesCommandBar({
         >
           Forecast
         </button>
+      )}
+      {canSeeProjects && (
+        <Link
+          to="/projects-board"
+          title="Every working project as one picture: ahead or behind at this pace, with the expected hours set in the open"
+          aria-label="Projects board"
+          style={{
+            padding: '0.5rem 0.9rem',
+            background: 'var(--bg-blue-tint)',
+            color: 'var(--text-link)',
+            border: '1px solid var(--border)',
+            borderRadius: 4,
+            fontWeight: 600,
+            whiteSpace: 'nowrap',
+            textDecoration: 'none',
+          }}
+        >
+          Projects
+        </Link>
       )}
       {/* Unified command bar (v2.1187): search + jump chip + GC filter + tools in one container. */}
       <div
@@ -328,6 +355,23 @@ export function JobsStagesCommandBar({
           >
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Sorted: {STAGES_SORT_MODE_ACTIVE_CHIP_LABELS[filters.sortMode]}</span>
             <span aria-hidden style={{ flexShrink: 0 }}>×</span>
+          </button>
+        ) : null}
+        {filters.kind && onClearKind ? (
+          <button
+            type="button"
+            onClick={() => onClearKind()}
+            title="Filtered by job kind — tap to clear"
+            aria-label={`Clear kind filter: ${STAGES_KIND_FILTER_LABELS[filters.kind]}`}
+            style={stagesActiveFilterChipStyle}
+          >
+            <span aria-hidden style={{ flexShrink: 0 }}>◐</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+              {STAGES_KIND_FILTER_LABELS[filters.kind]}
+            </span>
+            <span aria-hidden style={{ flexShrink: 0 }}>
+              ×
+            </span>
           </button>
         ) : null}
         {filters.contract ? (

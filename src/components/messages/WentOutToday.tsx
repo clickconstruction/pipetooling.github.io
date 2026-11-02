@@ -108,7 +108,8 @@ export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter
 
   const days = wentOutDays(lines ?? [], pill, new Date(now()), filter)
   const total = days.reduce((n, d) => n + d.rows.length, 0)
-  const count = lines === undefined ? null : total
+  // Unread or failed is no count at all: the bar and the band say … until a read lands, never a false 0 (#183 PR 5).
+  const count = lines == null ? null : total
   useEffect(() => {
     if (count !== null) onCount?.(count)
   }, [count, onCount])
@@ -116,10 +117,10 @@ export function WentOutToday({ pill, onOpenThread, filter: filterGiven, onFilter
     <section id="went-out" className="messagesLane" aria-label="Went out" data-testid="went-out-today">
       {/* The band (v2.5802, punch list #151 PR 3): the lane's color, the count in a pill; the sentence sits behind the bar's ?. */}
       <div className="stagesSectionBand messagesLaneBand" style={{ '--stage-color': JUMP_LANE_COLOR.wentOut } as CSSProperties} data-testid="lane-band">
-        <h3 className="stagesBandTitle" aria-label={WENT_OUT_WORDS.title(total)}>
+        <h3 className="stagesBandTitle" aria-label={count === null ? JUMP_LANE_LABEL.wentOut : WENT_OUT_WORDS.title(count)}>
           {JUMP_LANE_LABEL.wentOut}{' '}
           <span className="stagesBandCount" aria-hidden>
-            {total}
+            {count ?? '…'}
           </span>
         </h3>
         <span role="group" aria-label={WENT_OUT_WORDS.filters} style={{ marginLeft: 'auto', display: 'flex', gap: '0.3rem' }}>
