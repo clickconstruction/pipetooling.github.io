@@ -8,13 +8,15 @@ covers:
   - src/components/jobs/JobFormModal.tsx
 mapped_at: a05cef4c4
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-02
 ---
 
 ## Overview
 
 **Line numbers are exact as of `a05cef4c4` and rot with every commit — search the symbol, not the number.** Regenerate the facts with `npm run map -- src/components/jobs/JobFormModal.tsx` before trusting a range.
 
+> **v2.6300 (after `mapped_at`) — line budgets on the row:** the five `budget_*` columns of `jobs_ledger_fixtures` ride `FixtureRow` and the fixtures autosave writes them with the price (the spike had kept them in a store keyed on the grid's row id, and a reload lost a tuning); `LineBudgetQuietLine.tsx` under each line item's name on ① Line Items (the source glyph ◆ workbench · ≈ assumed · ✎ tuned, a labor | materials bar, the hours and dollars) opens the slider panel as a full-width row for the owner, read-only for the office, one line at a time (`useLineBudgets` holds which; `lib/jobs/lineBudgets.ts` is the kernel); `StageKindBadgePress` in `StageKindControls.tsx` flips a line between In order and Any time from its badge, so the two-button strip under each line is gone; the Costs tab draws `JobCostsLineBudgets.tsx` above the burn chart (`docs/recent-features/v2.6300.md`, punch list #234 PR 1).
+>
 > **v2.6288 — a job's Drive folder follows the form:** `placeJobFolderSoon` (module level) calls `makeJobDriveFolders` for a job the form creates and for the two places it writes `customer_id` on an existing job, so the folder goes under the customer now. Best effort: a refusal is logged and the sweep every 10 minutes places what the call did not. The identity autosave's customer change is left to the sweep.
 >
 > **v2.6112 (after `mapped_at`) — other job charges carry a date and a memo:** `MaterialRow` gains `charged_on` and `memo` (two nullable `jobs_ledger_materials` columns, migration `20261030060000`); `JobFormModal.tsx` hydrates both from the job's materials, `addMaterialRow` stamps a new row with today's date (`todayYmdInAppTz`), and `removeMaterialRow`'s cleared last row drops both; the materials slice (`buildMaterialsSliceJson`, `materialInsertRows`) and `JOBS_LEDGER_MATERIALS_EMBED` carry them, and the row draws in `JobFormPartsCostSection` (§14) as a date box, the description and a memo line summoned by **+ memo** (`docs/recent-features/v2.6112.md`).
