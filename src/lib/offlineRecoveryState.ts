@@ -1,5 +1,17 @@
 import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../utils/errorHandling'
-import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from './networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
+
+/**
+ * The same lost signal on a read (punch list #224). A read saved nothing, so
+ * the write sentence's *nothing was saved* is wrong for it, and on a crew
+ * screen it can sit beside a press kept on the phone and seem to say the press
+ * failed (#163's live test, 2026-10-30). `offlineRecoveryState` draws this one
+ * for an `idempotent` panel instead; the words follow `plainWords.ts` and say
+ * the read runs again by itself, which the panel does on the `online` event.
+ * It lives here, not beside `OFFLINE_ERROR_MESSAGE`, because `networkErrorMessage.ts`
+ * is copied into the edge functions' kernels and only the client draws this one.
+ */
+export const OFFLINE_READ_MESSAGE = 'No connection, so this could not load. Nothing was lost. It loads again when the signal is back.'
 
 /**
  * Offline recovery state (J2-F3, journey-map Tier-1 #6b).

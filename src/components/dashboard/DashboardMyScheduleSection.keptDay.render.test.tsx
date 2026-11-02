@@ -7,7 +7,8 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
-import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')

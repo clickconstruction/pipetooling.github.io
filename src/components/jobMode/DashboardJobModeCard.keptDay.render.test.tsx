@@ -11,7 +11,7 @@ import { act, cleanup, fireEvent, waitFor } from '@testing-library/react'
 import { KEPT_READ_SCHEMA, type KeptRead } from '../../lib/keptRead'
 import { denverCalendarDayKey } from '../../utils/dateUtils'
 import { jobModeKeptKey, type JobModeKeptRow } from '../../lib/jobMode/keptDay'
-import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 const JOB_A = '00000000-0000-0000-0000-00000000aaaa'
 const JOB_B = '00000000-0000-0000-0000-00000000bbbb'

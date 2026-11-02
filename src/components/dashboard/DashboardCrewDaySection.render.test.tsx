@@ -8,7 +8,7 @@ import { fireEvent, render, screen, waitFor, within } from '@testing-library/rea
 import { DashboardCrewDaySection } from './DashboardCrewDaySection'
 import type { CrewDayPayload } from '../../lib/crewDay'
 import { toLocalDateString } from '../../lib/dailyGoalsGate'
-import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 // The section always opens on today; the Day book fixture must sit on that day.
 const TODAY = toLocalDateString(new Date())

@@ -63,7 +63,8 @@ vi.mock('../ReportViewModal', () => ({ default: () => null }))
 
 import CustomerSummaryModal from './CustomerSummaryModal'
 import { renderSettled } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 async function mount(role: string) {
   mockRole = role

@@ -6,7 +6,7 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, waitFor } from '@testing-library/react'
-import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 const JOB_A = '00000000-0000-0000-0000-00000000aaaa'
 const JOB_B = '00000000-0000-0000-0000-00000000bbbb'

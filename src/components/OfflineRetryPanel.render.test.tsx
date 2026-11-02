@@ -20,7 +20,8 @@ vi.mock('../lib/navClickTelemetry', () => ({ recordNavClick: (...a: unknown[]) =
 
 import OfflineRetryPanel from './OfflineRetryPanel'
 import { renderWithProviders, settle } from '../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from '../lib/networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE } from '../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../lib/offlineRecoveryState'
 import { BACK_ONLINE_AUTO_MESSAGE, BACK_ONLINE_MESSAGE } from '../lib/offlineRecoveryState'
 
 const NETWORK = { kind: 'network' as const, message: OFFLINE_ERROR_MESSAGE }

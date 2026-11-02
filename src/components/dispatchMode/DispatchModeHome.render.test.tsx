@@ -7,7 +7,8 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 const H = vi.hoisted(() => ({ fetch: vi.fn() }))
 vi.mock('../../lib/supabase', async () => {

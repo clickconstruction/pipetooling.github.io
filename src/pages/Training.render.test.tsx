@@ -10,7 +10,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ToastProvider } from '../contexts/ToastContext'
 import { installDomShims, settle } from '../test/renderSmokeMocks'
-import { OFFLINE_READ_MESSAGE } from '../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../lib/offlineRecoveryState'
 import Training from './Training'
 
 vi.mock('../lib/supabase', async () => {

@@ -6,7 +6,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 const H = vi.hoisted(() => ({ usersError: null as unknown, reads: 0 }))
 vi.mock('../../lib/supabase', () => {

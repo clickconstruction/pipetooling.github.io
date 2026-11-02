@@ -7,7 +7,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
-import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 type RpcResult = { data: unknown; error: { message?: string; code?: string } | null; status?: number }
 const H = vi.hoisted(() => ({ rpc: vi.fn(async (_name?: unknown, _args?: unknown): Promise<RpcResult> => ({ data: null, error: null })) }))

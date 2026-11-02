@@ -11,7 +11,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 
 import JobModeMyRequests from './JobModeMyRequests'
 import { renderWithProviders, settle } from '../../test/renderSmokeMocks'
-import { OFFLINE_READ_MESSAGE } from '../../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../../lib/offlineRecoveryState'
 
 // Mutable result so one stub serves the empty and the populated case.
 let rows: unknown[] = []

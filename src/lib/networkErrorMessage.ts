@@ -40,16 +40,6 @@ const CHROME_FAILED_TO_FETCH_RE = /failed to fetch(?=\s*$|[.,;:)\]\n])/i
 export const OFFLINE_ERROR_MESSAGE =
   "No connection — the app couldn't reach the server, so nothing was saved. Check your signal and try again."
 
-/**
- * The same lost signal on a read (punch list #224). A read saved nothing, so
- * the write sentence's *nothing was saved* is wrong for it, and on a crew
- * screen it can sit beside a press kept on the phone and seem to say the press
- * failed (#163's live test, 2026-10-30). `offlineRecoveryState` draws this one
- * for an `idempotent` panel instead; the words follow `plainWords.ts` and say
- * the read runs again by itself, which the panel does on the `online` event.
- */
-export const OFFLINE_READ_MESSAGE = 'No connection, so this could not load. Nothing was lost. It loads again when the signal is back.'
-
 export function isNetworkFetchErrorMessage(message: string | null | undefined): boolean {
   const m = (message ?? '').toLowerCase()
   if (!m) return false

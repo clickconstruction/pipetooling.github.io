@@ -1,7 +1,6 @@
 import { FunctionsFetchError } from '@supabase/supabase-js'
 import { describe, expect, it } from 'vitest'
-import { isFetchLayerTypeError, isNetworkFetchErrorMessage, OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from './networkErrorMessage'
-import { plainWordsFailures } from './plainWords'
+import { isFetchLayerTypeError, isNetworkFetchErrorMessage, OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
 
 describe('isNetworkFetchErrorMessage', () => {
   it('recognizes the per-engine fetch failure signatures, wrapped or bare', () => {
@@ -49,12 +48,5 @@ describe('isNetworkFetchErrorMessage', () => {
   it('exports a plain-language message', () => {
     expect(OFFLINE_ERROR_MESSAGE).toMatch(/No connection/)
     expect(OFFLINE_ERROR_MESSAGE).not.toMatch(/TypeError|fetch/i)
-  })
-  it('the read sentence (punch list #224) says No connection in plain words, never that something was saved, and that it loads again', () => {
-    expect(OFFLINE_READ_MESSAGE).toMatch(/^No connection/)
-    expect(OFFLINE_READ_MESSAGE).not.toMatch(/TypeError|fetch|saved/i)
-    expect(OFFLINE_READ_MESSAGE).toMatch(/loads again/)
-    expect(OFFLINE_READ_MESSAGE).not.toBe(OFFLINE_ERROR_MESSAGE)
-    expect(plainWordsFailures(OFFLINE_READ_MESSAGE)).toEqual([])
   })
 })

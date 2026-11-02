@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { OFFLINE_ERROR_MESSAGE, OFFLINE_READ_MESSAGE } from './networkErrorMessage'
+import { OFFLINE_ERROR_MESSAGE } from './networkErrorMessage'
+import { plainWordsFailures } from './plainWords'
 import { DatabaseError, OperationTimeoutError } from '../utils/errorHandling'
 import {
   BACK_ONLINE_AUTO_MESSAGE,
@@ -8,12 +9,21 @@ import {
   offlineRecoveryState,
   recoveryFailureFromError,
   STILL_OFFLINE_SUFFIX,
+  OFFLINE_READ_MESSAGE,
 } from './offlineRecoveryState'
 
 const NETWORK = { kind: 'network' as const, message: OFFLINE_ERROR_MESSAGE }
 const REFUSED = { kind: 'server' as const, message: "You don't have permission to clock in." }
 
 describe('offlineRecoveryState', () => {
+  it('the read sentence (punch list #224) says No connection in plain words, never that something was saved, and that it loads again', () => {
+    expect(OFFLINE_READ_MESSAGE).toMatch(/^No connection/)
+    expect(OFFLINE_READ_MESSAGE).not.toMatch(/TypeError|fetch|saved/i)
+    expect(OFFLINE_READ_MESSAGE).toMatch(/loads again/)
+    expect(OFFLINE_READ_MESSAGE).not.toBe(OFFLINE_ERROR_MESSAGE)
+    expect(plainWordsFailures(OFFLINE_READ_MESSAGE)).toEqual([])
+  })
+
   it('is idle with no error', () => {
     const s = offlineRecoveryState({ online: true, lastError: null, attempts: 0 })
     expect(s).toEqual({ phase: 'idle', message: '', showRetry: false, retryLabel: 'Retry', autoRetry: false })

@@ -8,7 +8,7 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import DashboardMyVehicleCard from './DashboardMyVehicleCard'
 import { renderWithProviders } from '../test/renderSmokeMocks'
-import { OFFLINE_READ_MESSAGE } from '../lib/networkErrorMessage'
+import { OFFLINE_READ_MESSAGE } from '../lib/offlineRecoveryState'
 
 const now = new Date()
 const TODAY = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
