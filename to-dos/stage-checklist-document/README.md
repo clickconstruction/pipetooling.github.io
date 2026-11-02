@@ -2,7 +2,7 @@
 name: "Stage checklists as documents on the job: items anyone on the job can add, a stamp on every answer, a signature where the author asks for one, and a record that files itself"
 number: 237
 group: ready
-status: thought through 2026-11-01 with the owner over a three-persona click-through; three mock-up files beside this card; nothing built; five calls carry the owner's recommendations as defaults until he says otherwise
+status: thought through 2026-11-01 with the owner over a three-persona click-through; three mock-up files beside this card; built the same evening as a design spike in the real app (origin/spike/projects-board-242, never merges) and walked as estimator, superintendent, technician and office, which settled the items as named groups, Skip on this job and the per-item promote; nothing on main; five calls carry the owner's recommendations as defaults until he says otherwise
 summary: >
   The stage checklists of punch list #164 live in Settings, hold only the company's questions,
   and show the office nothing per job. The owner wants them moved onto the job's Documents tab as
@@ -199,6 +199,52 @@ answer and the signature sheet; `stage_checklist_records` with the freeze, the i
 and the PDF; the Documents section, desk and phone, with the inline add, take off, amend,
 promote and print; the Settings card read-only; the guides.
 
+## The spike
+
+The evening of 2026-11-01 the owner asked for the two views as working code, a fill view on the
+phone and a create view at the desk, and walked them as an estimator, a superintendent, a
+technician and the office. The code is on `origin/spike/projects-board-242` (a branch that never
+merges; it also carries #242's projects board, whose phone card counts this checklist as its proof).
+A builder cuts from `main` and reads the branch as the design:
+
+- `src/lib/jobs/checklistDocument.ts` — the kernel: `itemsForStage`, `checklistProgress` and
+  `progressWords`, `answerOwes` (a signature, a photo), `itemAnswered`, `noCount`, `recordId`,
+  `stampWords`, `signingWords`, `filedFootWords`, `AGREED_LINE`, `checklistStagesOf`. Keep as a
+  kernel with tests.
+- `src/hooks/useChecklistDocuments.ts` — the store, browser storage in the spike: the company's
+  items, and per job the items, answers, voided answers, skips, filed records and reopened
+  versions; `addItem`, `retireItem`, `moveItem`, `answer`, `setNote`, `markPhoto`, `takeBack`,
+  `fileIfComplete`, `amend`, `promoteItem`, `skipItem`, `unskipItem`. PRs 1–3 replace it with the
+  tables; the verbs are the API.
+- `src/components/stageChecklists/ChecklistDocumentSheet.tsx` — the phone sheet of *The sheet*
+  above as code: `ChecklistDocumentSheet`, `AddCheck`, `SheetChip`, the signing panel over
+  `SignatureTypeOrDrawInput`, the skipped and voided lines, the reason box, the filed paper.
+- `src/components/jobs/JobDocumentsChecklists.tsx` — the Documents section, mounted after *Hours
+  statements* in `JobWindowDocumentsTab.tsx`: author and read per stage, Amend, the per-item doors.
+
+What the walks settled, each now part of the design above and of PR 1 and PR 4:
+
+- **Named groups.** A stage's list shows *The company's questions* and *Added for this job* as two
+  named groups, every row naming who added it and when. Every job is a little different, so a
+  company item can be **skipped on this job** with a reason (and unskipped), a job item can be
+  **added to the company's list** one at a time (the per-item promote, beside the whole-list one),
+  a company item can be **taken off the company's list** with a reason (retired keeps its
+  answers), and items reorder with ▲ ▼. The job scope is the default on the phone; the add box
+  says *Every Trim Set in the company, from now on* when the company scope is picked.
+- **The add box stays open** for the next check, with a plan sheet and a why beside the words.
+- **A check can name a plan sheet**; its 📐 chip opens the job's Plans folder.
+- **The estimator may author** too, on the jobs he priced.
+- **A signed No asks for the note**; *Take it back* on a signed row needs a reason and keeps the
+  voided mark in a *Voided* line; the skipped items read in a *Skipped on this job* line.
+- **A filed No** reads on the stage's row and on the Pipeline's mark, not only on the paper.
+- **The paper's foot says what filing did** (`filedFootWords`: filed, nothing here changes, N
+  answers, N No).
+- **The phone needs a job-level strip** above the stages, which #242's superintendent card now is.
+
+What the spike fakes and the build must not: the store is browser storage; the signature PNG never
+leaves the browser; records never reach Drive. The walks' screenshots carry live job names and
+stay out of the repo.
+
 ## The plan
 
 1. **PR 1 · items on the job and the read-out** (M). The job-scoped rows (one migration with the
@@ -206,8 +252,10 @@ promote and print; the Settings card read-only; the guides.
    the office set for writes), the kernel's grouping, the sheet rebuilt as *The sheet* above
    describes (the progress header, one *Next* row with the presses, statement rows with the stamp,
    *Add a note* as a link) with the second group and the superintendent's *Add a check*, the
-   Documents section on desk and phone with inline add and take off, the guide *add a check to a
-   job's stage checklist*. Useful on its own.
+   Documents section on desk and phone with inline add and take off, the named groups with *Skip
+   on this job* and the per-item *Add to the company's list* (a `job_id`-scoped skip row with its
+   reason; a promote copies the row to the null scope and retires the job one), the plan-sheet
+   chip, the guide *add a check to a job's stage checklist*. Useful on its own.
 2. **PR 2 · needs a signature** (M). The toggle on every add box, the signature columns on the
    answer (one migration), the signature sheet with the gravity words and the agreed line over
    `SignatureTypeOrDrawInput`, the lock, *Take it back*, the outbox ride, the guide *sign a
@@ -239,3 +287,6 @@ Delete every ZZ Test row after.
 The owner asked to build it. PR 1 and PR 4 wait on nothing; PR 2 and PR 3 take the recommended
 answers to calls 1 and 2 as defaults. Later the same day the owner read the sheet and asked for
 better; the walk's sheet is now its second pass (*The sheet* above) and PR 1 builds that one.
+The same evening the two views were built as a design spike in the real app and walked as four
+personas (*The spike* above); the spike's code waits on `origin/spike/projects-board-242` as the
+reference for PR 1 to PR 4. Still nothing on main.
