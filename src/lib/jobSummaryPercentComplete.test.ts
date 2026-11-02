@@ -218,9 +218,20 @@ describe('the newest % wins (v2.3372)', () => {
     expect(reportPctIsCurrent('2026-05-15T20:12:54Z', null)).toBe(true)
     expect(reportPctIsCurrent('2026-09-04T10:00:00Z', '2026-09-03T18:53:56Z')).toBe(true)
   })
-  it('a hand-set at or after the report makes the report stale (Mission Hills: May 15 report, Sep 3 hand-set)', () => {
+  it('a hand-set after the report makes the report stale (Mission Hills: May 15 report, Sep 3 hand-set)', () => {
     expect(reportPctIsCurrent('2026-05-15T20:12:54Z', '2026-09-03T18:53:56Z')).toBe(false)
-    expect(reportPctIsCurrent('2026-09-03T18:53:56Z', '2026-09-03T18:53:56Z')).toBe(false)
+    expect(reportPctIsCurrent('2026-09-03T18:53:56Z', '2026-09-03T18:56:00Z')).toBe(false)
+  })
+  it("a hand-set within two minutes of the report is the report's own mirror, so the report stands (J804, v2.6388)", () => {
+    // The Oct 30 report at 16:38:18.48; set_job_pct_from_field wrote pct_complete at 16:38:18.81 and the trigger stamped it manual.
+    expect(reportPctIsCurrent('2026-10-30T16:38:18.4814+00:00', '2026-10-30T16:38:18.81501+00:00')).toBe(true)
+    expect(reportPctIsCurrent('2026-09-03T18:53:56Z', '2026-09-03T18:53:56Z')).toBe(true)
+    expect(reportPctIsCurrent('2026-09-03T18:53:56Z', '2026-09-03T18:55:56Z')).toBe(true)
+    expect(reportPctIsCurrent('2026-09-03T18:53:56Z', '2026-09-03T18:55:57Z')).toBe(false)
+    const rows = [{ job_ledger_id: 'j804', pct: 40, reported_at: '2026-10-30T16:38:18.4814+00:00', manual_at: '2026-10-30T16:38:18.81501+00:00' }]
+    expect(currentReportPctByJobId(rows).get('j804')).toBe(40)
+    expect(currentReportDateByJobId(rows).get('j804')).toBe('2026-10-30T16:38:18.4814+00:00')
+    expect(resolveJobSummaryPercentCompleteWithSource(40, 40)).toEqual({ pct: 40, source: 'crew-report' })
   })
   it('an unparseable date on either side keeps the report (the old rule)', () => {
     expect(reportPctIsCurrent(null, '2026-09-03T18:53:56Z')).toBe(true)
