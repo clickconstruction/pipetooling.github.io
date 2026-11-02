@@ -137,6 +137,9 @@ export type OfficeAsk =
   | { action: 'put_company'; name: string; mime: string }
   /** Find a file (v2.6305): Drive's full-text index over the jobs Shared Drive, two letters or more. */
   | { action: 'search'; words: string }
+  /** The index (punch list #240, PR 1): one file by its Drive id, or a job's folder tree, into file_index; `retry` takes held rows again. */
+  | { action: 'index'; driveFileId: string }
+  | { action: 'index_job'; job: JobRef; retry: boolean }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const DRIVE_ID = /^[A-Za-z0-9_-]{10,200}$/
@@ -191,6 +194,14 @@ export function parseOfficeAsk(body: unknown): OfficeAsk | null {
     case 'search': {
       const words = str(b.words, 200)
       return words && words.length >= 2 ? { action: 'search', words } : null
+    }
+    case 'index': {
+      const driveFileId = typeof b.driveFileId === 'string' && DRIVE_ID.test(b.driveFileId) ? b.driveFileId : null
+      return driveFileId ? { action: 'index', driveFileId } : null
+    }
+    case 'index_job': {
+      const job = jobOf(b.job)
+      return job ? { action: 'index_job', job, retry: b.retry === true } : null
     }
     default:
       return null

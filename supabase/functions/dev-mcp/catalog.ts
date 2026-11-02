@@ -1675,6 +1675,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "drive-intake",
   "drive-link",
   "driving-distance",
+  "file-index-sweep",
   "file-submittal-package",
   "gc-architect-email",
   "gc-card-bill",

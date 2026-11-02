@@ -205,3 +205,16 @@ describe('a photo’s landing (Messages, cut 10)', () => {
     expect(photoLanding({ project_id: PROJECT }, '1CustomerPictures00000001')).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
   })
 })
+
+describe('parseOfficeAsk — the index (punch list #240, PR 1)', () => {
+  const JOB = '00000000-0000-4000-8000-0000000001a1'
+  it('takes one file by its Drive id, and a job with or without retry, and refuses the rest', () => {
+    expect(parseOfficeAsk({ action: 'index', driveFileId: '1RockClauseMarkedUp0001' })).toEqual({ action: 'index', driveFileId: '1RockClauseMarkedUp0001' })
+    expect(parseOfficeAsk({ action: 'index', driveFileId: 'no spaces here!' })).toBeNull()
+    expect(parseOfficeAsk({ action: 'index' })).toBeNull()
+    expect(parseOfficeAsk({ action: 'index_job', job: { jobs_ledger_id: JOB } })).toEqual({ action: 'index_job', job: { jobs_ledger_id: JOB }, retry: false })
+    expect(parseOfficeAsk({ action: 'index_job', job: { bid_id: JOB }, retry: true })).toEqual({ action: 'index_job', job: { bid_id: JOB }, retry: true })
+    expect(parseOfficeAsk({ action: 'index_job', job: { jobs_ledger_id: 'x' } })).toBeNull()
+    expect(parseOfficeAsk({ action: 'index_job' })).toBeNull()
+  })
+})
