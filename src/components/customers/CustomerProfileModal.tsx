@@ -20,6 +20,8 @@ import {
   sortProfileBids,
 } from '../../lib/customers/customerProfileRails'
 import { fetchCustomerProfile, type CustomerProfileData } from '../../lib/customers/fetchCustomerProfile'
+import { customerFolderDoor } from '../../lib/customers/customerFolderWords'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { fetchJobActivityEventsForJobLedger } from '../../lib/fetchJobActivityEventsForJobLedger'
 import type { JobActivityEventRpcRow } from '../../lib/jobActivityEventsFromRpc'
 import GcHardHatIcon from '../icons/GcHardHatIcon'
@@ -235,7 +237,7 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
             </div>
 
             {/* contact band */}
-            {(contact.phone || contact.email || address || data.contactPersons.length > 0) && (
+            {(contact.phone || contact.email || address || data.contactPersons.length > 0 || readsJobs) && (
               <div style={{ display: 'flex', gap: 14, flexWrap: 'wrap', padding: '10px 20px', borderBottom: '1px solid var(--border)', fontSize: '0.83rem', alignItems: 'center' }}>
                 {contact.phone && (
                   <a href={telHrefFor(contact.phone)} style={{ color: 'var(--text-link)', textDecoration: 'none' }}>
@@ -262,6 +264,26 @@ function CustomerProfilePanel({ customerId, onClose, onShowTimeline }: { custome
                     · contact{data.contactPersons.length > 1 ? 's' : ''}: {data.contactPersons.map((c) => c.name).join(', ')}
                   </span>
                 )}
+                {/* the customer's Drive folder (v2.6288): every job's folder sits inside it */}
+                {readsJobs ? (
+                  (() => {
+                    const door = customerFolderDoor(data.customer.google_drive_link)
+                    return door.kind === 'open' ? (
+                      <button
+                        type="button"
+                        onClick={() => openInExternalBrowser(door.url)}
+                        style={{ background: 'none', border: 'none', padding: 0, font: 'inherit', color: 'var(--text-link)', cursor: 'pointer' }}
+                        data-testid="customer-profile-folder"
+                      >
+                        📁 Drive folder ↗
+                      </button>
+                    ) : (
+                      <span style={{ color: 'var(--text-faint)', fontSize: '0.75rem' }} data-testid="customer-profile-folder-later">
+                        📁 {door.words}
+                      </span>
+                    )
+                  })()
+                ) : null}
               </div>
             )}
 

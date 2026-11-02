@@ -50,7 +50,7 @@ th{color:#475569;font-weight:600;font-size:11px;letter-spacing:.06em;text-transf
 </head>
 <body>
 <h1>A job's kind: service call or project</h1>
-<p class="lead">One kind per job, read from the job's own facts by one kernel (a bid or a GC project behind it, Stage Plan rows, an HCP number) and settled by one press when the facts are thin. Shown as a chip, filtered on the board, backfilled on Quickfill. Made-up names and figures.</p>
+<p class="lead">One kind per job: priced before the work (a project) or priced by the work (a service call), read from the job's own facts by one kernel (a contract amount before the first hour, a bid or a GC project behind it, Stage Plan rows, an HCP number) and settled by one press when the facts are thin. Shown as a chip, filtered on the board, backfilled on Quickfill. Made-up names and figures.</p>
 
 <h2 class="sec">1 · The New Job form: one press, defaulted</h2>
 <div class="row">
@@ -62,13 +62,13 @@ th{color:#475569;font-weight:600;font-size:11px;letter-spacing:.06em;text-transf
         <label class="f">Job name<span class="in">Harbor Lane Offices · Building C rough-in</span></label>
         <label class="f">Kind <span class="newchip">new</span>
           <span class="seg"><span>Service call</span><span class="on">Project</span></span>
-          <span class="mute">Project, from bid B917. Change it if that is wrong.</span>
+          <span class="mute">Project · priced $112,000 from bid B917. Change it if that is wrong.</span>
         </label>
         <label class="f">Service type<span class="in">Plumbing</span></label>
         <div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="dbtn">Not now</button><button type="button" class="dbtn pri">Make the job</button></div>
       </div>
     </div>
-    <div class="cap"><b>Defaulted from the signals.</b> A job made from a bid reads <i>Project, from bid B917</i>; one made from an HCP import reads <i>Service call, from HCP 9057</i>; one with neither shows no default and the control waits for the press. The explicit press wins over the signals from then on.</div>
+    <div class="cap"><b>Defaulted from the signals.</b> A job made from a bid reads <i>Project · priced $112,000 from bid B917</i>; one made from an HCP import reads <i>Service call · priced when done</i>; one with neither shows no default and the control waits for the press. The explicit press wins over the signals from then on.</div>
   </div>
   <div class="col">
     <div class="desk">
@@ -78,7 +78,7 @@ th{color:#475569;font-weight:600;font-size:11px;letter-spacing:.06em;text-transf
         <label class="f">Job name<span class="in">Cedar Row Clinic · water heater swap, T&amp;M</span></label>
         <label class="f">Kind <span class="newchip">new</span>
           <span class="seg"><span class="on">Service call</span><span>Project</span></span>
-          <span class="mute">No bid, no stages, no HCP number: your call. Service call is a visit or two and one bill; Project runs through stages and bills by pay app or draw.</span>
+          <span class="mute">No price before the work, no bid, no stages: your call. A service call is priced by the work and billed at the end; a project is priced before it starts and moves only by change orders.</span>
         </label>
         <label class="f">Service type<span class="in">Plumbing</span></label>
         <div style="display:flex;justify-content:flex-end;gap:8px"><button type="button" class="dbtn">Not now</button><button type="button" class="dbtn pri">Make the job</button></div>
@@ -141,7 +141,7 @@ th{color:#475569;font-weight:600;font-size:11px;letter-spacing:.06em;text-transf
 
 <div class="notes">
   <div class="n"><h3>The kernel</h3><ul>
-    <li><code>jobKind(job)</code>: the explicit kind if set; else <code>bid_id</code> or <code>project_id</code> → project; else Stage Plan rows → project; else an HCP number alone → service call; else not set.</li>
+    <li><code>jobKind(job)</code>: the explicit kind if set; else a contract amount on the job before its first clock session → project (the price was known before the work); else <code>bid_id</code> or <code>project_id</code> → project; else Stage Plan rows → project; else an HCP number alone, or an amount that first appears at billing → service call; else not set.</li>
     <li>One source. #234's baseline, #237's checklists, the Pipeline's board, pay apps and the reports each read it; none re-derives it from a column of its own.</li>
   </ul></div>
   <div class="n"><h3>What is new</h3><ul>

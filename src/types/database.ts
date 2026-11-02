@@ -9756,6 +9756,8 @@ export type Database = {
           project_id: string | null
           tagged_at: string
           tagged_by: string | null
+          tied_line_ids: string[]
+          untagging_at: string | null
           user_id: string
         }
         Insert: {
@@ -9769,6 +9771,8 @@ export type Database = {
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
+          tied_line_ids?: string[]
+          untagging_at?: string | null
           user_id: string
         }
         Update: {
@@ -9782,6 +9786,8 @@ export type Database = {
           project_id?: string | null
           tagged_at?: string
           tagged_by?: string | null
+          tied_line_ids?: string[]
+          untagging_at?: string | null
           user_id?: string
         }
         Relationships: [
@@ -20530,6 +20536,7 @@ export type Database = {
           partner_person_id: string | null
           payments_made: number | null
           pct_complete: number | null
+          plan_part_id: string | null
           prior_numbers: string[]
           project_id: string | null
           revenue: number | null
@@ -20601,6 +20608,7 @@ export type Database = {
           partner_person_id?: string | null
           payments_made?: number | null
           pct_complete?: number | null
+          plan_part_id?: string | null
           prior_numbers?: string[]
           project_id?: string | null
           revenue?: number | null
@@ -20672,6 +20680,7 @@ export type Database = {
           partner_person_id?: string | null
           payments_made?: number | null
           pct_complete?: number | null
+          plan_part_id?: string | null
           prior_numbers?: string[]
           project_id?: string | null
           revenue?: number | null
@@ -20685,6 +20694,13 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "jobs_ledger_plan_part_id_fkey"
+            columns: ["plan_part_id"]
+            isOneToOne: false
+            referencedRelation: "plan_parts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "jobs_ledger_account_manager_user_id_fkey"
             columns: ["account_manager_user_id"]
@@ -27621,6 +27637,189 @@ export type Database = {
           },
         ]
       }
+      plan_parts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          current_set_at: string | null
+          current_set_by: string | null
+          current_set_id: string | null
+          development_id: string | null
+          id: string
+          job_id: string | null
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          current_set_at?: string | null
+          current_set_by?: string | null
+          current_set_id?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          current_set_at?: string | null
+          current_set_by?: string | null
+          current_set_id?: string | null
+          development_id?: string | null
+          id?: string
+          job_id?: string | null
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_parts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_parts_current_set_by_fkey"
+            columns: ["current_set_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_parts_current_set_id_fkey"
+            columns: ["current_set_id"]
+            isOneToOne: false
+            referencedRelation: "plan_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_parts_development_id_fkey"
+            columns: ["development_id"]
+            isOneToOne: false
+            referencedRelation: "developments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_parts_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      plan_sets: {
+        Row: {
+          came_at: string
+          check_note: string | null
+          checked_at: string | null
+          created_at: string
+          created_by: string | null
+          dated: string | null
+          file_count: number | null
+          file_name: string | null
+          file_size: number | null
+          id: string
+          job_id: string | null
+          kind: string
+          link: string
+          marks_up_set_id: string | null
+          memo: string
+          name: string
+          part_id: string
+          replaces_set_id: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          came_at?: string
+          check_note?: string | null
+          checked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          dated?: string | null
+          file_count?: number | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          link?: string
+          marks_up_set_id?: string | null
+          memo?: string
+          name: string
+          part_id: string
+          replaces_set_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          came_at?: string
+          check_note?: string | null
+          checked_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          dated?: string | null
+          file_count?: number | null
+          file_name?: string | null
+          file_size?: number | null
+          id?: string
+          job_id?: string | null
+          kind?: string
+          link?: string
+          marks_up_set_id?: string | null
+          memo?: string
+          name?: string
+          part_id?: string
+          replaces_set_id?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "plan_sets_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_sets_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_sets_marks_up_set_id_fkey"
+            columns: ["marks_up_set_id"]
+            isOneToOne: false
+            referencedRelation: "plan_sets"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_sets_part_id_fkey"
+            columns: ["part_id"]
+            isOneToOne: false
+            referencedRelation: "plan_parts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "plan_sets_replaces_set_id_fkey"
+            columns: ["replaces_set_id"]
+            isOneToOne: false
+            referencedRelation: "plan_sets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       price_book_entries: {
         Row: {
           created_at: string | null
@@ -33522,6 +33721,42 @@ export type Database = {
           {
             foreignKeyName: "user_dismissals_user_id_fkey"
             columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_imitations: {
+        Row: {
+          created_at: string
+          id: string
+          operator_id: string | null
+          target_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          operator_id?: string | null
+          target_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          operator_id?: string | null
+          target_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_imitations_operator_id_fkey"
+            columns: ["operator_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "user_imitations_target_id_fkey"
+            columns: ["target_id"]
             isOneToOne: false
             referencedRelation: "users"
             referencedColumns: ["id"]

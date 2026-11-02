@@ -194,6 +194,7 @@ import { JobFormCreateCustomerModal } from './JobFormCreateCustomerModal'
 import { extractContactFromCustomer, getCustomerDisplay } from '../../lib/jobs/jobFormCustomerDisplay'
 import { formatJobFormBidLinkTitle } from '../../lib/jobs/jobFormBidLinkTitle'
 import { isAssistantLike } from '../../lib/subcontractorLikeRole'
+import { makeJobDriveFolders } from '../../lib/jobs/jobDriveFoldersIo'
 
 /** v2.4294: the Bill tab's By bill / By date choice, per browser. */
 export const BILLS_VIEW_STORAGE_KEY = 'pipetooling.jobBill.view'
@@ -270,6 +271,16 @@ export type JobFormModalProps = {
   externalEscBlocked?: boolean
   /** Embedding only (Stage Plan PR 4): "Set stages on Bill →" asks the window to switch regions. */
   onRequestRegion?: (region: 'edit' | 'bill' | 'costs') => void
+}
+
+
+/**
+ * The job's Drive folder follows the job (v2.6288, the tree under the customer): a new job gets its folder at once, and a
+ * job whose customer was set or changed here has its folder moved under the customer now, not at the sweep's next look.
+ * Best effort and never in the way: the sweep every 10 minutes places what this call did not.
+ */
+function placeJobFolderSoon(jobId: string): void {
+  void makeJobDriveFolders(jobId).catch((e: unknown) => console.warn('JobFormModal: the job’s Drive folder waits for the sweep', e))
 }
 
 export default function JobFormModal({
@@ -2144,6 +2155,7 @@ export default function JobFormModal({
       if (editing) {
         const { error: updErr } = await supabase.from('jobs_ledger').update({ customer_id: cid }).eq('id', editing.id)
         if (updErr) throw updErr
+        placeJobFolderSoon(editing.id)
         const found = await fetchJobWithDetailsById(editing.id)
         if (found) setEditing(found)
         onSavedRef.current?.()
@@ -2171,6 +2183,7 @@ export default function JobFormModal({
         showToast(m.split('\n')[0] ?? m, 'error')
         return
       }
+      placeJobFolderSoon(editing.id)
     }
     setCustomerId(c.id)
     setCustomerSearch(getCustomerDisplay(c))
@@ -2312,6 +2325,7 @@ export default function JobFormModal({
       if (insertErr) throw insertErr
       const jobId = inserted?.id
       if (jobId) {
+        placeJobFolderSoon(jobId)
         // v2.4031: a row the database refused is said, not dropped in silence. The job is saved
         // either way, so the form still closes — staying open would invite a second Create.
         const childRowFailures = await writeNewJobChildRows(supabase, { jobId, payments, materials, fixtures, teamMemberIds })
