@@ -38,7 +38,8 @@ derived-roll-up recipe v2.2407 proved.
 - **Build order**: Phase 1 (contacts) → Phase 2 (per-GC Won/Lost) → Phase 3 (bid→job) →
   Phase 4 (`bid_gcs`). Each phase ships alone.
 - Bid-level roll-up rules: sent = FIRST send (shipped v2.2407) · last_contact = LATEST method
-  entry · outcome = `rollUpOutcome` (any won → won; all sent lost → lost) · due = EARLIEST due
+  entry · outcome = `rollUpOutcome` (any won → won; all sent REAL packets lost → lost; a
+  shared-letter packet rides the bid and never holds it, v2.6390) · due = EARLIEST due
   among UNSENT packets (Phase 4).
 
 ## The recipe every phase reuses (v2.2407 precedent)
@@ -212,3 +213,8 @@ phase (roll-up keeps them correct).
   rather than converted to own-GC editors — fold into Open Q #2's retirement pass.
 - 2026-08-28 — Phase 1 cleanup PR (v2.2417): all nine client `last_contact` hand-bumps
   removed; the trigger is the only writer.
+- 2026-11-02 — v2.6390: `rollUpOutcome` counts real packets only. BP391 sat in Not yet won or
+  lost with every GC marked lost because its second *Also sent to* GC had no version of its own,
+  so it came in as a shared-letter packet carrying the bid's sent date and no outcome. The bid
+  room's `roomRollUpOutcome` mirrors the rule; the Archive from board words on a per-GC bid name
+  the GC cards.

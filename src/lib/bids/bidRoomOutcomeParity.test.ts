@@ -19,11 +19,19 @@ describe('roomRollUpOutcome parity', () => {
     [{ outcome: 'won', sentOn: null }],
     [{ outcome: 'lost', sentOn: '2026-08-01' }, { outcome: 'lost', sentOn: null }],
     [{ outcome: 'lost', sentOn: '2026-08-01' }, { outcome: null, sentOn: '2026-08-02' }],
+    // v2.6390: a shared-letter GC ("Also sent to", no packet of its own) rides the bid and never holds the roll-up.
+    [{ outcome: 'lost', sentOn: '2026-08-01' }, { outcome: null, sentOn: '2026-08-01', sharedLetter: true }],
+    [{ outcome: null, sentOn: '2026-08-01', sharedLetter: true }],
     [{ outcome: null, sentOn: null }],
     [],
   ] as const
   it('matches gcPackets.rollUpOutcome on every case', () => {
     for (const c of cases) expect(roomRollUpOutcome(c as never)).toBe(rollUpOutcome(c as never))
+  })
+  it('a shared-letter GC with no answer does not hold an all-lost bid open (BP391, 2026-11-02)', () => {
+    const shared = [{ outcome: 'lost', sentOn: '2026-08-01' }, { outcome: null, sentOn: '2026-08-01', sharedLetter: true }]
+    expect(roomRollUpOutcome(shared)).toBe('lost')
+    expect(rollUpOutcome(shared)).toBe('lost')
   })
 })
 
