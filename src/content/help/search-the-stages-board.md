@@ -2,7 +2,7 @@
 title: search jobs on the Pipeline board
 category: Office
 roles: dev, master_technician, assistant
-keywords: stages, search, find a job, schedule notes, clock notes, session notes, schedule and time in search, tools menu
+keywords: stages, search, find a job, development, paid in full, schedule notes, clock notes, session notes, schedule and time in search, tools menu
 order: 74
 ---
 The search box on Jobs → Pipeline filters every section of the board at once. Counts, totals and prints all follow what you type.
@@ -15,6 +15,7 @@ Out of the box, typing matches the job's own fields:
 - **Job name**
 - **Job address**
 - **GC/Builder name**, the general contractor. See the GC guide.
+- **Development name**, the named group of jobs the job sits in. Every job in it comes up, Paid in Full ones too. See [the development guide](/help/group-jobs-into-a-development).
 
 :::example Jump straight to a job number
 The **#** chip inside the search bar is a faster path when you already know the number — type the digits and press Enter to jump straight to that job's row. On a keyboard, just press **n** anywhere on the board (while nothing else is focused) and the field opens ready to type.
