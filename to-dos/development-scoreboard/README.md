@@ -2,7 +2,7 @@
 name: "A scoreboard for a development: its jobs, their money, and who put what in"
 number: 250
 group: gated
-status: design 2026-11-02 · the mapping, four ways weighed, the mock-up drawn over made-up data and rendered at 1280 and 375 · waits on the owner's read and six calls · nothing built
+status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · waits on the owner's read and seven calls · nothing built
 summary: >
   The owner saw the game Squad's end-of-match scoreboard and asked for its shape on the Development
   page: one grid where the same columns mean the same thing at every level, a team banner with the
@@ -13,9 +13,12 @@ summary: >
   job. The pick is the board by job with the contributors under each, inside the Money look as its
   second view, with cuts by part of the site and by person and a time window as chips, and the
   sibling spike's cost timeline as the third view, so Money becomes one place with three views.
-next: The owner reads the mock-up and takes the six calls, then PR 1 is cut from fresh main once the Gun Dog stack (#6846 to #6849) and the photos PRs (#6839, #6840) are on it.
+  Draft 2 holds one rule at four levels: the site, a part, a job and a member each fold to three
+  figures and open to nine and their children, and every member fills Cost, so a job is the sum of
+  the rows under it.
+next: The owner reads draft 2 and takes the seven calls, then PR 1 is cut from fresh main once the Gun Dog stack (#6846 to #6849) and the photos PRs (#6839, #6840) are on it.
 size: M (PR 1 the board by job) + M (PR 2 the people under each job, the gold row) + S (PR 3 the view chips, the lead's tier, the headline) + M (PR 4 the cuts and the window)
-blocker: The owner's six calls. The Development page is a hot surface today; PR 1 waits for the stack on it to land.
+blocker: The owner's seven calls. The Development page is a hot surface today; PR 1 waits for the stack on it to land.
 opinion: build — it is the owner's own pattern, every column already exists for one job in Job Summary, and the board turns the page's Money look into the site's P&L with the people under it; the one new weight is the day ledger read for Overhead, which opens lazily with the view
 mockup: to-dos/development-scoreboard/mockup.html
 ver: v2.6040 · v2.6215 base
@@ -23,11 +26,12 @@ ver: v2.6040 · v2.6215 base
 
 # A scoreboard for a development: its jobs, their money, and who put what in (#250)
 
-Mock-up: [`mockup.html`](./mockup.html), draft 1 — the Money card's view chips, the board on a desk
-with one job open and the controller's gold line, the same board cut by part of the site and by
-person, two phones (a controller's with dollars, a lead's without), the empty and the failed states,
-the four ways weighed and the six calls. Made-up data: Harlow Ranch, Ridgeway Builders, the house's
-invented crew. Every total on the page is computed from the member rows, never typed.
+Mock-up: [`mockup.html`](./mockup.html), draft 2 — the critique of draft 1 against the game, the board
+on a desk with one job open and the controller's gold line, the same board dark, the cut by part of
+the site with one part open, the cut by person, two phones (a controller's with dollars, a lead's
+without), the empty and the failed states, the four ways weighed and the seven calls. Made-up data:
+Harlow Ranch, Ridgeway Builders, the house's invented crew. Every total on the page is computed from
+the member rows, never typed; a self-check in the page proves each job is the sum of its rows.
 
 ## The ask
 
@@ -38,6 +42,28 @@ The owner, 2026-11-02, with five screenshots of the game Squad's scoreboard:
 > a look at it and help me come up with ways that we can use it to summarise a breakdown of the
 > different jobs that make up a development and their profit and costs and what contributes and who
 > contributes to each?
+
+## The second pass
+
+The owner read draft 1 the same day: *This is great! And has so much great potential, but
+definitely needs a refinement pass. We could do a lot better.* Draft 1 was read again next to the
+five screenshots, as a critic, and it had the idea and not the thing. What it got wrong, and what
+draft 2 moved:
+
+| Draft 1 | Draft 2 |
+|---|---|
+| Two headers, misaligned: the banner's tiles in their own grid, then a second header row with emoji, the columns under it not lined up with the tiles | One header. The tiles are the column heads with the site's totals under them; every row lines up under them; the foot repeats them |
+| A sea of dashes: an open job showed nine member rows with six dashes each | A cell that is not the row's to fill is blank |
+| The members did not roll up: nothing in a member row added to the job's Cost, and Overhead had no row | The Cost column is the spine. A person's labor, a sub's sheets, a supplier's invoices, the card's charges and the overhead day share are each a row that fills Cost, and they sum to the job's Cost exactly |
+| No share at a glance | A bar under each member's Cost is their share of the job's cost |
+| Days summed over jobs | Days is distinct days with work at every level: a person's, a job's, the site's |
+| No order | Rows sort by Earned, biggest first; a press on a tile re-sorts |
+| One blue chip for every state | The chip wears the job's status colour, as the Pipeline's dot does; the open job's chip wears a ring |
+| Earned hid its percent | The percent sits beside it, as the margin sits beside Profit |
+| Emoji tiles on pastel | Plain glyphs on solid green, red and amber tiles |
+| One margin for the whole site, dragged to 19% by a pass-through materials job | The Profit tile says both: the blended margin and the margin on work alone (call 7) |
+| A part header showed three figures and could not open | One rule at four levels: the site, a part, a job, a member each fold to three and open to nine and their children |
+| No dark render | The board is drawn in both themes from the app's own tokens |
 
 ## What the game does, and what is lifted
 
@@ -98,9 +124,9 @@ drawn over them would say, truthfully, *24 jobs on no part* and *one job with no
 |---|---|---|---|
 | Team banner: flag, name, nine icons, the totals | The development: name, customer, GC, the site's nine totals, and small lines (left to collect, people on it, subs and supply houses) | The sum of the job rows | none |
 | The match headline | One line about the site right now: a job with no price that is costing, else the job that carried the site, else the job burning hot | — | `scoreboardHeadline()` in the kernel |
-| Squad row: chip, name, three totals when folded | A job: number chip, name, state word and flags; folded it shows Earned · Cost · Profit | — | the kernel's row |
-| The open squad: every column | The job's nine, then everyone who put something in | — | — |
-| Member row: role tag, name, kit icons, the columns | **Lead** or **Crew** (a person: hours, days, labor), **Sub** (a sheet name: subs), **Supplier** (a house: parts), **Card** (a holder: parts), **Office** (who sent the bills and booked the payments: words, no figure) | people: `utils/teamLabor.ts` by person and work date; subs: `people_labor_jobs.assigned_to_name`; suppliers: `supply_house_invoices.supply_house_id`; card: Job Summary's Cost by person (`partsPerPersonCostSummary.ts`); office: the two columns above | the site's crew hours (one batched read), the house id on the invoice read, the office columns on the bills and payments read |
+| Squad row: chip, name, three totals when folded | A job: its number chip in the job's status colour, name, state word and flags; folded it shows Earned · Cost · Profit; rows sorted by Earned | `jobsLedgerStatusDotColor` for the chip | the kernel's row |
+| The open squad: every column | The job's nine, then every row that put something in, summing to its Cost | — | — |
+| Member row: role tag, name, kit icons, the columns | **Lead** or **Crew** (a person: hours, days, labor), **Sub** (a sheet name: subs), **Supplier** (a house: parts), **Card** (a holder: parts), **Overhead** (the day share, no person), **Office** (who sent the bills and booked the payments: words, no figure). Each fills **Cost** with what it put in, with a bar for its share of the job's cost | people: `utils/teamLabor.ts` by person and work date; the Lead tag from `people_crew_jobs.crew_lead_person_name`; subs: `people_labor_jobs.assigned_to_name`; suppliers: `supply_house_invoices.supply_house_id`; card: Job Summary's Cost by person (`partsPerPersonCostSummary.ts`); office: the two columns above | the site's crew hours (one batched read), the house id on the invoice read, the office columns on the bills and payments read |
 | Your own row in gold | Your own row, under every job you are on; the office line when you sent or booked | — | the signed-in user matched to the clock's person through the Crew P&L resolver's keys (`crewPnlSummary.ts`) |
 | Unassigned players, 0 · 0 · 0 | *Nothing on them yet · N jobs · Show them*: a job with no earned dollar and no cost, folded | — | the kernel's fold |
 | Kit icons beside a name | Flags on a row: *no price*, *materials only*, *≈ 50% assumed*; counts beside a member: *11 invoices*, *34 charges*, *2 sheets* | Job Summary's row flags (`JobSummaryRowFlag`) and the line counts | — |
@@ -114,14 +140,14 @@ Green is effort, red is what it cost, gold is the money. Folded, a row shows the
 | Column | Meaning | Supplied today by | What the page must add |
 |---|---|---|---|
 | Hours | clocked hours on the job (recorded time) | `utils/teamLabor.ts` over `people_hours_recorded` + `people_crew_jobs` | one batched read of the site's crew rows and hours (a `fetchSiteLabor.ts` beside `fetchSiteCosts.ts`) |
-| Days | days with work on the job; the banner sums the jobs' days and says so | `jobDayLedger.ts` (distinct work dates) | the same read |
+| Days | distinct days with work, at every level: a person's days, a job's dates, the site's dates; never a sum | `jobDayLedger.ts` (distinct work dates) | the same read |
 | Labor | wage × hours by person | `TeamLaborRow.jobCost`, the wage join by trimmed name (`docs/CREW_PNL_DATA_FLOW.md` names the fragility); wage-less for roles outside the finance seats | — |
 | Subs | the sheets' total with drive cost | `useSiteCosts` → `siteCosts.ts` `subLabor` (`jobSubLaborInputsFromRows`, `buildJobProfitSummary`) | per sub: split the sheet names (`splitSheetNames`) |
 | Parts | supply invoices + card charges less exclusions + tally + other charges | `useSiteCosts` four buckets | per supplier: the house id on the invoice rows; per card holder: Job Summary's card parse |
 | Overhead | the day share from People → Overhead, from the day the pool began (2026-02-19) | `loadJobDayLedger.ts` + `overheadAllocation.ts` (`allocateJobOverheadDayShare`), settings from `overheadAllocationSettings.ts` | the day ledger for the window, read when the view opens; the heaviest read, it needs every job's days in the window, not only the site's |
-| Earned | the contract at 100%; the percent's share while working; half when no percent is on record (≈) | the first forty lines of `enrichJobSummaryRows` (`resolveJobSummaryPercentCompleteWithSource`, `earnedRevenueInWindow` with the row's own `finished`, the flags) | lift that slice into a pure `jobEarned()` both callers use; the page reads the newest report percent per job as Job Summary does |
-| Cost | Labor + Subs + Parts + Overhead | the sum | — |
-| Profit | Earned − Cost, with the percent of Earned beside it; red below zero; ≈ and dim on an assumed row | `trueProfitUsd`, `trueMarginPct` | — |
+| Earned | the contract at 100%; the percent's share while working, the percent shown beside it; half when no percent is on record (≈) | the first forty lines of `enrichJobSummaryRows` (`resolveJobSummaryPercentCompleteWithSource`, `earnedRevenueInWindow` with the row's own `finished`, the flags) | lift that slice into a pure `jobEarned()` both callers use; the page reads the newest report percent per job as Job Summary does |
+| Cost | Labor + Subs + Parts + Overhead; on a member row, what that row put in, with a bar for its share of the job's cost, so the rows under a job sum to the job | the sum | — |
+| Profit | Earned − Cost, with the percent of Earned beside it; red below zero; ≈ and dim on an assumed row. The site's tile also says the margin on work alone, materials-only jobs set aside | `trueProfitUsd`, `trueMarginPct` | the work-alone split: a job with no hours whose cost is all pass-through parts |
 
 Burn and the projected margin stay in Job Summary unless the owner wants them as columns ten and
 eleven (call 3). Revenue per hour is one division away and is left out of the grid.
@@ -162,17 +188,25 @@ since the kernel holds the same triples: job, contributor, measures.
 - **Where.** Inside the Money card as its second view. The card's head gains three chips, *Where the
   money is* · *Scoreboard* · *Timeline*; the first stays the default; the device remembers the one
   you were in (`devicePrefs.ts`, as the Money sort is kept).
-- **The banner.** The house glyph, the development's name, the customer, the GC, the counts; the
-  headline under *Right now*; one small line with what is left to collect, the people on it, the
-  subs and supply houses, and the day the overhead pool began. The nine totals to the right, each
-  an icon on its group's tint with the figure under it.
-- **The rows.** A folded job shows its chip, name, state and flags, and Earned · Cost · Profit.
-  Opened, the row goes bold on the subtle tint and fills all nine; under it the members, each with
-  an italic role tag in the margin and only their own cells filled, the rest an em dash. The office
-  line spans the number cells in words. The viewer's rows are gold with a *You* chip.
+- **One header.** The flag block over the Job column: the house glyph, the development's name, the
+  customer, the counts; the headline under *Right now*; one small line with what is left to collect,
+  the people on it, the subs and supply houses, and the day the overhead pool began. To its right the
+  nine tiles, a plain glyph on a solid green, red or amber tile with the site's total under it, and
+  they are the column heads: every row lines up under them. A press on a tile sorts by it.
+- **One rule at four levels.** The site, a part (when cut by part), a job and a member each fold to
+  three figures and open to nine and their children. A folded job shows its chip in the job's status
+  colour, name, state and flags, and Earned · Cost · Profit; rows sort by Earned, biggest first.
+  Opened, the row goes bold on the subtle tint, its chip wears a ring, and it fills all nine; under it
+  the rows that put something in, each with an italic role tag in the margin, its own kind's cell, and
+  **Cost** with a bar for its share of the job's cost: the people with hours, days and labor, the subs,
+  the supply houses, the card, and the overhead day share as its own row, so they sum to the job's
+  Cost exactly. A cell that is not the row's to fill is blank. The office line spans the number cells
+  in words. The viewer's rows are gold with a *You* chip.
 - **The fold at the bottom.** *Nothing on them yet · N jobs · Show them*: the jobs with no earned
   dollar and no cost, the change orders at $0 the owner keeps.
 - **The foot.** *The site · N jobs* with the nine totals again, so the board reads top and bottom.
+- **Dark.** The board takes the app's dark tokens as every card does; the solid tiles and the status
+  chips stay literal, as the app's saturated colours do.
 - **A phone.** The banner compressed to the name, the headline and the three totals with *All nine ›*;
   the job rows as cards with their three; a tap replaces the three with the nine as a labelled grid
   and lists the members as lines. Measured: 375 wide, nothing past the edge.
@@ -200,6 +234,9 @@ since the kernel holds the same triples: job, contributor, measures.
    Other charges on one job. The board reads them as Parts, as Job Summary does, and the Overhead
    column reads the pool's day share, so the two are side by side and not double counted in one cell;
    the Parts cell's title names them. Or: a tag on an other-charge row moves it to the Overhead column.
+7. **Pass-through materials in the margin.** The Profit tile says the blended margin and, under it,
+   the margin on work alone, with materials-only jobs set aside (on the mock-up: 19% and 35%). Or:
+   the blended figure only.
 
 ## The PR train
 
@@ -210,12 +247,13 @@ words. PR 1 waits for the Gun Dog stack and the photos PRs so the page seam is c
    page's reads (value, percent, bills, `useSiteCosts`) and a new batched read of the site's crew
    hours (`fetchSiteLabor.ts`); `jobEarned()` lifted out of `enrichJobSummaryRows` and called by both;
    Overhead through `loadJobDayLedger` when the view opens, the cells *reading…* until it lands.
-   `DevelopmentScoreboard.tsx` with the banner, the nine, the fold and the foot, desk and phone;
-   the view chips on the Money card's head; dev and controller. Page seam: one import, the view
-   state, the component inside the Money card.
-2. **PR 2 · the people under each job (M).** Lead and Crew rows from the clock, Sub rows from the
-   sheets, Supplier rows from the invoices' house, Card rows from the card parse, the Office line
-   from the bills' and payments' authors; the gold row; the counts beside a name.
+   `DevelopmentScoreboard.tsx` with the one header, the nine, the sort, the status chips, the fold
+   and the foot, desk and phone; the view chips on the Money card's head; dev and controller. Page
+   seam: one import, the view state, the component inside the Money card.
+2. **PR 2 · the rows under each job (M).** Lead and Crew rows from the clock, Sub rows from the
+   sheets, Supplier rows from the invoices' house, Card rows from the card parse, the Overhead row,
+   the Office line from the bills' and payments' authors; each filling Cost with its share bar; the
+   gold row; the counts beside a name.
 3. **PR 3 · the lead's tier and the headline (S).** The three-column board for the office door,
    `scoreboardHeadline()`, the glossary and access-control lines.
 4. **PR 4 · the cuts and the window (M).** *Cut by* job · part · person and *Window* all time · this
@@ -228,7 +266,8 @@ No migration. No edge function. The reads are the page's own tables under the re
 ## How to verify
 
 - `npm test` on the kernel: for every row Cost = Labor + Subs + Parts + Overhead and Profit =
-  Earned − Cost; the foot equals the sum of the rows and of the fold; a job with no percent and a
+  Earned − Cost; the rows under an open job sum to its Cost, the Overhead row included, and their
+  shares to one; the foot equals the sum of the rows and of the fold; a job with no percent and a
   price earns half and wears ≈; a job with no price and cost wears *no price* and leads the
   headline; the fold holds exactly the jobs with no earned dollar and no cost; the person cut's
   Earned shares sum to the job's Earned.
