@@ -256,6 +256,10 @@ export interface FileIndexRow {
   ocr_tried_at: string | null
   ocr_pages: number | null
   ocr_note: string | null
+  /** Meaning (PR 4): when the chunks were last embedded and last tried, the provider's reason when it refused. The pass sets them after the row. */
+  embedded_at: string | null
+  embed_tried_at: string | null
+  embed_note: string | null
 }
 
 /** What one file's OCR try left behind, for the row: nothing tried, read (the text is the read's), or refused with the reason. */
@@ -293,6 +297,9 @@ export function indexRowOf(f: DriveFileMeta, walk: { home: FileHome | null; via:
     ocr_tried_at: ocr.tried ? stamp : null,
     ocr_pages: fromOcr ? read.pages : null,
     ocr_note: ocr.tried && !fromOcr ? (ocr.note ?? 'no reason given').slice(0, 1000) : null,
+    embedded_at: null,
+    embed_tried_at: null,
+    embed_note: null,
   }
 }
 
