@@ -36,7 +36,8 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { JobPhotosRead } from '../../lib/photos/jobPhotos'
-import { captionWords, dayGroups, threadPath, timeWords, type SourcePick, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
+import { captionWords, dayGroups, jobWindowPath, threadPath, timeWords, type SourcePick, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
+import { pressThroughOutbox } from '../../lib/offline/pressThroughOutbox'
 import { supabaseJobPhotosWindowIo, type JobPhotosWindowIo } from '../../lib/photos/jobPhotoNotesIo'
 import {
   JOB_PHOTO_DESCRIPTION_MAX,
@@ -175,7 +176,30 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
     if (press.dead) return
     setAdding(true)
     try {
-      const writes = addWrites(host.tiles)
+      // A shot kept on the phone with no signal (PR 5): the whole press goes through the outbox, and the replay sends
+      // the kept shots first, then lands the words on every row, then writes the thread line.
+      if (host.kept > 0) {
+        if (!authUserId) {
+          showToast('Sign in again to add the photos.', 'warning')
+          return
+        }
+        const outcome = await pressThroughOutbox(
+          { kind: 'job-photos', userId: authUserId, pressedAt: Date.now(), payload: { jobLedgerId: job.id, photos: host.queuedPhotos() }, about: jobLabel, door: jobWindowPath(job.id) },
+          { forceQueue: true },
+        )
+        if (outcome.kind === 'queued') {
+          host.markQueued()
+          host.clear(host.tiles.map((t) => t.id))
+          showToast(JOB_PHOTO_WORDS.queued, 'success')
+        } else if (outcome.kind === 'landed') {
+          host.clear(host.tiles.map((t) => t.id))
+          setTick((t) => t + 1)
+        } else {
+          showToast(outcome.kind === 'refused' ? outcome.message : formatErrorMessage(outcome.error, 'The photos did not add.'), 'warning')
+        }
+        return
+      }
+      const writes = addWrites(host.tiles.filter((t) => t.status === 'sent'))
       const out = await io.add(writes)
       const failed = new Set(out.failedIds)
       host.clear(writes.map((w) => w.id).filter((id) => !failed.has(id)))
@@ -272,6 +296,8 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
                       <span style={{ color: 'var(--text-blue-700)', fontWeight: 600 }}>{JOB_PHOTO_WORDS.sending}</span>
                     ) : t.status === 'sent' ? (
                       <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{JOB_PHOTO_WORDS.sent}</span>
+                    ) : t.status === 'kept' ? (
+                      <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{JOB_PHOTO_WORDS.kept}</span>
                     ) : (
                       <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{t.failWhy}</span>
                     )}{' '}

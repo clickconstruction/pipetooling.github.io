@@ -28,9 +28,10 @@ import type { DatabaseErrorKind } from '../../utils/errorHandling'
 // ---------------------------------------------------------------------------
 // What may queue
 
-export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report'
+/** `job-photos` (punch list #244, PR 5): photos added to a job with their words from the Job photos window, kept on the phone with no signal. */
+export type OutboxKind = 'clock-in' | 'clock-out' | 'job-note' | 'field-report' | 'job-photos'
 
-export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report']
+export const OUTBOX_KINDS: readonly OutboxKind[] = ['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos']
 
 export function isOutboxKind(value: unknown): value is OutboxKind {
   return typeof value === 'string' && (OUTBOX_KINDS as readonly string[]).includes(value)
@@ -42,6 +43,7 @@ export const OUTBOX_KIND_WORDS: Record<OutboxKind, string> = {
   'clock-out': 'Clock out',
   'job-note': 'Job note',
   'field-report': 'Field report',
+  'job-photos': 'Job photos',
 }
 
 /**
@@ -143,13 +145,29 @@ export interface FieldReportPayload {
   photos?: KeptReportPhoto[]
 }
 
+/**
+ * A photo added to a job from the Job photos window (punch list #244, PR 5): a kept report photo's facts plus the
+ * words the person typed; the stage chips' question fields stay null. The replay sends the unsent ones first, then
+ * lands the press by writing the words, the stage and `added_at` on each row (`landJobPhotos`).
+ */
+export interface KeptJobPhoto extends KeptReportPhoto {
+  description: string
+}
+
+export interface JobPhotosPayload {
+  jobLedgerId: string
+  photos: KeptJobPhoto[]
+}
+
 export type OutboxPayloadOf<K extends OutboxKind> = K extends 'clock-in'
   ? ClockInPayload
   : K extends 'clock-out'
     ? ClockOutPayload
     : K extends 'job-note'
       ? JobNotePayload
-      : FieldReportPayload
+      : K extends 'job-photos'
+        ? JobPhotosPayload
+        : FieldReportPayload
 
 export interface OutboxPress<K extends OutboxKind = OutboxKind> {
   /** Minted on the phone when pressed; the server counts a send that lands twice once by it. */
@@ -588,12 +606,12 @@ export function outboxHoldsEverything(presses: readonly OutboxPress[], now: numb
   return holding && !presses.some((p) => needsAPerson(p, now))
 }
 
-/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report. */
+/** The photos riding with the presses that wait (punch list #229, PR 6): every photo of a waiting or sending field report, and since #244 of a job photos press. */
 export function keptPhotoCount(presses: readonly OutboxPress[]): number {
   let n = 0
   for (const p of presses) {
-    if (p.kind !== 'field-report' || (p.state !== 'waiting' && p.state !== 'sending')) continue
-    n += ((p.payload as FieldReportPayload).photos ?? []).length
+    if ((p.kind !== 'field-report' && p.kind !== 'job-photos') || (p.state !== 'waiting' && p.state !== 'sending')) continue
+    n += ((p.payload as FieldReportPayload | JobPhotosPayload).photos ?? []).length
   }
   return n
 }

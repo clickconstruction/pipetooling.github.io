@@ -50,7 +50,7 @@ function clockOut(over: Partial<OutboxPress<'clock-out'>> = {}): OutboxPress<'cl
 
 describe('outbox · what may queue', () => {
   it('four presses may queue, in this order of names, and nothing else', () => {
-    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report'])
+    expect(OUTBOX_KINDS).toEqual(['clock-in', 'clock-out', 'job-note', 'field-report', 'job-photos'])
     expect(isOutboxKind('clock-in')).toBe(true)
     expect(isOutboxKind('payment')).toBe(false)
     expect(isOutboxKind(null)).toBe(false)
@@ -429,6 +429,11 @@ describe('the photos on the bar', () => {
 
   it('counts every photo on a waiting or sending report, and none on a note or a landed one', () => {
     expect(keptPhotoCount([withPhotos('a', 2, 1), plain])).toBe(2)
+    // A job photos press (punch list #244, PR 5) carries its photos the same way.
+    const jobPhotos = newPress({ id: 'p-jp', seq: 3, kind: 'job-photos', userId: 'u1', pressedAt: T0, payload: { jobLedgerId: 'j1', photos: [{ ...photo('jp-0'), description: 'Meter location' }, { ...photo('jp-1', true), description: '' }] } })
+    expect(keptPhotoCount([jobPhotos])).toBe(2)
+    expect(photosWaitingLine([jobPhotos])).toEqual(['2 photos with it'])
+    expect(pressLead(jobPhotos, () => '7:58 AM')).toBe('Job photos from 7:58 AM')
     expect(keptPhotoCount([{ ...withPhotos('a', 2, 1), state: 'sent' }])).toBe(0)
     expect(keptPhotoCount([plain])).toBe(0)
   })

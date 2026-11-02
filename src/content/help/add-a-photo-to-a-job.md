@@ -49,6 +49,12 @@ The press waits while a photo is still sending. A photo that did not send says w
 
 Close the window without pressing Add and the new photos are let go. Nothing lands on the job.
 
+## With no signal
+
+A shot taken with no signal is kept on the phone. Its tile reads *Kept on the phone. It goes when the signal is back.* Type the words as usual and press the Add button. The photos wait in the queue together. The line at the top reads *Job photos from 7:58 AM*, then *waiting to send* and *1 photo with it*.
+
+When the signal is back the phone sends the photos first, then their words. The job's photos then show them as usual. A photo that fails for another reason still shows why, with {{button:outline|Retry}}.
+
 ## Where a photo lands
 
 Each photo goes to the job's Customer Pictures folder in Drive within five minutes. The file is named by the day, who took it and the first words. The tile reads *on its way to Drive* until then.
