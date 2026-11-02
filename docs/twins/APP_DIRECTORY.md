@@ -40,6 +40,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Job cost detail (parts, subs) → `/jobs?tab=parts`, `/jobs?tab=sub_sheet_ledger`
 - One job's money story (charges vs payments timeline) → `/jobs?tab=job-summary`
 - Who owes us money → `/accounts-receivable`
+- See every working project as one card, ahead or behind at this pace, and set its expected hours in the open → `/projects-board` (the Projects board, punch list #242, v2.6330: the leader, the office and the superintendents; the **Projects** press beside Forecast on `/jobs?tab=stages`; the leader and the office set, a superintendent reads; guide `see-where-every-project-stands-and-set-its-expected-hours`)
 - Schedule crews to jobs by week → `/schedule-dispatch`
 
 - See one development, a site with many bids and jobs, in five looks (History, Jobs & bids, Money, Plans, Questions) → `/developments/:id` (from the house line on a bid or a job; guide `see-everything-on-a-development`)
@@ -296,6 +297,9 @@ Account-Man jobs; superintendent = Reports + Sub Sheet Ledger; no subs/helpers/e
 - `?tab=sub_sheet_ledger` — subcontractor sheets/payments.
 - `?tab=parts` — parts costs against jobs.
 - `?tab=inspections`, `?tab=billed` — inspection tracking; billed-jobs list.
+
+### /projects-board — Projects board
+Every working project (a job Working with a stage In order, or priced at $25,000 and up) as one card, worst first (punch list #242, v2.6330). The card's strip is the labor budget filled by the job's real days and divided by its stages, the work done as a blue mark with its chip, the money as a thin line; hover a day or a stage's end bar for its card, press the title to open the card large. The slider under the strip is the expected hours, bounded by the hours in and the budget's edge, kept with a reason; **Recent changes** lists the last ones with **Undo the last change**; **back to the budget** clears a target. Roles: dev, master, assistant, controller and superintendent open it (`canSeeProjectsBoard`); dev, master, assistant and controller set the hours (`canSetExpectedHours`); a superintendent reads. Door: the **Projects** press beside Forecast on the Pipeline. Guide `see-where-every-project-stands-and-set-its-expected-hours`.
 
 ### /schedule-dispatch — Dispatch
 Week grid scheduling crews/subs onto jobs (and bid-anchored blocks). Drag to assign. A job's first visit saved asks before it texts the customer, and a moved first visit's Rescheduled text waits on Today's sends (guide `schedule-a-job-and-tell-the-customer`).

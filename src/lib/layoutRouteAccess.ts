@@ -46,6 +46,8 @@ export const PRIMARY_PATHS = [
 export const SUPERINTENDENT_PATHS = [
   '/dashboard',
   '/projects',
+  // The Projects board (punch list #242): his projects' pace and the expected hours the office set.
+  '/projects-board',
   '/workflows',
   '/jobs',
   '/schedule-dispatch',

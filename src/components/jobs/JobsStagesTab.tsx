@@ -286,6 +286,7 @@ import {
   stagesSectionElementId,
 } from '../../lib/jobs/stagesSectionPrefs'
 import * as stagesGates from '../../lib/jobs/stagesRoleGates'
+import { canSeeProjectsBoard } from '../../lib/jobs/projectsBoard'
 import { accountsReceivableButtonName } from '../../lib/jobs/stagesAccountsReceivableButton'
 import { useJobsListCache } from '../../contexts/JobsListCacheContext'
 import { setDevShowsZzTestJobs, useDevShowsZzTestJobs, useZzTestJobsHidden, zzTestJobsSwitchLine } from '../../lib/jobs/zzTestJobSwitch'
@@ -3219,6 +3220,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
               setFollowupOpen(true)
             }}
             canSeeForecast={canSeeBilledExpectedPay}
+            canSeeProjects={canSeeProjectsBoard(authRole)}
             onOpenForecast={() => setBilledPaymentForecastOpen(true)}
             onShowMap={!phoneBoard && jobsMapHidden ? toggleJobsMapHidden : null}
             query={stagesSearchQuery}
