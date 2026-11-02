@@ -10734,6 +10734,88 @@ export type Database = {
           },
         ]
       }
+      file_index: {
+        Row: {
+          bid_id: string | null
+          bytes: number | null
+          checked_at: string
+          customer_id: string | null
+          drive_file_id: string
+          folder_kind: string
+          indexed_at: string
+          jobs_ledger_id: string | null
+          mime: string
+          modified_at: string | null
+          name: string
+          pages: number | null
+          path: string
+          search: unknown
+          text: string | null
+          text_source: string | null
+          text_why: string | null
+        }
+        Insert: {
+          bid_id?: string | null
+          bytes?: number | null
+          checked_at?: string
+          customer_id?: string | null
+          drive_file_id: string
+          folder_kind?: string
+          indexed_at?: string
+          jobs_ledger_id?: string | null
+          mime: string
+          modified_at?: string | null
+          name: string
+          pages?: number | null
+          path?: string
+          search?: unknown
+          text?: string | null
+          text_source?: string | null
+          text_why?: string | null
+        }
+        Update: {
+          bid_id?: string | null
+          bytes?: number | null
+          checked_at?: string
+          customer_id?: string | null
+          drive_file_id?: string
+          folder_kind?: string
+          indexed_at?: string
+          jobs_ledger_id?: string | null
+          mime?: string
+          modified_at?: string | null
+          name?: string
+          pages?: number | null
+          path?: string
+          search?: unknown
+          text?: string | null
+          text_source?: string | null
+          text_why?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_index_bid_id_fkey"
+            columns: ["bid_id"]
+            isOneToOne: false
+            referencedRelation: "bids"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_customer_id_fkey"
+            columns: ["customer_id"]
+            isOneToOne: false
+            referencedRelation: "customers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_index_jobs_ledger_id_fkey"
+            columns: ["jobs_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fixture_component_corrections: {
         Row: {
           action: string
@@ -40071,6 +40153,14 @@ export type Database = {
         Args: { p_part_id: string }
         Returns: undefined
       }
+      plan_part_switch_words: {
+        Args: {
+          p_old: string
+          p_part: string
+          p_set: Database["public"]["Tables"]["plan_sets"]["Row"]
+        }
+        Returns: string
+      }
       portal_opens_since: {
         Args: { p_entity_id: string; p_since: string; p_surface: string }
         Returns: {
@@ -40623,6 +40713,30 @@ export type Database = {
           id: string
           subtitle: string
           title: string
+        }[]
+      }
+      search_file_index: {
+        Args: { max_hits?: number; words: string }
+        Returns: {
+          bid_id: string
+          bid_number: string
+          bytes: number
+          click_number: string
+          customer_id: string
+          drive_file_id: string
+          folder_kind: string
+          hcp_number: string
+          headline: string
+          job_name: string
+          jobs_ledger_id: string
+          mime: string
+          modified_at: string
+          name: string
+          path: string
+          project_name: string
+          rank: number
+          text_source: string
+          text_why: string
         }[]
       }
       search_job_ids_matching_schedule_or_clock: {

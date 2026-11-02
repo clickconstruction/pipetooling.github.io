@@ -5,7 +5,7 @@ file: docs/twins/APP_DIRECTORY.md
 type: Twin reference / Directory
 purpose: Route-level map of the app for role-impersonating agents — where everything lives, who sees it, and a task→URL index. Shared by every docs/twins/<role>.md brief.
 audience: Digital Twins, AI Agents, Developers
-last_updated: 2026-11-01
+last_updated: 2026-11-02
 authority: Routes from src/App.tsx; role gates from src/lib/layoutRouteAccess.ts + docs/ACCESS_CONTROL.md (Page Access Matrix). When this file and the app disagree, the app wins — report the drift.
 ---
 
@@ -65,7 +65,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Contracts and document packets → `/documents`
 - Set where a job's Drive files go, move the jobs root, name a job's folder, or make the folders for every job without one → `/documents?tab=where-files-go` (the office; guide `set-where-a-jobs-files-go`)
 - See every photo uploaded to the app, newest first, with its job, who took it and whether it is in Drive, and open the report, the box, the thread or the job it came with → `/documents?tab=photos` (v2.6270, punch list #232; guide `find-every-photo-that-was-uploaded`)
-- Find a file by the words inside it when you know it exists but not which job holds it → `/documents?tab=search`, the **Find a file** box under the job and bid search (v2.6305; the office; guide `find-a-file-when-you-do-not-know-where-it-is`)
+- Find a file by the words inside it when you know it exists but not which job holds it → `/documents?tab=search`, the **Find a file** box under the job and bid search (v2.6305; since v2.6319 our own file index answers first, Drive's search behind it; the office; guide `find-a-file-when-you-do-not-know-where-it-is`)
 
 **Everything else**
 - Your day, pins, nudges → `/dashboard`
