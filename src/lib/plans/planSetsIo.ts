@@ -49,7 +49,17 @@ export interface JobPlansIo {
 }
 
 const PART_COLS = 'id, development_id, job_id, name, position, current_set_id, current_set_by, current_set_at, created_by, created_at, updated_at'
-const SET_COLS = 'id, part_id, name, kind, source, dated, came_at, memo, changes, link, replaces_set_id, marks_up_set_id, job_id, file_name, file_size, file_count, checked_at, check_note, created_by, created_at, updated_at'
+/**
+ * A set's columns are read whole: a client deployed ahead of its migration's push still reads the rows, and a column
+ * the ledger lacks yet (v2.6356's `changes`) reads as its default through `setRow`, where a named column would have
+ * PostgREST refuse the whole read with a 400.
+ */
+const SET_COLS = '*'
+
+function setRow(r: Record<string, unknown>): PlanSetRow {
+  const changes = r.changes
+  return { ...(r as unknown as PlanSetRow), changes: typeof changes === 'string' ? changes : '' }
+}
 
 function taken<T>(r: { data: T; error: { message: string } | null }, what: string): NonNullable<T> {
   if (r.error) throw r.error
@@ -75,7 +85,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
         if (part) {
           const s = await supabase.from('plan_sets').select(SET_COLS).eq('part_id', part.id).order('came_at', { ascending: false })
           if (s.error) throw s.error
-          sets = (s.data ?? []) as PlanSetRow[]
+          sets = (s.data ?? []).map(setRow)
         }
       }
       let developmentParts: OtherPart[] = []
@@ -102,7 +112,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
       if (parts.length) {
         const s = await supabase.from('plan_sets').select(SET_COLS).in('part_id', parts.map((x) => x.id)).order('came_at', { ascending: false })
         if (s.error) throw s.error
-        sets = (s.data ?? []) as PlanSetRow[]
+        sets = (s.data ?? []).map(setRow)
       }
       const ids = new Set<string>()
       for (const x of parts) if (x.current_set_by) ids.add(x.current_set_by)
@@ -140,7 +150,8 @@ export function supabaseJobPlansIo(): JobPlansIo {
             source: draft.source,
             dated: draft.dated || null,
             memo: draft.memo.trim(),
-            changes: draft.changes.trim(),
+            // Sent only when written, so a set with none still saves while the column's push is minutes behind the deploy.
+            ...(draft.changes.trim() ? { changes: draft.changes.trim() } : {}),
             link: draft.link.trim(),
             replaces_set_id: replacesSetId,
             marks_up_set_id: marksUpSetId,
@@ -155,7 +166,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
         const r = await supabase.from('plan_parts').update({ current_set_id: made.id, current_set_by: userId, current_set_at: new Date().toISOString() }).eq('id', partId)
         if (r.error) throw r.error
       }
-      return made as unknown as PlanSetRow
+      return setRow(made as unknown as Record<string, unknown>)
     },
     async makeCurrent(partId, setId, userId) {
       const r = await supabase.from('plan_parts').update({ current_set_id: setId, current_set_by: userId, current_set_at: new Date().toISOString() }).eq('id', partId)
