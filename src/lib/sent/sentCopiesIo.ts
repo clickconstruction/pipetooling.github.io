@@ -12,11 +12,12 @@ import { supabase } from '../supabase'
 import { openHtmlPrintWindow, openHtmlWindowWhenReady } from '../jobsDocuments/printWindow'
 import { fileNameOf, openOrSaveFromStorage } from '../storageSave'
 import { type SentCopy, type SentCopyBody, type SentCopyStored, type SentFiling, type SentKindGroup, parseSentCopy, sentCopyDoor, sentCopyFrameHtml, sentCopyPath, sentDocumentInsert, sentKindGroupFilter, sentSearchFilter } from './sentCopies'
+import type { SentCopyAboutBid, SentCopyAboutJob, SentCopyAboutMaps } from './sentCopyAbout'
 
 /** The private bucket the copies live in: `<sent_documents.id>/<file>`. */
 export const SENT_COPIES_BUCKET = 'sent-documents'
 
-const SENT_COLS_BASE = 'id, kind, title, how, recipient_name, recipient_emails, subject, source_table, source_id, copy_path, copy_type, copy_hash, attachments, sent_at, sent_by_name'
+const SENT_COLS_BASE = 'id, kind, title, how, recipient_name, recipient_emails, subject, source_table, source_id, copy_path, copy_type, copy_hash, attachments, sent_at, sent_by_name, job_ids, bid_id'
 // `source_snapshot` (v2.4714) is applied after the client ships: a database without it answers
 // 42703 on a read and PGRST204 on a write, and the call goes again without the column.
 const SENT_COLS = `${SENT_COLS_BASE}, source_snapshot`
@@ -209,23 +210,57 @@ export async function openSentFile(path: string): Promise<boolean> {
 
 /**
  * Everything sent, newest first, for the Documents page: one group of papers or all of them,
- * narrowed by what was typed. Self-tests are left out. A read that fails is no rows.
+ * narrowed by what was typed. Self-tests are left out. A read that fails throws its reason, so the
+ * tab can say so and offer Retry (the Documents spike of 2026-11-01); before, a lost signal read
+ * as *No copy is on file yet*.
  */
+export async function readSentCopies(opts: { group: SentKindGroup | 'all'; typed: string; limit: number }): Promise<SentCopy[]> {
+  const read = (cols: string) => {
+    let q = table().select(cols).neq('kind', 'self_test')
+    const group = sentKindGroupFilter(opts.group)
+    if (group?.or) q = q.or(group.or)
+    for (const pattern of group?.notLike ?? []) q = q.not('kind', 'like', pattern)
+    const search = sentSearchFilter(opts.typed)
+    if (search) q = q.or(search)
+    return q.order('sent_at', { ascending: false }).limit(Math.max(1, Math.min(opts.limit, 1000)))
+  }
+  let { data, error } = await read(SENT_COLS)
+  if (error && isUnknownColumn(error.code)) ({ data, error } = await read(SENT_COLS_BASE))
+  if (error) throw error
+  return ((data ?? []) as unknown[]).map(parseSentCopy).filter((r): r is SentCopy => !!r)
+}
+
+/**
+ * The jobs and the bids a page of copies is about, by id, for the lines' about words (the Documents spike of
+ * 2026-11-01): one read each over the ids on the page. Best effort: a read that fails leaves the map empty and the
+ * list still draws.
+ */
+export async function loadSentCopyAbout(rows: ReadonlyArray<SentCopy>): Promise<SentCopyAboutMaps> {
+  const jobIds = [...new Set(rows.flatMap((r) => r.jobIds ?? []))]
+  const bidIds = [...new Set(rows.map((r) => r.bidId).filter((id): id is string => !!id))]
+  const [jobs, bids] = await Promise.all([
+    jobIds.length
+      ? supabase
+          .from('jobs_ledger')
+          .select('id, hcp_number, click_number, job_name')
+          .in('id', jobIds)
+          .then((r) => (r.error ? [] : ((r.data ?? []) as SentCopyAboutJob[])))
+      : Promise.resolve([] as SentCopyAboutJob[]),
+    bidIds.length
+      ? supabase
+          .from('bids')
+          .select('id, bid_number, project_name')
+          .in('id', bidIds)
+          .then((r) => (r.error ? [] : ((r.data ?? []) as SentCopyAboutBid[])))
+      : Promise.resolve([] as SentCopyAboutBid[]),
+  ])
+  return { jobs: new Map(jobs.map((j) => [j.id, j])), bids: new Map(bids.map((b) => [b.id, b])) }
+}
+
+/** The same read for a caller that wants no rows on a failure. */
 export async function loadSentCopies(opts: { group: SentKindGroup | 'all'; typed: string; limit: number }): Promise<SentCopy[]> {
   try {
-    const read = (cols: string) => {
-      let q = table().select(cols).neq('kind', 'self_test')
-      const group = sentKindGroupFilter(opts.group)
-      if (group?.or) q = q.or(group.or)
-      for (const pattern of group?.notLike ?? []) q = q.not('kind', 'like', pattern)
-      const search = sentSearchFilter(opts.typed)
-      if (search) q = q.or(search)
-      return q.order('sent_at', { ascending: false }).limit(Math.max(1, Math.min(opts.limit, 1000)))
-    }
-    let { data, error } = await read(SENT_COLS)
-    if (error && isUnknownColumn(error.code)) ({ data, error } = await read(SENT_COLS_BASE))
-    if (error) return []
-    return ((data ?? []) as unknown[]).map(parseSentCopy).filter((r): r is SentCopy => !!r)
+    return await readSentCopies(opts)
   } catch {
     return []
   }
