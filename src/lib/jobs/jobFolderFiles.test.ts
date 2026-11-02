@@ -66,6 +66,7 @@ describe('the words', () => {
     expect(fromWords(file('a'))).toEqual({ text: 'Added in Drive', tone: 'hand' })
     expect(fromWords(file('a', { from: { kind: 'photo', source: 'report' } }))).toEqual({ text: 'From the app · a report photo', tone: 'app' })
     expect(fromWords(file('a', { from: { kind: 'photo', source: 'box' } })).text).toBe('From the app · a Tally photo')
+    expect(fromWords(file('a', { from: { kind: 'photo', source: 'job' } })).text).toBe('From the app · a job photo')
     expect(fromWords(file('a', { from: { kind: 'photo', source: 'message' } })).text).toBe('From the app · a photo from a text or an email')
     expect(fromWords(file('a', { from: { kind: 'photo', source: 'something new' } })).text).toBe('From the app · a photo the app filed')
     expect(fromWords(file('a', { from: { kind: 'link', source: null } })).text).toBe('From the app · a file the app linked')

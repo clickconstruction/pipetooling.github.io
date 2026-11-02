@@ -2,7 +2,7 @@
 title: search for jobs, bids, customers, and estimates
 category: Getting Started
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent
-keywords: search, global search, find job, find bid, find customer, find estimate, address, job number, hcp number, c#, keyboard shortcut, cmd k, ctrl k, s key, magnifier, go anywhere, open a page, open a setting, find a setting, pages, settings, recent
+keywords: search, global search, find job, find bid, find customer, find estimate, address, job number, hcp number, c#, development, keyboard shortcut, cmd k, ctrl k, s key, magnifier, go anywhere, open a page, open a setting, find a setting, pages, settings, recent
 order: 10
 ---
 You click the magnifier in the header to open a search box. The box looks across jobs, bids, customers and estimates at once. The same box opens the app's pages, tabs, windows, Settings cards and guides by name.
@@ -23,7 +23,7 @@ From the Dashboard, press {{chip:blue|S}}, type part of the job name or HCP numb
 
 You don't have to know the job's name. The same box matches:
 
-- **Jobs**: the job name, the **address**, and either number. The **HCP #** and the **Click #**, also called C#, both work. Typing the number's prefix is fine. `J1004`, `1004` and `j1004` all find the same job.
+- **Jobs**: the job name, the **address**, and either number. The **HCP #** and the **Click #**, also called C#, both work. Typing the number's prefix is fine. `J1004`, `1004` and `j1004` all find the same job. The name of the job's **development** works too, the named group of jobs it sits in.
 - **Bids**: the bid number, such as `B352` or `BP1005`. Also the project name, the address and the **customer name**. Also the builder's name or the name of the GC, the general contractor.
 - **Customers**: the customer's name.
 - **Estimates**: the estimate number, such as `E12`. Also its title, the address, and the customer's name or email.

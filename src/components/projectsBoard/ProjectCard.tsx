@@ -34,9 +34,11 @@ export type ProjectCardProps = {
   canEdit: boolean
   onSetTarget: (hours: number, from: number, why: string) => Promise<boolean>
   onClearTarget: () => Promise<boolean>
+  /** Open the card large on arrival: the Costs tab's door lands on this project (PR 5). */
+  initiallyOpen?: boolean
 }
 
-export function ProjectCardBody({ row, pace, target, events, valueEvents, loading, failed, canEdit, onSetTarget, onClearTarget, big = false, onExpand }: ProjectCardProps & { big?: boolean; onExpand?: () => void }) {
+export function ProjectCardBody({ row, pace, target, events, valueEvents, loading, failed, canEdit, onSetTarget, onClearTarget, big = false, onExpand }: Omit<ProjectCardProps, 'initiallyOpen'> & { big?: boolean; onExpand?: () => void }) {
   const current = Math.round(target?.hours ?? pace.baseHours)
   const [draft, setDraft] = useState<number | null>(null)
   const [why, setWhy] = useState('')
@@ -137,8 +139,8 @@ export function ProjectCardBody({ row, pace, target, events, valueEvents, loadin
 }
 
 /** The card on the board, and the same card large when pressed. */
-export function ProjectCard(props: ProjectCardProps) {
-  const [open, setOpen] = useState(false)
+export function ProjectCard({ initiallyOpen = false, ...props }: ProjectCardProps) {
+  const [open, setOpen] = useState(initiallyOpen)
   return (
     <>
       <ProjectCardBody {...props} onExpand={() => setOpen(true)} />
