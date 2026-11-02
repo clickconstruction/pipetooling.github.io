@@ -2,7 +2,7 @@
 name: "One Drive folder per job, under its customer"
 number: 236
 group: close
-status: built 2026-11-01 as v2.6284 (#6719), v2.6287 (#6720) and v2.6288 (#6721), with the boot fix v2.6294 (#6736) · migration 20261101163412 pushed, job-drive-folders and photo-save deployed · the drive moved into clickplumbing.com's Workspace the same day (v2.6293, #6731) · by that evening the hand-made folders were in the Shared Drive and all 101 live jobs placed, none held · left: a look at the customer's door on test data, and what to do with the test folders
+status: built 2026-11-01 as v2.6284 (#6719), v2.6287 (#6720) and v2.6288 (#6721), with the boot fix v2.6294 (#6736) · migration 20261101163412 pushed, job-drive-folders and photo-save deployed · the drive moved into clickplumbing.com's Workspace the same day (v2.6293, #6731) · the owner's four asks after it shipped the same day: the tab lists what each folder holds (v2.6299), the Pipeline row's Job folder icon (v2.6301), Add a file beside each folder row (v2.6303), Find a file on Documents → Search (v2.6305) · by that evening the hand-made folders were in the Shared Drive and all 101 live jobs placed, none held · left: a look at the customer's door on test data, and what to do with the test folders
 summary: >
   Every job gets a Google Drive folder the moment it exists, the folder sits under its customer's
   folder, the back catalogue is brought into the same shape, and the app links straight to the
@@ -58,6 +58,8 @@ Two customers carried a folder link of their own.
 | [#6721](https://github.com/clickconstruction/pipetooling.github.io/pull/6721) | `claude/folders-customer-window` | The customer profile's *Drive folder* door (`src/lib/customers/customerFolderWords.ts`) and the job form's press (`placeJobFolderSoon` in `JobFormModal.tsx`) | merged, v2.6288 |
 
 Migration `20261101163412` is pushed (the types in #6735) and `job-drive-folders` and `photo-save` are deployed (`npm run check:migration-drift`, `npm run check:edge-drift`). Neither function could start after the first deploy, until v2.6294 exported what `_shared/jobFolders.ts` imports; `docs/EDGE_FUNCTIONS.md` → job-drive-folders → Status has it. A read of `jobs_ledger` and `customers` late on 2026-11-01 found all 101 live jobs placed and none held, and each of the 52 customers with a live job carrying its folder's link; the 16 live jobs with no customer sit under *No customer yet*. The sweep reads live jobs only, so it has not looked at the 775 paid jobs, 181 of them with a folder link, and where those folders sit was not checked.
+
+The owner's four asks after the train shipped on 2026-11-01 as their own PRs: the Documents tab lists what each of the job's folders holds, read live from Drive with where each file came from (v2.6299, #6742); the Pipeline row's **Job folder** icon after Share opens that tab, amber with a folder and grey without (v2.6301, #6747); **Add a file** beside each folder row puts a file from this computer into it through `drive-link` (v2.6303, #6748); **Find a file** on Documents → Search finds a file by the words inside it across every job's and bid's folder (v2.6305, #6751). The live walk below now also reads the new listing: a folder just made says *Nothing in Plans yet*.
 
 ## What is left, in order
 

@@ -29,6 +29,7 @@ import {
 } from '../utils/errorHandling'
 import { denverCalendarDayKey, startOfYmdInAppTzMs, todayYmdInAppTz } from '../utils/dateUtils'
 import { CLOCK_OUT_NOTE_FILLED_LINE, CLOCK_OUT_REVIEW_TITLE, clockOutDayReports, clockOutNoteFromReports, type ClockOutReportInput } from '../lib/clock/clockOutNote'
+import { clockOutJob, clockOutPickOf } from '../lib/clock/clockOutJob'
 import {
   fetchDispatchScheduledJobsForAssigneeDay,
   type DispatchScheduledJobForAssign,
@@ -255,6 +256,13 @@ export default function ClockInOutButton({
   const [unifiedSearchText, setUnifiedSearchText] = useState('')
   const [unifiedSearchResults, setUnifiedSearchResults] = useState<UnifiedSearchResult[]>([])
   const [selectedAssociation, setSelectedAssociation] = useState<UnifiedSearchResult | null>(null)
+  /** Whether the person picked a job or bid, or pressed Clear, since the clock-out window opened (punch list #228). */
+  const clockOutPickTouchedRef = useRef(false)
+  /** The person's own hand on the pick: a job or bid picked, or Clear. Typing in the search box is not a touch. */
+  const pickByHand = (next: UnifiedSearchResult | null) => {
+    clockOutPickTouchedRef.current = true
+    setSelectedAssociation(next)
+  }
   const [serviceTypes, setServiceTypes] = useState<Array<{ id: string; name: string }>>([])
   const [enabledBidServiceTypeIds, setEnabledBidServiceTypeIds] = useState<string[]>([])
   const [subcontractorServiceTypeIds, setSubcontractorServiceTypeIds] = useState<string[] | null>(null)
@@ -1106,6 +1114,7 @@ export default function ClockInOutButton({
     if (salaryUiActive) return
     if (!openSession) return
     setSelectedAssociation(null)
+    clockOutPickTouchedRef.current = false
     setAssociationChipFromSearch(false)
     setClockOutReviewNotes(openSession.notes?.trim() ?? '')
     clockOutNoteSeedRef.current = openSession.notes?.trim() ?? ''
@@ -1197,8 +1206,10 @@ export default function ClockInOutButton({
     setError(null)
     try {
       const notesTrim = clockOutReviewNotes.trim()
-      const jobId = selectedAssociation?.source === 'job' ? selectedAssociation.id : null
-      const bidId = selectedAssociation?.source === 'bid' ? selectedAssociation.id : null
+      // The job the press carries (punch list #228): the pick when the person picked a job or bid or pressed Clear, else
+      // the session's own, which the clock knows with no signal. The window's read of that job may never have landed, and
+      // the server writes whatever the payload names, so an untouched empty pick must not go out as "no job".
+      const { jobLedgerId: jobId, bidId } = clockOutJob({ pick: clockOutPickOf(selectedAssociation), touched: clockOutPickTouchedRef.current, session: openSession })
       // Through the outbox (punch list #163 PR 2). A clock-out on a clock-in still on the phone goes after it, never ahead.
       const pressId = pressIdOfSession(openSession.id)
       const outcome = await pressThroughOutbox(
@@ -1548,7 +1559,7 @@ export default function ClockInOutButton({
               title={titleAttr || undefined}
               onClick={() => {
                 onAssociatePickBefore?.()
-                setSelectedAssociation(u)
+                pickByHand(u)
                 setUnifiedSearchResults([])
                 setUnifiedSearchText('')
                 assignedJobsShownRef.current = true
@@ -1640,7 +1651,7 @@ export default function ClockInOutButton({
               title={titleAttr || undefined}
               onClick={() => {
                 onAssociatePickBefore?.()
-                setSelectedAssociation(b)
+                pickByHand(b)
                 setUnifiedSearchResults([])
                 setUnifiedSearchText('')
                 assignedJobsShownRef.current = true
@@ -1729,7 +1740,7 @@ export default function ClockInOutButton({
           type="button"
           onClick={() => {
             opts.onAssociatePickBefore?.()
-            setSelectedAssociation(lastSelectedJobBid)
+            pickByHand(lastSelectedJobBid)
           }}
           disabled={opts.disabled}
           style={{ ...useLastBtnStyle, alignSelf: 'flex-start' }}
@@ -2133,7 +2144,7 @@ export default function ClockInOutButton({
                     type="button"
                     onClick={() => {
                       setAssociationChipFromSearch(false)
-                      setSelectedAssociation(null)
+                      pickByHand(null)
                       setUnifiedSearchResults([])
                     }}
                     disabled={actionLoading}
@@ -2158,7 +2169,7 @@ export default function ClockInOutButton({
                         key={`${r.source}-${r.id}`}
                         type="button"
                         onClick={() => {
-                          setSelectedAssociation(r)
+                          pickByHand(r)
                           setAssociationChipFromSearch(true)
                           setUnifiedSearchResults([])
                           setUnifiedSearchText('')
@@ -2311,7 +2322,7 @@ export default function ClockInOutButton({
                     type="button"
                     onClick={() => {
                       setAssociationChipFromSearch(false)
-                      setSelectedAssociation(null)
+                      pickByHand(null)
                     }}
                     disabled={updateFocusLoading}
                     style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: updateFocusLoading ? 'not-allowed' : 'pointer' }}
@@ -2334,7 +2345,7 @@ export default function ClockInOutButton({
                         key={`${r.source}-${r.id}`}
                         type="button"
                         onClick={() => {
-                          setSelectedAssociation(r)
+                          pickByHand(r)
                           setAssociationChipFromSearch(true)
                           setUnifiedSearchResults([])
                           setUnifiedSearchText('')
@@ -2461,7 +2472,7 @@ export default function ClockInOutButton({
                     type="button"
                     onClick={() => {
                       setAssociationChipFromSearch(false)
-                      setSelectedAssociation(null)
+                      pickByHand(null)
                     }}
                     disabled={clockOutSaving}
                     style={{ padding: '0.35rem 0.75rem', fontSize: '0.875rem', border: '1px solid var(--border-strong)', borderRadius: 4, background: 'var(--surface)', cursor: clockOutSaving ? 'not-allowed' : 'pointer' }}
@@ -2484,7 +2495,7 @@ export default function ClockInOutButton({
                         key={`${r.source}-${r.id}`}
                         type="button"
                         onClick={() => {
-                          setSelectedAssociation(r)
+                          pickByHand(r)
                           setAssociationChipFromSearch(true)
                           setUnifiedSearchResults([])
                           setUnifiedSearchText('')

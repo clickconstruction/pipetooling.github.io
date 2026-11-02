@@ -12,6 +12,7 @@
 import { act, createRef } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, within } from '@testing-library/react'
+import { todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils'
 
 // v2.1824: the tab reads the scope API straight from the cache context; the
 // smoke props still supply `jobs`, so present every scope as merged (row-derived
@@ -564,7 +565,10 @@ describe('JobsStagesTab render smoke', () => {
 
   it('a Collections job with no bill line wears the shell pill — In Collections N days · no bill line (B6 / J4-10, wired in v2.4758)', async () => {
     const flaggedDaysAgo = 12
-    const flaggedAt = new Date(Date.now() - flaggedDaysAgo * 86_400_000).toISOString()
+    // The pill counts calendar days in the app's zone, so the flag is set on that calendar day at midday, never
+    // now − 12 × 24 h: across the fall-back weekend 288 hours ago lands one calendar day further back in the hour
+    // before midnight, and the smoke read 11 for 12 on 2026-11-01 at 23:00 Central.
+    const flaggedAt = `${ymdAddDays(todayYmdInAppTz(), -flaggedDaysAgo)}T18:00:00.000Z`
     const jobs = [
       makeJob({ job_name: 'Parked Shell', status: 'billed', revenue: 1200, payments_made: 0, collections_at: flaggedAt, invoices: [] }),
       makeJob({ job_name: 'Billed Shell', status: 'billed', revenue: 800, payments_made: 0, invoices: [] }),

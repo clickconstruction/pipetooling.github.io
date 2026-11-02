@@ -3,7 +3,7 @@
  * Render tests for ① Line Items on a phone (v2.4312): under 640 px every line
  * stacks. The name spans the grid's three columns, and the ×/$ boxes (a
  * discount's entry) and the trash sit on a line under it in the same cell, with
- * the In order / Any time switch still on the row under that. Focus no longer
+ * the In order / Any time press on the badge beside the name. Focus no longer
  * moves anything (v2.1229's stack-only-while-focused is gone). Wide screens keep
  * one row with the count and price in their own columns.
  */
@@ -108,16 +108,15 @@ describe('JobFormFixturesSection on a phone (v2.4312)', () => {
     expect(priceField(1).style.width).toBe(priceField(0).style.width)
   })
 
-  it('keeps the In order / Any time switch on the row under the line', () => {
+  it('keeps the In order / Any time press on the badge beside the name, no second line', () => {
     narrowMatches = true
     const plan = stagePlanFromForm({ fixtures, windows: [], orders: [], sheets: [], invoices: [], payments: [], todayYmd: '2026-10-01' })
     renderSection(fixtures, plan)
-    const switches = screen.getAllByTestId('stage-line')
-    expect(switches).toHaveLength(2)
+    expect(screen.queryAllByTestId('stage-line')).toHaveLength(0)
     for (const i of [0, 1]) {
-      const line = within(nameField(i).closest('td') as HTMLElement).getByTestId('line-numbers')
-      expect(line.compareDocumentPosition(switches[i]!) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
-      expect(within(switches[i]!).getByRole('radiogroup', { name: `Stage kind for ${fixtures[i]!.name}` })).toBeTruthy()
+      const cell = nameField(i).closest('td') as HTMLElement
+      const press = within(cell).getByRole('button', { name: `Stage kind for ${fixtures[i]!.name}: In order. Tap for Any time` })
+      expect(press.compareDocumentPosition(nameField(i)) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     }
   })
 

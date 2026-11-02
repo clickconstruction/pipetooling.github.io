@@ -7,6 +7,7 @@ import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, m
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
 import { driveFolderMeta, jobsRootFolderId } from '../_shared/driveSettings.ts'
 import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
+import { excerptOf, type Excerpt } from '../_shared/excerpt.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import {
@@ -52,7 +53,9 @@ import {
  *   POST { action: 'search', words }                    → Find a file (v2.6305): Drive's own full-text index over the jobs Shared
  *                                                        Drive, folders left out, at most 30 hits, each walked up to the job or
  *                                                        bid whose folder holds it → { hits: [{ id, name, mime, bytes, modified,
- *                                                        url, home, path }], more, noRoot }; a read a training account may run
+ *                                                        url, home, path, excerpt, excerptWhy }], more, noRoot }; a read a training
+ *                                                        account may run; since v2.6306 the first ten hits carry the line around
+ *                                                        the words (`excerpt`), or why there is none (`excerptWhy`)
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -265,6 +268,67 @@ async function walkUp(
   return { home: null, path: names.reverse().filter(Boolean).join(' › ') }
 }
 
+type ExcerptWhy = 'scan' | 'kind' | 'big' | 'slow'
+/** How many of a search's hits get their text read for an excerpt, and the caps on each read (v2.6306). */
+const EXCERPT_MAX_HITS = 10
+const EXCERPT_MS = 3000
+const EXCERPT_PDF_MAX_BYTES = 8 * 1024 * 1024
+const EXCERPT_PDF_MAX_PAGES = 40
+const EXCERPT_TEXT_MAX_BYTES = 2 * 1024 * 1024
+const GOOGLE_TEXT_KINDS = new Set(['application/vnd.google-apps.document', 'application/vnd.google-apps.spreadsheet', 'application/vnd.google-apps.presentation'])
+
+/**
+ * A hit's text for its excerpt (v2.6306), or why there is none: a Google Doc, Sheet or Slides exported as text; a PDF
+ * under the caps through unpdf's text layer (a dynamic import, so a runtime that cannot load it costs an excerpt and
+ * never the boot), under 20 characters of text being a scan; a text file as its bytes. Anything else is a kind we do
+ * not read.
+ */
+async function fileText(google: string, f: SearchListed): Promise<{ text: string } | { why: ExcerptWhy }> {
+  const bytes = f.size == null ? null : Number(f.size)
+  if (GOOGLE_TEXT_KINDS.has(f.mimeType)) {
+    const res = await fetch(`${DRIVE}/files/${encodeURIComponent(f.id)}/export?mimeType=text/plain`, { headers: { Authorization: `Bearer ${google}` } })
+    return res.ok ? { text: await res.text() } : { why: 'kind' }
+  }
+  if (f.mimeType === 'application/pdf' || /\.pdf$/i.test(f.name)) {
+    if (bytes != null && bytes > EXCERPT_PDF_MAX_BYTES) return { why: 'big' }
+    const res = await driveMedia(google, f.id)
+    if (!res.ok) return { why: 'kind' }
+    const data = new Uint8Array(await res.arrayBuffer())
+    if (data.length > EXCERPT_PDF_MAX_BYTES) return { why: 'big' }
+    const { getDocumentProxy, extractText } = await import('npm:unpdf@2.1.0')
+    const pdf = await getDocumentProxy(data)
+    if (pdf.numPages > EXCERPT_PDF_MAX_PAGES) return { why: 'big' }
+    const { text } = await extractText(pdf, { mergePages: true })
+    const t = typeof text === 'string' ? text : (text as string[]).join('\n')
+    return t.replace(/\s+/g, '').length < 20 ? { why: 'scan' } : { text: t }
+  }
+  if (f.mimeType.startsWith('text/') || /\.(csv|md|txt)$/i.test(f.name)) {
+    if (bytes != null && bytes > EXCERPT_TEXT_MAX_BYTES) return { why: 'big' }
+    const res = await driveMedia(google, f.id)
+    return res.ok ? { text: await res.text() } : { why: 'kind' }
+  }
+  return { why: 'kind' }
+}
+
+/** The excerpt for a hit, raced against the timer; a read that fails or finds no words costs the excerpt, never the search. */
+async function excerptFor(google: string, f: SearchListed, words: string): Promise<{ excerpt: Excerpt | null; excerptWhy: ExcerptWhy | null }> {
+  let timer: number | undefined
+  const slow = new Promise<{ why: ExcerptWhy }>((resolve) => {
+    timer = setTimeout(() => resolve({ why: 'slow' }), EXCERPT_MS)
+  })
+  try {
+    const r = await Promise.race([fileText(google, f), slow])
+    if ('why' in r) return { excerpt: null, excerptWhy: r.why }
+    const excerpt = excerptOf(r.text, words)
+    return excerpt ? { excerpt, excerptWhy: null } : { excerpt: null, excerptWhy: 'kind' }
+  } catch (e) {
+    console.warn('excerpt failed', f.id, e instanceof Error ? e.message : String(e))
+    return { excerpt: null, excerptWhy: 'kind' }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
  * Find a file (v2.6305): Drive's own full-text index, which already reads the words inside PDFs and OCR'd scans, asked
  * over the jobs root's Shared Drive (the whole of every Shared Drive when the root is not in one), folders left out.
@@ -298,9 +362,12 @@ async function searchFiles(admin: SupabaseClient, google: string, words: string)
     return p
   }
   const hits = await Promise.all(
-    files.map(async (f) => {
-      const { home, path } = await walkUp(f.parents?.[0] ?? null, homes, rootId, metaOf)
-      return { id: f.id, name: f.name, mime: f.mimeType, bytes: f.size == null ? null : Number(f.size), modified: f.modifiedTime ?? null, url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType), home, path }
+    files.map(async (f, i) => {
+      const [{ home, path }, ex] = await Promise.all([
+        walkUp(f.parents?.[0] ?? null, homes, rootId, metaOf),
+        i < EXCERPT_MAX_HITS ? excerptFor(google, f, words) : Promise.resolve({ excerpt: null, excerptWhy: null }),
+      ])
+      return { id: f.id, name: f.name, mime: f.mimeType, bytes: f.size == null ? null : Number(f.size), modified: f.modifiedTime ?? null, url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType), home, path, ...ex }
     }),
   )
   return { hits, more: Boolean(page.nextPageToken), noRoot: false }

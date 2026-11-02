@@ -18,6 +18,8 @@ The results come a moment after you stop typing. Each file sits under the job or
 
 Press the file's name to open it in Drive. Press **Open the job** to open the job window.
 
+Under many files a line shows where your words appear. The words are in bold. A Google Doc or a PDF with real text shows the line. A scanned paper says *Matched inside the scan*. A photo or a very big file shows no line.
+
 :::example Two words find a scanned letter
 
 **Find a file** &nbsp; {{chip:gray|rock clause}}
