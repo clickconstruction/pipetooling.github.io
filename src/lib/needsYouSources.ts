@@ -44,6 +44,7 @@ export type NeedsYouSource =
   | 'lienWaiversToSign'
   | 'contracts'
   | 'unpricedWorkOrders'
+  | 'jobKindGaps'
   | 'jobFollowups'
   | 'staleOpen'
   | 'capacityUnder'
@@ -92,6 +93,7 @@ export const NEEDS_YOU_SOURCES: readonly NeedsYouSource[] = [
   'lienWaiversToSign',
   'contracts',
   'unpricedWorkOrders',
+  'jobKindGaps',
   'jobFollowups',
   'staleOpen',
   'capacityUnder',
@@ -163,6 +165,7 @@ export function needsYouSourceEnabled(source: NeedsYouSource, role: UserRole | n
     case 'lien':
     case 'contracts':
     case 'unpricedWorkOrders':
+    case 'jobKindGaps':
     case 'jobFollowups':
     case 'staleOpen':
     case 'capacityUnder':
