@@ -66,8 +66,8 @@ export type LatestReportPctRow = {
 /**
  * A report's % is mirrored into `jobs_ledger.pct_complete` the moment the report saves
  * (`propagateReportPctToJob` → `set_job_pct_from_field`), and the `job_pct_events` trigger
- * stamps that row `manual` because the tech is signed in — so every crew report is followed,
- * a fraction of a second later, by a "hand-set" of its own number (J804, v2.6388: the Oct 30
+ * stamps that row `manual` because the tech is signed in — so every crew report that moves the
+ * job's % is followed, a fraction of a second later, by a "hand-set" of its own number (J804, v2.6388: the Oct 30
  * report, its mirror a third of a second later, and the % read *set by office*). A hand-set
  * inside this grace after the report is the mirror, not the office.
  */
