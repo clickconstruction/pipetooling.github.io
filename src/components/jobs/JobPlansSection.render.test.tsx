@@ -32,7 +32,6 @@ function set(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
     memo: '',
     link: 'https://drive.google.com/drive/folders/abc',
     replaces_set_id: null,
-    changes: '',
     marks_up_set_id: null,
     job_id: null,
     file_name: null,
@@ -138,7 +137,7 @@ describe('JobPlansSection', () => {
     expect(args.partId).toBe('p-new')
     expect(args.makeCurrent).toBe(true)
     expect(args.draft.link).toBe('https://drive.google.com/drive/folders/new')
-    expect(args.draft.changes).toBe('')
+    expect(args.draft.changes ?? '').toBe('')
     await waitFor(() => expect(onLink).toHaveBeenCalledWith('https://drive.google.com/drive/folders/new'))
   })
 

@@ -13,7 +13,6 @@ function set(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
     memo: '',
     link: 'https://drive.google.com/drive/folders/issued',
     replaces_set_id: null,
-    changes: '',
     marks_up_set_id: null,
     job_id: null,
     file_name: null,

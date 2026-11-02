@@ -30,8 +30,9 @@ export function PlanSetChangesLine({
 }) {
   const [draft, setDraft] = useState<string | null>(null)
   const line = changesLineWords(entry)
+  const written = entry.set.changes ?? ''
   if (draft !== null) {
-    const same = draft.trim() === entry.set.changes.trim()
+    const same = draft.trim() === written.trim()
     return (
       <span style={{ ...style, display: 'grid', gap: 4, width: '100%' }} data-testid={`plan-set-changes-editor-${entry.set.id}`}>
         <textarea style={area} rows={2} value={draft} placeholder={changesPlaceholder(entry.previous)} aria-label={`What changed in ${entry.set.name}`} onChange={(e) => setDraft(e.target.value)} />
@@ -51,7 +52,7 @@ export function PlanSetChangesLine({
     <span style={{ display: 'inline-flex', gap: 8, flexWrap: 'wrap', alignItems: 'baseline', ...style }} data-testid={`plan-set-changes-${entry.set.id}`}>
       {line ? <span style={muted}>{line}</span> : null}
       {canWrite ? (
-        <button type="button" style={press} disabled={busy} onClick={() => setDraft(entry.set.changes)}>
+        <button type="button" style={press} disabled={busy} onClick={() => setDraft(written)}>
           {line ? CHANGES_PRESS.edit : CHANGES_PRESS.write}
         </button>
       ) : null}

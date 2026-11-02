@@ -82,7 +82,7 @@ export function PlanSetForm({
       {asBuilt ? null : (
         <label style={{ ...field, alignItems: 'start' }}>
           <span>What changed</span>
-          <textarea style={{ ...input, minHeight: '3.4rem', resize: 'vertical' }} rows={2} value={draft.changes} placeholder={changesPlaceholder(current)} onChange={(e) => put({ changes: e.target.value })} data-testid="plan-set-changes" />
+          <textarea style={{ ...input, minHeight: '3.4rem', resize: 'vertical' }} rows={2} value={draft.changes ?? ''} placeholder={changesPlaceholder(current)} onChange={(e) => put({ changes: e.target.value })} data-testid="plan-set-changes" />
         </label>
       )}
       <label style={field}>

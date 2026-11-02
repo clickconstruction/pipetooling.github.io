@@ -38,8 +38,8 @@ export type PlanSetRow = {
   /** The day it reached us, an ISO stamp. */
   came_at: string
   memo: string
-  /** What changed from the set before it (v2.6356): empty on a first set, or until someone writes it. */
-  changes: string
+  /** What changed from the set before it (v2.6356): empty or absent until someone writes it, and on a first set. */
+  changes?: string
   /** A Drive folder or file link, or '' while the files are on their way. */
   link: string
   replaces_set_id: string | null
@@ -195,10 +195,10 @@ export function otherPlansNotice(args: { developmentName: string | null; myPartI
   return `${site} has plans on ${others.length === 1 ? 'another part' : `${others.length} other parts`} of the site: ${list}. A set on another part may touch this job.`
 }
 
-export type NewSetDraft = { name: string; kind: PlanSetKind; source: PlanSetSource; dated: string; memo: string; link: string; changes: string }
+export type NewSetDraft = { name: string; kind: PlanSetKind; source: PlanSetSource; dated: string; memo: string; link: string; changes?: string }
 
 export function emptyNewSetDraft(kind: PlanSetKind = 'issued'): NewSetDraft {
-  return { name: '', kind, source: kind === 'as_built' || kind === 'assembled' ? 'ours' : 'gc', dated: '', memo: '', link: '', changes: '' }
+  return { name: '', kind, source: kind === 'as_built' || kind === 'assembled' ? 'ours' : 'gc', dated: '', memo: '', link: '' }
 }
 
 /** What a new set still needs before it saves; null when it can. */
@@ -273,14 +273,14 @@ export function timelineEntryFor(timeline: ReadonlyArray<TimelineEntry>, set: Pl
 
 /** The set's change line: *What changed from Issued set: the riser moved to the north wall*; null until someone writes it. */
 export function changesLineWords(e: TimelineEntry): string | null {
-  const words = e.set.changes.trim()
+  const words = (e.set.changes ?? '').trim()
   if (!words) return null
   return e.previous ? `What changed from ${e.previous.name}: ${words}` : `What changed: ${words}`
 }
 
 /** True when the set followed another and nobody has written what changed: the row offers *Write what changed*. */
 export function changesMissing(e: TimelineEntry): boolean {
-  return !!e.previous && !e.set.changes.trim()
+  return !!e.previous && !(e.set.changes ?? '').trim()
 }
 
 /** The cue under *What changed* on the form, naming the set the new one would replace. */
