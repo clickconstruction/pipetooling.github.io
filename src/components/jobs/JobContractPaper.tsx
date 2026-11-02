@@ -386,7 +386,7 @@ export default function JobContractPaper(p: JobContractPaperProps) {
                 })}
               </div>
             ) : (
-              <span style={p.editable ? ghost : { ...kv }}>{p.editable ? '+ the lines they initial, one per line' : 'No lines to initial.'}</span>
+              <span style={p.editable ? ghost : { ...kv }}>{p.editable ? '+ the lines they initial, one per line' : 'This paper has no lines to initial.'}</span>
             )}
           </Editable>
         </div>
