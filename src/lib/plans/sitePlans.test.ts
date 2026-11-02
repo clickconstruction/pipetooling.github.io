@@ -60,9 +60,9 @@ describe('buildSitePlansView', () => {
 
   it('leaves a billing-only job and a service call out of the count, each with its reason, and says so in one quiet line', () => {
     expect(v.jobsNeedingNoPlans).toEqual([
-      { kind: 'job', id: 'j6', label: 'JP543', why: 'billing_only' },
-      { kind: 'job', id: 'j7', label: 'JP933', why: 'service' },
-      { kind: 'job', id: 'j8', label: 'HCP 7', why: 'service' },
+      { kind: 'job', id: 'j6', label: 'JP543', name: null, why: 'billing_only' },
+      { kind: 'job', id: 'j7', label: 'JP933', name: null, why: 'service' },
+      { kind: 'job', id: 'j8', label: 'HCP 7', name: null, why: 'service' },
     ])
     expect(sitePlansLeftOutWords(v)).toBe('3 jobs need no plans: 1 bills only, 2 are service calls')
     expect(sitePlansLeftOutWords(buildSitePlansView({ parts: [bunker], sets, jobs: [jobs[6]!], bids: [] }))).toBe('1 job needs no plans: 1 is a service call')
