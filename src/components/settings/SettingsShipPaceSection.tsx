@@ -187,7 +187,7 @@ function PaceTip({ active, payload }: { active?: boolean; payload?: { payload: C
   return (
     <div style={{ background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: '6px', padding: '0.4rem 0.6rem', fontSize: '0.8rem', color: 'var(--text-strong)' }}>
       <div style={{ fontWeight: 600 }}>{row.label}</div>
-      <div>{row.h == null ? 'Nothing merged this hour.' : `Median ${row.h} hours from opening to merge.`}</div>
+      <div>{row.h == null ? 'This hour had no merge.' : `Median ${row.h} hours from opening to merge.`}</div>
       <div style={{ color: 'var(--text-muted)' }}>
         {countWords(row.merged, 'merged')}, {countWords(row.created, 'opened')}.
       </div>
