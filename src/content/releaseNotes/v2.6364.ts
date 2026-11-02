@@ -9,7 +9,7 @@ const note: ReleaseNote = {
   highlights: [
     'After the one-time backfill the owner asked how we would know, later on, which uploaded files are in the index and which are not. A new check answers it: every file in the Shared Drive against every row of the index, in one call.',
     'It counts the files with no row (never reached by a walk or the sweep), the files changed in Drive since their row, the rows whose file is gone, and the rows with and without text by reason, and names the first files with no row so someone can act on them.',
-    'A dev runs it from a terminal and reads one line, such as how many files have no row; the same door is open to the office in the app and changes nothing in Drive or in the index.',
+    'A dev runs it from a terminal and reads one line, such as how many files have no row; the door changes nothing in Drive or in the index.',
   ],
 }
 
