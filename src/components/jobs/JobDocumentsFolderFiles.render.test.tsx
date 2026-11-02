@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 /**
  * The job window's Documents tab In the folders section over a fake io (v2.6299): a job with no link draws nothing and
- * reads nothing; the five folders list their newest rows with where each file came from, an empty folder says what
- * fills it and a folder not made yet says when the app makes it; a held job shows the hold's words; a read that fails
- * says why with Try again. Made-up names only.
+ * reads nothing; the five folders list their newest rows with where each file came from, a file the app's own Drive
+ * account put there as the app's with no address (v2.6334), an empty folder says what fills it and a folder not made
+ * yet says when the app makes it; a held job shows the hold's words; a read that fails says why with Try again.
+ * Made-up names only.
  */
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { JobFolderFile, JobFolderFilesRead, JobFolderSection } from '../../lib/jobs/jobFolderFiles'
 import type { JobFolderFilesIo } from '../../lib/jobs/jobFolderFilesIo'
@@ -69,6 +70,19 @@ describe('JobDocumentsFolderFiles', () => {
     expect(screen.queryByText('Invoice 6.pdf')).toBeNull()
     expect(screen.getByText(/and 2 more in Drive/)).toBeTruthy()
     expect(screen.getAllByRole('link', { name: 'Open in Drive ↗' }).length).toBe(4)
+  })
+
+  it('names a file the app’s own Drive account put there as the app’s, with no address (v2.6334)', async () => {
+    const r = read()
+    r.sections[1] = section('plans', 'Plans', [file('put', { name: 'drawings.pdf', bytes: 1024, by: 'drive-intake@example-drive.iam.gserviceaccount.com' })])
+    const { container } = renderWithProviders(<JobDocumentsFolderFiles job={job()} io={fakeIo(r)} />)
+    const row = (await screen.findByText('drawings.pdf')).closest('li')!
+    expect(within(row).getByText('From the app · a file the app put there')).toBeTruthy()
+    expect(within(row).queryByText('Added in Drive')).toBeNull()
+    expect(within(row).getByText('Nov 1 · 1 KB')).toBeTruthy()
+    expect(container.textContent).not.toContain('gserviceaccount')
+    // A person's file in the next folder still reads as theirs.
+    expect(screen.getAllByText('Added in Drive').length).toBeGreaterThan(0)
   })
 
   it('shows the hold’s words on a held job instead of a listing', async () => {

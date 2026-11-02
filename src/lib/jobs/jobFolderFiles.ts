@@ -3,8 +3,9 @@
  * "a user knows what exists before they go looking for it"). Drive is the record of what a folder holds, so the tab
  * reads the five folders live through `job-photos`' `files` action every time it opens and keeps nothing; a file
  * someone dropped in by hand is simply there the next time anyone looks. What the app adds is where a file came from:
- * a photo or a file the app itself filed carries its record, everything else is *Added in Drive*. The words here are
- * pure; `jobFolderFilesIo.ts` reads, `JobDocumentsFolderFiles.tsx` draws.
+ * a photo or a file the app itself filed carries its record, a file the app's own Drive account last changed is the
+ * app's too, everything else is *Added in Drive*. The words here are pure; `jobFolderFilesIo.ts` reads,
+ * `JobDocumentsFolderFiles.tsx` draws.
  */
 
 export type FolderSectionKey = 'job' | 'pictures' | 'plans' | 'photos' | 'sentByUs'
@@ -116,9 +117,18 @@ export function fileDayWords(iso: string | null, now: Date = new Date()): string
   return d.toLocaleDateString('en-US', sameYear ? { month: 'short', day: 'numeric' } : { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-/** The row's second line: *Nov 1 · 2.1 MB · Taunya McLemore*, whatever of the three Drive said. */
+/**
+ * Drive's last hand on the file was the app's own Drive account, not a person (v2.6334). Before, a file the app put
+ * there with no record of its own (one from *Add a file*) read *Added in Drive* beside
+ * `drive-intake@….iam.gserviceaccount.com`, since Drive names a service account by its address.
+ */
+export function byTheApp(by: string | null): boolean {
+  return by != null && /\.iam\.gserviceaccount\.com$/i.test(by.trim())
+}
+
+/** The row's second line: *Nov 1 · 2.1 MB · Taunya McLemore*, whatever of the three Drive said; the app's own account is left out. */
 export function fileMetaWords(f: Pick<JobFolderFile, 'modified' | 'bytes' | 'by'>, now: Date = new Date()): string {
-  return [fileDayWords(f.modified, now), fileSizeWords(f.bytes), f.by].filter((p): p is string => Boolean(p)).join(' · ')
+  return [fileDayWords(f.modified, now), fileSizeWords(f.bytes), byTheApp(f.by) ? null : f.by].filter((p): p is string => Boolean(p)).join(' · ')
 }
 
 const SOURCE_WORDS: Record<string, string> = {
@@ -128,9 +138,9 @@ const SOURCE_WORDS: Record<string, string> = {
   message: 'a photo from a text or an email',
 }
 
-/** Where a file came from: the app's own record, or a hand in Drive. */
-export function fromWords(f: Pick<JobFolderFile, 'from'>): { text: string; tone: 'app' | 'hand' } {
-  if (!f.from) return { text: 'Added in Drive', tone: 'hand' }
+/** Where a file came from: the app's own record, else the app's own Drive account, else a hand in Drive. */
+export function fromWords(f: Pick<JobFolderFile, 'from' | 'by'>): { text: string; tone: 'app' | 'hand' } {
+  if (!f.from) return byTheApp(f.by) ? { text: 'From the app · a file the app put there', tone: 'app' } : { text: 'Added in Drive', tone: 'hand' }
   if (f.from.kind === 'link') return { text: 'From the app · a file the app linked', tone: 'app' }
   const what = (f.from.source && SOURCE_WORDS[f.from.source]) || 'a photo the app filed'
   return { text: `From the app · ${what}`, tone: 'app' }
