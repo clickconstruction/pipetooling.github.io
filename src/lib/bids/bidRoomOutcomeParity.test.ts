@@ -22,6 +22,7 @@ describe('roomRollUpOutcome parity', () => {
     // v2.6390: a shared-letter GC ("Also sent to", no packet of its own) rides the bid and never holds the roll-up.
     [{ outcome: 'lost', sentOn: '2026-08-01' }, { outcome: null, sentOn: '2026-08-01', sharedLetter: true }],
     [{ outcome: null, sentOn: '2026-08-01', sharedLetter: true }],
+    [{ outcome: 'won', sentOn: null, sharedLetter: true }],
     [{ outcome: null, sentOn: null }],
     [],
   ] as const

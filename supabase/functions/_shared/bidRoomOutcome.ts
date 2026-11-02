@@ -14,15 +14,15 @@ export type OutcomeVersionRow = {
 }
 
 /**
- * gcPackets.rollUpOutcome, verbatim semantics: only REAL packets count — a shared-letter GC
- * ("Also sent to", no version of its own) rides the bid and never holds the roll-up (v2.6390).
- * `planRoomOutcome` groups versions alone, so its packets never carry the flag; the parity test
- * in src/lib/bids holds both kernels to the same answers.
+ * gcPackets.rollUpOutcome, verbatim semantics: a shared-letter GC ("Also sent to", no version of
+ * its own) with no answer of its own rides the bid and never holds the roll-up (v2.6390); an
+ * answer set on one is the bid's answer. `planRoomOutcome` groups versions alone, so its packets
+ * never carry the flag; the parity test in src/lib/bids holds both kernels to the same answers.
  */
 export function roomRollUpOutcome(packets: ReadonlyArray<{ outcome: string | null; sentOn: string | null; sharedLetter?: boolean }>): 'won' | 'lost' | null {
-  const real = packets.filter((p) => !p.sharedLetter)
-  if (real.some((p) => p.outcome === 'won')) return 'won'
-  const sent = real.filter((p) => p.sentOn || p.outcome)
+  const counted = packets.filter((p) => !p.sharedLetter || p.outcome)
+  if (counted.some((p) => p.outcome === 'won')) return 'won'
+  const sent = counted.filter((p) => p.sentOn || p.outcome)
   if (sent.length > 0 && sent.every((p) => p.outcome === 'lost')) return 'lost'
   return null
 }

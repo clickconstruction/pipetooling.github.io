@@ -146,9 +146,10 @@ describe('rollUpOutcome · a same-letter GC rides the bid (BP391, 2026-11-02)', 
     expect(getSubmissionSectionKey({ outcome: roll, bid_date_sent: '2026-09-01' })).toBe('lost')
   })
 
-  it('a shared-letter GC alone decides nothing: no real packet, no roll-up either way', () => {
+  it("an unanswered shared-letter GC decides nothing; an answer set on one is the bid's answer (the writer's in-memory path)", () => {
     expect(rollUpOutcome([{ outcome: null, sentOn: '2026-09-01', sharedLetter: true }])).toBeNull()
-    expect(rollUpOutcome([{ outcome: 'won', sentOn: '2026-09-01', sharedLetter: true }])).toBeNull()
+    expect(rollUpOutcome([{ outcome: 'won', sentOn: '2026-09-01', sharedLetter: true }])).toBe('won')
+    expect(rollUpOutcome([{ outcome: 'lost', sentOn: '2026-09-01' }, { outcome: 'lost', sentOn: '2026-09-01', sharedLetter: true }])).toBe('lost')
   })
 
   it('a real GC still waiting holds the bid open, shared letter or not', () => {
