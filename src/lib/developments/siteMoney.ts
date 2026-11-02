@@ -268,3 +268,17 @@ export function moneyLookWords(model: SiteMoneyModel, money: (n: number) => stri
   if (b.jobs === 0) return { count: 'no job yet', need: null }
   return { count: `${money(b.left)} left`, need: b.pastDue > 0 ? `${b.pastDue} ${b.pastDue === 1 ? 'bill' : 'bills'} past due` : null }
 }
+
+/**
+ * The fifth tile when nothing billed is unpaid but money is still to come (the Gun Dog spike, 2026-11-02:
+ * *Open on bills $0 · nothing unpaid* told the owner nothing while $170K sat in waiting jobs never billed).
+ * Null when a bill is open (the tile keeps its name) or nothing is left on the site.
+ */
+export function unbilledTileWords(model: SiteMoneyModel, openOnBillsUsd: number, money: (n: number) => string): { cap: string; value: string; sub: string } | null {
+  if (openOnBillsUsd > 0 || model.band.left <= 0) return null
+  const live = model.sections.filter((s) => s.key !== 'paid').flatMap((s) => s.rows).filter((r) => r.left > 0)
+  const parts: string[] = []
+  if (model.band.doneNotBilled > 0) parts.push(`${money(model.band.doneNotBilled)} done, not billed`)
+  parts.push(`${live.length} ${live.length === 1 ? 'job' : 'jobs'} with money left`)
+  return { cap: 'Not yet billed', value: money(model.band.left), sub: parts.join(' · ') }
+}
