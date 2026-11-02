@@ -14,6 +14,7 @@ import GcHardHatIcon from '../icons/GcHardHatIcon'
 import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import AccountManIcon from '../icons/AccountManIcon'
 import { STAGES_CONTRACT_FILTER_LABELS } from '../../lib/jobs/jobContractCoverage'
+import { STAGES_KIND_FILTER_LABELS } from '../../lib/jobs/jobKind'
 import { STAGES_SORT_MODE_ACTIVE_CHIP_LABELS } from '../../lib/jobsStagesSortMode'
 import { STAGES_ACCOUNT_MAN_FILTER_NONE, STAGES_DEVELOPMENT_FILTER_NONE, STAGES_GC_FILTER_NO_GC } from '../../lib/jobsStagesBoard'
 import { StagesJobNumberJumpChip } from './StagesJobNumberJumpChip'
@@ -40,6 +41,8 @@ export type JobsStagesCommandBarProps = {
   filters: StagesToolsFilters
   onClearSort: () => void
   onClearContract: () => void
+  /** The job-kind filter's chip (punch list #238); absent where the board has no kind filter. */
+  onClearKind?: () => void
   onClearGc: () => void
   onClearDevelopment: () => void
   onClearAccountMan: () => void
@@ -83,6 +86,7 @@ export function JobsStagesCommandBar({
   filters,
   onClearSort,
   onClearContract,
+  onClearKind,
   onClearGc,
   onClearDevelopment,
   onClearAccountMan,
@@ -328,6 +332,23 @@ export function JobsStagesCommandBar({
           >
             <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>Sorted: {STAGES_SORT_MODE_ACTIVE_CHIP_LABELS[filters.sortMode]}</span>
             <span aria-hidden style={{ flexShrink: 0 }}>×</span>
+          </button>
+        ) : null}
+        {filters.kind && onClearKind ? (
+          <button
+            type="button"
+            onClick={() => onClearKind()}
+            title="Filtered by job kind — tap to clear"
+            aria-label={`Clear kind filter: ${STAGES_KIND_FILTER_LABELS[filters.kind]}`}
+            style={stagesActiveFilterChipStyle}
+          >
+            <span aria-hidden style={{ flexShrink: 0 }}>◐</span>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', minWidth: 0 }}>
+              {STAGES_KIND_FILTER_LABELS[filters.kind]}
+            </span>
+            <span aria-hidden style={{ flexShrink: 0 }}>
+              ×
+            </span>
           </button>
         ) : null}
         {filters.contract ? (

@@ -57,6 +57,8 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobsStagesTableProps } from './JobsStagesTable'
 import type { JobsStagesUnifiedTableProps } from './JobsStagesUnifiedTable'
 import { useSessionNotesOpener } from './sessionNotesOpenerContext'
+import JobKindChip from './JobKindChip'
+import { jobKindOfRow } from '../../lib/jobs/jobKind'
 import { telHrefFor } from '../../lib/phoneContact'
 import {
   accountManOnlyStripeStyle,
@@ -902,7 +904,11 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
               <div style={cardTitleRowWithChipStyle}>
                 {renderStagesJobHcpChip(j, cardTitleChipStyle)}
-                <div style={{ minWidth: 0, flex: 1 }}>{renderStagesOpenDetailJobName(j)}</div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  {renderStagesOpenDetailJobName(j)}
+                  {/* The job's kind (punch list #238), under the name so a phone keeps the name's width. */}
+                  <JobKindChip read={jobKindOfRow(j)} size="sm" />
+                </div>
               </div>
               {actionLabel ? (
                 <button
@@ -1247,7 +1253,11 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
             <div style={{ display: 'flex', alignItems: 'flex-start', gap: '0.5rem' }}>
               <div style={cardTitleRowWithChipStyle}>
                 {renderStagesJobHcpChip(j, cardTitleChipStyle)}
-                <div style={{ minWidth: 0, flex: 1 }}>{renderStagesOpenDetailJobName(j)}</div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  {renderStagesOpenDetailJobName(j)}
+                  {/* The job's kind (punch list #238), under the name so a phone keeps the name's width. */}
+                  <JobKindChip read={jobKindOfRow(j)} size="sm" />
+                </div>
               </div>
               {primary ? (
                 <button
