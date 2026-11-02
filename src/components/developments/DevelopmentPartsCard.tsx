@@ -12,6 +12,7 @@
  */
 import { useState, type CSSProperties, type ReactNode } from 'react'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
+import { JobChip } from './JobChip'
 import { asBuiltLineWords, defaultSetName, emptyNewSetDraft, newSetDraftProblem, setLineWords, shortDayWords, type NewSetDraft, type PlanSetRow } from '../../lib/plans/planSets'
 import { olderSetsFor, sitePlansAskCount, sitePlansChipWords, sitePlansLeftOutWords, type SiteCarrier, type SitePartRow, type SitePlansView } from '../../lib/plans/sitePlans'
 import { plansAskLine, type PlansAsk } from '../../lib/developments/plans'
@@ -106,11 +107,17 @@ export function DevelopmentPartsCard({
   const askCount = sitePlansAskCount(view)
   const carriers = (list: SiteCarrier[]) => (
     <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap' }}>
-      {list.map((c) => (
-        <LinkButton key={`${c.kind}:${c.id}`} onClick={() => openCarrier(c)}>
-          {c.label}
-        </LinkButton>
-      ))}
+      {list.map((c) =>
+        c.kind === 'job' ? (
+          <JobChip key={`${c.kind}:${c.id}`} jobId={c.id} onOpen={() => openCarrier(c)}>
+            {c.label}
+          </JobChip>
+        ) : (
+          <LinkButton key={`${c.kind}:${c.id}`} onClick={() => openCarrier(c)}>
+            {c.label}
+          </LinkButton>
+        ),
+      )}
     </span>
   )
   const openLink = (s: Pick<PlanSetRow, 'link'>) =>

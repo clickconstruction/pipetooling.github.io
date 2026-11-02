@@ -13,6 +13,7 @@ import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import type { HistoryPiece } from '../../lib/developments/history'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatusForDashboard } from '../../lib/jobsLedgerStatusPipeline'
 import { Chip, LinkButton, money, PressChip, shortDay } from './developmentPageBits'
+import { JobChip } from './JobChip'
 import { BecameCell, CameFromCell, PairStrip, type PairingProps } from './DevelopmentPairCells'
 import { DEVELOPMENT_PHONE_QUERY } from './DevelopmentJumpStrip'
 
@@ -105,9 +106,9 @@ function JobCell({ job, label, crew, open, moneyShown }: { job: MemberJob; label
   return (
     <div style={{ display: 'grid', gap: 2, minWidth: 0 }}>
       <div style={{ display: 'flex', gap: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-        <LinkButton onClick={open} strong>
+        <JobChip jobId={job.id} onOpen={open} strong>
           {label}
-        </LinkButton>
+        </JobChip>
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, fontSize: '0.72rem', fontWeight: 700, color: 'var(--text-strong)' }}>
           <span aria-hidden style={{ width: 8, height: 8, borderRadius: 9999, background: jobsLedgerStatusDotColor(job.status), display: 'inline-block' }} />
           {status}
