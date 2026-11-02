@@ -24,8 +24,8 @@ export type ContactCard = {
   /** The records the person's own windows open by: a trade's company, a customer's or an architect's customer. */
   gc_company_id: string | null
   customer_id: string | null
-  /** `customers.customer_type` for a customer's or an architect's contact (v2.6394): residential puts a customer contact on the residential flow. */
-  customer_type: string | null
+  /** `customers.customer_type` for a customer's or an architect's contact (v2.6394): residential puts a customer contact on the residential flow. Absent until the card carries it. */
+  customer_type?: string | null
 }
 
 /** One contact's entry in `flow_rows_kind`: `flow_rows`' rows, the names, and each project's name. */
