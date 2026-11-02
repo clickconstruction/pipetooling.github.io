@@ -1196,7 +1196,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Required secrets**: `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `SUPABASE_ANON_KEY`, **`GOOGLE_SERVICE_ACCOUNT_JSON`** (the same service account as [drive-link](#drive-link)). Helpers from `_shared/driveUpload.ts`, `_shared/driveJobFolder.ts` (`childFolder`, `driveGet`, `driveMedia`) and `_shared/driveLink.ts`.
 
-**Doors**: `src/lib/photos/jobPhotosIo.ts` (`listJobPhotos` through `functions.invoke`; `jobPhotoThumb` and `jobPhotoFull` by a plain fetch under the caller's sign-in, since invoke reads an `image/jpeg` answer as text (v2.6128); object URLs the tiles revoke) behind `JobPhotosStrip.tsx` and `JobPhotosViewer.tsx` on the job window; the rules in `src/lib/photos/jobPhotos.ts`; the guide *see a job's photos*.
+**Doors**: `src/lib/photos/jobPhotosIo.ts` (`listJobPhotos` through `functions.invoke`; `jobPhotoThumb` and `jobPhotoFull` by a plain fetch under the caller's sign-in, since invoke reads an `image/jpeg` answer as text (v2.6128); since v2.6311 through `photoBytesQueue.ts`, six thumbnails and two full pictures in flight at a time, a 429 waited out and asked again, the bytes kept so a second tile or the viewer never ask twice, since Documents → Photos drew a hundred tiles at once and the gateway refused a fifth; object URLs the tiles revoke over the kept bytes) behind `JobPhotosStrip.tsx` and `JobPhotosViewer.tsx` on the job window; the rules in `src/lib/photos/jobPhotos.ts`; the guide *see a job's photos*.
 
 **Status**: v2.6090 deployed; v2.6299 (the `files` action) deploys from main once it merges.
 

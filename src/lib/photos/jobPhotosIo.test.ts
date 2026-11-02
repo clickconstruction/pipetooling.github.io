@@ -22,10 +22,12 @@ function answer(status: number, bytes: string, type = 'image/jpeg') {
 const urlApi = URL as unknown as { createObjectURL?: unknown }
 const before = urlApi.createObjectURL
 
-beforeEach(() => {
+beforeEach(async () => {
   auth.jwt = 'jwt-1'
   calls.length = 0
   urlApi.createObjectURL = () => 'blob:photo'
+  // The kept bytes are forgotten between tests, and a retry's wait is no wait.
+  ;(await import('./jobPhotosIo')).resetPhotoBytes(async () => {})
 })
 
 afterEach(() => {
@@ -59,6 +61,21 @@ describe('job photo bytes (v2.6128)', () => {
     expect(await jobPhotoThumb('job-1', 'file-1')).toBeNull()
     answer(200, '')
     expect(await jobPhotoThumb('job-1', 'file-1')).toBeNull()
+  })
+
+  it('a 429 is waited out and asked again, and the kept bytes serve a second ask without a call', async () => {
+    const { jobPhotoThumb } = await import('./jobPhotosIo')
+    let n = 0
+    vi.stubGlobal('fetch', async (url: string, init: RequestInit) => {
+      calls.push({ url, init })
+      n += 1
+      const status = n === 1 ? 429 : 200
+      return { ok: status < 400, status, headers: { get: () => null }, blob: async () => new Blob(['jpeg-bytes'], { type: 'image/jpeg' }) }
+    })
+    expect(await jobPhotoThumb('job-1', 'file-1')).toBe('blob:photo')
+    expect(calls).toHaveLength(2)
+    expect(await jobPhotoThumb('job-1', 'file-1')).toBe('blob:photo')
+    expect(calls).toHaveLength(2)
   })
 
   it('no sign-in is null without a call', async () => {
