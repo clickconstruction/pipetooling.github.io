@@ -5,8 +5,9 @@
  * still decides when it shows and what its click does, exactly as before.
  */
 import { Children, type ReactNode } from 'react'
-import { FileCheck2, FileSpreadsheet } from 'lucide-react'
+import { FileCheck2, FileSpreadsheet, Folder } from 'lucide-react'
 import { stagesRowIconsPerRow } from '../../lib/jobs/stagesRowIconGrid'
+import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 
 const iconButtonStyle = {
   padding: '0.25rem',
@@ -115,6 +116,33 @@ export function StagesLienReleaseButton({ onClick, hasRelease }: { onClick: () =
       }}
     >
       <FileCheck2 size={16} aria-hidden />
+    </button>
+  )
+}
+
+/**
+ * The job's Drive folder (v2.6301, the owner's ask after punch list #236): opens the window's Documents tab, where
+ * In the folders lists what is there and Open in Drive is one click further. ⌘-click (Ctrl on Windows)
+ * opens the folder in Drive itself. Grey while the job has no folder yet — the tab still opens, and
+ * its words say when the sweep makes one.
+ */
+export function StagesJobFolderButton({ folderUrl, onOpenTab }: { folderUrl: string | null | undefined; onOpenTab: () => void }) {
+  const hasFolder = Boolean(folderUrl)
+  return (
+    <button
+      type="button"
+      onClick={(e) => {
+        if (folderUrl && (e.metaKey || e.ctrlKey)) {
+          openInExternalBrowser(folderUrl)
+          return
+        }
+        onOpenTab()
+      }}
+      title={hasFolder ? 'Job folder — what is in the job’s Drive folders; ⌘-click opens the folder in Drive' : 'Job folder — this job has no Drive folder yet; the tab says when one is made'}
+      aria-label="Open the job’s folders"
+      style={{ ...iconButtonStyle, color: hasFolder ? '#d97706' : 'var(--text-muted)' }}
+    >
+      <Folder size={16} aria-hidden />
     </button>
   )
 }

@@ -737,6 +737,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         label: 'Share job',
         onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
       },
+      { key: 'folder', label: 'Job folder', onClick: () => openEdit(j, { initialTab: 'documents' }), badge: j.google_drive_link ? undefined : 'not made yet' },
       { key: 'click-tooling', label: 'Test report', onClick: () => openTestReportFor(j) },
     ]
     if ((j.job_address ?? '').trim()) {
@@ -1047,6 +1048,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
         label: 'Share job',
         onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
       },
+      { key: 'folder', label: 'Job folder', onClick: () => openEdit(j, { initialTab: 'documents' }), badge: j.google_drive_link ? undefined : 'not made yet' },
     ]
     if (onViewBill && invWithJob) {
       items.push({ key: 'view-bill', label: 'View bill', onClick: () => onViewBill(invWithJob) })
