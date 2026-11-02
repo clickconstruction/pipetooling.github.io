@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs
+keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
@@ -37,6 +37,20 @@ A strip under the counts names five looks: History, Jobs & bids, Money, Plans an
 
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
+
+## See a job's details without opening it
+
+Every job on the page shows as a blue number, such as *JP1091*. The number opens the job when you press it.
+
+1. Rest your pointer on a blue job number.
+2. A card floats beside the pointer. The card shows the job's full name, its address and its details.
+3. Move the pointer away and the card goes.
+
+The details are the customer, the stage, the crew, the last work day and the money on the job. A job that came from a bid names the bid. An estimator sees no money on the card.
+
+On a phone, press and hold the number for half a second, then lift your finger. The card opens under the number. Tap anywhere else to close it. A plain tap still opens the job.
+
+The card also opens when you reach the number with the Tab key. Press Escape to close it.
 
 ## Follow the site in History
 
