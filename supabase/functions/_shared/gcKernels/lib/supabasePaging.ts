@@ -96,11 +96,24 @@ export async function fetchAllRowsChunkedIn<T, Id>(
   ids: Id[],
   buildPage: (chunk: Id[], from: number, to: number) => PromiseLike<SupabaseClientResult<T[]>>,
   label: string,
-  opts?: { chunkSize?: number; pageSize?: number },
+  opts?: {
+    chunkSize?: number
+    pageSize?: number
+    /**
+     * How many chunks run at once (default 1, one after another). A read of a few hundred ids
+     * otherwise costs one round trip per 150 of them in a row; the rows come back in chunk order
+     * either way, so a caller that sorts by the whole list sees no change.
+     */
+    parallel?: number
+  },
 ): Promise<T[]> {
+  const chunks = chunkIds(ids, opts?.chunkSize ?? SUPABASE_IN_CHUNK_SIZE)
+  const width = Math.max(1, Math.floor(opts?.parallel ?? 1))
   const out: T[] = []
-  for (const chunk of chunkIds(ids, opts?.chunkSize ?? SUPABASE_IN_CHUNK_SIZE)) {
-    out.push(...(await fetchAllRows((from, to) => buildPage(chunk, from, to), label, opts?.pageSize)))
+  for (let i = 0; i < chunks.length; i += width) {
+    const group = chunks.slice(i, i + width)
+    const pages = await Promise.all(group.map((chunk) => fetchAllRows((from, to) => buildPage(chunk, from, to), label, opts?.pageSize)))
+    for (const rows of pages) out.push(...rows)
   }
   return out
 }
