@@ -448,6 +448,16 @@ export async function contactForCustomer(customerId: string): Promise<string> {
 }
 
 /**
+ * A customer's own contact when there is one, else null: a read, so a window that only looks (the courtesy
+ * notice's, punch list #243) makes nothing. The same row `contact_find_or_make` finds first: on their customers
+ * row, with no name.
+ */
+export async function findCustomerContactId(customerId: string): Promise<string | null> {
+  const rows = taken((await from('contacts').select('id').eq('customer_id', customerId).is('name', null).limit(1)) as Result<{ id: string }[]>, 'find their contact')
+  return rows?.[0]?.id ?? null
+}
+
+/**
  * One person as the thread reads them: their row, their numbers and addresses, their jobs and the record's name. Null
  * when the row is not there or is of a kind this build does not know.
  */

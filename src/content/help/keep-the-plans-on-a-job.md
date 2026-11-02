@@ -2,7 +2,7 @@
 title: keep the plans on a job
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: plans, plan set, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans
+keywords: plans, plan set, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history, job from bid, priced on
 where: /jobs
 order: 60
 ---
@@ -18,6 +18,14 @@ An updated set often comes in halfway through a job. The crew also marks up the 
 
 The Job tab's **Open plans** press opens the same set as **Building from**. The app keeps the two the same.
 
+## A job opened from a bid
+
+A job opened from a bid starts with the bid's plans. The set the bid was priced on becomes **Building from** the moment the job is made. Nothing to press.
+
+On a development, the job joins the part that already builds from that set. When no part does, the job gets a part named after itself. The office can fold it into another part later.
+
+The bid keeps its own sets. See [keep more than one set of plans on a bid](/help/keep-more-than-one-set-of-plans-on-a-bid#pin-the-set-the-price-stands-on).
+
 ## Add an updated set
 
 1. Press {{button:outline|+ New set}}.
@@ -30,6 +38,8 @@ The Job tab's **Open plans** press opens the same set as **Building from**. The 
 
 The job now builds from the new set. The old one moves under **Older sets**. Press {{button:outline|Add it, keep Issued set current}} instead to add the set without switching.
 
+On a development, the switch writes one line in the site's **History** for every job on the part. The line reads *Plans · the Bunker now builds from Addendum 1, dated Oct 2, 2026 · replaces Issued set*. Nobody types it.
+
 To switch later, press {{button:outline|Build from this set}} on any older set.
 
 ## Save the crew's as-built
@@ -41,6 +51,16 @@ To switch later, press {{button:outline|Build from this set}} on any older set.
 5. Press {{button:blue|Add the as-built}}.
 
 The as-built lands under **Our as-builts** with the day and who added it. The line says which set it marks up.
+
+## Open a job's plans from the Pipeline
+
+Every row on the **Pipeline** has a plans icon beside the job folder. A job with one set opens it. A job with two or more sets opens a window that lists them.
+
+1. Press the plans icon on the job's row. The number on it counts the sets.
+2. Read each set's name, kind and date. The set the job builds from wears {{chip:green|building from}}.
+3. Press {{button:outline|Open ↗}} on the set you want.
+
+Press {{button:outline|Open the Documents tab}} at the bottom of the window to add or switch a set. A job with no set yet opens its old plans link from the same icon.
 
 ## A job on a site with other plans
 

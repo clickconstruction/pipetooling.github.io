@@ -1,5 +1,20 @@
 import { describe, expect, it } from 'vitest'
-import { FIND_MIN_CHARS, emptyFindWords, findAFileFromAnswer, foundWords, groupByHome, hitMetaWords, homeWords, pathWords, type FoundFile } from './findAFile'
+import {
+  driveBehindIndex,
+  emptyFindWords,
+  excerptNote,
+  excerptParts,
+  FIND_MIN_CHARS,
+  findAFileFromAnswer,
+  findAFileFromIndexRows,
+  type FoundFile,
+  foundWords,
+  groupByHome,
+  hitMetaWords,
+  homeWords,
+  pathWords,
+  sourceWords,
+} from './findAFile'
 
 const hit = (over: Partial<FoundFile>): FoundFile => ({
   id: '1AbCdEfGhIjKlMnOpQrSt',
@@ -10,6 +25,8 @@ const hit = (over: Partial<FoundFile>): FoundFile => ({
   url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view',
   home: { kind: 'job', id: 'job-1', hcpNumber: '1187', clickNumber: null, name: 'Maple Court townhomes' },
   path: 'Plans',
+  excerpt: null,
+  excerptWhy: null,
   ...over,
 })
 
@@ -32,7 +49,7 @@ describe('findAFile (v2.6305)', () => {
     expect(read.hits[2]!.home).toBeNull()
     expect(read.more).toBe(true)
     expect(read.noRoot).toBe(false)
-    expect(findAFileFromAnswer(null)).toEqual({ hits: [], more: false, noRoot: false })
+    expect(findAFileFromAnswer(null)).toEqual({ hits: [], more: false, noRoot: false, source: 'drive' })
     expect(findAFileFromAnswer({ noRoot: true })).toMatchObject({ noRoot: true })
   })
 
@@ -60,11 +77,90 @@ describe('findAFile (v2.6305)', () => {
     expect(hitMetaWords(hit({ path: '', home: null, modified: null, bytes: null }), now)).toBe('')
   })
 
+  it('reads an excerpt and its marks, drops a mark outside the text, and draws the parts and the notes (v2.6306)', () => {
+    const read = findAFileFromAnswer({
+      hits: [
+        { id: 'a1234567890', name: 'x.pdf', excerpt: { text: '…agreed to the rock clause as written…', marks: [[15, 26], [90, 99]] } },
+        { id: 'b1234567890', name: 'scan.pdf', excerptWhy: 'scan' },
+        { id: 'c1234567890', name: 'y.pdf', excerptWhy: 'elsewhere' },
+      ],
+    })
+    expect(read.hits[0]!.excerpt).toEqual({ text: '…agreed to the rock clause as written…', marks: [[15, 26]] })
+    expect(excerptParts(read.hits[0]!.excerpt!)).toEqual([
+      { text: '…agreed to the ', mark: false },
+      { text: 'rock clause', mark: true },
+      { text: ' as written…', mark: false },
+    ])
+    expect(read.hits[1]!.excerpt).toBeNull()
+    expect(read.hits[1]!.excerptWhy).toBe('scan')
+    expect(read.hits[2]!.excerptWhy).toBeNull()
+    expect(excerptNote('scan')).toBe('Matched inside the scan.')
+    expect(excerptNote('big')).toBe('Too big to read here.')
+    expect(excerptNote('kind')).toBeNull()
+    expect(excerptNote(null)).toBeNull()
+  })
+
   it('counts the finds and says when there is nothing', () => {
-    expect(foundWords({ hits: [], more: false }, 'rock')).toBeNull()
-    expect(foundWords({ hits: [hit({})], more: false }, 'rock clause')).toBe('1 file says “rock clause”.')
-    expect(foundWords({ hits: [hit({}), hit({})], more: true }, 'permit')).toBe('2 files say “permit”, and Drive has more. Add a word to narrow it.')
+    expect(foundWords({ hits: [], more: false, source: 'drive' }, 'rock')).toBeNull()
+    expect(foundWords({ hits: [hit({})], more: false, source: 'drive' }, 'rock clause')).toBe('1 file says “rock clause”, from Drive.')
+    expect(foundWords({ hits: [hit({})], more: false, source: 'index' }, 'rock clause')).toBe('1 file says “rock clause”, from our index.')
+    expect(foundWords({ hits: [hit({}), hit({})], more: true, source: 'drive' }, 'permit')).toBe('2 files say “permit”, from Drive. Drive has more. Add a word to narrow it.')
+    expect(sourceWords('index')).toBe('from our index')
     expect(emptyFindWords('xyzzy').main).toBe('Nothing in the job folders says “xyzzy”. Try other words, or Drive’s own search.')
     expect(FIND_MIN_CHARS).toBe(2)
+  })
+
+  it('reads the index’s rows into hits (punch list #240, PR 1): the home from the joined numbers, the headline’s marks as the excerpt, a held row’s note', () => {
+    const read = findAFileFromIndexRows([
+      {
+        drive_file_id: '1AbCdEfGhIjKlMnOpQrSt',
+        jobs_ledger_id: 'job-1',
+        bid_id: null,
+        folder_kind: 'plans',
+        path: 'Plans',
+        name: 'Rock clause letter.pdf',
+        mime: 'application/pdf',
+        bytes: 419840,
+        modified_at: '2026-10-14T15:00:00Z',
+        text_why: null,
+        headline: 'the GC agreed to the <mark>rock</mark> <mark>clause</mark> as written',
+        hcp_number: '1187',
+        click_number: null,
+        job_name: 'Maple Court townhomes',
+        bid_number: null,
+        project_name: null,
+      },
+      { drive_file_id: '2BcDeFgHiJkLmNoPqRsTu', jobs_ledger_id: null, bid_id: 'bid-1', path: '', name: 'Scan.pdf', mime: 'application/pdf', bytes: null, modified_at: null, text_why: 'scan', headline: null, bid_number: '482', project_name: 'Boerne Retail Shell' },
+      { drive_file_id: '3CdEfGhIjKlMnOpQrStUv', jobs_ledger_id: null, bid_id: null, name: 'Loose.txt', mime: 'text/plain', text_why: 'reading', headline: 'nothing marked' },
+      { name: 'no id' },
+    ])
+    expect(read.source).toBe('index')
+    expect(read.more).toBe(false)
+    expect(read.hits).toHaveLength(3)
+    expect(read.hits[0]).toMatchObject({
+      id: '1AbCdEfGhIjKlMnOpQrSt',
+      url: 'https://drive.google.com/file/d/1AbCdEfGhIjKlMnOpQrSt/view',
+      home: { kind: 'job', id: 'job-1', hcpNumber: '1187', clickNumber: null, name: 'Maple Court townhomes' },
+      path: 'Plans',
+      bytes: 419840,
+      excerpt: { text: 'the GC agreed to the rock clause as written', marks: [[21, 32]] },
+      excerptWhy: null,
+    })
+    expect(read.hits[1]).toMatchObject({ home: { kind: 'bid', id: 'bid-1', number: '482', name: 'Boerne Retail Shell' }, excerpt: null, excerptWhy: 'scan' })
+    // A headline with no marks is no excerpt; a read the platform stopped reads as slow, which the box keeps quiet about.
+    expect(read.hits[2]).toMatchObject({ home: null, excerpt: null, excerptWhy: 'slow' })
+    expect(findAFileFromIndexRows(null)).toEqual({ hits: [], more: false, noRoot: false, source: 'index' })
+  })
+})
+
+describe('Drive fills in behind the index (PR 1, hardened in review)', () => {
+  const hit = (id: string) => ({ id, name: `${id}.pdf`, mime: 'application/pdf', bytes: 1, modified: null, url: `https://drive.google.com/file/d/${id}/view`, home: null, path: '', excerpt: null, excerptWhy: null })
+  it('keeps the index’s hits first, adds Drive’s the index did not name, takes Drive’s more; Drive empty leaves the index as it was', () => {
+    const index = { hits: [hit('i1'), hit('both')], more: false, noRoot: false, source: 'index' as const }
+    const drive = { hits: [hit('both'), hit('d1')], more: true, noRoot: false, source: 'drive' as const }
+    const merged = driveBehindIndex(index, drive)
+    expect(merged.hits.map((h) => h.id)).toEqual(['i1', 'both', 'd1'])
+    expect(merged).toMatchObject({ source: 'index', more: true })
+    expect(driveBehindIndex(index, { ...drive, hits: [], more: false })).toBe(index)
   })
 })

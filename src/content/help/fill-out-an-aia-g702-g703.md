@@ -208,7 +208,6 @@ The window helps two ways. In the history, once the latest application still hol
 Save the application and tie it to its bill as you would any other. That bill carries the release. Accounts Receivable's **Retainage held** line shows the bill's state until the bill is paid. See [Retainage a GC holds](/help/match-bank-deposits-to-bills#retainage-a-gc-holds).
 
 ## When an earlier application changes
-## When an earlier application changes
 
 Nothing locks, so an earlier application can change after a later one went out. The later one then shows a warning. It lists each amount that no longer matches.
 

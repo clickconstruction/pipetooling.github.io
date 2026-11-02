@@ -8,7 +8,7 @@
  * updated, one taken off is retired (never deleted, so an answer already given keeps its words), and every live row
  * takes its place in the list as its sort order. Pure; `stageChecklistIo.ts` writes the plan.
  */
-import { QUESTION_MAX_CHARS, STAGE_CHECKLIST_KIND_NAMES, type StageChecklistKind, type StageChecklistQuestion } from './stageChecklist'
+import { QUESTION_MAX_CHARS, STAGE_CHECKLIST_KIND_NAMES, isJobItem, type StageChecklistKind, type StageChecklistQuestion } from './stageChecklist'
 
 /** A question as the editor holds it: `id` null until it is saved. */
 export interface QuestionDraft {
@@ -25,10 +25,10 @@ export const SAVE_QUESTIONS = 'Save the questions'
 export const SAVED_TOAST = 'The questions are saved. The crew sees them on the next stage they open.'
 export const NOT_SAVED = 'The questions were not saved.'
 
-/** The drafts the table's live rows give, in order. */
+/** The drafts the table's live rows give, in order: the company's rows alone, never an item added for a job (#237). */
 export function draftsOf(questions: readonly StageChecklistQuestion[], kind: StageChecklistKind): QuestionDraft[] {
   return questions
-    .filter((q) => q.kind === kind)
+    .filter((q) => q.kind === kind && !isJobItem(q))
     .sort((a, b) => a.order - b.order || a.id.localeCompare(b.id))
     .map((q) => ({ id: q.id, words: q.words, asksPhoto: q.asksPhoto }))
 }
@@ -73,7 +73,8 @@ export interface QuestionSavePlan {
 
 /** The writes that take the table from `before` (the kind's live rows) to the drafts, in order. */
 export function planQuestionSave(kind: StageChecklistKind, before: readonly StageChecklistQuestion[], drafts: readonly QuestionDraft[]): QuestionSavePlan {
-  const live = new Map(before.filter((q) => q.kind === kind).map((q) => [q.id, q]))
+  // The company's rows alone: an item added for a job (#237) is never retired by the editor's save.
+  const live = new Map(before.filter((q) => q.kind === kind && !isJobItem(q)).map((q) => [q.id, q]))
   const clean = cleanDrafts(drafts)
   const plan: QuestionSavePlan = { inserts: [], updates: [], retires: [] }
   const kept = new Set<string>()

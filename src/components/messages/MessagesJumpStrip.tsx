@@ -6,7 +6,9 @@
  * segments read as one wrapping line of name and count (`isLine`), the shape the queues fold already draws. Sets
  * `--messages-jump-offset` on the document so a lane's section (`.messagesLane`) lands just under the bar. Inside the
  * one-row header (v2.5801, `MessagesTopBar`, `[data-messages-pinned]`) it measures that bar instead of itself, since
- * the bar is what stays pinned. The rows, the colors and the lit lane come from `lib/messages/jumpStrip.ts`.
+ * the bar is what stays pinned. The rows, the colors and the lit lane come from `lib/messages/jumpStrip.ts`. While the
+ * queue on screen is the device's kept read (`kept`, punch list #183 PR 5) the strip carries `data-kept-read`, so each
+ * segment's count mutes (`keptCount`) as the lanes' do.
  */
 import { Fragment, useEffect, useRef, useState, type CSSProperties } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
@@ -24,11 +26,13 @@ export interface MessagesJumpStripProps {
   onJump: (lane: JumpLane) => void
   /** The DOM id of a lane's section, which the bar watches while the page scrolls; the kernel's ids unless a smoke says otherwise. */
   anchorId?: (lane: JumpLane) => string
+  /** The counts are the device's kept read (#183 PR 5): the strip mutes them. */
+  kept?: boolean
 }
 
 const defaultAnchorId = (lane: JumpLane) => JUMP_LANE_ANCHOR[lane]
 
-export function MessagesJumpStrip({ counts, onJump, anchorId = defaultAnchorId }: MessagesJumpStripProps) {
+export function MessagesJumpStrip({ counts, onJump, anchorId = defaultAnchorId, kept = false }: MessagesJumpStripProps) {
   const items = jumpStripItems(counts)
   const keys = items.map((i) => i.key).join(',')
   const barRef = useRef<HTMLDivElement>(null)
@@ -65,7 +69,7 @@ export function MessagesJumpStrip({ counts, onJump, anchorId = defaultAnchorId }
   }, [keys, anchorId])
 
   return (
-    <div ref={barRef} className={`stagesStageBar messagesJumpStrip${phone ? ' isLine' : ''}`} data-messages-jump-strip style={{ top: 0 }}>
+    <div ref={barRef} className={`stagesStageBar messagesJumpStrip${phone ? ' isLine' : ''}`} data-messages-jump-strip data-kept-read={kept ? '' : undefined} style={{ top: 0 }}>
       <nav aria-label="Messages lanes" className="stagesStageSegs">
         {items.map((item, index) => {
           const on = item.key === active
@@ -90,7 +94,7 @@ export function MessagesJumpStrip({ counts, onJump, anchorId = defaultAnchorId }
                   <span className="stagesStageSegDot" aria-hidden />
                   {item.label}
                 </span>
-                <span className="stagesStageSegMeta">{item.count}</span>
+                <span className="stagesStageSegMeta keptCount">{item.count}</span>
               </button>
             </Fragment>
           )

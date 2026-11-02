@@ -3,6 +3,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { filingDocFooter, filingDocPdfBlob, filingPdfFilename, type FilingDocBlock } from '../jobsDocuments/lienFilingDocuments'
 import { markLienDeskItemSent } from './lienDeskIo'
+import { earliestSendDay, sentAtForTypedDay } from './lienSentAt'
 import { clearOneShotLienClaimCorrection } from './lienClaimCorrectionIo'
 import { runCourtesyCopies, runCourtesyEmailWords, runCoverNoteBlocks, runFilingPayload, runNoticeBlocks, type RunCourtesySend, type RunNotice, type RunSendRecord, type CoverWindow, recipientViaDocsmit } from './lienDeskRun'
 import { combinedFilingPayloads, type CombinedRunNotice } from './lienNoticeCombine'
@@ -159,7 +160,7 @@ export async function recordLienDeskRun(
         await linkMailPiecesToFilings(sends, (rows ?? []).map((r) => r.id))
         for (const part of n.parts) {
           const filingId = filingByJob.get(part.jobId)
-          if (filingId) await markLienDeskItemSent(part.itemId, filingId)
+          if (filingId) await markLienDeskItemSent(part.itemId, filingId, sentAtForTypedDay(earliestSendDay(sends), opts.todayYmd))
           await clearOneShotLienClaimCorrection(part.jobId).catch(() => undefined)
           result.recorded.push(part.itemId)
           if (part.release) await issueNoticeRelease(part.release.id).catch((e: unknown) => result.releaseFailed.push({ label: part.label, reason: e instanceof Error && e.message ? e.message : 'could not issue the release' }))
@@ -173,7 +174,8 @@ export async function recordLienDeskRun(
         () => supabase.from('job_lien_filings').insert(runFilingPayload(n, sends, opts.userId, opts.document ?? {}) as never).select('id').single(),
         'lien desk run: record notice',
       )
-      await markLienDeskItemSent(n.itemId, filing.id)
+      // Recorded in a later sitting (v2.5532), the item says it went on the Mailed on day, not today (punch list #243).
+      await markLienDeskItemSent(n.itemId, filing.id, sentAtForTypedDay(earliestSendDay(sends), opts.todayYmd))
       await linkMailPiecesToFilings(sends, [filing.id])
       // A claim corrected for this notice only (v2.3682) is done now; a carried one stays for the next.
       await clearOneShotLienClaimCorrection(n.jobId).catch(() => undefined)

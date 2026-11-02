@@ -30,6 +30,7 @@ function props(overrides: Partial<JobsStagesToolsMenuProps> = {}): JobsStagesToo
     },
     onSortModeChange: vi.fn(),
     onContractFilterChange: vi.fn(),
+    onKindFilterChange: vi.fn(),
     onGcFilterChange: vi.fn(),
     onDevelopmentFilterChange: vi.fn(),
     onAccountManFilterChange: vi.fn(),
@@ -56,6 +57,16 @@ function props(overrides: Partial<JobsStagesToolsMenuProps> = {}): JobsStagesToo
 }
 
 describe('JobsStagesToolsMenu', () => {
+  it('the job-kind select lists the three kinds with their counts and hands back the pick (punch list #238)', () => {
+    const p = props()
+    p.filters = { ...p.filters, kind: '', kindCounts: { project: 12, service: 40, unset: 7 } }
+    render(<JobsStagesToolsMenu {...p} />)
+    const select = screen.getByLabelText('Filter the Pipeline board by job kind') as HTMLSelectElement
+    expect(Array.from(select.options).map((o) => o.textContent)).toEqual(['All kinds', 'Projects · 12', 'Service calls · 40', 'Kind not set · 7'])
+    fireEvent.change(select, { target: { value: 'unset' } })
+    expect(p.onKindFilterChange).toHaveBeenCalledWith('unset')
+  })
+
   it('renders every item for a fully gated office user, with the counts', () => {
     render(<JobsStagesToolsMenu {...props()} />)
     for (const label of ['Lien desk', 'Legal desk', 'Contract sweep…', 'Hide groups…', 'Job Book…', 'Total by Name…', 'Combine / Separate…', 'Schedule & time in search', 'Follow cards I move', 'Ham mode', 'Edit mode', 'Mobile cards']) {

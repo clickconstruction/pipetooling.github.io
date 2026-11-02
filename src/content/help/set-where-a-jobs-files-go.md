@@ -11,7 +11,13 @@ Every job's files live in one Drive folder under its customer's folder, under th
 
 Open **Documents** and press **Where files go**. The tab is for the office. An estimator does not see it.
 
-Three cards sit left to right. The first is the jobs root. The second is how a job's folder is named. The third is what is inside. On a phone the cards stack.
+Four cards sit left to right. The first is the jobs root. The second is the company folder. The third is how a job's folder is named. The fourth is what is inside. On a phone the cards stack.
+
+## Set the company folder
+
+The second card names the folder that holds the company's papers, the W-9, the insurance and the licenses. **Documents → Company** lists that folder and its Upload a file press fills it.
+
+Paste a Drive folder link into the card's field and press {{button:outline|Check}}. The app answers in the same words as the root card. If the app can write there, press {{button:blue|Use this folder for company papers}} and then {{button:blue|Use this folder}}. The files that exist stay where they are. Until a folder is set, the card says *No company folder yet*.
 
 ## Move the jobs root
 
@@ -67,7 +73,7 @@ Press **Check 41 pasted folders** to look at every live job's pasted folder in o
 
 Open a job and press its **Documents** tab. Under **Job folders** a section called **In the folders** lists each of the five folders. Each folder shows its count and its newest files. Press a file's name to open it in Drive. Press **Open in Drive** to open the folder.
 
-Each file says where it came from. {{chip:blue|From the app · a report photo}} means the app filed it and knows what it is. {{chip:gray|Added in Drive}} means someone put it in the folder by hand.
+Each file says where it came from. {{chip:blue|From the app · a report photo}} means the app filed it and knows what it is. {{chip:blue|From the app · a file the app put there}} means the app saved it there. A file you add with **Add a file** shows this chip. {{chip:gray|Added in Drive}} means someone put it in the folder by hand.
 
 The list is read from Drive each time the tab opens. Nothing is copied. A file dropped into a folder by hand shows the next time anyone looks.
 

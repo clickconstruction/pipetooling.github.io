@@ -12,9 +12,6 @@ import { useAuth } from '../../hooks/useAuth'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import {
-  PLAN_SET_KINDS,
-  PLAN_SET_SOURCES,
-  addSetPressWords,
   asBuiltLineWords,
   buildJobPlansView,
   buildingFromLine,
@@ -30,10 +27,10 @@ import {
   type NewSetDraft,
   type PlanSetKind,
   type PlanSetRow,
-  type PlanSetSource,
 } from '../../lib/plans/planSets'
 import { supabaseJobPlansIo, type JobPlansIo, type JobPlansRead } from '../../lib/plans/planSetsIo'
 import { EmptyState } from '../EmptyState'
+import { PlanSetForm } from '../plans/PlanSetForm'
 import { documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
 
 const OFFICE: ReadonlySet<string> = new Set(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
@@ -220,78 +217,19 @@ export function JobPlansSection({
     </li>
   )
 
-  const setForm_ = (f: { kind: 'set' | 'as_built'; draft: NewSetDraft }) => {
-    const d = f.draft
-    const put = (patch: Partial<NewSetDraft>) => setForm({ ...f, draft: { ...d, ...patch } })
-    const words = addSetPressWords(view.current)
-    const asBuilt = f.kind === 'as_built'
-    return (
-      <div style={{ display: 'grid', gap: '0.4rem', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-muted)' }} data-testid={asBuilt ? 'job-plans-as-built-form' : 'job-plans-set-form'}>
-        <label style={field}>
-          <span>Name</span>
-          <input style={input} value={d.name} onChange={(e) => put({ name: e.target.value })} />
-        </label>
-        {asBuilt ? null : (
-          <>
-            <label style={field}>
-              <span>Kind</span>
-              <select style={input} value={d.kind} onChange={(e) => put({ kind: e.target.value as PlanSetKind, name: defaultSetName(e.target.value as PlanSetKind, read?.sets ?? []) })}>
-                {PLAN_SET_KINDS.filter((k) => k.kind !== 'as_built').map((k) => (
-                  <option key={k.kind} value={k.kind}>
-                    {k.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={field}>
-              <span>From</span>
-              <select style={input} value={d.source} onChange={(e) => put({ source: e.target.value as PlanSetSource })}>
-                {PLAN_SET_SOURCES.map((s) => (
-                  <option key={s.source} value={s.source}>
-                    {s.label}
-                  </option>
-                ))}
-              </select>
-            </label>
-            <label style={field}>
-              <span>Dated</span>
-              <input style={input} type="date" value={d.dated} onChange={(e) => put({ dated: e.target.value })} title="The date printed on the sheets" />
-            </label>
-          </>
-        )}
-        <label style={field}>
-          <span>Memo</span>
-          <input style={input} value={d.memo} placeholder={asBuilt ? 'What the crew changed, in a line' : 'What changed, in a line'} onChange={(e) => put({ memo: e.target.value })} />
-        </label>
-        <label style={field}>
-          <span>Link</span>
-          <input style={input} value={d.link} placeholder="A Drive folder or file link, or leave it empty for now" onChange={(e) => put({ link: e.target.value })} />
-        </label>
-        {problem ? <p style={{ ...muted, color: 'var(--text-amber-800)' }}>{problem}</p> : null}
-        <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-          {asBuilt ? (
-            <button type="button" style={blueButton} disabled={busy} onClick={() => void addSet(d, false)}>
-              Add the as-built
-            </button>
-          ) : (
-            <>
-              <button type="button" style={blueButton} disabled={busy} onClick={() => void addSet(d, true)}>
-                {words.makeCurrent}
-              </button>
-              {words.keep ? (
-                <button type="button" style={documentsQuietButton} disabled={busy} onClick={() => void addSet(d, false)}>
-                  {words.keep}
-                </button>
-              ) : null}
-            </>
-          )}
-          <button type="button" style={documentsQuietButton} disabled={busy} onClick={() => setForm(null)}>
-            Cancel
-          </button>
-        </div>
-      </div>
-    )
-  }
+  const setForm_ = (f: { kind: 'set' | 'as_built'; draft: NewSetDraft }) => (
+    <PlanSetForm
+      mode={f.kind}
+      draft={f.draft}
+      onChange={(d) => setForm({ ...f, draft: d })}
+      existing={read?.sets ?? []}
+      current={view.current}
+      busy={busy}
+      problem={problem}
+      onAdd={(makeCurrent) => void addSet(f.draft, makeCurrent)}
+      onCancel={() => setForm(null)}
+    />
+  )
 
   const partForm = (f: { kind: 'part'; name: string; pick: string }) => (
     <div style={{ display: 'grid', gap: '0.4rem', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-muted)' }} data-testid="job-plans-part-form">

@@ -1,10 +1,17 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, driveFolderIdFromUrl, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
+import { readDriveSettings } from '../_shared/driveSettings.ts'
+import { NO_COMPANY_FOLDER_WORDS } from '../_shared/whereFilesGo.ts'
 import { driveGet, driveMedia, freeName, halfInside, jobFolder, landingFolder, makeDriveLink, photoFolderFor, type Half, type JobFolder } from '../_shared/driveJobFolder.ts'
 import { photoDriveName, photoNameInputOf, type PhotoAttachmentRow } from '../_shared/gcKernels/index.ts'
-import { driveFolderMeta, jobsRootFolderId } from '../_shared/driveSettings.ts'
+import { driveFolderMeta, jobsRootFolderId, NO_ROOT_WORDS } from '../_shared/driveSettings.ts'
 import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
+import { excerptOf, type Excerpt } from '../_shared/excerpt.ts'
+import { fileTextWithin } from '../_shared/fileText.ts'
+import { folderHomes, folderMetaReader } from '../_shared/fileHomes.ts'
+import { filesUnder as indexFilesUnder, heldRowsFor, indexContext, indexFiles, fileMeta } from '../_shared/fileIndex.ts'
+import { EXCERPT_READ_MS, INDEX_JOB_MAX_FILES, walkUp, type DriveFileMeta, type FileHome } from '../_shared/fileIndexKernel.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import {
@@ -50,13 +57,29 @@ import {
  *   POST { action: 'search', words }                    → Find a file (v2.6305): Drive's own full-text index over the jobs Shared
  *                                                        Drive, folders left out, at most 30 hits, each walked up to the job or
  *                                                        bid whose folder holds it → { hits: [{ id, name, mime, bytes, modified,
- *                                                        url, home, path }], more, noRoot }; a read a training account may run
+ *                                                        url, home, path, excerpt, excerptWhy }], more, noRoot }; a read a training
+ *                                                        account may run; since v2.6306 the first ten hits carry the line around
+ *                                                        the words (`excerpt`), or why there is none (`excerptWhy`)
+ *   POST { action: 'index', driveFileId }                → one file into our own text index, file_index (punch list #240, PR 1,
+ *                                                        v2.6319): walked up to its job or bid, its text read by _shared/fileText.ts,
+ *                                                        one row upserted → { indexed, held: [{ id, name, why }], remaining }; a
+ *                                                        write of our table, never of Drive, so a training account may not
+ *   POST { action: 'index_job', job, retry? }           → every file under the job's folder tree (its plans and pictures links too)
+ *                                                        into the index, one at a time inside the request's budget, up to 40 a
+ *                                                        call → { indexed, held, remaining, total }; the Documents tab's Index
+ *                                                        this job's files presses it until remaining is 0; `retry` takes the
+ *                                                        held rows again
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
  *                                                        to the job's photos named by day, sender and caption (cut 10)
  *   POST { action: 'open', job, driveFileId }            → Drive's own viewer for a file inside the job's folder, for
  *                                                        the office's /files/drive/<id> page → { url }
+ *   POST { action: 'list_company' }                      → the company papers folder's files (the office's setting
+ *                                                        `drive_company_folder_id`, Documents → Where files go) → { files,
+ *                                                        capped, folder: { id, url } }; 409 while no folder is set
+ *   POST { action: 'put_company', name, mime, base64 }   → a file from this computer into the company folder, up to 10 MB,
+ *                                                        for the four office roles without the estimator → { driveFileId, url }
  *
  * A job is one of the spine's three: a GC project (gc_projects.drive_folder_url, with its Plans and Team only halves), a
  * bid (bids.drive_link) or a Pipeline job (jobs_ledger.google_drive_link). A bid's or a Pipeline job's folder has no
@@ -76,6 +99,8 @@ function json(body: unknown, status = 200): Response {
 }
 
 const OFFICE_ROLES = ['dev', 'master_technician', 'assistant', 'controller', 'estimator']
+/** Who puts a paper in the company folder: the office, not the estimators (the owner's word, 2026-11-01). */
+const COMPANY_PUT_ROLES = ['dev', 'master_technician', 'assistant', 'controller']
 /** A file from this computer comes in as base64, up to the trade portal's cap. */
 const PUT_MAX_BYTES = 10 * 1024 * 1024
 /** How many of a job's files a list reads, and how deep into its folders. */
@@ -181,79 +206,39 @@ async function putFolderFor(admin: SupabaseClient, google: string, job: JobRef, 
   return folder.plansId ?? landingFolder(google, folder, ['Plans'])
 }
 
+/** A Pipeline job's plans and pictures folders by their links, for an index of the job: usually inside its folder, on an older job elsewhere. */
+async function jobLinkedFolders(admin: SupabaseClient, job: JobRef): Promise<string[]> {
+  if (!('jobs_ledger_id' in job)) return []
+  const { data } = await admin.from('jobs_ledger').select('job_plans_link, job_pictures_link').eq('id', job.jobs_ledger_id).maybeSingle()
+  const row = (data ?? {}) as { job_plans_link?: string | null; job_pictures_link?: string | null }
+  return [driveFolderIdFromUrl(row.job_plans_link ?? null), driveFolderIdFromUrl(row.job_pictures_link ?? null)].filter((id): id is string => Boolean(id))
+}
+
 /** A hit of Find a file, as Drive lists it. */
-interface SearchListed {
-  id: string
-  name: string
-  mimeType: string
-  size?: string
-  modifiedTime?: string
-  webViewLink?: string
-  parents?: string[]
+type SearchListed = DriveFileMeta
+
+/** The home as the box names it: the index's shape without the customer the row keeps. */
+function boxHome(h: FileHome): Record<string, unknown> {
+  const { customerId: _customer, ...rest } = h
+  return rest
 }
 
-/** The job or bid whose folder holds a hit, as the box names it. */
-type FileHome =
-  | { kind: 'job'; id: string; hcpNumber: string | null; clickNumber: string | null; name: string | null }
-  | { kind: 'bid'; id: string; number: string | null; name: string | null }
-
-/** A home keyed by one of its folders; `via` names the folder when it is not the home's own (Plans, Customer Pictures). */
-type HomeAt = { home: FileHome; via: string | null }
-
-/** How many hits Find a file answers, and how many folders up it climbs before giving up on a home. */
+/** How many hits Find a file answers. */
 const SEARCH_MAX = 30
-const WALK_MAX = 8
 
-/** Every folder the app knows a job or bid by, keyed by its Drive id: a job's three links, a bid's one. */
-async function folderHomes(admin: SupabaseClient): Promise<Map<string, HomeAt>> {
-  const homes = new Map<string, HomeAt>()
-  const [jobs, bids] = await Promise.all([
-    admin
-      .from('jobs_ledger')
-      .select('id, hcp_number, click_number, job_name, google_drive_link, job_plans_link, job_pictures_link')
-      .or('google_drive_link.not.is.null,job_plans_link.not.is.null,job_pictures_link.not.is.null')
-      .limit(5000),
-    admin.from('bids').select('id, bid_number, project_name, drive_link').not('drive_link', 'is', null).limit(5000),
-  ])
-  type JobRow = { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; google_drive_link: string | null; job_plans_link: string | null; job_pictures_link: string | null }
-  for (const j of (jobs.data ?? []) as JobRow[]) {
-    const home: FileHome = { kind: 'job', id: j.id, hcpNumber: j.hcp_number, clickNumber: j.click_number, name: j.job_name }
-    const links: [string | null, string | null][] = [
-      [j.google_drive_link, null],
-      [j.job_plans_link, JOB_FOLDER_TREE.plans],
-      [j.job_pictures_link, JOB_FOLDER_TREE.pictures],
-    ]
-    for (const [link, via] of links) {
-      const id = driveFolderIdFromUrl(link)
-      if (id && !homes.has(id)) homes.set(id, { home, via })
-    }
-  }
-  type BidRow = { id: string; bid_number: string | null; project_name: string | null; drive_link: string | null }
-  for (const b of (bids.data ?? []) as BidRow[]) {
-    const id = driveFolderIdFromUrl(b.drive_link)
-    if (id && !homes.has(id)) homes.set(id, { home: { kind: 'bid', id: b.id, number: b.bid_number, name: b.project_name }, via: null })
-  }
-  return homes
-}
+type ExcerptWhy = 'scan' | 'kind' | 'big' | 'slow'
+/** How many of a search's hits get their text read for an excerpt (v2.6306). */
+const EXCERPT_MAX_HITS = 10
 
-/** Climbs a hit's folders until one is a home or the jobs root, naming the folders between (top down). */
-async function walkUp(
-  startId: string | null,
-  homes: Map<string, HomeAt>,
-  rootId: string,
-  metaOf: (id: string) => Promise<{ name: string; parent: string | null }>,
-): Promise<{ home: FileHome | null; path: string }> {
-  const names: string[] = []
-  let id = startId
-  for (let i = 0; id && i < WALK_MAX; i++) {
-    const at = homes.get(id)
-    if (at) return { home: at.home, path: [at.via, ...names.reverse()].filter((n): n is string => Boolean(n)).join(' › ') }
-    if (id === rootId) break
-    const m = await metaOf(id)
-    names.push(m.name)
-    id = m.parent
-  }
-  return { home: null, path: names.reverse().filter(Boolean).join(' › ') }
+/**
+ * The excerpt for a hit (v2.6306): the shared reader (`_shared/fileText.ts`, the index's too) raced against the timer; a
+ * read that fails or finds no words costs the excerpt, never the search.
+ */
+async function excerptFor(google: string, f: SearchListed, words: string): Promise<{ excerpt: Excerpt | null; excerptWhy: ExcerptWhy | null }> {
+  const r = await fileTextWithin(google, f, EXCERPT_READ_MS)
+  if ('why' in r) return { excerpt: null, excerptWhy: r.why === 'error' ? 'kind' : r.why }
+  const excerpt = excerptOf(r.text, words)
+  return excerpt ? { excerpt, excerptWhy: null } : { excerpt: null, excerptWhy: 'kind' }
 }
 
 /**
@@ -276,22 +261,14 @@ async function searchFiles(admin: SupabaseClient, google: string, words: string)
   const files = page.files ?? []
   if (files.length === 0) return { hits: [], more: false, noRoot: false }
   const homes = await folderHomes(admin)
-  const cache = new Map<string, Promise<{ name: string; parent: string | null }>>()
-  const metaOf = (id: string) => {
-    let p = cache.get(id)
-    if (!p) {
-      p = driveGet<{ name?: string; parents?: string[] }>(google, `${DRIVE}/files/${encodeURIComponent(id)}?fields=name,parents&supportsAllDrives=true`).then((m) => ({
-        name: m.name ?? '',
-        parent: m.parents?.[0] ?? null,
-      }))
-      cache.set(id, p)
-    }
-    return p
-  }
+  const metaOf = folderMetaReader(google)
   const hits = await Promise.all(
-    files.map(async (f) => {
-      const { home, path } = await walkUp(f.parents?.[0] ?? null, homes, rootId, metaOf)
-      return { id: f.id, name: f.name, mime: f.mimeType, bytes: f.size == null ? null : Number(f.size), modified: f.modifiedTime ?? null, url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType), home, path }
+    files.map(async (f, i) => {
+      const [{ home, path }, ex] = await Promise.all([
+        walkUp(f.parents?.[0] ?? null, homes, rootId, metaOf).then((w) => ({ home: w.home ? boxHome(w.home) : null, path: w.path })),
+        i < EXCERPT_MAX_HITS ? excerptFor(google, f, words) : Promise.resolve({ excerpt: null, excerptWhy: null }),
+      ])
+      return { id: f.id, name: f.name, mime: f.mimeType, bytes: f.size == null ? null : Number(f.size), modified: f.modifiedTime ?? null, url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType), home, path, ...ex }
     }),
   )
   return { hits, more: Boolean(page.nextPageToken), noRoot: false }
@@ -311,7 +288,8 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
-  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'list_company') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (ask.action === 'put_company' && !COMPANY_PUT_ROLES.includes(String(who.role))) return json({ error: 'The office puts papers in the company folder.' }, 403)
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
   const google = await googleAccessToken(saJson)
@@ -352,8 +330,48 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
 
   if (ask.action === 'search') return json(await searchFiles(admin, google, ask.words))
 
+  if (ask.action === 'list_company' || ask.action === 'put_company') {
+    const companyId = (await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))).companyFolderId
+    if (!companyId) return json({ error: NO_COMPANY_FOLDER_WORDS, why: 'no_company_folder' }, 409)
+    if (ask.action === 'list_company') {
+      const out: Record<string, unknown>[] = []
+      await filesUnder(google, companyId, 'team_only', out)
+      return json({ files: out, capped: out.length >= LIST_MAX_FILES, folder: { id: companyId, url: driveViewUrl(companyId, DRIVE_FOLDER_MIME) } })
+    }
+    const raw = typeof body?.base64 === 'string' ? body.base64 : ''
+    if (raw.length > Math.ceil((PUT_MAX_BYTES * 4) / 3) + 200) return json({ error: 'Over 10 MB. Put it in the company folder in Drive instead.' }, 413)
+    const bytes = bytesOfBase64(raw)
+    if (!bytes || bytes.length === 0) return json({ error: 'That file did not come through.' }, 400)
+    if (bytes.length > PUT_MAX_BYTES) return json({ error: 'Over 10 MB. Put it in the company folder in Drive instead.' }, 413)
+    const put = await uploadBytes(google, companyId, bytes, ask.name, ask.mime)
+    return json({ driveFileId: put.id, url: driveViewUrl(put.id) })
+  }
+
+  // The index (punch list #240, PR 1): one file by its id, or a job's folder tree, into file_index through the one
+  // pass every indexer runs (`_shared/fileIndex.ts`). Writes our table, never Drive; a training account was refused above.
+  if (ask.action === 'index') {
+    const ctx = await indexContext(admin, google)
+    if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
+    const meta = await fileMeta(google, ask.driveFileId)
+    if (!meta) return json({ error: 'Drive did not answer for that file.' }, 404)
+    const pass = await indexFiles(ctx, [meta], { retry: true, max: 1 })
+    return json({ indexed: pass.indexed, held: pass.held, remaining: pass.remaining })
+  }
+
   const folder = await jobFolder(admin, google, ask.job)
   if (!folder) return json({ error: 'That job has no Drive folder yet.' }, 409)
+
+  if (ask.action === 'index_job') {
+    const ctx = await indexContext(admin, google)
+    if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
+    const listed: DriveFileMeta[] = []
+    const seen = new Set<string>()
+    for (const id of [folder.folderId, ...(await jobLinkedFolders(admin, ask.job))]) await indexFilesUnder(google, id, listed, { seen })
+    const pass = await indexFiles(ctx, listed, { retry: ask.retry, max: INDEX_JOB_MAX_FILES })
+    // Once the job is done, the held list is every held row of the job, not this call's alone: a second press reports the standing.
+    const held = pass.remaining === 0 ? await heldRowsFor(admin, listed.map((f) => f.id)) : pass.held
+    return json({ indexed: pass.indexed, held, remaining: pass.remaining, total: listed.length })
+  }
 
   if (ask.action === 'list') {
     const out: Record<string, unknown>[] = []

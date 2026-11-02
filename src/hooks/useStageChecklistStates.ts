@@ -1,15 +1,15 @@
 /**
  * A checklist per stage (punch list #164, PR 4): the board's read behind the Pipeline's not-ready mark. One read of
- * the live questions and one chunked read of the answers on the board's jobs, as `useJobCrewPositions` reads the
- * crew: fail-soft, so a missing table (a client ahead of the push), a refused read or any error is an empty read and
+ * the company's live questions, one chunked read of the items added on the board's jobs (#237), one of the questions
+ * skipped on them (PR 1b) and one of the answers on those jobs, as `useJobCrewPositions` reads the crew: fail-soft, so a missing table (a client ahead of the push), a refused read or any error is an empty read and
  * the row draws what it drew before. Each row turns the read into its own marks with `stageChecklistMarks`.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { fetchAllRowsChunkedIn } from '../lib/supabasePaging'
-import type { StageChecklistAnswer, StageChecklistQuestion } from '../lib/jobs/stageChecklist'
-import { loadQuestions } from '../lib/jobs/stageChecklistIo'
+import { withSkips, type StageChecklistAnswer, type StageChecklistQuestion } from '../lib/jobs/stageChecklist'
+import { loadJobItems, loadJobSkips, loadQuestions } from '../lib/jobs/stageChecklistIo'
 
 // The tables are younger than the generated types; the types PR after the push removes this cast.
 const db = supabase as unknown as SupabaseClient
@@ -56,8 +56,13 @@ export function useStageChecklistStates(jobIds: ReadonlyArray<string>, enabled: 
     setLoading(true)
     void (async () => {
       try {
-        const q = await loadQuestions()
+        // The company's questions, then the items added on the board's jobs (#237): one chunked read on a partial index.
+        const [company, items] = await Promise.all([loadQuestions(), loadJobItems(ids)])
         if (cancelled || mine !== seq.current) return
+        // A skip leaves a company question off one stage (PR 1b), so a company with none has nothing to read.
+        const skips = company.length > 0 ? await loadJobSkips(ids) : []
+        if (cancelled || mine !== seq.current) return
+        const q = withSkips([...company, ...items], skips)
         // No question anywhere: nothing to read on the jobs, nothing to draw.
         if (q.length === 0) {
           setQuestions([])

@@ -53,7 +53,7 @@ vi.mock('../jobsDocuments/lienFilingDocuments', async (importOriginal) => ({
   ...(await importOriginal<typeof import('../jobsDocuments/lienFilingDocuments')>()),
   filingDocPdfBlob: async () => new Blob(['%PDF-1.4 notice']),
 }))
-vi.mock('./lienDeskIo', () => ({ markLienDeskItemSent: async (itemId: string) => void db.events.push(`sent ${itemId}`) }))
+vi.mock('./lienDeskIo', () => ({ markLienDeskItemSent: async (itemId: string, _filingId: string, sentAt: string | null = null) => void db.events.push(`sent ${itemId}${sentAt ? ` on ${sentAt}` : ''}`) }))
 vi.mock('./lienClaimCorrectionIo', () => ({ clearOneShotLienClaimCorrection: async () => undefined }))
 
 import { buildRunNoticePdf, recordLienDeskRun } from './lienDeskRunIo'
@@ -192,5 +192,17 @@ describe('buildRunNoticePdf · the attachment the courtesy preview shows (v2.507
     expect(db.invokes).toHaveLength(1)
     expect(btoa(await shown.text())).toBe(db.invokes[0]!.body.pdf_base64)
     expect(db.invokes[0]!.body.pdf_filename).toBe('notice-53-056-650.pdf')
+  })
+})
+
+describe('the day the item says it went (punch list #243, PR 2)', () => {
+  it('a run recorded in a later sitting marks the item sent at noon of the Mailed on day; one recorded the day it went leaves the stamp to the trigger', async () => {
+    db.events = []
+    await recordLienDeskRun([notice()], { ...OPTS, mailedOn: '2026-09-22' })
+    expect(db.events).toContain('sent it1 on 2026-09-22T17:00:00.000Z')
+    db.events = []
+    await recordLienDeskRun([notice()], OPTS)
+    expect(db.events).toContain('sent it1')
+    expect(db.events.some((e) => e.startsWith('sent it1 on'))).toBe(false)
   })
 })

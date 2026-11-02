@@ -2,7 +2,7 @@
 title: find a file when you do not know where it is
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: find a file, search files, file search, drive search, where is the file, which job, permit, scan, pdf, words inside, ocr, job folder, documents search, lost file
+keywords: find a file, search files, file search, drive search, where is the file, which job, permit, scan, pdf, words inside, ocr, job folder, documents search, lost file, index, index this job's files
 where: /documents?tab=search
 order: 47
 ---
@@ -18,6 +18,8 @@ The results come a moment after you stop typing. Each file sits under the job or
 
 Press the file's name to open it in Drive. Press **Open the job** to open the job window.
 
+Under many files a line shows where your words appear. The words are in bold. A Google Doc or a PDF with real text shows the line. A scanned paper says *Matched inside the scan*. A photo or a very big file shows no line.
+
 :::example Two words find a scanned letter
 
 **Find a file** &nbsp; {{chip:gray|rock clause}}
@@ -31,6 +33,14 @@ Rock clause letter.pdf &nbsp; *Plans · Oct 14 · 410 KB*
 Permit 2026-0412.pdf &nbsp; *the job's folder · Oct 14 · 2.1 MB*
 
 :::
+
+## What the search reads
+
+Our own index answers first. The index holds the words inside every file the app has read. A Google Doc, a PDF with real text and a text file are read. A scan or a photo is not read yet. The count line says *from our index* when the index answered.
+
+Drive's own search runs behind our index every time. Its finds that the index did not name follow the index's hits. When the index has nothing, Drive's finds are the whole list and the count line says *from Drive*. Drive reads the words inside PDFs and the scans it has read.
+
+To put a job's files in the index, open the job window and press **Documents**. Under **In the folders**, press **Index this job's files**. The press reads forty files at a time and says how many are left. A file it could not read is listed with the reason. New files are read on their own every ten minutes after that.
 
 ## When nothing comes back
 

@@ -46,6 +46,10 @@ import { MoveWindowFields } from './MoveWindowFields'
 import { EMPTY_WORK_ORDER_DECISION, workOrderDecisionReady, workOrderTrailWords, workOrderWrites, type WorkOrderDecision } from '../../lib/needsYou/fillInWorkOrders'
 import { workOrderFillInIo } from '../../lib/needsYou/fillInWorkOrdersIo'
 import { WorkOrderFields } from './WorkOrderFields'
+import { jobKindTrailWords, type JobKindFillInRow } from '../../lib/needsYou/fillInJobKinds'
+import { jobKindFillInIo } from '../../lib/needsYou/fillInJobKindsIo'
+import type { JobKind } from '../../lib/jobs/jobKind'
+import { JobKindPresses } from './JobKindPresses'
 import { suggestLossCategoryFromNote } from '../../lib/bidLossCategories'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
 import type { FillInIo, FillInRow } from '../../hooks/useFillInRows'
@@ -77,7 +81,7 @@ export type NeedsYouFillInDeckProps = {
   io?: FillInIo
 }
 
-const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo, purchases: purchaseFillInIo, moveWindow: moveWindowFillInIo, workOrders: workOrderFillInIo }
+const DEFAULT_IO: FillInIo = { lostBids: lostBidFillInIo, vehicles: vehicleFillInIo, jobAccounts: jobAccountFillInIo, contracts: contractFillInIo, contractsMissing: contractMissingFillInIo, purchases: purchaseFillInIo, moveWindow: moveWindowFillInIo, workOrders: workOrderFillInIo, jobKinds: jobKindFillInIo }
 
 type Handled = FillInHandled<FillInRow> & { undo: (() => Promise<void>) | null }
 
@@ -423,6 +427,30 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     }
   }
 
+  /** The job-kind kind: one press is the answer, so it saves and moves on with no Save. */
+  const pressJobKind = (row: JobKindFillInRow, kind: JobKind) => {
+    if (busy || !userId) return
+    setBusy(true)
+    void (async () => {
+      try {
+        const kindsIo = io.jobKinds ?? jobKindFillInIo
+        await kindsIo.save(row.jobId, kind)
+        recordNavClick(userId, role, 'needs-you', `#fill-save-job-kind-${kind}`)
+        const undo = async () => {
+          await kindsIo.undo(row.jobId)
+        }
+        setHandled((t) => pushHandled(t, { row, how: 'saved', words: jobKindTrailWords(kind), undo }))
+        setSavedKeys((k) => [...k, row.key])
+        setRevisitKey(null)
+        onRowSaved(row)
+      } catch (e) {
+        showToast(formatErrorMessage(e, "Could not save the job's kind"), 'error')
+      } finally {
+        setBusy(false)
+      }
+    })()
+  }
+
   const undo = (h: Handled) => {
     if (busy || !h.undo) return
     setBusy(true)
@@ -465,7 +493,7 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
     body = <div style={{ color: 'var(--text-muted)', fontSize: '0.875rem', padding: '0.5rem 0' }}>Reading the rows…</div>
   } else if (!current) {
     const savedOf = (kind: FillInKind) => handled.filter((h) => h.how === 'saved' && h.row.kind === kind).length
-    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window'), 'work-order': savedOf('work-order') }, skipped)
+    const done = fillInDoneWords({ 'lost-bid': savedOf('lost-bid'), vehicle: savedOf('vehicle'), 'job-account': savedOf('job-account'), contract: savedOf('contract'), 'contract-missing': savedOf('contract-missing'), purchase: savedOf('purchase'), 'move-window': savedOf('move-window'), 'work-order': savedOf('work-order'), 'job-kind': savedOf('job-kind') }, skipped)
     body = (
       <div data-fill-in-done style={{ ...NEEDS_YOU_WALK_TINT.blue, borderRadius: 10, padding: '1.1rem 1.2rem', marginBottom: '0.75rem' }}>
         <div style={{ fontSize: '0.75rem', fontWeight: 700, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', marginBottom: '0.3rem' }}>Fill them in</div>
@@ -516,14 +544,18 @@ export function NeedsYouFillInDeck({ rows, loading, userId, role, startKind, onR
           {current.kind === 'move-window' ? <MoveWindowFields row={current} decision={moveWindow} onChange={setMoveWindow} disabled={busy} /> : null}
           {current.kind === 'work-order' ? <WorkOrderFields row={current} decision={workOrder} onChange={setWorkOrder} disabled={busy} /> : null}
           <div style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap', alignItems: 'center', marginTop: '0.9rem' }}>
-            <button
-              type="button"
-              disabled={!ready || busy}
-              onClick={() => save(current)}
-              style={{ background: 'var(--text-strong)', color: 'var(--bg-page, var(--surface))', border: 'none', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', fontWeight: 600, cursor: ready && !busy ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.45 }}
-            >
-              {current.kind === 'contract' && contract.choice === 'resend' ? 'Send and next' : current.kind === 'contract' && contract.choice === 'text' ? 'Open messages and next' : current.kind === 'move-window' && moveWindow.choice === 'asked' ? 'Send and next' : 'Save and next'}
-            </button>
+            {current.kind === 'job-kind' ? (
+              <JobKindPresses lean={current.lean} disabled={busy} onPress={(kind) => pressJobKind(current, kind)} />
+            ) : (
+              <button
+                type="button"
+                disabled={!ready || busy}
+                onClick={() => save(current)}
+                style={{ background: 'var(--text-strong)', color: 'var(--bg-page, var(--surface))', border: 'none', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', fontWeight: 600, cursor: ready && !busy ? 'pointer' : 'default', opacity: ready && !busy ? 1 : 0.45 }}
+              >
+                {current.kind === 'contract' && contract.choice === 'resend' ? 'Send and next' : current.kind === 'contract' && contract.choice === 'text' ? 'Open messages and next' : current.kind === 'move-window' && moveWindow.choice === 'asked' ? 'Send and next' : 'Save and next'}
+              </button>
+            )}
             {rows.length > 1 ? (
               <button type="button" disabled={busy} onClick={() => skip(current)} style={{ background: 'var(--surface)', color: 'var(--text-700)', border: '1px solid var(--border-strong)', borderRadius: 6, padding: '0.55rem 1.1rem', fontSize: '0.875rem', cursor: 'pointer' }}>
                 Skip

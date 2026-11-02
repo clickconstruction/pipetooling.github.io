@@ -16,7 +16,7 @@ has each conversation. A **flow** per kind of person says where each one stands,
 fact the app already keeps, never by a typed word. The papers a step turns on are sent, signed and reminded from the
 thread. One rule under all of it: **a step is finished by a fact the app keeps.** Everything else is a view.
 
-It was built in two trains in October 2026, then worked into a desk by two punch-list trains on 2026-10-20 and 21 (#139, `to-dos/press-always-answers/README.md`, v2.5681 to v2.5708; #140, `to-dos/messages-desk/README.md`, v2.5709 to v2.5717): the GC Messages build (cuts 1 to 10, for trade partners, architects and the
+It was built in two trains in October 2026, then worked into a desk by two punch-list trains on 2026-10-20 and 21 (#139, `to-dos/press-always-answers/README.md`, v2.5681 to v2.5708; #140, its card retired 2026-11-01, v2.5709 to v2.5717): the GC Messages build (cuts 1 to 10, for trade partners, architects and the
 customers of GC projects) and the residential build (cuts R0 to R9, the plumbing company's own customers, leads, subs,
 supply houses and candidates on the same spine). The per-version record is `docs/recent-features/v2.5247.md` onward;
 the design is the plans named at the end of this page.
@@ -139,6 +139,8 @@ around-the-clock switch, v2.5721). The screens are `src/components/followUp/`
 (`FollowUpPanel`, `FollowUpSections`, `WhoHasItPill`, `OwedStrip`, `SettlingNote`, `NewLaneCard`, `SortAllDesk`, `AnswerAllDesk`; since v2.5332 `NudgesFromTheFlow` over `useFlowNudges`, whose *Text Greg* and *Email Jonah* open the thread with the nudge written since v2.5714) and the
 two slot hooks that put them in the thread. The Dashboard's Customers line (and `follow_up_count`; since v2.5596 a customer with an open call counts once) counts from the same reads
 (`customerCounts.ts`; on Quickfill the line is carried by the Messages station since v2.6098, which counts the people waiting on us once; v2.5823's `textsElsewhere` flag stays on the kernel, unused by a host).
+
+**The kept queue** (punch list #183 PR 5, v2.6327). `/messages` keeps the queue on the device through `useKeptRead` (`FollowUpPanel`'s `keptRead`; GC projects' tab keeps nothing). `lib/messages/keptQueue.ts` is one record under `u1:messages:queue`: the four lanes' rows and the calls as `followUpQueue` built them, the badge's count, the people those rows name and the lines they quote; the kind pills and Show narrow it at draw time, and the words a row carries that count from today are read again against the clock when it is unpacked (`keptLanesToday`). While the live read runs the panel draws that record under *Who was waiting at 7:52 AM · reading again…*, the panel, the bar and the strip carry `data-kept-read` so their counts mute, every press that writes on a row is held with the hover *reading again…* (`FollowUpSections`' `held`, `WhoHasItPill`'s `held`), the two desks wait, and the phone's fold holds (`queuesFolded`). A failed read over a kept queue keeps it with the stamp's Retry; with nothing kept `OfflineRetryPanel` names the failure by its class; either way a lost signal reads again by itself when it is back. Waiting on them and Went out are not kept: their own reads say … until they land.
 
 ## Flows, steps and the morning run
 
@@ -299,7 +301,7 @@ touch the copy's index or the dev-mcp catalog, land them one after the other and
   person; the portal's sample tokens save nothing; the desktop app's browser pane is hidden, so drive it headless; and
   measure a phone layout with device emulation off, since an emulated phone grows its viewport to hide an overflow.
 - **The database.** Every migration of the build is a `docs/migrations/<version>_*.md`; the schema's RLS and the
-  definer functions are the SQL beds CI runs on a bed's change (`supabase/tests/messages_follow_up/`, `30_log_call.sql` since v2.5710). Punch list #140's live checks (Route B, two ZZ rows seeded through the pooler) are in `to-dos/messages-desk/BUILD_PLAN.md` § 3.
+  definer functions are the SQL beds CI runs on a bed's change (`supabase/tests/messages_follow_up/`, `30_log_call.sql` since v2.5710). Punch list #140's live checks (Route B, two ZZ rows seeded through the pooler) ran through the walk kit on 2026-10-23 (`docs/WALK_KIT.md`; the card retired 2026-11-01).
 
 ## Deploying and operating it
 
@@ -335,7 +337,7 @@ run with the secret before a step is switched on.
 - `docs/MESSAGES_RESIDENTIAL_BUILD_PLAN.md` — the residential build, R0 to R9, with its own data, order, owner's calls
   and after-live list; `docs/MESSAGES_RESIDENTIAL_HANDOFF_2026-10-13.md` and `docs/MESSAGES_LIVE_WALK_2026-10-14.md`
   beside it.
-- `to-dos/press-always-answers/README.md` (punch list #139: the sheet that answers every press, then the page's sections) and `to-dos/messages-desk/README.md` with its `BUILD_PLAN.md` (punch list #140: Messages worked like a desk), the two trains of 2026-10-20 and 21, each README's *Where it stands* reading what shipped.
+- `to-dos/press-always-answers/README.md` (punch list #139: the sheet that answers every press, then the page's sections) and punch list #140 (Messages worked like a desk; its card retired 2026-11-01, the record in `docs/recent-features/v2.5709.md` to `v2.5717.md`), the two trains of 2026-10-20 and 21; #139's README's *Where it stands* reads what shipped.
 - The prototypes and mock-ups stay on branch `spike/gc-mode` under `to-dos/gc-mode/messages/` (`prototype.html`
   v1.178 is the GC spec; `customer-messages-prototype.html` and `customer-messages-integrations-mockups.html` the
   residential one; one `*-mockups.html` per screen). Read one with `git show origin/spike/gc-mode:<path>`.

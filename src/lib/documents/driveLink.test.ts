@@ -177,6 +177,13 @@ describe('the office’s door', () => {
     expect(parseOfficeAsk({ action: 'delete', job: { project_id: PROJECT } })).toBeNull()
     expect(parseOfficeAsk(null)).toBeNull()
   })
+
+  it('lists the company folder with no job, and puts a file from this computer in it by name', () => {
+    expect(parseOfficeAsk({ action: 'list_company' })).toEqual({ action: 'list_company' })
+    expect(parseOfficeAsk({ action: 'put_company', name: 'W-9 2026.pdf', mime: 'application/pdf', base64: 'AAAA' })).toEqual({ action: 'put_company', name: 'W-9 2026.pdf', mime: 'application/pdf' })
+    expect(parseOfficeAsk({ action: 'put_company', name: 'COI.pdf' })).toEqual({ action: 'put_company', name: 'COI.pdf', mime: 'application/octet-stream' })
+    expect(parseOfficeAsk({ action: 'put_company', name: '' })).toBeNull()
+  })
 })
 
 describe('a photo’s landing (Messages, cut 10)', () => {
@@ -196,5 +203,18 @@ describe('a photo’s landing (Messages, cut 10)', () => {
     expect(photoLanding({ jobs_ledger_id: PROJECT }, '1CustomerPictures00000001')).toEqual({ kind: 'pictures', folderId: '1CustomerPictures00000001' })
     // A GC project or a bid has no Customer Pictures link: the folder id is never read for them.
     expect(photoLanding({ project_id: PROJECT }, '1CustomerPictures00000001')).toEqual({ kind: 'job', path: ['Team only', 'Photos'] })
+  })
+})
+
+describe('parseOfficeAsk — the index (punch list #240, PR 1)', () => {
+  const JOB = '00000000-0000-4000-8000-0000000001a1'
+  it('takes one file by its Drive id, and a job with or without retry, and refuses the rest', () => {
+    expect(parseOfficeAsk({ action: 'index', driveFileId: '1RockClauseMarkedUp0001' })).toEqual({ action: 'index', driveFileId: '1RockClauseMarkedUp0001' })
+    expect(parseOfficeAsk({ action: 'index', driveFileId: 'no spaces here!' })).toBeNull()
+    expect(parseOfficeAsk({ action: 'index' })).toBeNull()
+    expect(parseOfficeAsk({ action: 'index_job', job: { jobs_ledger_id: JOB } })).toEqual({ action: 'index_job', job: { jobs_ledger_id: JOB }, retry: false })
+    expect(parseOfficeAsk({ action: 'index_job', job: { bid_id: JOB }, retry: true })).toEqual({ action: 'index_job', job: { bid_id: JOB }, retry: true })
+    expect(parseOfficeAsk({ action: 'index_job', job: { jobs_ledger_id: 'x' } })).toBeNull()
+    expect(parseOfficeAsk({ action: 'index_job' })).toBeNull()
   })
 })

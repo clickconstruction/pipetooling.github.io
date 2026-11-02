@@ -536,6 +536,44 @@ vi.mock('../../lib/people/hoursStatementRead', () => ({
 }))
 vi.mock('../../hooks/usePeopleAccess', () => ({ usePeopleAccess: () => ({ canAccessPay: true, accessResolved: true }) }))
 
+// Stage checklists (punch list #237, PR 1): the section's read over a fake io, one stage with the company's question
+// and one item added for the job.
+vi.mock('../../lib/jobs/stageChecklistSheetIo', () => ({
+  supabaseStageChecklistSheetIo: () => ({
+    stages: () => Promise.resolve([{ fixtureId: 'f3', name: 'Trim Set', sequenceOrder: 3 }]),
+    questions: () =>
+      Promise.resolve([
+        { id: 't1', kind: 'trim_set', order: 1, words: 'Did the final water test hold?', asksPhoto: false },
+        { id: 'j1', kind: 'trim_set', order: 0, words: 'Are the carriers in units 7 and 8 set?', asksPhoto: false, fixtureId: 'f3', addedById: 'u-pat', addedBy: 'Pat Sample', addedAt: '2026-11-01T15:00:00.000Z' },
+      ]),
+    answers: () => Promise.resolve([{ id: 'a1', fixtureId: 'f3', questionId: 't1', pick: 'yes', note: '', photo: null, answeredBy: 'Luis Ortega', answeredAt: '2026-11-01T15:14:00.000Z', storagePath: null, reportPhotoId: null }]),
+    pick: () => Promise.reject(new Error('not here')),
+    note: () => Promise.reject(new Error('not here')),
+    photo: () => Promise.reject(new Error('not here')),
+    photoUrl: () => Promise.resolve(null),
+    addItem: () => Promise.reject(new Error('not here')),
+    retireItem: () => Promise.reject(new Error('not here')),
+    mayAuthor: () => Promise.resolve(false),
+    skip: () => Promise.reject(new Error('not here')),
+    putBack: () => Promise.reject(new Error('not here')),
+    reorder: () => Promise.reject(new Error('not here')),
+    promote: () => Promise.reject(new Error('not here')),
+  }),
+}))
+
+describe('Stage checklists on the Documents tab (punch list #237, PR 1)', () => {
+  it('reads the stage with its standing, the stamped answer, and the item added for the job with who added it', async () => {
+    renderWithProviders(<JobWindowDocumentsTab job={makeJob({ id: 'job-1', hcp_number: '1042' })} />)
+    const section = await screen.findByTestId('job-documents-checklists')
+    expect(await within(section).findByText('Not ready · 1 of 2')).toBeTruthy()
+    expect(within(section).getByTestId('job-documents-checklists-summary').textContent).toBe('0 of 1 stage ready · 1 item added on this job')
+    const rows = within(section).getAllByTestId('job-documents-checklist-row')
+    expect(rows[0]!.textContent).toContain('Yes · Luis Ortega · Nov 1 · 9:14 am')
+    expect(rows[1]!.textContent).toContain('Added by Pat Sample · Nov 1')
+    expect(within(section).getByRole('button', { name: '+ Add a check for Trim Set' })).toBeTruthy()
+  })
+})
+
 describe('Hours statements on the Documents tab (punch list #212, PR 2)', () => {
   it('lists the job’s statements with their state and offers the press with its count', async () => {
     hoursStatements = [

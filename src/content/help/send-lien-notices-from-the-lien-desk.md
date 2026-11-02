@@ -150,7 +150,7 @@ A notice already sent to him has {{button:blue|Leader here, Approve ▸}} on its
 
 Some notices are printed here and mailed by hand. One paper may even cover several jobs at a property. Record it with **Already mailed? Record it…**, the quiet link left of {{button:outline|Save draft}}. On a notice past the draft, the footer is one row. A chip at the left says the state, like {{chip:green|Approved · leader's word · Oct 7}}. Hold the mouse on it to read the whole line. The side doors are links, and the one button sits at the right end.
 
-Type when it went out, how and to whom. Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
+Type when it went out, how and to whom. The day you type is the day the notice went out. Letter two, the courtesy notice and the day count all run from that day. Type the claim and the months as they were printed, and the link to the saved copy. Then tick the other unpaid jobs at the property it covered. On a phone this step opens as its own page over the desk, and **Back** returns to the notice.
 
 The record lands on every one of those jobs, and the desk stops asking for them. When the paper's claim differs from the app's, the record shows both figures. Neither one is rewritten. The Lien window's notice tab has the same door, {{button:outline|Already sent — record it…}}.
 

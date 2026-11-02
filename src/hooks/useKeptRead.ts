@@ -11,7 +11,8 @@ import { readKeptRead, writeKeptRead } from '../lib/keptReadStore'
  * kept for the key with their `readAt`, so the page paints at once with its stamp and its figures
  * muted; once every read of the page landed they are the live rows, written back as the kept read
  * for next time. A failed live read leaves the kept rows up with `failed` set, so the stamp reads
- * *could not read again*. The Pipeline is the first page on it (`JobsListCacheContext.tsx`).
+ * *could not read again*, even when it failed before the store answered, as a lost signal can (#183
+ * PR 5). The Pipeline is the first page on it (`JobsListCacheContext.tsx`).
  *
  *   - A half page is never kept: the write happens on the edge where `loading` turns false, with
  *     the rows of that render, so a page passes `loading` true until its last read landed.
@@ -100,10 +101,11 @@ export function useKeptRead<T>(key: string | null, rows: readonly T[] | null, op
     const wanted = scopesRef.current
     void readKeptRead(key, rowIsValidRef.current).then((found) => {
       if (gen !== genRef.current) return
-      if (!loadingRef.current) return // the live read landed first
+      // The live read landed first, so nothing kept is wanted. One that failed first is when it is wanted most: a lost signal fails in a moment, often ahead of the store.
+      if (!loadingRef.current && !failedRef.current) return
       if (!found || !keptReadIsUsable({ kept: found, key, wantedScopes: wanted, now: Date.now() })) return
       setKept(found as KeptRead<T>)
-      setFailed(false)
+      setFailed(!loadingRef.current)
     })
   }, [allowed, key, opts.loading])
 
@@ -119,11 +121,11 @@ export function useKeptRead<T>(key: string | null, rows: readonly T[] | null, op
       return
     }
     if (!was) return
-    genRef.current += 1
     if (failedRef.current) {
       if (keptRef.current) setFailed(true)
       return
     }
+    genRef.current += 1
     const landed = rowsRef.current
     if (landed == null) return
     landedKeyRef.current = key

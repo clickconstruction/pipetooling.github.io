@@ -54,10 +54,12 @@ function renderSection(withPlan: boolean, updateFixtureRow = vi.fn()) {
 }
 
 describe('JobFormFixturesSection with a Stage Plan', () => {
-  it('draws a badge and a selector under every named row; the stage note opens on a tap', () => {
+  it('draws a badge on every row, the kind press on every stage; the stage note opens on a tap', () => {
     renderSection(true)
     expect(screen.getAllByTestId('stage-badge')).toHaveLength(4)
-    expect(screen.getAllByTestId('stage-line')).toHaveLength(4)
+    // The badge is the press (spike): three stages carry it, the discount row keeps the plain badge.
+    expect(screen.getAllByTestId('stage-kind-press')).toHaveLength(3)
+    expect(screen.queryAllByTestId('stage-line')).toHaveLength(0)
     expect(screen.getByLabelText('Stage 1, done')).toBeTruthy()
     expect(screen.getByLabelText('Stage 2, current')).toBeTruthy()
     expect(screen.getByLabelText('Any-time stage, done')).toBeTruthy()
@@ -66,28 +68,25 @@ describe('JobFormFixturesSection with a Stage Plan', () => {
     expect(screen.queryByText('draw 1 paid Aug 29')).toBeNull()
     expect(screen.queryByTestId('stages-note')).toBeNull()
     fireEvent.click(screen.getByRole('button', { name: 'ⓘ How stages work' }))
-    expect(screen.getByTestId('stages-note').textContent).toMatch(/^The switch under each line sets its stage\./)
+    expect(screen.getByTestId('stages-note').textContent).toMatch(/^Tap the badge beside a line to flip it between In order and Any time\./)
   })
 
-  it('picking a kind writes stage_kind for that row; an invoiced row keeps its selector disabled', () => {
+  it('tapping the badge flips stage_kind for that row; an invoiced row keeps its press disabled', () => {
     const update = renderSection(true)
-    const topOut = screen.getByRole('radiogroup', { name: 'Stage kind for Top-out' })
-    // v2.3696: two options, In order / Any time — no "—" door (null = a discount, set by code)
-    expect(topOut.querySelectorAll('[role="radio"]')).toHaveLength(2)
-    expect(Array.from(topOut.querySelectorAll('[role="radio"]')).map((b) => b.textContent)).toEqual(['In order', 'Any time'])
-    fireEvent.click(topOut.querySelector('[role="radio"]:nth-child(2)') as HTMLElement)
+    // Two kinds, In order / Any time — no "—" door (null = a discount, set by code); the press names both.
+    const topOut = screen.getByRole('button', { name: 'Stage kind for Top-out: In order. Tap for Any time' })
+    expect(topOut.textContent).toContain('In order')
+    fireEvent.click(topOut)
     expect(update).toHaveBeenCalledWith('b', { stage_kind: 'any' })
     expect(update).not.toHaveBeenCalledWith('b', { stage_kind: null })
-    // the active option is a no-op
-    fireEvent.click(topOut.querySelector('[role="radio"]:nth-child(1)') as HTMLElement)
     expect(update).toHaveBeenCalledTimes(1)
-    const roughIn = screen.getByRole('radiogroup', { name: 'Stage kind for Rough-in' })
-    for (const b of roughIn.querySelectorAll('button')) expect((b as HTMLButtonElement).disabled).toBe(true)
+    const roughIn = screen.getByRole('button', { name: 'Stage kind for Rough-in: In order. Tap for Any time' })
+    expect((roughIn as HTMLButtonElement).disabled).toBe(true)
   })
 
-  it('without a plan the grid has no badges and no second lines', () => {
+  it('without a plan the grid has no badges and no presses', () => {
     renderSection(false)
     expect(screen.queryAllByTestId('stage-badge')).toHaveLength(0)
-    expect(screen.queryAllByTestId('stage-line')).toHaveLength(0)
+    expect(screen.queryAllByTestId('stage-kind-press')).toHaveLength(0)
   })
 })
