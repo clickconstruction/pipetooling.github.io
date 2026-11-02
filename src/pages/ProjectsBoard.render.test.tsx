@@ -91,7 +91,7 @@ describe('ProjectsBoard', () => {
     failure = { message: 'permission denied for table jobs_ledger', code: '42501' }
     renderWithProviders(<ProjectsBoard />)
     // The class decides the words, never the raw message: a refusal reads as permission, with no Retry.
-    await screen.findByText(/You don.t have permission/)
+    await screen.findByText(/You don.t have access to this project list/)
     expect(screen.queryByRole('button', { name: /retry/i })).toBeNull()
     expect(screen.queryByTestId('project-cards')).toBeNull()
     failure = null
