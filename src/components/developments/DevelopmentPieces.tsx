@@ -7,7 +7,7 @@
 import { useState, type ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { BID_STATUS_COLOR, bidMoney, bidStatusWord, jobOpenOnBill, type MemberBid, type MemberJob } from '../../lib/developments/overview'
-import { doneFoldWords, type PieceRow } from '../../lib/developments/pieces'
+import { archivedFoldWords, doneFoldWords, liveRows, type PieceRow } from '../../lib/developments/pieces'
 import { costBreakdownWords, type SiteCostsRead } from '../../lib/developments/siteCosts'
 import { priorNumbersBare } from '../../lib/jobs/priorNumbers'
 import type { HistoryPiece } from '../../lib/developments/history'
@@ -39,6 +39,8 @@ export type PiecesProps = {
   busy?: boolean
   /** False for a reader with no money (`readDoor.ts`, v2.6053): no price under a bid, no figure under a job, the Done fold's count alone. True when absent. */
   moneyShown?: boolean
+  /** The robot estimators' shadow bids (`shadowBidIds`): a chip on the row, nothing counted. */
+  shadowBidIds?: ReadonlySet<string>
   /** The jobs' costs (v2.6215), dev and controller only: absent, no column; else the read's state and, once read, a row per job. */
   costsByJobId?: SiteCostsRead
 }
@@ -56,7 +58,7 @@ function CostCell({ costs, jobId }: { costs: SiteCostsRead; jobId: string }) {
   )
 }
 
-function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy, moneyShown }: { bid: MemberBid; label: string; estimator: string | null; open: () => void; unpair?: () => void; putBackOnBoard?: () => void; busy?: boolean; moneyShown: boolean }) {
+function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy, moneyShown, shadow }: { bid: MemberBid; label: string; estimator: string | null; open: () => void; unpair?: () => void; putBackOnBoard?: () => void; busy?: boolean; moneyShown: boolean; shadow?: boolean }) {
   const status = bidStatusWord(bid)
   const value = bidMoney(bid)
   const when = bid.bid_date_sent ? `sent ${shortDay(bid.bid_date_sent)}` : bid.bid_due_date ? `due ${shortDay(bid.bid_due_date)}` : null
@@ -72,6 +74,11 @@ function BidCell({ bid, label, estimator, open, unpair, putBackOnBoard, busy, mo
         ) : (
           <Chip label={status} color={BID_STATUS_COLOR[status]} soft={status === 'archived' || status === 'working'} />
         )}
+        {shadow ? (
+          <span className="developmentCountChip" title="A robot estimator's shadow of a live bid: shown here, left out of the head's people and counts" data-testid="chip-shadow">
+            shadow
+          </span>
+        ) : null}
         {unpair ? (
           <button
             type="button"
@@ -164,8 +171,10 @@ export function DevelopmentPieces(props: PiecesProps) {
   // A column of dashes says nothing: the Waiting on column is drawn only while a piece waits (the owner, 2026-10-28: *do all 8*, item 7); the tile and the strip say when none does.
   const anyWaiting = props.rows.some((r) => r.waiting)
   const [showAll, setShowAll] = useState(false)
-  const open = props.rows.filter((r) => !r.done)
+  const open = liveRows(props.rows)
+  const archived = props.rows.filter((r) => r.archived)
   const done = props.rows.filter((r) => r.done)
+  const [showArchived, setShowArchived] = useState(false)
   const PHONE_CAP = 6
   const openShown = phone && !showAll ? open.slice(0, PHONE_CAP) : open
   const crewFor = (job: MemberJob | null): string[] => {
@@ -211,7 +220,7 @@ export function DevelopmentPieces(props: PiecesProps) {
               </div>
             ) : null}
             <div style={{ display: 'grid', gap: 6, marginTop: 6 }}>
-              {row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} moneyShown={moneyShown} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : null}
+              {row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} moneyShown={moneyShown} shadow={props.shadowBidIds?.has(row.bid.id)} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : null}
               {row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} moneyShown={moneyShown} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : null}
               {props.costsByJobId !== undefined && row.job ? (
                 <div style={{ fontSize: '0.78rem', color: 'var(--text-muted)' }}>
@@ -261,7 +270,7 @@ export function DevelopmentPieces(props: PiecesProps) {
                   ) : null}
                 </div>
               </td>
-              <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} moneyShown={moneyShown} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>
+              <td style={td}>{row.bid ? <BidCell bid={row.bid} label={props.bidLabel(row.bid)} estimator={estimatorFor(row.bid)} open={() => props.openBid(row.bid!.id)} unpair={unpairFor(row)} putBackOnBoard={putBackFor(row)} busy={props.busy} moneyShown={moneyShown} shadow={props.shadowBidIds?.has(row.bid.id)} /> : pairing && row.job ? <CameFromCell job={row.job} pairing={pairing} bidLabel={props.bidLabel} names={props.names} /> : <span style={{ color: 'var(--text-faint)' }}>no bid here</span>}</td>
               <td style={td}>{row.job ? <JobCell job={row.job} label={props.jobLabel(row.job)} crew={crewFor(row.job)} open={() => props.openJob(row.job!.id)} moneyShown={moneyShown} /> : pairing && row.bid ? <BecameCell bid={row.bid} pairing={pairing} jobLabel={props.jobLabel} /> : <span style={{ color: 'var(--text-faint)' }}>no job yet</span>}</td>
               {props.costsByJobId !== undefined && row.job ? (
                 <td style={td}>
@@ -299,6 +308,17 @@ export function DevelopmentPieces(props: PiecesProps) {
               <LinkButton onClick={() => setShowAll(true)}>Show the other {open.length - PHONE_CAP} rows</LinkButton>
             </div>
           ) : null}
+        </div>
+      ) : null}
+      {archived.length > 0 ? (
+        // The archived bids (the Gun Dog spike, 2026-11-02): off the working board, never sent, not decided; they fold like the done rows so the live table reads what is in play.
+        <div style={{ borderTop: '1px dashed var(--border)', paddingTop: 8 }} data-testid="pieces-archived-fold">
+          <div style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+            <strong style={{ color: 'var(--text-strong)' }}>Archived</strong>
+            <span>{archivedFoldWords(props.rows, moneyShown ? money : undefined)}</span>
+            <LinkButton onClick={() => setShowArchived((v) => !v)}>{showArchived ? 'Fold them' : 'Show them'}</LinkButton>
+          </div>
+          {showArchived ? <div style={{ marginTop: 8 }}>{rowsOf(archived, true)}</div> : null}
         </div>
       ) : null}
       {done.length > 0 ? (

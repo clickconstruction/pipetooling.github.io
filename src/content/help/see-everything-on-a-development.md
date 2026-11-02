@@ -50,6 +50,8 @@ History is one dated list, newest first. It holds what the records did and what 
 
 A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
 
+Three or more like lines on one day fold into one line with the count. Like means the same act on the same record by the same person. Questions, answers and kept entries never fold. A search sees every line.
+
 ## Keep what happened
 
 An email came in, a call was made, someone walked the site. History keeps those too, at the time they happened.
@@ -80,7 +82,9 @@ Press {{button:outline|Unpair}} on a paired row to take a pair apart. A window s
 
 Press {{button:outline|Mark the 2 paired bids won}} above the table to set won on paired bids with no outcome. A window shows each bid as the Bid Board will read it. The message after it offers {{button:outline|Undo}}.
 
-The paid jobs fold under the table with their sum. Press **Show them** to see them.
+The paid jobs fold under the table with their sum. Press **Show them** to see them. The archived bids fold the same way above them, with their count and what they bid.
+
+A robot estimator's shadow bid stays in the table with a shadow chip. The counts and the people at the top leave it out.
 
 ## See what is at the address but not in the development
 

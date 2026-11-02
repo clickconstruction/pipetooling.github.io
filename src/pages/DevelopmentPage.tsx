@@ -37,7 +37,8 @@ import { DevelopmentMoney } from '../components/developments/DevelopmentMoney'
 import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, type MoneySortMode } from '../lib/developments/siteMoney'
 import { countKeysFor, developmentDoorFor, jobDoorClosedWords, OFFICE_READS_MONEY, OFFICE_READS_MONEY_CHIP } from '../lib/developments/readDoor'
 import { isFolded, readFolds, readMoneySort, toggleFold, writeFolds, writeMoneySort } from '../lib/developments/devicePrefs'
-import { todayYmdInAppTz } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
+import { foldSameDayRuns } from '../lib/developments/historyFolds'
 import OfflineRetryPanel from '../components/OfflineRetryPanel'
 import { useBidPreview } from '../contexts/BidPreviewModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
@@ -45,7 +46,7 @@ import { useLedgerPrefixMap } from '../contexts/LedgerDisplayPrefixContext'
 import { useToastContext } from '../contexts/ToastContext'
 import { useMatchMedia } from '../hooks/useMatchMedia'
 import { fetchDevelopmentPage, type DevelopmentPageData } from '../lib/developments/fetchDevelopmentPage'
-import { bidMoney, bidStatusWord, bidUndecided, headCounts, requestIsOpen, sharedAddressWords, sitePeople, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
+import { bidMoney, bidStatusWord, bidUndecided, headCounts, requestIsOpen, shadowBidIds, sharedAddressWords, sitePeople, withoutShadowBids, type MemberBid, type MemberJob, type MemberRequest, type Members } from '../lib/developments/overview'
 import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
 import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../lib/plans/sitePlans'
@@ -164,8 +165,11 @@ export default function DevelopmentPage() {
     return includeAddress ? { bids: [...data.inIt.bids, ...data.atAddress.bids], jobs: [...data.inIt.jobs, ...data.atAddress.jobs] } : data.inIt
   }, [data, includeAddress])
 
-  const counts = useMemo(() => (shown && data ? headCounts(shown, data.requests, nowMs) : null), [shown, data, nowMs])
-  const people = useMemo(() => (shown && data ? sitePeople({ members: shown, names: data.names, teamMembers: data.teamMembers, jobLabel }) : null), [shown, data, jobLabel])
+  // The robot estimators' shadow bids (the Gun Dog spike, 2026-11-02): drawn in the table with a chip, left out of the head's people and the counts.
+  const shadows = useMemo(() => (shown && data ? shadowBidIds(shown.bids, data.twinUserIds) : new Set<string>()), [shown, data])
+  const counted: Members | null = useMemo(() => (shown && data ? withoutShadowBids(shown, data.twinUserIds) : null), [shown, data])
+  const counts = useMemo(() => (counted && data ? headCounts(counted, data.requests, nowMs) : null), [counted, data, nowMs])
+  const people = useMemo(() => (counted && data ? sitePeople({ members: counted, names: data.names, teamMembers: data.teamMembers, jobLabel }) : null), [counted, data, jobLabel])
   // The link-grouped view feeds the Jobs & bids table's Plans cell and History; the Plans look itself reads by part (v2.6302).
   const plans = useMemo(() => (shown && data ? buildPlansView({ members: shown, bidChanges: data.bidChanges, names: data.names, bidLabel, jobLabel }) : null), [shown, data, bidLabel, jobLabel])
   // The site's parts and their sets (punch list #239, PR 3): one read, again after every write.
@@ -262,7 +266,11 @@ export default function DevelopmentPage() {
     [shown, data, entries, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
-  const feedShown = useMemo(() => narrowLines(feed, histChip, histPiece), [feed, histChip, histPiece])
+  // The runs fold (the Gun Dog spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
+  const feedShown = useMemo(() => {
+    const narrowed = narrowLines(feed, histChip, histPiece)
+    return feedQuery.trim() ? narrowed : foldSameDayRuns(narrowed, calendarYmdInAppTzFromIso)
+  }, [feed, histChip, histPiece, feedQuery])
   const sinceShown = useMemo(() => placeSinceLine(feedShown, lastLooked), [feedShown, lastLooked])
   // The Plans question read back (PR 5): the open one, or the newest answered.
   const plansAsk = useMemo(() => (data ? plansAskOnRecord(data.requests, nowMs) : null), [data, nowMs])
@@ -731,7 +739,7 @@ export default function DevelopmentPage() {
     )
   }
   if (loading && !data) return <p style={{ color: 'var(--text-muted)', padding: '1rem 0' }}>Reading the site…</p>
-  if (!data || !shown || !counts || !people || !plans) return null
+  if (!data || !shown || !counted || !counts || !people || !plans) return null
 
   const dev = data.development
   const customerRow = data.customer as (Database['public']['Tables']['customers']['Row'] & { contact_info: unknown }) | null
@@ -742,11 +750,12 @@ export default function DevelopmentPage() {
   const whoIsThis = data.gcCustomer?.name ?? data.customer?.name ?? null
   const openQuestions = data.requests.filter(requestIsOpen).length
   // The Money look: the site's band and the live jobs in stage sections, from the same rows.
-  const siteMoney = buildSiteMoney({ members: shown, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
+  const siteMoney = buildSiteMoney({ members: counted, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
   const moneyWords = moneyLookWords(siteMoney, money)
 
   // The strip's five looks: the plain count with its noun, and in amber what in it needs the leader.
-  const activePieces = pieces.filter((r) => !r.done).length
+  const activePieces = pieces.filter((r) => !r.done && !r.archived).length
+  const archivedPieces = pieces.filter((r) => r.archived).length
   const looks: Record<DevelopmentJumpKey, DevelopmentLook> = {
     changed: { n: since.newCount, count: `${since.newCount} new`, need: since.newCount > 0 ? `${since.newCount} new` : null },
     pieces: { n: activePieces, count: String(activePieces), need: suggestions.length > 0 ? `${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : null },
@@ -762,7 +771,7 @@ export default function DevelopmentPage() {
   // The newest bid: where the GC contact and the estimator live when the head has none (the owner, 2026-10-28: *do all 8*, item 4).
   const newestBid = [...shown.bids].sort((a, b) => (b.created_at ?? '').localeCompare(a.created_at ?? ''))[0] ?? null
   // The counts' cards (the owner's pick A): what each tile holds, from the same rows the counts read.
-  const cardInputs = { members: shown, atAddress: includeAddress ? { bids: [], jobs: [] } : atAddress, requests: data.requests, names: data.names, teamMembers: data.teamMembers, bidLabel, jobLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, nowMs: Date.now(), siteName: dev.name, reader: door }
+  const cardInputs = { members: counted, atAddress: includeAddress ? { bids: [], jobs: [] } : atAddress, requests: data.requests, names: data.names, teamMembers: data.teamMembers, bidLabel, jobLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, nowMs: Date.now(), siteName: dev.name, reader: door }
   const cards: Record<CountKey, CountCard> = {
     waiting: buildCountCard('waiting', cardInputs),
     bids: buildCountCard('bids', cardInputs),
@@ -1095,7 +1104,7 @@ export default function DevelopmentPage() {
 
         <Card
           id={DEVELOPMENT_JUMP_ANCHOR.pieces}
-          title="Jobs & bids" fold={foldFor('pieces', `${activePieces} working or waiting · ${pieces.length - activePieces} paid${suggestions.length ? ` · ${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : ''}`)}
+          title="Jobs & bids" fold={foldFor('pieces', `${activePieces} working or waiting${archivedPieces ? ` · ${archivedPieces} archived` : ''} · ${pieces.length - activePieces - archivedPieces} paid${suggestions.length ? ` · ${suggestions.length} likely ${suggestions.length === 1 ? 'pair' : 'pairs'}` : ''}`)}
           meta={`each bid with the job it became${plans.newest ? ` · newest set ${plans.newest.dated ? shortDay(plans.newest.dated) : shortDay(plans.newest.filedAt)}` : ''}`}
           right={
             <>
@@ -1124,7 +1133,7 @@ export default function DevelopmentPage() {
           {shown.bids.length + shown.jobs.length === 0 ? (
             <EmptyState main={`Nothing in ${dev.name} yet.`} next={{ label: 'Bid Board', to: '/bids' }} tail={`and the Pipeline have a Development picker on Edit Bid and Edit Job, and a saved record at a shared address offers Put it in ${dev.name}.`} compact />
           ) : (
-            <DevelopmentPieces rows={pieces} costsByJobId={costsByJobId} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={moneyShown ? pairing : undefined} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} onHistory={showPieceHistory} busy={busy} moneyShown={moneyShown} />
+            <DevelopmentPieces rows={pieces} shadowBidIds={shadows} costsByJobId={costsByJobId} bidLabel={bidLabel} jobLabel={jobLabel} names={data.names} teamMembers={data.teamMembers} openBid={openBid} openJob={openJob} notInIt={includeAddress ? notInIt : new Set()} developmentName={dev.name} pairing={moneyShown ? pairing : undefined} onPutIn={doPutIn} onPutBackOnBoard={doPutBackOnBoard} onHistory={showPieceHistory} busy={busy} moneyShown={moneyShown} />
           )}
         </Card>
 

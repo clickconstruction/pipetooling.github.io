@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import {
-  addressSearchPattern,
+import { addressSearchPattern,
   bidMoney,
   bidStatusWord,
   bidUndecided,
@@ -16,8 +15,7 @@ import {
   splitMembers,
   type MemberBid,
   type MemberJob,
-  type MemberRequest,
-} from './overview'
+  type MemberRequest, shadowBidIds, withoutShadowBids } from './overview'
 
 const NOW = Date.parse('2026-10-28T12:00:00Z')
 
@@ -203,5 +201,22 @@ describe('pulseWords', () => {
     expect(pulseWords({ name: 'BP401', openQuestions: 1, oldestAgeDays: 0, newestPlansShort: null })).toEqual(['BP401', '1 question waiting'])
     expect(pulseWords({ name: 'BP401', openQuestions: 1, oldestAgeDays: 1, newestPlansShort: null })).toEqual(['BP401', '1 question waiting · 1 day'])
     expect(pulseWords({ name: 'JP1102', openQuestions: 3, oldestAgeDays: 8, newestPlansShort: 'Oct 20' })).toEqual(['JP1102', '3 questions waiting · 8 days', 'new plans Oct 20'])
+  })
+})
+
+describe('the robot estimators\' shadow bids (the Gun Dog spike, 2026-11-02)', () => {
+  const bids = [
+    { id: 'b-live', estimator_id: 'u-wendi' },
+    { id: 'b-shadow', estimator_id: 'u-twin' },
+    { id: 'b-none', estimator_id: null },
+  ]
+  it('names the bids whose estimator is a twin, and none with no twins', () => {
+    expect([...shadowBidIds(bids, new Set(['u-twin']))]).toEqual(['b-shadow'])
+    expect(shadowBidIds(bids, new Set()).size).toBe(0)
+  })
+  it('leaves the shadows out of the members for the counts, and hands the same members back with none to drop', () => {
+    const members = { bids: bids as never, jobs: [] } as Parameters<typeof withoutShadowBids>[0]
+    expect(withoutShadowBids(members, new Set(['u-twin'])).bids.map((b) => b.id)).toEqual(['b-live', 'b-none'])
+    expect(withoutShadowBids(members, new Set())).toBe(members)
   })
 })
