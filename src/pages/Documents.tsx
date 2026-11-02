@@ -56,6 +56,7 @@ import { supplyInvoicePaidWordMatches } from '../lib/supplyInvoicePaidSearch'
 import { EmptyState } from '../components/EmptyState'
 import { documentsLedgerEmptyWords } from '../lib/documents/documentsEmptyWords'
 import { DocumentsWhereFilesGo } from '../components/documents/DocumentsWhereFilesGo'
+import { DocumentsCompanyFolder } from '../components/documents/DocumentsCompanyFolder'
 import { canSetWhereFilesGo } from '../lib/documents/whereFilesGoTab'
 
 type LedgerEstimateRow = Tables<'estimates'> & {
@@ -68,6 +69,15 @@ function formatMoney(cents: number): string {
 }
 
 /** Documents ledger: align labels with Estimates Stages buckets. */
+/** Spike candidate — the Estimates ledger's status as a chip in the same palette as the Bids and Jobs ledgers. */
+function documentsEstimateStatusChip(status: LedgerEstimateRow['status']): { label: string; background: string; color: string } {
+  const label = documentsLedgerStatusLabel(status)
+  if (status === 'customer_accepted') return { label, background: 'var(--bg-green-tint)', color: 'var(--text-green-800)' }
+  if (status === 'sent') return { label, background: 'var(--bg-amber-tint)', color: 'var(--text-amber-700)' }
+  if (status === 'declined') return { label, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)' }
+  return { label, background: 'var(--bg-muted)', color: 'var(--text-muted)' }
+}
+
 function documentsLedgerStatusLabel(status: LedgerEstimateRow['status']): string {
   switch (status) {
     case 'draft':
@@ -238,6 +248,34 @@ const docsAddLinkButtonStyle: CSSProperties = {
   borderRadius: 4,
 }
 
+/** Spike candidate — ledger row grammar: site under the title, customer name alone, nowrap on the narrow cells. */
+/** The service tag drawn inline before a title, so a wrapping title keeps the tag on its first line. */
+const ledgerServiceTagStyle: CSSProperties = {
+  display: 'inline-block',
+  verticalAlign: 'text-bottom',
+  marginRight: '0.35rem',
+  padding: '0.1rem 0.28rem',
+  fontSize: '0.65rem',
+  fontWeight: 700,
+  color: '#fff',
+  borderRadius: 3,
+  lineHeight: 1.2,
+}
+
+const ledgerTitleSubLineStyle: CSSProperties = {
+  fontSize: '0.8rem',
+  color: 'var(--text-muted)',
+  marginTop: '0.1rem',
+}
+
+const ledgerStatusChipStyle: CSSProperties = {
+  fontSize: '0.7rem',
+  fontWeight: 600,
+  padding: '0.08rem 0.5rem',
+  borderRadius: 999,
+  whiteSpace: 'nowrap',
+}
+
 const documentsLedgerSearchInputStyle: CSSProperties = {
   width: '100%',
   boxSizing: 'border-box',
@@ -396,20 +434,23 @@ function DocumentsEstimatesLedger({ embedSearch, onClearEmbedSearch }: Documents
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Docs</th>
-                <th style={thStyle}>Title</th>
-                <th style={thStyle}>Job</th>
-                <th style={thStyle}>Customer</th>
-                <th style={thStyle}>Status</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Total</th>
+                <th style={{ ...thStyle, width: '3rem' }}>Docs</th>
+                <th style={thStyle}>Estimate</th>
+                <th style={{ ...thStyle, minWidth: '9rem' }}>Customer</th>
+                <th style={{ ...thStyle, width: '5.5rem' }}>Status</th>
+                <th style={{ ...thStyle, textAlign: 'right', width: '6rem' }}>Total</th>
               </tr>
             </thead>
             <tbody>
               {filteredRows.map((r) => {
                 const cx = ledgerCustomerColumnLines(r)
+                const linkedHcp = ledgerLinkedJobHcp(r)
+                const linkedJobName = (r.jobs_ledger?.job_name ?? '').trim()
+                const linkedJobWords = linkedHcp ? `Job #${linkedHcp}` : linkedJobName || 'Job linked'
+                const linkedJobTail = linkedJobName && !(linkedHcp && linkedJobName === linkedHcp) ? linkedJobName : null
                 return (
                   <tr key={r.id}>
-                    <td style={{ ...tdStyle, verticalAlign: 'middle', width: '2.5rem' }}>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                         {r.status === 'customer_accepted' ? (
                           <button
@@ -453,39 +494,28 @@ function DocumentsEstimatesLedger({ embedSearch, onClearEmbedSearch }: Documents
                       <Link to={`/estimates/${String(r.estimate_number)}`} style={{ color: 'var(--text-link)', fontWeight: 500 }}>
                         {(r.title ?? '').trim() || 'Untitled'}
                       </Link>
-                    </td>
-                    <td style={tdStyle}>
                       {r.job_ledger_id ? (
-                        <>
-                          <Link
-                            to={`/jobs?edit=${r.job_ledger_id}`}
-                            style={{ fontWeight: 500, color: 'var(--text-green-700)' }}
-                          >
-                            {(() => {
-                              const hcp = ledgerLinkedJobHcp(r)
-                              if (hcp) return `Job #${hcp}`
-                              const jn = (r.jobs_ledger?.job_name ?? '').trim()
-                              return jn || 'Job linked'
-                            })()}
+                        <div style={ledgerTitleSubLineStyle}>
+                          <Link to={`/jobs?edit=${r.job_ledger_id}`} style={{ fontWeight: 500, color: 'var(--text-green-700)' }}>
+                            {linkedJobWords}
                           </Link>
-                          {(() => {
-                            const hcp = ledgerLinkedJobHcp(r)
-                            const jn = (r.jobs_ledger?.job_name ?? '').trim()
-                            if (!jn || (hcp && jn === hcp)) return null
-                            return <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{jn}</div>
-                          })()}
-                        </>
-                      ) : (
-                        '—'
-                      )}
-                    </td>
-                    <td style={tdStyle}>
-                      <div>{cx.primary}</div>
-                      {cx.secondary ? (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cx.secondary}</div>
+                          {linkedJobTail ? <span> · {linkedJobTail}</span> : null}
+                        </div>
                       ) : null}
                     </td>
-                    <td style={tdStyle}>{documentsLedgerStatusLabel(r.status)}</td>
+                    <td style={tdStyle} title={cx.secondary ?? undefined}>
+                      {cx.primary}
+                    </td>
+                    <td style={tdStyle}>
+                      {(() => {
+                        const chip = documentsEstimateStatusChip(r.status)
+                        return (
+                          <span style={{ ...ledgerStatusChipStyle, background: chip.background, color: chip.color }}>
+                            {chip.label}
+                          </span>
+                        )
+                      })()}
+                    </td>
                     <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {formatMoney(r.total_cents ?? 0)}
                     </td>
@@ -923,12 +953,11 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Docs</th>
-                <th style={thStyle}>Title</th>
+                <th style={{ ...thStyle, width: '3rem' }}>Docs</th>
                 <th style={thStyle}>Job</th>
-                <th style={thStyle}>Customer</th>
-                <th style={thStyle}>Status</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Total</th>
+                <th style={{ ...thStyle, minWidth: '9rem' }}>Customer</th>
+                <th style={{ ...thStyle, width: '5.5rem' }}>Status</th>
+                <th style={{ ...thStyle, textAlign: 'right', width: '6rem' }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -949,7 +978,7 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                 return (
                   <Fragment key={r.id}>
                     <tr>
-                      <td style={{ ...tdStyle, verticalAlign: 'middle' }}>
+                      <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                         <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                           {hasJobFiles ? (
                             <button
@@ -980,52 +1009,20 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                         </div>
                       </td>
                       <td style={tdStyle}>
-                        <Link
-                          to={`/jobs?edit=${encodeURIComponent(r.id)}`}
-                          style={{ color: 'var(--text-link)', fontWeight: 500, display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}
-                        >
-                          {jobTag ? (
-                            <span
-                              style={{
-                                padding: '0.1rem 0.28rem',
-                                fontSize: '0.65rem',
-                                fontWeight: 700,
-                                background: jobTag.color,
-                                color: '#fff',
-                                borderRadius: 3,
-                                lineHeight: 1.2,
-                              }}
-                            >
-                              {jobTag.tag}
-                            </span>
-                          ) : null}
+                        <Link to={`/jobs?edit=${encodeURIComponent(r.id)}`} style={{ color: 'var(--text-link)', fontWeight: 500 }}>
+                          {jobTag ? <span style={{ ...ledgerServiceTagStyle, background: jobTag.color }}>{jobTag.tag}</span> : null}
                           {titleText}
                         </Link>
+                        {addr ? <div style={ledgerTitleSubLineStyle}>{addr}</div> : null}
                       </td>
-                      <td style={tdStyle}>
-                        {addr ? <div>{addr}</div> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                      </td>
-                      <td style={tdStyle}>
-                        <div>{cx.primary}</div>
-                        {cx.secondary ? (
-                          <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cx.secondary}</div>
-                        ) : null}
+                      <td style={tdStyle} title={cx.secondary ?? undefined}>
+                        {cx.primary}
                       </td>
                       <td style={tdStyle}>
                         {(() => {
                           const chip = jobPickerStatusChip(r.status)
                           return chip ? (
-                            <span
-                              style={{
-                                fontSize: '0.65rem',
-                                fontWeight: 600,
-                                padding: '0.06rem 0.45rem',
-                                borderRadius: 999,
-                                background: chip.background,
-                                color: chip.color,
-                                whiteSpace: 'nowrap',
-                              }}
-                            >
+                            <span style={{ ...ledgerStatusChipStyle, background: chip.background, color: chip.color }}>
                               {chip.label}
                             </span>
                           ) : (
@@ -1039,7 +1036,7 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                       const sent = calendarYmdInAppTzFromIso((inv.sent_to_customer_at ?? '').trim())
                       return (
                         <tr key={inv.id}>
-                          <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
+                          <td colSpan={5} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
                             <button
                               type="button"
                               onClick={() => setBilledInvoiceModal(inv)}
@@ -1067,7 +1064,7 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                     })}
                     {jobContracts.map((con) => (
                       <tr key={con.id}>
-                        <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
+                        <td colSpan={5} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
                           <button
                             type="button"
                             onClick={() => {
@@ -1097,7 +1094,7 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                     ))}
                     {jobTestReports.map((tr) => (
                       <tr key={tr.id}>
-                        <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
+                        <td colSpan={5} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
                           <button
                             type="button"
                             onClick={() => void openTestReportDocument(r.id, tr)}
@@ -1125,7 +1122,7 @@ function DocumentsJobsLedger({ embedSearch, onClearEmbedSearch }: DocumentsLedge
                       const relForm = isLienWaiverFormType(rel.form_type) ? rel.form_type : 'conditional_progress'
                       return (
                         <tr key={rel.id}>
-                          <td colSpan={6} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
+                          <td colSpan={5} style={{ ...tdStyle, paddingLeft: '1.75rem', background: 'var(--bg-page)' }}>
                             <button
                               type="button"
                               onClick={() => {
@@ -1359,12 +1356,11 @@ function DocumentsBidProposalsLedger({ embedSearch, onClearEmbedSearch }: Docume
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Docs</th>
-                <th style={thStyle}>Title</th>
-                <th style={thStyle}>Job</th>
-                <th style={thStyle}>Customer</th>
-                <th style={thStyle}>Status</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Total</th>
+                <th style={{ ...thStyle, width: '4.5rem' }}>Docs</th>
+                <th style={thStyle}>Bid</th>
+                <th style={{ ...thStyle, minWidth: '9rem' }}>Customer</th>
+                <th style={{ ...thStyle, width: '5.5rem' }}>Status</th>
+                <th style={{ ...thStyle, textAlign: 'right', width: '6.5rem' }}>Total</th>
               </tr>
             </thead>
             <tbody>
@@ -1385,7 +1381,7 @@ function DocumentsBidProposalsLedger({ embedSearch, onClearEmbedSearch }: Docume
                 const serviceTag = getBidServiceTypeTag(r.service_type?.name)
                 return (
                   <tr key={r.id}>
-                    <td style={{ ...tdStyle, verticalAlign: 'middle' }}>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                         {hasBidSubmissionLink ? (
                           <button
@@ -1443,58 +1439,22 @@ function DocumentsBidProposalsLedger({ embedSearch, onClearEmbedSearch }: Docume
                       </div>
                     </td>
                     <td style={tdStyle}>
-                      <Link
-                        to={coverHref}
-                        style={{
-                          color: 'var(--text-link)',
-                          fontWeight: 500,
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          gap: '0.35rem',
-                        }}
-                      >
+                      <Link to={coverHref} style={{ color: 'var(--text-link)', fontWeight: 500 }}>
                         {serviceTag ? (
-                          <span
-                            style={{
-                              padding: '0.1rem 0.28rem',
-                              fontSize: '0.65rem',
-                              fontWeight: 700,
-                              background: serviceTag.color,
-                              color: '#fff',
-                              borderRadius: 3,
-                              lineHeight: 1.2,
-                            }}
-                          >
-                            {serviceTag.tag}
-                          </span>
+                          <span style={{ ...ledgerServiceTagStyle, background: serviceTag.color }}>{serviceTag.tag}</span>
                         ) : null}
                         {titleText}
                       </Link>
+                      {addr ? <div style={ledgerTitleSubLineStyle}>{addr}</div> : null}
                     </td>
-                    <td style={tdStyle}>
-                      {addr ? <div>{addr}</div> : <span style={{ color: 'var(--text-muted)' }}>—</span>}
-                    </td>
-                    <td style={tdStyle}>
-                      <div>{cx.primary}</div>
-                      {cx.secondary ? (
-                        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{cx.secondary}</div>
-                      ) : null}
+                    <td style={tdStyle} title={cx.secondary ?? undefined}>
+                      {cx.primary}
                     </td>
                     <td style={tdStyle}>
                       {(() => {
                         const chip = bidSearchStatusChip(r.outcome, r.bid_date_sent)
                         return (
-                          <span
-                            style={{
-                              fontSize: '0.65rem',
-                              fontWeight: 600,
-                              padding: '0.06rem 0.45rem',
-                              borderRadius: 999,
-                              background: chip.background,
-                              color: chip.color,
-                              whiteSpace: 'nowrap',
-                            }}
-                          >
+                          <span style={{ ...ledgerStatusChipStyle, background: chip.background, color: chip.color }}>
                             {chip.label}
                           </span>
                         )
@@ -1629,9 +1589,9 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
           <table style={tableStyle}>
             <thead>
               <tr>
-                <th style={thStyle}>Docs</th>
+                <th style={{ ...thStyle, width: '3rem' }}>Docs</th>
                 <th style={thStyle}>Job</th>
-                <th style={thStyle}>
+                <th style={{ ...thStyle, minWidth: '9rem' }}>
                   <span style={{ display: 'block' }}>Supply house</span>
                   <span
                     style={{
@@ -1646,8 +1606,8 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                   </span>
                 </th>
                 <th style={thStyle}>Purchase order</th>
-                <th style={thStyle}>Date</th>
-                <th style={{ ...thStyle, textAlign: 'right' }}>Amount</th>
+                <th style={{ ...thStyle, whiteSpace: 'nowrap' }}>Date</th>
+                <th style={{ ...thStyle, textAlign: 'right', width: '6rem' }}>Amount</th>
               </tr>
             </thead>
             <tbody>
@@ -1656,6 +1616,8 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                 const hasDocLink = !!docLink
                 const house = supplyHouseInvoiceLedgerHouseName(r)
                 const allocs = supplyHouseInvoiceLedgerAllocations(r)
+                /** Spike candidate: the share is drawn only when the invoice is split across jobs. */
+                const showShare = allocs.length > 1
                 const allocTitle = allocs
                   .map((a) => {
                     const jl = a.jobs_ledger
@@ -1663,17 +1625,17 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                     const jn = (jl?.job_name ?? '').trim()
                     const ja = (jl?.job_address ?? '').trim()
                     const pct = Number(a.pct)
-                    const pctStr = Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
+                    const pctStr = showShare && Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
                     const line1 =
                       (hcp
                         ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn, jl?.click_number ?? null)
-                        : `— | ${jn || '—'}`) + pctStr
+                        : jn || '—') + pctStr
                     return ja ? `${line1} — ${ja}` : line1
                   })
                   .join('; ')
                 return (
                   <tr key={r.id}>
-                    <td style={{ ...tdStyle, verticalAlign: 'middle', width: '2.5rem' }}>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>
                       <div style={{ display: 'inline-flex', alignItems: 'center', gap: '0.35rem' }}>
                         {hasDocLink ? (
                           <button
@@ -1716,11 +1678,11 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                             const jn = (jl?.job_name ?? '').trim()
                             const ja = (jl?.job_address ?? '').trim()
                             const pct = Number(a.pct)
-                            const pctStr = Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
+                            const pctStr = showShare && Number.isFinite(pct) && pct > 0 ? ` · ${pct}%` : ''
                             const line1 =
-                      (hcp
-                        ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn, jl?.click_number ?? null)
-                        : `— | ${jn || '—'}`) + pctStr
+                              (hcp
+                                ? formatJobLedgerDocTitle(prefixMap, jl?.service_type_id ?? null, hcp, jn, jl?.click_number ?? null)
+                                : jn || '—') + pctStr
                             return (
                               <Link
                                 key={`${r.id}-${a.job_id}-${a.pct}`}
@@ -1730,25 +1692,10 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                                   fontWeight: 500,
                                   color: 'var(--text-green-700)',
                                   textDecoration: 'none',
-                                  maxWidth: '14rem',
                                 }}
                               >
                                 <span style={{ display: 'block' }}>{line1}</span>
-                                <span
-                                  title={ja || undefined}
-                                  style={{
-                                    display: 'block',
-                                    marginTop: '0.1rem',
-                                    fontSize: '0.8rem',
-                                    fontWeight: 400,
-                                    color: 'var(--text-muted)',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
-                                    whiteSpace: 'nowrap',
-                                  }}
-                                >
-                                  {ja || '—'}
-                                </span>
+                                {ja ? <span style={{ ...ledgerTitleSubLineStyle, display: 'block', fontWeight: 400 }}>{ja}</span> : null}
                               </Link>
                             )
                           })}
@@ -1773,7 +1720,7 @@ function DocumentsSupplyHouseInvoicesLedger({ embedSearch, onClearEmbedSearch }:
                         <span style={{ color: 'var(--text-muted)' }}>—</span>
                       )}
                     </td>
-                    <td style={tdStyle}>{formatSupplyInvoiceDateYmd(r.invoice_date)}</td>
+                    <td style={{ ...tdStyle, whiteSpace: 'nowrap' }}>{formatSupplyInvoiceDateYmd(r.invoice_date)}</td>
                     <td style={{ ...tdStyle, textAlign: 'right', whiteSpace: 'nowrap' }}>
                       {formatJobRevenueUsd(Number(r.amount))}
                     </td>
@@ -1827,7 +1774,7 @@ function DocumentsUnifiedSearchTab() {
         <DocumentsEstimatesLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
       <div>
-        <h2 style={documentsUnifiedSectionHeadingStyle}>Bid proposals</h2>
+        <h2 style={documentsUnifiedSectionHeadingStyle}>Bids</h2>
         <DocumentsBidProposalsLedger embedSearch={filterQuery} onClearEmbedSearch={() => setQuery('')} />
       </div>
       <div>
@@ -1875,74 +1822,49 @@ export default function Documents() {
     <div style={{ position: 'relative', padding: '0.35rem 1.25rem 1rem', maxWidth: 1200, margin: '0 auto', width: '100%', minWidth: 0, boxSizing: 'border-box' }}>
       <h1 style={documentsPageVisuallyHiddenH1Style}>Documents</h1>
 
+      {/* Spike candidate — the tab row: Search first, the four ledgers in the order money moves, what went out and came
+          in, then the office's reference and setup tabs last. The address ids are unchanged, so old links still land. */}
       <div style={{ display: 'flex', gap: '0.25rem', marginBottom: '0.75rem', flexWrap: 'wrap' }}>
-        {companyTabVisible ? (
-          <button
-            type="button"
-            style={pageTabStyle(documentsTab === 'company')}
-            onClick={() => setDocumentsTab('company')}
-          >
-            Company
-          </button>
-        ) : null}
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'search')}
-          onClick={() => setDocumentsTab('search')}
-        >
+        <button type="button" style={pageTabStyle(documentsTab === 'search')} onClick={() => setDocumentsTab('search')}>
           Search
         </button>
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'estimates')}
-          onClick={() => setDocumentsTab('estimates')}
-        >
+        <button type="button" style={pageTabStyle(documentsTab === 'estimates')} onClick={() => setDocumentsTab('estimates')}>
           Estimates
         </button>
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'bid-proposals')}
-          onClick={() => setDocumentsTab('bid-proposals')}
-        >
-          Bid proposals
+        <button type="button" style={pageTabStyle(documentsTab === 'bid-proposals')} onClick={() => setDocumentsTab('bid-proposals')}>
+          Bids
         </button>
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'jobs')}
-          onClick={() => setDocumentsTab('jobs')}
-        >
+        <button type="button" style={pageTabStyle(documentsTab === 'jobs')} onClick={() => setDocumentsTab('jobs')}>
           Jobs
         </button>
-        <button
-          type="button"
-          style={pageTabStyle(documentsTab === 'supply-invoices')}
-          onClick={() => setDocumentsTab('supply-invoices')}
-        >
+        <button type="button" style={pageTabStyle(documentsTab === 'supply-invoices')} onClick={() => setDocumentsTab('supply-invoices')}>
           Supply invoices
         </button>
         {sentTabVisible ? (
           <button type="button" style={pageTabStyle(documentsTab === 'sent')} onClick={() => setDocumentsTab('sent')}>
-            Sent
+            Sent copies
           </button>
         ) : null}
         <button type="button" style={pageTabStyle(documentsTab === 'photos')} onClick={() => setDocumentsTab('photos')}>
           Photos
         </button>
+        {companyTabVisible ? (
+          <button type="button" style={pageTabStyle(documentsTab === 'company')} onClick={() => setDocumentsTab('company')}>
+            Company
+          </button>
+        ) : null}
         {whereFilesGoVisible ? (
           <button type="button" style={pageTabStyle(documentsTab === 'where-files-go')} onClick={() => setDocumentsTab('where-files-go')}>
             Where files go
           </button>
         ) : null}
-        <button type="button" style={pageTabStyle(documentsTab === 'upload')} onClick={() => setDocumentsTab('upload')}>
-          Upload
-        </button>
       </div>
 
       {documentsTab === 'company' && companyTabVisible ? (
-        <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} showManage />
-      ) : null}
-      {documentsTab === 'upload' ? (
-        <p style={{ color: 'var(--text-muted)', margin: 0 }}>Upload coming soon.</p>
+        <>
+          <DocumentsCompanyFolder />
+          <SettingsCompanyDocumentsSection isDev={documentsAuthRole === 'dev'} showManage />
+        </>
       ) : null}
       {documentsTab === 'search' ? (
         <Fragment>

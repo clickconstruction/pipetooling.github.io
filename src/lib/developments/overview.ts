@@ -64,6 +64,8 @@ export type MemberJob = {
   last_work_date: string | null
   last_bill_date: string | null
   job_plans_link: string | null
+  /** The part of the site the job builds from (punch list #239); absent on an older read. */
+  plan_part_id?: string | null
   created_at: string | null
   updated_at: string | null
   service_type_id: string | null
