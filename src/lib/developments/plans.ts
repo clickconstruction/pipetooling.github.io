@@ -170,7 +170,7 @@ import { requestIsOpen } from './overview'
 /** The question the Plans card's ask writes, found again by its words: open, or the newest answered one. */
 export type PlansAsk = { id: string; askedAt: string; open: boolean; waitingDays: number; answer: string | null; answeredAt: string | null }
 
-const PLANS_ASK_RE = /on an older plan set or none/i
+const PLANS_ASK_RE = /on an older plan set or none|no plans to build from/i
 
 export function plansAskOnRecord(requests: readonly MemberRequest[], nowMs: number): PlansAsk | null {
   const about = requests.filter((r) => r.lane === 'estimators' && !!r.development_id && PLANS_ASK_RE.test(r.title ?? ''))

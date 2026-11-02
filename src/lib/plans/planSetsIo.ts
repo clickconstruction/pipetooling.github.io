@@ -28,8 +28,14 @@ export type AddSetArgs = {
   userId: string | null
 }
 
+export type SitePlansRead = { parts: PlanPartRow[]; sets: PlanSetRow[]; names: Record<string, string> }
+
 export interface JobPlansIo {
   read(jobId: string): Promise<JobPlansRead>
+  /** The development's parts and every set on them (PR 3, the site look). */
+  readSite(developmentId: string): Promise<SitePlansRead>
+  /** A new part on a development, named by the office. */
+  makeSitePart(args: { developmentId: string; name: string; position: number; userId: string | null }): Promise<PlanPartRow>
   /** Make the part a job builds from and name it on the job: the job's own part, or one on its development. */
   makePart(args: { jobId: string; developmentId: string | null; name: string; userId: string | null }): Promise<PlanPartRow>
   /** A job inside a development names one of the site's parts. */
@@ -85,6 +91,30 @@ export function supabaseJobPlansIo(): JobPlansIo {
         for (const r of u.data ?? []) if (r.name) names[r.id] = r.name
       }
       return { job, part, sets, developmentParts, names }
+    },
+    async readSite(developmentId) {
+      const p = await supabase.from('plan_parts').select(PART_COLS).eq('development_id', developmentId).order('position').order('created_at')
+      if (p.error) throw p.error
+      const parts = (p.data ?? []) as PlanPartRow[]
+      let sets: PlanSetRow[] = []
+      if (parts.length) {
+        const s = await supabase.from('plan_sets').select(SET_COLS).in('part_id', parts.map((x) => x.id)).order('came_at', { ascending: false })
+        if (s.error) throw s.error
+        sets = (s.data ?? []) as PlanSetRow[]
+      }
+      const ids = new Set<string>()
+      for (const x of parts) if (x.current_set_by) ids.add(x.current_set_by)
+      for (const x of sets) if (x.created_by) ids.add(x.created_by)
+      const names: Record<string, string> = {}
+      if (ids.size) {
+        const u = await supabase.from('users').select('id, name').in('id', [...ids])
+        for (const r of u.data ?? []) if (r.name) names[r.id] = r.name
+      }
+      return { parts, sets, names }
+    },
+    async makeSitePart({ developmentId, name, position, userId }) {
+      const made = taken(await supabase.from('plan_parts').insert({ development_id: developmentId, name: name.trim(), position, created_by: userId }).select(PART_COLS).single(), 'make the part')
+      return made as unknown as PlanPartRow
     },
     async makePart({ jobId, developmentId, name, userId }) {
       const row = developmentId ? { development_id: developmentId, name, created_by: userId } : { job_id: jobId, name, created_by: userId }
