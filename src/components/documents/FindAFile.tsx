@@ -22,7 +22,7 @@ import { EmptyState } from '../EmptyState'
 type State =
   | { kind: 'idle' }
   | { kind: 'searching'; words: string }
-  | { kind: 'done'; words: string; read: FindAFileRead }
+  | { kind: 'done'; words: string; read: FindAFileRead; filling?: boolean }
   | { kind: 'failed'; words: string; reason: string }
 
 const card: CSSProperties = { border: '1px solid var(--border)', borderRadius: 10, padding: '0.9rem 1rem', background: 'var(--surface)', display: 'grid', gap: '0.6rem', marginTop: '1.25rem' }
@@ -36,10 +36,10 @@ const markStyle: CSSProperties = { background: 'var(--bg-amber-100)', color: 'in
 
 /**
  * Find a file (v2.6305): the box on the Documents page's Search tab that searches every job's Drive files by their
- * words. It waits for the typing to pause, asks our own index first (`search_file_index`, punch list #240, PR 1) and
- * falls back to `drive-link`'s `search` (Drive's own full-text index, which already reads the words inside PDFs and
- * OCR'd scans, scoped to the jobs Shared Drive) when the index has nothing, and lists the hits under the job or
- * bid whose folder holds each, with the folder, the day and the size under the name. A hit opens in Drive; a job's
+ * words. It waits for the typing to pause, asks our own index (`search_file_index`, punch list #240, PR 1) and
+ * `drive-link`'s `search` (Drive's own full-text index, which already reads the words inside PDFs and OCR'd scans, scoped
+ * to the jobs Shared Drive) at once, shows the index's hits the moment they come and adds Drive's behind them when Drive
+ * answers (v2.6369), and lists the hits under the job or bid whose folder holds each, with the folder, the day and the size under the name. A hit opens in Drive; a job's
  * group offers Open the job. Nothing found says so in the empty state; a refusal shows its reason with Try again.
  */
 export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE_MS }: { io?: FindAFileIo; debounceMs?: number }) {
@@ -51,7 +51,10 @@ export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE
   const run = (w: string) => {
     const mine = ++seq.current
     setState({ kind: 'searching', words: w })
-    io.search(w).then(
+    const first = (read: FindAFileRead) => {
+      if (seq.current === mine) setState({ kind: 'done', words: w, read, filling: true })
+    }
+    io.search(w, first).then(
       (read) => {
         if (seq.current === mine) setState({ kind: 'done', words: w, read })
       },
@@ -102,6 +105,11 @@ export function FindAFile({ io = supabaseFindAFileIo, debounceMs = FIND_DEBOUNCE
           <p data-find-source={state.read.source} style={{ margin: 0, ...small, ...muted }}>
             {foundWords(state.read, state.words)}
           </p>
+          {state.filling ? (
+            <p data-find-filling="" style={{ margin: 0, ...small, ...muted }}>
+              {FIND_WORDS.filling}
+            </p>
+          ) : null}
           {groupByHome(state.read.hits).map((g) => (
             <div key={g.key} data-find-group={g.key} style={{ display: 'grid', gap: '0.35rem' }}>
               <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap' }}>
