@@ -58,7 +58,9 @@ describe('JobCostsLineBudgets', () => {
   })
 
   it('reads spent of the whole budget with the job percent, a bar for labor and one for materials, and a row per work line', () => {
-    renderWithProviders(<JobCostsLineBudgets fixtures={project} teamHours={12} spend={{ teamUsd: 500, subUsd: 250, partsUsd: 6200 }} jobPctDone={17} />)
+    renderWithProviders(<JobCostsLineBudgets fixtures={project} teamHours={12} spend={{ teamUsd: 500, subUsd: 250, partsUsd: 6200 }} jobPctDone={17} jobId="job-1" />)
+    // The door to the project's card on the Projects board (punch list #242, PR 5).
+    expect(screen.getByTestId('job-costs-board-door').getAttribute('href')).toBe('/projects-board?job=job-1')
     const card = screen.getByTestId('job-costs-line-budgets')
     // labor: 24000×45% + 16000×50% + 4000×45% = 10,800 + 8,000 + 1,800 = 20,600; materials: 8,400 + 4,800 + 1,400 = 14,600
     expect(card.textContent).toContain('$6,950 of $35,200 spent')

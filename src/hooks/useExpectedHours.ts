@@ -61,7 +61,7 @@ export function useExpectedHours(jobIds: ReadonlyArray<string>, enabled = true):
         const got = await fetchAllRowsChunkedIn<ExpectedHoursRow, string>(
           ids,
           (chunk, from, to) => db.from('job_expected_hours').select(COLS).in('job_id', chunk).order('set_at', { ascending: false }).range(from, to),
-          'expectedHours.rows',
+          'load expected hours ledger',
         )
         if (cancelled || mine !== seq.current) return
         setRows(got)

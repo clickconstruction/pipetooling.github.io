@@ -5,7 +5,8 @@
  * changes strip with Undo.
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { cleanup, screen, waitFor } from '@testing-library/react'
+import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { MemoryRouter } from 'react-router-dom'
 
 import ProjectsBoard from './ProjectsBoard'
 import { renderWithProviders } from '../test/renderSmokeMocks'
@@ -103,6 +104,26 @@ describe('ProjectsBoard', () => {
     renderWithProviders(<ProjectsBoard />)
     expect(screen.queryByTestId('projects-board')).toBeNull()
     role = 'dev'
+  })
+
+  it('opens the project the Costs tab came from large, and says so when it is not on the board (PR 5)', async () => {
+    rows = [job('fine'), job('late')]
+    render(
+      <MemoryRouter initialEntries={['/projects-board?job=late']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <ProjectsBoard />
+      </MemoryRouter>,
+    )
+    const big = await screen.findByTestId('project-card-big')
+    expect(big.textContent).toContain('J1050 · The Bunker')
+    expect(screen.queryByTestId('focus-missing')).toBeNull()
+    cleanup()
+    render(
+      <MemoryRouter initialEntries={['/projects-board?job=gone']} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
+        <ProjectsBoard />
+      </MemoryRouter>,
+    )
+    await screen.findByTestId('focus-missing')
+    expect(screen.queryByTestId('project-card-big')).toBeNull()
   })
 
   it('lists the recent changes with Undo for a setter', async () => {
