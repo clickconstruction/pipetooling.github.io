@@ -11,14 +11,17 @@ SET lock_timeout = '3s';
 -- flow_add_note, and nudge_record_sent behind the Send press (Taunya's report, 2026-11-02, a homeowner's moved-visit
 -- text). The check now reads the person's flow as the app does: their kind's, and the residential flow too for a
 -- customer contact whose customers row says residential (through the contact's own customer_id, or the named person's
--- customer_contact_persons row, as flow_rows_for resolves them). A row the caller may not read leaves the kind's flow
--- alone, as before. The refusal keeps its code, for the clients that read it, and names the step in DETAIL. No table.
+-- customer_contact_persons row, as flow_rows_for resolves them). SECURITY DEFINER now, where it was INVOKER: which
+-- flow a person is on is a fact of the person, not of who asks, and the customers policy shows an assistant only the
+-- customers of masters who adopted her and a controller none, so as the caller the check would still send such a
+-- press to the GC flow. It reads five tables and writes nothing; the write that follows each press keeps its own
+-- policies. The refusal keeps its code, for the clients that read it, and names the step in DETAIL. No table.
 
 CREATE OR REPLACE FUNCTION public.flow_step_check(p_contact uuid, p_step text)
 RETURNS void
 LANGUAGE plpgsql
 STABLE
-SECURITY INVOKER
+SECURITY DEFINER
 SET search_path = public
 AS $$
 BEGIN
@@ -40,4 +43,7 @@ END;
 $$;
 
 COMMENT ON FUNCTION public.flow_step_check(uuid, text) IS
-  'Messages flows (cut 4): the step must be on the person''s flow, else stepUnknown with the step in DETAIL. Since v2.6385 a customer contact whose customers row says residential finds the residential flow''s steps too, since contacts have no residential kind.';
+  'Messages flows (cut 4): the step must be on the person''s flow, else stepUnknown with the step in DETAIL. Since v2.6385 a customer contact whose customers row says residential finds the residential flow''s steps too, since contacts have no residential kind; SECURITY DEFINER so the answer does not depend on which customers the caller may read.';
+
+REVOKE ALL ON FUNCTION public.flow_step_check(uuid, text) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.flow_step_check(uuid, text) TO authenticated, service_role;
