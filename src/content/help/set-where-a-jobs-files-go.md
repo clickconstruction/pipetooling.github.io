@@ -62,3 +62,13 @@ Under the cards, {{button:blue|Make the folders for 14 jobs without one}} names 
 Press **Check a job's folder** and type a job number or name. Press the job. The app looks at the folder on the job and answers in the same words as the root card. A job that is paid is not in the live list. Type its number and the app looks it up among every job.
 
 Press **Check 41 pasted folders** to look at every live job's pasted folder in one run. After the run an amber line counts the jobs whose folder the app cannot write to. Press the line to read each one with its reason.
+
+## See what is in a job's folders
+
+Open a job and press its **Documents** tab. Under **Job folders** a section called **In the folders** lists each of the five folders. Each folder shows its count and its newest files. Press a file's name to open it in Drive. Press **Open in Drive** to open the folder.
+
+Each file says where it came from. {{chip:blue|From the app · a report photo}} means the app filed it and knows what it is. {{chip:gray|Added in Drive}} means someone put it in the folder by hand.
+
+The list is read from Drive each time the tab opens. Nothing is copied. A file dropped into a folder by hand shows the next time anyone looks.
+
+An empty folder says what fills it. A folder not made yet says when the app makes it. A held job shows the hold's words instead of a list. If the read fails, the section says why. Press **Try again**.

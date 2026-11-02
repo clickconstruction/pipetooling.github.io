@@ -1186,6 +1186,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 - `{ action: 'list', job_id }` → `{ folder: { kind: 'pictures' | 'photos' | 'none', url }, photos: [{ id, name, mime, bytes, modified, from }], capped, waiting }`: pictures only, newest first, up to 500 across both folders; `waiting` counts the job's checklist (`stage_checklist_answers`) and box (`job_box_photos`) photos still in a bucket on their way to the folder.
 - `{ action: 'thumb', job_id, file_id }` → the file's thumbnail bytes: Drive's `thumbnailLink` at 400 px, fetched with our token since the folder is not public, passed through with an hour's private cache.
 - `{ action: 'full', job_id, file_id }` → the file's bytes, streamed (`driveMedia`), refused past 25 MB with the words to open it in Drive.
+- `{ action: 'files', job_id }` (v2.6299) → `{ job: { folderId, url, hold }, sections: [{ key, name, folderId, url, files: [{ id, name, mime, bytes, modified, by, url, from }], more }] }`: what is in the job's five folders (`JOB_FOLDER_TREE`: Customer Pictures, Plans, Team only › Photos, Team only › Sent by us) and the job folder's own loose files, each listed live from Drive, newest first, folders inside skipped, 100 a folder with `more` past it, `webViewLink` and `lastModifyingUser`; the pictures and plans folders come from the job's links or by name under the job folder (`childFolder`); a folder not made yet has `folderId: null`; `from` names a file the app filed itself by matching Drive ids against `uploaded_photos` (`{ kind: 'photo', source }`) and `drive_links` (`{ kind: 'link' }`), null for one put there by hand; `hold` is the row's `drive_folder_hold`. Behind the job window's **In the folders** section (`JobDocumentsFolderFiles.tsx` over `src/lib/jobs/jobFolderFiles.ts`, read through `jobFolderFilesIo.ts`). Nothing is stored.
 - A thumb or a full read is answered only for a file whose parent is one of the job's two photo folders.
 
 **Endpoint**: `POST /functions/v1/job-photos` · **Auth**: `verify_jwt = false` in `config.toml`; the JWT is checked in-body, then the job's own gate, `can_report_stage_progress(job_id)` (the stage progress gate of v2.3192: the office roles, or a field user on the job's team, clocked in on it, or under the sub rule), run through the caller's client so RLS and the role table decide. A read, so a training account and a twin read too. 401 without a sign-in, 403 on a job the caller cannot see, 404 for a file outside the folders, 503 without the Drive secret.
@@ -1194,7 +1195,7 @@ The function reads and writes with the service role, so every bid-scoped verb en
 
 **Doors**: `src/lib/photos/jobPhotosIo.ts` (`listJobPhotos` through `functions.invoke`; `jobPhotoThumb` and `jobPhotoFull` by a plain fetch under the caller's sign-in, since invoke reads an `image/jpeg` answer as text (v2.6128); object URLs the tiles revoke) behind `JobPhotosStrip.tsx` and `JobPhotosViewer.tsx` on the job window; the rules in `src/lib/photos/jobPhotos.ts`; the guide *see a job's photos*.
 
-**Status**: v2.6090, waits for its first deploy from main once it merges.
+**Status**: v2.6090 deployed; v2.6299 (the `files` action) deploys from main once it merges.
 
 ### gc-plan-question-email
 
