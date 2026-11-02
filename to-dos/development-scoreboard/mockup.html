@@ -1,0 +1,518 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>A scoreboard for a development · mock-up · punch list #250</title>
+<style>
+  :root {
+    --bg-page: #f0f2f5; --surface: #ffffff; --bg-subtle: #f9fafb; --bg-muted: #f3f4f6; --bg-200: #e5e7eb;
+    --text-strong: #111827; --text-base: #1a1a1a; --text-700: #374151; --text-muted: #6b7280; --text-faint: #767f8d;
+    --text-link: #2563eb; --text-blue-800: #1e40af; --text-green-600: #059669; --text-green-700: #047857; --text-green-800: #166534;
+    --text-amber-800: #92400e; --text-amber-900: #78350f; --text-red-700: #b91c1c; --text-red-800: #991b1b;
+    --border: #cfd4db; --border-strong: #aab2bd;
+    --bg-blue-tint: #eff6ff; --bg-amber-tint: #fffbeb; --bg-amber-100: #fef3c7; --bg-amber-200: #fde68a;
+    --bg-green-tint: #f0fdf4; --bg-green-100: #dcfce7; --bg-red-tint: #fef2f2; --bg-red-100: #fee2e2;
+    --border-amber: #fcd34d; --border-green: #bbf7d0; --border-red: #fca5a5;
+    --font: -apple-system, "Segoe UI", system-ui, sans-serif; --mono: ui-monospace, Menlo, Consolas, monospace;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg-page); color: var(--text-base); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1240px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--text-strong); display: flex; justify-content: space-between; gap: 24px; flex-wrap: wrap; align-items: flex-end; }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--text-muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; max-width: 44ch; text-wrap: balance; color: var(--text-strong); }
+  .stamp { font-family: var(--mono); font-size: 12px; color: var(--text-muted); text-align: right; line-height: 1.6; }
+  h2 { font-size: 18px; margin: 36px 0 6px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; color: var(--text-strong); }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; background: var(--bg-blue-tint); color: var(--text-blue-800); }
+  h2 .tag.rec { background: var(--bg-amber-tint); color: var(--text-amber-800); }
+  .lede { margin: 0 0 14px; color: var(--text-muted); max-width: 92ch; }
+  .lede b { color: var(--text-strong); }
+  .ask { margin: 16px 0 0; border: 1px solid var(--border-green); background: var(--bg-green-tint); border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+  .ask .k { font-size: 11px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; color: var(--text-green-600); margin-bottom: 4px; }
+  .ask q { font-style: italic; display: block; }
+  .notes { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 14px; margin-top: 14px; }
+  .note { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; font-size: 13px; }
+  .note b { display: block; margin-bottom: 4px; color: var(--text-strong); }
+  .note.k { border-color: var(--border-green); } .note.x { border-color: var(--border-red); } .note.a { border-color: var(--border-amber); }
+  .caption { font-size: 12px; color: var(--text-muted); margin: 6px 0 0; }
+  table.map { width: 100%; border-collapse: collapse; font-size: 13px; background: var(--surface); border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
+  table.map th, table.map td { text-align: left; padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  table.map th { font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); background: var(--bg-subtle); }
+  table.map td:first-child { color: var(--text-strong); font-weight: 600; white-space: nowrap; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--bg-muted); padding: 0 4px; border-radius: 3px; }
+
+  /* the Money card's chrome, as the page draws it */
+  .pcard { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; }
+  .pcard .ph { display: flex; justify-content: space-between; gap: 10px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--border); flex-wrap: wrap; }
+  .pcard .ph b { font-size: 15px; color: var(--text-strong); }
+  .pcard .ph .m { color: var(--text-muted); font-size: 12.5px; }
+  .pcard .ph .right { margin-left: auto; display: flex; gap: 8px; align-items: center; }
+  .pcard .ph a { color: var(--text-link); text-decoration: none; font-size: 12.5px; font-weight: 600; }
+  .views { display: inline-flex; gap: 4px; padding: 3px; border: 1px solid var(--border); border-radius: 999px; background: var(--bg-subtle); }
+  .views span { padding: 3px 11px; border-radius: 999px; font-size: 12.5px; color: var(--text-700); }
+  .views span.on { background: var(--surface); color: var(--text-strong); font-weight: 700; box-shadow: 0 1px 2px rgba(17,24,39,.12); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; align-items: center; font-size: 12px; color: var(--text-muted); }
+  .chip { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--text-700); font-size: 11.5px; font-weight: 600; }
+  .chip.on { background: var(--bg-blue-tint); border-color: var(--border-strong); color: var(--text-blue-800); }
+
+  /* the banner: the team's flag and its nine totals */
+  .banner { display: grid; grid-template-columns: minmax(260px, 1fr) auto; gap: 14px 18px; padding: 12px 14px; border-bottom: 1px solid var(--border); background: var(--bg-subtle); align-items: center; }
+  .banner .who { min-width: 0; }
+  .banner .flag { display: flex; align-items: center; gap: 10px; }
+  .banner .flag .house { width: 34px; height: 34px; border-radius: 8px; background: var(--text-strong); color: #fff; display: grid; place-items: center; font-size: 18px; flex: none; }
+  .banner .flag b { font-size: 17px; color: var(--text-strong); display: block; line-height: 1.2; }
+  .banner .flag .sub { font-size: 12px; color: var(--text-muted); }
+  .banner .headline { margin: 8px 0 0; font-size: 13.5px; color: var(--text-strong); }
+  .banner .headline .lbl { font-size: 10.5px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-amber-800); font-weight: 700; margin-right: 6px; }
+  .banner .small { margin: 4px 0 0; font-size: 12px; color: var(--text-muted); }
+  .totals { display: grid; gap: 4px; }
+  .totals.n9 { grid-template-columns: repeat(9, minmax(64px, 1fr)); }
+  .totals.n3 { grid-template-columns: repeat(3, minmax(64px, 1fr)); }
+  .tot { text-align: center; }
+  .tot .ic { height: 34px; border-radius: 6px; display: grid; place-items: center; font-size: 17px; }
+  .tot .v { font-variant-numeric: tabular-nums; font-weight: 700; color: var(--text-strong); font-size: 13px; margin-top: 3px; white-space: nowrap; }
+  .tot .v small { font-weight: 500; color: var(--text-muted); font-size: 11px; display: block; }
+  .tot .l { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); }
+  .g-effort .ic { background: var(--bg-green-100); color: var(--text-green-800); }
+  .g-cost .ic { background: var(--bg-red-100); color: var(--text-red-800); }
+  .g-money .ic { background: var(--bg-amber-100); color: var(--text-amber-900); }
+
+  /* the grid */
+  table.board { width: 100%; border-collapse: collapse; font-size: 12.5px; }
+  table.board th { text-align: right; padding: 6px 6px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); border-bottom: 1px solid var(--border); white-space: nowrap; }
+  table.board th.lft { text-align: left; }
+  table.board th .ic { display: inline-grid; place-items: center; width: 22px; height: 22px; border-radius: 5px; font-size: 12px; margin-left: 4px; vertical-align: middle; }
+  table.board th.e .ic { background: var(--bg-green-100); } table.board th.c .ic { background: var(--bg-red-100); } table.board th.m .ic { background: var(--bg-amber-100); }
+  table.board td { padding: 6px 6px; border-bottom: 1px solid var(--border); vertical-align: middle; text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  table.board td.lft { text-align: left; white-space: normal; }
+  table.board td.dim { color: var(--text-faint); }
+  table.board td.neg { color: var(--text-red-700); font-weight: 700; }
+  table.board td.pos { color: var(--text-green-700); font-weight: 700; }
+  tr.job td { background: var(--surface); }
+  tr.job.open td { background: var(--bg-subtle); font-weight: 600; }
+  tr.job .jn { display: inline-flex; align-items: center; gap: 8px; }
+  tr.job .no { display: inline-grid; place-items: center; min-width: 46px; height: 24px; padding: 0 6px; border-radius: 5px; background: var(--text-link); color: #fff; font-weight: 700; font-size: 11.5px; }
+  tr.job.open .no { background: var(--text-green-700); }
+  tr.job .nm { font-weight: 600; color: var(--text-strong); }
+  tr.job .st { color: var(--text-muted); font-size: 11.5px; font-weight: 400; }
+  tr.job .chev { color: var(--text-muted); width: 14px; display: inline-block; }
+  .pct3 { font-size: 11px; color: var(--text-muted); font-weight: 500; margin-left: 5px; }
+  .flag { display: inline-block; padding: 0 6px; border-radius: 999px; font-size: 10.5px; font-weight: 700; margin-left: 6px; vertical-align: 1px; }
+  .flag.amber { background: var(--bg-amber-100); color: var(--text-amber-900); } .flag.red { background: var(--bg-red-100); color: var(--text-red-800); } .flag.grey { background: var(--bg-muted); color: var(--text-700); }
+  tr.member td { background: var(--surface); color: var(--text-700); }
+  tr.member td.lft { padding-left: 22px; }
+  tr.member .role { display: inline-block; width: 64px; font-size: 10.5px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); font-style: italic; }
+  tr.member .pn { font-weight: 600; color: var(--text-strong); }
+  tr.member .kit { color: var(--text-muted); font-size: 11.5px; margin-left: 6px; }
+  tr.member.you td { background: var(--bg-amber-tint); }
+  tr.member.you td.lft { box-shadow: inset 3px 0 0 var(--bg-amber-200); }
+  tr.member.you .pn { color: var(--text-amber-900); }
+  .you-chip { display: inline-block; padding: 0 6px; border-radius: 999px; background: var(--bg-amber-200); color: var(--text-amber-900); font-size: 10.5px; font-weight: 700; margin-left: 6px; }
+  tr.office td { color: var(--text-muted); font-size: 12px; text-align: left; }
+  tr.part td { background: var(--bg-muted); font-weight: 700; color: var(--text-strong); }
+  tr.part .pn { font-size: 13px; } tr.part .ct { color: var(--text-muted); font-weight: 500; font-size: 11.5px; margin-left: 8px; }
+  tr.fold td { background: var(--surface); color: var(--text-muted); }
+  tr.fold td.lft a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+  tfoot td { background: var(--bg-subtle); font-weight: 700; color: var(--text-strong); border-top: 2px solid var(--border-strong); }
+  .legend { padding: 8px 14px; font-size: 11.5px; color: var(--text-muted); border-top: 1px solid var(--border); display: flex; gap: 14px; flex-wrap: wrap; }
+  .legend .sw { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 5px; vertical-align: -1px; }
+
+  /* phone */
+  .phones { display: flex; gap: 18px; flex-wrap: wrap; margin-top: 12px; align-items: flex-start; }
+  .phone { width: 343px; background: var(--bg-page); border: 1px dashed var(--border-strong); border-radius: 12px; padding: 10px; }
+  .phone .plbl { font-size: 11px; color: var(--text-muted); margin: 0 0 6px; }
+  .pbanner { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 10px 12px; }
+  .pbanner .flag { display: flex; align-items: center; gap: 8px; }
+  .pbanner .flag .house { width: 28px; height: 28px; border-radius: 7px; background: var(--text-strong); color: #fff; display: grid; place-items: center; font-size: 15px; flex: none; }
+  .pbanner .flag b { font-size: 15px; color: var(--text-strong); display: block; line-height: 1.2; } .pbanner .flag .sub { font-size: 11.5px; color: var(--text-muted); }
+  .pbanner .headline { margin: 6px 0 0; font-size: 12.5px; color: var(--text-strong); } .pbanner .headline .lbl { font-size: 10px; letter-spacing: .06em; text-transform: uppercase; color: var(--text-amber-800); font-weight: 700; margin-right: 5px; }
+  .three { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+  .three div { text-align: center; padding: 6px 4px; border-radius: 6px; background: var(--bg-amber-tint); }
+  .three.effort div { background: var(--bg-green-tint); }
+  .three b { display: block; font-size: 14px; color: var(--text-strong); font-variant-numeric: tabular-nums; } .three b.neg { color: var(--text-red-700); }
+  .three span { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); }
+  .three small { display: block; font-size: 10.5px; color: var(--text-muted); }
+  .pmore { font-size: 12px; color: var(--text-link); font-weight: 600; margin-top: 6px; display: block; }
+  .pchips { display: flex; gap: 6px; flex-wrap: wrap; margin: 8px 0; }
+  .jcard { border: 1px solid var(--border); border-radius: 8px; padding: 8px 10px; margin: 8px 0; font-size: 12.5px; background: var(--surface); }
+  .jcard .t { display: flex; gap: 8px; align-items: center; } .jcard .t .no { display: inline-grid; place-items: center; min-width: 44px; height: 22px; padding: 0 6px; border-radius: 5px; background: var(--text-link); color: #fff; font-weight: 700; font-size: 11px; } .jcard.open .t .no { background: var(--text-green-700); }
+  .jcard .t .nm { color: var(--text-strong); font-weight: 600; flex: 1 1 auto; min-width: 0; } .jcard .t .st { color: var(--text-muted); font-size: 11px; }
+  .jcard .three { margin-top: 6px; }
+  .nine { display: grid; grid-template-columns: repeat(3, 1fr); gap: 4px; margin-top: 8px; }
+  .nine div { padding: 5px 6px; border-radius: 6px; background: var(--bg-subtle); }
+  .nine div.e { background: var(--bg-green-tint); } .nine div.c { background: var(--bg-red-tint); } .nine div.m { background: var(--bg-amber-tint); }
+  .nine span { display: block; font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); } .nine b { font-size: 12.5px; color: var(--text-strong); font-variant-numeric: tabular-nums; } .nine b.neg { color: var(--text-red-700); }
+  .mlist { margin-top: 8px; border-top: 1px solid var(--border); }
+  .mline { display: flex; gap: 8px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--border); font-size: 12px; }
+  .mline .role { font-size: 10px; letter-spacing: .05em; text-transform: uppercase; color: var(--text-faint); font-style: italic; width: 52px; flex: none; }
+  .mline .pn { font-weight: 600; color: var(--text-strong); flex: 1 1 auto; min-width: 0; } .mline .pn small { font-weight: 400; color: var(--text-muted); margin-left: 4px; }
+  .mline .fig { color: var(--text-700); white-space: nowrap; font-variant-numeric: tabular-nums; }
+  .mline.you { background: var(--bg-amber-tint); margin: 0 -10px; padding-left: 10px; padding-right: 10px; box-shadow: inset 3px 0 0 var(--bg-amber-200); } .mline.you .pn { color: var(--text-amber-900); }
+  .pfold { text-align: center; color: var(--text-muted); font-size: 12px; padding: 6px; } .pfold a { color: var(--text-link); text-decoration: none; font-weight: 600; }
+
+  /* empties */
+  .empty { padding: 18px 14px; font-size: 13px; color: var(--text-700); display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: baseline; }
+  .empty .main { color: var(--text-strong); }
+  .empty .press { display: inline-block; padding: 4px 10px; border-radius: 6px; background: var(--text-link); color: #fff; font-weight: 600; font-size: 12.5px; }
+  .empty .press.quiet { background: var(--surface); color: var(--text-700); border: 1px solid var(--border-strong); }
+  .empty .tail { color: var(--text-muted); }
+  .empty.bad { border-top: 3px solid var(--border-red); }
+
+  .two { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  .only-phone { display: none; }
+  @media (max-width: 760px) {
+    .two, .notes { grid-template-columns: 1fr; }
+    .totals.n9, .totals.n3 { grid-template-columns: repeat(3, 1fr); }
+    .banner { grid-template-columns: 1fr; }
+    .only-desk { display: none; }
+    .only-phone { display: block; }
+    .phones { display: block; }
+    .phone { width: 100%; border: none; padding: 0; }
+    h1 { font-size: 22px; }
+    table.map, table.board { display: block; overflow-x: auto; }
+    .pcard .ph .right { margin-left: 0; flex-wrap: wrap; }
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header class="top">
+  <div>
+    <p class="eyebrow">Punch list #250 · mock-up · draft 1 · 2026-11-02</p>
+    <h1>A scoreboard for a development: its jobs, their money, and who put what in</h1>
+  </div>
+  <div class="stamp">the Development page · Money<br>made-up data: Harlow Ranch, Ridgeway Builders<br>nine columns, the same at every level</div>
+</header>
+
+<div class="ask">
+  <div class="k">The ask, in the owner's words (2026-11-02)</div>
+  <q>In the developments tab, we recently worked towards adding a timeline feature. I think another great idea for a feature, this is from the game Squad, shows a breakdown in a neat way. Can you take a look at it and help me come up with ways that we can use it to summarise a breakdown of the different jobs that make up a development and their profit and costs and what contributes and who contributes to each?</q>
+</div>
+
+<h2>What is lifted from the game <span class="tag">the pattern, not the look</span></h2>
+<p class="lede">One grid. <b>The same nine columns mean the same thing at every level</b>: the whole site in the banner, each job in its row, each person, sub or supplier under the job. A collapsed row shows the three that matter most. A press opens the rest. Your own row is gold.</p>
+<table class="map">
+  <thead><tr><th>In Squad</th><th>On the Development page</th><th>Where the number comes from today</th></tr></thead>
+  <tbody>
+    <tr><td>Team banner: flag, name, nine stat icons, the team's totals</td><td>The development: its name, the customer, the GC, and the site's nine totals</td><td>The sum of the job rows. Nothing new.</td></tr>
+    <tr><td>The match headline (<i>unisea ENDED alkarii's 24 kill streak</i>)</td><td>One line about the site right now: the job with no price that is costing, else the job that carried the site</td><td>New: a small kernel picks the line from the rows.</td></tr>
+    <tr><td>Squad row: number chip, name, three totals when folded</td><td>A job: its number, its name, its state. Folded it shows Earned · Cost · Profit</td><td>Job Summary's row math, moved to a kernel the page can call.</td></tr>
+    <tr><td>The same squad opened: every column's total</td><td>The job's nine, and under it everyone who put something in</td><td>Hours, days and labor: the clock. Subs: the sheets. Parts: invoices, card, tally, other. Overhead: the day share.</td></tr>
+    <tr><td>Member row: role tag (SL, FTL), name, kit icons, every column</td><td>A person (Lead, Crew), a sub (Sub), a supply house (Supplier), a card holder (Card), the office (Office). Each fills only the cells they truly put in</td><td>People: the clock by person. Subs: by sheet name. Suppliers: by house. Card: by holder. Office: who sent the bills and booked the payments.</td></tr>
+    <tr><td>Your own row in gold</td><td>Your own row in gold, under every job you are on</td><td>New: the signed-in person matched to the clock's person.</td></tr>
+    <tr><td>Unassigned players, 0 · 0 · 0</td><td>Jobs with nothing on them yet, folded into one line</td><td>A job with no earned dollar and no cost.</td></tr>
+    <tr><td>Kit icons beside a name</td><td>Small flags: <i>≈ 50% assumed</i>, <i>no price</i>, <i>materials only</i>, <i>11 invoices</i>, <i>34 charges</i></td><td>Job Summary's row flags and the line counts.</td></tr>
+    <tr><td>The tabs: Summary · Scoreboard · Timeline</td><td>The Money card's views: Where the money is · Scoreboard · Timeline</td><td>The first exists. The timeline is the sibling spike's draft. This is the second.</td></tr>
+    <tr><td>Two teams side by side</td><td>Not two teams. The wide view spends its width on the nine columns</td><td>A window chip cuts the same grid by time instead.</td></tr>
+  </tbody>
+</table>
+
+<h2>Where it goes <span class="tag rec">recommended</span></h2>
+<p class="lede">Inside <b>Money</b>, as its second view. The card's head gains three view chips, the Squad tab strip in the app's own clothes. <b>Where the money is</b> stays the default. The sibling spike's cost timeline becomes the third chip, so the three read as one place.</p>
+<div class="pcard">
+  <div class="ph">
+    <b>Money</b><span class="m">where the site's money is · 9 jobs</span>
+    <span class="right">
+      <span class="views"><span>Where the money is</span><span class="on">Scoreboard</span><span>Timeline</span></span>
+      <a>GC Review ›</a>
+    </span>
+  </div>
+  <div style="padding:10px 14px" class="chips">
+    <span>Cut by</span><span class="chip on">job</span><span class="chip">part of the site</span><span class="chip">person</span>
+    <span style="margin-left:10px">Window</span><span class="chip on">all time</span><span class="chip">this month</span><span class="chip">90 days</span>
+  </div>
+</div>
+<p class="caption">The chips are the third PR. The first two ship the board by job over all time.</p>
+
+<h2>The board <span class="tag rec">recommended</span></h2>
+<p class="lede">A dev or a controller reads it. <b>Green</b> is effort, <b>red</b> is what it cost, <b>gold</b> is the money. One job is open: its nine, then the people, the sub, the two supply houses, the card, and the office line. The controller reading the page is Dana, so her office line is gold.</p>
+<div class="pcard" id="board"></div>
+<p class="caption">Earned follows the job's percent: the whole contract at 100%, the percent's share while working, half when no percent is on record yet (the ≈ flag). Overhead is the day share from People → Overhead, from the day the pool began.</p>
+
+<h2>Cut by part of the site <span class="tag">chip, PR 3</span></h2>
+<p class="lede">The same grid with a header row per part (the Plans look's parts), each with its three. Jobs under their part. Jobs on no part sit last, so the board itself says what the Plans look's picker should fix. Today Gun Dog has four parts and every job on no part, so this cut is worth little until the picker has been used.</p>
+<div class="pcard" id="board-parts"></div>
+
+<h2>Cut by person <span class="tag">chip, PR 3</span></h2>
+<p class="lede">The grid turned over: a person is the row, their jobs under them. Answers <i>who carried this site</i>. Earned is their share by hours, as Crew P&amp;L splits it, so it wears ≈. Everything else is the same number as under the job.</p>
+<div class="pcard" id="board-people"></div>
+
+<h2>On a phone <span class="tag rec">recommended</span></h2>
+<p class="lede">Job rows stack as cards with the three. A tap opens the nine as a grid and the people under it. Left: the dev's phone. Right: a lead's phone, the board without dollars, where the gold row earns its place: <i>my hours and days on this site</i>.</p>
+<div class="phones">
+  <div class="phone"><p class="plbl">375 wide · dev or controller</p><div id="phone-dev"></div></div>
+  <div class="phone"><p class="plbl">375 wide · a lead, no dollars</p><div id="phone-lead"></div></div>
+</div>
+
+<h2>Empty and failed</h2>
+<div class="two">
+  <div>
+    <div class="pcard">
+      <div class="ph"><b>Money</b><span class="m">what the site's jobs earned and cost</span><span class="right"><span class="views"><span>Where the money is</span><span class="on">Scoreboard</span><span>Timeline</span></span></span></div>
+      <div class="empty"><span class="main">No job on this site yet.</span><span class="press">New Job from a bid</span><span class="tail">makes the first, and the board fills from it.</span></div>
+    </div>
+    <p class="caption">A site with bids and no job. The make kind of empty state.</p>
+  </div>
+  <div>
+    <div class="pcard">
+      <div class="ph"><b>Money</b><span class="m">what the site's jobs earned and cost</span><span class="right"><span class="views"><span>Where the money is</span><span class="on">Scoreboard</span><span>Timeline</span></span></span></div>
+      <div class="empty bad"><span class="main">The costs could not be read. The signal was lost.</span><span class="press quiet">Retry</span><span class="tail">The jobs and their earned dollars are drawn. The cost cells say <i>not read</i> until then.</span></div>
+    </div>
+    <p class="caption">A lost read offers Retry and keeps the half it has. A refusal names its reason with no Retry.</p>
+  </div>
+</div>
+
+<h2>The four ways, weighed</h2>
+<div class="notes">
+  <div class="note k"><b>A · By job, people under each. Picked.</b>Answers the owner's sentence word for word: the jobs that make up the site, what each earned and cost, what kind of cost, and who. The banner is the site's P&amp;L. Every number already exists for one job in Job Summary.</div>
+  <div class="note a"><b>B · By part of the site. A chip on A.</b>Answers <i>which building paid</i>. Same grid, part header rows. Worth little until jobs are on parts, so a chip and not the default.</div>
+  <div class="note x"><b>C · By cost kind as the squads. Rejected.</b>Labor, Subs, Parts and Overhead as the rows, jobs under each. It breaks the one rule that makes the pattern work: a Labor row would fill one column and leave eight blank. The banner's nine totals already answer <i>where the money went</i>.</div>
+  <div class="note a"><b>D · By time. A chip on A, and the Timeline tab.</b><i>What did this site cost us this month</i> is a window on the same grid: earned by hours in the window, labor in the window, the overhead days in the window, as Job Summary already cuts them. The shape over time is the timeline's job, not a grid's.</div>
+  <div class="note a"><b>E · By person. A chip on A.</b>The grid turned over. Cheap once A exists, since the kernel holds the same triples: job, contributor, measures. Earned per person wears ≈.</div>
+</div>
+
+<h2>Your calls <span class="tag">defaults recommended</span></h2>
+<div class="notes">
+  <div class="note"><b>1 · Where it lives</b>Inside Money as its second view, with Timeline as the third. Or: its own look, a seventh chip on the strip.</div>
+  <div class="note"><b>2 · Who sees what</b>Dev and controller: all nine. Leaders and assistants: Hours · Days · Earned, no cost, no wage, so a lead reads their own gold rows. Estimators: the one line they read today. Or: dev and controller only, nothing new for the rest.</div>
+  <div class="note"><b>3 · The nine, and the folded three</b>Hours · Days · Labor · Subs · Parts · Overhead · Earned · Cost · Profit, folded to Earned · Cost · Profit. Or: add Burn and the projected margin as columns ten and eleven.</div>
+  <div class="note"><b>4 · People named, or counted</b>Named, with their hours, days and labor dollars, to the readers of call 2. Or: counted only (<i>4 people · 1 sub · 2 suppliers</i>) with the names behind a press.</div>
+  <div class="note"><b>5 · The window</b>All time by default, since a site's story is its life. Or: this month, as a desk opened every morning.</div>
+  <div class="note"><b>6 · Gun Dog's typed overhead</b>Six hand-typed <i>ESTIMATE · office overhead</i> rows sit under Other charges on one job. The board reads them as Parts, as Job Summary does, and the Overhead column reads the pool's day share. Or: a tag moves such rows to the Overhead column.</div>
+</div>
+
+</div>
+
+<script>
+// Made-up data. Every total on the page is computed from these rows, never typed.
+const WAGE = { Luis: 35, Mateo: 30, Tom: 27, Sam: 24, Nico: 22 }
+const JOBS = [
+  { no: 'JP612', name: 'Rough in: main house and barn', part: 'Main house', state: 'paid', contract: 241431, pct: 100, days: 118, overhead: 14920,
+    crew: [{ n: 'Luis', role: 'Lead', h: 612, d: 74 }, { n: 'Mateo', role: 'Crew', h: 540, d: 61 }, { n: 'Tom', role: 'Crew', h: 410, d: 50 }, { n: 'Sam', role: 'Crew', h: 280, d: 36 }],
+    subs: [{ n: 'Reyes Excavating', usd: 18400, kit: '2 sheets' }],
+    suppliers: [{ n: 'Ferguson', usd: 41120, kit: '11 invoices' }, { n: 'Moore Supply', usd: 12650, kit: '4 invoices' }],
+    cards: [{ n: 'Luis', usd: 9100, kit: '34 charges' }],
+    office: { n: 'Dana', words: 'sent 4 bills · booked the payment Feb 26' } },
+  { no: 'JP560', name: 'Septic system', part: 'Site', state: 'paid', contract: 139650, pct: 100, days: 41, overhead: 5880,
+    crew: [{ n: 'Mateo', role: 'Lead', h: 390, d: 41 }, { n: 'Nico', role: 'Crew', h: 370, d: 40 }],
+    subs: [{ n: 'Reyes Excavating', usd: 36500, kit: '3 sheets' }],
+    suppliers: [{ n: 'Ferguson', usd: 38900, kit: '6 invoices' }],
+    cards: [{ n: 'Mateo', usd: 2300, kit: '12 charges' }],
+    office: { n: 'Dana', words: 'sent 2 bills · booked the payment Jan 9' } },
+  { no: 'JP765', name: 'Barn fans and gas lines', part: 'Barn', state: 'paid', contract: 33953, pct: 100, days: 14, overhead: 1760,
+    crew: [{ n: 'Tom', role: 'Lead', h: 120, d: 14 }, { n: 'Sam', role: 'Crew', h: 92, d: 11 }],
+    subs: [], suppliers: [{ n: 'Moore Supply', usd: 14210, kit: '3 invoices' }], cards: [{ n: 'Tom', usd: 1180, kit: '5 charges' }],
+    office: { n: 'Dana', words: 'sent 1 bill · booked the payment May 2' } },
+  { no: 'JP446', name: 'Water wells', part: 'Site', state: 'paid', contract: 69045, pct: 100, days: 22, overhead: 2730,
+    crew: [{ n: 'Luis', role: 'Lead', h: 180, d: 22 }, { n: 'Tom', role: 'Crew', h: 130, d: 16 }],
+    subs: [{ n: 'Harlan Well Service', usd: 21000, kit: '1 sheet' }], suppliers: [{ n: 'Ferguson', usd: 9870, kit: '2 invoices' }], cards: [],
+    office: { n: 'Dana', words: 'sent 1 bill · booked the payment Nov 14' } },
+  { no: 'JP224', name: 'Materials draws, phase 2', part: 'Main house', state: 'paid', contract: 894971, pct: 100, days: 0, overhead: 0, materialsOnly: true,
+    crew: [], subs: [], suppliers: [{ n: 'Ferguson', usd: 812300, kit: '31 invoices' }], cards: [],
+    office: { n: 'Dana', words: 'sent 3 draws · booked the payments Aug 1' } },
+  { no: 'JP653', name: 'Guest house drain field', part: 'Guest house', state: 'paid', contract: 8838, pct: 100, days: 3, overhead: 380,
+    crew: [{ n: 'Nico', role: 'Lead', h: 26, d: 3 }], subs: [{ n: 'Reyes Excavating', usd: 4900, kit: '1 sheet' }], suppliers: [{ n: 'Moore Supply', usd: 1210, kit: '1 invoice' }], cards: [],
+    office: { n: 'Dana', words: 'sent 1 bill · booked the payment Mar 20' } },
+  { no: 'JP1091', name: 'Lift stations and site visit', part: null, state: 'working · 75%', contract: 0, pct: 75, days: 7, overhead: 890,
+    crew: [{ n: 'Luis', role: 'Lead', h: 32, d: 4 }, { n: 'Nico', role: 'Crew', h: 67, d: 7 }], subs: [], suppliers: [], cards: [{ n: 'Luis', usd: 3732, kit: '34 charges' }],
+    office: null },
+  { no: 'JP583', name: 'Gas line trenching', part: null, state: 'working · 20%', contract: 16000, pct: 20, days: 5, overhead: 610,
+    crew: [{ n: 'Sam', role: 'Lead', h: 54, d: 5 }], subs: [], suppliers: [{ n: 'Ferguson', usd: 1480, kit: '1 invoice' }], cards: [], office: null },
+  { no: 'JP958', name: 'Supplemental crew weeks', part: null, state: 'waiting', contract: 54514, pct: null, days: 0, overhead: 0,
+    crew: [], subs: [], suppliers: [], cards: [], office: null },
+]
+const EMPTY = ['JP953 Fire sprinkler risers', 'JP954 Propane tanks', 'JP955 BESS room HVAC', 'JP956 Gas line hose reels']
+const PARTS = ['Main house', 'Barn', 'Site', 'Guest house']
+
+const sum = (xs, f) => xs.reduce((a, x) => a + f(x), 0)
+function measure(j) {
+  const hours = sum(j.crew, (c) => c.h)
+  const labor = sum(j.crew, (c) => c.h * WAGE[c.n])
+  const subs = sum(j.subs, (s) => s.usd)
+  const parts = sum(j.suppliers, (s) => s.usd) + sum(j.cards, (c) => c.usd)
+  const earned = j.pct === 100 ? j.contract : j.pct == null ? j.contract * 0.5 : j.contract * (j.pct / 100)
+  const cost = labor + subs + parts + j.overhead
+  return { hours, days: j.days, labor, subs, parts, overhead: j.overhead, earned, cost, profit: earned - cost, assumed: j.pct == null && j.contract > 0 && j.state !== 'paid' }
+}
+const add = (a, b) => ({ hours: a.hours + b.hours, days: a.days + b.days, labor: a.labor + b.labor, subs: a.subs + b.subs, parts: a.parts + b.parts, overhead: a.overhead + b.overhead, earned: a.earned + b.earned, cost: a.cost + b.cost, profit: a.profit + b.profit })
+const ZERO = { hours: 0, days: 0, labor: 0, subs: 0, parts: 0, overhead: 0, earned: 0, cost: 0, profit: 0 }
+const M = JOBS.map((j) => ({ j, m: measure(j) }))
+const TOTAL = M.reduce((a, r) => add(a, r.m), ZERO)
+
+const usd = (n) => (n < 0 ? '−' : '') + '$' + Math.round(Math.abs(n)).toLocaleString('en-US')
+const hrs = (n) => Math.round(n).toLocaleString('en-US') + ' h'
+const dys = (n) => n + ' d'
+const pct = (p, e) => (e > 0 ? Math.round((p / e) * 100) + '%' : '—')
+const COLS = [
+  { k: 'hours', l: 'Hours', g: 'e', ic: '⏱', f: hrs }, { k: 'days', l: 'Days', g: 'e', ic: '📅', f: dys },
+  { k: 'labor', l: 'Labor', g: 'c', ic: '👷', f: usd }, { k: 'subs', l: 'Subs', g: 'c', ic: '🔧', f: usd }, { k: 'parts', l: 'Parts', g: 'c', ic: '📦', f: usd }, { k: 'overhead', l: 'Overhead', g: 'c', ic: '🏢', f: usd },
+  { k: 'earned', l: 'Earned', g: 'm', ic: '💵', f: usd }, { k: 'cost', l: 'Cost', g: 'm', ic: '🧾', f: usd }, { k: 'profit', l: 'Profit', g: 'm', ic: '★', f: usd },
+]
+const THREE = ['earned', 'cost', 'profit']
+const LEAD_COLS = ['hours', 'days', 'earned'] // the board without dollars of cost or wage
+
+function cell(c, v, m, opts = {}) {
+  if (v == null) return `<td class="dim">—</td>`
+  if (c.k === 'profit') {
+    if (opts.assumed) return `<td class="dim" title="Half the price counted, nothing spent: not a profit yet">${usd(v)}<span class="pct3">≈</span></td>`
+    const cls = v < 0 ? 'neg' : v > 0 ? 'pos' : ''
+    return `<td class="${cls}">${usd(v)}<span class="pct3">${pct(v, m.earned)}</span></td>`
+  }
+  if (c.k === 'earned' && opts.assumed) return `<td>${usd(v)}<span class="flag amber" title="No percent on record yet, so half the price is counted">≈</span></td>`
+  return `<td>${c.f(v)}</td>`
+}
+function blank(n) { return `<td class="dim">—</td>`.repeat(n) }
+function flagsOf(j, m) {
+  let out = ''
+  if (j.contract === 0 && m.cost > 0) out += `<span class="flag red" title="A job with no price: it costs and earns nothing until one is set">no price</span>`
+  if (j.materialsOnly) out += `<span class="flag grey" title="A pass-through job: no hours, parts billed on">materials only</span>`
+  if (m.assumed) out += `<span class="flag amber" title="No percent on record yet, so half the price is counted">≈ 50% assumed</span>`
+  return out
+}
+
+function headline() {
+  const noPrice = M.find((r) => r.j.contract === 0 && r.m.cost > 0)
+  if (noPrice) return `${noPrice.j.no} has no price yet: ${usd(noPrice.m.cost)} spent over ${hrs(noPrice.m.hours)}.`
+  const best = [...M].sort((a, b) => b.m.profit - a.m.profit)[0]
+  return `${best.j.no} carried the site: ${usd(best.m.profit)} profit, ${pct(best.m.profit, best.m.earned)}.`
+}
+
+function banner(cols = COLS) {
+  const withMoney = M.filter((r) => r.m.earned > 0 || r.m.cost > 0).length
+  const people = new Set(JOBS.flatMap((j) => j.crew.map((c) => c.n))).size
+  const outside = new Set(JOBS.flatMap((j) => [...j.subs, ...j.suppliers].map((s) => s.n))).size
+  const left = 186117
+  const tots = cols.map((c) => {
+    const v = TOTAL[c.k]
+    const extra = c.k === 'profit' ? `<small>${pct(v, TOTAL.earned)} of earned</small>` : c.k === 'days' ? `<small>summed over jobs</small>` : ''
+    return `<div class="tot g-${c.g === 'e' ? 'effort' : c.g === 'c' ? 'cost' : 'money'}"><div class="ic">${c.ic}</div><div class="v">${c.f(v)}${extra}</div><div class="l">${c.l}</div></div>`
+  }).join('')
+  return `<div class="banner">
+    <div class="who">
+      <div class="flag"><div class="house">⌂</div><div><b>Harlow Ranch</b><span class="sub">Ridgeway Builders · ${JOBS.length + EMPTY.length} jobs, ${withMoney} with money on them · 15 bids</span></div></div>
+      <p class="headline"><span class="lbl">Right now</span>${headline()}</p>
+      <p class="small">${usd(left)} left to collect · ${people} people on it · ${outside} subs and supply houses · overhead since Feb 19</p>
+    </div>
+    <div class="totals n${cols.length}">${tots}</div>
+  </div>`
+}
+
+function thead(cols = COLS) {
+  return `<thead><tr><th class="lft" style="width:34%">Job</th>${cols.map((c) => `<th class="${c.g}">${c.l}<span class="ic">${c.ic}</span></th>`).join('')}</tr></thead>`
+}
+
+function memberRows(j, cols, viewer) {
+  const rows = []
+  const crewOf = (c) => {
+    const m = { hours: c.h, days: c.d, labor: c.h * WAGE[c.n] }
+    return cols.map((col) => (col.k in m ? cell(col, m[col.k], m) : `<td class="dim">—</td>`)).join('')
+  }
+  for (const c of j.crew) rows.push(`<tr class="member ${viewer === c.n ? 'you' : ''}"><td class="lft"><span class="role">${c.role}</span><span class="pn">${c.n}</span>${viewer === c.n ? '<span class="you-chip">You</span>' : ''}</td>${crewOf(c)}</tr>`)
+  for (const s of j.subs) rows.push(`<tr class="member"><td class="lft"><span class="role">Sub</span><span class="pn">${s.n}</span><span class="kit">${s.kit}</span></td>${cols.map((col) => (col.k === 'subs' ? `<td>${usd(s.usd)}</td>` : `<td class="dim">—</td>`)).join('')}</tr>`)
+  for (const s of j.suppliers) rows.push(`<tr class="member"><td class="lft"><span class="role">Supplier</span><span class="pn">${s.n}</span><span class="kit">${s.kit}</span></td>${cols.map((col) => (col.k === 'parts' ? `<td>${usd(s.usd)}</td>` : `<td class="dim">—</td>`)).join('')}</tr>`)
+  for (const c of j.cards) rows.push(`<tr class="member"><td class="lft"><span class="role">Card</span><span class="pn">${c.n}</span><span class="kit">company card · ${c.kit}</span></td>${cols.map((col) => (col.k === 'parts' ? `<td>${usd(c.usd)}</td>` : `<td class="dim">—</td>`)).join('')}</tr>`)
+  if (j.office) rows.push(`<tr class="member office ${viewer === j.office.n ? 'you' : ''}"><td class="lft"><span class="role">Office</span><span class="pn">${j.office.n}</span>${viewer === j.office.n ? '<span class="you-chip">You</span>' : ''}</td><td colspan="${cols.length}" style="text-align:left">${j.office.words}</td></tr>`)
+  return rows.join('')
+}
+
+function jobRow(r, cols, open, viewer) {
+  const { j, m } = r
+  const three = new Set(cols.length === COLS.length ? THREE : cols.map((c) => c.k))
+  const cells = cols.map((c) => (open || three.has(c.k) ? cell(c, m[c.k], m, { assumed: m.assumed }) : `<td class="dim"></td>`)).join('')
+  const head = `<tr class="job ${open ? 'open' : ''}"><td class="lft"><span class="jn"><span class="chev">${open ? '▾' : '▸'}</span><span class="no">${j.no}</span><span class="nm">${j.name}</span><span class="st">${j.state}</span>${flagsOf(j, m)}</span></td>${cells}</tr>`
+  return head + (open ? memberRows(j, cols, viewer) : '')
+}
+
+function foldRow(cols) {
+  return `<tr class="fold"><td class="lft">Nothing on them yet · ${EMPTY.length} jobs · <a>Show them</a></td>${cols.map(() => `<td>0</td>`).join('')}</tr>`
+}
+function tfoot(cols) {
+  return `<tfoot><tr><td class="lft">The site · ${JOBS.length + EMPTY.length} jobs</td>${cols.map((c) => cell(c, TOTAL[c.k], TOTAL)).join('')}</tr></tfoot>`
+}
+function legend() {
+  return `<div class="legend"><span><i class="sw" style="background:var(--bg-green-100)"></i>effort</span><span><i class="sw" style="background:var(--bg-red-100)"></i>what it cost</span><span><i class="sw" style="background:var(--bg-amber-100)"></i>the money</span><span><i class="sw" style="background:var(--bg-amber-tint);box-shadow:inset 3px 0 0 var(--bg-amber-200)"></i>your own row</span><span>— not this row's to fill</span></div>`
+}
+
+// 1 · the board by job, JP612 open, Dana (controller) reading
+document.getElementById('board').innerHTML = `
+  <div class="ph"><b>Money</b><span class="m">what the site's jobs earned and cost · ${JOBS.length + EMPTY.length} jobs</span><span class="right"><span class="views"><span>Where the money is</span><span class="on">Scoreboard</span><span>Timeline</span></span><a>Job Summary ›</a></span></div>
+  ${banner()}
+  <table class="board">${thead()}<tbody>${M.map((r) => jobRow(r, COLS, r.j.no === 'JP612', 'Dana')).join('')}${foldRow(COLS)}</tbody>${tfoot(COLS)}</table>
+  ${legend()}`
+
+// 2 · cut by part
+function partRows() {
+  const groups = [...PARTS.map((p) => ({ p, rows: M.filter((r) => r.j.part === p) })), { p: 'No part', rows: M.filter((r) => !r.j.part) }]
+  return groups.map((g) => {
+    const t = g.rows.reduce((a, r) => add(a, r.m), ZERO)
+    const head = `<tr class="part"><td class="lft"><span class="pn">${g.p}</span><span class="ct">${g.rows.length} ${g.rows.length === 1 ? 'job' : 'jobs'}</span></td>${COLS.map((c) => (THREE.includes(c.k) ? cell(c, t[c.k], t) : `<td class="dim"></td>`)).join('')}</tr>`
+    return head + g.rows.map((r) => jobRow(r, COLS, false, 'Dana')).join('')
+  }).join('')
+}
+document.getElementById('board-parts').innerHTML = `
+  <div class="ph"><b>Money</b><span class="m">cut by part of the site</span><span class="right"><span class="chips"><span>Cut by</span><span class="chip">job</span><span class="chip on">part of the site</span><span class="chip">person</span></span></span></div>
+  <table class="board">${thead()}<tbody>${partRows()}${foldRow(COLS)}</tbody>${tfoot(COLS)}</table>`
+
+// 3 · cut by person: each person's jobs under them, earned as their share by hours (≈)
+function peopleRows() {
+  const names = [...new Set(JOBS.flatMap((j) => j.crew.map((c) => c.n)))]
+  return names.map((n) => {
+    const lines = M.filter((r) => r.j.crew.some((c) => c.n === n)).map((r) => {
+      const c = r.j.crew.find((c) => c.n === n)
+      const share = r.m.hours > 0 ? (c.h / r.m.hours) * r.m.earned : 0
+      return { r, c, m: { hours: c.h, days: c.d, labor: c.h * WAGE[n], earned: share } }
+    })
+    const t = lines.reduce((a, l) => ({ hours: a.hours + l.m.hours, days: a.days + l.m.days, labor: a.labor + l.m.labor, earned: a.earned + l.m.earned }), { hours: 0, days: 0, labor: 0, earned: 0 })
+    const pcell = (col, m) => (col.k in m ? (col.k === 'earned' ? `<td>${usd(m.earned)}<span class="flag amber" title="Their share of the job's earned dollars, by hours">≈</span></td>` : cell(col, m[col.k], m)) : `<td class="dim">—</td>`)
+    const head = `<tr class="job ${n === 'Luis' ? 'open' : ''}"><td class="lft"><span class="jn"><span class="chev">${n === 'Luis' ? '▾' : '▸'}</span><span class="nm">${n}</span><span class="st">${lines.length} ${lines.length === 1 ? 'job' : 'jobs'}</span></span></td>${COLS.map((col) => pcell(col, t)).join('')}</tr>`
+    const under = n === 'Luis' ? lines.map((l) => `<tr class="member"><td class="lft"><span class="role">${l.c.role}</span><span class="pn">${l.r.j.no}</span><span class="kit">${l.r.j.name}</span></td>${COLS.map((col) => pcell(col, l.m)).join('')}</tr>`).join('') : ''
+    return head + under
+  }).join('')
+}
+document.getElementById('board-people').innerHTML = `
+  <div class="ph"><b>Money</b><span class="m">cut by person · the crew who clocked on the site</span><span class="right"><span class="chips"><span>Cut by</span><span class="chip">job</span><span class="chip">part of the site</span><span class="chip on">person</span></span></span></div>
+  <table class="board">${thead()}<tbody>${peopleRows()}</tbody></table>
+  <div class="legend"><span>Subs, supply houses and the card are not people rows in this cut. Their dollars stay on the jobs.</span></div>`
+
+// 4 · phones
+function phoneBoard(cols, viewer, openNo) {
+  const three = cols.length === COLS.length ? THREE : cols.map((c) => c.k)
+  const col = (k) => COLS.find((c) => c.k === k)
+  const effort = cols.length !== COLS.length
+  const tot = three.map((k) => `<div><b class="${k === 'profit' && TOTAL[k] < 0 ? 'neg' : ''}">${col(k).f(TOTAL[k])}</b><span>${col(k).l}</span>${k === 'profit' ? `<small>${pct(TOTAL.profit, TOTAL.earned)} of earned</small>` : ''}</div>`).join('')
+  const cards = M.map((r) => {
+    const open = r.j.no === openNo
+    const t3 = three.map((k) => {
+      if (k === 'profit' && r.m.assumed) return `<div><b style="color:var(--text-faint)">${usd(r.m.profit)}</b><span>Profit</span><small>≈ not yet</small></div>`
+      return `<div><b class="${k === 'profit' && r.m[k] < 0 ? 'neg' : ''}">${col(k).f(r.m[k])}</b><span>${col(k).l}</span>${k === 'profit' ? `<small>${pct(r.m.profit, r.m.earned)}</small>` : k === 'earned' && r.m.assumed ? '<small>≈ half the price</small>' : ''}</div>`
+    }).join('')
+    // open: the nine take the three's place (a lead's board has only the three, so they stay)
+    const nine = open && !effort ? `<div class="nine">${cols.map((c) => `<div class="${c.g}"><span>${c.l}</span><b class="${c.k === 'profit' && r.m[c.k] < 0 ? 'neg' : ''}">${c.f(r.m[c.k])}</b></div>`).join('')}</div>` : ''
+    const threeBlock = open && !effort ? '' : `<div class="three ${effort ? 'effort' : ''}">${t3}</div>`
+    const fig = (m) => cols.filter((c) => c.k in m).map((c) => c.f(m[c.k])).join(' · ')
+    const members = open ? `<div class="mlist">
+      ${r.j.crew.map((c) => `<div class="mline ${viewer === c.n ? 'you' : ''}"><span class="role">${c.role}</span><span class="pn">${c.n}${viewer === c.n ? '<span class="you-chip">You</span>' : ''}</span><span class="fig">${fig({ hours: c.h, days: c.d, labor: c.h * WAGE[c.n] })}</span></div>`).join('')}
+      ${r.j.subs.map((s) => `<div class="mline"><span class="role">Sub</span><span class="pn">${s.n}<small>${s.kit}</small></span><span class="fig">${effort ? '' : usd(s.usd)}</span></div>`).join('')}
+      ${r.j.suppliers.map((s) => `<div class="mline"><span class="role">Supplier</span><span class="pn">${s.n}<small>${s.kit}</small></span><span class="fig">${effort ? '' : usd(s.usd)}</span></div>`).join('')}
+      ${r.j.cards.map((c) => `<div class="mline"><span class="role">Card</span><span class="pn">${c.n}<small>${c.kit}</small></span><span class="fig">${effort ? '' : usd(c.usd)}</span></div>`).join('')}
+      ${r.j.office && !effort ? `<div class="mline ${viewer === r.j.office.n ? 'you' : ''}"><span class="role">Office</span><span class="pn">${r.j.office.n}<small>${r.j.office.words}</small></span></div>` : ''}
+    </div>` : ''
+    return `<div class="jcard ${open ? 'open' : ''}"><div class="t"><span class="no">${r.j.no}</span><span class="nm">${r.j.name}</span><span class="st">${open ? '▾' : '▸'}</span></div><div class="st" style="font-size:11px;color:var(--text-muted)">${r.j.state}${flagsOf(r.j, r.m)}</div>${threeBlock}${nine}${members}</div>`
+  }).join('')
+  return `<div class="pbanner">
+    <div class="flag"><div class="house">⌂</div><div><b>Harlow Ranch</b><span class="sub">Ridgeway Builders · ${JOBS.length + EMPTY.length} jobs</span></div></div>
+    <p class="headline"><span class="lbl">Right now</span>${headline()}</p>
+    <div class="three ${effort ? 'effort' : ''}">${tot}</div>
+    ${effort ? '' : '<a class="pmore">All nine ›</a>'}
+  </div>
+  <div class="pchips"><span class="chip on">Scoreboard</span><span class="chip">Where the money is</span><span class="chip">Timeline</span></div>
+  ${cards}
+  <div class="pfold">Nothing on them yet · ${EMPTY.length} jobs · <a>Show them</a></div>`
+}
+document.getElementById('phone-dev').innerHTML = phoneBoard(COLS, 'Dana', 'JP612')
+document.getElementById('phone-lead').innerHTML = phoneBoard(COLS.filter((c) => LEAD_COLS.includes(c.k)), 'Luis', 'JP612')
+</script>
+</body>
+</html>
