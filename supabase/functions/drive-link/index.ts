@@ -12,6 +12,7 @@ import { fileTextWithin } from '../_shared/fileText.ts'
 import { folderHomes, folderMetaReader } from '../_shared/fileHomes.ts'
 import { filesUnder as indexFilesUnder, heldRowsFor, indexContext, indexFiles, fileMeta } from '../_shared/fileIndex.ts'
 import { EXCERPT_READ_MS, INDEX_JOB_MAX_FILES, walkUp, type DriveFileMeta, type FileHome } from '../_shared/fileIndexKernel.ts'
+import { indexCheck } from '../_shared/fileIndexCheck.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import {
@@ -69,6 +70,10 @@ import {
  *                                                        call → { indexed, held, remaining, total }; the Documents tab's Index
  *                                                        this job's files presses it until remaining is 0; `retry` takes the
  *                                                        held rows again
+ *   POST { action: 'index_check', max? }             → every file in the Shared Drive against every file_index row (v2.6364):
+ *                                                        counts of files with no row, files changed since their row, rows for a
+ *                                                        file gone, rows with and without text by reason, and the first files with
+ *                                                        no row → IndexCheck; a read a training account may run
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -288,7 +293,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
-  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'list_company') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'list_company' && ask.action !== 'index_check') return json({ error: 'A training account cannot change Drive.' }, 403)
   if (ask.action === 'put_company' && !COMPANY_PUT_ROLES.includes(String(who.role))) return json({ error: 'The office puts papers in the company folder.' }, 403)
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
@@ -349,6 +354,14 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
 
   // The index (punch list #240, PR 1): one file by its id, or a job's folder tree, into file_index through the one
   // pass every indexer runs (`_shared/fileIndex.ts`). Writes our table, never Drive; a training account was refused above.
+  // The index check (punch list #240, v2.6364): every file in the Shared Drive against every row, counts and the first
+  // files with no row; a read of Drive and of our table, so a training account may run it.
+  if (ask.action === 'index_check') {
+    const ctx = await indexContext(admin, google)
+    if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
+    return json(await indexCheck(ctx, ask.max ?? undefined))
+  }
+
   if (ask.action === 'index') {
     const ctx = await indexContext(admin, google)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
