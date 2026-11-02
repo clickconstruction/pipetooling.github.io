@@ -21,6 +21,7 @@
     "check:timezone": "node scripts/check-app-calendar-tz.mjs",
     "check:css-tokens": "node scripts/check-css-tokens.mjs",
     "check:edge-drift": "node scripts/check-edge-function-drift.mjs",
+    "check:edge-bundles": "node scripts/check-edge-bundles.mjs",
     "check:workflow-parity": "node scripts/check-workflow-parity.mjs",
     "check:migration-drift": "node scripts/check-migration-drift.mjs",
     "check:calls-ahead": "vite-node scripts/check-calls-ahead.ts",

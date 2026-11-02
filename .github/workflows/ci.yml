@@ -68,6 +68,13 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      # The typecheck reads the app alone. Deno refuses a missing named export when a module loads, so a function
+      # importing a name its `_shared` module does not export passed every check here and then answered 503
+      # BOOT_ERROR from its first request after the deploy (v2.6294, 2026-11-01: job-drive-folders and photo-save).
+      # This bundles every function with esbuild, remote imports external, in about half a second.
+      - name: Every edge function links (a missing export fails here, not at boot)
+        run: npm run check:edge-bundles
+
       - name: Theme token check
         run: node scripts/theme-tokenize.mjs --check src
 

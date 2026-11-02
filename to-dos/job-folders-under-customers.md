@@ -82,7 +82,7 @@ PipeTooling Jobs, in clickplumbing.com's Workspace since v2.6293, holds *Bid pla
 ## Gotchas met along the way
 
 - The generated database types do not know the two new columns until the types chore, so #6720's first CI run failed its typecheck; its jobs reads now cast through `unknown`.
-- The Mac it was built on has no Deno, so the function files were checked for syntax with esbuild and by eye; their types are checked at deploy. That is how a missing export between two `_shared` modules reached prod (v2.6294).
+- The Mac it was built on has no Deno, so the function files were checked for syntax with esbuild and by eye; their types are checked at deploy. That is how a missing export between two `_shared` modules reached prod (v2.6294); since v2.6315 CI links every function (`npm run check:edge-bundles`), so the next one fails the PR.
 - A customer changed by typing on an existing job's form (the identity autosave) is left to the sweep, which places it within a week or on the Tidy press; the form's two link buttons place it at once.
 
 ## Sources
