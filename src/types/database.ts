@@ -27810,6 +27810,9 @@ export type Database = {
           marks_up_set_id: string | null
           memo: string
           name: string
+          owed: boolean
+          ask_lane: string | null
+          ask_request_id: string | null
           part_id: string
           replaces_set_id: string | null
           source: string
@@ -27832,6 +27835,9 @@ export type Database = {
           marks_up_set_id?: string | null
           memo?: string
           name: string
+          owed?: boolean
+          ask_lane?: string | null
+          ask_request_id?: string | null
           part_id: string
           replaces_set_id?: string | null
           source?: string
@@ -27854,6 +27860,9 @@ export type Database = {
           marks_up_set_id?: string | null
           memo?: string
           name?: string
+          owed?: boolean
+          ask_lane?: string | null
+          ask_request_id?: string | null
           part_id?: string
           replaces_set_id?: string | null
           source?: string
