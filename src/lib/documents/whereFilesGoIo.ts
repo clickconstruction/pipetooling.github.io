@@ -45,6 +45,8 @@ export async function checkDriveFolder(folder: string): Promise<FolderCheck> {
 
 export interface WhereFilesGoSet {
   root?: string
+  /** The company papers folder's link or id (the Documents spike of 2026-11-01); refused as `company_unwritable`. */
+  company?: string
   job_pattern?: readonly JobFolderPiece[]
   bid_pattern?: readonly BidFolderPiece[]
   folders_made?: FoldersMade
@@ -74,8 +76,7 @@ export async function loadWhereFilesGoJobs(): Promise<WhereFilesGoJob[]> {
     () => supabase.from('jobs_ledger').select(JOB_COLUMNS).or('status.is.null,status.neq.paid').order('hcp_number', { ascending: false }).limit(1000),
     'loadWhereFilesGoJobs',
   )
-  // Through unknown until the types chore after migration 20261101163412 regenerates database.ts with the two stamps.
-  return (data ?? []) as unknown as WhereFilesGoJob[]
+  return data ?? []
 }
 
 /**
@@ -95,8 +96,7 @@ export async function findWhereFilesGoJobs(typed: string): Promise<WhereFilesGoJ
         .limit(8),
     'findWhereFilesGoJobs',
   )
-  // Through unknown until the types chore after migration 20261101163412 regenerates database.ts with the two stamps.
-  return (data ?? []) as unknown as WhereFilesGoJob[]
+  return data ?? []
 }
 
 type BidRow = { id: string; project_name: string | null; bid_number: string | null; address: string | null; created_at: string | null; customers: { name: string | null } | { name: string | null }[] | null }

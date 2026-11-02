@@ -11,7 +11,13 @@ Every job's files live in one Drive folder under its customer's folder, under th
 
 Open **Documents** and press **Where files go**. The tab is for the office. An estimator does not see it.
 
-Three cards sit left to right. The first is the jobs root. The second is how a job's folder is named. The third is what is inside. On a phone the cards stack.
+Four cards sit left to right. The first is the jobs root. The second is the company folder. The third is how a job's folder is named. The fourth is what is inside. On a phone the cards stack.
+
+## Set the company folder
+
+The second card names the folder that holds the company's papers, the W-9, the insurance and the licenses. **Documents → Company** lists that folder and its Upload a file press fills it.
+
+Paste a Drive folder link into the card's field and press {{button:outline|Check}}. The app answers in the same words as the root card. If the app can write there, press {{button:blue|Use this folder for company papers}} and then {{button:blue|Use this folder}}. The files that exist stay where they are. Until a folder is set, the card says *No company folder yet*.
 
 ## Move the jobs root
 

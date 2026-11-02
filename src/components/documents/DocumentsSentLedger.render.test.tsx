@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
- * Documents → Sent (v2.4573): everything sent, newest first, with a kind to pick and a box to
- * type in; a line opens its copy; the list says so when nothing matches.
+ * Documents → Sent copies (v2.4573): everything sent, newest first under a heading per day, with a kind to pick and a
+ * box to type in; a line opens its copy; the list says so when nothing matches; a read that fails says so with Retry
+ * (the Documents spike of 2026-11-01).
  */
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
@@ -9,14 +10,24 @@ import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { SentCopy } from '../../lib/sent/sentCopies'
 import { DocumentsSentLedger } from './DocumentsSentLedger'
 
-const io = vi.hoisted(() => ({ rows: [] as unknown[], asks: [] as Array<{ group: string; typed: string; limit: number }>, opened: [] as string[] }))
+const io = vi.hoisted(() => ({ rows: [] as unknown[], asks: [] as Array<{ group: string; typed: string; limit: number }>, opened: [] as string[], fail: null as null | Error }))
+// The retry panel reads the signed-in role for its error door; the tab itself asks nothing of auth.
+vi.mock('../../hooks/useAuth', () => {
+  const auth = () => ({ role: 'assistant', user: { id: 'u1' } })
+  return { useAuth: auth, useOptionalAuth: auth }
+})
 vi.mock('../../lib/sent/sentCopiesIo', () => ({
-  loadSentCopies: async (opts: { group: string; typed: string; limit: number }) => {
+  readSentCopies: async (opts: { group: string; typed: string; limit: number }) => {
     io.asks.push(opts)
+    if (io.fail) throw io.fail
     return io.rows
   },
   openSentCopy: async (row: { id: string }) => (io.opened.push(row.id), true),
   openSentFile: async () => true,
+  loadSentCopyAbout: async () => ({
+    jobs: new Map([['11111111-2222-4333-8444-555555555555', { id: '11111111-2222-4333-8444-555555555555', hcp_number: '1076', click_number: null, job_name: 'Sneegas Post Test' }]]),
+    bids: new Map(),
+  }),
 }))
 
 const lastAsk = () => io.asks[io.asks.length - 1]
@@ -26,6 +37,7 @@ beforeEach(() => {
   io.rows = []
   io.asks = []
   io.opened = []
+  io.fail = null
 })
 afterEach(() => {
   cleanup()
@@ -34,10 +46,19 @@ afterEach(() => {
 
 describe('DocumentsSentLedger', () => {
   it('lists what was sent, newest first, and a line opens its copy', async () => {
-    io.rows = [row({}), row({ id: 's2', kind: 'rfq', title: 'Price request · Ferguson', recipientName: 'Ferguson', sentAt: '2026-10-06T15:00:00Z', copyHash: 'h2', copyPath: 's2/copy.html' })]
+    io.rows = [row({ jobIds: ['11111111-2222-4333-8444-555555555555'], subject: 'Statement for RMC through October' }), row({ id: 's2', kind: 'rfq', title: 'Price request · Ferguson', subject: '', recipientName: 'Ferguson', sentAt: '2026-10-06T15:00:00Z', copyHash: 'h2', copyPath: 's2/copy.html' })]
     renderWithProviders(<DocumentsSentLedger />)
     const rows = await screen.findAllByTestId('documents-sent-row')
-    expect(rows.map((r) => r.textContent?.slice(0, 24))).toEqual(['Price request · Ferguson', 'Statement for RMCEmailed'])
+    expect(rows.map((r) => r.querySelector('button')?.textContent)).toEqual(['Price request · Ferguson', 'Statement for RMC'])
+    // One heading per day, the day alone when it is not today or yesterday; the row's grey words carry the time alone.
+    expect(screen.getAllByTestId('documents-sent-day').map((h) => h.textContent)).toEqual(['Tue, Oct 61 copy', 'Mon, Oct 51 copy'])
+    expect(rows[1]?.textContent).toMatch(/Emailed \d{1,2}:\d\d [AP]M · to RMC- Dudley Mason · by Dana/)
+    expect(rows[1]?.textContent).not.toContain('2026')
+    // The kind of paper before the title, the job it is for as a link, and the subject when it says more than the title.
+    expect(rows[1]?.textContent?.startsWith('GC statementStatement for RMC')).toBe(true)
+    await waitFor(() => expect(screen.getByRole('link', { name: 'J1076 · Sneegas Post Test' }).getAttribute('href')).toBe('/jobs?edit=11111111-2222-4333-8444-555555555555'))
+    expect(rows[1]?.textContent).toContain('“Statement for RMC through October”')
+    expect(rows[0]?.querySelector('[data-testid="documents-sent-row-about"]')).toBeNull()
     expect(io.asks[0]).toEqual({ group: 'all', typed: '', limit: 100 })
     fireEvent.click(screen.getByRole('button', { name: 'Statement for RMC' }))
     await waitFor(() => expect(io.opened).toEqual(['s1']))
@@ -62,7 +83,21 @@ describe('DocumentsSentLedger', () => {
     })
     vi.useRealTimers()
     await waitFor(() => expect(lastAsk()).toEqual({ group: 'bills', typed: 'Lenox', limit: 100 }))
-    expect((await screen.findByTestId('documents-sent-empty')).textContent).toBe('No copy matches. Try another kind or fewer words.')
+    expect((await screen.findByTestId('documents-sent-empty')).textContent).toBe('No copies match ‘Lenox’. Clear the search')
+    fireEvent.click(screen.getByRole('button', { name: 'Clear the search' }))
+    await waitFor(() => expect(lastAsk()).toEqual({ group: 'all', typed: '', limit: 100 }))
+  })
+
+  it('says the read failed with its reason and reads again on Retry, never as an empty ledger', async () => {
+    io.fail = new TypeError('Failed to fetch')
+    renderWithProviders(<DocumentsSentLedger />)
+    // A lost signal draws the retry panel (role alert, with Retry), never the empty ledger's words.
+    await screen.findByRole('alert')
+    expect(screen.queryByTestId('documents-sent-empty')).toBeNull()
+    io.fail = null
+    io.rows = [row({})]
+    fireEvent.click(screen.getByRole('button', { name: /retry/i }))
+    await screen.findAllByTestId('documents-sent-row')
   })
 
   it('says a copy is kept on every send when nothing is on file, and offers more when a step is full', async () => {
