@@ -14,7 +14,6 @@ import type { JobPlansIo } from '../../lib/plans/planSetsIo'
 import { todayYmd, type PlanSetRow } from '../../lib/plans/planSets'
 
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
-const line: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-700)', margin: 0 }
 const linkBtn: CSSProperties = { background: 'none', border: 'none', padding: 0, cursor: 'pointer', font: 'inherit', fontSize: '0.8125rem', color: 'var(--text-link)', fontWeight: 600 }
 const quiet: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
 const blue: CSSProperties = { ...quiet, background: '#2563eb', borderColor: '#2563eb', color: 'white' }
