@@ -293,7 +293,7 @@ Function-returning-JSX style throughout (blocks `memo`); no hooks, no Supabase â
 | Lien desk `legalSignoff.ask` 4546 | `legalRpc('legal_add_entry')` | write |
 | `confirmCollectionsMove` 2844 | RPC `set_job_collections_flag` via `lib/setJobCollectionsFlag` | write |
 | `confirmSendBackJob` 2904 | edge functions via `prepareBilledInvoicesBeforeJobRevertToReadyToBill` | Stripe void prep |
-| search effects 1793 / 1836 | schedule / clock tables via `lib/jobsStagesScheduleSessionSearch`; lean search + detail fetch | SELECT |
+| search effects 1793 / 1836 | schedule / clock tables via `lib/jobsStagesScheduleSessionSearch`; lean search (`lib/jobs/leanJobSearch.ts`: the five flat `jobs_ledger` columns and, since v2.6354, the developments whose name matches, as `development_id.in.(â€¦)` on the same `or`, so a development's Paid in Full jobs come up too) + detail fetch | SELECT |
 
 ---
 
