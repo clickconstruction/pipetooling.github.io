@@ -7,3 +7,5 @@ The courtesy notice's line in the job's trail (punch list #231, PR 3). A press o
 - Both revoked from `public`, `anon` and `authenticated`; a backfill at the end writes the lines for presses already made.
 
 No table or column changes; idempotent (`CREATE OR REPLACE`, `DROP TRIGGER IF EXISTS`). Apply order: with v2.6269's merge, `supabase db push`. The client calls nothing new, so nothing waits on the push; until it lands a press keeps its record on the notice and the History shows no line.
+
+**Applied** by 2026-11-01 (`npm run check:migration-drift` then: 1058 local files, 1058 remote versions, fully applied); the types and the dev-mcp catalog regenerated in #6732; `customer-portal`, `legal-portal` and `messages-notify` deployed (`npm run check:edge-drift` does not name them).
