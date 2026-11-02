@@ -1,7 +1,8 @@
 // @vitest-environment jsdom
 /**
  * The Development page's Plans look by part (punch list #239, PR 3): each part with what it builds from, the
- * older sets folded, the as-builts, the jobs on no part and the parts with no set as chips, + Part and + New
+ * older sets folded, the as-builts, the jobs that follow no plans yet and the parts with no set as chips (a
+ * billing holder left out of the count and named with its reason), + Part and + New
  * set through the writes, Build from this set, and the bids' pinned sets. Made-up names only.
  */
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -49,6 +50,7 @@ const sets = [
 const jobs = [
   { id: 'j1', label: 'JP991', plan_part_id: 'p2' },
   { id: 'j2', label: 'JP957', plan_part_id: null, name: 'Mobilizations Feb-Mar 2026' },
+  { id: 'j3', label: 'JP543', plan_part_id: null, billing_only: true },
 ]
 const bids = [{ id: 'b1', label: 'BP340', plans_link: 'https://drive.google.com/robot' }]
 const view = buildSitePlansView({ parts, sets, jobs, bids })
@@ -78,8 +80,11 @@ describe('DevelopmentPartsCard', () => {
     fireEvent.click(screen.getByTestId('site-chip-no-set'))
     expect(screen.getByTestId('site-list-no-set').textContent).toContain('ATV building')
     fireEvent.click(screen.getByTestId('site-chip-no-part'))
+    expect(screen.getByTestId('site-chip-no-part').textContent).toContain('1 job follows no plans yet')
     fireEvent.click(screen.getByText('JP957'))
     expect(open).toHaveBeenCalledWith({ kind: 'job', id: 'j2', label: 'JP957', name: 'Mobilizations Feb-Mar 2026' })
+    expect(screen.queryByText('JP543')).toBeNull()
+    expect(screen.getByTestId('site-left-out').textContent).toBe('1 job needs no plans: 1 bills only')
     fireEvent.click(screen.getByRole('button', { name: 'Ask the estimators about the 2' }))
     expect(ask).toHaveBeenCalledWith(2)
   })
@@ -154,7 +159,7 @@ describe('DevelopmentPartsCard', () => {
 
   it('a writer ticks the jobs on no part, names the part, and one press puts them on it', async () => {
     const w = writes()
-    const many = buildSitePlansView({ parts, sets, jobs: [...jobs, { id: 'j3', label: 'JP960', plan_part_id: null, name: 'ATV building fans' }], bids })
+    const many = buildSitePlansView({ parts, sets, jobs: [...jobs, { id: 'j4', label: 'JP960', plan_part_id: null, name: 'ATV building fans' }], bids })
     renderWithProviders(<DevelopmentPartsCard view={many} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
     fireEvent.click(screen.getByTestId('site-chip-no-part'))
     // Each row carries the job's name, by name: the ATV building job before the mobilizations.
@@ -166,7 +171,7 @@ describe('DevelopmentPartsCard', () => {
     const press = screen.getByText('Put 2 jobs on Lodge').closest('button')!
     expect(press.hasAttribute('disabled')).toBe(false)
     fireEvent.click(press)
-    await waitFor(() => expect(w.putJobsOnPart).toHaveBeenCalledWith('p1', ['j2', 'j3']))
+    await waitFor(() => expect(w.putJobsOnPart).toHaveBeenCalledWith('p1', ['j2', 'j4']))
   })
 
   it('a reader sees the jobs on no part as doors and no press', () => {

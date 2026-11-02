@@ -8,6 +8,7 @@ import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } fr
 import { HISTORY_SOURCE } from '../../lib/developments/history'
 import { EmptyState } from '../EmptyState'
 import { ageWords, LinkButton, shortDay, timeOfDay } from './developmentPageBits'
+import { JobChip } from './JobChip'
 
 function badge(line: ChangeLine): { glyph: string; bg: string; fg: string } {
   // A history entry wears its source's glyph: amber for what happened, the note's grey for what a person wrote.
@@ -134,7 +135,11 @@ export function DevelopmentFeed({
             <Lit text={line.verb} words={words} />
           </strong>
           {' · '}
-          {line.about.id && line.about.kind !== 'customer' ? (
+          {line.about.id && line.about.kind === 'job' ? (
+            <JobChip jobId={line.about.id} onOpen={() => openAbout(line.about)}>
+              <Lit text={line.about.label} words={words} />
+            </JobChip>
+          ) : line.about.id && line.about.kind !== 'customer' ? (
             <LinkButton onClick={() => openAbout(line.about)}>
               <Lit text={line.about.label} words={words} />
             </LinkButton>
