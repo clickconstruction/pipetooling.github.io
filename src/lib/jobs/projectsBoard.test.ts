@@ -4,6 +4,7 @@ import { canSeeProjectsBoard, canSetExpectedHours, checklistCountOf, isWorkingPr
 import { DEFAULT_LINE_BUDGET_SETTINGS } from './lineBudgets'
 import { JOB_BURN_DEFAULT_TARGET_MARGIN_PCT } from './jobBurn'
 import type { JobChargeEvent } from '../jobChargesTimeline'
+import type { SuperintendentLine } from './superintendentLine'
 
 const fixture = (p: Partial<ProjectFixture> & { id: string }): ProjectFixture => ({ name: p.id, stage_kind: 'any', line_kind: 'fixture', line_unit_price: 1000, count: 1, progress_pct: null, sequence_order: 0, ...p })
 const row = (p: Partial<ProjectRow> & { id: string }): ProjectRow => ({ hcp_number: '1044', click_number: null, job_name: 'The Lodge', job_address: '1 Hill Rd', status: 'working', pct_complete: null, revenue: null, fixtures: [], ...p })
@@ -105,7 +106,7 @@ describe('projectPace', () => {
 })
 
 describe('worst first', () => {
-  const mk = (tone: 'ahead' | 'behind' | 'even' | 'early', days: number, leads = false) => ({ line: { tone, days, money: leads ? { leads: true } : null } as never })
+  const mk = (tone: 'ahead' | 'behind' | 'even' | 'early', days: number, leads = false) => ({ line: { tone, days, money: leads ? { leads: true } : null } as unknown as SuperintendentLine })
   it('ranks money leading, then behind by days, then even, ahead, and no reading last', () => {
     expect(paceRank(mk('behind', -2, true).line)).toBe(0)
     expect(paceRank(mk('behind', -2).line)).toBe(1)
