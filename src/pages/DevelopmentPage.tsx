@@ -1314,7 +1314,7 @@ export default function DevelopmentPage() {
             }
           >
             {moneyView === 'scoreboard' ? (
-              <DevelopmentScoreboard model={scoreboard} columns={scoreboardColumnsFor(canSeeSiteCosts(role))} phone={phone} onSort={(k) => setScoreSort((s) => nextScoreboardSort(s, k))} openJob={openJob} head={scoreboardHead}
+              <DevelopmentScoreboard model={scoreboard} columns={scoreboardColumnsFor(canSeeSiteCosts(role), laborRead?.state !== 'read' || laborRead.labor.daysKnown)} phone={phone} onSort={(k) => setScoreSort((s) => nextScoreboardSort(s, k))} openJob={openJob} head={scoreboardHead}
                 membersOf={(r) =>
                   scoreboardMembers({
                     jobId: r.jobId,

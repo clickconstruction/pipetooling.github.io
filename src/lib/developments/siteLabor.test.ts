@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { allocateSiteLabor, crewDayHours, type SiteCrewRow } from './siteLabor'
+import { allocateSiteLabor, crewDayHours, siteLaborFromManHours, type SiteCrewRow } from './siteLabor'
 
 const config = {
   Luis: { hourly_wage: 35, is_salary: false },
@@ -68,5 +68,28 @@ describe('the login of each person (v2.6457)', () => {
     const people = out.byJobId.get('j1')!.people
     expect(people.find((p) => p.personName === 'Luis')!.userId).toBe('u-luis')
     expect(people.find((p) => p.personName === 'Mateo')!.userId).toBeNull()
+  })
+})
+
+describe('the hours alone, for a reader the clock is closed to (v2.6457)', () => {
+  it('each person’s hours on each site job, no wage, no days, and the site says its days are not known', () => {
+    const out = siteLaborFromManHours(['j1', 'j2'], [
+      { job_id: 'j1', person_name: 'Luis', man_hours: '612.5' },
+      { job_id: 'j1', person_name: 'Mateo', man_hours: 540 },
+      { job_id: 'j2', person_name: 'Luis', man_hours: 0 },
+      { job_id: 'elsewhere', person_name: 'Tom', man_hours: 99 },
+    ])
+    expect(out.daysKnown).toBe(false)
+    expect(out.people).toBe(2)
+    expect(out.byJobId.get('j1')).toMatchObject({ hours: 1152.5, costUsd: 0, days: 0 })
+    expect(out.byJobId.get('j1')!.people.map((p) => [p.personName, p.hours, p.costUsd, p.days, p.userId])).toEqual([
+      ['Luis', 612.5, 0, 0, null],
+      ['Mateo', 540, 0, 0, null],
+    ])
+    expect(out.byJobId.has('j2')).toBe(false)
+    expect(out.byJobId.has('elsewhere')).toBe(false)
+  })
+  it('the clock’s own read knows its days', () => {
+    expect(allocateSiteLabor({ jobIds: ['j1'], crewRows: crew, hoursRows: hours, config }).daysKnown).toBe(true)
   })
 })

@@ -7,6 +7,7 @@ import {
   nextScoreboardSort,
   scoreboardCellStands,
   scoreboardCellWords,
+  scoreboardCompactWords,
   scoreboardColumnsFor,
   scoreboardFoldWords,
   scoreboardFoldedKeys,
@@ -46,7 +47,7 @@ const labor: SiteLaborRead = {
       ['j1091', { jobId: 'j1091', hours: 99, costUsd: 2594, days: 7, people: [] }],
     ]),
     siteDays: 125,
-    people: 5,
+    people: 5, daysKnown: true,
   },
 }
 const costRow = (jobId: string, subs: number, supply: number, card: number) => ({ jobId, subLabor: subs, parts: { supplyInvoices: supply, cardCharges: card, tallyParts: 0, otherCharges: 0 }, total: subs + supply + card, breakdown: { subs: [], suppliers: [], cardLines: [], tallyLines: 0, otherLines: 0 } })
@@ -161,7 +162,7 @@ describe('the rows under an open job (v2.6457)', () => {
         ['j1', { jobId: 'j1', hours: 0, costUsd: 0, days: 0, people: [person({}), person({ personName: 'Luis', personId: 'p-luis', userId: 'u-luis', hours: 80, costUsd: 2800, days: 10, leadDays: 6 }), person({ personName: 'Tom', personId: null, hours: 120, costUsd: 3240, days: 14 })] }],
       ]),
       siteDays: 20,
-      people: 3,
+      people: 3, daysKnown: true,
     },
   }
   const costsRead: SiteCostsRead = {
@@ -293,5 +294,37 @@ describe('the rows under an open job (v2.6457)', () => {
     expect(scoreboardPendingWords(null)).toBeNull()
     expect(scoreboardNoMembersWords(true)).toBe('Nothing is on this job yet.')
     expect(scoreboardNoMembersWords(false)).toBe('No hours are on this job yet.')
+  })
+})
+
+describe('scoreboardCompactWords (v2.6457)', () => {
+  it('money reads short as the phone strip reads it; hours and days stay whole; a loss keeps its sign', () => {
+    expect(scoreboardCompactWords('earned', 2_099_313)).toBe('$2.1M')
+    expect(scoreboardCompactWords('earned', 2_000_000)).toBe('$2M')
+    expect(scoreboardCompactWords('earned', 12_400_000)).toBe('$12M')
+    expect(scoreboardCompactWords('parts', 684_445)).toBe('$684k')
+    expect(scoreboardCompactWords('overhead', 13_395)).toBe('$13k')
+    expect(scoreboardCompactWords('labor', 9_446)).toBe('$9,446')
+    expect(scoreboardCompactWords('profit', -27_160)).toBe('−$27k')
+    expect(scoreboardCompactWords('profit', -186)).toBe('−$186')
+    expect(scoreboardCompactWords('hours', 12_345)).toBe('12,345 h')
+    expect(scoreboardCompactWords('days', 57)).toBe('57 d')
+  })
+})
+
+describe('a reader with the hours but not the days (v2.6457)', () => {
+  it('the lead’s board drops Days; the full board keeps its money three folded', () => {
+    expect(scoreboardColumnsFor(false, false).map((c) => c.key)).toEqual(['hours', 'earned'])
+    expect([...scoreboardFoldedKeys(scoreboardColumnsFor(false, false))]).toEqual(['hours', 'earned'])
+    expect([...scoreboardFoldedKeys(scoreboardColumnsFor(true, false))]).toEqual(['earned', 'cost', 'profit'])
+    expect(scoreboardColumnsFor(true, false).some((c) => c.key === 'days')).toBe(false)
+  })
+  it('a person’s row carries hours alone, and nobody reads as a Lead without the days', () => {
+    const labor: SiteLaborRead = {
+      state: 'read',
+      labor: { byJobId: new Map([['j1', { jobId: 'j1', hours: 50, costUsd: 0, days: 0, people: [{ personName: 'Luis', personId: null, userId: null, hours: 50, costUsd: 0, days: 0, leadDays: 3 }] }]]), siteDays: 0, people: 1, daysKnown: false },
+    }
+    const { members } = scoreboardMembers({ jobId: 'j1', jobCost: 0, seesCosts: false, labor, invoices: [], payments: [], names: new Map(), viewer: { userId: null, name: 'Luis' } })
+    expect(members).toEqual([{ key: 'person:Luis', kind: 'crew', name: 'Luis', kit: null, m: { hours: 50 }, cost: null, share: null, words: null, you: true }])
   })
 })

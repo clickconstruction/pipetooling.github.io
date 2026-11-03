@@ -42,13 +42,15 @@ export const SCOREBOARD_FOLDED: ReadonlyArray<ScoreboardColumnKey> = ['earned', 
 /** The office without the finance seats reads effort and value, no wage and no cost (the owner's call 2). */
 export const SCOREBOARD_LEAD_COLUMNS: ReadonlyArray<ScoreboardColumnKey> = ['hours', 'days', 'earned']
 
-export function scoreboardColumnsFor(seesCosts: boolean): ReadonlyArray<ScoreboardColumn> {
-  return seesCosts ? SCOREBOARD_COLUMNS : SCOREBOARD_COLUMNS.filter((c) => SCOREBOARD_LEAD_COLUMNS.includes(c.key))
+export function scoreboardColumnsFor(seesCosts: boolean, daysKnown = true): ReadonlyArray<ScoreboardColumn> {
+  const cols = seesCosts ? SCOREBOARD_COLUMNS : SCOREBOARD_COLUMNS.filter((c) => SCOREBOARD_LEAD_COLUMNS.includes(c.key))
+  // A reader who gets the hours without the clock's days sees no Days column, never a false zero (v2.6457).
+  return daysKnown ? cols : cols.filter((c) => c.key !== 'days')
 }
 
 /** What a folded row shows for a set of columns: the money three on the full board, every column on the lead's. */
 export function scoreboardFoldedKeys(columns: ReadonlyArray<ScoreboardColumn>): ReadonlySet<ScoreboardColumnKey> {
-  return new Set(columns.length === SCOREBOARD_COLUMNS.length ? SCOREBOARD_FOLDED : columns.map((c) => c.key))
+  return new Set(columns.some((c) => c.key === 'cost') ? SCOREBOARD_FOLDED : columns.map((c) => c.key))
 }
 
 export type ScoreboardSort = { key: ScoreboardColumnKey; desc: boolean }
@@ -255,6 +257,23 @@ export function scoreboardCellWords(key: ScoreboardColumnKey, value: number): st
   return scoreboardUsd(value)
 }
 
+/**
+ * A dollar figure short enough for a narrow column (v2.6457, the walk at tablet widths): the Gun Dog phone
+ * strip's rule (`lookFigure.ts`), from a million *$2.1M*, from ten thousand *$684k*, below that the whole
+ * dollars, a minus sign before a loss. Hours and days stay whole. The exact figure rides the cell's title.
+ */
+export function scoreboardCompactWords(key: ScoreboardColumnKey, value: number): string {
+  if (key === 'hours' || key === 'days') return scoreboardCellWords(key, value)
+  const n = Math.abs(value)
+  const sign = value < 0 ? '−' : ''
+  if (n >= 1_000_000) return `${sign}$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1).replace(/\.0$/, '')}M`
+  if (n >= 10_000) return `${sign}$${Math.round(n / 1000)}k`
+  return scoreboardUsd(value)
+}
+
+/** Below this width the board's columns are too narrow for whole dollars: the cells and tiles read short. */
+export const SCOREBOARD_COMPACT_QUERY = '(max-width: 1180px)'
+
 /** The line a flag shows beside a job, and what it means on hover. */
 export const SCOREBOARD_FLAG_WORDS: Record<ScoreboardFlag, { label: string; title: string }> = {
   'no-price': { label: 'no price', title: 'A job with no price: it costs and earns nothing until one is set' },
@@ -368,12 +387,14 @@ export function scoreboardMembers(i: ScoreboardMembersInput): ScoreboardMembers 
   // The people, from the clock: leads first, then the crew, each by hours.
   note(readStateOf(i.labor))
   const lj = i.labor?.state === 'read' ? i.labor.labor.byJobId.get(i.jobId) : undefined
+  const daysKnown = i.labor?.state === 'read' ? i.labor.labor.daysKnown : true
   const people: ScoreboardMember[] = (lj?.people ?? []).map((p): ScoreboardMember => {
-    const lead = p.leadDays > 0
+    const lead = daysKnown && p.leadDays > 0
     const you = (i.viewer.userId != null && p.userId === i.viewer.userId) || (p.userId == null && sameName(p.personName, i.viewer.name))
     const kit = lead ? `led ${p.leadDays} of ${plural(p.days, 'day', 'days')}` : null
-    if (!i.seesCosts) return { key: `person:${p.personId ?? p.personName}`, kind: lead ? 'lead' : 'crew', name: p.personName, kit, m: { hours: p.hours, days: p.days }, cost: null, share: null, words: null, you }
-    return { ...money(lead ? 'lead' : 'crew', p.personId ?? p.personName, p.personName, kit, { hours: p.hours, days: p.days, labor: round2(p.costUsd) }, p.costUsd, you), key: `person:${p.personId ?? p.personName}` }
+    const effort = daysKnown ? { hours: p.hours, days: p.days } : { hours: p.hours }
+    if (!i.seesCosts) return { key: `person:${p.personId ?? p.personName}`, kind: lead ? 'lead' : 'crew', name: p.personName, kit, m: effort, cost: null, share: null, words: null, you }
+    return { ...money(lead ? 'lead' : 'crew', p.personId ?? p.personName, p.personName, kit, { ...effort, labor: round2(p.costUsd) }, p.costUsd, you), key: `person:${p.personId ?? p.personName}` }
   })
   people.sort((a, b) => Number(b.kind === 'lead') - Number(a.kind === 'lead') || (b.m.hours ?? 0) - (a.m.hours ?? 0) || a.name.localeCompare(b.name))
   if (!i.seesCosts) return { members: people, pending }

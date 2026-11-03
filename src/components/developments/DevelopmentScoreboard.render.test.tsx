@@ -19,8 +19,15 @@ vi.mock('../../lib/supabase', async () => {
   return { supabase: makeSupabaseStub() }
 })
 
+// The middle widths (v2.6457): the board's own narrow query, off unless a test turns it on.
+const narrowState = vi.hoisted(() => ({ on: false }))
+vi.mock('../../hooks/useMatchMedia', () => ({ useMatchMedia: () => narrowState.on }))
+
 beforeAll(installDomShims)
-afterEach(cleanup)
+afterEach(() => {
+  cleanup()
+  narrowState.on = false
+})
 
 function job(over: Partial<MemberJob> & { id: string; click_number: string }): MemberJob {
   return {
@@ -33,7 +40,7 @@ const jobs = [
   job({ id: 'j2', click_number: '583', job_name: 'Gas line trenching', status: 'working', revenue: 16000, pct_complete: 20 }),
   job({ id: 'j3', click_number: '953', job_name: 'Fire sprinkler risers', status: 'waiting', revenue: 0 }),
 ]
-const labor: SiteLaborRead = { state: 'read', labor: { byJobId: new Map([['j1', { jobId: 'j1', hours: 1842, costUsd: 55410, days: 118, people: [] }], ['j2', { jobId: 'j2', hours: 54, costUsd: 1296, days: 5, people: [] }]]), siteDays: 120, people: 4 } }
+const labor: SiteLaborRead = { state: 'read', labor: { byJobId: new Map([['j1', { jobId: 'j1', hours: 1842, costUsd: 55410, days: 118, people: [] }], ['j2', { jobId: 'j2', hours: 54, costUsd: 1296, days: 5, people: [] }]]), siteDays: 120, people: 4, daysKnown: true } }
 const costs: SiteCostsRead = {
   state: 'read',
   byJobId: new Map([
@@ -143,7 +150,7 @@ describe('DevelopmentScoreboard · the rows under an open job (v2.6457)', () => 
         ['j2', { jobId: 'j2', hours: 54, costUsd: 1296, days: 5, people: [{ personName: 'Sam', personId: 'p4', userId: null, hours: 54, costUsd: 1296, days: 5, leadDays: 5 }] }],
       ]),
       siteDays: 120,
-      people: 4,
+      people: 4, daysKnown: true,
     },
   }
   const holders = { state: 'read' as const, byTxId: new Map([['tx1', { cardId: 'c1', name: 'Luis', userId: 'u-luis' }]]) }
@@ -220,5 +227,25 @@ describe('DevelopmentScoreboard · the rows under an open job (v2.6457)', () => 
     const lines = screen.getByTestId('scoreboard-member-lines')
     expect(within(lines).getByTestId('scoreboard-member-person:p4').textContent).toContain('$1,296 · 54 h · 5 d')
     expect(within(lines).getByTestId('scoreboard-member-supplier:Ferguson').textContent).toContain('$1,480')
+  })
+})
+
+describe('DevelopmentScoreboard · the middle widths (v2.6457)', () => {
+  it('between the phone and 1180 px the money reads short, the whole figure on the title', () => {
+    narrowState.on = true
+    mount()
+    const tile = screen.getByTestId('scoreboard-tile-earned')
+    expect(tile.textContent).toContain('$245k')
+    const row = screen.getByTestId('scoreboard-row-j1')
+    const cost = [...row.querySelectorAll('td')].find((td) => td.textContent?.startsWith('$152k'))
+    expect(cost).toBeTruthy()
+    expect(cost!.getAttribute('title')).toBe('$151,600')
+  })
+  it('at full width the figures are whole and carry no title', () => {
+    mount()
+    expect(screen.getByTestId('scoreboard-tile-earned').textContent).toContain('$244,631')
+    const row = screen.getByTestId('scoreboard-row-j1')
+    const cost = [...row.querySelectorAll('td')].find((td) => td.textContent?.startsWith('$151,600'))
+    expect(cost!.getAttribute('title')).toBeNull()
   })
 })

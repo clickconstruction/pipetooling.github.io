@@ -8,6 +8,7 @@
  * `lib/developments/scoreboard.ts` built; reads nothing.
  */
 import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
+import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { EmptyState } from '../EmptyState'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
 import {
@@ -17,6 +18,8 @@ import {
   scoreboardPendingWords,
   scoreboardCellStands,
   scoreboardCellWords,
+  scoreboardCompactWords,
+  SCOREBOARD_COMPACT_QUERY,
   scoreboardFoldWords,
   scoreboardFoldedKeys,
   scoreboardPctOf,
@@ -47,6 +50,9 @@ export type DevelopmentScoreboardProps = {
 /** The three groups' solid tiles: saturated colours stay literal, white glyphs on them (the mock-up's pick). */
 const TILE_FILL: Record<ScoreboardColumn['group'], string> = { effort: '#15803d', cost: '#b91c1c', money: '#b45309' }
 
+/** How a cell writes a figure: whole dollars, or the short words when the columns are narrow. */
+type Fmt = (key: ScoreboardColumnKey, value: number) => string
+
 const num: CSSProperties = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }
 const cellPad: CSSProperties = { padding: '0 6px', height: 30, borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }
 
@@ -74,7 +80,7 @@ function Tile({ col, value, small, sorted, desc, onSort }: { col: ScoreboardColu
 }
 
 /** A figure for a cell, or what stands in for it while its read is out: … reading, *not read* failed, nothing when the role does not read it. */
-function Cell({ col, row, reads, open }: { col: ScoreboardColumn; row: ScoreboardJob; reads: ScoreboardReads; open: boolean }) {
+function Cell({ col, row, reads, open, fmt }: { col: ScoreboardColumn; row: ScoreboardJob; reads: ScoreboardReads; open: boolean; fmt: Fmt }) {
   const stands = scoreboardCellStands(col.key, reads)
   const firstMoney = col.key === 'earned' ? { borderLeft: '1px solid var(--border)' } : undefined
   const style: CSSProperties = { ...cellPad, ...num, ...firstMoney }
@@ -87,7 +93,9 @@ function Cell({ col, row, reads, open }: { col: ScoreboardColumn; row: Scoreboar
       </td>
     )
   const v = row.m[col.key]
-  const words = scoreboardCellWords(col.key, v)
+  const words = fmt(col.key, v)
+  const exact = scoreboardCellWords(col.key, v)
+  const whole = words !== exact ? exact : undefined
   const pc: CSSProperties = { fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 500, marginLeft: 4 }
   if (col.key === 'profit') {
     if (row.flags.includes('assumed-50'))
@@ -99,7 +107,7 @@ function Cell({ col, row, reads, open }: { col: ScoreboardColumn; row: Scoreboar
       )
     const tone = v < 0 ? 'var(--text-red-700)' : v > 0 ? 'var(--text-green-700)' : undefined
     return (
-      <td style={{ ...style, color: tone, fontWeight: tone ? 700 : undefined }}>
+      <td style={{ ...style, color: tone, fontWeight: tone ? 700 : undefined }} title={whole}>
         {words}
         <span style={pc}>{scoreboardPctOf(v, row.m.earned)}</span>
       </td>
@@ -108,14 +116,14 @@ function Cell({ col, row, reads, open }: { col: ScoreboardColumn; row: Scoreboar
   if (col.key === 'earned') {
     const note = row.flags.includes('assumed-50') ? '≈ 50%' : row.pct != null && !row.finished ? `${row.pct}%` : null
     return (
-      <td style={style} title={row.flags.includes('assumed-50') ? SCOREBOARD_FLAG_WORDS['assumed-50'].title : undefined}>
+      <td style={style} title={row.flags.includes('assumed-50') ? SCOREBOARD_FLAG_WORDS['assumed-50'].title : whole}>
         {words}
         {note ? <span style={pc}>{note}</span> : null}
       </td>
     )
   }
   return (
-    <td style={{ ...style, fontWeight: open ? 700 : undefined }}>
+    <td style={{ ...style, fontWeight: open ? 700 : undefined }} title={whole}>
       {words}
     </td>
   )
@@ -196,26 +204,26 @@ function ShareBar({ share, style }: { share: number | null; style?: CSSPropertie
 
 const youRow = (you: boolean): CSSProperties => (you ? { background: 'var(--bg-amber-tint)' } : { background: 'var(--surface)' })
 
-function MemberName({ member }: { member: ScoreboardMember }) {
+function MemberName({ member, narrow }: { member: ScoreboardMember; narrow: boolean }) {
   const quiet = member.kind === 'overhead'
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, maxWidth: '100%', minWidth: 0 }}>
-      <RoleTag kind={member.kind} />
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, maxWidth: '100%', minWidth: 0 }} title={narrow && member.kit ? `${member.name} · ${member.kit}` : undefined}>
+      <RoleTag kind={member.kind} width={narrow ? 50 : 64} />
       <span style={{ fontWeight: 600, fontStyle: quiet ? 'italic' : undefined, color: member.you ? 'var(--text-amber-900)' : quiet ? 'var(--text-muted)' : 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }} title={member.name}>
         {member.name}
       </span>
       {member.you ? <YouChip /> : null}
-      {member.kit ? <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>{member.kit}</span> : null}
+      {member.kit && !narrow ? <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>{member.kit}</span> : null}
     </span>
   )
 }
 
 /** One row under an open job on the desk: its own cells, and Cost with its share of the job. */
-function MemberRow({ member, columns }: { member: ScoreboardMember; columns: ReadonlyArray<ScoreboardColumn> }) {
+function MemberRow({ member, columns, fmt, narrow }: { member: ScoreboardMember; columns: ReadonlyArray<ScoreboardColumn>; fmt: Fmt; narrow: boolean }) {
   const bg = youRow(member.you)
   const nameCell = (
-    <td style={{ ...cellPad, ...bg, height: 28, textAlign: 'left', paddingLeft: 28, overflow: 'hidden', boxShadow: member.you ? 'inset 3px 0 0 var(--bg-amber-200)' : undefined }}>
-      <MemberName member={member} />
+    <td style={{ ...cellPad, ...bg, height: 28, textAlign: 'left', paddingLeft: narrow ? 14 : 28, overflow: 'hidden', boxShadow: member.you ? 'inset 3px 0 0 var(--bg-amber-200)' : undefined }}>
+      <MemberName member={member} narrow={narrow} />
     </td>
   )
   if (member.words != null) {
@@ -236,7 +244,7 @@ function MemberRow({ member, columns }: { member: ScoreboardMember; columns: Rea
         if (c.key === 'cost' && member.cost != null) {
           return (
             <td key={c.key} style={{ ...base, position: 'relative' }} title={member.share != null ? `${Math.round(member.share * 100)}% of the job’s cost` : undefined}>
-              {scoreboardCellWords('cost', member.cost)}
+              {fmt('cost', member.cost)}
               <ShareBar share={member.share} style={{ position: 'absolute', left: 6, right: 6, bottom: 3 }} />
             </td>
           )
@@ -244,7 +252,7 @@ function MemberRow({ member, columns }: { member: ScoreboardMember; columns: Rea
         const v = member.m[c.key as keyof ScoreboardMember['m']]
         return (
           <td key={c.key} style={base}>
-            {v == null ? '' : scoreboardCellWords(c.key, v)}
+            {v == null ? '' : fmt(c.key, v)}
           </td>
         )
       })}
@@ -301,6 +309,8 @@ function MemberLines({ list, seesCosts }: { list: ScoreboardMembers; seesCosts: 
 
 export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, head, membersOf }: DevelopmentScoreboardProps) {
   const seesCosts = columns.some((c) => c.key === 'cost')
+  const narrow = useMatchMedia(SCOREBOARD_COMPACT_QUERY) && !phone
+  const fmt: Fmt = narrow ? scoreboardCompactWords : scoreboardCellWords
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set())
   const [showEmpties, setShowEmpties] = useState(false)
   const toggle = (id: string) =>
@@ -338,7 +348,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
     const stands = scoreboardCellStands(col.key, model.reads)
     if (stands === 'reading') return '…'
     if (stands === 'failed') return 'not read'
-    return scoreboardCellWords(col.key, model.site[col.key])
+    return fmt(col.key, model.site[col.key])
   }
   const emptiesLine = (
     <span style={{ color: 'var(--text-muted)' }} data-testid="scoreboard-fold">
@@ -436,9 +446,9 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
           <td style={{ ...cellPad, textAlign: 'left', paddingLeft: 10, overflow: 'hidden', fontWeight: open ? 700 : undefined }}>
             <JobName row={r} open={open} onToggle={() => toggle(r.jobId)} openJob={() => openJob(r.jobId)} />
           </td>
-          {columns.map((c) => (open || folded.has(c.key) ? <Cell key={c.key} col={c} row={r} reads={model.reads} open={open} /> : <td key={c.key} style={{ ...cellPad, borderLeft: c.key === 'earned' ? '1px solid var(--border)' : undefined }} />))}
+          {columns.map((c) => (open || folded.has(c.key) ? <Cell key={c.key} col={c} row={r} reads={model.reads} open={open} fmt={fmt} /> : <td key={c.key} style={{ ...cellPad, borderLeft: c.key === 'earned' ? '1px solid var(--border)' : undefined }} />))}
         </tr>
-        {list ? list.members.map((m) => <MemberRow key={m.key} member={m} columns={columns} />) : null}
+        {list ? list.members.map((m) => <MemberRow key={m.key} member={m} columns={columns} fmt={fmt} narrow={narrow} />) : null}
         {note ? (
           <tr data-testid={`scoreboard-members-note-${r.jobId}`}>
             <td colSpan={columns.length + 1} style={{ ...cellPad, height: 28, paddingLeft: 28, fontSize: '0.74rem', color: 'var(--text-muted)', background: 'var(--surface)' }}>
@@ -451,9 +461,10 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
   }
   return (
     <div>
+      <div style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', tableLayout: 'fixed' }} data-testid="scoreboard-table">
         <colgroup>
-          <col style={{ width: columns.length > 3 ? '31%' : '46%' }} />
+          <col style={{ width: columns.length > 3 ? (narrow ? '26%' : '31%') : '46%' }} />
           {columns.map((c) => (
             <col key={c.key} />
           ))}
@@ -498,6 +509,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
           </tr>
         </tfoot>
       </table>
+      </div>
       {legend}
     </div>
   )

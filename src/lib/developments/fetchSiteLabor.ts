@@ -8,7 +8,7 @@
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { fetchLaborPayConfigMap, hoursFrom, resolveRecordedHoursTable } from '../../utils/teamLabor'
 import { fetchAllRowsChunkedIn } from '../supabasePaging'
-import { allocateSiteLabor, type SiteCrewRow, type SiteHoursRow, type SiteLabor } from './siteLabor'
+import { allocateSiteLabor, siteLaborFromManHours, type SiteCrewRow, type SiteHoursRow, type SiteLabor } from './siteLabor'
 
 const CREW_READS_AT_ONCE = 6
 
@@ -31,7 +31,9 @@ export async function fetchSiteLabor(supabase: SupabaseClient, jobIds: ReadonlyA
       crewRows.push(...((r.data ?? []) as unknown as SiteCrewRow[]))
     }
   }
-  if (crewRows.length === 0) return { byJobId: new Map(), siteDays: 0, people: 0 }
+  // No crew row at all: either the site has no hours, or the clock's rows are closed to this reader (a master without
+  // payroll approval). The man-hours read the Pipeline uses is open to the office and allocates the same way; it has no days.
+  if (crewRows.length === 0) return (await readManHours(supabase, ids)) ?? { byJobId: new Map(), siteDays: 0, people: 0, daysKnown: true }
   const persons = [...new Set(crewRows.map((r) => r.person_name))]
   const dates = [...new Set(crewRows.map((r) => r.work_date))].sort()
   const table = await resolveRecordedHoursTable(supabase)
@@ -65,4 +67,15 @@ async function readUserIdsOfPeople(supabase: SupabaseClient, personIds: string[]
     /* the board stands without the gold row's ids; the name match still finds the viewer */
   }
   return out
+}
+
+/** The site's hours from `get_man_hours_by_job` (a definer read for dev, master, assistant and controller), filtered to the site on the server; null when it gives nothing. */
+async function readManHours(supabase: SupabaseClient, jobIds: string[]): Promise<SiteLabor | null> {
+  try {
+    const r = await supabase.rpc('get_man_hours_by_job').in('job_id', jobIds).limit(5000)
+    if (r.error || !r.data || (r.data as unknown[]).length === 0) return null
+    return siteLaborFromManHours(jobIds, r.data as Array<{ job_id: string; person_name: string; man_hours: number | string }>)
+  } catch {
+    return null
+  }
 }
