@@ -302,30 +302,32 @@ describe('a PDF inside its time budget (v2.6332)', () => {
 
   it('lets a pass start a file only when it fits: the first always, the rest by what they should cost and hold', () => {
     const pdf = (mb: number) => file({ size: String(mb * 1024 * 1024) })
-    // The first file of a request always starts, however large, so a call makes progress.
-    expect(passMayTake(pdf(50), newPassSpend())).toBe(true)
+    // The first file of a request always starts, so a call makes progress.
+    expect(passMayTake(pdf(12), newPassSpend())).toBe(true)
     // A PDF over the cap is held with no download, so it costs nothing and never stops a pass.
-    expect(passMayTake(pdf(51), { ms: 5000, bytes: 49 * 1024 * 1024 })).toBe(true)
+    expect(passMayTake(pdf(13), { ms: 5000, bytes: 15 * 1024 * 1024 })).toBe(true)
     // A small PDF fits where a dense one does not.
     expect(passMayTake(pdf(1), { ms: 1000, bytes: 1 })).toBe(true)
     expect(passMayTake(pdf(8), { ms: 1000, bytes: 1 })).toBe(false)
     expect(passMayTake(pdf(8), { ms: 400, bytes: 1 })).toBe(true)
     // The bytes one request holds: a second large set waits for the next request, whatever the clock says.
-    expect(passMayTake(pdf(30), { ms: 10, bytes: 31 * 1024 * 1024 })).toBe(false)
-    expect(passMayTake(pdf(29), { ms: 10, bytes: 31 * 1024 * 1024 })).toBe(true)
+    expect(passMayTake(pdf(10), { ms: 10, bytes: 7 * 1024 * 1024 })).toBe(false)
+    expect(passMayTake(pdf(9), { ms: 10, bytes: 7 * 1024 * 1024 })).toBe(true)
     // A file with no parse goes on until the budget is spent, and an unknown size reads as small.
     const doc1 = file({ name: 'Scope.gdoc', mimeType: 'application/vnd.google-apps.document', size: null })
     expect(passMayTake(doc1, { ms: PASS_READ_BUDGET_MS - 1, bytes: 0 })).toBe(true)
     expect(passMayTake(doc1, { ms: PASS_READ_BUDGET_MS, bytes: 0 })).toBe(false)
     expect(passMayTake(file({ size: null }), { ms: 1100, bytes: 0 })).toBe(true)
-    // The budgets fit under the platform's two seconds of CPU, however the worst file lands.
+    // The budgets fit under the platform's two seconds of CPU, and its 256 MB, however the worst file lands.
     expect(PASS_READ_BUDGET_MS - 150 + PDF_READ_BUDGET_MS).toBeLessThan(2000)
     expect(PASS_READ_MAX_BYTES).toBeGreaterThan(TEXT_PDF_MAX_BYTES)
+    expect(PASS_READ_MAX_BYTES).toBeLessThanOrEqual(16 * 1024 * 1024)
   })
 
   it('reads for the index and for a search’s ten excerpts by different limits', () => {
-    expect(INDEX_PDF_LIMITS.maxBytes).toBe(50 * 1024 * 1024)
-    expect(EXCERPT_PDF_LIMITS).toEqual({ maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000 })
+    // A 25 MB plan set alone ran a worker out of memory on prod, and an 11 MB one read through (v2.6408).
+    expect(INDEX_PDF_LIMITS).toMatchObject({ maxBytes: 12 * 1024 * 1024, passMaxBytes: 16 * 1024 * 1024 })
+    expect(EXCERPT_PDF_LIMITS).toEqual({ maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000, passMaxBytes: 24 * 1024 * 1024 })
   })
 
   it('a row keeps the pages and how many its read reached; a file read whole reads the same; a held file has neither', () => {
