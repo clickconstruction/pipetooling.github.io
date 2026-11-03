@@ -2,7 +2,7 @@
 name: "Plan sets by part: an updated set mid-project, and our own as-builts kept with the build"
 number: 239
 group: ready
-status: building 2026-11-01 · PR 1 the tables merged as v2.6297 (#6743), migration 20261101210000 pushed · PR 2 the Plans section in the job window's Documents tab merged as v2.6298 (#6744) · PR 3 the Development page's Plans look by part merged as v2.6302 (#6749) · the papers ground v2.6312 (#6760) and doors v2.6313 (#6762) merged, migration 20261102010000 pushed · PR 4 the bid's priced-on and the hand-off v2.6342 (#6789) and PR 6 the row and History v2.6344 (#6790) merged, both migrations pushed · PR 5 Drive and photos open as #6793 · the live walk of the papers doors passed on 2026-11-02
+status: building 2026-11-01 · PR 1 the tables merged as v2.6297 (#6743), migration 20261101210000 pushed · PR 2 the Plans section in the job window's Documents tab merged as v2.6298 (#6744) · PR 3 the Development page's Plans look by part merged as v2.6302 (#6749) · the papers ground v2.6312 (#6760) and doors v2.6313 (#6762) merged, migration 20261102010000 pushed · PR 4 the bid's priced-on and the hand-off v2.6342 (#6789) and PR 6 the row and History v2.6344 (#6790) merged, both migrations pushed · PR 5 Drive and photos merged as v2.6345 (#6793) and `plan-set-files` deployed; its live check on a ZZ Test job passed on 2026-11-03 (an as-built's photos land in its own folder under Plans, a later photo takes the next name, a set with no link gets its folder) · the live walk of the papers doors passed on 2026-11-02
 summary: >
   The owner, 2026-11-01, after a read-only assessment of a development's Plans look: on a project they
   often get an updated set of plans halfway through, or the crew makes its own as-builts and wants them
@@ -13,10 +13,10 @@ summary: >
   site (the Lodge, the Bunker, the whole site), each part has one set it builds from, a job names its
   part and follows it, a bid pins what it was priced on, and an as-built is ours, on the job, marking up
   the set it built from. A job outside any development owns its own part, so it gets the same thing.
-next: PR 5 (#6793) lands, then `plan-set-files` deploys and one live call on a ZZ Test job files an as-built's photo and a mail's file (How to verify). The real site's papers are kept through Keep a paper once the doors are live, and the walk's fixes open after the doors. An as-built's author can still move the row to another job at the row level (`plan_sets_update`), a card of its own.
+next: The real site's papers are kept through Keep a paper now that the doors are live, and the walk's fixes open. A mail's file following its paper is still to be seen live, since no ZZ Test mail with a file is tagged to a ZZ Test job. An as-built's author can still move the row to another job at the row level (`plan_sets_update`), a card of its own.
 size: S (PR 1 the tables) + M (PR 2 the job section) + M (PR 3 the site look) + S (PR 4 the bid) + M (PR 5 Drive and photos) + S (PR 6 the row and History)
 blocker: None in the code. Every migration of the train is pushed (check:migration-drift read fully applied on 2026-11-03); the types stay hand-carried until the next chore(types). The real site's papers wait on one call of the owner's, about which part a few of them go on.
-ver: v2.6297 · 6298 · 6302 · 6312 · 6313 · 6342 · 6344
+ver: v2.6297 · 6298 · 6302 · 6312 · 6313 · 6342 · 6344 · 6345
 opinion: build the train as ordered; the one judgement call left to the owner is PR 3's "join an existing part" when a lone job is put into a development
 ---
 
