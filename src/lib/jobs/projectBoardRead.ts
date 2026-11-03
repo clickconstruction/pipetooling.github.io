@@ -46,6 +46,12 @@ function parseJob(raw: unknown): ProjectBoardJob | null {
     status: str(j.status),
     pct_complete: num(j.pct_complete),
     revenue: num(j.revenue),
+    // What the job's kind reads. A function older than these answers no `kind` at all, so the gate knows they never came.
+    kind: j.kind === undefined ? undefined : str(j.kind),
+    bid_id: str(j.bid_id),
+    project_id: str(j.project_id),
+    first_work_date: str(j.first_work_date),
+    billing_only: j.billing_only === true,
     fixtures: arr(j.fixtures) as ProjectFixture[],
     budgetKind: str(j.budget_kind),
     budgetHours: num(j.budget_hours),

@@ -1,11 +1,15 @@
 /**
  * The one form a new set of plans is typed into (punch list #239): on a job's Documents tab (PR 2) and
  * on the Development page's Plans look (PR 3). Name · Kind · From · Dated · Memo · Link for a set; Name ·
- * Memo · Link for an as-built. The presses name what they do: *Add the set and build from it*, *Add it,
- * keep <set> current*, *Add the as-built*. Pure over its props; the caller writes.
+ * Memo · Link for an as-built, which also takes **Photos or a PDF** from the phone or this computer (punch list
+ * #239, PR 5): each pick adds to the list, a file over 10 MB or of another kind is held with its reason and the
+ * rest still go, and the press names its count. The presses name what they do: *Add the set and build from it*,
+ * *Add it, keep <set> current*, *Add the as-built with 3 files*. Pure over its props; the caller writes.
  */
-import type { CSSProperties } from 'react'
+import { useRef, type CSSProperties } from 'react'
 import { PLAN_SET_KINDS, PLAN_SET_SOURCES, addSetPressWords, defaultSetName, type NewSetDraft, type PlanSetKind, type PlanSetRow, type PlanSetSource } from '../../lib/plans/planSets'
+import { AS_BUILT_ACCEPT, PLAN_SET_FILES_WORDS, addPickedFiles, asBuiltPressWords, filingWords, pickedFilesWords, splitReadyFiles } from '../../lib/plans/planSetFiles'
+import { addFileSizeWords } from '../../lib/jobs/jobFolderAddFile'
 
 import { changesPlaceholder } from '../../lib/plans/planSets'
 
@@ -25,6 +29,9 @@ export function PlanSetForm({
   problem,
   onAdd,
   onCancel,
+  files,
+  onFiles,
+  filing,
 }: {
   mode: 'set' | 'as_built'
   draft: NewSetDraft
@@ -38,10 +45,19 @@ export function PlanSetForm({
   /** Add the set; `makeCurrent` is what the press pressed said. */
   onAdd: (makeCurrent: boolean) => void
   onCancel: () => void
+  /** The as-built's photos or PDF, picked on this device; the caller files them after the row saves. */
+  files?: ReadonlyArray<File>
+  onFiles?: (files: File[]) => void
+  /** While the caller files them: which one is going. */
+  filing?: { done: number; total: number } | null
 }) {
   const put = (patch: Partial<NewSetDraft>) => onChange({ ...draft, ...patch })
   const words = addSetPressWords(current)
   const asBuilt = mode === 'as_built'
+  const fileInput = useRef<HTMLInputElement>(null)
+  const picked = files ?? []
+  const split = splitReadyFiles(picked)
+  const asBuiltWords = asBuiltPressWords(split.ready.length, split.held.length)
   return (
     <div style={{ display: 'grid', gap: '0.4rem', padding: '0.6rem', border: '1px solid var(--border)', borderRadius: 6, background: 'var(--bg-muted)' }} data-testid={asBuilt ? 'job-plans-as-built-form' : 'job-plans-set-form'}>
       <label style={field}>
@@ -84,15 +100,58 @@ export function PlanSetForm({
         <span>Memo</span>
         <input style={input} value={draft.memo} placeholder={asBuilt ? 'What the crew changed, in a line' : 'Who sent it, when, and where the file is'} onChange={(e) => put({ memo: e.target.value })} />
       </label>
+      {asBuilt && onFiles ? (
+        <div style={field} data-testid="job-plans-as-built-files">
+          <span>Files</span>
+          <div style={{ display: 'grid', gap: '0.3rem' }}>
+            <input
+              ref={fileInput}
+              type="file"
+              accept={AS_BUILT_ACCEPT}
+              multiple
+              aria-label={PLAN_SET_FILES_WORDS.pick}
+              style={{ display: 'none' }}
+              onChange={(e) => {
+                onFiles(addPickedFiles(picked, Array.from(e.target.files ?? [])))
+                e.target.value = ''
+              }}
+            />
+            <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', alignItems: 'center' }}>
+              <button type="button" style={quiet} disabled={busy} title={PLAN_SET_FILES_WORDS.pickTitle} onClick={() => fileInput.current?.click()}>
+                {picked.length ? PLAN_SET_FILES_WORDS.change : PLAN_SET_FILES_WORDS.pick}
+              </button>
+              {picked.length ? (
+                <>
+                  <span style={muted}>{pickedFilesWords(picked)}</span>
+                  <button type="button" style={{ ...quiet, border: 'none', background: 'none', color: 'var(--text-link)', padding: 0 }} disabled={busy} onClick={() => onFiles([])}>
+                    {PLAN_SET_FILES_WORDS.clear}
+                  </button>
+                </>
+              ) : null}
+            </div>
+            {split.held.length ? (
+              <ul style={{ margin: 0, paddingLeft: '1rem', fontSize: '0.8125rem', color: 'var(--text-amber-800)' }} data-testid="job-plans-as-built-held">
+                {split.held.map((h, i) => (
+                  <li key={`${h.file.name}-${i}`}>
+                    {h.file.name} · {addFileSizeWords(h.file.size)} · {h.why}
+                  </li>
+                ))}
+              </ul>
+            ) : null}
+            {filing ? <p style={muted}>{filingWords(filing.done, filing.total)}</p> : null}
+          </div>
+        </div>
+      ) : null}
       <label style={field}>
         <span>Link</span>
-        <input style={input} value={draft.link} placeholder="A Drive folder or file link, or leave it empty for now" onChange={(e) => put({ link: e.target.value })} />
+        <input style={input} value={draft.link} placeholder={asBuilt && onFiles ? 'A Drive link instead of files, or leave it empty: the as-built gets its own folder' : 'A Drive folder or file link, or leave it empty for now'} onChange={(e) => put({ link: e.target.value })} />
       </label>
       {problem ? <p style={{ ...muted, color: 'var(--text-amber-800)' }}>{problem}</p> : null}
+      {asBuilt && asBuiltWords.foot ? <p style={{ ...muted, color: 'var(--text-amber-800)' }}>{asBuiltWords.foot}</p> : null}
       <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
         {asBuilt ? (
-          <button type="button" style={blue} disabled={busy} onClick={() => onAdd(false)}>
-            Add the as-built
+          <button type="button" style={blue} disabled={busy || asBuiltWords.dead} onClick={() => onAdd(false)}>
+            {onFiles ? asBuiltWords.button : 'Add the as-built'}
           </button>
         ) : (
           <>

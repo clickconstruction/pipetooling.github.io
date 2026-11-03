@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 
-import { canSeeProjectsBoard, canSetExpectedHours, checklistCountOf, isWorkingProject, paceCounts, paceRank, projectLabel, projectPace, sortByPace, worstWords, type ProjectFixture, type ProjectRow } from './projectsBoard'
+import { canSeeProjectsBoard, canSetExpectedHours, checklistCountOf, isWorkingProject, paceCounts, paceRank, PROJECT_GATE_WORDS, projectLabel, projectPace, sortByPace, worstWords, type ProjectFixture, type ProjectRow } from './projectsBoard'
+import { plainWordsFailures } from '../plainWords'
 import { DEFAULT_LINE_BUDGET_SETTINGS } from './lineBudgets'
 import type { SuperintendentLine } from './superintendentLine'
 import type { ProjectBoardJob } from './projectBoardRead'
@@ -16,16 +17,54 @@ const staged = [
 ]
 
 describe('the gate', () => {
-  it('takes a working job with a stage In order, marked or recognized from its names', () => {
-    expect(isWorkingProject(row({ id: 'a', fixtures: [fixture({ id: 'x', name: 'Whole house', stage_kind: 'order' })] }))).toBe(true)
-    expect(isWorkingProject(row({ id: 'b', fixtures: staged }))).toBe(true)
+  // A job the read says everything about: already worked, nothing behind it, no press yet.
+  const known = (p: Partial<ProjectRow> & { id: string }) => row({ kind: null, bid_id: null, project_id: null, first_work_date: '2026-10-01', billing_only: false, ...p })
+  const repipe = [fixture({ id: 'x', name: 'Repipe' })]
+
+  it('takes a job reading Project, at any price', () => {
+    expect(isWorkingProject(known({ id: 'pressed', kind: 'project', revenue: 900, fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'before', first_work_date: null, revenue: 900, fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'bid', bid_id: 'b1', fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'gc', project_id: 'p1', fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'marked', fixtures: [fixture({ id: 'x', name: 'Whole house', stage_kind: 'order' })] }))).toBe(true)
+    expect(isWorkingProject(known({ id: 'named', fixtures: staged }))).toBe(true)
   })
 
-  it('takes a working job priced at $25,000 and up with no stage, and nothing else', () => {
-    expect(isWorkingProject(row({ id: 'c', revenue: 25000, fixtures: [fixture({ id: 'x', name: 'Repipe' })] }))).toBe(true)
-    expect(isWorkingProject(row({ id: 'd', revenue: '24999', fixtures: [fixture({ id: 'x', name: 'Repipe' })] }))).toBe(false)
+  it('leaves off a job reading Service call, even priced over the gate', () => {
+    // An HCP number with nothing before it reads Service call by the kernel's order, whatever the price.
+    expect(isWorkingProject(known({ id: 'hcp', revenue: 90000, fixtures: repipe }))).toBe(false)
+    // The office's press wins over a stage and a price alike.
+    expect(isWorkingProject(known({ id: 'pressed', kind: 'service', revenue: 90000, fixtures: staged }))).toBe(false)
+  })
+
+  it('keeps the guess for a job reading Kind not set: $25,000 and up is on, under it is off', () => {
+    const unset = (p: Partial<ProjectRow> & { id: string }) => known({ hcp_number: '', click_number: 'C77', fixtures: repipe, ...p })
+    expect(isWorkingProject(unset({ id: 'at', revenue: 25000 }))).toBe(true)
+    expect(isWorkingProject(unset({ id: 'over', revenue: '90000' }))).toBe(true)
+    expect(isWorkingProject(unset({ id: 'under', revenue: '24999' }))).toBe(false)
+    expect(isWorkingProject(unset({ id: 'none', revenue: null }))).toBe(false)
+  })
+
+  it('leaves off a billing-only job, which nobody clocks on, though it reads Project', () => {
+    expect(isWorkingProject(known({ id: 'bills', billing_only: true, revenue: 90000, fixtures: staged }))).toBe(false)
+  })
+
+  it('leaves off a job that is not Working, whatever it reads', () => {
+    expect(isWorkingProject(known({ id: 'billed', status: 'billed', kind: 'project', revenue: 90000, fixtures: staged }))).toBe(false)
+  })
+
+  it('keeps the whole guess on a read older than the facts, so no job drops off before the function is pushed', () => {
+    expect(isWorkingProject(row({ id: 'a', fixtures: [fixture({ id: 'x', name: 'Whole house', stage_kind: 'order' })] }))).toBe(true)
+    expect(isWorkingProject(row({ id: 'b', fixtures: staged }))).toBe(true)
+    expect(isWorkingProject(row({ id: 'c', revenue: 25000, fixtures: repipe }))).toBe(true)
+    expect(isWorkingProject(row({ id: 'd', revenue: '24999', fixtures: repipe }))).toBe(false)
     expect(isWorkingProject(row({ id: 'e', status: 'billed', revenue: 90000, fixtures: staged }))).toBe(false)
     expect(isWorkingProject(row({ id: 'f', fixtures: [fixture({ id: 'x', name: 'Diagnostic' }), fixture({ id: 'y', name: 'Parts' })] }))).toBe(false)
+  })
+
+  it('says the rule in plain words, with the price from the one constant', () => {
+    expect(PROJECT_GATE_WORDS).toContain('$25,000')
+    expect(plainWordsFailures(PROJECT_GATE_WORDS)).toEqual([])
   })
 })
 
