@@ -59,7 +59,7 @@ Open a job you worked on. Press {{button:outline|Hours statement…}}, pick your
 
 ## Printing one again
 
-Each row under **Hours statements** has {{button:outline|Print}} and {{button:outline|Open}}. Print prints the paper as it was saved, with its record number. Open brings the statement back into the window with its who and span. Save there keeps the same record number.
+Each card under **Hours statements** has {{button:outline|Print}} and {{button:outline|Open}}. Print prints the paper as it was saved, with its record number. Open brings the statement back into the window with its who and span. Save there keeps the same record number.
 
 ## Sending it for a signature
 

@@ -1,15 +1,18 @@
 /**
  * Hours statements (punch list #212, PR 2, v2.6097): the section on the job window's Documents tab and under the
- * person's desk Hours. Every statement on the job (or for the person) with its record id, its period, its kind, where
- * it stands and who saved it, each with **Print** (the paper again from its snapshot, with its record id) and **Open**
- * (the window on it), and on a signed one **Open the signed PDF** (PR 3, v2.6411: the flattened Contract Form through
- * `open-contract-form-pdf`'s gate, the open logged); and the press **Hours statement…** with its count — the people who
- * clocked on the job, or the jobs the person clocked on — dead when there is no one to make a statement for. An empty
- * section names the press. Shown to a dev and the controller alone (`canMakeHoursStatement`: the paper is payroll data,
- * Diane's call of 2026-11-02) and to no one else — nothing, not a dead section — with the desk's lock tag beside the
- * heading, *Controllers and devs only*, so an office reader knows why a colleague cannot see it.
+ * person's desk Hours. Every statement on the job (or for the person) as one card (v2.6428; a four-column table until
+ * then, cut off in the 600px desk pane and the job window at every width): the job, or the worker on the job's own
+ * window, as the title, then its record id and where it stands, its period and kind, and who saved it, each with
+ * **Print** (the paper again from its snapshot, with its record id) and **Open** (the window on it), and on a signed one
+ * **Open the signed PDF** (PR 3, v2.6411: the flattened Contract Form through `open-contract-form-pdf`'s gate, the open
+ * logged), at the right of the title or across the card's foot on a phone (`.hsCard` in `index.css`); and the press
+ * **Hours statement…** with its count — the people who clocked on the job, or the jobs the person clocked on — dead
+ * when there is no one to make a statement for. An empty section names the press. Shown to a dev and the controller
+ * alone (`canMakeHoursStatement`: the paper is payroll data, Diane's call of 2026-11-02) and to no one else — nothing,
+ * not a dead section — with the desk's lock tag beside the heading, *Controllers and devs only*, so an office reader
+ * knows why a colleague cannot see it.
  */
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -24,8 +27,13 @@ import { hoursStatementEmptyWords, hoursStatementPressWords, hoursStatementRowWo
 import { supabaseHoursStatementSigningIo, type HoursStatementSigningIo } from '../../lib/people/hoursStatementSigningIo'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { EmptyState } from '../EmptyState'
-import { documentsChip, documentsHeading, documentsQuietButton, documentsTd, documentsTh } from './jobDocumentsStyles'
-import { HoursStatementModal, type HoursStatementScope } from './HoursStatementModal'
+import { documentsChip, documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
+import type { HoursStatementScope } from './HoursStatementModal'
+
+// The window, its sheets and the paper's kernels load only when a statement is opened or started: statically imported
+// they sat in the main chunk, which crossed the service worker's 7 MiB precache cap with PR 3 (v2.6411) and failed
+// the deploy build (vite.config.ts → injectManifest.maximumFileSizeToCacheInBytes).
+const HoursStatementModal = lazy(() => import('./HoursStatementModal').then((m) => ({ default: m.HoursStatementModal })))
 
 export type HoursStatementsSectionScope =
   | { kind: 'job'; job: { id: string; hcp_number: string | null; click_number: string | null; job_name: string; job_address: string; customer_name: string | null } }
@@ -162,64 +170,59 @@ export function HoursStatementsSection({
     ) : rows.length === 0 ? (
       <EmptyState compact main={empty.main} {...(empty.withPress ? { next: { label: press.label, onPress: () => openWindow(null) }, tail: empty.tail } : {})} />
     ) : (
-      <div style={{ overflowX: 'auto' }}>
-        <table style={{ borderCollapse: 'collapse', width: '100%' }}>
-          <thead>
-            <tr>
-              <th style={documentsTh}>Record</th>
-              <th style={documentsTh}>{scope.kind === 'job' ? 'Worker' : 'Job'}</th>
-              <th style={documentsTh}>Period</th>
-              <th style={documentsTh}>Saved</th>
-              <th style={documentsTh} />
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r) => {
-              const jobLabel = r.job ? `${(r.job.hcp_number ?? '').trim() || (r.job.click_number ?? '').trim() || r.job_ledger_id.slice(0, 8)} · ${r.job.job_name ?? ''}` : r.snapshot ? `${r.snapshot.job.number} · ${r.snapshot.job.name}` : r.job_ledger_id.slice(0, 8)
-              const words = hoursStatementRowWords({
-                recordId: r.record_id,
-                workerName: r.worker?.name ?? r.snapshot?.worker.name ?? 'Worker',
-                jobLabel,
-                periodStart: r.period_start,
-                periodEnd: r.period_end,
-                withPay: r.with_pay,
-                state: r.state,
-                preparedAtYmd: calendarYmdInAppTzFromIso(r.prepared_at),
-                preparedByName: r.prepared_by_user?.name ?? null,
-              })
-              return (
-                <tr key={r.id} data-testid="hours-statement-row">
-                  <td style={{ ...documentsTd, fontWeight: 700, whiteSpace: 'nowrap' }}>
-                    {words.record}
+      // One card a statement (v2.6428): the job (or, on the job's own window, the worker) as the title, whole at any
+      // width; Record · Period · Saved as label · value lines; the presses small at the right of the title while the
+      // card is 360px or wider, and a full-width foot row under that (a phone), set by the card's own width in CSS.
+      <ul className="hsCards" aria-label="Saved hours statements">
+        {rows.map((r) => {
+          const jobLabel = r.job ? `${(r.job.hcp_number ?? '').trim() || (r.job.click_number ?? '').trim() || r.job_ledger_id.slice(0, 8)} · ${r.job.job_name ?? ''}` : r.snapshot ? `${r.snapshot.job.number} · ${r.snapshot.job.name}` : r.job_ledger_id.slice(0, 8)
+          const workerName = r.worker?.name ?? r.snapshot?.worker.name ?? 'Worker'
+          const words = hoursStatementRowWords({
+            recordId: r.record_id,
+            workerName,
+            jobLabel,
+            periodStart: r.period_start,
+            periodEnd: r.period_end,
+            withPay: r.with_pay,
+            state: r.state,
+            preparedAtYmd: calendarYmdInAppTzFromIso(r.prepared_at),
+            preparedByName: r.prepared_by_user?.name ?? null,
+          })
+          return (
+            <li key={r.id} className="hsCard" data-testid="hours-statement-row">
+              <div className="hsCardIn">
+                <div className="hsCardTitle">{scope.kind === 'job' ? workerName : jobLabel}</div>
+                <dl className="hsCardKv">
+                  <dt>Record</dt>
+                  <dd>
+                    <span style={{ fontWeight: 700, color: 'var(--text-strong)' }}>{words.record}</span>
                     <span style={{ ...documentsChip, ...chipTone[words.state.tone] }}>{words.state.label}</span>
-                  </td>
-                  <td style={documentsTd}>{scope.kind === 'job' ? r.worker?.name ?? r.snapshot?.worker.name ?? 'Worker' : jobLabel}</td>
-                  <td style={{ ...documentsTd, whiteSpace: 'nowrap' }}>
-                    {words.period}
-                    <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{words.kind}</span>
-                  </td>
-                  <td style={{ ...documentsTd, fontSize: '0.8125rem', color: 'var(--text-600)' }}>{words.saved}</td>
-                  <td style={{ ...documentsTd, textAlign: 'right', whiteSpace: 'nowrap' }}>
-                    {r.state === 'signed' && r.contract_document_id ? (
-                      <>
-                        <button type="button" style={documentsQuietButton} disabled={pdfBusy === r.id} onClick={() => void openSignedPdf(r)} aria-label={`Open the signed PDF ${r.record_id}`}>
-                          {pdfBusy === r.id ? 'Opening…' : 'Open the signed PDF'}
-                        </button>{' '}
-                      </>
-                    ) : null}
-                    <button type="button" style={documentsQuietButton} onClick={() => printRow(r)} aria-label={`Print ${r.record_id}`}>
-                      Print
-                    </button>{' '}
-                    <button type="button" style={documentsQuietButton} onClick={() => openWindow(r)} aria-label={`Open ${r.record_id}`}>
-                      Open
+                  </dd>
+                  <dt>Period</dt>
+                  <dd>
+                    {words.period} · {words.kind}
+                  </dd>
+                  <dt>Saved</dt>
+                  <dd>{words.saved}</dd>
+                </dl>
+                <div className="hsCardPresses">
+                  {r.state === 'signed' && r.contract_document_id ? (
+                    <button type="button" style={documentsQuietButton} disabled={pdfBusy === r.id} onClick={() => void openSignedPdf(r)} aria-label={`Open the signed PDF ${r.record_id}`}>
+                      {pdfBusy === r.id ? 'Opening…' : 'Open the signed PDF'}
                     </button>
-                  </td>
-                </tr>
-              )
-            })}
-          </tbody>
-        </table>
-      </div>
+                  ) : null}
+                  <button type="button" style={documentsQuietButton} onClick={() => printRow(r)} aria-label={`Print ${r.record_id}`}>
+                    Print
+                  </button>
+                  <button type="button" style={documentsQuietButton} onClick={() => openWindow(r)} aria-label={`Open ${r.record_id}`}>
+                    Open
+                  </button>
+                </div>
+              </div>
+            </li>
+          )
+        })}
+      </ul>
     )
 
   return (
@@ -233,7 +236,11 @@ export function HoursStatementsSection({
       </div>
       {error ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p> : null}
       {list}
-      {open ? <HoursStatementModal open scope={modalScope} maker={maker} existing={opening} zIndex={zIndex} onClose={closeWindow} /> : null}
+      {open ? (
+        <Suspense fallback={null}>
+          <HoursStatementModal open scope={modalScope} maker={maker} existing={opening} zIndex={zIndex} onClose={closeWindow} />
+        </Suspense>
+      ) : null}
     </section>
   )
 }
