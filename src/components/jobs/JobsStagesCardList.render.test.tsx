@@ -47,6 +47,7 @@ describe('JobsStagesCardList more-actions sheet', () => {
     expect(screen.getByText('Activity and notes')).toBeTruthy()
     expect(screen.getByText('Test report')).toBeTruthy()
     expect(screen.getByText('Job folder')).toBeTruthy()
+    expect(screen.getByText('Photos')).toBeTruthy()
     expect(screen.queryByText('Hazmat fee')).toBeNull()
     expect(screen.queryByText('Send back')).toBeNull()
     fireEvent.click(screen.getByText('View job'))
