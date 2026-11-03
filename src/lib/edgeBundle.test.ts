@@ -11,7 +11,7 @@ import * as kernel from '../../scripts/lib/edgeBundle.mjs'
  * code: index.ts plus every file it imports at run time. These pin the import reading, the walk,
  * the git-log parsing and the deployed-vs-repo verdicts.
  */
-type Commit = { ms: number; hash: string; subject: string }
+type Commit = { ms: number; hash: string; subject: string; builtMs?: number }
 type Verdict = { state: string; changed: string[]; added: string[]; dropped: string[]; foreign: string[] }
 const k = kernel as {
   runtimeImportSpecifiers: (source: string) => string[]
@@ -22,6 +22,9 @@ const k = kernel as {
   ) => { files: string[]; unresolved: string[] }
   commitsByFile: (gitLog: string) => Map<string, Commit[]>
   commitsSince: (files: string[], byFile: Map<string, Commit[]>, sinceMs: number) => Commit[]
+  pullNumberOf: (subject: string) => number | null
+  commitsToLand: (byFile: Map<string, Commit[]>, deployedMs: number[], windowMs: number) => { hash: string; pull: number }[]
+  withLandingTimes: (byFile: Map<string, Commit[]>, landedMs: (c: Commit) => number | null) => Map<string, Commit[]>
   historyBlobIds: (gitRawLog: string) => Set<string>
   gitBlobId: (bytes: string | Uint8Array) => string
   compareBundles: (repo: Map<string, string>, deployed: Map<string, string>, historyBlobs: Set<string>) => Verdict
@@ -208,6 +211,96 @@ describe('commit history', () => {
   it('computes git’s own blob ids', () => {
     expect(k.gitBlobId('')).toBe('e69de29bb2d1d6434b8b29ae775ad8c2e48c5391')
     expect(k.gitBlobId('hello\n')).toBe('ce013625030ba8dba906f756967f9e9ca394464a')
+  })
+})
+
+/**
+ * A commit's time is when it landed on main. On 2026-11-03 #6899's squash was built by the merge queue at
+ * 10:07Z and landed at 10:35Z; drive-link was deployed at 10:18Z from a main without it, and git's times
+ * called it current while its deployed bundle lacked the PR (v2.6452).
+ */
+describe('landing times', () => {
+  const built = Date.UTC(2026, 10, 3, 10, 7, 32)
+  const deployed = Date.UTC(2026, 10, 3, 10, 18, 21)
+  const landed = Date.UTC(2026, 10, 3, 10, 35, 3)
+  const earlier = Date.UTC(2026, 10, 3, 7, 36, 44) // #6920's squash, landed 09:00Z
+  const earlierLanded = Date.UTC(2026, 10, 3, 9, 0, 59)
+  const newer = Date.UTC(2026, 10, 3, 11, 0, 0) // after the deploy: a suspect by git's time alone
+  const old = deployed - 30 * 3600 * 1000 // before the window
+  const window = 24 * 3600 * 1000
+  const sec = (ms: number) => Math.floor(ms / 1000)
+  const log = [
+    `@${sec(newer)}\tn1\tv2.6430 later work (#6944)`,
+    'supabase/functions/_shared/other.ts',
+    '',
+    `@${sec(built)}\ta1\tv2.6417 the reconcile step (#6899)`,
+    'supabase/functions/_shared/fileIndexCheckKernel.ts',
+    'supabase/functions/file-index-sweep/index.ts',
+    '',
+    `@${sec(earlier)}\tb1\tv2.6338 search by meaning (#6920)`,
+    'supabase/functions/file-index-sweep/index.ts',
+    '',
+    `@${sec(built - 60_000)}\tl1\tchore: a commit that names no pull`,
+    'supabase/functions/_shared/fileIndexCheckKernel.ts',
+    '',
+    `@${sec(old)}\to1\tv2.6300 long before (#6700)`,
+    'supabase/functions/_shared/fileIndexCheckKernel.ts',
+  ].join('\n')
+  const kernelFile = 'supabase/functions/_shared/fileIndexCheckKernel.ts'
+  const sweepFile = 'supabase/functions/file-index-sweep/index.ts'
+  const driveLink = ['supabase/functions/drive-link/index.ts', kernelFile]
+  const byPull = (times: Map<number, number>) => (c: Commit) => times.get(k.pullNumberOf(c.subject) ?? -1) ?? null
+
+  it('reads the pull a squash names at the end of its subject', () => {
+    expect(k.pullNumberOf('v2.6417 the reconcile step (#6899)')).toBe(6899)
+    expect(k.pullNumberOf('Revert "v2.1 x (#5)" (#7)')).toBe(7)
+    expect(k.pullNumberOf('chore: a commit that names no pull')).toBeNull()
+    expect(k.pullNumberOf('(#12) in front')).toBeNull()
+  })
+
+  it('asks only about the squashes built within the window before some deploy, each once, oldest pull first', () => {
+    const byFile = k.commitsByFile(log)
+    expect(k.commitsToLand(byFile, [deployed], window)).toEqual([
+      { hash: 'a1', pull: 6899 },
+      { hash: 'b1', pull: 6920 },
+    ])
+    // a deploy an hour after the old commit brings it in; one before it does not, since git's time already says newer
+    expect(k.commitsToLand(byFile, [deployed, old + 3600 * 1000], window).map((t) => t.hash)).toEqual(['o1', 'a1', 'b1'])
+    expect(k.commitsToLand(byFile, [deployed, old - 3600 * 1000], window).map((t) => t.hash)).toEqual(['a1', 'b1'])
+    expect(k.commitsToLand(byFile, [], window)).toEqual([])
+  })
+
+  it('moves a commit to when it landed, never backwards, once for every file it touches', () => {
+    const byFile = k.withLandingTimes(k.commitsByFile(log), byPull(new Map([[6899, landed], [6920, earlierLanded], [6944, newer - 1000]])))
+    const kernelCommits = byFile.get(kernelFile) ?? []
+    expect(kernelCommits.map((c) => c.hash)).toEqual(['a1', 'l1', 'o1'])
+    expect(kernelCommits[0]).toEqual({ ms: landed, builtMs: built, hash: 'a1', subject: 'v2.6417 the reconcile step (#6899)' })
+    expect(kernelCommits[1]?.builtMs).toBeUndefined()
+    expect(byFile.get(sweepFile)?.[0]).toBe(kernelCommits[0])
+    expect(byFile.get(sweepFile)?.map((c) => [c.hash, c.ms])).toEqual([
+      ['a1', landed],
+      ['b1', earlierLanded],
+    ])
+    const later = byFile.get('supabase/functions/_shared/other.ts')?.[0]
+    expect(later?.ms).toBe(newer)
+    expect(later?.builtMs).toBeUndefined()
+  })
+
+  it('the 2026-11-03 shape: built before the deploy and landed after it is a suspect; landed before it is not', () => {
+    const byFile = k.withLandingTimes(k.commitsByFile(log), byPull(new Map([[6899, landed], [6920, earlierLanded]])))
+    expect(k.commitsSince(driveLink, byFile, deployed).map((c) => c.hash)).toEqual(['a1'])
+    expect(k.commitsSince([sweepFile], byFile, deployed).map((c) => c.hash)).toEqual(['a1'])
+    expect(k.commitsSince(driveLink, k.commitsByFile(log), deployed)).toEqual([]) // git's times alone: the blind spot
+  })
+
+  it('a squash whose landing is not known is read as landed now, so the download decides', () => {
+    const built0 = k.commitsByFile(log)
+    const unlanded = new Set(k.commitsToLand(built0, [deployed], window).map((t) => t.hash))
+    const now = deployed + 3600 * 1000
+    const byFile = k.withLandingTimes(built0, (c) => (unlanded.has(c.hash) ? now : null))
+    expect(k.commitsSince(driveLink, byFile, deployed).map((c) => c.hash)).toEqual(['a1'])
+    expect(k.commitsSince([sweepFile], byFile, deployed).map((c) => c.hash).sort()).toEqual(['a1', 'b1'])
+    expect(byFile.get(kernelFile)?.[2]?.ms).toBe(old)
   })
 })
 

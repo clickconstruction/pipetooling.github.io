@@ -5,7 +5,7 @@ file: docs/MESSAGES_ARCHITECTURE.md
 type: Engineering / Architecture
 purpose: One page for a developer new to Messages — the contact spine, the thread and its slots, Follow up, the flows and the morning run, the channels (Quo texts, email in and out, the portals, push), who sees what, the switches and crons, how to test it live, how it deploys, and what is still open. Everything here is a pointer into code and the per-version record; nothing is repeated that a kernel's header or a fragment already says.
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-03
 ---
 
 ## What it is, in one paragraph
@@ -150,7 +150,10 @@ papers it turns on, and its nudge (after how many days, how, and whether the app
 `flows/state.ts` (`readFlow`) reads where a person stands from the stamps `flows/load.ts` and `residentialLoad.ts` (wired for the residential flow since v2.6232: `person.ts` picks `residentialStampsFor` when `FlowRows.residential` is there, the Pipeline rows read beside `flow_rows_for` — days and marks, never an amount — by the step card's `flowPersonIo.ts` and Follow up's `flowNudgesIo.ts` through `residentialRowsIo.ts`'s `readPipelineRows`, and by the run's `nudgeRunReads`, each cut to one person by `flows/residentialRows.ts`'s `residentialRowsOf`; without them the lanes read empty, as before). **Which flow a contact is on is told from two columns, never one** (v2.6394): `contacts.kind` is the contact's kind and has no `residential` value (`contact_find_or_make` writes `customer` for every customer's own contact), so `contactFlowKindOf(kind, customerType)` in `flows/facts.ts` puts a `customer` contact on the residential flow when `customers.customer_type` says `residential`, which `flow_rows_for` carries on the card (`20261102223000`), and on the GC customer flow otherwise; every reader applies it — the step card, Follow up's nudges, the boards (`readBoard`) and the morning run — and `flow_step_check` is its SQL twin (v2.6385)
 gather out of the rows main keeps (invites, portal opens, signed papers, quotes, draws, schedule blocks, clock sessions,
 reports). The facts a step may pick from are **one list in code**, `flows/facts.ts`; a fact that is not there cannot be
-picked, and the SQL (`flow_fact_ids`, `flow_facts_ok`) refuses one it does not know.
+picked, and the SQL (`flow_fact_ids`, `flow_facts_ok`) refuses one it does not know. Code on an older list reads on
+without a newer fact (v2.6459): a migration that adds one to a flow's rows lands before the bundle and the functions
+that know it, so `readFlow` leaves a fact it does not know out of the read, a step with none it knows reads *later* and
+holds nobody, and the morning run counts a person whose flow still does not read as unread and goes on with the rest.
 
 Around the read: `card.ts` (the step card in plain words), `nudges.ts` (the reminders due), `panel.ts` (the rail beside
 the thread and the panel it opens to), `now.ts` (where one person is, in a line, for the quick replies), `going.ts` and

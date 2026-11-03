@@ -5,7 +5,7 @@ file: EDGE_FUNCTIONS.md
 type: API Reference
 purpose: Complete API documentation for all 175 Supabase Edge Functions
 audience: Developers, DevOps, AI Agents
-last_updated: 2026-11-02
+last_updated: 2026-11-03
 estimated_read_time: 20-25 minutes
 difficulty: Intermediate
 
@@ -915,6 +915,8 @@ The frontend (`src/pages/DevLogin.tsx`, v2.1526) no longer follows the returned 
 ---
 
 ### dev-mcp
+
+> **v2.6430 (server 0.21.0, numbered behind v2.6367's 0.16.0, v2.6422's 0.17.0, v2.6426's 0.18.0, v2.6437's 0.19.0 and v2.6414's 0.20.0, which merged first) — a waiting field report filed or dismissed**: `plan_person_report(report)` / `apply_person_report(report, plan_hash)` drain the HR queue (`docs/HR_FILES.md` → Pending reports) through its own `file_person_report` / `dismiss_person_report` (migration `20260824170000`, `is_dev()` or `hr_agent`, idempotent): `report = { report_id, action: file | dismiss, content?, source?, reason }`. **No wrapper RPC** — `WRITE_VERBS` marks them `rpc: null` like the plan-part verbs: the dry run is the server's own read of `person_reports` by id as the dev (`PERSON_REPORT_SELECT`) and of the person's name, handed to `personReportDryRun` (`_shared/devMcpPersonReport.ts`, pure): the report as it stands (its day, the submitted day in the company's calendar through `calendarYmdInAppTzFromIso`, the author, the words, the person) and `after` — for a file the entry as the RPC composes it (`entry_date` the day it happened, `source` report unless passed, `content` the tightened words or the RPC's own preamble `personReportDefaultBody`, `author_label` *Field report — <author>*), for a dismissal the status and the reason — with `then`; a report no longer `pending` is refused in words with where it went (`filed on <day> as entry …`, `dismissed — <reason>`). The plan hash is over the ask and that reply, so a report filed, dismissed or edited since refuses the apply. Apply, after the hash and the one-apply rule, POSTs the RPC `personReportRpc` names with its arguments (`p_report_id`, `p_content?`, `p_source?` · `p_report_id`, `p_reason`) and answers the RPC's `{ already, status, entry_id }` with `personReportAppliedWords`. The case sits after the plan-part block; `restPost` is reached seven times. Refused through `view_as`. Tests: `devMcpPersonReport.test.ts` (the allowlist and the queue migration's gates, the shape and its refusals, the dry run against the RPC's own composition with the Chicago day, the refusals for a resolved report, the hash's stability and sensitivity, the RPC bodies, the words after, the server's tool list, case order, version and the README row); `devMcpWrites.test.ts`'s rpc-null list and restPost count move with it.
 
 > **v2.6414 (server 0.20.0, numbered behind v2.6422's 0.17.0, v2.6426's 0.18.0 and v2.6437's 0.19.0, which merged first) — the signed hours statement's three verbs** (punch list #212, PR 5): `get_hours_statement { job, person, from, to, with_pay?, add_stated_block? }` is a composite over the door as the reader — the Hours statement window's own reads (the sessions on the job in the span with their approver, the roster row, the office job's setting, the first clock day, the typed days, and for the pay the config, the pay reports touching the span with their days, deductions, lines and payments; every one catalog-checked) handed to the shared kernel `_shared/hoursStatement.ts`, answering the paper (`statement`), a `reading` line, the counts and `statements_made`; `plan_hours_statement` / `apply_hours_statement` POST `dev_hours_statement_write` (migration [`20261103003000`](./migrations/20261103003000_dev_hours_statement_write.md)) in the plan → apply grammar: the server shapes `statement` first (`_shared/devMcpHoursStatement.ts`, `prepareHoursStatementWrite`: `make` resolves the job and the worker and reads the clock into the snapshot, so the plan hash commits to the clock; `file_on_matter` reads the signed PDF through `open-contract-form-pdf` into the file facts the document wrapper checks), `writeRpcBody` checks that shape, and at apply the snapshot's as-of is stamped after the hash check, the file stored under the matter as the dev before the row (as a document is), and a `make` with `send` runs the window's two calls as the dev (`invokeAsDev`: `hours-statement-signing` prepare, `send-contract-for-signature` by email or `mode: 'link'`) then `mark_sent` through the wrapper — the link rides in the reply's `signing` and never in the call log. `view_as` refuses the writes as every write. The catalog lists `hours-statement-signing` for `check_edge_boot`. **Redeploy required** after the push.
 
@@ -6295,7 +6297,9 @@ supabase functions list
 supabase functions logs create-user
 
 # Every repo function deployed and running this checkout's code: index.ts and every file it
-# imports, _shared included (scripts/check-edge-function-drift.mjs)
+# imports, _shared included (scripts/check-edge-function-drift.mjs). A commit counts from when it
+# LANDED on main (its pull's mergedAt, asked of GitHub through gh), since a merge-queue squash
+# carries the time the queue built it and a deploy made in between read as current (v2.6452)
 npm run check:edge-drift             # reads the functions whose code changed since their deploy
 npm run check:edge-drift -- --full   # reads every deployed function (the daily CI run)
 

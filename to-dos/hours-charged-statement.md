@@ -2,7 +2,7 @@
 name: "Hours charged statement: a worker's hours on a job at the rate the customer is charged, for everyone"
 number: 251
 group: ready
-status: drawn 2026-11-02 from the owner's ask · PR 1 built 2026-11-03, v2.6431, the rate's two homes, the Settings card and the kernel's charged basis · PR 2, the window, the print's Charged band, the row's basis and the gate, waits for #212's print restyle (#6892) and its signing (#6893) to land
+status: drawn 2026-11-02 from the owner's ask · PR 1 built 2026-11-03, v2.6431, the rate's two homes, the Settings card and the kernel's charged basis · PR 2 built 2026-11-03, v2.6446, the window's charged switch, the paper's Charged band and crew-days on one person's paper (the rate decided by #254's rate card and the job's rule, so no rate field, presets or slider; the v2.6431 card folded into Rates charged by crew) · left: the owner's look
 mockup: not required — the paper is #212's print with Charged in place of Paid; the restyle's mock-up (to-dos/signed-hours-statement/mockup-print-v2.html once it lands) stands for it
 summary: >
   A second basis for the Signed hours statement (#212): the same paper, one worker's recorded hours on one job
@@ -11,10 +11,10 @@ summary: >
   to every office role, where the paid paper is for a dev and the controller alone; the customer's portal never
   shows it. The app holds no charge
   rate today, so the first PR adds one as a company setting with a per-job override.
-next: PR 2 — the row's `basis` and `charge_rate`, the gate by basis, the window's basis choice and rate control (field, presets, slider), Save and Print writing the rate onto the job, Edit Job's field, the print's title and Charged band on the restyled layout, the section's chip, the guide and the docs. Cut it after #6892 and #6893 merge.
+next: the owner's look at a charged paper on a real job; a per-development roll-up, if wanted, is #254's Job Summary group row
 size: S + M
 blocker: #212's restyle (the paper this one copies) and its access narrowing (the gate this one widens by basis) should merge first, so this train changes one shape, not two.
-ver: v2.6431
+ver: v2.6446
 opinion: build — the paper, the window, the table and the section all exist; this is one more basis through them, and the only new fact is the rate
 ---
 

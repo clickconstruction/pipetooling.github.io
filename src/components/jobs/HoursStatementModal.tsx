@@ -95,6 +95,9 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
   const [from, setFrom] = useState('')
   const [to, setTo] = useState('')
   const [withPay, setWithPay] = useState(payAllowed)
+  // Punch list #251: the charged paper — the person's days as the crew-days they were part of, at the rate card or the
+  // job's rule, nothing on it what the worker was paid. Open to every maker; the pay switch is ignored while it is on.
+  const [charged, setCharged] = useState(false)
   const [stated, setStated] = useState(false)
   const [read, setRead] = useState<{ read: HoursStatementRead; asOf: string } | null>(null)
   const [reading, setReading] = useState(false)
@@ -116,6 +119,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
     let cancelled = false
     setRow(existing)
     setWithPay(existing ? existing.with_pay && payAllowed : payAllowed)
+    setCharged(existing?.basis === 'charged')
     setStated(existing ? existing.stated_days.length > 0 || existing.snapshot?.input.addStatedBlock === true : false)
     setRead(null)
     setReadError(null)
@@ -190,7 +194,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
     const t = setTimeout(() => {
       void (async () => {
         try {
-          const r = await loadHoursStatementInputs({ jobId, userId, periodStart: from, periodEnd: to, withPay: withPay && payAllowed, addStatedBlock: stated })
+          const r = await loadHoursStatementInputs({ jobId, userId, periodStart: from, periodEnd: to, withPay: !charged && withPay && payAllowed, basis: charged ? 'charged' : 'paid', addStatedBlock: stated })
           if (token.current !== mine) return
           setRead({ read: r, asOf: formatDenverDateTimeShort(Date.now()) })
         } catch (e: unknown) {
@@ -201,7 +205,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
       })()
     }, 250)
     return () => clearTimeout(t)
-  }, [spanOk, jobId, userId, from, to, withPay, payAllowed, stated])
+  }, [spanOk, jobId, userId, from, to, withPay, payAllowed, stated, charged])
 
   const snapshot = useMemo<HoursStatementSnapshot | null>(() => {
     if (!read || !jobFacts) return null
@@ -237,6 +241,9 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
         periodStart: from,
         periodEnd: to,
         withPay: snapshot.input.withPay,
+        basis: snapshot.input.basis === 'charged' ? 'charged' : 'paid',
+        chargeRate: read.read.charge?.rate ?? null,
+        chargeWords: read.read.charge?.words ?? null,
         kind: snapshot.input.kind,
         statedDays: snapshot.input.statedDays ?? [],
         gap: hoursStatementGap(from, to, snapshot.input.firstRecordedDay),
@@ -500,10 +507,25 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
               </label>
             </div>
             {from && to && from > to ? <p style={{ ...quiet, color: 'var(--text-red-600)' }}>From is after To. Pick a span that starts first.</p> : null}
-            <label style={{ ...toggle, cursor: payAllowed ? 'pointer' : 'not-allowed' }}>
-              <input type="checkbox" checked={withPay && payAllowed} disabled={!payAllowed || !rowOpen} onChange={(e) => setWithPay(e.target.checked)} style={{ marginTop: 3 }} />
+            <label style={toggle}>
+              <input type="checkbox" checked={charged} disabled={!rowOpen} onChange={(e) => setCharged(e.target.checked)} style={{ marginTop: 3 }} data-testid="hours-statement-charged" />
+              <span>
+                Charged to the customer, not paid to the worker
+                <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Each day as the crew it was part of, at the rate card or the job’s rule. Nothing on the paper is what the worker was paid.</span>
+                {charged && read?.read.charge ? (
+                  <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-base)' }} data-testid="hours-statement-charge-words">
+                    {read.read.charge.words}
+                    {read.read.charge.unpriced.length ? ` · ${read.read.charge.unpriced.join(' ')}` : ''}
+                    <span style={{ display: 'block', color: 'var(--text-muted)' }}>Change the job’s rule or the rate card in the Job Summary’s Charges window.</span>
+                  </span>
+                ) : null}
+              </span>
+            </label>
+            <label style={{ ...toggle, cursor: payAllowed && !charged ? 'pointer' : 'not-allowed' }}>
+              <input type="checkbox" checked={!charged && withPay && payAllowed} disabled={!payAllowed || !rowOpen || charged} onChange={(e) => setWithPay(e.target.checked)} style={{ marginTop: 3 }} />
               <span>
                 Show the rate, the amount and what was paid
+                {charged ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Off while the paper is charged to the customer.</span> : null}
               </span>
             </label>
             <label style={toggle}>

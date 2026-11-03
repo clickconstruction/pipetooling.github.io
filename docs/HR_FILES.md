@@ -5,7 +5,7 @@ file: docs/HR_FILES.md
 type: Feature reference + agent writing convention
 purpose: The dev-only per-person HR files system — schema, access model, the People → HR tab, and (most importantly) the convention any agent or dev follows when writing to it.
 audience: Developers, AI Agents
-last_updated: 2026-11-02
+last_updated: 2026-11-03
 ---
 
 ## What this is
@@ -158,7 +158,11 @@ person_reports where status='pending'`, then per report either
 `file_person_report` (optionally passing tightened `p_content` — keep the
 author's facts, and the entry text always carries the byline) or
 `dismiss_person_report` with a reason; then fold the new entries into the
-person's summary/narrative as usual. Authors see their report's status flip on
+person's summary/narrative as usual. From the dev seat the same two RPCs sit
+behind `plan_person_report` → `apply_person_report` since v2.6430
+([`dev-mcp/README.md`](./dev-mcp/README.md)): one report a plan, the plan
+showing the entry as it would be filed, the apply refused once the report is
+no longer waiting. Authors see their report's status flip on
 their Dashboard card, so don't leave pendings sitting.
 
 ## Agent recipes

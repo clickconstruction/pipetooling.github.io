@@ -9,6 +9,7 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { diffDiscountSnapshots, discountSnapshot, type DiscountSnapshotEntry } from './discountActivity'
+import { diffFixtureRows } from './fixtureRowsDiff'
 import { diffTeamMemberIds, fixtureInsertRows, materialInsertRows, paymentInsertRows } from './jobFormAutosaveSlices'
 import { jobFormRevenueDollars } from './jobFormMoneyTotals'
 import type { FixtureRow, MaterialRow, PaymentRow } from './jobFormTypes'
@@ -17,9 +18,11 @@ import { errorKindOf, formatErrorMessage } from '../../utils/errorHandling'
 
 /**
  * The billing slice: the job's revenue → its payments, diffed against the ids the form last
- * knew were saved (the owned-and-gone deleted, the rest upserted) → its line items, deleted and
- * re-inserted one at a time → the discount trail, logged without waiting. Throws the first
- * failed write as it came.
+ * knew were saved (the owned-and-gone deleted, the rest upserted) → its line items, upserted
+ * under their own ids in one call and then the job's lines not among them deleted (v2.6420,
+ * `diffFixtureRows`; until then every line was deleted and re-inserted with a new id, and the
+ * cascade took its checklist, its window and its progress) → the discount trail, logged without
+ * waiting. Throws the first failed write as it came.
  *
  * `onPaymentsWritten` runs the moment the payments are down — before the line items are
  * touched — so a failure further on still leaves the form knowing which payments are saved.
@@ -64,12 +67,16 @@ export async function writeBillingSlice(
     if (upsertPayErr) throw upsertPayErr
   }
   args.onPaymentsWritten(upserts.map((u) => u.id))
-  const { error: delFixErr } = await supabase.from('jobs_ledger_fixtures').delete().eq('job_id', jobId)
-  if (delFixErr) throw delFixErr
-  for (const row of fixtureInsertRows(jobId, fx)) {
-    const { error: insFixErr } = await supabase.from('jobs_ledger_fixtures').insert(row)
-    if (insFixErr) throw insFixErr
+  // The upsert runs first, so a refused write leaves the old lines standing with everything on them.
+  const lines = diffFixtureRows(jobId, fx)
+  if (lines.upserts.length > 0) {
+    const { error: upFixErr } = await supabase.from('jobs_ledger_fixtures').upsert(lines.upserts, { onConflict: 'id' })
+    if (upFixErr) throw upFixErr
   }
+  let delFix = supabase.from('jobs_ledger_fixtures').delete().eq('job_id', jobId)
+  if (lines.keepIds.length > 0) delFix = delFix.not('id', 'in', `(${lines.keepIds.join(',')})`)
+  const { error: delFixErr } = await delFix
+  if (delFixErr) throw delFixErr
   const nextDiscounts = discountSnapshot(fx)
   const discountEvents = diffDiscountSnapshots(args.persistedDiscounts, nextDiscounts)
   args.onDiscountsWritten(nextDiscounts)

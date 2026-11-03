@@ -73,6 +73,51 @@ export function commitsSince(files, byFile, sinceMs) {
   return [...found.values()].sort((a, b) => b.ms - a.ms)
 }
 
+/** The pull request a squash names at the end of its subject (`… (#6899)` -> 6899), else null. */
+export function pullNumberOf(subject) {
+  const m = /\(#(\d+)\)\s*$/.exec(subject ?? '')
+  return m ? Number(m[1]) : null
+}
+
+/**
+ * The commits whose landing time only GitHub can say. A merge-queue squash carries the time the queue BUILT
+ * it, not the time it landed on main (v2.6452: #6899 was built 10:07Z and landed 10:35Z, and drive-link was
+ * deployed at 10:18Z from a main without it, so commit times called it current). A commit built up to
+ * `windowMs` before some deploy and no later than it may have landed after that deploy; each distinct one
+ * that names a pull is listed, oldest pull first. A commit built after a deploy is newer than it already.
+ */
+export function commitsToLand(byFile, deployedMsList, windowMs) {
+  if (deployedMsList.length === 0) return []
+  const deploys = [...deployedMsList].sort((a, b) => a - b)
+  const nearADeploy = (ms) => deploys.some((d) => ms <= d && ms >= d - windowMs)
+  const found = new Map()
+  for (const commits of byFile.values()) {
+    for (const c of commits) {
+      if (found.has(c.hash) || !nearADeploy(c.ms)) continue
+      const pull = pullNumberOf(c.subject)
+      if (pull != null) found.set(c.hash, { hash: c.hash, pull })
+    }
+  }
+  return [...found.values()].sort((a, b) => a.pull - b.pull)
+}
+
+/**
+ * `byFile` with each commit's `ms` moved to when it landed: `landedMs(commit)` answers the landing time in
+ * ms, or null when it is not known. A time never moves backwards; a moved commit keeps the time git has as
+ * `builtMs`. Each file's commits stay newest first.
+ */
+export function withLandingTimes(byFile, landedMs) {
+  const moved = new Map()
+  const move = (c) => {
+    if (!moved.has(c.hash)) {
+      const landed = landedMs(c)
+      moved.set(c.hash, landed != null && landed > c.ms ? { ...c, ms: landed, builtMs: c.ms } : c)
+    }
+    return moved.get(c.hash)
+  }
+  return new Map([...byFile].map(([file, commits]) => [file, commits.map(move).sort((a, b) => b.ms - a.ms)]))
+}
+
 /** Every blob id named in `git log --format= --raw --no-abbrev` (the zero id of an add or delete excluded). */
 export function historyBlobIds(gitRawLog) {
   const ids = new Set()

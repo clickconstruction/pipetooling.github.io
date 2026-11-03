@@ -15,6 +15,10 @@ import { fetchOverheadOfficeJobLedgerIdFromAppSettings } from '../overheadOffice
 import { formatDenverTimeOnly } from '../../utils/dateUtils'
 import { stubNetPay } from '../payStubDeductions'
 import { hoursStatementRoundHours, hoursStatementStanding, hoursStatementWeekLabel, type HoursStatementInput, type HoursStatementPayGroup, type HoursStatementRow } from './hoursStatement'
+import { buildCrewDays, jobChargeRuleFrom, jobChargeRuleWords } from '../charges/crewDays'
+import { loadChargeAdjustments, loadCrewSessions, loadRateCard } from '../charges/jobChargesRead'
+import { indexAdjustments } from '../charges/adjustments'
+import { crewRateWords, parseCrewShape } from '../charges/rateCard'
 
 /** The job's number as the papers print it: the HCP number, else the click number, else the id's first eight. */
 export function hoursStatementJobNumber(job: { id: string; hcp_number: string | null; click_number: string | null }): string {
@@ -101,7 +105,27 @@ type StubDeductionRow = { pay_stub_id: string; amount: number }
 type StubAdditionalRow = { pay_stub_id: string; line_total: number }
 type StubPaymentRow = { pay_stub_id: string; paid_at: string; amount: number; memo: string | null; source_kind: string | null; source_id: string | null }
 
-export type HoursStatementReadArgs = { jobId: string; userId: string; periodStart: string; periodEnd: string; withPay: boolean; addStatedBlock?: boolean }
+export type HoursStatementReadArgs = {
+  jobId: string
+  userId: string
+  periodStart: string
+  periodEnd: string
+  withPay: boolean
+  addStatedBlock?: boolean
+  /** Punch list #251: `charged` prices the person's days as the crew-days they were part of, at the rate card or the job's rule; missing = paid. */
+  basis?: 'paid' | 'charged'
+}
+
+/** What the charged paper was priced by, for the window's line and the saved row. */
+export type HoursStatementChargeFacts = {
+  /** The headline rate: the job's shape or flat rate, else the master-with-a-helper row; null when the card has none. */
+  rate: number | null
+  /** `master with a helper throughout · $285.00 the crew’s hour`, or `the crew on each day, from the rate card`. */
+  words: string
+  /** Days in the span the person was part of that could not be priced, with the reason once each. */
+  unpriced: string[]
+  crewDays: number
+}
 
 /** What the read found in the span, for the window's line: see `hoursStatementSpanWords`. */
 export type HoursStatementReadCounts = { approved: number; pending: number; typedDays: number; quickAddsLeftOff: number }
@@ -116,6 +140,8 @@ export type HoursStatementRead = {
   /** The name the pay tables know the person by. */
   payName: string
   counts: HoursStatementReadCounts
+  /** On the charged basis, what the paper was priced by; null on the paid basis. */
+  charge: HoursStatementChargeFacts | null
 }
 
 function clockLabel(iso: string): string {
@@ -223,12 +249,56 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
   }
 
   const firstRecordedDay = ((firstRow ?? []) as Array<{ work_date: string }>)[0]?.work_date ?? null
+
+  // The charged basis (punch list #251 over #254's crew-days): the person's counted days become the crew-days they were
+  // part of — the people out on the job that day, the crew's hours, the shape and its rate — so two papers never sell the
+  // same hour twice. Pending rows stay pending; a day the card cannot price is listed with no amount and named.
+  let charge: HoursStatementChargeFacts | null = null
+  let chargedRows: HoursStatementRow[] | null = null
+  if (args.basis === 'charged') {
+    const [crew, card, jobRow, adjustments] = await Promise.all([
+      loadCrewSessions(jobId),
+      loadRateCard(),
+      withSupabaseRetry(() => supabase.from('jobs_ledger').select('*').eq('id', jobId).maybeSingle(), 'read the job’s rule'),
+      // The Charges window's adjustments (punch list #254, PR 3) hold on the paper too; a read that fails leaves them off.
+      loadChargeAdjustments(jobId).catch(() => []),
+    ])
+    const rule = jobChargeRuleFrom((jobRow ?? {}) as { charge_rule?: unknown; charge_shape?: unknown; hourly_charge_rate?: unknown }, parseCrewShape)
+    const applied = indexAdjustments(adjustments)
+    const dayShape = new Map(Array.from(applied.dayShape.entries()).map(([day, o]) => [day, o.shape] as const))
+    const days = buildCrewDays(crew.filter((s) => s.workDate >= periodStart && s.workDate <= periodEnd), card, rule, { dayShape, dayOff: applied.dayOff })
+    const mine = new Map(rows.filter((r) => !r.pending).map((r) => [r.day, r] as const))
+    const out: HoursStatementRow[] = []
+    const unpriced = new Set<string>()
+    let crewDays = 0
+    for (const d of days.days) {
+      const own = mine.get(d.workDate)
+      if (!own || !d.people.some((p) => p.userId === userId)) continue
+      crewDays += 1
+      const others = d.people.filter((p) => p.userId !== userId).map((p) => p.name)
+      const note = `${others.length ? `with ${others.join(', ')}` : 'alone'} · ${d.shapeWords}${d.why ? ` · ${d.why}` : ''}`
+      if (d.why) unpriced.add(d.why)
+      // The crew's hours, or the person's own when nobody out that day is charged, so an unpriced day still shows its hours.
+      out.push({ day: d.workDate, hours: d.crewHours > 0 ? d.crewHours : own.hours, note, inLabel: own.inLabel, outLabel: own.outLabel, pending: false, chargeRate: d.rate })
+    }
+    for (const r of rows) if (r.pending) out.push(r)
+    chargedRows = out
+    const headline = rule.kind === 'flat' ? rule.rate : rule.kind === 'shape' ? (card.rates[rule.shape] ?? null) : (card.rates.master_helper ?? null)
+    charge = {
+      rate: headline,
+      words: `${jobChargeRuleWords(rule)}${headline != null ? ` · ${crewRateWords({ rate: headline, why: null })}` : ''}`,
+      unpriced: Array.from(unpriced),
+      crewDays,
+    }
+  }
   const input: HoursStatementInput = {
     kind: salaried ? 'schedule' : 'clock',
     periodStart,
     periodEnd,
-    rows,
-    withPay: args.withPay,
+    rows: chargedRows ?? rows,
+    withPay: args.basis === 'charged' ? false : args.withPay,
+    basis: args.basis === 'charged' ? 'charged' : 'paid',
+    chargeWords: charge?.words ?? null,
     dayRates,
     fallbackRate,
     payGroups,
@@ -237,5 +307,5 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
     isOfficeJob,
     worker: { name: workerName },
   }
-  return { input, worker: { name: workerName, standing: hoursStatementStanding(user?.role ?? '', salaried) }, approvedBy, isOfficeJob, personId: person?.id ?? null, payName, counts }
+  return { input, worker: { name: workerName, standing: hoursStatementStanding(user?.role ?? '', salaried) }, approvedBy, isOfficeJob, personId: person?.id ?? null, payName, counts, charge }
 }

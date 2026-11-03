@@ -72,16 +72,15 @@ describe('writeBillingSlice', () => {
     onDiscountsWritten: vi.fn(),
   })
 
-  it('revenue → payments deleted then upserted → line items deleted then re-inserted, in that order', async () => {
+  it('revenue → payments deleted then upserted → line items upserted then the rest deleted, in that order', async () => {
     const { client, steps } = makeClient()
     expect(await writeBillingSlice(client, base())).toEqual({ heldPaymentDates: [] })
     expect(seq(steps)).toEqual([
       'update:jobs_ledger',
       'delete:jobs_ledger_payments',
       'upsert:jobs_ledger_payments',
+      'upsert:jobs_ledger_fixtures',
       'delete:jobs_ledger_fixtures',
-      'insert:jobs_ledger_fixtures',
-      'insert:jobs_ledger_fixtures',
     ])
   })
 
@@ -113,9 +112,8 @@ describe('writeBillingSlice', () => {
       'delete:jobs_ledger_payments',
       'upsert:jobs_ledger_payments',
       'upsert:jobs_ledger_payments',
+      'upsert:jobs_ledger_fixtures',
       'delete:jobs_ledger_fixtures',
-      'insert:jobs_ledger_fixtures',
-      'insert:jobs_ledger_fixtures',
     ])
     const [finished, held] = steps.filter((s) => s.op === 'upsert').map((s) => s.payload as { rows: Array<Record<string, unknown>>; options: unknown })
     expect(finished?.rows).toEqual([expect.objectContaining({ id: 'p-kept', paid_on: '2026-09-01' })])
@@ -129,17 +127,28 @@ describe('writeBillingSlice', () => {
   it('skips the payment delete and the upsert when there is nothing for them', async () => {
     const { client, steps } = makeClient()
     await writeBillingSlice(client, { ...base(), payments: [pay('p-blank', 0)], hydratedPaymentIds: [] })
-    expect(seq(steps)).toEqual(['update:jobs_ledger', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    expect(seq(steps)).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
   })
 
-  it('re-inserts the named line items only, each carrying its invoice link', async () => {
+  it('upserts the named line items under their own ids in one call, each carrying its invoice link, then deletes the job’s lines not among them', async () => {
     const { client, steps } = makeClient()
     await writeBillingSlice(client, base())
-    const inserts = steps.filter((s) => s.op === 'insert').map((s) => s.payload as { name: string; invoice_id: string | null; sequence_order: number })
-    expect(inserts.map((r) => [r.name, r.invoice_id, r.sequence_order])).toEqual([
-      ['Rough-in', 'inv-1', 0],
-      ['Top-out', null, 1],
+    const upsert = steps.find((s) => s.op === 'upsert' && s.table === 'jobs_ledger_fixtures')?.payload as { rows: Array<{ id: string; name: string; invoice_id: string | null; sequence_order: number }>; options: unknown }
+    expect(upsert.rows.map((r) => [r.id, r.name, r.invoice_id, r.sequence_order])).toEqual([
+      ['f1', 'Rough-in', 'inv-1', 0],
+      ['f2', 'Top-out', null, 1],
     ])
+    expect(upsert.options).toEqual({ onConflict: 'id' })
+    const del = steps.find((s) => s.op === 'delete' && s.table === 'jobs_ledger_fixtures')
+    expect(del?.filters).toEqual(['eq', 'job_id', 'job-1', 'not', 'id', 'in', '(f1,f2)'])
+  })
+
+  it('with no line worth keeping, deletes every line of the job and upserts none', async () => {
+    const { client, steps } = makeClient()
+    await writeBillingSlice(client, { ...base(), fixtures: [fixture('f3', '', null)], persistedDiscounts: [] })
+    expect(seq(steps).filter((s) => s.endsWith('jobs_ledger_fixtures'))).toEqual(['delete:jobs_ledger_fixtures'])
+    const del = steps.find((s) => s.op === 'delete' && s.table === 'jobs_ledger_fixtures')
+    expect(del?.filters).toEqual(['eq', 'job_id', 'job-1'])
   })
 
   it('tells the form which payments are saved before it touches the line items', async () => {
@@ -154,9 +163,8 @@ describe('writeBillingSlice', () => {
       'delete:jobs_ledger_payments',
       'upsert:jobs_ledger_payments',
       'told:payments',
+      'upsert:jobs_ledger_fixtures',
       'delete:jobs_ledger_fixtures',
-      'insert:jobs_ledger_fixtures',
-      'insert:jobs_ledger_fixtures',
       'told:discounts',
     ])
   })
@@ -174,17 +182,26 @@ describe('writeBillingSlice', () => {
       const { client, steps } = makeClient({ fail })
       const args = base()
       await expect(writeBillingSlice(client, args)).rejects.toEqual({ message: `${fail} refused` })
-      expect(seq(steps)).not.toContain('delete:jobs_ledger_fixtures')
+      expect(seq(steps)).not.toContain('upsert:jobs_ledger_fixtures')
       expect(args.onPaymentsWritten).not.toHaveBeenCalled()
     }
   })
 
-  it('a line item that fails part-way leaves the ones before it written, the payments saved, and the discounts as they were', async () => {
-    const { client, steps } = makeClient({ fail: 'insert:jobs_ledger_fixtures#2' })
+  it('a refused line-item upsert deletes no line: the old lines stand with everything on them, the payments are saved, and the discounts are as they were', async () => {
+    const { client, steps } = makeClient({ fail: 'upsert:jobs_ledger_fixtures' })
     const args = base()
-    await expect(writeBillingSlice(client, args)).rejects.toEqual({ message: 'insert:jobs_ledger_fixtures refused' })
-    expect(seq(steps).slice(-3)).toEqual(['delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    await expect(writeBillingSlice(client, args)).rejects.toEqual({ message: 'upsert:jobs_ledger_fixtures refused' })
+    expect(seq(steps).slice(-1)).toEqual(['upsert:jobs_ledger_fixtures'])
+    expect(seq(steps)).not.toContain('delete:jobs_ledger_fixtures')
     expect(args.onPaymentsWritten).toHaveBeenCalledTimes(1)
+    expect(args.onDiscountsWritten).not.toHaveBeenCalled()
+  })
+
+  it('a refused line-item delete is thrown after the upsert, and the discounts are as they were', async () => {
+    const { client, steps } = makeClient({ fail: 'delete:jobs_ledger_fixtures' })
+    const args = base()
+    await expect(writeBillingSlice(client, args)).rejects.toEqual({ message: 'delete:jobs_ledger_fixtures refused' })
+    expect(seq(steps).slice(-2)).toEqual(['upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
     expect(args.onDiscountsWritten).not.toHaveBeenCalled()
   })
 
@@ -197,7 +214,7 @@ describe('writeBillingSlice', () => {
     const logs = steps.filter((s) => s.op === 'rpc')
     expect(logs).toHaveLength(1)
     expect(logs[0]).toMatchObject({ table: 'log_job_discount_event', payload: { p_job_id: 'job-1', p_event_type: 'discount_added' } })
-    expect(steps.indexOf(logs[0]!)).toBeGreaterThan(seq(steps).lastIndexOf('insert:jobs_ledger_fixtures'))
+    expect(steps.indexOf(logs[0]!)).toBeGreaterThan(seq(steps).lastIndexOf('delete:jobs_ledger_fixtures'))
     expect(args.onDiscountsWritten).toHaveBeenCalledWith(discountSnapshot(withDiscount))
     await Promise.resolve()
     expect(warn).toHaveBeenCalled()

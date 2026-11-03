@@ -71,8 +71,11 @@ export function hoursStatementUniformRate(statement: HoursStatement): number | n
 export function buildHoursStatementHtml(ctx: HoursStatementHtmlContext): string {
   const { statement: s, worker, job } = ctx
   const company = ctx.company ?? { name: PAY_REPORT_EMPLOYER_NAME, ein: PAY_REPORT_EIN, address: PAY_REPORT_ADDRESS }
-  const withPay = s.withPay && s.kind !== 'schedule'
-  const title = s.withPay && s.pay ? 'Statement of hours worked and paid' : 'Statement of hours worked'
+  const chargedPaper = s.basis === 'charged' && s.charged != null
+  const chargedPriced = chargedPaper && s.charged != null && s.charged.total != null
+  // The money columns: with the pay, or on the charged basis once the days are priced (punch list #251).
+  const withPay = (s.withPay && s.kind !== 'schedule') || chargedPriced
+  const title = chargedPaper ? 'Statement of hours charged' : s.withPay && s.pay ? 'Statement of hours worked and paid' : 'Statement of hours worked'
   const docTitle = hoursStatementDocumentTitle(ctx)
   const stamp = `Made by ClickTooling from the clock, the pay reports and the payments as of ${ctx.asOf}. Record ${ctx.recordId ?? 'not yet filed (draft)'}.`
   const isSheet = s.kind === 'sheet'
@@ -122,6 +125,14 @@ export function buildHoursStatementHtml(ctx: HoursStatementHtmlContext): string 
     const rest = l.words.startsWith(l.label) ? l.words.slice(l.label.length).replace(/^ · /, '') : l.words
     return `<b>${esc(l.label)}</b><div>${esc(rest)}</div>`
   }
+  const chargedBand =
+    chargedPaper && s.charged
+      ? `<div class="band"><h2>Charged</h2><div class="pay">
+    ${s.charged.lines.map(payLine).join('\n    ')}${s.charged.lines.length === 0 ? '<p class="wide"><i>Nothing recorded on this job for the period.</i></p>' : ''}
+    <p class="wide"><b>${esc(s.charged.totalWords)}</b></p>
+    <p class="note">${esc(s.charged.note)}</p>${s.charged.leftOut.length ? `<p class="note">${esc(s.charged.leftOut.join(' '))}</p>` : ''}
+  </div></div>`
+      : ''
   const pay = s.pay
     ? `<div class="band"><h2>Paid</h2><div class="pay">
     ${s.pay.lines.map(payLine).join('\n    ')}${s.pay.lines.length === 0 ? '<p class="wide"><i>Nothing recorded as paid for this period.</i></p>' : ''}
@@ -213,11 +224,11 @@ tr.nt { break-before: avoid; page-break-before: avoid; }
     ${rows.join('\n    ')}
     ${totalRow}
   </table>
-  ${pay}
+  ${chargedBand}${pay}
   ${stated}
   <div class="attest">${esc(s.attestation)}</div>
   <div class="sig"><div>Signature of the worker${worker.company ? ` for ${esc(worker.company)}` : ''} · printed name</div><div>Date</div></div>
-  <div class="sig"><div>Prepared from the company’s records by ${esc(ctx.preparedBy)}</div><div>Date</div></div>
+  <div class="sig"><div>${esc(s.preparedWords ?? 'Prepared from the company’s records')} by ${esc(ctx.preparedBy)}</div><div>Date</div></div>
   <div class="foot">${esc(stamp)}</div>
 </div>
 </body>

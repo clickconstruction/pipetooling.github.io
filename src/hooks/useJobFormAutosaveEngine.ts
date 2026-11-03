@@ -143,9 +143,10 @@ export function useJobFormAutosaveEngine(args: JobFormAutosaveEngineArgs): JobFo
   }, [openJobId])
 
   /**
-   * The billing-slice WRITES — the same delete+reinsert sequence as always
-   * (payloads now built by the jobFormAutosaveSlices kernel). Baseline,
-   * debounce, and in-flight bookkeeping live in useJobFormAutosaveSlice.
+   * The billing-slice WRITES (`writeBillingSlice`: the revenue, the payments
+   * diffed, the line items upserted in place since v2.6420, the discount
+   * trail). Baseline, debounce, and in-flight bookkeeping live in
+   * useJobFormAutosaveSlice.
    */
   async function persistBillingSlice(): Promise<boolean> {
     const jobId = autosaveJobIdRef.current

@@ -135,13 +135,14 @@ describe('insert-row payload builders', () => {
     expect(Object.keys(paymentInsertRows('job1', [payment()])[0]!).sort()).toEqual(upsertKeys.sort())
   })
 
-  it('fixtureInsertRows drops unnamed rows and nulls non-positive prices', () => {
+  it('fixtureInsertRows drops unnamed rows, nulls non-positive prices, and carries the row’s own id (v2.6420)', () => {
     const rows = fixtureInsertRows('job1', [
       fixture({ name: '  ', line_description: 'scope only' }),
       fixture({ id: 'f2', name: 'Top Out', line_unit_price: 0, invoice_id: 'inv1' }),
     ])
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({
+      id: 'f2',
       job_id: 'job1',
       name: 'Top Out',
       sequence_order: 0,
