@@ -108,8 +108,10 @@ export type ScoreboardJob = {
   pctSource: ScoreboardPctSource
   finished: boolean
   flags: ScoreboardFlag[]
+  /** The job carries a price (`revenue` over 0); the headline's first case is a job without one. */
+  priced: boolean
   m: ScoreboardMeasures
-  /** No earned dollar and no cost: folded under *Nothing on them yet*. */
+  /** No earned dollar, no cost and no hours: folded under *Nothing on them yet*. Hours count since v2.6467, so the leader's board, which reads no cost, keeps a job with hours on it in view. */
   empty: boolean
 }
 
@@ -207,8 +209,9 @@ export function buildScoreboard(input: ScoreboardInput): ScoreboardModel {
       pctSource: source,
       finished,
       flags,
+      priced: contractUsd > 0,
       m,
-      empty: m.earned === 0 && m.cost === 0,
+      empty: m.earned === 0 && m.cost === 0 && m.hours === 0,
     }
   })
   const dir = sort.desc ? -1 : 1
@@ -313,6 +316,43 @@ export const SCOREBOARD_FLAG_WORDS: Record<ScoreboardFlag, { label: string; titl
 /** The folded line under the rows: the jobs with nothing on them yet. */
 export function scoreboardFoldWords(n: number): string {
   return `Nothing on them yet · ${n} ${n === 1 ? 'job' : 'jobs'}`
+}
+
+/** One line about the site right now: the job it names, its number, and the words after the number. */
+export type ScoreboardHeadline = { jobId: string; label: string; after: string }
+
+/** The headline as one sentence: the job's number, then the words. */
+export function scoreboardHeadlineWords(h: ScoreboardHeadline): string {
+  return `${h.label}${h.after}`
+}
+
+const biggest = <T,>(rows: ReadonlyArray<T>, by: (r: T) => number): T | undefined => rows.reduce<T | undefined>((best, r) => (best === undefined || by(r) > by(best) ? r : best), undefined)
+
+/**
+ * The match headline (v2.6467, punch list #250 PR 3): one line about the site right now, under *Right now* in the
+ * board's flag block. On the full board, a job with no price that is costing comes first, the costliest of them;
+ * else the job that carried the site, the most profit, leaving out a job whose earned dollars are the assumed half;
+ * else the job that has cost the most past what it earned. The leader's board reads no cost, so its line speaks in
+ * hours and earned dollars: a job with no price that has hours on it, else the job that earned the most. Null until
+ * the reads the line stands on are in, and when there is nothing to say, so the line never names a job on half a read.
+ */
+export function scoreboardHeadline(model: ScoreboardModel, seesCosts: boolean): ScoreboardHeadline | null {
+  const line = (r: ScoreboardJob, after: string): ScoreboardHeadline => ({ jobId: r.jobId, label: r.label, after })
+  const sure = model.rows.filter((r) => !r.flags.includes('assumed-50'))
+  if (seesCosts) {
+    if (scoreboardCellStands('profit', model.reads) !== 'stands') return null
+    const noPrice = biggest(model.rows.filter((r) => !r.priced && r.m.cost > 0), (r) => r.m.cost)
+    if (noPrice) return line(noPrice, ` has no price yet: ${scoreboardUsd(noPrice.m.cost)} spent${noPrice.m.hours > 0 ? ` over ${scoreboardHours(noPrice.m.hours)}` : ''}.`)
+    const carried = biggest(sure.filter((r) => r.m.profit > 0), (r) => r.m.profit)
+    if (carried) return line(carried, ` carried the site: ${scoreboardUsd(carried.m.profit)} profit, ${scoreboardPctOf(carried.m.profit, carried.m.earned)} of what it earned.`)
+    const losing = biggest(model.rows.filter((r) => r.m.profit < 0), (r) => -r.m.profit)
+    return losing ? line(losing, ` has cost ${scoreboardUsd(-losing.m.profit)} more than it earned.`) : null
+  }
+  if (model.reads.labor !== 'read') return null
+  const noPrice = biggest(model.rows.filter((r) => !r.priced && r.m.hours > 0), (r) => r.m.hours)
+  if (noPrice) return line(noPrice, ` has no price yet: ${scoreboardHours(noPrice.m.hours)} on it.`)
+  const carried = biggest(sure.filter((r) => r.m.earned > 0), (r) => r.m.earned)
+  return carried ? line(carried, ` carried the site: ${scoreboardUsd(carried.m.earned)} earned, ${scoreboardPctOf(carried.m.earned, model.site.earned)} of the site.`) : null
 }
 
 /** The site's second margin, with materials-only jobs set aside (call 7). */

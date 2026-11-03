@@ -24,10 +24,12 @@ import {
   scoreboardColumnWidths,
   scoreboardFoldWords,
   scoreboardFoldedKeys,
+  scoreboardHeadline,
   scoreboardPctOf,
   scoreboardWorkWords,
   type ScoreboardColumn,
   type ScoreboardColumnKey,
+  type ScoreboardHeadline,
   type ScoreboardJob,
   type ScoreboardMember,
   type ScoreboardMembers,
@@ -189,6 +191,19 @@ function RoleTag({ kind, width = 64 }: { kind: ScoreboardMember['kind']; width?:
   )
 }
 
+/** The match headline under *Right now* (v2.6467, punch list #250 PR 3): one line about the site, its job's number a press that opens the job, as on its row. */
+function Headline({ headline, openJob }: { headline: ScoreboardHeadline; openJob: (jobId: string) => void }) {
+  return (
+    <div data-testid="scoreboard-headline" style={{ marginTop: 6, fontSize: '0.78rem', fontWeight: 500, color: 'var(--text-strong)', lineHeight: 1.35, whiteSpace: 'normal' }}>
+      <span style={{ fontSize: '0.6rem', letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--text-amber-800)', fontWeight: 800, marginRight: 6 }}>Right now</span>
+      <JobChip jobId={headline.jobId} onOpen={() => openJob(headline.jobId)} strong nowrap>
+        {headline.label}
+      </JobChip>
+      {headline.after}
+    </div>
+  )
+}
+
 function YouChip() {
   return (
     <span style={{ display: 'inline-block', padding: '0 6px', borderRadius: 9999, background: 'var(--bg-amber-200)', color: 'var(--text-amber-900)', fontSize: '0.6rem', fontWeight: 800, marginLeft: 6, lineHeight: '15px' }} data-testid="scoreboard-you">
@@ -330,6 +345,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
   const narrow = !phone && seesCosts && (boxWidth > 0 ? boxWidth < SCOREBOARD_NARROW_BELOW_PX : narrowWindow)
   const fmt: Fmt = narrow ? scoreboardCompactWords : scoreboardCellWords
   const widths = scoreboardColumnWidths(columns, narrow)
+  const headline = scoreboardHeadline(model, seesCosts)
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set())
   const [showEmpties, setShowEmpties] = useState(false)
   const toggle = (id: string) =>
@@ -436,6 +452,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', background: 'var(--surface)' }}>
           <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--text-strong)' }}>{head.name}</div>
           <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{head.line}</div>
+          {headline ? <Headline headline={headline} openJob={openJob} /> : null}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, marginTop: 8 }}>
             {three.map((c) => (
               <div key={c.key} style={{ textAlign: 'center', padding: '6px 4px', borderRadius: 7, background: 'var(--bg-subtle)', borderTop: `3px solid ${TILE_FILL[c.group]}` }}>
@@ -493,6 +510,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
             <th style={{ ...th, textAlign: 'left', paddingLeft: 14, verticalAlign: 'middle', fontWeight: 400 }}>
               <div style={{ fontWeight: 800, fontSize: '1.05rem', color: 'var(--text-strong)', lineHeight: 1.15 }}>{head.name}</div>
               <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)', whiteSpace: 'normal' }}>{head.line}</div>
+              {headline && !narrow ? <Headline headline={headline} openJob={openJob} /> : null}
               {head.small ? <div style={{ fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'normal', marginTop: 4 }}>{head.small}</div> : null}
             </th>
             {columns.map((c) => (
@@ -503,6 +521,14 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
           </tr>
         </thead>
         <tbody>
+          {headline && narrow ? (
+            // The middle widths: the flag block's column is a quarter of the board, so the headline takes the board's width.
+            <tr data-testid="scoreboard-headline-row">
+              <td colSpan={columns.length + 1} style={{ ...cellPad, height: 'auto', padding: '0 10px 8px', background: 'var(--surface)' }}>
+                <Headline headline={headline} openJob={openJob} />
+              </td>
+            </tr>
+          ) : null}
           {model.rows.map(row)}
           {model.empties.length ? (
             <tr data-testid="scoreboard-fold-row">

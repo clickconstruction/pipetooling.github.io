@@ -862,7 +862,7 @@ export default function DevelopmentPage() {
   // The head's bid count leaves a robot's shadow bid out, as the tiles do (v2.6378).
   const scoreboardHead = {
     name: dev.name,
-    line: `${data.customer?.name ? `${data.customer.name} · ` : ''}${counted.jobs.length} ${counted.jobs.length === 1 ? 'job' : 'jobs'}, ${scoreboard.rows.length} with money on ${scoreboard.rows.length === 1 ? 'it' : 'them'} · ${counted.bids.length} ${counted.bids.length === 1 ? 'bid' : 'bids'}`,
+    line: `${data.customer?.name ? `${data.customer.name} · ` : ''}${counted.jobs.length} ${counted.jobs.length === 1 ? 'job' : 'jobs'}, ${scoreboard.rows.length} with ${canSeeSiteCosts(role) ? 'money' : 'work'} on ${scoreboard.rows.length === 1 ? 'it' : 'them'} · ${counted.bids.length} ${counted.bids.length === 1 ? 'bid' : 'bids'}`,
     small:
       [
         siteMoney.band.left > 0 ? `${money(siteMoney.band.left)} left to collect` : null,

@@ -12,6 +12,8 @@ import {
   scoreboardColumnsFor,
   scoreboardColumnWidths,
   scoreboardFoldWords,
+  scoreboardHeadline,
+  scoreboardHeadlineWords,
   scoreboardFoldedKeys,
   scoreboardPct,
   scoreboardWorkWords,
@@ -314,6 +316,72 @@ describe('the rows under an open job (v2.6457)', () => {
     expect(scoreboardPendingWords(null)).toBeNull()
     expect(scoreboardNoMembersWords(true)).toBe('Nothing is on this job yet.')
     expect(scoreboardNoMembersWords(false)).toBe('No hours are on this job yet.')
+  })
+})
+
+describe('scoreboardHeadline (v2.6467, punch list #250 PR 3)', () => {
+  // An invented site: a paid job, a job with no percent (its earned is the assumed half), a job running at a loss,
+  // a ticket with no price that is costing, and a job with nothing on it.
+  const site = [
+    job({ id: 'j10', status: 'paid', revenue: 120000 }),
+    job({ id: 'j11', status: 'waiting', revenue: 300000 }),
+    job({ id: 'j12', status: 'working', revenue: 90000, pct_complete: 50 }),
+    job({ id: 'j13', status: 'working', revenue: 0 }),
+    job({ id: 'j14', status: 'waiting', revenue: 0 }),
+  ]
+  const clock = (rows: Array<[string, number, number]>): SiteLaborRead => ({
+    state: 'read',
+    labor: { byJobId: new Map(rows.map(([id, hours, costUsd]) => [id, { jobId: id, hours, costUsd, days: 3, people: [] }])), siteDays: 9, people: 4, daysKnown: true },
+  })
+  const spend = (rows: Array<[string, number]>): SiteCostsRead => ({ state: 'read', byJobId: new Map(rows.map(([id, usd]) => [id, costRow(id, 0, usd, 0)])) })
+  const none: SiteOverheadRead = { state: 'read', byJobId: new Map() }
+  const full = (jobsIn: MemberJob[], l: SiteLaborRead, c: SiteCostsRead) => buildScoreboard({ jobs: jobsIn, invoices: [], jobLabel: label, labor: l, costs: c, overhead: none })
+  const words = (h: ReturnType<typeof scoreboardHeadline>) => (h ? scoreboardHeadlineWords(h) : null)
+
+  it('a job with no price that is costing comes first, the costliest of them, with its hours', () => {
+    const model = full(site, clock([['j10', 400, 9000], ['j13', 31, 1200]]), spend([['j10', 61000], ['j12', 50000], ['j13', 3000]]))
+    expect(words(scoreboardHeadline(model, true))).toBe('JP13 has no price yet: $4,200 spent over 31 h.')
+    expect(scoreboardHeadline(model, true)).toMatchObject({ jobId: 'j13', label: 'JP13' })
+    const noHours = full(site, clock([['j10', 400, 9000]]), spend([['j10', 61000], ['j13', 3000]]))
+    expect(words(scoreboardHeadline(noHours, true))).toBe('JP13 has no price yet: $3,000 spent.')
+  })
+
+  it('else the job that carried the site, the most profit, leaving out an earned dollar that is the assumed half', () => {
+    const model = full(site, clock([['j10', 400, 9000]]), spend([['j10', 61000], ['j11', 10000], ['j12', 50000]]))
+    // j11's profit is the biggest, but half its price is assumed: j10 carried the site.
+    expect(model.rows.find((r) => r.jobId === 'j11')!.m.profit).toBeGreaterThan(model.rows.find((r) => r.jobId === 'j10')!.m.profit)
+    expect(words(scoreboardHeadline(model, true))).toBe('JP10 carried the site: $50,000 profit, 42% of what it earned.')
+  })
+
+  it('else the job that has cost the most past what it earned', () => {
+    const losing = [job({ id: 'j20', status: 'working', revenue: 40000, pct_complete: 25 }), job({ id: 'j21', status: 'working', revenue: 10000, pct_complete: 50 })]
+    const model = full(losing, clock([]), spend([['j20', 16000], ['j21', 5500]]))
+    expect(words(scoreboardHeadline(model, true))).toBe('JP20 has cost $6,000 more than it earned.')
+  })
+
+  it('nothing until the reads it stands on are in, and nothing on a site with nothing on it', () => {
+    const reading = buildScoreboard({ jobs: site, invoices: [], jobLabel: label, labor: clock([['j13', 31, 1200]]), costs: { state: 'reading' }, overhead: none })
+    expect(scoreboardHeadline(reading, true)).toBeNull()
+    const failed = buildScoreboard({ jobs: site, invoices: [], jobLabel: label, labor: clock([]), costs: { state: 'failed' }, overhead: none })
+    expect(scoreboardHeadline(failed, true)).toBeNull()
+    expect(scoreboardHeadline(full([job({ id: 'j30', status: 'waiting', revenue: 0 })], clock([]), spend([])), true)).toBeNull()
+  })
+
+  it('the leader’s board says no cost: a job with no price that has hours, else the job that earned the most', () => {
+    const lead = (l: SiteLaborRead) => buildScoreboard({ jobs: site, invoices: [], jobLabel: label, labor: l })
+    expect(words(scoreboardHeadline(lead(clock([['j10', 400, 0], ['j13', 31, 0]])), false))).toBe('JP13 has no price yet: 31 h on it.')
+    const carried = lead(clock([['j10', 400, 0]]))
+    expect(words(scoreboardHeadline(carried, false))).toBe(`JP10 carried the site: $120,000 earned, ${Math.round((120000 / carried.site.earned) * 100)}% of the site.`)
+    expect(scoreboardHeadline(lead(clock([['j13', 31, 0]])), false)!.after).not.toContain('$')
+    expect(scoreboardHeadline(buildScoreboard({ jobs: site, invoices: [], jobLabel: label, labor: { state: 'reading' } }), false)).toBeNull()
+  })
+
+  it('a job with hours on it is not folded under Nothing on them yet, though the leader’s board reads no cost', () => {
+    const lead = buildScoreboard({ jobs: site, invoices: [], jobLabel: label, labor: clock([['j13', 31, 0]]) })
+    expect(lead.rows.map((r) => r.jobId)).toContain('j13')
+    expect(lead.empties.map((r) => r.jobId)).toEqual(['j14'])
+    expect(lead.rows.find((r) => r.jobId === 'j13')).toMatchObject({ priced: false, empty: false })
+    expect(lead.rows.find((r) => r.jobId === 'j10')).toMatchObject({ priced: true })
   })
 })
 
