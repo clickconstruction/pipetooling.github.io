@@ -1696,6 +1696,7 @@ The Submittals tables are **pricing-side data on the bid**: `bid_specified_produ
 ## Development page (v2.6040+)
 
 - The page itself opens for every signed-in office role; an estimator reads it with no money (`readDoor.ts`, v2.6053).
+- **The Photos look (v2.6371, punch list #247)**: the row reads `uploaded_photos` scoped to the site's jobs and bids, a `security_invoker` view, so each photo table's own policy and the ledger's scope decide what the reader sees — the office and the estimator see every source, a text's picture only the roles `message_attachments` lets read (`canSeeMessagePhotos`), and a reader with no `jobs_ledger` policy sees only the pictures on the site's bids. No new gate.
 - **Costs on the Jobs & bids table (v2.6215)**: dev and controller only (`canSeeSiteCosts`, `src/lib/developments/siteCosts.ts`) — each job's parts buckets and sub labor as one figure, the same number the Job window's profit band shows. Masters, assistants and estimators see no Costs column.
 
 ## Bid version locks (v2.6234)
