@@ -11,11 +11,12 @@ import type { Excerpt } from './excerpt.ts'
 /** The text kept on a row: plenty for ranking, and the generated tsvector reads the same cut. */
 export const INDEX_TEXT_MAX_CHARS = 200_000
 /**
- * The caps on one PDF's read for the index. Over the bytes it is `big`: it is held whole in memory to parse, so this cap
- * answers to the function's 256 MB and never to its CPU. The pages cap rarely bites, since the time budget or the text
- * cap stops a long PDF first (v2.6332; 8 MB and 40 pages before, which held a quarter of the drive's files as `big`).
+ * The caps on one PDF's read for the index. Over the bytes it is `big`, with no download: the file is held whole in
+ * memory to parse, and the platform's 256 MB is the limit that bites. On prod a 25 MB plan set alone ended its worker
+ * with *Memory limit exceeded* while an 11 MB one read through (v2.6408; v2.6332 had raised the cap to 50 MB). The
+ * pages cap rarely bites, since the time budget or the text cap stops a long PDF first.
  */
-export const TEXT_PDF_MAX_BYTES = 50 * 1024 * 1024
+export const TEXT_PDF_MAX_BYTES = 12 * 1024 * 1024
 export const TEXT_PDF_MAX_PAGES = 1000
 export const TEXT_PLAIN_MAX_BYTES = 2 * 1024 * 1024
 /**
@@ -25,23 +26,24 @@ export const TEXT_PLAIN_MAX_BYTES = 2 * 1024 * 1024
  */
 export const PDF_READ_BUDGET_MS = 800
 export const PASS_READ_BUDGET_MS = 1200
-/** The PDF bytes one request holds at most, past the first file: a second large set in one request is what memory cannot take. */
-export const PASS_READ_MAX_BYTES = 60 * 1024 * 1024
+/** The PDF bytes one request holds at most, past the first file: memory is shared by every read in a worker, and the parse holds several times the file. */
+export const PASS_READ_MAX_BYTES = 16 * 1024 * 1024
 /** What a PDF is expected to cost before it is read: the parse is about this much per megabyte, up to its budget. */
 const PDF_ESTIMATE_BASE_MS = 50
 const PDF_ESTIMATE_MS_PER_MB = 100
 
-/** The limits of one PDF read. `passBudgetMs` is what the whole request may have spent for this parse to start at all. */
+/** The limits of one PDF read. `passBudgetMs` and `passMaxBytes` are what the whole request may have spent and held for this parse to start at all. */
 export interface PdfReadLimits {
   maxBytes: number
   maxPages: number
   budgetMs: number
   passBudgetMs: number
+  passMaxBytes: number
 }
 
-export const INDEX_PDF_LIMITS: PdfReadLimits = { maxBytes: TEXT_PDF_MAX_BYTES, maxPages: TEXT_PDF_MAX_PAGES, budgetMs: PDF_READ_BUDGET_MS, passBudgetMs: PASS_READ_BUDGET_MS }
-/** A search reads ten hits' excerpts at once, so it keeps v2.6306's small caps and a short budget for each. */
-export const EXCERPT_PDF_LIMITS: PdfReadLimits = { maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000 }
+export const INDEX_PDF_LIMITS: PdfReadLimits = { maxBytes: TEXT_PDF_MAX_BYTES, maxPages: TEXT_PDF_MAX_PAGES, budgetMs: PDF_READ_BUDGET_MS, passBudgetMs: PASS_READ_BUDGET_MS, passMaxBytes: PASS_READ_MAX_BYTES }
+/** A search reads ten hits' excerpts at once, so it keeps v2.6306's small caps, a short budget for each and the bytes the ten may hold together. */
+export const EXCERPT_PDF_LIMITS: PdfReadLimits = { maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000, passMaxBytes: 24 * 1024 * 1024 }
 
 /** What one request has spent parsing PDFs, shared by every read in it. */
 export interface PassSpend {
