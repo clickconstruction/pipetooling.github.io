@@ -1,7 +1,7 @@
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { CATALOG_RPCS, CATALOG_TABLES, EDGE_FUNCTIONS } from './catalog.ts'
-import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRowsQuery, buildRpcQuery, isSafeIdent, redactSecrets, replyText, searchNames } from '../_shared/devMcpDoor.ts'
+import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRowsQuery, buildRpcQuery, isSafeIdent, redactSecrets, replyText, rpcArgNames, searchNames } from '../_shared/devMcpDoor.ts'
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
@@ -64,11 +64,14 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // A waiting field report (v2.6430 / 0.21.0): plan_person_report → apply_person_report file it onto the person's file as
 // the entry it becomes, or dismiss it with a reason, through the HR queue's own file_person_report / dismiss_person_report
 // — no wrapper: the dry run is this server's read of the report, hashed with the ask (_shared/devMcpPersonReport.ts).
+// get_job by the one card rule (v2.6468 / 0.23.0, behind its paged reads' 0.22.0): the card charges and the profit count
+// as the Job window's profit band counts them, from the window's own lookups, and the man-hours read asks the server for
+// the one job — an RPC result filter, checked as read_rows' filters are (buildRpcQuery).
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.22.0'
+const SERVER_VERSION = '0.23.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -146,7 +149,7 @@ const TOOLS: McpTool[] = [
   },
   {
     name: 'get_job',
-    description: "What the Job window shows for one job: the header, the money (profit = revenue − the four parts buckets − sub labor, and billed / open — computed by the Job window's own kernels), invoices and payments, the account strip, stages, hours, and recent activity. `job` is an id, or text that matches exactly one job. A part that could not be read says so in place.",
+    description: "What the Job window shows for one job: the header, the money (profit = revenue − the four parts buckets − sub labor, the card charges counted by the window's one card rule, and billed / open — computed by the Job window's own kernels), invoices and payments, the account strip, stages, hours, and recent activity. `job` is an id, or text that matches exactly one job. A part that could not be read says so in place.",
     inputSchema: { type: 'object', properties: { job: { type: 'string', description: "Job id, or a number like 'J1032'" } }, required: ['job'] },
   },
   {
@@ -796,9 +799,9 @@ const refused = (text: string, log: Partial<CallLog> = {}): Outcome => ({ log: {
 /** A `Reader` that GETs as one person. Every composite read goes through the same two checks the generic door makes. */
 function readerAs(jwt: string): Reader {
   return {
-    rpc: async (name, args = {}, limit) => {
+    rpc: async (name, args = {}, limit, filters) => {
       if (!isSafeIdent(name) || !CATALOG_RPCS[name]) throw new Error(`no RPC named "${name}" in the catalog`)
-      const built = buildRpcQuery(args, limit)
+      const built = buildRpcQuery(args, limit, filters?.length ? { filters, argNames: rpcArgNames(CATALOG_RPCS[name]) } : undefined)
       if (!built.ok) throw new Error(built.error)
       const res = await restGet(jwt, `rpc/${name}`, built.query)
       if (!res.ok) throw new Error(restError(res.status, res.body))

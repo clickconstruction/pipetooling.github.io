@@ -8,18 +8,21 @@
 // (`get_bid.totals`) instead of computing a second opinion.
 
 import type { RowFilter, RowOrder } from './devMcpDoor.ts'
+import { cardChargeCostUsd, EMPTY_CARD_CHARGE_EXCLUSIONS, type CardChargeExclusions } from './cardChargeAllocationFilter.ts'
 import { customerDaysToPay, customerEstimateOutcomes, customerMoneyStats, profileJobRowMoney, type ProfileJob } from './customerProfileStats.ts'
-import { mercuryCardTotalFromLines, mercuryLinesFromRows, supplyInvoiceTotalFromRows, supplyLinesFromRows, tallyLinesFromRows, tallyPartsTotalFromLines, jobAccountSplitFromLines } from './jobMaterialsCostLines.ts'
+import { jobCardChargesCountedFromLines, jobCardLineStatus, mercuryCardTotalFromLines, mercuryLinesFromRows, supplyInvoiceTotalFromRows, supplyLinesFromRows, tallyLinesFromRows, tallyPartsTotalFromLines, jobAccountSplitFromLines, type JobMercuryAllocLine } from './jobMaterialsCostLines.ts'
 import { buildJobProfitSummary } from './jobProfitSummary.ts'
 import { DRIVE_SETTING_KEYS, jobSubLaborInputsFromRows, type SubLaborItemRow, type SubLaborSheetRow } from './jobSubLaborInputs.ts'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from './ledgerDisplayPrefixes.ts'
+import { overheadPartsAccountingBucketFromDefaultKey } from './gcKernels/lib/overheadPartsAccountingBuckets.ts'
 import { STALE_COUNT_DAYS, containerLines, countDiffs, countIsDue, groupByPlace, lastCountedAt, linesOf, placeName, type Container, type Movement, type MovementReason, type Place } from './gcKernels/lib/materials/onSite.ts'
 import { retiredContainers, unretireVerdict } from './gcKernels/lib/materials/unretire.ts'
 
 export type RowsQuery = { select?: string; filters?: RowFilter[]; order?: RowOrder[]; limit?: number }
 export type Row = Record<string, unknown>
 export type Reader = {
-  rpc: (name: string, args?: Record<string, unknown>, limit?: number) => Promise<unknown>
+  /** `filters` narrow a set-returning RPC's answer on the server (v2.6468), as `rows`' filters narrow a table. */
+  rpc: (name: string, args?: Record<string, unknown>, limit?: number, filters?: RowFilter[]) => Promise<unknown>
   rows: (table: string, query: RowsQuery) => Promise<Row[]>
 }
 
@@ -143,6 +146,53 @@ const JOB_SELECT =
   'payments:jobs_ledger_payments(invoice_id,amount,paid_on),' +
   'team:jobs_ledger_team_members(users(name,role))'
 
+/** Every row of a read keyed by a list of ids, in `in` reads of `IDS_PER_READ`, each read paged. */
+type ReadIn = (what: string, table: string, select: string, column: string, ids: readonly string[], key?: string) => Promise<Row[]>
+
+/**
+ * The one card rule's lookups for a job's card lines, as the Job window loads them (`loadCardChargeExclusions`,
+ * v2.2692): each transaction's Banking → Accounting bucket (its drag-sort label's default key), and the transactions
+ * also linked to a supply-house invoice. A lookup that fails takes nothing out, as the window's does, and says so in
+ * `unread`.
+ */
+async function readCardChargeExclusions(readIn: ReadIn, txIds: readonly string[]): Promise<{ exclusions: CardChargeExclusions; unread: string[] }> {
+  if (txIds.length === 0) return { exclusions: EMPTY_CARD_CHARGE_EXCLUSIONS, unread: [] }
+  const [buckets, links] = await Promise.all([
+    part(async () => {
+      const assigned = await readIn('card line labels', 'mercury_transaction_drag_sort_assignments', 'mercury_transaction_id,label_id', 'mercury_transaction_id', txIds, 'mercury_transaction_id')
+      const labels = await readIn('Accounting labels', 'mercury_drag_sort_labels', 'id,default_key', 'id', [...new Set(assigned.map((a) => str(a.label_id)))])
+      const defaultKey = new Map(labels.map((l) => [str(l.id), (l.default_key as string | null) ?? null]))
+      return new Map(assigned.map((a) => [str(a.mercury_transaction_id), overheadPartsAccountingBucketFromDefaultKey(defaultKey.get(str(a.label_id)))]))
+    }),
+    part(async () => new Set((await readIn('invoice links', 'mercury_transaction_supply_house_invoice_links', 'id,mercury_transaction_id', 'mercury_transaction_id', txIds)).map((r) => str(r.mercury_transaction_id)))),
+  ])
+  return {
+    exclusions: { bucketByTxId: failed(buckets) ? new Map() : buckets, invoiceLinkedTxIds: failed(links) ? new Set() : links },
+    unread: [
+      ...(failed(buckets) ? [`The Accounting labels could not be read (${buckets.error}), so an Internal Transfer counts, as the window counts it then.`] : []),
+      ...(failed(links) ? [`The supply-house invoice links could not be read (${links.error}), so a charge also on an invoice counts, as the window counts it then.`] : []),
+    ],
+  }
+}
+
+/** What the card rule did to the job's lines, beside what it counts — the window marks each line it leaves out. */
+function cardRuleSummary(lines: JobMercuryAllocLine[], exclusions: CardChargeExclusions, unread: string[]) {
+  const left = { internal_transfer: { lines: 0, cost: 0 }, invoice_linked: { lines: 0, cost: 0 } }
+  for (const line of lines) {
+    const status = jobCardLineStatus(line, exclusions)
+    if (status === 'counts') continue
+    left[status].lines += 1
+    left[status].cost += cardChargeCostUsd(line.allocationAmount)
+  }
+  return {
+    rule: 'jobCardChargesCountedFromLines — an Internal Transfer is not a job cost, and a charge also on a supply-house invoice is counted there',
+    attached: mercuryCardTotalFromLines(lines),
+    ...left,
+    counted: jobCardChargesCountedFromLines(lines, exclusions),
+    ...(unread.length ? { note: unread.join(' ') } : {}),
+  }
+}
+
 export async function getJob(reader: Reader, ref: string, todayYmd: string) {
   const resolved = await resolve(ref, () => findJob(reader, ref) as Promise<{ matches: Row[] }>, 'job')
   if ('refused' in resolved) return resolved
@@ -162,12 +212,20 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
     if (read.capped) stopped.push(`${what}: stopped at ${read.rows.length}`)
     return read.rows
   }
+  // A read by a list of ids goes in `in` reads of a hundred: the door holds a URL to 6,000 characters.
+  const everyIn: ReadIn = async (what, table, select, column, ids, key = 'id') => {
+    const rows: Row[] = []
+    for (let i = 0; i < ids.length; i += IDS_PER_READ) rows.push(...(await every(what, table, { select, filters: [{ column, op: 'in', value: ids.slice(i, i + IDS_PER_READ) }] }, key)))
+    return rows
+  }
 
   const [strip, stages, stageProgress, hours, notes, statusEvents, reports, invoiceAmounts, supplyAlloc, cardAlloc, tally, sheets, settings] = await Promise.all([
     part(() => reader.rpc('list_job_account_strip', { p_job_ids: [id] })),
     part(() => reader.rpc('get_stages_enrichment', { p_job_ids: [id] })),
     part(() => reader.rpc('list_job_stage_progress', { p_job_id: id })),
-    part(async () => asRows(await reader.rpc('get_man_hours_by_job')).filter((r) => r.job_id === id)),
+    // The job's rows only, filtered on the server (v2.6468), as the Development page reads the site's (`fetchSiteLabor`):
+    // the company's rows read whole would stop at PostgREST's 1,000 and could leave the job's out.
+    part(async () => asRows(await reader.rpc('get_man_hours_by_job', {}, undefined, eq('job_id'))).filter((r) => r.job_id === id)),
     part(() => reader.rows('jobs_ledger_thread_notes', { select: 'created_at,body,author_user_id', filters: eq('job_id'), order: [{ column: 'created_at', ascending: false }], limit: THREAD_LIMIT })),
     part(() => reader.rows('job_status_events', { select: 'changed_at,from_status,to_status,changed_by_user_id', filters: eq('job_id'), order: [{ column: 'changed_at', ascending: false }], limit: THREAD_LIMIT })),
     part(() => reader.rpc('list_reports_for_job_ledger', { p_job_id: id }, THREAD_LIMIT)),
@@ -185,18 +243,19 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
   const money = await part(async () => {
     for (const p of [invoiceAmounts, supplyAlloc, cardAlloc, tally, sheets]) if (failed(p)) throw new Error(`a cost source could not be read: ${p.error}`)
     const sheetRows = sheets as unknown as SubLaborSheetRow[]
-    const items: Row[] = []
-    for (let i = 0; i < sheetRows.length; i += IDS_PER_READ) {
-      const ids = sheetRows.slice(i, i + IDS_PER_READ).map((s) => s.id)
-      items.push(...(await every('sheet items', 'people_labor_job_items', { select: 'id,job_id,count,hrs_per_unit,is_fixed,labor_rate,direct_labor_amount', filters: [{ column: 'job_id', op: 'in', value: ids }] })))
-    }
+    const cardLines = mercuryLinesFromRows(cardAlloc as unknown as Parameters<typeof mercuryLinesFromRows>[0])
+    const txIds = [...new Set(cardLines.map((l) => l.mercuryTransactionId).filter((t): t is string => !!t))]
+    const [items, card] = await Promise.all([
+      everyIn('sheet items', 'people_labor_job_items', 'id,job_id,count,hrs_per_unit,is_fixed,labor_rate,direct_labor_amount', 'job_id', sheetRows.map((s) => s.id)),
+      readCardChargeExclusions(everyIn, txIds),
+    ])
     const labor = jobSubLaborInputsFromRows(sheetRows, items as unknown as SubLaborItemRow[], failed(settings) ? [] : (settings as unknown as { key: string; value_num: number | null }[]))
     const supplyLines = supplyLinesFromRows(supplyAlloc as Row[])
-    const cardLines = mercuryLinesFromRows(cardAlloc as unknown as Parameters<typeof mercuryLinesFromRows>[0])
     const tallyLines = tallyLinesFromRows(asRows(tally) as unknown as Parameters<typeof tallyLinesFromRows>[0], id)
     const parts = {
       supply_invoices: supplyInvoiceTotalFromRows(asRows(invoiceAmounts) as { job_id: string; invoice_amount: number | string }[], id),
-      card_charges: mercuryCardTotalFromLines(cardLines),
+      // By the one card rule, as the window's profit band counts them (v2.6468) — not every line attached (`card_rule.attached`).
+      card_charges: jobCardChargesCountedFromLines(cardLines, card.exclusions),
       tally_parts: tallyPartsTotalFromLines(tallyLines),
       other_charges: asRows(job.materials).reduce((s, m) => s + (Number(m.amount) || 0), 0),
     }
@@ -215,6 +274,7 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
       source: 'buildJobProfitSummary + profileJobRowMoney — the Job window and Customer hub kernels',
       profit,
       parts,
+      card_rule: cardRuleSummary(cardLines, card.exclusions, card.unread),
       job_account_exposure: jobAccountSplitFromLines(supplyLines),
       billing,
       counts: { supply_invoice_lines: supplyLines.length, card_lines: cardLines.length, tally_lines: tallyLines.length, sub_labor_sheets: sheetRows.length },

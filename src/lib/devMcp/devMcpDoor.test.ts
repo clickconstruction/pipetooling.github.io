@@ -12,6 +12,7 @@ import {
   isSecretKey,
   redactSecrets,
   replyText,
+  rpcArgNames,
   searchNames,
 } from '../../../supabase/functions/_shared/devMcpDoor'
 
@@ -59,6 +60,34 @@ describe('buildRpcQuery', () => {
     const big = buildRpcQuery({ p_ids: Array.from({ length: 400 }, (_, i) => `00000000-0000-0000-0000-${String(i).padStart(12, '0')}`) })
     expect(big.ok).toBe(false)
     if (!big.ok) expect(big.error).toContain(String(QUERY_MAX_CHARS))
+  })
+
+  it('filters a set-returning RPC\'s answer on the server, as read_rows filters a table (v2.6468)', () => {
+    const argNames = rpcArgNames([{ args: { p_job_id: 'string', 'p_since?': 'string' } }])
+    expect([...argNames]).toEqual(['p_job_id', 'p_since'])
+    const q = buildRpcQuery({ p_job_id: 'j1' }, 20, { filters: [{ column: 'person_name', op: 'in', value: ['Al', 'Bo'] }, { column: 'man_hours', op: 'gt', value: 0 }], argNames })
+    expect(q.ok).toBe(true)
+    if (!q.ok) return
+    const p = new URLSearchParams(q.query)
+    expect(p.get('p_job_id')).toBe('j1')
+    expect(p.get('person_name')).toBe('in.("Al","Bo")')
+    expect(p.get('man_hours')).toBe('gt.0')
+    expect(p.get('limit')).toBe('20')
+  })
+
+  it('refuses a result filter on a secret column, on a name an argument holds, with a bad op or value, or with no column name', () => {
+    const argNames = rpcArgNames([{ args: { p_job_id: 'string', 'p_since?': 'string' } }])
+    const refusal = (filters: unknown[], args: Record<string, unknown> = {}) => {
+      const q = buildRpcQuery(args, undefined, { filters: filters as never, argNames })
+      return q.ok ? null : q.error
+    }
+    expect(refusal([{ column: 'portal_token', op: 'like', value: 'a*' }])).toContain('secret column')
+    expect(refusal([{ column: 'p_since', op: 'eq', value: '2026-01-01' }])).toContain('named like an argument')
+    expect(refusal([{ column: 'p_extra', op: 'eq', value: 1 }], { p_extra: 2 })).toContain('named like an argument')
+    expect(refusal([{ column: 'job_id', op: 'not.eq', value: 1 }])).toContain('is not one of')
+    expect(refusal([{ column: 'job_id', op: 'in', value: [] }])).toContain('cannot take that value')
+    expect(refusal([{ column: 'job_id;drop', op: 'eq', value: 1 }])).toContain('is not a column name')
+    expect(refusal([{ column: 'job_id', op: 'eq', value: 'j1' }])).toBeNull()
   })
 })
 
