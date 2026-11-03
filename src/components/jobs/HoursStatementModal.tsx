@@ -59,6 +59,8 @@ export type HoursStatementModalProps = {
   maker: HoursStatementMaker
   /** A saved statement to open on: its who, span and switches fill in, and Save and Print keep its record id. */
   existing?: HoursStatementRecordRow | null
+  /** On a job, the worker to pick first (the Legal desk's Ask…, v2.6413); the first who clocked here otherwise. */
+  initialUserId?: string | null
   /** Above the job window (1010) by default; the person's desk passes its editor layer. */
   zIndex?: number
   onSaved?: (row: HoursStatementRecordRow) => void
@@ -76,7 +78,7 @@ const btnDead: CSSProperties = { ...btn, background: DEAD_PRESS_FILL, color: DEA
 
 type Sheet = 'send' | 'scan' | null
 
-export function HoursStatementModal({ open, onClose, scope, maker, existing = null, zIndex = 1030, onSaved, signingIo = supabaseHoursStatementSigningIo }: HoursStatementModalProps) {
+export function HoursStatementModal({ open, onClose, scope, maker, existing = null, initialUserId = null, zIndex = 1030, onSaved, signingIo = supabaseHoursStatementSigningIo }: HoursStatementModalProps) {
   const { user, profileName } = useAuth()
   const { showToast } = useToastContext()
   const promptDialog = usePromptDialog()
@@ -128,7 +130,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
           const list = await listHoursStatementPeople(scope.job.id)
           if (cancelled) return
           setPeople(list)
-          const first = existing ? (list.find((p) => p.userId === existing.user_id) ?? null) : (list[0] ?? null)
+          const first = existing ? (list.find((p) => p.userId === existing.user_id) ?? null) : ((initialUserId ? list.find((p) => p.userId === initialUserId) : null) ?? list[0] ?? null)
           setPick(existing?.user_id ?? first?.userId ?? '')
           setFrom(existing?.period_start ?? first?.firstDay ?? '')
           setTo(existing?.period_end ?? first?.lastDay ?? '')
@@ -149,7 +151,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
       cancelled = true
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- the open, the scope and the saved row decide; the rest is read inside
-  }, [open, scopeKey, existingId, payAllowed])
+  }, [open, scopeKey, existingId, payAllowed, initialUserId])
 
   useEffect(() => {
     if (!open) return

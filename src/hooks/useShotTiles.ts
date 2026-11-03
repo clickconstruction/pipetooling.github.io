@@ -2,8 +2,10 @@ import { useEffect, useRef, useState, type ChangeEvent, type CSSProperties, type
 import { formatErrorMessage } from '../utils/errorHandling'
 import { newPhotoId } from '../lib/photos/reportPhotos'
 import { jobHasDriveFolder, loadReportPhotoSize } from '../lib/photos/reportPhotosIo'
-import { readyTiles, tilesInFlight, wordsForTheRest, type JobPhotoTile } from '../lib/photos/jobPhotoNotes'
+import { addWrites, keptTiles, readyTiles, tilesInFlight, wordsForTheRest, type JobPhotoTile } from '../lib/photos/jobPhotoNotes'
 import type { ShotIo } from '../lib/photos/jobPhotoNotesIo'
+import { keptPhotos, type KeptPhotosStore } from '../lib/offline/keptPhotos'
+import type { KeptJobPhoto } from '../lib/offline/outbox'
 import { edgeFor, shrinkReportPhoto, shrinkWords, withinCap, type ReportPhotoSize } from '../lib/photos/shrink'
 
 /**
@@ -30,12 +32,20 @@ export interface UseShotTilesInput {
   io: ShotIo
   /** Whether the job has a Drive folder, when the host read it already; left out, the hook reads it once per open. */
   jobHasFolder?: boolean | null
+  /** Where a shot's bytes wait with no signal (PR 5); the app's unless a test passes its own. */
+  kept?: KeptPhotosStore
 }
 
 export interface ShotTilesHost {
   tiles: JobPhotoTile[]
-  /** The shots in the bucket with their row: the press takes them. */
+  /** The shots the press takes: in the bucket with their row, or kept on the phone (PR 5). */
   ready: JobPhotoTile[]
+  /** How many wait on the phone: with any, the press goes through the outbox. */
+  kept: number
+  /** The riding shots as a kept press carries them (PR 5), with their words. */
+  queuedPhotos: () => KeptJobPhoto[]
+  /** The press was kept on the phone with the shots: the press owns them now, and a close drops nothing. */
+  markQueued: () => void
   /** True while a shot is still shrinking or sending: the press waits. */
   inFlight: boolean
   photoSize: ReportPhotoSize
@@ -83,6 +93,8 @@ export function useShotTiles(input: UseShotTilesInput): ShotTilesHost {
   tilesRef.current = tiles
   const ioRef = useRef(io)
   ioRef.current = io
+  const bytes = input.kept ?? keptPhotos
+  const queuedRef = useRef(false)
 
   // The office's size, once per open. The form never waits on it.
   useEffect(() => {
@@ -133,10 +145,13 @@ export function useShotTiles(input: UseShotTilesInput): ShotTilesHost {
 
   /** The shots of a window that was closed without the press leave the bucket and the table; every object URL is let go. */
   function drop() {
-    const unadded = tilesRef.current.filter((t) => t.status === 'sent').map((t) => ({ id: t.id, storagePath: t.storagePath }))
+    const unadded = queuedRef.current ? [] : tilesRef.current.filter((t) => t.status === 'sent').map((t) => ({ id: t.id, storagePath: t.storagePath }))
     if (unadded.length) void ioRef.current.discard(unadded)
+    const keptIds = queuedRef.current ? [] : tilesRef.current.filter((t) => t.status === 'kept').map((t) => t.id)
+    if (keptIds.length) void bytes.drop(keptIds)
     letGoOfUrls()
     originalsRef.current.clear()
+    queuedRef.current = false
     setTiles([])
     setLastShrink(null)
   }
@@ -157,8 +172,12 @@ export function useShotTiles(input: UseShotTilesInput): ShotTilesHost {
     inputRef.current?.click()
   }
 
-  /** Shrink on the device, then send: the tile reads each step. Any failure keeps the tile with Retry. */
+  /**
+   * Shrink on the device, keep the bytes, then send: the tile reads each step. A send lost to the signal leaves the
+   * tile kept on the phone (PR 5), to go with the press; any other failure keeps the tile with Retry.
+   */
   async function shrinkAndSend(id: string, file: File, takenAt: string) {
+    let held = false
     try {
       const shot = await shrinkReportPhoto(file, photoSize)
       if (!withinCap(shot.blob.size)) throw new Error('The photo is over 2 MB even after the shrink.')
@@ -169,9 +188,18 @@ export function useShotTiles(input: UseShotTilesInput): ShotTilesHost {
       setLastShrink(shrinkWords({ before: file.size, after: shot.blob.size, longEdge: edgeFor(photoSize), shrunk: shot.shrunk }))
       if (!authUserId) throw new Error('Sign in again to send a photo.')
       if (!jobId) throw new Error('A photo goes on a job.')
+      held = await bytes.keep(id, shot.blob)
       const sent = await ioRef.current.send({ id, jobId, blob: shot.blob, byUserId: authUserId, byName, takenAt, originalBytes: file.size, width: shot.width, height: shot.height })
       setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'sent', storagePath: sent.storagePath, failWhy: null } : t)))
+      void bytes.drop([id])
     } catch (err) {
+      // The class by name, not instanceof: a smoke that stubs the io throws a plain error and must still fail the tile.
+      const lostSignal = typeof err === 'object' && err != null && (err as { name?: unknown }).name === 'PhotoSendError' && (err as { kind?: unknown }).kind === 'network'
+      if (lostSignal && held) {
+        setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'kept', failWhy: null } : t)))
+        return
+      }
+      if (held) void bytes.drop([id])
       setTiles((prev) => prev.map((t) => (t.id === id ? { ...t, status: 'failed', failWhy: formatErrorMessage(err, 'The photo did not send.') } : t)))
     }
   }
@@ -223,8 +251,33 @@ export function useShotTiles(input: UseShotTilesInput): ShotTilesHost {
     const tile = tilesRef.current.find((t) => t.id === id)
     if (!tile) return
     if (tile.status === 'sent') void ioRef.current.discard([{ id: tile.id, storagePath: tile.storagePath }])
+    if (tile.status === 'kept') void bytes.drop([id])
     originalsRef.current.delete(id)
     setTiles((prev) => prev.filter((t) => t.id !== id))
+  }
+
+  /** The riding shots as the press carries them: a kept one unsent, a sent one with only the landing left. */
+  function queuedPhotos(): KeptJobPhoto[] {
+    const words = new Map(addWrites(tilesRef.current).map((w) => [w.id, w]))
+    return readyTiles(tilesRef.current).map((t) => {
+      const w = words.get(t.id)
+      return {
+        id: t.id,
+        sent: t.status === 'sent',
+        fixtureId: t.fixtureId,
+        stageName: t.stageName,
+        caption: w?.caption ?? '',
+        description: w?.description ?? '',
+        questionId: null,
+        questionWords: null,
+        takenAt: t.takenAt,
+        bytes: t.bytes,
+        originalBytes: t.originalBytes,
+        width: t.width,
+        height: t.height,
+        byName,
+      }
+    })
   }
 
   function clear(ids: ReadonlyArray<string>) {
@@ -257,6 +310,11 @@ export function useShotTiles(input: UseShotTilesInput): ShotTilesHost {
   return {
     tiles,
     ready: readyTiles(tiles),
+    kept: keptTiles(tiles).length,
+    queuedPhotos,
+    markQueued: () => {
+      queuedRef.current = true
+    },
     inFlight: tilesInFlight(tiles),
     photoSize,
     lastShrink,

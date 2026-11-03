@@ -406,7 +406,7 @@ export function JobWindowDocumentsTab({
       {/* Index this job's files into our own search index (punch list #240, PR 1); the office roles the folder press names. */}
       {canMakeJobDriveFolders(role) ? <JobDocumentsIndexFolder job={job} /> : null}
 
-      <JobDocumentsPhotos jobId={job.id} driveLink={job.google_drive_link} picturesLink={job.job_pictures_link} />
+      <JobDocumentsPhotos jobId={job.id} driveLink={job.google_drive_link} picturesLink={job.job_pictures_link} job={{ hcp_number: job.hcp_number, click_number: job.click_number, job_name: job.job_name, job_address: job.job_address }} />
 
       <AiaG702G703Modal
         open={aia != null}

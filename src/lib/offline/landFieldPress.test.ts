@@ -1,13 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { DatabaseError, OperationTimeoutError } from '../../utils/errorHandling'
 import { newPress } from './outbox'
-import { RPC_KIND, outcomeOfFailure, rpcPayload } from './landFieldPress'
+import { RPC_KIND, landJobPhotos, outcomeOfFailure, rpcPayload } from './landFieldPress'
 
 const T = 1_780_000_000_000
 
 describe('landFieldPress · the press as the RPC reads it', () => {
   it('names the four kinds in the database’s words', () => {
-    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report' })
+    expect(RPC_KIND).toEqual({ 'clock-in': 'clock_in', 'clock-out': 'clock_out', 'job-note': 'job_note', 'field-report': 'field_report', 'job-photos': 'job_photos' })
   })
 
   it('maps each payload to snake case, every column the RPC reads', () => {
@@ -54,5 +54,31 @@ describe('landFieldPress · the outcome of a failure, by class', () => {
       serverMessage: 'The office closed that session at 8:05 AM.',
     })
     expect(outcomeOfFailure(error)).toEqual({ kind: 'refused', refusal: { message: 'The office closed that session at 8:05 AM.', code: 'P0001' } })
+  })
+})
+
+// Punch list #244, PR 5: a job photos press lands through the table, not the RPC.
+describe('landJobPhotos', () => {
+  const photo = (id: string, sent: boolean) => ({ id, sent, fixtureId: 'f1', stageName: 'Rough In', caption: 'Meter location', description: 'Meter location, behind the east fence gate', questionId: null, questionWords: null, takenAt: '2026-11-02T20:41:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Carla Nguyen' })
+  const press = newPress({ id: 'jp', seq: 1, kind: 'job-photos', userId: 'u', pressedAt: T, payload: { jobLedgerId: 'j1', photos: [photo('a', true), photo('b', false)] } })
+
+  it('names the kind and the ids for the record, and lands only the sent photos with their words', async () => {
+    expect(rpcPayload(press)).toEqual({ job_ledger_id: 'j1', photo_ids: ['a', 'b'] })
+    const landed: unknown[] = []
+    const out = await landJobPhotos(press, {
+      land: async (writes) => {
+        landed.push(...writes)
+        return { added: writes.length }
+      },
+    })
+    expect(out).toEqual({ kind: 'landed', result: { added: 1 } })
+    expect(landed).toEqual([{ id: 'a', description: 'Meter location, behind the east fence gate', fixtureId: 'f1', stageName: 'Rough In', caption: 'Meter location' }])
+  })
+
+  it('a lost signal fails and waits; a refusal keeps the server’s reason', async () => {
+    const failed = await landJobPhotos(press, { land: async () => Promise.reject(new TypeError('Failed to fetch')) })
+    expect(failed.kind).toBe('failed')
+    const refused = await landJobPhotos(press, { land: async () => Promise.reject(new DatabaseError('Failed to add photos: The job is not one you can see.', '42501', undefined, { kind: 'server', status: 403, operationName: 'add photos', serverMessage: 'The job is not one you can see.' })) })
+    expect(refused.kind).toBe('refused')
   })
 })

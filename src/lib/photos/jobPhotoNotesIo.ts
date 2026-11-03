@@ -7,11 +7,12 @@
  */
 import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../supabase'
-import { errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../utils/errorHandling'
+import { databaseErrorFromResult, errorKindOf, formatErrorMessage, type DatabaseErrorKind } from '../../utils/errorHandling'
 import { JOB_PHOTO_NOTES_BUCKET, jobPhotoCaption, jobPhotoNotePath, type JobPhotoAddWrite, type JobPhotoNoteRow } from './jobPhotoNotes'
 import { UPLOADED_PHOTOS_SELECT, type UploadedPhotoRow } from './uploadedPhotos'
 import { supabaseJobPhotosIo, type JobPhotosIo } from './jobPhotosIo'
 import { supabaseUploadedPhotosIo, type UploadedPhotosIo } from './uploadedPhotosIo'
+import { postJobThreadNoteBody } from '../jobs/postJobThreadNote'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -107,6 +108,27 @@ export async function addJobPhotoNotes(writes: ReadonlyArray<JobPhotoAddWrite>):
   return { added, failed, failedIds }
 }
 
+/**
+ * A kept press lands (punch list #244, PR 5): the same writes as the press makes online, on the rows not yet added,
+ * so a repeat changes nothing and counts once; the first refusal or lost signal throws as the app's `DatabaseError`,
+ * for the outbox to class. Answers how many rows took the words this time.
+ */
+export async function landJobPhotoNotes(writes: ReadonlyArray<JobPhotoAddWrite>): Promise<{ added: number }> {
+  let added = 0
+  const addedAt = new Date().toISOString()
+  for (const w of writes) {
+    const { data, error, status } = await db
+      .from('job_photo_notes')
+      .update({ description: w.description, fixture_id: w.fixtureId, stage_name: w.stageName ?? '', caption: w.caption, added_at: addedAt })
+      .eq('id', w.id)
+      .is('added_at', null)
+      .select('id')
+    if (error) throw databaseErrorFromResult(error, 'add photos', status)
+    added += ((data ?? []) as unknown[]).length
+  }
+  return { added }
+}
+
 /** The viewer's Edit the words: the description and the caption it names; the sweep renames the Drive file on its next pass. Throws with the reason. */
 export async function editJobPhotoNoteWords(id: string, input: { description: string; stageName: string | null }): Promise<void> {
   const { error } = await db
@@ -147,7 +169,32 @@ export async function loadJobUploadedPhotos(jobId: string, limit = 500): Promise
   return (data ?? []) as UploadedPhotoRow[]
 }
 
-/** The reads and writes the Job photos window makes (PR 3); a test hands its own. */
+/** How many photos the view holds for one job (every source), for the Job Mode card's line; null when the count cannot be read. */
+export async function countJobUploadedPhotos(jobId: string): Promise<number | null> {
+  try {
+    const { count, error } = await db.from('uploaded_photos').select('id', { count: 'exact', head: true }).eq('job_id', jobId)
+    if (error) return null
+    return count ?? 0
+  } catch {
+    return null
+  }
+}
+
+export type JobPhotoLinks = { google_drive_link: string | null; job_pictures_link: string | null }
+
+/** The job's two folder links, for a door that opens the window without the job's row in hand; null when the read fails. */
+export async function loadJobPhotoLinks(jobId: string): Promise<JobPhotoLinks | null> {
+  try {
+    const { data } = await db.from('jobs_ledger').select('google_drive_link, job_pictures_link').eq('id', jobId).maybeSingle()
+    const row = data as Partial<JobPhotoLinks> | null
+    if (!row) return null
+    return { google_drive_link: row.google_drive_link ?? null, job_pictures_link: row.job_pictures_link ?? null }
+  } catch {
+    return null
+  }
+}
+
+/** The reads and writes the Job photos window makes (PR 3; the links and the thread line PR 4); a test hands its own. */
 export interface JobPhotosWindowIo {
   rows: (jobId: string) => Promise<UploadedPhotoRow[]>
   drive: JobPhotosIo
@@ -155,8 +202,12 @@ export interface JobPhotosWindowIo {
   shots: ShotIo
   add: typeof addJobPhotoNotes
   editWords: typeof editJobPhotoNoteWords
+  /** The job's folder links when the door did not hand them over. */
+  links: typeof loadJobPhotoLinks
+  /** The one line on the job's thread after the press, best-effort. */
+  thread: (jobId: string, authorUserId: string, body: string) => Promise<boolean>
 }
 
 export function supabaseJobPhotosWindowIo(): JobPhotosWindowIo {
-  return { rows: loadJobUploadedPhotos, drive: supabaseJobPhotosIo(), photos: supabaseUploadedPhotosIo(), shots: jobPhotoNotesShotIo, add: addJobPhotoNotes, editWords: editJobPhotoNoteWords }
+  return { rows: loadJobUploadedPhotos, drive: supabaseJobPhotosIo(), photos: supabaseUploadedPhotosIo(), shots: jobPhotoNotesShotIo, add: addJobPhotoNotes, editWords: editJobPhotoNoteWords, links: loadJobPhotoLinks, thread: postJobThreadNoteBody }
 }

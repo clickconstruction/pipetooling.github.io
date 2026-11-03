@@ -59,7 +59,7 @@ export const WRITE_VERBS = {
   // v2.6317 / 0.14.0 (punch list #239): a set of drawings, or a paper, on a plan part — the rows the job window's
   // Plans section writes (src/lib/plans/planSetsIo.ts addSet / keepPaper / markPaperCame), as the dev under RLS.
   // The dry run is the server's own read of the part (devMcpPlanSets.ts); no RPC, so rpc is null.
-  // v2.6437 / 0.17.0: clock sessions as the office edits them — the start and the end, the description, the job and
+  // v2.6437 / 0.18.0: clock sessions as the office edits them — the start and the end, the description, the job and
   // the approval — through dev_clock_session_write, op by op with a dry run; the typed-hours second look and the
   // approval guard hold inside the definer as they do in the app, so the dev's own session and the hours the dev
   // typed are held for someone else.

@@ -36,7 +36,8 @@ import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import type { JobPhotosRead } from '../../lib/photos/jobPhotos'
-import { captionWords, dayGroups, threadPath, timeWords, type SourcePick, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
+import { captionWords, dayGroups, jobWindowPath, threadPath, timeWords, type SourcePick, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
+import { pressThroughOutbox } from '../../lib/offline/pressThroughOutbox'
 import { supabaseJobPhotosWindowIo, type JobPhotosWindowIo } from '../../lib/photos/jobPhotoNotesIo'
 import {
   JOB_PHOTO_DESCRIPTION_MAX,
@@ -55,6 +56,7 @@ import {
   gridTileWords,
   newPhotosLine,
   offersWordsForTheRest,
+  threadLineWords,
   type JobPhotoGridItem,
 } from '../../lib/photos/jobPhotoNotes'
 
@@ -105,7 +107,25 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
   const authUserId = user?.id ?? null
   const phone = useNarrowViewport640()
   const cameraFirst = phone && canLeaveJobFieldReport(role)
-  const hasFolder = Boolean(driveFolderIdFromUrl(job.job_pictures_link) || driveFolderIdFromUrl(job.google_drive_link))
+  // A door without the job's row (the Job Mode card, PR 4) hands no links: the window reads them once.
+  const linksKnown = job.google_drive_link !== undefined || job.job_pictures_link !== undefined
+  const [readLinks, setReadLinks] = useState<{ drive: string | null; pictures: string | null } | null>(null)
+  useEffect(() => {
+    if (linksKnown) return
+    let live = true
+    setReadLinks(null)
+    io.links(job.id).then(
+      (l) => live && setReadLinks({ drive: l?.google_drive_link ?? null, pictures: l?.job_pictures_link ?? null }),
+      () => live && setReadLinks({ drive: null, pictures: null }),
+    )
+    return () => {
+      live = false
+    }
+  }, [io, job.id, linksKnown])
+  const picturesLink = linksKnown ? job.job_pictures_link : readLinks?.pictures
+  const driveLink = linksKnown ? job.google_drive_link : readLinks?.drive
+  const linksSettled = linksKnown || readLinks != null
+  const hasFolder = Boolean(driveFolderIdFromUrl(picturesLink) || driveFolderIdFromUrl(driveLink))
   const lineProgress = useJobLineProgress(job.id, true)
   const stages: ShotStage[] = useMemo(() => (lineProgress.lines ?? []).filter((r) => !r.drawPaid).map((r) => ({ fixtureId: r.fixtureId, name: r.name })), [lineProgress.lines])
   const host = useShotTiles({ open: true, jobId: job.id, authUserId, byName: profileName?.trim() || '', cameraFirst, io: io.shots, jobHasFolder: hasFolder })
@@ -121,6 +141,7 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
   const [editing, setEditing] = useState<{ row: UploadedPhotoRow; words: string; saving: boolean; why: string | null } | null>(null)
 
   useEffect(() => {
+    if (!linksSettled) return
     let live = true
     setFailure(null)
     setRows(null)
@@ -135,7 +156,7 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
     return () => {
       live = false
     }
-  }, [io, job.id, hasFolder, tick])
+  }, [io, job.id, hasFolder, linksSettled, tick])
 
   const items = useMemo(() => gridItems({ rows: rows ?? [], drive: drive?.photos ?? null, job }), [rows, drive, job])
   const chips = useMemo(() => gridChips(items, role), [items, role])
@@ -155,13 +176,41 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
     if (press.dead) return
     setAdding(true)
     try {
-      const writes = addWrites(host.tiles)
+      // A shot kept on the phone with no signal (PR 5): the whole press goes through the outbox, and the replay sends
+      // the kept shots first, then lands the words on every row, then writes the thread line.
+      if (host.kept > 0) {
+        if (!authUserId) {
+          showToast('Sign in again to add the photos.', 'warning')
+          return
+        }
+        const outcome = await pressThroughOutbox(
+          { kind: 'job-photos', userId: authUserId, pressedAt: Date.now(), payload: { jobLedgerId: job.id, photos: host.queuedPhotos() }, about: jobLabel, door: jobWindowPath(job.id) },
+          { forceQueue: true },
+        )
+        if (outcome.kind === 'queued') {
+          host.markQueued()
+          host.clear(host.tiles.map((t) => t.id))
+          showToast(JOB_PHOTO_WORDS.queued, 'success')
+        } else if (outcome.kind === 'landed') {
+          host.clear(host.tiles.map((t) => t.id))
+          setTick((t) => t + 1)
+        } else {
+          showToast(outcome.kind === 'refused' ? outcome.message : formatErrorMessage(outcome.error, 'The photos did not add.'), 'warning')
+        }
+        return
+      }
+      const writes = addWrites(host.tiles.filter((t) => t.status === 'sent'))
       const out = await io.add(writes)
       const failed = new Set(out.failedIds)
       host.clear(writes.map((w) => w.id).filter((id) => !failed.has(id)))
       const words = addedWords(out)
       showToast(words.text, words.tone)
-      if (out.added > 0) setTick((t) => t + 1)
+      if (out.added > 0) {
+        setTick((t) => t + 1)
+        // One line on the job's thread (call 5: a thread line, no push, no email), best-effort.
+        const line = threadLineWords(writes.filter((w) => !failed.has(w.id)))
+        if (authUserId && line) void io.thread(job.id, authUserId, line)
+      }
     } finally {
       setAdding(false)
     }
@@ -192,6 +241,7 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
 
   const addTileWords = cameraFirst ? JOB_PHOTO_WORDS.take : JOB_PHOTO_WORDS.add
   const emptyMake = emptyWordsWithPress(emptyWords({ kind: 'make', noun: 'photos on this job', control: addTileWords }), { onPress: () => host.openCamera() })
+  const folderUrl = drive?.folder.url ?? (hasFolder ? (picturesLink ?? driveLink ?? null) : null)
   const emptyFilter = emptyWordsWithPress(emptyWords({ kind: 'filter', noun: 'photos on this job', query: typed }), {
     onPress: () => {
       setTyped('')
@@ -241,6 +291,8 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
                       <span style={{ color: 'var(--text-blue-700)', fontWeight: 600 }}>{JOB_PHOTO_WORDS.sending}</span>
                     ) : t.status === 'sent' ? (
                       <span style={{ color: 'var(--text-green-700)', fontWeight: 600 }}>{JOB_PHOTO_WORDS.sent}</span>
+                    ) : t.status === 'kept' ? (
+                      <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{JOB_PHOTO_WORDS.kept}</span>
                     ) : (
                       <span style={{ color: 'var(--text-amber-800)', fontWeight: 600 }}>{t.failWhy}</span>
                     )}{' '}
@@ -339,10 +391,10 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
             {items.length > 0 ? (
               <p style={foot}>
                 {gridFootWords({ count: items.length, hand: items.filter((it) => it.hand).length, folderKind: drive?.folder.kind ?? null })}
-                {drive?.folder.url ? (
+                {folderUrl ? (
                   <>
                     {' · '}
-                    <button type="button" style={{ ...quiet, fontSize: '0.8125rem' }} onClick={() => openInExternalBrowser(drive.folder.url!)}>
+                    <button type="button" style={{ ...quiet, fontSize: '0.8125rem' }} onClick={() => openInExternalBrowser(folderUrl)}>
                       Open the folder ↗
                     </button>
                   </>

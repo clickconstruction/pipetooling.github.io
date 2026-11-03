@@ -2,7 +2,7 @@
 title: add a photo to a job and find it later
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator, primary, superintendent, helpers, subcontractor
-keywords: photo, photos, camera, picture, job photos, description, words, add a photo, pipeline, job mode, browse, search, drive, customer pictures, edit the words, find a photo
+keywords: photo, photos, camera, picture, job photos, description, words, add a photo, pipeline, job mode, browse, search, drive, customer pictures, edit the words, find a photo, documents tab, activity, thread
 where: /jobs?tab=stages
 order: 31
 ---
@@ -20,6 +20,18 @@ Hold ⌘ on a Mac, or Ctrl on Windows, and press the icon. The photo folder open
 
 On a phone, open the card's ⋯ menu and press **Photos**.
 
+## Open the job's photos from the Job Mode card
+
+1. Open the Dashboard with Job Mode on.
+2. Under the stage checklists, find the **Photos** line. The number after it is how many photos the job has.
+3. Press the line. The same window opens as a full sheet.
+
+A job with no photo yet says **add the first** on that line.
+
+In the window, press {{button:outline|Take a photo}}. The phone's camera opens. The words box comes up after the shot.
+
+The job window's **Documents** tab has the same door. Its **Photos** line opens the window, and {{button:outline|Add a photo}} sits beside it.
+
 ## Add a photo with its words
 
 1. Press {{button:outline|Add a photo}}. The tile sits first in the grid.
@@ -36,6 +48,12 @@ Several photos at once? Type the words under the first one. Then press **Use the
 The press waits while a photo is still sending. A photo that did not send says why under its tile and offers {{button:outline|Retry}}.
 
 Close the window without pressing Add and the new photos are let go. Nothing lands on the job.
+
+## With no signal
+
+A shot taken with no signal is kept on the phone. Its tile reads *Kept on the phone. It goes when the signal is back.* Type the words as usual and press the Add button. The photos wait in the queue together. The line at the top reads *Job photos from 7:58 AM*, then *waiting to send* and *1 photo with it*.
+
+When the signal is back the phone sends the photos first, then their words. The job's photos then show them as usual. A photo that fails for another reason still shows why, with {{button:outline|Retry}}.
 
 ## Where a photo lands
 
@@ -72,6 +90,6 @@ You may change the words on your own photos. The office may change the words on 
 
 Use {{button:blue|Leave report}} when the office should hear it now. A report pushes, emails and moves the thread. See [take photos for a report](/help/take-photos-for-a-report).
 
-Use **Photos** when the picture should be findable later. A job photo files no report and pushes nobody.
+Use **Photos** when the picture should be findable later. A job photo files no report and pushes nobody. One line lands on the job's activity, so the office sees what was added.
 
 Every photo across every job is on [Documents → Photos](/help/find-every-photo-that-was-uploaded). The job window's strip shows the folder too. See [see a job's photos](/help/see-a-jobs-photos).

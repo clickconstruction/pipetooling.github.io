@@ -12,7 +12,8 @@ import { cardPhotoWords } from './reportPhotos'
 import { sourceChips, sourceWords, type SourcePick, type UploadedPhotoRow } from './uploadedPhotos'
 
 /** Where a shot stands on the window. */
-export type JobPhotoTileStatus = 'shrinking' | 'sending' | 'sent' | 'failed'
+/** `kept` (PR 5): the shot waits on the phone with no signal and goes with the press. */
+export type JobPhotoTileStatus = 'shrinking' | 'sending' | 'sent' | 'kept' | 'failed'
 
 /** A shot on the window, from the shutter to Add. */
 export type JobPhotoTile = {
@@ -88,6 +89,10 @@ export const JOB_PHOTO_WORDS = {
   plainCaption: 'Job photo',
   onItsWay: 'on its way to Drive',
   inDrive: 'In Drive',
+  /** A shot kept on the phone with no signal (PR 5). */
+  kept: 'Kept on the phone. It goes when the signal is back.',
+  /** The toast after a press that queued. */
+  queued: 'Kept on the phone. The photos go to the job when the signal is back.',
   /** The Documents → Photos chip and the window's source chip. */
   sourceChip: 'Job photos',
   sourceWord: 'Job photo',
@@ -121,9 +126,14 @@ export function jobPhotoCaption(input: { description: string; stageName: string 
   return stage || JOB_PHOTO_WORDS.plainCaption
 }
 
-/** The tiles already in the bucket with their row: only the press is left for them. */
+/** The tiles the press takes: in the bucket with their row, or kept on the phone to go with the press (PR 5). */
 export function readyTiles<T extends Pick<JobPhotoTile, 'status'>>(tiles: ReadonlyArray<T>): T[] {
-  return tiles.filter((t) => t.status === 'sent')
+  return tiles.filter((t) => t.status === 'sent' || t.status === 'kept')
+}
+
+/** The tiles kept on the phone: with any, the press goes through the outbox. */
+export function keptTiles<T extends Pick<JobPhotoTile, 'status'>>(tiles: ReadonlyArray<T>): T[] {
+  return tiles.filter((t) => t.status === 'kept')
 }
 
 /** True while a shot is still shrinking or sending: the press waits for it. */
@@ -328,4 +338,25 @@ export function canEditJobPhotoWords(input: { role: string | null | undefined; b
   if (input.authUserId && input.byUserId && input.byUserId === input.authUserId) return true
   const r = input.role
   return r === 'dev' || r === 'master_technician' || r === 'assistant' || r === 'controller' || r === 'estimator'
+}
+
+// ---------------------------------------------------------------------------
+// The field's doors and the thread (PR 4).
+// ---------------------------------------------------------------------------
+
+/**
+ * The one line on the job's thread after the press (the author is the thread's own): *Added 2 photos: Cracked flange
+ * under the second lav; Water heater serial plate*; a photo with no words is counted and not named; '' with none.
+ */
+export function threadLineWords(writes: ReadonlyArray<Pick<JobPhotoAddWrite, 'caption' | 'description' | 'stageName'>>): string {
+  if (writes.length === 0) return ''
+  const head = writes.length === 1 ? 'Added 1 photo' : `Added ${writes.length} photos`
+  const named = writes.map((w) => (descriptionTrimmed(w.description) ? w.caption : (w.stageName ?? '').trim())).filter(Boolean)
+  return named.length ? `${head}: ${named.join('; ')}` : head
+}
+
+/** The Job Mode card's line: *Photos · 14*, *Photos · add the first*, *Photos* while the count is unread. */
+export function jobModePhotosLineWords(count: number | null): string {
+  if (count == null) return 'Photos'
+  return count > 0 ? `Photos · ${count}` : 'Photos · add the first'
 }

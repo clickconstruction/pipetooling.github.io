@@ -108,4 +108,31 @@ describe('afterLanding, the photos', () => {
     // c was never sent, so it is not attached; b did not attach, so a answers the question; the bytes of both sent go.
     expect(calls).toEqual(['attach:r1:a/Rough In/Rough In,b/Rough In/Rough In', 'answer:u:Luis Ortega:q1=a', 'drop:a,b', 'fn:send-report-notification', 'fn:send-report-email', 'pct'])
   })
+
+  // Punch list #244, PR 5.
+  it('a job photos press drops the sent shots’ bytes and writes the one thread line, and nothing else', async () => {
+    const calls: string[] = []
+    const run: AfterLandingIo = {
+      invokeFunction: async (name) => {
+        calls.push(`fn:${name}`)
+      },
+      stampMovedLines: async () => {
+        calls.push('stamp')
+      },
+      propagateReportPct: async () => {
+        calls.push('pct')
+      },
+      dropKeptPhotos: async (ids) => {
+        calls.push(`drop:${ids.join(',')}`)
+      },
+      postThreadLine: async (jobId, userId, body) => {
+        calls.push(`thread:${jobId}:${userId}:${body}`)
+        return true
+      },
+    }
+    const jp = (id: string, sent: boolean, description: string) => ({ id, sent, fixtureId: null, stageName: null, caption: description || 'Job photo', description, questionId: null, questionWords: null, takenAt: '2026-11-02T20:41:00Z', bytes: 1, originalBytes: 1, width: 1, height: 1, byName: 'Carla Nguyen' })
+    const press = newPress({ id: 'jp', seq: 1, kind: 'job-photos', userId: 'u', pressedAt: T, payload: { jobLedgerId: 'j', photos: [jp('a', true, 'Meter location'), jp('b', true, ''), jp('c', false, 'Never sent')] } })
+    await afterLanding(press, { added: 2 }, run)
+    expect(calls).toEqual(['drop:a,b', 'thread:j:u:Added 2 photos: Meter location'])
+  })
 })
