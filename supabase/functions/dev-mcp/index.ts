@@ -1271,7 +1271,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'plan_movement':
     case 'apply_movement':
     case 'plan_count':
-    case 'apply_count': {
+    case 'apply_count':
     case 'plan_person_evidence':
     case 'apply_person_evidence': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as
