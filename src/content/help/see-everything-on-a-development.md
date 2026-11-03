@@ -38,7 +38,7 @@ A strip under the counts names six looks: History, Jobs & bids, Money, Plans, Qu
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
 
-On a phone the strip is one row of five cells. Each cell shows the look's name over one number. The number is what waits on you, or the count. Money rounds to fit, so $186,116 reads as $186k. The look you are in is underlined.
+On a phone the strip is one row with a cell for each look. Each cell shows the look's name over one number. The number is what waits on you, or the count. Money rounds to fit, so $186,116 reads as $186k. The look you are in is underlined.
 
 ## See a job's details without opening it
 
