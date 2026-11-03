@@ -9,6 +9,7 @@ import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'
 import { bookEntryForForm } from './formStudioState'
 import { emptyFormSchema, type FormSchema } from './formSchema'
+import { HOURS_STATEMENT_DOC_TYPE } from '../people/hoursStatementForm'
 
 export const FORM_TEMPLATES_BUCKET = 'contract-form-templates'
 
@@ -38,9 +39,10 @@ function normalise(row: Record<string, unknown>): FormTemplateRow {
   return { ...(row as unknown as FormTemplateRow), schema: { ...emptyFormSchema(schema.pages ?? []), ...schema } }
 }
 
+/** The studio's list: every form a dev placed boxes on. A signed hours statement's own per-statement template (v2.6411) is not one of them. */
 export async function listFormTemplates(): Promise<FormTemplateRow[]> {
   const res = await withSupabaseRetry(
-    async () => supabase.from('contract_form_templates' as never).select(COLUMNS).order('updated_at', { ascending: false }),
+    async () => supabase.from('contract_form_templates' as never).select(COLUMNS).neq('doc_type', HOURS_STATEMENT_DOC_TYPE).order('updated_at', { ascending: false }),
     'list form templates',
   )
   return ((res ?? []) as unknown as Record<string, unknown>[]).map(normalise)
