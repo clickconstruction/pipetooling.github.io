@@ -9,7 +9,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
  */
 type Step = { method: string; args: unknown[] }
 const calls: Array<{ kind: 'from' | 'rpc'; name: string; args: unknown[]; steps: Step[] }> = []
-let route: (kind: 'from' | 'rpc', name: string) => unknown = () => []
+let route: (kind: 'from' | 'rpc', name: string, steps: Step[]) => unknown = () => []
 function recorder(kind: 'from' | 'rpc', name: string, args: unknown[]) {
   const steps: Step[] = []
   calls.push({ kind, name, args, steps })
@@ -20,7 +20,7 @@ function recorder(kind: 'from' | 'rpc', name: string, args: unknown[]) {
         if (prop === 'then') {
           return (resolve: (v: { data: unknown; error: null }) => void, reject: (e: unknown) => void) => {
             try {
-              resolve({ data: route(kind, name), error: null })
+              resolve({ data: route(kind, name, steps), error: null })
             } catch (e) {
               reject(e)
             }
@@ -105,7 +105,8 @@ describe('fetchJobMaterialsCostSnapshot', () => {
     expect(argsOf(call('supply_house_invoice_job_allocations').steps, 'eq')).toEqual([['job_id', 'j1']])
     expect(String(argsOf(call('supply_house_invoice_job_allocations').steps, 'select')[0]![0])).toContain('supply_house_invoices(invoice_number, invoice_date, amount, is_paid, on_job_account, supply_houses(name))')
     expect(argsOf(call('mercury_transaction_job_allocations').steps, 'eq')).toEqual([['job_id', 'j1']])
-    expect(argsOf(call('mercury_transaction_job_allocations').steps, 'order')).toEqual([['created_at', { ascending: true }]])
+    expect(argsOf(call('mercury_transaction_job_allocations').steps, 'order')).toEqual([['created_at', { ascending: true }], ['id']])
+    expect(argsOf(call('mercury_transaction_job_allocations').steps, 'range')).toEqual([[0, 999]])
     expect(call('list_tally_parts_with_po')).toMatchObject({ kind: 'rpc', args: [] })
 
     expect(snap.supplyInvoiceTotal).toBe(1250.5) // this job's row, not the other job's
@@ -136,6 +137,25 @@ describe('fetchJobMaterialsCostSnapshot', () => {
     expect(mercuryCardTotalFromLines(snap.mercuryAllocLines)).toBe(30.25) // 45.25 spent − 10 − 5 refunded
     expect(tallyPartsTotalFromLines(snap.tallyPartLines)).toBe(134)
     expect(mercuryCardTotalFromLines([])).toBe(0)
+  })
+
+  it('reads every card line of a big job, a page at a time, past PostgREST’s 1,000-row cut', async () => {
+    const lines = Array.from({ length: 1001 }, (_, i) => ({ id: `a${i}`, amount: -2, note: null, mercury_transaction_id: `tx${i}`, mercury_transactions: { posted_at: '2026-09-02', counterparty_name: 'Home Depot', amount: -2, raw: null } }))
+    // PostgREST's max_rows: an answer stops at 1,000 rows with no error, ranged or not.
+    route = (_k, name, steps) => {
+      if (name !== 'mercury_transaction_job_allocations') return full[name] ?? []
+      const [from, to] = (argsOf(steps, 'range')[0] ?? [0, 999]) as [number, number]
+      return lines.slice(from, Math.min(to, from + 999) + 1)
+    }
+    const snap = await fetchJobMaterialsCostSnapshot('j1')
+    const reads = calls.filter((c) => c.name === 'mercury_transaction_job_allocations')
+    expect(reads.map((c) => argsOf(c.steps, 'range'))).toEqual([[[0, 999]], [[1000, 1999]]])
+    // Every page asks the same unique order, so no line shifts between pages.
+    for (const r of reads) expect(argsOf(r.steps, 'order')).toEqual([['created_at', { ascending: true }], ['id']])
+    expect(snap.mercuryAllocLines).toHaveLength(1001)
+    expect(snap.mercuryAllocLines[1000]!.id).toBe('a1000')
+    expect(mercuryCardTotalFromLines(snap.mercuryAllocLines)).toBe(2002)
+    expect(snap.mercuryFetchFailed).toBe(false)
   })
 
   it('a job with nothing filed comes back empty, not failed', async () => {
