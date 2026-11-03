@@ -10,7 +10,7 @@
  * when there is no one to make a statement for. An empty section names the press. Shown to whoever may make one
  * (`canMakeHoursStatement`: the payroll roles, and an assistant for the hours-only paper).
  */
-import { useCallback, useEffect, useState, type CSSProperties } from 'react'
+import { Suspense, lazy, useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { useToastContext } from '../../contexts/ToastContext'
@@ -25,7 +25,12 @@ import { supabaseHoursStatementSigningIo, type HoursStatementSigningIo } from '.
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { EmptyState } from '../EmptyState'
 import { documentsChip, documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
-import { HoursStatementModal, type HoursStatementScope } from './HoursStatementModal'
+import type { HoursStatementScope } from './HoursStatementModal'
+
+// The window, its sheets and the paper's kernels load only when a statement is opened or started: statically imported
+// they sat in the main chunk, which crossed the service worker's 7 MiB precache cap with PR 3 (v2.6411) and failed
+// the deploy build (vite.config.ts → injectManifest.maximumFileSizeToCacheInBytes).
+const HoursStatementModal = lazy(() => import('./HoursStatementModal').then((m) => ({ default: m.HoursStatementModal })))
 
 export type HoursStatementsSectionScope =
   | { kind: 'job'; job: { id: string; hcp_number: string | null; click_number: string | null; job_name: string; job_address: string; customer_name: string | null } }
@@ -227,7 +232,11 @@ export function HoursStatementsSection({
       </div>
       {error ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p> : null}
       {list}
-      {open ? <HoursStatementModal open scope={modalScope} maker={maker} existing={opening} zIndex={zIndex} onClose={closeWindow} /> : null}
+      {open ? (
+        <Suspense fallback={null}>
+          <HoursStatementModal open scope={modalScope} maker={maker} existing={opening} zIndex={zIndex} onClose={closeWindow} />
+        </Suspense>
+      ) : null}
     </section>
   )
 }

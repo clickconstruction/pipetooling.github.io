@@ -4,7 +4,7 @@
  * their record id, state, kind and who saved them, the worker as the title on the job and the job on the desk; the
  * press with its count; Print again from a row's snapshot; Open handing the window the row; the empty section naming
  * the press, or saying why there is no one to make a statement for; who sees it. Since PR 3 (v2.6411) a signed row's
- * Open the signed PDF through the gate, first in the card's press group.
+ * Open the signed PDF through the gate, first in the card's press group. The window is lazy-loaded, so the stub is awaited.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -122,7 +122,7 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     expect(buildSpy).toHaveBeenCalledWith(snapshot, 'HS-1042-0001')
     expect(printSpy).toHaveBeenCalledTimes(1)
     fireEvent.click(within(list[1]!).getByRole('button', { name: 'Open HS-1042-0002' }))
-    expect(screen.getByTestId('window-stub').textContent).toContain('window from job for dev pay true on HS-1042-0002')
+    expect((await screen.findByTestId('window-stub')).textContent).toContain('window from job for dev pay true on HS-1042-0002')
     fireEvent.click(screen.getByRole('button', { name: 'close window' }))
     expect(screen.queryByTestId('window-stub')).toBeNull()
   })
@@ -146,7 +146,7 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     const presses = screen.getAllByRole('button', { name: 'Hours statement… · 2 people clocked here' })
     expect(presses).toHaveLength(2)
     fireEvent.click(presses[1]!)
-    expect(screen.getByTestId('window-stub').textContent).toContain('on a new one')
+    expect((await screen.findByTestId('window-stub')).textContent).toContain('on a new one')
   })
 
   it('with nobody clocked on the job, the press is dead and the section says why', async () => {
@@ -168,7 +168,7 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     expect(within(list[0]!).getByRole('button', { name: 'Open HS-1042-0001' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Hours statement… · 3 jobs clocked' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Hours statement… · 3 jobs clocked' }))
-    expect(screen.getByTestId('window-stub').textContent).toContain('window from person for dev pay false')
+    expect((await screen.findByTestId('window-stub')).textContent).toContain('window from person for dev pay false')
   })
 
   it('a helper and a master without pay access see nothing; an assistant sees it with the pay off', async () => {
@@ -185,6 +185,6 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     renderWithProviders(<HoursStatementsSection scope={jobScope} />)
     await screen.findByText(/No hours statements are saved on this job yet\./)
     fireEvent.click(screen.getAllByRole('button', { name: 'Hours statement… · 2 people clocked here' })[0]!)
-    expect(screen.getByTestId('window-stub').textContent).toContain('for assistant pay false')
+    expect((await screen.findByTestId('window-stub')).textContent).toContain('for assistant pay false')
   })
 })
