@@ -16,8 +16,8 @@
  *       filed in `contract-form-pdfs` as `contract-form-paper-entry` files them, the copy is written signed with
  *       `form_source = 'paper'`, and the statement reads signed with those days.
  *
- * Gate: the caller must read the statement under their own RLS (`can_touch_hours_statement`: a dev, the controller, a
- * pay-approved master, or an assistant on an hours-only row). A signed statement is never prepared or filed again.
+ * Gate: the caller must read the statement under their own RLS (`can_touch_hours_statement`: a dev or the controller
+ * alone since v2.6450 — payroll data, Diane's call of 2026-11-02). A signed statement is never prepared or filed again.
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'

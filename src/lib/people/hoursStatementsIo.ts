@@ -2,8 +2,8 @@
  * The reads and the one write over `hours_statements` (punch list #212, PR 2): the statements on a job or on a person,
  * and Save, which mints the record id per job and keeps the window's read as the snapshot the paper prints again
  * from. The table is read through its own name until the generated types catch up (`chore(types)` after the push);
- * the rows are typed here by hand. Every call is RLS-bound through `withSupabaseRetry`: the payroll roles see every
- * row, an assistant the hours-only ones (`can_touch_hours_statement`).
+ * the rows are typed here by hand. Every call is RLS-bound through `withSupabaseRetry`: a dev and the controller see every
+ * row and no one else sees any (`can_touch_hours_statement`, Diane's call of 2026-11-02).
  */
 import { supabase } from '../supabase'
 import { withSupabaseRetry } from '../../utils/errorHandling'

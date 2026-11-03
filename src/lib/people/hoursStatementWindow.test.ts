@@ -1,9 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
-import { canMakeHoursStatement, hoursStatementPayAllowed } from './hoursStatementAccess'
+import { HOURS_STATEMENT_ROLES_CHIP, canMakeHoursStatement, hoursStatementPayAllowed } from './hoursStatementAccess'
 import { HOURS_STATEMENT_CHANNELS, HOURS_STATEMENT_OPEN_WORDS, HOURS_STATEMENT_SENT_WORDS, HOURS_STATEMENT_SIGNED_WORDS, hoursStatementChannelHint } from './hoursStatementSigning'
 import {
-  HOURS_STATEMENT_PAY_FIXED_OFF,
   hoursStatementEmptyWords,
   hoursStatementPressWords,
   hoursStatementRowWords,
@@ -37,7 +36,7 @@ describe('what the app has in the span (punch list #212, PR 2)', () => {
       hoursStatementSpanWords({ approved: 0, pending: 1, typedDays: 0, quickAddsLeftOff: 0 }),
     ].flatMap((w) => [w.has, w.held ?? ''])
     const signing = [HOURS_STATEMENT_OPEN_WORDS, HOURS_STATEMENT_SENT_WORDS, HOURS_STATEMENT_SIGNED_WORDS, ...HOURS_STATEMENT_CHANNELS.map((c) => hoursStatementChannelHint(c))]
-    for (const line of [...lines, HOURS_STATEMENT_PAY_FIXED_OFF, ...signing]) expect(plainWordsFailures(line)).toEqual([])
+    for (const line of [...lines, HOURS_STATEMENT_ROLES_CHIP, ...signing]) expect(plainWordsFailures(line)).toEqual([])
   })
 })
 
@@ -67,18 +66,19 @@ describe('the press and the empty section', () => {
   })
 })
 
-describe('who may make one (the owner’s call 6)', () => {
-  it('the payroll roles and assistants open the section; only the payroll roles turn the pay on', () => {
+describe('who may make one (Diane’s call of 2026-11-02: payroll data)', () => {
+  it('a dev and the controller open the section and own the pay switch; a pay-approved master, an assistant and everyone else see nothing', () => {
     expect(canMakeHoursStatement({ role: 'dev', canAccessPay: true })).toBe(true)
     expect(canMakeHoursStatement({ role: 'controller', canAccessPay: true })).toBe(true)
-    expect(canMakeHoursStatement({ role: 'assistant', canAccessPay: false })).toBe(true)
-    expect(canMakeHoursStatement({ role: 'master_technician', canAccessPay: true })).toBe(true)
-    expect(canMakeHoursStatement({ role: 'master_technician', canAccessPay: false })).toBe(false)
+    expect(canMakeHoursStatement({ role: 'controller', canAccessPay: false })).toBe(true)
+    expect(canMakeHoursStatement({ role: 'master_technician', canAccessPay: true })).toBe(false)
+    expect(canMakeHoursStatement({ role: 'assistant', canAccessPay: false })).toBe(false)
     expect(canMakeHoursStatement({ role: 'helpers', canAccessPay: false })).toBe(false)
     expect(canMakeHoursStatement({ role: null, canAccessPay: false })).toBe(false)
-    expect(hoursStatementPayAllowed({ role: 'assistant', canAccessPay: false })).toBe(false)
+    expect(hoursStatementPayAllowed({ role: 'dev', canAccessPay: true })).toBe(true)
     expect(hoursStatementPayAllowed({ role: 'controller', canAccessPay: true })).toBe(true)
-    expect(hoursStatementPayAllowed({ role: 'master_technician', canAccessPay: true })).toBe(true)
-    expect(hoursStatementPayAllowed({ role: 'master_technician', canAccessPay: false })).toBe(false)
+    expect(hoursStatementPayAllowed({ role: 'master_technician', canAccessPay: true })).toBe(false)
+    expect(hoursStatementPayAllowed({ role: 'assistant', canAccessPay: false })).toBe(false)
+    expect(HOURS_STATEMENT_ROLES_CHIP).toBe('Controllers and devs only')
   })
 })

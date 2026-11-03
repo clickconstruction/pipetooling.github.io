@@ -3,7 +3,7 @@
  * Render smoke for the Hours statement window (punch list #212, PR 2): on a job the first person who clocked here is
  * picked with their span and the paper draws as a draft; the span line and the held line read; Save a draft writes the
  * row with the read as its snapshot and the paper then carries the record id; Print saves as printed and prints with
- * the id; an assistant's pay switch is fixed off and the read is asked without pay; from a person the job is picked
+ * the id; the controller's pay switch is on and may be turned off; from a person the job is picked
  * instead. Since PR 3 (v2.6411): Send for signature… saves, draws the form and opens the channel sheet with the worker's
  * contact; a channel prepares, mints the link, hands it on its way and moves the statement to sent; Sign here now does
  * the in-person channel in one press; File a signed scan… files the paper path; a signed statement opens its PDF.
@@ -13,7 +13,6 @@ import { fireEvent, screen, waitFor } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import type { HoursStatementJob, HoursStatementPerson, HoursStatementRead, HoursStatementReadArgs } from '../../lib/people/hoursStatementRead'
 import type { HoursStatementRecordRow, HoursStatementSave } from '../../lib/people/hoursStatementsIo'
-import { HOURS_STATEMENT_PAY_FIXED_OFF } from '../../lib/people/hoursStatementWindow'
 import { HOURS_STATEMENT_OPEN_WORDS, HOURS_STATEMENT_SENT_WORDS, HOURS_STATEMENT_SIGNED_WORDS } from '../../lib/people/hoursStatementSigning'
 import type { HoursStatementSigningIo, PreparedSigning, ScanFiling } from '../../lib/people/hoursStatementSigningIo'
 import { HoursStatementModal } from './HoursStatementModal'
@@ -192,16 +191,17 @@ describe('the Hours statement window (punch list #212, PR 2)', () => {
     await screen.findByText('Saved as HS-1042-0001 · Printed')
   })
 
-  it('an assistant’s pay switch is fixed off, the read is asked without pay, and the paper carries hours alone', async () => {
-    authRole = 'assistant'
-    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={{ role: 'assistant', canAccessPay: false }} onClose={() => undefined} />)
+  it('the controller’s pay switch is on by default and may be turned off, which asks the read without pay and prints hours alone', async () => {
+    authRole = 'controller'
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={{ role: 'controller', canAccessPay: true }} onClose={() => undefined} />)
     await screen.findByTestId('hours-statement-paper')
     const pay = screen.getByLabelText(/Show the rate, the amount and what was paid/) as HTMLInputElement
-    expect(pay.disabled).toBe(true)
-    expect(pay.checked).toBe(false)
-    expect(screen.getByText(HOURS_STATEMENT_PAY_FIXED_OFF)).toBeTruthy()
-    expect(loadSpy).toHaveBeenCalledWith(expect.objectContaining({ withPay: false }))
-    expect(paper()).toContain('Statement of hours worked<')
+    expect(pay.disabled).toBe(false)
+    expect(pay.checked).toBe(true)
+    expect(screen.queryByText(/The pay stays off/)).toBeNull()
+    fireEvent.click(pay)
+    await waitFor(() => expect(loadSpy).toHaveBeenCalledWith(expect.objectContaining({ withPay: false })))
+    await waitFor(() => expect(paper()).toContain('Statement of hours worked<'))
     expect(paper()).not.toContain('and paid')
   })
 

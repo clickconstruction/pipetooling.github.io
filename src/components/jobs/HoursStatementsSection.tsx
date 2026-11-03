@@ -5,8 +5,9 @@
  * (the window on it), and on a signed one **Open the signed PDF** (PR 3, v2.6411: the flattened Contract Form through
  * `open-contract-form-pdf`'s gate, the open logged); and the press **Hours statement…** with its count — the people who
  * clocked on the job, or the jobs the person clocked on — dead when there is no one to make a statement for. An empty
- * section names the press. Shown to whoever may make one (`canMakeHoursStatement`: the payroll roles, and an assistant
- * for the hours-only paper).
+ * section names the press. Shown to a dev and the controller alone (`canMakeHoursStatement`: the paper is payroll data,
+ * Diane's call of 2026-11-02) and to no one else — nothing, not a dead section — with the desk's lock tag beside the
+ * heading, *Controllers and devs only*, so an office reader knows why a colleague cannot see it.
  */
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -14,7 +15,8 @@ import { usePeopleAccess } from '../../hooks/usePeopleAccess'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
-import { canMakeHoursStatement } from '../../lib/people/hoursStatementAccess'
+import { HOURS_STATEMENT_ROLES_CHIP, canMakeHoursStatement } from '../../lib/people/hoursStatementAccess'
+import { LockTag } from '../personDesk/personDeskShared'
 import { hoursStatementJobNumber, listHoursStatementJobs, listHoursStatementPeople } from '../../lib/people/hoursStatementRead'
 import { listHoursStatementsForJob, listHoursStatementsForUser, type HoursStatementRecordRow } from '../../lib/people/hoursStatementsIo'
 import { buildHoursStatementPaper, printHoursStatementPaper } from '../../lib/people/hoursStatementPrint'
@@ -226,6 +228,7 @@ export function HoursStatementsSection({
         <h3 id={`hours-statements-${scope.kind}`} style={desk ? { ...documentsHeading, fontSize: '0.8125rem', flex: 1 } : { ...documentsHeading, flex: 1 }}>
           Hours statements
         </h3>
+        <LockTag label={HOURS_STATEMENT_ROLES_CHIP} title="A signed hours statement is payroll data. The section shows to a dev and the controller alone." />
         {pressButton}
       </div>
       {error ? <p style={{ margin: 0, fontSize: '0.8125rem', color: 'var(--text-red-600)' }}>{error}</p> : null}
