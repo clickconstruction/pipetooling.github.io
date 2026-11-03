@@ -837,6 +837,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "dev_on_site_container": [{"args":{"p_job_id":"string","p_ref":"string"},"returns":"{ code: string | null created_at: string created_by: string | null id: string job_id: string kind: string label: string lat: number | null lng: number | null pl…"}],
   "dev_on_site_part": [{"args":{"p_line":"Json","p_n":"number","p_number_key":"string"},"returns":"{ manufacturer: string part_id: string part_name: string quantity: number }[]"}],
   "dev_on_site_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
+  "dev_person_evidence_write": [{"args":{"p":"Json","p_dry_run?":"boolean","p_files?":"Json"},"returns":"Json"}],
   "dismiss_mercury_duplicate_pair": [{"args":{"p_id_a":"string","p_id_b":"string"},"returns":"undefined"}],
   "dismiss_person_report": [{"args":{"p_reason":"string","p_report_id":"string"},"returns":"Json"}],
   "dispatch_inbox_note_stats": [{"args":{"p_request_ids":"string[]"},"returns":"{ last_note_at: string note_count: number request_id: string }[]"}],
