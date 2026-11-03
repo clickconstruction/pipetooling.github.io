@@ -1,6 +1,6 @@
 # 20261103050000_dev_clock_session_write.sql (2026-11-03, v2.6437)
 
-The dev seat's clock session door ([v2.6437](../recent-features/v2.6437.md), dev-mcp 0.18.0): `plan_clock_sessions` / `apply_clock_sessions` adjust a session's start and end, its description, its job and its approval, op by op with a dry run.
+The dev seat's clock session door ([v2.6437](../recent-features/v2.6437.md), dev-mcp 0.19.0): `plan_clock_sessions` / `apply_clock_sessions` adjust a session's start and end, its description, its job and its approval, op by op with a dry run.
 
 1. **`approve_clock_sessions(p_session_ids uuid[])`** and **`recompute_people_hours_after_session_edit(p_session_id, p_old_work_date)`**: pasted whole from `20261010022000` with one line added each, `OR public.is_dev()`. Their check read `has_payroll_access() OR is_assistant()`, and `has_payroll_access()` is the controller or a pay-approved master, never a dev, so the seat's approval answered *Access denied* and a moved start on an approved day never reached `people_hours`. Everyone else's door is unchanged.
 2. **`dev_clock_session_image(p_session_id uuid)`**: the session as the plan and the apply report it before and after — `work_date`, the start and the end, the hours, the job (id, number, name), `bid_id`, `notes`, `origin`, `approved_at`. Invoker's rights, so a person reads it under their own RLS and the definer below reads as itself.
