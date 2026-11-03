@@ -265,3 +265,73 @@ describe('the attestation words', () => {
     expect(s.pay?.lines.map((l) => l.key)).toEqual(['stub-2'])
   })
 })
+
+describe('the charged basis (punch list #251)', () => {
+  const charged = (over: Partial<HoursStatementInput> = {}) => buildHoursStatement(helperInput({ basis: 'charged', chargeRate: 285, withPay: true, ...over }))
+
+  it('prices every counted hour at the charge rate and carries no pay, whatever the pay switch says', () => {
+    const s = charged()
+    expect(s.basis).toBe('charged')
+    expect(s.withPay).toBe(false)
+    expect(s.pay).toBeNull()
+    const first = s.groups[0]?.days[0]
+    expect(first && !first.pending ? [first.rate, first.amount] : null).toEqual([285, 2422.5])
+    expect(s.groups.map((g) => g.amount)).toEqual([8977.5, 4702.5])
+    expect(s.totals.amount).toBe(13680)
+    expect(s.charged?.rate).toBe(285)
+    expect(s.charged?.lines.map((l) => l.words)).toEqual(['Week of May 31 · 31.5 h at $285.00 = $8,977.50', 'Week of June 7 · 16.5 h at $285.00 = $4,702.50'])
+    expect(s.charged?.totalWords).toBe('48 h at $285.00 an hour = $13,680.00')
+    expect(s.charged?.leftOut).toEqual([])
+    expect(s.attestation).not.toContain('paid')
+    expect(s.preparedWords).toBe('Prepared from the company’s records, charged at $285.00 an hour')
+  })
+
+  it('leaves a pending session uncounted and unpriced, as the paid paper does', () => {
+    const s = charged({ rows: [...juneRows, clockRow('2026-06-10', 3, 'Walk-through', { pending: true })] })
+    expect(s.totals.hours).toBe(48)
+    expect(s.totals.amount).toBe(13680)
+    expect(s.totals.pendingCount).toBe(1)
+  })
+
+  it("leaves a sub's flat line off and names it, and prices the lines with hours", () => {
+    const sheet = { key: 'sheet-1', label: 'Sheet 1042-A · agreed May 4' }
+    const s = charged({
+      kind: 'sheet',
+      rows: [
+        { day: '2026-06-02', hours: 0, note: 'Rough-in, lump sum', rate: null, amount: 4200, group: sheet },
+        { day: '2026-06-03', hours: 4, note: 'Extra day, hourly', rate: 60, amount: 240, group: sheet },
+      ],
+      worker: { name: 'Marcus Reyes', company: 'Reyes Plumbing' },
+    })
+    expect(s.charged?.leftOut).toEqual(['Sheet 1042-A · agreed May 4: Rough-in, lump sum is a flat line with no hours, left off'])
+    expect(s.totals.hours).toBe(4)
+    expect(s.totals.amount).toBe(1140)
+    expect(s.groups[0]?.days).toHaveLength(1)
+  })
+
+  it('with no rate given carries hours alone and says so', () => {
+    const s = charged({ chargeRate: null })
+    expect(s.totals.hours).toBe(48)
+    expect(s.totals.amount).toBeNull()
+    expect(s.charged?.rate).toBeNull()
+    expect(s.charged?.total).toBeNull()
+    expect(s.charged?.note).toBe('No rate was given, so the paper carries hours alone.')
+    expect(s.charged?.totalWords).toBe('48 h · no rate given, so the paper carries hours alone')
+    expect(s.preparedWords).toBe('Prepared from the company’s records')
+  })
+
+  it("prices a salaried person's days too, where the paid paper shows no rate", () => {
+    const s = charged({ kind: 'schedule', rows: [clockRow('2026-06-01', 8, ''), clockRow('2026-06-02', 8, '')] })
+    const first = s.groups[0]?.days[0]
+    expect(first && !first.pending ? [first.rate, first.amount] : null).toEqual([285, 2280])
+    expect(s.totals.amount).toBe(4560)
+  })
+
+  it('is the paid paper when no basis is given', () => {
+    const s = buildHoursStatement(helperInput())
+    expect(s.basis).toBe('paid')
+    expect(s.charged).toBeNull()
+    expect(s.preparedWords).toBe('Prepared from the company’s records')
+  })
+})
+
