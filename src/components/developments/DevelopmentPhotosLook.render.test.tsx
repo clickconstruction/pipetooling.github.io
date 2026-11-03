@@ -100,9 +100,9 @@ function fakeIo(rows: UploadedPhotoRow[], pageSize = 100): { io: SitePhotosIo; a
   return { io, asked }
 }
 
-function Harness({ io, phone = false, openJob = () => {}, goToPieces = () => {} }: { io: SitePhotosIo; phone?: boolean; openJob?: (id: string) => void; goToPieces?: () => void }) {
+function Harness({ io, phone = false, openJob = () => {}, goToPieces = () => {}, door = 'office', role = 'dev' }: { io: SitePhotosIo; phone?: boolean; openJob?: (id: string) => void; goToPieces?: () => void; door?: 'office' | 'overview'; role?: string }) {
   const state = useSitePhotos({ jobIds: [J1, J2], bidIds: [], enabled: true, io })
-  return <DevelopmentPhotosLook state={state} pieces={PIECES} role="dev" phone={phone} siteName="Gun Dog Trail" openJob={openJob} goToPieces={goToPieces} />
+  return <DevelopmentPhotosLook state={state} pieces={PIECES} role={role} phone={phone} siteName="Gun Dog Trail" openJob={openJob} goToPieces={goToPieces} door={door} />
 }
 
 async function draw(io: SitePhotosIo, over: Partial<Parameters<typeof Harness>[0]> = {}) {
@@ -211,5 +211,22 @@ describe('DevelopmentPhotosLook', () => {
     const tiles = await screen.findAllByTestId('site-photos-tile')
     expect((within(tiles[0]!).getByRole('button') as HTMLElement).style.width).toBe('96px')
     expect((screen.getByTestId('site-photos-jobs') as HTMLElement).style.overflowX).toBe('auto')
+  })
+
+  it('an estimator: the text and email pictures with no source chips, since the view hands an estimator nothing else', async () => {
+    const texts = [row({ id: 't1', taken_at: iso(0, 12), source: 'message', channel: 'text', direction: 'in', job_id: null, bid_id: 'b1', report_id: null, by_name: 'Greg Paulk', caption: 'IMG_2231.jpg' })]
+    const { io } = fakeIo(texts)
+    await draw(io, { door: 'overview', role: 'estimator' })
+    expect(await screen.findAllByTestId('site-photos-tile')).toHaveLength(1)
+    expect(screen.queryByTestId('site-photos-sources')).toBeNull()
+  })
+
+  it('an estimator with no picture: the words say where the crews’ photos are, and no door to the jobs', async () => {
+    const { io } = fakeIo([])
+    const goToPieces = vi.fn()
+    await draw(io, { door: 'overview', role: 'estimator', goToPieces })
+    const empty = await screen.findByTestId('site-photos-empty')
+    expect(empty.textContent).toBe('No picture sent by text or email on Gun Dog Trail yet. The crews’ photos on the jobs are for the office.')
+    expect(within(empty).queryByRole('button')).toBeNull()
   })
 })

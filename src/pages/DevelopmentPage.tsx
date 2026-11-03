@@ -888,7 +888,7 @@ export default function DevelopmentPage() {
       count: openQuestions > 0 && openQuestions === data.requests.length ? `${openQuestions} waiting` : String(data.requests.length),
       need: openQuestions > 0 ? `${openQuestions} waiting` : null,
     },
-    photos: photosLookWords(sitePhotos.census),
+    photos: photosLookWords(sitePhotos.census, door),
   }
 
   // The newest bid: where the GC contact and the estimator live when the head has none (the owner, 2026-10-28: *do all 8*, item 4).
@@ -1351,8 +1351,8 @@ export default function DevelopmentPage() {
         </Card>
 
         {/* The sixth look (punch list #247): the site's photos as one row, scrolled sideways, newest at the left. */}
-        <Card id={DEVELOPMENT_JUMP_ANCHOR.photos} title="Photos" fold={foldFor('photos', lineOf(looks.photos))} meta={photosCardMeta(sitePhotos.census)}>
-          <DevelopmentPhotosLook state={sitePhotos} pieces={[...shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j) })), ...shown.bids.map((b) => ({ id: b.id, label: bidLabel(b) }))]} role={role} phone={phone} siteName={dev.name} openJob={openJob} goToPieces={goToPieces} />
+        <Card id={DEVELOPMENT_JUMP_ANCHOR.photos} title="Photos" fold={foldFor('photos', lineOf(looks.photos))} meta={photosCardMeta(sitePhotos.census, door)}>
+          <DevelopmentPhotosLook state={sitePhotos} pieces={[...shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j) })), ...shown.bids.map((b) => ({ id: b.id, label: bidLabel(b) }))]} role={role} phone={phone} siteName={dev.name} openJob={openJob} goToPieces={goToPieces} door={door} />
         </Card>
       </div>
       {chipConfirm ? (

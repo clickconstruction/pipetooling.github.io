@@ -8,7 +8,8 @@
  * `components/developments/DevelopmentPhotosLook.tsx`.
  */
 import { calendarYmdInAppTzFromIso, formatWorkDateYmdMonthDayShort, ymdAddDays } from '../../utils/dateUtils'
-import { firstName, sourceWords, type SourcePick, type UploadedPhotoRow } from './uploadedPhotos'
+import { firstName, sourceChips, sourceWords, type SourcePick, type UploadedPhotoRow } from './uploadedPhotos'
+import type { DevelopmentDoor } from '../developments/readDoor'
 
 /** Tiles read per step; Show more at the right end reads the next step. */
 export const SITE_PHOTOS_PAGE = 60
@@ -79,16 +80,29 @@ export function totalWords(census: Pick<SitePhotoCensus, 'total' | 'capped'>): s
   return census.capped ? `${census.total}+` : String(census.total)
 }
 
-/** The strip's sixth look: *312 · 9 this week*, *312*, *none yet*, or *…* while the census reads. Nothing in it needs the leader, so no amber. */
-export function photosLookWords(census: SitePhotoCensus | null): { n: number; count: string; need: null } {
+/**
+ * An estimator reads the page through the overview door, with no `jobs_ledger` read, and `uploaded_photos` joins every
+ * job photo to its job under the reader's own rules: the view hands an estimator only the pictures sent by text or email.
+ * The look says so instead of reading *Nothing filed yet* on a site full of crew photos (the live walk of 2026-11-03).
+ */
+export const CREWS_PHOTOS_FOR_THE_OFFICE = 'the crews’ photos are for the office'
+
+/** The source chips the look offers: the Photos tab's for the office; none for an estimator, whose only source is a text or an email. */
+export function siteSourceChips(role: string | null | undefined, door: DevelopmentDoor = 'office'): ReadonlyArray<{ key: SourcePick; label: string }> {
+  return door === 'office' ? sourceChips(role) : []
+}
+
+/** The strip's sixth look: *312 · 9 this week*, *312*, *none yet*, or *…* while the census reads; an estimator with none reads *the office reads them*. Nothing in it needs the leader, so no amber. */
+export function photosLookWords(census: SitePhotoCensus | null, door: DevelopmentDoor = 'office'): { n: number; count: string; need: null } {
   if (!census) return { n: 0, count: '…', need: null }
-  if (census.total === 0) return { n: 0, count: 'none yet', need: null }
+  if (census.total === 0) return { n: 0, count: door === 'office' ? 'none yet' : 'the office reads them', need: null }
   const total = totalWords(census)
   return { n: census.total, count: census.thisWeek > 0 ? `${total} · ${census.thisWeek} this week` : total, need: null }
 }
 
-/** The card's meta line: *312 on this site · 9 this week · newest first*; *nothing filed yet* with none. */
-export function photosCardMeta(census: SitePhotoCensus | null): string {
+/** The card's meta line: *312 on this site · 9 this week · newest first*; *nothing filed yet* with none; for an estimator, *3 sent by text or email · the crews’ photos are for the office*. */
+export function photosCardMeta(census: SitePhotoCensus | null, door: DevelopmentDoor = 'office'): string {
+  if (door !== 'office') return census && census.total > 0 ? `${totalWords(census)} sent by text or email · ${CREWS_PHOTOS_FOR_THE_OFFICE}` : CREWS_PHOTOS_FOR_THE_OFFICE
   if (!census) return 'reading the site’s photos…'
   if (census.total === 0) return 'nothing filed yet'
   const week = census.thisWeek > 0 ? ` · ${census.thisWeek} this week` : ''
@@ -190,8 +204,13 @@ export function sitePhotosNarrowed(q: Pick<SitePhotosQuery, 'jobId' | 'source'>,
   return q.jobId !== null || q.source !== 'all' || !!person
 }
 
-/** The empty state's words: what fills the row and where its door is (the empty-state rule). */
-export function sitePhotosEmptyWords(narrowed: boolean, siteName: string): { main: string; tail: string } {
+/** The empty state's words: what fills the row and where its door is (the empty-state rule); for an estimator, what fills it and where the crews' photos are. */
+export function sitePhotosEmptyWords(narrowed: boolean, siteName: string, door: DevelopmentDoor = 'office'): { main: string; tail: string } {
+  if (door !== 'office') {
+    return narrowed
+      ? { main: 'No picture matches.', tail: 'Pick another job.' }
+      : { main: `No picture sent by text or email on ${siteName} yet.`, tail: 'The crews’ photos on the jobs are for the office.' }
+  }
   return narrowed
     ? { main: 'No photo matches.', tail: 'Pick another job or another source.' }
     : { main: `Nothing filed yet on ${siteName}.`, tail: 'lists its jobs. A photo on a report, a box or a checklist on one of them shows here within a minute.' }

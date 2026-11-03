@@ -14,8 +14,9 @@ import { EmptyState } from '../EmptyState'
 import OfflineRetryPanel from '../OfflineRetryPanel'
 import { UploadedPhotoTile } from '../documents/UploadedPhotoTile'
 import { UploadedPhotoViewer } from '../documents/UploadedPhotoViewer'
-import { captionWords, sourceChips, threadPath, type SourcePick, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
-import { galleryTiles, jobPickWords, jobPicks, jobPicksShown, moreJobsWords, moreTileWords, personChipWords, photosFootWords, rowsByPerson, sitePhotosEmptyWords, sitePhotosNarrowed, tileWords } from '../../lib/photos/sitePhotos'
+import { captionWords, threadPath, type SourcePick, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
+import { galleryTiles, jobPickWords, jobPicks, jobPicksShown, moreJobsWords, moreTileWords, personChipWords, photosFootWords, rowsByPerson, sitePhotosEmptyWords, sitePhotosNarrowed, siteSourceChips, tileWords } from '../../lib/photos/sitePhotos'
+import type { DevelopmentDoor } from '../../lib/developments/readDoor'
 import type { SitePhotosState } from '../../hooks/useSitePhotos'
 import { capStyle } from './developmentPageBits'
 
@@ -45,6 +46,7 @@ export function DevelopmentPhotosLook({
   siteName,
   openJob,
   goToPieces,
+  door = 'office',
 }: {
   state: SitePhotosState
   /** The site's jobs and bids as the page labels them, for the picker and the tiles' words. */
@@ -55,6 +57,8 @@ export function DevelopmentPhotosLook({
   openJob: (jobId: string) => void
   /** The empty state's press: the Jobs & bids look, where the jobs that fill the row are. */
   goToPieces: () => void
+  /** The reader's door: an estimator, on the overview, sees only the pictures sent by text or email, and the look says where the crews' photos are. */
+  door?: DevelopmentDoor
 }) {
   const navigate = useNavigate()
   const { io, census, rows, more, reading, failure, source, setSource, jobId, setJobId, person, setPerson } = state
@@ -69,8 +73,8 @@ export function DevelopmentPhotosLook({
   const pickRow = useMemo(() => jobPicksShown(picks, jobId, picksOpen), [picks, jobId, picksOpen])
   const labelOf = useMemo(() => new Map(pieces.map((p) => [p.id, p.label.split(' ')[0] ?? p.label])), [pieces])
   const narrowed = sitePhotosNarrowed({ jobId, source }, person)
-  const empty = sitePhotosEmptyWords(narrowed, siteName)
-  const sources = sourceChips(role)
+  const empty = sitePhotosEmptyWords(narrowed, siteName, door)
+  const sources = siteSourceChips(role, door)
 
   // The wheel scrolls the row sideways (the owner: *scroll through*); a listener of our own, since React's is passive.
   useEffect(() => {
@@ -162,11 +166,11 @@ export function DevelopmentPhotosLook({
   return (
     <div style={{ display: 'grid', gap: 8 }} data-testid="site-photos-look">
       {picks.length > 1 ? pickChips : null}
-      {census && census.total > 0 ? sourceRow : null}
+      {census && census.total > 0 && sources.length > 0 ? sourceRow : null}
       {failure ? <OfflineRetryPanel failure={failure} onRetry={state.reload} surface="development-photos" idempotent busy={reading} /> : null}
       {!failure && shown.length === 0 && !reading ? (
         <div data-testid="site-photos-empty">
-          <EmptyState main={empty.main} next={narrowed ? undefined : { label: 'Jobs & bids', onPress: goToPieces }} tail={empty.tail} compact />
+          <EmptyState main={empty.main} next={narrowed || door !== 'office' ? undefined : { label: 'Jobs & bids', onPress: goToPieces }} tail={empty.tail} compact />
         </div>
       ) : null}
       {!failure && shown.length === 0 && reading ? <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--text-muted)' }}>Reading the site’s photos…</p> : null}
