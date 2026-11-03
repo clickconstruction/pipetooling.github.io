@@ -3,8 +3,6 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, googleAccessToken } from '../_shared/driveUpload.ts'
 import { filesChangedSince, indexContext, indexFiles, type IndexContext } from '../_shared/fileIndex.ts'
 import { type HeldFile, indexPassWords, sameInstant, SWEEP_MAX_FILES, SWEEP_RECHECK_ROWS, SWEEP_STAMP_KEY, sweepSince, sweepStamp } from '../_shared/fileIndexKernel.ts'
-import { reconcileStepWords, type ReconcileStep } from '../_shared/fileIndexCheckKernel.ts'
-import { reconcileSweep } from '../_shared/fileIndexReconcile.ts'
 
 /**
  * file-index-sweep — Search every file deeply (punch list #240, PR 1, v2.6319): the cron that keeps our own text index
@@ -38,6 +36,9 @@ import { reconcileSweep } from '../_shared/fileIndexReconcile.ts'
  * and its result never reaches the stamp, since those old dates would move it backwards. One log line a run, counts
  * only, read through the management API's function logs (the cron gives up at five seconds and keeps no answer).
  */
+// The step's imports sit under the header so PR 3's lines above (#6894, the OCR step) merge untouched.
+import { reconcileStepWords, type ReconcileStep } from '../_shared/fileIndexCheckKernel.ts'
+import { reconcileSweep } from '../_shared/fileIndexReconcile.ts'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
