@@ -230,3 +230,39 @@ describe('the courtesy notice — the record', () => {
     expect(courtesyOutcomeWords([])).toBe('Nothing went.')
   })
 })
+
+describe('the words follow the state (v2.6382, the sweep after Taunya’s report)', () => {
+  const lt = { state: 'overdue' as const, day: 23, firstSentAt: '2026-10-10T15:00:00Z', firstItemId: 'it-1', gcAuthorized: null, letterTwo: null, words: 'day 23 · letter two overdue', clock: { kind: 'recorded' as const, at: '2026-10-10T15:00:00Z', why: '' } }
+  it('a courtesy that went, seven days quiet: the footer sentence says nothing came since that notice, not since the packet', () => {
+    const s = courtesyStatus({ letterTwo: lt as never, records: [{ at: '2026-10-20T15:00:00Z', by: 'Taunya', lienDay: '2026-11-16', claim: 4850, to: [{ who: 'original_contractor', name: 'Dana', channel: 'email', address: 'd@x.test', ok: true, id: null, reason: '' }] }], openBalance: 4850, todayYmd: '2026-11-02', affidavit: { deadline: '2026-11-16', filedAt: null, homestead: false, hasWorkMonth: true } })
+    expect(s.state).toBe('due')
+    expect(s.lastSentAt).toBe('2026-10-20T15:00:00Z')
+    expect(courtesyFooterSentence(s, '$4,850.00')).toMatch(/^Nothing has come since the courtesy notice of Oct 20\. Another goes by email and text in a minute/)
+  })
+  it('the dead button’s detail carries no full stop — the window ends the sentence', () => {
+    expect(courtesySendButton([]).detail).toBe('Nothing can go: no email and no number that may be texted')
+  })
+  it('no number but a hold that says why: the hold is the text column’s reason, never “no number on the job”', () => {
+    const [gc] = courtesyPlan([{ who: 'original_contractor', name: 'Dana', email: '', phone: '', textHold: 'their Messages contact could not be opened: the row is gone' }])
+    expect(gc!.text).toEqual({ address: '', goes: false, reason: 'their Messages contact could not be opened: the row is gone' })
+    const [plain] = courtesyPlan([{ who: 'original_contractor', name: 'Dana', email: '', phone: '', textHold: '' }])
+    expect(plain!.text.reason).toBe('no number on the job')
+  })
+})
+
+describe('after letter two went out (v2.6383)', () => {
+  const sentTwo = { state: 'sent' as const, day: 23, firstSentAt: '2026-10-10T15:00:00Z', firstItemId: 'it-1', gcAuthorized: null, letterTwo: { itemId: 'it-2', kind: 'unresponsive' as const, status: 'sent', sentAt: '2026-10-24T15:00:00Z' }, words: 'letter two sent Oct 24 · unresponsive', clock: { kind: 'recorded' as const, at: '2026-10-10T15:00:00Z', why: '' } }
+  const affidavit = { deadline: '2026-11-16', filedAt: null, homestead: false, hasWorkMonth: true }
+  it('the owner’s call still closes the courtesy, though letter two’s state reads sent', () => {
+    const s = courtesyStatus({ letterTwo: { ...sentTwo, ownerCalledAt: '2026-10-28T16:00:00Z' } as never, records: [], openBalance: 4850, todayYmd: '2026-11-02', affidavit })
+    expect(s).toMatchObject({ state: 'closed', reason: 'owner called Oct 28' })
+  })
+  it('with no call, the footer names letter two as it stands instead of “from day 10”', () => {
+    const s = courtesyStatus({ letterTwo: sentTwo as never, records: [], openBalance: 4850, todayYmd: '2026-11-02', affidavit })
+    expect(s.state).toBe('due')
+    expect(s.letterTwoWords).toBe('letter two sent Oct 24 · unresponsive')
+    expect(courtesyFooterSentence(s, '$4,850.00')).toMatch(/your number\. Letter two sent Oct 24 · unresponsive\.$/)
+    const afterOne = courtesyStatus({ letterTwo: sentTwo as never, records: [{ at: '2026-11-01T15:00:00Z', by: 'Taunya', lienDay: '2026-11-16', claim: 4850, to: [] }], openBalance: 4850, todayYmd: '2026-11-02', affidavit })
+    expect(courtesyFooterSentence(afterOne, '$4,850.00')).toMatch(/if nothing comes; letter two sent Oct 24 · unresponsive\.$/)
+  })
+})

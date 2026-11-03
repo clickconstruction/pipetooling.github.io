@@ -28,6 +28,11 @@ INSERT INTO public.users (id, email, name, role, read_only, is_digital_twin) VAL
 -- A GC project and a number nobody has named, to hang a person's skip, hold, note and nudge on.
 INSERT INTO public.customers (id, name, master_user_id) VALUES
   ('00000000-0000-0000-0000-0000000006c1', 'Flows Helotes Dental', '00000000-0000-0000-0000-0000000006d1');
+-- A residential customer's own contact (v2.6385): kind customer, as contact_find_or_make writes every customer's, the
+-- customers row saying residential, so the residential flow's steps are theirs too.
+INSERT INTO public.customers (id, name, master_user_id, customer_type) VALUES
+  ('00000000-0000-0000-0000-0000000006c2', 'Flows Dana Whitfield', '00000000-0000-0000-0000-0000000006d1', 'residential');
+INSERT INTO public.contacts (id, kind, customer_id) VALUES ('00000000-0000-0000-0000-000000006006', 'customer', '00000000-0000-0000-0000-0000000006c2');
 INSERT INTO public.projects (id, name, customer_id) VALUES
   ('00000000-0000-0000-0000-0000000006f1', 'Flows Clinic', '00000000-0000-0000-0000-0000000006c1');
 INSERT INTO public.gc_projects (project_id, stage) VALUES ('00000000-0000-0000-0000-0000000006f1', 'buyout');
@@ -256,6 +261,15 @@ SELECT mfl.refused('nor a note in another''s name',
 INSERT INTO pressed SELECT 'skip', public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, 'A wrong number.');
 SELECT mfl.refused('a second skip of the same step', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, 'Again.')$q$, 'alreadySkipped');
 SELECT mfl.refused('a skip says why', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'who', 'project', '00000000-0000-0000-0000-0000000006f1', '')$q$, 'whyEmpty');
+-- v2.6385 · A residential customer's contact is kind customer; the residential flow's steps are theirs too, and a step on
+-- neither flow is still refused, with the step named.
+-- (Kept out of `pressed`: the assertion below the holds joins it expecting the one skip of 6004.)
+SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006006', 'booked', NULL, NULL, 'They called to move it.');
+SELECT mfl.same('a residential customer''s skip of Booked stands, though their contact is kind customer',
+  (SELECT concat_ws('|', k.step_key, k.why, k.by_name) FROM public.contact_step_skips k WHERE k.contact_id = '00000000-0000-0000-0000-000000006006'),
+  'booked|They called to move it.|Flows Estimator');
+SELECT mfl.refused('a residential customer has no Portal opened', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006006', 'portal', NULL, NULL, 'x')$q$, 'stepUnknown');
+SELECT mfl.refused('a commercial customer''s contact has no Booked', $q$SELECT public.flow_skip_step('00000000-0000-0000-0000-000000006004', 'booked', NULL, NULL, 'x')$q$, 'stepUnknown');
 SELECT public.flow_unskip_step(id) FROM pressed WHERE what = 'skip';
 SELECT mfl.refused('an undone skip is undone once', $q$SELECT public.flow_unskip_step(id) FROM pressed WHERE what = 'skip'$q$, 'notFound');
 INSERT INTO pressed SELECT 'hold', public.nudge_hold_until('00000000-0000-0000-0000-000000006004', 'who', NULL, NULL, public.app_today() + 3);

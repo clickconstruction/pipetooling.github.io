@@ -23,6 +23,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { bytesWords, shrinkPhoto } from '../../lib/materials/photoShrink'
+import { readTakenAt } from '../../lib/photos/photoTakenAt'
 import {
   PICK_WORDS,
   STAGE_CHECKLIST_PICKS,
@@ -108,6 +109,12 @@ export interface StageChecklistSheetProps {
   /** The row to open first, when the sheet is opened on a check from the Dispatch inbox (#245); the next unanswered row otherwise. */
   initialOpenQuestionId?: string | null
   onClose: () => void
+  /**
+   * The sheet in its own window, the strip's way, or its rows inline inside another sheet: the Pipeline row's door
+   * (punch list #246) draws one stage after another this way, each with the same rows and presses, and keeps the
+   * Close for itself.
+   */
+  frame?: 'sheet' | 'inline'
 }
 
 /** What the add box hands up for one check. */
@@ -149,7 +156,7 @@ const arrow: CSSProperties = { ...quiet, minWidth: 44, minHeight: 44, fontSize: 
 const withDispatchTag: CSSProperties = { display: 'inline-block', padding: '0.05rem 0.5rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', whiteSpace: 'nowrap' }
 const skippedRow: CSSProperties = { display: 'grid', gridTemplateColumns: '1.4rem minmax(0, 1fr) auto', gap: '0.15rem 0.5rem', alignItems: 'start', padding: '0.55rem 0', borderTop: '1px solid var(--border)', color: 'var(--text-muted)' }
 
-export function StageChecklistSheet({ jobId, stage, questions, answers: given, who, role = null, canAuthor = false, plansUrl = null, io, onAnswer, onQuestionAdded, onQuestionRetired, onQuestionsChanged, initialOpenQuestionId = null, onClose }: StageChecklistSheetProps) {
+export function StageChecklistSheet({ jobId, stage, questions, answers: given, who, role = null, canAuthor = false, plansUrl = null, io, onAnswer, onQuestionAdded, onQuestionRetired, onQuestionsChanged, initialOpenQuestionId = null, onClose, frame = 'sheet' }: StageChecklistSheetProps) {
   const { showToast } = useToastContext()
   const kind = stageChecklistKindOf(stage.name)
   const template = useMemo(() => (kind ? templateFor(questions, kind, stage.fixtureId) : []), [questions, kind, stage.fixtureId])
@@ -286,11 +293,15 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
     }
   }
 
+  // The rule, in the stage's name: under the rows inline, over the buttons in the sheet's own window.
+  const ruleLine = (
+    <p style={{ margin: frame === 'inline' ? '0.5rem 0 0' : '0 0 0.5rem', fontSize: '0.875rem', color: state.ready ? 'var(--text-green-800)' : 'var(--text-amber-700)', fontWeight: 600 }} data-checklist-foot>
+      {state.asked > 0 ? `${progress.left === 0 ? 'All answered.' : `${progress.left} left.`} ${sheetFootWords(stage.name, state)}` : ''}
+    </p>
+  )
   const foot = (
     <div style={{ width: '100%' }}>
-      <p style={{ margin: '0 0 0.5rem', fontSize: '0.875rem', color: state.ready ? 'var(--text-green-800)' : 'var(--text-amber-700)', fontWeight: 600 }} data-checklist-foot>
-        {state.asked > 0 ? `${progress.left === 0 ? 'All answered.' : `${progress.left} left.`} ${sheetFootWords(stage.name, state)}` : ''}
-      </p>
+      {ruleLine}
       <div style={S.footerRow}>
         <button
           type="button"
@@ -536,8 +547,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
   const jobProgress = checklistProgress(groups.job, byQuestion)
   const words = addCheckWords(stage.name)
 
-  return (
-    <ResponsiveModalShell title={`${stage.name} checklist`} onRequestClose={onClose} footer={foot} maxWidthDesktop={520}>
+  const body = (
       <div data-stage-checklist-sheet={stage.fixtureId}>
         <p style={{ ...meta, margin: '0 0 0.25rem' }} data-checklist-progress>
           {progressWords(progress)}
@@ -549,7 +559,7 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
           <p style={{ ...S.muted, marginTop: '0.75rem' }}>{noQuestionsWords(stage.name)}</p>
         ) : (
           <>
-            <p style={{ ...meta, margin: '0.5rem 0 0' }}>Each press saves by itself.</p>
+            {frame === 'sheet' ? <p style={{ ...meta, margin: '0.5rem 0 0' }}>Each press saves by itself.</p> : null}
             <div style={groupHead}>
               <span>{GROUP_WORDS.company}</span>
               <span>{groupCountWords(companyProgress)}</span>
@@ -605,19 +615,34 @@ export function StageChecklistSheet({ jobId, stage, questions, answers: given, w
           </>
         )}
       </div>
-      {sending && dispatchIo ? (
-        <StageCheckDispatchSheet
-          jobId={jobId}
-          stage={stage}
-          progressWords={progressWords(progress)}
-          question={sending}
-          answer={byQuestion.get(sending.id) ?? null}
-          who={who}
-          io={dispatchIo}
-          onSent={(request) => setWithDispatch((prev) => [...prev.filter((r) => r.id !== request.id), request])}
-          onClose={() => setSending(null)}
-        />
-      ) : null}
+  )
+  // The send sheet (#245) sits over either frame: the strip's own window and the Pipeline door's inline rows.
+  const dispatchSheet = sending && dispatchIo ? (
+    <StageCheckDispatchSheet
+      jobId={jobId}
+      stage={stage}
+      progressWords={progressWords(progress)}
+      question={sending}
+      answer={byQuestion.get(sending.id) ?? null}
+      who={who}
+      io={dispatchIo}
+      onSent={(request) => setWithDispatch((prev) => [...prev.filter((r) => r.id !== request.id), request])}
+      onClose={() => setSending(null)}
+    />
+  ) : null
+  if (frame === 'inline') {
+    return (
+      <div data-stage-checklist-inline={stage.fixtureId}>
+        {body}
+        {state.asked > 0 ? ruleLine : null}
+        {dispatchSheet}
+      </div>
+    )
+  }
+  return (
+    <ResponsiveModalShell title={`${stage.name} checklist`} onRequestClose={onClose} footer={foot} maxWidthDesktop={520}>
+      {body}
+      {dispatchSheet}
     </ResponsiveModalShell>
   )
 }
@@ -743,9 +768,10 @@ function PhotoRow({ stage, question, answer, jobId, who, io, onAnswer }: { stage
     const f = e.target.files?.[0]
     e.target.value = ''
     if (!f) return
-    const takenAt = new Date().toISOString()
     setBusy('Shrinking…')
     try {
+      // The photo's time is the file's own when the camera wrote one (punch list #247, PR 3), else now.
+      const takenAt = await readTakenAt(f)
       const shot = await shrinkPhoto(f)
       const fileName = checklistPhotoName({ takenAt, stageName: stage.name, question: question.words })
       setBusy('Sending…')

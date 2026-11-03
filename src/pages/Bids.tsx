@@ -900,7 +900,7 @@ export default function Bids() {
       if (!authUser?.id) return
       const bid = bids.find((b) => b.id === bidId)
       // A greyed button still fires: say why, with the door, in the kernel's words.
-      const blocked = archiveFromBoardBlockedReason(bid, authUser.id, myRole, archiveReasonNames)
+      const blocked = archiveFromBoardBlockedReason(bid, authUser.id, myRole, archiveReasonNames, gcPacketsByBid[bidId])
       if (blocked) {
         showToast(blocked, 'error')
         return
@@ -914,7 +914,7 @@ export default function Bids() {
       setWorkingBoardArchiveConfirmBidId(bidId)
       setWorkingBoardArchiveConfirmLabel(label)
     },
-    [authUser?.id, bids, myRole, showToast, archiveReasonNames],
+    [authUser?.id, bids, myRole, showToast, archiveReasonNames, gcPacketsByBid],
   )
 
   useEffect(() => {
@@ -2675,7 +2675,7 @@ export default function Bids() {
             setDeleteBidModalOpen={setDeleteBidModalOpen}
             setDeleteConfirmProjectName={setDeleteConfirmProjectName}
             setError={setError}
-            archiveFromBoardBlockedReason={archiveFromBoardBlockedReason(editingBid ?? undefined, authUser?.id, myRole, archiveReasonNames)}
+            archiveFromBoardBlockedReason={archiveFromBoardBlockedReason(editingBid ?? undefined, authUser?.id, myRole, archiveReasonNames, editingBid ? gcPacketsByBid[editingBid.id] : undefined)}
             archivedFromBoard={Boolean(editingBid?.working_board_archived_at)}
             archiveFromUnsentWorkingBusy={archiveWorkingBoardBusyBidId === editingBid?.id}
             onRequestArchiveFromUnsentWorking={

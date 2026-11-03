@@ -93,7 +93,8 @@ export async function loadCourtesyRecipients(input: CourtesyRecipientsInput): Pr
     }
   }
   const plans = courtesyPlan([
-    { who: 'original_contractor', name: input.gcName, email: gcEmail, phone, textHold: phone ? textHold : '' },
+    // The hold rides whether or not a number was found (v2.6382): with no number it is the reason none was — their contact could not be read.
+    { who: 'original_contractor', name: input.gcName, email: gcEmail, phone, textHold },
     { who: 'owner', name: input.ownerName, email: input.ownerEmail, phone: '', textHold: '' },
   ])
   return plans.map((p) => (p.who === 'original_contractor' ? { ...p, contactId, textChannelId: p.text.goes ? textChannelId : null } : { ...p, contactId: null, textChannelId: null }))
