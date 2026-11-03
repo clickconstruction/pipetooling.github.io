@@ -14,6 +14,7 @@
  * the spine's `20261012010000_messages_spine.sql` adds `contacts` and `contact_jobs`).
  */
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz, ymdAddDays } from '../../utils/dateUtils.ts'
+import type { ContactKind } from '../contacts/names.ts'
 import type { CompanyPaperRow } from '../gc/companyPapers.ts'
 import type { FactId, FactMark, FlowKind } from './facts.ts'
 import { docFactId } from './facts.ts'
@@ -27,7 +28,12 @@ import type { SubPersonRows } from './subOnboardingLoad.ts'
 // ---------- the rows, as the query layer selects them ----------
 
 /** `contacts` (the spine): the person, and off the flow. */
-export type ContactRow = { id: string; kind: FlowKind; off_since: string | null; off_why: string | null; off_by: string | null }
+/**
+ * `contacts`: the contact's own kind, never a flow's. A homeowner's contact is kind `customer`, and their flow is the
+ * residential one by the card's `customer_type` (`contactFlowKindOf`, v2.6394); until then readers typed this row's kind
+ * as a flow's and read every homeowner on the GC customer flow.
+ */
+export type ContactRow = { id: string; kind: ContactKind; off_since: string | null; off_why: string | null; off_by: string | null }
 /** `contact_jobs` (the spine): the jobs the office put them on, and the star. Only a GC project has a Per job lane. */
 export type ContactJobRow = { project_id: string | null; is_default: boolean }
 /** `gc_companies`: their press on Got it. */
@@ -125,6 +131,12 @@ export type FlowCard = {
   trades: string[]
   gc_company_id?: string | null
   customer_id?: string | null
+  /**
+   * `customers.customer_type` for a customer's or an architect's contact (v2.6394, `20261102223000`): `residential` puts a
+   * `customer` contact on the residential flow (`contactFlowKindOf`). Absent until that migration is pushed, which reads as
+   * the GC flow, as before.
+   */
+  customer_type?: string | null
 }
 /**
  * `contact_step_skips` (cut 4). A skip on a bid has no Per job lane to sit on; a residential customer's skip is on their

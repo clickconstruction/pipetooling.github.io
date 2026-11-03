@@ -103,7 +103,7 @@ Once you promise dates, **Oldest first** stops being just "who waited longest": 
 
 ## Record why you lost — the Friday ritual
 
-The **Why we lost** lens turns loss reasons into a one-tap habit instead of a blank text box. A red {{chip:red|N need a reason}} chip on the other lenses shows how many lost bids have no reason recorded. Click it to jump in. Once **5 or more** lost bids are waiting, the **dashboard** shows a banner with the count and the dollars unexplained. {{button:blue|Start call mode →}} drops you straight into the lens.
+The **Why we lost** lens turns loss reasons into a one-tap habit instead of a blank text box. A red {{chip:red|N need a reason}} chip on the other lenses shows how many lost bids have no reason recorded. A reason on every GC card counts as the bid's reason. Click it to jump in. Once **5 or more** lost bids are waiting, the **dashboard** shows a banner with the count and the dollars unexplained. {{button:blue|Start call mode →}} drops you straight into the lens.
 
 There's a second reason the tap matters. The app now says it wherever you mark a bid lost without a reason. It reads *Add why: an uncategorized loss can't teach the robots.* The robot estimators train on our decided bids. A loss with no category can't be told apart from a loss that never really competed. That is a GC that lost the project, or a project that died. So the whole record gets left out of their training math. One tap on a reason chip keeps it usable. The amber line appears on Edit Bid, the quick lost panel, and the per-GC Sent panel. The six chips are always right there. It never blocks the save.
 

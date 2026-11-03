@@ -15,7 +15,7 @@ import { SEED_FLOWS } from '../lib/flows/seed'
 const loadNudgeBatch = vi.fn(async (_now: Date): Promise<NudgeBatch> => ({
   people: demoPeople(),
   names: new Map(),
-  flows: { customer: SEED_FLOWS.customer, trade: SEED_FLOWS.trade, arch: SEED_FLOWS.arch },
+  flows: { customer: SEED_FLOWS.customer, trade: SEED_FLOWS.trade, arch: SEED_FLOWS.arch, residential: SEED_FLOWS.residential },
 }))
 vi.mock('../lib/flows/flowNudgesIo', () => ({ loadNudgeBatch: (now: Date) => loadNudgeBatch(now) }))
 

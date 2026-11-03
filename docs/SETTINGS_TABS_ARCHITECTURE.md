@@ -18,6 +18,8 @@ last_updated: 2026-11-01
 
 > **v2.6083 (after the stamp) — Photos on Jobs & billing:** `Settings.tsx` mounts `ReportPhotoSizeSettingsBlock` in the same group for the same roles, with `canSet` for a dev or a master only: Small · Medium · Large, the long edge a report photo is shrunk to on the phone (`lib/photos/shrink.ts`, `app_settings.report_photo_size`), read by the assistants (`docs/recent-features/v2.6083.md`).
 
+> **v2.6399 (after the stamp) — How fast a change ships, the Help zone's third tab:** `Settings.tsx` mounts `SettingsShipPaceSection` in a `settings-ship-pace` group after Release notes for the office roles (`canSeeShipPace` = `GC_OFFICE_TEAM`), conditional-mount (only while active, since the section reads a row), over `lib/settings/shipPaceIo.ts` (the `app_settings` row `ship_pace_v1` the `ship-pace` cron writes every 15 minutes from GitHub, and a dev's **Read GitHub now**) and the pure kernel `supabase/functions/_shared/shipPace.ts`; smoke `SettingsShipPaceSection.render.test.tsx` (`docs/recent-features/v2.6399.md`).
+
 ## Overview
 
 | File | Lines | Components | useState | Effects | useMemo | useCallback | useRef | Custom hooks | Last commit | Commits / 90 d |

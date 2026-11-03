@@ -9,10 +9,9 @@
  * customer name — the last is a server-side bonus the client filter never
  * had) and, since v2.6354, the jobs of every development whose name matches:
  * one small read of `developments` first, then their ids ride the same `or`
- * as `development_id.in.(…)`. Before that a development's name found only
- * the rows the board had loaded, so a built-out development's Paid in Full
- * houses never came up (the owner, 2026-11-02). GC names still live on
- * another table and keep matching client-side over loaded rows.
+ * as `development_id.in.(…)`. Before that the name reached a job the board
+ * had not loaded only when one of those flat columns also held it. GC names
+ * still live on another table and keep matching client-side over loaded rows.
  */
 import { supabase } from '../supabase'
 import { formatErrorMessage, withSupabaseRetry } from '../../utils/errorHandling'

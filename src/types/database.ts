@@ -27426,7 +27426,12 @@ export type Database = {
         Row: {
           author_label: string | null
           created_at: string
+          drive_file_id: string | null
+          drive_url: string | null
           entry_id: string | null
+          evidence_id: string | null
+          fail_why: string | null
+          filed_at: string | null
           filename: string
           id: string
           mime_type: string | null
@@ -27438,7 +27443,12 @@ export type Database = {
         Insert: {
           author_label?: string | null
           created_at?: string
+          drive_file_id?: string | null
+          drive_url?: string | null
           entry_id?: string | null
+          evidence_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
           filename: string
           id?: string
           mime_type?: string | null
@@ -27450,7 +27460,12 @@ export type Database = {
         Update: {
           author_label?: string | null
           created_at?: string
+          drive_file_id?: string | null
+          drive_url?: string | null
           entry_id?: string | null
+          evidence_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
           filename?: string
           id?: string
           mime_type?: string | null
@@ -27465,6 +27480,13 @@ export type Database = {
             columns: ["entry_id"]
             isOneToOne: false
             referencedRelation: "person_file_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_file_attachments_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_evidence"
             referencedColumns: ["id"]
           },
           {
@@ -27524,6 +27546,76 @@ export type Database = {
           },
           {
             foreignKeyName: "person_file_entries_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_file_evidence: {
+        Row: {
+          author_label: string | null
+          created_at: string
+          created_by: string | null
+          dated_on: string
+          drive_folder_id: string | null
+          drive_folder_url: string | null
+          entry_id: string | null
+          fail_why: string | null
+          filed_at: string | null
+          id: string
+          memo: string
+          person_id: string
+          title: string
+        }
+        Insert: {
+          author_label?: string | null
+          created_at?: string
+          created_by?: string | null
+          dated_on: string
+          drive_folder_id?: string | null
+          drive_folder_url?: string | null
+          entry_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
+          id?: string
+          memo?: string
+          person_id: string
+          title: string
+        }
+        Update: {
+          author_label?: string | null
+          created_at?: string
+          created_by?: string | null
+          dated_on?: string
+          drive_folder_id?: string | null
+          drive_folder_url?: string | null
+          entry_id?: string | null
+          fail_why?: string | null
+          filed_at?: string | null
+          id?: string
+          memo?: string
+          person_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_file_evidence_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_file_evidence_entry_id_fkey"
+            columns: ["entry_id"]
+            isOneToOne: false
+            referencedRelation: "person_file_entries"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_file_evidence_person_id_fkey"
             columns: ["person_id"]
             isOneToOne: false
             referencedRelation: "people"
@@ -27967,6 +28059,7 @@ export type Database = {
           ask_lane: string | null
           ask_request_id: string | null
           came_at: string
+          changes: string
           check_note: string | null
           checked_at: string | null
           created_at: string
@@ -27992,6 +28085,7 @@ export type Database = {
           ask_lane?: string | null
           ask_request_id?: string | null
           came_at?: string
+          changes?: string
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -28017,6 +28111,7 @@ export type Database = {
           ask_lane?: string | null
           ask_request_id?: string | null
           came_at?: string
+          changes?: string
           check_note?: string | null
           checked_at?: string | null
           created_at?: string
@@ -36220,6 +36315,7 @@ export type Database = {
         Returns: boolean
       }
       can_read_payment_promises: { Args: never; Returns: boolean }
+      can_read_project_board: { Args: never; Returns: boolean }
       can_report_stage_progress: {
         Args: { p_job_id: string }
         Returns: boolean
@@ -39500,6 +39596,7 @@ export type Database = {
         }[]
       }
       list_present_mercury_ids: { Args: { p_ids: string[] }; Returns: string[] }
+      list_project_board: { Args: { p_job_ids?: string[] }; Returns: Json }
       list_ready_to_bill_assigned_jobs_for_dashboard: {
         Args: never
         Returns: {
