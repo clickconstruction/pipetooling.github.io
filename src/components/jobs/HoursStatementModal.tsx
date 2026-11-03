@@ -46,6 +46,7 @@ import { fileToBase64, supabaseHoursStatementSigningIo, type HoursStatementSigni
 import { HoursStatementSendSheet, type HoursStatementContact } from './HoursStatementSendSheet'
 import { HoursStatementScanSheet, type ScanSheetDraft } from './HoursStatementScanSheet'
 import { UnchargedCallout } from '../charges/UnchargedCallout'
+import { officeNotes } from '../../lib/charges/crewDays'
 
 /** Where the window was opened from: a job (pick who) or a person (pick the job). */
 export type HoursStatementScope =
@@ -518,7 +519,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
                     {read.read.charge.words}
                     {(() => {
                       // The office reads who counts as nobody in the note below, so the paper's neutral line is not repeated here.
-                      const whys = read.read.charge.uncharged.length ? read.read.charge.unpriced.filter((w) => w !== 'Nobody out that day is charged to a customer.') : read.read.charge.unpriced
+                      const whys = officeNotes(read.read.charge.unpriced, read.read.charge.uncharged)
                       return whys.length ? ` · ${whys.join(' ')}` : ''
                     })()}
                     {read.read.charge.uncharged.length ? null : <span style={{ display: 'block', color: 'var(--text-muted)' }}>Change the job’s rule or the rate card in the Job Summary’s Charges window.</span>}

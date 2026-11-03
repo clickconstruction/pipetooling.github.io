@@ -10,7 +10,7 @@ import { buildCrewDays, jobChargeRuleFrom, unchargedWords, UNCHARGED_FIX_WORDS, 
 import { chargedAtMarkup } from './materialsCharged'
 import { indexAdjustments, type ChargeAdjustment } from './adjustments'
 import { premiumOf, type Premium } from './premium'
-import { CREW_SHAPES, parseChargeStanding, parseCrewShape, type ChargeStanding, type RateCard } from './rateCard'
+import { CREW_SHAPES, NOBODY_CHARGED_WHY, parseChargeStanding, parseCrewShape, type ChargeStanding, type RateCard } from './rateCard'
 import { moneyWords } from './moneyParts'
 
 export type LedgerChargesInput = {
@@ -104,7 +104,7 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
   // Someone with no login cannot be set in Who counts as what, so they are named with the link they need instead.
   const noLogin = loginlessWords(days.totals.uncharged.filter((u) => loginless.has(u.userId)))
   if (noLogin) whys.add(noLogin)
-  for (const d of days.days) if (d.why && !((nobody || noLogin) && d.why === 'Nobody out that day is charged to a customer.')) whys.add(d.why)
+  for (const d of days.days) if (d.why && !((nobody || noLogin) && d.why === NOBODY_CHARGED_WHY)) whys.add(d.why)
   if (markupPct == null && materialCost > 0) whys.add('No markup on materials is set, so materials are at cost.')
   const priced = materialCost > 0 || (days.totals.days > 0 && days.totals.unpriced < days.totals.days)
   return {

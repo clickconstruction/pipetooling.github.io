@@ -6,7 +6,7 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { buildJobCharges, type JobCharges } from '../../lib/charges/jobCharges'
 import { addChargeAdjustments, loadJobCharges, revertChargeAdjustments, saveJobChargeRule, type JobChargesReadResult, type NewChargeAdjustment } from '../../lib/charges/jobChargesRead'
 import { chargeAdjustmentWords, saveAdjustmentsLabel, type ChargeAdjustment } from '../../lib/charges/adjustments'
-import { jobChargeRuleWords, type CrewDay, type JobChargeRule } from '../../lib/charges/crewDays'
+import { jobChargeRuleWords, officeNotes, type CrewDay, type JobChargeRule } from '../../lib/charges/crewDays'
 import { CREW_SHAPES, CREW_SHAPE_LOWER, CREW_SHAPE_WORDS, crewRateWords, crewRateFor, type CrewShape } from '../../lib/charges/rateCard'
 import { marginOfMarkup } from '../../lib/charges/materialsCharged'
 import { Money } from './Money'
@@ -303,9 +303,9 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
               </div>
             </div>
             <UnchargedCallout people={charges.uncharged} unpricedDays={charges.totals.unpricedDays} onNavigate={onClose} />
-            {charges.notes.length ? (
+            {officeNotes(charges.notes, charges.uncharged).length ? (
               <ul style={{ margin: '0 1rem 0.5rem', paddingLeft: '1.1rem', fontSize: '0.8125rem', color: 'var(--text-muted)' }} data-testid="charges-notes">
-                {charges.notes.map((n) => (
+                {officeNotes(charges.notes, charges.uncharged).map((n) => (
                   <li key={n}>{n}</li>
                 ))}
               </ul>

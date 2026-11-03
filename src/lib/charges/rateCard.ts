@@ -151,9 +151,12 @@ export type CrewRatePrice = {
   why: string | null
 }
 
+/** The paper's neutral reason for a day nobody out is charged on; the office screens name who counts as nobody instead. */
+export const NOBODY_CHARGED_WHY = 'Nobody out that day is charged to a customer.'
+
 /** The rate for a shape with so many extra people, from the card; the missing row is named. */
 export function crewRateFor(card: RateCard, shape: CrewShape | null, extra: number): CrewRatePrice {
-  if (shape == null) return { rate: null, why: 'Nobody out that day is charged to a customer.' }
+  if (shape == null) return { rate: null, why: NOBODY_CHARGED_WHY }
   const base = card.rates[shape]
   if (base == null) return { rate: null, why: `The rate card has no rate for ${CREW_SHAPE_LOWER[shape]}.` }
   if (extra <= 0) return { rate: base, why: null }

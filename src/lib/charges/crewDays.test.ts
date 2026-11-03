@@ -120,6 +120,13 @@ describe('who counts as nobody (punch list #254, the live pass)', () => {
     expect(unchargedWords([])).toBeNull()
   })
 
+  it("drops the paper's neutral line from a window's notes while the callout names who counts as nobody", async () => {
+    const { officeNotes } = await import('./crewDays')
+    const notes = ['Nobody out that day is charged to a customer.', 'No markup on materials is set, so every material line is at cost.']
+    expect(officeNotes(notes, [{ userId: 't', name: 'Toby', days: 2 }])).toEqual(['No markup on materials is set, so every material line is at cost.'])
+    expect(officeNotes(notes, [])).toEqual(notes)
+  })
+
   it('words a span by what prices: none yet, some not yet, or all, never 0 crew-hours beside the person-hours', async () => {
     const { crewSpanWords } = await import('./crewDays')
     expect(crewSpanWords({ days: 40, unpricedDays: 40, crewHours: 0, personHours: 1312.5 })).toBe('40 crew-days in this span, none priced yet, from 1,312.5 person-hours')

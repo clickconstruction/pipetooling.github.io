@@ -6,7 +6,7 @@
  * with each person's standing, and get back the days, the weeks and the totals the paper, the window and the ledger
  * draw.
  */
-import { CREW_SHAPE_LOWER, crewRateFor, crewShapeOf, type ChargeStanding, type CrewShape, type RateCard } from './rateCard'
+import { CREW_SHAPE_LOWER, crewRateFor, crewShapeOf, NOBODY_CHARGED_WHY, type ChargeStanding, type CrewShape, type RateCard } from './rateCard'
 
 export type CrewSessionInput = {
   userId: string
@@ -127,7 +127,7 @@ export function buildCrewDays(sessions: ReadonlyArray<CrewSessionInput>, card: R
     let shapeWords = read.shape ? CREW_SHAPE_LOWER[read.shape] : 'nobody charged'
     const setTo = overrides.dayShape?.get(workDate) ?? null
     if (read.shape == null) {
-      why = 'Nobody out that day is charged to a customer.'
+      why = NOBODY_CHARGED_WHY
     } else if (setTo) {
       pricedShape = setTo
       const price = crewRateFor(card, setTo, 0)
@@ -282,6 +282,14 @@ export function crewSpanWords(t: { days: number; unpricedDays: number; crewHours
   if (t.unpricedDays >= t.days) return `${days}, none priced yet, from ${n(t.personHours)} person-hours`
   const unpriced = t.unpricedDays > 0 ? `, ${t.unpricedDays} not priced yet` : ''
   return `${days}${unpriced}, ${n(t.crewHours)} crew-hours from ${n(t.personHours)} person-hours`
+}
+
+/**
+ * A window's notes for the office: the paper's neutral line drops out while the callout names who counts as nobody, so
+ * the same fact is not said twice (the live pass).
+ */
+export function officeNotes(notes: readonly string[], uncharged: ReadonlyArray<unknown>): string[] {
+  return uncharged.length ? notes.filter((n) => n !== NOBODY_CHARGED_WHY) : [...notes]
 }
 
 /** Where the office sets it, in words: one place for everyone, or each person's desk. */
