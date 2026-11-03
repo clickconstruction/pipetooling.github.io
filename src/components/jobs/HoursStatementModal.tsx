@@ -525,10 +525,7 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
               <input type="checkbox" checked={!charged && withPay && payAllowed} disabled={!payAllowed || !rowOpen || charged} onChange={(e) => setWithPay(e.target.checked)} style={{ marginTop: 3 }} />
               <span>
                 Show the rate, the amount and what was paid
-<<<<<<< HEAD
-=======
-                {!payAllowed ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{HOURS_STATEMENT_PAY_FIXED_OFF}</span> : charged ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Off while the paper is charged to the customer.</span> : null}
->>>>>>> 280401230 (v2.6446 Hours charged statement, PR 2: the window's charged choice, the paper's Charged band, crew-days on one person's paper (punch list #251))
+                {charged ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>Off while the paper is charged to the customer.</span> : null}
               </span>
             </label>
             <label style={toggle}>

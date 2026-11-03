@@ -113,10 +113,7 @@ A signed statement can go on the account's legal matter. Open the Legal desk and
 
 ## Who can use this
 
-<<<<<<< HEAD
 A signed hours statement is payroll data. Only a dev and the controller see the **Hours statements** section and make one. The section wears a small tag beside its heading that reads **Controllers and devs only**. Leaders, assistants, helpers and subcontractors do not see it. Whoever may make a statement may send it, hand the phone over and file its signed paper.
-=======
-A dev, the controller and a pay-approved leader make the paper with the money. An assistant makes the hours-only paper. Helpers and subcontractors do not see the section. Whoever may make a statement may send it, hand the phone over and file its signed paper.
 
 ## Charge it to the customer instead
 
@@ -124,5 +121,4 @@ Tick **Charged to the customer, not paid to the worker** under the dates. The pa
 
 The line under the switch says how the job charges its labor. Change it in the Job Summary's Charges window, never on the paper. A day the rate card cannot price shows no amount and says why.
 
-Press {{button:outline|Save a draft}} and the section lists it as hours charged. Anyone in the office can make this paper.
->>>>>>> 280401230 (v2.6446 Hours charged statement, PR 2: the window's charged choice, the paper's Charged band, crew-days on one person's paper (punch list #251))
+Press {{button:outline|Save a draft}} and the section lists it as hours charged. The same people make this paper as any hours statement.

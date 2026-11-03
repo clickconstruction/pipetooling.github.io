@@ -124,7 +124,7 @@ One hidden account, `walk-tester@walk.pipetooling.local` (*ZZ Walk tester*), rol
 `users.charge_standing` (v2.6441, punch list #254) — master · tech · helper · none: what the person counts as when a crew's hour is priced for a customer. A plain profile field, not a privilege: `users_guard_privileged_columns` does not name it, so the roles the users update policy admits (dev, master, assistant, controller) set it on the person's desk under Access as **Charged as**; it changes no access, only what the rate card prices a day at.
 
 `job_charge_adjustments` (v2.6445, punch list #254) — the office's adjustments on a job's charges, read and written by `has_payroll_access()` (a dev, the controller, a pay-approved master), the roles that see a job's profit on the Job Summary; INSERT with `made_by = auth.uid()`, UPDATE for the revert stamp, no DELETE; the three fences. The Charges window shows read-only to anyone else who can open the Job Summary.
-A charged hours statement (v2.6446, punch list #251, `hours_statements.basis = 'charged'`) carries `with_pay = false`, so `can_touch_hours_statement(with_pay)` admits every office role to it as to any hours-only row; the paid paper's gate is unchanged.
+A charged hours statement (v2.6446, punch list #251, `hours_statements.basis = 'charged'`) carries `with_pay = false` and takes the hours statement's own gate, `can_touch_hours_statement(false)`: a dev or the controller, as v2.6450 draws it.
 
 ### Digital twins (account flag, not a role)
 
