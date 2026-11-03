@@ -269,5 +269,5 @@ export function scoreboardFoldWords(n: number): string {
 
 /** The site's second margin, with materials-only jobs set aside (call 7). */
 export function scoreboardWorkWords(work: ScoreboardModel['work']): string | null {
-  return work && work.earned > 0 ? `${scoreboardPctOf(work.profit, work.earned)} on work alone` : null
+  return work && work.earned > 0 ? `${scoreboardPctOf(work.profit, work.earned)} on work` : null
 }

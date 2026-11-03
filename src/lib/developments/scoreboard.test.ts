@@ -86,7 +86,7 @@ describe('buildScoreboard', () => {
   it('a pass-through job is materials only and set aside from the margin on work', () => {
     expect(row('j224').flags).toContain('materials-only')
     expect(model.work).toEqual({ earned: 241431 + 3200 + 0 + 27257, profit: 89831 + (3200 - 3386) + -7216 + 27257, jobs: 4 })
-    expect(scoreboardWorkWords(model.work)).toBe(`${Math.round(((89831 - 186 - 7216 + 27257) / (241431 + 3200 + 27257)) * 100)}% on work alone`)
+    expect(scoreboardWorkWords(model.work)).toBe(`${Math.round(((89831 - 186 - 7216 + 27257) / (241431 + 3200 + 27257)) * 100)}% on work`)
   })
 
   it('jobs with nothing on them fold, the rest sort by earned biggest first', () => {

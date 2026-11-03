@@ -190,8 +190,8 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
         </>
       )
     }
-    if (col.key === 'days') return 'each counted once'
-    if (col.key === 'earned') return `${model.rows.length} ${model.rows.length === 1 ? 'job' : 'jobs'} with money`
+    if (col.key === 'days') return 'once each'
+    if (col.key === 'earned') return `${model.rows.length} ${model.rows.length === 1 ? 'job' : 'jobs'}`
     return null
   }
   const tileValue = (col: ScoreboardColumn): string => {
@@ -242,7 +242,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
             <span>{stateWords(row)}</span>
             <Flags row={row} />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 4, marginTop: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 4, marginTop: 8 }}>
             {cols.map((c) => {
               const stands = scoreboardCellStands(c.key, model.reads)
               const v = row.m[c.key]
@@ -262,14 +262,14 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
       )
     }
     return (
-      <div style={{ display: 'grid', gap: 8 }} data-testid="scoreboard-phone">
+      <div style={{ display: 'grid', gridTemplateColumns: 'minmax(0, 1fr)', gap: 8 }} data-testid="scoreboard-phone">
         <div style={{ border: '1px solid var(--border)', borderRadius: 8, padding: '10px 12px', background: 'var(--surface)' }}>
           <div style={{ fontWeight: 800, fontSize: '0.98rem', color: 'var(--text-strong)' }}>{head.name}</div>
           <div style={{ fontSize: '0.74rem', color: 'var(--text-muted)' }}>{head.line}</div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 6, marginTop: 8 }}>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, minmax(0, 1fr))', gap: 6, marginTop: 8 }}>
             {three.map((c) => (
               <div key={c.key} style={{ textAlign: 'center', padding: '6px 4px', borderRadius: 7, background: 'var(--bg-subtle)', borderTop: `3px solid ${TILE_FILL[c.group]}` }}>
-                <b style={{ ...num, display: 'block', textAlign: 'center', fontSize: '0.88rem', color: 'var(--text-strong)' }}>{tileValue(c)}</b>
+                <b style={{ ...num, display: 'block', textAlign: 'center', fontSize: '0.82rem', color: 'var(--text-strong)' }}>{tileValue(c)}</b>
                 <span style={{ ...capStyle, fontSize: '0.6rem' }}>{c.label}</span>
                 {c.key === 'profit' ? <span style={{ display: 'block', fontSize: '0.64rem', color: 'var(--text-muted)' }}>{tileSmall(c)}</span> : null}
               </div>
