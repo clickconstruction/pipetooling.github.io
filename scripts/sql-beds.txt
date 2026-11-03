@@ -81,3 +81,4 @@ email-box-count
 bed-apply
 lien-release-sign
 legal-firm-coverage
+combine-rows

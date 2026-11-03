@@ -113,6 +113,7 @@
     "test:pg:contact-for-customer": "bash scripts/pgtest-contact-for-customer.sh",
     "test:pg:messages-tech-send": "bash scripts/pgtest-messages-tech-send.sh",
     "test:pg:stage-checklist-items": "bash scripts/pgtest-stage-checklist-items.sh",
+    "test:pg:combine-rows": "bash scripts/pgtest-combine-rows.sh",
     "test:pg:helper-on-job": "bash scripts/pgtest-helper-on-job.sh",
     "test:pg:photo-saves": "bash scripts/pgtest-photo-saves.sh",
     "test:pg:portal-opens-since": "bash scripts/pgtest-portal-opens-since.sh",
