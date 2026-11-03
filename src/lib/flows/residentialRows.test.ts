@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest'
 import type { ContactRow } from './load'
 import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, pipelineJobNames, residentialRowsOf, type PipelineRows } from './residentialRows'
 
-const DANA: ContactRow = { id: 'c-dana', kind: 'residential', off_since: null, off_why: null, off_by: null }
+// A homeowner's contact is kind customer (v2.6394): the residential flow is told from the customers row, never the contact's kind.
+const DANA: ContactRow = { id: 'c-dana', kind: 'customer', off_since: null, off_why: null, off_by: null }
 
 /** Dana's water heater job and Evan's sink, read at once, with a third job the office tied to Dana that she is not the customer on. */
 const ROWS: PipelineRows = {

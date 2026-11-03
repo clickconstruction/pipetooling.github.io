@@ -27,5 +27,6 @@ While anything is hidden, a red {{chip:red|Hiding 2 groups}} chip sits in the se
 
 - **Hides are per device**, like your other board preferences. Hiding a GC on your laptop doesn't touch anyone else's board or your phone.
 - **They stack with the other filters.** The GC, development and Account Man dropdowns in the tools menu still zoom the board to one group. Each also has a "No …" option for the untagged worklist. Search works within whatever is visible.
+- **A search tells you when a hidden group holds a match.** A line above the board says how many. {{button:outline|Show them}} shows those matches until you clear the search. Your hidden groups stay hidden. See [what the search does with filters](/help/search-the-stages-board#when-a-filter-hides-a-match).
 - **Nothing changes on the jobs.** Hiding is a view preference. Billing, aging and dashboards are unaffected.
 - If a hidden group's last job leaves the board, the row shows as *(no longer on the board)*. You can un-hide it instead of it becoming a stuck, invisible filter.

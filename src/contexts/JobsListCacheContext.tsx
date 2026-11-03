@@ -123,6 +123,8 @@ type JobsListCacheContextValue = {
    * them, so only a dev's Pipeline reads it: the chip that says how many are hidden.
    */
   zzTestJobCount: number
+  /** Their ids, for the same dev's Pipeline: a search match that is a ZZ job says so (`stagesSearchHeldBack.ts`). */
+  zzTestJobIds: ReadonlySet<string>
 }
 
 const JobsListCacheContext = createContext<JobsListCacheContextValue | null>(null)
@@ -175,7 +177,8 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
   const showingKept = jobsListSnapshotAt != null && kept.rows != null
   const boardJobs = showingKept ? (kept.rows as JobWithDetails[]) : jobs
   const visibleJobs = useMemo(() => (hideZz ? withoutZzTestJobs(boardJobs) : boardJobs), [boardJobs, hideZz])
-  const zzTestJobCount = useMemo(() => zzTestJobIds(boardJobs).size, [boardJobs])
+  const zzJobIdsOnBoard = useMemo(() => zzTestJobIds(boardJobs), [boardJobs])
+  const zzTestJobCount = zzJobIdsOnBoard.size
   const keptScopes = useMemo<ReadonlySet<JobsBoardScope>>(
     () => (showingKept && kept.scopes ? new Set(kept.scopes as JobsBoardScope[]) : mergedScopes),
     [showingKept, kept.scopes, mergedScopes],
@@ -598,6 +601,7 @@ export function JobsListCacheProvider({ children }: { children: ReactNode }) {
     runFetchScopes,
     refreshMergedScopes,
     zzTestJobCount,
+    zzTestJobIds: zzJobIdsOnBoard,
   }
 
   return <JobsListCacheContext.Provider value={value}>{children}</JobsListCacheContext.Provider>

@@ -15,10 +15,12 @@ import {
   offeredFrom,
   portalLinkOf,
   quickRepliesFrom,
+  runContactsOf,
   textNumberOf,
   type NudgeRunRows,
   type RunBillRows,
   type RunChannelRow,
+  type RunContactRow,
   type RunLineRow,
   type RunQuickReplyRow,
   type RunStepRow,
@@ -356,18 +358,21 @@ describe('a residential customer’s steps read from their Pipeline rows (v2.623
     paySpeeds: { company: { medianDays: 21, samples: 40 }, customers: { 'cust-dana': { medianDays: 9, samples: 2 } }, segments: { residential: null, commercial: null }, customerTypes: {}, receipts: {} },
     promisedPay: {},
   }
-  /** `flow_rows` for a residential contact names no customer on the card; the contact row carries it. */
+  /**
+   * `flow_rows` for a homeowner (v2.6394): her contact is kind customer, and the card says her customers row is residential,
+   * which is what puts her on the residential flow. This card names no customer, so the contact row's id is read.
+   */
   const DANA_FLOW_ROWS: FlowRows = {
-    contact: { id: 'dana', kind: 'residential', off_since: null, off_why: null, off_by: null },
+    contact: { id: 'dana', kind: 'customer', off_since: null, off_why: null, off_by: null },
     userNames: { 'u-luis': 'Luis', 'u-rosa': 'Rosa' },
-    card: { name: 'Dana Whitfield', goes_by: null, company: null, trades: [], customer_id: null },
+    card: { name: 'Dana Whitfield', goes_by: null, company: null, trades: [], customer_id: null, customer_type: 'residential' },
   }
   const DANA_PHONE: RunChannelRow = { id: 'ch-dana', contact_id: 'dana', kind: 'phone', value: '(210) 555-0142', opted_out_at: null, created_at: '2026-10-03T13:00:00Z' }
   /** Mon Oct 26, 9 AM Central: a week past her pay-by day. */
   const LATE_MORNING = new Date('2026-10-26T14:00:00Z')
   const danaRows = (change: Partial<NudgeRunRows> = {}): NudgeRunRows =>
     rowsFor({
-      contacts: [{ id: 'dana', kind: 'residential', name: 'Dana Whitfield', goes_by: null, snoozed_until: null, customer_id: 'cust-dana' }],
+      contacts: [{ id: 'dana', kind: 'customer', name: 'Dana Whitfield', goes_by: null, snoozed_until: null, customer_id: 'cust-dana' }],
       flowRows: { dana: DANA_FLOW_ROWS },
       lines: [{ contact_id: 'dana', direction: 'out', at: '2026-10-09T15:00:00Z', channel_id: 'ch-dana' }],
       channels: [DANA_PHONE],
@@ -399,6 +404,33 @@ describe('a residential customer’s steps read from their Pipeline rows (v2.623
     expect(planNudgeRun(input).texts).toEqual([])
   })
 
+  // v2.6394: a homeowner's contact is kind customer; the card's customer_type is what puts them on the residential flow,
+  // and the function holds the GC customers through runContactsOf before the read.
+  it('runs a customer contact whose card says residential and holds one whose card says commercial, counted', () => {
+    const dana: RunContactRow = { id: 'dana', kind: 'customer', name: 'Dana Whitfield', goes_by: null, snoozed_until: null, customer_id: 'cust-dana' }
+    const helotes: RunContactRow = { id: 'helotes', kind: 'customer', name: null, goes_by: null, snoozed_until: null, customer_id: 'cust-helotes' }
+    const tom: RunContactRow = { id: 'tom', kind: 'trade', name: 'Tom Riddle', goes_by: null, snoozed_until: null }
+    const helotesRows: FlowRows = { ...DANA_FLOW_ROWS, contact: { ...DANA_FLOW_ROWS.contact, id: 'helotes' }, card: { ...DANA_FLOW_ROWS.card!, name: 'Helotes Dental', customer_id: 'cust-helotes', customer_type: 'commercial' } }
+    const split = runContactsOf([dana, helotes, tom], { dana: DANA_FLOW_ROWS, helotes: helotesRows, tom: TOM_ROWS })
+    expect([split.run.map((c) => c.id), split.customersHeld]).toEqual([['dana', 'tom'], 1])
+    const reads = nudgeRunReads(danaRows({ contacts: split.run, flowRows: { dana: DANA_FLOW_ROWS, tom: TOM_ROWS }, appSends: { residential: { paid: true } } }), LATE_MORNING, { origin: ORIGIN })
+    expect(reads.input.people.map((p) => [p.id, p.reading.kind])).toEqual([
+      ['dana', 'residential'],
+      ['tom', 'trade'],
+    ])
+    expect(planNudgeRun(reads.input).texts.map((t) => t.contactId)).toEqual(['dana'])
+  })
+
+  it('holds a customer contact whose card does not say residential yet (the card before the push), and one with no card', () => {
+    const dana: RunContactRow = { id: 'dana', kind: 'customer', name: 'Dana Whitfield', goes_by: null, snoozed_until: null, customer_id: 'cust-dana' }
+    const before: FlowRows = { ...DANA_FLOW_ROWS, card: { ...DANA_FLOW_ROWS.card!, customer_type: undefined } }
+    expect(runContactsOf([dana], { dana: before })).toEqual({ run: [], customersHeld: 1 })
+    expect(runContactsOf([dana], {})).toEqual({ run: [], customersHeld: 1 })
+    // Trade partners, architects and the rest run whatever the card says.
+    const tom: RunContactRow = { id: 'tom', kind: 'trade', name: 'Tom Riddle', goes_by: null, snoozed_until: null }
+    expect(runContactsOf([tom], {})).toEqual({ run: [tom], customersHeld: 0 })
+  })
+
   it('leaves a trade partner’s rows as they were', () => {
     const rows = danaRows({ contacts: [...danaRows().contacts, { id: 'tom', kind: 'trade', name: 'Tom Riddle', goes_by: null, snoozed_until: null }], flowRows: { dana: DANA_FLOW_ROWS, tom: TOM_ROWS } })
     const { input } = nudgeRunReads(rows, LATE_MORNING, { origin: ORIGIN })
@@ -426,8 +458,8 @@ describe('the residential customers’ bills, for {amount} and {bill} (punch lis
     ],
   }
   const DANA_ROWS: FlowRows = {
-    contact: { id: 'dana', kind: 'residential', off_since: null, off_why: null, off_by: null },
-    card: { name: 'Dana Whitfield', goes_by: null, company: null, trades: [], customer_id: 'cust-dana' },
+    contact: { id: 'dana', kind: 'customer', off_since: null, off_why: null, off_by: null },
+    card: { name: 'Dana Whitfield', goes_by: null, company: null, trades: [], customer_id: 'cust-dana', customer_type: 'residential' },
   }
 
   it('reads each customer’s bills as the reply box does, their own payments and no one else’s', () => {
@@ -440,7 +472,7 @@ describe('the residential customers’ bills, for {amount} and {bill} (punch lis
 
   it('hands a residential customer their papers by contact, and nobody else any', () => {
     const rows = rowsFor({
-      contacts: [{ id: 'dana', kind: 'residential', name: 'Dana Whitfield', goes_by: null, snoozed_until: null }, { id: 'tom', kind: 'trade', name: 'Tom Riddle', goes_by: null, snoozed_until: null }],
+      contacts: [{ id: 'dana', kind: 'customer', name: 'Dana Whitfield', goes_by: null, snoozed_until: null }, { id: 'tom', kind: 'trade', name: 'Tom Riddle', goes_by: null, snoozed_until: null }],
       flowRows: { dana: DANA_ROWS, tom: TOM_ROWS },
       bills: BILLS,
     })

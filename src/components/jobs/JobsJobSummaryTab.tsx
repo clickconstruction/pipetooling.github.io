@@ -78,6 +78,7 @@ import type { JobSummaryViewBundle } from '../../hooks/useJobSummaryView'
 import { JOB_OVERHEAD_METHODS } from '../../lib/jobs/jobDayLedger'
 import { JOB_SUMMARY_CUT_OPTIONS, jobSummaryRowUnderTarget, jobSummarySearchOn, type JobSummaryViewMode } from '../../lib/jobs/jobSummaryLedgerView'
 import { jobSummarySearchNote } from '../../lib/jobs/jobSummarySearchWins'
+import { JOB_SUMMARY_BILLED_IN_FULL_CHIP, jobSummaryBilledInFullTitle, jobSummaryBurnCellWords } from '../../lib/jobs/jobSummaryHeaderWords'
 import type { TallyPartRow } from '../../types/tallyPart'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { LaborJob } from '../../types/laborJob'
@@ -720,7 +721,7 @@ export default function JobsJobSummaryTab({
                     <JobSummarySortHeader label={PROFIT_FIGURE_LABELS.trueProfit.label} sortKey="trueProfit" view={view} title={PROFIT_FIGURE_LABELS.trueProfit.tooltip} />
                     <JobSummarySortHeader label="True %" sortKey="trueMargin" view={view} title="True profit ÷ revenue" />
                     <JobSummarySortHeader label="Burn" sortKey="projMargin" view={view} title="Spend vs progress (v2.3191): % of the budget spent · % complete. Budget = the linked bid's estimate (◆) or a typed budget (✎), else contract × (1 − target margin). Red when spend leads progress by more than 5 points; early = under 3 field days or 10 %" />
-                    <JobSummarySortHeader label="Proj. margin" sortKey="projMargin" view={view} title="Projected true margin at completion: contract − spent ÷ % done − overhead so far − overhead per field day × field days left. Finished jobs show what happened" />
+                    <JobSummarySortHeader label={<span>Proj. true margin<span style={{ display: 'block', fontSize: '0.62rem', fontWeight: 600, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-muted)' }}>at 100%</span></span>} sortKey="projMargin" view={view} title="Projected true margin at completion: contract − spent ÷ % done − overhead so far − overhead per field day × field days left. Finished jobs show what happened" />
                     <JobSummarySortHeader label="$/hr" sortKey="revPerHour" view={view} title="Revenue ÷ approved field hours in the window — the realized rate" />
                     <JobSummarySortHeader
                       label="%"
@@ -890,14 +891,8 @@ export default function JobsJobSummaryTab({
                               const b = enriched.burn
                               const hot = b?.status === 'hot'
                               const burnColor = hot ? 'var(--text-red-700)' : b?.status === 'ok' ? 'var(--text-green-700)' : 'var(--text-muted)'
-                              const burnText =
-                                !showTeamLaborAndProfit || !b || b.status === 'no_budget'
-                                  ? '—'
-                                  : b.status === 'done'
-                                    ? 'done'
-                                    : b.status === 'early'
-                                      ? b.spentPct != null ? `${Math.round(b.spentPct)}% · early` : 'early'
-                                      : `${Math.round(b.spentPct ?? 0)}% · ${Math.round(enriched.pct ?? 0)}%`
+                              // v2.6389: the two percents carry their words — "94% spent · 40% done".
+                              const burnText = !showTeamLaborAndProfit ? '—' : jobSummaryBurnCellWords(b, enriched.pct)
                               // The footing glyph (v2.3300): ◆ bid · ✎ typed; the assumption stays unmarked so the table reads as before.
                               const footingMark = showTeamLaborAndProfit && b && b.status !== 'no_budget' && b.footing !== 'assumed' ? `${enriched.budgetGlyph} ` : ''
                               const pm = showTeamLaborAndProfit ? burnProjectedMarginForSort(b) : null
@@ -925,6 +920,15 @@ export default function JobsJobSummaryTab({
                                   reportedOn={enriched.pctSource === 'crew-report' ? jobSummaryReportDateByJobId.get(job.id) ?? latestReportPercent(jobSummaryReportsByJobId.get(job.id))?.createdAt ?? null : null}
                                   style={{ display: 'block', marginLeft: 0, marginTop: 2 }}
                                 />
+                              ) : null}
+                              {enriched.billedInFull ? (
+                                <span
+                                  data-testid="job-summary-billed-in-full"
+                                  title={jobSummaryBilledInFullTitle(enriched.pct)}
+                                  style={{ display: 'inline-block', marginTop: 2, fontSize: '0.66rem', fontWeight: 700, lineHeight: 1.4, padding: '0.05rem 0.4rem', borderRadius: 999, background: 'var(--bg-red-tint)', color: 'var(--text-red-700)', whiteSpace: 'nowrap' }}
+                                >
+                                  {JOB_SUMMARY_BILLED_IN_FULL_CHIP}
+                                </span>
                               ) : null}
                             </td>
                           </tr>

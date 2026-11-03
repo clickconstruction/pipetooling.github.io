@@ -38,10 +38,9 @@ describe('buildLeanJobNumberOr', () => {
 
 /**
  * The server-side search behind the Pipeline box (v2.1825) covered the five flat
- * `jobs_ledger` columns only, so a development's name found none of its jobs that
- * the board had not loaded yet — every Paid in Full house in a built-out
- * development (the owner, 2026-11-02). The search now reads the developments
- * whose name matches and asks for their jobs in the same `or`.
+ * `jobs_ledger` columns only, so a development's name reached a job the board had
+ * not loaded only when one of those columns also held it. The search now reads the
+ * developments whose name matches and asks for their jobs in the same `or`.
  */
 type Step = { method: string; args: unknown[] }
 const queries: Array<{ table: string; steps: Step[] }> = []

@@ -112,6 +112,25 @@ const jobLabel = (job: JobSummarySearchable): string => {
 }
 const floorName = (floor: number) => `the HCP # ${floor} floor`
 
+/**
+ * One searched row billed to its contract while its % is under 100 (v2.6389): the note
+ * names the contradiction and reads the margin both ways, so the reader sees what each
+ * answer means before deciding which is wrong.
+ */
+function billedInFullSentences(r: JobSummaryEnrichedRow, subject: string): string[] {
+  if (r.pct == null) return [`${subject} is billed in full, but has no % yet.`]
+  const who = r.pctSource === 'crew-report' ? "the crew's last report says" : 'its % says'
+  const out = [`${subject} is billed in full, but ${who} ${r.pct}% done.`]
+  const trueWord = r.overheadUsd != null ? 'true ' : ''
+  const now = r.trueMarginPct ?? r.marginPct
+  if (now != null) out.push(now < 0 ? `Read at ${r.pct}% it is under water.` : `Read at ${r.pct}% its ${trueWord}margin is ${Math.round(now)}%.`)
+  if (r.contractUsd > 0) {
+    const spent = r.laborUsd + r.subsUsd + r.partsUsd + (r.overheadUsd ?? 0)
+    out.push(`Read as finished its ${trueWord}margin is ${Math.round(((r.contractUsd - spent) / r.contractUsd) * 100)}%.`)
+  }
+  return out
+}
+
 /** The line under the controls while a search is on: what matched, and what each chip or the floor would have hidden. */
 export function jobSummarySearchNote<R extends JobSummaryLedgerRowInput>(args: JobSummarySearchNoteInput<R>): JobSummarySearchNote {
   const { search, rows, prefs, startYmd, endYmd, floor } = args
@@ -154,6 +173,7 @@ export function jobSummarySearchNote<R extends JobSummaryLedgerRowInput>(args: J
       else if (heldByStatus > 0) sentences.push(`${subject} ${statusWhy}, so the Show chip stepped aside.`)
       else if (heldByWindow > 0) sentences.push(`${subject} was not worked in this window, so the Worked in chip stepped aside.`)
       if (heldByBudget > 0) sentences.push(`${subject} is not on the Budget chip's footing, so that chip stepped aside.`)
+      if (first.billedInFull) sentences.push(...billedInFullSentences(first, subject))
     } else {
       if (heldByStatus > 0) sentences.push(`${heldByStatus} ${heldByStatus === 1 ? 'is' : 'are'} ${prefs.status === 'finished' ? 'still in progress' : 'finished already'}.`)
       if (heldByWindow > 0) sentences.push(`${heldByWindow} ${heldByWindow === 1 ? 'was' : 'were'} not worked in this window.`)

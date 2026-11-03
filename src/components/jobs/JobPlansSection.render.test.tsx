@@ -39,6 +39,9 @@ function set(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
     file_count: null,
     checked_at: null,
     check_note: null,
+    owed: false,
+    ask_lane: null,
+    ask_request_id: null,
     created_by: 'u1',
     created_at: '2026-10-01T12:00:00Z',
     updated_at: '2026-10-01T12:00:00Z',
@@ -59,6 +62,9 @@ function fakeIo(read: Partial<JobPlansRead> = {}, over: Partial<JobPlansIo> = {}
   return {
     read: vi.fn(async () => full),
     readSite: vi.fn(async () => ({ parts: [], sets: [], names: {} })),
+    readPapers: vi.fn(async () => ({ rows: [], requests: [] })),
+    keepPaper: vi.fn(async (a) => set({ id: 'paper-new', name: a.draft.name, kind: a.draft.kind })),
+    markPaperCame: vi.fn(async () => undefined),
     makeSitePart: vi.fn(async () => ({ ...part, id: 'p-site', job_id: null, development_id: 'd1', current_set_id: null })),
     makePart: vi.fn(async () => ({ ...part, id: 'p-new', current_set_id: null })),
     pickPart: vi.fn(async () => undefined),
@@ -66,6 +72,7 @@ function fakeIo(read: Partial<JobPlansRead> = {}, over: Partial<JobPlansIo> = {}
     makeCurrent: vi.fn(async () => undefined),
     removeSet: vi.fn(async () => undefined),
     updateMemo: vi.fn(async () => undefined),
+    updateChanges: vi.fn(async () => undefined),
     ...over,
   }
 }
@@ -136,7 +143,43 @@ describe('JobPlansSection', () => {
     expect(args.partId).toBe('p-new')
     expect(args.makeCurrent).toBe(true)
     expect(args.draft.link).toBe('https://drive.google.com/drive/folders/new')
+    expect(args.draft.changes ?? '').toBe('')
     await waitFor(() => expect(onLink).toHaveBeenCalledWith('https://drive.google.com/drive/folders/new'))
+  })
+
+  it('reads the change line under the set it builds from, and writes one on an older set that has none', async () => {
+    const io = fakeIo({
+      job: { id: 'j1', plan_part_id: 'p1', development_id: null, development_name: null, job_plans_link: null },
+      part,
+      sets: [
+        set({ id: 's1', dated: '2026-06-01' }),
+        set({ id: 's2', name: 'Addendum 1', kind: 'addendum', dated: '2026-07-01', replaces_set_id: 's1' }),
+        set({ id: 's3', name: 'Permit set', kind: 'permit', dated: '2026-10-14', replaces_set_id: 's2', changes: 'The water heater moved to the garage.' }),
+      ],
+    })
+    renderWithProviders(<JobPlansSection job={job} io={io} />)
+    expect(await screen.findByText('What changed from Addendum 1: The water heater moved to the garage.')).toBeTruthy()
+    expect(screen.getByRole('button', { name: 'Edit what changed' })).toBeTruthy()
+    expect(screen.queryByTestId('plan-set-changes-s1')).toBeNull()
+    fireEvent.click(screen.getByRole('button', { name: 'Write what changed' }))
+    fireEvent.change(screen.getByLabelText('What changed in Addendum 1'), { target: { value: 'Sheet P-2 redrawn.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save what changed' }))
+    await waitFor(() => expect(io.updateChanges).toHaveBeenCalledWith('s2', 'Sheet P-2 redrawn.'))
+    await waitFor(() => expect(io.read).toHaveBeenCalledTimes(2))
+  })
+
+  it('asks what changed on the New set form and sends it with the set', async () => {
+    const io = fakeIo({ job: { id: 'j1', plan_part_id: 'p1', development_id: null, development_name: null, job_plans_link: null }, part: { ...part, current_set_id: 's1' }, sets: [set({ id: 's1', dated: '2026-06-01' })] })
+    renderWithProviders(<JobPlansSection job={job} io={io} />)
+    fireEvent.click((await screen.findAllByRole('button', { name: '+ New set' }))[0]!)
+    const area = (await screen.findByTestId('plan-set-changes')) as HTMLTextAreaElement
+    expect(area.placeholder).toBe('What moved from Issued set: which sheets or areas, and what it means for our work. Nothing, for a reissue.')
+    fireEvent.change(area, { target: { value: ' The riser moved. ' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Add the set and build from it' }))
+    await waitFor(() => expect(io.addSet).toHaveBeenCalled())
+    const args = (io.addSet as ReturnType<typeof vi.fn>).mock.calls[0]![0]
+    expect(args.draft.changes).toBe(' The riser moved. ')
+    expect(args.replacesSetId).toBe('s1')
   })
 
   it('refuses a set with no name and says so', async () => {

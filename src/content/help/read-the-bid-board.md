@@ -43,7 +43,7 @@ Distance to the office lives in the row dropdown, along with the address. You ta
 
 A row you marked wears a light violet wash and a thin bar at its left. You press and hold a row for half a second to mark it. You hold it again to clear it. The mark is yours alone and shows on every workflow tab too. {{button:outline|Marked}} beside the search box shows only your marked bids. See [find a bid on the workflow tabs](?g=find-a-bid-on-the-workflow-tabs).
 
-In the **Lost** section, every bid carries a **Why did we lose?** strip. When the loss has a reason recorded, it reads the reason, category first, then what they said. When it does not, the strip says so. It reads *Add why: an uncategorized loss can't teach the robots*. It puts the **six reason chips right on the row**. So recording the reason is one tap without opening anything. A note on the bid may even pre-suggest a chip with an amber ring. An uncategorized loss gets left out of the robot estimators' training math. That is why the strip asks.
+In the **Lost** section, every bid carries a **Why did we lose?** strip. When the loss has a reason recorded, it reads the reason, category first, then what they said. A bid lost GC by GC reads each GC's reason on its own line. It asks nothing when every GC card has one. When a reason is missing, the strip says so. It reads *Add why: an uncategorized loss can't teach the robots*. It puts the **six reason chips right on the row**. So recording the reason is one tap without opening anything. A note on the bid may even pre-suggest a chip with an amber ring. An uncategorized loss gets left out of the robot estimators' training math. That is why the strip asks.
 
 ## Won rows: is the job linked, and was the bid costed?
 
