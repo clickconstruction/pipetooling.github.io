@@ -661,9 +661,9 @@ Per-user checklist lines (**`user_dashboard_goals`**) edited by dev, master, or 
 ## Access Control
 
 ### HR files
-Dev-only per-person employee files on People → HR (v2.2221): a curated **Summary** and **Narrative** plus an append-only **raw entries** log, maintained mostly by an AI agent. Corrections are new entries — the log has no UPDATE/DELETE policies.
+Dev-only per-person employee files on People → HR (v2.2221): a curated **Summary** and **Narrative** plus an append-only **raw entries** log, maintained mostly by an AI agent. Corrections are new entries — the log has no UPDATE/DELETE policies. Since v2.6392 the tab opens a person as **the person file**: a **Timeline** of everything on record on the day it is about (the entries beside the papers, licenses, write-ups, no-shows, excused lates, waiting field reports and the start and last days the app already knows, lanes Said · Did · Paper · Missed · Ahead), **Evidence** as records (the day it is about, a title, a memo and its files, filed in Drive under People › the person › the day and the title by `hr-evidence-drive`, v2.6393) and the **Narrative**. A waiting field report is filed from its own line.
 
-**Database**: `person_files` (summary/narrative, `UNIQUE(person_id, kind)`) + `person_file_entries` (append-only), both keyed on `people.id`, RLS `is_dev()` only
+**Database**: `person_files` (summary/narrative, `UNIQUE(person_id, kind)`) + `person_file_entries` (append-only) + `person_file_evidence` (append-only, v2.6392) with `person_file_attachments`, all keyed on `people.id`, RLS `is_dev()` only
 
 **Convention**: `docs/HR_FILES.md` (what gets written and how)
 
