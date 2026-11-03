@@ -19,7 +19,7 @@ describe('stagesGroupEmptyWords', () => {
   it('a board filter hid them: say so, the chips above take them off', () => {
     expect(stagesGroupEmptyWords(ctx({ filtered: true }))).toEqual({ main: 'No jobs in Working match the filters.' })
     // The search is named first: it is the one with a press.
-    expect(stagesGroupEmptyWords(ctx({ filtered: true, search: 'Elm', onClearSearch: vi.fn() })).main).toBe('No jobs in Working match ‘Elm’.')
+    expect(stagesGroupEmptyWords(ctx({ filtered: true, search: 'Elm', onClearSearch: vi.fn() })).main).toBe('No jobs in Working match ‘Elm’ with your filters on.')
   })
 
   it('Paid in Full holding nothing is a fact, not the good state', () => {
@@ -40,6 +40,7 @@ describe('stagesGroupEmptyWords', () => {
       stagesGroupEmptyWords(ctx({ group: 'Billed Awaiting Payment' })),
       stagesGroupEmptyWords(ctx({ search: 'Ridgeway', onClearSearch: vi.fn() })),
       stagesGroupEmptyWords(ctx({ filtered: true })),
+      stagesGroupEmptyWords(ctx({ filtered: true, search: 'Ridgeway' })),
       stagesGroupEmptyWords(ctx({ group: 'Paid in Full', done: true })),
       stagesGroupEmptyWords(ctx(), { filter: 'today', hidden: 4, onShowAll: vi.fn() }),
     ]

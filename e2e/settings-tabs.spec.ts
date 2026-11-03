@@ -59,6 +59,7 @@ const TABS: Array<{ label: string; marker: RegExp | string; expand?: string }> =
   { label: 'Activity logs', marker: 'Most recent push notifications' },
   { label: 'Guides', marker: 'How do I' },
   { label: 'Release notes', marker: 'Current version' },
+  { label: 'How fast a change ships', marker: 'How long a change takes' },
 ]
 
 test('every dev-visible Settings tab renders its marker without page errors', async ({ page }) => {

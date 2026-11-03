@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Link, useNavigate, useParams, useSearchParams } from 'react-router-dom'
 import DevelopmentHouseIcon from '../components/icons/DevelopmentHouseIcon'
 import { DevelopmentFeed } from '../components/developments/DevelopmentFeed'
+import { HistoryLegendPress } from '../components/developments/HistoryLegendWindow'
 import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY, type DevelopmentJumpKey, type DevelopmentLook } from '../components/developments/DevelopmentJumpStrip'
 import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
 import type { PairingProps } from '../components/developments/DevelopmentPairCells'
@@ -52,6 +53,7 @@ import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
 import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../lib/plans/sitePlans'
 import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
+import { papersFromRows, type Paper } from '../lib/papers/papers'
 import { canSeeSiteCosts } from '../lib/developments/siteCosts'
 import { useSiteCosts } from '../hooks/useSiteCosts'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
@@ -74,6 +76,9 @@ import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/
 import { telHrefFor } from '../lib/phoneContact'
 import { formatErrorMessage } from '../utils/errorHandling'
 import type { Database } from '../types/database'
+import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
+import { useSitePhotos } from '../hooks/useSitePhotos'
+import { photosCardMeta, photosLookWords } from '../lib/photos/sitePhotos'
 
 
 export default function DevelopmentPage() {
@@ -175,13 +180,24 @@ export default function DevelopmentPage() {
   // The site's parts and their sets (punch list #239, PR 3): one read, again after every write.
   const siteIo = useMemo(() => supabaseJobPlansIo(), [])
   const [siteRead, setSiteRead] = useState<SitePlansRead | null>(null)
+  const [sitePapers, setSitePapers] = useState<Paper[]>([])
   const [siteGen, setSiteGen] = useState(0)
   const developmentIdForParts = data?.development.id ?? null
   useEffect(() => {
     let live = true
     if (!developmentIdForParts) return
     siteIo.readSite(developmentIdForParts).then(
-      (r) => live && setSiteRead(r),
+      async (r) => {
+        if (!live) return
+        setSiteRead(r)
+        // The papers on the parts (the papers train), read beside the sets; a failed read leaves the column empty.
+        try {
+          const pr = await siteIo.readPapers(r.parts.map((p) => p.id))
+          if (live) setSitePapers(papersFromRows(pr.rows, pr.requests))
+        } catch {
+          if (live) setSitePapers([])
+        }
+      },
       () => live && setSiteRead({ parts: [], sets: [], names: {} }),
     )
     return () => {
@@ -223,6 +239,9 @@ export default function DevelopmentPage() {
   // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.
   const shownJobIds = useMemo(() => (shown ? shown.jobs.map((j) => j.id) : []), [shown])
   const costsByJobId = useSiteCosts(shownJobIds, canSeeSiteCosts(role))
+  // The site's photos (punch list #247): the census and the row, read once for the strip's sixth look and the Photos card.
+  const shownBidIds = useMemo(() => (shown ? shown.bids.map((b) => b.id) : []), [shown])
+  const sitePhotos = useSitePhotos({ jobIds: shownJobIds, bidIds: shownBidIds, enabled: !!data })
   const pieces = useMemo(() => (shown && data && plans ? buildPieceRows({ members: shown, requests: data.requests, plans, customerName: data.customer?.name ?? null, nowMs }) : []), [shown, data, plans, nowMs])
   const feed = useMemo<ChangeLine[]>(
     () =>
@@ -749,7 +768,7 @@ export default function DevelopmentPage() {
   const siteMoney = buildSiteMoney({ members: shown, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
   const moneyWords = moneyLookWords(siteMoney, money)
 
-  // The strip's five looks: the plain count with its noun, and in amber what in it needs the leader.
+  // The strip's six looks: the plain count with its noun, and in amber what in it needs the leader.
   const activePieces = pieces.filter((r) => !r.done).length
   const looks: Record<DevelopmentJumpKey, DevelopmentLook> = {
     changed: { n: since.newCount, count: `${since.newCount} new`, need: since.newCount > 0 ? `${since.newCount} new` : null },
@@ -761,6 +780,7 @@ export default function DevelopmentPage() {
       count: openQuestions > 0 && openQuestions === data.requests.length ? `${openQuestions} waiting` : String(data.requests.length),
       need: openQuestions > 0 ? `${openQuestions} waiting` : null,
     },
+    photos: photosLookWords(sitePhotos.census),
   }
 
   // The newest bid: where the GC contact and the estimator live when the head has none (the owner, 2026-10-28: *do all 8*, item 4).
@@ -1008,6 +1028,8 @@ export default function DevelopmentPage() {
           }
           right={
             <>
+              {/* What the marks mean (the owner, 2026-11-02): the ? opens the legend of every glyph the lines wear. */}
+              <HistoryLegendPress />
               {/* The search (the owner, 2026-10-28): people, jobs or bids, across every line, new and old, the kept lines too. */}
               {feed.length > 0 ? (
                 <span style={{ position: 'relative', display: 'inline-flex', alignItems: 'center' }}>
@@ -1162,11 +1184,16 @@ export default function DevelopmentPage() {
         )}
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="what each part of the site builds from">
-          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} />
+          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} papers={sitePapers} />
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>
           <DevelopmentQuestionsLook requests={data.requests} names={data.names} aboutLabel={requestAbout} openAbout={(r) => (r.bid_id ? openBid(r.bid_id) : r.job_ledger_id ? openJob(r.job_ledger_id) : undefined)} onAsk={(lane) => openAsk({ lane })} phone={phone} />
+        </Card>
+
+        {/* The sixth look (punch list #247): the site's photos as one row, scrolled sideways, newest at the left. */}
+        <Card id={DEVELOPMENT_JUMP_ANCHOR.photos} title="Photos" fold={foldFor('photos', lineOf(looks.photos))} meta={photosCardMeta(sitePhotos.census)}>
+          <DevelopmentPhotosLook state={sitePhotos} pieces={[...shown.jobs.map((j) => ({ id: j.id, label: jobLabel(j) })), ...shown.bids.map((b) => ({ id: b.id, label: bidLabel(b) }))]} role={role} phone={phone} siteName={dev.name} openJob={openJob} goToPieces={goToPieces} />
         </Card>
       </div>
       {chipConfirm ? (

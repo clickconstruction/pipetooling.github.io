@@ -40,6 +40,8 @@ export async function fileText(google: string, f: Pick<DriveFileMeta, 'id' | 'na
     if (opts.spend) {
       // Checked here and not before the download: a search's reads start together, and only the parse is what they share.
       if (opts.spend.ms >= limits.passBudgetMs) return { why: 'slow' }
+      // What the request's reads hold together: a search's ten downloads land at once, and memory is what they share.
+      if (opts.spend.bytes > 0 && opts.spend.bytes + data.length > limits.passMaxBytes) return { why: 'big' }
       opts.spend.bytes += data.length
     }
     const started = performance.now()

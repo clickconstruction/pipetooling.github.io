@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { plainWordsFailures } from '../plainWords'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
-import { HELD_NO_NUMBER, morningSendOn, offerRefusalWords, rateJobsOf, readyRows, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, type OfferRow, type TodaysSendsInput } from './offers'
+import { HELD_NEWER, HELD_NO_NUMBER, heldSentWords, morningSendOn, offerRefusalWords, rateJobsOf, readyRows, todaysSends, todaysSendsLine, TODAYS_SENDS_WORDS, withAnsweredHolds, withSentHolds, type OfferRow, type TodaysSendsInput } from './offers'
 
 const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   id: 'o1',
@@ -85,6 +85,51 @@ describe('withAnsweredHolds: a review offer on a job answered already', () => {
     const rows = withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW, channelId: null, heldWhy: HELD_NO_NUMBER }), offer({ id: 'r2', stepKey: 'review', body: REVIEW.replace('{rate}', 'https://clicktooling.com/rate?t=ab12') })], new Set(['job-1312']))
     expect(rows.map((r) => r.heldWhy)).toEqual([OFFER_HELD.answered, null])
     expect(withAnsweredHolds([offer({ id: 'r1', stepKey: 'review', body: REVIEW })], new Set())).toEqual([offer({ id: 'r1', stepKey: 'review', body: REVIEW })])
+  })
+})
+
+// Already texted (v2.6386): an office-made offer took neither of the run's roads, so a text that went after it was
+// prepared, or a newer offer on the same step and job, left it sitting ready.
+describe('withSentHolds: a text whose step already went, or that a newer one replaced', () => {
+  const moved = (over: Partial<OfferRow> = {}) => offer({ id: 'moved', stepKey: 'booked', preparedBy: 'office', preparedAt: '2026-10-19T14:55:00Z', body: 'Dana, your visit moved to Thursday.', ...over })
+  const went = { contactId: 'c-dana', stepKey: 'booked', jobKey: 'pipeline:job-1312', sentAt: '2026-10-20T15:10:00Z' }
+
+  it('holds the offer when a text on its step and job went after it was prepared, naming the day, and Send all skips it', () => {
+    const rows = withSentHolds([moved(), offer({ id: 'other' })], [went])
+    expect(rows.map((r) => [r.id, r.heldWhy])).toEqual([
+      ['moved', 'A text for this step already went to them on Tue Oct 20. Put this one away with Not this one.'],
+      ['other', null],
+    ])
+    expect(readyRows(todaysSends(input(rows))).map((r) => r.id)).toEqual(['other'])
+    expect(plainWordsFailures(heldSentWords('2026-10-20T15:10:00Z'))).toEqual([])
+  })
+
+  it('leaves it ready when the text went before it was prepared, on another job, on another step or to someone else', () => {
+    const rows = withSentHolds(
+      [moved()],
+      [
+        { ...went, sentAt: '2026-10-15T19:00:00Z' },
+        { ...went, jobKey: 'pipeline:job-2' },
+        { ...went, stepKey: 'onway' },
+        { ...went, contactId: 'c-sam' },
+      ],
+    )
+    expect(rows[0]?.heldWhy).toBeNull()
+  })
+
+  it('names the first day it went when it went twice, and wins over the run’s own hold', () => {
+    const rows = withSentHolds([moved({ channelId: null, heldWhy: HELD_NO_NUMBER })], [{ ...went, sentAt: '2026-10-22T12:00:00Z' }, went])
+    expect(rows[0]?.heldWhy).toBe(heldSentWords('2026-10-20T15:10:00Z'))
+  })
+
+  it('holds the older of two open offers on one step and job, so a visit moved twice sends one text', () => {
+    const rows = withSentHolds([moved(), moved({ id: 'moved-again', preparedAt: '2026-10-21T16:18:00Z', body: 'Dana, your visit moved to Friday.' }), moved({ id: 'other-job', jobKey: 'pipeline:job-2' })], [])
+    expect(rows.map((r) => [r.id, r.heldWhy])).toEqual([
+      ['moved', HELD_NEWER],
+      ['moved-again', null],
+      ['other-job', null],
+    ])
+    expect(plainWordsFailures(HELD_NEWER)).toEqual([])
   })
 })
 

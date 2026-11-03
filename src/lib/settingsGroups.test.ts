@@ -41,6 +41,7 @@ describe('getZonedSettingsGroups', () => {
       'settings-recent-push',
       'settings-guides',
       'settings-release-notes',
+      'settings-ship-pace',
     ])
     // Zones appear in declaration order with no interleaving.
     const zoneSeq = groups.map((g) => g.zone)
@@ -57,6 +58,17 @@ describe('getZonedSettingsGroups', () => {
         'settings-guides',
         'settings-release-notes',
       ])
+    }
+  })
+
+  it('the office team gets How fast a change ships, and nobody else does (v2.6399)', () => {
+    for (const role of ['dev', 'master_technician', 'assistant', 'controller', 'estimator'] as const) {
+      const ids = getZonedSettingsGroups(role).map((g) => g.id)
+      expect(ids).toContain('settings-ship-pace')
+      expect(ids.indexOf('settings-ship-pace')).toBe(ids.indexOf('settings-release-notes') + 1)
+    }
+    for (const role of ['superintendent', 'subcontractor', 'helpers', 'primary'] as const) {
+      expect(getZonedSettingsGroups(role).map((g) => g.id)).not.toContain('settings-ship-pace')
     }
   })
 

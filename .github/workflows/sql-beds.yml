@@ -73,7 +73,7 @@ jobs:
     # A draft runs no beds: they run once the PR is marked ready (ready_for_review above) and in the queue.
     if: needs.changes.outputs.beds == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
-    # A leg took 12 to 16 minutes (2026-11-02). The wrapper stops any one bed at 20, so the worst leg is two rounds of those and the pull.
+    # A leg took 8 to 9 minutes (2026-11-02, v2.6404). The wrapper stops any one bed at 20, so the worst leg is two rounds of those and the pull.
     timeout-minutes: 45
     strategy:
       fail-fast: false
