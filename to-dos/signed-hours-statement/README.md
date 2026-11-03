@@ -2,7 +2,7 @@
 name: "Signed hours statement: a worker's recorded hours on one job, as a paper they sign, for court"
 number: 212
 group: ready
-status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · PR 3, the signing, not started
+status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3, the signing, not started
 mockup: to-dos/signed-hours-statement/mockup.html
 summary: >
   A paper, made from the clock and the pay reports as they stand, that says what one worker did on one
@@ -15,7 +15,7 @@ summary: >
 next: PR 3, the signing: the pdf-lib statement and its form schema, the person_contract_documents row, Send for signature… with the four channels and Hand the phone to <name>, the stated rows as form boxes, File a signed scan…; counsel's word on what a worker's stated days for 2025 are worth comes first.
 size: M as a train of five (S · M · M · S · S)
 blocker: counsel's word on the stated block's weight before PR 3.
-ver: v2.6069 · v2.6097
+ver: v2.6069 · v2.6097 · v2.6412
 opinion: build — the owner took all seven calls as recommended on 2026-10-29; the paper is honest about what the app does not have
 ---
 
@@ -373,3 +373,10 @@ saves, stamps the id and files nothing), **Send for signature…** and **Sign he
 **Hours statements** section on the job's Documents tab and under the desk's Hours & approvals; the dev press is gone.
 PR 3 claims its version with `npm run claim` and starts from the plan above; counsel's question on the stated block
 must be answered before it ships.
+The print was restyled on 2026-11-02 as v2.6412 after the first real quarter printed as five pages with the table
+squeezed into the right half (one unclosed `<div>` in the facts block): the facts as one band across the width, the
+table full width with one line per day and *In – Out* as one cell, the rate stated once when it is the same all
+period, hours to two decimals, the week's subtotals under Hours and Amount, a long note on its own line under its
+day, Paid and the signatures as full-width bands, the column header on every page and no row split; a quarter is
+three pages. The mock-up it was built from is `mockup-print-v2.html` beside this card; PR 3's pdf-lib paper follows
+that layout.
