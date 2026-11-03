@@ -108,7 +108,7 @@ INSERT INTO public.contacts (id, kind, customer_id) VALUES
   ('00000000-0000-0000-0000-000000007001', 'customer', '00000000-0000-0000-0000-0000000007c1'),
   ('00000000-0000-0000-0000-000000007002', 'customer', '00000000-0000-0000-0000-0000000007c2');
 INSERT INTO public.contacts (id, kind) VALUES ('00000000-0000-0000-0000-000000007003', 'unknown');
-SELECT rfl.refused('a contact is never kind residential', $q$INSERT INTO public.contacts (kind) VALUES ('residential')$q$, 'contacts_kind_known');
+SELECT rfl.refused('a contact is never kind residential', $q$INSERT INTO public.contacts (kind, customer_id) VALUES ('residential', '00000000-0000-0000-0000-0000000007c1')$q$, 'contacts_kind_known');
 SELECT rfl.same('the card says what the customers row is, and the contact stays kind customer',
   (SELECT string_agg(concat_ws('|', right(e.k, 4), e.r -> 'contact' ->> 'kind', coalesce(e.r -> 'card' ->> 'customer_type', '-')), ', ' ORDER BY e.k)
    FROM jsonb_each(public.flow_rows_for(ARRAY['00000000-0000-0000-0000-000000007001', '00000000-0000-0000-0000-000000007002', '00000000-0000-0000-0000-000000007003']::uuid[])) AS e(k, r)),
