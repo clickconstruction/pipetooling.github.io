@@ -43,7 +43,7 @@ On **Pricing**, the Workbench shows the packet you are on. It reads *This GC —
 
 ## Track each GC's answer
 
-- On the **Bid Board**, a bid with more than one packet shows a line per GC under its row. The line shows the name, then *sent 7/31*, then the ★ value, then the answer chip. The chip is {{chip:gray|waiting…}}, {{chip:green|won}} or {{chip:red|lost}}. Set the answer there. A win rolls the bid up to **Won**. The bid only rolls to **Lost** once every GC you sent to has said no.
+- On the **Bid Board**, a bid with more than one packet shows a line per GC under its row. The line shows the name, then *sent 7/31*, then the ★ value, then the answer chip. The chip is {{chip:gray|waiting…}}, {{chip:green|won}} or {{chip:red|lost}}. Set the answer there. A win rolls the bid up to **Won**. The bid only rolls to **Lost** once every GC with a packet has said no. A *same letter* GC rides the bid and never holds it open.
 - **Followup → Full bid details** shows the same *Sent to — by GC* list with the same select.
 - **A win is one tap, but it is three changes. So the app says so first.** You can mark a GC {{chip:green|won}} in five places. They are Edit Bid, the board pill, Followup, Waiting to hear and the Call queue. Wherever you do it, a confirm reads *"Mark Southern Post Won? This marks the other GC (Burd & Assoc.) Lost — GC lost the project and the bid Won"*. If you had set the bid's Win/Loss to **Lost** by hand, it adds *"The bid is currently marked Lost by hand — it flips to Won"*. {{button:blue|Mark won}} does all of it. **Cancel** changes nothing.
 - **Mis-tapped? {{button:outline|↩ waiting}} on the winner undoes the whole thing.** The GCs the win marked lost go back to {{chip:gray|waiting}}. The bid goes back to where it was, Not set or the Lost you had set. The toast spells it out: *"Southern Post back to waiting · Burd & Assoc. back to waiting · bid back to Not set."* A GC you marked lost yourself with a reason stays lost.
@@ -76,7 +76,7 @@ You bid the shell to Burd & Assoc. and Southern Post. Southern Post calls with t
 
 ## "Also sent to": the same letter, no packet
 
-Open **Edit Bid**. Under **GCs on this bid**, every GC renders as the same card. The card shows the name, the address and the contact chips. Its role is a small chip. {{chip:yellow|★ Bid's GC}} means the bid runs in their name. **change ▸** on the card swaps them. The list under change ▸ puts the GCs already **on this bid** first. {{chip:blue|same letter}} means they got the bid GC's letter. Their answer is tracked with the bid. {{chip:green|own packet}} means their own prices and answer. Those land here on their own.
+Open **Edit Bid**. Under **GCs on this bid**, every GC renders as the same card. The card shows the name, the address and the contact chips. Its role is a small chip. {{chip:yellow|★ Bid's GC}} means the bid runs in their name. **change ▸** on the card swaps them. The list under change ▸ puts the GCs already **on this bid** first. {{chip:blue|same letter}} means they got the bid GC's letter. Their answer is tracked with the bid. They never hold the bid open once every packet has said no. {{chip:green|own packet}} means their own prices and answer. Those land here on their own.
 
 ## When the lead GC drops out
 

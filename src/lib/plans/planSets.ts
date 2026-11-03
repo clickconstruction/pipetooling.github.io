@@ -49,6 +49,10 @@ export type PlanSetRow = {
   file_count: number | null
   checked_at: string | null
   check_note: string | null
+  /** The papers train (migration 20261102010000): a paper we are waiting on, the lane and id of the question it raised. */
+  owed: boolean
+  ask_lane: string | null
+  ask_request_id: string | null
   created_by: string | null
   created_at: string
   updated_at: string
@@ -85,6 +89,14 @@ export function isAsBuilt(s: Pick<PlanSetRow, 'kind'>): boolean {
   return s.kind === 'as_built'
 }
 
+/**
+ * A set of drawings: the only kind a part builds from or a set list shows. Papers (a spec, a schedule, a task list;
+ * migration 20261102010000) live in the same table and read in their own block, never as a set.
+ */
+export function isDrawingSet(s: Pick<PlanSetRow, 'kind'>): boolean {
+  return PLAN_SET_KINDS.some((k) => k.kind === s.kind)
+}
+
 /** Newest date first; undated after the dated; among equals the one that came last first. */
 export function compareSets(a: Pick<PlanSetRow, 'dated' | 'came_at'>, b: Pick<PlanSetRow, 'dated' | 'came_at'>): number {
   if (a.dated && b.dated && a.dated !== b.dated) return a.dated < b.dated ? 1 : -1
@@ -107,7 +119,7 @@ export type JobPlansView = {
 
 export function buildJobPlansView(part: PlanPartRow | null, sets: ReadonlyArray<PlanSetRow>): JobPlansView {
   if (!part) return { part: null, current: null, replaced: null, older: [], asBuilts: [] }
-  const mine = sets.filter((s) => s.part_id === part.id)
+  const mine = sets.filter((s) => s.part_id === part.id && isDrawingSet(s))
   const asBuilts = mine.filter(isAsBuilt).sort(compareSets)
   const plain = mine.filter((s) => !isAsBuilt(s)).sort(compareSets)
   const current = plain.find((s) => s.id === part.current_set_id) ?? null

@@ -134,6 +134,18 @@ nothing and can go back to View. When Drive refuses, the verb (`driveFilingRefus
 account, where it stopped and the grant that fixes it, keeps the staged copy so the same plan applies again, and tells
 the agent that a person can drop the file into the division folder and press Find the folder on the bid form.
 
+## The people's files (v2.6393)
+
+A person's evidence (People → HR, the person file, `HR_FILES.md` → Evidence) is filed by `hr-evidence-drive` under the
+**People folder** the office sets on Documents → Where files go (`drive_people_folder_id`), as *<People folder> › <Person's
+name> › <YYYY-MM-DD · title> › the files*. **It lives in a Shared Drive of its own** (the owner's call, 2026-11-02): the
+Jobs drive's members would read the evidence there while the app keeps it dev-only, so `set.people` refuses a folder whose
+Shared Drive is the jobs root's. One-time setup, by a person (the SA cannot make a Shared Drive): a licensed
+clickplumbing.com user makes Shared Drive **PipeTooling People**, adds the owner as Manager and the SA
+(`drive-intake@pipetooling-drive.iam.gserviceaccount.com`) as Content manager and nobody else, opens the drive and pastes
+its link on the People folder card (the drive's own id serves as the folder), presses Check, then Use this folder. The same
+SA, key and secrets; nothing new to set up on the functions.
+
 ## Rotation / kill
 
 Delete the key in console (or `supabase secrets unset GOOGLE_SERVICE_ACCOUNT_JSON`);

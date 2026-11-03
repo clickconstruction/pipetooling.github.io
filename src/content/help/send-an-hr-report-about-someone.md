@@ -28,6 +28,8 @@ Good news counts too. A line like "stayed late to finish the trim-out so inspect
 
 Your report waits in a **Pending reports** queue that only devs see. During review, it gets filed onto that person's HR record as a dated entry with your name on it. It is dated the day it happened, not the day it was filed.
 
+The report also stands on that person's file, on the day it happened. The dev can file it from there with {{button:blue|File to the record}}.
+
 :::example How the queue reads to the dev
 The queue lists the **oldest report first**, and each one carries an age chip — {{chip:gray|today}} while it's fresh, {{chip:yellow|3 days waiting}} from day 3, {{chip:red|11 days waiting}} from day 7. Once the oldest report is 3+ days old, the dev's Dashboard **Needs You** card adds an **HR reports** item that says how old it is and opens the queue with {{button:blue|Open pending reports}} — so a report can't quietly sit under newer ones.
 :::

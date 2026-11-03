@@ -64,9 +64,20 @@ export type LatestReportPctRow = {
 }
 
 /**
- * The newest % wins, whoever set it (v2.3372). A report's % stands only when no
- * hand-set is recorded or the report was filed after the last hand-set; a
- * hand-set on the same instant or later means the office typed it knowing the
+ * A report's % is mirrored into `jobs_ledger.pct_complete` the moment the report saves
+ * (`propagateReportPctToJob` → `set_job_pct_from_field`), and the `job_pct_events` trigger
+ * stamps that row `manual` because the tech is signed in — so every crew report that moves the
+ * job's % is followed, a fraction of a second later, by a "hand-set" of its own number (J804, v2.6388: the Oct 30
+ * report, its mirror a third of a second later, and the % read *set by office*). A hand-set
+ * inside this grace after the report is the mirror, not the office.
+ */
+export const REPORT_PCT_MIRROR_GRACE_MS = 2 * 60 * 1000
+
+/**
+ * The newest % wins, whoever set it (v2.3372). A report's % stands when no hand-set
+ * is recorded, when the report was filed after the last hand-set, or when the last
+ * hand-set landed within `REPORT_PCT_MIRROR_GRACE_MS` of the report — the report's own
+ * mirror (v2.6388). A hand-set later than that means the office typed it knowing the
  * report, so the job's own % (the resolver's fallback) is the current answer.
  * An unparseable date on either side keeps the report — the pre-v2.3372 rule.
  */
@@ -76,7 +87,7 @@ export function reportPctIsCurrent(reportedAt: string | null | undefined, manual
   const r = Date.parse(reportedAt)
   const m = Date.parse(manualAt)
   if (!Number.isFinite(r) || !Number.isFinite(m)) return true
-  return r > m
+  return m - r <= REPORT_PCT_MIRROR_GRACE_MS
 }
 
 /**
