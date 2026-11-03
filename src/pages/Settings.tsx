@@ -76,10 +76,11 @@ import { useSettingsMyReports } from '../hooks/useSettingsMyReports'
 import { useSettingsAccount } from '../hooks/useSettingsAccount'
 import type { UserRow } from '../types/settingsRows'
 import { isAssistantLike, isSubcontractorLikeRole } from '../lib/subcontractorLikeRole'
-import { getZonedSettingsGroups, canSeeWhatCustomersSee } from '../lib/settingsGroups'
+import { getZonedSettingsGroups, canSeeShipPace, canSeeWhatCustomersSee } from '../lib/settingsGroups'
 import SettingsCompanyDocumentsSection from '../components/settings/SettingsCompanyDocumentsSection'
 import SettingsHcpReconcileSection from '../components/settings/SettingsHcpReconcileSection'
 import SettingsReleaseNotesSection from '../components/settings/SettingsReleaseNotesSection'
+import SettingsShipPaceSection from '../components/settings/SettingsShipPaceSection'
 import TeamReviewCadenceSettingsBlock from '../components/settings/TeamReviewCadenceSettingsBlock'
 import EasterEggsSettingsBlock from '../components/settings/EasterEggsSettingsBlock'
 import OfficeAddressSettingsBlock from '../components/settings/OfficeAddressSettingsBlock'
@@ -1914,6 +1915,13 @@ export default function Settings() {
       >
         <SettingsReleaseNotesSection role={myRole} />
       </SettingsGroup>
+
+      {/* How fast a change ships (v2.6399): the office roles; the row is the ship-pace cron's, so nothing here loads until the tab is open. */}
+      {canSeeShipPace(myRole) && activeSettingsTab === 'settings-ship-pace' && (
+        <SettingsGroup id="settings-ship-pace" title="How fast a change ships" description={settingsGroupHint('settings-ship-pace')}>
+          <SettingsShipPaceSection role={myRole} />
+        </SettingsGroup>
+      )}
         </div>
       </div>
     </div>

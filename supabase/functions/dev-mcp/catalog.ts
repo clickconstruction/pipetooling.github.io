@@ -1804,6 +1804,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "send-workflow-notification",
   "set-user-password",
   "share-job-contract",
+  "ship-pace",
   "sign-bid-room",
   "sign-job-contract",
   "sign-owner-records",
