@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Your week: one progress signal a tech can watch move</title>
+<style>
+  /* Punch list #255. Light only, like every to-do mock-up. Phone frames at 375 px. Made-up people: Jordan Price (apprentice plumber), Marcus Lee (tech), Luis Ortega (lead), Dana Whitfield at 1208 Mesquite Ln. Every number is made up. */
+  :root { color-scheme: light; --blue: #2563eb; --blue-ink: #1d4ed8; --blue-tint: #dbeafe; --green: #16a34a; --green-ink: #166534; --green-tint: #dcfce7; --green-line: #86efac; --amber: #92400e; --amber-mid: #d97706; --amber-tint: #fef3c7; --red-ink: #991b1b; --red-tint: #fee2e2; --page: #f3f4f6; --surface: #fff; --ink: #111827; --ink-2: #374151; --muted: #6b7280; --line: #cbd5e1; --line-2: #e5e7eb; --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--page); color: var(--ink); font: 14px/1.5 var(--font); padding: 0 16px 64px; }
+  .wrap { max-width: 1180px; margin: 0 auto; }
+  header.top { padding: 28px 0 14px; border-bottom: 2px solid var(--ink); }
+  .eyebrow { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 0 0 4px; }
+  h1 { margin: 0; font-size: 26px; line-height: 1.15; text-wrap: balance; }
+  header.top p { margin: 8px 0 0; color: var(--ink-2); max-width: 92ch; }
+  h2 { font-size: 18px; margin: 44px 0 6px; display: flex; align-items: center; gap: 10px; text-wrap: balance; }
+  h2 .num { display: inline-flex; align-items: center; justify-content: center; width: 26px; height: 26px; border-radius: 999px; background: var(--ink); color: #fff; font-size: 13px; flex: none; }
+  h2 .tag { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 2px 8px; border-radius: 999px; }
+  h2 .tag.lost { background: var(--red-tint); color: var(--red-ink); }
+  h2 .tag.pick { background: var(--green-tint); color: var(--green-ink); }
+  .lede { margin: 0 0 14px; color: var(--ink-2); max-width: 100ch; }
+  .note { margin: 10px 0 0; font-size: 12.5px; color: var(--ink-2); max-width: 100ch; }
+  .note b { color: var(--ink); }
+  .row { display: grid; grid-template-columns: repeat(auto-fit, minmax(330px, 1fr)); gap: 18px; align-items: start; }
+  .cap { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; padding: 6px 10px; border-radius: 8px 8px 0 0; background: var(--line-2); color: var(--ink-2); }
+  .cap.green { background: var(--green-tint); color: var(--green-ink); }
+  .cap.blue { background: var(--blue-tint); color: var(--blue-ink); }
+  .cap.red { background: var(--red-tint); color: var(--red-ink); }
+  .fit { border: 1px solid var(--line); border-top: 0; border-radius: 0 0 8px 8px; background: #eef0f3; padding: 14px; display: flex; justify-content: center; }
+
+  /* the phone: Job Mode home */
+  .phone { width: 343px; background: var(--page); border: 1px solid #aab2bd; border-radius: 18px; overflow: hidden; font-size: 13px; }
+  .phone .bar { background: var(--surface); border-bottom: 1px solid var(--line-2); padding: 10px 12px; display: flex; justify-content: space-between; align-items: center; font-weight: 800; }
+  .phone .bar .who { font-weight: 500; color: var(--muted); font-size: 12px; }
+  .phone .in { padding: 10px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 10px; }
+  .stub { background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 9px 11px; color: var(--muted); font-size: 12px; display: flex; justify-content: space-between; align-items: center; }
+  .stub b { color: var(--ink); font-size: 13px; }
+  .stub .clk { background: #dc2626; color: #fff; font-weight: 800; border-radius: 8px; padding: 6px 12px; font-size: 12.5px; }
+
+  /* the Your week card */
+  .wk { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 11px 12px 12px; }
+  .wk .hd { display: flex; justify-content: space-between; align-items: baseline; }
+  .wk .hd h3 { margin: 0; font-size: 15px; }
+  .wk .hd .when { font-size: 11.5px; color: var(--muted); }
+  .wk .what { font-size: 11px; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin: 8px 0 2px; }
+  .wk .big { font-size: 30px; font-weight: 800; line-height: 1.05; letter-spacing: -.01em; }
+  .wk .big small { font-size: 14px; font-weight: 600; color: var(--ink-2); letter-spacing: 0; }
+  .wk .move { margin-top: 6px; display: inline-flex; gap: 6px; align-items: center; background: var(--green-tint); color: var(--green-ink); font-weight: 800; border-radius: 999px; padding: 2px 10px; font-size: 12.5px; }
+  .wk .move.flat { background: var(--line-2); color: var(--ink-2); }
+  .wk .sub { font-size: 12.5px; color: var(--ink-2); margin-top: 6px; }
+  .wk .sub b { color: var(--ink); }
+  .wk svg { display: block; margin-top: 8px; width: 100%; }
+  .wk .ax { display: flex; justify-content: space-between; font-size: 10.5px; color: var(--muted); margin-top: 1px; }
+  .near { margin-top: 10px; border-top: 1px solid var(--line-2); padding-top: 8px; }
+  .near .lbar { height: 10px; margin-top: 4px; }
+  .near .lbar .ok { background: var(--green); }
+  .wk .move.ok { background: var(--green-tint); }
+  .quote { margin-top: 10px; border-left: 4px solid var(--green); background: #f0fdf4; border-radius: 0 8px 8px 0; padding: 8px 10px; font-size: 13px; }
+  .quote .st { color: #ca8a04; letter-spacing: 1px; font-size: 13px; }
+  .quote .by { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+
+  /* license bar: approved solid, waiting hatched */
+  .lbar { position: relative; height: 14px; border-radius: 999px; background: var(--line-2); overflow: hidden; margin-top: 8px; }
+  .lbar .ok { position: absolute; left: 0; top: 0; bottom: 0; background: var(--blue); }
+  .lbar .wait { position: absolute; top: 0; bottom: 0; background: repeating-linear-gradient(135deg, #93c5fd 0 4px, #dbeafe 4px 8px); }
+  .lkey { display: flex; gap: 12px; font-size: 11.5px; color: var(--muted); margin-top: 4px; }
+  .lkey i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+
+  /* draft 1 tiles */
+  .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; margin-top: 8px; }
+  .tile { border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 8px; }
+  .tile .n { font-size: 18px; font-weight: 800; }
+  .tile .l { font-size: 11px; color: var(--muted); }
+
+  /* the record card under it, collapsed */
+  .rec { background: var(--surface); border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 11px; font-size: 12px; color: var(--muted); }
+  .rec b { color: var(--ink); font-size: 13px; }
+
+  /* same-day strip */
+  .strip { background: var(--green-tint); border: 1.5px solid var(--green-line); border-radius: 10px; padding: 10px 12px; }
+  .strip .t { font-weight: 800; color: var(--green-ink); font-size: 13.5px; }
+  .strip .w { margin-top: 4px; font-size: 13.5px; }
+  .strip .f { display: flex; justify-content: space-between; align-items: center; margin-top: 8px; font-size: 11.5px; color: var(--green-ink); }
+  .strip .f button { font: inherit; font-weight: 700; font-size: 12.5px; border-radius: 8px; border: 1px solid var(--green-line); background: var(--surface); color: var(--green-ink); padding: 5px 12px; }
+
+  /* sheet after clock-out */
+  .sheet { width: 343px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 14px; overflow: hidden; font-size: 13px; }
+  .sheet .sbar { display: flex; justify-content: space-between; align-items: center; padding: 10px 12px; border-bottom: 1px solid var(--line-2); font-weight: 800; font-size: 15px; }
+  .sheet .sbar .x { color: var(--muted); font-weight: 400; font-size: 18px; }
+  .sheet .body { padding: 12px; }
+  .sheet .foot { padding: 10px 12px; border-top: 1px solid var(--line-2); }
+  .sheet .done { width: 100%; min-height: 46px; border: 0; border-radius: 10px; background: #2563eb; color: #fff; font: inherit; font-weight: 800; font-size: 14px; }
+  .clocked { font-size: 12.5px; color: var(--muted); margin-bottom: 8px; }
+
+  /* office side */
+  .desk { width: 100%; max-width: 520px; background: var(--surface); border: 1px solid #aab2bd; border-radius: 10px; padding: 12px 14px; font-size: 13px; }
+  .desk h4 { margin: 0 0 6px; font-size: 14px; }
+  .desk .hint { color: var(--muted); font-size: 12px; margin: 0 0 8px; }
+  .seg { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg span { padding: 7px 6px; text-align: center; font-weight: 600; font-size: 12.5px; border-left: 1px solid var(--line); }
+  .seg span:first-child { border-left: 0; }
+  .seg span.on { background: var(--blue); color: #fff; }
+  .fields { display: grid; grid-template-columns: 140px 1fr; gap: 6px 10px; align-items: center; margin-top: 4px; }
+  .fields .k { color: var(--muted); font-size: 12px; }
+  .fields .v { border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; }
+  .pair { display: grid; grid-template-columns: 1fr auto; gap: 8px; align-items: center; border-top: 1px solid var(--line-2); padding: 9px 0; }
+  .pair:first-of-type { border-top: 0; }
+  .pair .sm { color: var(--muted); font-size: 12px; }
+  .pair .btns { display: flex; gap: 6px; }
+  .pair button { font: inherit; font-size: 12px; font-weight: 700; border-radius: 7px; padding: 6px 10px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .pair button.red { background: #b91c1c; border-color: #b91c1c; color: #fff; }
+  .pair .stamp { font-size: 12px; font-weight: 700; color: var(--green-ink); }
+
+  .calls { margin: 8px 0 0; padding-left: 20px; max-width: 100ch; color: var(--ink-2); }
+  .calls li { margin: 6px 0; }
+  .calls b { color: var(--ink); }
+  .second { margin-top: 18px; background: var(--surface); border: 2px solid var(--ink); border-radius: 10px; padding: 14px 18px; max-width: 100ch; }
+  .second h3 { margin: 0 0 6px; font-size: 16px; }
+  .second ul { margin: 6px 0 0; padding-left: 20px; color: var(--ink-2); }
+  .second li { margin: 5px 0; }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header class="top">
+  <p class="eyebrow">Punch list #255 · mock-up · 2026-11-03</p>
+  <h1>Your week: one progress signal a tech can watch move</h1>
+  <p>The app already records what shows a tech getting better: the clock, the jobs, the customer's stars, the callbacks. All of it stops at the office. This draws one card on the tech's home that shows the one signal the office picked for them, how far it moved this week, and the customer's words by name. Compared to themselves, never to each other.</p>
+</header>
+
+<!-- ───────────── draft 1 ───────────── -->
+<h2><span class="num">1</span> Draft 1: three tiles and a bar <span class="tag lost">lost</span></h2>
+<p class="lede">The first idea: hours, jobs and stars as tiles, with a progress bar under them. It reads like the office's dashboard shrunk to a phone.</p>
+<div class="row">
+  <div>
+    <div class="cap red">Draft 1 · Marcus Lee, tech</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar">Home <span class="who">Marcus Lee</span></div>
+        <div class="in">
+          <div class="stub"><span><b>Clocked in</b><br>J1184 · 1208 Mesquite Ln</span><span class="clk">Clock out</span></div>
+          <div class="wk">
+            <div class="hd"><h3>Your week</h3><span class="when">Oct 27 to Nov 2</span></div>
+            <div class="tiles">
+              <div class="tile"><div class="n">41.5</div><div class="l">hours</div></div>
+              <div class="tile"><div class="n">6</div><div class="l">jobs</div></div>
+              <div class="tile"><div class="n">4.9★</div><div class="l">stars</div></div>
+            </div>
+            <div class="what">Jobs without a callback</div>
+            <div class="lbar"><div class="ok" style="width:62%"></div></div>
+            <div class="sub">Streak: <b>23 jobs</b></div>
+          </div>
+          <div class="rec"><b>Your record</b> · nothing to fix</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <p class="note"><b>Why it lost.</b> Four numbers, and none of them is <i>the</i> one. The article's whole point is one signal, held long enough to feel it move. Hours and jobs are activity, not progress. A busy week and a good week look the same.</p>
+    <p class="note"><b>The streak is a trap.</b> One callback sends 23 back to 0. A year of clean work erased by one return teaches people to hide callbacks. Draft 2 counts the last 30 jobs instead, so one return costs one.</p>
+    <p class="note"><b>The stars average hides the words.</b> 4.9 means nothing next to <i>"Marcus explained everything."</i> The words are the reward. The number is a summary for the office.</p>
+  </div>
+</div>
+
+<!-- ───────────── draft 2 ───────────── -->
+<h2><span class="num">2</span> Draft 2: one signal, the week's move, the customer's words <span class="tag pick">recommended</span></h2>
+<p class="lede">The same card for every tech, with the one signal the office picked for that person. The big number is where they stand. The green pill is how far it moved this week. The dots are the last eight weeks, so the climb shows even on a quiet week. License hours get a short bar to the next mark instead, because 41 hours barely moves an 8,000 hour bar.</p>
+<div class="row">
+
+  <div>
+    <div class="cap blue">Apprentice · Jordan Price · License hours</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar">Home <span class="who">Jordan Price</span></div>
+        <div class="in">
+          <div class="stub"><span><b>Clocked in</b><br>J1191 · 44 Cypress Bend</span><span class="clk">Clock out</span></div>
+          <div class="wk">
+            <div class="hd"><h3>Your week</h3><span class="when">Oct 27 to Nov 2</span></div>
+            <div class="what">Hours toward journeyman plumber</div>
+            <div class="big">3,412 <small>of 8,000</small></div>
+            <div class="lbar"><div class="ok" style="width:42.65%"></div><div class="wait" style="left:42.65%;width:0.48%"></div></div>
+            <div class="lkey"><span><i style="background:var(--blue)"></i>Approved</span><span><i style="background:repeating-linear-gradient(135deg,#93c5fd 0 3px,#dbeafe 3px 6px)"></i>38 h waiting for approval</span></div>
+            <span class="move">▲ 41.5 h this week</span>
+            <div class="near">
+              <div class="sub" style="margin-top:0">Next mark <b>3,500 h</b>. You are 50 hours away.</div>
+              <div class="lbar"><div class="ok" style="width:90%"></div></div>
+            </div>
+          </div>
+          <div class="rec"><b>Your record</b> · nothing to fix</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="cap blue">Tech · Marcus Lee · Jobs without a callback</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar">Home <span class="who">Marcus Lee</span></div>
+        <div class="in">
+          <div class="stub"><span><b>Clocked in</b><br>J1184 · 1208 Mesquite Ln</span><span class="clk">Clock out</span></div>
+          <div class="wk">
+            <div class="hd"><h3>Your week</h3><span class="when">Oct 27 to Nov 2</span></div>
+            <div class="what">Jobs without a callback</div>
+            <div class="big">29 <small>of your last 30 jobs</small></div>
+            <span class="move">▲ 5 jobs this week, none came back</span>
+            <svg width="100%" height="46" viewBox="0 0 317 46" preserveAspectRatio="none" aria-label="Jobs without a callback, last eight weeks">
+              <polyline points="10,34 50,30 90,30 130,24 170,24 210,15 250,15 290,15" fill="none" stroke="#93c5fd" stroke-width="2"/>
+              <g fill="#2563eb"><circle cx="10" cy="34" r="3"/><circle cx="50" cy="30" r="3"/><circle cx="90" cy="30" r="3"/><circle cx="130" cy="24" r="3"/><circle cx="170" cy="24" r="3"/><circle cx="210" cy="15" r="3"/><circle cx="250" cy="15" r="3"/></g>
+              <circle cx="290" cy="15" r="5" fill="#16a34a"/>
+            </svg>
+            <div class="ax"><span>8 weeks ago</span><span>This week</span></div>
+            <div class="quote">
+              <div class="st">★★★★★</div>
+              “Marcus explained everything before he started and cleaned up after.”
+              <div class="by">Dana W. · water heater · Thursday</div>
+            </div>
+          </div>
+          <div class="rec"><b>Your record</b> · nothing to fix</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div>
+    <div class="cap blue">Lead · Luis Ortega · Crew hours against target</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar">Home <span class="who">Luis Ortega</span></div>
+        <div class="in">
+          <div class="stub"><span><b>Clocked in</b><br>J1160 · Oak Hollow lot 14</span><span class="clk">Clock out</span></div>
+          <div class="wk">
+            <div class="hd"><h3>Your week</h3><span class="when">Oct 27 to Nov 2</span></div>
+            <div class="what">Your crew against the target</div>
+            <div class="big">112 h <small>for a 124 h target</small></div>
+            <span class="move">✓ 12 hours under on 3 jobs</span>
+            <div class="sub">One more job finished with no target, so it is not counted.</div>
+            <svg width="100%" height="46" viewBox="0 0 317 46" preserveAspectRatio="none" aria-label="Crew hours against target, last eight weeks. The middle line is on target.">
+              <line x1="0" y1="23" x2="317" y2="23" stroke="#cbd5e1" stroke-dasharray="3 3"/>
+              <polyline points="10,30 50,26 90,28 130,20 170,22 210,17 250,19 290,13" fill="none" stroke="#93c5fd" stroke-width="2"/>
+              <g fill="#2563eb"><circle cx="10" cy="30" r="3"/><circle cx="50" cy="26" r="3"/><circle cx="90" cy="28" r="3"/><circle cx="130" cy="20" r="3"/><circle cx="170" cy="22" r="3"/><circle cx="210" cy="17" r="3"/><circle cx="250" cy="19" r="3"/></g>
+              <circle cx="290" cy="13" r="5" fill="#16a34a"/>
+            </svg>
+            <div class="ax"><span>8 weeks ago</span><span>Dashed line is the target</span><span>This week</span></div>
+          </div>
+          <div class="rec"><b>Your record</b> · nothing to fix</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+<p class="note"><b>Three lines at most.</b> The signal and where it stands. The week's move. The customer's words, only on a week a customer wrote some. Jordan had none this week, so there is no empty quote box.</p>
+<p class="note"><b>Hatched hours.</b> Hours waiting for approval show hatched beside the approved ones and count in the week's move. A slow approval week never freezes the bar. They turn solid once approved.</p>
+<p class="note"><b>No signal yet.</b> Until the office picks one, a tech has no Your week card. The person’s People desk shows the picker with <i>Pick the one number they will see move</i>.</p>
+<p class="note"><b>A flat week.</b> When nothing moved, the pill turns grey and says <i>Same as last week</i>. It never shows a red arrow on a tech's own screen. The dots still show the climb.</p>
+
+<!-- ───────────── same-day words ───────────── -->
+<h2><span class="num">3</span> The customer's words, the day they land</h2>
+<p class="lede">A 4 or 5 star answer with words goes to every tech clocked on that job, as a green strip at the top of their home. It stays until they press <b>Got it</b>, then lives in the week's card.</p>
+<div class="row">
+  <div>
+    <div class="cap green">Marcus Lee · Thursday 4:12 PM</div>
+    <div class="fit">
+      <div class="phone">
+        <div class="bar">Home <span class="who">Marcus Lee</span></div>
+        <div class="in">
+          <div class="strip">
+            <div class="t">Dana gave you five stars</div>
+            <div class="w">“Marcus explained everything before he started and cleaned up after.”</div>
+            <div class="f"><span>Water heater at 1208 Mesquite Ln</span><button>Got it</button></div>
+          </div>
+          <div class="stub"><span><b>Clocked in</b><br>J1187 · 9 Ridge Run</span><span class="clk">Clock out</span></div>
+          <div class="rec"><b>Your record</b> · nothing to fix</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <p class="note"><b>Who gets it.</b> Every tech with a clock session on the job, not only the lead. The one who pressed On my way is always among them. A rating sent from the reply box with no job credits nobody, and stays with the office.</p>
+    <p class="note"><b>Low stars.</b> Recommended: 1 to 3 stars stay on the office's Needs you for the lead to talk through in person. This is call 1.</p>
+    <p class="note"><b>The first name only.</b> The customer is <i>Dana</i>, never their phone or full address. The street is there so the tech remembers the job.</p>
+  </div>
+</div>
+
+<!-- ───────────── after clock-out ───────────── -->
+<h2><span class="num">4</span> After the last clock-out of the week</h2>
+<p class="lede">The week said once, at the moment the work stops. It deals after the week's last clock-out, and skips a day the crew review deck deals. One button.</p>
+<div class="row">
+  <div>
+    <div class="cap">Marcus Lee · Friday 5:31 PM</div>
+    <div class="fit">
+      <div class="sheet">
+        <div class="sbar">Your week <span class="x">×</span></div>
+        <div class="body">
+          <div class="clocked">Clocked out at 5:31 PM. 41.5 hours this week.</div>
+          <div class="wk" style="border:0;padding:0">
+            <div class="what" style="margin-top:0">Jobs without a callback</div>
+            <div class="big">29 <small>of your last 30 jobs</small></div>
+            <span class="move">▲ 5 jobs this week, none came back</span>
+            <div class="quote">
+              <div class="st">★★★★★</div>
+              “Marcus explained everything before he started and cleaned up after.”
+              <div class="by">Dana W. · water heater · Thursday</div>
+            </div>
+          </div>
+        </div>
+        <div class="foot"><button class="done">Have a good weekend</button></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <p class="note"><b>Why here.</b> The article says the reward system needs feeding every week. The end of the week's last shift is when a tech asks themselves whether the week counted.</p>
+    <p class="note"><b>How the app knows it is the last.</b> The tech has no block on their schedule for the rest of the week. With no schedule, it deals on Friday's clock-out.</p>
+    <p class="note"><b>The Monday email</b> repeats the same card for anyone who missed it. It comes last in the train, registered in What the team sees.</p>
+  </div>
+</div>
+
+<!-- ───────────── office side ───────────── -->
+<h2><span class="num">5</span> What the office sets</h2>
+<p class="lede">Three small pieces. The signal picked once per person. A license class and target. A press on the Rework view, so a callback only counts once a person says it was one.</p>
+<div class="row">
+  <div>
+    <div class="cap">People → Jordan Price → desk</div>
+    <div class="fit">
+      <div class="desk">
+        <h4>Their week signal</h4>
+        <p class="hint">The one number Jordan sees move on Your week.</p>
+        <div class="seg"><span class="on">License hours</span><span>Jobs without a callback</span><span>Crew against target</span></div>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">People → Licenses → Jordan Price</div>
+    <div class="fit">
+      <div class="desk">
+        <h4>Working toward</h4>
+        <div class="fields">
+          <span class="k">License</span><span class="v">Journeyman plumber</span>
+          <span class="k">Hours it needs</span><span class="v">8,000</span>
+          <span class="k">Hours before the clock</span><span class="v">1,920 · from his apprentice log</span>
+        </div>
+        <p class="hint" style="margin-top:8px">The clock started March 12. Hours before it count once typed here with where they came from.</p>
+      </div>
+    </div>
+  </div>
+  <div>
+    <div class="cap">Jobs → Job Summary → Rework</div>
+    <div class="fit">
+      <div class="desk">
+        <h4>Went back within 90 days</h4>
+        <div class="pair"><div><b>1208 Mesquite Ln</b><div class="sm">Back in 12 days. Billed nothing. Marcus Lee, Jordan Price.</div></div><div class="btns"><button>It was a callback</button><button>Not a callback</button></div></div>
+        <div class="pair"><div><b>77 Hackberry Ct</b><div class="sm">Back in 41 days. Billed $380.</div></div><div class="stamp">Not a callback</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+<p class="note"><b>Credit to everyone on the first job.</b> Today the Rework view credits only the job's lead. A confirmed callback counts against every tech clocked on the first job, and nothing counts until the office presses. This is call 3.</p>
+
+<!-- ───────────── calls ───────────── -->
+<h2><span class="num">6</span> The six calls</h2>
+<ol class="calls">
+  <li><b>Low stars.</b> Do 1 to 3 star answers reach the tech? Recommended: no, they stay with the office.</li>
+  <li><b>The crew rating trend.</b> Ever shown to the rated person? Recommended: not in this train.</li>
+  <li><b>A callback's confirm.</b> Count only after <i>It was a callback</i> (recommended), or count every inferred pair unless someone presses <i>Not a callback</i>?</li>
+  <li><b>License targets.</b> Which licenses and hour counts per trade, and who types the hours before the clock.</li>
+  <li><b>The raise ladder.</b> What earns each pay step. Its own card once written.</li>
+  <li><b>Who picks each person's signal.</b> Recommended: the office, on the People desk, with a role default.</li>
+</ol>
+
+<div class="second">
+  <h3>Is this the best we can do? The second pass</h3>
+  <p style="margin:0;color:var(--ink-2)">Written after looking at the first render of draft 2, at the pane's width and in one column.</p>
+  <ul>
+    <li><b>Jordan's bar did not move.</b> 41 hours is half a percent of 8,000, so the big bar looked the same every week, which is the article's exact problem. The dots under it were a second long view. Swapped for a short green bar to the next 500 hour mark: 450 of 500, visibly close.</li>
+    <li><b>The lead's arrow read backwards.</b> A green ▲ beside <i>12 hours under</i> asked whether up was good. Now a ✓, a pill short enough for one line, and a note under the dots that the dashed line is the target.</li>
+    <li><b>The dots had no time.</b> Added <i>8 weeks ago</i> and <i>This week</i> under them.</li>
+    <li><b>The callback press leaned one way.</b> <i>It was a callback</i> was the red, solid button, so the office's easiest press was the verdict against a tech. Both buttons now weigh the same.</li>
+    <li><b>The charts pushed past the phone.</b> They were wider than the card and shoved Clock out off the edge. They now fit the card.</li>
+    <li><b>No signal yet.</b> The first render had no answer for a tech the office has not set up. Added: no card until a signal is picked.</li>
+    <li><b>What stays.</b> One signal per person, the customer's words by first name, the rolling count over a streak, no leaderboard. Nothing in the render argued against them.</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>
