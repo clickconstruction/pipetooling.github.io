@@ -351,7 +351,7 @@ describe('compare to + target (v2.2817)', () => {
   })
 
   it('compares totals measure by measure and leaves unknowns null', () => {
-    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, discountUsd: 0, discountJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0, projectedTrueMarginUsd: null, projectedRows: 0, projectedContractUsd: 0, burningJobs: 0, billedInFullJobs: 0, chargesUsd: 700, premiumUsd: 300, chargedJobs: 9 }
+    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, discountUsd: 0, discountJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0, projectedTrueMarginUsd: null, projectedRows: 0, projectedContractUsd: 0, burningJobs: 0, billedInFullJobs: 0, chargesUsd: 700, premiumUsd: 300, chargedJobs: 9, premiumWaitingJobs: 0 }
     const prior = { ...base, jobs: 8, revenueUsd: 800, grossUsd: 400, marginPct: 50, trueProfitUsd: 300, trueMarginPct: 37.5, overheadUsd: null, truePerHourUsd: null }
     const c = compareJobSummaryTotals(base, prior)
     expect(c.jobs).toEqual({ now: 10, prior: 8, delta: 2 })
@@ -446,6 +446,24 @@ describe('leakage flags (v2.2832)', () => {
     expect(rows[1]).toMatchObject({ writeDownUsd: 0, inCollections: true })
     expect(rows[2]!.inCollections).toBe(false)
     expect(summarizeJobSummaryRows(rows)).toMatchObject({ writeDownUsd: 200, writeDownJobs: 1, collectionsJobs: 1, collectionsUsd: 900 })
+  })
+})
+
+describe('the premium total (punch list #254, the live pass, v2.6471)', () => {
+  it('adds the premiums that exist and leaves out a job whose premium waits, never adding it as zero', () => {
+    const job = (id: string) => ({ id, hcp_number: id, job_name: id, pct_complete: 100, status: 'billed' })
+    const rows = enrichJobSummaryRows({
+      rows: [
+        { job: job('a'), subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 1000, charges: { chargesUsd: 700, premiumUsd: 300, note: null } },
+        { job: job('b'), subLaborCost: 0, teamLaborCost: 0, partsCost: 0, totalBill: 5000, charges: { chargesUsd: 400, premiumUsd: null, note: 'Toby counts as nobody on the rate card yet.' } },
+      ],
+      reportPctByJobId: new Map(),
+      ledger: null,
+      method: 'day',
+    })
+    expect(summarizeJobSummaryRows(rows)).toMatchObject({ chargesUsd: 1100, premiumUsd: 300, chargedJobs: 2, premiumWaitingJobs: 1 })
+    // Every premium waiting: a dash, never an even $0.00.
+    expect(summarizeJobSummaryRows([rows[1]!])).toMatchObject({ chargesUsd: 400, premiumUsd: null, chargedJobs: 1, premiumWaitingJobs: 1 })
   })
 })
 

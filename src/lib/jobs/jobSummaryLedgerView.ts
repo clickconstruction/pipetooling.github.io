@@ -758,8 +758,11 @@ export type JobSummaryTotals = {
   billedInFullJobs: number
   /** Charges by crew (punch list #254, PR 3): the rows' charges and premium added; null until a row is priced. */
   chargesUsd: number | null
+  /** The premiums that exist, added; a row whose premium waits (days still price at nothing) is left out, never added as zero. */
   premiumUsd: number | null
   chargedJobs: number
+  /** Priced rows whose premium waits, left out of `premiumUsd` (the live pass, v2.6471). */
+  premiumWaitingJobs: number
 }
 
 export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]): JobSummaryTotals {
@@ -789,12 +792,17 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
   let billedInFullJobs = 0
   let chargesUsd = 0
   let premiumUsd = 0
+  let premiumJobs = 0
+  let premiumWaitingJobs = 0
   let chargedJobs = 0
   for (const r of rows) {
     if (r.chargesUsd != null) {
       chargesUsd += r.chargesUsd
-      premiumUsd += r.premiumUsd ?? 0
       chargedJobs += 1
+      if (r.premiumUsd != null) {
+        premiumUsd += r.premiumUsd
+        premiumJobs += 1
+      } else premiumWaitingJobs += 1
     }
     if (r.burn && !r.finished && r.burn.projectedTrueMarginUsd != null) {
       projectedTrueMarginUsd += r.burn.projectedTrueMarginUsd
@@ -861,8 +869,9 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
     burningJobs,
     billedInFullJobs,
     chargesUsd: chargedJobs > 0 ? Math.round(chargesUsd * 100) / 100 : null,
-    premiumUsd: chargedJobs > 0 ? Math.round(premiumUsd * 100) / 100 : null,
+    premiumUsd: premiumJobs > 0 ? Math.round(premiumUsd * 100) / 100 : null,
     chargedJobs,
+    premiumWaitingJobs,
   }
 }
 

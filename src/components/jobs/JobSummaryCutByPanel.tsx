@@ -2,6 +2,7 @@ import type { CSSProperties } from 'react'
 import type { JobSummaryCompareBundle } from '../../hooks/useJobSummaryView'
 import { formatUsdNoCents } from '../../lib/jobs/jobFormatting'
 import { SignedAmountSmallCents } from '../AmountSmallCents'
+import { premiumTotalWaitsWords } from '../../lib/charges/premium'
 import type { JobSummaryConcentration, JobSummaryGroup, JobSummaryLedgerRowInput } from '../../lib/jobs/jobSummaryLedgerView'
 
 /**
@@ -135,7 +136,7 @@ export function JobSummaryGroupRow({
       <td style={cell}>{t.revenuePerHourUsd == null ? '—' : `$${Math.round(t.revenuePerHourUsd)}`}</td>
       <td style={cell} />
       <td style={cell} title={t.chargedJobs ? `${t.chargedJobs} of ${t.jobs} jobs priced` : undefined}>{showMoney && t.chargesUsd != null ? <SignedAmountSmallCents value={t.chargesUsd} /> : '—'}</td>
-      <td style={{ ...cell, color: showMoney && t.premiumUsd != null && t.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }}>{showMoney && t.premiumUsd != null ? <SignedAmountSmallCents value={t.premiumUsd} /> : '—'}</td>
+      <td style={{ ...cell, color: showMoney && t.premiumUsd != null && t.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }} title={showMoney ? (premiumTotalWaitsWords(t.premiumWaitingJobs, t.premiumUsd != null) ?? undefined) : undefined}>{showMoney && t.premiumUsd != null ? <SignedAmountSmallCents value={t.premiumUsd} /> : '—'}</td>
     </tr>
   )
 }
