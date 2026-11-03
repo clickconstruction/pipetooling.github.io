@@ -106,6 +106,17 @@ export function todaysSends(input: TodaysSendsInput): TodaysSend[] {
   return rows.sort((a, b) => rank(a) - rank(b) || a.who.localeCompare(b.who))
 }
 
+/**
+ * The words the office reads when a press is refused because the step is not on the person's flow (`stepUnknown`
+ * from `flow_step_check`, v2.6385): the step, the person and the door. Every other failure keeps its own words. Since
+ * the push of `20261102193000` a residential customer's step is found, so this is left for a step the office took off
+ * the flow after the text was prepared.
+ */
+export function offerRefusalWords(message: string, row: Pick<TodaysSend, 'step' | 'who'>): string {
+  if (!/stepUnknown/.test(message)) return message
+  return `The step ${row.step} is not on ${row.who}’s flow, so there is nothing to stop or hold. Put this text away with Not this one.`
+}
+
 /** The rows a press sends now: not held, and not handed to a morning. */
 export function readyRows(rows: readonly TodaysSend[]): TodaysSend[] {
   return rows.filter((r) => !r.held && !r.goesOn)

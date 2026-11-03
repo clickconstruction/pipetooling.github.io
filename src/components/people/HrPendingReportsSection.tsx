@@ -45,10 +45,18 @@ export function HrPendingReportsSection({
   nameForPerson,
   onOpenPerson,
   onFiled,
+  reloadKey = 0,
+  collapsed = false,
+  onExpand,
 }: {
   nameForPerson: (personId: string) => string
   onOpenPerson: (personId: string) => void
   onFiled: () => void
+  /** Bump to read the queue again — a report filed from a person's own line, say. */
+  reloadKey?: number
+  /** One line with the counts instead of the cards (a person's file is open below); `onExpand` opens the cards. */
+  collapsed?: boolean
+  onExpand?: () => void
 }) {
   const { showToast } = useToastContext()
   const { user: authUser, role } = useAuth()
@@ -72,13 +80,30 @@ export function HrPendingReportsSection({
 
   useEffect(() => {
     void load()
-  }, [load])
+  }, [load, reloadKey])
 
   if (rows == null || rows.length === 0) return null
 
   const aging = summarizePendingReportAging(rows, 0)
   // Rows are oldest-first, so the head of the list is the oldest report.
   const oldestAge = describeAge(rows[0]!.created_at, undefined, HR_PENDING_REPORT_AGE)
+
+  if (collapsed) {
+    return (
+      <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap', marginBottom: '1rem', padding: '0.45rem 0.75rem', border: `1px solid ${oldestAge?.state === 'red' ? 'var(--border-red)' : oldestAge?.state === 'amber' ? 'var(--border-amber)' : 'var(--border)'}`, borderRadius: 8, background: 'var(--surface)' }}>
+        <span style={{ fontWeight: 700, fontSize: '0.86rem' }}>Pending reports</span>
+        <span style={{ fontSize: '0.7rem', fontWeight: 700, padding: '0.1rem 0.45rem', borderRadius: 999, background: 'var(--bg-subtle)', color: 'var(--text-amber-700)' }}>{rows.length} waiting</span>
+        {aging && aging.oldestAgeDays > 0 ? (
+          <span style={{ fontSize: '0.72rem', fontWeight: 600, color: ageChipStyle(oldestAge?.state ?? 'fresh').color }}>
+            oldest {aging.oldestAgeDays} {aging.oldestAgeDays === 1 ? 'day' : 'days'}
+          </span>
+        ) : null}
+        <button type="button" onClick={onExpand} style={{ marginLeft: 'auto', font: 'inherit', fontSize: '0.76rem', fontWeight: 650, padding: '0.2rem 0.6rem', borderRadius: 6, border: '1px solid var(--border)', background: 'transparent', color: 'var(--text-link)', cursor: 'pointer' }}>
+          Show the queue
+        </button>
+      </div>
+    )
+  }
 
   function openPerson(r: PendingReport) {
     const age = describeAge(r.created_at, undefined, HR_PENDING_REPORT_AGE)

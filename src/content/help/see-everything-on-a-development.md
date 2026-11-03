@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
+keywords: development, site, subdivision, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
@@ -63,6 +63,8 @@ History is one dated list, newest first. It holds what the records did and what 
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
 
 A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
+
+Each line starts with a small mark. Press the round **?** beside the search box to read what every mark means. Grey is a note someone wrote. Blue is a move on a job or a bid. Green is money or a bid won. Red is a bid lost. Amber is something that went out or came in. The window groups the marks under the chips that narrow to them.
 
 ## Keep what happened
 

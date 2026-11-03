@@ -5,3 +5,5 @@ Search every file deeply (punch list #240): **`file_index_select` is replaced**,
 **Apply order**: push right after the merge. Nothing in the client or a function depends on it. A twin's Find a file then finds nothing in the index and is refused by Drive's search, as it was before v2.6319.
 
 **Verify** in a rolled-back transaction: `BEGIN READ ONLY; SET LOCAL ROLE authenticated; SELECT set_config('request.jwt.claims', '{"sub":"<a twin's id>","role":"authenticated"}', true); SELECT count(*) FROM public.file_index; ROLLBACK;` answers 0 as a twin and every row as a human estimator.
+
+**Status**: pushed 2026-11-03 at 01:35Z. The read as each role in a rolled-back transaction, right after: each of the three twins 0 rows and 0 search hits (2,620 rows the evening before); dev, master technician, assistant, controller and a human estimator every row (about 3,894, and growing with the backfill's fill); subcontractor, primary, superintendent and helpers 0; anon refused by the table's grants.
