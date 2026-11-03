@@ -147,7 +147,7 @@ GRANT ALL ON pressed TO authenticated;
 SELECT mfl.as_user('00000000-0000-0000-0000-0000000006d2');
 SET LOCAL ROLE authenticated;
 SELECT mfl.same('the office reads every flow and step',
-  concat_ws('|', (SELECT count(*) FROM public.flows), (SELECT count(*) FROM public.flow_steps)), '7|52');
+  concat_ws('|', (SELECT count(*) FROM public.flows), (SELECT count(*) FROM public.flow_steps)), '7|53');
 UPDATE public.flow_steps SET nudge_days = 4 WHERE step_key = 'portal';
 SELECT mfl.same('an edit lands and its clock moves',
   (SELECT concat_ws('|', s.nudge_days, (s.updated_at > w.updated_at)::text) FROM public.flow_steps s, was w WHERE s.step_key = 'portal'), '4|true');
