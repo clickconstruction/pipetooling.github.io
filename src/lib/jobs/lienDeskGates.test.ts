@@ -143,3 +143,20 @@ describe('the fifth gate: nothing billed (v2.4969)', () => {
     expect(lienGateShortWords(gate)).toBe('nothing billed')
   })
 })
+
+describe('gate 4 on a job with no month at all (v2.6384, job 890 after its windows closed)', () => {
+  it('says No month open, not No month picked, and its words say why', () => {
+    const { gates, verdict } = buildLienDeskGates({ ...clear, monthLabels: [], pickedMonthsCount: 0, monthsOnJob: 0 })
+    expect(gates[3]).toMatchObject({ key: 'months', tone: 'blocker', value: 'No month open', label: 'Approved hours' })
+    expect(gates[3]!.title).toMatch(/every month’s window has closed/i)
+    expect(verdict.ready).toBe(false)
+    expect(lienGateShortWords(gates[3]!)).toBe('no month open')
+    expect(lienFootBlockedSentence(gates[3]!, 0)).toBe("Don't send yet. Every month’s window has closed, so no new notice can name a month.")
+  })
+  it('with months on the job and none ticked, it still asks for the tick, dated-from-creation label and all', () => {
+    expect(buildLienDeskGates({ ...clear, monthLabels: ['Jul'], pickedMonthsCount: 0, monthsOnJob: 1 }).gates[3]).toMatchObject({ value: 'No month picked', label: 'Approved hours' })
+    expect(buildLienDeskGates({ ...clear, monthLabels: ['Jul'], pickedMonthsCount: 0, monthsOnJob: 1, datedFromCreation: true }).gates[3]).toMatchObject({ value: 'No month picked', label: 'Dated from creation' })
+    expect(buildLienDeskGates({ ...clear, monthLabels: [], pickedMonthsCount: 0 }).gates[3]).toMatchObject({ value: 'No month picked' })
+    expect(lienGateShortWords({ key: 'months', value: 'No month picked', label: 'Approved hours' })).toBe('no month picked')
+  })
+})

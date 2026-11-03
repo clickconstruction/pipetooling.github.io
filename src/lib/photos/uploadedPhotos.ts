@@ -9,7 +9,8 @@ import { calendarYmdInAppTzFromIso, formatDenverTimeOnly, formatWorkDateYmdWeekd
 import { bytesWords } from './shrink'
 import { senderOf } from './photoRows'
 
-export type UploadedPhotoSource = 'report' | 'box' | 'checklist' | 'message'
+/** `job` (punch list #244): a photo added to the job with a description from the Job photos window, `job_photo_notes`. */
+export type UploadedPhotoSource = 'report' | 'box' | 'checklist' | 'job' | 'message'
 
 /** One row of the view. */
 export interface UploadedPhotoRow {
@@ -70,6 +71,7 @@ export function sourceChips(role: string | null | undefined): ReadonlyArray<{ ke
     { key: 'report', label: 'Reports' },
     { key: 'box', label: 'Tally boxes' },
     { key: 'checklist', label: 'Checklists' },
+    { key: 'job', label: 'Job photos' },
   ]
   if (canSeeMessagePhotos(role)) base.push({ key: 'message', label: 'Texts & email' })
   return base
@@ -114,6 +116,8 @@ export function sourceWords(row: Pick<UploadedPhotoRow, 'source' | 'channel' | '
       return 'Tally box'
     case 'checklist':
       return 'Checklist'
+    case 'job':
+      return 'Job photo'
     case 'message':
       return row.channel === 'email' ? 'Email' : row.channel === 'text' || row.channel === 'sms' ? 'Text' : 'Message'
   }
@@ -258,6 +262,7 @@ export function sourceDoorWords(row: Pick<UploadedPhotoRow, 'source'>): string {
     case 'box':
       return 'Open the box'
     case 'checklist':
+    case 'job':
       return 'Open the job'
     case 'message':
       return 'Open the thread'
@@ -280,7 +285,7 @@ export function jobWindowPath(jobId: string): string {
 export function photosEmptyWords(narrowed: boolean): { main: string; tail: string } {
   return narrowed
     ? { main: 'No photo matches.', tail: 'Try another source, another place or fewer words.' }
-    : { main: 'Nothing uploaded yet.', tail: 'A photo taken on a report, a box or a checklist shows here within a minute.' }
+    : { main: 'Nothing uploaded yet.', tail: 'A photo taken on a report, a box or a checklist, or added to a job, shows here within a minute.' }
 }
 
 /** The line under the list. */
