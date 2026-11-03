@@ -6,7 +6,8 @@ import { formatDenverDateTimeShort, todayYmdInAppTz } from '../../utils/dateUtil
 import { openHtmlWindowWhenReady } from '../../lib/jobsDocuments/printWindow'
 import { buildJobCharges } from '../../lib/charges/jobCharges'
 import { loadJobCharges, type JobChargesReadResult } from '../../lib/charges/jobChargesRead'
-import { buildChargeStatementHtml, chargeStatementWords, cutJobChargesToPeriod, jobChargesSpan, type ChargeStatementSnapshot } from '../../lib/charges/statementOfCharges'
+import { buildChargeStatementHtml, chargeStatementWords, cutJobChargesToPeriod, jobChargesSpan, statementOfChargesFiling, type ChargeStatementSnapshot } from '../../lib/charges/statementOfCharges'
+import { fileSentCopy } from '../../lib/sent/sentCopiesIo'
 import { saveChargeStatement, type ChargeStatementRow } from '../../lib/charges/chargeStatementsIo'
 import { jobChargeRuleWords } from '../../lib/charges/crewDays'
 import { Money } from './Money'
@@ -137,12 +138,18 @@ export default function StatementOfChargesWindow({ job, existing, preparedBy, on
   const onPrint = async () => {
     if (busy || !snapshot) return
     setBusy('print')
+    const customerCopy = !officeCopy
+    const printed: { html?: string; saved?: ChargeStatementRow | null } = {}
     try {
       const ok = await openHtmlWindowWhenReady(async () => {
-        const saved = await save('printed')
-        return buildChargeStatementHtml({ snapshot, copy: officeCopy ? 'office' : 'customer', recordId: saved?.record_id ?? row?.record_id ?? null })
+        printed.saved = await save('printed')
+        printed.html = buildChargeStatementHtml({ snapshot, copy: customerCopy ? 'customer' : 'office', recordId: printed.saved?.record_id ?? row?.record_id ?? null })
+        return printed.html
       }, { print: true })
       if (!ok) showToast('The print window was blocked. Allow pop-ups for this site and press Print again.', 'error')
+      // A print counts as a send (docs/SENT_COPIES.md): the customer's copy is kept in the job's Documents. The office
+      // copy holds the premium and the shortfall, the office's own report, and is not a send.
+      else if (customerCopy && printed.html) void fileSentCopy({ ...statementOfChargesFiling(job, printed.saved ?? row), how: 'print' }, { html: printed.html })
     } catch (e) {
       showToast(formatErrorMessage(e, 'The statement could not be printed.'), 'error')
     } finally {

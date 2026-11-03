@@ -2,8 +2,9 @@
 /**
  * Render smokes for the Statement of charges window (punch list #254, PR 2): the read sets the span to what the job
  * holds and draws the paper with its counts and the charged total; the office-copy and imported-days switches change
- * the paper; Save files a draft and shows the record id; a read that fails names its reason with Try again; a saved
- * statement opens frozen on its own snapshot.
+ * the paper; Save files a draft and shows the record id; Print keeps a copy of the customer's paper in Documents and
+ * never of the office copy; a read that fails names its reason with Try again; a saved statement opens frozen on its own
+ * snapshot.
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor } from '@testing-library/react'
@@ -24,6 +25,8 @@ vi.mock('../../lib/charges/chargeStatementsIo', () => ({
 }))
 const printSpy = vi.fn((build: () => Promise<string>) => build().then(() => true))
 vi.mock('../../lib/jobsDocuments/printWindow', () => ({ openHtmlWindowWhenReady: (build: () => Promise<string>) => printSpy(build) }))
+const fileSpy = vi.fn((_filing: Record<string, unknown>, _body: { html: string }) => Promise.resolve(true))
+vi.mock('../../lib/sent/sentCopiesIo', () => ({ fileSentCopy: (filing: Record<string, unknown>, body: { html: string }) => fileSpy(filing, body) }))
 
 import StatementOfChargesWindow from './StatementOfChargesWindow'
 import type { JobChargesInput } from '../../lib/charges/jobCharges'
@@ -73,9 +76,10 @@ describe('StatementOfChargesWindow', () => {
     expect((state.saved[0] as { figures: { chargesUsd: number } }).figures.chargesUsd).toBe(6720.4)
   })
 
-  it('the customer copy drops the office box, the imported-days switch drops the line, and Print saves it as printed', async () => {
+  it('the customer copy drops the office box, the imported-days switch drops the line, and Print saves it as printed and keeps its copy', async () => {
     state.read = READ
     state.saved = []
+    fileSpy.mockClear()
     renderWithProviders(<StatementOfChargesWindow job={job} existing={null} preparedBy={preparedBy} onClose={() => {}} />)
     await waitFor(() => expect(screen.getByTestId('soc-span')).toBeTruthy())
     fireEvent.click(screen.getByTestId('soc-office-copy'))
@@ -87,6 +91,25 @@ describe('StatementOfChargesWindow', () => {
     await waitFor(() => expect(printSpy).toHaveBeenCalled())
     await waitFor(() => expect(screen.getByTestId('soc-saved').textContent).toContain('Printed'))
     expect((state.saved[0] as { state: string }).state).toBe('printed')
+    // A print counts as a send: the customer's paper is kept in the job's Documents, filed against the saved statement.
+    await waitFor(() => expect(fileSpy).toHaveBeenCalledTimes(1))
+    const [filing, body] = fileSpy.mock.calls[0]!
+    expect(filing).toEqual({ kind: 'statement_of_charges', title: 'Statement of charges SC-1042-0001', recipientName: 'A customer', jobIds: ['j1'], source: { table: 'job_charge_statements', id: 'row-1' }, how: 'print' })
+    expect(body.html).toContain('Statement SC-1042-0001')
+    expect(body.html).not.toContain('Office only')
+  })
+
+  it('the office copy prints and keeps no copy: it holds the premium and the shortfall', async () => {
+    state.read = READ
+    state.saved = []
+    fileSpy.mockClear()
+    printSpy.mockClear()
+    renderWithProviders(<StatementOfChargesWindow job={job} existing={null} preparedBy={preparedBy} onClose={() => {}} />)
+    await waitFor(() => expect(screen.getByTestId('soc-span')).toBeTruthy())
+    fireEvent.click(screen.getByTestId('soc-print'))
+    await waitFor(() => expect(printSpy).toHaveBeenCalledTimes(1))
+    await waitFor(() => expect(screen.getByTestId('soc-saved').textContent).toContain('Printed'))
+    expect(fileSpy).not.toHaveBeenCalled()
   })
 
   it('a read that fails names its reason with Try again', async () => {

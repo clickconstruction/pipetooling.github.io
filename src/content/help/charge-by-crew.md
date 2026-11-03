@@ -109,4 +109,6 @@ Press {{button:outline|Print}} to print it. Print saves it as printed.
 
 The office copy has a box marked office only. It carries the premium or shortfall and every adjustment with its reason. The customer copy carries charged amounts only. It says it is not an invoice.
 
+Printing the customer copy keeps a copy in the job's Documents, under **Sent from this job**. The office copy is never kept there.
+
 A saved statement keeps the paper as it read. Open it later and it prints the same, even after the rates change. Make a new one for today's rows.

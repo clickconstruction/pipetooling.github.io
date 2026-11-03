@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildChargeStatementHtml, chargeStatementPeriodLabel, chargeStatementWords, cutJobChargesToPeriod, jobChargesSpan, nextChargeStatementRecordId, parseChargeStatementRecordId, type ChargeStatementSnapshot } from './statementOfCharges'
+import { buildChargeStatementHtml, chargeStatementPeriodLabel, chargeStatementWords, cutJobChargesToPeriod, jobChargesSpan, nextChargeStatementRecordId, parseChargeStatementRecordId, statementOfChargesFiling, type ChargeStatementSnapshot } from './statementOfCharges'
+import { sentKindGroup, sentKindWords } from '../sent/sentCopies'
 import { buildJobCharges } from './jobCharges'
 import { chargeAdjustmentFromRow } from './adjustments'
 import type { CrewSessionInput } from './crewDays'
@@ -78,5 +79,19 @@ describe('the Statement of charges (punch list #254)', () => {
     expect(customer).toContain('Prepared from the company’s records · by Dana')
     // the cents smaller than the dollars, the owner's rule
     expect(office).toContain('<span class="c">.')
+  })
+
+  it('files a printed customer copy on its job, with the saved statement as its source', () => {
+    expect(statementOfChargesFiling({ id: 'j1', number: '1042', customer: 'Example Builders' }, { id: 'row-1', record_id: 'SC-1042-0001' })).toEqual({
+      kind: 'statement_of_charges',
+      title: 'Statement of charges SC-1042-0001',
+      recipientName: 'Example Builders',
+      jobIds: ['j1'],
+      source: { table: 'job_charge_statements', id: 'row-1' },
+    })
+    expect(statementOfChargesFiling({ id: 'j1', number: '1042', customer: null }, null)).toEqual({ kind: 'statement_of_charges', title: 'Statement of charges · Job 1042', recipientName: null, jobIds: ['j1'], source: null })
+    // Its tag in Sent copies reads as the paper's name, amber with the other statements.
+    expect(sentKindWords('statement_of_charges')).toBe('Statement of charges')
+    expect(sentKindGroup('statement_of_charges')).toBe('statements')
   })
 })

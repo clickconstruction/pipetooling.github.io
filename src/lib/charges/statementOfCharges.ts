@@ -14,6 +14,7 @@ import { crewRateWords, crewRateFor } from './rateCard'
 import { PREMIUM_CARRIES } from './premium'
 import { moneyWords } from './moneyParts'
 import { chargeAdjustmentWords } from './adjustments'
+import type { SentFiling } from '../sent/sentCopies'
 
 export type ChargeStatementCopy = 'office' | 'customer'
 
@@ -271,6 +272,21 @@ thead { display: table-header-group; }
 function addDays(ymd: string, n: number): string {
   const [y, mo, d] = ymd.split('-').map(Number)
   return new Date(Date.UTC(y!, mo! - 1, d! + n)).toISOString().slice(0, 10)
+}
+
+/**
+ * The filing for a printed customer copy (the owner's rule, `docs/SENT_COPIES.md`: a print counts as a send, and a
+ * copy is kept in Documents). It lists on the job's Documents under Sent from this job, with the saved statement as
+ * its source. The office copy holds the premium and the shortfall, the office's own report, and is never filed.
+ */
+export function statementOfChargesFiling(job: { id: string; number: string; customer: string | null }, saved: { id: string; record_id: string } | null): Omit<SentFiling, 'how'> {
+  return {
+    kind: 'statement_of_charges',
+    title: saved ? `Statement of charges ${saved.record_id}` : `Statement of charges · Job ${job.number}`,
+    recipientName: job.customer,
+    jobIds: [job.id],
+    source: saved ? { table: 'job_charge_statements', id: saved.id } : null,
+  }
 }
 
 /** `Statement of charges… · 6 people, 11 material lines`, dead with nothing. */
