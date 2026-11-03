@@ -204,7 +204,8 @@ export function courtesyFooterSentence(s: CourtesyStatus, amountWords: string, f
     case 'waiting':
       return `A courtesy notice may go from day ${COURTESY_FROM_DAY}: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number.`
     case 'due':
-      return `Nothing has come since the packet. A courtesy notice goes by email and text in a minute: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number. Letter two is counsel's certified second letter, from day 10.`
+      // After one went (v2.6382) the sentence says so: *nothing since the courtesy notice of Oct 20*, not *since the packet*.
+      return `Nothing has come since ${s.lastSentAt ? `the courtesy notice of ${formatDay(calendarYmdInAppTzFromIso(s.lastSentAt))}` : 'the packet'}. ${s.lastSentAt ? 'Another' : 'A courtesy notice'} goes by email and text in a minute: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number. Letter two is counsel's certified second letter, from day 10.`
   }
 }
 
@@ -239,7 +240,8 @@ export function courtesyPlan(recipients: ReadonlyArray<CourtesyRecipientInput>):
       who: r.who,
       name: r.name.trim(),
       email: email ? (EMAIL.test(email) ? { address: email, goes: true, reason: '' } : { address: email, goes: false, reason: 'not an email address' }) : { address: '', goes: false, reason: `no email on ${noun}` },
-      text: phone ? (r.textHold ? { address: phone, goes: false, reason: r.textHold } : { address: phone, goes: true, reason: '' }) : { address: '', goes: false, reason: `no number on ${noun}` },
+      // No number, but a hold that says why none was found (their contact could not be read, v2.6382): the hold is the reason, never *no number on the job*.
+      text: phone ? (r.textHold ? { address: phone, goes: false, reason: r.textHold } : { address: phone, goes: true, reason: '' }) : { address: '', goes: false, reason: r.textHold || `no number on ${noun}` },
     }
   })
 }
@@ -255,7 +257,8 @@ export function courtesySendButton(plans: ReadonlyArray<CourtesyRecipientPlan>):
   const c = courtesyCounts(plans)
   const n = c.emails + c.texts
   const parts = [c.emails ? `${c.emails} ${c.emails === 1 ? 'email' : 'emails'}` : '', c.texts ? `${c.texts} ${c.texts === 1 ? 'text' : 'texts'}` : ''].filter(Boolean)
-  return { label: countedLabel('Send', n, ['message', 'messages']), dead: n === 0, detail: n === 0 ? 'Nothing can go: no email and no number that may be texted.' : parts.join(' · ') }
+  // The window ends the detail itself (*. The record names who pressed…*), so no full stop here (v2.6382).
+  return { label: countedLabel('Send', n, ['message', 'messages']), dead: n === 0, detail: n === 0 ? 'Nothing can go: no email and no number that may be texted' : parts.join(' · ') }
 }
 
 // ---------------------------------------------------------------------------

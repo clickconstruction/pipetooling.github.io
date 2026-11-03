@@ -28,7 +28,7 @@ import {
  * job later is caught then. The design is quo-messages-mockup.html drafts 8 and 9 on branch spike/gc-mode.
  *
  *   POST (X-Cron-Secret) → { ticks, saved, failed: [{ id, why }], boxes: { saved, failed }, reports: { saved, failed },
- *     checklists: { saved, failed } }
+ *     checklists: { saved, failed }, jobPhotos: { saved, failed } }
  *
  * Materials on site (punch list #209, v2.6045): a second source after the Messages pass. A photo a crew takes of a box on
  * the On site tab waits in the box-photos bucket with a row in job_box_photos; the sweep files it in the same photo folder
@@ -299,20 +299,59 @@ async function sweepWaiting(admin: SupabaseClient, source: WaitingSource): Promi
 // ---------------------------------------------------------------------------
 
 const REPORT_PHOTO_BATCH = 20
-const REPORT_PHOTOS_BUCKET = 'report-photos'
 
 type ReportPhotoRow = { id: string; job_id: string; storage_path: string; by_name: string; taken_at: string; caption: string; stage_name: string }
 
-async function sweepReportPhotos(admin: SupabaseClient): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
-  const { data, error } = await admin
-    .from('report_photos')
-    .select('id, job_id, storage_path, by_name, taken_at, caption, stage_name')
-    .is('filed_at', null)
-    .not('storage_path', 'is', null)
-    .not('report_id', 'is', null)
-    .order('taken_at', { ascending: true })
-    .limit(REPORT_PHOTO_BATCH)
-  if (error) return { saved: 0, failed: [{ id: '', why: `the report photos did not read: ${error.message}` }] }
+/**
+ * A table whose rows are named by day, sender and caption when filed (`photoDriveName`): the report photos, and since
+ * punch list #244 (v2.6363) the job photos, `job_photo_notes`, a photo added to a job with a description from the Job
+ * photos window, filed once the person pressed Add (`added_at` set) as a report's are once the report is saved.
+ */
+interface NamedSource {
+  kind: 'report' | 'job'
+  table: string
+  bucket: string
+  /** The waiting rows under `ReportPhotoRow`'s names: the path set, nothing filed, the row committed, oldest first, a batch at most. */
+  waiting: (admin: SupabaseClient) => PromiseLike<WaitingRead>
+  /** The caption when the row names none and no stage. */
+  plainCaption: string
+}
+
+const REPORT_SOURCE: NamedSource = {
+  kind: 'report',
+  table: 'report_photos',
+  bucket: 'report-photos',
+  waiting: (admin) =>
+    admin
+      .from('report_photos')
+      .select('id, job_id, storage_path, by_name, taken_at, caption, stage_name')
+      .is('filed_at', null)
+      .not('storage_path', 'is', null)
+      .not('report_id', 'is', null)
+      .order('taken_at', { ascending: true })
+      .limit(REPORT_PHOTO_BATCH),
+  plainCaption: 'Report photo',
+}
+
+const JOB_PHOTO_SOURCE: NamedSource = {
+  kind: 'job',
+  table: 'job_photo_notes',
+  bucket: 'job-photo-notes',
+  waiting: (admin) =>
+    admin
+      .from('job_photo_notes')
+      .select('id, job_id, storage_path, by_name, taken_at, caption, stage_name')
+      .is('filed_at', null)
+      .not('storage_path', 'is', null)
+      .not('added_at', 'is', null)
+      .order('taken_at', { ascending: true })
+      .limit(REPORT_PHOTO_BATCH),
+  plainCaption: 'Job photo',
+}
+
+async function sweepNamedPhotos(admin: SupabaseClient, source: NamedSource): Promise<{ saved: number; failed: { id: string; why: string }[] }> {
+  const { data, error } = await source.waiting(admin)
+  if (error) return { saved: 0, failed: [{ id: '', why: `the ${source.kind} photos did not read: ${error.message}` }] }
   const rows = (data ?? []) as ReportPhotoRow[]
   if (rows.length === 0) return { saved: 0, failed: [] }
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
@@ -320,7 +359,7 @@ async function sweepReportPhotos(admin: SupabaseClient): Promise<{ saved: number
   const failed: { id: string; why: string }[] = []
   const fail = async (r: ReportPhotoRow, why: string) => {
     failed.push({ id: r.id, why })
-    await admin.from('report_photos').update({ fail_why: why.slice(0, 300) }).eq('id', r.id).is('filed_at', null)
+    await admin.from(source.table).update({ fail_why: why.slice(0, 300) }).eq('id', r.id).is('filed_at', null)
   }
   if (!saJson) {
     for (const r of rows) await fail(r, 'Drive is not set up here yet.')
@@ -344,18 +383,18 @@ async function sweepReportPhotos(admin: SupabaseClient): Promise<{ saved: number
         continue
       }
       const into = landing.id
-      const { data: blob, error: dl } = await admin.storage.from(REPORT_PHOTOS_BUCKET).download(r.storage_path)
+      const { data: blob, error: dl } = await admin.storage.from(source.bucket).download(r.storage_path)
       if (dl || !blob) {
         await fail(r, 'Our copy of that photo did not read.')
         continue
       }
       const mime = blob.type || 'image/jpeg'
       // Named as a text's photo is: the day, the sender, the caption (the stage it shows, else the report's words).
-      const nameInput = { at: r.taken_at, sender: r.by_name, fileName: 'photo', mime, words: r.caption || r.stage_name || 'Report photo', place: 1 }
+      const nameInput = { at: r.taken_at, sender: r.by_name, fileName: 'photo', mime, words: r.caption || r.stage_name || source.plainCaption, place: 1 }
       const name = await freeName(google, into, (taken) => photoDriveName(nameInput, taken))
       const put = await uploadBytes(google, into, new Uint8Array(await blob.arrayBuffer()), name, mime)
       const { error: kept } = await admin
-        .from('report_photos')
+        .from(source.table)
         .update({ drive_file_id: put.id, filed_at: new Date().toISOString(), fail_why: null })
         .eq('id', r.id)
         .is('drive_file_id', null)
@@ -363,13 +402,13 @@ async function sweepReportPhotos(admin: SupabaseClient): Promise<{ saved: number
         await fail(r, 'Saved to Drive, but the row did not keep it.')
         continue
       }
-      await admin.storage.from(REPORT_PHOTOS_BUCKET).remove([r.storage_path])
+      await admin.storage.from(source.bucket).remove([r.storage_path])
       saved += 1
     } catch (e) {
       await fail(r, driveFailWords(e instanceof Error ? e.message : String(e)))
     }
   }
-  if (failed.length) console.warn('photo-save: some report photos were not filed', failed)
+  if (failed.length) console.warn(`photo-save: some ${source.kind} photos were not filed`, failed)
   return { saved, failed }
 }
 
@@ -383,10 +422,11 @@ serve(async (req) => {
     const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
     const messages = await sweep(admin)
     const boxes = await sweepWaiting(admin, BOX_SOURCE)
-    const reports = await sweepReportPhotos(admin)
+    const reports = await sweepNamedPhotos(admin, REPORT_SOURCE)
     const checklists = await sweepWaiting(admin, CHECKLIST_SOURCE)
+    const jobPhotos = await sweepNamedPhotos(admin, JOB_PHOTO_SOURCE)
     const body = (await messages.json()) as Record<string, unknown>
-    return json({ ...body, boxes, reports, checklists }, messages.status)
+    return json({ ...body, boxes, reports, checklists, jobPhotos }, messages.status)
   } catch (e) {
     console.error('photo-save', e)
     return json({ error: e instanceof Error ? e.message : 'The sweep failed.' }, 500)

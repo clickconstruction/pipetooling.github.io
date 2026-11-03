@@ -1,4 +1,5 @@
 import { useMemo, type CSSProperties } from 'react'
+import { Link } from 'react-router-dom'
 import { calcLineBudget, DEFAULT_LINE_BUDGET_SETTINGS, lineBudgetEntryOf, lineBudgetFor, sumLineBudgets, LINE_BUDGET_GLYPH } from '../../lib/jobs/lineBudgets'
 import type { Database } from '../../types/database'
 
@@ -35,9 +36,11 @@ type Props = {
   spend: { teamUsd: number; subUsd: number; partsUsd: number } | null
   /** The job's percent done, for the kept-so-far reading when a line carries no percent of its own. */
   jobPctDone: number | null
+  /** The job, for the door to its card on the Projects board (punch list #242, PR 5); none, no door. */
+  jobId?: string | null
 }
 
-export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone }: Props) {
+export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone, jobId = null }: Props) {
   const lines = useMemo(
     () =>
       fixtures
@@ -88,7 +91,10 @@ export function JobCostsLineBudgets({ fixtures, teamHours, spend, jobPctDone }: 
     <div style={card} data-testid="job-costs-line-budgets">
       <div style={{ display: 'flex', alignItems: 'baseline', justifyContent: 'space-between', gap: 8, flexWrap: 'wrap' }}>
         <div>
-          <div style={lab}>Where we are</div>
+          <div style={{ ...lab, display: 'flex', gap: 8, alignItems: 'baseline' }}>
+            <span>Where we are</span>
+            {jobId ? <Link to={`/projects-board?job=${encodeURIComponent(jobId)}`} data-testid="job-costs-board-door" style={{ fontWeight: 600, textTransform: 'none', letterSpacing: 0, color: 'var(--text-link)', textDecoration: 'none' }} title="This project's card on the Projects board, with its expected hours">On the Projects board ›</Link> : null}
+          </div>
           <div style={{ ...big, color: ahead ? 'var(--text-red-700)' : 'inherit' }}>
             {spentUsd != null ? usd0(spentUsd) : '—'} <span style={{ fontWeight: 400, color: 'var(--text-muted)' }}>of {usd0(budgetUsd)} spent{spentPct != null ? ` · ${Math.round(spentPct)}% of the budget` : ''}</span>
           </div>

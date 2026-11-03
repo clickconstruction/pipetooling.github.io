@@ -13,8 +13,13 @@ name: SQL beds
 # when the beds passed or were not needed, and fails when any bed failed or was cancelled
 # (2026-10-09, the owner's call after a red bed could have merged).
 #
-# To add a bed: its script scripts/pgtest-<name>.sh, its folder supabase/tests/<name>/, and one
-# line in scripts/sql-beds.txt. This file does not change.
+# The beds share runners, since the org runs 20 jobs at once and one job per bed took 76 slots a run
+# (2026-11-02). `changes` deals the list into legs of at most 16, each leg is one runner, and on it
+# scripts/sql-beds-run.sh pulls the images once and runs eight beds at a time. A change to that script runs
+# the beds like a change to a bed script.
+#
+# To add a bed: its script scripts/pgtest-<name>.sh with a container NAME of its own, its folder
+# supabase/tests/<name>/, and one line in scripts/sql-beds.txt. This file does not change.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -22,7 +27,7 @@ on:
   workflow_dispatch:
 
 # A newer push to the same PR (or the same queue group) cancels the run it supersedes, so a superseded
-# matrix never holds twenty runners (2026-10-12: the merge queue timed out four times behind them).
+# matrix never holds its runners (2026-10-12: the merge queue timed out four times behind them).
 concurrency:
   group: sql-beds-${{ github.event.pull_request.number || github.event.merge_group.head_ref || github.ref }}
   cancel-in-progress: true
@@ -42,7 +47,10 @@ jobs:
         id: filter
         shell: bash
         run: |
-          MATRIX=$(grep -v '^\s*#' scripts/sql-beds.txt | grep -v '^\s*$' | jq -R . | jq -cs .)
+          # Legs of at most 16 beds, dealt in turn: another bed in the list never lengthens a leg past timeout-minutes.
+          MATRIX=$(grep -v '^\s*#' scripts/sql-beds.txt | grep -v '^\s*$' | jq -R . | jq -cs '
+            . as $beds | ((length + 15) / 16 | floor) as $legs
+            | [range(0; $legs) as $leg | {n: ($leg + 1), beds: ([range($leg; $beds | length; $legs) as $i | $beds[$i]] | join(" "))}]')
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "beds=true" >> "$GITHUB_OUTPUT"; echo "beds=true (dispatch) $MATRIX"; exit 0
@@ -54,7 +62,7 @@ jobs:
           BEDS=false
           while IFS= read -r f; do
             case "$f" in
-              supabase/migrations/*|supabase/tests/*|scripts/pgtest-*|scripts/sql-beds.txt|.github/workflows/sql-beds.yml) BEDS=true ;;
+              supabase/migrations/*|supabase/tests/*|scripts/pgtest-*|scripts/sql-beds.txt|scripts/sql-beds-run.sh|.github/workflows/sql-beds.yml) BEDS=true ;;
             esac
           done <<< "$CHANGED"
           echo "beds=$BEDS" >> "$GITHUB_OUTPUT"
@@ -65,17 +73,18 @@ jobs:
     # A draft runs no beds: they run once the PR is marked ready (ready_for_review above) and in the queue.
     if: needs.changes.outputs.beds == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # A leg took 12 to 16 minutes (2026-11-02). The wrapper stops any one bed at 20, so the worst leg is two rounds of those and the pull.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        bed: ${{ fromJSON(needs.changes.outputs.matrix) }}
-    name: ${{ matrix.bed }}
+        leg: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    name: leg ${{ matrix.leg.n }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: ${{ matrix.bed }} against every migration
-        run: bash scripts/pgtest-${{ matrix.bed }}.sh
+      - name: Its beds against every migration, eight at a time
+        run: bash scripts/sql-beds-run.sh ${{ matrix.leg.beds }}
 
   # The one check branch protection requires. It runs only to fail: a skipped job takes no runner and
   # counts as passing, so a clean build never waits behind the backlog for a job of seconds (2026-11-02).
