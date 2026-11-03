@@ -67,19 +67,19 @@ INSERT INTO public.jobs_ledger (id, master_user_id, service_type_id, job_name) V
   ('00000000-0000-0000-0000-0000000007a1', '00000000-0000-0000-0000-0000000007d1', '00000000-0000-0000-0000-0000000007f1', 'Clock bed job A'),
   ('00000000-0000-0000-0000-0000000007a2', '00000000-0000-0000-0000-0000000007d1', '00000000-0000-0000-0000-0000000007f1', 'Clock bed job B');
 
--- Sessions: the worker's approved day (s1), the worker's day waiting for approval (s2) and a second one (s4),
+-- Sessions (the first week of March 2026, before the clocks change, so -06 is Chicago's offset throughout): the worker's approved day (s1), the worker's day waiting for approval (s2) and a second one (s4),
 -- the dev's own waiting day (s3), and a revoked one (s5).
 INSERT INTO public.clock_sessions (id, user_id, job_ledger_id, clocked_in_at, clocked_out_at, work_date, origin, notes, approved_at, approved_by) VALUES
   ('00000000-0000-0000-0000-0000000007e1', '00000000-0000-0000-0000-0000000007d2', '00000000-0000-0000-0000-0000000007a1',
-   '2026-03-09 08:00-06', '2026-03-09 16:00-06', '2026-03-09', 'user_punch', 'pinpoint', '2026-03-10 07:00-06', '00000000-0000-0000-0000-0000000007d1'),
+   '2026-03-02 08:00-06', '2026-03-02 16:00-06', '2026-03-02', 'user_punch', 'pinpoint', '2026-03-03 07:00-06', '00000000-0000-0000-0000-0000000007d1'),
   ('00000000-0000-0000-0000-0000000007e2', '00000000-0000-0000-0000-0000000007d2', '00000000-0000-0000-0000-0000000007a1',
-   '2026-03-10 08:00-06', '2026-03-10 12:00-06', '2026-03-10', 'user_punch', '', NULL, NULL),
+   '2026-03-03 08:00-06', '2026-03-03 12:00-06', '2026-03-03', 'user_punch', '', NULL, NULL),
   ('00000000-0000-0000-0000-0000000007e4', '00000000-0000-0000-0000-0000000007d2', '00000000-0000-0000-0000-0000000007a1',
-   '2026-03-11 08:00-06', '2026-03-11 12:00-06', '2026-03-11', 'user_punch', '', NULL, NULL),
+   '2026-03-04 08:00-06', '2026-03-04 12:00-06', '2026-03-04', 'user_punch', '', NULL, NULL),
   ('00000000-0000-0000-0000-0000000007e3', '00000000-0000-0000-0000-0000000007d1', '00000000-0000-0000-0000-0000000007a1',
-   '2026-03-10 09:00-06', '2026-03-10 10:00-06', '2026-03-10', 'user_punch', '', NULL, NULL),
+   '2026-03-03 09:00-06', '2026-03-03 10:00-06', '2026-03-03', 'user_punch', '', NULL, NULL),
   ('00000000-0000-0000-0000-0000000007e5', '00000000-0000-0000-0000-0000000007d2', '00000000-0000-0000-0000-0000000007a1',
-   '2026-03-12 08:00-06', '2026-03-12 12:00-06', '2026-03-12', 'user_punch', '', NULL, NULL);
+   '2026-03-05 08:00-06', '2026-03-05 12:00-06', '2026-03-05', 'user_punch', '', NULL, NULL);
 UPDATE public.clock_sessions SET revoked_at = now(), revoked_by = '00000000-0000-0000-0000-0000000007d1' WHERE id = '00000000-0000-0000-0000-0000000007e5';
 
 -- The door's rights: the definer, closed to anon, open to a signed-in caller (gated is_dev() inside).
@@ -105,7 +105,7 @@ SELECT dcs.refused('no ops is refused', $q$SELECT public.dev_clock_session_write
 DO $$
 DECLARE r jsonb;
 BEGIN
-  r := dcs.door('[{"op":"times","session_id":"00000000-0000-0000-0000-0000000007e2","start":"2026-03-10T09:00:00-06:00","end":"2026-03-10T13:30:00-06:00"}]'::jsonb, true);
+  r := dcs.door('[{"op":"times","session_id":"00000000-0000-0000-0000-0000000007e2","start":"2026-03-03T09:00:00-06:00","end":"2026-03-03T13:30:00-06:00"}]'::jsonb, true);
   PERFORM dcs.same('the dry run says so', (r->>'dry_run'), 'true');
   PERFORM dcs.same('the dry run applied one op', (r->>'applied') || '/' || (r->>'held') || '/' || (r->>'refused'), '1/0/0');
   PERFORM dcs.same('the dry run names the person', r->'ops'->0->>'person', 'Clock Worker');
@@ -113,29 +113,29 @@ BEGIN
   PERFORM dcs.same('the dry run shows the hours after', r->'ops'->0->'after'->>'hours', '4.50');
   PERFORM dcs.same('the dry run shows the job', r->'ops'->0->'after'->'job'->>'name', 'Clock bed job A');
 END $$;
-SELECT dcs.same('the dry run wrote nothing', dcs.row('00000000-0000-0000-0000-0000000007e2'), '2026-03-10 08:00→12:00 2026-03-10 job Clock bed job A notes "" waiting');
+SELECT dcs.same('the dry run wrote nothing', dcs.row('00000000-0000-0000-0000-0000000007e2'), '2026-03-03 08:00→12:00 2026-03-03 job Clock bed job A notes "" waiting');
 
 -- For real: the start and the end, then the note, then the move — each op its own line.
 DO $$
 DECLARE r jsonb;
 BEGIN
-  r := dcs.door('[{"op":"times","session_id":"00000000-0000-0000-0000-0000000007e2","start":"2026-03-10T09:00:00-06:00","end":"2026-03-10T13:30:00-06:00"},
+  r := dcs.door('[{"op":"times","session_id":"00000000-0000-0000-0000-0000000007e2","start":"2026-03-03T09:00:00-06:00","end":"2026-03-03T13:30:00-06:00"},
                  {"op":"note","session_id":"00000000-0000-0000-0000-0000000007e2","note":"  trench, north wall "},
                  {"op":"move","session_id":"00000000-0000-0000-0000-0000000007e2","job_id":"00000000-0000-0000-0000-0000000007a2"}]'::jsonb, false);
   PERFORM dcs.same('three ops applied', (r->>'applied') || '/' || (r->>'held') || '/' || (r->>'refused'), '3/0/0');
   PERFORM dcs.same('the move names the job', r->'ops'->2->>'words', 'moved to Clock bed job B');
   PERFORM dcs.same('the reply names the dev', r->>'by', 'Clock Dev');
 END $$;
-SELECT dcs.same('the session reads the new start, end, note and job', dcs.row('00000000-0000-0000-0000-0000000007e2'), '2026-03-10 09:00→13:30 2026-03-10 job Clock bed job B notes "trench, north wall" waiting');
+SELECT dcs.same('the session reads the new start, end, note and job', dcs.row('00000000-0000-0000-0000-0000000007e2'), '2026-03-03 09:00→13:30 2026-03-03 job Clock bed job B notes "trench, north wall" waiting');
 
 -- An approved session's hours follow into people_hours: the dev may recompute (the one line added).
 DO $$
 DECLARE r jsonb;
 BEGIN
-  r := dcs.door('[{"op":"times","session_id":"00000000-0000-0000-0000-0000000007e1","start":"2026-03-09T08:00:00-06:00","end":"2026-03-09T17:00:00-06:00"}]'::jsonb, false);
+  r := dcs.door('[{"op":"times","session_id":"00000000-0000-0000-0000-0000000007e1","start":"2026-03-02T08:00:00-06:00","end":"2026-03-02T17:00:00-06:00"}]'::jsonb, false);
   PERFORM dcs.same('the approved day took the new end', (r->>'applied'), '1');
 END $$;
-SELECT dcs.same('people_hours reads the approved day''s new hours', dcs.hours('Clock Worker', '2026-03-09'), '9.00');
+SELECT dcs.same('people_hours reads the approved day''s new hours', dcs.hours('Clock Worker', '2026-03-02'), '9.00');
 
 -- Approval: the worker's waiting day is approved by the dev; the dev's own day is never approved by the dev.
 DO $$
@@ -148,7 +148,7 @@ BEGIN
 END $$;
 SELECT dcs.same('the worker''s day reads approved', (SELECT CASE WHEN approved_at IS NULL THEN 'waiting' ELSE 'approved' END FROM public.clock_sessions WHERE id = '00000000-0000-0000-0000-0000000007e4'), 'approved');
 SELECT dcs.same('the dev''s own day still waits', (SELECT CASE WHEN approved_at IS NULL THEN 'waiting' ELSE 'approved' END FROM public.clock_sessions WHERE id = '00000000-0000-0000-0000-0000000007e3'), 'waiting');
-SELECT dcs.same('an approved day''s hours are in people_hours', dcs.hours('Clock Worker', '2026-03-11'), '4.00');
+SELECT dcs.same('an approved day''s hours are in people_hours', dcs.hours('Clock Worker', '2026-03-04'), '4.00');
 
 -- Do what is ready: a refused op is named with its reason and the op beside it still lands.
 DO $$
@@ -158,7 +158,7 @@ BEGIN
                  {"op":"note","session_id":"00000000-0000-0000-0000-0000000007e2","note":"as built"},
                  {"op":"note","session_id":"00000000-0000-0000-0000-0000000007e5","note":"x"},
                  {"op":"split","session_id":"00000000-0000-0000-0000-0000000007e2"},
-                 {"op":"times","session_id":"00000000-0000-0000-0000-0000000007e2","start":"2026-03-10T09:00:00-06:00","end":"2026-03-10T08:00:00-06:00"},
+                 {"op":"times","session_id":"00000000-0000-0000-0000-0000000007e2","start":"2026-03-03T09:00:00-06:00","end":"2026-03-03T08:00:00-06:00"},
                  {"op":"approve","session_id":"00000000-0000-0000-0000-0000000007e4"}]'::jsonb, false);
   PERFORM dcs.same('one op applied, five refused', (r->>'applied') || '/' || (r->>'held') || '/' || (r->>'refused'), '1/0/5');
   PERFORM dcs.same('an unknown job is refused with its id', position('not found' IN (r->'ops'->0->>'words'))::text <> '0', 'true');

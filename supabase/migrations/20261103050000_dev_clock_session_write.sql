@@ -370,7 +370,7 @@ BEGIN
 
         SELECT * INTO v_row FROM public.clock_sessions WHERE id = v_sid;
         v_after := public.dev_clock_session_image(v_sid);
-        IF v_kind IN ('times', 'move') AND v_row.approved_at IS NOT NULL THEN
+        IF (v_kind IN ('times', 'move') OR (v_kind = 'approve' AND v_outcome = 'applied')) AND v_row.approved_at IS NOT NULL THEN
           PERFORM public.recompute_people_hours_after_session_edit(v_sid, v_old_date);
         END IF;
         IF v_outcome = 'held' THEN
