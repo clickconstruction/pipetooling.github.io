@@ -53,11 +53,18 @@ dev and the controller alone, and the customer's portal shows neither.
    titled *Statement of hours worked and charged*, prices every day at the charge rate, totals the week and the
    period, and replaces the Paid section with **Charged**: one line per week, hours at the rate, and the period's
    total. It never names a wage, a pay report or a payment.
-2. **The rate is a setting with a per-job override.** `app_settings` key `hourly_charge_rate_v1` (the office sets it
-   under Settings → Jobs & dispatch; $285.00 as the seed), and a job may carry its own in a new `jobs` column
-   `hourly_charge_rate` (Edit Job, beside the money fields). The paper prints the rate once in the header, *at
-   $285.00 an hour*, and says where it came from (*the company's rate* / *this job's rate*). The kernel is given the
-   rate; it never reads the setting.
+2. **The rate is set per job, in the window where the paper is made.** The owner, 2026-11-02: *on a job-to-job basis
+   we need to be able to set that per hour … in the Documents tab we need to add a slider or buttons to click or an
+   entry field or a form of all three, so that when we're creating these as needed we can do so swiftly.* So the
+   statement window on a charged basis carries one rate control in three forms bound to one value: a number field
+   (dollars an hour, the job's rate when it has one, else the company's), a row of preset presses (the company's
+   rate, this job's last rate, and the rates the last few charged papers used, each a press that fills the field),
+   and a slider ($100 to $500 in $5 steps, the company's rate marked). The paper redraws on every change. **Save a
+   draft** and **Print** keep the rate on the job (`jobs.hourly_charge_rate`), so the next paper on that job starts
+   there; Edit Job shows the same field beside the money fields for the record. The company's rate is the
+   `app_settings` key `hourly_charge_rate_v1` (Settings → Jobs & dispatch; $285.00 as the seed). The paper prints the
+   rate once in the header, *at $285.00 an hour*, and says where it came from (*the company's rate* / *this job's
+   rate*). The kernel is given the rate; it never reads the setting or the job.
 3. **Who signs what.** The worker signs the hours as on the paid paper. The attestation drops *and that I was paid
    for this work as shown*; the company's line reads *Prepared from the company's records; charged at $285.00 an
    hour.* The charged amount is the company's statement, not the worker's.
@@ -83,7 +90,8 @@ dev and the controller alone, and the customer's portal shows neither.
 - Table: `hours_statements` + `basis text not null default 'paid'`, `charge_rate numeric`; the gate
   `can_touch_hours_statement(with_pay, basis)`; `jobs.hourly_charge_rate`; the setting key in
   `src/lib/appSettingsKeys.ts` (regenerate the edge copy).
-- Window and section: `HoursStatementModal.tsx` (the basis choice, the rate shown, no pay switch on charged),
+- Window and section: `HoursStatementModal.tsx` (the basis choice, the rate control — field, presets, slider — and
+  the rate shown, no pay switch on charged; the control's words and bounds in `hoursStatementWindow.ts`),
   `HoursStatementsSection.tsx` (the chip, the access by basis), `hoursStatementAccess.ts`.
 - Settings → Jobs & dispatch: the rate's card; Edit Job: the override.
 - Docs: a new guide *make an hours charged statement* (or a section of the existing guide), `GLOSSARY.md`,
@@ -95,14 +103,17 @@ dev and the controller alone, and the customer's portal shows neither.
    Edit Job field (one migration), the kernel's `basis` with the Charged section and the attestation's words, the
    print's title and rate line, tests for a charged week, a sub's flat sheet left out, and the rate's source line.
 2. **PR 2 · the row, the gate and the doors (M).** The table's two columns and the gate's basis argument (one
-   migration), the window's basis choice and the rate shown, the section's chip and its access by basis, the
-   reads, the guide, the docs, the app directory.
+   migration), the window's basis choice and its rate control (the field, the presets, the slider, one value;
+   Save and Print writing it onto the job), the section's chip and its access by basis, the reads, the guide, the
+   docs, the app directory.
 
 ## How to verify
 
 Dev server, `/dev-login?as=1`: Settings → Jobs & dispatch → the rate reads $285.00; job 972 → Documents → Hours
 statement… → basis Charged: the paper prices each day at $285.00, the Charged band totals the weeks, no wage or
-payment appears anywhere on it; Edit Job → set a job rate → the paper and its header follow it. As the estimator
+payment appears anywhere on it; in the window type a rate, press a preset, drag the slider: the three agree and
+the paper and its header follow at once; Save a draft, reopen the job's window, press Hours statement… again: the
+rate starts where it was saved, and Edit Job shows the same number. As the estimator
 sample (`/dev-login?as=twin:estimator`): the section shows with the charged papers only, the press makes a charged
 one and the window offers no paid basis; a paid row is not in their list. As the helper sample: no section at all.
 As the controller: both bases. In a customer's portal: nothing. The SQL bed for `hours_statements` holds the gate by basis.
