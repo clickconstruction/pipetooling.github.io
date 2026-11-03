@@ -114,6 +114,7 @@ picks, one line per table in the same body, and a bed row each.
 - A split leaves a work order on the old job while its stage window moves with the line (`step_commitments.stage_window_id` then points across jobs). The split moved no work orders before either; a question for the Work Orders tab, not this card.
 - `job_photo_notes.fixture_id` names a line but the split does not carry the photo with the line; #244 shipped the same day and may want to.
 - Deleting a job outright, or moving its costs to a bid (`migrate_job_ledger_costs_to_bid_and_delete`), still takes every row here; the bid has nowhere for most of them.
+- Six tables name a job in a plain uuid column with no foreign key, so no cascade reaches them and this PR's list (read by foreign key) left them out: `ar_stripe_cases.job_id`, `ar_unbanked_check_cases.job_id`, `customer_ratings.job_id`, `job_watcher_notices.job_id`, `nudge_offers.jobs_ledger_id`, `schedule_block_events.job_id`. After a combine each keeps the source's id, which no job answers to. The AR cases and the rating look like moves; the notices, the offers and the schedule events are history that a reader joins by job. A follow-up gives each its rule and a bed row.
 
 ## How to verify
 
