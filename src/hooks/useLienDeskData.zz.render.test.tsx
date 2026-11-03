@@ -74,6 +74,25 @@ describe('useLienDeskData · ZZ test jobs', () => {
     expect(Object.keys(data.jobsById).sort()).toEqual(['A', 'Y', 'Z'])
   })
 
+  it('a job with a sent item and no month row reads its GC and customer from jobs_ledger (v2.6376, job 890)', async () => {
+    const items = TABLES.job_lien_desk_items!
+    const jobsLedger = TABLES.jobs_ledger!
+    TABLES.job_lien_desk_items = [...items, { id: 'iS', job_id: 'S', kind: 'notice_53_056', status: 'sent', sent_at: '2026-10-01T15:00:00Z', months: ['2026-07'], created_at: '2026-10-01', voided_at: null }]
+    TABLES.jobs_ledger = [...jobsLedger, { ...job('S', '628 Terrell Rd', 'Dudley Mason'), customer_id: 'c-mason' }]
+    try {
+      const data = await read(false)
+      const sent = data.queue.entries.find((e) => e.jobId === 'S')!
+      expect(sent.pile).toBe('sent')
+      expect(sent.months).toEqual([])
+      expect(sent.gcCustomerId).toBe('gc-1')
+      expect(sent.customerId).toBe('c-mason')
+      expect(data.gcsById['gc-1']?.name).toBe('Knight Builders')
+    } finally {
+      TABLES.job_lien_desk_items = items
+      TABLES.jobs_ledger = jobsLedger
+    }
+  })
+
   it('in full, reads the pieces an approved notice already went out as, by its desk item (v2.5532)', async () => {
     const items = TABLES.job_lien_desk_items!
     TABLES.job_lien_desk_items = [{ ...(items[0] as object), status: 'approved' }, items[1]!]

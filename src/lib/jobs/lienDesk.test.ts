@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { lienEmptyPileWords } from './lienDesk'
+import { buildLienDeskGates } from './lienDeskGates'
 import {
   buildLienDeskQueue,
   draftReadiness,
@@ -147,6 +148,47 @@ describe('buildLienDeskQueue', () => {
     expect(q.entries.map((e) => e.jobId)).toEqual(['b', 'c', 'a'])
     expect(q.entries.find((e) => e.jobId === 'a')!.policy).toBe('send')
     expect(q.entries.find((e) => e.jobId === 'c')!.policy).toBe('ask')
+  })
+})
+
+describe('buildLienDeskQueue · a job the RPC no longer lists keeps the job’s own GC (v2.6376, job 890)', () => {
+  // 890's shape on 2026-11-02: last work set by hand in August, the notice sent Oct 14, every month's window closed
+  // more than a week ago — so list_lien_notice_months returns no row for it, and the sent item alone keeps it on the desk.
+  const sent = item({ job_id: 'j890', status: 'sent', sent_at: '2026-10-14T16:00:00Z', months: ['2026-07', '2026-08'] })
+  const jobs = { j890: { customer_id: 'cust-mason', gc_customer_id: 'gc-rmc-dudley' } }
+
+  it('with no month rows, the entry’s GC and customer come from the job row, not from nothing', () => {
+    const q = buildLienDeskQueue([], [sent], { 'gc-rmc-dudley': 'ask' }, '2026-11-02', jobs)
+    expect(q.entries).toHaveLength(1)
+    const e = q.entries[0]!
+    expect(e.pile).toBe('sent')
+    expect(e.gcCustomerId).toBe('gc-rmc-dudley')
+    expect(e.customerId).toBe('cust-mason')
+    expect(e.policy).toBe('ask')
+    expect(e.months).toEqual([])
+  })
+
+  it('a month row still wins over the job row, as before', () => {
+    const rows = [row({ job_id: 'j890', work_month: '2026-08', deadline: '2026-11-16', gc_customer_id: 'gc-from-row', customer_id: 'cust-from-row' })]
+    const q = buildLienDeskQueue(rows, [sent], {}, '2026-11-02', jobs)
+    expect(q.entries[0]!.gcCustomerId).toBe('gc-from-row')
+    expect(q.entries[0]!.customerId).toBe('cust-from-row')
+  })
+
+  it('without the jobs the entry has no GC and no customer — never a job id in the customer’s slot', () => {
+    const q = buildLienDeskQueue([], [sent], {}, '2026-11-02')
+    expect(q.entries[0]!.gcCustomerId).toBeNull()
+    expect(q.entries[0]!.customerId).toBeNull()
+  })
+
+  it('the gates then read the GC green: the fix the desk shows on 890', () => {
+    const q = buildLienDeskQueue([], [sent], {}, '2026-11-02', jobs)
+    const gcsById: Record<string, { name: string; address: string }> = { 'gc-rmc-dudley': { name: 'RMC- Dudley Mason', address: '574 Co Rd 660, Devine TX 78016' } }
+    const gc = gcsById[q.entries[0]!.gcCustomerId ?? '']
+    const { gates } = buildLienDeskGates({ ownerName: 'Rizvi Syed Zulfiqar', ownerMailingAddress: '628 Terrell Rd, San Antonio, TX 78209', gcName: gc?.name ?? '', gcAddress: gc?.address ?? '', propertyKind: 'residential', county: 'Bexar', monthLabels: [], pickedMonthsCount: 0, pendingSessions: 0 })
+    const gcGate = gates.find((g) => g.key === 'gc')!
+    expect(gcGate.tone).toBe('ok')
+    expect(gcGate.value).toBe('RMC- Dudley Mason')
   })
 })
 

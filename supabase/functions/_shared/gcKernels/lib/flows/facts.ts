@@ -36,6 +36,15 @@ export function contactFlowKind(kind: ContactKind): FlowKind {
 }
 
 /**
+ * The flow a contact goes through, read as the database's `flow_step_check` reads it since v2.6385: a `customer`
+ * contact whose customers row says residential is on the residential flow, since every customer's own contact is kind
+ * `customer` (`contact_find_or_make`) and contacts have no `residential` kind; everyone else is on their kind's.
+ */
+export function contactFlowKindOf(kind: ContactKind, customerType: string | null | undefined): FlowKind {
+  return kind === 'customer' && customerType === 'residential' ? 'residential' : contactFlowKind(kind)
+}
+
+/**
  * True for a kind with a flow of its own: everyone but the three `contactFlowKind` folds to the unknown flow, and the
  * unknown themselves. Takes a flow's kind too, since a flow read's contact row carries the contact's kind under that type.
  */

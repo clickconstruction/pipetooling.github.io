@@ -16,8 +16,9 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesHazmatFeeButton, StagesJobFolderButton, StagesPhotosButton, StagesPlansButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesChecklistDoorButton, StagesHazmatFeeButton, StagesJobFolderButton, StagesPhotosButton, StagesPlansButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
 import { JobPhotosWindow } from '../photos/JobPhotosWindow'
+import { pipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import { JobPlanSetsModal } from './JobPlanSetsModal'
 import { usePlanSetsByJob } from '../../hooks/usePlanSetsByJob'
 import { jobPlansPress } from '../../lib/plans/jobPlanSetsIcon'
@@ -123,6 +124,7 @@ export type JobsStagesTableProps = {
   stagesManHoursLoading: StagesRowRenderContext['stagesManHoursLoading']
   crewByJobId: StagesRowRenderContext['crewByJobId']
   checklistMarksFor?: StagesRowRenderContext['checklistMarksFor']
+  openChecklistDoor?: StagesRowRenderContext['openChecklistDoor']
   stagesLaborBreakdownByJobId: StagesRowRenderContext['stagesLaborBreakdownByJobId']
   expandedJobThreadId: StagesRowRenderContext['expandedJobThreadId']
   toggleStagesJobThreadExpanded: StagesRowRenderContext['toggleStagesJobThreadExpanded']
@@ -198,6 +200,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     stagesManHoursLoading,
     crewByJobId,
     checklistMarksFor,
+    openChecklistDoor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -234,6 +237,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
   // The Job photos window (punch list #244): the row's camera icon opens it on that job.
   const [photosJob, setPhotosJob] = useState<JobWithDetails | null>(null)
   const plansPressFor = (j: JobWithDetails) => jobPlansPress(planSetsByJob.get(j.id), j.job_plans_link)
+  // The checklist door (punch list #246): the job's standing across its stages, from the marks the board already holds.
+  const checklistDoorFor = (j: JobWithDetails) => pipelineChecklistDoor(j.fixtures ?? [], checklistMarksFor?.(j) ?? null)
   const wideViewport = useWideViewport1100()
   const navigate = useNavigate()
   const dispatchTaskModal = useDispatchTaskModal()
@@ -253,6 +258,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
     stagesManHoursLoading,
     crewByJobId,
     checklistMarksFor,
+    openChecklistDoor,
     stagesLaborBreakdownByJobId,
     expandedJobThreadId,
     toggleStagesJobThreadExpanded,
@@ -427,6 +433,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                     model={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).model}
                     view={progressPaymentForJob(j, stagesRowSharedCtx.crewByJobId.get(j.id) ?? null).view}
                     checklist={stagesRowSharedCtx.checklistMarksFor?.(j) ?? null}
+                    onChecklistPress={openChecklistDoor ? () => openChecklistDoor(j) : undefined}
                     pctComplete={j.pct_complete ?? null}
                     billSentAlert={stagesBillSentPctAlert(j)}
                     pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
@@ -539,6 +546,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                             <StagesJobFolderButton folderUrl={j.google_drive_link} onOpenTab={() => openEdit(j, { initialTab: 'documents' })} />
                             <StagesPhotosButton picturesUrl={j.job_pictures_link} folderUrl={j.google_drive_link} onOpen={() => setPhotosJob(j)} />
                             {plansPressFor(j).kind !== 'none' ? <StagesPlansButton press={plansPressFor(j)} onPick={() => setPlansPickerJob(j)} /> : null}
+                            {openChecklistDoor && checklistDoorFor(j).kind !== 'none' ? <StagesChecklistDoorButton door={checklistDoorFor(j)} onClick={() => openChecklistDoor(j)} /> : null}
                             <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                             {showAiaG702G703(authRole, j) ? <StagesAiaG702Button onClick={() => setAiaG702StagesJob(j)} /> : null}
                             {canCreateHazmatFee ? <StagesHazmatFeeButton onClick={() => openHazmatFee(j)} hasFee={hazmatFeeJobIds?.has(j.id) === true} /> : null}
