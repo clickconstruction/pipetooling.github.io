@@ -68,6 +68,8 @@ export interface JobPlansIo {
   makeCurrent(partId: string, setId: string, userId: string | null): Promise<void>
   removeSet(setId: string): Promise<void>
   updateMemo(setId: string, memo: string): Promise<void>
+  /** What changed from the set before it, written or rewritten on a set already on the part (v2.6356). */
+  updateChanges(setId: string, changes: string): Promise<void>
 }
 
 const PART_COLS = 'id, development_id, job_id, name, position, current_set_id, current_set_by, current_set_at, created_by, created_at, updated_at'
@@ -78,6 +80,12 @@ function taken<T>(r: { data: T; error: { message: string } | null }, what: strin
   if (r.data == null) throw new Error(`Could not ${what}.`)
   return r.data as NonNullable<T>
 }
+
+/**
+ * A read takes a set's row whole: a client deployed ahead of its migration's push still reads, and a column the ledger
+ * lacks yet (v2.6356's `changes`) is simply absent, where a named column would have PostgREST refuse the read with a 400.
+ */
+const SET_READ = '*'
 
 export function supabaseJobPlansIo(): JobPlansIo {
   return {
@@ -95,7 +103,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
         if (p.error) throw p.error
         part = (p.data as PlanPartRow | null) ?? null
         if (part) {
-          const s = await supabase.from('plan_sets').select(SET_COLS).eq('part_id', part.id).order('came_at', { ascending: false })
+          const s = await supabase.from('plan_sets').select(SET_READ).eq('part_id', part.id).order('came_at', { ascending: false })
           if (s.error) throw s.error
           sets = (s.data ?? []) as PlanSetRow[]
         }
@@ -179,7 +187,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
       const parts = (p.data ?? []) as PlanPartRow[]
       let sets: PlanSetRow[] = []
       if (parts.length) {
-        const s = await supabase.from('plan_sets').select(SET_COLS).in('part_id', parts.map((x) => x.id)).order('came_at', { ascending: false })
+        const s = await supabase.from('plan_sets').select(SET_READ).in('part_id', parts.map((x) => x.id)).order('came_at', { ascending: false })
         if (s.error) throw s.error
         sets = (s.data ?? []) as PlanSetRow[]
       }
@@ -209,6 +217,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
       if (r.error) throw r.error
     },
     async addSet({ partId, draft, makeCurrent, replacesSetId, marksUpSetId, jobId, userId }) {
+      const changes = (draft.changes ?? '').trim()
       const made = taken(
         await supabase
           .from('plan_sets')
@@ -219,6 +228,8 @@ export function supabaseJobPlansIo(): JobPlansIo {
             source: draft.source,
             dated: draft.dated || null,
             memo: draft.memo.trim(),
+            // Sent only when written, so a set with none still saves while the column's push is minutes behind the deploy.
+            ...(changes ? { changes } : {}),
             link: draft.link.trim(),
             replaces_set_id: replacesSetId,
             marks_up_set_id: marksUpSetId,
@@ -245,6 +256,10 @@ export function supabaseJobPlansIo(): JobPlansIo {
     },
     async updateMemo(setId, memo) {
       const r = await supabase.from('plan_sets').update({ memo }).eq('id', setId)
+      if (r.error) throw r.error
+    },
+    async updateChanges(setId, changes) {
+      const r = await supabase.from('plan_sets').update({ changes: changes.trim() }).eq('id', setId)
       if (r.error) throw r.error
     },
   }
