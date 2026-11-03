@@ -14,6 +14,7 @@ import {
   type LienDeskQueue,
   type LienNoticeMonthRow,
   type LienNoticePolicy,
+  type LienDeskQueueJob,
 } from '../lib/jobs/lienDesk'
 import { parsePromisedPayDatesRpc, type PromisedPayDate } from '../lib/jobs/billedExpectedPay'
 import { buildLienAffidavitQueue, type LienAffidavitQueue, type LienAffidavitRow } from '../lib/jobs/lienDeskAffidavits'
@@ -29,6 +30,7 @@ import type { LienClaimCorrection } from '../lib/jobs/lienClaimCorrection'
 import type { JobLienFilingRow } from '../lib/jobs/lienDeadlines'
 import type { JobDemandLetterRow } from '../lib/jobs/demandLetterTracking'
 import { zzTestJobIds } from '../lib/jobs/zzTestJobVisibility'
+import { lienBilledOpen } from '../lib/jobs/lienBilledOpen'
 
 /** The slice of jobs_ledger the desk shows and prints from. */
 export type LienDeskJob = {
@@ -43,6 +45,8 @@ export type LienDeskJob = {
   customer_address_id: string | null
   revenue: number | null
   payments_made: number | null
+  /** The job's status (v2.6380) — `lienBilledOpen` reads a job billed as one shell by it. */
+  status?: string | null
   master_user_id: string | null
   /** 'YYYY-MM-DD' — the timeline's last-work fallback when the RPC's months are older (v2.3761). */
   last_work_date: string | null
@@ -66,7 +70,7 @@ export type LienDeskJob = {
 }
 
 /** The columns the desk reads from jobs_ledger. */
-export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name), created_at'
+export const LIEN_DESK_JOB_COLUMNS = 'id, hcp_number, click_number, job_name, job_address, customer_id, customer_name, gc_customer_id, customer_address_id, revenue, payments_made, status, master_user_id, last_work_date, lien_last_work_on, lien_contract_ended_on, lien_contract_ended_how, lien_retainage_held, lien_payment_bond, service_type:service_types(name), created_at'
 
 /** The desk's columns with the first work day (v2.6061): read first, and the list above when the column is not on prod yet. */
 export const LIEN_DESK_JOB_COLUMNS_WITH_FIRST_DAY = `${LIEN_DESK_JOB_COLUMNS}, first_work_date`
@@ -247,8 +251,33 @@ export function useLienDeskData(
         }
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
-        // The jobs ride along (v2.6376): an entry the RPC has no month row for reads its GC and customer from the job row.
-        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, jobsById)
+        // The jobs ride along (v2.6376): an entry the RPC has no month row for reads its GC and customer from the job row —
+        // and (v2.6380), on the open desk, its money: what the job's sent bills still owe, by the RPC's own rule, from the
+        // bills and payments of just those jobs. A failed read leaves the figure to the RPC's, never the desk dark.
+        const queueJobs: Record<string, LienDeskQueueJob> = { ...jobsById }
+        const rowJobIds = new Set(rows.map((r) => r.job_id))
+        const billedOpenJobIds = light ? [] : jobs.filter((j) => !rowJobIds.has(j.id)).map((j) => j.id)
+        if (billedOpenJobIds.length > 0) {
+          type InvoiceRow = { id: string; job_id: string; status: string | null; amount: number | null; sequence_order: number | null; billed_at: string | null }
+          type PaymentRow = { job_id: string; invoice_id: string | null; amount: number | null }
+          const [invRows, payRows] = await Promise.all([
+            withSupabaseRetry(() => supabase.from('jobs_ledger_invoices').select('id, job_id, status, amount, sequence_order, billed_at').in('job_id', billedOpenJobIds), 'lien desk: bills behind a sent notice').catch(() => null),
+            withSupabaseRetry(() => supabase.from('jobs_ledger_payments').select('job_id, invoice_id, amount').in('job_id', billedOpenJobIds), 'lien desk: payments behind a sent notice').catch(() => null),
+          ])
+          if (cancelled) return
+          if (invRows && payRows) {
+            const invByJob = new Map<string, InvoiceRow[]>()
+            for (const i of invRows as InvoiceRow[]) invByJob.set(i.job_id, [...(invByJob.get(i.job_id) ?? []), i])
+            const payByJob = new Map<string, PaymentRow[]>()
+            for (const p of payRows as PaymentRow[]) payByJob.set(p.job_id, [...(payByJob.get(p.job_id) ?? []), p])
+            for (const id of billedOpenJobIds) {
+              const j = jobsById[id]
+              if (!j) continue
+              queueJobs[id] = { ...j, billed_open: lienBilledOpen({ id: j.id, status: j.status ?? null, revenue: j.revenue, payments_made: j.payments_made }, invByJob.get(id) ?? [], payByJob.get(id) ?? []) }
+            }
+          }
+        }
+        const queue = buildLienDeskQueue(rows, items, policyByCustomer, todayYmd, queueJobs)
         const gcNames: Record<string, string> = {}
         for (const g of Object.values(gcsById)) gcNames[g.id] = g.name
         const summaryWithBatches = summarizeLienDeskForNeedsYou(queue)

@@ -54,7 +54,7 @@ A job under three field days or under 10% reads *too early to call* instead of g
 
 A project's line items each carry a budget. Then a **Where we are** card sits above the chart. It reads spent of the whole budget and the job's percent done. Under that come a **Labor** bar and a **Materials** bar. Each fills with what was spent against its budget. A dashed mark on each bar is the job's percent done. A bar turns red when its spend runs ten points past the work. Then comes one row per line with its own bar. See *see what a line should cost and tune it*.
 
-The same verdict shows up in two more places. One is Job Summary's **Burn** and **Proj. margin** columns. The other is the Pipeline's *jobs burning ahead of progress* card under Today's money opportunities.
+The same verdict shows up in two more places. One is Job Summary's **Burn** and **Proj. true margin** columns. The other is the Pipeline's *jobs burning ahead of progress* card under Today's money opportunities.
 
 :::example Reading a hot job
 Spent $19,860 of a $29,200 budget (68%) at 62% done. At completion: $32,032, margin $16,668 (34% against a 40% bid). Plus $4,140 overhead → true margin $12,528 (26%). Budget runs out Sep 17 with 38% of the work left. Time to look at why.

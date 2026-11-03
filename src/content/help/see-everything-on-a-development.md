@@ -2,7 +2,7 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, builder, estimator, no money, history, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
+keywords: development, site, subdivision, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
 order: 75
 ---
 A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
@@ -64,6 +64,8 @@ History is one dated list, newest first. It holds what the records did and what 
 
 A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
 
+Each line starts with a small mark. Press the round **?** beside the search box to read what every mark means. Grey is a note someone wrote. Blue is a move on a job or a bid. Green is money or a bid won. Red is a bid lost. Amber is something that went out or came in. The window groups the marks under the chips that narrow to them.
+
 ## Keep what happened
 
 An email came in, a call was made, someone walked the site. History keeps those too, at the time they happened.
@@ -110,7 +112,7 @@ Money shows the site's progress as one bar, then every job by stage with what is
 
 ## Check the plans and the questions
 
-Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part. On a phone each part is a card with the same facts.
+Plans lists each part of the site, such as the Lodge or the Bunker. Each row names the set that part builds from today. The row shows the date on the sheets, the day the set came, its memo and the jobs on it. Older sets fold under a count. Press the count to see them. The crew's as-builts read under their part. A **Papers** column counts the specs, schedules and lists kept with each part's sets. Press the count to read them. An amber chip counts the questions still waiting and the papers we are owed. On a phone each part is a card with the same facts. See [keep the papers with the plans](/help/keep-the-papers-with-the-plans).
 
 Press {{button:outline|+ Part}} to name a part of the site. Press {{button:outline|+ New set}} on a part's row to add a set. Press {{button:blue|Add the set and build from it}} and every job on that part builds from it. Press {{button:outline|Build from this set}} on an older set to go back to it.
 

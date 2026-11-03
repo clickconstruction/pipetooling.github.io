@@ -38,6 +38,9 @@ import {
   UNDER_CUSTOMER_WORDS,
   whereFilesGoFromAnswer,
   type WhereFilesGoJob,
+  peopleCardWords,
+  PEOPLE_FOLDER_IN_JOBS_DRIVE_WORDS,
+  NO_PEOPLE_FOLDER_YET_WORDS,
 } from './whereFilesGoTab'
 
 const folder = { id: '1AAAAAAAAAAAAAAAAAAAAAAAAAAA', name: 'Jobs', path: ['PipeTooling Jobs'], owner: null, drive: 'PipeTooling Jobs', folders: 118 }
@@ -101,6 +104,21 @@ describe('the root card', () => {
     expect(rootCardWords({ id: folder.id, url: '', from: 'setting', ok: true, words: '', folder: mine })).toEqual({ name: 'Jobs', path: null, owner: 'Owned by Dana Office.', count: '1 job folder inside.', from: null })
     expect(rootCardWords({ id: folder.id, url: '', from: 'setting', ok: false, words: 'x', folder: null })).toEqual({ name: 'The jobs root', path: null, owner: null, count: null, from: null })
     expect(rootCardWords(null)).toEqual({ name: 'The jobs root', path: null, owner: null, count: null, from: NO_ROOT_YET_WORDS })
+  })
+})
+
+describe('the People card (the People → Paperwork spike)', () => {
+  it('reads the folder from the answer, names its drive, and warns when it shares the jobs root’s drive', () => {
+    const folder = { id: 'P1', name: 'People', path: ['PipeTooling People'], owner: null, drive: 'PipeTooling People', folders: 2 }
+    const rootFolder = { id: 'R1', name: 'Jobs', path: ['PipeTooling Jobs'], owner: null, drive: 'PipeTooling Jobs', folders: 40 }
+    const read = whereFilesGoFromAnswer({ app_email: 'a@b', root: { id: 'R1', url: 'u', from: 'setting', ok: true, words: 'ok', folder: rootFolder }, people: { id: 'P1', url: 'u2', ok: true, words: 'ok', folder } })
+    expect(read.people).toMatchObject({ id: 'P1', ok: true })
+    const own = peopleCardWords(read.people, read.root)
+    expect(own).toMatchObject({ name: 'People', path: 'PipeTooling People › People', owner: 'In the Shared Drive PipeTooling People.', warning: null })
+    const shared = peopleCardWords({ ...read.people!, folder: { ...folder, drive: 'PipeTooling Jobs' } }, read.root)
+    expect(shared.warning).toBe(PEOPLE_FOLDER_IN_JOBS_DRIVE_WORDS)
+    expect(peopleCardWords(null, read.root)).toMatchObject({ name: 'The People folder', from: NO_PEOPLE_FOLDER_YET_WORDS, warning: null })
+    expect(whereFilesGoFromAnswer({}).people).toBeNull()
   })
 })
 

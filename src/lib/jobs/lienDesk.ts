@@ -203,8 +203,11 @@ function pileForItem(item: LienDeskItemRow, hasOwner: boolean): LienDeskPile {
   }
 }
 
-/** The job row's own links (v2.6376): what an entry falls back on when the RPC has no month row for the job. */
-export type LienDeskQueueJob = { customer_id?: string | null; gc_customer_id?: string | null }
+/**
+ * The job row's own facts (v2.6376): what an entry falls back on when the RPC has no month row for the job —
+ * its links, and (v2.6380) what its sent bills still owe, `lienBilledOpen` on the client, the RPC's own rule.
+ */
+export type LienDeskQueueJob = { customer_id?: string | null; gc_customer_id?: string | null; billed_open?: number | null }
 
 /**
  * Fold the RPC rows and the stored items into one entry per job. Jobs whose
@@ -216,7 +219,10 @@ export type LienDeskQueueJob = { customer_id?: string | null; gc_customer_id?: s
  * window closed more than a week ago, nothing billed, or the balance paid — stays on
  * the desk through its sent item alone, with no month row to read; its GC and its
  * customer then come from the job row, so the gates never say *No GC on the job*
- * about a job that has one (job 890, 2026-11-02). A month row still wins.
+ * about a job that has one (job 890, 2026-11-02), and its money is what the job's
+ * sent bills still owe (`billed_open`, v2.6380), so the row never reads $0 beside
+ * *letter two overdue* and gate 5 never says *Nothing billed* over a sent bill. A
+ * month row still wins.
  */
 export function buildLienDeskQueue(
   rows: ReadonlyArray<LienNoticeMonthRow>,
@@ -293,7 +299,7 @@ export function buildLienDeskQueue(
       jobId,
       customerId,
       gcCustomerId,
-      openBalance: Number(first?.open_balance ?? 0) || 0,
+      openBalance: Number(first?.open_balance ?? job?.billed_open ?? 0) || 0,
       hasOwner,
       propertyKind: first?.property_kind ?? '',
       months,

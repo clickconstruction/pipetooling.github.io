@@ -4,24 +4,36 @@ import {
   cutText,
   type DriveFileMeta,
   driveQueryTerm,
+  EXCERPT_PDF_LIMITS,
   exportMimeOf,
   type FileHome,
   folderKindOf,
   headlineToExcerpt,
   heldWhyWords,
   type HomeAt,
+  INDEX_PDF_LIMITS,
   INDEX_TEXT_MAX_CHARS,
   indexPassWords,
   indexPlan,
   indexRowOf,
   type KnownRow,
+  newPassSpend,
+  PASS_READ_BUDGET_MS,
+  PASS_READ_MAX_BYTES,
   passCursor,
+  passMayTake,
+  PDF_READ_BUDGET_MS,
+  type PdfDoc,
+  pdfPagesText,
   readingRowOf,
+  RETRY_HOLD_MS,
+  retryDue,
   sameInstant,
   settledWhy,
   SWEEP_CURSOR_MARK,
   sweepSince,
   sweepStamp,
+  TEXT_PDF_MAX_BYTES,
   textKindOf,
   walkUp,
 } from '../../../supabase/functions/_shared/fileIndexKernel'
@@ -104,11 +116,11 @@ describe('walkUp and folderKindOf', () => {
 describe('indexPlan', () => {
   const known = new Map<string, KnownRow>([
     // The row's time as PostgREST reads it back: the same instant as the file's 2026-10-14T15:00:00Z, spelled otherwise.
-    ['same', { drive_file_id: 'same', modified_at: '2026-10-14T15:00:00+00:00', text_why: null, text_source: 'pdf_layer' }],
-    ['moved', { drive_file_id: 'moved', modified_at: '2026-10-01T00:00:00Z', text_why: null, text_source: 'pdf_layer' }],
-    ['slow', { drive_file_id: 'slow', modified_at: '2026-10-14T15:00:00Z', text_why: 'slow', text_source: null }],
-    ['stopped', { drive_file_id: 'stopped', modified_at: '2026-10-14T15:00:00Z', text_why: 'reading', text_source: null }],
-    ['scan', { drive_file_id: 'scan', modified_at: '2026-10-14T15:00:00Z', text_why: 'scan', text_source: null }],
+    ['same', { drive_file_id: 'same', modified_at: '2026-10-14T15:00:00+00:00', text_why: null, text_source: 'pdf_layer', checked_at: '2026-11-02T05:00:00Z' }],
+    ['moved', { drive_file_id: 'moved', modified_at: '2026-10-01T00:00:00Z', text_why: null, text_source: 'pdf_layer', checked_at: '2026-11-02T05:00:00Z' }],
+    ['slow', { drive_file_id: 'slow', modified_at: '2026-10-14T15:00:00Z', text_why: 'slow', text_source: null, checked_at: '2026-11-02T06:50:00Z' }],
+    ['stopped', { drive_file_id: 'stopped', modified_at: '2026-10-14T15:00:00Z', text_why: 'reading', text_source: null, checked_at: '2026-11-02T05:00:00Z' }],
+    ['scan', { drive_file_id: 'scan', modified_at: '2026-10-14T15:00:00Z', text_why: 'scan', text_source: null, checked_at: '2026-11-02T05:00:00Z' }],
   ])
   const listed = [file({ id: 'new' }), file({ id: 'same' }), file({ id: 'moved' }), file({ id: 'slow' }), file({ id: 'stopped' }), file({ id: 'scan' }), file({ id: 'same' }), file({ id: 'folder', mimeType: 'application/vnd.google-apps.folder' })]
 
@@ -121,7 +133,21 @@ describe('indexPlan', () => {
       { id: 'stopped', why: 'held' },
       { id: 'scan', why: 'current' },
     ])
-    expect(indexPlan(listed, known, { retry: true }).toIndex.map((f) => f.id)).toEqual(['new', 'moved', 'slow', 'stopped'])
+    // A retry takes a held row only when its last check is an hour old: slow was checked ten minutes before, stopped two hours.
+    const now = new Date('2026-11-02T07:00:00Z')
+    const retry = indexPlan(listed, known, { retry: true, now })
+    expect(retry.toIndex.map((f) => f.id)).toEqual(['new', 'moved', 'stopped'])
+    expect(retry.skipped).toContainEqual({ id: 'slow', why: 'held' })
+    expect(indexPlan(listed, known, { retry: true, now: new Date('2026-11-02T08:00:00Z') }).toIndex.map((f) => f.id)).toEqual(['new', 'moved', 'slow', 'stopped'])
+  })
+
+  it('retryDue: a row with no stamp or a stamp an hour old is due, a fresh one waits', () => {
+    const now = new Date('2026-11-02T07:00:00Z')
+    expect(retryDue(null, now)).toBe(true)
+    expect(retryDue('2026-11-02T06:00:00Z', now)).toBe(true)
+    expect(retryDue('2026-11-02T06:00:01Z', now)).toBe(false)
+    expect(retryDue('not a time', now)).toBe(true)
+    expect(RETRY_HOLD_MS).toBe(60 * 60 * 1000)
   })
 })
 
@@ -198,7 +224,8 @@ describe('the budget, the sweep’s cursor and the words', () => {
 
   it('counts a pass in words, and names a held file’s reason', () => {
     expect(indexPassWords({ indexed: 1, held: [], remaining: 0 })).toBe('Indexed 1 file.')
-    expect(indexPassWords({ indexed: 12, held: [{ id: 'a', name: 'a', why: 'scan' }], remaining: 28 })).toBe('Indexed 12 files, 1 held, 28 to go.')
+    expect(indexPassWords({ indexed: 12, held: [{ id: 'a', name: 'a', why: 'scan' }], remaining: 28 })).toBe('Indexed 12 files, 11 with their words, 1 held, 28 to go.')
+    expect(indexPassWords({ indexed: 9, held: Array.from({ length: 7 }, (_, i) => ({ id: String(i), name: String(i), why: 'scan' as const })), remaining: 0 })).toBe('Indexed 9 files, 2 with their words, 7 held.')
     expect(indexPassWords({ indexed: 0, held: [{ id: 'a', name: 'a', why: 'big' }, { id: 'b', name: 'b', why: 'slow' }], remaining: 0 })).toBe('Indexed 0 files, 2 held.')
     expect(heldWhyWords('scan')).toBe('a scan with no text to read')
     expect(heldWhyWords('slow')).toBe('the read ran out of time')
@@ -213,5 +240,98 @@ describe('headlineToExcerpt', () => {
   it('collapses the text’s line breaks, keeps marks apart when words sit between, and reads a headline with no marks as plain', () => {
     expect(headlineToExcerpt('a <mark>permit</mark>\n  for the\n<mark>trench</mark> here')).toEqual({ text: 'a permit for the trench here', marks: [[2, 8], [17, 23]] })
     expect(headlineToExcerpt('nothing marked')).toEqual({ text: 'nothing marked', marks: [] })
+  })
+})
+
+describe('a PDF inside its time budget (v2.6332)', () => {
+  /** A made-up document: each page's items, and how long the clock moves while that page is read. */
+  const doc = (pages: { items: unknown[]; ms?: number }[], clock: { t: number }): PdfDoc & { read: number[]; cleaned: number[] } => {
+    const read: number[] = []
+    const cleaned: number[] = []
+    return {
+      numPages: pages.length,
+      read,
+      cleaned,
+      getPage: async (n: number) => ({
+        getTextContent: async () => {
+          read.push(n)
+          clock.t += pages[n - 1]!.ms ?? 0
+          return { items: pages[n - 1]!.items }
+        },
+        cleanup: () => cleaned.push(n),
+      }),
+    }
+  }
+  const limits = { maxPages: 100, budgetMs: 800 }
+
+  it('reads every page when the time allows, in the shape unpdf merges: line ends kept, runs of space one, at most one blank line', async () => {
+    const clock = { t: 0 }
+    const pdf = doc([{ items: [{ str: 'SHEET  P-101', hasEOL: true }, { str: 'WATER HEATER' }, { str: '  ' }, { str: 'WH-1', hasEOL: true }, { notText: true }] }, { items: [] }, { items: [{ str: 'GENERAL NOTES' }] }], clock)
+    const r = await pdfPagesText(pdf, limits, () => clock.t)
+    expect(r.text).toBe('SHEET P-101\nWATER HEATER WH-1\n\nGENERAL NOTES')
+    expect(r.pagesRead).toBe(3)
+    expect(pdf.cleaned).toEqual([1, 2, 3])
+  })
+
+  it('stops between pages once its time is spent, keeps what it read, and always reads the first page', async () => {
+    const clock = { t: 0 }
+    const dense = { items: [{ str: 'a sheet' }], ms: 300 }
+    const pdf = doc([dense, dense, dense, dense, dense], clock)
+    const r = await pdfPagesText(pdf, limits, () => clock.t)
+    expect(pdf.read).toEqual([1, 2, 3])
+    expect(r.pagesRead).toBe(3)
+    expect(r.text).toBe('a sheet\na sheet\na sheet')
+    // One sheet that takes longer than the whole budget still counts, so the next file is never blocked by nothing read.
+    const slow = { t: 0 }
+    const one = doc([{ items: [{ str: 'heavy' }], ms: 5000 }, { items: [{ str: 'never' }] }], slow)
+    expect(await pdfPagesText(one, limits, () => slow.t)).toEqual({ text: 'heavy', pagesRead: 1 })
+    // The clock starts with the document open: a cold worker's slow load never costs a short letter its pages.
+    const cold = { t: 900 }
+    const opened = doc([{ items: [{ str: 'first' }] }, { items: [{ str: 'second' }] }], cold)
+    expect(await pdfPagesText(opened, limits, () => cold.t)).toEqual({ text: 'first\nsecond', pagesRead: 2 })
+  })
+
+  it('stops at the page cap and at the text cap', async () => {
+    const clock = { t: 0 }
+    const page = { items: [{ str: 'x' }] }
+    const capped = doc([page, page, page], clock)
+    expect((await pdfPagesText(capped, { maxPages: 2, budgetMs: 800 }, () => clock.t)).pagesRead).toBe(2)
+    const long = { items: [{ str: 'y'.repeat(INDEX_TEXT_MAX_CHARS) }] }
+    expect((await pdfPagesText(doc([long, long, long], clock), limits, () => clock.t)).pagesRead).toBe(1)
+  })
+
+  it('lets a pass start a file only when it fits: the first always, the rest by what they should cost and hold', () => {
+    const pdf = (mb: number) => file({ size: String(mb * 1024 * 1024) })
+    // The first file of a request always starts, however large, so a call makes progress.
+    expect(passMayTake(pdf(50), newPassSpend())).toBe(true)
+    // A PDF over the cap is held with no download, so it costs nothing and never stops a pass.
+    expect(passMayTake(pdf(51), { ms: 5000, bytes: 49 * 1024 * 1024 })).toBe(true)
+    // A small PDF fits where a dense one does not.
+    expect(passMayTake(pdf(1), { ms: 1000, bytes: 1 })).toBe(true)
+    expect(passMayTake(pdf(8), { ms: 1000, bytes: 1 })).toBe(false)
+    expect(passMayTake(pdf(8), { ms: 400, bytes: 1 })).toBe(true)
+    // The bytes one request holds: a second large set waits for the next request, whatever the clock says.
+    expect(passMayTake(pdf(30), { ms: 10, bytes: 31 * 1024 * 1024 })).toBe(false)
+    expect(passMayTake(pdf(29), { ms: 10, bytes: 31 * 1024 * 1024 })).toBe(true)
+    // A file with no parse goes on until the budget is spent, and an unknown size reads as small.
+    const doc1 = file({ name: 'Scope.gdoc', mimeType: 'application/vnd.google-apps.document', size: null })
+    expect(passMayTake(doc1, { ms: PASS_READ_BUDGET_MS - 1, bytes: 0 })).toBe(true)
+    expect(passMayTake(doc1, { ms: PASS_READ_BUDGET_MS, bytes: 0 })).toBe(false)
+    expect(passMayTake(file({ size: null }), { ms: 1100, bytes: 0 })).toBe(true)
+    // The budgets fit under the platform's two seconds of CPU, however the worst file lands.
+    expect(PASS_READ_BUDGET_MS - 150 + PDF_READ_BUDGET_MS).toBeLessThan(2000)
+    expect(PASS_READ_MAX_BYTES).toBeGreaterThan(TEXT_PDF_MAX_BYTES)
+  })
+
+  it('reads for the index and for a search’s ten excerpts by different limits', () => {
+    expect(INDEX_PDF_LIMITS.maxBytes).toBe(50 * 1024 * 1024)
+    expect(EXCERPT_PDF_LIMITS).toEqual({ maxBytes: 8 * 1024 * 1024, maxPages: 40, budgetMs: 300, passBudgetMs: 1000 })
+  })
+
+  it('a row keeps the pages and how many its read reached; a file read whole reads the same; a held file has neither', () => {
+    const walk = { home: null, via: null, names: [], path: '' }
+    expect(indexRowOf(file(), walk, { text: 'cover sheet', source: 'pdf_layer', pages: 212, pagesRead: 9 }, NOW)).toMatchObject({ pages: 212, pages_read: 9 })
+    expect(indexRowOf(file(), walk, { text: 'a letter', source: 'pdf_layer', pages: 2 }, NOW)).toMatchObject({ pages: 2, pages_read: 2 })
+    expect(indexRowOf(file(), walk, { why: 'big' }, NOW)).toMatchObject({ pages: null, pages_read: null })
   })
 })
