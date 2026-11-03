@@ -16,7 +16,8 @@ import { formatDenverTimeOnly } from '../../utils/dateUtils'
 import { stubNetPay } from '../payStubDeductions'
 import { hoursStatementRoundHours, hoursStatementStanding, hoursStatementWeekLabel, type HoursStatementInput, type HoursStatementPayGroup, type HoursStatementRow } from './hoursStatement'
 import { buildCrewDays, jobChargeRuleFrom, jobChargeRuleWords } from '../charges/crewDays'
-import { loadCrewSessions, loadRateCard } from '../charges/jobChargesRead'
+import { loadChargeAdjustments, loadCrewSessions, loadRateCard } from '../charges/jobChargesRead'
+import { indexAdjustments } from '../charges/adjustments'
 import { crewRateWords, parseCrewShape } from '../charges/rateCard'
 
 /** The job's number as the papers print it: the HCP number, else the click number, else the id's first eight. */
@@ -255,13 +256,17 @@ export async function loadHoursStatementInputs(args: HoursStatementReadArgs): Pr
   let charge: HoursStatementChargeFacts | null = null
   let chargedRows: HoursStatementRow[] | null = null
   if (args.basis === 'charged') {
-    const [crew, card, jobRow] = await Promise.all([
+    const [crew, card, jobRow, adjustments] = await Promise.all([
       loadCrewSessions(jobId),
       loadRateCard(),
       withSupabaseRetry(() => supabase.from('jobs_ledger').select('*').eq('id', jobId).maybeSingle(), 'read the job’s rule'),
+      // The Charges window's adjustments (punch list #254, PR 3) hold on the paper too; a read that fails leaves them off.
+      loadChargeAdjustments(jobId).catch(() => []),
     ])
     const rule = jobChargeRuleFrom((jobRow ?? {}) as { charge_rule?: unknown; charge_shape?: unknown; hourly_charge_rate?: unknown }, parseCrewShape)
-    const days = buildCrewDays(crew.filter((s) => s.workDate >= periodStart && s.workDate <= periodEnd), card, rule)
+    const applied = indexAdjustments(adjustments)
+    const dayShape = new Map(Array.from(applied.dayShape.entries()).map(([day, o]) => [day, o.shape] as const))
+    const days = buildCrewDays(crew.filter((s) => s.workDate >= periodStart && s.workDate <= periodEnd), card, rule, { dayShape, dayOff: applied.dayOff })
     const mine = new Map(rows.filter((r) => !r.pending).map((r) => [r.day, r] as const))
     const out: HoursStatementRow[] = []
     const unpriced = new Set<string>()
