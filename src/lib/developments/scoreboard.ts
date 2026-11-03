@@ -195,7 +195,8 @@ export function buildScoreboard(input: ScoreboardInput): ScoreboardModel {
     m.cost = round2(m.labor + m.subs + m.parts + m.overhead)
     m.profit = round2(m.earned - m.cost)
     const flags: ScoreboardFlag[] = []
-    if (!(contractUsd > 0) && m.cost > 0) flags.push('no-price')
+    // A job with no price and something on it: a cost, or hours on the leader's board, which reads no cost (v2.6467, so the row wears what its headline says).
+    if (!(contractUsd > 0) && (m.cost > 0 || m.hours > 0)) flags.push('no-price')
     const materialsOnly = job.billing_only === true || (laborBy != null && costsBy != null && m.earned > 0 && m.hours === 0 && m.subs === 0 && m.parts > 0)
     if (materialsOnly) flags.push('materials-only')
     if (earned.flags.includes('assumed-50')) flags.push('assumed-50')

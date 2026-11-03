@@ -381,6 +381,8 @@ describe('scoreboardHeadline (v2.6467, punch list #250 PR 3)', () => {
     expect(lead.rows.map((r) => r.jobId)).toContain('j13')
     expect(lead.empties.map((r) => r.jobId)).toEqual(['j14'])
     expect(lead.rows.find((r) => r.jobId === 'j13')).toMatchObject({ priced: false, empty: false })
+    // and it wears *no price*, as its headline says, though that board reads no cost
+    expect(lead.rows.find((r) => r.jobId === 'j13')!.flags).toContain('no-price')
     expect(lead.rows.find((r) => r.jobId === 'j10')).toMatchObject({ priced: true })
   })
 })
