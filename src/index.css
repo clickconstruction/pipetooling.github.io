@@ -6219,6 +6219,38 @@ button.aging-win-inv--door:disabled { opacity: 0.6; cursor: default; }
   color: var(--text-amber-800);
   font-weight: 600;
 }
+/* The Plans look's part picker (the Gun Dog spike, 2026-11-02): one row per job on no part, the tick, the number as the
+   door, the name a person picks the part by; a ticked row tints. */
+.developmentPickRow {
+  display: grid;
+  grid-template-columns: auto auto minmax(0, 1fr);
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  margin: 0 -6px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.developmentPickRow:hover {
+  background: var(--bg-subtle);
+}
+.developmentPickRow.isOn {
+  background: var(--bg-blue-tint);
+}
+.developmentPickRow input {
+  margin: 0;
+}
+.developmentPickNumber {
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+.developmentPickName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--text-strong);
+}
 /* The head's count tiles and their cards (punch list #208): a tile lifts on hover and while its card is open;
    the card floats under the tile on a desk, sits under the tiles as a sheet on a phone. */
 .developmentCountTile:hover,

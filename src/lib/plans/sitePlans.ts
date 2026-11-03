@@ -11,10 +11,11 @@
 import { jobKindOfRow, type JobKindRowLike } from '../jobs/jobKind'
 import { buildJobPlansView, compareSets, isDrawingSet, type PlanPartRow, type PlanSetRow } from './planSets'
 
-export type SiteCarrier = { kind: 'job' | 'bid'; id: string; label: string }
+/** A job or bid as the look names it; `name` is the job's name (its address when it has none), the words a person picks a part by. */
+export type SiteCarrier = { kind: 'job' | 'bid'; id: string; label: string; name?: string | null }
 
 /** A job as the look takes it: its part, and the facts the job-kind kernel reads (a fact not loaded is skipped, never guessed). */
-export type SiteJobInput = { id: string; label: string; plan_part_id?: string | null } & Pick<JobKindRowLike, 'kind' | 'hcp_number' | 'click_number' | 'bid_id' | 'project_id' | 'revenue' | 'status' | 'billing_only'>
+export type SiteJobInput = { id: string; label: string; plan_part_id?: string | null; name?: string | null } & Pick<JobKindRowLike, 'kind' | 'hcp_number' | 'click_number' | 'bid_id' | 'project_id' | 'revenue' | 'status' | 'billing_only'>
 
 export type NoPlansWhy = 'billing_only' | 'service'
 
@@ -70,7 +71,7 @@ export function buildSitePlansView(args: {
       replaced: v.replaced,
       older: v.older,
       asBuilts: v.asBuilts,
-      jobs: args.jobs.filter((j) => j.plan_part_id === part.id).map((j) => ({ kind: 'job' as const, id: j.id, label: j.label })),
+      jobs: args.jobs.filter((j) => j.plan_part_id === part.id).map((j) => ({ kind: 'job' as const, id: j.id, label: j.label, name: j.name ?? null })),
     }
   })
   const partIds = new Set(ordered.map((p) => p.id))
@@ -79,8 +80,8 @@ export function buildSitePlansView(args: {
   const jobsNeedingNoPlans: SiteJobLeftOut[] = []
   for (const j of onNoPart) {
     const why = jobNeedsNoPlans(j)
-    if (why) jobsNeedingNoPlans.push({ kind: 'job', id: j.id, label: j.label, why })
-    else jobsWithNoPart.push({ kind: 'job', id: j.id, label: j.label })
+    if (why) jobsNeedingNoPlans.push({ kind: 'job', id: j.id, label: j.label, name: j.name ?? null, why })
+    else jobsWithNoPart.push({ kind: 'job', id: j.id, label: j.label, name: j.name ?? null })
   }
   const partsWithNoSet = parts.filter((r) => !r.current)
   const setCount = args.sets.filter((s) => partIds.has(s.part_id) && isDrawingSet(s)).length
@@ -141,4 +142,20 @@ export function sitePlansAskCount(view: SitePlansView): number {
 /** The older sets of a part, newest first, for the fold under its row. */
 export function olderSetsFor(row: SitePartRow): PlanSetRow[] {
   return [...row.older].sort(compareSets)
+}
+
+/**
+ * The jobs on no part in the order a person picks parts for them (the Gun Dog spike, 2026-11-02: the
+ * owner on a grid of bare numbers, *I need a good way to see the job names so a human can quickly make
+ * decisions*): by name, so the *ATV building* jobs sit together and the *Bunker* ones after them, the
+ * nameless last, ties by number.
+ */
+export function orderForPicking<T extends SiteCarrier>(rows: ReadonlyArray<T>): T[] {
+  const key = (c: T) => (c.name ?? '').trim().toLocaleLowerCase()
+  return [...rows].sort((a, b) => {
+    const an = key(a)
+    const bn = key(b)
+    if (!an !== !bn) return an ? -1 : 1
+    return an.localeCompare(bn, undefined, { numeric: true }) || a.label.localeCompare(b.label, undefined, { numeric: true })
+  })
 }

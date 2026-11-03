@@ -2,7 +2,7 @@
 name: "Signed hours statement: a worker's recorded hours on one job, as a paper they sign, for court"
 number: 212
 group: ready
-status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3 built 2026-11-02, v2.6411, the signing: the statement as its own Contract Form, Send for signature… with the four channels, Sign here now, File a signed scan…, the signed PDF on the job and the desk · PR 4, the matter, not started · access narrowed 2026-11-03, v2.6450: a dev and the controller alone (Diane's call of 2026-11-02, payroll data), the section tagged Controllers and devs only
+status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3 built 2026-11-02, v2.6411, the signing: the statement as its own Contract Form, Send for signature… with the four channels, Sign here now, File a signed scan…, the signed PDF on the job and the desk · PR 4 built 2026-11-03, v2.6413, the matter: Signed statements under each job on the Evidence tab, Ask… per worker, Add to evidence, the exhibit, the gap jobs · PR 5, the MCP, not started · access narrowed 2026-11-03, v2.6450: a dev and the controller alone (Diane's call of 2026-11-02, payroll data), the section tagged Controllers and devs only
 mockup: to-dos/signed-hours-statement/mockup.html
 summary: >
   A paper, made from the clock and the pay reports as they stand, that says what one worker did on one
@@ -12,10 +12,10 @@ summary: >
   ink-signing page the lien waivers use, and the Legal desk's Evidence tab; what is new is one builder,
   one window, one small table, and two verbs on the dev MCP so an agent can read and make one. The hard part is the span before the app: nothing in the app precedes
   2026-03-12, so for 2025 the paper can carry only what the worker states, marked as such.
-next: PR 4, the matter: Signed statements on the Legal desk's Evidence tab proof table with Ask… per worker, Add to evidence copying the signed PDF into legal_matter_documents (matter_document_id filled), the exhibit candidate and its lettering, the gap jobs read as gap jobs; counsel's word on what a worker's stated days for 2025 are worth is still owed (the stated block shipped in PR 3 marked as the worker's own statement).
+next: PR 5, the MCP: get_hours_statement as a composite over the shared kernel, a migration for dev_hours_statement_write, plan_hours_statement / apply_hours_statement in the plan → apply grammar, the catalog rebuilt, dev-mcp redeployed with its version bumped, the verbs' rows in the two docs, a test under src/lib/devMcp/ with the fake reader; counsel's word on what a worker's stated days for 2025 are worth is still owed (the stated block shipped in PR 3 marked as the worker's own statement).
 size: M as a train of five (S · M · M · S · S)
 blocker: counsel's word on the stated block's weight, still owed after PR 3 shipped it as the worker's own statement (Diane's call of 2026-11-02 to build now).
-ver: v2.6069 · v2.6097 · v2.6412 · v2.6411 · v2.6450
+ver: v2.6069 · v2.6097 · v2.6412 · v2.6411 · v2.6413 · v2.6450
 opinion: build — the owner took all seven calls as recommended on 2026-10-29; the paper is honest about what the app does not have
 ---
 
@@ -395,5 +395,12 @@ typed days and keeps the consent as `hours_statement`; `open-contract-form-pdf` 
 one until v2.6450 took the assistant and the pay-approved master off the paper altogether (Diane's call of 2026-11-02: payroll data). The window's **Send for signature…** opens the channel sheet (Email the link · Text the link · Copy the link ·
 Hand the phone to <name>), **Sign here now** is the last in one press, **File a signed scan…** the paper path, and a
 signed row carries **Open the signed PDF** on the list and the window. Counsel's word on the stated block is still owed;
-the block shipped marked as the worker's own statement. PR 4 claims its version with `npm run claim` and starts from
-the plan above: the Evidence tab's *Signed statements* with **Ask…** and **Add to evidence**, the exhibit candidate.
+the block shipped marked as the worker's own statement. PR 4 shipped 2026-11-03 as v2.6413: the packet reads the
+`hours_statements` on the account's jobs and the app's first clock day, each `LegalEvidenceJob` carries its statements,
+its workers and whether it is a gap job, `LegalEvidenceStatementsBand.tsx` sits under each job of *Proof the work
+happened* with **Ask <name>…** (the window on the job with the worker picked), **Add to evidence** (the signed PDF
+copied onto the matter through `hoursStatementEvidence.ts`, `matter_document_id` filled, the copy taken off again if the
+tie fails) and **Show on Evidence ↗**, the exhibit *Signed hours statements* letters under D on the desk and in the
+firm's print, and a gap job says a statement there would be the worker's own and asks no one. Drive's *Sent by us*
+stays the later S. PR 5 claims its version with `npm run claim` and starts from the plan above: `get_hours_statement`,
+the migration for `dev_hours_statement_write`, `plan_hours_statement` / `apply_hours_statement`.

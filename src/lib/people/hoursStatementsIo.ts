@@ -133,3 +133,8 @@ export async function saveHoursStatement(args: HoursStatementSave): Promise<Hour
   }
   throw lastError
 }
+
+/** The statement's copy on a legal matter's Evidence tab (v2.6413, punch list #212 PR 4): the row it was filed as, or null to untie. */
+export async function setHoursStatementMatterDocument(id: string, matterDocumentId: string | null): Promise<void> {
+  await withSupabaseRetry(() => supabase.from(TABLE).update({ matter_document_id: matterDocumentId, updated_at: new Date().toISOString() } as never).eq('id', id).select('id').single(), 'tie the statement to the matter')
+}

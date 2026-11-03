@@ -213,6 +213,31 @@ export type LegalClockSessionLike = {
   approved: boolean
   /** Rejected or revoked sessions never count as evidence. */
   disqualified: boolean
+  /** Who clocked it (v2.6413, punch list #212 PR 4): the login and its name, so the Evidence tab can ask each worker for a signed statement. Absent on an older caller. */
+  userId?: string | null
+  userName?: string | null
+}
+
+/** A signed hours statement on one of the account's jobs (v2.6413, punch list #212 PR 4), as `hours_statements` keeps it. */
+export type LegalHoursStatementLike = {
+  id: string
+  jobId: string
+  userId: string
+  workerName: string
+  recordId: string
+  /** draft · printed · sent · signed. */
+  state: string
+  periodStart: string
+  periodEnd: string
+  withPay: boolean
+  /** The hours the paper counts, from its snapshot. */
+  hours: number
+  /** Days the worker stated rather than the company recorded. */
+  statedDays: number
+  /** The day it was signed (`YYYY-MM-DD`), null until then. */
+  signedOn: string | null
+  contractDocumentId: string | null
+  matterDocumentId: string | null
 }
 
 export type LegalThreadNoteLike = { jobId: string; body: string; createdAt: string; authorName: string | null }
@@ -251,6 +276,10 @@ export type LegalPacketInput = {
   reports: ReadonlyArray<LegalReportLike>
   clockSessions: ReadonlyArray<LegalClockSessionLike>
   threadNotes: ReadonlyArray<LegalThreadNoteLike>
+  /** The signed hours statements on the jobs (v2.6413, punch list #212 PR 4). Absent on an older caller: none shown. */
+  hoursStatements?: ReadonlyArray<LegalHoursStatementLike>
+  /** The first day any clock row exists in the app (`2026-03-12` live): a job whose work predates it with no session is a gap job. Absent: no job reads as one. */
+  firstRecordedDay?: string | null
   /** For naming who flagged Collections. */
   users: ReadonlyArray<{ id: string; name: string | null }>
   /** Per-entry holds keyed by timeline entry key: true = hold back from counsel (PR 2 stores them). Since #85 item 29 everything else goes; a `false` is a no-op. */
@@ -423,9 +452,29 @@ export type LegalSaidEntry = {
   shared: boolean
 }
 
+/** A signed hours statement as the Evidence tab lists it (v2.6413). */
+export type LegalEvidenceStatement = {
+  id: string
+  recordId: string
+  workerName: string
+  state: string
+  signed: boolean
+  periodLabel: string
+  hours: number
+  withPay: boolean
+  statedDays: number
+  signedOn: string | null
+  contractDocumentId: string | null
+  matterDocumentId: string | null
+}
+
+/** Someone who clocked on the job (approved sessions), for the Evidence tab's Ask… (v2.6413). */
+export type LegalEvidenceWorker = { userId: string; name: string; sessions: number }
+
 export type LegalEvidenceJob = {
   jobId: string
   jobLabel: string
+  jobSite: string | null
   reports: number
   reportsWithGps: number
   latestReport: LegalReportLike | null
@@ -441,6 +490,12 @@ export type LegalEvidenceJob = {
   latestNote: LegalThreadNoteLike | null
   picturesLink: string | null
   driveLink: string | null
+  /** The signed hours statements on the job, newest first (v2.6413, punch list #212 PR 4). */
+  statements: LegalEvidenceStatement[]
+  /** Who clocked here, most sessions first, each one a statement can be asked of. */
+  workers: LegalEvidenceWorker[]
+  /** A gap job: nothing clocked here and the work predates the app's first recorded day, so a statement would be the worker's own. */
+  beforeTheApp: boolean
 }
 
 export type LegalStep = {
@@ -549,6 +604,8 @@ export type LegalPacket = {
   /** The day the packet was built — the views date the paper's words from it (#41 PR 1). */
   todayYmd: string
   exhibits: LegalExhibit[]
+  /** The app's first clock day (v2.6413), for the gap jobs' line; null when the caller did not read it. */
+  firstRecordedDay: string | null
 }
 
 // ---------------------------------------------------------------------------
@@ -671,9 +728,25 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     const sessions = live.filter((s) => s.approved)
     const notes = input.threadNotes.filter((n) => n.jobId === j.id).sort((a, b) => b.createdAt.localeCompare(a.createdAt))
     const workDays = sessions.map((s) => s.workDate).sort()
+    // v2.6413: who clocked here (approved), the statements already made, and whether the job predates the app.
+    const workerMap = new Map<string, LegalEvidenceWorker>()
+    for (const x of sessions) {
+      if (!x.userId) continue
+      const w = workerMap.get(x.userId)
+      if (w) w.sessions += 1
+      else workerMap.set(x.userId, { userId: x.userId, name: (x.userName ?? '').trim() || 'Unnamed', sessions: 1 })
+    }
+    const workers = Array.from(workerMap.values()).sort((p, q) => q.sessions - p.sessions || p.name.localeCompare(q.name))
+    const statements = (input.hoursStatements ?? [])
+      .filter((h) => h.jobId === j.id)
+      .map((h): LegalEvidenceStatement => ({ id: h.id, recordId: h.recordId, workerName: h.workerName, state: h.state, signed: h.state === 'signed', periodLabel: legalPeriodLabel(h.periodStart, h.periodEnd), hours: h.hours, withPay: h.withPay, statedDays: h.statedDays, signedOn: h.signedOn, contractDocumentId: h.contractDocumentId, matterDocumentId: h.matterDocumentId }))
+      .sort((p, q) => q.recordId.localeCompare(p.recordId))
+    const lastKnown = ymdOfIso(j.last_work_date) ?? ymdOfIso(j.created_at) ?? null
+    const beforeTheApp = Boolean(input.firstRecordedDay) && live.length === 0 && lastKnown != null && lastKnown < (input.firstRecordedDay as string)
     return {
       jobId: j.id,
       jobLabel: labelByJob.get(j.id) ?? '—',
+      jobSite: (j.job_address ?? '').trim() || null,
       reports: reports.length,
       reportsWithGps: reports.filter((r) => r.hasGps).length,
       latestReport: reports[0] ?? null,
@@ -687,6 +760,9 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
       latestNote: notes[0] ?? null,
       picturesLink: (j.job_pictures_link ?? '').trim() || null,
       driveLink: (j.google_drive_link ?? '').trim() || null,
+      statements,
+      workers,
+      beforeTheApp,
     }
   })
   const evidenceByJob = new Map(evidence.map((e) => [e.jobId, e] as const))
@@ -1109,6 +1185,8 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     { title: 'Lien notices and filings', count: lienFilings.length },
     { title: 'What was said — contacts, promises, calls', count: timeline.filter((e) => e.shared).length },
     { title: 'Field reports and clock sessions', count: evidence.reduce((s, e) => s + e.reports + e.sessions, 0) },
+    // v2.6413 (punch list #212 PR 4): the signed statements, one record each, under D with the field evidence.
+    { title: 'Signed hours statements', count: evidence.reduce((s, e) => s + e.statements.filter((x) => x.signed).length, 0) },
     { title: 'Property record', count: properties.filter((p) => p.source !== 'job_address').length },
   ]
   const exhibits: LegalExhibit[] = []
@@ -1139,6 +1217,7 @@ export function buildLegalPacket(input: LegalPacketInput): LegalPacket {
     paper: { agreements, lienClock, demandLetters, lienFilings, timelines, envelopes },
     theirWord: { timeline, firstBillYmd, heldCount, kept, decided, broken },
     evidence,
+    firstRecordedDay: input.firstRecordedDay ?? null,
     feesAndSteps: { steps },
     theory,
     worth,
@@ -1160,6 +1239,37 @@ export function quickNet(balance: number, fee: LegalFeeModel = LEGAL_DEFAULT_FEE
 }
 
 /** The clock sessions cell, one wording for the desk, the firm's view and both prints (item 25): `2 approved (2 with GPS) · 1 awaiting approval`. */
+/** `June 1 – June 13, 2026`, or across a year `September 15, 2025 – March 11, 2026`: a statement's span as its paper names it. */
+export function legalPeriodLabel(from: string, to: string): string {
+  const M = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+  const p = (ymd: string) => {
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(ymd ?? '')
+    return m ? { y: Number(m[1]), mo: Number(m[2]), d: Number(m[3]) } : null
+  }
+  const a = p(from)
+  const b = p(to)
+  if (!a || !b) return `${from} – ${to}`
+  if (a.y === b.y) return `${M[a.mo - 1]} ${a.d} – ${M[b.mo - 1]} ${b.d}, ${a.y}`
+  return `${M[a.mo - 1]} ${a.d}, ${a.y} – ${M[b.mo - 1]} ${b.d}, ${b.y}`
+}
+
+/** The Evidence row's words on its statements (v2.6413): `2 signed · 1 waiting for a signature · 1 not sent yet`, or nothing signed yet. */
+export function legalStatementsWords(statements: ReadonlyArray<Pick<LegalEvidenceStatement, 'state'>>): string {
+  if (statements.length === 0) return 'Nothing signed here yet.'
+  const n = (k: string) => statements.filter((s) => s.state === k).length
+  const parts: string[] = []
+  if (n('signed')) parts.push(`${n('signed')} signed`)
+  if (n('sent')) parts.push(`${n('sent')} waiting for a signature`)
+  const open = n('draft') + n('printed')
+  if (open) parts.push(`${open} not sent yet`)
+  return parts.join(' · ')
+}
+
+/** A gap job's line (v2.6413): what the app has nothing of, said plainly. */
+export function legalGapJobWords(firstRecordedDay: string | null | undefined): string {
+  return `Nothing clocked here. The app recorded nothing before ${firstRecordedDay ? legalPeriodLabel(firstRecordedDay, firstRecordedDay).replace(/ – .*?,/, ',') : 'its first day'}, so a statement for this job would be the worker’s own, not the company’s record.`
+}
+
 export function legalSessionWords(e: Pick<LegalEvidenceJob, 'sessions' | 'sessionsWithGps' | 'awaitingApproval'>): string {
   const counted = `${e.sessions} approved${e.sessions ? ` (${e.sessionsWithGps} with GPS)` : ''}`
   return e.awaitingApproval ? `${counted} · ${e.awaitingApproval} awaiting approval` : counted

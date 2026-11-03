@@ -36918,6 +36918,42 @@ export type Database = {
       }
       dev_mcp_reveal_key: { Args: { p_credential_id: string }; Returns: string }
       dev_migration_ledger_tail: { Args: { p_n?: number }; Returns: Json }
+      dev_on_site_container: {
+        Args: { p_job_id: string; p_ref: string }
+        Returns: {
+          code: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          job_id: string
+          kind: string
+          label: string
+          lat: number | null
+          lng: number | null
+          place_id: string | null
+          retired_at: string | null
+          where_note: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "job_containers"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      dev_on_site_part: {
+        Args: { p_line: Json; p_n: number; p_number_key: string }
+        Returns: {
+          manufacturer: string
+          part_id: string
+          part_name: string
+          quantity: number
+        }[]
+      }
+      dev_on_site_write: {
+        Args: { p: Json; p_dry_run?: boolean }
+        Returns: Json
+      }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
         Returns: undefined
@@ -40386,6 +40422,10 @@ export type Database = {
         Returns: string
       }
       on_site_can_touch_job: { Args: { p_job_id: string }; Returns: boolean }
+      on_site_line_on_hand: {
+        Args: { p_container_id: string; p_part_id: string; p_part_name: string }
+        Returns: number
+      }
       open_ar_rejected_check_cases: { Args: never; Returns: Json }
       open_ar_unbanked_check_cases: {
         Args: { p_days?: number; p_floor?: string; p_quiet?: boolean }

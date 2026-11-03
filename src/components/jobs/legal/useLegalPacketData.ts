@@ -12,6 +12,7 @@ import {
   type LegalContactLike,
   type LegalCustomerLike,
   type LegalFeeModel,
+  type LegalHoursStatementLike,
   type LegalPacket,
   type LegalReportLike,
   type LegalThreadNoteLike,
@@ -25,6 +26,7 @@ import type { LegalDeskItemLike } from '../../../lib/legal/legalLienPaper'
 import type { CustomerAddressRow } from '../../../lib/jobs/lienProperty'
 import type { LegalJobOwnerRow } from '../../../lib/legal/legalProperty'
 import type { LegalGapAnswerLike } from '../../../lib/legal/legalGapAnswers'
+import { buildHoursStatement, type HoursStatementInput } from '../../../lib/people/hoursStatement'
 
 /**
  * Loads every record behind one account's legal packet and folds them through
@@ -41,7 +43,9 @@ export type LegalPacketData = {
   reload: () => void
 }
 
-type ClockSessionRow = { job_ledger_id: string | null; work_date: string; clocked_in_at: string; clocked_out_at: string | null; clock_in_lat: number | null; approved_at: string | null; rejected_at: string | null; revoked_at: string | null }
+type ClockSessionRow = { job_ledger_id: string | null; work_date: string; clocked_in_at: string; clocked_out_at: string | null; clock_in_lat: number | null; approved_at: string | null; rejected_at: string | null; revoked_at: string | null; user_id: string | null; worker: { name: string | null } | Array<{ name: string | null }> | null }
+/** `hours_statements` as the Evidence tab reads it (v2.6413, punch list #212 PR 4); the snapshot carries the kernel's input for the hours. */
+type HoursStatementRow = { id: string; job_ledger_id: string; user_id: string; record_id: string; state: string; period_start: string; period_end: string; with_pay: boolean; stated_days: unknown; snapshot: { input?: HoursStatementInput } | null; updated_at: string; contract_document_id: string | null; matter_document_id: string | null; worker: { name: string | null } | Array<{ name: string | null }> | null }
 type ReportRow = { created_at: string; created_by_name: string | null; template_name: string | null; reported_at_lat: number | null }
 type ThreadNoteRow = { job_id: string; body: string; created_at: string; author: { name: string | null } | Array<{ name: string | null }> | null }
 type ContactEntryRow = { id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }
@@ -53,6 +57,11 @@ const db = supabase as unknown as SupabaseClient
 
 /** PostgREST caps a plain select at 1,000 rows; Collections accounts sit far under it, and the cap is named here so a runaway one is a known shape. */
 const ROW_CAP = 1000
+/** An embedded `users(name)`, as PostgREST hands it back: one row, or a one-row list on an older client. */
+function nameOf(v: { name: string | null } | Array<{ name: string | null }> | null | undefined): string | null {
+  const one = Array.isArray(v) ? v[0] : v
+  return (one?.name ?? '').trim() || null
+}
 
 const ADDRESS_COLUMNS =
   'id, customer_id, address, county, county_source, legal_description, owner_mode, owner_name, owner_company, owner_mailing_address, parcel_id, parcel_source, parcel_tax_year, parcel_looked_up_at, homestead, property_kind, is_primary, note, sequence_order, created_at, updated_at'
@@ -177,12 +186,12 @@ export function useLegalPacketData(
           }, []),
           src<LegalClockSessionLike[]>('clock sessions', async () => {
             const rows = (await withSupabaseRetry<ClockSessionRow[]>(
-              () => db.from('clock_sessions').select('job_ledger_id, work_date, clocked_in_at, clocked_out_at, clock_in_lat, approved_at, rejected_at, revoked_at').in('job_ledger_id', jobIds).order('work_date').limit(ROW_CAP),
+              () => db.from('clock_sessions').select('job_ledger_id, work_date, clocked_in_at, clocked_out_at, clock_in_lat, approved_at, rejected_at, revoked_at, user_id, worker:users!clock_sessions_user_id_fkey(name)').in('job_ledger_id', jobIds).order('work_date').limit(ROW_CAP),
               'load legal packet clock sessions',
             )) ?? []
             return rows
               .filter((r) => r.job_ledger_id)
-              .map((r): LegalClockSessionLike => ({ jobId: r.job_ledger_id as string, workDate: r.work_date, clockedInAt: r.clocked_in_at, clockedOutAt: r.clocked_out_at, hasGps: r.clock_in_lat != null, approved: r.approved_at != null, disqualified: r.rejected_at != null || r.revoked_at != null }))
+              .map((r): LegalClockSessionLike => ({ jobId: r.job_ledger_id as string, workDate: r.work_date, clockedInAt: r.clocked_in_at, clockedOutAt: r.clocked_out_at, hasGps: r.clock_in_lat != null, approved: r.approved_at != null, disqualified: r.rejected_at != null || r.revoked_at != null, userId: r.user_id, userName: nameOf(r.worker) }))
           }, []),
           src<LegalThreadNoteLike[]>('job notes', async () => {
             const rows = (await withSupabaseRetry<ThreadNoteRow[]>(
@@ -223,6 +232,44 @@ export function useLegalPacketData(
           return { gapKey: r.gap_key, text: r.answer, by: userName(r.answered_by), ymd: calendarYmdInAppTzFromIso(r.answered_at), documentId: r.document_id, documentTitle: (doc?.title ?? '').trim() }
         })
       }, [])
+      // v2.6413 (punch list #212 PR 4): the signed hours statements on the jobs, and the app's first clock day for the gap jobs.
+      // The statements' policy is the payroll roles' and an assistant's (hours only); anyone else reads none, and the tab says so by showing none.
+      const [hoursStatements, firstRecordedDay] = await Promise.all([
+        src<LegalHoursStatementLike[]>('signed hours statements', async () => {
+          const rows = (await withSupabaseRetry<HoursStatementRow[]>(
+            () => db.from('hours_statements').select('id, job_ledger_id, user_id, record_id, state, period_start, period_end, with_pay, stated_days, snapshot, updated_at, contract_document_id, matter_document_id, worker:users!hours_statements_user_id_fkey(name)').in('job_ledger_id', jobIds).order('record_id', { ascending: false }).limit(ROW_CAP),
+            'load legal packet hours statements',
+          )) ?? []
+          return rows.map((r): LegalHoursStatementLike => {
+            let hours = 0
+            try {
+              if (r.snapshot?.input) hours = buildHoursStatement(r.snapshot.input).totals.hours
+            } catch {
+              hours = 0
+            }
+            return {
+              id: r.id,
+              jobId: r.job_ledger_id,
+              userId: r.user_id,
+              workerName: nameOf(r.worker) ?? r.snapshot?.input?.worker?.name ?? 'Worker',
+              recordId: r.record_id,
+              state: r.state,
+              periodStart: r.period_start,
+              periodEnd: r.period_end,
+              withPay: r.with_pay,
+              hours,
+              statedDays: Array.isArray(r.stated_days) ? r.stated_days.length : 0,
+              signedOn: r.state === 'signed' ? calendarYmdInAppTzFromIso(r.updated_at) : null,
+              contractDocumentId: r.contract_document_id,
+              matterDocumentId: r.matter_document_id,
+            }
+          })
+        }, []),
+        src<string | null>('first recorded day', async () => {
+          const rows = (await withSupabaseRetry<Array<{ work_date: string }>>(() => db.from('clock_sessions').select('work_date').is('rejected_at', null).is('revoked_at', null).order('work_date', { ascending: true }).limit(1), 'load the first recorded day')) ?? []
+          return rows[0]?.work_date ?? null
+        }, null),
+      ])
       const jobAddressIds = [...new Set(links.map((l) => l.customer_address_id).filter((v): v is string => Boolean(v)))]
       const [jobAddresses, jobOwners] = await Promise.all([
         src<CustomerAddressRow[]>('job property records', async () => {
@@ -258,6 +305,8 @@ export function useLegalPacketData(
           reports,
           clockSessions: sessions,
           threadNotes: notes,
+          hoursStatements,
+          firstRecordedDay,
           users,
           holdOverrides: holdOverrides ?? {},
           fee,

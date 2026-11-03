@@ -6,6 +6,8 @@
 import type { Dispatch, FormEvent, SetStateAction } from 'react'
 import TripChargeAmountsSettingsBlock from './TripChargeAmountsSettingsBlock'
 import HourlyChargeRateSettingsBlock from './HourlyChargeRateSettingsBlock'
+import RatesChargedByCrewSettingsBlock from './RatesChargedByCrewSettingsBlock'
+import MaterialsMarkupSettingsBlock from './MaterialsMarkupSettingsBlock'
 import HideHcpFieldSettingsBlock from './HideHcpFieldSettingsBlock'
 import SubPortalPaySettingsBlock from './SubPortalPaySettingsBlock'
 import LegalFirmSettingsBlock from './LegalFirmSettingsBlock'
@@ -311,6 +313,8 @@ export default function SettingsJobsTab({
 
       <TripChargeAmountsSettingsBlock />
       <HourlyChargeRateSettingsBlock />
+      <RatesChargedByCrewSettingsBlock />
+      <MaterialsMarkupSettingsBlock />
 
       <JobAddressCityListSettingsBlock />
       <TxCountyMapSettingsBlock />
