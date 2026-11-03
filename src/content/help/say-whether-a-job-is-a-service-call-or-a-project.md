@@ -66,4 +66,5 @@ Pick **Projects** or **Service calls** in the same list to see one kind alone. A
 - A job that only carries a GC project's bills is a project.
 - An HCP number alone reads as a service call. A bid, stages or a price before the work comes first.
 - A job already billed with no clock time reads from its other facts. The price may have come at billing.
+- The kind decides the [Projects board](/help/see-where-every-project-stands-and-set-its-expected-hours#which-jobs-land-here). A Working job reading Project lands there. A job reading Service call stays off.
 - See [know when Edit Job saves my changes](/help/edit-job-autosave) for how the rest of the Edit tab saves.

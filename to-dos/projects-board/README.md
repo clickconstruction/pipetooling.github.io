@@ -14,7 +14,7 @@ summary: >
   strip answers "what was that day", "what does this stage cost to reach" and "which stage is
   this". The superintendent's phone draws the same strip from the same kernel, so the office and
   the field read one number. The spike proved it on eleven live projects and settled the shape.
-next: The owner reads the board one morning against live projects and moves one number; then delete the folder. #238's job kind replaces the gate's guess when it ships.
+next: The owner reads the board one morning against live projects and moves one number; then delete the folder. The gate reads #238's job kind since v2.6402.
 size: L as a train of five (M · S · M · M · S); one migration (expected hours); no edge function
 blocker: none. The bonus and what counts as certified stay on #234; this card stops at the line and the lever.
 ver: v2.3297 · 3299 · 5245 · 6077 · 5929 · 2145 · 5837
@@ -91,9 +91,12 @@ assumed split, so stage shares come out near equal); the board's project read is
 
 ## The design
 
-**The gate.** A working project: status *working* and either a stage marked *In order* or a price
-of $25,000 and up, read the way the Pipeline recognizes stages. #238's kind replaces that guess
-when it ships. Service calls stay out.
+**The gate.** A working project: status *working* and the job's kind (#238, `jobKindOfRow`, the same
+read as the job's chip) reads *project*, at any price (v2.6402). A job reading *service* stays off,
+even priced over $25,000. A job reading *Kind not set* keeps the guess the kind replaced, a stage
+marked *In order* or a price of $25,000 and up, read the way the Pipeline recognizes stages, so
+nothing the owner reads each morning goes missing while the office works through the Fill them in
+deck. A billing-only job stays off, as on the Pipeline's Working column: nobody clocks on it.
 
 **Who sees it.** The leader (master technician), the superintendents, the assistant and the
 controller. The door is a *Projects* press on the Pipeline's command bar beside *Forecast*, shown to
@@ -211,8 +214,9 @@ Each with the recommendation the build takes unless the owner says otherwise:
    own and its reason; the point is that someone else moved it.
 2. **Does a superintendent see other superintendents' projects?** Yes, the whole board; the
    number on his own card is the one that matters to him, and seeing the rest is the incentive.
-3. **The gate until #238 ships?** *In order* stage or $25,000 and up. A card for a job that should
-   not be there costs nothing; a missing one costs the morning read.
+3. **The gate now that #238 has shipped?** The job's kind, and for a job with no kind yet the old
+   guess, *In order* stage or $25,000 and up. A card for a job that should not be there costs nothing;
+   a missing one costs the morning read.
 4. **Where does the target live on the Costs tab?** Nowhere: the Costs tab is the budget. The
    board is the target's only home, and the phone reads it.
 
