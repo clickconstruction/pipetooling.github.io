@@ -1,7 +1,7 @@
 /**
  * A residential customer's stamps (`FlowStamps`) for `readFlow`, from their Pipeline jobs (`jobs_ledger.id`):
- * `residentialStampsFor` reads each job's dispatch, clock-ins, reports, estimates, moves on the Jobs board, bills and
- * texts. A sub's stamps (`subStampsFor`) live here too, from their sheets (`people_labor_jobs.id`) and work orders: the
+ * `residentialStampsFor` reads each job's dispatch, clock-ins, reports, estimates, moves on the Jobs board, bills, texts
+ * and the warranties sent in place of a contract. A sub's stamps (`subStampsFor`) live here too, from their sheets (`people_labor_jobs.id`) and work orders: the
  * sheet's money (`subLaborOutstanding`) is another rule that must not ride along. Pure, as `load.ts` is. It lives apart
  * from `load.ts` because the bills' rules it reads (`billTruth`, `billedExpectedPay`, `billToParty`,
  * `paymentAttribution`) and the report preview would otherwise ride into every edge function that copies the flow's
@@ -72,6 +72,11 @@ export type PipelineMessageRow = {
   who_user_id: string | null
   who_text: string
 }
+/**
+ * `job_contracts`: a job agreement on a Pipeline job (the Contract Desk's row), the kind it is (`contract`, or the
+ * `warranty` sent in place of one), where it stands, and the days it went and was signed. A voided one is gone.
+ */
+export type JobAgreementRow = { id: string; job_id: string; kind: string; status: string; sent_at: string | null; signed_at: string | null; voided_at: string | null }
 /** `contact_step_skips` on a Pipeline job. */
 export type PipelineStepSkipRow = { step_key: string; jobs_ledger_id: string | null; why: string; by_name: string; created_at: string; undone_at: string | null }
 
@@ -92,6 +97,8 @@ export type ResidentialRows = {
   invoices?: readonly PipelineInvoiceRow[]
   payments?: readonly PipelinePaymentRow[]
   messages?: readonly PipelineMessageRow[]
+  /** Their job agreements: the warranties sent in place of a contract are the Warranty step's rounds. */
+  agreements?: readonly JobAgreementRow[]
   skips?: readonly PipelineStepSkipRow[]
   /** Pay speeds (`get_billed_customer_pay_speeds`), for a bill's expected pay day; null leaves the day unset. */
   paySpeeds?: PaySpeedData | null
@@ -236,6 +243,25 @@ export function paidRounds(rows: ResidentialRows, jobId: string, now: Date): Rou
   })
 }
 
+/**
+ * The warranties on one job: one `warranty_signed` round per warranty sent in place of a contract (`job_contracts` of
+ * kind `warranty`, the Contract Desk's row), signed on the day it was signed, else waiting on them since it went. A
+ * draft was never sent and a voided one is gone, so neither is a round; a voided-and-redone warranty is a new row and a
+ * new round. One signed on the office's device or filed from paper has a signing day and may have no sending day.
+ */
+export function warrantyRounds(rows: ResidentialRows, jobId: string): RoundStamp[] {
+  const sent = (rows.agreements ?? [])
+    .filter((a) => a.job_id === jobId && a.kind === 'warranty' && !a.voided_at && ((a.status === 'sent' && a.sent_at) || a.status === 'signed'))
+    .sort((a, b) => (a.sent_at ?? a.signed_at ?? '').localeCompare(b.sent_at ?? b.signed_at ?? '') || a.id.localeCompare(b.id))
+  return sent.map((a, i) => ({
+    key: a.id,
+    name: sent.length === 1 ? 'Warranty' : `Warranty ${i + 1}`,
+    opened: a.sent_at ?? a.signed_at,
+    due: null,
+    stamps: [a.status === 'signed' ? stamp('warranty_signed', 'ok', a.signed_at) : stamp('warranty_signed', 'wait', a.sent_at)],
+  }))
+}
+
 /** Their Pipeline jobs: the ones they are the customer on and the ones the office tied them to, the star first. */
 function pipelineJobsOf(rows: ResidentialRows): { jobIds: string[]; defaultJobId: string | null } {
   const ids = new Set(rows.jobs.map((j) => j.id))
@@ -259,6 +285,7 @@ export function residentialStampsFor(rows: ResidentialRows, now: Date): FlowStam
     ...lane([...visitStamps(rows, jobId), ...estimateStamps(rows, jobId), ...statusStamps(rows, jobId), ...reviewStamps(rows, jobId)], {
       billed: billedRounds(rows, jobId),
       paid: paidRounds(rows, jobId, now),
+      warranty_paper: warrantyRounds(rows, jobId),
     }),
   })
   return {
