@@ -60,7 +60,7 @@ const job931 = makeJob({ id: 'j931', hcp_number: '931', job_name: 'Lavender Spri
 const job432 = makeJob({ id: 'j432', hcp_number: '432', job_name: 'Old import', pct_complete: 100, revenue: 900, last_work_date: '2026-10-02' })
 const rows891And931 = [summaryRow(job891, 10_000, 2_000), summaryRow(job931, 48_700)]
 
-function buildView(rows: JobSummaryRow[], search: string, prefs: JobSummaryViewPrefs): JobSummaryViewBundle<JobSummaryRow> {
+function buildView(rows: JobSummaryRow[], search: string, prefs: JobSummaryViewPrefs, hygiene: JobSummaryViewBundle<JobSummaryRow>['hygiene'] = null): JobSummaryViewBundle<JobSummaryRow> {
   const enriched = enrichJobSummaryRows({ rows, reportPctByJobId: new Map(), ledger: null, method: prefs.method })
   const visible = filterAndSortJobSummaryRows({ rows: enriched, prefs, search, startYmd: START, endYmd: END })
   const groups = groupJobSummaryRows(visible, prefs.cutBy)
@@ -78,7 +78,7 @@ function buildView(rows: JobSummaryRow[], search: string, prefs: JobSummaryViewP
     allRows: enriched,
     totals: summarizeJobSummaryRows(visible),
     hiddenByStatus: jobSummaryRowsHiddenByStatus({ rows: enriched, prefs, search, startYmd: START, endYmd: END }),
-    hygiene: null,
+    hygiene,
     compare: null,
     groups,
     concentration: jobSummaryConcentration(groups),
@@ -95,10 +95,10 @@ function buildView(rows: JobSummaryRow[], search: string, prefs: JobSummaryViewP
   }
 }
 
-function renderTab(args: { search: string; ledgerJobs: JobWithDetails[]; rows: JobSummaryRow[]; liftedJobIds?: ReadonlySet<string> }) {
+function renderTab(args: { search: string; ledgerJobs: JobWithDetails[]; rows: JobSummaryRow[]; liftedJobIds?: ReadonlySet<string>; hygiene?: JobSummaryViewBundle<JobSummaryRow>['hygiene'] }) {
   const prefs: JobSummaryViewPrefs = { ...JOB_SUMMARY_VIEW_DEFAULTS, window: '90d' }
   const props: JobsJobSummaryTabProps = {
-    view: buildView(args.rows, args.search, prefs),
+    view: buildView(args.rows, args.search, prefs, args.hygiene ?? null),
     canOpenSessionNotes: true,
     users: [],
     error: null,
@@ -203,5 +203,43 @@ describe('JobsJobSummaryTab · the search wins (v2.5745)', () => {
     expect((press.closest('[data-empty-state]') as HTMLElement).textContent).toBe('No jobs match the filters. Clear the filters')
     fireEvent.click(press)
     expect(view.setPrefs).toHaveBeenCalledWith({ status: 'all', window: 'all', budgetFilter: 'all' })
+  })
+})
+
+describe('JobsJobSummaryTab · the header says what each number is for (v2.6389)', () => {
+  it('804 typed: billed in full under 100% — the chip on the % cell, the note, the Burn words, the tiles and the Proj. true margin header', async () => {
+    const job804 = makeJob({
+      id: 'j804',
+      hcp_number: '804',
+      job_name: 'Auto parts store',
+      pct_complete: 40,
+      revenue: 32_600,
+      status: 'billed',
+      last_work_date: '2026-10-20',
+      invoices: [makeInvoice({ status: 'paid', amount: 11_736 }), makeInvoice({ status: 'paid', amount: 11_736 }), makeInvoice({ status: 'billed', amount: 6_520 }), makeInvoice({ status: 'billed', amount: 2_608 })],
+    })
+    renderTab({ search: '804', ledgerJobs: [job804, job931], rows: [summaryRow(job804, 32_600, 19_957.12), summaryRow(job931, 48_700)] })
+    await settle()
+    expect(drawnJobCells()).toEqual([expect.stringContaining('J804')])
+    expect(screen.getByTestId('job-summary-billed-in-full').textContent).toBe('billed in full')
+    expect(note()).toBe('1 job matches your search. Job 804 is still in progress, so the Show chip stepped aside. Job 804 is billed in full, but its % says 40% done. Read at 40% it is under water. Read as finished its margin is 39%.')
+    expect(screen.getByText('94% spent · 40% done')).toBeTruthy()
+    expect(screen.getByText('matching your search')).toBeTruthy()
+    expect(screen.getByText('Revenue earned')).toBeTruthy()
+    expect(screen.getByText('to date · 40% of $32,600')).toBeTruthy()
+    expect(screen.getByText('Proj. true margin')).toBeTruthy()
+    expect(screen.getByText(/1 job is billed in full but under 100%/)).toBeTruthy()
+  })
+
+  it('the window-wide chips fold into one line while a search is on, and a press opens them', async () => {
+    const hygiene = { unallocatedUsd: 0, unallocatedDays: 0, pendingFieldSessions: 15, pendingFieldHours: 127.9, poolUsd: 0, carriedInUsd: 0, activityUsd: 0, carryUsd: 0, inFlightUsd: 6_517.2, reconciles: true, offListUsd: 12_745.4, offListJobs: 10 }
+    renderTab({ search: '891', ledgerJobs: [job891, job931], rows: rows891And931, hygiene })
+    await settle()
+    const fold = screen.getByTestId('job-summary-window-chips-fold')
+    expect(fold.textContent).toBe('Across the last 90 days: 15 sessions await approval · $6,517 of overhead in flight · $12,745 on 10 jobs off this list ▾')
+    expect(screen.queryByText(/127\.9 h counted as recorded time/)).toBeNull()
+    fireEvent.click(fold)
+    expect(screen.getByText(/127\.9 h counted as recorded time/)).toBeTruthy()
+    expect(screen.getByTestId('job-summary-window-chips-fold').textContent).toMatch(/▴$/)
   })
 })
