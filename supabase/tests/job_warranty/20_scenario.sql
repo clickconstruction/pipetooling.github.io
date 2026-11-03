@@ -37,7 +37,7 @@ $$;
 -- The residential Warranty step in one line, as the residential bed reads a step.
 CREATE FUNCTION jwb.step(p_key text) RETURNS text LANGUAGE sql AS $$
   SELECT concat_ws('|', s.position, s.phase, s.who, array_to_string(s.facts, ','), array_to_string(s.papers, ','),
-    coalesce(s.loop_words, '-'), coalesce(s.loop_ends, '-'), s.aside, coalesce(s.nudge_days::text, '-'), coalesce(s.nudge_how, '-'),
+    coalesce(s.loop_words, '-'), coalesce(s.loop_ends, '-'), s.aside::text, coalesce(s.nudge_days::text, '-'), coalesce(s.nudge_how, '-'),
     coalesce(s.nudge_send, '-'), s.usual, coalesce(s.later_en, '-'), s.name, s.name_es)
   FROM public.flow_steps s JOIN public.flows f ON f.id = s.flow_id WHERE f.kind = 'residential' AND s.step_key = p_key
 $$;
