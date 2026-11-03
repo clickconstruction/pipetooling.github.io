@@ -20807,6 +20807,8 @@ export type Database = {
           bill_copy_other_party: boolean
           bill_to_party: string
           billing_only: boolean
+          charge_rule: string | null
+          charge_shape: string | null
           click_number: string
           collections_at: string | null
           collections_by: string | null
@@ -20852,6 +20854,7 @@ export type Database = {
           lien_payment_bond: string
           lien_retainage_held: number | null
           master_user_id: string
+          materials_markup_pct: number | null
           owner_contract_confirmed_at: string | null
           owner_contract_confirmed_by: string | null
           partner_auto_exempt_at: string | null
@@ -20881,6 +20884,8 @@ export type Database = {
           bill_copy_other_party?: boolean
           bill_to_party?: string
           billing_only?: boolean
+          charge_rule?: string | null
+          charge_shape?: string | null
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -20926,6 +20931,7 @@ export type Database = {
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id: string
+          materials_markup_pct?: number | null
           owner_contract_confirmed_at?: string | null
           owner_contract_confirmed_by?: string | null
           partner_auto_exempt_at?: string | null
@@ -20955,6 +20961,8 @@ export type Database = {
           bill_copy_other_party?: boolean
           bill_to_party?: string
           billing_only?: boolean
+          charge_rule?: string | null
+          charge_shape?: string | null
           click_number?: string
           collections_at?: string | null
           collections_by?: string | null
@@ -21000,6 +21008,7 @@ export type Database = {
           lien_payment_bond?: string
           lien_retainage_held?: number | null
           master_user_id?: string
+          materials_markup_pct?: number | null
           owner_contract_confirmed_at?: string | null
           owner_contract_confirmed_by?: string | null
           partner_auto_exempt_at?: string | null
@@ -34654,6 +34663,7 @@ export type Database = {
           archived_at: string | null
           bid_board_self_highlight: Json | null
           calibration_standard: boolean
+          charge_standing: string | null
           counttooling_user_id: string | null
           created_at: string | null
           dispatch_mode_enabled: boolean | null
@@ -34688,6 +34698,7 @@ export type Database = {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
           calibration_standard?: boolean
+          charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
@@ -34722,6 +34733,7 @@ export type Database = {
           archived_at?: string | null
           bid_board_self_highlight?: Json | null
           calibration_standard?: boolean
+          charge_standing?: string | null
           counttooling_user_id?: string | null
           created_at?: string | null
           dispatch_mode_enabled?: boolean | null
