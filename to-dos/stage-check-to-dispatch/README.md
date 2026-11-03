@@ -15,7 +15,7 @@ summary: >
 next: PR 2, the context window and the loop back. PR 3, the marks, can follow it: #246's door is on main.
 size: M as a train of three (S · M · S); one migration (two columns on dispatch_requests); no edge function beyond the push that already sends
 blocker: none. Call 1 (the reason set) and call 2 (who may close) take the recommendations below as defaults.
-ver: v2.6360 · 6462 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
+ver: v2.6360 · 6462 · 6466 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
 opinion: now — the sheet's second pass made the row the place the crew stands; a dead end there sends them to a text message, and the context is lost the moment they type one
 mockup: to-dos/stage-check-to-dispatch/mockup.html
 ---
@@ -186,6 +186,6 @@ the toast, the request with both columns filled, the push function answering 200
 taken off (both kept as ZZ rows). Found in the walk's reading: a *Can't do it* send draws as the
 *Customer waiting* card, which keeps the doors but drops the *Stage check* tag; v2.6462 draws it as
 its own row instead: the tag, the title and both doors under a red *Can't do it · waiting 4 min*
-line, with **Lower priority** beside the thread. The app-wide *Customer waiting* banner still counts
-such a check and names it *A customer*; whether a stopped crew raises that banner is the owner's
-call. PR 2 is next; PR 3 can follow it.
+line, with **Lower priority** beside the thread. On the owner's call of 2026-11-03 it stays off the
+app-wide *Customer waiting* banner and **Needs you** too (v2.6466): those stay a customer's. PR 2 is
+next; PR 3 can follow it.

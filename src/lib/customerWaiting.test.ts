@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildCustomerWaitingBanner, canHideForMe, customerWaitingInboxHref, isInboxRoute, pruneHiddenIds, rowsVisibleToViewer, summarizeCustomerWaiting, type CustomerWaitingRow } from './customerWaiting'
+import { buildCustomerWaitingBanner, canHideForMe, customerWaitingInboxHref, isInboxRoute, pruneHiddenIds, rowsVisibleToViewer, summarizeCustomerWaiting, waitsOnTheBanner, type CustomerWaitingRow } from './customerWaiting'
 
 const NOW = Date.parse('2026-09-10T19:14:00Z')
 const minAgo = (m: number) => new Date(NOW - m * 60_000).toISOString()
@@ -117,5 +117,42 @@ describe('hide for me (v2.3524)', () => {
   it('prunes hidden ids to the rows still open and high', () => {
     expect(pruneHiddenIds(new Set(['mine', 'gone']), [calledByMe])).toEqual(['mine'])
     expect(pruneHiddenIds(new Set(), [calledByMe])).toEqual([])
+  })
+})
+
+describe('a stage check stays off the banner and Needs You (v2.6466)', () => {
+  const stageCheck = (over: Partial<CustomerWaitingRow> & { id: string }) =>
+    row({
+      title: "Trim Set · “Is the pan drain run to the hub?” · can't do it · JP1088 ZZ TEST Riders Walk",
+      reference_summary: 'JP1088 · ZZ TEST Riders Walk',
+      pending_action: 'stage_check',
+      pending_payload: { stage_check: { fixture_id: 'f3', question_id: 't3', reason: 'cant_do', stage_name: 'Trim Set' } },
+      ...over,
+    })
+
+  it('is a customer\'s banner: a stage check never waits on it', () => {
+    expect(waitsOnTheBanner({ pending_action: 'stage_check' })).toBe(false)
+    expect(waitsOnTheBanner({ pending_action: null })).toBe(true)
+    expect(waitsOnTheBanner({ pending_action: 'gc_stage_ask' })).toBe(true)
+  })
+
+  it('draws no banner and no Needs You item when only a stage check is open and high', () => {
+    expect(buildCustomerWaitingBanner([stageCheck({ id: 's' })], NOW)).toBeNull()
+    expect(summarizeCustomerWaiting([stageCheck({ id: 's' })], NOW)).toBeNull()
+  })
+
+  it('never takes the lead from a waiting customer, however long it has waited, nor counts as one', () => {
+    const rows = [stageCheck({ id: 's', created_at: minAgo(50) }), row({ id: 'c', created_at: minAgo(5) })]
+    const b = buildCustomerWaitingBanner(rows, NOW)
+    expect(b?.lead.id).toBe('c')
+    expect(b?.leadName).toBe('Jane Doe')
+    expect(b?.others).toBe(0)
+    expect(b?.waitingCount).toBe(1)
+    expect(summarizeCustomerWaiting(rows, NOW)).toMatchObject({ count: 1, uncalled: 1, oldestMinutes: 5, leadName: 'Jane Doe' })
+  })
+
+  it('lets the banner calm to amber once every customer is called, with a stage check still open', () => {
+    const rows = [stageCheck({ id: 's', created_at: minAgo(50) }), row({ id: 'c', last_called_at: minAgo(2), last_called_by: { name: 'Sam Rivera' } })]
+    expect(buildCustomerWaitingBanner(rows, NOW)?.state).toBe('called')
   })
 })

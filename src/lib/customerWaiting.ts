@@ -11,6 +11,7 @@
  *             call leads, "Sam called Jane Doe 2:14 pm", Open only.
  *   none    — nothing open and high: no banner, no item.
  */
+import { STAGE_CHECK_ACTION } from './jobs/stageCheckDispatch'
 import { parsePortalRequestPayload } from './portalRequestPayload'
 import { describeCalled, describeWait, firstName, portalKindLabel, type RequestInbox, type WaitDescription } from './requestPriority'
 
@@ -65,14 +66,25 @@ function ms(iso: string | null): number {
   return Number.isFinite(t) ? t : Number.POSITIVE_INFINITY
 }
 
+/**
+ * Whether an open high row belongs on the banner and in Needs You (v2.6466): a customer's, never a stage check a crew
+ * sent with *Can't do it* (punch list #245). That check leads the Dispatch inbox under its own red line, and its push
+ * already reached the group. Nobody calls it, so on the banner it would read *A customer*, never turn amber, and could
+ * take the lead from a customer who can be called. The owner's call, 2026-11-03.
+ */
+export function waitsOnTheBanner(row: Pick<CustomerWaitingRow, 'pending_action'>): boolean {
+  return row.pending_action !== STAGE_CHECK_ACTION
+}
+
 export function buildCustomerWaitingBanner(
   rows: ReadonlyArray<CustomerWaitingRow>,
   now: Date | number = Date.now(),
   timeZone?: string,
 ): CustomerWaitingBanner | null {
-  if (rows.length === 0) return null
-  const uncalled = rows.filter((r) => !r.last_called_at).sort((a, b) => ms(a.created_at) - ms(b.created_at))
-  const called = rows.filter((r) => !!r.last_called_at).sort((a, b) => ms(b.last_called_at) - ms(a.last_called_at))
+  const live = rows.filter(waitsOnTheBanner)
+  if (live.length === 0) return null
+  const uncalled = live.filter((r) => !r.last_called_at).sort((a, b) => ms(a.created_at) - ms(b.created_at))
+  const called = live.filter((r) => !!r.last_called_at).sort((a, b) => ms(b.last_called_at) - ms(a.last_called_at))
   const state: CustomerWaitingBanner['state'] = uncalled.length > 0 ? 'waiting' : 'called'
   const lead = (state === 'waiting' ? uncalled[0] : called[0])!
   const portal = parsePortalRequestPayload(lead.pending_payload)
@@ -91,7 +103,7 @@ export function buildCustomerWaitingBanner(
     wait: state === 'waiting' ? describeWait(lead.created_at, now) : null,
     calledLine,
     snippet: snippetOf(portal?.description ?? null),
-    others: rows.length - 1,
+    others: live.length - 1,
     waitingCount: uncalled.length,
     calledCount: called.length,
   }
@@ -141,7 +153,7 @@ export function summarizeCustomerWaiting(rows: ReadonlyArray<CustomerWaitingRow>
   const b = buildCustomerWaitingBanner(rows, now)
   if (!b) return null
   return {
-    count: rows.length,
+    count: rows.filter(waitsOnTheBanner).length,
     uncalled: b.waitingCount,
     oldestMinutes: b.wait?.minutes ?? 0,
     leadName: b.leadName,
