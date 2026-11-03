@@ -85,17 +85,19 @@ describe('a row whose crew counts as nobody (punch list #254, the live pass)', (
     expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: null, premiumUsd: null, note: r.note })
   })
 
-  it('reaches a standing through the People record’s link when the two names differ, and names someone with no login apart', () => {
-    // The crew rows name people by their People record: "Zed W" is linked to the login "Zedd", and "Ana Q" has no login.
-    const users = [{ id: 'u-z', name: 'Zedd', charge_standing: 'tech' }]
-    const links = new Map([['p-z', 'u-z']])
+  it('reaches a standing through the People record’s link when the two names differ, names people as their login, and someone with no login apart', () => {
+    // The crew rows name people by their People record: "Zed W" is linked to the login "Zedd", "Bo R" to the login
+    // "Bobby" (who left, with no standing yet), and "Ana Q" has no login.
+    const users = [{ id: 'u-z', name: 'Zedd', charge_standing: 'tech' }, { id: 'u-b', name: 'Bobby', charge_standing: null }]
+    const links = new Map([['p-z', 'u-z'], ['p-b', 'u-b']])
     const r = ledgerChargesFor({
       breakdown: [
         { personName: 'Zed W', personId: 'p-z', byWorkDate: [{ workDate: '2026-03-02', hours: 8 }] },
         { personName: 'Ana Q', personId: 'p-a', byWorkDate: [{ workDate: '2026-03-03', hours: 6 }] },
+        { personName: 'Bo R', personId: 'p-b', byWorkDate: [{ workDate: '2026-03-04', hours: 5 }] },
       ],
       standingOf: standingLookup(users, key, links),
-      hasLogin: loginLookup(users, key, links),
+      loginOf: loginLookup(users, key, links),
       invoicesFromSupplyHouses: 1000,
       partsFromTally: 0,
       billedMaterialsSum: 0,
@@ -103,14 +105,14 @@ describe('a row whose crew counts as nobody (punch list #254, the live pass)', (
       job: {},
       contractUsd: 5000,
     })
-    // Zed W prices as a tech alone through the link; Ana Q's day prices at nothing and the premium waits for it.
+    // Zed W prices as a tech alone through the link; Bo R and Ana Q's days price at nothing and the premium waits for them.
     expect(r.laborUsd).toBe(1480)
-    expect(r.unpricedDays).toBe(1)
-    expect(r.note).toBe('Ana has no login for a Charged as. Link the People record to a login on People.')
+    expect(r.unpricedDays).toBe(2)
+    expect(r.note).toBe('Bobby counts as nobody on the rate card yet. Set Charged as in Settings → Rates charged by crew → Who counts as what, or on each person’s desk. Ana has no login for a Charged as. Link the People record to a login on People.')
     expect(ledgerSummaryCell(r)).toEqual({ chargesUsd: r.chargesUsd, premiumUsd: null, note: r.note })
-    expect(loginLookup(users, key, links)('Zed W', 'p-z')).toBe(true)
-    expect(loginLookup(users, key, links)('zedd', null)).toBe(true)
-    expect(loginLookup(users, key, links)('Ana Q', 'p-a')).toBe(false)
+    expect(loginLookup(users, key, links)('Zed W', 'p-z')).toEqual({ id: 'u-z', name: 'Zedd' })
+    expect(loginLookup(users, key, links)('zedd', null)).toEqual({ id: 'u-z', name: 'Zedd' })
+    expect(loginLookup(users, key, links)('Ana Q', 'p-a')).toBeNull()
   })
 
   it('shows the premium once every day prices', () => {

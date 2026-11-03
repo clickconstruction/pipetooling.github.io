@@ -19,10 +19,11 @@ export type LedgerChargesInput = {
   /** A person's standing by the key the breakdown names them with (the name key, or the person id). */
   standingOf: (personName: string, personId: string | null | undefined) => ChargeStanding
   /**
-   * Whether a person on the breakdown reaches a login, the one place a Charged as is set (the live pass). Someone on the
-   * crew rows with none is named apart, since Who counts as what lists logins. Left out, everyone is taken to have one.
+   * The login a person on the breakdown reaches, the one place a Charged as is set (the live pass): through the People
+   * record's link, else by the name. Someone with none is named apart, since Who counts as what lists logins; someone with
+   * one is named as the login is, so the note reads the name the list shows. Left out, everyone is taken to have one.
    */
-  hasLogin?: (personName: string, personId: string | null | undefined) => boolean
+  loginOf?: (personName: string, personId: string | null | undefined) => { id: string; name: string | null } | null
   /** The row's material sums: supply-house invoice shares, tallied parts, typed material charges. */
   invoicesFromSupplyHouses: number
   partsFromTally: number
@@ -71,10 +72,12 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
   for (const p of input.breakdown) {
     const key = p.personId || p.personName
     const standing = input.standingOf(p.personName, p.personId)
-    if (input.hasLogin && !input.hasLogin(p.personName, p.personId)) loginless.add(key)
+    const login = input.loginOf ? input.loginOf(p.personName, p.personId) : undefined
+    if (login === null) loginless.add(key)
+    const shown = login?.name?.trim() || p.personName
     for (const d of p.byWorkDate) {
       if (!(d.hours > 0)) continue
-      sessions.push({ userId: key, name: p.personName.split(' ')[0] || p.personName, standing, workDate: d.workDate, hours: d.hours })
+      sessions.push({ userId: key, name: shown.split(' ')[0] || shown, standing, workDate: d.workDate, hours: d.hours })
     }
   }
   const dayShape = new Map(Array.from(applied.dayShape.entries()).map(([day, o]) => [day, o.shape] as const))
@@ -149,14 +152,15 @@ export function ledgerSummaryCell(c: Pick<LedgerCharges, 'priced' | 'chargesUsd'
   return { chargesUsd: c.chargesUsd, premiumUsd: c.unpricedDays > 0 ? null : c.premium.signed, note: c.note }
 }
 
-/** Whether a breakdown person reaches a login: by the People record's link, else by the name key. */
-export function loginLookup(users: ReadonlyArray<{ id: string; name: string | null }>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): NonNullable<LedgerChargesInput['hasLogin']> {
-  const ids = new Set(users.map((u) => u.id))
-  const names = new Set(users.filter((u) => u.name).map((u) => nameKey(u.name as string)))
+/** The login a breakdown person reaches: by the People record's link, else by the name key; null when none. */
+export function loginLookup(users: ReadonlyArray<{ id: string; name: string | null }>, nameKey: (name: string) => string, personIdToUserId?: ReadonlyMap<string, string>): NonNullable<LedgerChargesInput['loginOf']> {
+  const byId = new Map(users.map((u) => [u.id, u] as const))
+  const byName = new Map<string, { id: string; name: string | null }>()
+  for (const u of users) if (u.name) byName.set(nameKey(u.name), u)
   return (personName, personId) => {
     const userId = personId ? personIdToUserId?.get(personId) : undefined
-    if (userId && ids.has(userId)) return true
-    return names.has(nameKey(personName))
+    const u = (userId ? byId.get(userId) : undefined) ?? byName.get(nameKey(personName))
+    return u ? { id: u.id, name: u.name } : null
   }
 }
 
