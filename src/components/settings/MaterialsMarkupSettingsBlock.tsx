@@ -106,7 +106,7 @@ export default function MaterialsMarkupSettingsBlock() {
                   {saving ? 'Saving…' : 'Save the markup'}
                 </button>
               </div>
-              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', padding: '0.6rem 0.75rem', borderRadius: 6, background: 'var(--surface-2, var(--surface))', border: '1px solid var(--border)' }} data-testid="materials-markup-reads">
+              <p style={{ margin: 0, fontSize: '0.875rem', color: 'var(--text-base)', padding: '0.6rem 0.75rem', borderRadius: 6, background: 'var(--bg-subtle)', border: '1px solid var(--border)' }} data-testid="materials-markup-reads">
                 {readsBothWays
                   ? `${pct}% over cost is a ${marginOfMarkup(pct)}% margin on the sale. ${moneyWords(1000)} of materials is charged at ${moneyWords(chargedAtMarkup(1000, pct))}.`
                   : 'No markup is set. Materials on a charges paper are at cost until one is.'}
