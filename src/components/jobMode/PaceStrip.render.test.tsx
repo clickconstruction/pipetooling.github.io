@@ -67,6 +67,22 @@ describe('PaceStrip', () => {
     expect(screen.getByTestId('pace-stage-words').textContent).toContain('40%')
   })
 
+  it('sets the work done on the plan: the budget, the expected hours, or the edge of a track run past it', () => {
+    const at = () => screen.getByTestId('pace-done').style.left
+    const { unmount } = render(<PaceStrip line={line} hoursBudget={200} days={days} />)
+    // 60% of the 200 h budget.
+    expect(at()).toBe('calc(60% - 2px)')
+    unmount()
+    const short = render(<PaceStrip line={line} hoursBudget={200} targetHours={100} days={days} />)
+    // 60% of the 100 h expected, on a 200 h track.
+    expect(at()).toBe('calc(30% - 2px)')
+    short.unmount()
+    const over = superintendentLine({ pctDone: 80, hoursUsed: 289, hoursBudget: 47, budgetSource: 'bid', money: null, plannedFinishYmd: null, checklist: { answered: 0, asked: 0 }, certifiedPct: null })
+    render(<PaceStrip line={over} hoursBudget={289} targetHours={47} />)
+    // 80% of a 47 h budget, on a track as long as the 289 h used: about 13%, not 80%.
+    expect(parseFloat(at().replace('calc(', ''))).toBeCloseTo(13, 0)
+  })
+
   it('falls back to one fill with no days and reads the days used at the crew day', () => {
     const plain = superintendentLine({ pctDone: 50, hoursUsed: 100, hoursBudget: 200, budgetSource: 'assumed', money: null, plannedFinishYmd: null, checklist: { answered: 0, asked: 0 }, certifiedPct: null })
     render(<PaceStrip line={plain} hoursBudget={200} />)

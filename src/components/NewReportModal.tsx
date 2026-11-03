@@ -17,7 +17,7 @@ import { ReportVoiceNote } from './reports/ReportVoiceNote'
 import { DraftedMark, HeardFold } from './reports/VoiceDraftBits'
 import { useReportVoiceDraft } from '../hooks/useReportVoiceDraft'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../lib/reports/stageProgressReport'
-import { MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
+import { MARK_EACH_LINE_LINK, jobPercentFromLines, lineProgressFieldValue } from '../lib/reports/lineProgressReport'
 import { stampMovedLines, useJobLineProgress } from '../hooks/useJobLineProgress'
 import { pressThroughOutbox } from '../lib/offline/pressThroughOutbox'
 import { KEPT_ON_PHONE_WORDS } from '../lib/offline/pendingSession'
@@ -185,9 +185,15 @@ export default function NewReportModal({ open, onClose, onSaved, authUserId, use
     selectedJob && selectedJob.source === 'job_ledger' && jobPctSeed && jobPctSeed.jobId === selectedJob.id ? jobPctSeed : null
   const linesActive = lineProgress.lines != null
   const recordedPctForLines = lineProgress.recordedPct ?? seedForSelected?.pct ?? null
-  // The percent the report files: what the lines say once something moved; until then the job's own
-  // number, so a report that moves nothing files the same number, as the slider does.
-  const stageDerivedPct = linesActive ? (lineProgress.moved.length > 0 ? lineProgress.derivedPct : (recordedPctForLines ?? lineProgress.derivedPct)) : null
+  // The percent the report files: what the lines say once something moved (the lines nobody has reported
+  // seeded from the same record the field and the Stage progress line read, v2.6391); until then the job's
+  // own number, so a report that moves nothing files the same number, as the slider does.
+  const stageDerivedPct =
+    linesActive && lineProgress.lines
+      ? lineProgress.moved.length > 0
+        ? jobPercentFromLines(lineProgress.lines, lineProgress.picks, recordedPctForLines)
+        : (recordedPctForLines ?? lineProgress.derivedPct)
+      : null
   const percentFieldLabel = (templateFields[selectedTemplateId] ?? []).find((f) => f.input_type === 'percent_0_100')?.label ?? null
   // Keep the template's percent value in step with the stage math, so the copy text,
   // the seed hint and the saved field all read the derived number.

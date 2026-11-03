@@ -41,11 +41,13 @@ describe('useJobLineProgress', () => {
     expect(result.current.recordedPct).toBe(46)
     // Rough In · Top Out · Trim Set read as a plan (v2.3417), so the first not done is numbered 2.
     expect(result.current.openId).toBe('r')
-    expect(result.current.derivedPct).toBe(32)
+    // The lines nobody has reported count from the record (v2.6391): the paid draw and Rough In carry 32.25 of the
+    // 46, the other two share the rest, so untouched the lines say 46 and Rough In's 15 points on 35% move it 5.25.
+    expect(result.current.derivedPct).toBe(46)
     expect(result.current.moved).toEqual([])
     act(() => result.current.setPick('r', 50))
     act(() => result.current.setPick('w', 100))
-    expect(result.current.derivedPct).toBe(58)
+    expect(result.current.derivedPct).toBe(65) // 20 + 17.5 + 25 × 30.6% + 20
     expect(result.current.moved).toEqual([
       { fixtureId: 'r', name: 'Rough In', from: 35, to: 50 },
       { fixtureId: 'w', name: 'Water heater', from: null, to: 100 },

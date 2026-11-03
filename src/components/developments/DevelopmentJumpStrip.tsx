@@ -11,6 +11,7 @@
  */
 import { useEffect, useRef } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
+import { lookFigure } from '../../lib/developments/lookFigure'
 import { useJumpStrip } from '../gc/useJumpStrip'
 
 export type DevelopmentJumpKey = 'changed' | 'pieces' | 'money' | 'plans' | 'questions' | 'photos'
@@ -55,8 +56,40 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
     }
   }, [phone])
 
+  // The phone (the Gun Dog spike, 2026-11-02): one row of five equal cells, each the look's name over
+  // one figure, the look you are in underlined, no cap and no ordinals. The desk's chips wrapped into
+  // four ragged lines there (the owner: *I don't like how this looks on mobile*).
+  if (phone) {
+    return (
+      <nav ref={barRef as React.RefObject<HTMLDivElement>} aria-label="Five looks at the site" className="developmentPhoneStrip" data-development-jump-strip data-testid="development-phone-strip">
+        {ORDER.map((key, index) => {
+          const on = key === active
+          const look = looks[key]
+          const need = look.need && look.need.trim() ? look.need : null
+          const whole = `${look.count}${need && need !== look.count ? `, ${need}` : ''}`
+          return (
+            <button
+              key={key}
+              type="button"
+              onClick={() => jumpTo(key)}
+              aria-label={`Look ${index + 1}, ${LABEL[key]}, ${whole}`}
+              aria-current={on ? 'location' : undefined}
+              title={`${LABEL[key]} · ${whole}`}
+              className={`developmentPhoneLook${on ? ' isOn' : ''}${look.n === 0 && !need ? ' isEmpty' : ''}`}
+              data-testid="development-jump"
+              data-need={need ? '1' : undefined}
+            >
+              <span className="developmentPhoneLookName">{LABEL[key]}</span>
+              <span className={`developmentPhoneLookFigure${need ? ' reviewNeed' : ''}`}>{lookFigure(look)}</span>
+            </button>
+          )
+        })}
+      </nav>
+    )
+  }
+
   return (
-    <div ref={barRef} className={`stagesStageBar messagesJumpStrip developmentReviewStrip${phone ? ' isLine' : ''}`} data-development-jump-strip style={{ top: 0, marginBottom: 12 }}>
+    <div ref={barRef} className="stagesStageBar messagesJumpStrip developmentReviewStrip" data-development-jump-strip style={{ top: 0, marginBottom: 12 }}>
       <div className="stagesStageBarEnd reviewCap" title={REVIEW_TELL} data-testid="review-cap">
         <strong>Six looks</strong>
       </div>
@@ -65,8 +98,7 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
           const on = key === active
           const look = looks[key]
           const need = look.need && look.need.trim() ? look.need : null
-          // The phone keeps the amber words and drops the plain count where both would not fit.
-          const meta = need ? (need === look.count || phone ? <span className="reviewNeed">{need}</span> : <>{look.count} · <span className="reviewNeed">{need}</span></>) : look.count
+          const meta = need ? (need === look.count ? <span className="reviewNeed">{need}</span> : <>{look.count} · <span className="reviewNeed">{need}</span></>) : look.count
           return (
             <button
               key={key}
