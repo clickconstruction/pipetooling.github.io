@@ -18,13 +18,13 @@ let role = 'dev'
 const history: unknown[] = []
 const undoLatest = vi.fn(() => Promise.resolve(true))
 let readsWages = true
-const rpcCalls: Array<{ name: string; ids: string[] | null }> = []
+const rpcCalls: Array<{ name: string; args: { p_job_ids?: string[] } }> = []
 const burnEnabled: boolean[] = []
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    rpc: (name: string, args: { p_job_ids: string[] | null }) => {
-      rpcCalls.push({ name, ids: args.p_job_ids })
+    rpc: (name: string, args: { p_job_ids?: string[] }) => {
+      rpcCalls.push({ name, args })
       return Promise.resolve(failure ? { data: null, error: failure } : { data: { reads_wages: readsWages, jobs: rows }, error: null })
     },
   },
@@ -106,7 +106,8 @@ describe('ProjectsBoard', () => {
     role = 'superintendent'
     renderWithProviders(<ProjectsBoard />)
     await waitFor(() => expect(screen.getAllByTestId('project-card')).toHaveLength(2))
-    expect(rpcCalls[0]).toEqual({ name: 'list_project_board', ids: null })
+    // The whole board sends no ids at all, so the function's default stands.
+    expect(rpcCalls[0]).toEqual({ name: 'list_project_board', args: {} })
     // The superintendent reads the same tones the leader does, with no read of his own.
     const cards = screen.getAllByTestId('project-card')
     expect(cards[0]!.dataset.tone).toBe('behind')
