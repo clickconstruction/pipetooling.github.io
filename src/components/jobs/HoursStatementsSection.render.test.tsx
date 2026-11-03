@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
 /**
- * Render smoke for the Hours statements section (punch list #212, PR 2): the saved rows with their record id, state,
- * kind and who saved them; the press with its count; Print again from a row's snapshot; Open handing the window the
- * row; the empty section naming the press, or saying why there is no one to make a statement for; who sees it. Since
- * PR 3 (v2.6411) a signed row's Open the signed PDF through the gate.
+ * Render smoke for the Hours statements section (punch list #212, PR 2): the saved statements as cards (v2.6428) with
+ * their record id, state, kind and who saved them, the worker as the title on the job and the job on the desk; the
+ * press with its count; Print again from a row's snapshot; Open handing the window the row; the empty section naming
+ * the press, or saying why there is no one to make a statement for; who sees it. Since PR 3 (v2.6411) a signed row's
+ * Open the signed PDF through the gate, first in the card's press group.
  */
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen, waitFor, within } from '@testing-library/react'
@@ -101,17 +102,19 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     buildSpy.mockClear()
   })
 
-  it('lists a saved statement with its record, state, kind and who saved it; the press carries its count; Print prints it again; Open hands the window the row', async () => {
+  it('lists a saved statement as a card with its record, state, kind and who saved it; the press carries its count; Print prints it again; Open hands the window the row', async () => {
     rows = [row(), row({ id: 'hs-2', record_id: 'HS-1042-0002', state: 'printed', with_pay: false, worker: { name: 'Lena Ortiz' } })]
     renderWithProviders(<HoursStatementsSection scope={jobScope} />)
     const list = await screen.findAllByTestId('hours-statement-row')
     expect(list).toHaveLength(2)
+    // A card a statement: the worker as the title on the job's own window, then Record · Period · Saved as label · value lines.
+    expect(list[0]!.querySelector('.hsCardTitle')?.textContent).toBe('Marcus Reyes')
+    expect([...list[0]!.querySelectorAll('dt')].map((d) => d.textContent)).toEqual(['Record', 'Period', 'Saved'])
     expect(list[0]!.textContent).toContain('HS-1042-0001')
     expect(list[0]!.textContent).toContain('Draft')
-    expect(list[0]!.textContent).toContain('Marcus Reyes')
-    expect(list[0]!.textContent).toContain('June 1 – June 13, 2026')
-    expect(list[0]!.textContent).toContain('hours and pay')
+    expect(list[0]!.textContent).toContain('June 1 – June 13, 2026 · hours and pay')
     expect(list[0]!.textContent).toContain('October 29, 2026 by Dana Office')
+    expect(list[0]!.querySelector('table')).toBeNull()
     expect(list[1]!.textContent).toContain('Printed')
     expect(list[1]!.textContent).toContain('hours only')
     expect(screen.getByRole('button', { name: 'Hours statement… · 2 people clocked here' })).toBeTruthy()
@@ -154,11 +157,15 @@ describe('the Hours statements section (punch list #212, PR 2)', () => {
     expect(press.disabled).toBe(true)
   })
 
-  it('on a person, the job column reads the job and the press counts jobs', async () => {
+  it('on a person, the card is titled by the job and the press counts jobs', async () => {
     rows = [row()]
     renderWithProviders(<HoursStatementsSection scope={{ kind: 'person', userId: 'u-marcus', name: 'Marcus Reyes' }} canAccessPay={false} desk />)
     const list = await screen.findAllByTestId('hours-statement-row')
-    expect(list[0]!.textContent).toContain('1042 · Ridgeway Lofts')
+    // On the desk the job is the card's title, whole, and the worker's name is not repeated.
+    expect(list[0]!.querySelector('.hsCardTitle')?.textContent).toBe('1042 · Ridgeway Lofts')
+    expect(list[0]!.textContent).not.toContain('Marcus Reyes')
+    expect(within(list[0]!).getByRole('button', { name: 'Print HS-1042-0001' })).toBeTruthy()
+    expect(within(list[0]!).getByRole('button', { name: 'Open HS-1042-0001' })).toBeTruthy()
     expect(screen.getByRole('button', { name: 'Hours statement… · 3 jobs clocked' })).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: 'Hours statement… · 3 jobs clocked' }))
     expect(screen.getByTestId('window-stub').textContent).toContain('window from person for dev pay false')
