@@ -87,6 +87,15 @@ describe('ManifestPrintModal', () => {
     expect(screen.getAllByTestId('manifest-page')).toHaveLength(2)
   })
 
+  it('sits on <body> with the print rules that take the page behind out of the print layout (v2.6432)', () => {
+    setup()
+    const root = [...document.body.children].find((el) => el.classList.contains('on-site-manifest'))
+    expect(root).toBeTruthy()
+    const css = root!.querySelector('style')!.textContent ?? ''
+    expect(css).toContain('body > *:not(.on-site-manifest) { display: none !important; }')
+    expect(css).not.toContain('visibility: hidden')
+  })
+
   it('opens on one box alone from the phone’s link', () => {
     setup(C3)
     expect(screen.getAllByTestId('manifest-page').map((p) => p.getAttribute('aria-label'))).toEqual(['Manifest for C3'])
