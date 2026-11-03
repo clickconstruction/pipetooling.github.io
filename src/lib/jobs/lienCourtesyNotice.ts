@@ -109,6 +109,8 @@ export type CourtesyStatus = {
   lastSentAt: string | null
   /** 'YYYY-MM-DD' — the lien's day the message would name; null when none can be named. */
   lienDay: string | null
+  /** Letter two's own words while it is in flight or went out (v2.6383), '' otherwise — the footer names it in place of *from day 10*. */
+  letterTwoWords?: string
   records: CourtesyRecord[]
 }
 
@@ -159,13 +161,16 @@ export function courtesyStatus(input: CourtesyStatusInput): CourtesyStatus {
   const lastSentAt = last?.at ?? null
   const deadline = (input.affidavit?.deadline ?? '').trim()
   const lienDay = YMD.test(deadline) ? deadline : null
-  const base = { day: lt.day, lastSentAt, lienDay, records }
+  const letterTwoWords = lt.state === 'sent' || lt.state === 'in_flight' ? lt.words : ''
+  const base = { day: lt.day, lastSentAt, lienDay, letterTwoWords, records }
   const closed = (reason: string): CourtesyStatus => ({ ...base, state: 'closed', words: reason, reason })
   const held = (reason: string): CourtesyStatus => ({ ...base, state: 'held', words: `Courtesy held · ${reason}`, reason })
 
   if (input.openBalance <= 0.005 || lt.state === 'paid') return closed('paid')
   if (lt.gcAuthorized) return closed(`the GC authorized direct pay ${fmt(calendarYmdInAppTzFromIso(lt.gcAuthorized.at))}`)
+  // The owner's call closes it whatever letter two's state (v2.6383): a letter two that went out reads `sent` before `owner_called`.
   if (lt.state === 'owner_called') return closed(lt.words || 'the owner called')
+  if (lt.ownerCalledAt) return closed(`owner called ${fmt(calendarYmdInAppTzFromIso(lt.ownerCalledAt))}`)
   if (input.affidavit?.filedAt) return closed(`the affidavit is filed · served next`)
   if (input.repliedAt && last && input.repliedAt > last.at) return closed(`they answered ${fmt(calendarYmdInAppTzFromIso(input.repliedAt))}`)
 
@@ -200,12 +205,12 @@ export function courtesyFooterSentence(s: CourtesyStatus, amountWords: string, f
     case 'held':
       return `Courtesy notice held: ${s.reason}. A reminder may not name a lien that cannot go on.`
     case 'sent':
-      return `${s.words[0]!.toUpperCase()}${s.words.slice(1)}. Another may go in ${COURTESY_AGAIN_DAYS} days if nothing comes; letter two is counsel's certified second letter from day 10.`
+      return `${s.words[0]!.toUpperCase()}${s.words.slice(1)}. Another may go in ${COURTESY_AGAIN_DAYS} days if nothing comes; ${s.letterTwoWords ? `${s.letterTwoWords}.` : "letter two is counsel's certified second letter from day 10."}`
     case 'waiting':
       return `A courtesy notice may go from day ${COURTESY_FROM_DAY}: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number.`
     case 'due':
       // After one went (v2.6382) the sentence says so: *nothing since the courtesy notice of Oct 20*, not *since the packet*.
-      return `Nothing has come since ${s.lastSentAt ? `the courtesy notice of ${formatDay(calendarYmdInAppTzFromIso(s.lastSentAt))}` : 'the packet'}. ${s.lastSentAt ? 'Another' : 'A courtesy notice'} goes by email and text in a minute: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number. Letter two is counsel's certified second letter, from day 10.`
+      return `Nothing has come since ${s.lastSentAt ? `the courtesy notice of ${formatDay(calendarYmdInAppTzFromIso(s.lastSentAt))}` : 'the packet'}. ${s.lastSentAt ? 'Another' : 'A courtesy notice'} goes by email and text in a minute: the notice stands, the lien goes on by ${s.lienDay ? formatDay(s.lienDay) : 'its day'} unless ${amountWords} is paid, the pay link, your number. ${s.letterTwoWords ? `${s.letterTwoWords[0]!.toUpperCase()}${s.letterTwoWords.slice(1)}.` : "Letter two is counsel's certified second letter, from day 10."}`
   }
 }
 

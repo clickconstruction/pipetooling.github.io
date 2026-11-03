@@ -223,3 +223,13 @@ You are clocked in on a job that has no signed agreement yet. The customer is st
 3. Take the phone back. The job now reads {{chip:green|✍ Signed}} everywhere. Their signed copy goes to the email on the job.
 
 Nothing is emailed until they sign. If the office already sent this customer an agreement, the same one opens. If there is none yet, the app makes it from the job's own facts. So there is nothing to type. The line shows for the master, primary, superintendent and estimator roles. It disappears once the job is signed.
+
+## Read your project's line as a superintendent
+
+A superintendent on a project sees one more card on Job Mode, above the job's details. The card's first line says whether the job is ahead or behind at this pace. Under it, the strip is the labor budget. The real days the crew worked fill it. The stages divide it, with their names under the strip. The blue mark is the work done. The thin line at the bottom is the money.
+
+- Tap a day on the strip to read who clocked and for how long. The day also shows the report.
+- When the office set expected hours for the job, the card reads them with 🎯. The line says who set them, when, from what, and why.
+- When the job is behind, the card names the one move. Press {{button:blue|Set the %}} to set the percent done. Press {{button:outline|Open the checklist}} to answer the stage's open questions.
+
+The office reads the same strip on its [Projects board](/help/see-where-every-project-stands-and-set-its-expected-hours). The two can never disagree, because they read one number.

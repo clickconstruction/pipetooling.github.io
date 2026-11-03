@@ -10,11 +10,13 @@
  * `remaining`, so the caller loops.
  */
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { DRIVE } from './driveUpload.ts'
-import { driveGet } from './driveJobFolder.ts'
+import { DRIVE, driveFolderIdFromUrl } from './driveUpload.ts'
+import { driveGet, jobFolder } from './driveJobFolder.ts'
+import type { JobRef } from './driveLink.ts'
 import { driveFolderMeta, jobsRootFolderId } from './driveSettings.ts'
 import { fileTextWithin } from './fileText.ts'
 import { folderHomes, folderMetaReader, type HomeAt } from './fileHomes.ts'
+import { WALK_MAX } from './fileIndexKernel.ts'
 import {
   DRIVE_FOLDER_KIND,
   INDEX_BUDGET_MS,
@@ -22,7 +24,9 @@ import {
   budgetAllows,
   indexPlan,
   indexRowOf,
+  newPassSpend,
   passCursor,
+  passMayTake,
   readingRowOf,
   settledWhy,
   walkUp,
@@ -30,6 +34,7 @@ import {
   type HeldFile,
   type IndexPassResult,
   type KnownRow,
+  type PassSpend,
 } from './fileIndexKernel.ts'
 
 /** The fields every list of files asks Drive for. */
@@ -43,6 +48,8 @@ export interface IndexContext {
   driveId: string | null
   homes: Map<string, HomeAt>
   metaOf: (id: string) => Promise<{ name: string; parent: string | null }>
+  /** What this request has spent parsing PDFs, across every step that reads in it. */
+  spend: PassSpend
 }
 
 /** The context, or `noRoot` when the jobs root is not set anywhere. */
@@ -54,14 +61,14 @@ export async function indexContext(admin: SupabaseClient, google: string): Promi
   // stamp on that, so a root Drive does not answer for is this request's failure, never a wider listing.
   if (root.status < 200 || root.status >= 300) throw new Error(`Drive answered ${root.status} for the jobs root folder.`)
   const homes = await folderHomes(admin)
-  return { admin, google, rootId, driveId: root.body.driveId ?? null, homes, metaOf: folderMetaReader(google) }
+  return { admin, google, rootId, driveId: root.body.driveId ?? null, homes, metaOf: folderMetaReader(google), spend: newPassSpend() }
 }
 
 /** The rows the table holds for these ids, in chunks the API takes. */
 export async function knownRows(admin: SupabaseClient, ids: readonly string[]): Promise<Map<string, KnownRow>> {
   const known = new Map<string, KnownRow>()
   for (let i = 0; i < ids.length; i += 200) {
-    const { data } = await admin.from('file_index').select('drive_file_id, modified_at, text_why, text_source').in('drive_file_id', ids.slice(i, i + 200))
+    const { data } = await admin.from('file_index').select('drive_file_id, modified_at, text_why, text_source, checked_at').in('drive_file_id', ids.slice(i, i + 200))
     for (const r of (data ?? []) as KnownRow[]) known.set(r.drive_file_id, r)
   }
   return known
@@ -79,7 +86,8 @@ export async function fileMeta(google: string, id: string): Promise<DriveFileMet
 /** A folder's files and its subfolders' too, to the depth and cap, folders left out of the answer. */
 export async function filesUnder(google: string, folderId: string, out: DriveFileMeta[], opts: { depth?: number; maxDepth?: number; max?: number; seen?: Set<string> } = {}): Promise<void> {
   const depth = opts.depth ?? 0
-  const maxDepth = opts.maxDepth ?? 3
+  // As deep as a walk climbs: a plan export sat nine folders down, and a bid's folder outside the Shared Drive has no other way in (v2.6403).
+  const maxDepth = opts.maxDepth ?? WALK_MAX
   const max = opts.max ?? 2000
   const seen = opts.seen ?? new Set<string>()
   if (seen.has(folderId)) return
@@ -101,6 +109,28 @@ export async function filesUnder(google: string, folderId: string, out: DriveFil
     }
     pageToken = page.nextPageToken ?? ''
   } while (pageToken && out.length < max)
+}
+
+/**
+ * Every file a job's index pass looks at: the job's folder tree three levels deep, and for a Pipeline job its plans and
+ * pictures folders by their links when an older job keeps them elsewhere. Null when the job has no Drive folder.
+ */
+export async function jobFilesToIndex(admin: SupabaseClient, google: string, job: JobRef): Promise<DriveFileMeta[] | null> {
+  const folder = await jobFolder(admin, google, job)
+  if (!folder) return null
+  const roots = [folder.folderId]
+  if ('jobs_ledger_id' in job) {
+    const { data } = await admin.from('jobs_ledger').select('job_plans_link, job_pictures_link').eq('id', job.jobs_ledger_id).maybeSingle()
+    const row = (data ?? {}) as { job_plans_link?: string | null; job_pictures_link?: string | null }
+    for (const link of [row.job_plans_link, row.job_pictures_link]) {
+      const id = driveFolderIdFromUrl(link ?? null)
+      if (id && !roots.includes(id)) roots.push(id)
+    }
+  }
+  const listed: DriveFileMeta[] = []
+  const seen = new Set<string>()
+  for (const id of roots) await filesUnder(google, id, listed, { seen })
+  return listed
 }
 
 /** Files changed in the Shared Drive since a time, oldest first, folders left out, up to the cap. */
@@ -126,10 +156,22 @@ export async function filesChangedSince(ctx: IndexContext, sinceIso: string, max
 
 /** One file into the table: walked up to its home, stamped `reading`, its text read, the row written. */
 export async function indexOneFile(ctx: IndexContext, f: DriveFileMeta): Promise<{ ok: true; held: HeldFile | null } | { ok: false; error: string }> {
-  const walk = await walkUp(f.parents?.[0] ?? null, ctx.homes, ctx.rootId, ctx.metaOf)
+  let walk: Awaited<ReturnType<typeof walkUp>>
+  try {
+    walk = await walkUp(f.parents?.[0] ?? null, ctx.homes, ctx.rootId, ctx.metaOf)
+  } catch (e) {
+    // A folder up the tree Drive would not show (a 404 the account cannot open): the row is written held as `error`
+    // with no home, so the pass moves on and a retry takes it an hour later, instead of the same file failing first
+    // on every call with no row to say so.
+    const why = (e as { message?: string } | null)?.message ?? String(e)
+    console.warn('file index walk failed', f.id, why)
+    const { error } = await ctx.admin.from('file_index').upsert(indexRowOf(f, { home: null, via: null, names: [], path: '' }, { why: 'error' }, new Date()), { onConflict: 'drive_file_id' })
+    if (error) return { ok: false, error: error.message }
+    return { ok: true, held: { id: f.id, name: f.name, why: 'error' } }
+  }
   const stamp = await ctx.admin.from('file_index').upsert(readingRowOf(f, walk, new Date()), { onConflict: 'drive_file_id' })
   if (stamp.error) return { ok: false, error: stamp.error.message }
-  const read = await fileTextWithin(ctx.google, f, INDEX_READ_MS)
+  const read = await fileTextWithin(ctx.google, f, INDEX_READ_MS, { spend: ctx.spend })
   const row = indexRowOf(f, walk, read, new Date())
   const { error } = await ctx.admin.from('file_index').upsert(row, { onConflict: 'drive_file_id' })
   if (error) return { ok: false, error: error.message }
@@ -150,7 +192,8 @@ export async function indexFiles(ctx: IndexContext, listed: readonly DriveFileMe
   let taken = 0
   const takenIds = new Set<string>()
   for (const f of plan.toIndex) {
-    if (taken >= max || !budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS)) break
+    // The clock's budget, then what the request has spent parsing: the platform kills a request at about 2 s of CPU.
+    if (taken >= max || !budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS) || !passMayTake(f, ctx.spend)) break
     taken += 1
     takenIds.add(f.id)
     const r = await indexOneFile(ctx, f)
