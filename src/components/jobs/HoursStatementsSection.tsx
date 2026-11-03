@@ -2,9 +2,11 @@
  * Hours statements (punch list #212, PR 2, v2.6097): the section on the job window's Documents tab and under the
  * person's desk Hours. Every statement on the job (or for the person) with its record id, its period, its kind, where
  * it stands and who saved it, each with **Print** (the paper again from its snapshot, with its record id) and **Open**
- * (the window on it); and the press **Hours statement…** with its count — the people who clocked on the job, or the
- * jobs the person clocked on — dead when there is no one to make a statement for. An empty section names the press.
- * Shown to whoever may make one (`canMakeHoursStatement`: the payroll roles, and an assistant for the hours-only paper).
+ * (the window on it), and on a signed one **Open the signed PDF** (PR 3, v2.6411: the flattened Contract Form through
+ * `open-contract-form-pdf`'s gate, the open logged); and the press **Hours statement…** with its count — the people who
+ * clocked on the job, or the jobs the person clocked on — dead when there is no one to make a statement for. An empty
+ * section names the press. Shown to whoever may make one (`canMakeHoursStatement`: the payroll roles, and an assistant
+ * for the hours-only paper).
  */
 import { useCallback, useEffect, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -17,6 +19,7 @@ import { hoursStatementJobNumber, listHoursStatementJobs, listHoursStatementPeop
 import { listHoursStatementsForJob, listHoursStatementsForUser, type HoursStatementRecordRow } from '../../lib/people/hoursStatementsIo'
 import { buildHoursStatementPaper, printHoursStatementPaper } from '../../lib/people/hoursStatementPrint'
 import { hoursStatementEmptyWords, hoursStatementPressWords, hoursStatementRowWords } from '../../lib/people/hoursStatementWindow'
+import { supabaseHoursStatementSigningIo, type HoursStatementSigningIo } from '../../lib/people/hoursStatementSigningIo'
 import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { EmptyState } from '../EmptyState'
 import { documentsChip, documentsHeading, documentsQuietButton, documentsTd, documentsTh } from './jobDocumentsStyles'
@@ -39,6 +42,7 @@ export function HoursStatementsSection({
   onOverlayOpenChange,
   canAccessPay: canAccessPayGiven,
   desk = false,
+  signingIo = supabaseHoursStatementSigningIo,
 }: {
   scope: HoursStatementsSectionScope
   /** The window's layer: above the job window by default; the desk passes its editor layer. */
@@ -48,6 +52,8 @@ export function HoursStatementsSection({
   canAccessPay?: boolean
   /** Drawn inside a desk section: a lighter heading. */
   desk?: boolean
+  /** The signing's calls (the signed PDF's door); the smoke hands a fake. */
+  signingIo?: HoursStatementSigningIo
 }) {
   const { user, role } = useAuth()
   const { showToast } = useToastContext()
@@ -58,6 +64,7 @@ export function HoursStatementsSection({
   const [error, setError] = useState<string | null>(null)
   const [open, setOpen] = useState(false)
   const [opening, setOpening] = useState<HoursStatementRecordRow | null>(null)
+  const [pdfBusy, setPdfBusy] = useState<string | null>(null)
   const allowed = canMakeHoursStatement(maker)
   const scopeKey = scope.kind === 'job' ? `job:${scope.job.id}` : `person:${scope.userId}`
 
@@ -117,6 +124,18 @@ export function HoursStatementsSection({
     void printHoursStatementPaper(() => Promise.resolve(buildHoursStatementPaper(snap, r.record_id))).then((ok) => {
       if (!ok) showToast('The print window was blocked. Allow pop-ups for this site and press Print again.', 'error')
     })
+  }
+  const openSignedPdf = async (r: HoursStatementRecordRow) => {
+    if (!r.contract_document_id || pdfBusy) return
+    setPdfBusy(r.id)
+    try {
+      const url = await signingIo.openSignedPdf(r.contract_document_id)
+      if (!window.open(url, '_blank', 'noopener')) showToast('The window was blocked. Allow pop-ups for this site and press Open the signed PDF again.', 'error')
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'The signed PDF could not be opened.'), 'error')
+    } finally {
+      setPdfBusy(null)
+    }
   }
   const modalScope: HoursStatementScope =
     scope.kind === 'job'
@@ -179,6 +198,13 @@ export function HoursStatementsSection({
                   </td>
                   <td style={{ ...documentsTd, fontSize: '0.8125rem', color: 'var(--text-600)' }}>{words.saved}</td>
                   <td style={{ ...documentsTd, textAlign: 'right', whiteSpace: 'nowrap' }}>
+                    {r.state === 'signed' && r.contract_document_id ? (
+                      <>
+                        <button type="button" style={documentsQuietButton} disabled={pdfBusy === r.id} onClick={() => void openSignedPdf(r)} aria-label={`Open the signed PDF ${r.record_id}`}>
+                          {pdfBusy === r.id ? 'Opening…' : 'Open the signed PDF'}
+                        </button>{' '}
+                      </>
+                    ) : null}
                     <button type="button" style={documentsQuietButton} onClick={() => printRow(r)} aria-label={`Print ${r.record_id}`}>
                       Print
                     </button>{' '}

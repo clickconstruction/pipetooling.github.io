@@ -166,6 +166,7 @@ when_to_read:
    - [get-contract-signing-link-for-self](#get-contract-signing-link-for-self)
    - [open-contract-form-pdf](#open-contract-form-pdf)
    - [contract-form-paper-entry](#contract-form-paper-entry)
+   - [hours-statement-signing](#hours-statement-signing)
    - [complete-contract-form-office](#complete-contract-form-office)
    - [check-estimate-attachment-url](#check-estimate-attachment-url)
    - [resolve-ip-geolocation](#resolve-ip-geolocation)
@@ -2790,6 +2791,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### accept-contract
 
+> **v2.6411 — a signed hours statement** (punch list #212): once the signature row commits, a form row whose id an `hours_statements.contract_document_id` names moves that statement to `state = 'signed'` and keeps the days the worker typed into the stated boxes (`stated_<n>_day` · `_hours` · `_note`, read by `statedDaysFromFormValues` in `_shared/hoursStatementForm.ts`: a day in any shape they type, the hours a number, a row with no day dropped) as its `stated_days`, each stated by `<printed name>, <signing day>`. Its consent row is kept as `record_type = 'hours_statement'` with the statement's id. The body may carry `inPerson: true` (the page's `?inperson=1`), kept as the consent's `method = 'in_person'`. Best-effort after the signature; a failure is logged and the copy still stands signed. **Redeploy required.**
+
 > **v2.5400 — `deno check` passes again**: the default import of `https://esm.sh/@pdf-lib/fontkit@1.1.1` failed TS1192. esm.sh types it with the package's own `fontkit.d.ts`, which declares named exports only (`create` and its interfaces). The module it serves Deno (`denonext`) exports just a default, the fontkit object, so the default import is right: a namespace import would hand pdf-lib `{ default }`, with no `create`. The import carries a `@ts-expect-error` that says so, and it errors again if the types ever gain a default. The emitted JavaScript is byte-identical. **Redeploy** once merged, so `check:edge-drift` stops naming it.
 
 > **v2.5329 — the shared clause read, generalized**: `clausePaperFor` (`_shared/clausePaper.ts`) runs through the helpers the portals share, with the same reads and the same answer ([get-contract-for-signer](#get-contract-for-signer)). Redeployed so `check:edge-drift` reads clean.
@@ -2820,6 +2823,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 
 ### send-contract-for-signature
 
+> **v2.6411 — the link alone** (punch list #212, the signed hours statement): the body may carry `mode: 'link'`. The person path then needs only `person_contract_document_id`, mints or renews the 14-day token, sets the row `sent` and answers `{ ok, emailed: false, accept_url }` with nothing emailed and no sent copy — the office texts the link, copies it, or opens it on the device in hand with `&inperson=1`, as `send-job-contract`'s link mode does for a job's agreement. Without `mode`, or with `mode: 'email'`, the path is unchanged: `signer_email` required, the email built and sent, the copy filed. **Redeploy required.**
+
 > **v2.5041 — a trade partner company's paper (GC mode, the Board's B6-b-i)**: a body with `trade_email: { companyId, key, lang, subject, lines, actionLabel }` takes the company branch, gc-trade-email's steps in order. A dev only (`officeOnly`; a training account or a twin `readOnly`), Spanish held (`spanishHeld`), the company's own sendable paper (`notFound` when the paper is not that company's), the `key` sent once and checked before any token is minted (`already: true`, nothing sent), the company's `contracts` people with the rest cc'd (`noEmail`), the token as for a person, then `buildGcTradeEmail` with the signing link as its action and the company's portal under it when it has a link (read, never minted). It writes a `gc_trade_messages` row (`msa`, or `paper` for a W-9, group `contracts`) and the sent copy (`gc_trade_email`, its `?t=` kept as `…`). Errors are gc-trade-email's keys. The person path is unchanged: its request checks, sendability and sent copy moved word for word to `_shared/contractSigningSend.ts` and are pinned against main with its email by `src/lib/contractSigningSend.pin.test.ts`. **Redeploy required.**
 
 > **v2.4574 — the email is kept as it went**: the signing email is filed (`person_contract`, the document as its source), under the person when the document's name finds exactly one active person. [`SENT_COPIES.md`](./SENT_COPIES.md). **Redeploy required.**
@@ -2848,6 +2853,8 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 > **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
 
 ### open-contract-form-pdf
+
+> **v2.6411 — an assistant and the hours-only statement** (punch list #212): when the row is a signed hours statement's copy (`hours_statements.contract_document_id`) with `with_pay = false`, an assistant may open it too — the hours-only paper is theirs to make (`can_touch_hours_statement`), so its signed copy is theirs to read. Every other row keeps the gate below. **Redeploy required.**
 
 > **v2.5041** (GC mode, B6-b-i): a company's form PDF downloads as `<document_name> - <company name>.pdf`, never under its stored name. **Redeploy required.**
 
@@ -2881,6 +2888,24 @@ curl -sS "${SUPABASE_URL}/functions/v1/get-estimate-public-terms" \
 **Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font (unused here in practice since no signature is drawn).
 
 > **v2.6080 — redeploy only**: bundles [`_shared/contractSigningEmail.ts`](../supabase/functions/_shared/contractSigningEmail.ts), whose link line and reach line write their small print in `#5e6d7c` (was `#8a97a6`) and whose wordmark takes the copper `#9a5b2b` (punch list #199, the portal's colours since v2.6067). What it sends is otherwise unchanged; redeploy after merge so the bundle matches the repo.
+
+### hours-statement-signing
+
+**Purpose** (v2.6411, punch list #212, PR 3 — the signed hours statement): a statement becomes a Contract Form of its own, so it is sent, signed and filed exactly as every form is. Two actions in one function.
+
+**Endpoint**: `POST /functions/v1/hours-statement-signing` (`verify_jwt = false`; JWT validated with `auth.getUser` in the body).
+
+**Gate**: the caller must read the statement under their own RLS (`can_touch_hours_statement`: a dev, the controller, a pay-approved master, or an assistant on an hours-only row) → else **404**. A training account or a twin → **403** `read_only`. A statement already signed → **409** `already_signed`; one with no snapshot → **400**.
+
+**Body**:
+- `{ "action": "prepare", "statement_id": uuid, "how"?: "email" | "text" | "link" | "in_person" }` → `{ ok, document_id, document_status, record_id, document_name, worker: { name, email, phone }, pages }`. Draws the statement from the row's `snapshot` and `stated_days` with pdf-lib ([`_shared/hoursStatementPdf.ts`](../supabase/functions/_shared/hoursStatementPdf.ts): the paper `buildHoursStatementHtml` prints, with a `FormSchema` recorded as it is drawn — the stated rows as text boxes, three blank after any the office stated, the printed name, the signature box and today's date), uploads it as the template to `contract-form-templates/hours-statements/<statement id>/statement.pdf` (over the old one), writes or refreshes the statement's own `contract_form_templates` row (`doc_type = 'hours_statement'`, `status = 'published'`, `revision_label` the record id, the schema, the sha) and its `person_contract_documents` copy (`document_name` *Hours statement HS-…*, `doc_type = 'hours_statement'`, the worker's roster row, `form_values` the office's stated days as seed values, a `note` saying how it went out and by whom), ties the statement to the copy (`contract_document_id`) and answers the worker's email and phone from the roster, else the login. A copy already sent is refreshed in place and sent again; a signed one is refused. The office then calls [`send-contract-for-signature`](#send-contract-for-signature) (by email, or `mode: 'link'` for the other three channels) and moves the statement to `sent` itself; the worker signs on `/contract/accept`; [`accept-contract`](#accept-contract) files the flattened PDF and marks the statement signed.
+- `{ "action": "file_scan", "statement_id", "scan": { base64, mime, filename }, "signed_on_ymd", "signer_printed_name", "attested": true, "stated_days"?: [{ day, hours?, note? }] }` → `{ ok, document_id, stated_days }`. The paper path: the worker signed the printed paper with a pen. The scan must be a JPG, PNG, WEBP, HEIC or PDF under 8 MB; `stated_days` are the days the office keys from the worker's handwriting (`parseStatedDayRows`: a real day each, hours a number up to 24; they replace the office's earlier rows). The same template is drawn with those rows, filled with them and the printed name and **no signature drawn** (the ink stays on the scan), flattened and filed as `contract-form-pdfs/<copy id>/signed.pdf` with the scan beside it as `source.<ext>`; the copy is written `signed` with `form_source = 'paper'`, `form_scan_storage_path`, `form_keyed_by_user_id`; the statement reads `signed` with those `stated_days`. Uploaded objects are removed if the filing fails.
+
+**Secrets**: `SUPABASE_URL`, `SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`; `APP_ORIGIN` for the cursive font (unused on the paper path since no signature is drawn). Imports `pdf-lib@1.17.1` and `@pdf-lib/fontkit@1.1.1` from esm.sh.
+
+**Implementation**: [`supabase/functions/hours-statement-signing/index.ts`](../supabase/functions/hours-statement-signing/index.ts); the kernels [`_shared/hoursStatementForm.ts`](../supabase/functions/_shared/hoursStatementForm.ts) and [`_shared/hoursStatementPdf.ts`](../supabase/functions/_shared/hoursStatementPdf.ts) (tested from `src/lib/people/` on node_modules' pdf-lib). Migration [`20261102230000_hours_statement_doc_type.sql`](./migrations/20261102230000_hours_statement_doc_type.md) widens the two `doc_type` checks.
+
+---
 
 ### complete-contract-form-office
 
