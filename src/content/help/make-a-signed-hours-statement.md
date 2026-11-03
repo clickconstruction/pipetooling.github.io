@@ -107,6 +107,10 @@ The statement reads {{chip:green|Signed}}. The signature stays on the scan. The 
 
 A signed row under **Hours statements** carries {{button:outline|Open the signed PDF}}. The same press sits on the window. The PDF opens in a new tab for five minutes. Each open is logged. An assistant opens the hours-only paper. The paper with the money opens for the payroll roles.
 
+## Putting it on a legal matter
+
+A signed statement can go on the account's legal matter. Open the Legal desk and pick the account. On the **Evidence** tab, each job lists its **Signed statements**. Press {{button:outline|Add to evidence}} on a signed one. The signed PDF is copied onto the matter for the firm. See [review a collections account before it goes to your attorney](/help/review-a-collections-account-before-it-goes-to-your-attorney#signed-hours-statements-on-the-matter).
+
 ## Who can use this
 
 A dev, the controller and a pay-approved leader make the paper with the money. An assistant makes the hours-only paper. Helpers and subcontractors do not see the section. Whoever may make a statement may send it, hand the phone over and file its signed paper.
