@@ -12,10 +12,10 @@ summary: >
   with a number and a PDF in the job's Drive folder. The company's standard lists are made in the
   same place and promoted from a job, so Settings becomes a read-only mirror. The superintendent's
   line of #234 reads the same count as its proof.
-next: PR 2, needs a signature. Before the office types questions, the job form's billing save must stop deleting the stage lines (the last paragraph below).
+next: PR 2, needs a signature.
 size: L as a train of six (M · M · M · M · S · S); four migrations; no edge function beyond the PDF renderer the hours statement already has
 blocker: none for PR 1b and PR 4. PR 2 takes "Not here signs" and PR 3 takes "files itself at the last answer" as the owner's defaults; he can change either before they build.
-ver: v2.6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
+ver: v2.6420 · 6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
 opinion: now — the office has typed no questions yet because there was nowhere good to read the answers; this gives them the place, and the signature is what makes a checklist worth more than a report
 mockup: to-dos/stage-checklist-document/mockup-document-and-signature.html
 ---
@@ -334,7 +334,10 @@ and a combine deleted the source job, whose cascade took them. Closed by v2.6350
 line's job, and a combine moves the report photos with the reports, since a question one of them answered lost it
 when the source went. Prod held no answer, question or report photo on 2026-11-02, so nothing was at stake yet.
 
-Still open, read from the code and not run: each save of the job form's billing slice deletes and re-inserts the
-job's lines with new ids (`writeBillingSlice`, `fixtureInsertRows`), and `ON DELETE CASCADE` on `fixture_id` would
-take every checklist row on the job with them. A stage's answers do not survive an edit to the job's Specific Work
-until that save keeps its line ids, so it needs its own PR before the office types questions.
+Closed by v2.6420 (`docs/recent-features/v2.6420.md`), before the office types questions: each save of the job form's
+billing slice deleted and re-inserted the job's lines with new ids (`writeBillingSlice`, `fixtureInsertRows`), and
+`ON DELETE CASCADE` on `fixture_id` took every checklist row and stage window on the job with them, a report photo lost
+its stage, and a stage's progress reset. The bed `50_billing_save_keeps_lines.sql` replayed the old save as the office and
+showed it. The save now upserts each line under its own id and deletes only the lines the form dropped, so an edit to a
+job's Specific Work leaves a stage's answers, its window and its progress standing. Prod held none of these rows on
+2026-11-02, so nothing was lost.
