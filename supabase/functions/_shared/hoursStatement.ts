@@ -14,6 +14,9 @@
 /** Where the rows come from: punches and typed days on the clock, a sub's sheet lines, or a salaried schedule. */
 export type HoursStatementKind = 'clock' | 'sheet' | 'schedule'
 
+/** The paper's basis (punch list #251): `paid` prices the days at the wage and carries the pay reports; `charged` prices every counted hour at the rate the customer is charged and carries no pay. */
+export type HoursStatementBasis = 'paid' | 'charged'
+
 export type HoursStatementRow = {
   /** `YYYY-MM-DD` in the app's calendar. */
   day: string
@@ -68,6 +71,10 @@ export type HoursStatementInput = {
   rows: HoursStatementRow[]
   /** The rate, the amount and what was paid; off, the paper carries hours alone. */
   withPay: boolean
+  /** Missing = `paid`. On `charged`, `withPay` is ignored and the days are priced at `chargeRate`. */
+  basis?: HoursStatementBasis
+  /** Dollars an hour the customer is charged (the job's own rate, else the company's), on the charged basis. */
+  chargeRate?: number | null
   /** `YYYY-MM-DD` → the rate on the pay report for that day (`pay_stub_days.rate_at_time`, or the job or office rate). */
   dayRates?: Record<string, number>
   /** The person's current wage, for a day no pay report has snapshotted yet. */
@@ -106,8 +113,11 @@ export type HoursStatementPayLine = {
   rateSource: 'report' | 'current' | 'none'
 }
 
+export type HoursStatementChargedLine = { key: string; label: string; from: string; hours: number; amount: number | null; words: string }
+
 export type HoursStatement = {
   kind: HoursStatementKind
+  basis: HoursStatementBasis
   periodStart: string
   periodEnd: string
   periodLabel: string
@@ -115,6 +125,10 @@ export type HoursStatement = {
   groups: HoursStatementGroup[]
   totals: { hours: number; days: number; pendingCount: number; amount: number | null; label: string; daysWords: string }
   pay: { lines: HoursStatementPayLine[]; note: string; allPaid: boolean } | null
+  /** The charged basis: one line per week or sheet, the hours at the rate, and the total; null on the paid basis. */
+  charged: { rate: number | null; rateWords: string; lines: HoursStatementChargedLine[]; total: number | null; totalWords: string; note: string; leftOut: string[] } | null
+  /** The company's own line under the signature: the records, and on the charged basis the rate. The print adds who prepared it. */
+  preparedWords: string
   gap: { from: string; to: string; heading: string; words: string } | null
   stated: { rows: HoursStatementStatedDay[]; heading: string; words: string } | null
   attestation: string
@@ -266,7 +280,13 @@ export function hoursStatementAttestation(input: { kind: HoursStatementKind; wit
 
 /** Build the statement from the rows as read. Pure. */
 export function buildHoursStatement(input: HoursStatementInput): HoursStatement {
-  const { kind, periodStart, periodEnd, withPay } = input
+  const { kind, periodStart, periodEnd } = input
+  const basis: HoursStatementBasis = input.basis === 'charged' ? 'charged' : 'paid'
+  const chargeRate = basis === 'charged' && typeof input.chargeRate === 'number' && input.chargeRate > 0 ? cents(input.chargeRate) : null
+  // The charged paper carries no pay: the switch is ignored and every counted hour is priced at the charge rate.
+  const withPay = basis === 'charged' ? false : input.withPay
+  const priced = basis === 'charged' ? chargeRate != null : withPay
+  const leftOut: string[] = []
   const isOfficeJob = input.isOfficeJob === true
   const dayRates = input.dayRates ?? {}
   const fallbackRate = typeof input.fallbackRate === 'number' && input.fallbackRate > 0 ? input.fallbackRate : null
@@ -279,9 +299,14 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
   let rateMissing = false
   for (const r of rows) {
     const g = r.group ?? { key: hoursStatementWeekStart(r.day), label: hoursStatementWeekLabel(hoursStatementWeekStart(r.day)) }
+    // A sub's flat line has no hours to price on the charged basis: it is named, not counted.
+    if (basis === 'charged' && kind === 'sheet' && !r.pending && hoursStatementRoundHours(r.hours) <= 0) {
+      leftOut.push(`${g.label}: ${(r.note ?? '').trim() || 'a line'} is a flat line with no hours, left off`)
+      continue
+    }
     let group = groupMap.get(g.key)
     if (!group) {
-      group = { key: g.key, label: g.label, days: [], hours: 0, amount: withPay ? 0 : null }
+      group = { key: g.key, label: g.label, days: [], hours: 0, amount: priced ? 0 : null }
       groupMap.set(g.key, group)
       groupOrder.push(g.key)
     }
@@ -292,7 +317,12 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
     }
     let rate: number | null = null
     let amount: number | null = null
-    if (withPay && kind !== 'schedule') {
+    if (basis === 'charged') {
+      if (chargeRate != null) {
+        rate = chargeRate
+        amount = cents(hours * chargeRate)
+      }
+    } else if (withPay && kind !== 'schedule') {
       if (typeof r.rate === 'number' && r.rate > 0) rate = r.rate
       else if (typeof dayRates[r.day] === 'number' && (dayRates[r.day] ?? 0) > 0) rate = dayRates[r.day] ?? null
       else if (fallbackRate != null) {
@@ -328,7 +358,7 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
     }
   }
   const daysWords = `${countedDays.size} ${countedDays.size === 1 ? 'day' : 'days'}${pendingCount > 0 ? ` · ${pendingCount} waiting for approval, not counted` : ''}`
-  const totals = { hours: totalHours, days: countedDays.size, pendingCount, amount: withPay && anyAmount ? totalAmount : null, label: totalsLabel(kind, isOfficeJob), daysWords }
+  const totals = { hours: totalHours, days: countedDays.size, pendingCount, amount: priced && anyAmount ? totalAmount : null, label: totalsLabel(kind, isOfficeJob), daysWords }
 
   let pay: HoursStatement['pay'] = null
   if (withPay) {
@@ -376,6 +406,31 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
     pay = { lines, note: payNote(kind), allPaid }
   }
 
+  let charged: HoursStatement['charged'] = null
+  if (basis === 'charged') {
+    const rateWords = chargeRate != null ? `at ${hoursStatementMoney(chargeRate)} an hour` : ''
+    const lines: HoursStatementChargedLine[] = groups.map((g) => {
+      const first = g.days.find((d) => !d.pending)?.day ?? g.days[0]?.day ?? periodStart
+      const amount = chargeRate != null ? g.amount : null
+      const words =
+        chargeRate != null
+          ? `${g.label} · ${hoursStatementHours(g.hours)} h at ${hoursStatementMoney(chargeRate)} = ${hoursStatementMoney(amount ?? 0)}`
+          : `${g.label} · ${hoursStatementHours(g.hours)} h · no rate given`
+      return { key: g.key, label: g.label, from: first, hours: g.hours, amount, words }
+    })
+    const total = chargeRate != null ? totals.amount : null
+    const totalWords =
+      chargeRate != null
+        ? `${hoursStatementHours(totalHours)} h at ${hoursStatementMoney(chargeRate)} an hour = ${hoursStatementMoney(total ?? 0)}`
+        : `${hoursStatementHours(totalHours)} h · no rate given, so the paper carries hours alone`
+    const note =
+      chargeRate != null
+        ? 'The amounts are the hours above at the rate the company charges for an hour of this work. Nothing on this paper is what the worker was paid.'
+        : 'No rate was given, so the paper carries hours alone.'
+    charged = { rate: chargeRate, rateWords, lines, total, totalWords, note, leftOut }
+  }
+  const preparedWords = charged && charged.rate != null ? `Prepared from the company’s records, charged ${charged.rateWords}` : 'Prepared from the company’s records'
+
   const gapSpan = hoursStatementGap(periodStart, periodEnd, input.firstRecordedDay)
   const gap = gapSpan
     ? {
@@ -396,5 +451,5 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
 
   const attestation = hoursStatementAttestation({ kind, withPay, allPaid: pay?.allPaid ?? false, hasStated: stated != null, worker: input.worker })
 
-  return { kind, periodStart, periodEnd, periodLabel: hoursStatementPeriodLabel(periodStart, periodEnd), withPay, groups, totals, pay, gap, stated, attestation }
+  return { kind, basis, periodStart, periodEnd, periodLabel: hoursStatementPeriodLabel(periodStart, periodEnd), withPay, groups, totals, pay, charged, preparedWords, gap, stated, attestation }
 }
