@@ -1,8 +1,8 @@
 ---
 name: "Job photos: a camera icon on the Pipeline row and on the Job Mode card opens one window that adds a photo with its description and browses every photo on the job"
 number: 244
-group: ready
-status: planned 2026-11-02 — the card, the self-critique and the mock-up; the owner took all eight calls as recommended the same day; nothing built yet
+group: close
+status: built 2026-11-02 and 03, walked live on the ZZ Test job · left: the owner's look on a phone and at a desk, then delete the folder
 mockup: to-dos/job-photos/mockup.html
 summary: >
   The owner likes the Pipeline row's Job folder icon and wants a photos icon beside it: a window
@@ -15,13 +15,37 @@ summary: >
   Mode card for the field, and from the job window's Photos section; a new `job_photo_notes` row
   per photo (the job, the stage, the description, who, when) filed by the same sweep into the
   same Drive folder as a report's photo, listed on Documents → Photos as a fifth source.
-next: PR 1, the ground: the migration, the kernel and the io, the shot-tile hook lifted from the report form.
+next: The owner presses the camera on a Pipeline row (a card's ⋯ → Photos on a phone), adds a photo with a few words and finds it again by those words; then this folder goes.
 size: M as a train of five PRs (S · S · M · S · XS); one migration (a table, a bucket, a view branch, a cron clause); two edge functions redeployed (photo-save, job-photos)
-blocker: None. The calls are made; the train starts with PR 1.
+blocker: The owner's look.
+ver: v2.6359 · 6363 · 6365 · 6368 · 6370 · 6439 · 6449 · 6451
 opinion: build it as one window with two faces, not a modal that only uploads; put the field's door on the Job Mode card, not the Pipeline; keep a job photo quiet (a thread line, no push) so it never competes with Leave report
 ---
 
 # Job photos (#244)
+
+## Where it stands
+
+Built 2026-11-02 and 03 as drawn, in the five PRs of the plan and three follow-ups the live walk found, and walked on
+the ZZ Test job on clicktooling.com at every door:
+
+| PR | Version | What | The live walk |
+|---|---|---|---|
+| #6826 | v2.6359 | The ground: `job_photo_notes`, its bucket, the view's fifth source, the kernel, the io, `useShotTiles` | The migration pushed 2026-11-02 |
+| #6827 | v2.6363 | `photo-save` files a job photo into the job's Drive folder | Each photo filed 3 to 4 minutes after its press |
+| #6831 | v2.6365 | The window, the Pipeline camera, the ⋯ sheets' Photos line, the guide | Two photos added with their words, the words edited, both found on Documents → Photos |
+| #6834 | v2.6368 | The Job Mode card's Photos line, the job window's Documents door, the thread line | A photo added from the Documents door; its line reached the job's thread |
+| #6835 | v2.6370 | No signal: the photo kept on the phone and the press queued | Kept and queued offline; landed with its thread line 3 seconds after the signal came back |
+| #6925 | v2.6439 | The viewer drew Open the job twice, and Open the report opened the job | One Open the job |
+| #6936 | v2.6449 | The window loads on its press, 23 kB off the app's first load | |
+| #6943 | v2.6451 | A phone card's ⋯ Photos line opened nothing; only the short phone rows drew the window | A paid ZZ card's ⋯ Photos opens the window on a phone |
+
+What the build changed from the plan: the report form's photo hook stayed as it was, and the window got its own
+`useShotTiles`, so the report form's tests stayed untouched; folding `useReportPhotos` onto it is a follow-up. Only
+`photo-save` changed among the edge functions, and the drift check read every function current after its deploy.
+
+The walk's four photos and their two thread lines were deleted afterwards. The four files the sweep filed stay in the
+ZZ Test job's Customer Pictures folder, where the window shows them as files added in Drive.
 
 ## The ask
 
