@@ -11,6 +11,8 @@ import { excerptOf, type Excerpt } from '../_shared/excerpt.ts'
 import { fileTextWithin } from '../_shared/fileText.ts'
 import { folderHomes, folderMetaReader } from '../_shared/fileHomes.ts'
 import { heldRowsFor, indexContext, indexFiles, fileMeta, jobFilesToIndex } from '../_shared/fileIndex.ts'
+import { OCR_PROBE_PNG, ocrSetup, ocrText } from '../_shared/ocr.ts'
+import { OCR_PROCESSOR_SECRET, ocrStateWords } from '../_shared/ocrKernel.ts'
 import { type DriveFileMeta, EXCERPT_PDF_LIMITS, EXCERPT_READ_MS, type FileHome, INDEX_JOB_MAX_FILES, newPassSpend, type PassSpend, walkUp } from '../_shared/fileIndexKernel.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
@@ -77,6 +79,9 @@ import {
  *                                                        first `sample` files with no row → IndexCheck; a read, a dev's door
  *   POST { action: 'index_home', driveFileIds }      → these files' rows walked up to their job or bid again, up to 40 a call, nothing
  *                                                        read out of the files (v2.6403) → { homed, none, unanswered, failed }; a dev's door
+ *   POST { action: 'ocr_probe' }                        → a dev's one made-up call through the OCR provider (PR 3, v2.6336): a
+ *                                                        one-pixel PNG to the Document AI processor the secret names →
+ *                                                        { configured, secret, words, answer }; answer null while unset
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -293,7 +298,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
-  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'list_company') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'list_company' && ask.action !== 'ocr_probe') return json({ error: 'A training account cannot change Drive.' }, 403)
   if (ask.action === 'put_company' && !COMPANY_PUT_ROLES.includes(String(who.role))) return json({ error: 'The office puts papers in the company folder.' }, 403)
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
@@ -372,8 +377,17 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     return json(await rehomeFiles(ctx, ask.driveFileIds))
   }
 
+  // The dev's one made-up call through the OCR provider (PR 3): a one-pixel PNG to the processor, the provider's own
+  // words back, so "it is set up" is proven by an answer and never by a secret's presence alone.
+  if (ask.action === 'ocr_probe') {
+    if (who.role !== 'dev') return json({ error: 'A dev runs the OCR probe.' }, 403)
+    const setup = ocrSetup(saJson)
+    const answer = setup ? await ocrText(setup, OCR_PROBE_PNG, 'image/png', { maxPages: 1 }) : null
+    return json({ configured: Boolean(setup), secret: OCR_PROCESSOR_SECRET, words: ocrStateWords(Boolean(setup)), answer })
+  }
+
   if (ask.action === 'index') {
-    const ctx = await indexContext(admin, google)
+    const ctx = await indexContext(admin, google, saJson)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
     const meta = await fileMeta(google, ask.driveFileId)
     if (!meta) return json({ error: 'Drive did not answer for that file.' }, 404)
@@ -385,7 +399,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   if (!folder) return json({ error: 'That job has no Drive folder yet.' }, 409)
 
   if (ask.action === 'index_job') {
-    const ctx = await indexContext(admin, google)
+    const ctx = await indexContext(admin, google, saJson)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
     const listed = (await jobFilesToIndex(admin, google, ask.job)) ?? []
     const pass = await indexFiles(ctx, listed, { retry: ask.retry, max: INDEX_JOB_MAX_FILES })

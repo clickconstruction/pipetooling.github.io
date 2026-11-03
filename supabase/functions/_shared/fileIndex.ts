@@ -11,16 +11,19 @@
  */
 import type { SupabaseClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { DRIVE, driveFolderIdFromUrl } from './driveUpload.ts'
-import { driveGet, jobFolder } from './driveJobFolder.ts'
+import { driveGet, driveMedia, jobFolder } from './driveJobFolder.ts'
 import type { JobRef } from './driveLink.ts'
 import { driveFolderMeta, jobsRootFolderId } from './driveSettings.ts'
 import { fileTextWithin } from './fileText.ts'
 import { folderHomes, folderMetaReader, type HomeAt } from './fileHomes.ts'
 import { WALK_MAX } from './fileIndexKernel.ts'
+import { ocrSetup, ocrText, type OcrSetup } from './ocr.ts'
+import { OCR_KIND_NOTE, OCR_MAX_BYTES, OCR_MIMES, OCR_PER_PASS_MAX, ocrMimeOf, ocrTakes } from './ocrKernel.ts'
 import {
   DRIVE_FOLDER_KIND,
   INDEX_BUDGET_MS,
   INDEX_READ_MS,
+  PASS_READ_BUDGET_MS,
   budgetAllows,
   indexPlan,
   indexRowOf,
@@ -31,6 +34,8 @@ import {
   settledWhy,
   walkUp,
   type DriveFileMeta,
+  type FileTextRead,
+  type OcrTry,
   type HeldFile,
   type IndexPassResult,
   type KnownRow,
@@ -38,7 +43,7 @@ import {
 } from './fileIndexKernel.ts'
 
 /** The fields every list of files asks Drive for. */
-export const FILE_FIELDS = 'id,name,mimeType,size,modifiedTime,parents,webViewLink'
+export const FILE_FIELDS = 'id,name,mimeType,size,modifiedTime,parents,webViewLink,trashed'
 
 /** What one request's passes share: the root, the homes and the folder cache, read once. */
 export interface IndexContext {
@@ -50,10 +55,12 @@ export interface IndexContext {
   metaOf: (id: string) => Promise<{ name: string; parent: string | null }>
   /** What this request has spent parsing PDFs, across every step that reads in it. */
   spend: PassSpend
+  /** OCR (PR 3): the processor and its token when the secret is set, else null and a scan stays `scan`. */
+  ocr: OcrSetup | null
 }
 
-/** The context, or `noRoot` when the jobs root is not set anywhere. */
-export async function indexContext(admin: SupabaseClient, google: string): Promise<IndexContext | { noRoot: true }> {
+/** The context, or `noRoot` when the jobs root is not set anywhere. `saJson` is the service account, for OCR. */
+export async function indexContext(admin: SupabaseClient, google: string, saJson: string | null = null): Promise<IndexContext | { noRoot: true }> {
   const rootId = await jobsRootFolderId(admin)
   if (!rootId) return { noRoot: true }
   const root = await driveFolderMeta(google, rootId)
@@ -61,14 +68,14 @@ export async function indexContext(admin: SupabaseClient, google: string): Promi
   // stamp on that, so a root Drive does not answer for is this request's failure, never a wider listing.
   if (root.status < 200 || root.status >= 300) throw new Error(`Drive answered ${root.status} for the jobs root folder.`)
   const homes = await folderHomes(admin)
-  return { admin, google, rootId, driveId: root.body.driveId ?? null, homes, metaOf: folderMetaReader(google), spend: newPassSpend() }
+  return { admin, google, rootId, driveId: root.body.driveId ?? null, homes, metaOf: folderMetaReader(google), spend: newPassSpend(), ocr: ocrSetup(saJson) }
 }
 
 /** The rows the table holds for these ids, in chunks the API takes. */
 export async function knownRows(admin: SupabaseClient, ids: readonly string[]): Promise<Map<string, KnownRow>> {
   const known = new Map<string, KnownRow>()
   for (let i = 0; i < ids.length; i += 200) {
-    const { data } = await admin.from('file_index').select('drive_file_id, modified_at, text_why, text_source, checked_at').in('drive_file_id', ids.slice(i, i + 200))
+    const { data } = await admin.from('file_index').select('drive_file_id, modified_at, text_why, text_source, checked_at, ocr_tried_at').in('drive_file_id', ids.slice(i, i + 200))
     for (const r of (data ?? []) as KnownRow[]) known.set(r.drive_file_id, r)
   }
   return known
@@ -154,8 +161,30 @@ export async function filesChangedSince(ctx: IndexContext, sinceIso: string, max
   return { files, more: Boolean(pageToken) }
 }
 
-/** One file into the table: walked up to its home, stamped `reading`, its text read, the row written. */
-export async function indexOneFile(ctx: IndexContext, f: DriveFileMeta): Promise<{ ok: true; held: HeldFile | null } | { ok: false; error: string }> {
+/** A scan's bytes through OCR (PR 3): the text as an `ocr` read, or the provider's reason. */
+async function ocrScan(ctx: IndexContext, f: DriveFileMeta, mime: string): Promise<{ read: FileTextRead | null; note: string | null }> {
+  const size = f.size == null || f.size === '' ? null : Number(f.size)
+  if (size != null && size > OCR_MAX_BYTES) return { read: null, note: `The file is ${size} bytes; Document AI takes up to ${OCR_MAX_BYTES} inline.` }
+  let bytes: Uint8Array
+  try {
+    const res = await driveMedia(ctx.google, f.id)
+    if (!res.ok) return { read: null, note: `Drive answered ${res.status} for the bytes.` }
+    bytes = new Uint8Array(await res.arrayBuffer())
+  } catch (e) {
+    // A reset mid-download is this scan's refusal for the day, never the whole pass's.
+    return { read: null, note: `The bytes did not come down from Drive: ${(e as { message?: string } | null)?.message ?? String(e)}` }
+  }
+  const answer = await ocrText(ctx.ocr!, bytes, mime, { spend: ctx.spend })
+  if (!answer.ok) return { read: null, note: answer.error }
+  return { read: { text: answer.text, source: 'ocr', pages: answer.pages }, note: null }
+}
+
+/**
+ * One file into the table: walked up to its home, stamped `reading`, its text read (a scan through OCR when set up and
+ * the pass allows it; past the pass's cap the scan stays due for the next call), the row written. `ocrCalled` says
+ * whether the provider was asked, so the pass counts its calls.
+ */
+export async function indexOneFile(ctx: IndexContext, f: DriveFileMeta, opts: { ocr?: boolean } = {}): Promise<{ ok: true; held: HeldFile | null; ocrCalled: boolean } | { ok: false; error: string }> {
   let walk: Awaited<ReturnType<typeof walkUp>>
   try {
     walk = await walkUp(f.parents?.[0] ?? null, ctx.homes, ctx.rootId, ctx.metaOf)
@@ -167,15 +196,29 @@ export async function indexOneFile(ctx: IndexContext, f: DriveFileMeta): Promise
     console.warn('file index walk failed', f.id, why)
     const { error } = await ctx.admin.from('file_index').upsert(indexRowOf(f, { home: null, via: null, names: [], path: '' }, { why: 'error' }, new Date()), { onConflict: 'drive_file_id' })
     if (error) return { ok: false, error: error.message }
-    return { ok: true, held: { id: f.id, name: f.name, why: 'error' } }
+    return { ok: true, held: { id: f.id, name: f.name, why: 'error' }, ocrCalled: false }
   }
   const stamp = await ctx.admin.from('file_index').upsert(readingRowOf(f, walk, new Date()), { onConflict: 'drive_file_id' })
   if (stamp.error) return { ok: false, error: stamp.error.message }
-  const read = await fileTextWithin(ctx.google, f, INDEX_READ_MS, { spend: ctx.spend })
-  const row = indexRowOf(f, walk, read, new Date())
+  let read = await fileTextWithin(ctx.google, f, INDEX_READ_MS, { spend: ctx.spend })
+  let ocr: OcrTry = { tried: false }
+  let ocrCalled = false
+  if ('why' in read && read.why === 'scan' && ctx.ocr && opts.ocr !== false) {
+    const mime = ocrMimeOf(f)
+    if (mime) {
+      ocrCalled = ocrTakes(f)
+      const r = await ocrScan(ctx, f, mime)
+      ocr = { tried: true, note: r.note }
+      if (r.read) read = r.read
+    } else {
+      // A kind Document AI does not read (HEIC from a phone, SVG): stamped with the reason, and never due again.
+      ocr = { tried: true, note: OCR_KIND_NOTE }
+    }
+  }
+  const row = indexRowOf(f, walk, read, new Date(), ocr)
   const { error } = await ctx.admin.from('file_index').upsert(row, { onConflict: 'drive_file_id' })
   if (error) return { ok: false, error: error.message }
-  return { ok: true, held: 'why' in read ? { id: f.id, name: f.name, why: read.why } : null }
+  return { ok: true, held: 'why' in read ? { id: f.id, name: f.name, why: read.why } : null, ocrCalled }
 }
 
 /**
@@ -184,24 +227,30 @@ export async function indexOneFile(ctx: IndexContext, f: DriveFileMeta): Promise
  */
 export async function indexFiles(ctx: IndexContext, listed: readonly DriveFileMeta[], opts: { retry?: boolean; max?: number; budgetMs?: number; startedMs?: number } = {}): Promise<IndexPassResult> {
   const known = await knownRows(ctx.admin, listed.map((f) => f.id))
-  const plan = indexPlan(listed, known, { retry: opts.retry })
+  const plan = indexPlan(listed, known, { retry: opts.retry, ocr: Boolean(ctx.ocr) })
   const started = opts.startedMs ?? Date.now()
   const max = opts.max ?? plan.toIndex.length
   const held: HeldFile[] = []
   let indexed = 0
   let taken = 0
+  let ocrCalls = 0
   const takenIds = new Set<string>()
   for (const f of plan.toIndex) {
     // The clock's budget, then what the request has spent parsing: the platform kills a request at about 2 s of CPU.
     if (taken >= max || !budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS) || !passMayTake(f, ctx.spend)) break
+    // Past the pass's OCR cap a scan due for OCR alone is left untaken (remaining, and the sweep's cursor stops at
+    // it); a new or changed file is still taken, its scan written due for a later pass.
+    const ocrAllowed = ocrCalls < OCR_PER_PASS_MAX
+    if (plan.forOcr.has(f.id) && !ocrAllowed) continue
     taken += 1
     takenIds.add(f.id)
-    const r = await indexOneFile(ctx, f)
+    const r = await indexOneFile(ctx, f, { ocr: ocrAllowed })
     if (!r.ok) {
       console.warn('file index write failed', f.id, r.error)
       held.push({ id: f.id, name: f.name, why: 'error' })
       continue
     }
+    if (r.ocrCalled) ocrCalls += 1
     indexed += 1
     if (r.held) held.push(r.held)
   }
@@ -219,4 +268,40 @@ export async function heldRowsFor(admin: SupabaseClient, ids: readonly string[])
     }
   }
   return out
+}
+
+/** The scans due for OCR, of a kind Document AI reads, oldest try first: never tried, or tried over a day ago. Empty when OCR is not set up. */
+export async function ocrPending(ctx: IndexContext, n: number, now: Date = new Date()): Promise<string[]> {
+  if (!ctx.ocr || n <= 0) return []
+  const cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000).toISOString()
+  const { data } = await ctx.admin.from('file_index').select('drive_file_id').eq('text_why', 'scan').in('mime', [...OCR_MIMES]).lte('bytes', OCR_MAX_BYTES).or(`ocr_tried_at.is.null,ocr_tried_at.lt.${cutoff}`).order('ocr_tried_at', { ascending: true, nullsFirst: true }).limit(n)
+  return ((data ?? []) as { drive_file_id: string }[]).map((r) => r.drive_file_id)
+}
+
+/** The OCR pass (PR 3): the scans due, each read again from Drive and through the processor, inside the budget. */
+export async function ocrPass(ctx: IndexContext, n: number, opts: { startedMs?: number; budgetMs?: number } = {}): Promise<{ tried: number; read: number; refused: HeldFile[]; gone: number }> {
+  const ids = await ocrPending(ctx, n)
+  const started = opts.startedMs ?? Date.now()
+  let tried = 0
+  let read = 0
+  let gone = 0
+  const refused: HeldFile[] = []
+  for (const id of ids) {
+    if (!budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS) || ctx.spend.ms >= PASS_READ_BUDGET_MS) break
+    const meta = await fileMeta(ctx.google, id)
+    if (!meta || meta.trashed) {
+      // Drive did not answer for it, or it sits in the trash: stamped as tried with the reason, so it leaves the
+      // queue's head until the recheck drops its row, instead of holding a slot every run.
+      gone += 1
+      await ctx.admin.from('file_index').update({ ocr_tried_at: new Date().toISOString(), ocr_note: meta ? 'Trashed in Drive.' : 'Drive did not answer for the file.' }).eq('drive_file_id', id)
+      continue
+    }
+    if (!passMayTake(meta, ctx.spend)) break
+    tried += 1
+    const r = await indexOneFile(ctx, meta, { ocr: true })
+    if (r.ok && !r.held) read += 1
+    else if (r.ok && r.held) refused.push(r.held)
+    else refused.push({ id, name: meta.name, why: 'error' })
+  }
+  return { tried, read, refused, gone }
 }
