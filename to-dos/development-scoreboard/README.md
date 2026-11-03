@@ -1,8 +1,8 @@
 ---
 name: "A scoreboard for a development: its jobs, their money, and who put what in"
 number: 250
-group: gated
-status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way* · waits on the seven calls, then the Gun Dog stack landing · nothing built
+group: ready
+status: design 2026-11-02 · draft 1 shown, the owner said *great potential, needs a refinement pass* · draft 2 the same day, read against the game's board (one header, one rule at four levels, the Cost column as the spine every member fills, a dark render) · the owner on draft 2: *right way*, and he took all seven defaults the same evening · PR 1 waits for the Gun Dog stack to land · nothing built
 summary: >
   The owner saw the game Squad's end-of-match scoreboard and asked for its shape on the Development
   page: one grid where the same columns mean the same thing at every level, a team banner with the
@@ -16,10 +16,10 @@ summary: >
   Draft 2 holds one rule at four levels: the site, a part, a job and a member each fold to three
   figures and open to nine and their children, and every member fills Cost, so a job is the sum of
   the rows under it.
-next: The owner takes the seven calls (the defaults stand unless he says otherwise), then PR 1 is cut from fresh main once the Gun Dog stack (#6846 to #6849) and the photos PRs (#6839, #6840) are on it.
+next: Cut PR 1 from fresh main once the Gun Dog stack (#6846 to #6849) and the photos PRs (#6839, #6840) are on it; the kernel, its tests and the site labor read can start before that, since none of them touches the page.
 size: M (PR 1 the board by job) + M (PR 2 the people under each job, the gold row) + S (PR 3 the view chips, the lead's tier, the headline) + M (PR 4 the cuts and the window)
-blocker: The owner's seven calls. The Development page is a hot surface today; PR 1 waits for the stack on it to land.
-opinion: build — it is the owner's own pattern, every column already exists for one job in Job Summary, and the board turns the page's Money look into the site's P&L with the people under it; the one new weight is the day ledger read for Overhead, which opens lazily with the view
+blocker: The Development page is a hot surface today; PR 1's page seam waits for the stack on it to land.
+opinion: build — the owner took the design and all seven defaults; every column already exists for one job in Job Summary, and the board turns the page's Money look into the site's P&L with the rows under each job summing to it; the one new weight is the day ledger read for Overhead, which opens lazily with the view
 mockup: to-dos/development-scoreboard/mockup.html
 ver: v2.6040 · v2.6215 base
 ---
@@ -218,7 +218,7 @@ since the kernel holds the same triples: job, contributor, measures.
   read*, Retry re-reads; a refusal names its reason with no Retry (`OfflineRetryPanel`,
   `formatErrorMessage`). An estimator keeps the one line they read today.
 
-## Your calls (defaults recommended)
+## Your calls (defaults recommended — the owner took all seven, 2026-11-02)
 
 1. **Where it lives.** Inside Money as its second view, Timeline the third. Or: its own look and a
    seventh chip on the strip.
