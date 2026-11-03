@@ -24,6 +24,14 @@ describe("a Job Summary row's charges (punch list #254)", () => {
     expect(r.premium.kind).toBe('premium')
     expect(r.note).toBeNull()
     expect(r.rule).toEqual({ kind: 'shape', shape: 'master_helper' })
+    expect(r.priced).toBe(true)
+  })
+
+  it('reads as not priced when nothing on the row could be: no labor or materials at all, or every day unpriced and no materials', () => {
+    expect(ledgerChargesFor({ breakdown: [], standingOf, invoicesFromSupplyHouses: 0, partsFromTally: 0, billedMaterialsSum: 0, card: OWNER, job: {}, contractUsd: 220 }).priced).toBe(false)
+    const empty = { rates: {}, extraPerson: null, materialsMarkupPct: null }
+    expect(ledgerChargesFor({ breakdown, standingOf, invoicesFromSupplyHouses: 0, partsFromTally: 0, billedMaterialsSum: 0, card: empty, job: {}, contractUsd: 220 }).priced).toBe(false)
+    expect(ledgerChargesFor({ breakdown, standingOf, invoicesFromSupplyHouses: 10, partsFromTally: 0, billedMaterialsSum: 0, card: empty, job: {}, contractUsd: 220 }).priced).toBe(true)
   })
 
   it('by the card alone, a day with only a master names the missing row, and a person not charged never counts', () => {

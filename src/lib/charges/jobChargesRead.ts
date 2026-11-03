@@ -20,6 +20,8 @@ export type JobChargesReadResult = {
   /** The job's own markup, or null for the company's. */
   jobMarkupPct: number | null
   adjustments: ChargeAdjustment[]
+  /** Why the adjustments could not be read, when they could not: the window shows the record and says so. */
+  adjustmentsError: string | null
 }
 
 const ADJUSTMENTS = 'job_charge_adjustments' as never
@@ -112,14 +114,18 @@ export async function loadChargeAdjustments(jobId: string): Promise<ChargeAdjust
 type JobRow = { id: string; click_number: string | null; hcp_number: string | null; job_name: string | null; customer_name: string | null; revenue: number | null; charge_rule?: unknown; charge_shape?: unknown; hourly_charge_rate?: unknown; materials_markup_pct?: unknown }
 
 export async function loadJobCharges(jobId: string): Promise<JobChargesReadResult> {
-  const [{ data: jobRaw, error: jerr }, sessions, lines, card, adjustments] = await Promise.all([
+  const [{ data: jobRaw, error: jerr }, sessions, lines, card, adjustmentsRead] = await Promise.all([
     supabase.from('jobs_ledger').select('*').eq('id', jobId).maybeSingle(),
     loadCrewSessions(jobId),
     loadMaterialLines(jobId),
     loadRateCard(),
-    loadChargeAdjustments(jobId),
+    loadChargeAdjustments(jobId).then(
+      (rows) => ({ rows, error: null as string | null }),
+      (e: unknown) => ({ rows: [] as ChargeAdjustment[], error: e instanceof Error ? e.message : typeof e === 'object' && e && 'message' in e ? String((e as { message: unknown }).message) : 'The adjustments could not be read.' }),
+    ),
   ])
   if (jerr) throw jerr
+  const adjustments = adjustmentsRead.rows
   if (!jobRaw) throw new Error('The job could not be read.')
   const job = jobRaw as unknown as JobRow
   const rule = jobChargeRuleFrom(job, parseCrewShape)
@@ -131,6 +137,7 @@ export async function loadJobCharges(jobId: string): Promise<JobChargesReadResul
     rule,
     jobMarkupPct,
     adjustments,
+    adjustmentsError: adjustmentsRead.error,
   }
 }
 

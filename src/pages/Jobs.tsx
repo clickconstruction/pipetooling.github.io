@@ -1565,7 +1565,7 @@ export default function Jobs() {
                   adjustments: chargeAdjustmentsByJobId.get(job.id) ?? [],
                   contractUsd: totalBill,
                 })
-                return { chargesUsd: c.chargesUsd, premiumUsd: c.premium.signed, note: c.note }
+                return c.priced ? { chargesUsd: c.chargesUsd, premiumUsd: c.premium.signed, note: c.note } : { chargesUsd: null, premiumUsd: null, note: c.note }
               })()
             : null
         return {

@@ -71,7 +71,7 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
   const [reading, setReading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [pending, setPending] = useState<Pending[]>([])
-  const editable = canAdjustCharges(viewer)
+  const editable = canAdjustCharges(viewer) && !read?.adjustmentsError
 
   const load = useCallback(async () => {
     setReading(true)
@@ -394,7 +394,7 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
               <button type="button" style={btn} disabled={!editable || busy != null || (read.adjustments.length === 0 && pending.length === 0)} onClick={() => void revertAll()} data-testid="charges-revert">
                 Revert to the record
               </button>
-              {!editable ? <span style={quiet}>Read only: a dev, the controller or a pay-approved master adjusts charges.</span> : null}
+              {read.adjustmentsError ? <span style={quiet} data-testid="charges-adjustments-unavailable">Adjustments are not available: {read.adjustmentsError}</span> : !editable ? <span style={quiet}>Read only: a dev, the controller or a pay-approved master adjusts charges.</span> : null}
               <span style={{ flex: 1 }} />
               <button
                 type="button"

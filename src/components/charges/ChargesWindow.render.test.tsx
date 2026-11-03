@@ -51,6 +51,7 @@ const READ = {
   rule: { kind: 'shape', shape: 'master_helper' },
   jobMarkupPct: null,
   adjustments: [],
+  adjustmentsError: null,
 }
 const viewer = { userId: 'u-me', role: 'dev', canAccessPay: true }
 

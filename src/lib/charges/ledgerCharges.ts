@@ -31,6 +31,8 @@ export type LedgerChargesInput = {
 }
 
 export type LedgerCharges = {
+  /** False when nothing on the row could be priced: no labor or materials at all, or every day unpriced and no materials. The column reads a dash then. */
+  priced: boolean
   laborUsd: number
   materialsUsd: number
   chargesUsd: number
@@ -82,7 +84,9 @@ export function ledgerChargesFor(input: LedgerChargesInput): LedgerCharges {
   const whys = new Set<string>()
   for (const d of days.days) if (d.why) whys.add(d.why)
   if (markupPct == null && materialCost > 0) whys.add('No markup on materials is set, so materials are at cost.')
+  const priced = materialCost > 0 || (days.totals.days > 0 && days.totals.unpriced < days.totals.days)
   return {
+    priced,
     laborUsd: days.totals.charged,
     materialsUsd,
     chargesUsd,
