@@ -276,8 +276,11 @@ export default defineConfig({
         // growth (6,277 → 6,284 kB across v2.5332's merge, the same 259 chunks before and after), so the cap
         // is 7 MiB: ~0.7 MiB for growth, and it still trips on a regression like v2.4655's, which put every
         // help guide (now ~2.3 MB) in the main chunk (fixed v2.4695: LienRulesDoor lazy-loads its window).
-        // Raise it only with a reason here; the 6.3 MB main chunk itself is due a code-split pass.
-        maximumFileSizeToCacheInBytes: 7 * 1024 * 1024,
+        // Raise it only with a reason here; the main chunk itself is due a code-split pass. It crossed 7 MiB on
+        // 2026-11-03 (7,347,392 bytes after v2.6411, 24 merges in one night), which failed every deploy build until
+        // v2.6428 lazy-loaded the hours statement window (7,320,448 bytes, 19 KB under) — too thin for a queue that
+        // lands a code change every few minutes, so the cap is 8 MiB: ~0.7 MiB for growth again, until the split.
+        maximumFileSizeToCacheInBytes: 8 * 1024 * 1024,
         // Help screen recordings ({{gif:…}} tokens) are lazy-loaded media, never precached.
         globIgnores: ['**/help/**', '**/easter-eggs/**', '**/fonts/**', '**/to-dos/**', '**/lensEngine-*.js'],
       },
