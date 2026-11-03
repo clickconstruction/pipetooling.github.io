@@ -28,6 +28,8 @@ import { DevelopmentChipConfirm, type ChipConfirmRow } from '../components/devel
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useAuth } from '../hooks/useAuth'
 import { DevelopmentPartsCard, type SitePlansWrites } from '../components/developments/DevelopmentPartsCard'
+import { JobCardsProvider } from '../components/developments/JobChip'
+import { jobHoverCardLookup } from '../lib/developments/jobHoverCard'
 import { DevelopmentQuestionsLook } from '../components/developments/DevelopmentQuestionsLook'
 import { Card, capStyle, FoldButton, money, shortDay, SmallButton, LinkButton } from '../components/developments/developmentPageBits'
 import { DevelopmentCounts, type CountTileSpec } from '../components/developments/DevelopmentCounts'
@@ -167,6 +169,8 @@ export default function DevelopmentPage() {
 
   const counts = useMemo(() => (shown && data ? headCounts(shown, data.requests, nowMs) : null), [shown, data, nowMs])
   const people = useMemo(() => (shown && data ? sitePeople({ members: shown, names: data.names, teamMembers: data.teamMembers, jobLabel }) : null), [shown, data, jobLabel])
+  // The job chips' hover cards (v2.6353): the words for every job the page holds, the ones at the address too, from the rows it read; a chip asks by id, and nothing is fetched on a hover.
+  const jobCardFor = useMemo(() => (shown && data ? jobHoverCardLookup([...shown.jobs, ...data.atAddress.jobs], { names: data.names, teamMembers: data.teamMembers, crewRead: new Set(shown.jobs.map((j) => j.id)), bids: [...shown.bids, ...data.atAddress.bids], jobLabel, bidLabel, stageLabel: labelJobsLedgerStatusForDashboard, money, shortDay, moneyShown }) : () => null), [shown, data, jobLabel, bidLabel, moneyShown])
   // The link-grouped view feeds the Jobs & bids table's Plans cell and History; the Plans look itself reads by part (v2.6302).
   const plans = useMemo(() => (shown && data ? buildPlansView({ members: shown, bidChanges: data.bidChanges, names: data.names, bidLabel, jobLabel }) : null), [shown, data, bidLabel, jobLabel])
   // The site's parts and their sets (punch list #239, PR 3): one read, again after every write.
@@ -870,6 +874,7 @@ export default function DevelopmentPage() {
   )
 
   return (
+    <JobCardsProvider cardFor={jobCardFor}>
     <div data-testid="development-page">
       {/* The whole of a long History line (the owner, 2026-10-29: the rest in a modal). */}
       <DevelopmentLineWindow line={lineOpen} onClose={() => setLineOpen(null)} openAbout={(a) => { setLineOpen(null); openAbout(a) }} />
@@ -1075,11 +1080,11 @@ export default function DevelopmentPage() {
                       <strong style={{ color: 'var(--text-strong)', flex: 'none' }}>{n.label}</strong>
                       <span style={{ color: 'var(--text-faint)' }}>·</span>
                       {n.about.id && n.about.kind !== 'customer' ? (
-                        <LinkButton onClick={() => openAbout(n.about)} nowrap>
+                        <LinkButton onClick={() => openAbout(n.about)} nowrap={!phone}>
                           {n.about.label}
                         </LinkButton>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{n.about.label}</span>
+                        <span style={{ color: 'var(--text-muted)', whiteSpace: phone ? 'normal' : 'nowrap' }}>{n.about.label}</span>
                       )}
                       <span style={{ color: 'var(--text-muted)', minWidth: 0 }}>· {n.text}</span>
                     </div>
@@ -1192,5 +1197,6 @@ export default function DevelopmentPage() {
         />
       ) : null}
     </div>
+    </JobCardsProvider>
   )
 }

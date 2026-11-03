@@ -10,12 +10,16 @@ import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
 import type { PlanPartRow, PlanSetRow } from '../../lib/plans/planSets'
 import { buildSitePlansView } from '../../lib/plans/sitePlans'
+import { papersFromRows } from '../../lib/papers/papers'
 import { DevelopmentPartsCard, type SitePlansWrites } from './DevelopmentPartsCard'
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
   return { supabase: makeSupabaseStub() }
 })
+// The screen's width: the desk by default, a phone where a test says so (the Gun Dog spike, 2026-11-02).
+const screenState = vi.hoisted(() => ({ phone: false }))
+vi.mock('../../hooks/useMatchMedia', () => ({ useMatchMedia: () => screenState.phone }))
 const opened: string[] = []
 vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url: string) => opened.push(url) }))
 
@@ -23,6 +27,7 @@ beforeAll(installDomShims)
 afterEach(() => {
   cleanup()
   opened.length = 0
+  screenState.phone = false
 })
 
 function part(over: Partial<PlanPartRow> & { id: string; name: string }): PlanPartRow {
@@ -130,6 +135,53 @@ describe('DevelopmentPartsCard', () => {
     fireEvent.change(screen.getByLabelText("The part's name"), { target: { value: 'Pool house' } })
     fireEvent.click(screen.getByRole('button', { name: 'Make the part' }))
     await waitFor(() => expect(w.addPart).toHaveBeenCalledWith('Pool house'))
+  })
+
+  it('carries the papers on each part: a column and its fold on the desk, the same count and list in a phone card', () => {
+    const papers = papersFromRows(
+      [
+        set({ id: 'pa', part_id: 'p2', name: 'Finishes sheet', kind: 'spec', source: 'gc', marks_up_set_id: 's2', ask_lane: 'estimators', ask_request_id: 'q1' }),
+        set({ id: 'pb', part_id: 'p2', name: 'Soil report', kind: 'report', source: 'gc', owed: true, link: '' }),
+      ],
+      [{ id: 'q1', lane: 'estimators', title: 'Which finish?', status: 'open', created_at: '2026-10-01T12:00:00Z', closed_at: null, closed_note: null }],
+    )
+    const card = <DevelopmentPartsCard view={view} papers={papers} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />
+    renderWithProviders(card)
+    expect(screen.getByRole('columnheader', { name: 'Papers' })).toBeTruthy()
+    const row = screen.getByTestId('site-part-p2')
+    expect(within(row).getByText('1 owed')).toBeTruthy()
+    fireEvent.click(screen.getByTestId('site-papers-p2'))
+    const list = screen.getByTestId('site-papers-list-p2')
+    expect(within(list).getByText('With Bunker addendum 1')).toBeTruthy()
+    expect(list.textContent).toContain('Finishes sheet')
+    expect(list.textContent).toContain('Soil report')
+    cleanup()
+    screenState.phone = true
+    renderWithProviders(card)
+    expect(screen.queryByRole('columnheader', { name: 'Papers' })).toBeNull()
+    const phoneCard = screen.getByTestId('site-part-p2')
+    expect(within(phoneCard).getByText('Papers')).toBeTruthy()
+    fireEvent.click(within(phoneCard).getByTestId('site-papers-p2'))
+    expect(within(phoneCard).getByTestId('site-papers-list-p2').textContent).toContain('Finishes sheet')
+  })
+
+  it('draws no Papers column when the page hands no papers in', () => {
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    expect(screen.queryByRole('columnheader', { name: 'Papers' })).toBeNull()
+    expect(screen.queryByTestId('site-papers-p2')).toBeNull()
+  })
+
+  it('on a phone draws each part as a card with the same facts, and no table', () => {
+    screenState.phone = true
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{ u1: 'Taunya' }} canWrite openCarrier={() => {}} askAbout={() => {}} writes={writes()} />)
+    expect(screen.queryByTestId('site-plans-table')).toBeNull()
+    const cards = screen.getByTestId('site-plans-cards')
+    expect(cards.querySelectorAll('[data-testid^="site-part-"]').length).toBe(3)
+    const bunker = screen.getByTestId('site-part-p2')
+    expect(bunker.textContent).toContain('Bunker addendum 1')
+    expect(bunker.textContent).toContain('P-201 redrawn')
+    expect(bunker.textContent).toContain('JP991')
+    expect(screen.getByTestId('site-older-p2')).toBeTruthy()
   })
 
   it('says what fills an empty site and offers + Part to a writer', () => {

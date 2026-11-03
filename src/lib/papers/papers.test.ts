@@ -4,7 +4,7 @@ import { askChipWords, askFromRequest, buildPapersView, emptyPaperDraft, fromGue
 
 function row(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
   return {
-    part_id: 'p1', name: 'Reece spec book', kind: 'spec', source: 'supplier', dated: null, came_at: '2025-07-07T12:00:00Z', memo: '', link: 'https://x/y',
+    part_id: 'p1', name: 'Fixture spec book', kind: 'spec', source: 'supplier', dated: null, came_at: '2025-07-07T12:00:00Z', memo: '', link: 'https://x/y',
     replaces_set_id: null, marks_up_set_id: 's1', job_id: null, file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null,
     owed: false, ask_lane: null, ask_request_id: null, created_by: null, created_at: '2025-07-07T12:00:00Z', updated_at: '2025-07-07T12:00:00Z', ...over,
   }
@@ -21,7 +21,7 @@ describe('papers among the sets', () => {
   it('reads the paper rows out of a part’s sets and resolves each ask from its lane', () => {
     const rows = [
       row({ id: 'd1', kind: 'issued', name: 'Issued set' }),
-      row({ id: 'a', name: 'Nate’s task list', kind: 'task_list', source: 'gc', came_at: '2026-06-24T12:00:00Z', ask_lane: 'estimators', ask_request_id: 'q1' }),
+      row({ id: 'a', name: 'The owner’s task list', kind: 'task_list', source: 'gc', came_at: '2026-06-24T12:00:00Z', ask_lane: 'estimators', ask_request_id: 'q1' }),
       row({ id: 'b', name: 'Soil report', kind: 'report', owed: true, link: '', came_at: '2025-09-15T12:00:00Z', ask_lane: 'estimators', ask_request_id: 'q2' }),
       row({ id: 'c', name: 'Loads table', kind: 'schedule', source: 'ours', marks_up_set_id: null, came_at: '2026-07-02T12:00:00Z' }),
     ]
@@ -55,8 +55,8 @@ describe('papers among the sets', () => {
   })
 
   it('writes the History line the trigger writes', () => {
-    expect(historyLineForPaper({ kind: 'task_list', name: 'Nate’s task list', source: 'gc', memo: 'doors already bought', owed: false, askWords: 'paint spec?', askLane: 'estimators' }, 'Bunker addendum 1', null)).toBe(
-      'Kept task list Nate’s task list, the owner, on Bunker addendum 1: doors already bought · asked the estimators: paint spec?',
+    expect(historyLineForPaper({ kind: 'task_list', name: 'The owner’s task list', source: 'gc', memo: 'doors already bought', owed: false, askWords: 'paint spec?', askLane: 'estimators' }, 'Bunker addendum 1', null)).toBe(
+      'Kept task list The owner’s task list, the owner, on Bunker addendum 1: doors already bought · asked the estimators: paint spec?',
     )
     expect(historyLineForPaper({ kind: 'schedule', name: 'Equipment schedule', source: 'ours', memo: '', owed: false, askWords: null, askLane: null }, null, 'July loads')).toBe('Kept schedule Equipment schedule, ours · replaces July loads')
     expect(historyLineForPaper({ kind: 'report', name: 'Soil report', source: 'gc', memo: 'never came by mail', owed: true, askWords: null, askLane: null }, null, null)).toBe('Owed: Soil report from the owner · never came by mail')
@@ -69,14 +69,14 @@ describe('papers among the sets', () => {
     expect(paperDraftProblem({ ...d, name: 'Spec', asks: true }, false)).toBe('Say what it asks of us, in a line.')
     expect(paperDraftProblem({ ...d, name: 'Soil report' }, true)).toBe('Say who owes it and what it is.')
     expect(paperDraftProblem({ ...d, name: 'Spec' }, false)).toBeNull()
-    expect(fromGuess('amm@macdonaldarchitects.com')).toBe('architect')
-    expect(fromGuess('eddie@reece.com')).toBe('supplier')
-    expect(fromGuess('trace@clickplumbing.com')).toBe('ours')
+    expect(fromGuess('pat@quailridgearchitects.example')).toBe('architect')
+    expect(fromGuess('sam@reece.example')).toBe('supplier')
+    expect(fromGuess('office@clickplumbing.com')).toBe('ours')
     expect(fromGuess('owner@example.com')).toBe('gc')
-    expect(kindGuess('Fwd: Task list items from Nate')).toBe('task_list')
+    expect(kindGuess('Fwd: Task list items from the owner')).toBe('task_list')
     expect(kindGuess('Equipment schedule, presently')).toBe('schedule')
     expect(kindGuess('Submittals for HVAC')).toBe('submittal')
     expect(kindGuess('Hello')).toBe('other')
-    expect(nameFromSubject('Fwd: Re: Task list items from Nate')).toBe('Task list items from Nate')
+    expect(nameFromSubject('Fwd: Re: Task list items from the owner')).toBe('Task list items from the owner')
   })
 })

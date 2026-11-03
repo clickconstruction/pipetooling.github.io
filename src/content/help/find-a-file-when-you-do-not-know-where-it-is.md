@@ -38,7 +38,7 @@ Permit 2026-0412.pdf &nbsp; *the job's folder · Oct 14 · 2.1 MB*
 
 Our own index answers first. The index holds the words inside every file the app has read. A Google Doc, a PDF with real text and a text file are read. A scan or a photo is not read yet. The count line says *from our index* when the index answered.
 
-Drive's own search runs behind our index every time. Its finds that the index did not name follow the index's hits. When the index has nothing, Drive's finds are the whole list and the count line says *from Drive*. Drive reads the words inside PDFs and the scans it has read.
+Drive's own search runs behind our index every time. The index's hits show first, usually within a second. Drive's finds that the index did not name follow a moment later. When the index has nothing, Drive's finds are the whole list and the count line says *from Drive*. Drive reads the words inside PDFs and the scans it has read.
 
 To put a job's files in the index, open the job window and press **Documents**. Under **In the folders**, press **Index this job's files**. The press reads forty files at a time and says how many are left. A file it could not read is listed with the reason. New files are read on their own every ten minutes after that.
 
