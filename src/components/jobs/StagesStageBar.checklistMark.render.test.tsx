@@ -4,8 +4,8 @@
  * question left reads in amber with the box before its name and the count in its title; a filled one and a stage
  * with no checklist read as before. Made-up stages and prices.
  */
-import { cleanup } from '@testing-library/react'
-import { afterEach, describe, expect, it } from 'vitest'
+import { cleanup, fireEvent } from '@testing-library/react'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { progressPaymentForJob } from '../../lib/jobs/progressPaymentForJob'
 import type { StageChecklistState } from '../../lib/jobs/stageChecklist'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
@@ -49,6 +49,24 @@ describe('StagesStageBar: the checklist mark', () => {
     expect(trim.getAttribute('data-stage-checklist')).toBe('ready')
     expect(trim.getAttribute('title')).toContain('checklist filled')
     expect(trim.textContent).not.toContain('☐')
+  })
+
+  it('with the door’s opener the marked name is a press to the row’s checklists sheet, and the others are not (#246)', () => {
+    const { view } = progressPaymentForJob(job, null, '2026-10-29')
+    const onChecklistPress = vi.fn()
+    renderWithProviders(<StagesStageBar view={view} pctComplete={20} checklist={new Map([['f1', notReady], ['f3', filled]])} onChecklistPress={onChecklistPress} />)
+    const presses = Array.from(document.querySelectorAll('[data-stage-checklist-press]'))
+    expect(presses).toHaveLength(1)
+    const press = presses[0] as HTMLButtonElement
+    expect(press.getAttribute('aria-label')).toBe('Checklists on Rough · checklist 2 of 3 answered · not ready · press to open')
+    expect(press.textContent).toContain('☐')
+    fireEvent.click(press)
+    expect(onChecklistPress).toHaveBeenCalledTimes(1)
+    // Without the opener the mark stays words alone, as v2.6087 drew it.
+    cleanup()
+    renderWithProviders(<StagesStageBar view={view} pctComplete={20} checklist={new Map([['f1', notReady]])} />)
+    expect(document.querySelector('[data-stage-checklist-press]')).toBeNull()
+    expect((document.querySelector('[role="listitem"]') as HTMLElement).textContent).toContain('☐')
   })
 
   it('draws no mark while no question exists', () => {

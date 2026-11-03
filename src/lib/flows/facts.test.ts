@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { stepsByKind } from '../quickReplies/kernel'
 import { plainWordsFailures } from '../plainWords'
-import { FACT_GROUPS, FLOW_FACTS, FLOW_KINDS, FLOW_PAPERS, factById, factForPaper, factGroups, contactFlowKind, factsWords, flowContactKind, hasFlow, isFactId, isPaperId, noFlowWords, type FlowKind } from './facts'
+import { FACT_GROUPS, FLOW_FACTS, FLOW_KINDS, FLOW_PAPERS, factById, factForPaper, factGroups, contactFlowKind, contactFlowKindOf, factsWords, flowContactKind, hasFlow, isFactId, isPaperId, noFlowWords, type FlowKind } from './facts'
 import { SEED_FLOWS } from './seed'
 import { flat } from './state'
 
@@ -141,6 +141,14 @@ describe('flows/facts', () => {
   it('reads a residential flow’s person as a customer, and every other flow’s as its own kind', () => {
     const all: FlowKind[] = ['customer', 'trade', 'arch', 'residential', 'sub', 'unknown', 'candidate']
     expect(all.map(flowContactKind)).toEqual(['customer', 'trade', 'arch', 'customer', 'sub', 'unknown', 'candidate'])
+  })
+
+  it('puts a customer contact on the residential flow when their customers row says residential, and on their kind’s otherwise (v2.6385)', () => {
+    expect(contactFlowKindOf('customer', 'residential')).toBe('residential')
+    expect(contactFlowKindOf('customer', 'commercial')).toBe('customer')
+    expect(contactFlowKindOf('customer', null)).toBe('customer')
+    expect(contactFlowKindOf('trade', 'residential')).toBe('trade')
+    expect(contactFlowKindOf('lead', 'residential')).toBe('unknown')
   })
 
   it('sends a lead, a supply house and a teammate to the unknown flow, and every other kind to its own, a candidate since the spike', () => {

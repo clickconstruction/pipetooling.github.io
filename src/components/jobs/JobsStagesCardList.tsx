@@ -46,6 +46,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesCardMoreActionsSheet'
+import { DOOR_SHEET_WORDS, pipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import { StagesPhoneRow } from './StagesPhoneRow'
 import { phoneRowPasses } from '../../lib/jobs/jobNextLine'
 import { useShareJob } from './ShareJobButton'
@@ -148,6 +149,19 @@ const cardPrimaryActionStyle: CSSProperties = {
   border: 'none',
   borderRadius: 4,
   cursor: 'pointer',
+}
+
+/**
+ * The ⋯ sheet's *Checklists* line (punch list #246): the phone card's door to the row's checklists sheet, with the
+ * job's standing as its badge, *3 of 6*, *filled* or *no questions yet*; nothing on a job with no stage that takes a
+ * checklist, or without the opener.
+ */
+function checklistDoorAction(ctx: StagesRowRenderContext, job: JobWithDetails): StagesCardMoreAction[] {
+  const open = ctx.openChecklistDoor
+  if (!open) return []
+  const door = pipelineChecklistDoor(job.fixtures ?? [], ctx.checklistMarksFor?.(job) ?? null)
+  if (door.kind === 'none') return []
+  return [{ key: 'checklists', label: DOOR_SHEET_WORDS.cardLine, onClick: () => open(job), badge: door.badge }]
 }
 
 /** Crew names for the ⋯ sheet header — the card body no longer spends a row on them (zoned card). */
@@ -690,6 +704,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     stagesManHoursLoading: props.stagesManHoursLoading,
     crewByJobId: props.crewByJobId,
     checklistMarksFor: props.checklistMarksFor,
+    openChecklistDoor: props.openChecklistDoor,
     stagesLaborBreakdownByJobId: props.stagesLaborBreakdownByJobId,
     expandedJobThreadId: props.expandedJobThreadId,
     toggleStagesJobThreadExpanded: props.toggleStagesJobThreadExpanded,
@@ -740,6 +755,8 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
       },
       { key: 'folder', label: 'Job folder', onClick: () => openEdit(j, { initialTab: 'documents' }), badge: j.google_drive_link ? undefined : 'not made yet' },
+      // The checklist door (punch list #246): the same door as the desktop row's icon, with the job's standing as its badge.
+      ...checklistDoorAction(ctx, j),
       { key: 'click-tooling', label: 'Test report', onClick: () => openTestReportFor(j) },
     ]
     if ((j.job_address ?? '').trim()) {
@@ -929,6 +946,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
                 model={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).model}
                     view={progressPaymentForJob(j, ctx.crewByJobId.get(j.id) ?? null).view}
                     checklist={ctx.checklistMarksFor?.(j) ?? null}
+                    onChecklistPress={ctx.openChecklistDoor ? () => ctx.openChecklistDoor?.(j) : undefined}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={showPctComplete ? pctCompleteSavingId === j.id : undefined}
@@ -1011,6 +1029,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     stagesManHoursLoading: props.stagesManHoursLoading,
     crewByJobId: props.crewByJobId,
     checklistMarksFor: props.checklistMarksFor,
+    openChecklistDoor: props.openChecklistDoor,
     stagesLaborBreakdownByJobId: props.stagesLaborBreakdownByJobId,
     expandedJobThreadId: props.expandedJobThreadId,
     toggleStagesJobThreadExpanded: props.toggleStagesJobThreadExpanded,
@@ -1055,6 +1074,8 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
         onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
       },
       { key: 'folder', label: 'Job folder', onClick: () => openEdit(j, { initialTab: 'documents' }), badge: j.google_drive_link ? undefined : 'not made yet' },
+      // The checklist door (punch list #246): the same door as the desktop row's icon, with the job's standing as its badge.
+      ...checklistDoorAction(ctx, j),
     ]
     if (onViewBill && invWithJob) {
       items.push({ key: 'view-bill', label: 'View bill', onClick: () => onViewBill(invWithJob) })
@@ -1297,6 +1318,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
                 model={cardProgress.model}
                 view={cardProgress.view}
                 checklist={ctx.checklistMarksFor?.(j) ?? null}
+                onChecklistPress={ctx.openChecklistDoor ? () => ctx.openChecklistDoor?.(j) : undefined}
                 billMark={inv && inv.status === 'billed' ? billMarkFor(cardProgress.view, { billId: inv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [], payments: j.payments ?? [] }) : null}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}

@@ -46,6 +46,8 @@ A text you prepared for a morning shows its day instead of a Send button. The ap
 - **Hold until…** picks a day. The step waits until then before the app prepares it again.
 - **Stop reminding on this job** turns the step off for this customer on this job.
 
+If the app says the step is not on the customer's flow, press **Not this one**. Someone took the step off the flow after the text was prepared.
+
 ## When a text is held
 
 A held row says why under the text and has no Send button.

@@ -38,7 +38,9 @@ import { buildOverheadAllocation, normalizeOverheadAllocationSettings, type Over
  * window reads exactly contract × %; one with hours before the window reads
  * its window's share. Without the day ledger (or with no hours at all) the
  * row keeps contract × %. `earnedLifetimeUsd` (contract × %) stays on the row
- * for the Ahead view's remaining-value read.
+ * for the Ahead view's remaining-value read. Done is the row's own `finished`
+ * (the % column resolves to 100), never the job's status (v2.6388): a billed
+ * job at 40 % earns by the 40.
  */
 
 export type JobSummaryStatusFilter = 'finished' | 'in_progress' | 'all'
@@ -448,9 +450,12 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     const earnedLifetimeUsd = revenueUsd
     if (!finished && ledger) {
       // v2.3575: the window's share of the earned value, by hours — the Bridge's kernel.
+      // v2.6388: the row's own `finished` (the % column) decides done, not the status — the
+      // kernel's status rule read a billed job at 40 % as done and earned it the whole contract
+      // (J804: $32,600 "earned" over a hover that said contract × 40 %).
       const share0 = allocateJobOverheadDayShare(ledger, job.id, settings)
       const prior0 = ledger.priorHoursByJob.get(job.id) ?? 0
-      const w = earnedRevenueInWindow({ contractUsd, pctComplete: pct, status: job.status ?? 'in_progress', hoursInWindow: share0.hoursInWindow, lifetimeHours: share0.hoursInWindow + prior0 })
+      const w = earnedRevenueInWindow({ contractUsd, pctComplete: pct, status: job.status ?? 'in_progress', finished, hoursInWindow: share0.hoursInWindow, lifetimeHours: share0.hoursInWindow + prior0 })
       if (w) {
         revenueUsd = w.usd
         earnedHours = { inWindow: share0.hoursInWindow, lifetime: share0.hoursInWindow + prior0, expected: w.expectedHours }
