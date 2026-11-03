@@ -5,8 +5,10 @@
  */
 import { describe, expect, it, vi } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
+import type { PipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import {
   StagesAiaG702Button,
+  StagesChecklistDoorButton,
   StagesHazmatFeeButton,
   StagesJobFolderButton,
   StagesLienInstrumentsButton,
@@ -130,5 +132,31 @@ describe('StagesRowActionButtons', () => {
     expect(onOpenBare).toHaveBeenCalledTimes(1)
     expect(open).toHaveBeenCalledTimes(2)
     open.mockRestore()
+  })
+
+  it('the checklist door reads its tone and count, carries its words, fires its click, and is nothing with no stage that takes a checklist (#246)', () => {
+    const door = (over: Partial<PipelineChecklistDoor>): PipelineChecklistDoor => ({ kind: 'open', tone: 'amber', answered: 3, asked: 6, count: '3/6', title: 'Checklists · Trim Set 3 of 6 · Rough In filled', aria: 'Checklists on this job · 3 of 6 answered', badge: '3 of 6', ...over })
+    const onClick = vi.fn()
+    const { unmount, container } = render(<StagesChecklistDoorButton door={door({})} onClick={onClick} />)
+    const open = screen.getByLabelText('Checklists on this job · 3 of 6 answered')
+    expect(open.getAttribute('title')).toBe('Checklists · Trim Set 3 of 6 · Rough In filled')
+    expect(open.getAttribute('data-stages-checklist-door')).toBe('open')
+    expect(open.style.color).toBe('var(--text-amber-700)')
+    expect(container.querySelector('[data-stages-checklist-count]')?.textContent).toBe('3/6')
+    fireEvent.click(open)
+    expect(onClick).toHaveBeenCalledTimes(1)
+    unmount()
+
+    const filled = render(<StagesChecklistDoorButton door={door({ kind: 'filled', tone: 'green', count: '', aria: 'Checklists on this job · every stage filled' })} onClick={vi.fn()} />)
+    expect(screen.getByLabelText('Checklists on this job · every stage filled').style.color).toBe('var(--text-green-700)')
+    expect(filled.container.querySelector('[data-stages-checklist-count]')).toBeNull()
+    filled.unmount()
+
+    const empty = render(<StagesChecklistDoorButton door={door({ kind: 'empty', tone: 'muted', count: '', aria: 'Checklists on this job · no questions yet' })} onClick={vi.fn()} />)
+    expect(screen.getByLabelText('Checklists on this job · no questions yet').style.color).toBe('var(--text-muted)')
+    empty.unmount()
+
+    const none = render(<StagesChecklistDoorButton door={door({ kind: 'none' })} onClick={vi.fn()} />)
+    expect(none.container.querySelector('button')).toBeNull()
   })
 })

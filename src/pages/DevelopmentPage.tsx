@@ -1068,11 +1068,11 @@ export default function DevelopmentPage() {
                       <strong style={{ color: 'var(--text-strong)', flex: 'none' }}>{n.label}</strong>
                       <span style={{ color: 'var(--text-faint)' }}>·</span>
                       {n.about.id && n.about.kind !== 'customer' ? (
-                        <LinkButton onClick={() => openAbout(n.about)} nowrap>
+                        <LinkButton onClick={() => openAbout(n.about)} nowrap={!phone}>
                           {n.about.label}
                         </LinkButton>
                       ) : (
-                        <span style={{ color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>{n.about.label}</span>
+                        <span style={{ color: 'var(--text-muted)', whiteSpace: phone ? 'normal' : 'nowrap' }}>{n.about.label}</span>
                       )}
                       <span style={{ color: 'var(--text-muted)', minWidth: 0 }}>· {n.text}</span>
                     </div>

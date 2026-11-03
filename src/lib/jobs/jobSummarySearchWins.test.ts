@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { JOB_SUMMARY_VIEW_DEFAULTS, enrichJobSummaryRows, filterAndSortJobSummaryRows, type JobSummaryLedgerRowInput } from './jobSummaryLedgerView'
-import { jobSummarySearchIsExactNumber, jobSummarySearchNote, jobSummarySearchReaches, jobSummaryUnderFloorMatches } from './jobSummarySearchWins'
+import { JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS, jobSummaryJobsTileWords, jobSummarySearchIsExactNumber, jobSummarySearchNote, jobSummarySearchReaches, jobSummaryUnderFloorMatches } from './jobSummarySearchWins'
 import { plainWordsFailures } from '../plainWords'
 
 /**
@@ -162,5 +162,18 @@ describe('plain words', () => {
     ].flatMap((n) => n.sentences)
     expect(all.length).toBeGreaterThan(10)
     for (const s of all) expect(plainWordsFailures(s)).toEqual([])
+  })
+})
+
+describe('the Jobs tile says what the rows are (v2.6388)', () => {
+  it('with nothing typed it names the two chips in force, the month kept as a name', () => {
+    expect(jobSummaryJobsTileWords({ prefs: JOB_SUMMARY_VIEW_DEFAULTS, search: '' })).toBe('finished (100%) · worked since January 1')
+    expect(jobSummaryJobsTileWords({ prefs: { status: 'in_progress', window: '90d' }, search: '   ' })).toBe('in progress · worked in the last 90 days')
+    expect(jobSummaryJobsTileWords({ prefs: { status: 'all', window: 'all' }, search: '' })).toBe('all · every job — overhead charged from 2025-01-01')
+  })
+  it('while the search is on the chips have stepped aside, so it says the rows match the search — not "finished (100%)" over an in-progress row', () => {
+    expect(jobSummaryJobsTileWords({ prefs: JOB_SUMMARY_VIEW_DEFAULTS, search: '804' })).toBe(JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS)
+    expect(JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS).toBe('matching your search')
+    expect(plainWordsFailures(JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS)).toEqual([])
   })
 })

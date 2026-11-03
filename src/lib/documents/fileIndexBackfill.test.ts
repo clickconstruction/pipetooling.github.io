@@ -25,8 +25,9 @@ const k = kernel as {
   wantsAnotherRound: (t: Tally) => boolean
   heldCounts: (held: Held[]) => Record<string, number>
   homeOutcome: (h: Home, t: Tally, ms: number, error: string | null) => { kind: string; id: string; number: string; files: number; indexed: number; withText: number; held: Record<string, number>; heldFiles: Held[]; rounds: number; remaining: number; ms: number; error: string | null }
-  totalsOf: (o: Outcome[]) => { homes: number; jobs: number; bids: number; files: number; indexed: number; withText: number; held: Record<string, number>; unopened: number; unfinished: number; rounds: number; ms: number }
+  totalsOf: (o: Outcome[]) => { homes: number; jobs: number; bids: number; files: number; indexed: number; withText: number; held: Record<string, number>; stopped: number; unfinished: number; rounds: number; ms: number }
   summaryWords: (t: ReturnType<typeof k.totalsOf>) => string
+  recordOutcome: (state: { done?: Record<string, unknown>; stopped?: Record<string, unknown> }, out: Outcome) => { done: Record<string, unknown>; stopped: Record<string, unknown> }
   roundWords: (h: Home, t: Tally) => string
   homesLeft: (homes: Home[], doneIds: string[], again: boolean) => Home[]
   refusalWords: (status: number, body: unknown) => string
@@ -143,14 +144,14 @@ describe('rounds', () => {
 
 describe('totals and the summary', () => {
   const o = (over: Partial<Outcome>): Outcome => ({ kind: 'job', id: 'x', number: '1', files: 0, indexed: 0, withText: 0, held: { scan: 0, kind: 0, big: 0, slow: 0, error: 0 }, heldFiles: [], rounds: 1, remaining: 0, ms: 100, error: null, ...over })
-  it('adds every home, counts a refused home as unopened and a home with files to go as unfinished', () => {
+  it('adds every home, counts a refused home as stopped and a home with files to go as unfinished', () => {
     const t = k.totalsOf([
       o({ files: 10, indexed: 10, withText: 7, held: { scan: 2, kind: 1, big: 0, slow: 0, error: 0 } }),
       o({ kind: 'bid', files: 5, indexed: 5, withText: 5 }),
       o({ error: 'HTTP 500' }),
       o({ files: 50, indexed: 40, withText: 40, remaining: 10 }),
     ])
-    expect(t).toMatchObject({ homes: 4, jobs: 3, bids: 1, files: 65, indexed: 55, withText: 52, unopened: 1, unfinished: 1 })
+    expect(t).toMatchObject({ homes: 4, jobs: 3, bids: 1, files: 65, indexed: 55, withText: 52, stopped: 1, unfinished: 1 })
     expect(t.held).toEqual({ scan: 2, kind: 1, big: 0, slow: 0, error: 0 })
   })
   it('the summary is counts only, with every reason named and the singular right', () => {
@@ -158,7 +159,7 @@ describe('totals and the summary', () => {
       o({ files: 1200, indexed: 1200, withText: 900, held: { scan: 250, kind: 30, big: 5, slow: 10, error: 5 } }),
       o({ kind: 'bid', error: 'The app cannot open this folder.' }),
     ])
-    expect(k.summaryWords(t)).toBe('Walked 2 homes (1 job, 1 bid): 1,200 files, 900 with text, 300 with none (250 scans, 30 of a kind the index does not read, 5 too big, 10 slow, 5 failed). 1 home the app could not open.')
+    expect(k.summaryWords(t)).toBe('Walked 2 homes (1 job, 1 bid): 1,200 files, 900 with text, 300 with none (250 scans, 30 of a kind the index does not read, 5 too big, 10 slow, 5 failed). 1 home the function refused or stopped on, to walk again.')
   })
   it('a clean run says so without a held clause', () => {
     const t = k.totalsOf([o({ files: 3, indexed: 3, withText: 3 })])
@@ -171,6 +172,19 @@ describe('totals and the summary', () => {
 })
 
 describe('resume and refusals', () => {
+  it('a home ended clean is done; one refused or out of rounds stays to walk again, and a later clean walk moves it; no file name goes in the state', () => {
+    const out = (over: Partial<Outcome>): Outcome => ({ kind: 'bid', id: 'b1', number: '1', files: 9, indexed: 9, withText: 8, held: { scan: 1, kind: 0, big: 0, slow: 0, error: 0 }, heldFiles: [{ id: 'f', name: 'never-kept.pdf', why: 'scan' }], rounds: 1, remaining: 0, ms: 100, error: null, ...over })
+    const refused = k.recordOutcome({}, out({ error: 'HTTP 546', remaining: 5 }))
+    expect(Object.keys(refused.done)).toEqual([])
+    expect(Object.keys(refused.stopped)).toEqual(['b1'])
+    expect(k.homesLeft(k.homesFor([], bids, 'bids'), Object.keys(refused.done), false)).toHaveLength(2)
+    const outOfRounds = k.recordOutcome({}, out({ remaining: 200 }))
+    expect(Object.keys(outOfRounds.stopped)).toEqual(['b1'])
+    const clean = k.recordOutcome(refused, out({}))
+    expect(Object.keys(clean.done)).toEqual(['b1'])
+    expect(Object.keys(clean.stopped)).toEqual([])
+    expect(JSON.stringify(clean)).not.toContain('never-kept')
+  })
   it('a second run skips the homes the state marks done, unless told again', () => {
     const homes = k.homesFor(jobs, bids, 'live')
     expect(k.homesLeft(homes, ['j2'], false).map((h) => h.id)).toEqual(['j10', 'jblank'])

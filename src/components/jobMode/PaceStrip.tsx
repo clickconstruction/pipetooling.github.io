@@ -61,6 +61,10 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
   const chip = line.tone === 'early' ? null : line.money?.wrong ? 'budget?' : line.money?.leads && line.days <= 0 ? 'money ahead' : line.tone === 'even' ? 'on pace' : `${line.days > 0 ? '+' : ''}${line.days} d`
   const chipColor = behind ? 'var(--text-red-700)' : line.tone === 'ahead' ? 'var(--text-green-700)' : 'var(--text-700)'
   const budget = hoursBudget && hoursBudget > 0 ? hoursBudget : 0
+  // The work done sits on the plan, not on the track: 100% done is the expected hours, or the budget's edge when the
+  // track has run past it, so the gap between the mark and the fill is ahead or behind in hours on every job.
+  const plan = targetHours != null && targetHours > 0 ? targetHours : budget
+  const doneAt = budget > 0 ? Math.min(100, (done * plan) / budget) : done
   // The real days, laid end to end from the left; each one as wide as its hours.
   const segments: Array<{ ymd: string; hours: number; left: number; width: number }> = []
   let acc = 0
@@ -148,11 +152,11 @@ export function PaceStrip({ line, hoursBudget, targetHours, days = [], stages = 
         {moneyFill != null ? <div style={{ position: 'absolute', left: 0, bottom: 2, height: 3, width: `${moneyFill}%`, background: line.money?.leads ? '#b91c1c' : 'var(--text-muted)', borderRadius: 2, pointerEvents: 'none' }} /> : null}
         {targetPct != null ? <div title={`expected ${Math.round(targetHours!)} h`} style={{ position: 'absolute', top: -4, bottom: -4, left: `calc(${targetPct}% - 1px)`, width: 0, borderLeft: '2px dashed var(--text-strong)', pointerEvents: 'none' }} /> : null}
         {targetPct != null ? <div style={{ position: 'absolute', top: 0, bottom: 0, left: `${targetPct}%`, right: 0, background: 'repeating-linear-gradient(135deg, transparent 0 4px, rgba(127,127,127,0.18) 4px 6px)', pointerEvents: 'none', borderRadius: '0 6px 6px 0' }} /> : null}
-        {line.tone !== 'early' ? <div style={{ position: 'absolute', top: -3, bottom: -3, left: `calc(${done}% - 2px)`, width: 4, background: '#2563eb', borderRadius: 2, pointerEvents: 'none' }} /> : null}
+        {line.tone !== 'early' ? <div data-testid="pace-done" style={{ position: 'absolute', top: -3, bottom: -3, left: `calc(${doneAt}% - 2px)`, width: 4, background: '#2563eb', borderRadius: 2, pointerEvents: 'none' }} /> : null}
         {chip ? (
-          <span style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: done > 80 ? 'auto' : `calc(${done}% + 8px)`, right: done > 80 ? `calc(${100 - done}% + 8px)` : 'auto', fontSize: compact ? '0.7rem' : '0.74rem', fontWeight: 800, color: chipColor, background: 'var(--surface)', borderRadius: 999, padding: '0 6px', whiteSpace: 'nowrap', lineHeight: '16px', pointerEvents: 'none' }}>{chip}</span>
+          <span style={{ position: 'absolute', top: '50%', transform: 'translateY(-50%)', left: doneAt > 80 ? 'auto' : `calc(${doneAt}% + 8px)`, right: doneAt > 80 ? `calc(${100 - doneAt}% + 8px)` : 'auto', fontSize: compact ? '0.7rem' : '0.74rem', fontWeight: 800, color: chipColor, background: 'var(--surface)', borderRadius: 999, padding: '0 6px', whiteSpace: 'nowrap', lineHeight: '16px', pointerEvents: 'none' }}>{chip}</span>
         ) : null}
-        {daysLeftWords && usedPct < 85 && done < 60 ? <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{daysLeftWords}</span> : null}
+        {daysLeftWords && usedPct < 85 && doneAt < 60 ? <span style={{ position: 'absolute', right: 6, top: '50%', transform: 'translateY(-50%)', fontSize: '0.68rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', pointerEvents: 'none' }}>{daysLeftWords}</span> : null}
       </div>
       {stageHover && pieces[stageHover.index] ? (
         <StageEndCard x={stageHover.x} y={stageHover.y} name={shortName(pieces[stageHover.index]!.name)} index={stageHover.index} count={pieces.length} stageHours={pieces[stageHover.index]!.hours} stageUsd={pieces[stageHover.index]!.laborUsd} toHereHours={pieces[stageHover.index]!.toHereHours} toHereUsd={pieces[stageHover.index]!.toHereUsd} days={days} />

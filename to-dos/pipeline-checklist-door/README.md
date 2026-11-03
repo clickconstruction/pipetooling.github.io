@@ -2,7 +2,7 @@
 name: "A checklist door on the Pipeline row: the office sees each stage's progress on the board and manages the list from there"
 number: 246
 group: ready
-status: asked 2026-11-02 on the Pipeline's screenshot; thought through and mocked up the same day; nothing built
+status: asked 2026-11-02 on the Pipeline's screenshot; thought through and mocked up the same day; PR 1 (the door and the sheet) built the same day as v2.6362, PR #6830; PR 2 (the board's chip) next
 summary: >
   The Pipeline row's only sign of a stage checklist is an amber ☐ before the stage's name under
   the bar, with the count hidden in a hover. The owner wants an entry point on the row, in the
@@ -10,10 +10,10 @@ summary: >
   job window. One icon with the count, toned by standing, opening a sheet beside the row: each
   stage with its bar and count, the open rows, answer in place, add a check, skip, and the door to
   the Documents read-out.
-next: PR 1, the door and the sheet. Useful on its own.
+next: PR 2, the board's Checklist left · N chip, once PR 1 is on main.
 size: S as a train of two (S · S); no migration; no edge function
 blocker: none
-ver: v2.6328 · 6347 · 6087 · 6084
+ver: v2.6362 · 6328 · 6347 · 6087 · 6084
 opinion: now — the owner's own words on the board were "we don't currently have the tools … to look at checklist"; the board is where the office looks
 mockup: to-dos/pipeline-checklist-door/mockup.html
 ---
@@ -105,4 +105,13 @@ and land on Documents with the stamped row. Delete every ZZ Test row after.
 ## Where it stands
 
 2026-11-02: asked on the Pipeline's screenshot, thought through and mocked up (`mockup.html`: the
-row with the door, the sheet beside it, the phone card). Nothing built.
+row with the door, the sheet beside it, the phone card).
+
+2026-11-02, later: **PR 1 built as v2.6362 (PR #6830)** — the kernel `pipelineChecklistDoor.ts`, the
+icon in both desktop clusters and the phone cards' ⋯ sheet, the amber stage name as a press, the
+sheet beside the row drawing the strip's own rows inline (`StageChecklistSheet frame="inline"`),
+Open on the job, the guide *see every checklist on the Pipeline*. Three calls made in the build, in
+`docs/recent-features/v2.6362.md`: the icon's count is the open stages' answered and asked added up
+(the mockup's 3/6 with one open stage, 5/10 with two); a lucide glyph with an amber badge in the
+strip's square cell rather than the mockup's wide ☐ chip; the board re-reads its marks when the
+sheet closes, not on every press (the sheet's own chips move at once). PR 2 is next.

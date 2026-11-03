@@ -16,7 +16,8 @@ import { Fragment } from 'react'
 import { JobsStagesActivityBox } from './JobsStagesActivityBox'
 import { STAGES_EDIT_MODE_RAIL_WIDTH, stagesOpenRowStyle, accountManOnlyStripeStyle, renderJobAddressWithMap, renderStagesEditModeRail, renderStagesJobColumnEstimateFooter, renderStagesJobHcpSubline, renderStagesProjectBannerRow, renderStagesSeeAllButton, renderStagesThreadExpandButton, shouldSuppressStagesRowJobThreadToggle, stagesRowHasProjectBanner, stagesActionMoveStackStyle } from './jobsStagesRowShared'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesHazmatFeeButton, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesJobFolderButton, StagesPhotosButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesChecklistDoorButton, StagesHazmatFeeButton, StagesLienInstrumentsButton, StagesLienReleaseButton, StagesJobFolderButton, StagesPhotosButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { pipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import { StagesCrewLine } from './StagesCrewLine'
 import { StagesExpandedThreadRow } from './StagesExpandedThreadRow'
 import { formatCurrency, formatTimeSince, formatUsdNoCents } from '../../lib/jobs/jobFormatting'
@@ -197,6 +198,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 model={progress.model}
                 view={progress.view}
                 checklist={stagesRowSharedCtx.checklistMarksFor?.(j) ?? null}
+                onChecklistPress={stagesRowSharedCtx.openChecklistDoor ? () => stagesRowSharedCtx.openChecklistDoor?.(j) : undefined}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
                 pctSaving={pctCompleteSavingId === j.id}
@@ -221,6 +223,7 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 model={progress.model}
                 view={progress.view}
                 checklist={stagesRowSharedCtx.checklistMarksFor?.(j) ?? null}
+                onChecklistPress={stagesRowSharedCtx.openChecklistDoor ? () => stagesRowSharedCtx.openChecklistDoor?.(j) : undefined}
                 billMark={bundleInv.status === 'billed' && row.kind === 'job_with_merged_billed' ? billMarkFor(progress.view, { billId: bundleInv.id, fixtures: j.fixtures ?? [], invoices: j.invoices ?? [], payments: j.payments ?? [] }) : null}
                 pctComplete={j.pct_complete ?? null}
                 billSentAlert={stagesBillSentPctAlert(j)}
@@ -371,6 +374,12 @@ export function StagesUnifiedJobRow({ row, t }: { row: StagesUnifiedJobRowKind; 
                 />
                 <StagesJobFolderButton folderUrl={j.google_drive_link} onOpenTab={() => openEdit(j, { initialTab: 'documents' })} />
                 {t.openJobPhotos ? <StagesPhotosButton picturesUrl={j.job_pictures_link} folderUrl={j.google_drive_link} onOpen={() => t.openJobPhotos!(j)} /> : null}
+                {(() => {
+                  // The checklist door (punch list #246): the job's standing across its stages, from the marks the board already holds.
+                  const openDoor = stagesRowSharedCtx.openChecklistDoor
+                  const door = openDoor ? pipelineChecklistDoor(j.fixtures ?? [], stagesRowSharedCtx.checklistMarksFor?.(j) ?? null) : null
+                  return openDoor && door && door.kind !== 'none' ? <StagesChecklistDoorButton door={door} onClick={() => openDoor(j)} /> : null
+                })()}
                 {showClickTooling && (
                   <StagesTestReportButton onClick={() => openTestReportFor(j)} />
                 )}
