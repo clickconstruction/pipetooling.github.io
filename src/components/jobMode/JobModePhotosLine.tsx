@@ -6,7 +6,7 @@
  */
 import { useEffect, useMemo, useState, type CSSProperties } from 'react'
 import { CameraGlyph } from '../materials/PhotoPress'
-import { JobPhotosWindow } from '../photos/JobPhotosWindow'
+import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
 import { jobModePhotosLineWords } from '../../lib/photos/jobPhotoNotes'
 import { countJobUploadedPhotos, type JobPhotosWindowIo } from '../../lib/photos/jobPhotoNotesIo'
 
@@ -34,7 +34,7 @@ export function JobModePhotosLine({ jobId, hcpNumber, jobName, jobAddress, count
         {jobModePhotosLineWords(n)} ▸
       </button>
       {open ? (
-        <JobPhotosWindow
+        <JobPhotosWindowLazy
           job={{ id: jobId, hcp_number: hcpNumber ?? null, job_name: jobName ?? null, job_address: jobAddress ?? null }}
           onClose={() => {
             setOpen(false)
