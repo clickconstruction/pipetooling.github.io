@@ -8,10 +8,11 @@ summary: >
   A second basis for the Signed hours statement (#212): the same paper, one worker's recorded hours on one job
   for a period, but priced at the rate the company charges the customer for an hour instead of the rate it
   paid the worker, with a Charged section in place of Paid. Because it holds no payroll figure it can be shown
-  to every signed-in role, where the paid paper is for a dev and the controller alone. The app holds no charge
+  to every office role, where the paid paper is for a dev and the controller alone; the customer's portal never
+  shows it. The app holds no charge
   rate today, so the first PR adds one as a company setting with a per-job override.
 next: PR 1 — the charge rate as a setting with a per-job override, and the kernel's `basis` with its words and tests.
-size: S + M (+ S for the customer's copy, if the owner says yes)
+size: S + M
 blocker: #212's restyle (the paper this one copies) and its access narrowing (the gate this one widens by basis) should merge first, so this train changes one shape, not two.
 opinion: build — the paper, the window, the table and the section all exist; this is one more basis through them, and the only new fact is the rate
 ---
@@ -24,8 +25,9 @@ The owner, 2026-11-02, after seeing the Signed hours statement (#212) print on a
 should make another version of this, which is how much we're charging the customer per hour. And our rate tends
 to be two hundred and eighty-five dollars per hour. It would be a sheet just like this, for jobs, but instead of
 saying how much we paid, it's how much we charged, and that can be exposed to everyone."* In the same breath the
-paid paper was narrowed to a dev and the controller, because it gives out payroll data; the charged paper is the
-one everyone else gets.
+paid paper was narrowed to a dev and the controller, because it gives out payroll data. Confirmed the same evening:
+the charged paper is the one anyone in the office can see, the paid paper (what the company pays its techs) is for a
+dev and the controller alone, and the customer's portal shows neither.
 
 ## What the app has today (verified 2026-11-02 by reading the code)
 
@@ -59,18 +61,19 @@ one everyone else gets.
 3. **Who signs what.** The worker signs the hours as on the paid paper. The attestation drops *and that I was paid
    for this work as shown*; the company's line reads *Prepared from the company's records; charged at $285.00 an
    hour.* The charged amount is the company's statement, not the worker's.
-4. **Everyone signed in may make and see a charged paper**: `canMakeHoursStatement` answers true for every role when
-   the basis is charged, and `can_touch_hours_statement` gains a basis argument that admits every authenticated
-   user for a charged row; a helper or a sub sees the charged papers on their own jobs and their own desk. The
-   paid basis keeps the narrowed gate (a dev and the controller).
+4. **Every office role may make and see a charged paper** (the owner's word: *anyone in the office*): the app's
+   office set — dev, master, assistant, controller, estimator; reuse the existing office predicate, never a new
+   list — through `canMakeHoursStatement` when the basis is charged, and `can_touch_hours_statement` gains a
+   basis argument that admits those roles for a charged row. A helper and a sub see no statement of either kind;
+   the customer's portal shows neither (the owner, 2026-11-02). The paid basis keeps the narrowed gate (a dev and
+   the controller).
 5. **A sub's flat-rate sheet has no hours**, so a charged paper over a sub lists only sheet lines with hours and
    says which sheets it left out and why.
 6. **The record id shares the job's counter** (`HS-972-0003` may be charged while `-0002` was paid); the row's
    basis is a chip in the list, *Paid* · *Charged*, and the press on the section offers the basis as a choice in
    the window (defaulting to charged for a role that may not make a paid one).
-7. **Open for the owner**: whether the customer's portal shows the charged paper on their job (it says what they were
-   charged, which the bills already say, but as hours by day with the worker's name), and whether the charged
-   paper is ever sent for signature or only printed.
+7. **Open for the owner**: whether the charged paper is ever sent for signature or only printed. (The portal
+   question is closed: the customer never sees it.)
 
 ## Where it plugs in
 
@@ -84,7 +87,7 @@ one everyone else gets.
   `HoursStatementsSection.tsx` (the chip, the access by basis), `hoursStatementAccess.ts`.
 - Settings → Jobs & dispatch: the rate's card; Edit Job: the override.
 - Docs: a new guide *make an hours charged statement* (or a section of the existing guide), `GLOSSARY.md`,
-  `ACCESS_CONTROL.md`, `PROJECT_DOCUMENTATION.md` §6, `docs/twins/APP_DIRECTORY.md` (every role sees it).
+  `ACCESS_CONTROL.md`, `PROJECT_DOCUMENTATION.md` §6, `docs/twins/APP_DIRECTORY.md` (the office roles see it).
 
 ## The plan
 
@@ -94,16 +97,15 @@ one everyone else gets.
 2. **PR 2 · the row, the gate and the doors (M).** The table's two columns and the gate's basis argument (one
    migration), the window's basis choice and the rate shown, the section's chip and its access by basis, the
    reads, the guide, the docs, the app directory.
-3. **PR 3 · the customer's copy (S), only on the owner's yes** to the open call in decision 7.
 
 ## How to verify
 
 Dev server, `/dev-login?as=1`: Settings → Jobs & dispatch → the rate reads $285.00; job 972 → Documents → Hours
 statement… → basis Charged: the paper prices each day at $285.00, the Charged band totals the weeks, no wage or
-payment appears anywhere on it; Edit Job → set a job rate → the paper and its header follow it. As the helper
-sample (`/dev-login?as=twin:helper`): the section shows on their own job with the charged papers only, the press
-makes a charged one and the window offers no paid basis; a paid row is not in their list. As the controller: both
-bases. The SQL bed for `hours_statements` holds the gate by basis.
+payment appears anywhere on it; Edit Job → set a job rate → the paper and its header follow it. As the estimator
+sample (`/dev-login?as=twin:estimator`): the section shows with the charged papers only, the press makes a charged
+one and the window offers no paid basis; a paid row is not in their list. As the helper sample: no section at all.
+As the controller: both bases. In a customer's portal: nothing. The SQL bed for `hours_statements` holds the gate by basis.
 
 ## Not verified
 
@@ -112,6 +114,7 @@ paper should also show what the job billed for those weeks; read `jobs_ledger_in
 
 ## Where it stands
 
-Drawn 2026-11-02 in the docs session that catalogued #212's state, from the owner's words the same evening.
-Nothing built. Waits for #212's print restyle and its access narrowing (both in flight the same evening) so the
+Drawn 2026-11-02 in the docs session that catalogued #212's state, from the owner's words the same evening, and
+confirmed by the owner in the same sitting: office roles see the charged paper, a dev and the controller the paid
+one, the customer neither. Nothing built. Waits for #212's print restyle and its access narrowing (both in flight the same evening) so the
 charged paper copies the restyled layout and widens the narrowed gate, not the old ones.
