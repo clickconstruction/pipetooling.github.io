@@ -171,7 +171,7 @@ The row reads the same photos as Documents → Photos. The guide [find every pho
 
 ## What an estimator sees
 
-An estimator opens the same page. It shows the jobs and bids, the history, the plans and the questions. It shows no money. The Money look is one line that says the office reads it.
+An estimator opens the same page with the jobs and bids, the history, the plans and the questions. The page shows no money. The Money look is one line that says the office reads it.
 
 The crews' photos on the jobs read only to the office. An estimator's Photos look shows just the pictures sent by text or email.
 
