@@ -10,6 +10,11 @@ import type { QuickReply } from '../../../../lib/quickReplies/kernel'
 import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 // Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
@@ -86,7 +91,7 @@ async function openStrip(lang: 'es' | 'en' | undefined) {
   }
   renderWithProviders(
     <OpenThreadContext.Provider value={open}>
-      <ReplyBox contact={contact} io={replyIo()} quickIo={quickIo()} />
+      <ReplyBox papersIo={noPapers} contact={contact} io={replyIo()} quickIo={quickIo()} />
     </OpenThreadContext.Provider>,
   )
   const el = document.querySelector('[data-reply-box]') as HTMLElement
