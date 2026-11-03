@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from './stagesPaidSearchHint'
 
 describe('stagesPaidSearchHint (B6 / J3-3)', () => {
-  const base = { searchActive: true, openMatchCount: 0, paidMatchCount: 0, serverSearchBusy: false }
+  const base = { searchActive: true, openMatchCount: 0, paidMatchCount: 0, serverSearchBusy: false, heldBackCount: 0 }
 
   it('is silent without a search', () => {
     expect(stagesPaidSearchHint({ ...base, searchActive: false, paidMatchCount: 3 })).toBeNull()
@@ -20,6 +20,12 @@ describe('stagesPaidSearchHint (B6 / J3-3)', () => {
   it('stays quiet while open sections have matches and paid has none', () => {
     expect(stagesPaidSearchHint({ ...base, openMatchCount: 4 })).toBeNull()
     expect(stagesPaidSearchHint({ ...base, openMatchCount: 4, serverSearchBusy: true })).toBeNull()
+  })
+
+  it('never says "nowhere" while the filters hold a match back; a paid match is still named', () => {
+    expect(stagesPaidSearchHint({ ...base, heldBackCount: 2 })).toBeNull()
+    expect(stagesPaidSearchHint({ ...base, heldBackCount: 2, serverSearchBusy: true })?.kind).toBe('checking')
+    expect(stagesPaidSearchHint({ ...base, heldBackCount: 2, paidMatchCount: 1 })?.kind).toBe('paid_matches')
   })
 
   it('says it is still checking before declaring nothing anywhere', () => {
