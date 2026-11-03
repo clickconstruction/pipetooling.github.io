@@ -12,18 +12,34 @@ import type { FileHome, HomeAt } from './fileIndexKernel.ts'
 export type { FileHome, HomeAt }
 
 /** Every folder the app knows a job or bid by, keyed by its Drive id: a job's three links, a bid's one. */
+/** Every row of a query, a thousand at a time in a fixed order: PostgREST caps one answer at a thousand rows, whatever the limit asks. */
+async function allRows<T>(page: (from: number, to: number) => PromiseLike<{ data: unknown }>): Promise<T[]> {
+  const size = 1000
+  const out: T[] = []
+  for (let from = 0; ; from += size) {
+    const { data } = await page(from, from + size - 1)
+    const rows = (data ?? []) as T[]
+    out.push(...rows)
+    if (rows.length < size) return out
+  }
+}
+
 export async function folderHomes(admin: SupabaseClient): Promise<Map<string, HomeAt>> {
   const homes = new Map<string, HomeAt>()
-  const [jobs, bids] = await Promise.all([
-    admin
-      .from('jobs_ledger')
-      .select('id, hcp_number, click_number, job_name, customer_id, google_drive_link, job_plans_link, job_pictures_link')
-      .or('google_drive_link.not.is.null,job_plans_link.not.is.null,job_pictures_link.not.is.null')
-      .limit(5000),
-    admin.from('bids').select('id, bid_number, project_name, customer_id, drive_link').not('drive_link', 'is', null).limit(5000),
-  ])
   type JobRow = { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; customer_id: string | null; google_drive_link: string | null; job_plans_link: string | null; job_pictures_link: string | null }
-  for (const j of (jobs.data ?? []) as JobRow[]) {
+  type BidRow = { id: string; bid_number: string | null; project_name: string | null; customer_id: string | null; drive_link: string | null }
+  const [jobs, bids] = await Promise.all([
+    allRows<JobRow>((from, to) =>
+      admin
+        .from('jobs_ledger')
+        .select('id, hcp_number, click_number, job_name, customer_id, google_drive_link, job_plans_link, job_pictures_link')
+        .or('google_drive_link.not.is.null,job_plans_link.not.is.null,job_pictures_link.not.is.null')
+        .order('id')
+        .range(from, to),
+    ),
+    allRows<BidRow>((from, to) => admin.from('bids').select('id, bid_number, project_name, customer_id, drive_link').not('drive_link', 'is', null).order('id').range(from, to)),
+  ])
+  for (const j of jobs) {
     const home: FileHome = { kind: 'job', id: j.id, hcpNumber: j.hcp_number, clickNumber: j.click_number, name: j.job_name, customerId: j.customer_id }
     const links: [string | null, string | null][] = [
       [j.google_drive_link, null],
@@ -35,8 +51,7 @@ export async function folderHomes(admin: SupabaseClient): Promise<Map<string, Ho
       if (id && !homes.has(id)) homes.set(id, { home, via })
     }
   }
-  type BidRow = { id: string; bid_number: string | null; project_name: string | null; customer_id: string | null; drive_link: string | null }
-  for (const b of (bids.data ?? []) as BidRow[]) {
+  for (const b of bids) {
     const id = driveFolderIdFromUrl(b.drive_link)
     if (id && !homes.has(id)) homes.set(id, { home: { kind: 'bid', id: b.id, number: b.bid_number, name: b.project_name, customerId: b.customer_id }, via: null })
   }
