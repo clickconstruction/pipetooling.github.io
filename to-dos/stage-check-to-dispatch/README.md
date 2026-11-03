@@ -2,7 +2,7 @@
 name: "Send a stage check to Dispatch: the crew's reason rides with the job, the stage and the check, and Dispatch opens it with the context and acts on it in place"
 number: 245
 group: ready
-status: asked 2026-11-02 on the sheet's screenshot; thought through and mocked up the same day; nothing built; three calls carry recommendations as defaults
+status: asked 2026-11-02 on the sheet's screenshot; thought through and mocked up the same day; PR 1 (the send and the inbox doors) built the same day as v2.6360, PR #6829, merged 2026-11-03 with its migration pushed; PR 2 (the context window and the loop back) next; three calls carry recommendations as defaults
 summary: >
   A crew member on a stage checklist hits a check they cannot answer: the part is missing, the
   check is wrong for this job, the office has to decide. Today the phone has no door from the row,
@@ -12,10 +12,10 @@ summary: >
   or change the check for that job. It rides the dispatch_requests rail the app already has, as a
   structured request, so the inbox, the push, the thread, the priority card and Questions on this
   job all carry it for free.
-next: PR 1, the send and the inbox row's doors. Useful on its own; nothing in it waits on a call.
+next: PR 2, the context window and the loop back. PR 3, the marks, can follow it: #246's door is on main.
 size: M as a train of three (S · M · S); one migration (two columns on dispatch_requests); no edge function beyond the push that already sends
 blocker: none. Call 1 (the reason set) and call 2 (who may close) take the recommendations below as defaults.
-ver: v2.6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
+ver: v2.6360 · 6328 · 6347 · 6052 · 6214 · 3246 · 6087 · 6084
 opinion: now — the sheet's second pass made the row the place the crew stands; a dead end there sends them to a text message, and the context is lost the moment they type one
 mockup: to-dos/stage-check-to-dispatch/mockup.html
 ---
@@ -164,4 +164,19 @@ closed by itself with its note. Delete every ZZ Test row after, the request and 
 ## Where it stands
 
 2026-11-02: asked on the sheet's screenshot, thought through and mocked up (`mockup.html`: the
-row's press, the send sheet, the inbox row and the context window). Nothing built.
+row's press, the send sheet, the inbox row and the context window).
+
+2026-11-02, later: **PR 1 built as v2.6360 (PR #6829)**, merged 2026-11-03 with migration
+`20261102113000` pushed within two minutes of the merge and checked on prod (the two columns over
+the API, the one-open index, `npm run check:migration-drift`); the types follow in PR #6918. Built:
+the kernel `stageCheckDispatch.ts`, **Send to Dispatch** on the open row and the send sheet
+`StageCheckDispatchSheet.tsx`, *With Dispatch · 12 min · need a part* in the press's place while a
+request is open, the inbox row's *Stage check* tag with **Open the job** and **Open the check**
+(`openJobDetail({ openStageChecklist })`), the guide *send a check to Dispatch*. Calls 1 and 2
+shipped as recommended, and call 3's no stands: the push alone. Three calls made in the build, in
+`docs/recent-features/v2.6360.md`: the inbox's doors read the request's payload rather than the new
+columns, so the Dashboard's read never waited on the push; the chip is words, not a press, until PR
+2's window gives it somewhere to open; the sheet's confirm carries no aria-label, so it and the
+row's press read apart. The send sheet opens from #246's inline door too, since v2.6362 landed first
+and the merge mounts it in both frames. The live walk under *How to verify* is not done yet: it
+sends a real push to the Dispatch group. PR 2 is next; PR 3 can follow it.
