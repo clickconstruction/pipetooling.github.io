@@ -10,7 +10,9 @@
  *   npx vite-node scripts/file-index-check.ts --fill [--pause 1500]
  *                                                              index the files with no row through `index`, one file a
  *                                                              call, until none are left or a round gains nothing; writes
- *                                                              our table and never Drive, counts only
+ *                                                              our table and never Drive, counts only. The sweep takes
+ *                                                              them too since v2.6417, forty a run; this is for when you
+ *                                                              cannot wait
  *   npx vite-node scripts/file-index-check.ts --rehome [--pause 500]
  *                                                              walk every row on no job or bid up to its home again, forty
  *                                                              rows a call, nothing read out of the files, counts only
@@ -126,7 +128,7 @@ async function main(): Promise<void> {
   } else {
     const c = await check(session, 25)
     console.log(checkWords(c))
-    console.log(checkWantsAPass(c) ? 'The index wants a pass: --fill takes the files with no row, and the sweep takes a file changed since its row.' : 'Every file the Shared Drive lists has a current row.')
+    console.log(checkWantsAPass(c) ? 'The index wants a pass: the sweep takes a file with no row and a file changed since its row, forty a run; --fill takes the files with no row now, for when you cannot wait.' : 'Every file the Shared Drive lists has a current row.')
     if (argv.includes('--list')) for (const m of c.missing) console.log(`  ${m.modified ?? '-'}  ${m.mime}  ${m.name}`)
   }
   console.log(`(${Math.round((Date.now() - started) / 100) / 10} s)`)

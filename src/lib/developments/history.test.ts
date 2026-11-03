@@ -136,6 +136,7 @@ describe('lineMatchesChip, aboutIsPiece, narrowLines — the chips that narrow',
     line('paid', onJob, { id: 'pd' }),
     line('asked', onSite, { id: 'a' }),
     line('answered', onCustomer, { id: 'an' }),
+    line('photos', onJob, { id: 'ph' }),
   ]
   const ids = (chip: HistoryChip) => lines.filter((l) => lineMatchesChip(l, chip)).map((l) => l.id)
 
@@ -147,7 +148,8 @@ describe('lineMatchesChip, aboutIsPiece, narrowLines — the chips that narrow',
     expect(ids('stages')).toEqual(['s1', 'nj', 'nb', 'w', 'l', 'st', 'c'])
     expect(ids('money')).toEqual(['b', 'pd'])
     expect(ids('questions')).toEqual(['a', 'an'])
-    expect(HISTORY_CHIPS.map((c) => c.key)).toEqual(['all', 'wrote', 'happened', 'plans', 'stages', 'money', 'questions'])
+    expect(ids('photos')).toEqual(['ph'])
+    expect(HISTORY_CHIPS.map((c) => c.key)).toEqual(['all', 'wrote', 'happened', 'plans', 'stages', 'money', 'questions', 'photos'])
   })
   it('a piece is its job, its bid, or both; no piece is everything', () => {
     const both = { jobId: 'j1102', bidId: 'b401', label: 'JP1102' }

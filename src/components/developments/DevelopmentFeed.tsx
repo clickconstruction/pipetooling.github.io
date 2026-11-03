@@ -6,6 +6,11 @@
 import { useState, type CSSProperties } from 'react'
 import { filterChangeLines, searchWords, splitForHighlight, type ChangeLine } from '../../lib/developments/whatChanged'
 import { historyMark, type MarkTone } from '../../lib/developments/historyLegend'
+import { lineTiles } from '../../lib/developments/photoLines'
+import { captionWords } from '../../lib/photos/uploadedPhotos'
+import type { UploadedPhotosIo } from '../../lib/photos/uploadedPhotosIo'
+import { UploadedPhotoTile } from '../documents/UploadedPhotoTile'
+import { UploadedPhotoViewer } from '../documents/UploadedPhotoViewer'
 import { EmptyState } from '../EmptyState'
 import { ageWords, LinkButton, shortDay, timeOfDay } from './developmentPageBits'
 import { JobChip } from './JobChip'
@@ -26,6 +31,8 @@ const MARK_TONE: Record<MarkTone, { bg: string; fg: string }> = {
 }
 
 const PAGE = 12
+/** The *+ N* tile opens the viewer on the first photo the line did not draw. */
+const LINE_TILES_SHOWN = 3
 /** A line's words past this many fold behind *more ›*, which opens the whole of it in a window (the owner, 2026-10-29: *only show so much and show the rest in a modal if the user clicks on it*). */
 const FOLD_AT = 260
 
@@ -79,6 +86,8 @@ export function DevelopmentFeed({
   onToggleOlder,
   query,
   onMore,
+  photoIo,
+  onPerson,
 }: {
   lines: ChangeLine[]
   /** Where the *You last looked* line sits, or null with no stamp yet. */
@@ -92,8 +101,14 @@ export function DevelopmentFeed({
   query?: string
   /** A long line's *more ›*: the page opens the whole of it in a window. */
   onMore?: (line: ChangeLine) => void
+  /** The bytes behind a `photos` line's thumbnails and its viewer (punch list #247, PR 2); with none the line draws its words alone. */
+  photoIo?: UploadedPhotosIo
+  /** The viewer's *Only Malachi's photos*: the page puts the name in the search box. */
+  onPerson?: (name: string) => void
 }) {
   const [shown, setShown] = useState(PAGE)
+  // The viewer opened from a photos line: that line's batch, at the tile pressed.
+  const [photoOpen, setPhotoOpen] = useState<{ line: ChangeLine; index: number } | null>(null)
   const searching = (query ?? '').trim() !== ''
   const words = searching ? searchWords(query ?? '') : []
   const rowStyle: CSSProperties = { display: 'grid', gridTemplateColumns: `${searching ? '124px' : '52px'} 22px 1fr`, gap: 10, alignItems: 'start', padding: '6px 0', borderBottom: '1px solid var(--border)', fontSize: '0.84rem' }
@@ -158,7 +173,7 @@ export function DevelopmentFeed({
             </span>
           ) : null}
           {/* An entry's time is the point (kept at the email's time): drawn at the line's end, where the day column has no room for it. */}
-          {line.withTime && !searching && !line.dayOnly && timeOfDay(line.at) ? <span style={{ color: 'var(--text-faint)', fontSize: '0.76rem' }}> · {timeOfDay(line.at)}</span> : null}
+          {line.withTime && !searching && !line.dayOnly && (line.timeRange || timeOfDay(line.at)) ? <span style={{ color: 'var(--text-faint)', fontSize: '0.76rem' }}> · {line.timeRange || timeOfDay(line.at)}</span> : null}
           {line.waitingDays != null ? (
             <span style={{ color: 'var(--text-amber-800)', fontWeight: 700 }}>
               {' '}
@@ -166,9 +181,44 @@ export function DevelopmentFeed({
             </span>
           ) : null}
         </span>
+        {/* A photos line's thumbnails under its words (punch list #247): up to four, or three and a + N tile; a tap opens the viewer on that photo. */}
+        {line.kind === 'photos' && line.photos && photoIo ? (
+          <div style={{ gridColumn: 3, display: 'flex', gap: 6, flexWrap: 'wrap' }} data-testid="photos-line-tiles">
+            {lineTiles(line.photos).map((t) =>
+              t.kind === 'more' ? (
+                <button key="more" type="button" onClick={() => setPhotoOpen({ line, index: LINE_TILES_SHOWN })} title={`${t.count} more in this batch`} data-testid="photos-line-more" style={{ width: 56, height: 56, borderRadius: 6, border: '1px solid var(--border-blue)', background: 'var(--bg-blue-tint)', color: 'var(--text-link)', fontWeight: 700, cursor: 'pointer', font: 'inherit' }}>
+                  + {t.count}
+                </button>
+              ) : (
+                <button key={`${t.row.source}-${t.row.id}`} type="button" aria-label={`Open ${captionWords(t.row)}`} onClick={() => setPhotoOpen({ line, index: t.index })} data-testid="photos-line-tile" style={{ border: 'none', background: 'transparent', padding: 0, cursor: 'pointer', borderRadius: 6 }}>
+                  <UploadedPhotoTile row={t.row} io={photoIo} size={56} />
+                </button>
+              ),
+            )}
+          </div>
+        ) : null}
       </div>
     )
   }
+  const viewer =
+    photoOpen && photoIo && photoOpen.line.photos?.[photoOpen.index] ? (
+      <UploadedPhotoViewer
+        rows={photoOpen.line.photos}
+        index={photoOpen.index}
+        io={photoIo}
+        onIndex={(i) => setPhotoOpen({ line: photoOpen.line, index: i })}
+        onClose={() => setPhotoOpen(null)}
+        onJob={(row) => {
+          setPhotoOpen(null)
+          if (row.job_id) openAbout({ kind: 'job', id: row.job_id, label: photoOpen.line.about.label })
+        }}
+        onSource={null}
+        onPerson={(name) => {
+          setPhotoOpen(null)
+          onPerson?.(name)
+        }}
+      />
+    ) : null
 
   // A search: every line that matches, new and old alike, newest first, with its time.
   if (searching) {
@@ -179,6 +229,7 @@ export function DevelopmentFeed({
     const visible = hits.slice(0, Math.max(shown, PAGE * 2))
     return (
       <div data-testid="feed-search-hits">
+        {viewer}
         {visible.map((line) => row(line, sinceIndex !== null && lines.indexOf(line) < sinceIndex))}
         {visible.length < hits.length ? (
           <div style={{ paddingTop: 8 }}>
@@ -194,6 +245,7 @@ export function DevelopmentFeed({
     const visible = lines.slice(0, shown)
     return (
       <div>
+        {viewer}
         {visible.map((line) => row(line, false))}
         {visible.length < lines.length ? (
           <div style={{ paddingTop: 8 }}>
@@ -211,6 +263,7 @@ export function DevelopmentFeed({
   const olderVisible = olderOpen ? older.slice(0, shown) : []
   return (
     <div>
+      {viewer}
       {fresh.map((line) => row(line, true))}
       {fresh.length > 0 ? <SinceLine lastLooked={lastLooked} olderCount={older.length} open={olderOpen} onToggle={() => older.length > 0 && onToggleOlder()} everythingNew={older.length === 0} /> : null}
       {olderOpen ? (

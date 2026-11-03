@@ -12,6 +12,7 @@ import { JOB_PHOTO_NOTES_BUCKET, jobPhotoCaption, jobPhotoNotePath, type JobPhot
 import { UPLOADED_PHOTOS_SELECT, type UploadedPhotoRow } from './uploadedPhotos'
 import { supabaseJobPhotosIo, type JobPhotosIo } from './jobPhotosIo'
 import { supabaseUploadedPhotosIo, type UploadedPhotosIo } from './uploadedPhotosIo'
+import { postJobThreadNoteBody } from '../jobs/postJobThreadNote'
 
 const db = supabase as unknown as SupabaseClient
 
@@ -147,7 +148,32 @@ export async function loadJobUploadedPhotos(jobId: string, limit = 500): Promise
   return (data ?? []) as UploadedPhotoRow[]
 }
 
-/** The reads and writes the Job photos window makes (PR 3); a test hands its own. */
+/** How many photos the view holds for one job (every source), for the Job Mode card's line; null when the count cannot be read. */
+export async function countJobUploadedPhotos(jobId: string): Promise<number | null> {
+  try {
+    const { count, error } = await db.from('uploaded_photos').select('id', { count: 'exact', head: true }).eq('job_id', jobId)
+    if (error) return null
+    return count ?? 0
+  } catch {
+    return null
+  }
+}
+
+export type JobPhotoLinks = { google_drive_link: string | null; job_pictures_link: string | null }
+
+/** The job's two folder links, for a door that opens the window without the job's row in hand; null when the read fails. */
+export async function loadJobPhotoLinks(jobId: string): Promise<JobPhotoLinks | null> {
+  try {
+    const { data } = await db.from('jobs_ledger').select('google_drive_link, job_pictures_link').eq('id', jobId).maybeSingle()
+    const row = data as Partial<JobPhotoLinks> | null
+    if (!row) return null
+    return { google_drive_link: row.google_drive_link ?? null, job_pictures_link: row.job_pictures_link ?? null }
+  } catch {
+    return null
+  }
+}
+
+/** The reads and writes the Job photos window makes (PR 3; the links and the thread line PR 4); a test hands its own. */
 export interface JobPhotosWindowIo {
   rows: (jobId: string) => Promise<UploadedPhotoRow[]>
   drive: JobPhotosIo
@@ -155,8 +181,12 @@ export interface JobPhotosWindowIo {
   shots: ShotIo
   add: typeof addJobPhotoNotes
   editWords: typeof editJobPhotoNoteWords
+  /** The job's folder links when the door did not hand them over. */
+  links: typeof loadJobPhotoLinks
+  /** The one line on the job's thread after the press, best-effort. */
+  thread: (jobId: string, authorUserId: string, body: string) => Promise<boolean>
 }
 
 export function supabaseJobPhotosWindowIo(): JobPhotosWindowIo {
-  return { rows: loadJobUploadedPhotos, drive: supabaseJobPhotosIo(), photos: supabaseUploadedPhotosIo(), shots: jobPhotoNotesShotIo, add: addJobPhotoNotes, editWords: editJobPhotoNoteWords }
+  return { rows: loadJobUploadedPhotos, drive: supabaseJobPhotosIo(), photos: supabaseUploadedPhotosIo(), shots: jobPhotoNotesShotIo, add: addJobPhotoNotes, editWords: editJobPhotoNoteWords, links: loadJobPhotoLinks, thread: postJobThreadNoteBody }
 }
