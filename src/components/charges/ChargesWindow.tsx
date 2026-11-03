@@ -10,6 +10,7 @@ import { jobChargeRuleWords, type CrewDay, type JobChargeRule } from '../../lib/
 import { CREW_SHAPES, CREW_SHAPE_LOWER, CREW_SHAPE_WORDS, crewRateWords, crewRateFor, type CrewShape } from '../../lib/charges/rateCard'
 import { marginOfMarkup } from '../../lib/charges/materialsCharged'
 import { Money } from './Money'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * The Charges window (punch list #254, PR 3): behind a Charges cell on the Job Summary. The job's rule and markup at
@@ -27,6 +28,8 @@ const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.875rem', 
 const label: CSSProperties = { display: 'grid', gap: '0.2rem', fontSize: '0.8125rem', color: 'var(--text-muted)', fontWeight: 600 }
 const quiet: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }
 const btn: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', fontWeight: 600 }
+/** A dead press reads the dead pair, blue or grey alike. */
+const dead: CSSProperties = { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'transparent', cursor: 'not-allowed' }
 const chip: CSSProperties = { padding: '0.15rem 0.45rem', fontSize: '0.8125rem', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit', cursor: 'pointer' }
 const th: CSSProperties = { textAlign: 'left', padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', fontSize: '0.75rem', color: 'var(--text-muted)', fontWeight: 600 }
 const td: CSSProperties = { padding: '0.3rem 0.4rem', borderBottom: '1px solid var(--border)', fontSize: '0.8125rem', verticalAlign: 'top' }
@@ -180,7 +183,8 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
     <div role="presentation" style={{ position: 'fixed', inset: 0, zIndex, background: 'rgba(17,24,39,0.45)', display: 'flex', alignItems: 'flex-start', justifyContent: 'center', padding: 'calc(2vh + var(--app-top-chrome, 0px)) 0.75rem 2vh', overflowY: 'auto' }} onClick={onClose}>
       <div role="dialog" aria-modal="true" aria-labelledby={titleId} data-testid="charges-window" style={{ width: 'min(1200px, 100%)', maxHeight: 'min(96vh, 100%)', display: 'flex', flexDirection: 'column', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 10, boxShadow: '0 18px 48px rgba(17,24,39,0.25)', color: 'var(--text-base)' }} onClick={(e) => e.stopPropagation()}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.8rem 1rem', borderBottom: '1px solid var(--border)' }}>
-          <h2 id={titleId} style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)', flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+          <div style={{ flex: 1, minWidth: 0, display: 'flex', flexWrap: 'wrap', alignItems: 'baseline', columnGap: '0.75rem', rowGap: '0.1rem' }}>
+          <h2 id={titleId} style={{ margin: 0, fontSize: '1rem', fontWeight: 700, color: 'var(--text-strong)', flex: '1 1 12rem', minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {title}
           </h2>
           {read ? (
@@ -188,6 +192,7 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
               Revenue on the bills <Money amount={read.job.revenue} data-testid="charges-revenue" />
             </span>
           ) : null}
+          </div>
           <button type="button" onClick={onClose} aria-label="Close" style={{ ...btn, padding: '0.2rem 0.55rem', fontSize: '1.1rem', lineHeight: 1 }}>
             ×
           </button>
@@ -205,14 +210,14 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
         ) : (
           <>
             <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'flex-end', gap: '0.9rem', padding: '0.75rem 1rem', borderBottom: '1px solid var(--border)', background: 'var(--bg-subtle)' }}>
-              <label style={label}>
+              <label style={{ ...label, flex: '1 1 16rem', minWidth: 0, maxWidth: 420 }}>
                 Charge this job’s labor as
                 <select
                   value={rule.kind === 'shape' ? `shape:${rule.shape}` : rule.kind}
                   disabled={!editable || busy != null}
                   aria-label="Charge this job’s labor as"
                   data-testid="charges-rule"
-                  style={{ ...field, maxWidth: 420 }}
+                  style={{ ...field, width: '100%', minWidth: 0 }}
                   onChange={(e) => {
                     const v = e.target.value
                     if (v === 'crew') void saveRule({ kind: 'crew' }, read.jobMarkupPct)
@@ -391,14 +396,14 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
             </div>
 
             <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderTop: '1px solid var(--border)', flexWrap: 'wrap' }}>
-              <button type="button" style={btn} disabled={!editable || busy != null || (read.adjustments.length === 0 && pending.length === 0)} onClick={() => void revertAll()} data-testid="charges-revert">
+              <button type="button" style={{ ...btn, ...(!editable || busy != null || (read.adjustments.length === 0 && pending.length === 0) ? dead : {}) }} disabled={!editable || busy != null || (read.adjustments.length === 0 && pending.length === 0)} onClick={() => void revertAll()} data-testid="charges-revert">
                 Revert to the record
               </button>
               {read.adjustmentsError ? <span style={quiet} data-testid="charges-adjustments-unavailable">Adjustments are not available: {read.adjustmentsError}</span> : !editable ? <span style={quiet}>Read only: a dev, the controller or a pay-approved master adjusts charges.</span> : null}
               <span style={{ flex: 1 }} />
               <button
                 type="button"
-                style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#ffffff' }}
+                style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#ffffff', ...(!editable || busy != null || pending.length === 0 || pending.some((p) => !p.reason.trim()) ? dead : {}) }}
                 disabled={!editable || busy != null || pending.length === 0 || pending.some((p) => !p.reason.trim())}
                 title={pending.some((p) => !p.reason.trim()) ? 'Every adjustment needs a reason.' : undefined}
                 onClick={() => void saveAdjustments()}
