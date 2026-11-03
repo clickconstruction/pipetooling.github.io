@@ -81,7 +81,7 @@ Open the job window and go to **Edit**. The last row reads **Charging the custom
 
 ## See what a job is charged at
 
-Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the table. **Charges** is the job's crew days at the rate card plus its materials at the markup. **Premium** is how far the contract price stands above the charges. A shortfall reads red. The premium waits until every day on the job prices, so a dash can mean days still price at nothing. A chip over the table names the rate card and markup in force.
+Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the table. **Charges** is the job's crew days at the rate card plus its materials at the markup. **Premium** is how far the contract price stands above the charges. A shortfall reads red. The premium waits until every day on the job prices, so a dash can mean days still price at nothing. The total leaves out a job whose premium waits. A chip over the table names the rate card and markup in force.
 
 ## Adjust a job's charges
 

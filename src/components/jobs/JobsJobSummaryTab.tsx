@@ -2,6 +2,7 @@
  * Presentational — all data/state/loaders/modals live in the parent (Jobs.tsx) and arrive as props. */
 import { cardChargeCostUsd } from '../../lib/jobs/cardChargeAllocationFilter'
 import { jobSummaryRowDomId } from '../../lib/jobs/moneyStoryDoor'
+import { premiumTotalWaitsWords } from '../../lib/charges/premium'
 import { burnProjectedMarginForSort } from '../../lib/jobs/jobSummaryBurn'
 import type { CategoryTagColor } from '../../lib/banking/categoryTags'
 import { Fragment, type CSSProperties, type Dispatch, type KeyboardEvent, type ReactNode, type SetStateAction } from 'react'
@@ -3265,7 +3266,11 @@ export default function JobsJobSummaryTab({
                     <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap' }} title={view.totals.chargedJobs ? `${view.totals.chargedJobs} of ${view.totals.jobs} jobs priced` : undefined}>
                       {showTeamLaborAndProfit && view.totals.chargesUsd != null ? <SignedAmountSmallCents value={view.totals.chargesUsd} /> : '—'}
                     </td>
-                    <td style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: showTeamLaborAndProfit && view.totals.premiumUsd != null && view.totals.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }}>
+                    <td
+                      style={{ padding: '0.6rem 0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: showTeamLaborAndProfit && view.totals.premiumUsd != null && view.totals.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }}
+                      title={showTeamLaborAndProfit ? (premiumTotalWaitsWords(view.totals.premiumWaitingJobs, view.totals.premiumUsd != null) ?? undefined) : undefined}
+                      data-testid="job-summary-premium-total"
+                    >
                       {showTeamLaborAndProfit && view.totals.premiumUsd != null ? <SignedAmountSmallCents value={view.totals.premiumUsd} /> : '—'}
                     </td>
                   </tr>

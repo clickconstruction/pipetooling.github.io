@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { premiumOf, premiumWaitsWords } from './premium'
+import { premiumOf, premiumTotalWaitsWords, premiumWaitsWords } from './premium'
 import { adjustMaterialLines, chargeAdjustmentFromRow, chargeAdjustmentWords, indexAdjustments, saveAdjustmentsLabel } from './adjustments'
 import type { MaterialLineInput } from './materialsCharged'
 
@@ -14,6 +14,12 @@ describe('premium and shortfall (punch list #254)', () => {
   it('waits while any day prices at nothing, since the charges are short by those days', () => {
     expect(premiumWaitsWords(1)).toBe('The premium waits until every day prices: 1 day prices at nothing.')
     expect(premiumWaitsWords(40)).toBe('The premium waits until every day prices: 40 days price at nothing.')
+  })
+
+  it('titles a premium total that leaves waiting jobs out', () => {
+    expect(premiumTotalWaitsWords(0, true)).toBeNull()
+    expect(premiumTotalWaitsWords(1, true)).toBe('Leaves out 1 job whose premium waits until every day prices.')
+    expect(premiumTotalWaitsWords(3, false)).toBe('The premium waits until every day prices on 3 jobs.')
   })
 })
 
