@@ -71,6 +71,7 @@ import GcWordAsk from './pages/GcWordAsk'
 import LegalConfirm from './pages/LegalConfirm'
 import SupplyHouseQuotePage from './pages/SupplyHouseQuotePage'
 import PartnerStatement from './pages/PartnerStatement'
+import Logbook from './pages/Logbook'
 import ContractAccept from './pages/ContractAccept'
 import CustomerRating from './pages/CustomerRating'
 import JobContractSign from './pages/JobContractSign'
@@ -381,6 +382,7 @@ function AppContent() {
           <Route path="moneyfill" element={<ErrorBoundary><Moneyfill /></ErrorBoundary>} />
           <Route path="partnerships" element={<ErrorBoundary><Partnerships /></ErrorBoundary>} />
           <Route path="my-statement" element={<ErrorBoundary><PartnerStatement /></ErrorBoundary>} />
+          <Route path="logbook/:userId" element={<ErrorBoundary><Logbook /></ErrorBoundary>} />
           <Route path="people" element={<People />} />
           <Route path="calendar" element={<Calendar />} />
           <Route path="map" element={<Map />} />
