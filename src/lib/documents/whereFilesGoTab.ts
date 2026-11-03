@@ -58,12 +58,17 @@ export interface WhereFilesGoCompany {
   folder: RootFolderFacts | null
 }
 
+/** The people's folder as the `settings` verb answers it (the People → Paperwork spike, 2026-11-02): the same shape as the company's. */
+export type WhereFilesGoPeople = WhereFilesGoCompany
+
 /** The tab's settings, as the page holds them. */
 export interface WhereFilesGo {
   appEmail: string
   root: WhereFilesGoRoot | null
   /** The company papers folder, or null while none is set. */
   company: WhereFilesGoCompany | null
+  /** The people's folder (a person's evidence lands under it), or null while none is set. */
+  people: WhereFilesGoPeople | null
   jobPattern: JobFolderPiece[]
   bidPattern: BidFolderPiece[]
   foldersMade: FoldersMade
@@ -100,6 +105,7 @@ export function whereFilesGoFromAnswer(data: unknown): WhereFilesGo {
     app_email?: unknown
     root?: { id?: unknown; url?: unknown; from?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
     company?: { id?: unknown; url?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
+    people?: { id?: unknown; url?: unknown; ok?: unknown; words?: unknown; folder?: unknown } | null
     job_pattern?: unknown
     bid_pattern?: unknown
     folders_made?: unknown
@@ -118,10 +124,14 @@ export function whereFilesGoFromAnswer(data: unknown): WhereFilesGo {
   const company = r.company && typeof r.company === 'object' && str(r.company.id)
     ? { id: str(r.company.id), url: str(r.company.url), ok: r.company.ok === true, words: str(r.company.words), folder: factsOf(r.company.folder) }
     : null
+  const people = r.people && typeof r.people === 'object' && str(r.people.id)
+    ? { id: str(r.people.id), url: str(r.people.url), ok: r.people.ok === true, words: str(r.people.words), folder: factsOf(r.people.folder) }
+    : null
   return {
     appEmail: str(r.app_email),
     root,
     company,
+    people,
     jobPattern: parseFolderPattern(JSON.stringify(r.job_pattern ?? null), JOB_FOLDER_PIECES, DEFAULT_JOB_FOLDER_PATTERN),
     bidPattern: parseFolderPattern(JSON.stringify(r.bid_pattern ?? null), BID_FOLDER_PIECES, DEFAULT_BID_FOLDER_PATTERN),
     foldersMade: parseFoldersMade(str(r.folders_made)),
@@ -170,6 +180,21 @@ export function companyCardWords(company: WhereFilesGoCompany | null): { name: s
   const path = f && f.path.length > 0 ? [...f.path, f.name].filter(Boolean).join(' › ') : null
   const owner = f?.drive ? `In the Shared Drive ${f.drive}.` : f?.owner ? `Owned by ${f.owner}.` : null
   return { name, path, owner, from: null }
+}
+
+export const NO_PEOPLE_FOLDER_YET_WORDS = 'No People folder yet. Paste a folder link and press Check.'
+/** The People card's warning when the folder shares the jobs root's Shared Drive: that drive's members read the evidence there. */
+export const PEOPLE_FOLDER_IN_JOBS_DRIVE_WORDS = 'This folder sits in the same Shared Drive as the jobs root. Its members can read the evidence there.'
+
+/** The People card's lines: the folder's name, its path, the drive it sits in, and a warning when that drive is the jobs root's. */
+export function peopleCardWords(people: WhereFilesGoPeople | null, root: WhereFilesGoRoot | null): { name: string; path: string | null; owner: string | null; from: string | null; warning: string | null } {
+  if (!people) return { name: 'The People folder', path: null, owner: null, from: NO_PEOPLE_FOLDER_YET_WORDS, warning: null }
+  const f = people.folder
+  const name = f?.name || 'The People folder'
+  const path = f && f.path.length > 0 ? [...f.path, f.name].filter(Boolean).join(' › ') : null
+  const owner = f?.drive ? `In the Shared Drive ${f.drive}.` : f?.owner ? `Owned by ${f.owner}.` : null
+  const warning = f?.drive && root?.folder?.drive && f.drive === root.folder.drive ? PEOPLE_FOLDER_IN_JOBS_DRIVE_WORDS : null
+  return { name, path, owner, from: null, warning }
 }
 
 /** A live job as the tab reads it from `jobs_ledger`. */

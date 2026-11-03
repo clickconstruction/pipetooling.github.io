@@ -45,6 +45,20 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      # A change that touches only docs/, to-dos/, a root .md, .claude/ or a release note cannot break the app, and
+      # the suite costs 13 to 21 of this job's 25 minutes (2026-11-02: 16 of 74 merges were such changes, and the
+      # queue built three at a time). The compare API lists the files between the build's base and head — on a
+      # merge-queue build that is every entry in the group, so a code PR ahead in the group keeps the full suite.
+      # scripts/lib/docsOnlyChange.mjs decides, fail-safe: no files, an unreadable body, a list cut at the API's
+      # cap, or one file outside the patterns runs everything. Typecheck, lint and the house checks run either way.
+      - name: Which files changed (a docs-only change runs the doc-reading tests alone)
+        id: changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          BASE: ${{ github.event_name == 'merge_group' && github.event.merge_group.base_sha || github.event.pull_request.base.sha }}
+          HEAD: ${{ github.event_name == 'merge_group' && github.event.merge_group.head_sha || github.event.pull_request.head.sha }}
+        run: gh api "repos/${GITHUB_REPOSITORY}/compare/${BASE}...${HEAD}?per_page=300" | node scripts/ci-docs-only.mjs
+
       # Typecheck and lint caches. warm-caches.yml saves them on every push to main; every pull request and
       # merge-queue build restores the newest one it can see (a branch sees main's caches and its own). tsc then
       # re-checks only the files that changed since that main, and eslint only the files whose content changed,
@@ -136,9 +150,19 @@ jobs:
           GH_TOKEN: ${{ github.token }}
 
       - name: Test
+        if: steps.changed.outputs.docs_only != 'true'
         run: npm test
         env:
           # Unit tests don't hit Supabase, but src/lib/supabase.ts throws at import
           # if these are unset. Dummy non-empty values satisfy the guard.
+          VITE_SUPABASE_URL: https://example.supabase.co
+          VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key
+
+      # The five tests that read docs/, to-dos/, .claude/ or the release notes from disk — the list is the
+      # step's output, kept by src/lib/docsOnlyChange.test.ts, so there is no second copy here to drift.
+      - name: Test the doc readers (a docs-only change)
+        if: steps.changed.outputs.docs_only == 'true'
+        run: npx vitest run ${{ steps.changed.outputs.doc_tests }}
+        env:
           VITE_SUPABASE_URL: https://example.supabase.co
           VITE_SUPABASE_ANON_KEY: ci-dummy-anon-key

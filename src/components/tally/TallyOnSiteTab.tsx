@@ -57,6 +57,17 @@ const quiet: CSSProperties = { background: 'none', border: 'none', padding: 0, m
 const card: CSSProperties = { background: 'var(--surface)', borderWidth: 1, borderStyle: 'solid', borderColor: 'var(--border)', borderRadius: 10, padding: '0.75rem 0.9rem' }
 const input: CSSProperties = { width: '100%', minHeight: TOUCH_MIN, padding: '0.6rem 0.9rem', fontSize: '1rem', boxSizing: 'border-box', border: '1px solid var(--border-strong)', borderRadius: 8, background: 'var(--surface)', color: 'var(--text-strong)' }
 const muted: CSSProperties = { color: 'var(--text-muted)', fontSize: '0.85rem' }
+/** A print the box's page offers: a pill at thumb height with the printer glyph, drawn as a link because it opens the office page in a new tab. */
+const paperPress: CSSProperties = { ...btn, borderRadius: 999, justifyContent: 'center', gap: '0.4rem', textDecoration: 'none', fontSize: '0.9rem', padding: '0 0.6rem', whiteSpace: 'nowrap' }
+function PrinterGlyph() {
+  return (
+    <svg aria-hidden width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ flex: 'none' }}>
+      <path d="M6 9V3h12v6" />
+      <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2" />
+      <rect x="6" y="14" width="12" height="7" />
+    </svg>
+  )
+}
 /** Inline styles have no :disabled, so a dead press fades by hand. */
 const dis = (off: boolean): CSSProperties => (off ? { opacity: 0.45, cursor: 'default' } : {})
 
@@ -430,10 +441,17 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
       ))}
       <button type="button" style={{ ...btn, ...btnBlock }} onClick={() => setSheet({ kind: 'add-part', container })}>Add a part to {container.label}</button>
       {container.kind !== 'unsorted' ? (
-        <div style={{ display: 'flex', gap: '1.25rem', flexWrap: 'wrap' }}>
-          {/* The label prints from the office page, which opens on this box's label (#209). */}
-          <a href={`/jobs?tab=materials&job=${jobId}&label=${container.id}`} target="_blank" rel="noopener" style={{ ...quiet, color: 'var(--text-muted)', display: 'inline-flex', alignItems: 'center' }}>Print the label for {container.label}</a>
-          <button type="button" style={{ ...quiet, color: 'var(--text-muted)' }} onClick={() => setSheet({ kind: 'retire', container })}>Retire {container.label}</button>
+        /* The box's paper and its retirement (v2.6366): the two prints are a pair of pill presses with the printer glyph, one row under a caption, and Retire sits apart on its own line so a thumb reaching for a print never lands on it. Both print from the office page, which opens on this box. */
+        <div style={{ display: 'grid', gap: '0.5rem', paddingTop: '0.6rem', borderTop: '1px solid var(--border)' }}>
+          <span style={muted}>Paper for {container.label}</span>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', gap: '0.4rem' }}>
+            <a href={`/jobs?tab=materials&job=${jobId}&label=${container.id}`} target="_blank" rel="noopener" aria-label={`Print the label for ${container.label}`} style={paperPress}><PrinterGlyph />Print the label</a>
+            <a href={`/jobs?tab=materials&job=${jobId}&manifest=${container.id}`} target="_blank" rel="noopener" aria-label={`Print the manifest for ${container.label}`} style={paperPress}><PrinterGlyph />Print the manifest</a>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '0.75rem', ...muted }}>
+            <span>Done with this {container.kind === 'cage' ? 'cage' : 'box'}?</span>
+            <button type="button" style={{ ...quiet, color: 'var(--text-muted)', fontSize: '0.9rem' }} onClick={() => setSheet({ kind: 'retire', container })}>Retire {container.label}</button>
+          </div>
         </div>
       ) : null}
 
@@ -457,7 +475,7 @@ export default function TallyOnSiteTab({ jobs, jobsLoading, selectedJobId, onPic
             <p style={{ margin: 0 }}>{sheet.container.label} still has parts in it. Move them or mark them used first, then retire it.</p>
           ) : (
             <>
-              <p style={{ margin: 0, ...muted }}>The cage leaves this job. The next job gets its own {sheet.container.label}.</p>
+              <p style={{ margin: 0, ...muted }}>The {sheet.container.kind === 'cage' ? 'cage' : 'box'} leaves this job. The next job gets its own {sheet.container.label}.</p>
               <button type="button" style={{ ...btnPrimary, ...btnBlock }} onClick={() => { retireContainer(sheet.container.id); setSheet(null); setView({ kind: 'containers' }); showToast(`${sheet.container.label} retired.`, 'success') }}>Retire {sheet.container.label}</button>
             </>
           )}

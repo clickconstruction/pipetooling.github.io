@@ -7,6 +7,8 @@ import {
   BID_FOLDER_PIECES,
   DRIVE_BID_FOLDER_PATTERN_KEY,
   DRIVE_COMPANY_FOLDER_ID_KEY,
+  DRIVE_PEOPLE_FOLDER_ID_KEY,
+  PEOPLE_IN_JOBS_DRIVE_WORDS,
   DRIVE_FOLDERS_MADE_KEY,
   DRIVE_JOB_FOLDER_PATTERN_KEY,
   DRIVE_JOBS_ROOT_FOLDER_ID_KEY,
@@ -96,11 +98,15 @@ async function settingsAnswer(token: string, appEmail: string, settings: DriveSe
   const check = root ? await checkFolderWrite(token, root, appEmail) : null
   const company = settings.companyFolderId
   const companyCheck = company ? await checkFolderWrite(token, company, appEmail) : null
+  const people = settings.peopleFolderId
+  const peopleCheck = people ? await checkFolderWrite(token, people, appEmail) : null
   return {
     success: true,
     app_email: appEmail,
     root: root ? { id: root, url: folderUrl(root), from: settings.rootFrom, ok: check?.ok ?? false, words: check?.words ?? NO_ROOT_WORDS, folder: check?.folder ?? null } : null,
     company: company ? { id: company, url: folderUrl(company), ok: companyCheck?.ok ?? false, words: companyCheck?.words ?? '', folder: companyCheck?.folder ?? null } : null,
+    // The people's files (a person's evidence, hr-evidence-drive): a Shared Drive of its own, the owner's call of 2026-11-02.
+    people: people ? { id: people, url: folderUrl(people), ok: peopleCheck?.ok ?? false, words: peopleCheck?.words ?? '', folder: peopleCheck?.folder ?? null } : null,
     job_pattern: settings.jobPattern,
     bid_pattern: settings.bidPattern,
     folders_made: settings.foldersMade,
@@ -124,7 +130,7 @@ serve(async (req) => {
       job_id?: string
       check?: { folder?: string }
       settings?: boolean
-      set?: { root?: string | null; company?: string | null; job_pattern?: unknown; bid_pattern?: unknown; folders_made?: unknown }
+      set?: { root?: string | null; company?: string | null; people?: string | null; job_pattern?: unknown; bid_pattern?: unknown; folders_made?: unknown }
       sweep?: { limit?: unknown; all?: unknown; offset?: unknown }
     }
 
@@ -178,6 +184,19 @@ serve(async (req) => {
         const r = await checkFolderWrite(token, id, appEmail)
         if (!r.ok) return json({ error: r.words, why: 'company_unwritable', app_email: appEmail, folder: r.folder }, 409)
         rows.push({ key: DRIVE_COMPANY_FOLDER_ID_KEY, value_text: id })
+      }
+      if (body.set.people !== undefined) {
+        // The people's files: checked the same way, and refused inside the Jobs drive, whose members would read the evidence there.
+        const id = driveFolderIdFromLinkOrId(body.set.people)
+        if (!id) return json({ error: 'Paste the link of a Drive folder to hold the people’s files.', why: 'not_a_folder' }, 400)
+        const r = await checkFolderWrite(token, id, appEmail)
+        if (!r.ok) return json({ error: r.words, why: 'people_unwritable', app_email: appEmail, folder: r.folder }, 409)
+        const jobsRoot = settings.rootFolderId
+        const rootDrive = jobsRoot ? (await checkFolderWrite(token, jobsRoot, appEmail)).folder?.drive ?? null : null
+        if (rootDrive && r.folder?.drive && r.folder.drive === rootDrive) {
+          return json({ error: PEOPLE_IN_JOBS_DRIVE_WORDS, why: 'people_in_jobs_drive', app_email: appEmail, folder: r.folder }, 409)
+        }
+        rows.push({ key: DRIVE_PEOPLE_FOLDER_ID_KEY, value_text: id })
       }
       if (body.set.job_pattern !== undefined) {
         const pattern = parseFolderPattern(JSON.stringify(body.set.job_pattern), JOB_FOLDER_PIECES, [])
