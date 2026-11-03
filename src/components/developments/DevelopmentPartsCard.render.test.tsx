@@ -90,6 +90,30 @@ describe('DevelopmentPartsCard', () => {
     expect(ask).toHaveBeenCalledWith(2)
   })
 
+  it('a writer ticks the jobs on no part, names the part, and one press puts them on it', async () => {
+    const w = writes()
+    const many = buildSitePlansView({ parts, sets, jobs: [...jobs, { id: 'j4', label: 'JP960', plan_part_id: null, name: 'ATV building fans' }], bids })
+    renderWithProviders(<DevelopmentPartsCard view={many} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
+    fireEvent.click(screen.getByTestId('site-chip-no-part'))
+    // Each row carries the job's name, by name: the ATV building job before the mobilizations.
+    const rows = screen.getByTestId('site-list-no-part').querySelectorAll('.developmentPickRow')
+    expect([...rows].map((r) => r.textContent)).toEqual(['JP960ATV building fans', 'JP957Mobilizations Feb-Mar 2026'])
+    expect(screen.getByText('Put jobs on a part').closest('button')!.hasAttribute('disabled')).toBe(true)
+    fireEvent.click(screen.getByText('Tick all 2'))
+    fireEvent.change(screen.getByTestId('site-part-for-jobs'), { target: { value: 'p1' } })
+    const press = screen.getByText('Put 2 jobs on Lodge').closest('button')!
+    expect(press.hasAttribute('disabled')).toBe(false)
+    fireEvent.click(press)
+    await waitFor(() => expect(w.putJobsOnPart).toHaveBeenCalledWith('p1', ['j2', 'j4']))
+  })
+
+  it('a reader sees the jobs on no part as doors and no press', () => {
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    fireEvent.click(screen.getByTestId('site-chip-no-part'))
+    expect(screen.getByTestId('site-list-no-part').textContent).toContain('JP957')
+    expect(screen.queryByTestId('site-part-for-jobs')).toBeNull()
+  })
+
   it('folds the older sets and switches with Build from this set', async () => {
     const w = writes()
     renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
@@ -249,29 +273,5 @@ describe('DevelopmentPartsCard', () => {
     expect(screen.getByText('No part of the site has plans yet.')).toBeTruthy()
     fireEvent.click(screen.getByRole('button', { name: '+ Part' }))
     expect(screen.getByTestId('site-part-form')).toBeTruthy()
-  })
-
-  it('a writer ticks the jobs on no part, names the part, and one press puts them on it', async () => {
-    const w = writes()
-    const many = buildSitePlansView({ parts, sets, jobs: [...jobs, { id: 'j4', label: 'JP960', plan_part_id: null, name: 'ATV building fans' }], bids })
-    renderWithProviders(<DevelopmentPartsCard view={many} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
-    fireEvent.click(screen.getByTestId('site-chip-no-part'))
-    // Each row carries the job's name, by name: the ATV building job before the mobilizations.
-    const rows = screen.getByTestId('site-list-no-part').querySelectorAll('.developmentPickRow')
-    expect([...rows].map((r) => r.textContent)).toEqual(['JP960ATV building fans', 'JP957Mobilizations Feb-Mar 2026'])
-    expect(screen.getByText('Put jobs on a part').closest('button')!.hasAttribute('disabled')).toBe(true)
-    fireEvent.click(screen.getByText('Tick all 2'))
-    fireEvent.change(screen.getByTestId('site-part-for-jobs'), { target: { value: 'p1' } })
-    const press = screen.getByText('Put 2 jobs on Lodge').closest('button')!
-    expect(press.hasAttribute('disabled')).toBe(false)
-    fireEvent.click(press)
-    await waitFor(() => expect(w.putJobsOnPart).toHaveBeenCalledWith('p1', ['j2', 'j4']))
-  })
-
-  it('a reader sees the jobs on no part as doors and no press', () => {
-    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
-    fireEvent.click(screen.getByTestId('site-chip-no-part'))
-    expect(screen.getByTestId('site-list-no-part').textContent).toContain('JP957')
-    expect(screen.queryByTestId('site-part-for-jobs')).toBeNull()
   })
 })
