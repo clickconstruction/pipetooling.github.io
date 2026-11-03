@@ -20,7 +20,7 @@ vi.mock('../../lib/openInExternalBrowser', () => ({ openInExternalBrowser: (url:
 
 function row(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
   return {
-    part_id: 'p1', name: 'Reece spec book', kind: 'spec', source: 'supplier', dated: null, came_at: '2025-07-07T12:00:00Z', memo: '', link: 'https://drive.google.com/spec',
+    part_id: 'p1', name: 'Fixture spec book', kind: 'spec', source: 'supplier', dated: null, came_at: '2025-07-07T12:00:00Z', memo: '', link: 'https://drive.google.com/spec',
     replaces_set_id: null, marks_up_set_id: 's1', job_id: null, file_name: null, file_size: null, file_count: null, checked_at: null, check_note: null,
     owed: false, ask_lane: null, ask_request_id: null, created_by: null, created_at: '2025-07-07T12:00:00Z', updated_at: '2025-07-07T12:00:00Z', ...over,
   }
@@ -28,9 +28,9 @@ function row(over: Partial<PlanSetRow> & { id: string }): PlanSetRow {
 const sets: PlanSetRow[] = [row({ id: 's1', name: 'Issued set', kind: 'issued', source: 'gc', marks_up_set_id: null, link: 'https://drive.google.com/issued' }), row({ id: 's2', name: 'Addendum 1', kind: 'addendum', source: 'gc', marks_up_set_id: null })]
 const papersRead: PapersRead = {
   rows: [
-    row({ id: 'a', name: 'Nate’s task list', kind: 'task_list', source: 'gc', came_at: '2026-06-24T12:00:00Z', marks_up_set_id: 's2', memo: 'doors already bought', link: '', ask_lane: 'estimators', ask_request_id: 'q1' }),
+    row({ id: 'a', name: 'The owner’s task list', kind: 'task_list', source: 'gc', came_at: '2026-06-24T12:00:00Z', marks_up_set_id: 's2', memo: 'doors already bought', link: '', ask_lane: 'estimators', ask_request_id: 'q1' }),
     row({ id: 'b', name: 'Soil report', kind: 'report', source: 'gc', owed: true, link: '', came_at: '2025-09-15T12:00:00Z', marks_up_set_id: null, ask_lane: 'estimators', ask_request_id: 'q2' }),
-    row({ id: 'c', name: 'Reece spec book', marks_up_set_id: 's1' }),
+    row({ id: 'c', name: 'Fixture spec book', marks_up_set_id: 's1' }),
   ],
   requests: [
     { id: 'q1', lane: 'estimators', title: 'Paint spec for the overhead piping?', status: 'open', created_at: '2026-06-25T15:00:00Z', closed_at: null, closed_note: null },
