@@ -47,6 +47,12 @@ A project at or over its labor budget shows the slider pinned. The words say the
 
 Press the card's title, or any space around the controls, to open it large. The strip is taller and each stage is named under its piece. The slider is long. {{button:outline|−}} and {{button:outline|+}} move it one crew day. A box takes the hours typed. The full reading sits under it.
 
+## The leader's Dashboard
+
+The leader also sees Projects on the Dashboard, as one line under Money in. The line counts the working projects, how many are behind, how many are ahead, and names the worst one. Press the line and it opens to the same cards as the board. Press {{button:outline|Close ▴}} and it folds back to one line. The Dashboard remembers your choice.
+
 ## Who sees what
 
 The leader, the assistant and the controller set the expected hours. A superintendent sees the whole board and reads every number, and sets nothing. The point is that someone else moved the number.
+
+Everyone on the board reads the same hours and the same money percent. Only a dev, the leader and the controller see dollars on a day. Everyone else reads each person's hours and the report.

@@ -454,7 +454,12 @@ describe('/messages: the kept queue (punch list #183 PR 5)', () => {
     keptStore.write.mockClear()
   })
   afterEach(() => {
+    // The tree comes down before the phone's matchMedia is put back: a passive effect of the last render (the jump
+    // strip's `useMatchMedia`) can still flush on the unmount, and the saved value is jsdom's undefined, which the
+    // shim fills again (the merge queue's flake of 2026-11-02, "window.matchMedia is not a function").
+    cleanup()
     window.matchMedia = realMatchMedia
+    installDomShims()
     keptStore.read.mockReset()
     keptStore.read.mockResolvedValue(null)
   })

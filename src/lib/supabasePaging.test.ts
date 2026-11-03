@@ -95,6 +95,47 @@ describe('fetchAllRowsChunkedIn', () => {
       fetchAllRowsChunkedIn([1], () => Promise.resolve({ data: null, error: { message: 'nope' } }), 'child rows'),
     ).rejects.toThrow(/Failed to child rows: nope/)
   })
+
+  it('runs chunks a few at a time when asked and keeps them in chunk order', async () => {
+    // Seven ids in chunks of 2 → four chunks; `parallel: 3` runs three together, then the last one alone.
+    const inFlight: number[] = []
+    let peak = 0
+    let live = 0
+    const rows = await fetchAllRowsChunkedIn(
+      [1, 2, 3, 4, 5, 6, 7],
+      async (chunk) => {
+        live++
+        peak = Math.max(peak, live)
+        inFlight.push(chunk[0] ?? 0)
+        await new Promise((r) => setTimeout(r, 5))
+        live--
+        return { data: chunk.map((id) => ({ id })), error: null }
+      },
+      'test',
+      { chunkSize: 2, parallel: 3 },
+    )
+    expect(rows.map((r) => r.id)).toEqual([1, 2, 3, 4, 5, 6, 7])
+    expect(peak).toBe(3)
+    expect(inFlight).toEqual([1, 3, 5, 7])
+  })
+
+  it('runs one chunk at a time by default', async () => {
+    let peak = 0
+    let live = 0
+    await fetchAllRowsChunkedIn(
+      [1, 2, 3, 4],
+      async (chunk) => {
+        live++
+        peak = Math.max(peak, live)
+        await new Promise((r) => setTimeout(r, 2))
+        live--
+        return { data: chunk.map((id) => ({ id })), error: null }
+      },
+      'test',
+      { chunkSize: 1 },
+    )
+    expect(peak).toBe(1)
+  })
 })
 
 describe('fetchAllRows maxRows (a real, detectable ceiling)', () => {
