@@ -28,7 +28,7 @@ export type ExhibitSource = {
     lienFilings: ReadonlyArray<Pick<LegalPacket['paper']['lienFilings'][number], 'jobLabel' | 'kind' | 'filedYmd' | 'wentOutYmd' | 'county'>>
   }
   theirWord: { timeline: ReadonlyArray<Pick<LegalPacket['theirWord']['timeline'][number], 'ymd' | 'text' | 'shared' | 'jobLabel'>> }
-  evidence: ReadonlyArray<Pick<LegalPacket['evidence'][number], 'jobLabel' | 'reports' | 'sessions' | 'hours'>>
+  evidence: ReadonlyArray<Pick<LegalPacket['evidence'][number], 'jobLabel' | 'reports' | 'sessions' | 'hours'> & { statements?: ReadonlyArray<Pick<LegalPacket['evidence'][number]['statements'][number], 'recordId' | 'workerName' | 'hours' | 'periodLabel' | 'signed' | 'matterDocumentId'>> }>
 }
 
 export const EXHIBIT_LINES_SHOWN = 6
@@ -38,7 +38,7 @@ const day = (ymd: string | null | undefined): string => (ymd && ymd.length >= 10
 function tabFor(title: string): ExhibitTab {
   const t = title.toLowerCase()
   if (t.startsWith('what was said')) return 'their_word'
-  if (t.startsWith('field reports')) return 'evidence'
+  if (t.startsWith('field reports') || t.startsWith('signed hours')) return 'evidence'
   if (t.startsWith('signed agreements') || t.startsWith('final demand') || t.startsWith('lien notices')) return 'paper'
   return 'account'
 }
@@ -52,6 +52,8 @@ function linesFor(title: string, p: ExhibitSource): string[] {
   if (t.startsWith('lien notices')) return p.paper.lienFilings.map((f) => `${day(f.filedYmd ?? f.wentOutYmd)} · ${f.jobLabel} · ${f.kind}${f.filedYmd ? ' filed' : ''}${f.county ? ` · ${f.county}` : ''}`)
   if (t.startsWith('what was said')) return p.theirWord.timeline.filter((e) => e.shared).map((e) => `${day(e.ymd)}${e.jobLabel ? ` · ${e.jobLabel}` : ''} · ${e.text}`)
   if (t.startsWith('field reports')) return p.evidence.filter((e) => e.reports + e.sessions > 0).map((e) => `${e.jobLabel} · ${e.reports} report${e.reports === 1 ? '' : 's'} · ${e.sessions} clock session${e.sessions === 1 ? '' : 's'}${e.hours ? ` · ${Math.round(e.hours)} h` : ''}`)
+  // v2.6413 (punch list #212 PR 4): one line per signed statement, and whether its copy is on the matter already.
+  if (t.startsWith('signed hours')) return p.evidence.flatMap((e) => (e.statements ?? []).filter((x) => x.signed).map((x) => `${e.jobLabel} · ${x.recordId} · ${x.workerName} · ${x.hours ? `${Math.round(x.hours * 10) / 10} h · ` : ''}${x.periodLabel}${x.matterDocumentId ? ' · on the matter' : ''}`))
   return []
 }
 
