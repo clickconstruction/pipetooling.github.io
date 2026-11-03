@@ -16,7 +16,7 @@ import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { APP_CALENDAR_TZ } from '../_shared/appTimeZone.ts'
 import { buildJobContractPdf, contractBodyToPlainText, type JobContractPdfInput, type PdfLibLike } from '../_shared/jobContractPdf.ts'
 import { encodeBase64 } from 'https://deno.land/std@0.224.0/encoding/base64.ts'
-import { amountCentsFromFields, appOrigin, contractHeading, corsHeaders, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signedRecordId, signingUrl } from '../_shared/jobContract.ts'
+import { agreementHeading, agreementKindOf, agreementNoun, amountCentsFromFields, appOrigin, corsHeaders, initialLinesOf, escapeHtml, formatMoney, isValidEmail, JOB_CONTRACT_BUCKET, JOB_CONTRACT_LINK_DAYS, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, json, randomUrlToken, signedRecordId, signingUrl } from '../_shared/jobContract.ts'
 import { buildJobContractPaperEmail } from '../_shared/jobContractEmail.ts'
 import { filedOnPaper, signerNamesLine } from '../_shared/jobContractSigners.ts'
 
@@ -113,13 +113,13 @@ serve(async (req) => {
       // a draft, a sent-and-unopened, even a signed one prints the same page without the
       // mark), else from the fields the client holds for a job with no row yet.
       let jobId: string | null = null
-      let draft: { fields: Record<string, unknown>; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number; co_signer_name: string | null } | null = null
+      let draft: { fields: Record<string, unknown>; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number; co_signer_name: string | null; kind: string | null } | null = null
       if (body.contract_id) {
-        const { data: row } = await userClient.from('job_contracts').select('job_id, fields, body_html, body_format, template_name, recipient_name, revision, co_signer_name').eq('id', body.contract_id).maybeSingle()
+        const { data: row } = await userClient.from('job_contracts').select('job_id, fields, body_html, body_format, template_name, recipient_name, revision, co_signer_name, kind').eq('id', body.contract_id).maybeSingle()
         if (!row) return json({ error: 'Contract not found or access denied' }, 403)
-        const c = row as { job_id: string; fields: unknown; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number; co_signer_name: string | null }
+        const c = row as { job_id: string; fields: unknown; body_html: string | null; body_format: string; template_name: string | null; recipient_name: string | null; revision: number; co_signer_name: string | null; kind: string | null }
         jobId = c.job_id
-        draft = { co_signer_name: c.co_signer_name ?? null, fields: (c.fields && typeof c.fields === 'object' ? c.fields : {}) as Record<string, unknown>, body_html: c.body_html, body_format: c.body_format, template_name: c.template_name, recipient_name: c.recipient_name, revision: c.revision }
+        draft = { kind: c.kind ?? null, co_signer_name: c.co_signer_name ?? null, fields: (c.fields && typeof c.fields === 'object' ? c.fields : {}) as Record<string, unknown>, body_html: c.body_html, body_format: c.body_format, template_name: c.template_name, recipient_name: c.recipient_name, revision: c.revision }
       } else if (body.job_id && body.draft) {
         jobId = body.job_id
         const d = body.draft
@@ -131,6 +131,8 @@ serve(async (req) => {
           recipient_name: typeof d.recipient_name === 'string' ? d.recipient_name.slice(0, 200) : null,
           revision: typeof d.revision === 'number' && d.revision > 0 ? d.revision : 1,
           co_signer_name: typeof d.co_signer_name === 'string' && d.co_signer_name.trim() ? d.co_signer_name.trim().slice(0, 200) : null,
+          // The warranty in place of a contract (2026-11-02): the window says which paper the draft is.
+          kind: d.kind === 'warranty' ? 'warranty' : 'contract',
         }
       } else {
         return json({ error: 'draft_pdf needs a contract_id, or a job_id with the draft fields.' }, 400)
@@ -139,6 +141,7 @@ serve(async (req) => {
       const jobRow = (j ?? null) as JobLite | null
       if (!jobRow) return json({ error: 'Job not found or access denied' }, 404)
       const f = draft.fields
+      const draftKind = agreementKindOf(draft.kind)
       const amount = amountCentsFromFields(draft.fields)
       const key = typeof f.payment_terms_key === 'string' ? f.payment_terms_key : 'half_down'
       const paymentLine =
@@ -152,7 +155,10 @@ serve(async (req) => {
               ? 'Progress billing: invoiced as work completes; each invoice is due on receipt.'
               : (typeof f.payment_terms_text === 'string' && f.payment_terms_text.trim()) || 'Payment terms as agreed.'
       const bytes = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, {
-        heading: contractHeading(jobRow),
+        heading: agreementHeading(draftKind, jobRow),
+        kind: draftKind,
+        // A warranty's lines to initial print as empty boxes for a pen.
+        initialLines: initialLinesOf(draft.fields).map((line) => ({ line, initials: null })),
         jobNumber: jobNumberLabel(jobRow),
         jobAddress: jobRow.job_address,
         customerName: jobRow.customer_name,
@@ -173,7 +179,7 @@ serve(async (req) => {
         coSignerName: draft.co_signer_name,
       })
       const jobNo = jobNumberLabel(jobRow).replace(/[^a-zA-Z0-9-]/g, '')
-      const draftFilename = `Agreement-J${jobNo}-to-sign.pdf`
+      const draftFilename = `${draftKind === 'warranty' ? 'Warranty' : 'Agreement'}-J${jobNo}-to-sign.pdf`
       if (mode === 'draft_pdf') return json({ ok: true, filename: draftFilename, pdf_base64: encodeBase64(bytes) })
 
       // send_to_sign: the same page, emailed to be signed by hand.
@@ -206,11 +212,12 @@ serve(async (req) => {
         recipientName: recipientName || null,
         message: (body.message ?? '').trim().slice(0, 4000),
         jobAddress: jobRow.job_address,
-        heading: contractHeading(jobRow),
+        heading: agreementHeading(draftKind, jobRow),
         jobNo: jobNumberLabel(jobRow),
-        amountLine: amount != null ? `Contract amount: ${formatMoney(amount)}` : '',
+        amountLine: amount != null ? `${agreementNoun(draftKind).amountLabel}: ${formatMoney(amount)}` : '',
         url,
         senderName: senderNamePaper,
+        kind: draftKind,
       })
       // The email first: a row must never say "sent" for a page that did not go.
       const sentPaper = await sendEmailViaResend(recipientEmail, paperEmail.subject, paperEmail.text, paperEmail.html, resendKeyPaper, {
@@ -298,6 +305,8 @@ serve(async (req) => {
         co_signer_consented_at: string | null
         co_signer_ip: string | null
         co_signer_signature_storage_path: string | null
+        kind: string | null
+        initials: unknown
       }
       if (c.status !== 'signed' || !c.signed_at) return json({ error: 'Only a signed contract can be shared.' }, 409)
       const { data: j } = await userClient.from('jobs_ledger').select('id, hcp_number, click_number, job_name, job_address, customer_name, master_user_id').eq('id', c.job_id).maybeSingle()
@@ -307,9 +316,9 @@ serve(async (req) => {
       signerName = (c.signer_printed_name ?? '').trim()
       signedBy = signerNamesLine(c) || signerName
       signedAt = c.signed_at
-      heading = contractHeading(job)
+      heading = agreementHeading(agreementKindOf(c.kind), job)
       const jobNo = jobNumberLabel(job)
-      filename = `Signed-agreement-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`
+      filename = `${agreementKindOf(c.kind) === 'warranty' ? 'Signed-warranty' : 'Signed-agreement'}-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.pdf`
       if (c.public_token) signLink = signingUrl(appOrigin(body.public_origin), c.public_token)
       if (filedOnPaper(c)) {
         // Filed outside the app: the uploaded copy is the document when there is
@@ -321,7 +330,7 @@ serve(async (req) => {
           pdf = await fetchBytes(admin, c.paper_upload_path)
           pdfPath = c.paper_upload_path
           const ext = c.paper_upload_path.split('.').pop() ?? 'pdf'
-          filename = `Signed-agreement-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.${ext}`
+          filename = `${agreementKindOf(c.kind) === 'warranty' ? 'Signed-warranty' : 'Signed-agreement'}-J${jobNo.replace(/[^a-zA-Z0-9-]/g, '')}.${ext}`
         } else if (c.signed_document_url) {
           docLink = c.signed_document_url
         } else {
@@ -374,6 +383,8 @@ serve(async (req) => {
             signature: { printedName: signerName, auditLine: `${c.signer_consented_at ? 'Consent recorded · ' : ''}${how} · ${stamp(c.signer_consented_at ?? c.signed_at)} CT${c.signer_ip ? ` · ${c.signer_ip}` : ''}`, png: sigPng, recordId: signedRecordId('J', jobNo, c.id), whenLabel: `${stamp(c.signer_consented_at ?? c.signed_at)} CT` },
             coSignerName: c.co_signer_name ?? null,
             coSignature,
+            kind: agreementKindOf(c.kind),
+            initialLines: initialLinesOf(c.fields).map((line) => ({ line, initials: (Array.isArray(c.initials) ? (c.initials as { line?: unknown; initials?: unknown }[]) : []).find((e) => e?.line === line && typeof e?.initials === 'string')?.initials as string | undefined ?? null })),
           })
           const { error: upErr } = await admin.storage.from(JOB_CONTRACT_BUCKET).upload(pdfPath, pdf, { contentType: 'application/pdf', upsert: true })
           if (!upErr) await admin.from('job_contracts').update({ signed_pdf_path: pdfPath }).eq('id', c.id)

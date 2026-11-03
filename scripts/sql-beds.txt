@@ -82,4 +82,5 @@ bed-apply
 lien-release-sign
 legal-firm-coverage
 job-warranty
+combine-rows
 dev-clock-session-write

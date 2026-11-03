@@ -14,6 +14,11 @@ import { TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 const switchRead = vi.hoisted(() => ({ on: false }))
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => switchRead.on }))
@@ -50,7 +55,7 @@ function openTextWindow(from: 'text' | 'email' = 'text') {
   renderWithProviders(
     <MessagesRereadContext.Provider value={vi.fn()}>
       <OpenThreadContext.Provider value={open}>
-        <ReplyBox contact={open.contact} io={io} />
+        <ReplyBox papersIo={noPapers} contact={open.contact} io={io} />
       </OpenThreadContext.Provider>
     </MessagesRereadContext.Provider>,
   )

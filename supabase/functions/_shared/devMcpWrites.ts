@@ -7,7 +7,9 @@
 // file in the legal-matter-documents bucket before the row; since v2.6005 dev_legal_gap_answer_write, the
 // one line the attorney reads instead of a packet gap; since v2.6183 dev_bid_write, a new bid as the New Bid form
 // makes it (action create) and, v2.6185, the plan set onto it (action file_plans); since v2.6244 dev_legal_statement_write, a sworn
-// statement drafted onto a matter's Timeline (punch list #220). The verb grammar is plan_ (a dry run, its own call) →
+// statement drafted onto a matter's Timeline (punch list #220); since v2.6367 dev_on_site_write, the Materials on site
+// ledger's presses (punch list #209: a container, a delivery, a movement, a count), SECURITY INVOKER so every row lands
+// under the dev's own RLS. The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
 // hash uses the platform's crypto.subtle, which Deno and Node both have.
 //
@@ -57,7 +59,7 @@ export const WRITE_VERBS = {
   // v2.6317 / 0.14.0 (punch list #239): a set of drawings, or a paper, on a plan part — the rows the job window's
   // Plans section writes (src/lib/plans/planSetsIo.ts addSet / keepPaper / markPaperCame), as the dev under RLS.
   // The dry run is the server's own read of the part (devMcpPlanSets.ts); no RPC, so rpc is null.
-  // v2.6437 / 0.16.0: clock sessions as the office edits them — the start and the end, the description, the job and
+  // v2.6437 / 0.17.0: clock sessions as the office edits them — the start and the end, the description, the job and
   // the approval — through dev_clock_session_write, op by op with a dry run; the typed-hours second look and the
   // approval guard hold inside the definer as they do in the app, so the dev's own session and the hours the dev
   // typed are held for someone else.
@@ -67,6 +69,18 @@ export const WRITE_VERBS = {
   apply_plan_set: { rpc: null, step: 'apply' },
   plan_paper: { rpc: null, step: 'plan' },
   apply_paper: { rpc: null, step: 'apply' },
+  // v2.6367 (punch list #209): Materials on site — what the phone's On site tab and the office's Materials tab write, as
+  // one RPC with an action each (dev_on_site_write, SECURITY INVOKER: the gate, the CHECKs, training mode and the twin
+  // fence apply as on the screen). A cage or box (add, move, retire an empty one, bring one back), a delivery into Unsorted or a box, one press on a
+  // line (moved, used, returned, taken, cannot_find, damaged) and a count of a box. Every row reads "<robot> · MCP as <dev>".
+  plan_container: { rpc: 'dev_on_site_write', step: 'plan' },
+  apply_container: { rpc: 'dev_on_site_write', step: 'apply' },
+  plan_delivery: { rpc: 'dev_on_site_write', step: 'plan' },
+  apply_delivery: { rpc: 'dev_on_site_write', step: 'apply' },
+  plan_movement: { rpc: 'dev_on_site_write', step: 'plan' },
+  apply_movement: { rpc: 'dev_on_site_write', step: 'apply' },
+  plan_count: { rpc: 'dev_on_site_write', step: 'plan' },
+  apply_count: { rpc: 'dev_on_site_write', step: 'apply' },
 } as const
 
 export type WriteVerb = keyof typeof WRITE_VERBS
@@ -78,7 +92,16 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_statement' ? 'plan_matter_statement' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : verb === 'apply_history_entry' ? 'plan_history_entry' : verb === 'apply_bid' ? 'plan_bid' : verb === 'apply_file_plans' ? 'plan_file_plans' : verb === 'apply_plan_set' ? 'plan_plan_set' : verb === 'apply_paper' ? 'plan_paper' : verb === 'apply_clock_sessions' ? 'plan_clock_sessions' : null
+  if (WRITE_VERBS[verb].step !== 'apply') return null
+  const plan = verb.replace(/^apply_/, 'plan_')
+  return isWriteVerb(plan) ? plan : null
+}
+
+/** The apply verb a plan's reply points at. */
+export function applyVerbFor(verb: WriteVerb): WriteVerb | null {
+  if (WRITE_VERBS[verb].step !== 'plan') return null
+  const apply = verb.replace(/^plan_/, 'apply_')
+  return isWriteVerb(apply) ? apply : null
 }
 
 const PLAN_ITEM_ACTIONS = ['add', 'update', 'mark_done'] as const
@@ -91,6 +114,10 @@ const HISTORY_SOURCES = ['email', 'call', 'text', 'on_site', 'letter', 'note'] a
 const GAP_ACTIONS = ['answer', 'clear'] as const
 const CLOCK_OPS = ['times', 'note', 'move', 'approve'] as const
 const CLOCK_SESSION_MAX_MS = 24 * 3600 * 1000
+const CONTAINER_ACTIONS = ['add', 'move', 'retire', 'bring_back'] as const
+const CONTAINER_KINDS = ['cage', 'box', 'loose'] as const
+const MOVEMENT_REASONS = ['moved', 'used', 'returned', 'taken', 'cannot_find', 'damaged'] as const
+const ON_SITE_LINES_MAX = 200
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
 type Json = Record<string, unknown>
@@ -440,6 +467,117 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: bidId, planHash }
   }
+  if (verb === 'plan_container' || verb === 'apply_container') {
+    const container = obj(input.container)
+    const shape = `${verb} needs container — { job_id (a jobs_ledger.id — find_job), action: add | move | retire | bring_back (add when left out), agent_label (the robot's name as the row shows it, under 80); add: label (the stencil on the box, A1 or B7, under 24), kind (cage | box | loose), where? (where exactly, in the crew's words, under 120), place? (the place on site, under 80 — made when the job has none of that name); move: container (a label or an id), place (made when missing); retire: container (an empty one — a box with parts in it is refused, as on the phone); bring_back: container (a retired box's label or id, as read_on_site lists it under retired); at? (an ISO timestamp with its offset for a move or a retire that happened earlier) }.`
+    if (!container) return { ok: false, error: shape }
+    const str = (k: string) => (typeof container[k] === 'string' ? (container[k] as string).trim() : '')
+    const action = str('action') || 'add'
+    const jobId = str('job_id')
+    const agentLabel = str('agent_label')
+    if (!(CONTAINER_ACTIONS as readonly string[]).includes(action) || !UUID_RE.test(jobId) || !agentLabel || agentLabel.length > 80) return { ok: false, error: shape }
+    const p: Json = { action: `${action}_container`, job_id: jobId, agent_label: agentLabel }
+    let target: string
+    if (action === 'add') {
+      const label = str('label')
+      const kind = str('kind').toLowerCase()
+      if (!label || label.length > 24 || !(CONTAINER_KINDS as readonly string[]).includes(kind)) return { ok: false, error: shape }
+      p.label = label
+      p.kind = kind
+      const where = str('where')
+      if (where.length > 120) return { ok: false, error: shape }
+      if (where) p.where = where
+      const place = str('place')
+      if (place.length > 80) return { ok: false, error: shape }
+      if (place) p.place = place
+      target = `${jobId} ${label.toUpperCase()}`
+    } else {
+      const ref = str('container')
+      if (!ref || ref.length > 40) return { ok: false, error: shape }
+      p.container = ref
+      if (action === 'move') {
+        const place = str('place')
+        if (!place || place.length > 80) return { ok: false, error: shape }
+        p.place = place
+      }
+      target = `${jobId} ${ref}`
+    }
+    const at = str('at')
+    if (at) {
+      if (Number.isNaN(Date.parse(at))) return { ok: false, error: shape }
+      p.at = at
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target, planHash }
+  }
+  if (verb === 'plan_delivery' || verb === 'apply_delivery') {
+    const delivery = obj(input.delivery)
+    const shape = `${verb} needs delivery — { job_id (a jobs_ledger.id — find_job), agent_label (the robot's name as the rows show it, under 80), lines: [{ part_id (a material_parts.id — read_rows on material_parts by name) | part_name (a name typed as on site, under 160), manufacturer?, quantity (a whole number, 1 or more), unit? (EA, FT, BOX — kept as the line's note) }] (1 to ${ON_SITE_LINES_MAX}), source? (the invoice or PO behind it, INV-10422 or PO-2211, under 120), to? (a box's stencil or id; Unsorted when left out, made on first use), at? (an ISO timestamp with its offset when it came earlier) }.`
+    if (!delivery) return { ok: false, error: shape }
+    const str = (k: string) => (typeof delivery[k] === 'string' ? (delivery[k] as string).trim() : '')
+    const jobId = str('job_id')
+    const agentLabel = str('agent_label')
+    if (!UUID_RE.test(jobId) || !agentLabel || agentLabel.length > 80) return { ok: false, error: shape }
+    const lines = onSiteLines(delivery.lines, 'quantity', 1)
+    if (!lines) return { ok: false, error: shape }
+    const p: Json = { action: 'delivery', job_id: jobId, agent_label: agentLabel, lines }
+    const source = str('source')
+    if (source.length > 120) return { ok: false, error: shape }
+    if (source) p.source = source
+    const to = str('to')
+    if (to.length > 40) return { ok: false, error: shape }
+    if (to) p.to = to
+    const at = str('at')
+    if (at) {
+      if (Number.isNaN(Date.parse(at))) return { ok: false, error: shape }
+      p.at = at
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} ${to || 'Unsorted'}`, planHash }
+  }
+  if (verb === 'plan_movement' || verb === 'apply_movement') {
+    const movement = obj(input.movement)
+    const shape = `${verb} needs movement — { job_id (a jobs_ledger.id — find_job), agent_label (the robot's name as the row shows it, under 80), container (the box the parts are in: a stencil or an id; Unsorted for what a delivery landed), part_id | part_name (the line, as read_on_site lists it), quantity (a whole number, 1 up to what the box has), reason: moved | used | returned | taken | cannot_find | damaged, to? (moved only: the box the parts go into), note? (under 300; taken needs one saying where it went), at? (an ISO timestamp with its offset when it happened earlier) }. A delivery is plan_delivery; a count is plan_count.`
+    if (!movement) return { ok: false, error: shape }
+    const str = (k: string) => (typeof movement[k] === 'string' ? (movement[k] as string).trim() : '')
+    const jobId = str('job_id')
+    const agentLabel = str('agent_label')
+    const container = str('container')
+    const reason = str('reason').toLowerCase()
+    if (!UUID_RE.test(jobId) || !agentLabel || agentLabel.length > 80 || !container || container.length > 40 || !(MOVEMENT_REASONS as readonly string[]).includes(reason)) return { ok: false, error: shape }
+    const line = onSiteLine(movement, 'quantity', 1)
+    if (!line) return { ok: false, error: shape }
+    const p: Json = { action: 'movement', job_id: jobId, agent_label: agentLabel, container, reason, ...line }
+    const to = str('to')
+    if (to.length > 40 || (reason === 'moved') !== Boolean(to)) return { ok: false, error: shape }
+    if (to) p.to = to
+    const note = str('note')
+    if (note.length > 300 || (reason === 'taken' && !note)) return { ok: false, error: shape }
+    if (note) p.note = note
+    const at = str('at')
+    if (at) {
+      if (Number.isNaN(Date.parse(at))) return { ok: false, error: shape }
+      p.at = at
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} ${container}`, planHash }
+  }
+  if (verb === 'plan_count' || verb === 'apply_count') {
+    const count = obj(input.count)
+    const shape = `${verb} needs count — { job_id (a jobs_ledger.id — find_job), agent_label (the robot's name as the rows show it, under 80), container (the box counted: a stencil or an id), lines: [{ part_id | part_name (a line of the box, as read_on_site lists it, or a part found in it), manufacturer?, counted (a whole number, 0 or more — what is there now) }] (1 to ${ON_SITE_LINES_MAX}), at? (an ISO timestamp with its offset when the count was walked earlier) }. A line left out is not reset.`
+    if (!count) return { ok: false, error: shape }
+    const str = (k: string) => (typeof count[k] === 'string' ? (count[k] as string).trim() : '')
+    const jobId = str('job_id')
+    const agentLabel = str('agent_label')
+    const container = str('container')
+    if (!UUID_RE.test(jobId) || !agentLabel || agentLabel.length > 80 || !container || container.length > 40) return { ok: false, error: shape }
+    const lines = onSiteLines(count.lines, 'counted', 0)
+    if (!lines) return { ok: false, error: shape }
+    const p: Json = { action: 'count', job_id: jobId, agent_label: agentLabel, container, lines }
+    const at = str('at')
+    if (at) {
+      if (Number.isNaN(Date.parse(at))) return { ok: false, error: shape }
+      p.at = at
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} ${container}`, planHash }
+  }
   // plan_hr_entry / apply_hr_entry
   const entry = obj(input.entry)
   const personId = entry && typeof entry.person_id === 'string' ? entry.person_id.trim() : ''
@@ -447,6 +585,44 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     return { ok: false, error: `${verb} needs entry — hr_agent_write's payload ({ person_id, entries?, summary?, narrative? | narrative_append?, covered_through? }, docs/HR_FILES.md); person_id is a people.id (find_person).` }
   }
   return { ok: true, rpc, step, body: { p: entry, p_dry_run: step === 'plan' }, dryRunBody: { p: entry, p_dry_run: true }, target: personId, planHash }
+}
+
+/**
+ * One line of a delivery, a movement or a count (v2.6367): the part from the book by id or a name typed as on
+ * site, its maker, and its whole number under `numberKey` (`quantity` or `counted`), at least `min`. Null when the
+ * shape is wrong, so the verb refuses in words with its shape.
+ */
+function onSiteLine(line: Json, numberKey: 'quantity' | 'counted', min: number): Json | null {
+  const str = (k: string) => (typeof line[k] === 'string' ? (line[k] as string).trim() : '')
+  const partId = str('part_id')
+  const partName = str('part_name').replace(/\s+/g, ' ')
+  const manufacturer = str('manufacturer')
+  const n = line[numberKey]
+  if (partId && !UUID_RE.test(partId)) return null
+  if (!partId && (!partName || partName.length > 160)) return null
+  if (manufacturer.length > 120) return null
+  if (typeof n !== 'number' || !Number.isInteger(n) || n < min || n > 100000) return null
+  const out: Json = { [numberKey]: n }
+  if (partId) out.part_id = partId
+  else out.part_name = partName
+  if (manufacturer) out.manufacturer = manufacturer
+  return out
+}
+
+function onSiteLines(value: unknown, numberKey: 'quantity' | 'counted', min: number): Json[] | null {
+  if (!Array.isArray(value) || value.length === 0 || value.length > ON_SITE_LINES_MAX) return null
+  const out: Json[] = []
+  for (const raw of value) {
+    const line = obj(raw)
+    if (!line) return null
+    const unit = typeof line.unit === 'string' ? line.unit.trim() : ''
+    if (unit.length > 40) return null
+    const built = onSiteLine(line, numberKey, min)
+    if (!built) return null
+    if (unit && numberKey === 'quantity') built.unit = unit
+    out.push(built)
+  }
+  return out
 }
 
 /** JSON with object keys sorted at every depth, so the same value always hashes the same. */
@@ -490,12 +666,23 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_statement' ? 'apply_matter_statement' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : verb === 'plan_history_entry' ? 'apply_history_entry' : verb === 'plan_bid' ? 'apply_bid' : verb === 'plan_file_plans' ? 'apply_file_plans' : verb === 'plan_plan_set' ? 'apply_plan_set' : verb === 'plan_paper' ? 'apply_paper' : verb === 'plan_clock_sessions' ? 'apply_clock_sessions' : 'apply_hr_entry'
+  const applyVerb = applyVerbFor(verb) ?? 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
     ...r,
   }
+}
+
+/**
+ * The apply verbs the one-apply rule below leaves alone (v2.6367): Materials on site's plans commit to the
+ * state their write changes, so the wrapper refuses a replay itself — the stencil is live, the box is
+ * already at that place, already retired or already back, or the box's row count moved and the hash no
+ * longer matches. The log's rule would only refuse a real second act whose plan reads like an old one:
+ * G4 added, retired, and added again on the same job.
+ */
+export function stateGuarded(verb: string): boolean {
+  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count'
 }
 
 /**

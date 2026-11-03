@@ -20,6 +20,8 @@ export type ContractDraftPdfSource =
         revision?: number | null
         /** v2.4590: a second signer the office named — the page prints a second pair of pen rules with that name. */
         co_signer_name?: string | null
+        /** The kind of agreement (2026-11-02): a warranty prints Price and its lines to initial as empty boxes. Omitted: a contract. */
+        kind?: 'contract' | 'warranty'
       }
     }
 

@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ROBOT_PLANS_SHARED_DRIVE, robotPlansDivisionFolderName, robotPlansPathWords } from '../../../supabase/functions/_shared/bidPlansFolders'
-import { WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
@@ -13,6 +13,7 @@ const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_h
 const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
 const STATEMENT_MIGRATION = readFileSync('supabase/migrations/20261031190000_dev_legal_statement_write.sql', 'utf8')
 const CLOCK_MIGRATION = readFileSync('supabase/migrations/20261103050000_dev_clock_session_write.sql', 'utf8')
+const ON_SITE_MIGRATION = readFileSync('supabase/migrations/20261102100000_dev_on_site_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
@@ -27,7 +28,7 @@ describe('devMcpWrites — the allowlist', () => {
     const tableVerbs = Object.entries(WRITE_VERBS).filter(([, v]) => v.rpc === null).map(([k]) => k)
     expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper'])
     const rpcs = new Set(Object.values(WRITE_VERBS).flatMap((v) => (v.rpc === null ? [] : [v.rpc])))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -233,12 +234,12 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(alreadyApplied('apply_matter_statement', { target: MATTER, at: null })).toContain('Said lane')
     expect(planMismatch('apply_matter_statement', 'a'.repeat(64), 'b'.repeat(64))).toContain('plan_matter_statement')
   })
-  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports 0.16.0 (the clock session verbs bumped it from 0.15.0)', () => {
+  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports 0.17.0 (the clock session verbs bumped it from Materials on site's 0.16.0)', () => {
     expect(SERVER).toContain("name: 'plan_matter_statement'")
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.16.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -295,12 +296,12 @@ describe('the document verbs (v2.6004)', () => {
   })
   it('the server declares both verbs, handles them in the write branch, stores the file only at apply, and keeps the bytes out of the log', () => {
     expect(SERVER).toContain("name: 'plan_matter_document'")
-    expect(SERVER).toContain("case 'apply_matter_document': {")
+    expect(SERVER).toContain("case 'apply_matter_document':")
     expect(SERVER).toContain('const file = isDocument ? await documentBytes(args) : null')
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
     expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.16.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
   })
 })
 
@@ -344,13 +345,13 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: '2026-10-28T15:00:00Z' })).toContain('on this matter')
     expect(alreadyApplied('apply_gap_answer', { target: MATTER, at: null })).toContain('legal_matter_gap_answers')
   })
-  it('the server declares both verbs in the write branch and reports 0.12.0', () => {
+  it('the server declares both verbs in the write branch and reports the server version', () => {
     expect(SERVER).toContain("name: 'plan_gap_answer'")
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.16.0'")
-    expect(SERVER).toContain('Writes are twenty-seven verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
+    expect(SERVER).toContain('Writes are thirty-five verbs and nothing else')
   })
 })
 
@@ -435,6 +436,122 @@ describe('the history verbs (v2.6044)', () => {
     expect(SERVER).toContain('rpc/dev_history_read')
     expect(HISTORY_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_history_read(')
     expect(HISTORY_MIGRATION).toContain('SECURITY INVOKER')
+  })
+})
+
+describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
+  const JOB = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
+  const PART = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
+  const ON_SITE_VERBS = ['plan_container', 'apply_container', 'plan_delivery', 'apply_delivery', 'plan_movement', 'apply_movement', 'plan_count', 'apply_count'] as const
+  it('are eight verbs on the allowlist over one SECURITY INVOKER RPC that refuses a training account and a twin in words, with the seven actions', () => {
+    for (const verb of ON_SITE_VERBS) {
+      expect(isWriteVerb(verb)).toBe(true)
+      expect(WRITE_VERBS[verb].rpc).toBe('dev_on_site_write')
+    }
+    expect(planVerbFor('apply_container')).toBe('plan_container')
+    expect(planVerbFor('apply_delivery')).toBe('plan_delivery')
+    expect(planVerbFor('apply_movement')).toBe('plan_movement')
+    expect(planVerbFor('apply_count')).toBe('plan_count')
+    expect(planVerbFor('plan_count')).toBeNull()
+    expect(ON_SITE_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(ON_SITE_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_on_site_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(ON_SITE_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(ON_SITE_MIGRATION).toContain('IF public.is_read_only() THEN')
+    expect(ON_SITE_MIGRATION).toContain('IF public.is_digital_twin() THEN')
+    expect(ON_SITE_MIGRATION).toContain('IF NOT public.on_site_can_touch_job(v_job_id) THEN')
+    expect(ON_SITE_MIGRATION).toContain('REVOKE ALL ON FUNCTION public.dev_on_site_write(jsonb, boolean) FROM anon;')
+    expect(ON_SITE_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_on_site_write(jsonb, boolean) TO authenticated;')
+    expect(ON_SITE_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    // SECURITY INVOKER on purpose: every insert lands under the dev's own RLS, the gate and the fences as on the screen.
+    const wrapper = ON_SITE_MIGRATION.slice(ON_SITE_MIGRATION.indexOf('FUNCTION public.dev_on_site_write('), ON_SITE_MIGRATION.indexOf('REVOKE ALL ON FUNCTION public.dev_on_site_write'))
+    expect(wrapper).toContain('SECURITY INVOKER')
+    expect(wrapper).not.toContain('SECURITY DEFINER')
+    for (const action of ['add_container', 'move_container', 'retire_container', 'bring_back_container', 'delivery', 'movement', 'count']) expect(wrapper).toContain(`v_action = '${action}'`)
+    // The phone's rules, in its own words: a box with parts in it is not retired (v2.6041); a retired box comes back
+    // unless a live box on the job carries its stencil now, compared without case or spaces (v2.6406's unretireVerdict).
+    expect(wrapper).toContain('still has parts in it. Move them or mark them used first, then retire it.')
+    expect(wrapper).toContain('already carries %. Retire it first, or give it another stencil.')
+    expect(wrapper).toContain('% is already on the job.')
+    expect(wrapper).toContain("format('%s is back on the job. Its label works again.', v_container.label)")
+    expect(wrapper).toContain("lower(regexp_replace(c.label, '\\s+', '', 'g')) = lower(regexp_replace(v_container.label, '\\s+', '', 'g'))")
+    expect(wrapper).toContain('UPDATE public.job_containers SET retired_at = NULL WHERE id = v_container.id;')
+    // The ledger's arithmetic in SQL beside the kernel's: a count resets, the rest sum.
+    expect(ON_SITE_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.on_site_line_on_hand(p_container_id uuid, p_part_id uuid, p_part_name text)')
+    expect(ON_SITE_MIGRATION).toContain('MCP as')
+  })
+  it('a container plan: add with its stencil, kind, where and place; move, retire and bring back name the box; refusals in words', () => {
+    const add = writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'the receiving robot', label: ' a2 ', kind: 'Cage', where: 'by the north stair', place: 'Level 2' } })
+    const p = { action: 'add_container', job_id: JOB, agent_label: 'the receiving robot', label: 'a2', kind: 'cage', where: 'by the north stair', place: 'Level 2' }
+    expect(add).toEqual({ ok: true, rpc: 'dev_on_site_write', step: 'plan', body: { p, p_dry_run: true }, dryRunBody: { p, p_dry_run: true }, target: `${JOB} A2`, planHash: null })
+    expect(pOf(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'move', container: 'A2', place: 'Laydown yard', at: '2026-11-01T09:00:00-05:00' } }))).toEqual({ action: 'move_container', job_id: JOB, agent_label: 'r', container: 'A2', place: 'Laydown yard', at: '2026-11-01T09:00:00-05:00' })
+    expect(pOf(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'retire', container: 'A2' } }))).toEqual({ action: 'retire_container', job_id: JOB, agent_label: 'r', container: 'A2' })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'bring_back', container: 'G4' } })).toMatchObject({ ok: true, target: `${JOB} G4`, body: { p: { action: 'bring_back_container', job_id: JOB, agent_label: 'r', container: 'G4' } } })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'bring_back' } })).toMatchObject({ ok: false, error: expect.stringContaining('bring_back: container') })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'unretire', container: 'G4' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_container', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs container') })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', label: 'A2', kind: 'unsorted' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', label: 'A2', kind: 'box', where: 'x'.repeat(121) } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, label: 'A2', kind: 'box' } })).toMatchObject({ ok: false, error: expect.stringContaining('agent_label') })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'move', container: 'A2' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'move', container: 'A2', place: 'Yard', at: 'last week' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('apply_container', { container: { job_id: JOB, agent_label: 'r', label: 'A2', kind: 'box' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_hash') })
+    expect(writeRpcBody('apply_container', { container: { job_id: JOB, agent_label: 'r', label: 'A2', kind: 'box' }, plan_hash: HASH })).toMatchObject({ ok: true, step: 'apply', body: { p_dry_run: false }, dryRunBody: { p_dry_run: true }, planHash: HASH })
+  })
+  it('a delivery plan: lines by book id or typed name with whole quantities and units, the source, the box (Unsorted when left out)', () => {
+    const plan = writeRpcBody('plan_delivery', { delivery: { job_id: JOB, agent_label: 'the receiving robot', source: ' INV-10422 ', lines: [{ part_id: PART, quantity: 25, unit: 'EA' }, { part_name: '  50 gal  water heater ', quantity: 2 }] } })
+    expect(pOf(plan)).toEqual({ action: 'delivery', job_id: JOB, agent_label: 'the receiving robot', source: 'INV-10422', lines: [{ quantity: 25, part_id: PART, unit: 'EA' }, { quantity: 2, part_name: '50 gal water heater' }] })
+    expect(plan).toMatchObject({ ok: true, target: `${JOB} Unsorted` })
+    expect(writeRpcBody('plan_delivery', { delivery: { job_id: JOB, agent_label: 'r', to: 'A2', lines: [{ part_name: 'x', quantity: 1 }] } })).toMatchObject({ ok: true, target: `${JOB} A2`, body: { p: { to: 'A2' } } })
+    expect(writeRpcBody('plan_delivery', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs delivery') })
+    expect(writeRpcBody('plan_delivery', { delivery: { job_id: JOB, agent_label: 'r', lines: [] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_delivery', { delivery: { job_id: JOB, agent_label: 'r', lines: [{ part_name: 'x', quantity: 0 }] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_delivery', { delivery: { job_id: JOB, agent_label: 'r', lines: [{ part_name: 'x', quantity: 2.5 }] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_delivery', { delivery: { job_id: JOB, agent_label: 'r', lines: [{ part_id: 'the copper', quantity: 1 }] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_delivery', { delivery: { job_id: JOB, agent_label: 'r', lines: [{ quantity: 1 }] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_delivery', { delivery: { job_id: JOB, agent_label: 'r', lines: Array.from({ length: 201 }, () => ({ part_name: 'x', quantity: 1 })) } })).toMatchObject({ ok: false })
+  })
+  it('a movement plan: one press on a line with its reason; moved needs to, taken needs a note, nothing else takes to', () => {
+    expect(pOf(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'Unsorted', part_id: PART, quantity: 25, reason: 'moved', to: 'A2' } }))).toEqual({ action: 'movement', job_id: JOB, agent_label: 'r', container: 'Unsorted', reason: 'moved', quantity: 25, part_id: PART, to: 'A2' })
+    expect(pOf(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'A2', part_name: '3/4" copper 90', quantity: 4, reason: 'USED', note: 'the risers' } }))).toEqual({ action: 'movement', job_id: JOB, agent_label: 'r', container: 'A2', reason: 'used', quantity: 4, part_name: '3/4" copper 90', note: 'the risers' })
+    expect(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'A2', part_id: PART, quantity: 1, reason: 'taken', note: "Mateo's truck" } })).toMatchObject({ ok: true })
+    expect(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'A2', part_id: PART, quantity: 1, reason: 'taken' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'A2', part_id: PART, quantity: 1, reason: 'moved' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'A2', part_id: PART, quantity: 1, reason: 'used', to: 'B1' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'A2', part_id: PART, quantity: 1, reason: 'delivered' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_delivery') })
+    expect(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'A2', part_id: PART, quantity: 1, reason: 'counted' } })).toMatchObject({ ok: false, error: expect.stringContaining('plan_count') })
+    expect(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', part_id: PART, quantity: 1, reason: 'used' } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_movement', { movement: { job_id: JOB, agent_label: 'r', container: 'A2', part_id: PART, quantity: 0, reason: 'used' } })).toMatchObject({ ok: false })
+  })
+  it('a count plan: the box and its lines with counted numbers, zero allowed; the plan hash commits to the lines and the box\'s row count, never a clock', async () => {
+    const count = { job_id: JOB, agent_label: 'the counting robot', container: 'A2', lines: [{ part_id: PART, counted: 12 }, { part_name: '2in pvc 45', counted: 0 }] }
+    expect(pOf(writeRpcBody('plan_count', { count }))).toEqual({ action: 'count', job_id: JOB, agent_label: 'the counting robot', container: 'A2', lines: [{ counted: 12, part_id: PART }, { counted: 0, part_name: '2in pvc 45' }] })
+    expect(writeRpcBody('plan_count', { count: { ...count, lines: [{ part_id: PART, counted: -1 }] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_count', { count: { ...count, lines: [{ part_id: PART, quantity: 3 }] } })).toMatchObject({ ok: false })
+    expect(writeRpcBody('plan_count', { count: { ...count, container: '' } })).toMatchObject({ ok: false, error: expect.stringContaining('needs count') })
+    const reply = { ok: true, dry_run: true, action: 'count', job: { id: JOB, label: '972', name: 'ZZ Test job' }, after: { container: 'A2', lines: [{ part: 'x', expected: 14, counted: 12, diff: -2 }] }, by: 'the counting robot · MCP as Stephen', at: 'now', container_rows: 4 }
+    const built = writeRpcBody('plan_count', { count })
+    const h1 = await planHash('plan_count', pOf(built), reply)
+    expect(h1).toBe(await planHash('apply_count', pOf(writeRpcBody('apply_count', { count, plan_hash: HASH })), { ...reply, dry_run: false }))
+    expect(h1).not.toBe(await planHash('plan_count', pOf(built), { ...reply, container_rows: 5 }))
+    expect(planCommitment('plan_count', reply)).not.toHaveProperty('dry_run')
+  })
+  it('the plan replies point at their apply verbs, a replay is refused by the box\'s own state rather than the log, and the server declares the nine verbs and reports 0.16.0', () => {
+    expect(String(planReply('plan_container', { after: { container: 'A2' } }, 'e'.repeat(64)).next)).toContain('apply_container')
+    expect(String(planReply('plan_delivery', {}, 'e'.repeat(64)).next)).toContain('apply_delivery')
+    expect(String(planReply('plan_movement', {}, 'e'.repeat(64)).next)).toContain('apply_movement')
+    expect(String(planReply('plan_count', {}, 'e'.repeat(64)).next)).toContain('apply_count')
+    // The log's one-apply rule leaves the four alone: their plans commit to the state the write changes, so a replay
+    // is refused by the wrapper (a live stencil, already there, already retired or back) or by a moved row count —
+    // and G4 added, retired and added again is a second act, not a replay.
+    for (const verb of ['apply_container', 'apply_delivery', 'apply_movement', 'apply_count']) expect(stateGuarded(verb)).toBe(true)
+    for (const verb of ['plan_container', 'apply_cost_batch', 'apply_hr_entry', 'apply_history_entry', 'apply_bid', 'apply_plan_set', 'apply_paper']) expect(stateGuarded(verb)).toBe(false)
+    expect(SERVER).toContain('const prior = stateGuarded(name) ? null : await hooks.priorApply(name, fresh)')
+    for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
+    for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
+    expect(SERVER).toContain("case 'read_on_site':")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
+    expect(SERVER).toContain('Writes are thirty-five verbs and nothing else')
+    expect(SERVER).toContain('plan_count → apply_count')
   })
 })
 
@@ -757,7 +874,7 @@ describe('the clock session verbs (v2.6437)', () => {
       expect(SERVER).toContain(`name: '${verb}'`)
       expect(SERVER).toContain(`case '${verb}':`)
     }
-    expect(SERVER).toContain("const SERVER_VERSION = '0.16.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
     const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
     const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
     expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')

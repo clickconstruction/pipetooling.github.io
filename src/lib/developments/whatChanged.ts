@@ -6,8 +6,10 @@
  * list (`placeSinceLine`): above it is new, under it is seen. Pure.
  */
 import { bidStatusWord, requestIsOpen, type MemberBid, type MemberJob, type MemberRequest, type Members } from './overview'
+import type { UploadedPhotoRow } from '../photos/uploadedPhotos'
 
-export type ChangeKind = 'asked' | 'answered' | 'sent' | 'contact' | 'won' | 'lost' | 'plans' | 'stage' | 'billed' | 'paid' | 'note' | 'new_bid' | 'new_job' | 'entry'
+/** `photos` (punch list #247, PR 2): a batch of the crews' photos on one piece by one person within an hour, with its thumbnails. */
+export type ChangeKind = 'asked' | 'answered' | 'sent' | 'contact' | 'won' | 'lost' | 'plans' | 'stage' | 'billed' | 'paid' | 'note' | 'new_bid' | 'new_job' | 'entry' | 'photos'
 
 /** Where a history entry came from (punch list #208, the History look): the badge and the verb. */
 export type HistorySource = 'email' | 'call' | 'text' | 'on_site' | 'letter' | 'note'
@@ -35,6 +37,12 @@ export type ChangeLine = {
   agent?: string | null
   /** The time is the point (an entry kept at the email's time): the line shows it always. */
   withTime?: boolean
+  /** A batch's span at the line's end (*7:42–8:15 AM*), drawn in place of the one time. */
+  timeRange?: string
+  /** A `photos` line's rows, newest first: the thumbnails, and the viewer's Previous and Next inside the batch. */
+  photos?: UploadedPhotoRow[]
+  /** Words the search reads that the line does not print (every caption of a batch). */
+  searchText?: string
 }
 
 export type ChangeInputs = {
@@ -50,6 +58,8 @@ export type ChangeInputs = {
   bidNotes: ReadonlyArray<{ id: string; estimate_id: string; created_at: string; author_user_id: string; body: string }>
   /** The history entries kept on the site, already shaped as lines (`entryLine` in `history.ts`). */
   entryLines: ReadonlyArray<ChangeLine>
+  /** The crews' photos, already folded into lines (`foldPhotoBatches` in `photoLines.ts`); absent on a reader with none. */
+  photoLines?: ReadonlyArray<ChangeLine>
   /** The customers' contact log (the Customers page's dated comments), with the customers' names. */
   customerContacts: ReadonlyArray<{ id: string; customer_id: string; contact_date: string; contact_method: string | null; details: string | null; created_by: string | null }>
   customerNames: ReadonlyMap<string, string>
@@ -151,6 +161,8 @@ export function buildWhatChanged(inp: ChangeInputs): ChangeLine[] {
   }
   // What happened that no record caught: the entries people and robots kept (the History look).
   for (const l of inp.entryLines) lines.push(l)
+  // The crews' photos, placed by their own time (punch list #247).
+  for (const l of inp.photoLines ?? []) lines.push(l)
   for (const r of inp.requests) {
     const b = r.bid_id ? bidsById.get(r.bid_id) : null
     const j = r.job_ledger_id ? jobsById.get(r.job_ledger_id) : null
@@ -199,7 +211,7 @@ export function filterChangeLines(lines: readonly ChangeLine[], query: string): 
   const words = query.toLowerCase().split(/\s+/).filter(Boolean)
   if (words.length === 0) return [...lines]
   return lines.filter((l) => {
-    const hay = `${l.about.label} ${l.verb} ${l.detail ?? ''} ${l.by ?? ''}`.toLowerCase()
+    const hay = `${l.about.label} ${l.verb} ${l.detail ?? ''} ${l.by ?? ''} ${l.searchText ?? ''}`.toLowerCase()
     return words.every((w) => hay.includes(w))
   })
 }

@@ -129,7 +129,7 @@ export function entryLine(e: HistoryEntry, labels: { site: string; job: (id: str
 
 // ---- the chips that narrow -------------------------------------------------------------------
 
-export type HistoryChip = 'all' | 'wrote' | 'happened' | 'plans' | 'stages' | 'money' | 'questions'
+export type HistoryChip = 'all' | 'wrote' | 'happened' | 'plans' | 'stages' | 'money' | 'questions' | 'photos'
 
 export const HISTORY_CHIPS: ReadonlyArray<{ key: HistoryChip; label: string; title: string }> = [
   { key: 'all', label: 'Everything', title: 'Every line, whoever or whatever wrote it' },
@@ -139,6 +139,7 @@ export const HISTORY_CHIPS: ReadonlyArray<{ key: HistoryChip; label: string; tit
   { key: 'stages', label: 'Stages', title: 'Sends, outcomes, stage moves, new jobs and bids' },
   { key: 'money', label: 'Money', title: 'Bills and payments' },
   { key: 'questions', label: 'Questions', title: 'Questions asked and answered' },
+  { key: 'photos', label: 'Photos', title: 'The crews’ photos, one line per job, person and hour' },
 ]
 
 export function lineMatchesChip(line: ChangeLine, chip: HistoryChip): boolean {
@@ -157,6 +158,8 @@ export function lineMatchesChip(line: ChangeLine, chip: HistoryChip): boolean {
       return line.kind === 'billed' || line.kind === 'paid'
     case 'questions':
       return line.kind === 'asked' || line.kind === 'answered'
+    case 'photos':
+      return line.kind === 'photos'
   }
 }
 

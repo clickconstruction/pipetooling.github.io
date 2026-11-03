@@ -1,8 +1,8 @@
 ---
 name: "Search every file deeply: our own index, OCR and meaning, backfilled once by an agent"
 number: 240
-group: ready
-status: designed 2026-11-02 in the session that shipped Find a file (v2.6305) · PR 1 shipped v2.6319 (#6773, the index, the sweep and Find a file reading it first) · the backfill runner shipped v2.6343 and walked every job and bid the same day · the index check shipped v2.6364 and the fill it enabled gave every file the Shared Drive lists a row (4,209 rows, counts in Where it stands) · v2.6403 lets a deep file reach its home · left: the rehome pass and the one retry, PR 2 to PR 4, the reconcile step the owner chose for new files
+group: close
+status: built 2026-11-03 · PR 1 v2.6319 (#6773: the index, the sweep, Find a file reading it first) · PR 2 v2.6332 (#6809: the dev seat's door, a read inside the platform's limits) · PR 3 v2.6336 (#6894: OCR behind a secret) · PR 4 v2.6338 (#6920: search by meaning behind a key) · with v2.6369 (the index's hits at once), v2.6396 (no twin reads a file's words) and v2.6408 (a 12 MB cap after a memory kill) · the walk, the fill and the one retry ran: 4,573 rows, 2,002 with their words, every Shared Drive file with a row · left: the owner's two secrets, the reconcile step the owner chose for new files
 summary: >
   Find a file (Documents → Search, v2.6305) asks Drive's own full-text index and lands each hit on its job; PR #6752
   adds the line around the words. That finds a file by words Google has indexed, and nothing more. The owner wants
@@ -10,10 +10,11 @@ summary: >
   Postgres (one row per Drive file, full-text ranked), fed by the sweep as files land and filled once by a backfill,
   our own OCR for scanned paper, and embeddings so a search by meaning finds the letter that never used the word.
   The backfill is to be run one time by a Claude agent session after the features land, not by a cron.
-next: once v2.6403 is deployed, `npx vite-node scripts/file-index-check.ts --rehome`; once PR 2's budgeted read is deployed and tested on the ZZ plan sets, the runner's one pass with `--retry` over the `reading`, `slow` and `big` rows and the bids' deeper folders; the reconcile step in another session (the owner has the prompt); then these counts again.
+next: the owner sets `GOOGLE_DOCAI_PROCESSOR` and `GEMINI_API_KEY` (`docs/DRIVE_INTAKE_SETUP.md` → Our own OCR, Search by meaning); nothing redeploys, both are read at call time, and the sweep then reads five waiting scans and embeds ten files a run by itself; `drive-link`'s `ocr_probe` and `embed_probe`, called as a dev, say it took; tune `max_distance` from the first days' hits by meaning; the reconcile step in another session (the owner has the prompt)
 size: L
-blocker: PRs 3 and 4 wait on two owner decisions (the OCR provider, the embeddings provider and its key). The one retry waits on PR 2's deploy. New files in a bid's folder outside the Shared Drive wait on decision 4. Nothing here waits on a dev-mcp key: the seat answers again since 2026-11-02.
-opinion: build — the owner asked for it twice and chose the shape; Drive's index is kept as the floor, so every PR here adds reach without taking anything away
+blocker: the two secrets are the owner's. New files in a bid's folder outside the Shared Drive wait on decision 4. PDFs over 12 MB stay `big`, found by Drive's search, unless a heavier reader is built later.
+ver: v2.6319 · 6332 · 6336 · 6338 · 6343 · 6364 · 6369 · 6396 · 6403 · 6408
+opinion: your call — the code is done and deployed; the two secrets are yours, and each turns its part on with no redeploy
 mockup: not required — the box is the shipped Find a file; the index changes what it finds and how fast, not the screen, and PR #6752 already draws the excerpt line the index will feed
 ---
 
@@ -270,7 +271,7 @@ The check after all three: the Shared Drive's 2,348 files, 0 with no row.
 |---|---:|
 | Every file | 4,573 |
 | With text | 2,002 |
-| Scans and pictures, no text until PR 3's OCR | 1,587 |
+| Scans and pictures, no text until OCR is set up | 1,587 |
 | PDFs too big to read today | 605 |
 | A kind the index does not read | 353 |
 | Reads cut short | 23 |
@@ -299,6 +300,15 @@ sounds, since 135 jobs share 55 folders and a shared folder's files are credited
 An upload through the app had its row and its words within three seconds of landing, with nobody pressing anything. Words from
 a file eleven folders deep in a plan export find it on its bid.
 
+### The live checks after each deploy (2026-11-02 and 11-03, test data only)
+
+- **The budgeted read** (PR 2), one call each on the ZZ test bids' held plan sets: an 11 MB set read through, as a scan; a 25 MB set ended its worker with *Memory limit exceeded* in the function's log; a 29 MB set ran out its 20-second read; a 76 MB set stayed `big`. That memory kill is why v2.6408 caps a PDF at 12 MB and a request at 16 MB. After it deployed, the 25 and 29 MB sets answered `big` in about 1.4 s with no worker ended.
+- **The sweep**, twice with made-up letters put in the ZZ Test job's Plans through the app: indexed 101 s after the upload under PR 1's code, and 180 s after under PR 3's, each under the right job and folder, its phrase found.
+- **Who reads the index**, one rolled-back read per role on prod: dev, master technician, assistant, controller and a human estimator read every row; subcontractor, primary, superintendent and helpers none; anon is refused. The three digital twins read every row too until v2.6396, and none since.
+- **The dev seat's door** (PR 2): `read_file_index_status` answers its line, `plan_index_backfill` on the ZZ Test job hands back a hash, `apply_index_backfill` walked its 15 files (1 indexed, 14 current, the job done), and an apply quoting a stale hash is refused. Its status line says live jobs with no rows *have none yet*; an empty folder counts there too.
+- **The probes**: `ocr_probe` and `embed_probe` answer *not set up* with the secret to set, and call no provider.
+- **The hybrid search** (PR 4), in a rolled-back transaction on prod with made-up vectors on the two ZZ letters: words and vector together found the letter *by both* at distance 0.005, nonsense words with the same vector found it *by meaning*, and a far vector with matching words found the words' files *by words* alone, the far letter held off by the distance cap. Nothing stayed after the rollback.
+
 ### New files from here on: the owner chose the sweep plus a reconcile step (2026-11-02)
 
 Not built as this is written; the owner has a prompt for another session. Until it lands, this is what catches what:
@@ -320,11 +330,9 @@ Not built as this is written; the owner has a prompt for another session. Until 
 
 ## Decisions still open (the owner's)
 
-1. **OCR provider** (PR 3): Document AI (recommended) or Cloud Vision.
-2. **Embeddings provider and key** (PR 4): Gemini embeddings in the existing GCP project (recommended, one key, no
-   new vendor), Voyage, or OpenAI. The dimension is set when the table is made.
-3. **A dev-mcp key** for the session that builds PR 2 and runs the backfill (the Settings → Developer door, or
-   however keys are minted today; the old one is revoked).
+1. **OCR provider** (PR 3): built on Document AI's Document OCR processor, the recommended default (v2.6336). The owner's step is the processor and the secret `GOOGLE_DOCAI_PROCESSOR`. Cloud Vision stays the alternative, a change inside `_shared/ocr.ts`.
+2. **Embeddings provider and key** (PR 4): built on Gemini's `gemini-embedding-001` at 768 dimensions, the recommended default (v2.6338). The owner's step is the key in the secret `GEMINI_API_KEY`. Another provider means a new table, since the dimension is fixed with it.
+3. **A dev-mcp key**: no longer open. The seat answers again since 2026-11-02, and the door ran its live test.
 4. **The estimators' bid folders.** Every plumbing bid's folder sits in the owner's **My Drive**, in a folder of
    the estimators' own (40-plus bid folders for Aug–Oct 2026 alone, with HVAC and electrical siblings), outside the
    Shared Drive. Drive's own search in the box is scoped to the Shared Drive and does not reach them; our index does,
