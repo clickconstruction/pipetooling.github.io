@@ -3,8 +3,11 @@
  * mail as a paper on JP…** opens the one form with the kind, the sender and the day guessed from the mail, so the
  * spec book, the task list or the schedule lands beside the set it goes with the day it arrives, with its History
  * line and its ask. The job's part is read when the press opens: the job's own part, or one of its development's
- * parts to pick; a job outside any development with no part gets its own part made. The attachment itself stays in
- * the mail until the Drive filing lands; the link field takes a Drive link when there is one.
+ * parts to pick; a job outside any development with no part gets its own part made. The mail's files follow the
+ * paper into its own folder under the job's Plans folder (punch list #239, PR 5, `plan-set-files`), one by one past
+ * any that fails, a file that stayed in Gmail named instead of sent; the link field still takes a Drive link when the
+ * paper lives somewhere else. What became of the files is said in words that match the color, and a file that did not
+ * land, or a read that failed, is tried again on the same paper, never a second one.
  */
 import { useMemo, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
@@ -12,6 +15,8 @@ import { formatErrorMessage } from '../../utils/errorHandling'
 import { PAPER_FROMS, PAPER_KINDS, fromGuess, historyLineForPaper, isPaperKind, kindGuess, nameFromSubject, type PaperAskLane, type PaperDraft, type PaperFrom, type PaperKind } from '../../lib/papers/papers'
 import { supabaseJobPlansIo, type JobPlansIo } from '../../lib/plans/planSetsIo'
 import { jobShortLabel, partNameForJob, type PlanSetRow } from '../../lib/plans/planSets'
+import { PLAN_SET_FILES_WORDS, fileAgainLabel, mailFilesWords, splitMailFiles, type MailFile, type MailFilesResult } from '../../lib/plans/planSetFiles'
+import { supabasePlanSetFilesIo, type PlanSetFilesIo } from '../../lib/plans/planSetFilesIo'
 
 const muted: CSSProperties = { fontSize: '0.8125rem', color: 'var(--text-muted)', margin: 0 }
 const quiet: CSSProperties = { padding: '0.3rem 0.7rem', fontSize: '0.8125rem', borderRadius: 4, cursor: 'pointer', border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-700)' }
@@ -19,6 +24,17 @@ const blue: CSSProperties = { ...quiet, background: '#2563eb', borderColor: '#25
 const field: CSSProperties = { display: 'grid', gridTemplateColumns: 'minmax(5.5rem, 7rem) 1fr', gap: '0.3rem 0.6rem', alignItems: 'center', fontSize: '0.8125rem' }
 const input: CSSProperties = { font: 'inherit', fontSize: '0.8125rem', padding: '0.3rem 0.45rem', border: '1px solid var(--border)', borderRadius: 4, background: 'var(--surface)', color: 'var(--text)', width: '100%', boxSizing: 'border-box' }
 const hist: CSSProperties = { fontSize: '0.78rem', color: 'var(--text-muted)', borderLeft: '3px solid var(--border)', paddingLeft: '0.5rem', margin: 0 }
+
+type Kept = {
+  head: string
+  /** The paper, for a second try of its files. */
+  setId: string | null
+  files: MailFilesResult | null
+  /** The files that did not land, kept for that second try. */
+  retry: MailFile[]
+}
+
+const noFiles = (linkTyped: boolean): MailFilesResult => ({ readFailed: null, landed: 0, failed: [], left: [], linkTyped, noLineFiles: 0 })
 
 type Opened = {
   /** The parts the paper may go on: the job's own, or the development's. */
@@ -32,14 +48,36 @@ type Opened = {
   makeOwnPart: boolean
 }
 
-export function MailPaperDoor({ jobId, jobLabel, subject, senderAddress, at, io: ioProp }: { jobId: string; jobLabel: string; subject: string; senderAddress: string | null; at: string; io?: JobPlansIo }) {
+export function MailPaperDoor({
+  jobId,
+  jobLabel,
+  subject,
+  senderAddress,
+  at,
+  messageId = null,
+  mailFileCount = 0,
+  io: ioProp,
+  filesIo = supabasePlanSetFilesIo,
+}: {
+  jobId: string
+  jobLabel: string
+  subject: string
+  senderAddress: string | null
+  at: string
+  /** The mail's line in Messages when the conversation is tagged: its files follow the paper into Drive. */
+  messageId?: string | null
+  /** How many files the mail shows, so a mail no line holds yet can say they stay behind. */
+  mailFileCount?: number
+  io?: JobPlansIo
+  filesIo?: PlanSetFilesIo
+}) {
   const io = useMemo(() => ioProp ?? supabaseJobPlansIo(), [ioProp])
   const { user } = useAuth()
   const [opened, setOpened] = useState<Opened | null>(null)
   const [draft, setDraft] = useState<(PaperDraft & { partId: string }) | null>(null)
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
-  const [kept, setKept] = useState<string | null>(null)
+  const [kept, setKept] = useState<Kept | null>(null)
 
   const open = async () => {
     if (busy) return
@@ -78,6 +116,45 @@ export function MailPaperDoor({ jobId, jobLabel, subject, senderAddress, at, io:
     }
   }
 
+  /**
+   * The mail's files into the paper's folder, one that fails named and the rest still landing. `only` are the files a
+   * first try left behind; with none the files are read first, and a read that fails says so instead of reading as
+   * a mail with no file. The paper is kept whatever happens here.
+   */
+  const fileTheMail = async (setId: string, lineId: string, before: MailFilesResult, only: MailFile[]): Promise<{ files: MailFilesResult; retry: MailFile[] }> => {
+    let ready = only
+    let left = before.left
+    if (only.length === 0) {
+      try {
+        const split = splitMailFiles(await filesIo.attachmentsOf(lineId))
+        ready = split.ready
+        left = split.left
+      } catch (e) {
+        return { files: { ...before, readFailed: formatErrorMessage(e, 'The read did not finish.') }, retry: [] }
+      }
+    }
+    const failed: Array<{ file: MailFile; why: string }> = []
+    for (const f of ready) {
+      try {
+        await filesIo.saveAttachment(setId, f.id)
+      } catch (e) {
+        failed.push({ file: f, why: formatErrorMessage(e, 'it did not land') })
+      }
+    }
+    return {
+      files: { ...before, readFailed: null, left, landed: before.landed + ready.length - failed.length, failed: failed.map((x) => ({ name: x.file.name, why: x.why })) },
+      retry: failed.map((x) => x.file),
+    }
+  }
+
+  const fileAgain = async () => {
+    if (!kept?.setId || !kept.files || !messageId || busy) return
+    setBusy(true)
+    const next = await fileTheMail(kept.setId, messageId, kept.files, kept.retry)
+    setKept({ ...kept, ...next })
+    setBusy(false)
+  }
+
   const keep = async () => {
     if (!opened || !draft || busy) return
     if (!draft.name.trim()) {
@@ -94,8 +171,17 @@ export function MailPaperDoor({ jobId, jobLabel, subject, senderAddress, at, io:
       }
       if (!partId) throw new Error('Pick the part of the site the paper goes on.')
       if (opened.developmentId && !opened.jobPartId) await io.pickPart(jobId, partId)
-      await io.keepPaper({ partId, draft, owed: false, jobId, jobLabel, developmentId: opened.developmentId, siteName: opened.siteName, userId: user?.id ?? null })
-      setKept(`Kept on ${opened.parts.find((p) => p.id === partId)?.name ?? jobShortLabel({ job_name: jobLabel })}: ${draft.name.trim()}. It reads under Plans on ${jobLabel}${opened.developmentId ? ' and on the site' : ''}.`)
+      const made = await io.keepPaper({ partId, draft, owed: false, jobId, jobLabel, developmentId: opened.developmentId, siteName: opened.siteName, userId: user?.id ?? null })
+      const linkTyped = Boolean(draft.link.trim())
+      const filing =
+        messageId && made?.id
+          ? await fileTheMail(made.id, messageId, noFiles(linkTyped), [])
+          : { files: !messageId && mailFileCount > 0 ? { ...noFiles(linkTyped), noLineFiles: mailFileCount } : null, retry: [] }
+      setKept({
+        head: `Kept on ${opened.parts.find((p) => p.id === partId)?.name ?? jobShortLabel({ job_name: jobLabel })}: ${draft.name.trim()}. It reads under Plans on ${jobLabel}${opened.developmentId ? ' and on the site' : ''}.`,
+        setId: made?.id ?? null,
+        ...filing,
+      })
       setDraft(null)
     } catch (e) {
       setProblem(formatErrorMessage(e, 'The paper did not keep.'))
@@ -104,7 +190,23 @@ export function MailPaperDoor({ jobId, jobLabel, subject, senderAddress, at, io:
     }
   }
 
-  if (kept) return <p style={{ ...muted, color: 'var(--text-green-700)' }}>{kept}</p>
+  if (kept) {
+    const said = kept.files ? mailFilesWords(kept.files) : null
+    const again = kept.retry.length > 0 ? fileAgainLabel(kept.retry.length) : kept.files?.readFailed ? PLAN_SET_FILES_WORDS.mailReadAgain : null
+    return (
+      <div style={{ display: 'grid', gap: '0.25rem', justifyItems: 'start' }} data-testid="mail-paper-kept" data-tone={said?.tone ?? 'success'}>
+        <p style={{ ...muted, color: said?.tone === 'warning' ? 'var(--text-amber-800)' : 'var(--text-green-700)' }}>
+          {kept.head}
+          {said ? ` ${said.words}` : ''}
+        </p>
+        {again ? (
+          <button type="button" style={quiet} disabled={busy} onClick={() => void fileAgain()}>
+            {busy ? 'Filing…' : again}
+          </button>
+        ) : null}
+      </div>
+    )
+  }
   if (!draft || !opened)
     return (
       <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', flexWrap: 'wrap' }} data-testid="mail-paper-door">
@@ -183,6 +285,7 @@ export function MailPaperDoor({ jobId, jobLabel, subject, senderAddress, at, io:
         <span>Link</span>
         <input style={input} value={draft.link} placeholder="A Drive link, or leave it empty for now" onChange={(e) => put({ link: e.target.value })} />
       </label>
+      {!messageId && mailFileCount > 0 ? <p style={muted}>{PLAN_SET_FILES_WORDS.mailNoLineAhead(mailFileCount)}</p> : null}
       <label style={field}>
         <span>Asks us</span>
         <span>
