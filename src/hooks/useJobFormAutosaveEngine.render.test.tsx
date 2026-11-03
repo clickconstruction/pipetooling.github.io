@@ -196,8 +196,10 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
     await tick(1_199)
     expect(db.steps).toEqual([])
     await tick(1)
-    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
     expect(db.steps[0]?.payload).toEqual({ revenue: 1_575 })
+    // The line goes up under its own id, so whatever names it stays (v2.6420).
+    expect(db.steps[2]?.payload).toEqual([expect.objectContaining({ id: 'f1', line_unit_price: 1_500 })])
     expect(result.current.hydratedPaymentIdsRef.current).toEqual(['p1'])
     expect(result.current.billingAutosaveStatus).toBe('saved')
     expect(result.current.billingAutosave.isDirty()).toBe(false)
@@ -211,7 +213,7 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
     await tick(1_199)
     expect(db.steps).toEqual([])
     await tick(1)
-    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
     expect(db.steps[1]?.payload).toEqual([expect.objectContaining({ id: 'p1', amount: 300, paid_on: '2026-09-01', sent_on: '2026-08-28' })])
     expect(result.current.billingAutosave.isDirty()).toBe(false)
     expect(spies.onSaved).toHaveBeenCalledTimes(1)
@@ -253,11 +255,13 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
   })
 
   it('a failed save says so, marks the slice, leaves it dirty, and the next edit tries again', async () => {
-    db.fail = 'delete:jobs_ledger_fixtures'
+    db.fail = 'upsert:jobs_ledger_fixtures'
     const { result, rerender, args, spies } = mount()
     rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_500)] })
     await tick(1_200)
-    expect(ui.showToast).toHaveBeenCalledWith('Autosave failed: delete:jobs_ledger_fixtures refused', 'error')
+    expect(ui.showToast).toHaveBeenCalledWith('Autosave failed: upsert:jobs_ledger_fixtures refused', 'error')
+    // A refused write deletes no line (v2.6420).
+    expect(seq()).not.toContain('delete:jobs_ledger_fixtures')
     expect(result.current.billingAutosaveStatus).toBe('error')
     expect(result.current.billingAutosave.isDirty()).toBe(true)
     expect(spies.onSaved).not.toHaveBeenCalled()
@@ -265,13 +269,13 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
     db.steps.length = 0
     rerender({ ...args, fixtures: [fixture('f1', 'Rough-in', 1_600)] })
     await tick(1_200)
-    expect(seq()).toContain('insert:jobs_ledger_fixtures')
+    expect(seq()).toContain('upsert:jobs_ledger_fixtures')
     expect(result.current.billingAutosaveStatus).toBe('saved')
   })
 
   it('a Received date caught mid-year is left out of the write and said once; the finished year saves it', async () => {
     const { result, rerender, args } = mount()
-    const upserts = () => db.steps.filter((s: Step) => s.op === 'upsert').map((s: Step) => s.payload as Array<Record<string, unknown>>)
+    const upserts = () => db.steps.filter((s: Step) => s.op === 'upsert' && s.table === 'jobs_ledger_payments').map((s: Step) => s.payload as Array<Record<string, unknown>>)
     // The year "2026" typed one digit at a time, with a pause after the first digit and the line item changed in the same pause.
     rerender({ ...args, payments: [{ ...pay('p1', 300), paid_on: '0002-09-15' }], fixtures: [fixture('f1', 'Rough-in', 1_500)] })
     await tick(1_200)
@@ -280,7 +284,7 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
     expect('paid_on' in upserts()[0]![0]!).toBe(false)
     // Nothing else waited for the date: the line item is down, and the invoice actions can read it.
     expect(db.steps[0]?.payload).toEqual({ revenue: 1_500 })
-    expect(seq()).toContain('insert:jobs_ledger_fixtures')
+    expect(seq()).toContain('upsert:jobs_ledger_fixtures')
     expect(ui.showToast).toHaveBeenCalledTimes(1)
     expect(ui.showToast).toHaveBeenCalledWith(expect.stringContaining('That date was not finished, so it was not saved.'), 'info')
     expect(result.current.billingAutosaveStatus).toBe('saved')
@@ -302,7 +306,7 @@ describe('useJobFormAutosaveEngine — the billing slice', () => {
     const { rerender, args } = mount()
     rerender({ ...args, payments: [{ ...pay('p1', 300), sent_on: '0020-08-28' }] })
     await tick(1_200)
-    const upserts = db.steps.filter((s: Step) => s.op === 'upsert').map((s: Step) => s.payload as Array<Record<string, unknown>>)
+    const upserts = db.steps.filter((s: Step) => s.op === 'upsert' && s.table === 'jobs_ledger_payments').map((s: Step) => s.payload as Array<Record<string, unknown>>)
     expect(upserts).toEqual([[expect.objectContaining({ id: 'p1', paid_on: '2026-09-01' })]])
     expect('sent_on' in upserts[0]![0]!).toBe(false)
     expect(ui.showToast).toHaveBeenCalledWith(expect.stringContaining('That date was not finished, so it was not saved.'), 'info')
@@ -426,8 +430,8 @@ describe('useJobFormAutosaveEngine — materials, team, and all four together', 
     expect(seq()).toEqual([
       'update:jobs_ledger',
       'upsert:jobs_ledger_payments',
+      'upsert:jobs_ledger_fixtures',
       'delete:jobs_ledger_fixtures',
-      'insert:jobs_ledger_fixtures',
       'update:jobs_ledger',
       'upsert:jobs_ledger_materials',
       'delete:jobs_ledger_materials',
@@ -495,8 +499,10 @@ describe('useJobFormAutosaveEngine — re-reading the line items', () => {
     await tick(1_199)
     expect(db.steps).toEqual([])
     await tick(1)
-    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
     expect((db.steps[1]?.payload as Array<{ id: string }>).map((r) => r.id)).toEqual(['p1', 'p2'])
+    // The lines re-read from the database go up under the ids it gave them (v2.6420).
+    expect((db.steps[2]?.payload as Array<{ id: string }>).map((r) => r.id)).toEqual(['f1', 'd1'])
     expect(result.current.engine.billingAutosave.isDirty()).toBe(false)
     expect(result.current.engine.billingAutosaveStatus).toBe('saved')
   })
@@ -542,7 +548,7 @@ describe('useJobFormAutosaveEngine — re-reading the payments after a removal',
     act(() => result.current.reread([pay('p1', 300)]))
     act(() => result.current.setFixtures([fixture('f1', 'Rough-in', 1_400)]))
     await tick(1_200)
-    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
   })
 
   it('keeps the save an unsaved edit is owed: a line item typed just before is still written', async () => {
@@ -554,7 +560,7 @@ describe('useJobFormAutosaveEngine — re-reading the payments after a removal',
     expect(result.current.engine.hydratedPaymentIdsRef.current).toEqual(['p1'])
     expect(result.current.engine.billingAutosave.isDirty()).toBe(true)
     await tick(1_200)
-    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'delete:jobs_ledger_fixtures', 'insert:jobs_ledger_fixtures'])
+    expect(seq()).toEqual(['update:jobs_ledger', 'upsert:jobs_ledger_payments', 'upsert:jobs_ledger_fixtures', 'delete:jobs_ledger_fixtures'])
     expect(db.steps[0]?.payload).toEqual({ revenue: 1_400 })
     expect(result.current.engine.billingAutosave.isDirty()).toBe(false)
   })
