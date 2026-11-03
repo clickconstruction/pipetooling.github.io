@@ -2,7 +2,7 @@
 name: "Send a stage check to Dispatch: the crew's reason rides with the job, the stage and the check, and Dispatch opens it with the context and acts on it in place"
 number: 245
 group: ready
-status: asked 2026-11-02 on the sheet's screenshot; thought through and mocked up the same day; PR 1 (the send and the inbox doors) built the same day as v2.6360, PR #6829, merged 2026-11-03 with its migration pushed; PR 2 (the context window and the loop back) next; three calls carry recommendations as defaults
+status: asked 2026-11-02 on the sheet's screenshot; thought through and mocked up the same day; PR 1 (the send and the inbox doors) built the same day as v2.6360, PR #6829, merged 2026-11-03 with its migration pushed, walked live the same day; PR 2 (the context window and the loop back) next; three calls carry recommendations as defaults
 summary: >
   A crew member on a stage checklist hits a check they cannot answer: the part is missing, the
   check is wrong for this job, the office has to decide. Today the phone has no door from the row,
@@ -178,5 +178,11 @@ shipped as recommended, and call 3's no stands: the push alone. Three calls made
 columns, so the Dashboard's read never waited on the push; the chip is words, not a press, until PR
 2's window gives it somewhere to open; the sheet's confirm carries no aria-label, so it and the
 row's press read apart. The send sheet opens from #246's inline door too, since v2.6362 landed first
-and the merge mounts it in both frames. The live walk under *How to verify* is not done yet: it
-sends a real push to the Dispatch group. PR 2 is next; PR 3 can follow it.
+and the merge mounts it in both frames. The live walk passed on prod 2026-11-03 at 14:38Z, as the
+dev on ZZ TEST Riders Walk. The company's list is empty on prod, so no stage had a question: the
+walk added a job item for Trim Set first. Then **Send to Dispatch** with *Need a part*, the chip and
+the toast, the request with both columns filled, the push function answering 200, the inbox row's
+*Stage check* tag with both doors working, and last the request closed with a note and the check
+taken off (both kept as ZZ rows). Found in the walk's reading: a *Can't do it* send draws as the
+*Customer waiting* card, which keeps the doors but drops the *Stage check* tag; PR 2 draws the tag
+there too. PR 2 is next; PR 3 can follow it.
