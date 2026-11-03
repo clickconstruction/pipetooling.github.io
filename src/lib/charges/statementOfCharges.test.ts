@@ -81,6 +81,15 @@ describe('the Statement of charges (punch list #254)', () => {
     expect(office).toContain('<span class="c">.')
   })
 
+  it("the office copy's premium waits while a day prices at nothing", () => {
+    const short: ChargeStatementSnapshot = { ...snapshot, input: { ...snapshot.input, sessions: [...snapshot.input.sessions, s('c', 'Casey', 'none', '2026-04-21', 8)] } }
+    const charges = buildJobCharges(cutJobChargesToPeriod(short.input, short.period.start, short.period.end))
+    expect(charges.totals.unpricedDays).toBe(1)
+    const office = buildChargeStatementHtml({ snapshot: short, copy: 'office', recordId: null })
+    expect(office).toContain('The premium waits until every day prices: 1 day prices at nothing.')
+    expect(office).not.toContain('The price stands')
+  })
+
   it('files a printed customer copy on its job, with the saved statement as its source', () => {
     expect(statementOfChargesFiling({ id: 'j1', number: '1042', customer: 'Example Builders' }, { id: 'row-1', record_id: 'SC-1042-0001' })).toEqual({
       kind: 'statement_of_charges',

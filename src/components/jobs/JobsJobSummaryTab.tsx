@@ -946,7 +946,7 @@ export default function JobsJobSummaryTab({
                               tabIndex={showTeamLaborAndProfit && onOpenCharges ? 0 : undefined}
                               className={showTeamLaborAndProfit && onOpenCharges ? jobSummaryBreakdownInteractiveClass(true) : undefined}
                               data-testid="job-summary-charges-cell"
-                              title={!showTeamLaborAndProfit ? undefined : enriched.chargesUsd == null ? 'Not priced yet: the rate card is being read, or nothing on this job is charged.' : `${enriched.chargesNote ? `${enriched.chargesNote} ` : ''}Press to see every line and adjust.`}
+                              title={!showTeamLaborAndProfit ? undefined : enriched.chargesUsd == null ? (enriched.chargesNote ?? 'Not priced yet: the rate card is being read, or this job has no hours and no materials.') : `${enriched.chargesNote ? `${enriched.chargesNote} ` : ''}Press to see every line and adjust.`}
                               style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', cursor: showTeamLaborAndProfit && onOpenCharges ? 'pointer' : undefined }}
                               onClick={(e) => {
                                 if (!showTeamLaborAndProfit || !onOpenCharges) return
@@ -964,7 +964,7 @@ export default function JobsJobSummaryTab({
                             <td
                               data-testid="job-summary-premium-cell"
                               style={{ padding: '0.75rem', textAlign: 'right', whiteSpace: 'nowrap', color: showTeamLaborAndProfit && enriched.premiumUsd != null && enriched.premiumUsd < 0 ? 'var(--text-red-700)' : undefined }}
-                              title={showTeamLaborAndProfit && enriched.premiumUsd != null ? (enriched.premiumUsd < 0 ? 'A shortfall: the contract price sits below the charges.' : enriched.premiumUsd > 0 ? 'A premium: the contract price sits above the charges.' : 'The price and the charges are even.') : undefined}
+                              title={!showTeamLaborAndProfit ? undefined : enriched.premiumUsd != null ? (enriched.premiumUsd < 0 ? 'A shortfall: the contract price sits below the charges.' : enriched.premiumUsd > 0 ? 'A premium: the contract price sits above the charges.' : 'The price and the charges are even.') : enriched.chargesUsd != null ? 'The premium waits until every day on the job prices.' : undefined}
                             >
                               {!showTeamLaborAndProfit || enriched.premiumUsd == null ? '—' : <SignedAmountSmallCents value={enriched.premiumUsd} />}
                               {showTeamLaborAndProfit && enriched.premiumUsd != null && enriched.premiumUsd < 0 ? <span style={{ display: 'block', fontSize: '0.66rem', fontWeight: 600 }}>shortfall</span> : null}

@@ -85,7 +85,7 @@ describe('who may make one (Diane’s call of 2026-11-02: payroll data)', () => 
 
 describe('the charged paper on the list (punch list #251, PR 2)', () => {
   it('reads as hours charged, whatever the pay switch', () => {
-    const base = { recordId: 'HS-629-0002', workerName: 'Trace', jobLabel: '629', periodStart: '2026-01-01', periodEnd: '2026-10-31', withPay: false, state: 'draft', preparedAtYmd: '2026-11-03', preparedByName: 'Robert' }
+    const base = { recordId: 'HS-1042-0002', workerName: 'Toby', jobLabel: '1042', periodStart: '2026-01-01', periodEnd: '2026-10-31', withPay: false, state: 'draft', preparedAtYmd: '2026-11-03', preparedByName: 'Dana' }
     expect(hoursStatementRowWords({ ...base, basis: 'charged' }).kind).toBe('hours charged')
     expect(hoursStatementRowWords({ ...base, basis: 'paid' }).kind).toBe('hours only')
     expect(hoursStatementRowWords({ ...base, withPay: true }).kind).toBe('hours and pay')

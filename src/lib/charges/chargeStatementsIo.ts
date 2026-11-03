@@ -38,7 +38,8 @@ export type ChargeStatementSave = {
   jobId: string
   jobNumber: string
   snapshot: ChargeStatementSnapshot
-  figures: { laborUsd: number; materialsUsd: number; chargesUsd: number; premiumUsd: number }
+  /** `premiumUsd` is null while any day in the span prices at nothing. */
+  figures: { laborUsd: number; materialsUsd: number; chargesUsd: number; premiumUsd: number | null }
   state: ChargeStatementState
   preparedBy: string | null
 }

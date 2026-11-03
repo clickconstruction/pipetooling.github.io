@@ -45,6 +45,8 @@ import {
 import { fileToBase64, supabaseHoursStatementSigningIo, type HoursStatementSigningIo } from '../../lib/people/hoursStatementSigningIo'
 import { HoursStatementSendSheet, type HoursStatementContact } from './HoursStatementSendSheet'
 import { HoursStatementScanSheet, type ScanSheetDraft } from './HoursStatementScanSheet'
+import { UnchargedCallout } from '../charges/UnchargedCallout'
+import { officeNotes } from '../../lib/charges/crewDays'
 
 /** Where the window was opened from: a job (pick who) or a person (pick the job). */
 export type HoursStatementScope =
@@ -515,12 +517,17 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
                 {charged && read?.read.charge ? (
                   <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-base)' }} data-testid="hours-statement-charge-words">
                     {read.read.charge.words}
-                    {read.read.charge.unpriced.length ? ` · ${read.read.charge.unpriced.join(' ')}` : ''}
-                    <span style={{ display: 'block', color: 'var(--text-muted)' }}>Change the job’s rule or the rate card in the Job Summary’s Charges window.</span>
+                    {(() => {
+                      // The office reads who counts as nobody in the note below, so the paper's neutral line is not repeated here.
+                      const whys = officeNotes(read.read.charge.unpriced, read.read.charge.uncharged)
+                      return whys.length ? ` · ${whys.join(' ')}` : ''
+                    })()}
+                    {read.read.charge.uncharged.length ? null : <span style={{ display: 'block', color: 'var(--text-muted)' }}>Change the job’s rule or the rate card in the Job Summary’s Charges window.</span>}
                   </span>
                 ) : null}
               </span>
             </label>
+            {charged && read?.read.charge?.uncharged.length ? <UnchargedCallout people={read.read.charge.uncharged} unpricedDays={read.read.charge.unchargedDays} onNavigate={onClose} margin="0" /> : null}
             <label style={{ ...toggle, cursor: payAllowed && !charged ? 'pointer' : 'not-allowed' }}>
               <input type="checkbox" checked={!charged && withPay && payAllowed} disabled={!payAllowed || !rowOpen || charged} onChange={(e) => setWithPay(e.target.checked)} style={{ marginTop: 3 }} />
               <span>

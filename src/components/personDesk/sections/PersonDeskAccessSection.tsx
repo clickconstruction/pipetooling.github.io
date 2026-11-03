@@ -1,5 +1,5 @@
 import { useEffect, useState, type FormEvent } from 'react'
-import { CHARGE_STANDINGS, CHARGE_STANDING_HINTS, CHARGE_STANDING_WORDS, parseChargeStanding, type ChargeStanding } from '../../../lib/charges/rateCard'
+import { CHARGE_STANDINGS, CHARGE_STANDING_HINTS, CHARGE_STANDING_WORDS, parseChargeStanding, type ChargeStanding, chargeStandingSavedWords } from '../../../lib/charges/rateCard'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { useToastContext } from '../../../contexts/ToastContext'
@@ -148,7 +148,7 @@ export function PersonDeskAccessSection({
         if (error) throw new Error(error.message)
         setStanding(next)
       },
-      `Charged as ${CHARGE_STANDING_WORDS[next].toLowerCase()}`,
+      chargeStandingSavedWords(displayName, next).replace(/\.$/, ''),
     )
   }
 

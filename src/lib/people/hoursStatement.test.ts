@@ -344,12 +344,12 @@ describe('the charged basis priced row by row (punch list #254: crew-days)', () 
       basis: 'charged',
       chargeWords: 'master with a helper throughout · $285.00 the crew’s hour',
       rows: [
-        { day: '2026-04-20', hours: 9.93, note: 'with Zack · master with a helper · the job’s rule', chargeRate: 285 },
+        { day: '2026-04-20', hours: 9.93, note: 'with Zed · master with a helper · the job’s rule', chargeRate: 285 },
         { day: '2026-04-21', hours: 8, note: 'alone · master alone · The rate card has no rate for master alone.' },
         { day: '2026-04-25', hours: 9.44, note: 'alone · a tech alone · adjusted', chargeRate: 185 },
       ],
       withPay: true,
-      worker: { name: 'Trace' },
+      worker: { name: 'Toby' },
     })
     expect(s.basis).toBe('charged')
     expect(s.pay).toBeNull()
@@ -362,7 +362,7 @@ describe('the charged basis priced row by row (punch list #254: crew-days)', () 
   })
 
   it('with one rate on every row the week reads at that rate, as the single-rate paper does', () => {
-    const s = buildHoursStatement({ kind: 'clock', periodStart: '2026-04-20', periodEnd: '2026-04-26', basis: 'charged', rows: [{ day: '2026-04-20', hours: 8, note: '', chargeRate: 285 }, { day: '2026-04-21', hours: 8, note: '', chargeRate: 285 }], withPay: false, worker: { name: 'Trace' } })
+    const s = buildHoursStatement({ kind: 'clock', periodStart: '2026-04-20', periodEnd: '2026-04-26', basis: 'charged', rows: [{ day: '2026-04-20', hours: 8, note: '', chargeRate: 285 }, { day: '2026-04-21', hours: 8, note: '', chargeRate: 285 }], withPay: false, worker: { name: 'Toby' } })
     expect(s.charged?.lines[0]!.words).toBe('Week of April 19 · 16 h at $285.00 = $4,560.00')
     expect(s.charged?.totalWords).toBe('16 h at the rate card’s rates for the crew on each day = $4,560.00')
   })

@@ -4,7 +4,7 @@
  * Charges window and the Statement of charges all draw from, so every surface prices the same rows the same way.
  * The reads hand in the inputs; nothing here touches the database.
  */
-import { buildCrewDays, crewDaysByWeek, type CrewDay, type CrewSessionInput, type CrewWeek, type JobChargeRule, DEFAULT_JOB_CHARGE_RULE } from './crewDays'
+import { buildCrewDays, crewDaysByWeek, type CrewDay, type CrewSessionInput, type CrewWeek, type JobChargeRule, DEFAULT_JOB_CHARGE_RULE, type CrewUncharged } from './crewDays'
 import { chargeMaterials, type MaterialLineCharged, type MaterialLineInput, type MaterialsChargedTotals } from './materialsCharged'
 import { adjustMaterialLines, indexAdjustments, type ChargeAdjustment } from './adjustments'
 import { premiumOf, type Premium } from './premium'
@@ -43,6 +43,8 @@ export type JobCharges = {
   adjustmentsCount: number
   /** Why some of it is not priced, each once, for the window and the paper. */
   notes: string[]
+  /** People out who count as nobody yet, most days first: the office's screens name them, never the paper. */
+  uncharged: CrewUncharged[]
 }
 
 const cents = (n: number): number => Math.round(Math.round(n * 1000) / 10) / 100
@@ -84,5 +86,6 @@ export function buildJobCharges(input: JobChargesInput): JobCharges {
     record: { totals: recordTotals, premium: premiumOf(input.revenue, recordTotals.charges) },
     adjustmentsCount: (input.adjustments ?? []).length,
     notes,
+    uncharged: days.totals.uncharged,
   }
 }

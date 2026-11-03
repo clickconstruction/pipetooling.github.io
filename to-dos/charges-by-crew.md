@@ -2,7 +2,7 @@
 name: "Charges by crew: a rate card by who was out, a markup on materials, the Statement of charges, and the Job Summary's Charges window"
 number: 254
 group: ready
-status: all four PRs built 2026-11-03 (v2.6441, v2.6445, v2.6447, v2.6448) with #251's PR 2 (v2.6446) between them, queued behind one another · the rate card's missing rows are the owner's · the live pass follows the last merge
+status: all four PRs built 2026-11-03 (v2.6441, v2.6445, v2.6447, v2.6448) with #251's PR 2 (v2.6446) between them, and the live pass's fixes (v2.6461), landing one after another · nobody has a standing yet and the rate card's missing rows are the owner's · the live pass at three widths follows the last merge
 mockup: the canvas and its critique — https://claude.ai/artifact/8zmhz5CJPUg8UUrrRZ3ecy (eight artboards, A to H); no static copy in the repo, because the papers on it are drawn from one person's reconstructed hours, which stay out of git
 summary: >
   Punch list #251 gave the company one rate for an hour. The owner's next asks, all on 2026-11-03: the rate is
@@ -30,10 +30,9 @@ this charge rate. It also allows us to add a margin to our materials."* Then whe
 drawn on the canvas above. Then the words for the gap between the statement's total and the price: *premium* above,
 *shortfall* below, on the office copy only (*warranty* and *discount* were considered and dropped, because both mean
 something else in the app and would be read literally by a customer or an attorney). Then: *"Let's also think about if
-this should show up in the job summary tab of jobs."* Then the rate itself: *"Sometimes for jobs we'll send people who
-are not master plumbers with a helper out and we should not charge two eighty five … if Abraham and Paige go out
-together, together they are two eighty-five, on their own they are just one-eighty-five … if Michael goes out, he is
-only seventy-five dollars per hour."* For the Gun Dog development the master-with-a-helper way was used throughout,
+this should show up in the job summary tab of jobs."* Then the rate itself, in the owner's words paraphrased:
+a crew that is not a master plumber with a helper should not be charged $285; two techs out together are $285, each
+alone $185; a helper alone is $75. For the Gun Dog development the master-with-a-helper way was used throughout,
 whoever clocked. And last: *"a dedicated modal where when a user clicks on charges they can see a breakdown of
 everything and an easy way to adjust."*
 
@@ -69,7 +68,7 @@ everything and an easy way to adjust."*
   of the number (*25% over cost is a 20% margin on the sale*). Rentals and sub labor pass through at cost unless a line
   is set otherwise.
 - **A crew-day**: the people who clocked on a job on the same day. Its shape is the standings present; its rate is the
-  card's row; its hours are the longest day of anyone in it. Abraham and Paige out eight hours together is one line,
+  card's row; its hours are the longest day of anyone in it. Two techs out eight hours together is one line,
   8 crew-hours at $285, never sixteen person-hours. A crew of three or more is the two highest standings' row plus the
   per-person add-on.
 - **A job's rule** (Edit Job → *Charging the customer*): the crew on each day from the rate card (the default), or one
@@ -140,8 +139,8 @@ everything and an easy way to adjust."*
 
 ## How to verify
 
-Dev server, `/dev-login?as=1`. Settings → Jobs & dispatch: the rate card shows the four owner's numbers and three blank
-rows; blank a row, open a job whose days need it, the window names the day it cannot price. Jobs → Job Summary grouped
+Dev server, `/dev-login?as=1`. Settings → Jobs & billing: the rate card shows the four owner's numbers and three blank
+rows, *Save the rates* is dead until a row changes, and *Who counts as what* lists every person with their *Charged as*; blank a row, open a job whose days need it, the window names the day it cannot price. Jobs → Job Summary grouped
 by development, Gun Dog: Charges on the rough-in reads its crew-days at $285 with the job's rule, the premium column
 reads a shortfall while change orders 957 and 958 are unbilled; a click opens the Charges window; set one Saturday to a
 tech alone with a reason, save, and the row, the window's tiles and a new statement all read the adjustment, while the
@@ -154,4 +153,4 @@ early (the longest day stands in for it until the owner wants a finer cut).
 
 ## Where it stands
 
-Drawn 2026-11-03. Built the same day: PR 1 (v2.6441, the standings, the rate card, the markup), PR 3 (v2.6445, the Job Summary's columns and chip, the Charges window, `job_charge_adjustments`), #251's PR 2 (v2.6446, the charged hours paper on crew-days) and PR 2 (v2.6447, the Statement of charges: the window, the two prints, `job_charge_statements`, the Documents section). PR 4 (v2.6448, the Edit Job row *Charging the customer*, the directory and the glossary) closes the train. Each lands after the one before it merges, with its migration pushed right after; the live pass at three widths follows the last.
+Drawn 2026-11-03. Built the same day: PR 1 (v2.6441, the standings, the rate card, the markup), PR 3 (v2.6445, the Job Summary's columns and chip, the Charges window, `job_charge_adjustments`), #251's PR 2 (v2.6446, the charged hours paper on crew-days) and PR 2 (v2.6447, the Statement of charges: the window, the two prints, `job_charge_statements`, the Documents section). PR 4 (v2.6448, the Edit Job row *Charging the customer*, the directory and the glossary) closes the train. The live pass on the app's own data, after PRs 1 and 3 and #251's PR 2 landed, found every person with no standing, so every crew-day priced at nothing and the Charges column was blank on every job: v2.6461 adds *Who counts as what* to the rate card and has the Charges window, the Statement of charges window and the Job Summary's note name who counts as nobody, with links to fix it. Setting each person's standing is the owner's. A printed customer copy of a Statement of charges is kept under *Sent from this job* (v2.6447). Each lands after the one before it merges, with its migration pushed right after; the live pass at three widths follows the last.

@@ -6,18 +6,18 @@ const inv = (id: string, label: string, cost: number, more: Partial<MaterialLine
 
 describe('materials charged (punch list #254)', () => {
   it('charges every line at cost plus the markup, to the cent, and totals cost, markup and charged', () => {
-    const r = chargeMaterials([inv('1', 'Ferguson · invoice 3344372', 1996.67), inv('2', 'Reece · invoice S124734980.003', 1720.38)], 25)
-    expect(r.lines.map((l) => [l.charged, l.markup])).toEqual([[2495.84, 499.17], [2150.48, 430.1]])
-    expect(r.totals).toEqual({ lines: 2, cost: 3717.05, markup: 929.27, charged: 4646.32, passedThrough: 0, leftOff: 0 })
+    const r = chargeMaterials([inv('1', 'A supply house · invoice 1001', 1896.67), inv('2', 'A supply house · invoice 3003', 1620.38)], 25)
+    expect(r.lines.map((l) => [l.charged, l.markup])).toEqual([[2370.84, 474.17], [2025.48, 405.1]])
+    expect(r.totals).toEqual({ lines: 2, cost: 3517.05, markup: 879.27, charged: 4396.32, passedThrough: 0, leftOff: 0 })
     expect(r.why).toBeNull()
-    expect(chargedAtMarkup(9806.98, 25)).toBe(12258.73)
+    expect(chargedAtMarkup(806.98, 25)).toBe(1008.73)
   })
 
   it('passes a line through at cost or leaves it off when an adjustment says so, and keeps what was left off for the office', () => {
-    const r = chargeMaterials([inv('1', 'Sunbelt Rentals · invoice 180856872-0001', 1423.08, { passThrough: true }), inv('2', 'Ferguson · invoice 7926343', 68.25), inv('3', 'NAPA · card', 719.85, { leftOff: true })], 25)
-    expect(r.lines.map((l) => [l.id, l.charged, l.passedThrough])).toEqual([['1', 1423.08, true], ['2', 85.31, false]])
+    const r = chargeMaterials([inv('1', 'A rental yard · invoice 2002', 1323.08, { passThrough: true }), inv('2', 'A supply house · invoice 4004', 58.25), inv('3', 'A parts store · card', 619.85, { leftOff: true })], 25)
+    expect(r.lines.map((l) => [l.id, l.charged, l.passedThrough])).toEqual([['1', 1323.08, true], ['2', 72.81, false]])
     expect(r.leftOff.map((l) => l.id)).toEqual(['3'])
-    expect(r.totals).toMatchObject({ lines: 2, passedThrough: 1, leftOff: 1, charged: 1508.39 })
+    expect(r.totals).toMatchObject({ lines: 2, passedThrough: 1, leftOff: 1, charged: 1395.89 })
   })
 
   it('with no markup set, charges every line at cost and says why', () => {
@@ -37,7 +37,7 @@ describe('materials charged (punch list #254)', () => {
 
 describe('money parts (the cents smaller than the dollars)', () => {
   it('splits a figure into its sign, dollars and cents', () => {
-    expect(moneyParts(241968.73)).toEqual({ sign: '', dollars: '$241,968', cents: '.73', words: '$241,968.73' })
+    expect(moneyParts(250537.73)).toEqual({ sign: '', dollars: '$250,537', cents: '.73', words: '$250,537.73' })
     expect(moneyParts(-537.73)).toEqual({ sign: '−', dollars: '$537', cents: '.73', words: '−$537.73' })
     expect(moneyParts(8)).toEqual({ sign: '', dollars: '$8', cents: '.00', words: '$8.00' })
     expect(moneyParts(0.005)).toMatchObject({ cents: '.01' })

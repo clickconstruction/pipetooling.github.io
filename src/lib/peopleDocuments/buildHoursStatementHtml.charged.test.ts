@@ -2,7 +2,10 @@ import { describe, expect, it } from 'vitest'
 import { buildHoursStatement } from '../people/hoursStatement'
 import { buildHoursStatementHtml } from './buildHoursStatementHtml'
 
-/** The charged paper's print (punch list #251, PR 2): its title, its Charged band in place of Paid, and the prepared line. */
+/**
+ * The charged paper's print (punch list #251, PR 2): its title, its Charged band in place of Paid, and the prepared line.
+ * Every name, job and place here is made up.
+ */
 describe('the charged paper on the page', () => {
   const statement = buildHoursStatement({
     kind: 'clock',
@@ -11,19 +14,19 @@ describe('the charged paper on the page', () => {
     basis: 'charged',
     chargeWords: 'master with a helper throughout · $285.00 the crew’s hour',
     rows: [
-      { day: '2026-04-20', hours: 9.93, note: 'with Zack · master with a helper · the job’s rule', inLabel: '8:00 am', outLabel: '5:00 pm', chargeRate: 285 },
+      { day: '2026-04-20', hours: 9.93, note: 'with Zed · master with a helper · the job’s rule', inLabel: '8:00 am', outLabel: '5:00 pm', chargeRate: 285 },
       { day: '2026-04-25', hours: 9.44, note: 'alone · a tech alone · adjusted', inLabel: '8:00 am', outLabel: '5:26 pm', chargeRate: 185 },
     ],
     withPay: true,
-    worker: { name: 'Trace' },
+    worker: { name: 'Toby' },
   })
   const html = buildHoursStatementHtml({
     statement,
-    worker: { name: 'Trace', standing: 'primary' },
-    job: { number: '629', name: 'ROUGH IN: bunker and lodge, 2026', customer: 'DSI (Diamondback)', site: 'Gun Dog Trail, Neeses, SC', isOfficeJob: false },
-    approvedBy: 'Robert',
-    recordId: 'HS-629-0002',
-    preparedBy: 'Robert',
+    worker: { name: 'Toby', standing: 'primary' },
+    job: { number: '1042', name: 'ROUGH IN: house and barn', customer: 'Example Builders', site: '1 Field Rd, Anytown', isOfficeJob: false },
+    approvedBy: 'Dana',
+    recordId: 'HS-1042-0002',
+    preparedBy: 'Dana',
     preparedOn: 'November 3, 2026',
     asOf: 'Nov 3, 9:00 AM',
   })
@@ -32,7 +35,7 @@ describe('the charged paper on the page', () => {
     expect(html).toContain('<h1>Statement of hours charged</h1>')
     expect(html).toContain('<h2>Charged</h2>')
     expect(html).not.toContain('<h2>Paid</h2>')
-    expect(html).toContain('Prepared from the company’s records, charged as master with a helper throughout · $285.00 the crew’s hour by Robert')
+    expect(html).toContain('Prepared from the company’s records, charged as master with a helper throughout · $285.00 the crew’s hour by Dana')
     expect(html).toContain('Nothing on this paper is what the worker was paid.')
   })
 
