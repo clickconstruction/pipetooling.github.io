@@ -133,6 +133,16 @@ describe('FindAFile', () => {
     await screen.findByRole('link', { name: 'New answer.pdf' })
   })
 
+  it('tags a hit the index found by meaning and draws the chunk’s opening as its line (PR 4)', async () => {
+    const io = fakeIo({ hits: [hit({ by: 'meaning', excerpt: { text: 'The general contractor accepts the added cost of the rock…', marks: [] } })], source: 'index', meaning: true })
+    renderWithProviders(<FindAFile io={io} debounceMs={0} />)
+    type('extra rock the GC agreed to')
+    await screen.findByText('1 file is about “extra rock the GC agreed to”, from our index.')
+    expect(screen.getByText('by meaning')).toBeTruthy()
+    expect(document.querySelector('[data-excerpt]')!.textContent).toBe('The general contractor accepts the added cost of the rock…')
+    expect(document.querySelector('mark')).toBeNull()
+  })
+
   it('one letter searches nothing', async () => {
     const io = fakeIo()
     renderWithProviders(<FindAFile io={io} debounceMs={0} />)

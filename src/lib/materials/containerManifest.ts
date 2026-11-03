@@ -18,8 +18,8 @@ export type ManifestPick = 'all' | ReadonlyArray<string>
 
 /** A page always carries at least this many ruled lines for the pen. */
 export const MANIFEST_BLANK_ROWS = 6
-/** Items and ruled lines together fill at least this many rows, so a near-empty box still gives a page of lines; 14 fills a Letter sheet under the header with the foot still on it. */
-export const MANIFEST_MIN_ROWS = 14
+/** Items and ruled lines together fill at least this many rows, so a near-empty box still gives a page of lines. 11 fills a Letter sheet at full size under the header with the foot still on it: an empty box's page lays out about 905px of the sheet's 960, room for a job name that wraps once more (measured 2026-11-03, v2.6432, once the print stopped shrinking). */
+export const MANIFEST_MIN_ROWS = 11
 
 /** The columns over the ruled lines, as the header reads them. */
 export const MANIFEST_ADDED_COLUMNS = ['Item', 'Qty', 'Who', 'Date'] as const

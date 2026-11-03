@@ -19,6 +19,8 @@ import { folderHomes, folderMetaReader, type HomeAt } from './fileHomes.ts'
 import { WALK_MAX } from './fileIndexKernel.ts'
 import { ocrSetup, ocrText, type OcrSetup } from './ocr.ts'
 import { OCR_KIND_NOTE, OCR_MAX_BYTES, OCR_MIMES, OCR_PER_PASS_MAX, ocrMimeOf, ocrTakes } from './ocrKernel.ts'
+import { embeddingsSetup, embedTexts, type EmbeddingsSetup } from './embeddings.ts'
+import { EMBED_CPU_MS_PER_CHUNK, chunkText, chunksCut, chunksCutNote, embedDue } from './embeddingsKernel.ts'
 import {
   DRIVE_FOLDER_KIND,
   INDEX_BUDGET_MS,
@@ -57,6 +59,8 @@ export interface IndexContext {
   spend: PassSpend
   /** OCR (PR 3): the processor and its token when the secret is set, else null and a scan stays `scan`. */
   ocr: OcrSetup | null
+  /** Meaning (PR 4): the embeddings endpoint when the key is set, else null and the words alone answer. */
+  embed: EmbeddingsSetup | null
 }
 
 /** The context, or `noRoot` when the jobs root is not set anywhere. `saJson` is the service account, for OCR. */
@@ -68,7 +72,7 @@ export async function indexContext(admin: SupabaseClient, google: string, saJson
   // stamp on that, so a root Drive does not answer for is this request's failure, never a wider listing.
   if (root.status < 200 || root.status >= 300) throw new Error(`Drive answered ${root.status} for the jobs root folder.`)
   const homes = await folderHomes(admin)
-  return { admin, google, rootId, driveId: root.body.driveId ?? null, homes, metaOf: folderMetaReader(google), spend: newPassSpend(), ocr: ocrSetup(saJson) }
+  return { admin, google, rootId, driveId: root.body.driveId ?? null, homes, metaOf: folderMetaReader(google), spend: newPassSpend(), ocr: ocrSetup(saJson), embed: embeddingsSetup() }
 }
 
 /** The rows the table holds for these ids, in chunks the API takes. */
@@ -218,7 +222,69 @@ export async function indexOneFile(ctx: IndexContext, f: DriveFileMeta, opts: { 
   const row = indexRowOf(f, walk, read, new Date(), ocr)
   const { error } = await ctx.admin.from('file_index').upsert(row, { onConflict: 'drive_file_id' })
   if (error) return { ok: false, error: error.message }
+  if (row.text && ctx.embed) await embedRow(ctx, row.drive_file_id, row.text)
+  // A row that lost its text (a revised file read as slow, big, error or scan) loses its chunks too, whether or not
+  // meaning is set up: stale chunks would find it by wording it no longer has and show that wording as its line.
+  else if (!row.text) await ctx.admin.from('file_index_chunks').delete().eq('drive_file_id', row.drive_file_id)
   return { ok: true, held: 'why' in read ? { id: f.id, name: f.name, why: read.why } : null, ocrCalled }
+}
+
+/**
+ * A row's text into chunks with vectors (PR 4): the old chunks go, the new ones land, the row keeps `embedded_at`; a
+ * refusal keeps `embed_tried_at` and the provider's reason, and the row is due again a day later. Never throws.
+ */
+export async function embedRow(ctx: IndexContext, driveFileId: string, text: string): Promise<{ ok: true; chunks: number } | { ok: false; error: string }> {
+  if (!ctx.embed) return { ok: false, error: 'Search by meaning is not set up.' }
+  const now = new Date().toISOString()
+  const chunks = chunkText(text)
+  if (chunks.length === 0) {
+    await ctx.admin.from('file_index').update({ embedded_at: now, embed_tried_at: now, embed_note: null }).eq('drive_file_id', driveFileId)
+    return { ok: true, chunks: 0 }
+  }
+  const answer = await embedTexts(ctx.embed, chunks.map((c) => c.text), 'RETRIEVAL_DOCUMENT')
+  if (!answer.ok) {
+    await ctx.admin.from('file_index').update({ embed_tried_at: now, embed_note: answer.error.slice(0, 1000) }).eq('drive_file_id', driveFileId)
+    return answer
+  }
+  const rows = chunks.map((c, i) => ({ drive_file_id: driveFileId, chunk_no: c.chunk_no, text: c.text, embedding: answer.vectors[i], embedded_at: now }))
+  // Reading the vectors and writing them back is CPU the clock around a parse never sees, so it is charged by the chunk.
+  ctx.spend.ms += chunks.length * EMBED_CPU_MS_PER_CHUNK
+  const gone = await ctx.admin.from('file_index_chunks').delete().eq('drive_file_id', driveFileId)
+  if (gone.error) {
+    await ctx.admin.from('file_index').update({ embed_tried_at: now, embed_note: gone.error.message.slice(0, 1000) }).eq('drive_file_id', driveFileId)
+    return { ok: false, error: gone.error.message }
+  }
+  const put = await ctx.admin.from('file_index_chunks').insert(rows)
+  if (put.error) {
+    await ctx.admin.from('file_index').update({ embed_tried_at: now, embed_note: put.error.message.slice(0, 1000) }).eq('drive_file_id', driveFileId)
+    return { ok: false, error: put.error.message }
+  }
+  await ctx.admin.from('file_index').update({ embedded_at: now, embed_tried_at: now, embed_note: chunksCut(text, chunks) ? chunksCutNote(chunks.length) : null }).eq('drive_file_id', driveFileId)
+  return { ok: true, chunks: rows.length }
+}
+
+/**
+ * The embedding pass (PR 4): rows with text and no `embedded_at` (never embedded, or indexed again since: every index
+ * write clears the stamp), due now, inside the budget. No Drive read: the text is on the row. PostgREST cannot compare
+ * two columns, so the cleared stamp is the whole test.
+ */
+export async function embedPass(ctx: IndexContext, n: number, opts: { startedMs?: number; budgetMs?: number } = {}): Promise<{ tried: number; embedded: number; chunks: number; refused: { id: string; name: string; error: string }[] }> {
+  const out = { tried: 0, embedded: 0, chunks: 0, refused: [] as { id: string; name: string; error: string }[] }
+  if (!ctx.embed || n <= 0) return out
+  const now = new Date()
+  const { data } = await ctx.admin.from('file_index').select('drive_file_id, name, text, indexed_at, embedded_at, embed_tried_at').not('text', 'is', null).is('embedded_at', null).order('embed_tried_at', { ascending: true, nullsFirst: true }).limit(n * 3)
+  const started = opts.startedMs ?? Date.now()
+  for (const r of (data ?? []) as { drive_file_id: string; name: string; text: string; indexed_at: string; embedded_at: string | null; embed_tried_at: string | null }[]) {
+    if (out.tried >= n || !budgetAllows(started, Date.now(), opts.budgetMs ?? INDEX_BUDGET_MS) || ctx.spend.ms >= PASS_READ_BUDGET_MS) break
+    if (!embedDue(r, now)) continue
+    out.tried += 1
+    const e = await embedRow(ctx, r.drive_file_id, r.text)
+    if (e.ok) {
+      out.embedded += 1
+      out.chunks += e.chunks
+    } else out.refused.push({ id: r.drive_file_id, name: r.name, error: e.error })
+  }
+  return out
 }
 
 /**

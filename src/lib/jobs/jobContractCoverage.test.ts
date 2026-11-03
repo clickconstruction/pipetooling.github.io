@@ -109,7 +109,7 @@ describe('buildJobContractCoverage', () => {
       [contract({ id: 'old', status: 'sent', voided_at: '2026-09-01T00:00:00Z' }), contract({ id: 'new', status: 'draft' })],
       [],
     )
-    expect(cov.get('j1')).toEqual({ kind: 'draft', contractId: 'new' })
+    expect(cov.get('j1')).toEqual({ kind: 'draft', contractId: 'new', agreement: 'contract' })
   })
 })
 
@@ -232,5 +232,27 @@ describe('a second signer (v2.4590): the chip names both and counts the frames',
     for (const col of ['recipient_name', 'signer_consented_at', 'co_signer_name', 'co_signed_at', 'co_signer_printed_name', 'co_signer_mode', 'signer_printed_name']) {
       expect(JOB_CONTRACT_COVERAGE_COLUMNS.split(', ')).toContain(col)
     }
+  })
+})
+
+describe('the warranty in place of a contract (2026-11-02): the chip says Warranty', () => {
+  it('reads the kind beside the other columns, so no reader drops it', () => {
+    expect(JOB_CONTRACT_COVERAGE_COLUMNS.split(', ')).toContain('kind')
+  })
+
+  it('a warranty out, signed or drafted is worded as one; a row from before the column stays a contract', () => {
+    const sent = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ kind: 'warranty', view_count: 1 })], []).get('j1')
+    expect(sent).toMatchObject({ kind: 'sent', agreement: 'warranty' })
+    expect(jobContractChipLabel(sent, NOW)).toBe('Warranty sent · opened 1× · 5d')
+    expect(jobContractChipTitle(sent)).toContain('Warranty rev 1 sent to mpalmer@example.com')
+    const signed = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ kind: 'warranty', status: 'signed', signed_at: '2026-09-01T15:00:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'type' })], []).get('j1')
+    expect(jobContractChipLabel(signed, NOW)).toBe('✍ Warranty signed Sep 1 · M. Palmer')
+    expect(jobContractChipTitle(signed)).toBe('Warranty signed electronically by Michael Palmer — the warranty in place of a contract, each line initialled')
+    const draft = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ kind: 'warranty', status: 'draft', sent_at: null, last_sent_at: null })], []).get('j1')
+    expect(jobContractChipLabel(draft, NOW)).toBe('Warranty draft')
+    expect(jobContractChipTitle(draft)).toBe('A warranty draft is saved but has not been sent')
+    const old = buildJobContractCoverage([{ id: 'j1', bid_id: null }], [contract({ status: 'signed', signed_at: '2026-09-01T15:00:00Z', signer_printed_name: 'Michael Palmer', signer_mode: 'type' })], []).get('j1')
+    expect(old).toMatchObject({ kind: 'signed', agreement: 'contract' })
+    expect(jobContractChipLabel(old, NOW)).toBe('✍ Signed Sep 1 · M. Palmer')
   })
 })

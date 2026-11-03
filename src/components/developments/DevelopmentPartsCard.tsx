@@ -156,8 +156,10 @@ export function DevelopmentPartsCard({
       )
     ) : null
 
+  // One column as wide as the box and never wider: an auto column grows to its widest child's min-content, and on a
+  // phone the all-good chip below is 356 px of nowrap words in a 329 px column, so every card ended 4 px past the screen (v2.6442).
   return (
-    <div style={{ display: 'grid', gap: 10 }}>
+    <div style={{ display: 'grid', gap: 10, gridTemplateColumns: 'minmax(0, 1fr)' }}>
       {view.parts.length === 0 ? (
         <EmptyState
           compact
@@ -211,30 +213,48 @@ export function DevelopmentPartsCard({
               openOlder[row.part.id] && older.length ? (
                 <ul style={{ margin: 0, padding: 0, listStyle: 'none' }} data-testid={`site-older-list-${row.part.id}`}>
                   {/* Each set reads date first, as people sort them; a dashed rule between neighbours; Open ↗, Build
-                      from this set and × as one group at the right edge that wraps as a unit (the owner, 2026-11-02). */}
-                  {older.map((s, i) => (
-                    <li key={s.id} style={{ display: 'grid', gridTemplateColumns: '7rem minmax(0, 1fr)', columnGap: 10, alignItems: 'baseline', padding: '5px 0', borderTop: i ? '1px dashed var(--border)' : 'none' }} data-testid="site-older-set">
-                      <span style={muted} data-testid="site-older-day">
-                        {setRowDayWords(s)}
+                      from this set and × as one group at the right edge that wraps as a unit (the owner, 2026-11-02),
+                      on a phone on a line of its own under the words, inside the card (2026-11-03). */}
+                  {older.map((s, i) => {
+                    // The three presses as one group. On the desk it sits at the right of the words and drops under them as a
+                    // unit when the row is narrow (v2.6355). On a phone the words column is narrower than the group (a 356 px
+                    // card leaves it 214; *link still to come · Build from this set · ×* is 239), so there the group takes a
+                    // line of its own across both columns, still at the right, and wraps inside itself before it leaves the card.
+                    const presses = (
+                      <span
+                        style={
+                          phone
+                            ? { display: 'inline-flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap', justifyContent: 'flex-end', gridColumn: '1 / -1', justifySelf: 'end', maxWidth: '100%', minWidth: 0, marginTop: 2 }
+                            : { display: 'inline-flex', gap: 10, alignItems: 'baseline', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }
+                        }
+                        data-testid="site-older-presses"
+                      >
+                        {openLink(s)}
+                        {canWrite && writes ? (
+                          <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
+                            Build from this set
+                          </LinkButton>
+                        ) : null}
+                        {removePress(s)}
                       </span>
-                      <div style={{ display: 'flex', columnGap: 10, rowGap: 2, flexWrap: 'wrap', alignItems: 'baseline', minWidth: 0 }}>
-                        <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
-                          <span>{s.name}</span> <span style={muted}>{setRowLineWords(s)}</span>
-                          {s.memo ? <div style={muted}>{s.memo}</div> : null}
-                          <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
-                        </div>
-                        <span style={{ display: 'inline-flex', gap: 10, alignItems: 'baseline', marginLeft: 'auto', flex: '0 0 auto', whiteSpace: 'nowrap' }} data-testid="site-older-presses">
-                          {openLink(s)}
-                          {canWrite && writes ? (
-                            <LinkButton onClick={() => void run(() => writes.buildFrom(row.part.id, s.id))} nowrap>
-                              Build from this set
-                            </LinkButton>
-                          ) : null}
-                          {removePress(s)}
+                    )
+                    return (
+                      <li key={s.id} style={{ display: 'grid', gridTemplateColumns: '7rem minmax(0, 1fr)', columnGap: 10, alignItems: 'baseline', padding: '5px 0', borderTop: i ? '1px dashed var(--border)' : 'none' }} data-testid="site-older-set">
+                        <span style={muted} data-testid="site-older-day">
+                          {setRowDayWords(s)}
                         </span>
-                      </div>
-                    </li>
-                  ))}
+                        <div style={{ display: 'flex', columnGap: 10, rowGap: 2, flexWrap: 'wrap', alignItems: 'baseline', minWidth: 0 }}>
+                          <div style={{ flex: '1 1 14rem', minWidth: 0 }}>
+                            <span>{s.name}</span> <span style={muted}>{setRowLineWords(s)}</span>
+                            {s.memo ? <div style={muted}>{s.memo}</div> : null}
+                            <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={!!(canWrite && writes)} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
+                          </div>
+                          {phone ? null : presses}
+                        </div>
+                        {phone ? presses : null}
+                      </li>
+                    )
+                  })}
                 </ul>
               ) : null
             const asBuilts = row.asBuilts.length ? (
@@ -415,7 +435,12 @@ export function DevelopmentPartsCard({
             {chips.noPart} <span aria-hidden>{openChip === 'noPart' ? '▾' : '▸'}</span>
           </button>
         ) : null}
-        {chips.allGood ? <span className="developmentCountChip">{chips.allGood}</span> : null}
+        {chips.allGood ? (
+          // A sentence, not a count: wider than a phone's row (338 px of words in 329), so there it wraps inside the row, in a softer corner, instead of running past the screen (v2.6442).
+          <span className="developmentCountChip" style={phone ? { whiteSpace: 'normal', borderRadius: 12 } : undefined} data-testid="site-chip-all-good">
+            {chips.allGood}
+          </span>
+        ) : null}
         {canWrite && writes && view.parts.length > 0 && partName === null ? (
           <SmallButton onClick={() => setPartName('')} title="Name a new part of the site: a building, an area, the whole site">
             + Part

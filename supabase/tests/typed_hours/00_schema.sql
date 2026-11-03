@@ -72,3 +72,8 @@ END $$;
 CREATE OR REPLACE FUNCTION public.t_as(p_user uuid) RETURNS void LANGUAGE sql AS $$
   SELECT set_config('request.jwt.claim.sub', COALESCE(p_user::text, ''), true)
 $$;
+-- The import door (v2.6425) checks the job exists and is not billing-only.
+CREATE TABLE IF NOT EXISTS public.jobs_ledger (
+  id uuid PRIMARY KEY,
+  billing_only boolean NOT NULL DEFAULT false
+);

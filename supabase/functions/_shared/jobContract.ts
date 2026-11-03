@@ -46,6 +46,46 @@ export function contractHeading(job: { job_address: string | null; job_name: str
   return name ? `Service agreement — ${name}` : 'Service agreement'
 }
 
+/** The kind of job agreement a row is (the owner's call of 2026-11-02): our contract, or the warranty sent in place of one. */
+export type JobAgreementKind = 'contract' | 'warranty'
+export const agreementKindOf = (raw: unknown): JobAgreementKind => (raw === 'warranty' ? 'warranty' : 'contract')
+/** "Contract" / "Warranty", and in a sentence. The client's twin is `src/lib/jobs/jobAgreementKind.ts`. */
+export const agreementNoun = (kind: JobAgreementKind): { Noun: string; noun: string; amountLabel: string } =>
+  kind === 'warranty' ? { Noun: 'Warranty', noun: 'warranty', amountLabel: 'Price' } : { Noun: 'Contract', noun: 'contract', amountLabel: 'Contract amount' }
+
+/** The paper's heading by kind: "Service agreement for 407 E 6th St", "Warranty for 407 E 6th St". */
+export function agreementHeading(kind: JobAgreementKind, job: { job_address: string | null; job_name: string | null }): string {
+  if (kind !== 'warranty') return contractHeading(job)
+  const addr = (job.job_address ?? '').trim()
+  if (addr) return `Warranty for ${addr.split(',')[0]?.trim() || addr}`
+  const name = (job.job_name ?? '').trim()
+  return name ? `Warranty — ${name}` : 'Warranty'
+}
+
+/** A warranty's lines to initial, as its `fields.initial_lines` keeps them. */
+export function initialLinesOf(fields: unknown): string[] {
+  const raw = fields && typeof fields === 'object' ? (fields as Record<string, unknown>).initial_lines : null
+  return Array.isArray(raw) ? raw.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean) : []
+}
+
+/** Initials as typed, with dots and spaces off and in capitals; two to four letters pass. The client's rule is the same. */
+export const cleanInitials = (raw: string): string => raw.replace(/[.\s]/g, '').toUpperCase()
+export const INITIALS_SHAPE = /^[A-Za-z]{2,4}$/
+
+/**
+ * The customer's initials on a warranty's lines, checked and kept: `[{line, initials}]` in the lines' order, or the
+ * refusal in words when a line is blank or its initials are not two to four letters. A contract takes none.
+ */
+export function initialsForLines(lines: readonly string[], typed: unknown): { ok: true; entries: { line: string; initials: string }[] } | { ok: false; error: string } {
+  if (lines.length === 0) return { ok: true, entries: [] }
+  const list = Array.isArray(typed) ? typed.map((x) => (typeof x === 'string' ? cleanInitials(x) : '')) : []
+  const missing = lines.findIndex((_, i) => !list[i])
+  if (missing >= 0) return { ok: false, error: lines.length === 1 ? 'Initial the line above to continue.' : `Initial every line to continue. Line ${missing + 1} is still blank.` }
+  const odd = lines.findIndex((_, i) => !INITIALS_SHAPE.test(list[i] ?? ''))
+  if (odd >= 0) return { ok: false, error: `Initials are two to four letters. Line ${odd + 1} reads "${list[odd] ?? ''}".` }
+  return { ok: true, entries: lines.map((line, i) => ({ line, initials: list[i] ?? '' })) }
+}
+
 export function amountCentsFromFields(fields: unknown): number | null {
   if (!fields || typeof fields !== 'object') return null
   const v = (fields as { amount_cents?: unknown }).amount_cents

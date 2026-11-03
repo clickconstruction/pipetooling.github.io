@@ -13,6 +13,8 @@ import { folderHomes, folderMetaReader } from '../_shared/fileHomes.ts'
 import { heldRowsFor, indexContext, indexFiles, fileMeta, jobFilesToIndex } from '../_shared/fileIndex.ts'
 import { OCR_PROBE_PNG, ocrSetup, ocrText } from '../_shared/ocr.ts'
 import { OCR_PROCESSOR_SECRET, ocrStateWords } from '../_shared/ocrKernel.ts'
+import { embeddingsSetup, embedTexts } from '../_shared/embeddings.ts'
+import { EMBED_KEY_SECRET, MEANING_MAX_DISTANCE, embedStateWords } from '../_shared/embeddingsKernel.ts'
 import { type DriveFileMeta, EXCERPT_PDF_LIMITS, EXCERPT_READ_MS, type FileHome, INDEX_JOB_MAX_FILES, newPassSpend, type PassSpend, walkUp } from '../_shared/fileIndexKernel.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
@@ -79,6 +81,11 @@ import {
  *                                                        first `sample` files with no row → IndexCheck; a read, a dev's door
  *   POST { action: 'index_home', driveFileIds }      → these files' rows walked up to their job or bid again, up to 40 a call, nothing
  *                                                        read out of the files (v2.6403) → { homed, none, unanswered, failed }; a dev's door
+ *   POST { action: 'search_index', words }              → Find a file's first answer (PR 4, v2.6338): the rows of search_file_index, or
+ *                                                        once GEMINI_API_KEY is set the query embedded here and the rows of
+ *                                                        search_file_index_meaning (words and meaning fused) → { rows, meaning, note }
+ *   POST { action: 'embed_probe' }                      → a dev's one made-up call through the embeddings provider (PR 4): one sentence
+ *                                                        embedded → { configured, secret, words, answer }; answer null while unset
  *   POST { action: 'ocr_probe' }                        → a dev's one made-up call through the OCR provider (PR 3, v2.6336): a
  *                                                        one-pixel PNG to the Document AI processor the secret names →
  *                                                        { configured, secret, words, answer }; answer null while unset
@@ -298,8 +305,41 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   const ask = parseOfficeAsk(body)
   if (!ask) return json({ error: 'That is not an ask this door takes.' }, 400)
   // Training mode reads everything and writes nothing: a list and an open are reads.
-  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'list_company' && ask.action !== 'ocr_probe') return json({ error: 'A training account cannot change Drive.' }, 403)
+  if (who.read_only && ask.action !== 'list' && ask.action !== 'open' && ask.action !== 'search' && ask.action !== 'search_index' && ask.action !== 'list_company' && ask.action !== 'ocr_probe' && ask.action !== 'embed_probe') return json({ error: 'A training account cannot change Drive.' }, 403)
   if (ask.action === 'put_company' && !COMPANY_PUT_ROLES.includes(String(who.role))) return json({ error: 'The office puts papers in the company folder.' }, 403)
+  // The index answers from our own table: no Drive token for it, so a search costs no token exchange and Google being
+  // down costs the floor alone, never the index.
+  if (ask.action === 'search_index') {
+    const embed = embeddingsSetup()
+    let meaning = false
+    let rows: unknown = null
+    let error: string | null = null
+    if (embed) {
+      const q = await embedTexts(embed, [ask.words], 'RETRIEVAL_QUERY')
+      if (q.ok) {
+        const r = await admin.rpc('search_file_index_meaning', { query_embedding: q.vectors[0], words: ask.words, max_hits: SEARCH_MAX, max_distance: MEANING_MAX_DISTANCE })
+        if (r.error) error = r.error.message
+        else {
+          rows = r.data
+          meaning = true
+        }
+      } else console.warn('query embedding refused; the words alone answer', q.error)
+    }
+    if (rows == null) {
+      const r = await admin.rpc('search_file_index', { words: ask.words, max_hits: SEARCH_MAX })
+      if (r.error) return json({ error: `The index did not answer: ${r.error.message}` }, 500)
+      rows = r.data
+    }
+    return json({ rows: Array.isArray(rows) ? rows : [], meaning, note: error })
+  }
+
+  if (ask.action === 'embed_probe') {
+    if (who.role !== 'dev') return json({ error: 'A dev runs the embeddings probe.' }, 403)
+    const setup = embeddingsSetup()
+    const answer = setup ? await embedTexts(setup, ['A made-up sentence about a rock clause in a plumbing contract.'], 'RETRIEVAL_QUERY') : null
+    return json({ configured: Boolean(setup), secret: EMBED_KEY_SECRET, words: embedStateWords(Boolean(setup)), answer: answer ? (answer.ok ? { ok: true, dimensions: answer.vectors[0]?.length ?? 0 } : answer) : null })
+  }
+
   const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
   if (!saJson) return json({ error: 'Drive is not set up here yet.' }, 500)
   const google = await googleAccessToken(saJson)
@@ -340,6 +380,9 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
 
   if (ask.action === 'search') return json(await searchFiles(admin, google, ask.words))
 
+  // Find a file's first answer (PR 4): our own index, by the words alone (search_file_index) or, once GEMINI_API_KEY is
+  // set, by the words and the meaning fused (search_file_index_meaning, the query embedded here). The RPC runs as the
+  // service role: the door checked the office role above, and the office reads every row of the table anyway.
   if (ask.action === 'list_company' || ask.action === 'put_company') {
     const companyId = (await readDriveSettings(admin, Deno.env.get('DRIVE_JOBS_FOLDER_ID'))).companyFolderId
     if (!companyId) return json({ error: NO_COMPANY_FOLDER_WORDS, why: 'no_company_folder' }, 409)
