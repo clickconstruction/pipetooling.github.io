@@ -32,6 +32,16 @@ Beside the chart, **Merges are taking** shows one number, like *4.2 hours*. The 
 
 Four tiles follow the chart. **Opened today** and **Merged today** count the day's pull requests. **Open now** counts the ones still waiting, with the drafts named. **In the merge queue** counts the ones in line for their final check.
 
+## Find your change in line
+
+A change is a pull request. The title of a pull request says what it is in plain words. The card **In line now** lists the pull requests in the merge queue. The list is the order they go live in. The top one is next. Each line says its place, how long it has waited, and about how long is left. Find your change by its title.
+
+A change still on its checks is not in line yet. The line under the list counts those changes. The same line counts the changes nobody has asked to merge yet. The list shows the first ten. *and 4 more* means four more wait behind them.
+
+:::example When the card says the queue was not read
+The reader could not see the queue. Ask a dev to check the GitHub token's permissions.
+:::
+
 ## What the number means
 
 The hours count from the pull request opening, not from when you asked. Writing the change comes first, and that time is not in the number. The app updates a few minutes after a merge.

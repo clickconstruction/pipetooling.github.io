@@ -1762,6 +1762,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "payment-forecast-email-dispatch",
   "photo-save",
   "plan-fetch",
+  "plan-set-files",
   "preview-stripe-invoice",
   "property-lookup",
   "quo-config",

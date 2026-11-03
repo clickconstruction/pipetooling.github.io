@@ -44,7 +44,7 @@ describe('buildLeanJobNumberOr', () => {
  */
 type Step = { method: string; args: unknown[] }
 const queries: Array<{ table: string; steps: Step[] }> = []
-let route: (table: string, steps: Step[]) => { data: unknown; error: null } = () => ({ data: [], error: null })
+let route: (table: string, steps: Step[]) => { data: unknown; error: unknown } = () => ({ data: [], error: null })
 vi.mock('../supabase', () => ({
   supabase: {
     from: (table: string) => {
@@ -121,6 +121,18 @@ describe('fetchLeanJobSearchIds by development name', () => {
     const jobsQ = queries.find((q) => q.table === 'jobs_ledger')!
     expect(String(stepArg(jobsQ.steps, 'or', 0))).not.toContain('development_id')
     expect(jobsQ.steps.some((s) => s.method === 'eq')).toBe(false)
+  })
+
+  it('a refusal comes back with its reason and its kind, so the board can say why and offer no Retry', async () => {
+    route = (table) =>
+      table === 'jobs_ledger'
+        ? { data: null, error: { message: 'permission denied for table jobs_ledger', code: '42501' } }
+        : { data: [], error: null }
+    const res = await fetchLeanJobSearchIds('Sagebrush', null)
+    expect(res.ok).toBe(false)
+    if (res.ok) return
+    expect(res.errorKind).toBe('server')
+    expect(res.error.length).toBeGreaterThan(0)
   })
 
   it('one letter asks the server nothing, as before', async () => {
