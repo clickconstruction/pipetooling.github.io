@@ -6297,7 +6297,9 @@ supabase functions list
 supabase functions logs create-user
 
 # Every repo function deployed and running this checkout's code: index.ts and every file it
-# imports, _shared included (scripts/check-edge-function-drift.mjs)
+# imports, _shared included (scripts/check-edge-function-drift.mjs). A commit counts from when it
+# LANDED on main (its pull's mergedAt, asked of GitHub through gh), since a merge-queue squash
+# carries the time the queue built it and a deploy made in between read as current (v2.6452)
 npm run check:edge-drift             # reads the functions whose code changed since their deploy
 npm run check:edge-drift -- --full   # reads every deployed function (the daily CI run)
 
