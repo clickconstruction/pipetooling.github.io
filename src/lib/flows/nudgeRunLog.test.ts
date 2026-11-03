@@ -75,6 +75,18 @@ describe('runSummary: what the owner reads first', () => {
     expect(runSummary({ run: run(), sent: 0, refused: [], unread: 0, customersHeld: 0, now: NOW, dry: false })).toMatchObject({ prepared: 0, morningSent: 0 })
   })
 
+  it('says the texts put away because the visit day they named had passed (v2.6387)', () => {
+    const s = runSummary({ run: run(), sent: 1, refused: [], unread: 0, customersHeld: 0, expired: 2, now: NOW, dry: false })
+    expect(s.expired).toBe(2)
+    expect(s.words).toEqual(['1 text went.', '2 texts were put away because the visit day passed.'])
+    expect(runSummary({ run: run(), sent: 0, refused: [], unread: 0, customersHeld: 0, expired: 1, now: NOW, dry: true }).words).toEqual([
+      'A dry run. Nothing went and nothing was written.',
+      'No text would go.',
+      '1 text would be put away because the visit day passed.',
+    ])
+    expect(runSummary({ run: run(), sent: 0, refused: [], unread: 0, customersHeld: 0, now: NOW, dry: false }).expired).toBe(0)
+  })
+
   it('names a line’s blank among the reasons, after the person’s own (punch list #124, v2.6079)', () => {
     const s = runSummary({ run: run([kept('blanks left'), kept('no number', 'bill')]), sent: 0, refused: [], unread: 0, customersHeld: 0, now: NOW, dry: false })
     expect(s.kept).toEqual({ 'blanks left': 1, 'no number': 1 })
@@ -88,8 +100,8 @@ describe('runSummary: what the owner reads first', () => {
   it('reads in plain words for every reason and every line', () => {
     const all: NudgeNotSent[] = ['off', 'offered', 'not a text', 'snoozed', 'sent lately', 'no number', 'opted out', 'prefers email', 'blanks left', 'one a morning', 'answered']
     const words = [
-      ...summaryWords({ at: '', dry: true, sent: 1, kept: Object.fromEntries(all.map((w) => [w, 1])), textsOff: 1, refused: [], refusedCount: 1, unread: 1, customersHeld: 1, prepared: 1, morningSent: 1 }),
-      ...summaryWords({ at: '', dry: false, sent: 2, kept: Object.fromEntries(all.map((w) => [w, 3])), textsOff: 2, refused: [], refusedCount: 2, unread: 2, customersHeld: 0, prepared: 2, morningSent: 2 }),
+      ...summaryWords({ at: '', dry: true, sent: 1, kept: Object.fromEntries(all.map((w) => [w, 1])), textsOff: 1, refused: [], refusedCount: 1, unread: 1, customersHeld: 1, prepared: 1, morningSent: 1, expired: 1 }),
+      ...summaryWords({ at: '', dry: false, sent: 2, kept: Object.fromEntries(all.map((w) => [w, 3])), textsOff: 2, refused: [], refusedCount: 2, unread: 2, customersHeld: 0, prepared: 2, morningSent: 2, expired: 2 }),
     ]
     expect(words.length).toBeGreaterThan(all.length * 2)
     for (const w of words) expect(plainWordsFailures(w)).toEqual([])

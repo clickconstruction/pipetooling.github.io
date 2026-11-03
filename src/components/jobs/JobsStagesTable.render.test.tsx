@@ -336,6 +336,20 @@ describe('JobsStagesTable render smoke', () => {
     expect(openEdit).toHaveBeenCalledWith(bare, { initialTab: 'documents' })
   })
 
+  it('every row carries the Photos icon after the folder, and a click opens the Job photos window on that job (punch list #244)', async () => {
+    const made = makeJob({ job_name: 'Has a folder', google_drive_link: 'https://drive.google.com/drive/folders/1AbCdEfGhIjKlMnOpQrStUv' })
+    const bare = makeJob({ job_name: 'No folder yet' })
+    renderWithProviders(<JobsStagesTable {...makeProps({ jobList: [made, bare] })} />)
+    await settle()
+    const icons = screen.getAllByLabelText('Open the job’s photos')
+    expect(icons).toHaveLength(2)
+    expect(icons[0]!.style.color).toBe('rgb(217, 119, 6)')
+    expect(icons[1]!.style.color).toBe('var(--text-muted)')
+    fireEvent.click(icons[1]!)
+    expect(await screen.findByText('Job photos')).toBeTruthy()
+    expect(document.querySelector('[data-job-photos-window]')?.getAttribute('data-job-photos-window')).toBe(bare.id)
+  })
+
   it('the checklist door sits in the strip with the job’s standing, opens the row’s sheet, and the marked stage name is a press too; a job with no stage that takes a checklist draws neither (#246)', async () => {
     const openChecklistDoor = vi.fn()
     const stages = makeJob({

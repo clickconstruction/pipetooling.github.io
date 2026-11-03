@@ -8,7 +8,6 @@
  * day reads the hours the server read already carries.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { SupabaseClient } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 import { withSupabaseRetry } from '../utils/errorHandling'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../lib/offlineRecoveryState'
@@ -21,12 +20,9 @@ import { laborEventsOf, parseProjectBoardRead, valueEventsOf, type ProjectBoardJ
 import type { SuperintendentLine } from '../lib/jobs/superintendentLine'
 import type { JobChargeEvent, JobValueEvent } from '../lib/jobChargesTimeline'
 
-// The function is younger than the generated types; the types PR after the push removes this cast.
-const db = supabase as unknown as SupabaseClient
-
 /** The server's read: every Working job, or just these ids (the phone's one job). Throws its reason. */
 export async function loadProjectBoardRead(jobIds?: readonly string[]): Promise<ProjectBoardRead> {
-  const raw = await withSupabaseRetry(() => db.rpc('list_project_board', { p_job_ids: jobIds ? [...jobIds] : null }), 'load project list')
+  const raw = await withSupabaseRetry(() => supabase.rpc('list_project_board', jobIds ? { p_job_ids: [...jobIds] } : {}), 'load project list')
   return parseProjectBoardRead(raw)
 }
 

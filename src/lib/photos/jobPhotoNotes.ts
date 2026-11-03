@@ -7,7 +7,9 @@
  * pure; the reads and writes are `jobPhotoNotesIo.ts`; the tile state machine is `hooks/useShotTiles.ts`.
  */
 import { countedLabel } from '../batchWords'
+import type { JobPhoto } from './jobPhotos'
 import { cardPhotoWords } from './reportPhotos'
+import { sourceChips, sourceWords, type SourcePick, type UploadedPhotoRow } from './uploadedPhotos'
 
 /** Where a shot stands on the window. */
 export type JobPhotoTileStatus = 'shrinking' | 'sending' | 'sent' | 'failed'
@@ -203,4 +205,127 @@ export function addedWords(input: { added: number; failed: ReadonlyArray<string>
   if (input.failed.length === 0) return { text: head || 'Nothing added', tone: 'success' }
   const miss = input.failed.length === 1 ? 'one did not' : `${input.failed.length} did not`
   return { text: head ? `${head}, but ${miss}: ${input.failed[0]}` : `The photo did not add: ${input.failed[0]}`, tone: 'warning' }
+}
+
+// ---------------------------------------------------------------------------
+// The window's grid (PR 3): Drive is the list, our rows are the words.
+// ---------------------------------------------------------------------------
+
+/** One tile of the grid: a row of ours, or a file put in the folder by hand (`hand`), drawn from Drive's list alone. */
+export type JobPhotoGridItem = { row: UploadedPhotoRow; hand: boolean }
+
+/** The words that stand in for a person on a file put in the folder by hand. */
+export const ADDED_IN_DRIVE = 'Added in Drive'
+
+type GridJob = { id: string; hcp_number?: string | null; click_number?: string | null; job_name?: string | null; customer_name?: string | null }
+
+/**
+ * The grid: every row of ours on the job (every source, the view's rows), then every picture in the job's Drive photo
+ * folders that no row of ours names, as a hand-added tile with the file's name for its words; newest first, a row with
+ * no time last. A row still in a bucket has no Drive id and so is never doubled.
+ */
+export function gridItems(input: { rows: ReadonlyArray<UploadedPhotoRow>; drive: ReadonlyArray<JobPhoto> | null | undefined; job: GridJob }): JobPhotoGridItem[] {
+  const known = new Set(input.rows.map((r) => r.drive_file_id).filter((id): id is string => Boolean(id)))
+  const items: JobPhotoGridItem[] = input.rows.map((row) => ({ row, hand: false }))
+  for (const p of input.drive ?? []) {
+    if (known.has(p.id)) continue
+    items.push({
+      hand: true,
+      row: {
+        source: 'job',
+        id: `drive:${p.id}`,
+        job_id: input.job.id,
+        bid_id: null,
+        project_id: null,
+        report_id: null,
+        container_id: null,
+        question_id: null,
+        message_id: null,
+        contact_id: null,
+        caption: p.name,
+        stage_name: '',
+        by_user_id: null,
+        by_name: ADDED_IN_DRIVE,
+        direction: null,
+        channel: null,
+        taken_at: p.modified ?? '',
+        bytes: p.bytes ?? 0,
+        original_bytes: 0,
+        bucket: '',
+        storage_path: null,
+        drive_file_id: p.id,
+        filed_at: p.modified,
+        fail_why: null,
+        status: null,
+        job_hcp_number: input.job.hcp_number ?? null,
+        job_click_number: input.job.click_number ?? null,
+        job_name: input.job.job_name ?? null,
+        customer_name: input.job.customer_name ?? null,
+        bid_number: null,
+      },
+    })
+  }
+  const ms = (iso: string) => {
+    const n = Date.parse(iso)
+    return Number.isFinite(n) ? n : -1
+  }
+  return items.sort((a, b) => ms(b.row.taken_at) - ms(a.row.taken_at))
+}
+
+/** The search box: the words, the person, the stage and the source's word, case blind; fewer than two characters narrows nothing. */
+export function gridSearch(items: ReadonlyArray<JobPhotoGridItem>, typed: string): JobPhotoGridItem[] {
+  const q = typed.trim().toLowerCase()
+  if (q.length < 2) return [...items]
+  return items.filter((it) => [it.row.caption, it.row.by_name, it.row.stage_name, it.hand ? ADDED_IN_DRIVE : sourceWords(it.row)].some((w) => w.toLowerCase().includes(q)))
+}
+
+/** The source chip filter: a hand-added file counts under Job photos. */
+export function gridBySource(items: ReadonlyArray<JobPhotoGridItem>, source: SourcePick): JobPhotoGridItem[] {
+  if (source === 'all') return [...items]
+  return items.filter((it) => it.row.source === source)
+}
+
+/**
+ * The chips over the grid, each with its count, only when the job's photos came through more than one door: All, then
+ * the sources present in the Documents page's order for this role. One door, no chips.
+ */
+export function gridChips(items: ReadonlyArray<JobPhotoGridItem>, role: string | null | undefined): Array<{ key: SourcePick; label: string }> {
+  const counts = new Map<string, number>()
+  for (const it of items) counts.set(it.row.source, (counts.get(it.row.source) ?? 0) + 1)
+  if (counts.size < 2) return []
+  const out: Array<{ key: SourcePick; label: string }> = [{ key: 'all', label: `All · ${items.length}` }]
+  for (const c of sourceChips(role)) {
+    if (c.key === 'all') continue
+    const n = counts.get(c.key)
+    if (n) out.push({ key: c.key, label: `${c.label} · ${n}` })
+  }
+  return out
+}
+
+/** The words under a grid tile: the caption as the view holds it (the description, the stage, the box's words, the file's name). */
+export function gridTileWords(item: JobPhotoGridItem): { text: string; none: boolean; who: string } {
+  if (item.hand) return { text: item.row.caption || 'A file in Drive', none: true, who: ADDED_IN_DRIVE }
+  const w = tileWords({ description: item.row.caption, stage_name: item.row.stage_name })
+  const who = [item.row.by_name.trim(), item.row.source === 'job' ? '' : sourceWords(item.row)].filter(Boolean).join(' · ')
+  return { ...w, who }
+}
+
+/** Whether the search or a chip hides rows, for the empty state's kind. */
+export function gridNarrowed(input: { typed: string; source: SourcePick }): boolean {
+  return input.source !== 'all' || input.typed.trim().length >= 2
+}
+
+/** The line under the grid: the count, the folder and the hand-added note. */
+export function gridFootWords(input: { count: number; hand: number; folderKind: 'pictures' | 'photos' | 'none' | null }): string {
+  const n = input.count === 1 ? '1 photo' : `${input.count} photos`
+  const folder = input.folderKind === 'pictures' ? 'In Drive: Customer Pictures' : input.folderKind === 'photos' ? 'In Drive: Team only › Photos' : ''
+  const hand = input.hand > 0 ? `${input.hand === 1 ? '1 was' : `${input.hand} were`} put in the folder by hand and read by file name` : ''
+  return [n, folder, hand].filter(Boolean).join(' · ')
+}
+
+/** Who may change a photo's words later: the taker, or the office and the estimator (the policy's rule). */
+export function canEditJobPhotoWords(input: { role: string | null | undefined; byUserId: string | null; authUserId: string | null }): boolean {
+  if (input.authUserId && input.byUserId && input.byUserId === input.authUserId) return true
+  const r = input.role
+  return r === 'dev' || r === 'master_technician' || r === 'assistant' || r === 'controller' || r === 'estimator'
 }

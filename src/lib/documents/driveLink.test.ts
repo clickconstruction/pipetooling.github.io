@@ -224,5 +224,6 @@ describe('parseOfficeAsk — the index (punch list #240, PR 1)', () => {
     expect(parseOfficeAsk({ action: 'index_job', job: { bid_id: JOB }, retry: true })).toEqual({ action: 'index_job', job: { bid_id: JOB }, retry: true })
     expect(parseOfficeAsk({ action: 'index_job', job: { jobs_ledger_id: 'x' } })).toBeNull()
     expect(parseOfficeAsk({ action: 'index_job' })).toBeNull()
+    expect(parseOfficeAsk({ action: 'ocr_probe' })).toEqual({ action: 'ocr_probe' })
   })
 })

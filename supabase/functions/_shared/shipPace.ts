@@ -13,6 +13,11 @@
  * - The headline's median and 90th percentile are over the merges of the last 24 hours.
  * - The series runs the last 72 hours: the hour holding now less 72 hours through the hour holding now.
  * - *Today* is the app calendar's day (`todayYmdInAppTz`), so a merge at 11 PM Central on Sunday is Sunday's.
+ * - The queue's line (v2.6401): the merge queue's entries in position order, each with its title after the version,
+ *   how long it has been in the queue and GitHub's estimate to merge; around it, the open pull requests in three
+ *   buckets: armed (auto-merge on, not in the queue: waiting on checks or a review; GitHub clears the arm once a
+ *   pull request enters the queue, so the two never overlap), open and not armed, and drafts. The whole block is
+ *   null when the queue was not read, as the count is.
  *
  * Tested from `src/lib/settings/shipPace.test.ts`.
  */
@@ -29,6 +34,10 @@ export const SHIP_PACE_NOW_HOURS = 6
 /** How often the cron reads GitHub, in minutes; a row older than four reads is called stale. */
 export const SHIP_PACE_READ_MINUTES = 15
 export const SHIP_PACE_STALE_MINUTES = SHIP_PACE_READ_MINUTES * 4
+/** How many of the queue's entries the card lists before *and N more*. */
+export const SHIP_PACE_QUEUE_SHOWN = 10
+/** The longest a listed title runs before it is cut on a word. */
+export const SHIP_PACE_QUEUE_TITLE_MAX = 90
 
 const HOUR_MS = 60 * 60 * 1000
 
@@ -50,13 +59,44 @@ export type PaceQueueRun = {
   conclusion: string | null
 }
 
+/** One entry of the merge queue as GraphQL lists it: `estimatedSeconds` is GitHub's `estimatedTimeToMerge`, null when it has none. */
+export type PaceQueueEntryInput = {
+  number: number
+  title: string
+  position: number
+  enqueuedAt: string
+  estimatedSeconds: number | null
+}
+
+/** One open pull request as GraphQL lists it: whether auto-merge is on, whether it sits in the queue, its checks and its mergeability. */
+export type PaceOpenPr = {
+  number: number
+  title: string
+  draft: boolean
+  /** `autoMergeRequest` is set: the author asked GitHub to merge it when it is ready. */
+  armed: boolean
+  /** `mergeQueueEntry` is set: it is in the queue (GitHub clears the arm then). */
+  inQueue: boolean
+  /** `statusCheckRollup.state`: SUCCESS, PENDING, FAILURE, ERROR, EXPECTED, or null with no checks. */
+  checks: string | null
+  /** `mergeable`: MERGEABLE, CONFLICTING or UNKNOWN. */
+  mergeable: string | null
+}
+
+/** The queue as read: its total, its entries and every open pull request's state. */
+export type PaceQueueInput = {
+  total: number
+  entries: PaceQueueEntryInput[]
+  open: PaceOpenPr[]
+}
+
 export type PaceInput = {
   now: string | Date
   prs: PacePr[]
   /** The queue's builds in the window; null when Actions was not read (the token lacks it), so the hours say so. */
   queueRuns: PaceQueueRun[] | null
-  /** How many pull requests sit in the merge queue now; null when the queue was not read. */
-  queueNow: number | null
+  /** The merge queue's entries and the open pull requests' state; null when the queue was not read. */
+  queue: PaceQueueInput | null
 }
 
 export type PaceHour = {
@@ -98,6 +138,28 @@ export type PaceRecent = {
   since: string | null
 }
 
+/** One pull request in line: its position, its title as GitHub has it, when it entered and GitHub's estimate in whole minutes. */
+export type PaceQueueEntry = {
+  number: number
+  title: string
+  position: number
+  enqueuedAt: string
+  estimatedMinutes: number | null
+}
+
+/** The queue's line and the buckets around it. */
+export type PaceQueue = {
+  /** In position order, first to merge first. */
+  entries: PaceQueueEntry[]
+  /** Auto-merge on and not in the queue: waiting on checks or a review. */
+  armedWaiting: number
+  /** Of those, held by a red check or a conflict, so waiting will not move them. */
+  armedHeld: number
+  /** Open, not a draft, not armed and not in the queue: nobody has asked GitHub to merge it yet. */
+  openUnarmed: number
+  drafts: number
+}
+
 export type ShipPacePicture = {
   v: 1
   /** When GitHub was read. */
@@ -112,6 +174,8 @@ export type ShipPacePicture = {
   today: { ymd: string; created: number; merged: number }
   /** Open now, how many of those are drafts, and the merge queue's count (null when not read). */
   now: { open: number; drafts: number; queue: number | null }
+  /** The queue's line and the buckets around it; null when the queue was not read. Missing on a row written before v2.6401. */
+  queue: PaceQueue | null
 }
 
 /** The start of the hour holding `ms`, as an instant. Chicago's offset is whole hours, so this is the wall hour's start too. */
@@ -235,8 +299,48 @@ export function shipPacePicture(input: PaceInput): ShipPacePicture {
       created: prs.filter((p) => ymdOf(p.createdMs) === todayYmd).length,
       merged: prs.filter((p) => p.mergedMs != null && ymdOf(p.mergedMs) === todayYmd).length,
     },
-    now: { open: openNow.length, drafts: openNow.filter((p) => p.draft).length, queue: input.queueNow },
+    now: { open: openNow.length, drafts: openNow.filter((p) => p.draft).length, queue: input.queue ? input.queue.total : null },
+    queue: input.queue ? paceQueue(input.queue) : null,
   }
+}
+
+/** A red check or a conflict: waiting will not move this pull request. */
+function isHeld(p: PaceOpenPr): boolean {
+  return p.checks === 'FAILURE' || p.checks === 'ERROR' || p.mergeable === 'CONFLICTING'
+}
+
+/**
+ * The queue's line in position order with GitHub's estimate in whole minutes, and the open pull requests in their
+ * buckets: a draft is a draft whatever else it is, one in the queue is in the line and nowhere else, one armed is
+ * waiting (held when red or conflicting), and the rest are open and not yet asked to merge.
+ */
+export function paceQueue(input: PaceQueueInput): PaceQueue {
+  const inLine = new Set(input.entries.map((e) => e.number))
+  const entries: PaceQueueEntry[] = [...input.entries]
+    .sort((a, b) => a.position - b.position)
+    .map((e) => ({
+      number: e.number,
+      title: e.title,
+      position: e.position,
+      enqueuedAt: e.enqueuedAt,
+      estimatedMinutes: e.estimatedSeconds == null || !Number.isFinite(e.estimatedSeconds) ? null : Math.max(0, Math.round(e.estimatedSeconds / 60)),
+    }))
+  let armedWaiting = 0
+  let armedHeld = 0
+  let openUnarmed = 0
+  let drafts = 0
+  const seen = new Set<number>()
+  for (const p of input.open) {
+    if (seen.has(p.number)) continue
+    seen.add(p.number)
+    if (p.draft) drafts += 1
+    else if (p.inQueue || inLine.has(p.number)) continue
+    else if (p.armed) {
+      armedWaiting += 1
+      if (isHeld(p)) armedHeld += 1
+    } else openUnarmed += 1
+  }
+  return { entries, armedWaiting, armedHeld, openUnarmed, drafts }
 }
 
 /** The row's JSON read back; null for an empty, malformed or older-shaped row. */
@@ -245,7 +349,7 @@ export function parseShipPacePicture(valueText: string | null | undefined): Ship
   try {
     const raw = JSON.parse(valueText) as Partial<ShipPacePicture> | null
     if (!raw || raw.v !== 1 || typeof raw.asOf !== 'string' || !Array.isArray(raw.hours) || !raw.last24h || !raw.recent || !raw.today || !raw.now) return null
-    return raw as ShipPacePicture
+    return { ...raw, queue: raw.queue ?? null } as ShipPacePicture
   } catch {
     return null
   }
@@ -330,4 +434,75 @@ export function paceYMax(hours: PaceHour[]): number {
 /** `77 opened`, `1 opened`: a count with its noun, never pluralized. */
 export function countWords(n: number, what: string): string {
   return `${n.toLocaleString('en-US')} ${what}`
+}
+
+/** `1st`, `2nd`, `3rd`, `4th`, `11th`, `12th`, `13th`, `21st`, `112th`. */
+export function ordinalWords(n: number): string {
+  const tens = n % 100
+  if (tens >= 11 && tens <= 13) return `${n}th`
+  const one = n % 10
+  return `${n}${one === 1 ? 'st' : one === 2 ? 'nd' : one === 3 ? 'rd' : 'th'}`
+}
+
+/** `under a minute`, `1 minute`, `25 minutes`, `1 hour`, `2 hours 5 minutes`: a span of whole minutes in plain words. */
+export function queueSpanWords(minutes: number): string {
+  const m = Math.max(0, Math.round(minutes))
+  if (m < 1) return 'under a minute'
+  if (m < 60) return m === 1 ? '1 minute' : `${m} minutes`
+  const h = Math.floor(m / 60)
+  const r = m % 60
+  const hours = h === 1 ? '1 hour' : `${h} hours`
+  if (r === 0) return hours
+  return `${hours} ${r === 1 ? '1 minute' : `${r} minutes`}`
+}
+
+/**
+ * One entry's words: *3rd in line, in the queue 25 minutes, about 12 minutes to go*; with no estimate from GitHub,
+ * *3rd in line, in the queue 25 minutes*; an estimate under a minute says *under a minute to go*.
+ */
+export function queueLineWords(entry: Pick<PaceQueueEntry, 'position' | 'enqueuedAt' | 'estimatedMinutes'>, nowMs: number): string {
+  const sinceMs = msOf(entry.enqueuedAt)
+  const waited = Number.isFinite(sinceMs) ? Math.max(0, (nowMs - sinceMs) / 60_000) : 0
+  const head = `${ordinalWords(entry.position)} in line, in the queue ${queueSpanWords(waited)}`
+  if (entry.estimatedMinutes == null) return head
+  if (entry.estimatedMinutes < 1) return `${head}, under a minute to go`
+  return `${head}, about ${queueSpanWords(entry.estimatedMinutes)} to go`
+}
+
+/** The title the office reads: the leading `v2.NNNN ` dropped, and cut on a word at `max` characters with an ellipsis. */
+export function queueTitleWords(title: string, max = SHIP_PACE_QUEUE_TITLE_MAX): string {
+  const plain = title.trim().replace(/^v\d+\.\d+\s+/, '').trim()
+  if (plain.length <= max) return plain
+  const cut = plain.slice(0, max)
+  const space = cut.lastIndexOf(' ')
+  return `${(space > max / 2 ? cut.slice(0, space) : cut).replace(/[\s,;:–—-]+$/, '')}…`
+}
+
+/** *and 8 more* under the listed entries; empty when every entry is listed. */
+export function queueMoreWords(total: number, shown: number): string {
+  const more = Math.max(0, total - shown)
+  return more === 0 ? '' : `and ${more.toLocaleString('en-US')} more`
+}
+
+/**
+ * The line under the list for the other two buckets: *12 more are armed and waiting on their checks. 31 are open and
+ * not yet asked to merge.* With an empty line the armed ones are not *more*; a held one is named; one reads singular.
+ */
+export function queueBucketsWords(q: Pick<PaceQueue, 'entries' | 'armedWaiting' | 'armedHeld' | 'openUnarmed'>): string {
+  const more = q.entries.length > 0 ? ' more' : ''
+  const n = (v: number) => v.toLocaleString('en-US')
+  const armed =
+    q.armedWaiting === 0
+      ? `Nothing${q.entries.length > 0 ? ' else' : ''} is armed and waiting on its checks.`
+      : q.armedWaiting === 1
+        ? `1${more} is armed and waiting on its checks.`
+        : `${n(q.armedWaiting)}${more} are armed and waiting on their checks.`
+  const held = q.armedHeld === 0 ? '' : q.armedHeld === 1 ? ' 1 of them is held by a red check or a conflict.' : ` ${n(q.armedHeld)} of them are held by a red check or a conflict.`
+  const open =
+    q.openUnarmed === 0
+      ? 'Every other open change has asked to merge.'
+      : q.openUnarmed === 1
+        ? '1 is open and not yet asked to merge.'
+        : `${n(q.openUnarmed)} are open and not yet asked to merge.`
+  return `${armed}${held} ${open}`
 }
