@@ -18284,6 +18284,75 @@ export type Database = {
           },
         ]
       }
+      job_charge_statements: {
+        Row: {
+          charges_usd: number | null
+          created_at: string
+          id: string
+          job_ledger_id: string
+          labor_usd: number | null
+          materials_usd: number | null
+          period_end: string
+          period_start: string
+          premium_usd: number | null
+          prepared_at: string
+          prepared_by: string | null
+          record_id: string
+          snapshot: Json
+          state: string
+          updated_at: string
+        }
+        Insert: {
+          charges_usd?: number | null
+          created_at?: string
+          id?: string
+          job_ledger_id: string
+          labor_usd?: number | null
+          materials_usd?: number | null
+          period_end: string
+          period_start: string
+          premium_usd?: number | null
+          prepared_at?: string
+          prepared_by?: string | null
+          record_id: string
+          snapshot?: Json
+          state?: string
+          updated_at?: string
+        }
+        Update: {
+          charges_usd?: number | null
+          created_at?: string
+          id?: string
+          job_ledger_id?: string
+          labor_usd?: number | null
+          materials_usd?: number | null
+          period_end?: string
+          period_start?: string
+          premium_usd?: number | null
+          prepared_at?: string
+          prepared_by?: string | null
+          record_id?: string
+          snapshot?: Json
+          state?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_charge_statements_job_ledger_id_fkey"
+            columns: ["job_ledger_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_charge_statements_prepared_by_fkey"
+            columns: ["prepared_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_collect_payment_flows: {
         Row: {
           certified_at: string | null
