@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MemberBid, MemberJob, MemberRequest, Members } from './overview'
-import { buildPieceRows, doneFoldWords } from './pieces'
+import { archivedFoldWords, buildPieceRows, doneFoldWords, liveRows } from './pieces'
 import { buildPlansView } from './plans'
 
 const NOW = Date.parse('2026-10-28T12:00:00Z')
@@ -132,5 +132,62 @@ describe('doneFoldWords', () => {
     expect(doneFoldWords(rowsOf(members), money)).toBe('2 paid jobs · $7,500 all in and 1 lost bid')
     expect(doneFoldWords(rowsOf({ bids: [], jobs: [job({ id: 'JP1102', status: 'paid' })] }), money)).toBe('1 paid job')
     expect(doneFoldWords(rowsOf({ bids: [bid({ id: 'BP401', outcome: 'lost' }), bid({ id: 'BP402', outcome: 'lost' })], jobs: [] }))).toBe('2 lost bids')
+  })
+})
+
+describe('the archived bids and the live order (the Gun Dog spike, 2026-11-02)', () => {
+  it('an archived bid with no job sits apart: after the live rows, before the done ones, out of liveRows', () => {
+    const members: Members = {
+      bids: [
+        bid({ id: 'b-arch', working_board_archived_at: '2026-06-01T00:00:00Z', updated_at: '2026-10-27T00:00:00Z' }),
+        bid({ id: 'b-work', updated_at: '2026-09-01T00:00:00Z' }),
+        bid({ id: 'b-lost', outcome: 'lost', updated_at: '2026-10-28T00:00:00Z' }),
+      ],
+      jobs: [],
+    }
+    const rows = rowsOf(members)
+    expect(rows.map((r) => r.key)).toEqual(['bid:b-work', 'bid:b-arch', 'bid:b-lost'])
+    expect(rows.find((r) => r.key === 'bid:b-arch')).toMatchObject({ archived: true, done: false })
+    expect(liveRows(rows).map((r) => r.key)).toEqual(['bid:b-work'])
+  })
+
+  it('a bid archived after it was sent is still live: the answer is out', () => {
+    const rows = rowsOf({ bids: [bid({ id: 'b1', bid_date_sent: '2026-09-01', working_board_archived_at: '2026-10-01T00:00:00Z' })], jobs: [] })
+    expect(rows[0]).toMatchObject({ archived: false, done: false })
+  })
+
+  it('live rows read bids in play, then each bid with its job, then jobs with no bid, newest first inside each', () => {
+    const members: Members = {
+      bids: [
+        bid({ id: 'b-paired', outcome: 'won', updated_at: '2026-10-20T00:00:00Z' }),
+        bid({ id: 'b-old', updated_at: '2026-08-01T00:00:00Z' }),
+        bid({ id: 'b-new', updated_at: '2026-10-27T00:00:00Z' }),
+      ],
+      jobs: [job({ id: 'j-paired', bid_id: 'b-paired', updated_at: '2026-10-28T00:00:00Z' }), job({ id: 'j-alone', updated_at: '2026-10-28T00:00:00Z' })],
+    }
+    expect(rowsOf(members).map((r) => r.key)).toEqual(['bid:b-new', 'bid:b-old', 'bid:b-paired:job:j-paired', 'job:j-alone'])
+  })
+
+  it('a waiting row still comes first, whatever its state', () => {
+    const members: Members = {
+      bids: [bid({ id: 'b-new', updated_at: '2026-10-27T00:00:00Z' })],
+      jobs: [job({ id: 'j-billed', status: 'billed', last_bill_date: '2026-10-01', updated_at: '2026-10-01T00:00:00Z' })],
+    }
+    expect(rowsOf(members).map((r) => r.key)).toEqual(['job:j-billed', 'bid:b-new'])
+  })
+
+  it('the archived fold says how many and what they were priced at, the sum only where a price is', () => {
+    const money = (n: number) => `$${n.toFixed(2)}`
+    const members: Members = {
+      bids: [
+        bid({ id: 'b1', working_board_archived_at: '2026-06-01T00:00:00Z', bid_value: 2503.68 }),
+        bid({ id: 'b2', working_board_archived_at: '2026-06-01T00:00:00Z' }),
+      ],
+      jobs: [],
+    }
+    expect(archivedFoldWords(rowsOf(members), money)).toBe('2 archived bids · $2503.68 bid')
+    expect(archivedFoldWords(rowsOf(members))).toBe('2 archived bids')
+    expect(archivedFoldWords(rowsOf({ bids: [bid({ id: 'b3', working_board_archived_at: '2026-06-01T00:00:00Z' })], jobs: [] }), money)).toBe('1 archived bid')
+    expect(archivedFoldWords([])).toBe('')
   })
 })

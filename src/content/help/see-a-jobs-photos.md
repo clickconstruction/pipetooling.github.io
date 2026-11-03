@@ -28,3 +28,7 @@ A photo just taken shows under the strip as on its way to the folder. It appears
 ## A job with no folder
 
 A job with no Drive folder link says so under the address. The office presses {{button:outline|Set the folder}} and pastes the folder's link. The office can also press **Make the job's Drive folders** on the Documents tab. Anyone else asks the office.
+
+## Add a photo with words
+
+The Pipeline row's camera icon opens the **Job photos** window. Add a photo there and type what it shows. See [add a photo to a job and find it later](/help/add-a-photo-to-a-job).

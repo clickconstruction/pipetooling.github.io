@@ -146,7 +146,8 @@ export function DevelopmentFeed({
             </span>
           )}
           {line.detail ? (
-            <span style={{ color: 'var(--text-muted)' }}>
+            // A folded run's details sit one a line (the Gun Dog spike, 2026-11-02); every other detail wraps as prose.
+            <span style={{ color: 'var(--text-muted)', whiteSpace: 'foldedCount' in line && line.foldedCount ? 'pre-line' : undefined }}>
               {' · '}
               {line.detail.length > FOLD_AT && !searching && onMore ? (
                 <>

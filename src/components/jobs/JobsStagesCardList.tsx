@@ -46,6 +46,7 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl, googleMapsSearchUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { StagesCardMoreActionsSheet, type StagesCardMoreAction } from './StagesCardMoreActionsSheet'
+import { JobPhotosWindow } from '../photos/JobPhotosWindow'
 import { DOOR_SHEET_WORDS, pipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import { StagesPhoneRow } from './StagesPhoneRow'
 import { phoneRowPasses } from '../../lib/jobs/jobNextLine'
@@ -694,6 +695,8 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
   const shareJob = useShareJob()
   const sessionNotesOpener = useSessionNotesOpener()
   const [moreActionsJob, setMoreActionsJob] = useState<JobWithDetails | null>(null)
+  // The Job photos window (punch list #244): the sheet's Photos line opens it on that job.
+  const [photosJob, setPhotosJob] = useState<JobWithDetails | null>(null)
   const ctx: StagesRowRenderContext = {
     openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
@@ -755,6 +758,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
       },
       { key: 'folder', label: 'Job folder', onClick: () => openEdit(j, { initialTab: 'documents' }), badge: j.google_drive_link ? undefined : 'not made yet' },
+      { key: 'photos', label: 'Photos', onClick: () => setPhotosJob(j) },
       // The checklist door (punch list #246): the same door as the desktop row's icon, with the job's standing as its badge.
       ...checklistDoorAction(ctx, j),
       { key: 'click-tooling', label: 'Test report', onClick: () => openTestReportFor(j) },
@@ -887,6 +891,17 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
           actions={moreActionsJob ? moreActionsFor(moreActionsJob) : []}
           onClose={() => setMoreActionsJob(null)}
         />
+        {photosJob ? (
+          <JobPhotosWindow
+            job={photosJob}
+            onClose={() => setPhotosJob(null)}
+            onOpenJob={() => {
+              const j = photosJob
+              setPhotosJob(null)
+              openEdit(j)
+            }}
+          />
+        ) : null}
       </div>
     )
   }
@@ -1019,6 +1034,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     else openInExternalBrowser(buildClickToolingUrl(job))
   }
   const [moreActionsRow, setMoreActionsRow] = useState<(typeof rows)[number] | null>(null)
+  const [photosJob, setPhotosJob] = useState<JobWithDetails | null>(null)
   const ctx: StagesRowRenderContext = {
     openCustomerProfile: customerProfileModal?.openCustomerProfile,
     openJobHoursStory: jobHoursStoryModal?.openJobHoursStory,
@@ -1074,6 +1090,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
         onClick: () => void shareJob(j.id, { hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }),
       },
       { key: 'folder', label: 'Job folder', onClick: () => openEdit(j, { initialTab: 'documents' }), badge: j.google_drive_link ? undefined : 'not made yet' },
+      { key: 'photos', label: 'Photos', onClick: () => setPhotosJob(j) },
       // The checklist door (punch list #246): the same door as the desktop row's icon, with the job's standing as its badge.
       ...checklistDoorAction(ctx, j),
     ]
@@ -1217,6 +1234,17 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
           actions={moreActionsRow ? moreActionsForRow(moreActionsRow) : []}
           onClose={() => setMoreActionsRow(null)}
         />
+        {photosJob ? (
+          <JobPhotosWindow
+            job={photosJob}
+            onClose={() => setPhotosJob(null)}
+            onOpenJob={() => {
+              const j = photosJob
+              setPhotosJob(null)
+              openEdit(j)
+            }}
+          />
+        ) : null}
       </div>
     )
   }

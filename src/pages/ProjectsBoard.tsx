@@ -7,7 +7,7 @@ import { EmptyState } from '../components/EmptyState'
 import { emptyWords, emptyWordsWithPress } from '../lib/emptyWords'
 import { useProjectsBoard } from '../hooks/useProjectsBoard'
 import { changeWords } from '../lib/jobs/expectedHours'
-import { canSeeProjectsBoard, canSetExpectedHours, projectLabel } from '../lib/jobs/projectsBoard'
+import { canSeeProjectsBoard, canSetExpectedHours, PROJECT_GATE_WORDS, projectLabel } from '../lib/jobs/projectsBoard'
 import { ProjectCard } from '../components/projectsBoard/ProjectCard'
 
 /**
@@ -62,7 +62,7 @@ export default function ProjectsBoard() {
       ) : null}
       {targets.error ? <p role="alert" style={{ color: 'var(--text-red-700)', margin: 0, fontSize: '0.85rem' }}>{targets.error}</p> : null}
       {failure ? <OfflineRetryPanel failure={failure} onRetry={reload} surface="projects-board" idempotent busy={loading} /> : null}
-      {focusJob && rows && !rows.some((r) => r.id === focusJob) ? <p data-testid="focus-missing" style={{ ...muted, margin: 0 }}>The job you came from is not on the board. A job lands here when it is Working with a stage In order, or priced at $25,000 and up.</p> : null}
+      {focusJob && rows && !rows.some((r) => r.id === focusJob) ? <p data-testid="focus-missing" style={{ ...muted, margin: 0 }}>The job you came from is not on the board. {PROJECT_GATE_WORDS} To bring a Working job here, press Project under Kind on its Edit tab.</p> : null}
       {rows && rows.length === 0 ? <EmptyState {...emptyWordsWithPress(emptyWords({ kind: 'data', noun: 'working projects', page: { label: 'Open the Pipeline', tail: 'and set a job Working with its stages.' } }), { to: '/jobs?tab=stages' })} /> : null}
       {cards.length > 0 ? (
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: '0.75rem' }} data-testid="project-cards">
@@ -83,7 +83,7 @@ export default function ProjectsBoard() {
           ))}
         </div>
       ) : null}
-      <p style={{ ...muted, margin: 0 }}>A project is a working job with a stage In order, or priced at $25,000 and up.</p>
+      <p style={{ ...muted, margin: 0 }}>{PROJECT_GATE_WORDS}</p>
     </div>
   )
 }

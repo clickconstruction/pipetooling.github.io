@@ -9,6 +9,7 @@ import { cleanup, render, screen, waitFor } from '@testing-library/react'
 import { MemoryRouter } from 'react-router-dom'
 
 import ProjectsBoard from './ProjectsBoard'
+import { PROJECT_GATE_WORDS } from '../lib/jobs/projectsBoard'
 import { renderWithProviders } from '../test/renderSmokeMocks'
 
 let rows: unknown[] = []
@@ -17,13 +18,13 @@ let role = 'dev'
 const history: unknown[] = []
 const undoLatest = vi.fn(() => Promise.resolve(true))
 let readsWages = true
-const rpcCalls: Array<{ name: string; ids: string[] | null }> = []
+const rpcCalls: Array<{ name: string; args: { p_job_ids?: string[] } }> = []
 const burnEnabled: boolean[] = []
 
 vi.mock('../lib/supabase', () => ({
   supabase: {
-    rpc: (name: string, args: { p_job_ids: string[] | null }) => {
-      rpcCalls.push({ name, ids: args.p_job_ids })
+    rpc: (name: string, args: { p_job_ids?: string[] }) => {
+      rpcCalls.push({ name, args })
       return Promise.resolve(failure ? { data: null, error: failure } : { data: { reads_wages: readsWages, jobs: rows }, error: null })
     },
   },
@@ -78,13 +79,35 @@ describe('ProjectsBoard', () => {
     expect(screen.getByText('2 projects')).toBeTruthy()
   })
 
+  it('goes by the job\'s kind, with the guess only for a job whose kind is not set', async () => {
+    const repipe = (price: number) => ({ revenue: price, fixtures: [{ id: 'x', name: 'Repipe', stage_kind: 'any', line_kind: 'fixture', line_unit_price: price, count: 1, progress_pct: null, sequence_order: 1 }] })
+    const facts = { kind: null, bid_id: null, project_id: null, first_work_date: '2026-10-01', billing_only: false }
+    rows = [
+      // A small job with a bid behind it reads Project, so it lands here under the old price.
+      job('small-bid', { ...facts, ...repipe(9000), bid_id: 'b1', job_name: 'Small bid' }),
+      // An HCP job over the old price, worked and with nothing behind it, reads Service call.
+      job('big-service', { ...facts, ...repipe(90000), job_name: 'Big service' }),
+      // With no number, no bid and no stage, the kind is not set: the price still decides.
+      job('big-unset', { ...facts, ...repipe(30000), hcp_number: '', click_number: 'C77', job_name: 'Big unset' }),
+      job('small-unset', { ...facts, ...repipe(9000), hcp_number: '', click_number: 'C78', job_name: 'Small unset' }),
+    ]
+    renderWithProviders(<ProjectsBoard />)
+    await waitFor(() => expect(screen.getAllByTestId('project-card')).toHaveLength(2))
+    const titles = screen.getAllByTestId('project-card').map((c) => c.textContent ?? '')
+    expect(titles.some((t) => t.includes('Small bid'))).toBe(true)
+    expect(titles.some((t) => t.includes('Big unset'))).toBe(true)
+    expect(titles.some((t) => t.includes('Big service') || t.includes('Small unset'))).toBe(false)
+    expect(screen.getByText(PROJECT_GATE_WORDS)).toBeTruthy()
+  })
+
   it('stands every role on the one server read, and asks for dollars only for a viewer whose read carries them', async () => {
     rows = [job('fine'), job('late')]
     readsWages = false
     role = 'superintendent'
     renderWithProviders(<ProjectsBoard />)
     await waitFor(() => expect(screen.getAllByTestId('project-card')).toHaveLength(2))
-    expect(rpcCalls[0]).toEqual({ name: 'list_project_board', ids: null })
+    // The whole board sends no ids at all, so the function's default stands.
+    expect(rpcCalls[0]).toEqual({ name: 'list_project_board', args: {} })
     // The superintendent reads the same tones the leader does, with no read of his own.
     const cards = screen.getAllByTestId('project-card')
     expect(cards[0]!.dataset.tone).toBe('behind')
@@ -147,7 +170,7 @@ describe('ProjectsBoard', () => {
         <ProjectsBoard />
       </MemoryRouter>,
     )
-    await screen.findByTestId('focus-missing')
+    expect((await screen.findByTestId('focus-missing')).textContent).toContain('press Project under Kind on its Edit tab')
     expect(screen.queryByTestId('project-card-big')).toBeNull()
   })
 
