@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { CATALOG_RPCS, CATALOG_TABLES } from '../../../supabase/functions/dev-mcp/catalog'
 import { buildRowsQuery, buildRpcQuery } from '../../../supabase/functions/_shared/devMcpDoor'
-import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, jobNumberOf, onSiteBoxCode, readOnSiteMovements, type Reader, type Row, type RowsQuery } from '../../../supabase/functions/_shared/devMcpComposites'
+import { ALL_ROWS_MAX, findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, jobNumberOf, onSiteBoxCode, readAllRows, readOnSiteMovements, type Reader, type Row, type RowsQuery } from '../../../supabase/functions/_shared/devMcpComposites'
 import { boxCode } from '../materials/labels'
 import { containerLines, type Movement } from '../materials/onSite'
 import { effectiveJobLedgerNumber } from '../ledgerDisplayPrefixes'
@@ -154,6 +154,77 @@ describe('dev-mcp composites', () => {
     expect(noErrors(bid)).toEqual([])
     expect((bid.bid as Row).label).toBe('B482')
     expect(String(bid.totals)).toContain('useBidPricingEngine')
+  })
+})
+
+/**
+ * A door over one table's rows that answers as PostgREST does: the `eq` / `in` / `gt` filters, the order, and the
+ * door's own cut at 200 rows a read (`clampLimit`). What the catalog reader checks, this one serves.
+ */
+function pagingReader(rowsByTable: Record<string, Row[]>, base: Reader): Reader & { reads: Record<string, number> } {
+  const reads: Record<string, number> = {}
+  return {
+    reads,
+    rpc: base.rpc,
+    rows: async (table: string, query: RowsQuery) => {
+      await base.rows(table, query)
+      reads[table] = (reads[table] ?? 0) + 1
+      let rows = [...(rowsByTable[table] ?? [])]
+      for (const f of query.filters ?? []) {
+        if (f.op === 'eq') rows = rows.filter((r) => r[f.column] === f.value)
+        else if (f.op === 'in') rows = rows.filter((r) => (f.value as unknown[]).includes(r[f.column]))
+        else if (f.op === 'gt') rows = rows.filter((r) => String(r[f.column]) > String(f.value))
+        else throw new Error(`pagingReader: no ${f.op}`)
+      }
+      for (const o of [...(query.order ?? [])].reverse()) rows.sort((a, b) => (String(a[o.column]) < String(b[o.column]) ? -1 : String(a[o.column]) > String(b[o.column]) ? 1 : 0) * (o.ascending === false ? -1 : 1))
+      return rows.slice(0, Math.min(query.limit ?? 50, 200))
+    },
+  }
+}
+
+const pad = (n: number) => String(n).padStart(4, '0')
+
+describe('the reads a big job outgrows (v2.6463)', () => {
+  it('readAllRows takes every row a page at a time in key order, none twice, none skipped', async () => {
+    const rows = Array.from({ length: 498 }, (_, i) => ({ id: `a${pad((i * 37) % 498)}`, job_id: JOB, amount: -1 }))
+    const reader = pagingReader({ mercury_transaction_job_allocations: rows }, catalogReader({}))
+    const read = await readAllRows(reader, 'mercury_transaction_job_allocations', { select: 'id,amount', filters: [{ column: 'job_id', op: 'eq', value: JOB }] })
+    expect(read.capped).toBe(false)
+    expect(read.rows).toHaveLength(498)
+    expect(new Set(read.rows.map((r) => r.id)).size).toBe(498)
+    expect(reader.reads.mercury_transaction_job_allocations).toBe(3)
+  })
+
+  it('a read that reaches the cap stops and says so; a select without the key cannot page', async () => {
+    const rows = Array.from({ length: 450 }, (_, i) => ({ id: `a${pad(i)}`, job_id: JOB }))
+    const reader = pagingReader({ mercury_transaction_job_allocations: rows }, catalogReader({}))
+    const capped = await readAllRows(reader, 'mercury_transaction_job_allocations', { select: 'id', filters: [] }, 'id', 400)
+    expect(capped).toMatchObject({ capped: true })
+    expect(capped.rows).toHaveLength(400)
+    const keyless = pagingReader({ mercury_transaction_job_allocations: rows.map(({ job_id }) => ({ job_id, amount: -1 })) }, catalogReader({}))
+    await expect(readAllRows(keyless, 'mercury_transaction_job_allocations', { select: 'amount', filters: [] })).rejects.toThrow('cannot page')
+    expect(ALL_ROWS_MAX).toBe(5000)
+  })
+
+  it('get_job counts every card line, supply invoice and sheet item past the door’s 200', async () => {
+    const card = Array.from({ length: 498 }, (_, i) => ({ id: `c${pad(i)}`, job_id: JOB, amount: -2, note: null, mercury_transaction_id: `t${i}`, mercury_transactions: { posted_at: '2026-09-02', counterparty_name: 'HD', amount: -2 } }))
+    const supply = Array.from({ length: 230 }, (_, i) => ({ invoice_id: `i${pad(i)}`, job_id: JOB, pct: 100, supply_house_invoices: { invoice_number: `S${i}`, invoice_date: '2026-09-01', amount: 10, is_paid: true, on_job_account: false, supply_houses: { name: 'Morrison' } } }))
+    const sheets = Array.from({ length: 120 }, (_, i) => ({ id: `s${pad(i)}`, job_ledger_id: JOB, job_number: '1032', labor_rate: 50, distance_miles: 0 }))
+    const items = sheets.flatMap((s, i) => [0, 1].map((k) => ({ id: `it${pad(i)}${k}`, job_id: s.id, count: 1, hrs_per_unit: 1, is_fixed: false, labor_rate: null, direct_labor_amount: null })))
+    const base = catalogReader({
+      rows: { jobs_ledger: [{ id: JOB, click_number: '1032', revenue: 100000, materials: [], invoices: [], payments: [], team: [] }] },
+      rpc: { get_invoice_amounts_for_jobs: [{ job_id: JOB, invoice_amount: '2300' }] },
+    })
+    const reader = pagingReader({ jobs_ledger: [{ id: JOB, click_number: '1032', revenue: 100000, materials: [], invoices: [], payments: [], team: [] }], service_types: [], mercury_transaction_job_allocations: card, supply_house_invoice_job_allocations: supply, people_labor_jobs: sheets, people_labor_job_items: items, app_settings: [] }, base)
+    const out = (await getJob(reader, JOB, '2026-09-20')) as Record<string, unknown>
+    expect(noErrors(out)).toEqual([])
+    const money = out.money as { parts: Record<string, number>; counts: Record<string, number>; profit: { laborCost: number }; stopped_reads?: string[] }
+    expect(money.counts).toMatchObject({ card_lines: 498, supply_invoice_lines: 230, sub_labor_sheets: 120 })
+    expect(money.parts.card_charges).toBe(996)
+    expect(money.profit.laborCost).toBe(120 * 2 * 50)
+    expect(money).not.toHaveProperty('stopped_reads')
+    // the sheet items go in reads of a hundred sheets, each one paged
+    expect(reader.reads.people_labor_job_items).toBe(2 + 1)
   })
 })
 

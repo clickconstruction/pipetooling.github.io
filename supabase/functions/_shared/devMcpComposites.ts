@@ -26,6 +26,12 @@ export type Reader = {
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 const FIND_LIMIT = 20
 const THREAD_LIMIT = 15
+/** The door answers at most this many rows a read (`ROWS_MAX_LIMIT` in devMcpDoor.ts). */
+const ROWS_PAGE = 200
+/** Where `readAllRows` stops and says so: twenty-five pages. */
+export const ALL_ROWS_MAX = 5000
+/** Ids per `in` read: each is about forty characters of the URL, which the door holds to 6,000. */
+const IDS_PER_READ = 100
 
 export type Part<T> = T | { error: string }
 async function part<T>(run: () => Promise<T>): Promise<Part<T>> {
@@ -40,6 +46,32 @@ const asRows = (v: unknown): Row[] => (Array.isArray(v) ? (v as Row[]) : [])
 const str = (v: unknown): string => (typeof v === 'string' ? v : v == null ? '' : String(v))
 /** PostgREST `ilike` wildcard is `*`; a literal `*` or `,` or `(`/`)` in the text would change the pattern. */
 const likeTerm = (text: string): string => `*${text.trim().replace(/[*,()]/g, ' ').replace(/\s+/g, '*')}*`
+
+/**
+ * Every row of a read the door cuts at 200 (v2.6463): a page at a time in `key` order, each page after the last
+ * page's key, so no row repeats and none is skipped. `key` must be unique among the rows the filters keep, and in
+ * the select. Stops at `max` rows and says so (`capped`), so a total never undercounts in silence.
+ */
+export async function readAllRows(
+  reader: Reader,
+  table: string,
+  query: { select: string; filters: RowFilter[] },
+  key = 'id',
+  max = ALL_ROWS_MAX,
+): Promise<{ rows: Row[]; capped: boolean }> {
+  const rows: Row[] = []
+  let after: string | null = null
+  for (;;) {
+    const filters: RowFilter[] = after == null ? query.filters : [...query.filters, { column: key, op: 'gt', value: after }]
+    const page = await reader.rows(table, { select: query.select, filters, order: [{ column: key }], limit: ROWS_PAGE })
+    rows.push(...page)
+    if (page.length < ROWS_PAGE) return { rows, capped: false }
+    if (rows.length >= max) return { rows, capped: true }
+    const last = page[page.length - 1]![key]
+    if (last == null || last === '') throw new Error(`${table} cannot page: its select has no ${key}`)
+    after = String(last)
+  }
+}
 
 type PrefixMap = Record<string, { job: string | null; bid: string | null }>
 async function prefixMap(reader: Reader): Promise<PrefixMap> {
@@ -122,6 +154,15 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
   const job = jobRows[0]
   if (!job) return { refused: `No job ${id} — it does not exist, or RLS hides it from you.` }
 
+  // The reads a big job outgrows come back whole (v2.6463): the door answers 200 rows a read, and a busy job carries
+  // hundreds of card lines. A read that reaches `ALL_ROWS_MAX` says so beside the money instead of undercounting in silence.
+  const stopped: string[] = []
+  const every = async (what: string, table: string, query: { select: string; filters: RowFilter[] }, key = 'id'): Promise<Row[]> => {
+    const read = await readAllRows(reader, table, query, key)
+    if (read.capped) stopped.push(`${what}: stopped at ${read.rows.length}`)
+    return read.rows
+  }
+
   const [strip, stages, stageProgress, hours, notes, statusEvents, reports, invoiceAmounts, supplyAlloc, cardAlloc, tally, sheets, settings] = await Promise.all([
     part(() => reader.rpc('list_job_account_strip', { p_job_ids: [id] })),
     part(() => reader.rpc('get_stages_enrichment', { p_job_ids: [id] })),
@@ -131,10 +172,12 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
     part(() => reader.rows('job_status_events', { select: 'changed_at,from_status,to_status,changed_by_user_id', filters: eq('job_id'), order: [{ column: 'changed_at', ascending: false }], limit: THREAD_LIMIT })),
     part(() => reader.rpc('list_reports_for_job_ledger', { p_job_id: id }, THREAD_LIMIT)),
     part(() => reader.rpc('get_invoice_amounts_for_jobs', { p_job_ids: [id] })),
-    part(() => reader.rows('supply_house_invoice_job_allocations', { select: 'pct,supply_house_invoices(invoice_number,invoice_date,amount,is_paid,on_job_account,supply_houses(name))', filters: eq('job_id'), limit: 200 })),
-    part(() => reader.rows('mercury_transaction_job_allocations', { select: 'id,amount,note,mercury_transaction_id,mercury_transactions(posted_at,counterparty_name,amount,raw)', filters: eq('job_id'), order: [{ column: 'created_at' }], limit: 200 })),
+    // One allocation per invoice on a job, so the invoice id pages it (the table has no id of its own).
+    part(() => every('supply invoice lines', 'supply_house_invoice_job_allocations', { select: 'invoice_id,pct,supply_house_invoices(invoice_number,invoice_date,amount,is_paid,on_job_account,supply_houses(name))', filters: eq('job_id') }, 'invoice_id')),
+    // No `raw` on the embed: the totals never read it, and on a busy job the bank records ran to megabytes (the page dropped it too, v2.6378).
+    part(() => every('card lines', 'mercury_transaction_job_allocations', { select: 'id,amount,note,mercury_transaction_id,mercury_transactions(posted_at,counterparty_name,amount)', filters: eq('job_id') })),
     part(() => reader.rpc('list_tally_parts_with_po')),
-    part(() => reader.rows('people_labor_jobs', { select: 'id,job_number,labor_rate,distance_miles', filters: [{ column: 'job_ledger_id', op: 'eq', value: id }], order: [{ column: 'created_at', ascending: false }], limit: 200 })),
+    part(() => every('sub-labor sheets', 'people_labor_jobs', { select: 'id,job_number,labor_rate,distance_miles', filters: [{ column: 'job_ledger_id', op: 'eq', value: id }] })),
     part(() => reader.rows('app_settings', { select: 'key,value_num', filters: [{ column: 'key', op: 'in', value: [...DRIVE_SETTING_KEYS] }], limit: 10 })),
   ])
 
@@ -142,7 +185,11 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
   const money = await part(async () => {
     for (const p of [invoiceAmounts, supplyAlloc, cardAlloc, tally, sheets]) if (failed(p)) throw new Error(`a cost source could not be read: ${p.error}`)
     const sheetRows = sheets as unknown as SubLaborSheetRow[]
-    const items = sheetRows.length === 0 ? [] : await reader.rows('people_labor_job_items', { select: 'job_id,count,hrs_per_unit,is_fixed,labor_rate,direct_labor_amount', filters: [{ column: 'job_id', op: 'in', value: sheetRows.map((s) => s.id) }], limit: 200 })
+    const items: Row[] = []
+    for (let i = 0; i < sheetRows.length; i += IDS_PER_READ) {
+      const ids = sheetRows.slice(i, i + IDS_PER_READ).map((s) => s.id)
+      items.push(...(await every('sheet items', 'people_labor_job_items', { select: 'id,job_id,count,hrs_per_unit,is_fixed,labor_rate,direct_labor_amount', filters: [{ column: 'job_id', op: 'in', value: ids }] })))
+    }
     const labor = jobSubLaborInputsFromRows(sheetRows, items as unknown as SubLaborItemRow[], failed(settings) ? [] : (settings as unknown as { key: string; value_num: number | null }[]))
     const supplyLines = supplyLinesFromRows(supplyAlloc as Row[])
     const cardLines = mercuryLinesFromRows(cardAlloc as unknown as Parameters<typeof mercuryLinesFromRows>[0])
@@ -171,6 +218,7 @@ export async function getJob(reader: Reader, ref: string, todayYmd: string) {
       job_account_exposure: jobAccountSplitFromLines(supplyLines),
       billing,
       counts: { supply_invoice_lines: supplyLines.length, card_lines: cardLines.length, tally_lines: tallyLines.length, sub_labor_sheets: sheetRows.length },
+      ...(stopped.length ? { stopped_reads: stopped, note: `A read stopped at ${ALL_ROWS_MAX} rows, so these totals undercount.` } : {}),
     }
   })
 
