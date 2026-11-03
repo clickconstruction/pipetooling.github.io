@@ -151,8 +151,8 @@ type GhOpenPr = {
 type GhQueueAnswer = {
   data?: {
     repository?: {
-      mergeQueue?: { entries?: { totalCount: number; nodes: GhQueueEntry[] } } | null
-      pullRequests?: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: GhOpenPr[] }
+      mergeQueue?: { entries?: { totalCount: number; nodes: (GhQueueEntry | null)[] } } | null
+      pullRequests?: { pageInfo: { hasNextPage: boolean; endCursor: string | null }; nodes: (GhOpenPr | null)[] }
     } | null
   } | null
   errors?: { message: string }[]
@@ -198,11 +198,13 @@ async function readQueue(token: string, repo: string): Promise<PaceQueueInput | 
         if (!q) return null
         total = q.totalCount
         for (const e of q.nodes ?? []) {
-          if (!e.pullRequest) continue
+          if (!e?.pullRequest) continue
           entries.push({ number: e.pullRequest.number, title: e.pullRequest.title, position: e.position, enqueuedAt: e.enqueuedAt, estimatedSeconds: e.estimatedTimeToMerge })
         }
       }
       for (const p of repoData.pullRequests.nodes ?? []) {
+        // GitHub nulls a node when a field on it is refused; skip it, so one pull request never costs the whole line.
+        if (!p) continue
         open.push({
           number: p.number,
           title: p.title,
