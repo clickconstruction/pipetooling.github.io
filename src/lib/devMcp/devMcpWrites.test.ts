@@ -943,7 +943,7 @@ describe('the hours statement verbs (v2.6414, punch list #212 PR 5)', () => {
     }
     expect(SERVER).toContain("const SERVER_VERSION = '0.21.0'")
     expect(SERVER).toContain('plan_hours_statement → apply_hours_statement')
-    expect(SERVER).toContain('thirty-nine verbs')
+    expect(SERVER).toContain('forty-one verbs')
   })
 })
 
