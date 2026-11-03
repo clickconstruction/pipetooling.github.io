@@ -1,3 +1,4 @@
+import { countedLabel } from './batchWords'
 import { formatAppliedVersionPlainDate, isoToPlainDateInAppTz } from './personContractAppliedDate'
 
 /**
@@ -148,6 +149,42 @@ export function buildAgreementSummaries(input: {
   })
   return summaries
 }
+
+/** A Book entry nobody holds (v2.6427): no one assigned it and no copy anywhere, so its card reads *0 assigned · 0 signed*. */
+export function agreementIsIdle(summary: Pick<AgreementSummary, 'assignedCount'>): boolean {
+  return summary.assignedCount === 0
+}
+
+export type AgreementSummariesSplit = {
+  /** Assigned to someone or signed by someone: drawn open. */
+  live: AgreementSummary[]
+  /** Every other Book entry: behind one press that names their count. */
+  idle: AgreementSummary[]
+}
+
+/**
+ * The panel's two lists (v2.6427; the People → Paperwork spike, v2.6392 → Left): the Book lists
+ * every document it holds, the lien waivers and the customer-facing papers among them, so the
+ * panel sat on a run of *0 assigned · 0 signed* cards above the agreements people actually hold.
+ * `live` is what is assigned or signed, in `buildAgreementSummaries`' own order; `idle` is the
+ * rest, in the same order, one press away.
+ */
+export function splitAgreementSummaries(summaries: readonly AgreementSummary[]): AgreementSummariesSplit {
+  const live: AgreementSummary[] = []
+  const idle: AgreementSummary[] = []
+  for (const s of summaries) (agreementIsIdle(s) ? idle : live).push(s)
+  return { live, idle }
+}
+
+/** The fold's press, its count from `countedLabel`: *Show 9 unassigned documents*, *Hide 9 unassigned documents*; '' at zero, when no fold draws. */
+export function idleAgreementsFoldLabel(count: number, open: boolean): string {
+  if (count <= 0) return ''
+  return countedLabel(open ? 'Hide' : 'Show', count, ['unassigned document', 'unassigned documents'])
+}
+
+/** The panel with nothing live and something idle: the fold is the empty state's press. */
+export const AGREEMENTS_NOTHING_LIVE_MAIN = 'Nothing is assigned or signed yet.'
+export const AGREEMENTS_NOTHING_LIVE_TAIL = 'lists them.'
 
 /** Short date for the compliance table: 'Jul 12' this year, 'Jul 12, 2025' otherwise; handles plain dates and timestamps. */
 export function formatAgreementShortDate(value: string | null | undefined, todayYear: number = new Date().getFullYear()): string | null {
