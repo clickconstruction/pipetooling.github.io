@@ -2,7 +2,7 @@
 title: combine two duplicate jobs into one
 category: Office
 roles: dev, master_technician, assistant, controller
-keywords: combine, duplicate, jobs, merge, separate, migrate, delete, two cards, same address, status, percent, activity note, stays behind, work order, materials on site, plans
+keywords: combine, duplicate, jobs, merge, separate, migrate, delete, two cards, same address, status, percent, activity note, stays behind, work order, materials on site, plans, promise, lien, agreement, pay application, legal matter
 order: 73
 ---
 Sometimes the same work ends up as two job cards. Each card collects its own costs, hours and activity, so the money and the story split in half.
@@ -17,7 +17,7 @@ It may be a second Job # for the same address. Or it may be a job re-entered und
 4. Check the status line under the Summary. The source's progress may differ from the target's. Say the source was marked {{chip:green|Ready to bill}} at 100% while the target is still {{chip:blue|Working}}. Then an amber warning spells it out **before** you confirm.
 5. Press {{button:red|Confirm migrate and delete source}}.
 
-Everything real moves to the target: costs, labor, schedule, reports, stage checklists, notes, and the job total. The source's job history, photos, materials on site, test reports, share links, hours statements and plan sets move too. So do its Messages links, its Drive links, its work orders and its supply-house accounts. A stage's checklist keeps every answer, added check and skip. A stage's window goes with its line. The source card is then deleted.
+Everything real moves to the target: costs, labor, schedule, reports, stage checklists, notes, and the job total. The source's job history, photos, materials on site, test reports, share links, hours statements and plan sets move too. So do its Messages links, its Drive links, its work orders and its supply-house accounts. Its payment promises, lien paper, agreements and pay applications move too. A stage's checklist keeps every answer, added check and skip. A stage's window goes with its line. The source card is then deleted.
 
 The source's HCP number and C# are not lost. They stay on the target as prior numbers. The job window and the Pipeline row read them as *also JP550*. Search the Pipeline by an old number and the combined job comes up.
 
@@ -41,13 +41,21 @@ A job has one set of plans. A target with none takes the source's. A target with
 Say both cards hold a live work order for Rivera Mechanical. The combine holds and says so by name. Cancel one of the two orders, then press Combine again.
 :::
 
+## Money and legal paper
+
+Payment promises and chase calls go to the target. So does the trace of a payment moved off or onto the source. The promised pay date marked last stands. A claim correction on both jobs keeps the target's.
+
+Lien notices, affidavits, lien releases and demand letters move too. They are the record of what went out. Lien desk items, agreements and pay applications move as well. A legal matter that named the source now names the target once.
+
+:::example Both jobs hold a live Lien desk item of the same kind
+Say both cards hold a drafted lien notice. The target's stands. The source's comes over voided, so the Lien desk still reads it.
+:::
+
+The combine holds in two more cases and says which. Both jobs hold an open agreement, a draft or one sent for signing. Void one of them, then press Combine again. Both jobs hold pay applications. Their numbers are on paper the GC holds, so the combine never renumbers them. Delete one job's applications, then press Combine again.
+
 ## What stays behind
 
-A few things do not move yet. Until then, those rows stay with the source card.
-
 The **Combine** tab refuses a source that has bills or payments. Clear or move them first. The Delete flow's {{button:outline|Reassign to another job…}} lets a source's bills and payments go with it on purpose.
-
-Payment promises, promised pay dates and chase calls stay with the source. So do lien notices, lien releases, Lien desk items and claim corrections. A legal matter's link to the source, its agreements, its pay applications and its demand letters stay behind too. A dev can restore a removed job's rows for 90 days.
 
 Three things go on purpose, because the target rebuilds them. The note count, the drive time between two jobs, and the paid-job email queue.
 

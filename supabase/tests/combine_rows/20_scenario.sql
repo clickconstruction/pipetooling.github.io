@@ -1,10 +1,11 @@
--- A combine moves every row that would have gone with the source job's delete (punch list #252, migration
--- *_combine_moves_every_row). Two combines and a split on made-up jobs: the first combine onto a target with none of
--- the one-per-job rows (they move), a split that moves a line and its window, a refused combine on a work-order
--- collision (nothing moves), and a second combine onto a target that holds every merge case. Each assertion writes
--- down a miss and goes on; the last statement raises with the whole list, so one run says everything. Ends with
--- "combine_rows PASSED". Fixtures are written as postgres; the combines and the split run as the dev; everything
--- rolls back. See scripts/pgtest-combine-rows.sh. Never against prod.
+-- A combine moves every row that would have gone with the source job's delete (punch list #252, migrations
+-- *_combine_moves_every_row and *_combine_moves_money_and_legal_rows). Two combines and a split on made-up jobs: the
+-- first combine onto a target with none of the one-per-job rows (they move), a split that moves a line and its window,
+-- a combine refused three times in turn (a work order, an open agreement, a pay application on both jobs; nothing
+-- moves), and a second combine onto a target that holds every merge case, the money and legal rows among them. Each
+-- assertion writes down a miss and goes on; the last statement raises with the whole list, so one run says
+-- everything. Ends with "combine_rows PASSED". Fixtures are written as postgres; the combines and the split run as
+-- the dev; everything rolls back. See scripts/pgtest-combine-rows.sh. Never against prod.
 \set ON_ERROR_STOP 1
 BEGIN;
 
@@ -74,6 +75,9 @@ INSERT INTO public.job_baselines (job_id, kept_on, grade, team_hours) VALUES ('0
 INSERT INTO public.job_budgets (job_id, kind, labor_hours) VALUES ('00000000-0000-0000-0000-000000252b02', 'typed', 40);
 INSERT INTO public.job_property_owners (job_id, owner_name) VALUES ('00000000-0000-0000-0000-000000252b02', 'First Owner');
 INSERT INTO public.photo_saves (jobs_ledger_id, on_since) VALUES ('00000000-0000-0000-0000-000000252b02', now());
+-- The promised pay date logs a promise as it is written; both come over. The claim correction is one per job too.
+INSERT INTO public.job_promised_pay_dates (job_id, promised_date, marked_at) VALUES ('00000000-0000-0000-0000-000000252b02', '2026-11-14', '2026-10-01 10:00+00');
+INSERT INTO public.job_lien_claim_corrections (job_id, amount_off, reason) VALUES ('00000000-0000-0000-0000-000000252b02', 15, 'Bed correction first');
 
 SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
 SET LOCAL ROLE authenticated;
@@ -88,6 +92,9 @@ SELECT cr.same('a target with no baseline takes the source''s', (SELECT job_id::
 SELECT cr.same('a target with no budget takes the source''s', (SELECT job_id::text FROM public.job_budgets WHERE labor_hours = 40), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a target with no property owner takes the source''s', (SELECT job_id::text FROM public.job_property_owners WHERE owner_name = 'First Owner'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a target with no photo-save tick takes the source''s', (SELECT count(*)::text FROM public.photo_saves WHERE jobs_ledger_id = '00000000-0000-0000-0000-000000252b01'), '1');
+SELECT cr.same('a target with no promised pay date takes the source''s', (SELECT promised_date::text FROM public.job_promised_pay_dates WHERE job_id = '00000000-0000-0000-0000-000000252b01'), '2026-11-14');
+SELECT cr.same('and the promise it logged came over', (SELECT count(*)::text FROM public.job_payment_promises WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND promised_date = '2026-11-14'), '1');
+SELECT cr.same('a target with no claim correction takes the source''s', (SELECT amount_off::text FROM public.job_lien_claim_corrections WHERE job_id = '00000000-0000-0000-0000-000000252b01'), '15');
 
 -- ── 2. A split moves a line, and its window follows. ────────────────────────────────────────────────────────────────
 SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
@@ -200,6 +207,46 @@ INSERT INTO public.job_expected_hours (id, job_id, hours, why, cleared_at) VALUE
 INSERT INTO public.step_commitments (id, job_id, person_id, display_name, amount, status) VALUES
   ('00000000-0000-0000-0000-000000252f41', '00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252e01', 'Pat Sub', 1500, 'draft'),
   ('00000000-0000-0000-0000-000000252f42', '00000000-0000-0000-0000-000000252b01', '00000000-0000-0000-0000-000000252e01', 'Pat Sub', 1500, 'draft');
+-- Money and legal rows. A payment's trace both ways, a promise, a chase touch, and the source's promised date marked
+-- later than the one the target took in the first combine.
+INSERT INTO public.jobs_ledger_payment_events (id, kind, from_job_id, to_job_id, amount) VALUES
+  ('00000000-0000-0000-0000-000000252101', 'moved', '00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01', 120),
+  ('00000000-0000-0000-0000-000000252102', 'moved', '00000000-0000-0000-0000-000000252b01', '00000000-0000-0000-0000-000000252b03', 30);
+INSERT INTO public.job_payment_promises (id, job_id, promised_date, said_by) VALUES ('00000000-0000-0000-0000-000000252103', '00000000-0000-0000-0000-000000252b03', '2026-11-20', 'Their office');
+INSERT INTO public.job_payment_chase_touches (id, customer_id, job_id, outcome, note) VALUES ('00000000-0000-0000-0000-000000252104', '00000000-0000-0000-0000-000000252c01', '00000000-0000-0000-0000-000000252b03', 'note', 'Bed chase note');
+INSERT INTO public.job_promised_pay_dates (job_id, promised_date, marked_at) VALUES ('00000000-0000-0000-0000-000000252b03', '2026-11-28', '2026-10-15 10:00+00');
+-- Lien paper: a notice filing, a release and a demand letter on the source. Desk items: a live notice on both (the
+-- source's comes over voided), an affidavit and a sent notice on the source alone. A claim correction on the source;
+-- the target holds the one it took in the first combine.
+INSERT INTO public.job_lien_filings (id, job_id, kind, amount) VALUES ('00000000-0000-0000-0000-000000252105', '00000000-0000-0000-0000-000000252b03', 'notice_53_056', 900);
+INSERT INTO public.job_lien_releases (id, job_id, form_type, amount) VALUES ('00000000-0000-0000-0000-000000252106', '00000000-0000-0000-0000-000000252b03', 'conditional_progress', 400);
+INSERT INTO public.job_demand_letters (id, job_id, amount) VALUES ('00000000-0000-0000-0000-000000252107', '00000000-0000-0000-0000-000000252b03', 900);
+INSERT INTO public.job_lien_desk_items (id, job_id, kind, status) VALUES
+  ('00000000-0000-0000-0000-000000252108', '00000000-0000-0000-0000-000000252b03', 'notice_53_056', 'drafted'),
+  ('00000000-0000-0000-0000-000000252109', '00000000-0000-0000-0000-000000252b03', 'affidavit', 'drafted'),
+  ('00000000-0000-0000-0000-00000025210a', '00000000-0000-0000-0000-000000252b03', 'notice_53_056', 'sent'),
+  ('00000000-0000-0000-0000-00000025210b', '00000000-0000-0000-0000-000000252b01', 'notice_53_056', 'awaiting_approval');
+INSERT INTO public.job_lien_claim_corrections (job_id, amount_off, reason) VALUES ('00000000-0000-0000-0000-000000252b03', 50, 'Bed correction source');
+-- Legal matters: one names both jobs, one names the source alone.
+INSERT INTO public.legal_matters (id, payer_key) VALUES
+  ('00000000-0000-0000-0000-00000025210c', 'bed-payer-one'),
+  ('00000000-0000-0000-0000-00000025210d', 'bed-payer-two');
+INSERT INTO public.legal_matter_jobs (matter_id, job_id) VALUES
+  ('00000000-0000-0000-0000-00000025210c', '00000000-0000-0000-0000-000000252b03'),
+  ('00000000-0000-0000-0000-00000025210c', '00000000-0000-0000-0000-000000252b01'),
+  ('00000000-0000-0000-0000-00000025210d', '00000000-0000-0000-0000-000000252b03');
+-- Agreements: a sent one and a signed one on the source, a draft on the target (the collision, until it is voided).
+INSERT INTO public.job_contracts (id, job_id, status, template_name) VALUES
+  ('00000000-0000-0000-0000-00000025210e', '00000000-0000-0000-0000-000000252b03', 'sent', 'Bed terms'),
+  ('00000000-0000-0000-0000-00000025210f', '00000000-0000-0000-0000-000000252b03', 'signed', 'Bed terms'),
+  ('00000000-0000-0000-0000-000000252110', '00000000-0000-0000-0000-000000252b01', 'draft', 'Bed terms');
+-- Pay applications: number 1 on both (the collision, until the target's is deleted). The stamp writes updated_by and
+-- updated_at on every insert, so the seed turns it off to put Hal's save at its day.
+ALTER TABLE public.job_pay_applications DISABLE TRIGGER job_pay_applications_stamp;
+INSERT INTO public.job_pay_applications (id, job_id, application_number, updated_by, updated_at) VALUES
+  ('00000000-0000-0000-0000-000000252111', '00000000-0000-0000-0000-000000252b03', 1, '00000000-0000-0000-0000-000000252a03', '2026-10-05 10:00+00'),
+  ('00000000-0000-0000-0000-000000252112', '00000000-0000-0000-0000-000000252b01', 1, '00000000-0000-0000-0000-000000252a03', '2026-10-06 10:00+00');
+ALTER TABLE public.job_pay_applications ENABLE TRIGGER job_pay_applications_stamp;
 -- Let go on purpose: the drive-time cache, the paid-job mail queue, the note count cache (recomputed from the notes).
 INSERT INTO public.job_travel_times (from_job_id, to_job_id, duration_seconds, distance_meters) VALUES
   ('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01', 600, 5000),
@@ -222,7 +269,27 @@ SELECT cr.same('the held combine moved nothing: the incident is on the source', 
 SELECT cr.same('the held combine moved nothing: the source''s Unsorted stands', (SELECT count(*)::text FROM public.job_containers WHERE id = 'c252e071-0000-0000-0000-000000252e71'), '1');
 UPDATE public.step_commitments SET status = 'cancelled' WHERE id = '00000000-0000-0000-0000-000000252f42';
 
--- 3b. The combine.
+-- 3b. Both jobs hold an open agreement: the combine holds, says what to do, and moves nothing.
+SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
+SET LOCAL ROLE authenticated;
+SELECT public.migrate_job_ledger_costs_and_delete('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01') AS refused_agreement \gset
+RESET ROLE;
+SELECT cr.same('two open agreements: the combine holds', :'refused_agreement'::jsonb ->> 'code', 'agreement_collision');
+SELECT cr.same('and says what to do', :'refused_agreement'::jsonb ->> 'error', 'Both jobs hold an open agreement. Void one of them, then combine.');
+SELECT cr.same('the held combine moved nothing: the sent agreement is on the source', (SELECT job_id::text FROM public.job_contracts WHERE id = '00000000-0000-0000-0000-00000025210e'), '00000000-0000-0000-0000-000000252b03');
+UPDATE public.job_contracts SET status = 'voided', voided_at = now() WHERE id = '00000000-0000-0000-0000-000000252110';
+
+-- 3c. Both jobs hold pay applications: the combine holds, says what to do, and moves nothing.
+SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
+SET LOCAL ROLE authenticated;
+SELECT public.migrate_job_ledger_costs_and_delete('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01') AS refused_apps \gset
+RESET ROLE;
+SELECT cr.same('two runs of pay applications: the combine holds', :'refused_apps'::jsonb ->> 'code', 'pay_application_collision');
+SELECT cr.same('and says what to do about them', :'refused_apps'::jsonb ->> 'error', 'Both jobs hold pay applications. Delete one job''s applications, then combine.');
+SELECT cr.same('the held combine moved nothing: the promise is on the source', (SELECT job_id::text FROM public.job_payment_promises WHERE id = '00000000-0000-0000-0000-000000252103'), '00000000-0000-0000-0000-000000252b03');
+UPDATE public.job_pay_applications SET deleted_at = now() WHERE id = '00000000-0000-0000-0000-000000252112';
+
+-- 3d. The combine.
 SELECT cr.as_user('00000000-0000-0000-0000-000000252a01');
 SET LOCAL ROLE authenticated;
 SELECT public.migrate_job_ledger_costs_and_delete('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01') AS combine_two \gset
@@ -317,6 +384,33 @@ SELECT cr.same('a Looks right mark the target lacked moved with its key', (SELEC
 SELECT cr.same('the target''s hours target stands', (SELECT hours::text FROM public.job_expected_hours WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND cleared_at IS NULL), '80.0');
 SELECT cr.same('the source''s open target came over closed', (SELECT job_id::text || ' ' || (cleared_at IS NOT NULL)::text || ' ' || cleared_by_name FROM public.job_expected_hours WHERE id = '00000000-0000-0000-0000-000000252f31'), '00000000-0000-0000-0000-000000252b01 true Dee Dev');
 SELECT cr.same('the source''s older target came over', (SELECT job_id::text FROM public.job_expected_hours WHERE id = '00000000-0000-0000-0000-000000252f32'), '00000000-0000-0000-0000-000000252b01');
+
+-- Money and legal rows.
+SELECT cr.same('a moved payment''s trace names the target at both ends', (SELECT from_job_id::text || ' ' || to_job_id::text FROM public.jobs_ledger_payment_events WHERE id = '00000000-0000-0000-0000-000000252101'), '00000000-0000-0000-0000-000000252b01 00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a payment moved onto the source reads as moved onto the target', (SELECT to_job_id::text FROM public.jobs_ledger_payment_events WHERE id = '00000000-0000-0000-0000-000000252102'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a payment promise moved', (SELECT job_id::text FROM public.job_payment_promises WHERE id = '00000000-0000-0000-0000-000000252103'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a chase touch moved', (SELECT job_id::text FROM public.job_payment_chase_touches WHERE id = '00000000-0000-0000-0000-000000252104'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('the later-marked promised pay date stands', (SELECT promised_date::text FROM public.job_promised_pay_dates WHERE job_id = '00000000-0000-0000-0000-000000252b01'), '2026-11-28');
+SELECT cr.same('and the target holds one promised date', (SELECT count(*)::text FROM public.job_promised_pay_dates WHERE job_id IN ('00000000-0000-0000-0000-000000252b01', '00000000-0000-0000-0000-000000252b03')), '1');
+SELECT cr.same('the move logged no second promise', (SELECT count(*)::text FROM public.job_payment_promises WHERE job_id = '00000000-0000-0000-0000-000000252b01'), '3');
+SELECT cr.same('a lien notice filing moved', (SELECT job_id::text FROM public.job_lien_filings WHERE id = '00000000-0000-0000-0000-000000252105'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a lien release moved', (SELECT job_id::text FROM public.job_lien_releases WHERE id = '00000000-0000-0000-0000-000000252106'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a demand letter moved', (SELECT job_id::text FROM public.job_demand_letters WHERE id = '00000000-0000-0000-0000-000000252107'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a live desk notice the target already holds comes over voided', (SELECT job_id::text || ' ' || (voided_at IS NOT NULL)::text FROM public.job_lien_desk_items WHERE id = '00000000-0000-0000-0000-000000252108'), '00000000-0000-0000-0000-000000252b01 true');
+SELECT cr.same('the target''s own notice stands live', (SELECT (voided_at IS NULL)::text || ' ' || status FROM public.job_lien_desk_items WHERE id = '00000000-0000-0000-0000-00000025210b'), 'true awaiting_approval');
+SELECT cr.same('an affidavit item the target lacked moved live', (SELECT job_id::text || ' ' || (voided_at IS NULL)::text FROM public.job_lien_desk_items WHERE id = '00000000-0000-0000-0000-000000252109'), '00000000-0000-0000-0000-000000252b01 true');
+SELECT cr.same('a sent notice moved as history', (SELECT job_id::text || ' ' || status FROM public.job_lien_desk_items WHERE id = '00000000-0000-0000-0000-00000025210a'), '00000000-0000-0000-0000-000000252b01 sent');
+SELECT cr.same('the target keeps its claim correction', (SELECT amount_off::text FROM public.job_lien_claim_corrections WHERE job_id = '00000000-0000-0000-0000-000000252b01'), '15');
+SELECT cr.same('the source''s correction went', (SELECT count(*)::text FROM public.job_lien_claim_corrections WHERE amount_off = 50), '0');
+SELECT cr.same('a legal matter on both jobs links the target once', (SELECT count(*)::text FROM public.legal_matter_jobs WHERE matter_id = '00000000-0000-0000-0000-00000025210c'), '1');
+SELECT cr.same('and names the target', (SELECT job_id::text FROM public.legal_matter_jobs WHERE matter_id = '00000000-0000-0000-0000-00000025210c'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a matter on the source alone now names the target', (SELECT job_id::text FROM public.legal_matter_jobs WHERE matter_id = '00000000-0000-0000-0000-00000025210d'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a sent agreement moved', (SELECT job_id::text FROM public.job_contracts WHERE id = '00000000-0000-0000-0000-00000025210e'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('a signed agreement moved', (SELECT job_id::text FROM public.job_contracts WHERE id = '00000000-0000-0000-0000-00000025210f'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('the target''s voided draft stands', (SELECT job_id::text || ' ' || status FROM public.job_contracts WHERE id = '00000000-0000-0000-0000-000000252110'), '00000000-0000-0000-0000-000000252b01 voided');
+SELECT cr.same('the source''s pay application moved', (SELECT job_id::text FROM public.job_pay_applications WHERE id = '00000000-0000-0000-0000-000000252111'), '00000000-0000-0000-0000-000000252b01');
+SELECT cr.same('and keeps who saved it and when', (SELECT updated_by::text || ' ' || updated_at::text FROM public.job_pay_applications WHERE id = '00000000-0000-0000-0000-000000252111'), '00000000-0000-0000-0000-000000252a03 2026-10-05 10:00:00+00');
+SELECT cr.same('the target''s deleted application stays on the target', (SELECT job_id::text || ' ' || (deleted_at IS NOT NULL)::text FROM public.job_pay_applications WHERE id = '00000000-0000-0000-0000-000000252112'), '00000000-0000-0000-0000-000000252b01 true');
 
 -- Let go on purpose.
 SELECT cr.same('the drive-time cache between the two is gone', (SELECT count(*)::text FROM public.job_travel_times WHERE from_job_id IN ('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01') OR to_job_id IN ('00000000-0000-0000-0000-000000252b03', '00000000-0000-0000-0000-000000252b01')), '0');

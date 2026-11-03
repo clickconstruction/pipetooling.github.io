@@ -2,18 +2,18 @@
 name: "Combine: every row that goes with the source job, sorted"
 number: 252
 group: gated
-status: PR 1 built 2026-11-02 (v2.6423, the move, merge and let-go rows that are not money or legal); PR 2 waits on the owner's word on the money and legal rows below
+status: PR 1 built 2026-11-02 (v2.6423, the move, merge and let-go rows that are not money or legal); PR 2 built 2026-11-03 (v2.6458, the money and legal rows, on the owner's word); left are the six soft job pointers under *Also noted*
 mockup: not required — a database rule and a guide section, no screen changes
 summary: >
   A job combine moved a named list of tables and deleted the source row, and ON DELETE CASCADE took every other row
   that named the job: 52 tables on prod's catalog on 2026-11-02, 31 of them with rows, job_activity_events about
   13,700. The guide said everything real moves. This card sorts every one of them into move, merge or let go with its
-  reason. v2.6423 did the rows that are not money or legal; the fifteen money and legal tables keep today's cascade
-  until the owner decides each, and a second migration restates the combine with them.
-next: The owner's word on the fifteen money and legal tables under *Wait on the owner*, then PR 2 restates `migrate_job_ledger_costs_and_delete` with them (the full body pasted, one change each, a bed row per table) and the guide's *What stays behind* shrinks to the let-go caches.
+  reason. v2.6423 did the rows that are not money or legal; v2.6458 did the money and legal rows on the owner's word
+  (bills and payments keep the billing guard). Six tables that name a job with no foreign key are left.
+next: A third small migration for the six tables under *Also noted* that name a job in a plain uuid column: a rule and a bed row each (the AR cases and the rating move; the notices, offers and schedule events are history that moves too, or is let go with a reason), then retire the card.
 size: S
-blocker: The owner's call on the money and legal rows.
-opinion: build — the rules proposed below are the ones the tables' own keys ask for; the only real judgment calls are the two refusals (agreements, pay applications) and whether a lien desk item on both jobs is voided or refused
+blocker: none
+opinion: build — the rules are the ones the tables' own keys ask for; the one open call, a live Lien desk item on both jobs, was built as *the source's comes over voided* and is a one-line flip to a refusal if the desk wants the hold
 ---
 
 # Combine: every row that goes with the source job, sorted (#252)
@@ -90,24 +90,25 @@ already did.
 | `common_jobs` | Deleted by the RPC since the start. |
 | `job_collect_payment_flows` | One per job, under the billing guard: a source with one is refused unless `p_allow_billed`. |
 
-## Wait on the owner — money and legal rows, with the rule proposed
+## Money and legal rows — shipped in v2.6458 (the owner's word, 2026-11-03)
 
-Today each of these goes with the source's delete (or is refused by the billing guard). PR 2 writes the rule the owner
-picks, one line per table in the same body, and a bed row each.
+Until v2.6458 each of these went with the source's delete (or was refused by the billing guard). The owner said build
+with the rules proposed here; `20261103160000_combine_moves_money_and_legal_rows.sql` restates the body with them, one
+line per table, and the bed holds a row each. Bills and payments keep the guard.
 
-| Table | Today | Proposed |
+| Table | Before | Rule as built |
 |---|---|---|
-| `jobs_ledger_invoices`, `jobs_ledger_payments` | The billing guard refuses a source with either unless `p_allow_billed` (Delete job → Reassign to another job…), where they go with the source by design. | Keep as is. |
-| `jobs_ledger_payment_events` | The trace of a payment moved off the source is deleted, so the job it went to loses its grey trace line. | Move: `from_job_id` and `to_job_id` that name the source take the target. |
-| `job_payment_promises` | Promises and paid claims (voided ones included) go. | Move. |
-| `job_promised_pay_dates` | One per job; goes. | Merge: the later `marked_at` stands. |
-| `job_payment_chase_touches` | The chase call log pinned to the job goes. | Move. |
-| `job_lien_filings`, `job_lien_releases`, `job_demand_letters` | § 53.056 notices, affidavits, waivers and demand letters sent go. | Move; they are the record of what went out. |
-| `job_lien_desk_items` | The desk's queue items go. One live per job and kind. | Move; a live item of the same kind on both: the target's stands and the source's comes over voided (or the combine refuses, the owner's call). |
-| `job_lien_claim_corrections` | One per job; goes. | Merge: the target's stands, else the source's moves. |
-| `legal_matter_jobs` | The matter's link to the job goes. | Merge: the matter links to the target once. |
-| `job_contracts` | Agreements go, with their signed PDFs and the customer's links. One live (draft or sent) per job. | Move; both jobs with a live agreement: refuse with a reason, since a sent agreement's link must not die. |
-| `job_pay_applications` | AIA applications go. One live number per job. | Move; both jobs with applications: refuse with a reason, since the numbers are on paper the GC holds. |
+| `jobs_ledger_invoices`, `jobs_ledger_payments` | The billing guard refuses a source with either unless `p_allow_billed` (Delete job → Reassign to another job…), where they go with the source by design. | As before. |
+| `jobs_ledger_payment_events` | The trace of a payment moved off the source was deleted, so the job it went to lost its grey trace line. | Move: `from_job_id` and `to_job_id` that name the source take the target. |
+| `job_payment_promises` | Promises and paid claims (voided ones included) went. | Move. |
+| `job_promised_pay_dates` | One per job; went. | Merge: the later `marked_at` stands. The move keeps the date, so `job_promised_pay_dates_log_promise` writes no second promise. |
+| `job_payment_chase_touches` | The chase call log pinned to the job went. | Move. |
+| `job_lien_filings`, `job_lien_releases`, `job_demand_letters` | § 53.056 notices, affidavits, waivers and demand letters sent went. | Move; they are the record of what went out. A bid's waiver names no job and is untouched. The activity triggers fire on state changes only, so a move writes no event. |
+| `job_lien_desk_items` | The desk's queue items went. One live per job and kind (`job_lien_desk_items_live_uniq`: not voided, not sent or missed). | Move; a live item of a kind the target holds live comes over voided (`voided_at`), so the desk still reads it and nothing is lost; the target's stands. The refusal was the other way offered; a hold on a draft was judged the worse trade, and it is a one-line flip. |
+| `job_lien_claim_corrections` | One per job; went. | Merge: the target's stands, else the source's moves. |
+| `legal_matter_jobs` | The matter's link to the job went. | Merge: the matter links to the target once. |
+| `job_contracts` | Agreements went, with their signed PDFs and the customer's links. One live (draft or sent) per job. | Move; both jobs with an open agreement: `agreement_collision`, *Both jobs hold an open agreement. Void one of them, then combine.* |
+| `job_pay_applications` | AIA applications went. One live number per job. | Move, the saved stamp kept (`job_pay_applications_stamp` restated with a gate for a job-only change); both jobs with live applications: `pay_application_collision`, *Both jobs hold pay applications. Delete one job's applications, then combine.* |
 
 ## Also noted
 
