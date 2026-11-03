@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest'
 import { captionWordsOf, foldPhotoBatches, lineTiles, photoTimeRange } from './photoLines'
 import { filterChangeLines } from './whatChanged'
+import { foldSameDayRuns } from './historyFolds'
+import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import type { UploadedPhotoRow } from '../photos/uploadedPhotos'
 
 function row(over: Partial<UploadedPhotoRow> & { id: string; taken_at: string }): UploadedPhotoRow {
@@ -118,5 +120,17 @@ describe('the words and the tiles', () => {
     expect(lineTiles(four).map((t) => (t.kind === 'photo' ? t.row.id : `+${t.count}`))).toEqual(['1', '2', '3', '4'])
     const eleven = Array.from({ length: 11 }, (_, i) => row({ id: String(i), taken_at: '2026-11-02T13:42:00Z' }))
     expect(lineTiles(eleven).map((t) => (t.kind === 'photo' ? t.row.id : `+${t.count}`))).toEqual(['0', '1', '2', '+8'])
+  })
+})
+
+describe('the History’s same-day fold (v2.6378) leaves photo lines alone', () => {
+  it('three batches by one person on one job on one day stay three lines, each with its own photos', () => {
+    // Two hours apart, so the hour rule makes three batches; the same day, kind, piece and person would fold any record line.
+    const rows = [0, 120, 240].map((min, i) => row({ id: `b${i}`, taken_at: new Date(Date.parse('2026-11-02T20:00:00Z') - min * 60_000).toISOString() }))
+    const lines = foldPhotoBatches(rows, labels)
+    expect(lines).toHaveLength(3)
+    const shown = foldSameDayRuns(lines, calendarYmdInAppTzFromIso)
+    expect(shown.map((l) => l.id)).toEqual(lines.map((l) => l.id))
+    expect(shown.every((l) => !('foldedCount' in l) && (l.photos?.length ?? 0) === 1)).toBe(true)
   })
 })
