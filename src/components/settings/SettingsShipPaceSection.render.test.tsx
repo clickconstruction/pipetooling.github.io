@@ -3,11 +3,12 @@
  * How fast a change ships (v2.6399): Settings → How fast a change ships over a fake io. The headline, the as-of line,
  * the chart's title and today's tiles draw from the row; no row draws the empty state that names what fills it; a
  * read that fails draws its reason with Retry; a dev sees Read GitHub now, whose answer lands on the line and reloads
- * the row; a controller does not see the press.
+ * the row; a controller does not see the press. In line now (v2.6401): the queue's top ten in order with their words
+ * and *and N more*, the buckets line under them, an empty queue's words, and the one line when the queue was not read.
  */
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
-import { shipPacePicture, type PacePr, type ShipPacePicture } from '../../../supabase/functions/_shared/shipPace'
+import { shipPacePicture, type PaceOpenPr, type PacePr, type PaceQueueEntryInput, type ShipPacePicture } from '../../../supabase/functions/_shared/shipPace'
 import type { ShipPaceIo } from '../../lib/settings/shipPaceIo'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { SHIP_PACE_WORDS as W } from '../../lib/settings/shipPaceWords'
@@ -38,9 +39,29 @@ function pr(createdAt: string, mergedAt: string | null, draft = false): PacePr {
   return { number: n, createdAt, mergedAt, closedAt: mergedAt, draft }
 }
 
+/** Twelve in line: the third entered 25 minutes ago with 12 minutes to go; the first has no estimate. */
+const QUEUE_ENTRIES: PaceQueueEntryInput[] = Array.from({ length: 12 }, (_, i) => ({
+  number: 7001 + i,
+  title: `v2.64${String(i + 1).padStart(2, '0')} Change number ${i + 1} in its plain sentence`,
+  position: i + 1,
+  enqueuedAt: new Date(Date.parse(NOW) - (i === 2 ? 25 : 40 - i) * 60_000).toISOString(),
+  estimatedSeconds: i === 0 ? null : i === 2 ? 720 : (i + 1) * 600,
+}))
+
+/** The open pull requests around the line: the twelve in it, two armed (one on a red check), three open and unarmed, one draft. */
+const QUEUE_OPEN: PaceOpenPr[] = [
+  ...QUEUE_ENTRIES.map((e) => ({ number: e.number, title: e.title, draft: false, armed: false, inQueue: true, checks: 'SUCCESS', mergeable: 'UNKNOWN' })),
+  { number: 7101, title: 'v2.6420 Armed and green', draft: false, armed: true, inQueue: false, checks: 'PENDING', mergeable: 'MERGEABLE' },
+  { number: 7102, title: 'v2.6421 Armed and red', draft: false, armed: true, inQueue: false, checks: 'FAILURE', mergeable: 'MERGEABLE' },
+  { number: 7103, title: 'v2.6422 Open, unarmed', draft: false, armed: false, inQueue: false, checks: 'SUCCESS', mergeable: 'MERGEABLE' },
+  { number: 7104, title: 'v2.6423 Open, unarmed', draft: false, armed: false, inQueue: false, checks: 'PENDING', mergeable: 'MERGEABLE' },
+  { number: 7105, title: 'docs: open, unarmed', draft: false, armed: false, inQueue: false, checks: null, mergeable: 'MERGEABLE' },
+  { number: 7106, title: 'v2.6424 A draft', draft: true, armed: false, inQueue: false, checks: 'SUCCESS', mergeable: 'MERGEABLE' },
+]
+
 /**
  * Monday 3:37 PM: five merges in the last 24 hours (2, 4, 9, 4 and 2.5 hours; the last two inside the last six hours),
- * five opened today (the 00:00Z one is Sunday 6 PM Central), one draft open.
+ * five opened today (the 00:00Z one is Sunday 6 PM Central), one draft open; twelve in the merge queue.
  */
 const PICTURE: ShipPacePicture = shipPacePicture({
   now: NOW,
@@ -54,7 +75,7 @@ const PICTURE: ShipPacePicture = shipPacePicture({
     pr('2026-11-01T18:00:00Z', null),
   ],
   queueRuns: null,
-  queueNow: 3,
+  queue: { total: 12, entries: QUEUE_ENTRIES, open: QUEUE_OPEN },
 })
 
 function fakeIo(over: Partial<ShipPaceIo> = {}): ShipPaceIo {
@@ -74,7 +95,7 @@ describe('SettingsShipPaceSection', () => {
     expect(today).toContain(`${W.openedToday}5`)
     expect(today).toContain(`${W.mergedToday}5`)
     expect(today).toContain(`${W.openNow}21 draft among them`)
-    expect(today).toContain(`${W.inQueue}3`)
+    expect(today).toContain(`${W.inQueue}12`)
     expect(text('[data-ship-pace-meaning]')).toBe(W.meaning)
     expect(document.querySelector('[data-ship-pace-chart]')).toBeTruthy()
     // The solid number: the median of the two merges in the last six hours, 4 and 2.5 hours.
@@ -85,11 +106,45 @@ describe('SettingsShipPaceSection', () => {
     expect(screen.queryByRole('button', { name: W.readNow })).toBeNull()
   })
 
+  it('In line now lists the top ten in order with their words, says and 2 more, and the buckets line', async () => {
+    renderWithProviders(<SettingsShipPaceSection role="controller" io={fakeIo()} now={nowMs} />)
+    await waitFor(() => expect(document.querySelectorAll('[data-ship-pace-queue-entry]')).toHaveLength(10))
+    expect(screen.getByText(W.queueTitle)).toBeTruthy()
+    expect(screen.getByText(W.queueOrder)).toBeTruthy()
+    const titles = Array.from(document.querySelectorAll('[data-ship-pace-queue-entry-title]')).map((el) => el.textContent)
+    expect(titles[0]).toBe('Change number 1 in its plain sentence')
+    expect(titles[9]).toBe('Change number 10 in its plain sentence')
+    const words = Array.from(document.querySelectorAll('[data-ship-pace-queue-entry-words]')).map((el) => el.textContent)
+    expect(words[0]).toBe('1st in line, in the queue 40 minutes')
+    expect(words[2]).toBe('3rd in line, in the queue 25 minutes, about 12 minutes to go')
+    expect(text('[data-ship-pace-queue-more]')).toBe('and 2 more')
+    expect(text('[data-ship-pace-queue-buckets]')).toBe(
+      '2 more are armed and waiting on their checks. 1 of them is held by a red check or a conflict. 3 are open and not yet asked to merge.',
+    )
+    expect(document.querySelector('[data-ship-pace-queue-unread]')).toBeNull()
+    expect(document.querySelector('[data-ship-pace-queue] [data-empty-state]')).toBeNull()
+  })
+
+  it('an empty queue says nothing is waiting on it, with the buckets line still under it', async () => {
+    const empty: ShipPacePicture = {
+      ...PICTURE,
+      now: { ...PICTURE.now, queue: 0 },
+      queue: { entries: [], armedWaiting: 0, armedHeld: 0, openUnarmed: 2, drafts: 1 },
+    }
+    renderWithProviders(<SettingsShipPaceSection role="assistant" io={fakeIo({ load: vi.fn(async () => empty) })} now={nowMs} />)
+    await waitFor(() => expect(text('[data-ship-pace-queue] [data-empty-state]')).toBe('Nothing waiting on the queue.'))
+    expect(document.querySelectorAll('[data-ship-pace-queue-entry]')).toHaveLength(0)
+    expect(document.querySelector('[data-ship-pace-queue-more]')).toBeNull()
+    expect(text('[data-ship-pace-queue-buckets]')).toBe('Nothing is armed and waiting on its checks. 2 are open and not yet asked to merge.')
+    expect(text('[data-ship-pace-today]')).toContain(`${W.inQueue}0`)
+  })
+
   it('says the reader may be stuck when the row is more than an hour old, that the queue was not read, and that nothing merged in six hours', async () => {
     const old: ShipPacePicture = {
       ...PICTURE,
       asOf: '2026-11-02T20:10:00.000Z',
       now: { ...PICTURE.now, queue: null },
+      queue: null,
       recent: { hours: 6, merged: 0, medianH: null, meanH: null, p90H: null, since: null },
     }
     renderWithProviders(<SettingsShipPaceSection role="estimator" io={fakeIo({ load: vi.fn(async () => old) })} now={nowMs} />)
@@ -97,6 +152,10 @@ describe('SettingsShipPaceSection', () => {
     expect(text('[data-ship-pace-today]')).toContain(`${W.inQueue}${W.queueNotRead}`)
     expect(text('[data-ship-pace-now-figure]')).toBe('—')
     expect(text('[data-ship-pace-now-words]')).toBe('Nothing merged in the last 6 hours, so there is no number right now.')
+    // The queue card: one line, no list, no buckets.
+    expect(text('[data-ship-pace-queue-unread]')).toBe(W.queueUnread)
+    expect(document.querySelectorAll('[data-ship-pace-queue-entry]')).toHaveLength(0)
+    expect(document.querySelector('[data-ship-pace-queue-buckets]')).toBeNull()
   })
 
   it('with no row yet, the empty state names what fills it', async () => {

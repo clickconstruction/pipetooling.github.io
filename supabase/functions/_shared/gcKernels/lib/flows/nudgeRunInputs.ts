@@ -16,11 +16,11 @@
  * id is unique only within its kind's flow: the sub flow brings `asked`, `onsite` and `yes` again.
  */
 import { APP_SETTINGS_KEY_MESSAGES_NUDGE_APP_SENDS_V1 } from '../appSettingsKeys.ts'
-import { firstName } from '../contacts/names.ts'
+import { firstName, type ContactKind } from '../contacts/names.ts'
 import { billPapers, type Paper, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from '../messages/papers.ts'
 import type { QuickReply, QuickReplyFor, QuickReplyScope } from '../quickReplies/kernel.ts'
 import { flowFromRows, type FlowStepRow } from './editor.ts'
-import { FLOW_KINDS, flowContactKind, type FlowKind } from './facts.ts'
+import { FLOW_KINDS, contactFlowKindOf, flowContactKind, type FlowKind } from './facts.ts'
 import type { FlowCard, FlowRows } from './load.ts'
 import type { AppSends, NudgeOffered, NudgeRunInput, NudgeSent, TextNumber } from './nudgeDispatch.ts'
 import type { NudgeOptions, PersonFlow } from './nudges.ts'
@@ -37,8 +37,12 @@ export const PERSON_LINES = 50
 
 // ---------- the rows, as the run selects them ----------
 
-/** `contacts`: who they are, their kind, Follow up's snooze (set only while `state` is `snoozed`), and a residential customer's record (v2.6232). */
-export type RunContactRow = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; snoozed_until: string | null; prefers?: string | null; customer_id?: string | null }
+/**
+ * `contacts`: who they are, their contact's kind (never a flow's: a homeowner's is `customer`, and `nudgeRunReads` tells
+ * their flow from the card's `customer_type`, v2.6394), Follow up's snooze (set only while `state` is `snoozed`), and a
+ * customer's record (v2.6232).
+ */
+export type RunContactRow = { id: string; kind: ContactKind; name: string | null; goes_by: string | null; snoozed_until: string | null; prefers?: string | null; customer_id?: string | null }
 /** `flow_steps` with its flow's kind (`flows(kind)`), as `readFlowDef` reads one kind. */
 export type RunStepRow = FlowStepRow & { flows: { kind: string } | null }
 export type RunHoldRow = HoldRow & { contact_id: string }
@@ -118,6 +122,24 @@ export interface NudgeRunReads {
   unread: string[]
 }
 
+/**
+ * The contacts the morning reads, and the GC customers it holds (v2.6394). A contact's flow is their kind's, and the
+ * residential one for a `customer` contact whose customers row says residential, told from the card `flow_rows_for`
+ * carries (`contactFlowKindOf`). A customer contact on the GC customer flow is held: the run cannot read their page yet,
+ * so the function leaves them out of `nudgeRunReads` and the summary counts them (*Customers wait until the run can read
+ * their page*). A homeowner whose card has no `customer_type` yet (the client deployed before the migration's push) is
+ * held the same way, so nothing new goes before the push. Everyone else runs as before.
+ */
+export function runContactsOf<C extends Pick<RunContactRow, 'id' | 'kind'>>(contacts: readonly C[], flowRows: Readonly<Partial<Record<string, Pick<FlowRows, 'card'>>>>): { run: C[]; customersHeld: number } {
+  const run: C[] = []
+  let customersHeld = 0
+  for (const c of contacts) {
+    if (contactFlowKindOf(c.kind, flowRows[c.id]?.card?.customer_type) === 'customer') customersHeld++
+    else run.push(c)
+  }
+  return { run, customersHeld }
+}
+
 // ---------- the pieces ----------
 
 /** The stored text read as JSON; null when it does not read. */
@@ -185,7 +207,7 @@ export function flowsByKind(steps: readonly RunStepRow[]): Record<FlowKind, Flow
 }
 
 /** What we call them on their flow: the name they go by, else their first name, else their company, else "them". */
-export function flowFirst(contact: Pick<RunContactRow, 'kind' | 'name' | 'goes_by'>, card: FlowCard | null | undefined): string {
+export function flowFirst(contact: { kind: ContactKind | FlowKind; name: string | null; goes_by: string | null }, card: FlowCard | null | undefined): string {
   const first = firstName({ name: contact.name ?? card?.name ?? '', goesBy: contact.goes_by ?? card?.goes_by ?? null, kind: flowContactKind(contact.kind) })
   return first || card?.company || 'them'
 }
@@ -304,7 +326,10 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
   for (const contact of rows.contacts) {
     if (opts.walkKitContactId && contact.id === opts.walkKitContactId) continue
     const flowRows = rows.flowRows[contact.id]
-    const flow = flows[contact.kind]
+    // Their flow is their contact's kind's, and the residential one for a customer contact whose customers row says
+    // residential, read from the card (v2.6394, `runContactsOf` holds the GC customers before this read).
+    const kind = contactFlowKindOf(contact.kind, flowRows?.card?.customer_type)
+    const flow = flows[kind]
     if (!flowRows || !flow) {
       unread.push(contact.id)
       continue
@@ -315,7 +340,7 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
     const first = flowFirst(contact, flowRows.card)
     // A residential customer's steps read their Pipeline rows (v2.6232), cut from everyone's as their own panel reads them.
     const rowsOf =
-      contact.kind === 'residential' && rows.pipeline
+      kind === 'residential' && rows.pipeline
         ? { ...flowRows, residential: residentialRowsOf(rows.pipeline, { contact: flowRows.contact, firstName: first, customerId, userNames: flowRows.userNames, skips: flowRows.skips }) }
         : flowRows
     people.push(
@@ -330,18 +355,18 @@ export function nudgeRunReads(rows: NudgeRunRows, now: Date, opts: { origin: str
         notes: notes.get(contact.id) ?? [],
         lines: newestLines(theirLines),
         owed: rows.owed,
-        portal: contact.kind === 'customer' && customerId ? (rows.portals?.[customerId] ?? null) : null,
+        portal: kind === 'customer' && customerId ? (rows.portals?.[customerId] ?? null) : null,
       }),
     )
     const number = textNumberOf(channels.get(contact.id) ?? [], theirLines)
     numbers[contact.id] = { number: number.number, optedOut: number.optedOut }
     if (number.channelId && !number.optedOut) channelIds[contact.id] = number.channelId
-    const link = contact.kind === 'customer' ? (customerId ? rows.customerLinks?.[customerId] : null) : portalLinkOf(flowRows.previewPath, opts.origin)
+    const link = kind === 'customer' ? (customerId ? rows.customerLinks?.[customerId] : null) : portalLinkOf(flowRows.previewPath, opts.origin)
     if (link) links[contact.id] = link
     if (contact.snoozed_until) snoozed[contact.id] = contact.snoozed_until
     if (contact.prefers === 'text' || contact.prefers === 'email' || contact.prefers === 'either') prefers[contact.id] = contact.prefers
     // A residential customer's bills, for the Paid reminder's {amount} and {bill} (v2.6224); the box reads them by the customer too.
-    const bills = contact.kind === 'residential' && customerId ? billsByCustomer?.get(customerId) : undefined
+    const bills = kind === 'residential' && customerId ? billsByCustomer?.get(customerId) : undefined
     if (bills?.length) papers[contact.id] = bills
   }
   return {

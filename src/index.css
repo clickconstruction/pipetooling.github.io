@@ -6546,15 +6546,16 @@ button.developmentCountChip:focus-visible {
   margin-left: 4px;
   vertical-align: 1px;
 }
-/* On a phone the strip is one row of five equal cells (the Gun Dog spike, 2026-11-02): the look's name over one
-   figure, amber when something in it waits on the leader, the look you are in underlined in blue. Pinned like
-   the desk's bar, a third of its height. */
+/* On a phone the strip is one row with a cell for each look (the Gun Dog spike, 2026-11-02): the look's name over
+   one figure, amber when something in it waits on the leader, the look you are in underlined in blue. Pinned like
+   the desk's bar, a third of its height. The row names no column count: each cell starts as wide as its words
+   and the cells share what is left, so a look added to the strip stays in the row (a five-column grid dropped
+   v2.6371's Photos to a second row). On a screen too narrow for every name, the names give way with an ellipsis. */
 .developmentPhoneStrip {
   position: sticky;
   top: 0;
   z-index: 5;
-  display: grid;
-  grid-template-columns: repeat(5, minmax(0, 1fr));
+  display: flex;
   margin: 0 0 12px;
   background: var(--surface);
   border: 1px solid var(--border);
@@ -6562,6 +6563,7 @@ button.developmentCountChip:focus-visible {
   overflow: hidden;
 }
 .developmentPhoneLook {
+  flex: 1 1 auto;
   min-width: 0;
   display: flex;
   flex-direction: column;

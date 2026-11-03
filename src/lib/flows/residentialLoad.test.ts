@@ -83,7 +83,7 @@ const PAY_SPEEDS: PaySpeedData = {
 }
 
 const base = (): ResidentialRows => ({
-  contact: { id: 'c-dana', kind: 'residential', off_since: null, off_why: null, off_by: null },
+  contact: { id: 'c-dana', kind: 'customer', off_since: null, off_why: null, off_by: null },
   firstName: 'Dana',
   jobs: [],
   userNames: NAMES,

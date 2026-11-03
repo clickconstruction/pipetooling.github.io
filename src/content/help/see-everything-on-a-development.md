@@ -2,10 +2,10 @@
 title: see everything on a development in one place
 category: Office
 roles: dev, master_technician, assistant, controller, estimator
-keywords: development, site, subdivision, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
+keywords: development, site, subdivision, builder, estimator, no money, history, what the marks mean, icons, legend, keep what happened, email came in, ask a question, ask the estimators, ask dispatch, questions on this job, questions on this bid, pieces, money, plans, questions, photos, gallery, crew photos, house icon, not in it, pair bids with jobs, job number, hover, job card, press and hold
 order: 75
 ---
-A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in five looks.
+A development is one site with many bids and jobs on it. The Development page shows the whole site on one screen, in six looks.
 
 You put bids and jobs into a development first. The guide [group bids and jobs into a development](/help/group-jobs-into-a-development) shows how. Then the page gathers them.
 
@@ -31,14 +31,14 @@ Bid undecided counts the bids sent or still being worked. An archived bid sits a
 
 On a phone, tap the count. The card opens as a sheet under the counts.
 
-## Jump between the five looks
+## Jump between the six looks
 
-A strip under the counts names five looks: History, Jobs & bids, Money, Plans and Questions. Each look shows its count and what in it waits on you.
+A strip under the counts names six looks: History, Jobs & bids, Money, Plans, Questions and Photos. Each look shows its count and what in it waits on you.
 
 1. Press a look's name to jump to it.
 2. Press the chevron on a look's card to fold it. The page remembers your folds on this device.
 
-On a phone the strip is one row of five cells. Each cell shows the look's name over one number. The number is what waits on you, or the count. Money rounds to fit, so $186,116 reads as $186k. The look you are in is underlined.
+On a phone the strip is one row with a cell for each look. Each cell shows the look's name over one number. The number is what waits on you, or the count. Money rounds to fit, so $186,116 reads as $186k. The look you are in is underlined.
 
 ## See a job's details without opening it
 
@@ -63,6 +63,8 @@ History is one dated list, newest first. It holds what the records did and what 
 3. Press {{button:outline|Mark as looked}} when you have read the new lines. The list draws a line where you stopped.
 
 A long line shows its first words and a **more** press. Press it and the whole line opens in a window.
+
+Three or more like lines on one day fold into one line with the count. Like means the same act on the same record by the same person. Questions, answers and kept entries never fold. A search sees every line.
 
 Each line starts with a small mark. Press the round **?** beside the search box to read what every mark means. Grey is a note someone wrote. Blue is a move on a job or a bid. Green is money or a bid won. Red is a bid lost. Amber is something that went out or came in. The window groups the marks under the chips that narrow to them.
 
@@ -96,7 +98,9 @@ Press {{button:outline|Unpair}} on a paired row to take a pair apart. A window s
 
 Press {{button:outline|Mark the 2 paired bids won}} above the table to set won on paired bids with no outcome. A window shows each bid as the Bid Board will read it. The message after it offers {{button:outline|Undo}}.
 
-The paid jobs fold under the table with their sum. Press **Show them** to see them.
+The paid jobs fold under the table with their sum. Press **Show them** to see them. The archived bids fold the same way above them, with their count and what they bid.
+
+A robot estimator's shadow bid stays in the table with a shadow chip. The counts and the people at the top leave it out.
 
 ## See what is at the address but not in the development
 
@@ -120,9 +124,24 @@ Two chips sit under the table. One counts the parts with no set. One counts the 
 
 Questions starts with two presses, {{button:outline|Ask the estimators}} and {{button:outline|Ask Dispatch}}. Under them sits one table for each lane with questions. Open questions come first, oldest first. Each shows how long it has waited, what it is about, the words and the answer so far. The answered ones fold under a count. With no question at all, the look says nothing is waiting.
 
+## The photos
+
+Photos is the last look on the page. It shows every photo the crews took on the site, newest at the left, in one row.
+
+1. Slide the row sideways to go back in time. A mouse wheel or a trackpad moves it too.
+2. Read the small day label over a tile. It marks where a new day starts.
+3. Press a tile to open the photo at full size. Press {{button:outline|Next ›}} to walk along the row.
+4. Press {{button:outline|Show more}} at the right end to read the next sixty.
+
+Chips above the row narrow it. Press a job's chip to see that job's photos alone. Each chip counts its photos. Press a source chip, like {{chip:blue|Reports}} or {{chip:blue|Tally boxes}}, to see one kind.
+
+The open photo shows the job, who took it, when and where it is filed. Press {{button:outline|Open the job}} to go to the job. Press {{button:outline|Only Deon's photos}} to see one person's photos on the row.
+
+The row reads the same photos as Documents → Photos. The guide [find every photo that was uploaded](/help/find-every-photo-that-was-uploaded) explains where each one is saved.
+
 ## What an estimator sees
 
-An estimator opens the same page. It shows the jobs and bids, the history, the plans and the questions. It shows no money. The Money look is one line that says the office reads it.
+An estimator opens the same page. It shows the jobs and bids, the history, the plans, the questions and the photos. It shows no money. The Money look is one line that says the office reads it.
 
 A job's number opens nothing for an estimator. The job's stage, crew, plans and history are on this page.
 

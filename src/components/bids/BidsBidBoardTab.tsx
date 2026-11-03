@@ -40,10 +40,10 @@ import { bidSentCounts, scopeLabel, type BidSentScope } from '../../lib/bids/bid
 import { buildBidBoardWeeklySentSummaries } from '../../lib/bidBoardWeeklySentStats'
 import { BidBoardNotesPanel, type BidBoardNotesTab } from './BidBoardNotesPanel'
 import { BidBoardLostSummaryModal } from './BidBoardLostSummaryModal'
-import { LOSS_UNCATEGORIZED_NUDGE, bidLossCategoryLabel, isBidLossCategoryKey, suggestLossCategoryFromNote, type BidLossCategoryKey } from '../../lib/bidLossCategories'
+import { lossReasonState, lossReasonWords, type BidLossCategoryKey } from '../../lib/bidLossCategories'
 import type { BidGcRecipientsMap } from '../../lib/bids/bidGcRecipients'
 import { BidWorkingBoardArchivedModal } from './BidWorkingBoardArchivedModal'
-import { BidLossCategoryChips } from './BidLossCategoryChips'
+import { BidBoardLostStripReason } from './BidBoardLostStripReason'
 import { BidBoardCustomerReviewModal } from './BidBoardCustomerReviewModal'
 import { BidBoardEstimatingHealthSection } from './BidBoardEstimatingHealthSection'
 import { BidBoardMapCard } from './BidBoardMapCard'
@@ -475,7 +475,7 @@ export function BidsBidBoardTab({
   // Tier-2 #20: the pill counts come from the one count kernel (per bid, the pill's trade). The
   // buckets above use the same pile rule (`getSubmissionSectionKey` + the archived-working
   // exclusion), so a pill and its section header can never disagree.
-  const boardCounts = useMemo(() => bidSentCounts(filteredBidsForBidBoard, { scope: sentScope }), [filteredBidsForBidBoard, sentScope])
+  const boardCounts = useMemo(() => bidSentCounts(filteredBidsForBidBoard, { scope: sentScope, packetsByBid: gcPacketsByBid }), [filteredBidsForBidBoard, sentScope, gcPacketsByBid])
   // Bid flow facts for the rows on the board, loaded once per list (chunked, never per row).
   const bidFlowIds = useMemo(() => filteredBidsForBidBoard.map((b) => b.id), [filteredBidsForBidBoard])
   const { factsByBid: bidFlowFactsByBid } = useBidFlowFacts(bidFlowIds)
@@ -520,14 +520,14 @@ export function BidsBidBoardTab({
   }
 
   // "Missing" clears when either a structured category or free text exists (v2.1799),
-  // matching the Lost summary's red-row rule and the Why we lost lens queue.
+  // matching the Lost summary's red-row rule and the Why we lost lens queue — read over the bid
+  // AND its GC cards since v2.6409 (`lossReasonState`).
   const lostBidsMissingLossReasonCount = useMemo(() => {
-    return bidBoardBuckets.lost.filter(
-      (b) =>
-        !((b as { loss_reason?: string | null }).loss_reason ?? '').trim() &&
-        !isBidLossCategoryKey((b as { loss_category?: string | null }).loss_category ?? null),
-    ).length
-  }, [bidBoardBuckets.lost])
+    return bidBoardBuckets.lost.filter((b) => {
+      const s = lossReasonState(b as { loss_category?: string | null; loss_reason?: string | null }, gcPacketsByBid[b.id])
+      return !s.categorized && !s.hasNote
+    }).length
+  }, [bidBoardBuckets.lost, gcPacketsByBid])
 
   const bidBoardWeeklySentSummaries = useMemo(
     () => buildBidBoardWeeklySentSummaries(filteredBidsForBidBoard),
@@ -1512,7 +1512,7 @@ export function BidsBidBoardTab({
         </tr>
         {bid.outcome === 'lost' ? (
           <tr
-            aria-label={`Loss reason: ${(bid as { loss_reason?: string | null }).loss_reason?.trim() || 'not recorded'}`}
+            aria-label={`Loss reason: ${lossReasonWords(lossReasonState(bid as { loss_category?: string | null; loss_reason?: string | null }, gcPacketsByBid[bid.id]))}`}
             style={{ background: 'var(--bg-subtle)' }}
           >
             <td
@@ -1546,38 +1546,24 @@ export function BidsBidBoardTab({
 
   /**
    * The lost strip's "Why did we lose?" content, shared by the table row and the
-   * phone card. Item 10 (v2.2943): an uncategorized loss is flagged out of the
-   * robot gate denominators, so the strip nudges and carries the six reason
-   * chips right there — one tap writes `bids.loss_category` (the same write as
-   * the Lost summary modal) without opening anything.
+   * phone card — `BidBoardLostStripReason` since v2.6409, reading the bid AND its GC
+   * cards. Item 10 (v2.2943): an uncategorized loss is flagged out of the robot gate
+   * denominators, so the strip nudges and carries the six reason chips right there —
+   * one tap writes `bids.loss_category` (the same write as the Lost summary modal)
+   * without opening anything.
    */
   function renderLostStripReason(bid: BidWithBuilder) {
     const lossReason = (bid as { loss_reason?: string | null }).loss_reason?.trim()
-    const category = (bid as { loss_category?: string | null }).loss_category ?? null
-    const categorized = isBidLossCategoryKey(category)
     return (
-      <>
-        <span style={{ fontWeight: 600, color: 'var(--text-strong)' }}>Why did we lose? </span>
-        <span style={{ color: categorized || lossReason ? 'var(--text-700)' : 'var(--text-faint)' }}>
-          {categorized ? `${bidLossCategoryLabel(category)}${lossReason ? ` — ${lossReason}` : ''}` : lossReason || '—'}
-        </span>
-        {!categorized ? (
-          <div onClick={(e) => e.stopPropagation()} style={{ marginTop: '0.4rem', cursor: 'default' }}>
-            <div style={{ fontSize: '0.72rem', color: 'var(--text-amber-700)', marginBottom: '0.3rem' }}>{LOSS_UNCATEGORIZED_NUDGE}</div>
-            <BidLossCategoryChips
-              value={null}
-              size="sm"
-              disabled={lossCategorySavingBidId === bid.id}
-              suggestedKey={suggestLossCategoryFromNote(lossReason)}
-              suggestedHint="suggested from the note — click to confirm"
-              onSelect={(key) => {
-                setLossCategorySavingBidId(bid.id)
-                void onSaveLossReason(bid.id, lossReason ?? '', key).finally(() => setLossCategorySavingBidId(null))
-              }}
-            />
-          </div>
-        ) : null}
-      </>
+      <BidBoardLostStripReason
+        bid={bid as { id: string; loss_category?: string | null; loss_reason?: string | null }}
+        packets={gcPacketsByBid[bid.id]}
+        saving={lossCategorySavingBidId === bid.id}
+        onSelect={(key) => {
+          setLossCategorySavingBidId(bid.id)
+          void onSaveLossReason(bid.id, lossReason ?? '', key).finally(() => setLossCategorySavingBidId(null))
+        }}
+      />
     )
   }
 
@@ -2195,6 +2181,7 @@ export function BidsBidBoardTab({
             onClose={onCloseLostSummary}
             initialStaffTabUserId={lostSummaryInitialStaffTab}
             lostBids={bidBoardBuckets.lost}
+            packetsByBid={gcPacketsByBid}
             ledgerPrefixMap={ledgerPrefixMap}
             showLaborColumn={showLostModalLabor}
             onSaveLossReason={onSaveLossReason}

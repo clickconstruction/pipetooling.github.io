@@ -7,7 +7,8 @@
 import { supabase } from '../supabase'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { flowFromRows, type FlowStepRow } from './editor'
-import type { FlowKind } from './facts'
+import type { ContactKind } from '../contacts/names'
+import { contactFlowKindOf, type FlowKind } from './facts'
 import type { FlowRows } from './load'
 import { loadCustomerPortalReadBack } from '../portal/customerPortalViewsIo'
 import type { HoldRow, OwedRow, PortalReadBackRow, PressJob, SentRow, StepNoteRow, ThreadLineRow } from './person'
@@ -17,13 +18,20 @@ import type { Qualifications } from '../hiring/tradeScale'
 import type { CandidateRow } from './candidateLoad'
 import { flowFirst } from './nudgeRunInputs'
 import type { ResidentialRows } from './residentialLoad'
-import { NO_PIPELINE_ROWS, PIPELINE_SELECTS, residentialRowsOf, type PipelineRows } from './residentialRows'
+import { residentialRowsOf } from './residentialRows'
+import { readPipelineRows } from './residentialRowsIo'
 import { SEED_FLOWS } from './seed'
 import type { SubPersonRows } from './subOnboardingLoad'
 import type { FlowDef } from './state'
 
-/** The contact as the panel names them; `customer_id` is a residential customer's record (v2.6232). */
+/**
+ * The contact as the panel names them, with the kind of flow they are on: their contact's kind, or `residential` for a
+ * customer contact whose customers row says residential (`contactFlowKindOf` over the card's `customer_type`, v2.6394;
+ * no contact is kind `residential`). `customer_id` is a customer's record (v2.6232).
+ */
 export type FlowContact = { id: string; kind: FlowKind; name: string | null; goes_by: string | null; team_prospect_id?: string | null; person_id?: string | null; customer_id?: string | null }
+/** The `contacts` row as it is read: the contact's own kind, before the flow's is told from the card. */
+type ContactRead = Omit<FlowContact, 'kind'> & { kind: ContactKind }
 
 export type FlowPersonRead = {
   contact: FlowContact
@@ -103,7 +111,7 @@ export function readFlowPerson(contactId: string): Promise<FlowPersonRead> {
 
 async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
   const [contactA, rowsA, holdsA, sentA, notesA, linesA, owedA] = await Promise.all([
-    table('contacts').select('id, kind, name, goes_by, team_prospect_id, person_id, customer_id').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<FlowContact>>,
+    table('contacts').select('id, kind, name, goes_by, team_prospect_id, person_id, customer_id').eq('id', contactId).maybeSingle() as unknown as Promise<Answer<ContactRead>>,
     call<FlowRows>('flow_rows', { p_contact: contactId }),
     table('nudge_holds').select('id, step_key, project_id, jobs_ledger_id, until_on, released_at').eq('contact_id', contactId) as unknown as Promise<Answer<HoldRow[]>>,
     table('nudge_sent').select('step_key, project_id, jobs_ledger_id, sent_at, sent_by').eq('contact_id', contactId) as unknown as Promise<Answer<SentRow[]>>,
@@ -116,9 +124,12 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
     >,
     table('contact_owed').select('contact_id, done_at').eq('contact_id', contactId).is('done_at', null) as unknown as Promise<Answer<OwedRow[]>>,
   ])
-  const contact = check(contactA, 'Their contact')
-  if (!contact) throw new Error('Their contact: not found')
+  const row = check(contactA, 'Their contact')
+  if (!row) throw new Error('Their contact: not found')
   const rows = check(rowsA, 'Their flow')
+  // Their flow is their kind's, and the residential one for a customer contact whose customers row says residential, read
+  // from the card (v2.6394); until the card carries `customer_type`, a homeowner reads the GC customer flow, as before.
+  const contact: FlowContact = { ...row, kind: contactFlowKindOf(row.kind, rows.card?.customer_type) }
   // A candidate's stamps read their row on the Team hiring board (spike); `flow_rows` does not carry it yet.
   if (contact.kind === 'candidate' && contact.team_prospect_id) {
     const board = (await table('team_prospects')
@@ -160,53 +171,15 @@ async function readFlowPersonOnce(contactId: string): Promise<FlowPersonRead> {
   }
 }
 
-/** An RPC the reader may not be allowed, read soft: a refusal or a lost signal leaves it null, and a bill's due day unset. */
-async function softCall(fn: string): Promise<unknown> {
-  try {
-    const a = await call<unknown>(fn, {})
-    return a.error ? null : a.data
-  } catch {
-    return null
-  }
-}
-
 /**
- * One residential customer's Pipeline rows (`residentialLoad.ts`'s `ResidentialRows`), the columns `PIPELINE_SELECTS`
- * names: the jobs they are the customer on and the ones the office tied to them (`contact_jobs.jobs_ledger_id`),
- * everything on those jobs, their own texts out, and the two pay-day RPCs the Stages tab calls (soft: a role the gate
- * refuses reads no pace, and the bill's due day stays unset). A table the reader may not read fails with its reason.
+ * One residential customer's Pipeline rows (`residentialLoad.ts`'s `ResidentialRows`): the jobs they are the customer on
+ * and the ones the office tied to them, everything on those jobs, their own texts out and the two pay-day RPCs, read
+ * through `readPipelineRows` (the read Follow up's nudges share) and cut to them by `residentialRowsOf`.
  */
 async function residentialOf(contact: FlowContact, rows: FlowRows): Promise<ResidentialRows> {
   const customerId = contact.customer_id ?? rows.card?.customer_id ?? null
-  const jobsRead = (customerId ? table('jobs_ledger').select(PIPELINE_SELECTS.jobs).eq('customer_id', customerId) : Promise.resolve({ data: [], error: null })) as unknown as Promise<Answer<PipelineRows['jobs'][number][]>>
-  const [jobsA, tiesA, textsA, paySpeeds, promisedPay] = await Promise.all([
-    jobsRead,
-    table('contact_jobs').select(PIPELINE_SELECTS.contactJobs).eq('contact_id', contact.id).not('jobs_ledger_id', 'is', null) as unknown as Promise<Answer<PipelineRows['contactJobs'][number][]>>,
-    table('messages').select(PIPELINE_SELECTS.texts).eq('contact_id', contact.id).eq('channel', 'text').eq('direction', 'out') as unknown as Promise<Answer<PipelineRows['texts'][number][]>>,
-    softCall('get_billed_customer_pay_speeds'),
-    softCall('list_job_promised_pay_dates'),
-  ])
-  const own = check(jobsA, 'Their jobs') ?? []
-  const contactJobs = check(tiesA, 'Their jobs') ?? []
-  const tiedIds = contactJobs.flatMap((t) => (t.jobs_ledger_id && !own.some((j) => j.id === t.jobs_ledger_id) ? [t.jobs_ledger_id] : []))
-  const tied = tiedIds.length ? (check((await table('jobs_ledger').select(PIPELINE_SELECTS.jobs).in('id', tiedIds)) as unknown as Answer<PipelineRows['jobs'][number][]>, 'Their jobs') ?? []) : []
-  const jobs = [...own, ...tied]
-  const ids = jobs.map((j) => j.id)
-  const on = <T>(name: string, select: string, column: string, what: string): Promise<T[]> =>
-    ids.length ? (table(name).select(select).in(column, ids) as unknown as Promise<Answer<T[]>>).then((a) => check(a, what) ?? []) : Promise.resolve([])
-  const [blocks, clockSessions, reports, estimates, statusEvents, invoices, payments] = await Promise.all([
-    on<PipelineRows['blocks'][number]>('job_schedule_blocks', PIPELINE_SELECTS.blocks, 'job_id', 'Their visits'),
-    on<PipelineRows['clockSessions'][number]>('clock_sessions', PIPELINE_SELECTS.clockSessions, 'job_ledger_id', 'Their visits'),
-    on<PipelineRows['reports'][number]>('reports', PIPELINE_SELECTS.reports, 'job_ledger_id', 'Their reports'),
-    on<PipelineRows['estimates'][number]>('estimates', PIPELINE_SELECTS.estimates, 'job_ledger_id', 'Their estimates'),
-    on<PipelineRows['statusEvents'][number]>('job_status_events', PIPELINE_SELECTS.statusEvents, 'job_id', 'Their jobs'),
-    on<PipelineRows['invoices'][number]>('jobs_ledger_invoices', PIPELINE_SELECTS.invoices, 'job_id', 'Their bills'),
-    on<PipelineRows['payments'][number]>('jobs_ledger_payments', PIPELINE_SELECTS.payments, 'job_id', 'Their payments'),
-  ])
-  return residentialRowsOf(
-    { ...NO_PIPELINE_ROWS, jobs, contactJobs, blocks, clockSessions, reports, estimates, statusEvents, invoices, payments, texts: check(textsA, 'Their texts') ?? [], paySpeeds, promisedPay },
-    { contact: rows.contact, firstName: flowFirst(contact, rows.card), customerId, userNames: rows.userNames, skips: rows.skips },
-  )
+  const pipeline = await readPipelineRows({ customerIds: [customerId], contactIds: [contact.id] })
+  return residentialRowsOf(pipeline, { contact: rows.contact, firstName: flowFirst(contact, rows.card), customerId, userNames: rows.userNames, skips: rows.skips })
 }
 
 /** A customer's page, read back; the card goes without it when it cannot be read (the flow itself still reads). */

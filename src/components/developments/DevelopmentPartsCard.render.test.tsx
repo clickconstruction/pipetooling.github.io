@@ -57,7 +57,7 @@ const bids = [{ id: 'b1', label: 'BP340', plans_link: 'https://drive.google.com/
 const view = buildSitePlansView({ parts, sets, jobs, bids })
 
 function writes(over: Partial<SitePlansWrites> = {}): SitePlansWrites {
-  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), ...over }
+  return { addPart: vi.fn(async () => true), addSet: vi.fn(async () => true), buildFrom: vi.fn(async () => true), removeSet: vi.fn(async () => true), writeChanges: vi.fn(async () => true), ...over }
 }
 
 describe('DevelopmentPartsCard', () => {
@@ -101,6 +101,30 @@ describe('DevelopmentPartsCard', () => {
     expect(opened.length).toBe(1)
   })
 
+  it('reads the change line under a set, offers Write what changed on one that followed another with none, and saves it', async () => {
+    const w = writes()
+    const told = buildSitePlansView({ parts, sets: sets.map((s) => (s.id === 's2' ? { ...s, changes: 'P-201: the riser moved to the north wall.' } : s)), jobs, bids })
+    const { unmount } = renderWithProviders(<DevelopmentPartsCard view={told} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
+    expect(screen.getByTestId('plan-set-changes-s2').textContent).toContain('What changed from Bunker issued set: P-201: the riser moved to the north wall.')
+    expect(screen.getByRole('button', { name: 'Edit what changed' })).toBeTruthy()
+    fireEvent.click(screen.getByTestId('site-older-p2'))
+    expect(within(screen.getByTestId('plan-set-changes-s1')).getByRole('button', { name: 'Write what changed' })).toBeTruthy()
+    expect(screen.queryByTestId('plan-set-changes-s0')).toBeNull()
+    unmount()
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={w} />)
+    fireEvent.click(screen.getByRole('button', { name: 'Write what changed' }))
+    expect(screen.getByTestId('plan-set-changes-editor-s2').style.display).toBe('grid')
+    fireEvent.change(screen.getByLabelText('What changed in Bunker addendum 1'), { target: { value: 'P-201: the riser moved to the north wall.' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Save what changed' }))
+    await waitFor(() => expect(w.writeChanges).toHaveBeenCalledWith('s2', 'P-201: the riser moved to the north wall.'))
+    await waitFor(() => expect(screen.queryByTestId('plan-set-changes-editor-s2')).toBeNull())
+  })
+
+  it('shows no change press to a reader', () => {
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite={false} openCarrier={() => {}} askAbout={() => {}} />)
+    expect(screen.queryByRole('button', { name: 'Write what changed' })).toBeNull()
+  })
+
   it('reads each older set date first, draws a dashed rule between sets, and groups the presses at the right', () => {
     renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={writes()} />)
     fireEvent.click(screen.getByTestId('site-older-p2'))
@@ -135,6 +159,16 @@ describe('DevelopmentPartsCard', () => {
     fireEvent.change(screen.getByLabelText("The part's name"), { target: { value: 'Pool house' } })
     fireEvent.click(screen.getByRole('button', { name: 'Make the part' }))
     await waitFor(() => expect(w.addPart).toHaveBeenCalledWith('Pool house'))
+  })
+
+  it('on a phone reads the change line in the part’s card and under an older set', () => {
+    screenState.phone = true
+    const told = buildSitePlansView({ parts, sets: sets.map((s) => (s.id === 's2' ? { ...s, changes: 'P-201: the riser moved to the north wall.' } : s)), jobs, bids })
+    renderWithProviders(<DevelopmentPartsCard view={told} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={writes()} />)
+    const cards = screen.getByTestId('site-plans-cards')
+    expect(within(cards).getByTestId('plan-set-changes-s2').textContent).toContain('What changed from Bunker issued set: P-201: the riser moved to the north wall.')
+    fireEvent.click(screen.getByTestId('site-older-p2'))
+    expect(within(cards).getByTestId('plan-set-changes-s1')).toBeTruthy()
   })
 
   it('carries the papers on each part: a column and its fold on the desk, the same count and list in a phone card', () => {

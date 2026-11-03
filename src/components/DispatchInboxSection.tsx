@@ -13,6 +13,8 @@ import {
 import { useNarrowViewport640 } from '../hooks/useNarrowViewport640'
 import { useAuth } from '../hooks/useAuth'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
+import { useJobDetailModal } from '../contexts/JobDetailModalContext'
+import { STAGE_CHECK_ACTION, STAGE_CHECK_WORDS, stageCheckPayloadFrom } from '../lib/jobs/stageCheckDispatch'
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
 import { canCreateJobFromBid } from '../lib/bids/wonMomentActions'
 import { jobDraftFromPayload, jobDraftWords } from '../lib/bids/jobDraft'
@@ -164,6 +166,8 @@ export function DispatchInboxSection({
 }: DispatchInboxSectionProps) {
   // v2.3143: the "open the job" to-do's one button runs the app-level New Job door itself.
   const jobFormModal = useJobFormModal()
+  // A stage check (punch list #245) opens the job window itself, on the Job tab or on the check's sheet.
+  const jobDetailModal = useJobDetailModal()
   const narrow = useNarrowViewport640()
   const { user: authUser, role } = useAuth()
   // Customer Waiting (v2.3247): which row the lower/raise sheet is open for.
@@ -349,6 +353,53 @@ export function DispatchInboxSection({
                     Open the job
                   </button>
                 ) : null
+                // A check the crew could not answer (punch list #245): the tag, Open the job and Open the check. The
+                // stage and the check ride in the payload, which the inbox has read since v2.1615, so the row's doors
+                // need no new column; the two id columns are the sheet's and PR 2's.
+                const stageCheck = req.pending_action === STAGE_CHECK_ACTION ? stageCheckPayloadFrom(req.pending_payload) : null
+                const stageCheckJobId = stageCheck && !isClosed && jobDetailModal ? req.job_ledger_id : null
+                const stageCheckBtnStyle = {
+                  padding: '0.35rem 0.75rem',
+                  background: 'var(--surface)',
+                  border: '1px solid #93c5fd',
+                  borderRadius: 4,
+                  cursor: 'pointer',
+                  fontSize: '0.875rem',
+                  color: 'var(--text-blue-700)',
+                  fontWeight: 600,
+                  flexShrink: 0,
+                } as const
+                const openStageCheckJobBtn = stageCheckJobId ? (
+                  <button
+                    type="button"
+                    data-dispatch-open-job={req.id}
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      jobDetailModal?.openJobDetail({ jobId: stageCheckJobId })
+                    }}
+                    title="Open the job window on the Job tab, the stage checklists in view"
+                    aria-label={`${STAGE_CHECK_WORDS.openJob}: ${req.title}`}
+                    style={stageCheckBtnStyle}
+                  >
+                    {STAGE_CHECK_WORDS.openJob}
+                  </button>
+                ) : null
+                const openStageCheckBtn =
+                  stageCheckJobId && stageCheck ? (
+                    <button
+                      type="button"
+                      data-dispatch-open-check={req.id}
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        jobDetailModal?.openJobDetail({ jobId: stageCheckJobId, openStageChecklist: { fixtureId: stageCheck.fixture_id, questionId: stageCheck.question_id } })
+                      }}
+                      title={`Open ${stageCheck.stage_name ? `the ${stageCheck.stage_name} checklist` : 'the stage checklist'} with this check's row open: answer it, add a note, skip it on this job or take it off`}
+                      aria-label={`${STAGE_CHECK_WORDS.openCheck}: ${req.title}`}
+                      style={stageCheckBtnStyle}
+                    >
+                      {STAGE_CHECK_WORDS.openCheck}
+                    </button>
+                  ) : null
                 const showLinkJobPicturesAction =
                   !isClosed &&
                   req.pending_action === 'link_job_pictures' &&
@@ -658,6 +709,14 @@ export function DispatchInboxSection({
                           />
                         ) : (
                           <div style={{ fontWeight: 500 }}>
+                            {stageCheck ? (
+                              <span
+                                data-dispatch-stage-check-tag={req.id}
+                                style={{ display: 'inline-block', marginRight: 6, padding: '0.05rem 0.5rem', borderRadius: 999, fontSize: '0.7rem', fontWeight: 700, background: 'var(--bg-amber-100)', color: 'var(--text-amber-800)', verticalAlign: 'middle' }}
+                              >
+                                {STAGE_CHECK_WORDS.tag}
+                              </span>
+                            ) : null}
                             <ChecklistTitleWithLinks title={req.title} links={req.links ?? []} />
                           </div>
                         )}
@@ -751,6 +810,8 @@ export function DispatchInboxSection({
                         }
                       >
                         {openJobFromBidBtn}
+                        {openStageCheckBtn}
+                        {openStageCheckJobBtn}
                         {linkJobPicturesBtn}
                         {openSupplyShareBtn}
                         {createTripChargeBtn}
