@@ -849,6 +849,20 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
     return items
   }
 
+  // The Job photos window the ⋯ sheet's Photos line opens (punch list #244), drawn under the phone rows and under the
+  // cards alike: v2.6365 drew it under the phone rows only, so a card's Photos line opened nothing (v2.6451).
+  const photosWindow = photosJob ? (
+    <JobPhotosWindow
+      job={photosJob}
+      onClose={() => setPhotosJob(null)}
+      onOpenJob={() => {
+        const j = photosJob
+        setPhotosJob(null)
+        openEdit(j)
+      }}
+    />
+  ) : null
+
   // Phone rows (punch list #30, PR 2a): two lines and one chip per job; the ⋯ sheet and the
   // stage's action are the same ones the cards wire — only the surface changes.
   if (props.phoneRows) {
@@ -891,17 +905,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
           actions={moreActionsJob ? moreActionsFor(moreActionsJob) : []}
           onClose={() => setMoreActionsJob(null)}
         />
-        {photosJob ? (
-          <JobPhotosWindow
-            job={photosJob}
-            onClose={() => setPhotosJob(null)}
-            onOpenJob={() => {
-              const j = photosJob
-              setPhotosJob(null)
-              openEdit(j)
-            }}
-          />
-        ) : null}
+        {photosWindow}
       </div>
     )
   }
@@ -984,6 +988,7 @@ export default function JobsStagesCardList(props: JobsStagesTableProps) {
         actions={moreActionsJob ? moreActionsFor(moreActionsJob) : []}
         onClose={() => setMoreActionsJob(null)}
       />
+      {photosWindow}
     </div>
   )
 }
@@ -1186,6 +1191,20 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
     return items
   }
 
+  // The Job photos window the ⋯ sheet's Photos line opens (punch list #244), drawn under the phone rows and under the
+  // cards alike: v2.6365 drew it under the phone rows only, so a card's Photos line opened nothing (v2.6451).
+  const photosWindow = photosJob ? (
+    <JobPhotosWindow
+      job={photosJob}
+      onClose={() => setPhotosJob(null)}
+      onOpenJob={() => {
+        const j = photosJob
+        setPhotosJob(null)
+        openEdit(j)
+      }}
+    />
+  ) : null
+
   if (props.phoneRows) {
     const pr = props.phoneRows
     const phoneRows = rows
@@ -1234,17 +1253,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
           actions={moreActionsRow ? moreActionsForRow(moreActionsRow) : []}
           onClose={() => setMoreActionsRow(null)}
         />
-        {photosJob ? (
-          <JobPhotosWindow
-            job={photosJob}
-            onClose={() => setPhotosJob(null)}
-            onOpenJob={() => {
-              const j = photosJob
-              setPhotosJob(null)
-              openEdit(j)
-            }}
-          />
-        ) : null}
+        {photosWindow}
       </div>
     )
   }
@@ -1382,6 +1391,7 @@ export function JobsStagesUnifiedCardList(props: JobsStagesUnifiedTableProps) {
         actions={moreActionsRow ? moreActionsForRow(moreActionsRow) : []}
         onClose={() => setMoreActionsRow(null)}
       />
+      {photosWindow}
     </div>
   )
 }

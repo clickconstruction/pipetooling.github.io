@@ -12,7 +12,8 @@ import { cardPhotoWords } from './reportPhotos'
 import { sourceChips, sourceWords, type SourcePick, type UploadedPhotoRow } from './uploadedPhotos'
 
 /** Where a shot stands on the window. */
-export type JobPhotoTileStatus = 'shrinking' | 'sending' | 'sent' | 'failed'
+/** `kept` (PR 5): the shot waits on the phone with no signal and goes with the press. */
+export type JobPhotoTileStatus = 'shrinking' | 'sending' | 'sent' | 'kept' | 'failed'
 
 /** A shot on the window, from the shutter to Add. */
 export type JobPhotoTile = {
@@ -88,6 +89,10 @@ export const JOB_PHOTO_WORDS = {
   plainCaption: 'Job photo',
   onItsWay: 'on its way to Drive',
   inDrive: 'In Drive',
+  /** A shot kept on the phone with no signal (PR 5). */
+  kept: 'Kept on the phone. It goes when the signal is back.',
+  /** The toast after a press that queued. */
+  queued: 'Kept on the phone. The photos go to the job when the signal is back.',
   /** The Documents → Photos chip and the window's source chip. */
   sourceChip: 'Job photos',
   sourceWord: 'Job photo',
@@ -121,9 +126,14 @@ export function jobPhotoCaption(input: { description: string; stageName: string 
   return stage || JOB_PHOTO_WORDS.plainCaption
 }
 
-/** The tiles already in the bucket with their row: only the press is left for them. */
+/** The tiles the press takes: in the bucket with their row, or kept on the phone to go with the press (PR 5). */
 export function readyTiles<T extends Pick<JobPhotoTile, 'status'>>(tiles: ReadonlyArray<T>): T[] {
-  return tiles.filter((t) => t.status === 'sent')
+  return tiles.filter((t) => t.status === 'sent' || t.status === 'kept')
+}
+
+/** The tiles kept on the phone: with any, the press goes through the outbox. */
+export function keptTiles<T extends Pick<JobPhotoTile, 'status'>>(tiles: ReadonlyArray<T>): T[] {
+  return tiles.filter((t) => t.status === 'kept')
 }
 
 /** True while a shot is still shrinking or sending: the press waits for it. */

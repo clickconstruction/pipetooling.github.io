@@ -1,6 +1,7 @@
 import { calendarYmdInAppTzFromIso } from '../../utils/dateUtils'
 import { jobPartyName } from './jobPartyExclusive'
 import { earnedRevenueInWindow } from '../bridge/earnedRevenue'
+import { jobEarned } from './jobEarned'
 import { burnProjectedMarginForSort, projectJobSummaryBurn, type JobBudgetFooting, type JobSummaryBurn } from './jobSummaryBurn'
 import { JOB_BUDGET_GLYPH, type JobBudgetSource } from './jobBudget'
 import {
@@ -451,15 +452,11 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     )
     const finished = pct === 100
     const flags: JobSummaryRowFlag[] = []
-    let revenueUsd = contractUsd
+    // The earned slice is one kernel with the Development page's scoreboard (v2.6407).
+    const earned = jobEarned({ contractUsd, pct, finished })
+    let revenueUsd = earned.usd
     let earnedHours: JobSummaryEnrichedRow<R>['earnedHours'] = null
-    if (!finished) {
-      if (pct == null) {
-        revenueUsd = contractUsd * 0.5
-        flags.push('assumed-50')
-      } else revenueUsd = contractUsd * (pct / 100)
-      if (contractUsd > 0) flags.push('earned')
-    }
+    flags.push(...earned.flags)
     const earnedLifetimeUsd = revenueUsd
     if (!finished && ledger) {
       // v2.3575: the window's share of the earned value, by hours — the Bridge's kernel.

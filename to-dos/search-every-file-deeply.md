@@ -2,7 +2,7 @@
 name: "Search every file deeply: our own index, OCR and meaning, backfilled once by an agent"
 number: 240
 group: close
-status: built 2026-11-03 · PR 1 v2.6319 (#6773: the index, the sweep, Find a file reading it first) · PR 2 v2.6332 (#6809: the dev seat's door, a read inside the platform's limits) · PR 3 v2.6336 (#6894: OCR behind a secret) · PR 4 v2.6338 (#6920: search by meaning behind a key) · with v2.6369 (the index's hits at once), v2.6396 (no twin reads a file's words) and v2.6408 (a 12 MB cap after a memory kill) · the walk, the fill and the one retry ran: 4,573 rows, 2,002 with their words, every Shared Drive file with a row · left: the owner's two secrets, the reconcile step the owner chose for new files
+status: built 2026-11-03 · PR 1 v2.6319 (#6773: the index, the sweep, Find a file reading it first) · PR 2 v2.6332 (#6809: the dev seat's door, a read inside the platform's limits) · PR 3 v2.6336 (#6894: OCR behind a secret) · PR 4 v2.6338 (#6920: search by meaning behind a key) · PR 5 v2.6417 (#6899: the sweep's reconcile step, live 2026-11-03) · with v2.6369 (the index's hits at once), v2.6396 (no twin reads a file's words) and v2.6408 (a 12 MB cap after a memory kill) · the walk, the fill and the one retry ran: 4,573 rows, 2,002 with their words, every Shared Drive file with a row · left: the owner's two secrets
 summary: >
   Find a file (Documents → Search, v2.6305) asks Drive's own full-text index and lands each hit on its job; PR #6752
   adds the line around the words. That finds a file by words Google has indexed, and nothing more. The owner wants
@@ -10,10 +10,10 @@ summary: >
   Postgres (one row per Drive file, full-text ranked), fed by the sweep as files land and filled once by a backfill,
   our own OCR for scanned paper, and embeddings so a search by meaning finds the letter that never used the word.
   The backfill is to be run one time by a Claude agent session after the features land, not by a cron.
-next: the owner sets `GOOGLE_DOCAI_PROCESSOR` and `GEMINI_API_KEY` (`docs/DRIVE_INTAKE_SETUP.md` → Our own OCR, Search by meaning); nothing redeploys, both are read at call time, and the sweep then reads five waiting scans and embeds ten files a run by itself; `drive-link`'s `ocr_probe` and `embed_probe`, called as a dev, say it took; tune `max_distance` from the first days' hits by meaning; the reconcile step in another session (the owner has the prompt)
+next: the owner sets `GOOGLE_DOCAI_PROCESSOR` and `GEMINI_API_KEY` (`docs/DRIVE_INTAKE_SETUP.md` → Our own OCR, Search by meaning); nothing redeploys, both are read at call time, and the sweep then reads five waiting scans and embeds ten files a run by itself; `drive-link`'s `ocr_probe` and `embed_probe`, called as a dev, say it took; tune `max_distance` from the first days' hits by meaning
 size: L
 blocker: the two secrets are the owner's. New files in a bid's folder outside the Shared Drive wait on decision 4. PDFs over 12 MB stay `big`, found by Drive's search, unless a heavier reader is built later.
-ver: v2.6319 · 6332 · 6336 · 6338 · 6343 · 6364 · 6369 · 6396 · 6403 · 6408
+ver: v2.6319 · 6332 · 6336 · 6338 · 6343 · 6364 · 6369 · 6396 · 6403 · 6408 · 6417
 opinion: your call — the code is done and deployed; the two secrets are yours, and each turns its part on with no redeploy
 mockup: not required — the box is the shipped Find a file; the index changes what it finds and how fast, not the screen, and PR #6752 already draws the excerpt line the index will feed
 ---
@@ -317,14 +317,18 @@ a file eleven folders deep in a plan export find it on its bid.
   hour), and each of the 4 files changed since the sweep began had its row within nine minutes. A deleted file loses its row within about a
   day by the rechecks.
 - **What it cannot see.** A file moved into the drive keeps its old modified time: 672 of the 775 job rows are dated before the drive
-  existed (2026-11-01). Forum reports say a file dragged in from a computer keeps its date too; nothing official says so and it is
-  untested here, so the reconcile step's last proof settles it. This card used to say a file dropped in by hand is found within minutes.
-  That holds only for a file with a fresh date.
+  existed (2026-11-01). A file put in by hand through Drive's own page keeps its date too, proved 2026-11-03 under the ZZ Test job: a
+  PDF dated 2024-03-15 showed that date in Drive and got no row across two sweep runs on the code before v2.6417. This card used to say
+  a file dropped in by hand is found within minutes. That held only for a file with a fresh date; since v2.6417 it holds for any.
 - **The reconcile step** (v2.6417): each run, once its stamped pass left nothing behind, also lists the whole Shared Drive against every
   row's id and takes the files with no row, newest first, forty a run, whatever their date, as the run's last step in its own catch, so
   a heavy file there costs neither the stamp nor the rechecks, and its old dates never move the stamp. About a dozen extra Drive lists
-  a run at today's size; one log line a run, counts only, read through the management API's `function_logs`. The proof the owner
-  gives (a file dragged in from a computer under the ZZ Test job) settles whether a drag keeps its old date; the step takes it either way.
+  a run at today's size; one log line a run, counts only, read through the management API's `function_logs`. Live 2026-11-03: a second
+  PDF with the same 2024 date, put in at 11:50Z, had its row at 11:53Z from the step's first run after it (1 with no row, 1 taken,
+  1 indexed), its modified time still 2024-03-15. Six of the seven runs in the hour after the deploy finished the step in eight to
+  ten seconds; the seventh's listing met a Drive 403 that the step's own catch took, costing the stamp and the rechecks nothing, its
+  reason not in the line since `driveGet` throws the status alone (one to watch: 403s on most runs would mean the dozen lists meet
+  Drive's rate). No worker stopped, and the check read 0 files with no row.
 - **Weighed and not chosen**: Drive's change feed (`changes.list` with a page token), which also shows a delete at once but is untested on
   a file moved in; and indexing when the app files something itself, which misses every file put in by hand.
 - **Neither covers a bid's folder outside the Shared Drive**: 1,861 rows sit there. They are searchable, which Drive's own search in the

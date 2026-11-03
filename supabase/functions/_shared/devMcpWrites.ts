@@ -9,7 +9,9 @@
 // makes it (action create) and, v2.6185, the plan set onto it (action file_plans); since v2.6244 dev_legal_statement_write, a sworn
 // statement drafted onto a matter's Timeline (punch list #220); since v2.6367 dev_on_site_write, the Materials on site
 // ledger's presses (punch list #209: a container, a delivery, a movement, a count), SECURITY INVOKER so every row lands
-// under the dev's own RLS. The verb grammar is plan_ (a dry run, its own call) →
+// under the dev's own RLS; since v2.6426 dev_person_evidence_write, a piece of evidence
+// on a person's HR file, whose apply stages the files in the hr-files bucket before the rows and asks hr-evidence-drive
+// after them. The verb grammar is plan_ (a dry run, its own call) →
 // apply_ (the real write, which must quote the plan). Pure: no env reads, no network; the
 // hash uses the platform's crypto.subtle, which Deno and Node both have.
 //
@@ -18,6 +20,10 @@
 // RLS, and no RPC exists for them. Their dry run and write live in devMcpPlanSets.ts; the grammar is the same.
 
 import { isPlanPartVerb, planPartInput } from './devMcpPlanSets.ts'
+import { EVIDENCE_FILE_MAX_BYTES, EVIDENCE_MEMO_MAX, EVIDENCE_TITLE_MAX } from './personEvidence.ts'
+
+/** Files on one evidence record through the seat; the panel takes any number, a tool call carries them as base64. */
+export const EVIDENCE_MAX_FILES = 20
 
 export const WRITE_VERBS = {
   plan_cost_batch: { rpc: 'cost_batch_apply', step: 'plan' },
@@ -25,6 +31,11 @@ export const WRITE_VERBS = {
   revert_cost_batch: { rpc: 'cost_batch_revert', step: 'revert' },
   plan_hr_entry: { rpc: 'dev_hr_entry_write', step: 'plan' },
   apply_hr_entry: { rpc: 'dev_hr_entry_write', step: 'apply' },
+  // v2.6426: a piece of evidence on a person's HR file (dev_person_evidence_write): the record — the day it is about, a
+  // title, a memo — and its files. content_base64 becomes name, mime, size_bytes and sha256 before the dry run, as a
+  // matter document's does; the server stages the files in hr-files at apply before the rows, then asks hr-evidence-drive.
+  plan_person_evidence: { rpc: 'dev_person_evidence_write', step: 'plan' },
+  apply_person_evidence: { rpc: 'dev_person_evidence_write', step: 'apply' },
   // v2.4814: the narrative for the firm on a legal matter (dev_legal_narrative_write over legal_set_narrative).
   plan_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'plan' },
   apply_matter_narrative: { rpc: 'dev_legal_narrative_write', step: 'apply' },
@@ -59,6 +70,12 @@ export const WRITE_VERBS = {
   // v2.6317 / 0.14.0 (punch list #239): a set of drawings, or a paper, on a plan part — the rows the job window's
   // Plans section writes (src/lib/plans/planSetsIo.ts addSet / keepPaper / markPaperCame), as the dev under RLS.
   // The dry run is the server's own read of the part (devMcpPlanSets.ts); no RPC, so rpc is null.
+  // v2.6437 / 0.19.0: clock sessions as the office edits them — the start and the end, the description, the job and
+  // the approval — through dev_clock_session_write, op by op with a dry run; the typed-hours second look and the
+  // approval guard hold inside the definer as they do in the app, so the dev's own session and the hours the dev
+  // typed are held for someone else.
+  plan_clock_sessions: { rpc: 'dev_clock_session_write', step: 'plan' },
+  apply_clock_sessions: { rpc: 'dev_clock_session_write', step: 'apply' },
   plan_plan_set: { rpc: null, step: 'plan' },
   apply_plan_set: { rpc: null, step: 'apply' },
   plan_paper: { rpc: null, step: 'plan' },
@@ -106,6 +123,8 @@ const DOCUMENT_STATES = ['draft', 'final', 'sent', 'received'] as const
 const DOCUMENT_SENT_HOWS = ['email', 'certified_mail', 'mail', 'hand', 'other'] as const
 const HISTORY_SOURCES = ['email', 'call', 'text', 'on_site', 'letter', 'note'] as const
 const GAP_ACTIONS = ['answer', 'clear'] as const
+const CLOCK_OPS = ['times', 'note', 'move', 'approve'] as const
+const CLOCK_SESSION_MAX_MS = 24 * 3600 * 1000
 const CONTAINER_ACTIONS = ['add', 'move', 'retire', 'bring_back'] as const
 const CONTAINER_KINDS = ['cage', 'box', 'loose'] as const
 const MOVEMENT_REASONS = ['moved', 'used', 'returned', 'taken', 'cannot_find', 'damaged'] as const
@@ -324,6 +343,44 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
   }
+  if (verb === 'plan_clock_sessions' || verb === 'apply_clock_sessions') {
+    // v2.6437: the ops the office's own doors take — the start and the end (the edit modal), the description (its
+    // note box), the job (the assign popover), the approval (approve_clock_sessions_v2) — each checked here for shape
+    // and in the database for the rest (a revoked or rejected session, a job that is not there, a hold).
+    const sessions = obj(input.sessions)
+    const shape = `${verb} needs sessions — { reason (words: why, kept in the call log and read by the next person), ops: [ { op: 'times', session_id, start, end (ISO timestamps with their offset; end after start, at most 24 hours) } | { op: 'note', session_id, note (the description as the session shows it; '' clears it) } | { op: 'move', session_id, job_id (a jobs_ledger.id: find_job) } | { op: 'approve', session_id } ] } — at most 50 ops; session_id is a clock_sessions.id (read_rows on clock_sessions by user_id and work_date, or get_job's hours).`
+    if (!sessions) return { ok: false, error: shape }
+    const reason = typeof sessions.reason === 'string' ? sessions.reason.trim() : ''
+    if (!reason || reason.length > 500) return { ok: false, error: shape }
+    if (!Array.isArray(sessions.ops) || sessions.ops.length === 0 || sessions.ops.length > 50) return { ok: false, error: shape }
+    const ops: Json[] = []
+    for (const raw of sessions.ops) {
+      const o = obj(raw)
+      const op = o && typeof o.op === 'string' ? o.op.trim().toLowerCase() : ''
+      const sessionId = o && typeof o.session_id === 'string' ? o.session_id.trim() : ''
+      if (!o || !(CLOCK_OPS as readonly string[]).includes(op) || !UUID_RE.test(sessionId)) return { ok: false, error: shape }
+      const built: Json = { op, session_id: sessionId }
+      if (op === 'times') {
+        const start = typeof o.start === 'string' ? o.start.trim() : ''
+        const end = typeof o.end === 'string' ? o.end.trim() : ''
+        const startMs = Date.parse(start)
+        const endMs = Date.parse(end)
+        if (!start || !end || Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs || endMs - startMs > CLOCK_SESSION_MAX_MS) return { ok: false, error: shape }
+        built.start = start
+        built.end = end
+      } else if (op === 'note') {
+        if (typeof o.note !== 'string' || o.note.length > 2000) return { ok: false, error: shape }
+        built.note = o.note
+      } else if (op === 'move') {
+        const jobId = typeof o.job_id === 'string' ? o.job_id.trim() : ''
+        if (!UUID_RE.test(jobId)) return { ok: false, error: shape }
+        built.job_id = jobId
+      }
+      ops.push(built)
+    }
+    const p: Json = { reason, ops }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${ops.length} clock session op${ops.length === 1 ? '' : 's'}`, planHash }
+  }
   if (verb === 'plan_history_entry' || verb === 'apply_history_entry') {
     const line = obj(input.line)
     const shape = `${verb} needs line — { development_id (a developments.id: read_rows on developments by name), happened_at (when it happened, an ISO timestamp with its offset: the email's time, not now), source (email | call | text | on_site | letter | note), body (what happened, whole, under 20,000 characters), agent_label (the robot's name as the line shows it, e.g. the inbox robot, under 80), job_id? | bid_id? | customer_id? (at most one: the piece it is about; none means the site), link_url? }.`
@@ -532,6 +589,36 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${jobId} ${container}`, planHash }
   }
+  if (verb === 'plan_person_evidence' || verb === 'apply_person_evidence') {
+    const evidence = obj(input.evidence)
+    const shape = `${verb} needs evidence — { person_id (a people.id; get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, the day it is about, not ahead of today), title (under ${EVIDENCE_TITLE_MAX} characters), memo (what it shows and why it matters, under ${EVIDENCE_MEMO_MAX}), entry_id? (the person_file_entries.id it proves), files: [{ name (with its extension), content_base64 (the file; the server replaces it with mime, size_bytes and sha256), mime? }] — at least one, at most ${EVIDENCE_MAX_FILES}, each under ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB }.`
+    if (!evidence) return { ok: false, error: shape }
+    const str = (k: string) => (typeof evidence[k] === 'string' ? (evidence[k] as string).trim() : '')
+    const personId = str('person_id')
+    const datedOn = str('dated_on')
+    const title = str('title')
+    const memo = str('memo')
+    if (!UUID_RE.test(personId) || !YMD_RE.test(datedOn) || !title || title.length > EVIDENCE_TITLE_MAX || !memo || memo.length > EVIDENCE_MEMO_MAX) return { ok: false, error: shape }
+    const rawFiles = Array.isArray(evidence.files) ? evidence.files : []
+    if (rawFiles.length < 1 || rawFiles.length > EVIDENCE_MAX_FILES) return { ok: false, error: shape }
+    const files: Json[] = []
+    for (const raw of rawFiles) {
+      const f = obj(raw)
+      const name = f && typeof f.name === 'string' ? f.name.trim() : ''
+      const mime = f && typeof f.mime === 'string' ? f.mime.trim().toLowerCase() : ''
+      const sha256 = f && typeof f.sha256 === 'string' ? f.sha256.trim().toLowerCase() : ''
+      const sizeBytes = f && typeof f.size_bytes === 'number' && Number.isInteger(f.size_bytes) ? f.size_bytes : NaN
+      if (!f || !name || name.length > 200 || !mime || !HASH_RE.test(sha256) || !(sizeBytes > 0 && sizeBytes <= EVIDENCE_FILE_MAX_BYTES)) return { ok: false, error: shape }
+      files.push({ name, mime, size_bytes: sizeBytes, sha256 })
+    }
+    const p: Json = { person_id: personId, dated_on: datedOn, title, memo, files }
+    const entryId = str('entry_id')
+    if (entryId) {
+      if (!UUID_RE.test(entryId)) return { ok: false, error: shape }
+      p.entry_id = entryId
+    }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: personId, planHash }
+  }
   // plan_hr_entry / apply_hr_entry
   const entry = obj(input.entry)
   const personId = entry && typeof entry.person_id === 'string' ? entry.person_id.trim() : ''
@@ -657,8 +744,10 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const filePlans = verb === 'apply_file_plans'
   const planSet = verb === 'apply_plan_set'
   const paper = verb === 'apply_paper'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const evidence = verb === 'apply_person_evidence'
+  const clock = verb === 'apply_clock_sessions'
+  const what = clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : `on this person${when}`
+  const again = clock ? 'The sessions already read that way; read_rows on clock_sessions shows them. Plan again with what you mean now.' : cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : evidence ? 'The record is on the person\'s Evidence tab; get_person_file shows it with its Drive state. A second copy needs a new plan with a different day, title or files.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 

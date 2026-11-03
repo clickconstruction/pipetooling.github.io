@@ -80,7 +80,7 @@ export async function replayOutbox(io: OutboxReplayIo = {}): Promise<void> {
     store.put(sending)
     // A kept report's photos go first (punch list #229, PR 6), each marked sent on the press as it lands; a photo
     // that does not send counts as the press's failed try, and the report waits with it.
-    if (sending.kind === 'field-report' && unsentKeptPhotos(sending).length > 0) {
+    if (unsentKeptPhotos(sending).length > 0) {
       const photosOut = await (io.sendKept ?? ((p, s) => sendKeptPhotos(p, s, {} as SendKeptIo)))(sending, store)
       const fresh = store.presses().find((p) => p.id === sending.id)
       if (!fresh) return

@@ -79,3 +79,25 @@ export function writeMoneySort(developmentId: string, mode: MoneySortMode): void
     /* the page works without the memory */
   }
 }
+
+/** The Money look's view (v2.6407): where the money is, or the scoreboard; the device remembers the one you were in. */
+export type MoneyView = 'money' | 'scoreboard'
+
+const viewKey = (developmentId: string) => `pt.development.${developmentId}.money.view`
+
+export function readMoneyView(developmentId: string): MoneyView {
+  try {
+    return window.localStorage.getItem(viewKey(developmentId)) === 'scoreboard' ? 'scoreboard' : 'money'
+  } catch {
+    return 'money'
+  }
+}
+
+export function writeMoneyView(developmentId: string, view: MoneyView): void {
+  try {
+    if (view === 'money') window.localStorage.removeItem(viewKey(developmentId))
+    else window.localStorage.setItem(viewKey(developmentId), view)
+  } catch {
+    /* the page works without the memory */
+  }
+}

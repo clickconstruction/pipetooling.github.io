@@ -6,7 +6,8 @@ import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_share
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { getPersonFile } from '../_shared/devMcpPersonFile.ts'
-import { WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, stateGuarded, writeRpcBody } from '../_shared/devMcpWrites.ts'
+import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, stateGuarded, writeRpcBody } from '../_shared/devMcpWrites.ts'
+import { EVIDENCE_FILE_MAX_BYTES, evidenceMime, evidenceStoragePath } from '../_shared/personEvidence.ts'
 import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, planPartApply, planPartDryRun, readPlanPartWorld, type FiledPlansJob, type FiledPlansPart, type PartReads, type PartWrites, type PlanPartPayload } from '../_shared/devMcpPlanSets.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
@@ -33,8 +34,10 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0;
 // a new bid v2.6183 / 0.10.0; its plan set into Drive and onto the bid v2.6185 / 0.11.0; a sworn statement drafted onto a
 // matter's Timeline v2.6244 / 0.13.0; a set of drawings or a paper on a plan part v2.6317 / 0.14.0; Materials on site's
-// presses v2.6367 / 0.16.0, behind the file index's 0.15.0, punch list #209) are a SECOND path, not a loosening of the first: thirty-three verbs
-// (_shared/devMcpWrites.ts) — twenty-nine POST one of eleven hard-coded, dev-gated RPCs as the dev (dev_on_site_write the
+// presses v2.6367 / 0.16.0, behind the file index's 0.15.0, punch list #209; a piece of evidence on a person's HR file
+// v2.6426 / 0.18.0, behind get_person_file's 0.17.0; clock sessions — the start and the end, the description, the job, the
+// approval — v2.6437 / 0.19.0) are a SECOND path, not a loosening of the first: thirty-seven verbs
+// (_shared/devMcpWrites.ts) — thirty-three POST one of fourteen hard-coded, dev-gated RPCs as the dev (dev_on_site_write the
 // one SECURITY INVOKER wrapper, so the rows land under the dev's own RLS); the four plan-part verbs (v2.6317) write the rows
 // the job window's Plans section writes (plan_sets, plan_parts, a lane's request) as the dev under the same RLS, since no
 // RPC exists for them —
@@ -50,11 +53,14 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // A person's HR file whole (v2.6422 / 0.17.0, numbered behind v2.6367's 0.16.0): get_person_file reads it as the People → HR tab draws it — the
 // tab's own kernel (_shared/personTimeline.ts) over the tab's sources and keys (_shared/devMcpPersonFile.ts), as the
 // reader under RLS, fail-soft per source; the HR sources are dev-only, so a view_as of the office sees the papers.
+// A piece of evidence on that file (v2.6426 / 0.18.0): plan_person_evidence → apply_person_evidence, the record and its
+// files (content_base64, each a name, mime, size and sha256 before the dry run) through dev_person_evidence_write; apply
+// stages the files in the hr-files bucket as the dev before the rows and asks hr-evidence-drive after them, fail-soft.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.17.0'
+const SERVER_VERSION = '0.19.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -196,6 +202,16 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { entry: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['entry', 'plan_hash'] },
   },
   {
+    name: 'plan_person_evidence',
+    description: "Dry-run a piece of evidence on a person's HR file (docs/HR_FILES.md → Evidence): a record — the day it is about, a title, a memo on what it shows and why it matters — and its files, sent as content_base64 (a photo, a PDF, an email as .eml, a screenshot; each under 10 MB, at most 20). The server turns each file into its name, mime, size and sha256 before the dry run, so the plan commits to the files themselves; replies with the person, the record as it would be written, where it lands in Drive (People › the person › the day · the title), whether the People folder is set, and a plan_hash. Nothing is written or stored. You are named as the author.",
+    inputSchema: { type: 'object', properties: { evidence: { type: 'object', description: "{ person_id (a people.id — get_person_file resolves a login or a name), dated_on (YYYY-MM-DD, not ahead of today), title (under 160), memo (under 4,000), entry_id? (the person_file_entries.id it proves), files: [{ name (with its extension), content_base64, mime? }] }" } }, required: ['evidence'] },
+  },
+  {
+    name: 'apply_person_evidence',
+    description: 'Keep the evidence you planned: the same evidence plus the plan_hash from plan_person_evidence. Runs the dry run again first and writes only when it still matches. Stages each file in the private hr-files bucket as you, writes the record and its file rows as you (append-only: a correction is a new record), then asks hr-evidence-drive to file the record into the People Shared Drive — fail-soft: a refusal leaves the record standing as not in Drive, and the sweep tries again every ten minutes while a file waits. One apply per plan.',
+    inputSchema: { type: 'object', properties: { evidence: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['evidence', 'plan_hash'] },
+  },
+  {
     name: 'plan_matter_narrative',
     description: "Dry-run the narrative for the firm on a legal matter (v2.4814): the office's account in markdown, read by the law firm as the first tab of its portal and the first section of its printed packet. Replies with the matter, the narrative's length before and after, whether the firm reads it now, and a plan_hash. Nothing is written. The text replaces what is there; an empty markdown clears it. Write facts the record shows, and name each document by its title under Evidence.",
     inputSchema: { type: 'object', properties: { narrative: { type: 'object', description: '{ matter_id (legal_matters.id — read_rows on legal_matters by payer_name), markdown (the whole text, at most 40,000 characters) }' } }, required: ['narrative'] },
@@ -274,6 +290,16 @@ const TOOLS: McpTool[] = [
     name: 'apply_history_entry',
     description: 'Keep the line you planned: the same line plus the plan_hash from plan_history_entry. Runs the dry run again first and writes only when it still matches. Written as you through dev_history_entry_write with via = mcp and your agent_label; the office sees it in History at once, marked via MCP.',
     inputSchema: { type: 'object', properties: { line: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['line', 'plan_hash'] },
+  },
+  {
+    name: 'plan_clock_sessions',
+    description: "Dry-run changes to clock sessions (v2.6437): the start and the end, the description, the job, or the approval of one or more sessions, as the office edits them in People → Hours. The dry run performs every op and unwinds it, replying with each session before and after, each op applied, held (an approval the guard holds: your own session, or hours you typed) or refused with its reason, under a plan_hash; nothing is written. A moved start or end on a punched session is stamped as hours you typed, for someone else's second look, as in the app.",
+    inputSchema: { type: 'object', properties: { sessions: { type: 'object', description: "{ reason (words: why, kept in the call log), ops: [ { op: 'times', session_id, start, end (ISO timestamps with their offset; end after start, at most 24 hours) } | { op: 'note', session_id, note (the description; '' clears it) } | { op: 'move', session_id, job_id (jobs_ledger.id — find_job) } | { op: 'approve', session_id } ] } — at most 50 ops; a session_id is a clock_sessions.id (read_rows on clock_sessions by user_id and work_date)" } }, required: ['sessions'] },
+  },
+  {
+    name: 'apply_clock_sessions',
+    description: 'Write the clock session changes you planned: the same sessions plus the plan_hash from plan_clock_sessions. Runs the dry run again first and writes only when it still matches, so a session someone edited meanwhile refuses the apply. Replies as the plan did, with what was written.',
+    inputSchema: { type: 'object', properties: { sessions: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['sessions', 'plan_hash'] },
   },
   {
     name: 'plan_bid',
@@ -397,7 +423,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are thirty-three verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are thirty-seven verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64 — staged in hr-files and filed into the People Shared Drive), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -531,9 +557,9 @@ async function documentBytes(args: Record<string, unknown>): Promise<DocumentFil
   return { args: { ...args, document: { ...rest, original_name: name, mime, size_bytes: bytes.length, sha256 } }, bytes, mime, name, sha256 }
 }
 
-/** The file into the legal-matter-documents bucket, as the dev (the office cohort's own storage policy applies). */
-async function storagePut(jwt: string, path: string, bytes: Uint8Array, mime: string): Promise<string | null> {
-  const res = await fetch(`${env('SUPABASE_URL')}/storage/v1/object/${LEGAL_MATTER_DOCUMENTS_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`, {
+/** A file into a private bucket as the dev (the bucket's own storage policy applies): legal-matter-documents for a matter's document, hr-files for a person's evidence (v2.6426). */
+async function storagePut(jwt: string, bucket: string, path: string, bytes: Uint8Array, mime: string): Promise<string | null> {
+  const res = await fetch(`${env('SUPABASE_URL')}/storage/v1/object/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`, {
     method: 'POST',
     headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'Content-Type': mime, 'x-upsert': 'false' },
     body: bytes,
@@ -542,17 +568,82 @@ async function storagePut(jwt: string, path: string, bytes: Uint8Array, mime: st
   return `Could not store the file: ${res.status} ${(await res.text()).slice(0, 300)}`
 }
 
-async function storageRemove(jwt: string, path: string): Promise<void> {
+async function storageRemove(jwt: string, bucket: string, path: string): Promise<void> {
   try {
-    await fetch(`${env('SUPABASE_URL')}/storage/v1/object/${LEGAL_MATTER_DOCUMENTS_BUCKET}/${path.split('/').map(encodeURIComponent).join('/')}`, {
+    await fetch(`${env('SUPABASE_URL')}/storage/v1/object/${bucket}/${path.split('/').map(encodeURIComponent).join('/')}`, {
       method: 'DELETE',
       headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}` },
     })
   } catch { /* the row failed; a leftover object is reported by the error already returned */ }
 }
 
-/** A document's bytes never reach the log (v2.6004): the base64 is replaced by its length. */
+/** The private bucket the person file's evidence is staged in (docs/HR_FILES.md); its policies take a dev. */
+const HR_FILES_BUCKET = 'hr-files'
+
+/** An evidence verb's files (v2.6426): each decoded, checked against the panel's caps, digested. `args` is the input with every content_base64 replaced by mime, size_bytes and sha256. */
+type EvidenceFiles = { args: Record<string, unknown>; files: Array<{ bytes: Uint8Array; mime: string; name: string; sha256: string }> }
+
+async function evidenceBytes(args: Record<string, unknown>): Promise<EvidenceFiles | { error: string }> {
+  const ev = args.evidence && typeof args.evidence === 'object' && !Array.isArray(args.evidence) ? (args.evidence as Record<string, unknown>) : null
+  if (!ev) return { error: 'plan_person_evidence needs evidence — { person_id, dated_on, title, memo, entry_id?, files: [{ name, content_base64, mime? }] }.' }
+  const raw = Array.isArray(ev.files) ? ev.files : []
+  if (raw.length < 1) return { error: 'evidence.files needs at least one file — a photo, a PDF, an email as .eml, a screenshot — each { name, content_base64, mime? }.' }
+  if (raw.length > EVIDENCE_MAX_FILES) return { error: `evidence.files holds ${raw.length} files; a record takes at most ${EVIDENCE_MAX_FILES} — plan a second record for the rest.` }
+  const files: EvidenceFiles['files'] = []
+  const facts: Record<string, unknown>[] = []
+  for (const r of raw) {
+    const f = r && typeof r === 'object' && !Array.isArray(r) ? (r as Record<string, unknown>) : null
+    const name = f && typeof f.name === 'string' ? f.name.trim() : ''
+    const b64 = f && typeof f.content_base64 === 'string' ? f.content_base64.replace(/\s+/g, '') : ''
+    if (!name) return { error: 'Every file in evidence.files needs a name, with its extension.' }
+    if (!b64) return { error: `${name}: content_base64 is required — the file, base64-encoded.` }
+    let bytes: Uint8Array
+    try {
+      bytes = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0))
+    } catch {
+      return { error: `${name}: content_base64 is not valid base64.` }
+    }
+    if (bytes.length < 1 || bytes.length > EVIDENCE_FILE_MAX_BYTES) return { error: `${name} must be between 1 byte and ${EVIDENCE_FILE_MAX_BYTES / 1024 / 1024} MB; it is ${bytes.length} bytes. Put a larger file in the person's Drive folder by hand and note it in the memo.` }
+    const mime = evidenceMime({ type: typeof f.mime === 'string' ? f.mime : '', name })
+    const sha256 = await sha256HexOf(bytes)
+    files.push({ bytes, mime, name, sha256 })
+    facts.push({ name, mime, size_bytes: bytes.length, sha256 })
+  }
+  return { args: { ...args, evidence: { ...ev, files: facts } }, files }
+}
+
+/** Drive for one evidence record, as the panel asks it after the rows (personEvidenceIo.ts): fail-soft, the record stands either way. */
+async function fileEvidenceToDrive(jwt: string, evidenceId: string): Promise<Record<string, unknown>> {
+  try {
+    const res = await fetch(`${env('SUPABASE_URL')}/functions/v1/hr-evidence-drive`, {
+      method: 'POST',
+      headers: { apikey: env('SUPABASE_ANON_KEY'), Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ evidence_id: evidenceId }),
+      signal: AbortSignal.timeout(60_000),
+    })
+    const body = (await res.json().catch(() => ({}))) as Record<string, unknown>
+    if (!res.ok) return { asked: true, ok: false, why: `hr-evidence-drive answered ${res.status}: ${typeof body.error === 'string' ? body.error : JSON.stringify(body).slice(0, 200)}` }
+    const failWhy = typeof body.fail_why === 'string' && body.fail_why ? body.fail_why : null
+    return { asked: true, ok: !failWhy, filed: body.filed ?? 0, remaining: body.remaining ?? null, fail_why: failWhy, folder_url: body.folder_url ?? null }
+  } catch (e) {
+    return { asked: true, ok: false, why: `hr-evidence-drive could not be reached: ${e instanceof Error ? e.message : String(e)}` }
+  }
+}
+
+function evidenceDriveNext(drive: Record<string, unknown>): string {
+  if (drive.ok === true) return 'In Drive: folder_url opens the record\'s folder, and get_person_file shows the record with its state.'
+  const why = typeof drive.fail_why === 'string' ? drive.fail_why : typeof drive.why === 'string' ? drive.why : 'no reason given'
+  return `Kept, not in Drive yet: ${why}. The record and its files stand in the app; the sweep asks Drive again every ten minutes while a file waits, and Try Drive again on the Evidence tab asks now.`
+}
+
+/** A document's bytes never reach the log (v2.6004), nor an evidence file's (v2.6426): the base64 is replaced by its length. */
 function argsForLog(name: string, args: Record<string, unknown>): Record<string, unknown> {
+  if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {
+    const ev = args.evidence && typeof args.evidence === 'object' && !Array.isArray(args.evidence) ? (args.evidence as Record<string, unknown>) : null
+    if (!ev || !Array.isArray(ev.files)) return args
+    const files = ev.files.map((f) => (f && typeof f === 'object' && typeof (f as { content_base64?: unknown }).content_base64 === 'string' ? { ...(f as Record<string, unknown>), content_base64: `(${((f as { content_base64: string }).content_base64).length} characters, not logged)` } : f))
+    return { ...args, evidence: { ...ev, files } }
+  }
   if (name !== 'plan_matter_document' && name !== 'apply_matter_document') return args
   const d = args.document && typeof args.document === 'object' && !Array.isArray(args.document) ? (args.document as Record<string, unknown>) : null
   if (!d || typeof d.content_base64 !== 'string') return args
@@ -1180,6 +1271,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'apply_gap_answer':
     case 'plan_history_entry':
     case 'apply_history_entry':
+    case 'plan_clock_sessions':
+    case 'apply_clock_sessions':
     case 'plan_bid':
     case 'apply_bid':
     case 'plan_matter_document':
@@ -1191,7 +1284,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'plan_movement':
     case 'apply_movement':
     case 'plan_count':
-    case 'apply_count': {
+    case 'apply_count':
+    case 'plan_person_evidence':
+    case 'apply_person_evidence': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as
       // refuses these before it gets here; this check is the belt to that suspender.
       // Every write verb's label sits HERE, above this block (v2.6244): v2.6187's mint_twin_setup_code block was
@@ -1203,7 +1298,12 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const isDocument = name === 'plan_matter_document' || name === 'apply_matter_document'
       const file = isDocument ? await documentBytes(args) : null
       if (file && 'error' in file) return refused(file.error)
-      const built = writeRpcBody(name, file ? file.args : args)
+      // v2.6426: an evidence record's files arrive the same way, one content_base64 each; they are staged in hr-files at
+      // apply, under the record's folder (evidenceStoragePath), before the rows — the RPC refuses the rows without them.
+      const isEvidence = name === 'plan_person_evidence' || name === 'apply_person_evidence'
+      const evidence = isEvidence ? await evidenceBytes(args) : null
+      if (evidence && 'error' in evidence) return refused(evidence.error)
+      const built = writeRpcBody(name, file ? file.args : evidence ? evidence.args : args)
       if (!built.ok) return refused(built.error)
       const rpcPath = `rpc/${built.rpc}`
       const session = await jwt()
@@ -1218,6 +1318,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       }
       let writeBody: Record<string, unknown> = built.body
       let stored: string | null = null
+      const staged: string[] = []
       if (built.step === 'apply') {
         const dry = await restPost(session, rpcPath, built.dryRunBody ?? built.body)
         if (!dry.ok) return fail(dry.status, dry.body)
@@ -1231,18 +1332,43 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
           // The file first, as the dev, under the matter's folder; the RPC refuses the row unless it is there.
           const id = crypto.randomUUID()
           const path = legalDocumentStoragePath(String(built.target), id, file.name)
-          const problem = await storagePut(session, path, file.bytes, file.mime)
+          const problem = await storagePut(session, LEGAL_MATTER_DOCUMENTS_BUCKET, path, file.bytes, file.mime)
           if (problem) return { log: { status: 'error', target: built.target, error: problem }, text: problem, isError: true }
           stored = path
           writeBody = { ...built.body, p_file: { id, storage_path: path } }
         }
+        if (evidence && !('error' in evidence)) {
+          // The files first, as the dev, under the record's folder in hr-files; the RPC refuses the rows unless every one is there.
+          const evidenceId = crypto.randomUUID()
+          const rows: Array<{ id: string; storage_path: string }> = []
+          for (const f of evidence.files) {
+            const id = crypto.randomUUID()
+            const path = evidenceStoragePath(String(built.target), evidenceId, id, f.name)
+            const problem = await storagePut(session, HR_FILES_BUCKET, path, f.bytes, f.mime)
+            if (problem) {
+              for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)
+              return { log: { status: 'error', target: built.target, error: problem }, text: `${f.name}: ${problem}`, isError: true }
+            }
+            staged.push(path)
+            rows.push({ id, storage_path: path })
+          }
+          writeBody = { ...built.body, p_files: { evidence_id: evidenceId, files: rows } }
+        }
       }
       const res = await restPost(session, rpcPath, writeBody)
       if (!res.ok) {
-        if (stored) await storageRemove(session, stored)
+        if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)
+        for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)
         return fail(res.status, res.body)
       }
       const reply = redactSecrets(res.body)
+      if (isEvidence && built.step === 'apply' && reply && typeof reply === 'object') {
+        // Drive after the rows, as the panel asks it: a function not deployed, a refusal or no People folder leaves the
+        // record standing as not in Drive, and the cron sweep tries again while a file waits.
+        const evidenceId = (reply as { evidence_id?: unknown }).evidence_id
+        const drive = typeof evidenceId === 'string' ? await fileEvidenceToDrive(session, evidenceId) : { asked: false, ok: false, why: 'the RPC answered no evidence_id' }
+        return ok({ ...(reply as Record<string, unknown>), drive, next: evidenceDriveNext(drive) }, { target: typeof evidenceId === 'string' ? evidenceId : built.target })
+      }
       const batchId = reply && typeof reply === 'object' && typeof (reply as { batch_id?: unknown }).batch_id === 'string' ? (reply as { batch_id: string }).batch_id : null
       // v2.6183: a made bid is logged by its number, the way find_bid names it.
       const bidNumber = name === 'apply_bid' && reply && typeof reply === 'object' && typeof (reply as { bid_number?: unknown }).bid_number === 'string' ? `b${(reply as { bid_number: string }).bid_number}` : null

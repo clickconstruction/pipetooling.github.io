@@ -15,7 +15,8 @@ import { supabaseJobPhotosIo, type JobPhotosIo } from '../../lib/photos/jobPhoto
 import { JOB_PHOTO_WORDS } from '../../lib/photos/jobPhotoNotes'
 import type { JobPhotosWindowIo } from '../../lib/photos/jobPhotoNotesIo'
 import { formatErrorMessage } from '../../utils/errorHandling'
-import { JobPhotosWindow, type JobPhotosWindowJob } from '../photos/JobPhotosWindow'
+import type { JobPhotosWindowJob } from '../photos/JobPhotosWindow'
+import { JobPhotosWindowLazy } from '../photos/JobPhotosWindowLazy'
 import { documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
 
 const line: CSSProperties = { fontSize: '0.875rem', color: 'var(--text-700)' }
@@ -102,7 +103,7 @@ export function JobDocumentsPhotos({
       )}
       {hasFolder ? <p style={muted}>{PHOTOS_LINE_SUB}</p> : null}
       {open ? (
-        <JobPhotosWindow
+        <JobPhotosWindowLazy
           job={windowJob}
           io={windowIo}
           onClose={() => {

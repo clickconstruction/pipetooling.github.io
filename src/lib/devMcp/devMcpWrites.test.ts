@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ROBOT_PLANS_SHARED_DRIVE, robotPlansDivisionFolderName, robotPlansPathWords } from '../../../supabase/functions/_shared/bidPlansFolders'
-import { WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
@@ -12,7 +12,9 @@ const GAP_MIGRATION = readFileSync('supabase/migrations/20261028120000_dev_legal
 const HISTORY_MIGRATION = readFileSync('supabase/migrations/20261029130000_dev_history_entry_write.sql', 'utf8')
 const BID_MIGRATION = readFileSync('supabase/migrations/20261030210000_dev_bid_write.sql', 'utf8')
 const STATEMENT_MIGRATION = readFileSync('supabase/migrations/20261031190000_dev_legal_statement_write.sql', 'utf8')
+const CLOCK_MIGRATION = readFileSync('supabase/migrations/20261103050000_dev_clock_session_write.sql', 'utf8')
 const ON_SITE_MIGRATION = readFileSync('supabase/migrations/20261102100000_dev_on_site_write.sql', 'utf8')
+const EVIDENCE_MIGRATION = readFileSync('supabase/migrations/20261103060000_dev_person_evidence_write.sql', 'utf8')
 const SERVER = readFileSync('supabase/functions/dev-mcp/index.ts', 'utf8')
 
 const PERSON = '11111111-2222-4333-8444-555555555555'
@@ -27,7 +29,7 @@ describe('devMcpWrites — the allowlist', () => {
     const tableVerbs = Object.entries(WRITE_VERBS).filter(([, v]) => v.rpc === null).map(([k]) => k)
     expect(tableVerbs).toEqual(['plan_plan_set', 'apply_plan_set', 'plan_paper', 'apply_paper'])
     const rpcs = new Set(Object.values(WRITE_VERBS).flatMap((v) => (v.rpc === null ? [] : [v.rpc])))
-    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write'])
+    expect([...rpcs].sort()).toEqual(['cost_batch_apply', 'cost_batch_revert', 'dev_bid_write', 'dev_clock_session_write', 'dev_history_entry_write', 'dev_hr_entry_write', 'dev_legal_document_write', 'dev_legal_gap_answer_write', 'dev_legal_narrative_write', 'dev_legal_plan_write', 'dev_legal_statement_write', 'dev_on_site_write', 'dev_person_evidence_write'])
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_apply(p jsonb, p_dry_run boolean DEFAULT true)')
     expect(COST_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.cost_batch_revert(p_batch_id uuid, p_reason text DEFAULT NULL)')
     expect(COST_MIGRATION.match(/NOT public\.is_dev\(\)/g)?.length).toBeGreaterThanOrEqual(2)
@@ -107,6 +109,20 @@ describe('devMcpWrites — the allowlist', () => {
     expect(STATEMENT_MIGRATION).toContain('public.legal_statement_affiant_problem(v_affiant)') // the office RPC's own affiant check, so the plan refuses in words
     expect(STATEMENT_MIGRATION).toContain("WHERE matter_id = v_matter.id AND kind = 'statement' AND voided_at IS NULL") // the live count the hash commits to
     expect(STATEMENT_MIGRATION).toContain("'state_words', CASE WHEN v_state = 'draft' THEN 'Draft · not signed.'")
+    // v2.6426: the evidence wrapper — the same gates; the panel's two tables, append-only, only once every file is in hr-files.
+    expect(EVIDENCE_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(EVIDENCE_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_person_evidence_write(p jsonb, p_dry_run boolean DEFAULT true, p_files jsonb DEFAULT NULL)')
+    expect(EVIDENCE_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(EVIDENCE_MIGRATION).toContain('REVOKE EXECUTE ON FUNCTION public.dev_person_evidence_write(jsonb, boolean, jsonb) FROM PUBLIC, anon;')
+    expect(EVIDENCE_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_person_evidence_write(jsonb, boolean, jsonb) TO authenticated;')
+    expect(EVIDENCE_MIGRATION).not.toMatch(/CREATE TABLE/i)
+    expect(EVIDENCE_MIGRATION).toContain("FROM storage.objects WHERE bucket_id = 'hr-files' AND name = v_path")
+    expect(EVIDENCE_MIGRATION).toContain('INSERT INTO public.person_file_evidence (id, person_id, entry_id, dated_on, title, memo, created_by, author_label)')
+    expect(EVIDENCE_MIGRATION).toContain('INSERT INTO public.person_file_attachments (id, person_id, entry_id, evidence_id, storage_path, filename, mime_type, size_bytes, uploaded_by, author_label)')
+    expect(EVIDENCE_MIGRATION).not.toMatch(/UPDATE public\.person_file|DELETE FROM public\.person_file/) // append-only, as the panel
+    expect(EVIDENCE_MIGRATION).toContain('IF v_dated > public.app_today() THEN') // the panel's rule: never ahead of today
+    expect(EVIDENCE_MIGRATION).toContain("'evidence_on_person', v_live") // the live count the hash commits to
+    expect(EVIDENCE_MIGRATION).not.toMatch(/net\.http|pg_net|PERFORM /) // Drive is the function's leg, after the rows: the wrapper calls nothing out
   })
 
   it('knows its verbs, and the server declares every one as a tool and refuses them through view_as', () => {
@@ -233,12 +249,12 @@ describe('the statement verbs (v2.6244, punch list #220)', () => {
     expect(alreadyApplied('apply_matter_statement', { target: MATTER, at: null })).toContain('Said lane')
     expect(planMismatch('apply_matter_statement', 'a'.repeat(64), 'b'.repeat(64))).toContain('plan_matter_statement')
   })
-  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports 0.17.0 (the file index verbs bumped it to 0.15.0, Materials on site to 0.16.0, get_person_file to 0.17.0)', () => {
+  it('the server declares both verbs in the write branch, with every older write verb\'s label there too, and reports 0.19.0 (the clock session verbs bumped it from 0.18.0, the evidence verbs)', () => {
     expect(SERVER).toContain("name: 'plan_matter_statement'")
     expect(SERVER).toContain("name: 'apply_matter_statement'")
     expect(SERVER).toContain("case 'plan_matter_statement':")
     expect(SERVER).toContain("case 'apply_matter_statement':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.19.0'")
     expect(SERVER).toContain('plan_matter_statement → apply_matter_statement')
     // v2.6187's mint_twin_setup_code block was merged between the older write labels and the write branch, so for a day
     // plan_cost_batch through apply_history_entry fell through into it. Every write label now sits directly above the
@@ -298,9 +314,84 @@ describe('the document verbs (v2.6004)', () => {
     expect(SERVER).toContain("case 'apply_matter_document':")
     expect(SERVER).toContain('const file = isDocument ? await documentBytes(args) : null')
     expect(SERVER).toContain("p_file: { id, storage_path: path }")
-    expect(SERVER).toContain('if (stored) await storageRemove(session, stored)')
+    expect(SERVER).toContain('if (stored) await storageRemove(session, LEGAL_MATTER_DOCUMENTS_BUCKET, stored)')
     expect(SERVER).toContain('args: argsForLog(name, args)')
-    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
+    expect(SERVER).toContain("const SERVER_VERSION = '0.19.0'")
+  })
+})
+
+describe('the evidence verbs (v2.6426)', () => {
+  const ENTRY = 'b1b2c3d4-0000-4000-8000-000000000099'
+  const FILE = { name: 'site.jpg', mime: 'image/jpeg', size_bytes: 2048, sha256: 'b'.repeat(64) }
+  const EVIDENCE = { person_id: PERSON, dated_on: '2026-10-28', title: ' Left a mess at the site ', memo: 'Two photos from the super.', files: [FILE] }
+  const problem = (input: Record<string, unknown>): string => {
+    const r = writeRpcBody('plan_person_evidence', input)
+    return r.ok ? '' : r.error
+  }
+
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } with each file as its name, mime, size and digest — never its bytes', () => {
+    expect(WRITE_VERBS.plan_person_evidence).toEqual({ rpc: 'dev_person_evidence_write', step: 'plan' })
+    expect(WRITE_VERBS.apply_person_evidence).toEqual({ rpc: 'dev_person_evidence_write', step: 'apply' })
+    expect(planVerbFor('apply_person_evidence')).toBe('plan_person_evidence')
+    const plan = writeRpcBody('plan_person_evidence', { evidence: EVIDENCE })
+    expect(plan).toMatchObject({ ok: true, rpc: 'dev_person_evidence_write', step: 'plan', target: PERSON })
+    expect(pOf(plan)).toEqual({ person_id: PERSON, dated_on: '2026-10-28', title: 'Left a mess at the site', memo: 'Two photos from the super.', files: [FILE] })
+    expect(plan.ok && plan.body.p_dry_run).toBe(true)
+    const apply = writeRpcBody('apply_person_evidence', { evidence: { ...EVIDENCE, entry_id: ENTRY, files: [{ ...FILE, mime: 'IMAGE/JPEG', sha256: 'B'.repeat(64) }] }, plan_hash: HASH })
+    expect(apply.ok && apply.body.p_dry_run).toBe(false)
+    expect(apply.ok && apply.dryRunBody?.p_dry_run).toBe(true)
+    expect(pOf(apply).entry_id).toBe(ENTRY)
+    expect(pOf(apply).files).toEqual([FILE]) // the mime and the digest lowered
+    expect(JSON.stringify(pOf(apply))).not.toContain('content_base64')
+  })
+
+  it('refuses in words an evidence without its person, day, title, memo or files, the caps, a file with no digest or over 10 MB, a bad entry id, and apply without the hash', () => {
+    expect(problem({})).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, person_id: 'nope' } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, dated_on: '10/28/2026' } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, title: ' ' } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, title: 'x'.repeat(161) } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, memo: '' } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, memo: 'x'.repeat(4001) } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, files: [] } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, files: Array(EVIDENCE_MAX_FILES + 1).fill(FILE) } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, files: [{ ...FILE, sha256: 'short' }] } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, files: [{ ...FILE, size_bytes: 10 * 1024 * 1024 + 1 }] } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, files: [{ ...FILE, name: '' }] } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, entry_id: 'nope' } })).toContain('needs evidence')
+    expect(problem({ evidence: { ...EVIDENCE, files: Array(EVIDENCE_MAX_FILES).fill(FILE) } })).toBe('')
+    const noHash = writeRpcBody('apply_person_evidence', { evidence: EVIDENCE })
+    expect(noHash.ok ? '' : noHash.error).toContain('needs plan_hash')
+  })
+
+  it("the plan hash commits to the files' digests, the record as it would be written and the live count; a record kept or a file changed since moves it", async () => {
+    const reply = { dry_run: true, person: { id: PERSON, name: 'Pat' }, author_label: 'Robert', after: { dated_on: '2026-10-28', title: 'Left a mess at the site', files: [FILE] }, evidence_on_person: 2, where: 'People › Pat › 2026-10-28 · Left a mess at the site', people_folder_set: true }
+    const a = await planHash('plan_person_evidence', pOf(writeRpcBody('plan_person_evidence', { evidence: EVIDENCE })), reply)
+    const b = await planHash('apply_person_evidence', pOf(writeRpcBody('apply_person_evidence', { evidence: EVIDENCE, plan_hash: HASH })), { ...reply, dry_run: false })
+    expect(a).toBe(b)
+    expect(await planHash('plan_person_evidence', pOf(writeRpcBody('plan_person_evidence', { evidence: EVIDENCE })), { ...reply, evidence_on_person: 3 })).not.toBe(a)
+    expect(await planHash('plan_person_evidence', pOf(writeRpcBody('plan_person_evidence', { evidence: { ...EVIDENCE, files: [{ ...FILE, sha256: 'c'.repeat(64) }] } })), reply)).not.toBe(a)
+    expect(planCommitment('plan_person_evidence', reply)).not.toHaveProperty('dry_run')
+  })
+
+  it('the plan reply points at apply_person_evidence, and a repeat apply says the record is on the Evidence tab', () => {
+    expect(planReply('plan_person_evidence', { dry_run: true }, HASH).next).toContain('apply_person_evidence')
+    expect(alreadyApplied('apply_person_evidence', { target: PERSON, at: '2026-11-02T00:00:00Z' })).toContain('Evidence tab')
+    expect(alreadyApplied('apply_person_evidence', { target: PERSON, at: null })).toContain('on this person')
+  })
+
+  it("the server declares both verbs in the write branch, stages every file in hr-files under the record's folder only at apply, removes them when the rows are refused, asks Drive after the rows, and keeps the bytes out of the log", () => {
+    expect(SERVER).toContain("name: 'plan_person_evidence'")
+    expect(SERVER).toContain("name: 'apply_person_evidence'")
+    expect(SERVER).toContain("case 'plan_person_evidence':\n    case 'apply_person_evidence': {")
+    expect(SERVER).toContain('const evidence = isEvidence ? await evidenceBytes(args) : null')
+    expect(SERVER).toContain('evidenceStoragePath(String(built.target), evidenceId, id, f.name)')
+    expect(SERVER).toContain('storagePut(session, HR_FILES_BUCKET, path, f.bytes, f.mime)')
+    expect(SERVER).toContain('p_files: { evidence_id: evidenceId, files: rows }')
+    expect(SERVER).toContain('for (const p of staged) await storageRemove(session, HR_FILES_BUCKET, p)')
+    expect(SERVER.indexOf('await fileEvidenceToDrive(session, evidenceId)')).toBeGreaterThan(SERVER.indexOf('const res = await restPost(session, rpcPath, writeBody)'))
+    expect(SERVER).toContain("if (name === 'plan_person_evidence' || name === 'apply_person_evidence') {") // argsForLog
+    expect(SERVER).toContain("const SERVER_VERSION = '0.19.0'")
   })
 })
 
@@ -349,8 +440,8 @@ describe('the gap-answer verbs (v2.6005)', () => {
     expect(SERVER).toContain("name: 'apply_gap_answer'")
     expect(SERVER).toContain("case 'plan_gap_answer':")
     expect(SERVER).toContain("case 'apply_gap_answer':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
-    expect(SERVER).toContain('Writes are thirty-three verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.19.0'")
+    expect(SERVER).toContain('Writes are thirty-seven verbs and nothing else')
   })
 })
 
@@ -548,8 +639,8 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")
-    expect(SERVER).toContain("const SERVER_VERSION = '0.17.0'")
-    expect(SERVER).toContain('Writes are thirty-three verbs and nothing else')
+    expect(SERVER).toContain("const SERVER_VERSION = '0.19.0'")
+    expect(SERVER).toContain('Writes are thirty-seven verbs and nothing else')
     expect(SERVER).toContain('plan_count → apply_count')
   })
 })
@@ -792,5 +883,94 @@ describe('the file index verbs (v2.6332, punch list #240 PR 2)', () => {
     expect(block).toContain('backfillCommitment(plan, jobs)')
     expect(block).not.toContain('hooks.priorApply(')
     expect(block).not.toContain('restPost(')
+  })
+})
+
+describe('the clock session verbs (v2.6437)', () => {
+  const SESSION = '0e4dcd2b-a524-4056-b93c-16713041a6e7'
+  const JOB = '11111111-2222-4333-8444-555555555555'
+  const ops = [
+    { op: 'times', session_id: SESSION, start: '2026-03-10T08:00:00-06:00', end: '2026-03-10T16:30:00-06:00' },
+    { op: 'note', session_id: SESSION, note: ' trench, north wall ' },
+    { op: 'move', session_id: SESSION, job_id: JOB },
+    { op: 'approve', session_id: SESSION },
+  ]
+  const sessions = { reason: 'the day was punched on the wrong job', ops }
+
+  it('are on the allowlist, plan before apply, and POST { p, p_dry_run } with the ops as the door takes them', () => {
+    expect(isWriteVerb('plan_clock_sessions')).toBe(true)
+    expect(isWriteVerb('apply_clock_sessions')).toBe(true)
+    expect(WRITE_VERBS.plan_clock_sessions).toEqual({ rpc: 'dev_clock_session_write', step: 'plan' })
+    expect(WRITE_VERBS.apply_clock_sessions).toEqual({ rpc: 'dev_clock_session_write', step: 'apply' })
+    expect(planVerbFor('apply_clock_sessions')).toBe('plan_clock_sessions')
+    const plan = writeRpcBody('plan_clock_sessions', { sessions })
+    expect(plan.ok).toBe(true)
+    if (!plan.ok) return
+    expect(plan.rpc).toBe('dev_clock_session_write')
+    expect(plan.body.p_dry_run).toBe(true)
+    expect(plan.target).toBe('4 clock session ops')
+    const p = pOf(plan)
+    expect(p.reason).toBe('the day was punched on the wrong job')
+    expect(p.ops).toEqual([
+      { op: 'times', session_id: SESSION, start: '2026-03-10T08:00:00-06:00', end: '2026-03-10T16:30:00-06:00' },
+      { op: 'note', session_id: SESSION, note: ' trench, north wall ' },
+      { op: 'move', session_id: SESSION, job_id: JOB },
+      { op: 'approve', session_id: SESSION },
+    ])
+    const apply = writeRpcBody('apply_clock_sessions', { sessions, plan_hash: HASH })
+    expect(apply.ok).toBe(true)
+    if (!apply.ok) return
+    expect(apply.body.p_dry_run).toBe(false)
+    expect(apply.dryRunBody).toEqual({ p, p_dry_run: true })
+    expect(apply.planHash).toBe(HASH)
+    const noHash = writeRpcBody('apply_clock_sessions', { sessions })
+    expect(noHash.ok).toBe(false)
+    if (!noHash.ok) expect(noHash.error).toContain('plan_clock_sessions')
+  })
+
+  it('refuses in words a missing reason, an unknown op, an end before its start, a day over 24 hours, a bad id and more than 50 ops', () => {
+    const bad = (input: Record<string, unknown>) => {
+      const r = writeRpcBody('plan_clock_sessions', { sessions: input })
+      expect(r.ok).toBe(false)
+      if (!r.ok) expect(r.error).toContain('plan_clock_sessions needs sessions')
+    }
+    bad({ ops })
+    bad({ reason: 'why', ops: [] })
+    bad({ reason: 'why', ops: [{ op: 'split', session_id: SESSION }] })
+    bad({ reason: 'why', ops: [{ op: 'times', session_id: SESSION, start: '2026-03-10T16:00:00-06:00', end: '2026-03-10T08:00:00-06:00' }] })
+    bad({ reason: 'why', ops: [{ op: 'times', session_id: SESSION, start: '2026-03-10T08:00:00-06:00', end: '2026-03-11T09:00:00-06:00' }] })
+    bad({ reason: 'why', ops: [{ op: 'times', session_id: SESSION, start: 'yesterday', end: 'today' }] })
+    bad({ reason: 'why', ops: [{ op: 'move', session_id: SESSION, job_id: 'J1042' }] })
+    bad({ reason: 'why', ops: [{ op: 'note', session_id: 'not-a-uuid', note: 'x' }] })
+    bad({ reason: 'why', ops: [{ op: 'note', session_id: SESSION, note: 'x'.repeat(2001) }] })
+    bad({ reason: 'why', ops: Array.from({ length: 51 }, () => ({ op: 'approve', session_id: SESSION })) })
+  })
+
+  it('the migration creates the door gated is_dev(), closed to anon, pasting the two live RPCs whole with one line each; the plan reply points at apply_clock_sessions; a repeat apply says the sessions already read that way', async () => {
+    expect(CLOCK_MIGRATION.startsWith("SET lock_timeout = '3s';")).toBe(true)
+    expect(CLOCK_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.dev_clock_session_write(p jsonb, p_dry_run boolean DEFAULT true)')
+    expect(CLOCK_MIGRATION).toContain('IF auth.uid() IS NULL OR NOT public.is_dev() THEN')
+    expect(CLOCK_MIGRATION).toContain("RAISE EXCEPTION USING ERRCODE = 'P0DRY', MESSAGE = 'dry run';")
+    expect(CLOCK_MIGRATION).toContain('REVOKE ALL ON FUNCTION public.dev_clock_session_write(jsonb, boolean) FROM anon;')
+    expect(CLOCK_MIGRATION).toContain('GRANT EXECUTE ON FUNCTION public.dev_clock_session_write(jsonb, boolean) TO authenticated;')
+    expect(CLOCK_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.approve_clock_sessions(p_session_ids uuid[])')
+    expect(CLOCK_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.recompute_people_hours_after_session_edit(p_session_id uuid, p_old_work_date date DEFAULT NULL::date)')
+    expect(CLOCK_MIGRATION).toContain('OR public.is_dev();')
+    expect(CLOCK_MIGRATION).toContain('or public.is_dev()')
+    expect(CLOCK_MIGRATION).toContain('PERFORM public.recompute_people_hours_after_session_edit(v_sid, v_old_date);')
+    expect(CLOCK_MIGRATION).toContain('SELECT * INTO v_appr FROM public.approve_clock_sessions_v2(ARRAY[v_sid]);')
+    expect(CLOCK_MIGRATION).not.toMatch(/CREATE TABLE/i) // no table → no read-only fence appliers owed
+    for (const verb of ['plan_clock_sessions', 'apply_clock_sessions']) {
+      expect(SERVER).toContain(`name: '${verb}'`)
+      expect(SERVER).toContain(`case '${verb}':`)
+    }
+    expect(SERVER).toContain("const SERVER_VERSION = '0.19.0'")
+    const reply = { dry_run: true, applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] }
+    const hash = await planHash('plan_clock_sessions', { reason: 'why', ops: [ops[1]] }, reply)
+    expect(planReply('plan_clock_sessions', reply, hash).next).toContain('apply_clock_sessions')
+    expect(planCommitment('plan_clock_sessions', reply)).toEqual({ applied: 1, held: 0, refused: 0, ops: [{ seq: 1, op: 'note', outcome: 'applied' }] })
+    expect(alreadyApplied('apply_clock_sessions', { target: '1 clock session op', at: '2026-11-03T05:00:00Z' })).toContain('on those sessions at 2026-11-03T05:00:00Z')
+    expect(alreadyApplied('apply_clock_sessions', { target: null, at: null })).toContain('read_rows on clock_sessions')
+    expect(planMismatch('apply_clock_sessions', 'a'.repeat(64), 'b'.repeat(64))).toContain('plan_clock_sessions')
   })
 })

@@ -42,7 +42,7 @@ import { CALL_ASIDE, CALL_WORDS, callDayWords, type CallLogDraft } from '../../.
 import { boxForReply, lastWroteTo, type BoxSettings } from '../../../../lib/messages/boxes'
 import { CallButton } from '../../../messages/CallButton'
 import { jobRefOf } from '../../../../lib/messages/jobKeys'
-import { defaultEstimatePaper, defaultPaperFills, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
+import { defaultEstimatePaper, defaultPaperFills, defaultWarrantyPaper, listedPapers, paperFills, paperLineWords, papersTitle, type Paper } from '../../../../lib/messages/papers'
 import { ESTIMATE_LINK_MAKING, estimateLinkNote, supabaseEstimateLinkIo, type EstimateLinkIo } from '../../../../lib/messages/estimateLinkIo'
 import { RATING_LINK_MAKING, supabaseRatingLinkIo, type RatingLinkIo } from '../../../../lib/ratings/ratingLinkIo'
 import { supabasePapersIo, type PapersIo } from '../../../../lib/messages/papersIo'
@@ -456,9 +456,16 @@ export function ReplyBox({
   const linkSeq = useRef(0)
   const rateSeq = useRef(0)
   const defaultEstimate = papers ? defaultEstimatePaper(papers, pipelineJobId, Boolean(job)) : null
+  // The warranty in place of a contract (2026-11-02): `{warranty}` is the Contract Desk's own link, off the row, so it fills at once.
+  const defaultWarranty = papers ? defaultWarrantyPaper(papers, pipelineJobId, Boolean(job)) : null
   const fillNow = (words: string, paper: Paper | null) => fillLine(words, { ...fills, ...(paper ? paperFills(paper) : {}) }).text
-  /** How a line reads in the lists before a press: one that holds {estimate} with the estimate it will speak of. */
-  const fillsFor = (q: QuickReply) => (defaultEstimate && lineWords(q, lang).includes('{estimate}') ? { ...fills, ...paperFills(defaultEstimate) } : fills)
+  /** How a line reads in the lists before a press: one that holds {estimate} or {warranty} with the paper it will speak of. */
+  const fillsFor = (q: QuickReply) => {
+    const words = lineWords(q, lang)
+    if (defaultEstimate && words.includes('{estimate}')) return { ...fills, ...paperFills(defaultEstimate) }
+    if (defaultWarranty && words.includes('{warranty}')) return { ...fills, ...paperFills(defaultWarranty) }
+    return fills
+  }
   const mintRate = () => {
     const mine = ++rateSeq.current
     setRateLinking(true)
@@ -477,7 +484,8 @@ export function ReplyBox({
   }
   const withLink = (words: string, paper: Paper | null, put: (filled: string) => void) => {
     const estimate = words.includes('{estimate}') ? (paper?.kind === 'estimate' ? paper : !paper ? defaultEstimate : null) : null
-    put(fillNow(words, paper ?? estimate))
+    const warranty = words.includes('{warranty}') ? (paper?.kind === 'warranty' ? paper : !paper ? defaultWarranty : null) : null
+    put(fillNow(words, paper ?? estimate ?? warranty))
     if (words.includes('{rate}')) mintRate()
     if (!estimate) return
     const mine = ++linkSeq.current
@@ -565,7 +573,7 @@ export function ReplyBox({
   /** A paper picked: the team's line for it when there is one, else the app's words, filled for that paper. */
   const pickPaper = (p: Paper) => {
     if (!slashWord) return
-    const team = paperTeamLine(stripLines ?? [], contact.kind, p.kind === 'bill' ? { kind: 'bill', open: p.open } : { kind: 'estimate', approved: p.approved }, me)
+    const team = paperTeamLine(stripLines ?? [], contact.kind, p.kind === 'bill' ? { kind: 'bill', open: p.open } : p.kind === 'warranty' ? { kind: 'warranty', signed: p.signed } : { kind: 'estimate', approved: p.approved }, me)
     const words = team ? lineWords(team, lang) : paperLineWords(p)
     withLink(words, p, putInPlace(body, slashWord))
     setPeek(false)

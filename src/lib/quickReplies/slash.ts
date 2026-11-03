@@ -96,13 +96,14 @@ export function slashMove(active: number, count: number, step: 1 | -1): number {
 
 // ---------- the customer's papers (#127 PR 2) ----------
 
-/** What a paper is: a bill or an estimate. */
-export type PaperKind = 'bill' | 'estimate'
+/** What a paper is: a bill, an estimate, or the warranty sent in place of a contract (2026-11-02). */
+export type PaperKind = 'bill' | 'estimate' | 'warranty'
 
 /** The words that call a customer's papers after the `/`, beside the lines whose words hold them. */
 export const PAPER_WORDS: Readonly<Record<PaperKind, readonly string[]>> = {
   bill: ['bill', 'bills', 'invoice', 'invoices', 'pay', 'owe', 'owed', 'owes'],
   estimate: ['estimate', 'estimates', 'quote', 'quotes', 'price'],
+  warranty: ['warranty', 'warranties', 'guarantee'],
 }
 
 /**
@@ -112,7 +113,7 @@ export const PAPER_WORDS: Readonly<Record<PaperKind, readonly string[]>> = {
 export function slashPaperKind(words: string): PaperKind | null {
   const typed = words.trim().toLowerCase()
   if (typed.length < 2) return null
-  for (const kind of ['bill', 'estimate'] as const) {
+  for (const kind of ['bill', 'estimate', 'warranty'] as const) {
     if (PAPER_WORDS[kind].some((w) => w.startsWith(typed) || typed.startsWith(w))) return kind
   }
   return null
@@ -123,10 +124,11 @@ export function slashPaperKind(words: string): PaperKind | null {
  * `{estimate}`), the person's most used first. A paid bill and an approved estimate take the app's own copy words,
  * since the team's lines speak of an open bill and an estimate still to choose from. Null when there is none.
  */
-export function paperTeamLine(lines: readonly QuickReply[], kind: ContactKind, paper: { kind: PaperKind; open?: boolean; approved?: boolean }, me: string): QuickReply | null {
+export function paperTeamLine(lines: readonly QuickReply[], kind: ContactKind, paper: { kind: PaperKind; open?: boolean; approved?: boolean; signed?: boolean }, me: string): QuickReply | null {
   if (paper.kind === 'bill' && paper.open === false) return null
   if (paper.kind === 'estimate' && paper.approved === true) return null
-  const blank = paper.kind === 'bill' ? '{bill}' : '{estimate}'
+  if (paper.kind === 'warranty' && paper.signed === true) return null
+  const blank = paper.kind === 'bill' ? '{bill}' : paper.kind === 'warranty' ? '{warranty}' : '{estimate}'
   const forKind = qrKindOf(kind)
   return (
     qrVisible(lines, me)

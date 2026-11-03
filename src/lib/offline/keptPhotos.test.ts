@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createKeptPhotos, keptPhotosOf, sendKeptPhotos, unsentKeptPhotos, withPhoto } from './keptPhotos'
-import { newPress, type KeptReportPhoto, type OutboxPress } from './outbox'
+import { newPress, type KeptJobPhoto, type KeptReportPhoto, type OutboxPress } from './outbox'
 import { createOutboxState } from './outboxState'
 
 const T = 1_780_000_000_000
@@ -87,5 +87,22 @@ describe('keptPhotos', () => {
     expect(out.ok).toBe(false)
     expect(keptPhotosOf(s.presses()[0]!).map((p) => [p.id, p.sent])).toEqual([['a', true], ['b', false], ['c', false]])
     expect(await bytes.read('b')).not.toBeNull()
+  })
+
+  // Punch list #244, PR 5: a job photos press carries its photos as a report does and sends them to its own io.
+  it('a job photos press carries its photos, and the replay sends the unsent ones with the job id', async () => {
+    const jp = (id: string, sent = false): KeptJobPhoto => ({ ...photo(id, sent), description: 'Meter location' })
+    const press = newPress({ id: 'p-jp', seq: 1, kind: 'job-photos', userId: 'u1', pressedAt: T, payload: { jobLedgerId: 'j1', photos: [jp('a', true), jp('b')] } })
+    expect(keptPhotosOf(press).map((p) => p.id)).toEqual(['a', 'b'])
+    expect(unsentKeptPhotos(press).map((p) => p.id)).toEqual(['b'])
+    const bytes = memory()
+    await bytes.keep('b', new Blob([new Uint8Array(3)], { type: 'image/jpeg' }), T)
+    const s = store([press])
+    const sent: string[] = []
+    const out = await sendKeptPhotos(press, s, { bytes, send: async (input) => void sent.push(`${input.jobId}/${input.id}/${input.byName}`) })
+    expect(out).toEqual({ ok: true })
+    expect(sent).toEqual(['j1/b/Luis Ortega'])
+    expect(unsentKeptPhotos(s.presses()[0]!)).toEqual([])
+    expect(withPhoto(press, 'b', { lost: true }).payload).toMatchObject({ jobLedgerId: 'j1', photos: [{ id: 'a' }] })
   })
 })

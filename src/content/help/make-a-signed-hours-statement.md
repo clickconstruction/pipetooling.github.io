@@ -1,7 +1,7 @@
 ---
 title: make a signed hours statement
 category: Office
-roles: dev, master_technician, assistant, controller
+roles: dev, controller
 keywords: hours statement, signed hours, proof of work, proof of pay, court, attorney, unpaid bill, clock, pay report, worker signs, HS record, stated days, send for signature, sign here now, signed scan, signed PDF
 order: 100
 ---
@@ -35,7 +35,7 @@ If a session is still waiting for approval, an amber line says so. The paper nam
 
 ## The pay on the paper
 
-The pay switch is for the payroll roles. A dev, the controller and a pay-approved leader may turn it on. An assistant makes the hours-only paper. Their switch stays off.
+The pay switch is on when the window opens. Turn it off for a copy that shows hours alone, for a GC or a license board.
 
 With the pay on, each day shows the rate and the amount. Under the table, **Paid** lists each week's pay report. It shows the job's share, what was paid, the day and the reference. An unpaid week prints as not yet paid. The paper never claims a payment it does not have.
 
@@ -113,4 +113,4 @@ A signed statement can go on the account's legal matter. Open the Legal desk and
 
 ## Who can use this
 
-A dev, the controller and a pay-approved leader make the paper with the money. An assistant makes the hours-only paper. Helpers and subcontractors do not see the section. Whoever may make a statement may send it, hand the phone over and file its signed paper.
+A signed hours statement is payroll data. Only a dev and the controller see the **Hours statements** section and make one. The section wears a small tag beside its heading that reads **Controllers and devs only**. Leaders, assistants, helpers and subcontractors do not see it. Whoever may make a statement may send it, hand the phone over and file its signed paper.
