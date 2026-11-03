@@ -259,7 +259,8 @@ export function scoreboardCellWords(key: ScoreboardColumnKey, value: number): st
 
 /**
  * A dollar figure short enough for a narrow column (v2.6457, the walk at tablet widths): the Gun Dog phone
- * strip's rule (`lookFigure.ts`), from a million *$2.1M*, from ten thousand *$684k*, below that the whole
+ * strip's rule (`lookFigure.ts`), from a million *$2.1M*, from ten thousand *$684k*, and since a 57 px column
+ * cannot hold *−$7,972* in bold, from a thousand one decimal (*$9.4k*, *−$8k*); under a thousand the whole
  * dollars, a minus sign before a loss. Hours and days stay whole. The exact figure rides the cell's title.
  */
 export function scoreboardCompactWords(key: ScoreboardColumnKey, value: number): string {
@@ -268,6 +269,7 @@ export function scoreboardCompactWords(key: ScoreboardColumnKey, value: number):
   const sign = value < 0 ? '−' : ''
   if (n >= 1_000_000) return `${sign}$${(n / 1_000_000).toFixed(n >= 10_000_000 ? 0 : 1).replace(/\.0$/, '')}M`
   if (n >= 10_000) return `${sign}$${Math.round(n / 1000)}k`
+  if (n >= 1_000) return `${sign}$${(n / 1000).toFixed(1).replace(/\.0$/, '')}k`
   return scoreboardUsd(value)
 }
 
