@@ -75,6 +75,8 @@ export type HoursStatementListRow = {
   periodStart: string
   periodEnd: string
   withPay: boolean
+  /** Punch list #251: the charged paper; missing reads as paid. */
+  basis?: 'paid' | 'charged' | null
   state: string
   preparedAtYmd: string
   preparedByName: string | null
@@ -87,7 +89,7 @@ export function hoursStatementRowWords(row: HoursStatementListRow): { record: st
     record: row.recordId,
     period: hoursStatementPeriodLabel(row.periodStart, row.periodEnd),
     state: { label, tone },
-    kind: row.withPay ? 'hours and pay' : 'hours only',
+    kind: row.basis === 'charged' ? 'hours charged' : row.withPay ? 'hours and pay' : 'hours only',
     saved: `${hoursStatementLongDate(row.preparedAtYmd)}${row.preparedByName ? ` by ${row.preparedByName}` : ''}`,
   }
 }

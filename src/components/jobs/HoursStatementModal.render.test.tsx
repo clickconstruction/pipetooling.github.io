@@ -53,6 +53,7 @@ function readFor(args: HoursStatementReadArgs): HoursStatementRead {
     personId: 'p-marcus',
     payName: 'Marcus Reyes',
     counts: { approved: 2, pending: 1, typedDays: 1, quickAddsLeftOff: 0 },
+    charge: args.basis === 'charged' ? { rate: 285, words: 'master with a helper throughout · $285.00 the crew’s hour', unpriced: [], crewDays: 2 } : null,
   }
 }
 /** The window's read as a saved row keeps it. */
@@ -342,5 +343,18 @@ describe('the Hours statement window (punch list #212, PR 2)', () => {
     expect(onClose).not.toHaveBeenCalled()
     fireEvent.keyDown(document, { key: 'Escape' })
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('the charged paper (punch list #251, PR 2)', () => {
+  it('the switch hands the read basis charged with the pay off, shows how the job charges its labor, and quiets the pay switch', async () => {
+    renderWithProviders(<HoursStatementModal open scope={jobScope} maker={payroll} onClose={() => undefined} />)
+    await screen.findByTestId('hours-statement-paper')
+    fireEvent.click(screen.getByTestId('hours-statement-charged'))
+    await waitFor(() => expect(loadSpy).toHaveBeenCalledWith(expect.objectContaining({ basis: 'charged', withPay: false })))
+    await waitFor(() => expect(screen.getByTestId('hours-statement-charge-words').textContent).toContain('master with a helper throughout · $285.00 the crew’s hour'))
+    expect(screen.getByTestId('hours-statement-charge-words').textContent).toContain('Change the job’s rule or the rate card in the Job Summary’s Charges window.')
+    expect((screen.getByLabelText(/Show the rate, the amount and what was paid/) as HTMLInputElement).disabled).toBe(true)
+    expect(screen.getByText('Off while the paper is charged to the customer.')).toBeTruthy()
   })
 })

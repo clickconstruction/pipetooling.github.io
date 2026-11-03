@@ -184,6 +184,7 @@ export function HoursStatementsSection({
             periodStart: r.period_start,
             periodEnd: r.period_end,
             withPay: r.with_pay,
+            basis: r.basis ?? null,
             state: r.state,
             preparedAtYmd: calendarYmdInAppTzFromIso(r.prepared_at),
             preparedByName: r.prepared_by_user?.name ?? null,

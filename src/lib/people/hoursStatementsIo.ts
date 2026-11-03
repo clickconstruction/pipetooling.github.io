@@ -33,6 +33,10 @@ export type HoursStatementRecordRow = {
   period_start: string
   period_end: string
   with_pay: boolean
+  /** Punch list #251: `paid` at the wage with the pay reports, `charged` at the rate card as crew-days. Missing on a row saved before v2.6446 reads as paid. */
+  basis?: 'paid' | 'charged' | null
+  charge_rate?: number | null
+  charge_words?: string | null
   kind: 'clock' | 'sheet' | 'schedule'
   stated_days: HoursStatementStatedDay[]
   gap_from: string | null
@@ -52,7 +56,7 @@ export type HoursStatementRecordRow = {
 
 const TABLE = 'hours_statements' as never
 const COLUMNS =
-  'id, record_id, job_ledger_id, person_id, user_id, labor_company, period_start, period_end, with_pay, kind, stated_days, gap_from, gap_to, snapshot, prepared_by, prepared_at, contract_document_id, matter_document_id, state, created_at, updated_at, worker:users!hours_statements_user_id_fkey(name), prepared_by_user:users!hours_statements_prepared_by_fkey(name), job:jobs_ledger!hours_statements_job_ledger_id_fkey(hcp_number, click_number, job_name)'
+  'id, record_id, job_ledger_id, person_id, user_id, labor_company, period_start, period_end, with_pay, basis, charge_rate, charge_words, kind, stated_days, gap_from, gap_to, snapshot, prepared_by, prepared_at, contract_document_id, matter_document_id, state, created_at, updated_at, worker:users!hours_statements_user_id_fkey(name), prepared_by_user:users!hours_statements_prepared_by_fkey(name), job:jobs_ledger!hours_statements_job_ledger_id_fkey(hcp_number, click_number, job_name)'
 
 /** Every statement on the job, newest first. */
 export async function listHoursStatementsForJob(jobId: string): Promise<HoursStatementRecordRow[]> {
@@ -78,6 +82,9 @@ export type HoursStatementSave = {
   periodStart: string
   periodEnd: string
   withPay: boolean
+  basis?: 'paid' | 'charged'
+  chargeRate?: number | null
+  chargeWords?: string | null
   kind: 'clock' | 'sheet' | 'schedule'
   statedDays: HoursStatementStatedDay[]
   gap: { from: string; to: string } | null
@@ -103,7 +110,10 @@ export async function saveHoursStatement(args: HoursStatementSave): Promise<Hour
     labor_company: args.laborCompany,
     period_start: args.periodStart,
     period_end: args.periodEnd,
-    with_pay: args.withPay,
+    with_pay: args.basis === 'charged' ? false : args.withPay,
+    basis: args.basis ?? 'paid',
+    charge_rate: args.basis === 'charged' ? (args.chargeRate ?? null) : null,
+    charge_words: args.basis === 'charged' ? (args.chargeWords ?? null) : null,
     kind: args.kind,
     stated_days: args.statedDays,
     gap_from: args.gap?.from ?? null,

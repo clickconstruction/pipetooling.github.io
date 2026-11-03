@@ -335,3 +335,35 @@ describe('the charged basis (punch list #251)', () => {
   })
 })
 
+describe('the charged basis priced row by row (punch list #254: crew-days)', () => {
+  it('prices each row at its own rate, words a week with one rate as before and a mixed week by its total, and names an unpriced day', () => {
+    const s = buildHoursStatement({
+      kind: 'clock',
+      periodStart: '2026-04-20',
+      periodEnd: '2026-04-26',
+      basis: 'charged',
+      chargeWords: 'master with a helper throughout · $285.00 the crew’s hour',
+      rows: [
+        { day: '2026-04-20', hours: 9.93, note: 'with Zack · master with a helper · the job’s rule', chargeRate: 285 },
+        { day: '2026-04-21', hours: 8, note: 'alone · master alone · The rate card has no rate for master alone.' },
+        { day: '2026-04-25', hours: 9.44, note: 'alone · a tech alone · adjusted', chargeRate: 185 },
+      ],
+      withPay: true,
+      worker: { name: 'Trace' },
+    })
+    expect(s.basis).toBe('charged')
+    expect(s.pay).toBeNull()
+    expect(s.charged?.lines.map((l) => l.words)).toEqual(['Week of April 19 · 27.37 h = $4,576.45 · 1 day not priced'])
+    expect(s.charged?.total).toBe(4576.45)
+    expect(s.charged?.totalWords).toBe('27.37 h as master with a helper throughout · $285.00 the crew’s hour = $4,576.45')
+    expect(s.preparedWords).toBe('Prepared from the company’s records, charged as master with a helper throughout · $285.00 the crew’s hour')
+    const days = s.groups[0]!.days.filter((d): d is Extract<typeof d, { pending: false }> => !d.pending)
+    expect(days.map((d) => [d.rate, d.amount])).toEqual([[285, 2830.05], [null, null], [185, 1746.4]])
+  })
+
+  it('with one rate on every row the week reads at that rate, as the single-rate paper does', () => {
+    const s = buildHoursStatement({ kind: 'clock', periodStart: '2026-04-20', periodEnd: '2026-04-26', basis: 'charged', rows: [{ day: '2026-04-20', hours: 8, note: '', chargeRate: 285 }, { day: '2026-04-21', hours: 8, note: '', chargeRate: 285 }], withPay: false, worker: { name: 'Trace' } })
+    expect(s.charged?.lines[0]!.words).toBe('Week of April 19 · 16 h at $285.00 = $4,560.00')
+    expect(s.charged?.totalWords).toBe('16 h at the rate card’s rates for the crew on each day = $4,560.00')
+  })
+})

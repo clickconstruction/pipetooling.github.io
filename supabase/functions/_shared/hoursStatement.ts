@@ -30,6 +30,8 @@ export type HoursStatementRow = {
   /** A sheet line's own rate and amount; a clock row's come from `dayRates`. */
   rate?: number | null
   amount?: number | null
+  /** On the charged basis, this row's own rate: a crew-day priced by the rate card (punch list #254). Missing: the paper's one `chargeRate`. */
+  chargeRate?: number | null
   /** The sheet kind groups rows by sheet; a clock row with no group lands in its company week. */
   group?: { key: string; label: string }
 }
@@ -75,6 +77,8 @@ export type HoursStatementInput = {
   basis?: HoursStatementBasis
   /** Dollars an hour the customer is charged (the job's own rate, else the company's), on the charged basis. */
   chargeRate?: number | null
+  /** On the charged basis with the rows priced one by one (crew-days, punch list #254): how, for the words under the signature, e.g. `master with a helper throughout · $285.00 the crew’s hour`. */
+  chargeWords?: string | null
   /** `YYYY-MM-DD` → the rate on the pay report for that day (`pay_stub_days.rate_at_time`, or the job or office rate). */
   dayRates?: Record<string, number>
   /** The person's current wage, for a day no pay report has snapshotted yet. */
@@ -302,7 +306,8 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
   const chargeRate = basis === 'charged' && typeof input.chargeRate === 'number' && input.chargeRate > 0 ? cents(input.chargeRate) : null
   // The charged paper carries no pay: the switch is ignored and every counted hour is priced at the charge rate.
   const withPay = basis === 'charged' ? false : input.withPay
-  const priced = basis === 'charged' ? chargeRate != null : withPay
+  const rowRated = basis === 'charged' && input.rows.some((r) => typeof r.chargeRate === 'number' && r.chargeRate > 0)
+  const priced = basis === 'charged' ? chargeRate != null || rowRated : withPay
   const leftOut: string[] = []
   const isOfficeJob = input.isOfficeJob === true
   const dayRates = input.dayRates ?? {}
@@ -335,9 +340,11 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
     let rate: number | null = null
     let amount: number | null = null
     if (basis === 'charged') {
-      if (chargeRate != null) {
-        rate = chargeRate
-        amount = cents(hours * chargeRate)
+      // A row may carry its own rate (a crew-day priced by the rate card, punch list #254); else the paper's one rate.
+      const rowRate = typeof r.chargeRate === 'number' && r.chargeRate > 0 ? cents(r.chargeRate) : chargeRate
+      if (rowRate != null) {
+        rate = rowRate
+        amount = cents(hours * rowRate)
       }
     } else if (withPay && kind !== 'schedule') {
       if (typeof r.rate === 'number' && r.rate > 0) rate = r.rate
@@ -425,28 +432,36 @@ export function buildHoursStatement(input: HoursStatementInput): HoursStatement 
 
   let charged: HoursStatement['charged'] = null
   if (basis === 'charged') {
-    const rateWords = chargeRate != null ? `at ${hoursStatementMoney(chargeRate)} an hour` : ''
+    // One rate for the paper, or the rows' own rates (crew-days, punch list #254): the words say which.
+    const rateWords = chargeRate != null ? `at ${hoursStatementMoney(chargeRate)} an hour` : rowRated ? (input.chargeWords ? `as ${input.chargeWords}` : 'at the rate card’s rates for the crew on each day') : ''
     const lines: HoursStatementChargedLine[] = groups.map((g) => {
       const first = g.days.find((d) => !d.pending)?.day ?? g.days[0]?.day ?? periodStart
-      const amount = chargeRate != null ? g.amount : null
+      const amount = priced ? g.amount : null
+      const groupRates = Array.from(new Set(g.days.filter((d): d is Extract<HoursStatementDay, { pending: false }> => !d.pending && d.rate != null).map((d) => d.rate as number)))
+      const oneRate = groupRates.length === 1 ? groupRates[0]! : null
+      const unpriced = g.days.filter((d) => !d.pending && d.amount == null).length
       const words =
-        chargeRate != null
-          ? `${g.label} · ${hoursStatementHours(g.hours)} h at ${hoursStatementMoney(chargeRate)} = ${hoursStatementMoney(amount ?? 0)}`
-          : `${g.label} · ${hoursStatementHours(g.hours)} h · no rate given`
+        !priced
+          ? `${g.label} · ${hoursStatementHours(g.hours)} h · no rate given`
+          : oneRate != null && unpriced === 0
+            ? `${g.label} · ${hoursStatementHours(g.hours)} h at ${hoursStatementMoney(oneRate)} = ${hoursStatementMoney(amount ?? 0)}`
+            : `${g.label} · ${hoursStatementHours(g.hours)} h = ${hoursStatementMoney(amount ?? 0)}${unpriced ? ` · ${unpriced} ${unpriced === 1 ? 'day' : 'days'} not priced` : ''}`
       return { key: g.key, label: g.label, from: first, hours: g.hours, amount, words }
     })
-    const total = chargeRate != null ? totals.amount : null
-    const totalWords =
-      chargeRate != null
+    const total = priced ? totals.amount : null
+    const totalWords = !priced
+      ? `${hoursStatementHours(totalHours)} h · no rate given, so the paper carries hours alone`
+      : chargeRate != null
         ? `${hoursStatementHours(totalHours)} h at ${hoursStatementMoney(chargeRate)} an hour = ${hoursStatementMoney(total ?? 0)}`
-        : `${hoursStatementHours(totalHours)} h · no rate given, so the paper carries hours alone`
-    const note =
-      chargeRate != null
+        : `${hoursStatementHours(totalHours)} h ${rateWords} = ${hoursStatementMoney(total ?? 0)}`
+    const note = !priced
+      ? 'No rate was given, so the paper carries hours alone.'
+      : chargeRate != null
         ? 'The amounts are the hours above at the rate the company charges for an hour of this work. Nothing on this paper is what the worker was paid.'
-        : 'No rate was given, so the paper carries hours alone.'
+        : 'Each day is the crew’s hour at the rate the company charges for that crew, the people out together priced once. Nothing on this paper is what the worker was paid.'
     charged = { rate: chargeRate, rateWords, lines, total, totalWords, note, leftOut }
   }
-  const preparedWords = charged && charged.rate != null ? `Prepared from the company’s records, charged ${charged.rateWords}` : 'Prepared from the company’s records'
+  const preparedWords = charged && priced ? `Prepared from the company’s records, charged ${charged.rateWords}` : 'Prepared from the company’s records'
 
   const gapSpan = hoursStatementGap(periodStart, periodEnd, input.firstRecordedDay)
   const gap = gapSpan
