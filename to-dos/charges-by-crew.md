@@ -86,6 +86,10 @@ everything and an easy way to adjust."*
   of and says so, so two papers never sell the same hour twice.
 - **Nothing on any of it is typed in**: every line is a row the Costs tab already shows, so the paper reconciles to
   the cent, and no estimate enters a job through it.
+- **Money words** (the owner, 2026-11-03, on the canvas): the cents are always smaller text than the whole dollars, on
+  every screen and paper this train draws — the papers, the window, the ledger's two columns, the Charges window's
+  tiles and rows — one kernel that splits a figure into its dollars and its cents, so no surface formats money by hand.
+  The hours statement's print (#212) takes the same rule when #251's PR 2 touches it.
 
 ## Where it plugs in (the artboards)
 
