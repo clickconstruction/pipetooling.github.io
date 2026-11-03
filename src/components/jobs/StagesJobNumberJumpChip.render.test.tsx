@@ -124,4 +124,17 @@ describe('StagesJobNumberJumpChip paid fallback (v2.1808)', () => {
     expect(input.value).toBe('555')
     expect(input.title).toBe('No job matches that number')
   })
+
+  it("resolve('failed') re-enables the field with the digits kept and never claims no match", async () => {
+    let resolveJump: (v: boolean | 'failed') => void = () => {}
+    const onJump = vi.fn(() => new Promise<boolean | 'failed'>((r) => { resolveJump = r }))
+    render(<StagesJobNumberJumpChip onJump={onJump} />)
+    const input = open()
+    fireEvent.change(input, { target: { value: '555' } })
+    fireEvent.keyDown(input, { key: 'Enter' })
+    resolveJump('failed')
+    await waitFor(() => expect(input.disabled).toBe(false))
+    expect(input.value).toBe('555')
+    expect(input.title).not.toBe('No job matches that number')
+  })
 })
