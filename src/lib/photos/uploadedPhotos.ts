@@ -269,6 +269,14 @@ export function sourceDoorWords(row: Pick<UploadedPhotoRow, 'source'>): string {
   }
 }
 
+/**
+ * Whether a row's own door already opens its job: a checklist's or a job photo's *Open the job* (punch list #244). The
+ * viewer then draws no second *Open the job* beside it.
+ */
+export function sourceDoorOpensJob(row: Pick<UploadedPhotoRow, 'source'>): boolean {
+  return row.source === 'checklist' || row.source === 'job'
+}
+
 /** The thread's address for a message picture's line, opened at that line. */
 export function threadPath(row: Pick<UploadedPhotoRow, 'contact_id' | 'message_id'>): string | null {
   if (!row.contact_id) return null

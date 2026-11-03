@@ -32,6 +32,7 @@ const KIND_MARK: Record<Exclude<ChangeKind, 'entry'>, HistoryMark> = {
   contact: { glyph: '➤', tone: 'amber' },
   asked: { glyph: '?', tone: 'amber' },
   answered: { glyph: '↩', tone: 'green' },
+  photos: { glyph: '▣', tone: 'blue' },
 }
 
 /** The mark a line wears: a kept entry wears its source's glyph, grey for a note and amber for what happened; every other kind its own. */
@@ -47,7 +48,7 @@ export const HISTORY_LEGEND_TITLE = 'What the marks mean'
 export const HISTORY_LEGEND_PRESS = 'What the marks mean'
 export const HISTORY_LEGEND_INTRO = 'Every line wears one mark for what it records. The colour is its family. The chips under the search box narrow the list by the same families.'
 
-/** The legend, in the order the chips run: what people wrote, what happened, plans, stages, money, questions. */
+/** The legend, in the order the chips run: what people wrote, what happened, plans, stages, money, questions, photos. */
 export const HISTORY_LEGEND: ReadonlyArray<HistoryLegendRow> = [
   { key: 'note', mark: historyMark('note'), name: 'A note', words: 'Words a person or a robot wrote about a job, a bid, the site or the customer.', chip: 'wrote' },
   { key: 'email', mark: historyMark('entry', 'email'), name: 'An email', words: 'An email came in or went out, kept at its own time.', chip: 'happened' },
@@ -64,6 +65,7 @@ export const HISTORY_LEGEND: ReadonlyArray<HistoryLegendRow> = [
   { key: 'paid', mark: historyMark('paid'), name: 'Paid', words: 'A payment came in.', chip: 'money' },
   { key: 'asked', mark: historyMark('asked'), name: 'Asked', words: 'A question went to the estimators or to Dispatch.', chip: 'questions' },
   { key: 'answered', mark: historyMark('answered'), name: 'Answered', words: 'That question got its answer.', chip: 'questions' },
+  { key: 'photos', mark: historyMark('photos'), name: 'Photos', words: 'The crews’ photos, one line per job, person and hour, with their thumbnails.', chip: 'photos' },
 ]
 
 /** The chip's label a row sits under, for the legend's last column. */

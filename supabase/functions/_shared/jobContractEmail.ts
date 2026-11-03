@@ -28,13 +28,21 @@ export type JobContractSendEmailInput = {
   url: string
   /** The sender's name for the sign-off; '' for none. */
   senderName: string
+  /** The kind of agreement (2026-11-02): a warranty's words say so. Omitted: a contract. */
+  kind?: 'contract' | 'warranty'
 }
+
+const isWarranty = (i: { kind?: 'contract' | 'warranty' }) => i.kind === 'warranty'
 
 /** The "Please sign" email — `send-job-contract`, mode `email`. */
 export function buildJobContractSendEmail(i: JobContractSendEmailInput): BuiltEmail {
   const greeting = i.recipientName ? `Hi ${i.recipientName.split(' ')[0]},` : 'Hello,'
   const subject = `Please sign: ${i.heading} — Job #${i.jobNo}`
-  const opening = i.message || `Here is your service agreement for ${i.jobAddress || 'your project'}. It takes about a minute to review and sign on your phone.`
+  const opening =
+    i.message ||
+    (isWarranty(i)
+      ? `Here is our warranty for ${i.jobAddress || 'your project'}. It takes about a minute to read, initial each line and sign on your phone.`
+      : `Here is your service agreement for ${i.jobAddress || 'your project'}. It takes about a minute to review and sign on your phone.`)
   const text =
     `${greeting}\n\n` +
     `${opening}\n\n` +
@@ -60,7 +68,7 @@ export function buildJobContractSendEmail(i: JobContractSendEmailInput): BuiltEm
 export function buildJobContractPaperEmail(i: JobContractSendEmailInput): BuiltEmail {
   const greeting = i.recipientName ? `Hi ${i.recipientName.split(' ')[0]},` : 'Hello,'
   const subject = `Please sign: ${i.heading} — Job #${i.jobNo} (PDF attached)`
-  const opening = i.message || `Attached is your service agreement for ${i.jobAddress || 'your project'}.`
+  const opening = i.message || `Attached is ${isWarranty(i) ? 'our warranty' : 'your service agreement'} for ${i.jobAddress || 'your project'}.`
   const how = 'Print it, sign and date the last page, and send it back — reply to this email with a scan or a clear photo of the signed page, or hand it to us on site.'
   const screen = 'Rather sign on a screen? It takes about a minute here:'
   const text =
@@ -91,6 +99,8 @@ export type JobContractSignedCopyEmailInput = {
   url: string
   /** True when the signed PDF is attached. */
   hasPdf: boolean
+  /** The kind of agreement (2026-11-02). Omitted: a contract. */
+  kind?: 'contract' | 'warranty'
 }
 
 /** The customer's signed copy, the moment they sign — `sign-job-contract` (v2.3617: one builder for the sender and the tab). */
@@ -98,9 +108,10 @@ export function buildJobContractSignedCopyEmail(i: JobContractSignedCopyEmailInp
   const amountLine = i.amountLabel != null ? ` · ${i.amountLabel}` : ''
   const subject = `Signed: ${i.heading} — Job #${i.jobNo}`
   const copyLine = i.hasPdf ? 'Your signed copy is attached as a PDF, and it stays at this link any time:' : 'Your signed copy stays at this link any time:'
-  const text = `Thank you, ${i.printedName}. Your agreement is signed.\n\n${i.heading}\nJob #${i.jobNo}${amountLine}\n\n${copyLine}\n${i.url}\n`
+  const what = isWarranty(i) ? 'Your warranty is signed and on file with us.' : 'Your agreement is signed.'
+  const text = `Thank you, ${i.printedName}. ${what}\n\n${i.heading}\nJob #${i.jobNo}${amountLine}\n\n${copyLine}\n${i.url}\n`
   const html =
-    `<p>Thank you, ${escapeHtml(i.printedName)}. Your agreement is signed.</p>` +
+    `<p>Thank you, ${escapeHtml(i.printedName)}. ${escapeHtml(what)}</p>` +
     `<p><strong>${escapeHtml(i.heading)}</strong><br>Job #${escapeHtml(i.jobNo)}${escapeHtml(amountLine)}</p>` +
     `<p>${copyLine} <a href="${escapeHtml(i.url)}">${escapeHtml(i.url)}</a></p>`
   return { subject, text, html }
@@ -115,22 +126,26 @@ export type JobContractReminderEmailInput = {
   url: string
   /** True on the last automatic reminder — the closing line changes. */
   last: boolean
+  /** The kind of agreement (2026-11-02). Omitted: a contract. */
+  kind?: 'contract' | 'warranty'
 }
 
 /** The nudge an unsigned agreement gets — `remind-job-contracts`. */
 export function buildJobContractReminderEmail(i: JobContractReminderEmailInput): BuiltEmail {
   const greeting = i.recipientName ? `Hi ${i.recipientName.split(' ')[0]},` : 'Hello,'
   const subject = `Reminder: please sign — ${i.heading} (Job #${i.jobNo})`
-  const amountLine = i.amountLabel != null ? `Contract amount: ${i.amountLabel}\n` : ''
+  const amountName = isWarranty(i) ? 'Price' : 'Contract amount'
+  const waiting = isWarranty(i) ? 'A quick reminder that our warranty is waiting for your initials and signature. It takes about a minute on your phone.' : 'A quick reminder that your service agreement is waiting for your signature. It takes about a minute on your phone.'
+  const amountLine = i.amountLabel != null ? `${amountName}: ${i.amountLabel}\n` : ''
   const closing = i.last ? 'This is our last automatic reminder — reply to this email or call us if anything needs changing.' : 'Questions? Just reply to this email.'
   const text =
-    `${greeting}\n\nA quick reminder that your service agreement is waiting for your signature. It takes about a minute on your phone.\n\n` +
+    `${greeting}\n\n${waiting}\n\n` +
     `${i.heading}\nJob #${i.jobNo}\n${amountLine}\nReview and sign here:\n${i.url}\n\n` +
     `${closing}\n`
   const html =
     `<p>${escapeHtml(greeting)}</p>` +
-    `<p>A quick reminder that your service agreement is waiting for your signature. It takes about a minute on your phone.</p>` +
-    `<p><strong>${escapeHtml(i.heading)}</strong><br>Job #${escapeHtml(i.jobNo)}${i.amountLabel != null ? `<br>Contract amount: ${escapeHtml(i.amountLabel)}` : ''}</p>` +
+    `<p>${escapeHtml(waiting)}</p>` +
+    `<p><strong>${escapeHtml(i.heading)}</strong><br>Job #${escapeHtml(i.jobNo)}${i.amountLabel != null ? `<br>${amountName}: ${escapeHtml(i.amountLabel)}` : ''}</p>` +
     `<p><a href="${escapeHtml(i.url)}" style="display:inline-block;background:#c2410c;color:#fff;padding:10px 18px;border-radius:8px;text-decoration:none;font-weight:600">Review &amp; sign</a></p>` +
     `<p style="color:#6b7280;font-size:13px">${escapeHtml(closing)}</p>`
   return { subject, text, html }

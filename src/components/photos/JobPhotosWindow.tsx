@@ -230,18 +230,13 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
     }
   }
 
-  const openSource = (row: UploadedPhotoRow) => {
-    if (row.source === 'message') {
-      const to = threadPath(row)
-      if (to) {
-        setOpen(null)
-        onClose()
-        navigate(to)
-      }
-      return
-    }
+  /** A text's picture opens its thread; every other photo's one door is the job (`onJob` below), never a second here. */
+  const openThread = (row: UploadedPhotoRow) => {
+    const to = threadPath(row)
+    if (!to) return
     setOpen(null)
-    onOpenJob?.()
+    onClose()
+    navigate(to)
   }
 
   const addTileWords = cameraFirst ? JOB_PHOTO_WORDS.take : JOB_PHOTO_WORDS.add
@@ -417,11 +412,15 @@ export function JobPhotosWindow({ job, onClose, onOpenJob, io: ioProp }: { job: 
           io={io.photos}
           onIndex={setOpen}
           onClose={() => setOpen(null)}
-          onJob={() => {
-            setOpen(null)
-            onOpenJob?.()
-          }}
-          onSource={onOpenJob || shown[open]?.row.source === 'message' ? openSource : null}
+          onJob={
+            onOpenJob
+              ? () => {
+                  setOpen(null)
+                  onOpenJob()
+                }
+              : null
+          }
+          onSource={shown[open]?.row.source === 'message' && threadPath(shown[open]!.row) ? openThread : null}
           onPerson={(name) => {
             setOpen(null)
             setTyped(name)

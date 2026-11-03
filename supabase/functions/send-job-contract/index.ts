@@ -13,10 +13,13 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { buildJobContractSendEmail } from '../_shared/jobContractEmail.ts'
 import { jobContractLiveToken } from '../_shared/jobContractLinkLive.ts'
+import { writeJobAgreementThreadLine } from '../_shared/jobContractThreadLine.ts'
 import {
+  agreementHeading,
+  agreementKindOf,
+  agreementNoun,
   amountCentsFromFields,
   appOrigin,
-  contractHeading,
   corsHeaders,
   formatMoney,
   isValidEmail,
@@ -66,7 +69,7 @@ serve(async (req) => {
     const { data: row, error: selErr } = await userClient
       .from('job_contracts')
       .select(
-        'id, job_id, status, revision, public_token, public_token_expires_at, recipient_name, recipient_email, recipient_phone, cc_emails, send_count, sent_at, fields, body_html, template_name, reminders_enabled, voided_at',
+        'id, job_id, status, revision, public_token, public_token_expires_at, recipient_name, recipient_email, recipient_phone, cc_emails, send_count, sent_at, fields, body_html, template_name, reminders_enabled, voided_at, kind',
       )
       .eq('id', contractId)
       .maybeSingle()
@@ -89,9 +92,13 @@ serve(async (req) => {
       template_name: string | null
       reminders_enabled: boolean
       voided_at: string | null
+      kind: string | null
     }
-    if (c.voided_at || c.status === 'voided') return json({ error: 'This contract was voided. Start a new one.' }, 409)
-    if (c.status === 'signed') return json({ error: 'This contract is already signed.' }, 409)
+    // The warranty in place of a contract (2026-11-02): the same send, worded by kind.
+    const kind = agreementKindOf(c.kind)
+    const words = agreementNoun(kind)
+    if (c.voided_at || c.status === 'voided') return json({ error: `This ${words.noun} was voided. Start a new one.` }, 409)
+    if (c.status === 'signed') return json({ error: `This ${words.noun} is already signed.` }, 409)
     if (!(c.body_html ?? '').trim()) return json({ error: 'Add the terms before sending.' }, 400)
 
     // v2.5145 (punch list #104): handing out the link a sent agreement already carries is not a send. A row out with
@@ -156,7 +163,7 @@ serve(async (req) => {
 
     const origin = appOrigin(body.public_origin)
     const url = signingUrl(origin, token)
-    const heading = contractHeading(job)
+    const heading = agreementHeading(kind, job)
     const jobNo = jobNumberLabel(job)
     const amount = amountCentsFromFields(c.fields)
 
@@ -166,6 +173,8 @@ serve(async (req) => {
       metadata: { channel: mode, to: mode === 'email' ? recipientEmail : null, revision: c.revision },
       actor_user_id: user.id,
     })
+    // The thread's line (2026-11-02): the paper went, on the customer's own thread, keyed on this send.
+    await writeJobAgreementThreadLine(admin, { contractId: c.id, jobId: c.job_id, kind, event: 'sent', heading, signerName: null, sentAtIso: nowIso })
 
     if (mode === 'link') return json({ ok: true, emailed: false, sign_url: url })
 
@@ -184,9 +193,10 @@ serve(async (req) => {
       jobAddress: job.job_address,
       heading,
       jobNo,
-      amountLine: amount != null ? `Contract amount: ${formatMoney(amount)}` : '',
+      amountLine: amount != null ? `${words.amountLabel}: ${formatMoney(amount)}` : '',
       url,
       senderName,
+      kind,
     })
 
     const sent = await sendEmailViaResend(recipientEmail, subject, textPlain, html, resendKey, {

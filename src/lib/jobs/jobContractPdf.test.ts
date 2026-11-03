@@ -100,3 +100,35 @@ describe('buildJobContractPdf', () => {
     expect(unsigned.length).not.toBe(signed.length)
   })
 })
+
+describe('the warranty in place of a contract (2026-11-02)', () => {
+  it('builds a warranty with its lines to initial, signed and unsigned, without throwing', async () => {
+    const base = {
+      heading: 'Warranty for 138 W Pat Blanco',
+      jobNumber: '1312',
+      jobAddress: '138 W Pat Blanco',
+      customerName: 'Michael Palmer',
+      recipientName: 'Michael Palmer',
+      dateLabel: 'Nov 2, 2026',
+      revision: 1,
+      templateName: 'Built-in warranty terms',
+      scopeLines: ['Replace the water heater'],
+      exclusions: '',
+      note: '',
+      amountCents: 185000,
+      paymentLine: 'Full amount due on completion of the work.',
+      dates: '',
+      termsText: '1. The work. We do the work listed above.\n\n2. The warranty. One year on labor.',
+      issuer: null,
+      kind: 'warranty' as const,
+      initialLines: [
+        { line: 'The work listed above is the work I asked for at this address.', initials: 'MP' },
+        { line: 'The labor is warranted for one year from the day the work is finished. Manufacturer warranties pass through on materials. Misuse, freezing and work by others are not covered.', initials: null },
+      ],
+    }
+    const unsigned = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...base, signature: null })
+    expect(unsigned.byteLength).toBeGreaterThan(1000)
+    const signed = await buildJobContractPdf(pdfLib as unknown as PdfLibLike, { ...base, signature: { printedName: 'Michael Palmer', auditLine: 'Consent recorded · typed · Nov 2, 2026, 5:00 PM CT', recordId: 'J1312-ABCDEF', whenLabel: 'Nov 2, 2026, 5:00 PM CT' } })
+    expect(signed.byteLength).toBeGreaterThan(1000)
+  })
+})
