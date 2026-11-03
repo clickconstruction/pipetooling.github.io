@@ -161,9 +161,9 @@ BEGIN
                  {"op":"times","session_id":"00000000-0000-0000-0000-0000000007e2","start":"2026-03-03T09:00:00-06:00","end":"2026-03-03T08:00:00-06:00"},
                  {"op":"approve","session_id":"00000000-0000-0000-0000-0000000007e4"}]'::jsonb, false);
   PERFORM dcs.same('one op applied, five refused', (r->>'applied') || '/' || (r->>'held') || '/' || (r->>'refused'), '1/0/5');
-  PERFORM dcs.same('an unknown job is refused with its id', position('not found' IN (r->'ops'->0->>'words'))::text <> '0', 'true');
+  PERFORM dcs.same('an unknown job is refused with its id', (position('not found' IN (r->'ops'->0->>'words')) > 0)::text, 'true');
   PERFORM dcs.same('a revoked session is refused', r->'ops'->2->>'words', 'the session is revoked');
-  PERFORM dcs.same('an unknown op is refused', position('unknown op' IN (r->'ops'->3->>'words'))::text <> '0', 'true');
+  PERFORM dcs.same('an unknown op is refused', (position('unknown op' IN (r->'ops'->3->>'words')) > 0)::text, 'true');
   PERFORM dcs.same('an end before its start is refused', r->'ops'->4->>'words', 'end must be after start');
   PERFORM dcs.same('an approved session is not approved twice', r->'ops'->5->>'words', 'the session is already approved');
 END $$;
