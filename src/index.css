@@ -6651,3 +6651,82 @@ button.developmentCountChip:focus-visible {
 .developmentPhoneLookFigure.reviewNeed {
   color: var(--text-amber-800);
 }
+
+/* v2.6428 (punch list #212): the Hours statements section's cards, one a statement, on the job window's Documents tab
+   and the person's desk (`jobs/HoursStatementsSection.tsx`). Neither home is ever wide enough for the old table (the
+   desk pane is 600px at every desktop width, the job window about 556px), so a card keeps the job's name whole and the
+   presses inside the pane. Print · Open sit small at the right of the title while the card is 360px or wider; under
+   that (a phone) they drop to a full-width foot row, thumb-sized. The switch reads the card's own width. */
+.hsCards {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: grid;
+  gap: 0.5rem;
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 24rem), 1fr));
+}
+.hsCard {
+  container-type: inline-size;
+  min-width: 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 0.6rem 0.7rem;
+  background: var(--bg-subtle);
+}
+.hsCardIn {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  grid-template-areas:
+    "title presses"
+    "kv kv";
+  gap: 0.35rem 0.6rem;
+  align-items: start;
+}
+.hsCardTitle {
+  grid-area: title;
+  font-size: 0.875rem;
+  font-weight: 700;
+  color: var(--text-strong);
+  overflow-wrap: anywhere;
+}
+.hsCardKv {
+  grid-area: kv;
+  display: grid;
+  grid-template-columns: 5.5em minmax(0, 1fr);
+  gap: 0.1rem 0.5rem;
+  margin: 0;
+  font-size: 0.8125rem;
+}
+.hsCardKv dt {
+  color: var(--text-muted);
+  font-weight: 400;
+}
+.hsCardKv dd {
+  margin: 0;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  color: var(--text-base);
+}
+.hsCardPresses {
+  grid-area: presses;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.3rem;
+  justify-content: flex-end;
+}
+@container (max-width: 359px) {
+  .hsCardIn {
+    grid-template-columns: minmax(0, 1fr);
+    grid-template-areas:
+      "title"
+      "kv"
+      "presses";
+  }
+  .hsCardPresses {
+    margin-top: 0.2rem;
+  }
+  .hsCardPresses > button {
+    flex: 1 1 7rem;
+    min-height: 40px;
+  }
+}
