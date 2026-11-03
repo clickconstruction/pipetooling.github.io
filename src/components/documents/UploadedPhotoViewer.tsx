@@ -9,7 +9,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import * as S from '../jobMode/sheetStyles'
 import { formatDenverCalendarDayWithYear } from '../../utils/dateUtils'
 import { driveFileUrl } from '../../lib/photos/reportPhotos'
-import { captionWords, jobWords, sizeWords, sourceDoorWords, sourceWords, timeWords, viewerTitle, whereWords, whoWords, firstName, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
+import { captionWords, jobWords, sizeWords, sourceDoorOpensJob, sourceDoorWords, sourceWords, timeWords, viewerTitle, whereWords, whoWords, firstName, type UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
 import type { UploadedPhotosIo } from '../../lib/photos/uploadedPhotosIo'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 
@@ -34,8 +34,8 @@ export function UploadedPhotoViewer({
   io: UploadedPhotosIo
   onIndex: (i: number) => void
   onClose: () => void
-  /** The job press; absent when the row has no job. */
-  onJob: (row: UploadedPhotoRow) => void
+  /** The job press; null when the caller has no job to open (a Job photos window opened inside the job, or on the Job Mode card). */
+  onJob: ((row: UploadedPhotoRow) => void) | null
   /** The source's door; null when the row has none to offer. */
   onSource: ((row: UploadedPhotoRow) => void) | null
   onPerson: (name: string) => void
@@ -87,7 +87,7 @@ export function UploadedPhotoViewer({
           {sourceDoorWords(row)}
         </button>
       ) : null}
-      {row.job_id && row.source !== 'checklist' ? (
+      {row.job_id && onJob && !(onSource && sourceDoorOpensJob(row)) ? (
         <button type="button" style={S.secondaryBtn} onClick={() => onJob(row)}>
           Open the job
         </button>

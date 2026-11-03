@@ -1,7 +1,7 @@
 /**
  * The words of the Hours statement window and its sections (punch list #212, PR 2): what the app has in the span, the
- * held line for a session still waiting for approval, the press with its count, the held presses' reasons until PR 3
- * ships the signing, and a saved statement's row. Pure; the window and the sections draw these.
+ * held line for a session still waiting for approval, the press with its count, and a saved statement's row. The signing's
+ * own words are `hoursStatementSigning.ts`. Pure; the window and the sections draw these.
  */
 import { pluralNoun } from '../batchWords'
 import { hoursStatementLongDate, hoursStatementPeriodLabel } from './hoursStatement'
@@ -44,9 +44,6 @@ export function hoursStatementSpanWords(c: HoursStatementSpanCounts, opts: { isO
 
 /** The pay switch's words when it is fixed off for an assistant. */
 export const HOURS_STATEMENT_PAY_FIXED_OFF = 'The pay stays off for an assistant. The paper carries hours alone.'
-
-/** Why Send for signature… and Sign here now cannot be pressed yet (PR 3 ships the signing). */
-export const HOURS_STATEMENT_SIGNING_HELD = 'Signing in the app is not here yet. Print the paper and sign it with a pen.'
 
 /**
  * The press that opens the window, with its count (`CLAUDE.md` → Do what is ready): *Hours statement… · 3 people

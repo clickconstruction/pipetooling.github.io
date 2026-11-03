@@ -1,19 +1,24 @@
 /**
- * The Hours statement window (punch list #212, PR 2, v2.6097): one worker's recorded hours on one job for a period, as
- * the paper they sign, read live from the clock and the pay reports. Opened from the job window's Documents tab (who:
- * the people who clocked here) or from the person's desk (the job instead). Two switches: *Show the rate, the amount and
- * what was paid* (the payroll roles' own; fixed off for an assistant, the owner's call 6) and *Add days the app did not
- * record* (the stated block, call 5). A line says what the app has in the span and a held line names a session still
- * waiting for approval, which the paper says under its day instead of counting. The preview is the paper itself.
+ * The Hours statement window (punch list #212, PR 2, v2.6097; the signing PR 3, v2.6411): one worker's recorded hours
+ * on one job for a period, as the paper they sign, read live from the clock and the pay reports. Opened from the job
+ * window's Documents tab (who: the people who clocked here) or from the person's desk (the job instead). Two switches:
+ * *Show the rate, the amount and what was paid* (the payroll roles' own; fixed off for an assistant, the owner's call 6)
+ * and *Add days the app did not record* (the stated block, call 5). A line says what the app has in the span and a held
+ * line names a session still waiting for approval, which the paper says under its day instead of counting. The preview
+ * is the paper itself.
  *
  * Presses: **Save a draft** writes the `hours_statements` row with the read as its snapshot and mints the record id
  * (`HS-<job>-<n>`); **Print** saves the same way (a draft becomes printed), stamps the record id on the paper and files
- * nothing — the paper is signed with a pen; **Send for signature…** and **Sign here now** are drawn and held with their
- * reason until PR 3 ships the signing. The kernel and the print are PR 1's (`hoursStatement.ts`, `buildHoursStatementHtml`).
+ * nothing — the paper is signed with a pen. **Send for signature…** saves, draws the statement as its own Contract Form
+ * (`hours-statement-signing`) and opens the channel sheet: the link by email, by text, copied, or **Hand the phone to
+ * <name>** on this device; **Sign here now** is the last of those in one press; **File a signed scan…** is the paper
+ * path, the pen-signed paper filed with the days the worker wrote. A sent statement is a record that can be sent again;
+ * a signed one opens its PDF through `open-contract-form-pdf`'s gate. The kernel and the print are PR 1's.
  */
 import { useCallback, useEffect, useId, useMemo, useRef, useState, type CSSProperties } from 'react'
 import { useAuth } from '../../hooks/useAuth'
 import { useToastContext } from '../../contexts/ToastContext'
+import { usePromptDialog } from '../../contexts/ConfirmDialogContext'
 import { useBodyScrollLock } from '../../hooks/useBodyScrollLock'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { formatErrorMessage } from '../../utils/errorHandling'
@@ -22,10 +27,24 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { hoursStatementGap, hoursStatementLongDate } from '../../lib/people/hoursStatement'
 import { listHoursStatementJobs, listHoursStatementPeople, loadHoursStatementInputs, type HoursStatementJob, type HoursStatementPerson, type HoursStatementRead } from '../../lib/people/hoursStatementRead'
 import { hoursStatementPayAllowed, type HoursStatementMaker } from '../../lib/people/hoursStatementAccess'
-import { HOURS_STATEMENT_PAY_FIXED_OFF, HOURS_STATEMENT_SIGNING_HELD, hoursStatementSavedWords, hoursStatementSpanWords } from '../../lib/people/hoursStatementWindow'
+import { HOURS_STATEMENT_PAY_FIXED_OFF, hoursStatementSavedWords, hoursStatementSpanWords } from '../../lib/people/hoursStatementWindow'
 import { hoursStatementIsOpen, hoursStatementStateAfterPrint, type HoursStatementState } from '../../lib/people/hoursStatementRecord'
 import { saveHoursStatement, type HoursStatementRecordRow, type HoursStatementSnapshot } from '../../lib/people/hoursStatementsIo'
 import { buildHoursStatementPaper, printHoursStatementPaper } from '../../lib/people/hoursStatementPrint'
+import {
+  HOURS_STATEMENT_OPEN_WORDS,
+  HOURS_STATEMENT_SENT_WORDS,
+  HOURS_STATEMENT_SIGNED_WORDS,
+  hoursStatementSentWords,
+  hoursStatementTextBody,
+  inPersonUrl,
+  smsHref,
+  type HoursStatementChannel,
+  type ScanStatedRow,
+} from '../../lib/people/hoursStatementSigning'
+import { fileToBase64, supabaseHoursStatementSigningIo, type HoursStatementSigningIo } from '../../lib/people/hoursStatementSigningIo'
+import { HoursStatementSendSheet, type HoursStatementContact } from './HoursStatementSendSheet'
+import { HoursStatementScanSheet, type ScanSheetDraft } from './HoursStatementScanSheet'
 
 /** Where the window was opened from: a job (pick who) or a person (pick the job). */
 export type HoursStatementScope =
@@ -43,6 +62,8 @@ export type HoursStatementModalProps = {
   /** Above the job window (1010) by default; the person's desk passes its editor layer. */
   zIndex?: number
   onSaved?: (row: HoursStatementRecordRow) => void
+  /** The signing's calls; the smoke hands a fake. */
+  signingIo?: HoursStatementSigningIo
 }
 
 const field: CSSProperties = { padding: '0.35rem 0.5rem', fontSize: '0.875rem', borderRadius: 4, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', font: 'inherit', width: '100%', boxSizing: 'border-box' }
@@ -53,9 +74,12 @@ const btn: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.
 const btnPrimary: CSSProperties = { ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#fff' }
 const btnDead: CSSProperties = { ...btn, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'not-allowed' }
 
-export function HoursStatementModal({ open, onClose, scope, maker, existing = null, zIndex = 1030, onSaved }: HoursStatementModalProps) {
+type Sheet = 'send' | 'scan' | null
+
+export function HoursStatementModal({ open, onClose, scope, maker, existing = null, zIndex = 1030, onSaved, signingIo = supabaseHoursStatementSigningIo }: HoursStatementModalProps) {
   const { user, profileName } = useAuth()
   const { showToast } = useToastContext()
+  const promptDialog = usePromptDialog()
   const narrow = useMatchMedia('(max-width: 860px)')
   const titleId = useId()
   useBodyScrollLock(open)
@@ -74,7 +98,10 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
   const [reading, setReading] = useState(false)
   const [readError, setReadError] = useState<string | null>(null)
   const [row, setRow] = useState<HoursStatementRecordRow | null>(existing)
-  const [busy, setBusy] = useState<'save' | 'print' | null>(null)
+  const [busy, setBusy] = useState<'save' | 'print' | 'sign' | 'scan' | 'pdf' | null>(null)
+  const [sheet, setSheet] = useState<Sheet>(null)
+  const [contact, setContact] = useState<HoursStatementContact | null>(null)
+  const [signing, setSigning] = useState<HoursStatementChannel | null>(null)
   const token = useRef(0)
 
   const scopeKey = scope.kind === 'job' ? `job:${scope.job.id}` : `person:${scope.userId}`
@@ -93,6 +120,8 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
     setListError(null)
     setPeople(null)
     setJobs(null)
+    setSheet(null)
+    setContact(null)
     void (async () => {
       try {
         if (scope.kind === 'job') {
@@ -184,9 +213,14 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
       asOf: read.asOf,
     }
   }, [read, jobFacts, profileName])
-  const html = useMemo(() => (snapshot ? buildHoursStatementPaper(snapshot, row?.record_id ?? null) : null), [snapshot, row?.record_id])
+  // A sent or signed statement is a record: its paper is its snapshot's, never the live read's.
+  const paperSnapshot = row && !hoursStatementIsOpen(row.state) && row.snapshot?.job ? row.snapshot : snapshot
+  const html = useMemo(() => (paperSnapshot ? buildHoursStatementPaper(paperSnapshot, row?.record_id ?? null) : null), [paperSnapshot, row?.record_id])
   const span = read ? hoursStatementSpanWords(read.read.counts, { isOfficeJob: read.read.isOfficeJob }) : null
   const rowOpen = row == null || hoursStatementIsOpen(row.state)
+  const signed = row?.state === 'signed'
+  const workerName = row?.snapshot?.worker.name ?? row?.worker?.name ?? read?.read.worker.name ?? (scope.kind === 'person' ? scope.name : '')
+  const jobLabel = jobFacts ? `${jobFacts.number} · ${jobFacts.name}` : row?.snapshot ? `${row.snapshot.job.number} · ${row.snapshot.job.name}` : ''
 
   const save = useCallback(
     async (state: HoursStatementState): Promise<HoursStatementRecordRow | null> => {
@@ -215,6 +249,13 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
     [snapshot, read, jobFacts, userId, row?.id, from, to, user?.id, onSaved],
   )
 
+  /** The saved row the signing works on: a record as it stands, or the live read saved first so the paper is current. */
+  const ensureSaved = useCallback(async (): Promise<HoursStatementRecordRow | null> => {
+    if (row && !hoursStatementIsOpen(row.state)) return row
+    if (!snapshot) return row
+    return await save(row ? row.state : 'draft')
+  }, [row, snapshot, save])
+
   const onSaveDraft = async () => {
     if (busy || !snapshot) return
     setBusy('save')
@@ -230,12 +271,13 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
 
   // Print saves first (a draft becomes printed) so the paper carries its record id; the window opens inside the press.
   const onPrint = () => {
-    if (busy || !snapshot) return
-    const snap = snapshot
+    if (busy || !paperSnapshot) return
+    const snap = paperSnapshot
     setBusy('print')
     let saveError: unknown = null
     void printHoursStatementPaper(async () => {
       try {
+        if (row && !hoursStatementIsOpen(row.state)) return buildHoursStatementPaper(snap, row.record_id)
         const saved = await save(hoursStatementStateAfterPrint(row?.state ?? 'draft'))
         if (!saved) throw new Error('The statement was not saved.')
         return buildHoursStatementPaper(snap, saved.record_id)
@@ -251,10 +293,131 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
       .finally(() => setBusy(null))
   }
 
+  // Send for signature…: save, draw the statement as its form (the worker's contact comes back), and open the sheet.
+  const openSendSheet = async () => {
+    if (busy || signed) return
+    setBusy('sign')
+    try {
+      const saved = await ensureSaved()
+      if (!saved) throw new Error('The statement was not saved.')
+      const prepared = await signingIo.prepare(saved.id, 'email')
+      setContact({ email: prepared.worker.email ?? '', phone: prepared.worker.phone ?? '' })
+      setSheet('send')
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'The statement could not be made ready to sign.'), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  /** One channel: the form drawn with how it goes, the link minted, handed on its way, the statement moved to sent. */
+  const sendBy = async (channel: HoursStatementChannel, current: HoursStatementRecordRow, who: HoursStatementContact) => {
+    const prepared = await signingIo.prepare(current.id, channel)
+    const sent = await signingIo.send(prepared.documentId, { channel, email: who.email })
+    if (channel === 'text') {
+      window.location.href = smsHref(who.phone, hoursStatementTextBody({ recordId: current.record_id, jobLabel, url: sent.acceptUrl }))
+    } else if (channel === 'link') {
+      try {
+        await navigator.clipboard.writeText(sent.acceptUrl)
+      } catch {
+        // The clipboard is closed to the app here: the link shows in a window to copy by hand.
+        await promptDialog({ title: 'Copy the signing link', message: 'The app could not reach the clipboard. Select the link below and copy it.', defaultValue: sent.acceptUrl, confirmLabel: 'I copied it' })
+      }
+    } else if (channel === 'in_person') {
+      const url = inPersonUrl(sent.acceptUrl)
+      const opened = window.open(url, '_blank', 'noopener')
+      if (!opened) await promptDialog({ title: 'Open the signing page', message: 'The window was blocked. Open this link on this device and hand it over.', defaultValue: url, confirmLabel: 'I opened it' })
+    }
+    const updated = await signingIo.markSent(current.id)
+    setRow(updated)
+    onSaved?.(updated)
+    showToast(hoursStatementSentWords(channel, { recordId: current.record_id, workerName: prepared.worker.name, emailed: sent.emailed, emailError: sent.emailError }), channel === 'email' && !sent.emailed ? 'error' : 'success')
+  }
+
+  const onPickChannel = async (channel: HoursStatementChannel) => {
+    if (signing || !row || !contact) return
+    setSigning(channel)
+    try {
+      await sendBy(channel, row, contact)
+      setSheet(null)
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'The statement was not sent.'), 'error')
+    } finally {
+      setSigning(null)
+    }
+  }
+
+  // Sign here now: Hand the phone in one press, the sheet skipped.
+  const onSignHereNow = async () => {
+    if (busy || signed) return
+    setBusy('sign')
+    try {
+      const saved = await ensureSaved()
+      if (!saved) throw new Error('The statement was not saved.')
+      await sendBy('in_person', saved, contact ?? { email: '', phone: '' })
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'The signing page could not be opened.'), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const openScanSheet = async () => {
+    if (busy || signed) return
+    setBusy('scan')
+    try {
+      const saved = await ensureSaved()
+      if (!saved) throw new Error('The statement was not saved.')
+      setSheet('scan')
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'The statement was not saved.'), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const onFileScan = async (draft: ScanSheetDraft) => {
+    if (busy || !row || !draft.file) return
+    setBusy('scan')
+    try {
+      const base64 = await fileToBase64(draft.file)
+      const statedDays = draft.rows.filter((r) => r.day.trim() || r.hours.trim() || r.note.trim()).map((r) => ({ day: r.day.trim(), hours: r.hours.trim() || null, note: r.note.trim() }))
+      const filed = await signingIo.fileScan({ statementId: row.id, scan: { base64, mime: draft.file.type, filename: draft.file.name }, signedOnYmd: draft.signedOn, signerPrintedName: draft.printedName.trim(), statedDays })
+      const updated: HoursStatementRecordRow = { ...row, state: 'signed', contract_document_id: filed.documentId, stated_days: statedDays.map((d) => ({ day: d.day, hours: d.hours == null ? null : Number(d.hours.replace(',', '.')), note: d.note, statedBy: `${draft.printedName.trim()}, ${draft.signedOn}` })) }
+      setRow(updated)
+      onSaved?.(updated)
+      setSheet(null)
+      showToast(`${row.record_id} filed as signed on paper.`, 'success')
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'The signed scan was not filed.'), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  const onOpenSignedPdf = async () => {
+    if (busy || !row?.contract_document_id) return
+    setBusy('pdf')
+    try {
+      const url = await signingIo.openSignedPdf(row.contract_document_id)
+      const opened = window.open(url, '_blank', 'noopener')
+      if (!opened) await promptDialog({ title: 'Open the signed PDF', message: 'The window was blocked. Open this link; it works for five minutes.', defaultValue: url, confirmLabel: 'I opened it' })
+    } catch (e: unknown) {
+      showToast(formatErrorMessage(e, 'The signed PDF could not be opened.'), 'error')
+    } finally {
+      setBusy(null)
+    }
+  }
+
   if (!open) return null
   const title = scope.kind === 'job' ? `Hours statement · ${scope.job.number} · ${scope.job.name}` : `Hours statement · ${scope.name}`
   const canAct = Boolean(snapshot) && !reading && !busy && rowOpen
+  // The signing presses: a paper to work on (the live read, or a record), nothing else in flight, not signed yet.
+  const canSign = (Boolean(snapshot) || Boolean(row)) && !reading && !busy && !signed && sheet == null
   const listEmpty = scope.kind === 'job' ? people != null && people.length === 0 && !existing : jobs != null && jobs.length === 0 && !existing
+  const statedRows: ScanStatedRow[] = (row?.stated_days ?? []).map((d) => ({ day: d.day, hours: d.hours == null ? '' : String(d.hours), note: d.note }))
+  const paperHasStatedBlock = Boolean(row?.gap_from) || (row?.stated_days.length ?? 0) > 0 || row?.snapshot?.input.addStatedBlock === true || Boolean(snapshot && (snapshot.input.addStatedBlock || hoursStatementGap(snapshot.input.periodStart, snapshot.input.periodEnd, snapshot.input.firstRecordedDay)))
+  const footerWords = signed ? HOURS_STATEMENT_SIGNED_WORDS : row && !rowOpen ? HOURS_STATEMENT_SENT_WORDS : HOURS_STATEMENT_OPEN_WORDS
 
   return (
     <div
@@ -327,11 +490,11 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem' }}>
               <label style={label}>
                 From
-                <input type="date" style={field} value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" />
+                <input type="date" style={field} value={from} onChange={(e) => setFrom(e.target.value)} aria-label="From" disabled={!rowOpen} />
               </label>
               <label style={label}>
                 To
-                <input type="date" style={field} value={to} onChange={(e) => setTo(e.target.value)} aria-label="To" />
+                <input type="date" style={field} value={to} onChange={(e) => setTo(e.target.value)} aria-label="To" disabled={!rowOpen} />
               </label>
             </div>
             {from && to && from > to ? <p style={{ ...quiet, color: 'var(--text-red-600)' }}>From is after To. Pick a span that starts first.</p> : null}
@@ -347,14 +510,15 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
               <span>Add days the app did not record</span>
             </label>
             {readError ? <p style={{ ...quiet, color: 'var(--text-red-600)' }}>{readError}</p> : null}
-            {span ? (
+            {span && rowOpen ? (
               <div data-testid="hours-statement-span" style={{ display: 'grid', gap: '0.25rem' }}>
                 <p style={quiet}>{span.has}</p>
                 {span.held ? <p style={{ ...quiet, color: 'var(--text-amber-800)', fontWeight: 600 }}>{span.held}</p> : null}
               </div>
             ) : null}
             {row ? <p data-testid="hours-statement-saved" style={{ ...quiet, color: 'var(--text-strong)', fontWeight: 600 }}>{hoursStatementSavedWords(row.record_id, row.state)}</p> : null}
-            {row && !rowOpen ? <p style={quiet}>This statement was sent or signed, so it is a record now. It can be printed again as it was.</p> : null}
+            {row && !rowOpen ? <p style={quiet}>{signed ? HOURS_STATEMENT_SIGNED_WORDS : HOURS_STATEMENT_SENT_WORDS}</p> : null}
+            {signed && (row?.stated_days.length ?? 0) > 0 ? <p style={quiet}>{row!.stated_days.length} {row!.stated_days.length === 1 ? 'day' : 'days'} stated by the worker on the signed copy.</p> : null}
           </div>
 
           <div style={{ minHeight: narrow ? 520 : 620, display: 'flex', flexDirection: 'column', border: '1px solid var(--border)', borderRadius: 6, overflow: 'hidden', position: 'relative' }}>
@@ -363,12 +527,15 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
             ) : (
               <p style={{ ...quiet, padding: '1rem' }}>{reading ? 'Reading the clock and the pay reports…' : spanOk ? 'The paper draws here.' : 'Pick who and a span, and the paper draws here.'}</p>
             )}
-            {html && reading ? <div style={{ position: 'absolute', top: 8, right: 8, padding: '0.25rem 0.6rem', borderRadius: 999, fontSize: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>Reading…</div> : null}
+            {html && reading && rowOpen ? <div style={{ position: 'absolute', top: 8, right: 8, padding: '0.25rem 0.6rem', borderRadius: 999, fontSize: '0.75rem', background: 'var(--surface)', border: '1px solid var(--border)', color: 'var(--text-muted)' }}>Reading…</div> : null}
           </div>
         </div>
 
+        {sheet === 'send' && row ? <HoursStatementSendSheet workerName={workerName} contact={contact} onContactChange={setContact} busy={signing} onPick={(c) => void onPickChannel(c)} onCancel={() => setSheet(null)} /> : null}
+        {sheet === 'scan' && row ? <HoursStatementScanSheet workerName={workerName} todayYmd={todayYmdInAppTz()} initialRows={statedRows} showStatedRows={paperHasStatedBlock} busy={busy === 'scan'} onFile={(d) => void onFileScan(d)} onCancel={() => setSheet(null)} /> : null}
+
         <div style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '0.5rem', padding: '0.75rem 1rem', borderTop: '1px solid var(--border)' }}>
-          <button type="button" style={canAct ? btn : btnDead} disabled={!canAct} onClick={onPrint}>
+          <button type="button" style={paperSnapshot && !busy ? btn : btnDead} disabled={!paperSnapshot || Boolean(busy)} onClick={onPrint}>
             {busy === 'print' ? 'Printing…' : 'Print'}
           </button>
           {rowOpen ? (
@@ -376,13 +543,24 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
               {busy === 'save' ? 'Saving…' : row ? 'Save' : 'Save a draft'}
             </button>
           ) : null}
-          <button type="button" style={btnDead} disabled aria-disabled="true" title={HOURS_STATEMENT_SIGNING_HELD}>
-            Send for signature…
-          </button>
-          <button type="button" style={btnDead} disabled aria-disabled="true" title={HOURS_STATEMENT_SIGNING_HELD}>
-            Sign here now
-          </button>
-          <span style={{ ...quiet, flexBasis: '100%' }}>{HOURS_STATEMENT_SIGNING_HELD}</span>
+          {!signed ? (
+            <>
+              <button type="button" style={canSign ? btn : btnDead} disabled={!canSign} onClick={() => void openSendSheet()}>
+                {busy === 'sign' && sheet == null ? 'Getting it ready…' : 'Send for signature…'}
+              </button>
+              <button type="button" style={canSign ? btn : btnDead} disabled={!canSign} onClick={() => void onSignHereNow()}>
+                Sign here now
+              </button>
+              <button type="button" style={canSign ? btn : btnDead} disabled={!canSign} onClick={() => void openScanSheet()}>
+                File a signed scan…
+              </button>
+            </>
+          ) : (
+            <button type="button" style={row?.contract_document_id && !busy ? btnPrimary : btnDead} disabled={!row?.contract_document_id || Boolean(busy)} onClick={() => void onOpenSignedPdf()}>
+              {busy === 'pdf' ? 'Opening…' : 'Open the signed PDF'}
+            </button>
+          )}
+          <span style={{ ...quiet, flexBasis: '100%' }}>{footerWords}</span>
         </div>
       </div>
     </div>

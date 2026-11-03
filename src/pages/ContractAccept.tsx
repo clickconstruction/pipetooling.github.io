@@ -69,6 +69,9 @@ type LoadPayload = {
 export default function ContractAccept() {
   const [params] = useSearchParams()
   const token = params.get('t')?.trim() ?? ''
+  // Signed on the office's device, handed over in person (`?inperson=1`, punch list #212, v2.6411): the page says so,
+  // and the signature's consent is kept as in person.
+  const inPerson = params.get('inperson') === '1'
   // What customers see (v2.2760): the sample token renders the sample agreement for a signed-in office user.
   const sample = sampleStateFromToken(token)
   const { user, loading: authLoading } = useAuth()
@@ -243,9 +246,10 @@ export default function ContractAccept() {
       // A paper built from clauses signs at the revision the page showed, in the language it was read in.
       const clausePart = payload?.clause_paper && !payload.form ? { paperRevision: payload.clause_paper.revision, paperLang } : {}
       const consentPart = p.consent ? { esignConsent: p.consent } : {}
+      const inPersonPart = inPerson ? { inPerson: true as const } : {}
       const body =
         p.mode === 'type'
-          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart, ...clausePart, ...consentPart }
+          ? { token, printedName: p.printedName, agreedTerms: true as const, ...formPart, ...clausePart, ...consentPart, ...inPersonPart }
           : {
               token,
               printedName: p.printedName,
@@ -254,6 +258,7 @@ export default function ContractAccept() {
               ...formPart,
               ...clausePart,
               ...consentPart,
+              ...inPersonPart,
             }
       const res = await fetch(`${supabaseUrl}/functions/v1/accept-contract`, {
         method: 'POST',
@@ -474,6 +479,11 @@ export default function ContractAccept() {
             <p style={{ color: 'var(--text-muted)' }}>This link has no contract to read. Ask the office to send it again before you sign.</p>
           ) : null}
 
+          {inPerson ? (
+            <p data-testid="contract-accept-in-person" style={{ margin: '0.6rem 0 0.2rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              Signing in person with a Click Plumbing team member present.
+            </p>
+          ) : null}
           <ContractAcceptSignatureForm
             printedName={printedName}
             agreed={agreed}

@@ -1,0 +1,5 @@
+# 20261102230000_hours_statement_doc_type.sql (2026-11-02, v2.6411)
+
+Signed hours statement (punch list #212, PR 3): a statement is signed as a Contract Form of its own. `hours-statement-signing` draws the paper with pdf-lib, uploads it as the form's template, and writes one `contract_form_templates` row and one `person_contract_documents` copy per statement, both typed `doc_type = 'hours_statement'`. The two `doc_type` checks named five kinds (agreement · coi · w9 · license · other); this re-adds each with the sixth, `NOT VALID` then validated, so the live rows are not re-read under the lock. The Form Studio leaves the per-statement templates out of its list by this kind (`listFormTemplates`), and the person's Paperwork names the chip by it.
+
+Apply from the main checkout after the PR merges (`supabase db push`), then deploy `hours-statement-signing`, `send-contract-for-signature`, `accept-contract` and `open-contract-form-pdf`. Until the push, **Send for signature…** and **File a signed scan…** answer with the check's refusal and nothing else changes; the old client has nothing to misread.

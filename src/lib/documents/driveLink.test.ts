@@ -225,5 +225,8 @@ describe('parseOfficeAsk — the index (punch list #240, PR 1)', () => {
     expect(parseOfficeAsk({ action: 'index_job', job: { jobs_ledger_id: 'x' } })).toBeNull()
     expect(parseOfficeAsk({ action: 'index_job' })).toBeNull()
     expect(parseOfficeAsk({ action: 'ocr_probe' })).toEqual({ action: 'ocr_probe' })
+    expect(parseOfficeAsk({ action: 'embed_probe' })).toEqual({ action: 'embed_probe' })
+    expect(parseOfficeAsk({ action: 'search_index', words: 'rock clause' })).toEqual({ action: 'search_index', words: 'rock clause' })
+    expect(parseOfficeAsk({ action: 'search_index', words: 'r' })).toBeNull()
   })
 })

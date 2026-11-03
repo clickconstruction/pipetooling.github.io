@@ -11,6 +11,11 @@ import type { QuickRepliesIo } from '../../../../lib/quickReplies/quickRepliesIo
 import { SLASH_HINT, SLASH_NONE } from '../../../../lib/quickReplies/slash'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 // Send texts is on, so the Text tab draws its box; the step they are on reads as nothing, so no read waits.
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
@@ -75,7 +80,7 @@ function box(quick: QuickRepliesIo = fakeQuick()) {
   }
   renderWithProviders(
     <OpenThreadContext.Provider value={open}>
-      <ReplyBox contact={contact} io={fakeIo()} quickIo={quick} />
+      <ReplyBox papersIo={noPapers} contact={contact} io={fakeIo()} quickIo={quick} />
     </OpenThreadContext.Provider>,
   )
   const el = document.querySelector('[data-reply-box]') as HTMLElement

@@ -20,6 +20,7 @@ import { SampleModeBanner } from '../components/SampleModeBanner'
 import { jobContractSignatureAuditLine } from '../lib/jobs/jobContractLifecycle'
 import { openFrames, signerFrames, type SignerFrameKey } from '../lib/jobs/jobContractSigners'
 import { esignConsentText } from '../lib/esignConsent'
+import { WARRANTY_CERTIFY_SENTENCE, initialsProblem, jobAgreementKindOf, parseInitials } from '../lib/jobs/jobAgreementKind'
 import { portalFailure, portalFailureCause, portalFailureKind, type PortalFailureCause } from '../lib/portal/portalFailure'
 import { PortalFailureNote } from '../components/portal/PortalFailureNote'
 
@@ -55,6 +56,9 @@ type ContractFetch = {
     co_signer_mode?: string | null
     co_signer_consented_at?: string | null
     co_signature_url?: string | null
+    /** The warranty in place of a contract (2026-11-02): its kind, and the lines as the customer initialled them once signed. */
+    kind?: string | null
+    initials?: unknown
   }
   issuer: JobContractIssuer | null
   brand: string | null
@@ -95,6 +99,10 @@ export default function JobContractSign() {
   const [reloadNonce, setReloadNonce] = useState(0)
   const [printedName, setPrintedName] = useState('')
   const [agreed, setAgreed] = useState(false)
+  /** A warranty's initials as typed, one per line to initial, in the lines' order. */
+  const [typedInitials, setTypedInitials] = useState<string[]>([])
+  /** The line still blank or odd when they pressed Sign, said once under the boxes. */
+  const [initialsError, setInitialsError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
   const [formError, setFormError] = useState<string | null>(null)
   /** The signature's failure as kept (v2.5965): its words show in the form, its presses under it. */
@@ -151,6 +159,14 @@ export default function JobContractSign() {
   async function submit(payload: EstimateAcceptSubmitPayload) {
     if (!data) return
     const signer: SignerFrameKey = chosenFrame ?? openFrames(data.contract)[0]?.key ?? 'primary'
+    // A warranty's first signer initials every line before the signature counts; the page says which line is blank.
+    const warrantyLines = jobAgreementKindOf(data.contract.kind) === 'warranty' && signer === 'primary' ? fields.initial_lines : []
+    const initialsLeft = initialsProblem(warrantyLines, typedInitials)
+    if (initialsLeft) {
+      setInitialsError(initialsLeft)
+      document.querySelector('[data-testid="contract-initials"]')?.scrollIntoView?.({ behavior: 'smooth', block: 'center' })
+      return
+    }
     if (sample) {
       setJustSigned({ printedName: payload.printedName, signedAt: new Date().toISOString(), mode: payload.mode, signer, complete: true, waitingOn: null })
       return
@@ -172,6 +188,7 @@ export default function JobContractSign() {
           ...(payload.consent ? { esignConsent: payload.consent } : {}),
           ...(inPerson ? { mode: 'in_person' } : {}),
           ...(signer === 'co' ? { signer: 'co' } : {}),
+          ...(warrantyLines.length ? { initials: typedInitials.slice(0, warrantyLines.length) } : {}),
           public_origin: window.location.origin,
         }),
       })
@@ -244,6 +261,14 @@ export default function JobContractSign() {
   const signingFrame = open.length === 1 ? open[0] : open.find((f) => f.key === chosenFrame) ?? null
   const amountLabel = fields.amount_cents != null ? formatContractMoney(fields.amount_cents) : 'Billed at completion'
   const scope = fields.scope_lines.map((l) => l.trim()).filter(Boolean)
+  // The warranty in place of a contract (2026-11-02): its words, its lines to initial, and the initials once kept.
+  const kind = jobAgreementKindOf(c.kind)
+  const initialLines = kind === 'warranty' ? fields.initial_lines : []
+  const keptInitials = parseInitials(c.initials)
+  const primarySigned = frames.some((f) => f.key === 'primary' && f.signedAt && f.printedName)
+  // One line under the boxes: what they pressed Sign against, else the live read once something is typed.
+  const initialsShown = initialsError ?? (typedInitials.some((t) => t.trim()) ? initialsProblem(initialLines, typedInitials) : null)
+  const amountName = kind === 'warranty' ? 'Price' : 'Contract amount'
   const dateLabel = (() => {
     const d = new Date(c.sent_at ?? Date.now())
     return Number.isNaN(d.getTime()) ? '' : d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
@@ -318,7 +343,7 @@ export default function JobContractSign() {
 
         <div style={sectionLabel}>Price &amp; payment</div>
         <div style={{ display: 'flex', justifyContent: 'space-between', fontWeight: 700, fontSize: '1.1rem', borderTop: '1px solid var(--border-rule)', paddingTop: '0.5rem' }}>
-          <span>Contract amount</span>
+          <span>{amountName}</span>
           <span>{amountLabel}</span>
         </div>
         <p style={{ margin: '0.35rem 0 0', fontSize: '0.88rem', color: 'var(--text-700)' }}>{paymentTermsSentence(fields)}</p>
@@ -348,6 +373,50 @@ export default function JobContractSign() {
           {termsOpen ? 'Collapse the terms ▴' : 'Read the full terms ▾'}
         </button>
 
+        {initialLines.length > 0 ? (
+          <div data-testid="contract-initials">
+            <div style={sectionLabel}>Initial here</div>
+            {!(signed || primarySigned) ? <p style={{ margin: '0 0 0.5rem', fontSize: '0.85rem', color: 'var(--text-700)' }}>Type your initials beside each line, two to four letters, then sign below.</p> : null}
+            <div style={{ display: 'grid', gap: '0.55rem' }}>
+              {initialLines.map((line, i) => {
+                const kept = keptInitials.find((e) => e.line === line)?.initials ?? keptInitials[i]?.initials ?? ''
+                const locked = signed || primarySigned
+                return (
+                  <div key={i} style={{ display: 'flex', gap: '0.7rem', alignItems: 'flex-start', fontSize: '0.92rem' }} data-testid={`contract-initial-line-${i}`}>
+                    {locked ? (
+                      <span style={{ flex: '0 0 3.6rem', minHeight: '1.9rem', border: '1.5px solid var(--text-orange-700)', color: 'var(--text-orange-700)', borderRadius: 6, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', fontWeight: 700, letterSpacing: '0.06em' }} data-testid={`contract-initial-kept-${i}`}>
+                        {kept}
+                      </span>
+                    ) : (
+                      <input
+                        value={typedInitials[i] ?? ''}
+                        onChange={(e) => {
+                          const v = e.target.value
+                          setTypedInitials((prev) => {
+                            const next = [...prev]
+                            next[i] = v
+                            return next
+                          })
+                          setInitialsError(null)
+                        }}
+                        maxLength={8}
+                        autoCapitalize="characters"
+                        autoComplete="off"
+                        aria-label={`Initials for line ${i + 1}`}
+                        placeholder="Initials"
+                        data-testid={`contract-initial-${i}`}
+                        style={{ flex: '0 0 4.2rem', width: '4.2rem', textAlign: 'center', fontWeight: 700, letterSpacing: '0.06em', padding: '0.35rem 0.3rem', borderRadius: 6, border: '1.5px solid var(--border-strong)', font: 'inherit', background: 'var(--surface)', color: 'inherit' }}
+                      />
+                    )}
+                    <span style={{ paddingTop: locked ? '0.2rem' : '0.4rem' }}>{line}</span>
+                  </div>
+                )
+              })}
+            </div>
+            {initialsShown && !(signed || primarySigned) ? <p style={{ margin: '0.5rem 0 0', fontSize: '0.82rem', color: 'var(--text-red-700)' }} role="status" data-testid="contract-initials-problem">{initialsShown}</p> : null}
+          </div>
+        ) : null}
+
         {frames.filter((f) => f.signedAt && f.printedName).map((f) => (
           <div key={f.key} style={{ marginTop: '1.2rem', borderTop: '1px solid var(--border-rule)', paddingTop: '0.4rem' }} data-testid={`contract-sign-frame-${f.key}`}>
             <SignedSignatureBlock
@@ -355,7 +424,7 @@ export default function JobContractSign() {
               printedName={f.printedName ?? ''}
               signedAtIso={f.signedAt}
               consentedAtIso={f.consentedAt}
-              consentSummary="agreed to do business electronically and to this agreement's scope, price and terms"
+              consentSummary={kind === 'warranty' ? 'agreed to do business electronically, certified the work listed and accepted this warranty' : "agreed to do business electronically and to this agreement's scope, price and terms"}
               method={f.mode}
               recordId={signedRecordId('J', c.job_number, c.id)}
               drawSignatureUrl={f.key === 'primary' ? c.signature_url : c.co_signature_url ?? null}
@@ -415,11 +484,11 @@ export default function JobContractSign() {
               formError={formError ?? signFailed?.message ?? null}
               submitting={submitting}
               onSubmit={(p) => void submit(p)}
-              heading={frames.length > 1 && signingFrame ? `Sign agreement — ${signingFrame.expectedName || (signingFrame.key === 'primary' ? 'the customer' : 'the second signer')}` : 'Sign agreement'}
-              disclosure="Your signature below applies to the scope, price, and terms shown on this page."
-              consent={esignConsentText({ audience: 'customer', documentNoun: 'this agreement' })}
-              agreeLabel="I agree to do business electronically and accept this agreement, its scope, price, and terms."
-              submitLabel={`Sign agreement${fields.amount_cents != null ? ` — ${amountLabel}` : ''}`}
+              heading={frames.length > 1 && signingFrame ? `Sign ${kind === 'warranty' ? 'warranty' : 'agreement'} — ${signingFrame.expectedName || (signingFrame.key === 'primary' ? 'the customer' : 'the second signer')}` : kind === 'warranty' ? 'Sign the warranty' : 'Sign agreement'}
+              disclosure={kind === 'warranty' ? `${WARRANTY_CERTIFY_SENTENCE} Your initials above and your signature below say so.` : 'Your signature below applies to the scope, price, and terms shown on this page.'}
+              consent={esignConsentText({ audience: 'customer', documentNoun: kind === 'warranty' ? 'this warranty' : 'this agreement' })}
+              agreeLabel={kind === 'warranty' ? 'I agree to do business electronically, certify the work listed above and accept this warranty.' : 'I agree to do business electronically and accept this agreement, its scope, price, and terms.'}
+              submitLabel={`${kind === 'warranty' ? 'Sign the warranty' : 'Sign agreement'}${fields.amount_cents != null ? ` — ${amountLabel}` : ''}`}
             />
             <PortalFailureNote
               failure={signFailed}

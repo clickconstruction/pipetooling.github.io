@@ -87,6 +87,7 @@ import type { Database } from '../types/database'
 import { DevelopmentPhotosLook } from '../components/developments/DevelopmentPhotosLook'
 import { useSitePhotos } from '../hooks/useSitePhotos'
 import { photosCardMeta, photosLookWords } from '../lib/photos/sitePhotos'
+import { foldPhotoBatches } from '../lib/developments/photoLines'
 
 
 export default function DevelopmentPage() {
@@ -268,6 +269,24 @@ export default function DevelopmentPage() {
   const shownBidIds = useMemo(() => (shown ? shown.bids.map((b) => b.id) : []), [shown])
   const sitePhotos = useSitePhotos({ jobIds: shownJobIds, bidIds: shownBidIds, enabled: !!data })
   const pieces = useMemo(() => (shown && data && plans ? buildPieceRows({ members: shown, requests: data.requests, plans, customerName: data.customer?.name ?? null, nowMs }) : []), [shown, data, plans, nowMs])
+  // The crews' photos as History lines (punch list #247, PR 2): the Photos look's rows, folded by job, person and hour.
+  const photoLines = useMemo<ChangeLine[]>(
+    () =>
+      shown && data
+        ? foldPhotoBatches(sitePhotos.rows, {
+            job: (id) => {
+              const j = shown.jobs.find((x) => x.id === id)
+              return j ? { kind: 'job', id, label: `${jobLabel(j)} ${(j.job_name ?? '').trim()}`.trim() } : null
+            },
+            bid: (id) => {
+              const b = shown.bids.find((x) => x.id === id)
+              return b ? { kind: 'bid', id, label: `${bidLabel(b)} ${(b.project_name ?? '').trim()}`.trim() } : null
+            },
+            siteName: data.development.name,
+          })
+        : [],
+    [shown, data, sitePhotos.rows, jobLabel, bidLabel],
+  )
   const feed = useMemo<ChangeLine[]>(
     () =>
       shown && data
@@ -295,6 +314,7 @@ export default function DevelopmentPage() {
                 customer: (id) => (data.customer && data.customer.id === id ? data.customer.name : null),
               }),
             ),
+            photoLines,
             customerContacts: data.customerContacts,
             customerNames: new Map(data.customers.map((c) => [c.id, c.name])),
             names: data.names,
@@ -307,7 +327,7 @@ export default function DevelopmentPage() {
             nowMs,
           })
         : [],
-    [shown, data, entries, bidLabel, jobLabel, nowMs],
+    [shown, data, entries, photoLines, bidLabel, jobLabel, nowMs],
   )
   const since = useMemo(() => placeSinceLine(feed, lastLooked), [feed, lastLooked])
   // The runs fold (the Gun Dog spike, 2026-11-02): one act's many lines read as one with the count; a search sees every line.
@@ -1197,7 +1217,7 @@ export default function DevelopmentPage() {
                   </LinkButton>
                 </div>
               ) : (
-                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} />
+                <DevelopmentFeed lines={feedShown} sinceIndex={sinceShown.index} lastLooked={lastLooked} openAbout={openAbout} olderOpen={olderOpen} onToggleOlder={() => setOlderOpen((v) => !v)} query={feedQuery} onMore={setLineOpen} photoIo={sitePhotos.io.photos} onPerson={setFeedQuery} />
               )}
             </>
           ) : null}
