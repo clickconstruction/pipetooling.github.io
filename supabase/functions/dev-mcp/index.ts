@@ -12,6 +12,9 @@ import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentM
 import { PDFDocument } from 'https://esm.sh/pdf-lib@1.17.1'
 import { findExistingFile, findOrCreateFolder, googleAccessToken, uploadBytes } from '../_shared/driveUpload.ts'
 import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robotPlansDivisionFolderName, robotPlansPathWords } from '../_shared/bidPlansFolders.ts'
+import { indexContext, indexFiles, jobFilesToIndex } from '../_shared/fileIndex.ts'
+import { SWEEP_STAMP_KEY } from '../_shared/fileIndexKernel.ts'
+import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitment, backfillJobPassedReply, backfillJobsQuery, backfillPlanReply, cursorLostWords, nextBackfillJob, parseBackfillPlan, statusReading, type BackfillJob } from '../_shared/devMcpIndexBackfill.ts'
 
 // dev-mcp (to-dos/mcp-servers.md, PR 4b; owner decisions 2026-09-20) — the MCP server a
 // DEV's agent reads PipeTooling through. Public address: https://mcp.clicktooling.com/dev
@@ -35,12 +38,17 @@ import { ROBOT_PLANS_SHARED_DRIVE, divisionBidFolderByKey, driveFolderUrl, robot
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table the agent names, never through view_as. One more
 // (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
-// dev — the key it leads to never crosses this door.
+// dev — the key it leads to never crosses this door. The file index (v2.6332 / 0.14.0, punch list #240 PR 2):
+// read_file_index_status reads dev_file_index_status as the dev; plan_index_backfill lists the jobs a backfill
+// would walk under a plan_hash, and apply_index_backfill runs the one index pass (_shared/fileIndex.ts, the
+// same code under drive-link's index_job and the sweep) over one job's next files per call, as the service
+// role into file_index and never into Drive — the agent loops with a cursor; an apply may run as often as the
+// plan has files left, so the one-apply-per-plan rule does not hold it.
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.14.0'
+const SERVER_VERSION = '0.15.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -287,6 +295,21 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { paper: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['paper', 'plan_hash'] },
   },
   {
+    name: 'read_file_index_status',
+    description: 'Where our own file index stands (v2.6332, punch list #240): rows, rows with text, counts by source (export, pdf_layer, plain, ocr), by why (scan, kind, big, slow, error, reading) and by folder, the jobs and bids with rows, the PDFs read only in part, the live and paid jobs with a Drive folder and how many have no row yet, the newest indexed stamp, the oldest recheck and the sweep’s last look. One call of dev_file_index_status as you. Read it before a backfill and after.',
+    inputSchema: { type: 'object', properties: {} },
+  },
+  {
+    name: 'plan_index_backfill',
+    description: "Dry-run the one-time backfill of the file index (v2.6332, punch list #240): the jobs a scope would walk — live (every job with a Drive folder not Paid in Full, oldest first by created_at), paid (the back catalogue, newest first) or job (one job by jobs_ledger.id) — at most 500 a plan (after_job inside the plan starts the list after that job: the next 500, or going on past a job that left the scope), with how many already have rows and the sweep’s last look, under a plan_hash that commits to the job list. Nothing is read from Drive and nothing is written. retry: true takes held rows (slow, error, big, a stopped read) again.",
+    inputSchema: { type: 'object', properties: { plan: { type: 'object', description: '{ scope: live | paid | job, job_id?, limit? (jobs, at most 500), retry?, after_job? (a job id: the list starts after it) }' } }, required: ['plan'] },
+  },
+  {
+    name: 'apply_index_backfill',
+    description: "Run the backfill you planned, one job’s next files per call: the same plan plus the plan_hash from plan_index_backfill, after_job (the next_after of the last answer; leave it out to start at the first job) and batch (files this call takes, 25, at most 40). Lists the job’s Drive folders, indexes the files not in the table or changed since (one at a time inside the request’s budget: walked up to the job, the text read, the row written to file_index as the service role; never a write to Drive) and answers indexed, held with the reason, remaining, job_done and next_after. Call again with the same after_job while remaining is above 0, then with next_after; sleep a few seconds between calls. Every answer is already written, so a stopped loop loses nothing. The plan’s hash is checked on every call: a job added to the scope since refuses it, so plan again. A job whose folder Drive refuses is passed over with its reason (job_passed) and next_after moves on, so one bad folder never strands the loop. An after_job the plan does not hold is refused: plan again with that job as the plan’s own after_job.",
+    inputSchema: { type: 'object', properties: { plan: { type: 'object' }, plan_hash: { type: 'string' }, after_job: { type: 'string', description: 'The job id the last answer named as next_after' }, batch: { type: 'number' } }, required: ['plan', 'plan_hash'] },
+  },
+  {
     name: 'mint_twin_setup_code',
     description: "Mint a ten-minute, single-use setup code for a twin (v2.6187) — the code Settings → Digital twins → Set up on this Mac makes — so the Mac your agent runs on can hold a twin key and run /bid itself. The key never comes back through this door: the reply is the code and the command that redeems it (python3 scripts/twin/redeem_setup_code.py <code>), which mints the key server-side, writes it to ~/pt-twin-digest/twin.token (mode 600), saves the kickoff beside it and prints nothing secret. Devs only (a dev may set up any twin); ten codes per ten minutes; twin_setup_codes keeps who minted it and the Mac that redeemed it, and the key is revoked by its label at Settings → Digital twins.",
     inputSchema: { type: 'object', properties: { label: { type: 'string', description: "The key's label as the fleet lists it, e.g. \"Todd's agent on todd-mbp\" — the name it is revoked by" }, twin: { type: 'string', description: "The twin's users.id or email (twin-estimator-N@twins.pipetooling.local); the first estimator twin when left out" }, rounds: { type: 'boolean', description: 'true: the redeemer gets the rounds kickoff (a Mac that stays on and makes a round every five minutes)' } }, required: ['label'] },
@@ -308,7 +331,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are twenty-five verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are twenty-five verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -824,6 +847,99 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
       }
     }
+    case 'read_file_index_status': {
+      // v2.6332 (punch list #240, PR 2): one GET of the dev-gated RPC as you; the reading line opens the reply.
+      const res = await restGet(await jwt(), 'rpc/dev_file_index_status', '')
+      if (!res.ok) {
+        const message = restError(res.status, res.body)
+        return { log: { status: 'error', target: 'dev_file_index_status', error: message }, text: message, isError: true }
+      }
+      const body = res.body && typeof res.body === 'object' && !Array.isArray(res.body) ? (res.body as Record<string, unknown>) : { data: res.body }
+      if (typeof body.refused === 'string') return refused(body.refused, { target: 'dev_file_index_status' })
+      return ok({ reading: statusReading(body), ...body }, { target: 'dev_file_index_status' })
+    }
+    case 'plan_index_backfill':
+    case 'apply_index_backfill': {
+      // v2.6332 (punch list #240, PR 2): the agent's one-time backfill of file_index. The plan lists the jobs a scope
+      // walks and commits to them under a hash; the apply runs the one index pass (_shared/fileIndex.ts, the same
+      // code under drive-link's index_job and the sweep) over one job's next files per call, as the service role into
+      // our own table and never into Drive, and hands back the cursor. The plan's hash is checked on every apply; an
+      // apply may run as often as files remain, so priorApply is not consulted here.
+      if (who.role !== 'dev') return refused(`${name} runs only as you, with a dev's own key.`)
+      const parsed = parseBackfillPlan(args.plan)
+      if (!parsed.ok) return refused(parsed.error)
+      const plan = parsed.plan
+      const admin = createClient(env('SUPABASE_URL'), env('SUPABASE_SERVICE_ROLE_KEY'), { auth: { autoRefreshToken: false, persistSession: false } })
+      const q = backfillJobsQuery(plan)
+      // The walk's order is created_at then id, a total order: a job number ties on '' for every click-only job, and a
+      // tie would place the cursor differently on every read. The plan's own after_job starts the list after that job,
+      // read fresh so a job that left the scope still places it.
+      let jobsQuery = admin.from('jobs_ledger').select('id, hcp_number, click_number, job_name, status, created_at').not('google_drive_link', 'is', null)
+      if (q.status === 'one') jobsQuery = jobsQuery.eq('id', q.jobId!)
+      else if (q.status === 'paid') jobsQuery = jobsQuery.eq('status', 'paid')
+      else jobsQuery = jobsQuery.or('status.is.null,status.neq.paid')
+      if (q.afterJob) {
+        const { data: at } = await admin.from('jobs_ledger').select('id, created_at').eq('id', q.afterJob).maybeSingle()
+        const atRow = at as { id: string; created_at: string | null } | null
+        if (!atRow) return refused(`No job has the id the plan's after_job names (${q.afterJob}).`)
+        if (!atRow.created_at) return refused(`Job ${q.afterJob} has no created_at, so nothing sorts after it; start the plan after another job.`)
+        jobsQuery = jobsQuery.or(backfillAfterFilter(atRow.created_at, atRow.id, q.ascending))
+      }
+      const { data: jobRows, error: jobsErr } = await jobsQuery.order('created_at', { ascending: q.ascending, nullsFirst: false }).order('id', { ascending: true }).limit(q.limit)
+      if (jobsErr) return refused(`The jobs did not read: ${jobsErr.message}`)
+      const jobs: BackfillJob[] = ((jobRows ?? []) as { id: string; hcp_number: string | null; click_number: string | null; job_name: string | null; status: string | null }[]).map((j) => ({
+        id: j.id,
+        number: j.hcp_number || j.click_number || null,
+        name: j.job_name,
+        status: j.status,
+        rows: null,
+      }))
+      if (jobs.length === 0) return refused(q.status === 'one' ? 'No job with that id has a Drive folder.' : `No ${q.status} job has a Drive folder.`)
+      const hash = await sha256Hex(JSON.stringify(backfillCommitment(plan, jobs)))
+      const target = plan.scope === 'job' ? plan.job_id : `${plan.scope}:${jobs.length}`
+      if (name === 'plan_index_backfill') {
+        // Which jobs already have rows: the ids per chunk of jobs, a thousand rows a page (PostgREST's cap) until a
+        // short page, so a few jobs with many files never hide the rest of the chunk.
+        const withRows = new Set<string>()
+        for (let i = 0; i < jobs.length; i += 100) {
+          const ids = jobs.slice(i, i + 100).map((j) => j.id)
+          for (let from = 0; ; from += 1000) {
+            const { data } = await admin.from('file_index').select('jobs_ledger_id').in('jobs_ledger_id', ids).order('drive_file_id').range(from, from + 999)
+            const rows = (data ?? []) as { jobs_ledger_id: string }[]
+            for (const r of rows) withRows.add(r.jobs_ledger_id)
+            if (rows.length < 1000) break
+          }
+        }
+        for (const j of jobs) j.rows = withRows.has(j.id) ? 1 : 0
+        const { data: stamp } = await admin.from('app_settings').select('value_text').eq('key', SWEEP_STAMP_KEY).maybeSingle()
+        return ok({ plan_hash: hash, ...backfillPlanReply(plan, jobs, (stamp as { value_text?: string | null } | null)?.value_text ?? null) }, { target })
+      }
+      const quoted = typeof args.plan_hash === 'string' ? args.plan_hash.trim().toLowerCase() : ''
+      if (!quoted) return refused('apply_index_backfill needs plan_hash — the value plan_index_backfill replied with.')
+      if (quoted !== hash) return refused(`Nothing indexed: the plan you quoted (${quoted.slice(0, 12)}…) is not what this scope gives now (${hash.slice(0, 12)}…) — a job joined or left the scope since. Call plan_index_backfill again and read it.`, { target })
+      const afterJob = typeof args.after_job === 'string' && args.after_job.trim() ? args.after_job.trim() : null
+      const step = nextBackfillJob(jobs, afterJob)
+      if (step.lost) return refused(cursorLostWords(afterJob!), { target })
+      const { job, position } = step
+      if (!job) return ok({ job: null, jobs_done: jobs.length, jobs_left: 0, next: 'Every job in the plan is done. Read read_file_index_status and write the counts into the card.' }, { target })
+      const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
+      if (!saJson) return refused('Drive is not set up on this project (GOOGLE_SERVICE_ACCOUNT_JSON, docs/DRIVE_INTAKE_SETUP.md).', { target })
+      const google = await googleAccessToken(saJson)
+      const ctx = await indexContext(admin, google)
+      if ('noRoot' in ctx) return refused('The jobs root is not set yet (Documents → Where files go), so there is nothing to walk.', { target })
+      let listed: Awaited<ReturnType<typeof jobFilesToIndex>>
+      try {
+        listed = await jobFilesToIndex(admin, google, { jobs_ledger_id: job.id })
+      } catch (e) {
+        // Drive refused the job's folder (a 404 on one the account cannot open): the job is passed over with the
+        // reason and the cursor moves on, so one bad folder never strands the loop.
+        const why = (e as { message?: string } | null)?.message ?? String(e)
+        return ok(backfillJobPassedReply(job, `Drive refused its folder (${why})`, position, jobs.length), { target: `${target}:${job.number ?? job.id}` })
+      }
+      if (!listed) return ok(backfillJobPassedReply(job, 'no Drive folder the account can open', position, jobs.length), { target: `${target}:${job.number ?? job.id}` })
+      const pass = await indexFiles(ctx, listed, { retry: plan.retry, max: backfillBatch(args.batch) })
+      return ok(backfillApplyReply(job, pass, listed.length, position, jobs.length), { target: `${target}:${job.number ?? job.id}`, rowCount: pass.indexed })
+    }
     case 'plan_file_plans':
     case 'apply_file_plans': {
       // v2.6185: the plan set into Drive and onto the bid — the same grammar as every write
@@ -1115,7 +1231,7 @@ async function callTool(req: Request, name: string, args: Record<string, unknown
     if (name === 'view_as') {
       const verb = String(args.verb ?? '')
       if (!verb || verb === 'view_as') return finish(refused('view_as needs a `verb` — any read verb of this server except view_as.'))
-      if (isWriteVerb(verb) || verb === 'mint_twin_setup_code') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
+      if (isWriteVerb(verb) || verb === 'mint_twin_setup_code' || verb === 'plan_index_backfill' || verb === 'apply_index_backfill') return finish(refused(`view_as never writes: ${verb} runs only as you, with your own key.`, { target: verb }))
       const target = await resolveViewAsTarget(admin, args)
       if ('error' in target) return finish(refused(target.error))
       const inner = (args.args && typeof args.args === 'object' && !Array.isArray(args.args) ? args.args : {}) as Record<string, unknown>

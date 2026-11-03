@@ -1718,6 +1718,7 @@ export const EDGE_FUNCTIONS: string[] = [
   "gmail-mine",
   "gmail-sync",
   "gsa-per-diem",
+  "hr-evidence-drive",
   "import-manual-transactions",
   "invite-user",
   "job-drive-folders",
