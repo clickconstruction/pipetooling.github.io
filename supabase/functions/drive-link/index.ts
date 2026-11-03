@@ -10,8 +10,8 @@ import { JOB_FOLDER_TREE } from '../_shared/whereFilesGo.ts'
 import { excerptOf, type Excerpt } from '../_shared/excerpt.ts'
 import { fileTextWithin } from '../_shared/fileText.ts'
 import { folderHomes, folderMetaReader } from '../_shared/fileHomes.ts'
-import { filesUnder as indexFilesUnder, heldRowsFor, indexContext, indexFiles, fileMeta } from '../_shared/fileIndex.ts'
-import { EXCERPT_READ_MS, INDEX_JOB_MAX_FILES, walkUp, type DriveFileMeta, type FileHome } from '../_shared/fileIndexKernel.ts'
+import { heldRowsFor, indexContext, indexFiles, fileMeta, jobFilesToIndex } from '../_shared/fileIndex.ts'
+import { type DriveFileMeta, EXCERPT_PDF_LIMITS, EXCERPT_READ_MS, type FileHome, INDEX_JOB_MAX_FILES, newPassSpend, type PassSpend, walkUp } from '../_shared/fileIndexKernel.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import { indexCheck } from '../_shared/fileIndexCheck.ts'
@@ -211,14 +211,6 @@ async function putFolderFor(admin: SupabaseClient, google: string, job: JobRef, 
   return folder.plansId ?? landingFolder(google, folder, ['Plans'])
 }
 
-/** A Pipeline job's plans and pictures folders by their links, for an index of the job: usually inside its folder, on an older job elsewhere. */
-async function jobLinkedFolders(admin: SupabaseClient, job: JobRef): Promise<string[]> {
-  if (!('jobs_ledger_id' in job)) return []
-  const { data } = await admin.from('jobs_ledger').select('job_plans_link, job_pictures_link').eq('id', job.jobs_ledger_id).maybeSingle()
-  const row = (data ?? {}) as { job_plans_link?: string | null; job_pictures_link?: string | null }
-  return [driveFolderIdFromUrl(row.job_plans_link ?? null), driveFolderIdFromUrl(row.job_pictures_link ?? null)].filter((id): id is string => Boolean(id))
-}
-
 /** A hit of Find a file, as Drive lists it. */
 type SearchListed = DriveFileMeta
 
@@ -239,11 +231,14 @@ const EXCERPT_MAX_HITS = 10
  * The excerpt for a hit (v2.6306): the shared reader (`_shared/fileText.ts`, the index's too) raced against the timer; a
  * read that fails or finds no words costs the excerpt, never the search.
  */
-async function excerptFor(google: string, f: SearchListed, words: string): Promise<{ excerpt: Excerpt | null; excerptWhy: ExcerptWhy | null }> {
-  const r = await fileTextWithin(google, f, EXCERPT_READ_MS)
+async function excerptFor(google: string, f: SearchListed, words: string, spend: PassSpend): Promise<{ excerpt: Excerpt | null; excerptWhy: ExcerptWhy | null }> {
+  const r = await fileTextWithin(google, f, EXCERPT_READ_MS, { limits: EXCERPT_PDF_LIMITS, spend })
   if ('why' in r) return { excerpt: null, excerptWhy: r.why === 'error' ? 'kind' : r.why }
   const excerpt = excerptOf(r.text, words)
-  return excerpt ? { excerpt, excerptWhy: null } : { excerpt: null, excerptWhy: 'kind' }
+  if (excerpt) return { excerpt, excerptWhy: null }
+  // The words sit past the pages this read had time for: too big to show, never a kind we do not read.
+  const partly = r.pages != null && r.pagesRead != null && r.pagesRead < r.pages
+  return { excerpt: null, excerptWhy: partly ? 'big' : 'kind' }
 }
 
 /**
@@ -267,11 +262,13 @@ async function searchFiles(admin: SupabaseClient, google: string, words: string)
   if (files.length === 0) return { hits: [], more: false, noRoot: false }
   const homes = await folderHomes(admin)
   const metaOf = folderMetaReader(google)
+  // One clock for the ten excerpts: they read at once in one worker, and the platform counts their CPU as one request's.
+  const spend = newPassSpend()
   const hits = await Promise.all(
     files.map(async (f, i) => {
       const [{ home, path }, ex] = await Promise.all([
         walkUp(f.parents?.[0] ?? null, homes, rootId, metaOf).then((w) => ({ home: w.home ? boxHome(w.home) : null, path: w.path })),
-        i < EXCERPT_MAX_HITS ? excerptFor(google, f, words) : Promise.resolve({ excerpt: null, excerptWhy: null }),
+        i < EXCERPT_MAX_HITS ? excerptFor(google, f, words, spend) : Promise.resolve({ excerpt: null, excerptWhy: null }),
       ])
       return { id: f.id, name: f.name, mime: f.mimeType, bytes: f.size == null ? null : Number(f.size), modified: f.modifiedTime ?? null, url: f.webViewLink ?? driveViewUrl(f.id, f.mimeType), home, path, ...ex }
     }),
@@ -378,9 +375,7 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
   if (ask.action === 'index_job') {
     const ctx = await indexContext(admin, google)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
-    const listed: DriveFileMeta[] = []
-    const seen = new Set<string>()
-    for (const id of [folder.folderId, ...(await jobLinkedFolders(admin, ask.job))]) await indexFilesUnder(google, id, listed, { seen })
+    const listed = (await jobFilesToIndex(admin, google, ask.job)) ?? []
     const pass = await indexFiles(ctx, listed, { retry: ask.retry, max: INDEX_JOB_MAX_FILES })
     // Once the job is done, the held list is every held row of the job, not this call's alone: a second press reports the standing.
     const held = pass.remaining === 0 ? await heldRowsFor(admin, listed.map((f) => f.id)) : pass.held
