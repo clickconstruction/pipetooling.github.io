@@ -7,11 +7,14 @@
  * On a phone the rows are cards and an open card shows the nine as a labelled grid. Draws what
  * `lib/developments/scoreboard.ts` built; reads nothing.
  */
-import { useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
 import { EmptyState } from '../EmptyState'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
 import {
   SCOREBOARD_FLAG_WORDS,
+  SCOREBOARD_MEMBER_ROLE,
+  scoreboardNoMembersWords,
+  scoreboardPendingWords,
   scoreboardCellStands,
   scoreboardCellWords,
   scoreboardFoldWords,
@@ -21,6 +24,8 @@ import {
   type ScoreboardColumn,
   type ScoreboardColumnKey,
   type ScoreboardJob,
+  type ScoreboardMember,
+  type ScoreboardMembers,
   type ScoreboardModel,
   type ScoreboardReads,
 } from '../../lib/developments/scoreboard'
@@ -35,6 +40,8 @@ export type DevelopmentScoreboardProps = {
   openJob: (jobId: string) => void
   /** The flag block: the development's name, the line under it, and the small line. */
   head: { name: string; line: string; small: string | null }
+  /** The rows under an open job (v2.6457): who put what in. Absent, an open job shows its nine alone. */
+  membersOf?: (row: ScoreboardJob) => ScoreboardMembers
 }
 
 /** The three groups' solid tiles: saturated colours stay literal, white glyphs on them (the mock-up's pick). */
@@ -160,7 +167,140 @@ function JobName({ row, open, onToggle, openJob }: { row: ScoreboardJob; open: b
   )
 }
 
-export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, head }: DevelopmentScoreboardProps) {
+/** The role tag in the margin: Lead, Crew, Sub, Supplier, Card, Tally, Other, Overhead, Office. */
+function RoleTag({ kind, width = 64 }: { kind: ScoreboardMember['kind']; width?: number }) {
+  return (
+    <span style={{ display: 'inline-block', width, flex: 'none', fontSize: '0.6rem', letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--text-faint)', fontStyle: 'italic' }}>
+      {SCOREBOARD_MEMBER_ROLE[kind]}
+    </span>
+  )
+}
+
+function YouChip() {
+  return (
+    <span style={{ display: 'inline-block', padding: '0 6px', borderRadius: 9999, background: 'var(--bg-amber-200)', color: 'var(--text-amber-900)', fontSize: '0.6rem', fontWeight: 800, marginLeft: 6, lineHeight: '15px' }} data-testid="scoreboard-you">
+      You
+    </span>
+  )
+}
+
+/** A row's share of the job's cost, as a thin bar under its Cost figure. */
+function ShareBar({ share, style }: { share: number | null; style?: CSSProperties }) {
+  if (share == null) return null
+  return (
+    <span aria-hidden style={{ display: 'block', height: 3, borderRadius: 2, background: 'var(--bg-200)', overflow: 'hidden', ...style }}>
+      <i style={{ display: 'block', height: '100%', width: `${Math.max(1, Math.round(share * 100))}%`, background: 'var(--border-strong)' }} />
+    </span>
+  )
+}
+
+const youRow = (you: boolean): CSSProperties => (you ? { background: 'var(--bg-amber-tint)' } : { background: 'var(--surface)' })
+
+function MemberName({ member }: { member: ScoreboardMember }) {
+  const quiet = member.kind === 'overhead'
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'baseline', gap: 6, maxWidth: '100%', minWidth: 0 }}>
+      <RoleTag kind={member.kind} />
+      <span style={{ fontWeight: 600, fontStyle: quiet ? 'italic' : undefined, color: member.you ? 'var(--text-amber-900)' : quiet ? 'var(--text-muted)' : 'var(--text-strong)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', minWidth: 0 }} title={member.name}>
+        {member.name}
+      </span>
+      {member.you ? <YouChip /> : null}
+      {member.kit ? <span style={{ color: 'var(--text-muted)', fontSize: '0.7rem', whiteSpace: 'nowrap' }}>{member.kit}</span> : null}
+    </span>
+  )
+}
+
+/** One row under an open job on the desk: its own cells, and Cost with its share of the job. */
+function MemberRow({ member, columns }: { member: ScoreboardMember; columns: ReadonlyArray<ScoreboardColumn> }) {
+  const bg = youRow(member.you)
+  const nameCell = (
+    <td style={{ ...cellPad, ...bg, height: 28, textAlign: 'left', paddingLeft: 28, overflow: 'hidden', boxShadow: member.you ? 'inset 3px 0 0 var(--bg-amber-200)' : undefined }}>
+      <MemberName member={member} />
+    </td>
+  )
+  if (member.words != null) {
+    return (
+      <tr data-testid={`scoreboard-member-${member.key}`} data-you={member.you ? 'true' : undefined}>
+        {nameCell}
+        <td colSpan={columns.length} style={{ ...cellPad, ...bg, height: 28, color: 'var(--text-muted)', fontStyle: 'italic', fontSize: '0.74rem' }}>
+          {member.words}
+        </td>
+      </tr>
+    )
+  }
+  return (
+    <tr data-testid={`scoreboard-member-${member.key}`} data-you={member.you ? 'true' : undefined}>
+      {nameCell}
+      {columns.map((c) => {
+        const base: CSSProperties = { ...cellPad, ...num, ...bg, height: 28, fontSize: '0.76rem', color: 'var(--text-700)', borderLeft: c.key === 'earned' ? '1px solid var(--border)' : undefined }
+        if (c.key === 'cost' && member.cost != null) {
+          return (
+            <td key={c.key} style={{ ...base, position: 'relative' }} title={member.share != null ? `${Math.round(member.share * 100)}% of the job’s cost` : undefined}>
+              {scoreboardCellWords('cost', member.cost)}
+              <ShareBar share={member.share} style={{ position: 'absolute', left: 6, right: 6, bottom: 3 }} />
+            </td>
+          )
+        }
+        const v = member.m[c.key as keyof ScoreboardMember['m']]
+        return (
+          <td key={c.key} style={base}>
+            {v == null ? '' : scoreboardCellWords(c.key, v)}
+          </td>
+        )
+      })}
+    </tr>
+  )
+}
+
+/** The figure a member shows on a phone: its cost first, then a person's hours and days. */
+function memberFigure(m: ScoreboardMember): string {
+  const bits: string[] = []
+  if (m.cost != null) bits.push(scoreboardCellWords('cost', m.cost))
+  if (m.m.hours != null) bits.push(scoreboardCellWords('hours', m.m.hours))
+  if (m.m.days != null) bits.push(scoreboardCellWords('days', m.m.days))
+  return bits.join(' · ')
+}
+
+/** The rows under an open job in a phone's card, each a line with its share bar. */
+function MemberLines({ list, seesCosts }: { list: ScoreboardMembers; seesCosts: boolean }) {
+  const words = scoreboardPendingWords(list.pending) ?? (list.members.length === 0 ? scoreboardNoMembersWords(seesCosts) : null)
+  return (
+    <div style={{ marginTop: 8, borderTop: '1px solid var(--border)' }} data-testid="scoreboard-member-lines">
+      {list.members.map((m) => (
+        <div
+          key={m.key}
+          data-testid={`scoreboard-member-${m.key}`}
+          data-you={m.you ? 'true' : undefined}
+          style={{
+            display: 'grid',
+            gridTemplateColumns: '58px minmax(0, 1fr) auto',
+            columnGap: 8,
+            alignItems: 'baseline',
+            padding: m.you ? '5px 10px 6px' : '5px 0 6px',
+            margin: m.you ? '0 -10px' : undefined,
+            borderBottom: '1px solid var(--border)',
+            fontSize: '0.74rem',
+            ...(m.you ? { background: 'var(--bg-amber-tint)', boxShadow: 'inset 3px 0 0 var(--bg-amber-200)' } : null),
+          }}
+        >
+          <RoleTag kind={m.kind} width={58} />
+          <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontWeight: 600, color: m.you ? 'var(--text-amber-900)' : 'var(--text-strong)' }} title={m.name}>
+            {m.name}
+            {m.you ? <YouChip /> : null}
+            {m.kit ? <small style={{ fontWeight: 400, color: 'var(--text-muted)', marginLeft: 4 }}>{m.kit}</small> : null}
+          </span>
+          <span style={{ ...num, color: 'var(--text-700)' }}>{m.words == null ? memberFigure(m) : ''}</span>
+          {m.words != null ? <span style={{ gridColumn: '2 / 4', color: 'var(--text-muted)', fontStyle: 'italic' }}>{m.words}</span> : null}
+          {m.share != null ? <ShareBar share={m.share} style={{ gridColumn: '2 / 4', marginTop: 2 }} /> : null}
+        </div>
+      ))}
+      {words ? <div style={{ padding: '6px 0', fontSize: '0.74rem', color: 'var(--text-muted)' }}>{words}</div> : null}
+    </div>
+  )
+}
+
+export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, head, membersOf }: DevelopmentScoreboardProps) {
+  const seesCosts = columns.some((c) => c.key === 'cost')
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set())
   const [showEmpties, setShowEmpties] = useState(false)
   const toggle = (id: string) =>
@@ -258,6 +398,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
               )
             })}
           </div>
+          {open && membersOf ? <MemberLines list={membersOf(row)} seesCosts={seesCosts} /> : null}
         </div>
       )
     }
@@ -287,13 +428,25 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
   const th: CSSProperties = { padding: '10px 4px 8px', borderBottom: '2px solid var(--border-strong)', verticalAlign: 'top', background: 'var(--bg-subtle)' }
   const row = (r: ScoreboardJob) => {
     const open = openIds.has(r.jobId)
+    const list = open && membersOf ? membersOf(r) : null
+    const note = list ? (scoreboardPendingWords(list.pending) ?? (list.members.length === 0 ? scoreboardNoMembersWords(seesCosts) : null)) : null
     return (
-      <tr key={r.jobId} data-testid={`scoreboard-row-${r.jobId}`} style={{ background: open ? 'var(--bg-subtle)' : undefined }}>
-        <td style={{ ...cellPad, textAlign: 'left', paddingLeft: 10, overflow: 'hidden', fontWeight: open ? 700 : undefined }}>
-          <JobName row={r} open={open} onToggle={() => toggle(r.jobId)} openJob={() => openJob(r.jobId)} />
-        </td>
-        {columns.map((c) => (open || folded.has(c.key) ? <Cell key={c.key} col={c} row={r} reads={model.reads} open={open} /> : <td key={c.key} style={{ ...cellPad, borderLeft: c.key === 'earned' ? '1px solid var(--border)' : undefined }} />))}
-      </tr>
+      <Fragment key={r.jobId}>
+        <tr data-testid={`scoreboard-row-${r.jobId}`} style={{ background: open ? 'var(--bg-subtle)' : undefined }}>
+          <td style={{ ...cellPad, textAlign: 'left', paddingLeft: 10, overflow: 'hidden', fontWeight: open ? 700 : undefined }}>
+            <JobName row={r} open={open} onToggle={() => toggle(r.jobId)} openJob={() => openJob(r.jobId)} />
+          </td>
+          {columns.map((c) => (open || folded.has(c.key) ? <Cell key={c.key} col={c} row={r} reads={model.reads} open={open} /> : <td key={c.key} style={{ ...cellPad, borderLeft: c.key === 'earned' ? '1px solid var(--border)' : undefined }} />))}
+        </tr>
+        {list ? list.members.map((m) => <MemberRow key={m.key} member={m} columns={columns} />) : null}
+        {note ? (
+          <tr data-testid={`scoreboard-members-note-${r.jobId}`}>
+            <td colSpan={columns.length + 1} style={{ ...cellPad, height: 28, paddingLeft: 28, fontSize: '0.74rem', color: 'var(--text-muted)', background: 'var(--surface)' }}>
+              {note}
+            </td>
+          </tr>
+        ) : null}
+      </Fragment>
     )
   }
   return (

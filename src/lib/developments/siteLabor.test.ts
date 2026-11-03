@@ -61,3 +61,12 @@ describe('allocateSiteLabor', () => {
     expect(crewDayHours({ is_salary: true }, crew[3]!, map)).toBe(0)
   })
 })
+
+describe('the login of each person (v2.6457)', () => {
+  it('a person carries the login the roster links them to, else null', () => {
+    const out = allocateSiteLabor({ jobIds: ['j1'], crewRows: crew, hoursRows: hours, config, userIdByPersonId: new Map([['p-luis', 'u-luis']]) })
+    const people = out.byJobId.get('j1')!.people
+    expect(people.find((p) => p.personName === 'Luis')!.userId).toBe('u-luis')
+    expect(people.find((p) => p.personName === 'Mateo')!.userId).toBeNull()
+  })
+})

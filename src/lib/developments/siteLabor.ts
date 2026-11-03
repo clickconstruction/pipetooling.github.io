@@ -24,6 +24,8 @@ export type SitePayConfig = Record<string, { hourly_wage: number; is_salary: boo
 export type SiteLaborPerson = {
   personName: string
   personId: string | null
+  /** The login the roster person signs in with (`people.account_user_id`), for the viewer's gold row (v2.6457); null when none or unread. */
+  userId: string | null
   hours: number
   costUsd: number
   /** Days with hours on this job, counted once each. */
@@ -61,7 +63,7 @@ export function crewDayHours(cfg: { is_salary: boolean } | undefined, row: SiteC
   return hoursForCrewRow(hoursMap, row)
 }
 
-export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRows: ReadonlyArray<SiteCrewRow>; hoursRows: ReadonlyArray<SiteHoursRow>; config: SitePayConfig }): SiteLabor {
+export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRows: ReadonlyArray<SiteCrewRow>; hoursRows: ReadonlyArray<SiteHoursRow>; config: SitePayConfig; userIdByPersonId?: ReadonlyMap<string, string> }): SiteLabor {
   const jobSet = new Set(args.jobIds)
   const hoursMap = buildHoursMap([...args.hoursRows])
   // A crew row holds a whole day's assignments, so the same row comes back for every job of the site it names: keep it once.
@@ -114,7 +116,7 @@ export function allocateSiteLabor(args: { jobIds: ReadonlyArray<string>; crewRow
     const people = byJob.get(jobId)
     if (!people) continue
     const rows: SiteLaborPerson[] = [...people.entries()]
-      .map(([personName, a]) => ({ personName, personId: a.personId, hours: a.hours, costUsd: a.costUsd, days: a.days.size, leadDays: a.leadDays }))
+      .map(([personName, a]) => ({ personName, personId: a.personId, userId: (a.personId ? args.userIdByPersonId?.get(a.personId) : undefined) ?? null, hours: a.hours, costUsd: a.costUsd, days: a.days.size, leadDays: a.leadDays }))
       .sort((x, y) => y.hours - x.hours || x.personName.localeCompare(y.personName))
     byJobId.set(jobId, {
       jobId,

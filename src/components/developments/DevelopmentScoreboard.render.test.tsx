@@ -8,7 +8,7 @@
 import { cleanup, fireEvent, screen, within } from '@testing-library/react'
 import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest'
 import { installDomShims, renderWithProviders } from '../../test/renderSmokeMocks'
-import { buildScoreboard, scoreboardColumnsFor, SCOREBOARD_DEFAULT_SORT } from '../../lib/developments/scoreboard'
+import { buildScoreboard, scoreboardColumnsFor, scoreboardMembers, SCOREBOARD_DEFAULT_SORT } from '../../lib/developments/scoreboard'
 import type { MemberJob } from '../../lib/developments/overview'
 import type { SiteCostsRead } from '../../lib/developments/siteCosts'
 import type { SiteLaborRead } from '../../lib/developments/siteLabor'
@@ -37,8 +37,8 @@ const labor: SiteLaborRead = { state: 'read', labor: { byJobId: new Map([['j1', 
 const costs: SiteCostsRead = {
   state: 'read',
   byJobId: new Map([
-    ['j1', { jobId: 'j1', subLabor: 18400, parts: { supplyInvoices: 53770, cardCharges: 9100, tallyParts: 0, otherCharges: 0 }, total: 81270 }],
-    ['j2', { jobId: 'j2', subLabor: 0, parts: { supplyInvoices: 1480, cardCharges: 0, tallyParts: 0, otherCharges: 0 }, total: 1480 }],
+    ['j1', { jobId: 'j1', subLabor: 18400, parts: { supplyInvoices: 53770, cardCharges: 9100, tallyParts: 0, otherCharges: 0 }, total: 81270, breakdown: { subs: [{ name: 'Reyes Excavating', usd: 18400, sheets: 2 }], suppliers: [{ name: 'Ferguson', usd: 41120, invoices: 11 }, { name: 'Moore Supply', usd: 12650, invoices: 4 }], cardLines: [{ txId: 'tx1', usd: 9100 }], tallyLines: 0, otherLines: 0 } }],
+    ['j2', { jobId: 'j2', subLabor: 0, parts: { supplyInvoices: 1480, cardCharges: 0, tallyParts: 0, otherCharges: 0 }, total: 1480, breakdown: { subs: [], suppliers: [{ name: 'Ferguson', usd: 1480, invoices: 1 }], cardLines: [], tallyLines: 0, otherLines: 0 } }],
   ]),
 }
 const overhead = { state: 'read' as const, byJobId: new Map([['j1', { usd: 14920, days: 118 }], ['j2', { usd: 610, days: 5 }]]) }
@@ -118,5 +118,107 @@ describe('DevelopmentScoreboard', () => {
     mount({ jobs: [] })
     expect(screen.getByText('No job on this site yet.')).toBeTruthy()
     expect(screen.getByText('Bid Board')).toBeTruthy()
+  })
+})
+
+describe('DevelopmentScoreboard · the rows under an open job (v2.6457)', () => {
+  const crew: SiteLaborRead = {
+    state: 'read',
+    labor: {
+      byJobId: new Map([
+        [
+          'j1',
+          {
+            jobId: 'j1',
+            hours: 1842,
+            costUsd: 55410,
+            days: 118,
+            people: [
+              { personName: 'Mateo', personId: 'p2', userId: null, hours: 540, costUsd: 16200, days: 61, leadDays: 0 },
+              { personName: 'Luis', personId: 'p1', userId: 'u-luis', hours: 612, costUsd: 21420, days: 74, leadDays: 40 },
+              { personName: 'Tom', personId: 'p3', userId: null, hours: 690, costUsd: 17790, days: 70, leadDays: 0 },
+            ],
+          },
+        ],
+        ['j2', { jobId: 'j2', hours: 54, costUsd: 1296, days: 5, people: [{ personName: 'Sam', personId: 'p4', userId: null, hours: 54, costUsd: 1296, days: 5, leadDays: 5 }] }],
+      ]),
+      siteDays: 120,
+      people: 4,
+    },
+  }
+  const holders = { state: 'read' as const, byTxId: new Map([['tx1', { cardId: 'c1', name: 'Luis', userId: 'u-luis' }]]) }
+
+  function mountRows(over: { phone?: boolean; seesCosts?: boolean; viewer?: { userId: string | null; name: string | null } } = {}) {
+    const seesCosts = over.seesCosts ?? true
+    const model = buildScoreboard({ jobs, invoices: [], jobLabel: label, labor: crew, costs, overhead, sort: SCOREBOARD_DEFAULT_SORT })
+    const membersOf = (r: { jobId: string; m: { cost: number } }) =>
+      scoreboardMembers({
+        jobId: r.jobId,
+        jobCost: r.m.cost,
+        seesCosts,
+        labor: crew,
+        costs,
+        overhead,
+        cardHolders: holders,
+        invoices: [{ job_id: 'j1', sent_by_user_id: 'u-dana' }],
+        payments: [{ job_id: 'j1', created_by: 'u-dana' }],
+        names: new Map([['u-dana', 'Dana']]),
+        viewer: over.viewer ?? { userId: 'u-dana', name: 'Dana' },
+      })
+    renderWithProviders(<DevelopmentScoreboard model={model} columns={scoreboardColumnsFor(seesCosts)} phone={over.phone ?? false} onSort={vi.fn()} openJob={vi.fn()} head={head} membersOf={membersOf} />)
+  }
+
+  it('a folded job shows no rows; opened, the people, the sub, the houses, the card, the overhead and the office line', () => {
+    mountRows()
+    expect(screen.queryByTestId('scoreboard-member-person:p1')).toBeNull()
+    fireEvent.click(screen.getByTestId('scoreboard-open-j1'))
+    const luis = screen.getByTestId('scoreboard-member-person:p1')
+    expect(luis.textContent).toContain('Lead')
+    expect(luis.textContent).toContain('led 40 of 74 days')
+    expect(luis.textContent).toContain('612 h')
+    expect(luis.textContent).toContain('$21,420')
+    expect(screen.getByTestId('scoreboard-member-sub:Reyes Excavating').textContent).toContain('2 sheets')
+    expect(screen.getByTestId('scoreboard-member-supplier:Ferguson').textContent).toContain('$41,120')
+    expect(screen.getByTestId('scoreboard-member-card:Luis').textContent).toContain('1 charge')
+    expect(screen.getByTestId('scoreboard-member-overhead:day-share').textContent).toContain('118 days charged')
+    expect(screen.getByTestId('scoreboard-member-office:u-dana').textContent).toContain('sent 1 bill · booked 1 payment')
+  })
+
+  it('the leads come first, then the crew by hours', () => {
+    mountRows()
+    fireEvent.click(screen.getByTestId('scoreboard-open-j1'))
+    const order = screen.getAllByTestId(/^scoreboard-member-person:/).map((el) => el.getAttribute('data-testid'))
+    expect(order).toEqual(['scoreboard-member-person:p1', 'scoreboard-member-person:p3', 'scoreboard-member-person:p2'])
+  })
+
+  it('the viewer’s own rows are gold with You: the office line for Dana, the person and the card for Luis', () => {
+    mountRows()
+    fireEvent.click(screen.getByTestId('scoreboard-open-j1'))
+    expect(screen.getByTestId('scoreboard-member-office:u-dana').getAttribute('data-you')).toBe('true')
+    expect(screen.getAllByTestId('scoreboard-you')).toHaveLength(1)
+    cleanup()
+    mountRows({ viewer: { userId: 'u-luis', name: 'Luis' } })
+    fireEvent.click(screen.getByTestId('scoreboard-open-j1'))
+    expect(screen.getByTestId('scoreboard-member-person:p1').getAttribute('data-you')).toBe('true')
+    expect(screen.getByTestId('scoreboard-member-card:Luis').getAttribute('data-you')).toBe('true')
+    expect(screen.getByTestId('scoreboard-member-person:p3').getAttribute('data-you')).toBeNull()
+  })
+
+  it('the lead’s board opens to the people alone, with hours and days and no dollar', () => {
+    mountRows({ seesCosts: false, viewer: { userId: 'u-luis', name: 'Luis' } })
+    fireEvent.click(screen.getByTestId('scoreboard-open-j1'))
+    const rows = screen.getAllByTestId(/^scoreboard-member-/)
+    expect(rows.map((el) => el.getAttribute('data-testid'))).toEqual(['scoreboard-member-person:p1', 'scoreboard-member-person:p3', 'scoreboard-member-person:p2'])
+    expect(rows[0]!.textContent).toContain('612 h')
+    expect(rows[0]!.textContent).not.toContain('$')
+    expect(rows[0]!.getAttribute('data-you')).toBe('true')
+  })
+
+  it('on a phone an open card lists the rows as lines with their figures', () => {
+    mountRows({ phone: true })
+    fireEvent.click(screen.getByTestId('scoreboard-open-j2'))
+    const lines = screen.getByTestId('scoreboard-member-lines')
+    expect(within(lines).getByTestId('scoreboard-member-person:p4').textContent).toContain('$1,296 · 54 h · 5 d')
+    expect(within(lines).getByTestId('scoreboard-member-supplier:Ferguson').textContent).toContain('$1,480')
   })
 })

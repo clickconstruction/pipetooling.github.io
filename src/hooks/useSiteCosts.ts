@@ -29,7 +29,7 @@ export function useSiteCosts(jobIds: ReadonlyArray<string>, enabled: boolean): S
           supabase.from('mercury_transaction_job_allocations').select('job_id, id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount)').in('job_id', ids).order('created_at', { ascending: true }).limit(2000),
           supabase.rpc('list_tally_parts_with_po'),
           supabase.from('jobs_ledger_materials').select('job_id, amount').in('job_id', ids).limit(2000),
-          supabase.from('people_labor_jobs').select('id, job_ledger_id, job_number, labor_rate, distance_miles').in('job_ledger_id', ids).limit(500),
+          supabase.from('people_labor_jobs').select('id, job_ledger_id, job_number, labor_rate, distance_miles, assigned_to_name').in('job_ledger_id', ids).limit(500),
           supabase.from('app_settings').select('key, value_num').in('key', [...DRIVE_SETTING_KEYS]),
         ])
         for (const r of [inv, supply, card, tally, other, sheets]) if (r.error) throw r.error
@@ -56,6 +56,8 @@ export function useSiteCosts(jobIds: ReadonlyArray<string>, enabled: boolean): S
           sheets: sheetRows,
           items: (items.data ?? []) as unknown as SiteCostRows['items'],
           settings: settings.error ? [] : ((settings.data ?? []) as SiteCostRows['settings']),
+          // The allocations with their house, for the Scoreboard's supply rows (v2.6457); the total still reads the RPC.
+          supplyAlloc: (supply.data ?? []) as unknown as NonNullable<SiteCostRows['supplyAlloc']>,
         })
         if (!cancelled) setState({ key, read: { state: 'read', byJobId: map } })
       } catch {

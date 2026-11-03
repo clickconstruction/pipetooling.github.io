@@ -15,6 +15,7 @@ import { normalizeJobsLedgerStatus, type JobsLedgerPipelineStatus } from '../job
 import type { MemberJob } from './overview'
 import type { SiteCostsRead } from './siteCosts'
 import type { SiteLaborRead } from './siteLabor'
+import type { CardHoldersRead } from './cardHolders'
 
 export type ScoreboardColumnKey = 'hours' | 'days' | 'labor' | 'subs' | 'parts' | 'overhead' | 'earned' | 'cost' | 'profit'
 
@@ -270,4 +271,181 @@ export function scoreboardFoldWords(n: number): string {
 /** The site's second margin, with materials-only jobs set aside (call 7). */
 export function scoreboardWorkWords(work: ScoreboardModel['work']): string | null {
   return work && work.earned > 0 ? `${scoreboardPctOf(work.profit, work.earned)} on work` : null
+}
+
+// ---- the rows under an open job (v2.6457, punch list #250 PR 2) ---------------------------------
+
+export type ScoreboardMemberKind = 'lead' | 'crew' | 'sub' | 'supplier' | 'card' | 'tally' | 'other' | 'overhead' | 'office'
+
+/** The role tag in the margin, the game's SL and FTL in the app's words. */
+export const SCOREBOARD_MEMBER_ROLE: Record<ScoreboardMemberKind, string> = {
+  lead: 'Lead',
+  crew: 'Crew',
+  sub: 'Sub',
+  supplier: 'Supplier',
+  card: 'Card',
+  tally: 'Tally',
+  other: 'Other',
+  overhead: 'Overhead',
+  office: 'Office',
+}
+
+export type ScoreboardMemberMeasures = Partial<Pick<ScoreboardMeasures, 'hours' | 'days' | 'labor' | 'subs' | 'parts' | 'overhead'>>
+
+export type ScoreboardMember = {
+  key: string
+  kind: ScoreboardMemberKind
+  name: string
+  /** The small words beside the name: *led 12 of 74 days*, *2 sheets*, *11 invoices*, *34 charges*. */
+  kit: string | null
+  /** The cells this row fills besides Cost: a person's hours, days and labor; a sub's subs; a house's or a card's parts. */
+  m: ScoreboardMemberMeasures
+  /** What this row put into the job's Cost; null on the office line and on the lead's board. */
+  cost: number | null
+  /** That cost's share of the job's Cost, 0 to 1; null with no cost. */
+  share: number | null
+  /** The office line's words, in place of figures. */
+  words: string | null
+  /** The viewer's own row: gold. */
+  you: boolean
+}
+
+export type ScoreboardViewer = { userId: string | null; name: string | null }
+
+export type ScoreboardMembersInput = {
+  jobId: string
+  /** The job's Cost on the board: the shares' whole. */
+  jobCost: number
+  /** Dev and controller: every kind with its dollars. Otherwise the people with hours and days alone. */
+  seesCosts: boolean
+  labor?: SiteLaborRead
+  costs?: SiteCostsRead
+  overhead?: SiteOverheadRead
+  cardHolders?: CardHoldersRead
+  invoices: ReadonlyArray<{ job_id: string; sent_by_user_id?: string | null }>
+  payments: ReadonlyArray<{ job_id: string; created_by?: string | null }>
+  names: ReadonlyMap<string, string>
+  viewer: ScoreboardViewer
+}
+
+export type ScoreboardMembers = {
+  members: ScoreboardMember[]
+  /** A read the rows still wait on, or one that would not read; the rows under the job say so in one line. */
+  pending: 'reading' | 'failed' | null
+}
+
+const plural = (n: number, one: string, many: string) => `${n} ${n === 1 ? one : many}`
+const sameName = (a: string | null | undefined, b: string | null | undefined) => !!a?.trim() && !!b?.trim() && a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Everyone and everything that put something into one job, each filling Cost with what it put in so
+ * the rows add up to the job: the people from the clock (a *Lead* led the crew on at least one of the
+ * days), the subs by the names on their sheets, the supply houses, the card holders, the tally, the
+ * other charges and the overhead day share, then the office line (who sent the bills and booked the
+ * payments, words only). A supply or card split that falls short of its total (an allocation read cut
+ * at its limit, the card rule's clamp, a card read that failed) gets one reconciling row, so the sum
+ * holds. The lead's board lists the people with hours and days and nothing else. Pure.
+ */
+export function scoreboardMembers(i: ScoreboardMembersInput): ScoreboardMembers {
+  let pending: ScoreboardMembers['pending'] = null
+  const note = (state: ScoreboardReadState) => {
+    if (state === 'failed') pending = 'failed'
+    else if (state === 'reading' && pending !== 'failed') pending = 'reading'
+  }
+  const share = (usd: number) => (i.jobCost > 0 ? Math.max(0, usd) / i.jobCost : null)
+  const money = (kind: ScoreboardMemberKind, key: string, name: string, kit: string | null, m: ScoreboardMemberMeasures, usd: number, you = false): ScoreboardMember => ({
+    key: `${kind}:${key}`,
+    kind,
+    name,
+    kit,
+    m,
+    cost: round2(usd),
+    share: share(usd),
+    words: null,
+    you,
+  })
+
+  // The people, from the clock: leads first, then the crew, each by hours.
+  note(readStateOf(i.labor))
+  const lj = i.labor?.state === 'read' ? i.labor.labor.byJobId.get(i.jobId) : undefined
+  const people: ScoreboardMember[] = (lj?.people ?? []).map((p): ScoreboardMember => {
+    const lead = p.leadDays > 0
+    const you = (i.viewer.userId != null && p.userId === i.viewer.userId) || (p.userId == null && sameName(p.personName, i.viewer.name))
+    const kit = lead ? `led ${p.leadDays} of ${plural(p.days, 'day', 'days')}` : null
+    if (!i.seesCosts) return { key: `person:${p.personId ?? p.personName}`, kind: lead ? 'lead' : 'crew', name: p.personName, kit, m: { hours: p.hours, days: p.days }, cost: null, share: null, words: null, you }
+    return { ...money(lead ? 'lead' : 'crew', p.personId ?? p.personName, p.personName, kit, { hours: p.hours, days: p.days, labor: round2(p.costUsd) }, p.costUsd, you), key: `person:${p.personId ?? p.personName}` }
+  })
+  people.sort((a, b) => Number(b.kind === 'lead') - Number(a.kind === 'lead') || (b.m.hours ?? 0) - (a.m.hours ?? 0) || a.name.localeCompare(b.name))
+  if (!i.seesCosts) return { members: people, pending }
+
+  const out: ScoreboardMember[] = [...people]
+  note(readStateOf(i.costs))
+  const row = i.costs?.state === 'read' ? i.costs.byJobId.get(i.jobId) : undefined
+  if (row) {
+    const b = row.breakdown
+    for (const sub of b.subs) out.push(money('sub', sub.name, sub.name, plural(sub.sheets, 'sheet', 'sheets'), { subs: round2(sub.usd) }, sub.usd))
+    let houses = 0
+    for (const h of b.suppliers) {
+      houses += h.usd
+      out.push(money('supplier', h.name, h.name, plural(h.invoices, 'invoice', 'invoices'), { parts: round2(h.usd) }, h.usd))
+    }
+    const supplyGap = round2(row.parts.supplyInvoices - houses)
+    if (Math.abs(supplyGap) >= 0.01) out.push(money('supplier', 'gap', 'Other supply invoices', null, { parts: supplyGap }, supplyGap))
+    // The card charges by holder once that read is in; until then, or if it will not read, one row for the card.
+    const holders = i.cardHolders?.state === 'read' ? i.cardHolders.byTxId : null
+    const byHolder = new Map<string, { usd: number; n: number; userId: string | null }>()
+    for (const l of b.cardLines) {
+      const h = holders && l.txId ? holders.get(l.txId) : undefined
+      const name = h?.name ?? 'Card'
+      const cur = byHolder.get(name) ?? { usd: 0, n: 0, userId: h?.userId ?? null }
+      cur.usd += l.usd
+      cur.n += 1
+      if (!cur.userId && h?.userId) cur.userId = h.userId
+      byHolder.set(name, cur)
+    }
+    let cards = 0
+    for (const [name, c] of [...byHolder.entries()].sort((x, y) => y[1].usd - x[1].usd)) {
+      cards += c.usd
+      out.push(money('card', name, name, plural(c.n, 'charge', 'charges'), { parts: round2(c.usd) }, c.usd, i.viewer.userId != null && c.userId === i.viewer.userId))
+    }
+    const cardGap = round2(row.parts.cardCharges - cards)
+    if (Math.abs(cardGap) >= 0.01) out.push(money('card', 'gap', 'Card charges not split', null, { parts: cardGap }, cardGap))
+    if (row.parts.tallyParts) out.push(money('tally', 'tally', 'The tally', plural(b.tallyLines, 'line', 'lines'), { parts: round2(row.parts.tallyParts) }, row.parts.tallyParts))
+    if (row.parts.otherCharges) out.push(money('other', 'other', 'Other job charges', plural(b.otherLines, 'line', 'lines'), { parts: round2(row.parts.otherCharges) }, row.parts.otherCharges))
+  }
+  note(readStateOf(i.overhead))
+  const o = i.overhead?.state === 'read' ? i.overhead.byJobId.get(i.jobId) : undefined
+  if (o && o.usd) out.push(money('overhead', 'day-share', 'Day share', `${plural(o.days, 'day', 'days')} charged`, { overhead: round2(o.usd) }, o.usd))
+
+  // The office line: who sent the bills and who booked the payments, by person.
+  const acts = new Map<string, { bills: number; payments: number }>()
+  for (const inv of i.invoices) if (inv.job_id === i.jobId && inv.sent_by_user_id) acts.set(inv.sent_by_user_id, { bills: (acts.get(inv.sent_by_user_id)?.bills ?? 0) + 1, payments: acts.get(inv.sent_by_user_id)?.payments ?? 0 })
+  for (const pay of i.payments) if (pay.job_id === i.jobId && pay.created_by) acts.set(pay.created_by, { bills: acts.get(pay.created_by)?.bills ?? 0, payments: (acts.get(pay.created_by)?.payments ?? 0) + 1 })
+  const office = [...acts.entries()]
+    .sort((x, y) => y[1].bills + y[1].payments - (x[1].bills + x[1].payments))
+    .map(([userId, a]): ScoreboardMember => ({
+      key: `office:${userId}`,
+      kind: 'office',
+      name: i.names.get(userId)?.trim() || 'Someone in the office',
+      kit: null,
+      m: {},
+      cost: null,
+      share: null,
+      words: [a.bills ? `sent ${plural(a.bills, 'bill', 'bills')}` : null, a.payments ? `booked ${plural(a.payments, 'payment', 'payments')}` : null].filter(Boolean).join(' · '),
+      you: i.viewer.userId != null && userId === i.viewer.userId,
+    }))
+  out.push(...office)
+  return { members: out, pending }
+}
+
+/** The one line under an open job while its rows wait, or when one would not read. */
+export function scoreboardPendingWords(pending: ScoreboardMembers['pending']): string | null {
+  if (pending === 'reading') return 'Some rows are still reading.'
+  if (pending === 'failed') return 'A source would not read. The Job window has these rows.'
+  return null
+}
+
+/** The line under an open job with no row at all. */
+export function scoreboardNoMembersWords(seesCosts: boolean): string {
+  return seesCosts ? 'Nothing is on this job yet.' : 'No hours are on this job yet.'
 }
