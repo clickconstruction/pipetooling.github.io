@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { todayYmdInAppTz as edgeTodayYmdInAppTz, ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
-import { todayYmdInAppTz as appTodayYmdInAppTz } from '../utils/dateUtils'
+import { calendarYmdInAppTzFromIso as edgeCalendarYmd, todayYmdInAppTz as edgeTodayYmdInAppTz, ymdAddDays } from '../../supabase/functions/_shared/appTimeZone'
+import { calendarYmdInAppTzFromIso as appCalendarYmd, todayYmdInAppTz as appTodayYmdInAppTz } from '../utils/dateUtils'
 
 /** The Edge twin of `todayYmdInAppTz` must give the same civil day as the app's, at every kind of instant. */
 describe('_shared/appTimeZone parity with dateUtils (v2.2703)', () => {
@@ -15,6 +15,13 @@ describe('_shared/appTimeZone parity with dateUtils (v2.2703)', () => {
   it.each(instants)('%s', (iso) => {
     const now = new Date(iso)
     expect(edgeTodayYmdInAppTz(now)).toBe(appTodayYmdInAppTz(now))
+  })
+  it.each(instants)('calendarYmdInAppTzFromIso %s (lifted with the person file, v2.6418)', (iso) => {
+    expect(edgeCalendarYmd(iso)).toBe(appCalendarYmd(iso))
+  })
+  it('calendarYmdInAppTzFromIso answers nothing for an instant that is not one, as the app does', () => {
+    expect(edgeCalendarYmd('not a time')).toBe('')
+    expect(appCalendarYmd('not a time')).toBe('')
   })
   it('evening instants land on the Central date, not the UTC one', () => {
     expect(edgeTodayYmdInAppTz(new Date('2026-09-04T01:30:00Z'))).toBe('2026-09-03')

@@ -6,6 +6,7 @@
  * writes; the spike keeps it on this device until the tables land.
  */
 import { Suspense, lazy, useEffect, useMemo, useState, type CSSProperties } from 'react'
+import { createPortal } from 'react-dom'
 import { useSearchParams } from 'react-router-dom'
 import { useAddressGeocodeCoords } from '../../hooks/useAddressGeocodeCoords'
 import { normalizeAddressForGeocodeKey } from '../../lib/map/normalizeAddressForGeocode'
@@ -27,6 +28,7 @@ import { invoiceNumber, manifestComparison, parseInvoiceText, SAMPLE_INVOICE_TEX
 import { jobMaterialsSummary, staleWords } from '../../lib/materials/onSiteSummary'
 import { flowFigure, officeFlow } from '../../lib/materials/flowRow'
 import { boxAddress, boxCode, boxUrl, labelRows } from '../../lib/materials/labels'
+import { printRootCss } from '../../lib/printRoot'
 import { photoMarkWords } from '../../lib/materials/photo'
 import { BoxPhotos, CameraGlyph } from '../materials/PhotoPress'
 import { FlowRow } from '../materials/FlowRow'
@@ -709,10 +711,10 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
   const lth: CSSProperties = { textAlign: 'left', padding: '0.2rem 0.3rem', fontSize: '0.68rem', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--text-700)', borderBottom: '2px solid #111827' }
   /** Rows tall enough for a pen on paper: about 8 mm printed. */
   const cell: CSSProperties = { borderBottom: '1px solid var(--border-400)', padding: '0 0.3rem', height: '1.9rem', fontSize: '0.84rem', verticalAlign: 'bottom', color: 'var(--text-strong)' }
-  return (
+  return createPortal(
     <div className="on-site-labels" style={{ position: 'fixed', inset: 0, zIndex: 900, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 'calc(1rem + var(--app-top-chrome, 0px)) 1rem 1rem' }} onClick={onClose}>
-      {/* Printing draws the labels alone, one a sheet: the page behind and the window's chrome stay off the paper. */}
-      <style>{`@media print { body * { visibility: hidden !important; } .on-site-labels, .on-site-labels * { visibility: visible !important; } .on-site-labels { position: absolute !important; inset: 0 !important; padding: 0 !important; background: #fff !important; display: block !important; } .on-site-labels-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-labels-chrome { display: none !important; } .on-site-label { break-inside: avoid; page-break-inside: avoid; border-radius: 0 !important; } }`}</style>
+      {/* Printing draws the labels alone at full size, one a sheet of Letter. The window sits on <body> (a portal) and print takes everything else on <body> out of the layout (lib/printRoot.ts), so the page behind can neither show on the paper nor shrink it, and every label prints, not the first sheet alone (v2.6432). */}
+      <style>{`${printRootCss('on-site-labels')} @media print { .on-site-labels-dialog { box-shadow: none !important; max-height: none !important; width: 100% !important; border-radius: 0 !important; padding: 0 !important; overflow: visible !important; } .on-site-labels-chrome { display: none !important; } .on-site-labels-list { display: block !important; } .on-site-label { break-inside: avoid; page-break-inside: avoid; border-radius: 0 !important; } .on-site-label + .on-site-label { break-before: page; page-break-before: always; } }`}</style>
       <div role="dialog" aria-modal="true" aria-label={one ? `Print the label for ${one.label}` : 'Print labels'} className="on-site-labels-dialog" data-theme="light" style={{ background: 'var(--surface)', color: 'var(--text-strong)', borderRadius: 10, width: 'min(640px, 100%)', maxHeight: 'min(90vh, 100%)', overflow: 'auto', padding: '1rem 1.25rem', boxShadow: '0 12px 32px rgba(0,0,0,0.3)' }} onClick={(e) => e.stopPropagation()}>
         <div className="on-site-labels-chrome" style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', marginBottom: '0.75rem' }}>
           <div style={{ flex: '1 1 auto', minWidth: 0 }}>
@@ -722,7 +724,7 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
           <button type="button" style={{ ...btnPrimary, flex: '0 0 auto' }} onClick={() => window.print()}>{shown.length === 1 ? 'Print 1 label' : `Print ${shown.length} labels`}</button>
           <button type="button" style={{ ...btn, flex: '0 0 auto' }} onClick={onClose}>Close</button>
         </div>
-        <div style={{ display: 'grid', gap: '0.9rem' }}>
+        <div className="on-site-labels-list" style={{ display: 'grid', gap: '0.9rem' }}>
           {shown.map((c) => {
             const rows = labelRows(linesOf(lines, c.id))
             const place = places.find((p) => p.id === c.locationId)?.name ?? ''
@@ -758,6 +760,7 @@ function LabelsModal({ jobLabel: jl, containers, lines, places, only, onClose }:
           })}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }

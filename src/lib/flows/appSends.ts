@@ -180,6 +180,8 @@ export interface LastRun {
   prepared: number
   /** Texts the office prepared for that morning that went. */
   morningSent: number
+  /** Texts put away because the visit day they named had passed (v2.6387). */
+  expired: number
   /** The run's own sentences. */
   words: string[]
 }
@@ -219,6 +221,7 @@ export function lastRunFrom(stored: unknown): LastRun | null {
     unread: count(v.unread),
     prepared: count(v.prepared),
     morningSent: count(v.morningSent),
+    expired: count(v.expired),
     words: Array.isArray(v.words) ? v.words.filter((w): w is string => typeof w === 'string' && w.trim() !== '') : [],
   }
 }
@@ -283,6 +286,7 @@ export function lastRunLine(run: LastRun | null, nowIso: string): string {
     `Last morning run ${when}: ${sent}, ${keptTotal ? `${keptTotal} kept back` : 'none kept back'}.`,
     ...(parts.length ? [`${capital(andList(parts))}.`] : []),
     ...(run.prepared ? [`${is(run.prepared, 'text', 'texts')} prepared for Today’s sends.`] : []),
+    ...(run.expired ? [`${is(run.expired, 'text', 'texts')} put away because the visit day passed.`] : []),
     ...(run.refusedCount ? [`${is(run.refusedCount, 'text', 'texts')} did not go.`] : []),
   ]
   return words.join(' ')
