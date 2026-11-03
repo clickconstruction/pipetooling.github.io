@@ -45,9 +45,7 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
-for f in supabase/migrations/*.sql; do
-  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
-done
+pgtest_apply supabase/migrations/*.sql
 # A second run must change nothing: the CHECKs made again, the policies, the guard, the functions, their grants. In
 # their own order: the notary's widens the mode CHECK past the signing code's, the bid waiver's restates the signing
 # function, and the notary file's restates the link column's comment, so each keeps the last word it has on a fresh
