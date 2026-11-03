@@ -17,6 +17,11 @@ import { TEXTS_WAIT, type ReplyIo } from '../../../../lib/messages/replyIo'
 import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 const switchRead = vi.hoisted(() => ({ on: false as boolean | null }))
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => switchRead.on }))
@@ -57,7 +62,7 @@ function threadBox() {
   renderWithProviders(
     <MessagesRereadContext.Provider value={vi.fn()}>
       <OpenThreadContext.Provider value={open}>
-        <ReplyBox contact={open.contact} io={fakeIo()} loadBoxes={() => Promise.resolve(null)} />
+        <ReplyBox papersIo={noPapers} contact={open.contact} io={fakeIo()} loadBoxes={() => Promise.resolve(null)} />
       </OpenThreadContext.Provider>
     </MessagesRereadContext.Provider>,
   )
@@ -85,7 +90,7 @@ const DANA: Contact = {
 function jobBox(kind: ReplyKind) {
   renderWithProviders(
     <MessagesRereadContext.Provider value={vi.fn()}>
-      <ReplyBox contact={DANA} io={fakeIo()} job={{ key: 'pipeline:j-helotes', name: 'Helotes' }} kinds={[kind]} loadBoxes={() => Promise.resolve(null)} />
+      <ReplyBox papersIo={noPapers} contact={DANA} io={fakeIo()} job={{ key: 'pipeline:j-helotes', name: 'Helotes' }} kinds={[kind]} loadBoxes={() => Promise.resolve(null)} />
     </MessagesRereadContext.Provider>,
   )
   return document.querySelector('[data-reply-box]') as HTMLElement

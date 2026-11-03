@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { fireEvent, screen } from '@testing-library/react'
 import { renderWithProviders } from '../../test/renderSmokeMocks'
 import { BridgeDial } from './BridgeDial'
@@ -44,5 +44,33 @@ describe('BridgeDial', () => {
     expect(spark.querySelector('svg')).not.toBeNull()
     expect(spark.style.flex).toBe('0 1 240px')
     expect(spark.style.maxWidth).toBe('100%')
+  })
+  describe('the marks', () => {
+    afterEach(() => vi.restoreAllMocks())
+    /** jsdom lays nothing out, so the track and each label answer with a width: the track `trackPx`, a label 4.6 px a character. */
+    const measure = (trackPx: number) =>
+      vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
+        const width = this.dataset.testid === 'bridge-dial-mark' ? (this.textContent?.length ?? 0) * 4.6 : this.querySelector('[data-testid="bridge-dial-mark"]') ? trackPx : 0
+        return { x: 0, y: 0, top: 0, left: 0, bottom: 0, right: width, width, height: 0, toJSON: () => ({}) } as DOMRect
+      })
+    const draw = () => {
+      const spec = dialSpec(input, 'bill', { perUnitUsd: 233_000 / 15 })!
+      const reading = buildDialReading(input, 'bill', 22_000, { spec, todayYmd: '2026-10-10', dayLabel: (y) => y })
+      renderWithProviders(<BridgeDial reading={reading} moved={false} onChange={() => {}} onReset={() => {}} />)
+      const marks = screen.getAllByTestId('bridge-dial-mark')
+      return { rows: marks.map((m) => m.dataset.row), track: marks[0]!.parentElement!.parentElement as HTMLElement }
+    }
+    it('lays the labels into rows by their measured widths, and the track grows past two rows on a phone', () => {
+      measure(328)
+      const { rows, track } = draw()
+      expect(new Set(rows).size).toBeGreaterThan(2)
+      expect(track.style.height).toBe(`${28 + 13 * new Set(rows).size}px`)
+    })
+    it('keeps a desk track at its two-row height', () => {
+      measure(740)
+      const { rows, track } = draw()
+      expect(new Set(rows).size).toBeLessThanOrEqual(2)
+      expect(track.style.height).toBe('54px')
+    })
   })
 })

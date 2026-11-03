@@ -12,6 +12,11 @@ import { OpenThreadContext, type OpenThread } from '../openThread'
 import { MessagesRereadContext } from '../useMessagesReread'
 import { SLASH_HINT } from '../../../../lib/quickReplies/slash'
 import { ReplyBox } from './ReplyBox'
+import type { PapersIo } from '../../../../lib/messages/papersIo'
+
+// The box reads no papers here: its bills and estimates are ReplyBox.papers.render.test.tsx's, and without a stub the
+// read goes through the real client (v2.6436).
+const noPapers: PapersIo = { load: () => Promise.resolve([]) }
 
 // Send texts is on here, so a text writes as it will once the owner turns it on (`ReplyBox.textsOn` holds the off box).
 vi.mock('./useTextsOn', () => ({ useTextsOn: () => true }))
@@ -51,7 +56,7 @@ function box(contactId = 'c-greg', more: { jobFilter?: string | null; io?: Reply
   const open = thread(contactId, more.jobFilter ?? null)
   const wrap = (child: ReactNode) =>
     more.provider === false ? child : <OpenThreadContext.Provider value={open}>{child}</OpenThreadContext.Provider>
-  renderWithProviders(<MessagesRereadContext.Provider value={reread}>{wrap(<ReplyBox contact={open.contact} io={io} loadBoxes={more.boxes ?? NO_BOXES} />)}</MessagesRereadContext.Provider>)
+  renderWithProviders(<MessagesRereadContext.Provider value={reread}>{wrap(<ReplyBox papersIo={noPapers} contact={open.contact} io={io} loadBoxes={more.boxes ?? NO_BOXES} />)}</MessagesRereadContext.Provider>)
   const el = document.querySelector('[data-reply-box]') as HTMLElement
   return { io, reread, el, open }
 }
