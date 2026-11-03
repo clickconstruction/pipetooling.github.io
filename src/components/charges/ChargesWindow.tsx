@@ -57,7 +57,7 @@ function pendingKey(kind: NewChargeAdjustment['kind'], target: string): string {
 /** The office's pending changes read as adjustments, so the kernels price them before they are saved. */
 function pendingAsAdjustments(jobId: string, pending: ReadonlyArray<Pending>): ChargeAdjustment[] {
   const now = new Date().toISOString()
-  return pending.map((p) => ({ id: `pending:${p.key}`, jobId, kind: p.kind, target: p.target, shape: p.shape, reason: p.reason, madeByName: 'you', madeAt: now }))
+  return pending.map((p) => ({ id: `pending:${p.key}`, jobId, kind: p.kind, target: p.target, shape: p.shape, amount: p.amount, reason: p.reason, madeByName: 'you', madeAt: now }))
 }
 
 export function canAdjustCharges(viewer: ChargesWindowViewer): boolean {
@@ -380,7 +380,7 @@ export default function ChargesWindow({ jobId, viewer, onClose, onChanged, zInde
                   {read.adjustments.length === 0 && pending.length === 0 ? <p style={quiet}>Nothing adjusted. Every line is the record. Change a day’s crew, untick a day or a line, or pass a line through, and it lands here.</p> : null}
                   {pending.map((p) => (
                     <div key={p.key} style={{ padding: '0.35rem 0.5rem', borderLeft: '3px solid var(--text-amber-700, var(--border-strong))', background: 'var(--bg-subtle)', borderRadius: 4, fontSize: '0.8125rem' }}>
-                      {chargeAdjustmentWords({ id: p.key, jobId, kind: p.kind, target: p.target, shape: p.shape, reason: p.reason, madeByName: null, madeAt: '' }, dayWords, lineLabel)}
+                      {chargeAdjustmentWords({ id: p.key, jobId, kind: p.kind, target: p.target, shape: p.shape, amount: p.amount, reason: p.reason, madeByName: null, madeAt: '' }, dayWords, lineLabel)}
                       <span style={{ ...quiet, display: 'block' }}>not saved yet{p.reason.trim() ? '' : ' · give it a reason'}</span>
                     </div>
                   ))}
