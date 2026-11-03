@@ -1,5 +1,6 @@
-import type { FieldReportPayload, KeptReportPhoto, MovedLineStamp, OutboxPress } from './outbox'
+import type { FieldReportPayload, JobPhotosPayload, KeptReportPhoto, MovedLineStamp, OutboxPress } from './outbox'
 import { checklistAnswerWrites, type ChecklistAnswerWrite } from '../photos/reportPhotoChecklist'
+import { threadLineWords } from '../photos/jobPhotoNotes'
 import { keptPhotos } from './keptPhotos'
 
 export type { MovedLineStamp } from './outbox'
@@ -24,15 +25,18 @@ export interface AfterLandingIo {
   answerQuestions?: (writes: ReadonlyArray<ChecklistAnswerWrite>, who: { userId: string; name: string }) => Promise<unknown>
   /** The kept bytes go once the photos are on the report. */
   dropKeptPhotos?: (ids: ReadonlyArray<string>) => Promise<void>
+  /** A job photos press (punch list #244, PR 5): the one line on the job's thread after it lands, best effort. */
+  postThreadLine?: (jobId: string, userId: string, body: string) => Promise<boolean>
 }
 
 async function defaultIo(): Promise<AfterLandingIo> {
-  const [{ supabase }, { stampMovedLines }, { propagateReportPctToJob }, { attachReportPhotos }, { answerQuestionsWithReportPhotos }] = await Promise.all([
+  const [{ supabase }, { stampMovedLines }, { propagateReportPctToJob }, { attachReportPhotos }, { answerQuestionsWithReportPhotos }, { postJobThreadNoteBody }] = await Promise.all([
     import('../supabase'),
     import('../../hooks/useJobLineProgress'),
     import('../propagateReportPctToJob'),
     import('../photos/reportPhotosIo'),
     import('../jobs/stageChecklistSheetIo'),
+    import('../jobs/postJobThreadNote'),
   ])
   return {
     invokeFunction: (name, body) => supabase.functions.invoke(name, { body }),
@@ -41,6 +45,7 @@ async function defaultIo(): Promise<AfterLandingIo> {
     attachPhotos: (reportId, photos) => attachReportPhotos(reportId, photos),
     answerQuestions: (writes, who) => answerQuestionsWithReportPhotos(writes, who),
     dropKeptPhotos: (ids) => keptPhotos.drop(ids),
+    postThreadLine: (jobId, userId, body) => postJobThreadNoteBody(jobId, userId, body),
   }
 }
 
@@ -57,6 +62,17 @@ export function reportIdOf(result: unknown): string | null {
 }
 
 export async function afterLanding(press: OutboxPress, result: unknown, io?: AfterLandingIo): Promise<void> {
+  if (press.kind === 'job-photos') {
+    // The press landed the words on the rows; the bytes go and the thread gets its one line. Best effort.
+    const payload = press.payload as JobPhotosPayload
+    const run = io ?? (await defaultIo().catch(() => null))
+    if (!run) return
+    const sent = (payload.photos ?? []).filter((p) => p.sent)
+    if (run.dropKeptPhotos && sent.length > 0) await run.dropKeptPhotos(sent.map((p) => p.id)).catch(() => undefined)
+    const line = threadLineWords(sent)
+    if (run.postThreadLine && line && payload.jobLedgerId) await run.postThreadLine(payload.jobLedgerId, press.userId, line).catch(() => undefined)
+    return
+  }
   if (press.kind !== 'field-report') return
   const reportId = reportIdOf(result)
   const payload = press.payload as FieldReportPayload

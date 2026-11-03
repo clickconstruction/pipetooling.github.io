@@ -1,5 +1,5 @@
 import { DatabaseError, databaseErrorFromResult, errorKindOf, formatErrorMessage, OperationTimeoutError, withOperationTimeout, type SupabaseResultError } from '../../utils/errorHandling'
-import { failureQueues, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type OutboxKind, type OutboxPress, type OutboxRefusal } from './outbox'
+import { failureQueues, type ClockInPayload, type ClockOutPayload, type FieldReportPayload, type JobNotePayload, type JobPhotosPayload, type OutboxKind, type OutboxPress, type OutboxRefusal } from './outbox'
 
 /**
  * The send (punch list #163 PR 2): one press to the `land_field_press` RPC, which takes the
@@ -21,6 +21,8 @@ export const RPC_KIND: Record<OutboxKind, string> = {
   'clock-out': 'clock_out',
   'job-note': 'job_note',
   'field-report': 'field_report',
+  /** Never sent to the RPC: a job photos press lands through the table's own policies (`landJobPhotos`). */
+  'job-photos': 'job_photos',
 }
 
 /** The press's payload as the RPC reads it. */
@@ -42,6 +44,33 @@ export function rpcPayload(press: OutboxPress): Record<string, unknown> {
       const p = press.payload as FieldReportPayload
       return { template_id: p.templateId, field_values: p.fieldValues, job_ledger_id: p.jobLedgerId, project_id: p.projectId, bid_id: p.bidId, lat: p.lat, lng: p.lng }
     }
+    case 'job-photos': {
+      const p = press.payload as JobPhotosPayload
+      return { job_ledger_id: p.jobLedgerId, photo_ids: p.photos.map((ph) => ph.id) }
+    }
+  }
+}
+
+export type LandJobPhotosIo = {
+  land?: (writes: ReadonlyArray<{ id: string; description: string; fixtureId: string | null; stageName: string | null; caption: string }>) => Promise<unknown>
+}
+
+/**
+ * A job photos press lands without the RPC (punch list #244, PR 5): its rows already exist under the phone-minted
+ * ids (the replay sent each kept shot's bytes and row first, `sendKeptPhotos`), so landing is the same update the
+ * window makes online, the words, the stage, the caption and `added_at` on each sent row, under the table's own
+ * policies; a row added by an earlier try is left as it is, so a repeat counts once. The outcome is classed as any
+ * press's: a lost signal or a timeout fails and waits, a refusal keeps the server's reason.
+ */
+export async function landJobPhotos(press: OutboxPress, io: LandJobPhotosIo = {}): Promise<LandOutcome> {
+  try {
+    const land = io.land ?? (await import('../photos/jobPhotoNotesIo')).landJobPhotoNotes
+    const p = press.payload as JobPhotosPayload
+    const writes = p.photos.filter((ph) => ph.sent).map((ph) => ({ id: ph.id, description: ph.description, fixtureId: ph.fixtureId, stageName: ph.stageName, caption: ph.caption }))
+    const result = await withOperationTimeout(land(writes), LAND_TIMEOUT_MS, 'Add photos')
+    return { kind: 'landed', result: result ?? {} }
+  } catch (e) {
+    return outcomeOfFailure(e)
   }
 }
 
@@ -60,6 +89,7 @@ export function outcomeOfFailure(error: unknown): LandOutcome {
 }
 
 export async function landFieldPress(press: OutboxPress): Promise<LandOutcome> {
+  if (press.kind === 'job-photos') return landJobPhotos(press)
   try {
     // The client is read here, not at import, so the kernels that take this send as a default load without it (a test, a worker).
     const { supabase } = await import('../supabase')

@@ -1,4 +1,4 @@
-import type { FieldReportPayload, KeptReportPhoto, OutboxPress } from './outbox'
+import type { FieldReportPayload, JobPhotosPayload, KeptReportPhoto, OutboxPress } from './outbox'
 import type { OutboxStateStore } from './outboxState'
 import { KEPT_PHOTOS_STORE_NAME, openOutboxDb } from './outboxStore'
 
@@ -122,10 +122,11 @@ export function createKeptPhotos(io: { open?: () => Promise<IDBDatabase | null> 
 /** The app's one store of kept bytes. */
 export const keptPhotos: KeptPhotosStore = createKeptPhotos()
 
-/** The photos riding with a press: none for a press that is not a field report. */
+/** The photos riding with a press: a field report's, or a job photos press's (punch list #244); none for any other kind. */
 export function keptPhotosOf(press: OutboxPress): KeptReportPhoto[] {
-  if (press.kind !== 'field-report') return []
-  return (press.payload as FieldReportPayload).photos ?? []
+  if (press.kind === 'field-report') return (press.payload as FieldReportPayload).photos ?? []
+  if (press.kind === 'job-photos') return (press.payload as JobPhotosPayload).photos ?? []
+  return []
 }
 
 /** The ones still on the phone: the replay sends them before the report. */
@@ -137,7 +138,7 @@ export function unsentKeptPhotos(press: OutboxPress): KeptReportPhoto[] {
 export function withPhoto(press: OutboxPress, id: string, change: { sent: true } | { lost: true }): OutboxPress {
   const photos = keptPhotosOf(press)
   const next = 'lost' in change ? photos.filter((p) => p.id !== id) : photos.map((p) => (p.id === id ? { ...p, sent: true } : p))
-  return { ...press, payload: { ...(press.payload as FieldReportPayload), photos: next } }
+  return { ...press, payload: { ...(press.payload as FieldReportPayload | JobPhotosPayload), photos: next } } as OutboxPress
 }
 
 export type SendKeptPhoto = (input: { id: string; jobId: string; blob: Blob; byUserId: string; byName: string; takenAt: string; originalBytes: number; width: number; height: number }) => Promise<unknown>
@@ -155,7 +156,7 @@ export interface SendKeptIo {
  */
 export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore, io: SendKeptIo = {}): Promise<{ ok: true } | { ok: false; error: unknown }> {
   const bytes = io.bytes ?? keptPhotos
-  const jobId = (press.payload as FieldReportPayload).jobLedgerId
+  const jobId = (press.payload as FieldReportPayload | JobPhotosPayload).jobLedgerId
   let current = press
   for (const photo of unsentKeptPhotos(press)) {
     if (!jobId) {
@@ -170,7 +171,8 @@ export async function sendKeptPhotos(press: OutboxPress, store: OutboxStateStore
       continue
     }
     try {
-      const send = io.send ?? (await import('../photos/reportPhotosIo')).sendReportPhoto
+      // A job photo goes to its own bucket and table (punch list #244); a report's as before.
+      const send = io.send ?? (press.kind === 'job-photos' ? (await import('../photos/jobPhotoNotesIo')).sendJobPhotoNote : (await import('../photos/reportPhotosIo')).sendReportPhoto)
       await send({ id: photo.id, jobId, blob, byUserId: press.userId, byName: photo.byName, takenAt: photo.takenAt, originalBytes: photo.originalBytes, width: photo.width, height: photo.height })
     } catch (error) {
       return { ok: false, error }

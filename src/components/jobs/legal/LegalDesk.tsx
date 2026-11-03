@@ -1193,7 +1193,7 @@ export default function LegalDesk(props: LegalDeskProps) {
                     curation={stored && canEditReview ? { holdBack, shareAgain, shareAll, holdFor, setHoldFor, reasons: heldReasonsOf(matter), busy } : null} entries={matter ? (legal?.entriesByMatter.get(matter.id) ?? []) : []}
                     officeActs={stored && canEditReview ? { acknowledge, answerFor, setAnswerFor, sendAnswer, markApplied, busy, onOpenPipelineRow: () => { if (firstJob) props.onFocusJob(firstJob.id) }, askForm: matter ? askForm : null, setAskForm, sendAsk, withdrawFirmAsk, canAsk: matterIsWithFirm(matter) || inHouse, inHouse, offerAdd, offerSetStatus, answerSettlement, setCounselRead, counselRead, moveStage, voidEntry } : null}
                     documents={matter ? { matterId: matter.id, list: legal?.documentsByMatter.get(matter.id) ?? [], canEdit: stored && canEditReview, canPull: stored && canEditReview && !closed, reload: () => void legal?.reload() } : null}
-                    narrative={narrativeDesk} busy={busy} planActs={planActs} />
+                    narrative={narrativeDesk} busy={busy} planActs={planActs} onStatementsChanged={reload} />
                 ) : null}
                 </div>
               </>
