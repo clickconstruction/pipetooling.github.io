@@ -9,6 +9,7 @@ import {
   photosNarrowed,
   sizeWords,
   sourceChips,
+  sourceDoorOpensJob,
   sourceWords,
   threadPath,
   thumbSource,
@@ -191,5 +192,18 @@ describe('the days', () => {
 
   it('puts a row with no readable time under No date', () => {
     expect(dayGroups([row({ taken_at: 'nope' })], '2026-11-01')[0]!.label).toBe('No date')
+  })
+})
+
+describe('sourceDoorOpensJob (punch list #244: one Open the job in the viewer)', () => {
+  it('is true for a checklist photo and a job photo, whose own door is Open the job', () => {
+    expect(sourceDoorOpensJob({ source: 'checklist' })).toBe(true)
+    expect(sourceDoorOpensJob({ source: 'job' })).toBe(true)
+  })
+
+  it('is false for a report, a box and a text, whose doors open something else', () => {
+    expect(sourceDoorOpensJob({ source: 'report' })).toBe(false)
+    expect(sourceDoorOpensJob({ source: 'box' })).toBe(false)
+    expect(sourceDoorOpensJob({ source: 'message' })).toBe(false)
   })
 })
