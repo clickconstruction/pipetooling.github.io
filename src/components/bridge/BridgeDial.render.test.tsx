@@ -29,4 +29,20 @@ describe('BridgeDial', () => {
     fireEvent.change(screen.getByRole('slider'), { target: { value: '40000' } })
     expect(onChange).toHaveBeenCalledWith(40_000)
   })
+  it('lets the slider, the number and the spark wrap under each other on a phone (v2.6421)', () => {
+    // jsdom lays nothing out, so this pins the row's rule: a fixed 240 px grid column collapsed the slider to
+    // nothing at 375 and ran the spark 49 px past the screen. The slider grows, the spark never does.
+    const spec = dialSpec(input, 'bill', { perUnitUsd: 233_000 / 15 })!
+    const reading = buildDialReading(input, 'bill', 22_000, { spec, todayYmd: '2026-10-10', dayLabel: (y) => y })
+    renderWithProviders(<BridgeDial reading={reading} moved={false} onChange={() => {}} onReset={() => {}} />)
+    const row = screen.getByRole('slider').closest('div')!.parentElement!.parentElement as HTMLElement
+    expect(row.style.display).toBe('flex')
+    expect(row.style.flexWrap).toBe('wrap')
+    const [slider, value, spark] = Array.from(row.children) as [HTMLElement, HTMLElement, HTMLElement]
+    expect(slider.style.flex).toBe('1 1 220px')
+    expect(value.contains(screen.getByTestId('bridge-dial-value'))).toBe(true)
+    expect(spark.querySelector('svg')).not.toBeNull()
+    expect(spark.style.flex).toBe('0 1 240px')
+    expect(spark.style.maxWidth).toBe('100%')
+  })
 })
