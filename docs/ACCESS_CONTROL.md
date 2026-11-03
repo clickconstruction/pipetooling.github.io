@@ -1035,7 +1035,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Settings** | ✅ | ✅ limited | ✅ limited | ✅ limited (`/settings` is in `SUBCONTRACTOR_PATHS`; account, appearance, guides, release notes, My Reports) | ✅ limited | ✅ limited | ✅ limited |
+| **Settings** (the **How fast a change ships** tab, v2.6399: dev · master · assistant · controller · estimator, `canSeeShipPace` = `GC_OFFICE_TEAM`, reading the `app_settings` row `ship_pace_v1` the `ship-pace` cron writes as the service role; a dev's **Read GitHub now** asks `is_dev()` in the function) | ✅ | ✅ limited | ✅ limited | ✅ limited (`/settings` is in `SUBCONTRACTOR_PATHS`; account, appearance, guides, release notes, My Reports) | ✅ limited | ✅ limited | ✅ limited |
 | **Map** (`/map`) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | **Prospects** (`/prospects`) | ✅ | ✅ | ✅ | ❌ | ✅ if `estimator_prospects_access` granted | ❌ | ❌ |
 | **Quickfill** (`/quickfill`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
@@ -1696,6 +1696,7 @@ The Submittals tables are **pricing-side data on the bid**: `bid_specified_produ
 ## Development page (v2.6040+)
 
 - The page itself opens for every signed-in office role; an estimator reads it with no money (`readDoor.ts`, v2.6053).
+- **The Photos look (v2.6371, punch list #247)**: the row reads `uploaded_photos` scoped to the site's jobs and bids, a `security_invoker` view, so each photo table's own policy and the ledger's scope decide what the reader sees — the office and the estimator see every source, a text's picture only the roles `message_attachments` lets read (`canSeeMessagePhotos`), and a reader with no `jobs_ledger` policy sees only the pictures on the site's bids. No new gate.
 - **Costs on the Jobs & bids table (v2.6215)**: dev and controller only (`canSeeSiteCosts`, `src/lib/developments/siteCosts.ts`) — each job's parts buckets and sub labor as one figure, the same number the Job window's profit band shows. Masters, assistants and estimators see no Costs column.
 - **The Scoreboard on the Money look (v2.6407, punch list #250)**: dev and controller read all nine columns (`scoreboardColumnsFor(canSeeSiteCosts(role))`, `src/lib/developments/scoreboard.ts`) — hours, days, labor, subs, parts, overhead, earned, cost and profit — and the overhead day share reads the job day ledger as the Job window's Burn does; a master or an assistant reads Hours · Days · Earned, no wage and no cost, through the office door's own `jobs_ledger` reads and the clock's rows under their policies (`people_pay_config` is closed to the role, so a wage would read $0, and the column is not drawn); an estimator keeps the one line with no money.
 

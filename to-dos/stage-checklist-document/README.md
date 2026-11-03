@@ -15,7 +15,7 @@ summary: >
 next: PR 2, needs a signature. Before the office types questions, the job form's billing save must stop deleting the stage lines (the last paragraph below).
 size: L as a train of six (M · M · M · M · S · S); four migrations; no edge function beyond the PDF renderer the hours statement already has
 blocker: none for PR 1b and PR 4. PR 2 takes "Not here signs" and PR 3 takes "files itself at the last answer" as the owner's defaults; he can change either before they build.
-ver: v2.6350 · 6347 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
+ver: v2.6350 · 6347 · 6329 · 6328 · 6072 · 6077 · 6084 · 6087 · 6219 · 6270 · 6069 · 6097 · 5077 · 3159 · 5245 · 3417 · 2927
 opinion: now — the office has typed no questions yet because there was nowhere good to read the answers; this gives them the place, and the signature is what makes a checklist worth more than a report
 mockup: to-dos/stage-checklist-document/mockup-document-and-signature.html
 ---
@@ -273,6 +273,13 @@ stay out of the repo.
    the guide *write the questions for a stage checklist* rewritten to the new door.
 5. **PR 5 · the line's proof** (S). The superintendent's line of #234 reads this count; lands
    with #234's PR 3 or after it.
+
+Then one small piece outside the train, **the gate on the kind** (`GLOSSARY.md` → *Job kind*,
+v2.6329). A service call has no Rough In, so the checklists and their records are for projects;
+nothing here reads the kind yet. The gate is one predicate on `jobKindOfRow`
+(`src/lib/jobs/jobKind.ts`), never the customer's Res/Comm. One stage line left at Any does not make
+a job a project: it reads *Kind not set* on a Click number and *Service call* on an HCP number, so
+decide what that job's checklist does before the gate lands.
 
 ## How to verify
 

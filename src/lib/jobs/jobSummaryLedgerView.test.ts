@@ -351,7 +351,7 @@ describe('compare to + target (v2.2817)', () => {
   })
 
   it('compares totals measure by measure and leaves unknowns null', () => {
-    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, discountUsd: 0, discountJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0, projectedTrueMarginUsd: null, projectedRows: 0, burningJobs: 0 }
+    const base = { jobs: 10, revenueUsd: 1000, laborUsd: 300, subsUsd: 0, partsUsd: 100, grossUsd: 600, marginPct: 60, hours: 40, overheadUsd: 100, trueProfitUsd: 500, trueMarginPct: 50, truePerHourUsd: 12.5, revenuePerHourUsd: 25, writeDownUsd: 0, writeDownJobs: 0, discountUsd: 0, discountJobs: 0, collectionsJobs: 0, collectionsUsd: 0, noRevenueJobs: 0, noPctJobs: 0, noHoursJobs: 0, priorHoursJobs: 0, earnedRows: 0, projectedTrueMarginUsd: null, projectedRows: 0, projectedContractUsd: 0, burningJobs: 0, billedInFullJobs: 0 }
     const prior = { ...base, jobs: 8, revenueUsd: 800, grossUsd: 400, marginPct: 50, trueProfitUsd: 300, trueMarginPct: 37.5, overheadUsd: null, truePerHourUsd: null }
     const c = compareJobSummaryTotals(base, prior)
     expect(c.jobs).toEqual({ now: 10, prior: 8, delta: 2 })
@@ -535,6 +535,19 @@ describe('a billed job under 100 % earns by its % (v2.6388, J804)', () => {
     expect(j804!.pctSource).toBe('crew-report')
     expect(j804!.finished).toBe(false)
     expect(j804!.flags).toContain('earned')
+  })
+  it('is billed in full while under 100 % (v2.6389): the row carries the flag and the totals count it', () => {
+    expect(j804!.billedInFull).toBe(true)
+    expect(j804!.flags).toContain('billed-in-full')
+    const t = summarizeJobSummaryRows([j804!])
+    expect(t.billedInFullJobs).toBe(1)
+    expect(t.projectedRows).toBe(1)
+    expect(t.projectedContractUsd).toBe(32_600)
+    // A job short of its contract on the invoices, or finished, is not flagged.
+    const [short] = enrichJobSummaryRows({ rows: [row('s', 's', { totalBill: 32_600, job: { status: 'billed', pct_complete: 40, invoices: invoices.slice(0, 3) } })], reportPctByJobId: new Map(), ledger: null, method: 'day' })
+    expect(short!.billedInFull).toBe(false)
+    const [done] = enrichJobSummaryRows({ rows: [r804], reportPctByJobId: new Map([['j804', 100]]), ledger: null, method: 'day' })
+    expect(done!.billedInFull).toBe(false)
   })
   it('Revenue is contract × 40 % = $13,040 with every hour in the window — the status never made it the whole contract', () => {
     expect(j804!.revenueUsd).toBeCloseTo(13_040, 6)

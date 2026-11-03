@@ -5,7 +5,9 @@ import { jobEarned } from './jobEarned'
 import { burnProjectedMarginForSort, projectJobSummaryBurn, type JobBudgetFooting, type JobSummaryBurn } from './jobSummaryBurn'
 import { JOB_BUDGET_GLYPH, type JobBudgetSource } from './jobBudget'
 import {
+  jobInvoicedTotalUsd,
   jobSummaryPaidInvoiceOpts,
+  paidInvoicesCoverContract,
   resolveJobSummaryPercentCompleteWithSource,
   type JobSummaryPercentSource,
 } from '../jobSummaryPercentComplete'
@@ -354,7 +356,7 @@ function discountRowUsd(f: { name?: string | null; count?: number | null; line_u
   return -unit * qty
 }
 
-export type JobSummaryRowFlag = 'no-revenue' | 'no-hours' | 'no-pct' | 'assumed-50' | 'prior-hours' | 'earned' | 'write-down' | 'discount' | 'collections'
+export type JobSummaryRowFlag = 'no-revenue' | 'no-hours' | 'no-pct' | 'assumed-50' | 'prior-hours' | 'earned' | 'write-down' | 'discount' | 'collections' | 'billed-in-full'
 
 export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummaryLedgerRowInput> = {
   row: R
@@ -394,6 +396,8 @@ export type JobSummaryEnrichedRow<R extends JobSummaryLedgerRowInput = JobSummar
   /** Discount line items (v2.3256): dollars given away up front on the line items — revenue already reflects them. */
   discountUsd: number
   inCollections: boolean
+  /** Billed to the contract (every invoice, any status, covers it) while the % is under 100 (v2.6389) — the office or the crew is wrong. */
+  billedInFull: boolean
   lastWorkedYmd: string | null
   flags: JobSummaryRowFlag[]
   /** Burn (v2.3191): spend vs progress and the projected margin, from this row's aggregates. */
@@ -466,6 +470,10 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
     if (discountUsd > 0) flags.push('discount')
     const inCollections = job.collections_at != null && job.status !== 'paid'
     if (inCollections) flags.push('collections')
+    // v2.6389: the invoices add up to the contract but the % says less (J804: billed in full
+    // Oct 12 at 100 %, then a line report took it to 40 %) — named on the row, not resolved.
+    const billedInFull = !finished && contractUsd > 0 && paidInvoicesCoverContract(jobInvoicedTotalUsd(job.invoices), contractUsd)
+    if (billedInFull) flags.push('billed-in-full')
     const laborUsd = row.teamLaborCost
     const subsUsd = row.subLaborCost
     const partsUsd = row.partsCost
@@ -536,6 +544,7 @@ export function enrichJobSummaryRows<R extends JobSummaryLedgerRowInput>(args: {
       writeDownUsd,
       discountUsd,
       inCollections,
+      billedInFull,
       lastWorkedYmd: jobLastWorkedYmd(job, ledger),
       flags,
       burn,
@@ -726,7 +735,11 @@ export type JobSummaryTotals = {
   /** Burn (v2.3191): Σ projected true margin over the in-progress rows that have one; null when none. */
   projectedTrueMarginUsd: number | null
   projectedRows: number
+  /** Σ contract over those same rows (v2.6389) — the Heading for tile's denominator. */
+  projectedContractUsd: number
   burningJobs: number
+  /** Rows billed to the contract while under 100 % (v2.6389). */
+  billedInFullJobs: number
 }
 
 export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]): JobSummaryTotals {
@@ -751,13 +764,17 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
   let collectionsUsd = 0
   let projectedTrueMarginUsd = 0
   let projectedRows = 0
+  let projectedContractUsd = 0
   let burningJobs = 0
+  let billedInFullJobs = 0
   for (const r of rows) {
     if (r.burn && !r.finished && r.burn.projectedTrueMarginUsd != null) {
       projectedTrueMarginUsd += r.burn.projectedTrueMarginUsd
       projectedRows += 1
+      projectedContractUsd += r.contractUsd
     }
     if (r.burn?.status === 'hot') burningJobs += 1
+    if (r.billedInFull) billedInFullJobs += 1
     if (r.writeDownUsd > 0) {
       writeDownUsd += r.writeDownUsd
       writeDownJobs += 1
@@ -812,7 +829,9 @@ export function summarizeJobSummaryRows(rows: readonly JobSummaryEnrichedRow[]):
     earnedRows,
     projectedTrueMarginUsd: projectedRows > 0 ? projectedTrueMarginUsd : null,
     projectedRows,
+    projectedContractUsd,
     burningJobs,
+    billedInFullJobs,
   }
 }
 

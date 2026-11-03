@@ -269,6 +269,7 @@ import { StagesSendBackJobModal } from './StagesSendBackJobModal'
 import { StagesCreatePartialInvoiceModal } from './StagesCreatePartialInvoiceModal'
 import { JobsMapCard } from './JobsMapCard'
 import { StagesSearchHighlightProvider, StagesSearchMark } from './StagesSearchMark'
+import { StagesSearchHeldBackHint } from './StagesSearchHeldBackHint'
 import SessionNotesModal from './SessionNotesModal'
 import StagesBilledMoneyModals from './StagesBilledMoneyModals'
 import { StagesCrewModalContext } from '../../contexts/StagesCrewModalContext'
@@ -297,6 +298,7 @@ import type { StagesSectionToolKey } from '../../lib/jobs/stagesSectionToolsMenu
 import { JobsStagesSectionToolsMenu } from './JobsStagesSectionToolsMenu'
 import { StagesToolsMenuGlyph } from './StagesToolsMenuGlyph'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from '../../lib/jobs/stagesPaidSearchHint'
+import { countStagesSearchHeldBack, countStagesZzHeldBack, stagesSearchHeldBackLines } from '../../lib/jobs/stagesSearchHeldBack'
 import StagesCustomerTimelineChips from './StagesCustomerTimelineChips'
 import { jobLedgerHasCustomerForBilling } from '../../lib/jobLedgerCustomerForBilling'
 import { extractContactFromCustomer } from '../../lib/jobs/jobFormCustomerDisplay'
@@ -695,6 +697,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     leanBilledRows: cacheLeanBilledRows,
     setJobs: cacheSetJobs,
     zzTestJobCount: cacheZzTestJobCount,
+    zzTestJobIds: cacheZzTestJobIds,
   } = useJobsListCache()
   /**
    * A dev's ZZ test jobs switch (punch list #61, v2.5120); every other role never holds the rows. It shows
@@ -769,6 +772,14 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const [stagesSearchExtraJobIds, setStagesSearchExtraJobIds] = useState<ReadonlySet<string>>(() => new Set())
   const [stagesServerSearchIds, setStagesServerSearchIds] = useState<ReadonlySet<string>>(() => new Set())
   const [stagesServerSearchBusy, setStagesServerSearchBusy] = useState(false)
+  /**
+   * The press on *2 matches are hidden by your filters* (`stagesSearchHeldBack.ts`): the filters step aside for this
+   * search, and clearing the search puts them back. What the filters say stays saved either way.
+   */
+  const [stagesSearchShowsHeldBack, setStagesSearchShowsHeldBack] = useState(false)
+  useEffect(() => {
+    if (stagesSearchQuery.trim() === '') setStagesSearchShowsHeldBack(false)
+  }, [stagesSearchQuery])
   const jobsRef = useRef(jobs)
   jobsRef.current = jobs
   const stagesCombinedExtraJobIds = useMemo(() => {
@@ -1493,32 +1504,48 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
     })
   }, [])
   const stagesExclusionCount = countStagesExclusions(stagesExcludeFilters)
+  /** The jobs every board filter lets through, before the search. */
+  const stagesJobsUnderFilters = useMemo(
+    () =>
+      filterJobsByKind(
+        filterJobsByContractCoverage(
+          filterJobsByAccountMan(
+            filterJobsByDevelopment(
+              filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
+              stagesDevelopmentFilter || null,
+            ),
+            stagesAccountManFilter || null,
+          ),
+          jobContractCoverageByJobId,
+          stagesContractFilter,
+          contractFloorCents,
+        ),
+        stagesKindFilter,
+      ),
+    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesKindFilter],
+  )
+  const stagesSeesPastFilters = stagesSearchShowsHeldBack && stagesSearchQuery.trim() !== ''
   const stagesBoardLists = useMemo(
     () =>
       buildJobsStagesBoardLists(
-        filterJobsByKind(
-          filterJobsByContractCoverage(
-            filterJobsByAccountMan(
-              filterJobsByDevelopment(
-                filterJobsByGcCustomer(filterJobsByExclusions(jobs, stagesExcludeFilters), stagesGcFilter || null),
-                stagesDevelopmentFilter || null,
-              ),
-              stagesAccountManFilter || null,
-            ),
-            jobContractCoverageByJobId,
-            stagesContractFilter,
-            contractFloorCents,
-          ),
-          stagesKindFilter,
-        ),
+        stagesSeesPastFilters ? jobs : stagesJobsUnderFilters,
         stagesSearchQuery,
         stagesCombinedExtraJobIds,
         stagesSortMode,
         // v2.3788: the next-first order reads the same upcoming map the strip draws.
         stagesSortMode === 'next' ? makeStagesNextFirstComparator(stagesUpcomingByJobId, sortStagesJobsByEffectiveNumberDesc) : null,
       ),
-    [jobs, stagesExcludeFilters, stagesGcFilter, stagesDevelopmentFilter, stagesAccountManFilter, jobContractCoverageByJobId, stagesContractFilter, contractFloorCents, stagesKindFilter, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode, stagesUpcomingByJobId],
+    [jobs, stagesJobsUnderFilters, stagesSeesPastFilters, stagesSearchQuery, stagesCombinedExtraJobIds, stagesSortMode, stagesUpcomingByJobId],
   )
+  const stagesSearchHeldBackCount = useMemo(
+    () => countStagesSearchHeldBack(jobs, stagesJobsUnderFilters, stagesSearchQuery, stagesCombinedExtraJobIds),
+    [jobs, stagesJobsUnderFilters, stagesSearchQuery, stagesCombinedExtraJobIds],
+  )
+  const stagesZzHeldBackCount = countStagesZzHeldBack({
+    lookupIds: stagesServerSearchIds,
+    zzJobIds: cacheZzTestJobIds,
+    devHidesZz: zzTestJobsLine != null && !zzTestJobsLine.shown,
+  })
   // v2.3788: the Working header's schedule pills — All / Not scheduled / This week / Later,
   // counted from the strip's own "when" state; the pick filters the Working rows only.
   const [stagesWhenPill, setStagesWhenPill] = useState<StagesWhenPill>('all')
@@ -2641,7 +2668,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
   const groupEmptyFor = (group: string, opts?: { filtered?: boolean; done?: boolean }): StagesGroupEmptyContext => ({
     group,
     search: stagesSearchQuery,
-    filtered: stagesBoardFiltered || Boolean(opts?.filtered),
+    filtered: (stagesBoardFiltered && !stagesSeesPastFilters) || Boolean(opts?.filtered),
     done: opts?.done,
     onClearSearch: () => setStagesSearchQuery(''),
   })
@@ -3622,6 +3649,7 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                 waiting.length + working.length + readyToBillRows.length + billedActiveRows.length + collectionsRows.length + uncollectibleRows.length,
               paidMatchCount: paid.length,
               serverSearchBusy: stagesServerSearchBusy,
+              heldBackCount: (stagesSeesPastFilters ? 0 : stagesSearchHeldBackCount) + stagesZzHeldBackCount,
             })
             return (
               <>
@@ -3674,6 +3702,18 @@ const JobsStagesTab = forwardRef(function JobsStagesTabInner(
                     )}
                   </div>
                 ) : null}
+                <StagesSearchHeldBackHint
+                  lines={stagesSearchHeldBackLines({
+                    searchActive: stagesSearchActive,
+                    heldBackCount: stagesSearchHeldBackCount,
+                    showingHeldBack: stagesSeesPastFilters,
+                    zzHeldBackCount: stagesZzHeldBackCount,
+                  })}
+                  onPress={(kind) => {
+                    if (kind === 'zz') setStagesHideGroupsModalOpen(true)
+                    else setStagesSearchShowsHeldBack(kind === 'filters')
+                  }}
+                />
                 <div data-stages-section-header className="stagesSectionBand" id={stagesSectionElementId('waiting')} style={{ ...(stageColorVar('waiting') as CSSProperties), margin: '1.5rem 0 0.5rem', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '1rem', flexWrap: 'wrap' }}>
                   <button
                     type="button"

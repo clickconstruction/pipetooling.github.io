@@ -168,6 +168,14 @@ describe('buildLienDeskQueue · a job the RPC no longer lists keeps the job’s 
     expect(e.months).toEqual([])
   })
 
+  it('its money is what the job’s sent bills still owe (v2.6380) — the row never reads $0 beside “letter two overdue”', () => {
+    const q = buildLienDeskQueue([], [sent], {}, '2026-11-02', { j890: { ...jobs.j890, billed_open: 285 } })
+    expect(q.entries[0]!.openBalance).toBe(285)
+    expect(buildLienDeskQueue([], [sent], {}, '2026-11-02', jobs).entries[0]!.openBalance).toBe(0)
+    const rows = [row({ job_id: 'j890', work_month: '2026-08', deadline: '2026-11-16', open_balance: 900 })]
+    expect(buildLienDeskQueue(rows, [sent], {}, '2026-11-02', { j890: { ...jobs.j890, billed_open: 285 } }).entries[0]!.openBalance).toBe(900)
+  })
+
   it('a month row still wins over the job row, as before', () => {
     const rows = [row({ job_id: 'j890', work_month: '2026-08', deadline: '2026-11-16', gc_customer_id: 'gc-from-row', customer_id: 'cust-from-row' })]
     const q = buildLienDeskQueue(rows, [sent], {}, '2026-11-02', jobs)
