@@ -1,5 +1,6 @@
-# Pulls for the SQL beds (scripts/sql-beds.txt, .github/workflows/sql-beds.yml). A bed sources this
-# from the repo root and calls one of the two pulls below before its `docker run`.
+# Pulls and the migration run for the SQL beds (scripts/sql-beds.txt, .github/workflows/sql-beds.yml). A bed sources
+# this from the repo root, calls one of the two pulls below before its `docker run`, and pgtest_apply once its
+# container answers.
 #
 # 2026-10-09: the beds start at once and each pulls its image anonymously, so the registries refuse a
 # burst ("toomanyrequests": Docker Hub's pull limit on postgres:15, ECR Public's rate on the Supabase
@@ -51,4 +52,38 @@ pgtest_pull_supabase() {
   else
     pgtest_pull "$1" "$1"
   fi
+}
+
+# pgtest_apply FILE... — every FILE through one psql in the bed's container, in the order given, each in a session of
+# its own. One `docker exec` per file took 477 s for the 1,068 migrations with eight beds side by side, and one psql
+# took 236 s (2026-11-02). psql reads each file itself (\i), so a file's last statement ends with the file even with no
+# semicolon or newline, and an error names the file and its own line. The files go in by tar over `docker exec`, since
+# `docker cp` refused two of four young containers ("Could not find the file /tmp", 2026-11-02). Each file's name goes
+# to stderr before it runs, so a failure can say which. A file given twice in a row is a second run. A failure stops the
+# bed, and so does a run that never reached its last line. Uses the bed's NAME, ERR and psql_as.
+pgtest_apply() {
+  local f prev="" word rc=0 last said
+  tar -cf - "$@" | docker exec -i "$NAME" tar -xf - -C /tmp >/dev/null 2>"$ERR" || { echo "FAILED copying the files into $NAME"; cat "$ERR"; exit 1; }
+  psql_as postgres -f - >/dev/null 2>"$ERR" < <(
+    echo '\cd /tmp'
+    for f in "$@"; do
+      word=applying
+      [ "$f" != "$prev" ] || word=re-applying
+      prev="$f"
+      printf '%s\n' "\\warn '>> $word $f'" '\connect' "\\i '$f'"
+    done
+    echo "\\warn '>> done'"
+  ) || rc=$?
+  if [ "$rc" = 0 ] && [ "$(tail -n 1 "$ERR")" = ">> done" ]; then return 0; fi
+  last="$(grep -n '^>> ' "$ERR" | tail -n 1 || true)"
+  last="${last:-0:>> reaching psql}"
+  echo "FAILED ${last#*:>> }"
+  [ "$rc" != 0 ] || echo "psql stopped there with no error, before its last file"
+  said="$(tail -n +"$((${last%%:*} + 1))" "$ERR")"
+  if grep -qE "ERROR|FATAL" <<<"$said"; then
+    grep -E -A6 "ERROR|FATAL" <<<"$said" | head -20 || true
+  else
+    tail -n 20 <<<"$said"
+  fi
+  exit 1
 }

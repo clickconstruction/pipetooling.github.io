@@ -10,6 +10,7 @@
 import { APP_CALENDAR_TZ, todayYmdInAppTz } from '../../utils/dateUtils'
 import { OFFER_HELD } from '../flows/nudgeDispatch'
 import { RUN_HOUR } from '../flows/nudgeRunLog'
+import { weekdayDate } from '../gc/words'
 import { jobRefOf } from '../messages/jobKeys'
 import { needsRatingLink } from '../ratings/ratingAsk'
 
@@ -83,6 +84,41 @@ export function withAnsweredHolds(offers: readonly OfferRow[], answered: Readonl
   return offers.map((o) => {
     const jobId = rateJobOf(o)
     return jobId && answered.has(jobId) ? { ...o, heldWhy: OFFER_HELD.answered } : o
+  })
+}
+
+/** A reminder that went on a step (`nudge_sent`), as the window reads it: whose, the step, the job and when. */
+export interface SentRow {
+  contactId: string
+  stepKey: string
+  jobKey: string | null
+  /** ISO timestamp. */
+  sentAt: string
+}
+
+/** Why a text waits when its step already got one after it was prepared (v2.6386): the day it went, and the door. */
+export function heldSentWords(sentAtIso: string): string {
+  return `A text for this step already went to them on ${weekdayDate(todayYmdInAppTz(new Date(sentAtIso)))}. Put this one away with Not this one.`
+}
+
+/** Why the older of two open texts on one step and job waits (v2.6386): a visit moved twice makes two. */
+export const HELD_NEWER = 'A newer text for this step is on this list. Put this one away with Not this one.'
+
+/**
+ * Already texted (v2.6386): the morning run keeps a step back when a reminder went inside its days (`sentLately`) and
+ * when a text for it already waits (`offeredAlready`), but an office-made offer — a moved visit's, Send in the morning's
+ * — took neither road, so it sat ready after the step's text went another way: the run's own text, Remind now from the
+ * thread's step card, or another offer on the same step pressed. The window holds such an offer with the day and the
+ * door, and holds the older of two open offers on one step and job (a visit moved twice). A text that went is the fact
+ * that matters, so this hold wins over the run's own.
+ */
+export function withSentHolds(offers: readonly OfferRow[], sent: readonly SentRow[]): OfferRow[] {
+  const sameStep = (a: Pick<OfferRow, 'contactId' | 'stepKey' | 'jobKey'>, b: Pick<OfferRow, 'contactId' | 'stepKey' | 'jobKey'>) => a.contactId === b.contactId && a.stepKey === b.stepKey && (a.jobKey ?? null) === (b.jobKey ?? null)
+  return offers.map((o) => {
+    const went = sent.filter((s) => sameStep(s, o) && s.sentAt > o.preparedAt).sort((a, b) => a.sentAt.localeCompare(b.sentAt))[0]
+    if (went) return { ...o, heldWhy: heldSentWords(went.sentAt) }
+    const newer = offers.some((x) => x.id !== o.id && sameStep(x, o) && (x.preparedAt > o.preparedAt || (x.preparedAt === o.preparedAt && x.id > o.id)))
+    return newer ? { ...o, heldWhy: HELD_NEWER } : o
   })
 }
 

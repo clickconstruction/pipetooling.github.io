@@ -681,6 +681,10 @@ verify_jwt = false
 [functions.file-index-sweep]
 verify_jwt = false
 
+# How fast a change ships (v2.6399): the quarter-hour cron sends X-Cron-Secret and no JWT; a dev's Read GitHub now is checked in-function.
+[functions.ship-pace]
+verify_jwt = false
+
 # A job's Drive photos in the app (punch list #164, PR 5): the JWT is checked in-body, so the refusal has words.
 [functions.job-photos]
 verify_jwt = false
@@ -813,6 +817,11 @@ verify_jwt = false
 # plan-fetch: X-Twin-Token calls carry no JWT; auth is validated in-function
 # (per-twin credential or staff getUser) — same model as drive-intake.
 [functions.plan-fetch]
+verify_jwt = false
+
+# plan-set-files: one Drive subfolder per set of plans and the files in it (punch list #239, PR 5); the JWT is
+# checked in-function so a refusal has words, the set row read under the caller's RLS.
+[functions.plan-set-files]
 verify_jwt = false
 
 # Public supply house quote page (RFQ Phase 2) — the RFQ token IS the credential

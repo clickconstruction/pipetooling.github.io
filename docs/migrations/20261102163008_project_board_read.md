@@ -39,4 +39,18 @@ The function's body ran read-only on prod (`BEGIN READ ONLY … ROLLBACK` throug
 
 ## After the push
 
-`check:calls-ahead` labels the PR *push right after the merge*: the client calls what only this creates. Then run the rolled-back role checks on the sample accounts and write what they said here. `npm run gen-types:linked` goes in a `chore(types)` PR, which removes the hook's cast.
+`check:calls-ahead` labels the PR *push right after the merge*: the client calls what only this creates. Pushed 2026-11-03 at 01:40Z, under two minutes after the merge, with `--include-all`, since three later-stamped migrations had reached prod first and none of them names this function or policy. Drift read 1074 of 1074 applied.
+
+The read as each sample account, read only and rolled back, counts only:
+
+| Sample role | Answer | Working jobs | Crew rows | Report points | `reads_wages` | A dollar field |
+|---|---|---|---|---|---|---|
+| Superintendent | read | 38 | 378 | 49 | false | none |
+| Assistant | read | 38 | 378 | 49 | false | none |
+| Master, not pay-approved | read | 38 | 378 | 49 | false | none |
+| Controller | read | 38 | 378 | 49 | true | none |
+| Estimator, helpers, primary, subcontractor | 42501 | | | | | |
+
+Every role on the board reads the same rows, where before the push the superintendent read none of them. A call with one job's id answers with that one job, the phone card's read: about 730 bytes on the ZZ test job, which has no crew rows. Both functions are definer with `search_path=public`, and `anon` cannot execute them.
+
+`npm run gen-types:linked` goes in a `chore(types)` PR, which removes the hook's cast.

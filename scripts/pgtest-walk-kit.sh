@@ -60,9 +60,13 @@ else
   apply() { cat "$1"; }
 fi
 
-for f in supabase/migrations/*.sql; do
-  apply "$f" | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
-done
+if [ -n "${PGTEST_PGBIN:-}" ]; then
+  for f in supabase/migrations/*.sql; do
+    apply "$f" | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
+  done
+else
+  pgtest_apply supabase/migrations/*.sql
+fi
 # A second run must change nothing: the functions, their comments and grants.
 apply "$WRITES" | psql_as postgres -f - >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 out="$(psql_as postgres -f - < "$BED/20_scenario.sql" 2>&1 || true)"

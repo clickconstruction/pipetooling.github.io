@@ -1035,7 +1035,7 @@ Mercury **Person** attribution (job splits modal): staff use **`list_users_for_b
 | **Estimates** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited (project-linked super visibility) |
 | **Materials** | ✅ | ✅ | ✅ | ❌ | ✅ | ✅ | ✅ limited |
 | **Templates** | ✅ | ❌ | ❌ | ❌ | ❌ | ❌ | ❌ |
-| **Settings** | ✅ | ✅ limited | ✅ limited | ✅ limited (`/settings` is in `SUBCONTRACTOR_PATHS`; account, appearance, guides, release notes, My Reports) | ✅ limited | ✅ limited | ✅ limited |
+| **Settings** (the **How fast a change ships** tab, v2.6399: dev · master · assistant · controller · estimator, `canSeeShipPace` = `GC_OFFICE_TEAM`, reading the `app_settings` row `ship_pace_v1` the `ship-pace` cron writes as the service role; a dev's **Read GitHub now** asks `is_dev()` in the function) | ✅ | ✅ limited | ✅ limited | ✅ limited (`/settings` is in `SUBCONTRACTOR_PATHS`; account, appearance, guides, release notes, My Reports) | ✅ limited | ✅ limited | ✅ limited |
 | **Map** (`/map`) | ✅ | ✅ | ✅ | ❌ | ✅ | ❌ | ❌ |
 | **Prospects** (`/prospects`) | ✅ | ✅ | ✅ | ❌ | ✅ if `estimator_prospects_access` granted | ❌ | ❌ |
 | **Quickfill** (`/quickfill`) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |

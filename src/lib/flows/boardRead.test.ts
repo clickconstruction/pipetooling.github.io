@@ -8,7 +8,7 @@ const read = (id: string) => {
   const p = flowFixture(id)
   return readFlow(SEED_FLOWS[p.kind], p.stamps, NOW)
 }
-const card = (c: Partial<ContactCard> & Pick<ContactCard, 'name'>): ContactCard => ({ goes_by: null, company: null, trades: [], gc_company_id: null, customer_id: null, ...c })
+const card = (c: Partial<ContactCard> & Pick<ContactCard, 'name'>): ContactCard => ({ goes_by: null, company: null, trades: [], gc_company_id: null, customer_id: null, customer_type: null, ...c })
 
 describe('parseFlowRowsKind', () => {
   it('keeps each entry with a contact, and reads a card with a field missing as empty', () => {
@@ -19,8 +19,17 @@ describe('parseFlowRowsKind', () => {
       worse: 'not an entry',
     })
     expect(Object.keys(answer)).toEqual(['c1', 'c2'])
-    expect(answer.c1?.card).toEqual({ name: 'Greg Paulk', goes_by: null, company: 'Hillside Excavation', trades: ['Sitework'], gc_company_id: null, customer_id: null })
-    expect(answer.c2?.card).toEqual({ name: '', goes_by: null, company: null, trades: [], gc_company_id: null, customer_id: null })
+    expect(answer.c1?.card).toEqual({ name: 'Greg Paulk', goes_by: null, company: 'Hillside Excavation', trades: ['Sitework'], gc_company_id: null, customer_id: null, customer_type: null })
+    expect(answer.c2?.card).toEqual({ name: '', goes_by: null, company: null, trades: [], gc_company_id: null, customer_id: null, customer_type: null })
+  })
+
+  it('reads the customers row’s type off the card (v2.6394), and none as none', () => {
+    const answer = parseFlowRowsKind({
+      g1: { contact: { id: 'g1', kind: 'customer' }, card: { name: 'Dana Whitfield', customer_id: 'cu-8', customer_type: 'residential' } },
+      k1: { contact: { id: 'k1', kind: 'customer' }, card: { name: 'Elena Marchetti', customer_id: 'cu-4', customer_type: 'commercial' } },
+      t1: { contact: { id: 't1', kind: 'trade' }, card: { name: 'Greg Paulk' } },
+    })
+    expect([answer.g1?.card.customer_type, answer.k1?.card.customer_type, answer.t1?.card.customer_type]).toEqual(['residential', 'commercial', null])
   })
 
   it('reads the records a contact’s own windows open by, a trade’s company from its rows when the card has none', () => {
@@ -78,6 +87,21 @@ describe('jobPaperCompanyOf', () => {
     expect(Object.keys(onBoerne.reads)).toEqual(['invitation', 'w9', 'coi', 'msa', 'quote', 'sow', 'waiver', 'final_waiver'])
     expect(onBoerne.reads.coi).toMatchObject({ stepId: 'papers', mark: 'bad' })
     expect(jobPaperCompanyOf(SEED_FLOWS.trade, company, r, 'padb').reads.quote).toMatchObject({ stepId: 'ask', stepState: 'now' })
+  })
+})
+
+// v2.6394: a homeowner's contact is kind customer and their flow the residential one, told from the card's customer_type.
+describe('readBoard, the kind a contact reads on', () => {
+  const answer = {
+    k1: { contact: { id: 'k1', kind: 'customer' }, card: card({ name: 'Elena Marchetti', customer_id: 'cu-4', customer_type: 'commercial' }) },
+    g1: { contact: { id: 'g1', kind: 'customer' }, card: card({ name: 'Dana Whitfield', customer_id: 'cu-8', customer_type: 'residential' }) },
+    t1: { contact: { id: 't1', kind: 'trade' }, card: card({ name: 'Greg Paulk', company: 'Hillside Excavation', gc_company_id: 'co-9' }) },
+  } as unknown as FlowRowsKindAnswer
+
+  it('leaves a homeowner off the customer board and puts them on the residential one', () => {
+    expect(readBoard(SEED_FLOWS.customer, answer, NOW).companies.map((c) => c.contactId)).toEqual(['k1'])
+    expect(readBoard(SEED_FLOWS.residential, answer, NOW).companies.map((c) => c.contactId)).toEqual(['g1'])
+    expect(readBoard(SEED_FLOWS.trade, answer, NOW).companies.map((c) => c.contactId)).toEqual(['t1'])
   })
 })
 

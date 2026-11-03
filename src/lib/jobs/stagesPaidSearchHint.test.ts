@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { stagesPaidHeaderSearchCount, stagesPaidSearchHint } from './stagesPaidSearchHint'
 
 describe('stagesPaidSearchHint (B6 / J3-3)', () => {
-  const base = { searchActive: true, openMatchCount: 0, paidMatchCount: 0, serverSearchBusy: false }
+  const base = { searchActive: true, openMatchCount: 0, paidMatchCount: 0, serverSearchBusy: false, heldBackCount: 0, serverSearchFailed: false }
 
   it('is silent without a search', () => {
     expect(stagesPaidSearchHint({ ...base, searchActive: false, paidMatchCount: 3 })).toBeNull()
@@ -22,6 +22,18 @@ describe('stagesPaidSearchHint (B6 / J3-3)', () => {
     expect(stagesPaidSearchHint({ ...base, openMatchCount: 4, serverSearchBusy: true })).toBeNull()
   })
 
+  it('never says "nowhere" while the filters hold a match back; a paid match is still named', () => {
+    expect(stagesPaidSearchHint({ ...base, heldBackCount: 2 })).toBeNull()
+    expect(stagesPaidSearchHint({ ...base, heldBackCount: 2, serverSearchBusy: true })?.kind).toBe('checking')
+    expect(stagesPaidSearchHint({ ...base, heldBackCount: 2, paidMatchCount: 1 })?.kind).toBe('paid_matches')
+  })
+
+  it('never says "nowhere" when the lookup failed: its own line says what was not searched', () => {
+    expect(stagesPaidSearchHint({ ...base, serverSearchFailed: true })).toBeNull()
+    expect(stagesPaidSearchHint({ ...base, serverSearchFailed: true, serverSearchBusy: true })?.kind).toBe('checking')
+    expect(stagesPaidSearchHint({ ...base, serverSearchFailed: true, paidMatchCount: 2 })?.kind).toBe('paid_matches')
+  })
+
   it('says it is still checking before declaring nothing anywhere', () => {
     expect(stagesPaidSearchHint({ ...base, serverSearchBusy: true })).toEqual({ kind: 'checking', label: 'Checking Paid in Full…' })
     expect(stagesPaidSearchHint(base)).toEqual({ kind: 'none_anywhere', label: 'No match anywhere — Paid in Full included' })
@@ -34,5 +46,11 @@ describe('stagesPaidHeaderSearchCount', () => {
     expect(stagesPaidHeaderSearchCount(0, false)).toBe('0 matches')
     expect(stagesPaidHeaderSearchCount(1, false)).toBe('1 match')
     expect(stagesPaidHeaderSearchCount(2, true)).toBe('2 matches')
+  })
+
+  it('a paid list the failed lookup never reached is "not searched", never "0 matches"', () => {
+    expect(stagesPaidHeaderSearchCount(0, false, true)).toBe('not searched')
+    expect(stagesPaidHeaderSearchCount(0, true, true)).toBe('checking…')
+    expect(stagesPaidHeaderSearchCount(1, false, true)).toBe('1 match')
   })
 })

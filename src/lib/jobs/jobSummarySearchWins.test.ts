@@ -177,3 +177,31 @@ describe('the Jobs tile says what the rows are (v2.6388)', () => {
     expect(plainWordsFailures(JOB_SUMMARY_JOBS_TILE_SEARCH_WORDS)).toEqual([])
   })
 })
+
+describe('a searched job billed in full while under 100 % (v2.6389)', () => {
+  const invoices = [{ status: 'paid', amount: 11_736 }, { status: 'paid', amount: 11_736 }, { status: 'billed', amount: 6_520 }, { status: 'billed', amount: 2_608 }]
+  const r804 = row('j804', '804', { totalBill: 32_600, teamLaborCost: 3_122.12, subLaborCost: 5_600, partsCost: 11_235, job: { pct_complete: 40, status: 'billed', invoices, last_work_date: '2026-10-20' } })
+  const p = { ...JOB_SUMMARY_VIEW_DEFAULTS, window: '90d' as const }
+  const noteFor = (report: ReadonlyMap<string, number>) => {
+    const e = enrichJobSummaryRows({ rows: [r804], reportPctByJobId: report, ledger: null, method: 'day' })
+    return jobSummarySearchNote({ search: '804', rows: filterAndSortJobSummaryRows({ rows: e, prefs: p, search: '804', ...ctx }), prefs: p, ...ctx, floor: 500 })
+  }
+  it('the note names the contradiction and reads the margin both ways, in plain words', () => {
+    const n = noteFor(new Map([['j804', 40]]))
+    expect(n.sentences).toEqual([
+      '1 job matches your search.',
+      'Job 804 is still in progress, so the Show chip stepped aside.',
+      "Job 804 is billed in full, but the crew's last report says 40% done.",
+      'Read at 40% it is under water.',
+      'Read as finished its margin is 39%.',
+    ])
+    for (const s of n.sentences) expect(plainWordsFailures(s)).toEqual([])
+  })
+  it("the office's % reads as its own; a job short of its contract on the invoices says nothing", () => {
+    expect(noteFor(new Map()).sentences[2]).toBe('Job 804 is billed in full, but its % says 40% done.')
+    const short = row('j805', '805', { totalBill: 32_600, teamLaborCost: 1_000, job: { pct_complete: 40, status: 'billed', invoices: invoices.slice(0, 2), last_work_date: '2026-10-20' } })
+    const e = enrichJobSummaryRows({ rows: [short], reportPctByJobId: new Map(), ledger: null, method: 'day' })
+    const n = jobSummarySearchNote({ search: '805', rows: filterAndSortJobSummaryRows({ rows: e, prefs: p, search: '805', ...ctx }), prefs: p, ...ctx, floor: 500 })
+    expect(n.sentences).toHaveLength(2)
+  })
+})

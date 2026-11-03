@@ -34,9 +34,7 @@ sleep 5
 psql_as() { local user="$1"; shift; docker exec -i -e PGPASSWORD=pg "$NAME" psql -U "$user" -h localhost -d postgres -X -q -v ON_ERROR_STOP=1 "$@"; }
 
 psql_as supabase_admin -f - < supabase/tests/combined_copies/00_prod_extras.sql >/dev/null
-for f in supabase/migrations/*.sql; do
-  psql_as postgres -f - < "$f" >/dev/null 2>"$ERR" || { echo "FAILED applying $f"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
-done
+pgtest_apply supabase/migrations/*.sql
 # A second run must change nothing: the function is replaced as it was, and its grants come out the same.
 psql_as postgres -f - < "$WRITES" >/dev/null 2>"$ERR" || { echo "FAILED re-applying $WRITES"; grep -E -A6 "ERROR|FATAL" "$ERR" | head -20; exit 1; }
 # v2.5309 (20261013000000) replaced gc_trade_sign_sow with an eight-argument one and dropped this one. The second run above

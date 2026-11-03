@@ -1,0 +1,61 @@
+/**
+ * Materials on site (punch list #209): the way back for a retired cage or box. Retiring sets
+ * `retiredAt` and hides the box from both pages, the search and its QR label; nothing cleared it
+ * until the owner asked (2026-11-03) whether a mistaken retire could be undone. The phone's
+ * "G4 retired." toast now carries Undo for a minute, and the office page's Retired fold offers
+ * Bring back. Both go through `unretireVerdict` first, so a stencil a live box took in the
+ * meantime is refused with its reason instead of putting two G4s on one job.
+ *
+ * Pure rules only; the write is `unretireContainer` in `onSiteStore.ts`.
+ */
+import type { Container } from './onSite'
+
+/** How long the toast's Undo stays after a retire. */
+export const UNDO_RETIRE_MS = 60_000
+
+export type UnretireVerdict =
+  | { ok: true }
+  | { ok: false; reason: 'gone' | 'live' | 'clash'; words: string }
+
+const stencilKey = (label: string) => label.replace(/\s+/g, '').toLowerCase()
+
+const kindWord = (c: Pick<Container, 'kind'>): string => (c.kind === 'cage' ? 'cage' : 'box')
+
+/** Whether a retired container can come back, and the words when it cannot. */
+export function unretireVerdict(containers: ReadonlyArray<Container>, id: string): UnretireVerdict {
+  const box = containers.find((c) => c.id === id)
+  if (!box) return { ok: false, reason: 'gone', words: 'That box is not on this job.' }
+  if (!box.retiredAt) return { ok: false, reason: 'live', words: `${box.label} is already on the job.` }
+  const clash = containers.find((c) => c.id !== id && c.jobId === box.jobId && !c.retiredAt && stencilKey(c.label) === stencilKey(box.label))
+  if (clash) return { ok: false, reason: 'clash', words: `A live ${kindWord(clash)} on this job already carries ${box.label}. Retire it first, or give it another stencil.` }
+  return { ok: true }
+}
+
+/** The retired cages and boxes of a job, newest retire first; never the Unsorted row. */
+export function retiredContainers(containers: ReadonlyArray<Container>): Container[] {
+  return containers
+    .filter((c) => c.retiredAt && c.kind !== 'unsorted')
+    .sort((a, b) => (b.retiredAt ?? '').localeCompare(a.retiredAt ?? ''))
+}
+
+/** The toast after a retire: *G4 retired.* Its Undo reads `undoRetireLabel`. */
+export function retiredWords(c: Pick<Container, 'label'>): string {
+  return `${c.label} retired.`
+}
+
+export const undoRetireLabel = 'Undo'
+
+/** The toast after a box comes back. */
+export function broughtBackWords(c: Pick<Container, 'label' | 'kind'>): string {
+  return `${c.label} is back on the job. Its label works again.`
+}
+
+/** The press on a retired row: *Bring back G4*. */
+export function bringBackLabel(c: Pick<Container, 'label'>): string {
+  return `Bring back ${c.label}`
+}
+
+/** The fold's heading: *Retired · 2*. */
+export function retiredFoldWords(n: number): string {
+  return `Retired · ${n}`
+}

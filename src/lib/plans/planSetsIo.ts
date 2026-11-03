@@ -6,6 +6,9 @@
  */
 import { supabase } from '../supabase'
 import type { NewSetDraft, OtherPart, PlanPartRow, PlanSetRow } from './planSets'
+import { PAPER_KINDS, type PaperDraft, type PaperRequest } from '../papers/papers'
+import { askRow, type AskLane } from '../developments/ask'
+import { sendAsk } from '../developments/askWrites'
 
 export type JobPlansRead = {
   job: { id: string; plan_part_id: string | null; development_id: string | null; development_name: string | null; job_plans_link: string | null }
@@ -30,8 +33,29 @@ export type AddSetArgs = {
 
 export type SitePlansRead = { parts: PlanPartRow[]; sets: PlanSetRow[]; names: Record<string, string> }
 
+export type PapersRead = { rows: PlanSetRow[]; requests: PaperRequest[] }
+
+export type KeepPaperArgs = {
+  partId: string
+  draft: PaperDraft
+  owed: boolean
+  /** The job it is kept on, with its label for the question's words; null when kept on the site. */
+  jobId: string | null
+  jobLabel: string | null
+  /** The development the part is on (or the job's), for the question; null for a job outside any development. */
+  developmentId: string | null
+  siteName: string
+  userId: string | null
+}
+
 export interface JobPlansIo {
   read(jobId: string): Promise<JobPlansRead>
+  /** The papers on these parts and the questions they raised (the papers train). */
+  readPapers(partIds: ReadonlyArray<string>): Promise<PapersRead>
+  /** Keep a paper, asking its question first when it has one; the History line is the database's trigger. */
+  keepPaper(args: KeepPaperArgs): Promise<PlanSetRow>
+  /** An owed paper came: the link lands and owed clears. */
+  markPaperCame(setId: string, link: string): Promise<void>
   /** The development's parts and every set on them (PR 3, the site look). */
   readSite(developmentId: string): Promise<SitePlansRead>
   /** A new part on a development, named by the office. */
@@ -44,16 +68,24 @@ export interface JobPlansIo {
   makeCurrent(partId: string, setId: string, userId: string | null): Promise<void>
   removeSet(setId: string): Promise<void>
   updateMemo(setId: string, memo: string): Promise<void>
+  /** What changed from the set before it, written or rewritten on a set already on the part (v2.6356). */
+  updateChanges(setId: string, changes: string): Promise<void>
 }
 
 const PART_COLS = 'id, development_id, job_id, name, position, current_set_id, current_set_by, current_set_at, created_by, created_at, updated_at'
-const SET_COLS = 'id, part_id, name, kind, source, dated, came_at, memo, link, replaces_set_id, marks_up_set_id, job_id, file_name, file_size, file_count, checked_at, check_note, created_by, created_at, updated_at'
+const SET_COLS = 'id, part_id, name, kind, source, dated, came_at, memo, link, replaces_set_id, marks_up_set_id, job_id, file_name, file_size, file_count, checked_at, check_note, owed, ask_lane, ask_request_id, created_by, created_at, updated_at'
 
 function taken<T>(r: { data: T; error: { message: string } | null }, what: string): NonNullable<T> {
   if (r.error) throw r.error
   if (r.data == null) throw new Error(`Could not ${what}.`)
   return r.data as NonNullable<T>
 }
+
+/**
+ * A read takes a set's row whole: a client deployed ahead of its migration's push still reads, and a column the ledger
+ * lacks yet (v2.6356's `changes`) is simply absent, where a named column would have PostgREST refuse the read with a 400.
+ */
+const SET_READ = '*'
 
 export function supabaseJobPlansIo(): JobPlansIo {
   return {
@@ -71,7 +103,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
         if (p.error) throw p.error
         part = (p.data as PlanPartRow | null) ?? null
         if (part) {
-          const s = await supabase.from('plan_sets').select(SET_COLS).eq('part_id', part.id).order('came_at', { ascending: false })
+          const s = await supabase.from('plan_sets').select(SET_READ).eq('part_id', part.id).order('came_at', { ascending: false })
           if (s.error) throw s.error
           sets = (s.data ?? []) as PlanSetRow[]
         }
@@ -92,13 +124,70 @@ export function supabaseJobPlansIo(): JobPlansIo {
       }
       return { job, part, sets, developmentParts, names }
     },
+    async readPapers(partIds) {
+      if (partIds.length === 0) return { rows: [], requests: [] }
+      const s = await supabase.from('plan_sets').select(SET_COLS).in('part_id', [...partIds]).in('kind', PAPER_KINDS.map((k) => k.kind)).order('came_at', { ascending: false })
+      if (s.error) throw s.error
+      const rows = (s.data ?? []) as PlanSetRow[]
+      const est = rows.filter((r) => r.ask_lane === 'estimators' && r.ask_request_id).map((r) => r.ask_request_id as string)
+      const dis = rows.filter((r) => r.ask_lane === 'dispatch' && r.ask_request_id).map((r) => r.ask_request_id as string)
+      const requests: PaperRequest[] = []
+      if (est.length) {
+        const r = await supabase.from('estimator_requests').select('id, title, status, created_at, closed_at, closed_note').in('id', est)
+        for (const x of r.data ?? []) requests.push({ ...(x as Omit<PaperRequest, 'lane'>), lane: 'estimators' })
+      }
+      if (dis.length) {
+        const r = await supabase.from('dispatch_requests').select('id, title, status, created_at, closed_at, closed_note').in('id', dis)
+        for (const x of r.data ?? []) requests.push({ ...(x as Omit<PaperRequest, 'lane'>), lane: 'dispatch' })
+      }
+      return { rows, requests }
+    },
+    async keepPaper({ partId, draft, owed, jobId, jobLabel, developmentId, siteName, userId }) {
+      let askLane: AskLane | null = null
+      let askId: string | null = null
+      if ((draft.asks || owed) && draft.askWords.trim() && userId) {
+        askLane = draft.askLane
+        const about = jobId ? { kind: 'job' as const, id: jobId, label: jobLabel ?? 'the job' } : { kind: 'site' as const }
+        const sent = await sendAsk(askLane, askRow({ lane: askLane, about, title: draft.askWords.trim() }, developmentId, siteName, userId))
+        askId = sent.id
+      }
+      const made = taken(
+        await supabase
+          .from('plan_sets')
+          .insert({
+            part_id: partId,
+            name: draft.name.trim(),
+            kind: draft.kind,
+            source: draft.from,
+            dated: null,
+            came_at: `${draft.cameOn}T12:00:00`,
+            memo: draft.memo.trim(),
+            link: owed ? '' : draft.link.trim(),
+            marks_up_set_id: draft.goesWithSetId,
+            replaces_set_id: draft.replacesPaperId,
+            job_id: jobId,
+            owed,
+            ask_lane: askLane,
+            ask_request_id: askId,
+            created_by: userId,
+          })
+          .select(SET_COLS)
+          .single(),
+        'keep the paper',
+      )
+      return made as unknown as PlanSetRow
+    },
+    async markPaperCame(setId, link) {
+      const r = await supabase.from('plan_sets').update({ owed: false, link: link.trim(), came_at: new Date().toISOString() }).eq('id', setId)
+      if (r.error) throw r.error
+    },
     async readSite(developmentId) {
       const p = await supabase.from('plan_parts').select(PART_COLS).eq('development_id', developmentId).order('position').order('created_at')
       if (p.error) throw p.error
       const parts = (p.data ?? []) as PlanPartRow[]
       let sets: PlanSetRow[] = []
       if (parts.length) {
-        const s = await supabase.from('plan_sets').select(SET_COLS).in('part_id', parts.map((x) => x.id)).order('came_at', { ascending: false })
+        const s = await supabase.from('plan_sets').select(SET_READ).in('part_id', parts.map((x) => x.id)).order('came_at', { ascending: false })
         if (s.error) throw s.error
         sets = (s.data ?? []) as PlanSetRow[]
       }
@@ -128,6 +217,7 @@ export function supabaseJobPlansIo(): JobPlansIo {
       if (r.error) throw r.error
     },
     async addSet({ partId, draft, makeCurrent, replacesSetId, marksUpSetId, jobId, userId }) {
+      const changes = (draft.changes ?? '').trim()
       const made = taken(
         await supabase
           .from('plan_sets')
@@ -138,6 +228,8 @@ export function supabaseJobPlansIo(): JobPlansIo {
             source: draft.source,
             dated: draft.dated || null,
             memo: draft.memo.trim(),
+            // Sent only when written, so a set with none still saves while the column's push is minutes behind the deploy.
+            ...(changes ? { changes } : {}),
             link: draft.link.trim(),
             replaces_set_id: replacesSetId,
             marks_up_set_id: marksUpSetId,
@@ -164,6 +256,10 @@ export function supabaseJobPlansIo(): JobPlansIo {
     },
     async updateMemo(setId, memo) {
       const r = await supabase.from('plan_sets').update({ memo }).eq('id', setId)
+      if (r.error) throw r.error
+    },
+    async updateChanges(setId, changes) {
+      const r = await supabase.from('plan_sets').update({ changes: changes.trim() }).eq('id', setId)
       if (r.error) throw r.error
     },
   }

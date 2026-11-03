@@ -53,6 +53,7 @@ import { buildPieceRows } from '../lib/developments/pieces'
 import { buildPlansView, plansAskOnRecord, type PlanCarrier } from '../lib/developments/plans'
 import { buildSitePlansView, sitePlansCountWords, sitePlansNeedWords } from '../lib/plans/sitePlans'
 import { supabaseJobPlansIo, type SitePlansRead } from '../lib/plans/planSetsIo'
+import { papersFromRows, type Paper } from '../lib/papers/papers'
 import { canSeeSiteCosts } from '../lib/developments/siteCosts'
 import { useSiteCosts } from '../hooks/useSiteCosts'
 import { readIncludeAddress, readLastLooked, readNotThese, writeIncludeAddress, writeLastLooked, writeNotThese } from '../lib/developments/sinceYouLooked'
@@ -180,13 +181,24 @@ export default function DevelopmentPage() {
   // The site's parts and their sets (punch list #239, PR 3): one read, again after every write.
   const siteIo = useMemo(() => supabaseJobPlansIo(), [])
   const [siteRead, setSiteRead] = useState<SitePlansRead | null>(null)
+  const [sitePapers, setSitePapers] = useState<Paper[]>([])
   const [siteGen, setSiteGen] = useState(0)
   const developmentIdForParts = data?.development.id ?? null
   useEffect(() => {
     let live = true
     if (!developmentIdForParts) return
     siteIo.readSite(developmentIdForParts).then(
-      (r) => live && setSiteRead(r),
+      async (r) => {
+        if (!live) return
+        setSiteRead(r)
+        // The papers on the parts (the papers train), read beside the sets; a failed read leaves the column empty.
+        try {
+          const pr = await siteIo.readPapers(r.parts.map((p) => p.id))
+          if (live) setSitePapers(papersFromRows(pr.rows, pr.requests))
+        } catch {
+          if (live) setSitePapers([])
+        }
+      },
       () => live && setSiteRead({ parts: [], sets: [], names: {} }),
     )
     return () => {
@@ -223,6 +235,7 @@ export default function DevelopmentPage() {
       addSet: (partId, draft, makeCurrent, replacesSetId) => after('The set did not save.')(() => siteIo.addSet({ partId, draft, makeCurrent, replacesSetId, marksUpSetId: null, jobId: null, userId: authUser?.id ?? null })),
       buildFrom: (partId, setId) => after('The set did not switch.')(() => siteIo.makeCurrent(partId, setId, authUser?.id ?? null)),
       removeSet: (setId) => after('The set did not come off.')(() => siteIo.removeSet(setId)),
+      writeChanges: (setId, changes) => after('What changed did not save.')(() => siteIo.updateChanges(setId, changes)),
     }
   }, [canWritePlans, developmentIdForParts, siteIo, siteRead?.parts.length, authUser?.id, showToast])
   // The jobs' costs for the Jobs & bids table (v2.6215): dev and controller read them, one batched read for the site.
@@ -1192,7 +1205,7 @@ export default function DevelopmentPage() {
         )}
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.plans} title="Plans" fold={foldFor('plans', lineOf(looks.plans))} meta="what each part of the site builds from">
-          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} />
+          <DevelopmentPartsCard view={siteView} names={siteRead?.names ?? {}} canWrite={canWritePlans} openCarrier={openCarrier} askAbout={(n) => openAsk({ lane: 'estimators', title: askTitleForSitePlans(n) })} askOnRecord={plansAsk} openQuestions={goToQuestions} writes={siteWrites} papers={sitePapers} />
         </Card>
 
         <Card id={DEVELOPMENT_JUMP_ANCHOR.questions} title="Questions" fold={foldFor('questions', lineOf(looks.questions))} meta={data.requests.length ? `${data.requests.length} on this site · ${openQuestions} waiting · open first` : 'what a site waits on'}>
