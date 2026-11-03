@@ -65,6 +65,10 @@ export type JobContractPdfInput = {
   /** v2.4186: a second signer the office named — a second block, signed or with its own pen rules. */
   coSignerName?: string | null
   coSignature?: JobContractPdfInput['signature']
+  /** The kind of agreement (2026-11-02): a warranty prints *Price* and its lines to initial. Omitted: a contract. */
+  kind?: 'contract' | 'warranty'
+  /** A warranty's lines, each with the initials the customer typed, or null for a box left for a pen. */
+  initialLines?: ReadonlyArray<{ line: string; initials: string | null }>
 }
 
 /** The unsigned block's wording, shared with the TS test twin. */
@@ -267,7 +271,7 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
   hr()
   ensure(20)
   const amountLabel = input.amountCents != null ? formatPdfMoney(input.amountCents) : 'Billed at completion (time and materials)'
-  page.drawText('Contract amount', { x: MARGIN, y: y - 13, size: 12, font: bold, color: ink })
+  page.drawText(input.kind === 'warranty' ? 'Price' : 'Contract amount', { x: MARGIN, y: y - 13, size: 12, font: bold, color: ink })
   const aw = bold.widthOfTextAtSize(amountLabel, 12)
   page.drawText(amountLabel, { x: PAGE_W - MARGIN - aw, y: y - 13, size: 12, font: bold, color: ink })
   y -= 22
@@ -295,6 +299,31 @@ export async function buildJobContractPdf(lib: PdfLibLike, input: JobContractPdf
     }
   }
   terms(input.termsText || 'Terms as agreed.')
+
+  // The lines a warranty's customer initials (2026-11-02): a box with the initials, or an empty one for a pen, then the words.
+  const initialLines = input.kind === 'warranty' ? (input.initialLines ?? []).filter((l) => l.line.trim()) : []
+  if (initialLines.length) {
+    label('Initial here')
+    const boxW = 44
+    const boxH = 18
+    const wordsX = MARGIN + boxW + 10
+    for (const l of initialLines) {
+      const lines = wrap(l.line.trim(), font, 9.5, CONTENT_W - boxW - 10)
+      ensure(Math.max(boxH + 6, lines.length * 9.5 * 1.35 + 4))
+      const top = y - 2
+      page.drawRectangle({ x: MARGIN, y: top - boxH, width: boxW, height: boxH, borderColor: l.initials ? accent : ink, borderWidth: 0.9 })
+      if (l.initials) {
+        const iw = bold.widthOfTextAtSize(l.initials, 10)
+        page.drawText(l.initials, { x: MARGIN + (boxW - iw) / 2, y: top - boxH + 5, size: 10, font: bold, color: accent })
+      }
+      let ly = y
+      for (const line of lines) {
+        page.drawText(line, { x: wordsX, y: ly - 9.5, size: 9.5, font, color: ink })
+        ly -= 9.5 * 1.35
+      }
+      y -= Math.max(boxH + 6, lines.length * 9.5 * 1.35 + 4)
+    }
+  }
 
   // Signature block (v2.2724 "Option A"): a framed mark tagged SIGNED
   // ELECTRONICALLY with the record ID, printed name + time to the right, the

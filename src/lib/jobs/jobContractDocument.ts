@@ -32,6 +32,11 @@ export type JobContractFields = {
   completion_date: string | null
   /** Optional customer-facing note above the terms. */
   note: string
+  /**
+   * A warranty's lines the customer initials, one each (the warranty in place of a contract, 2026-11-02): prefilled from
+   * `DEFAULT_WARRANTY_INITIAL_LINES`, edited per job. Empty on a contract.
+   */
+  initial_lines: string[]
 }
 
 export const EMPTY_JOB_CONTRACT_FIELDS: JobContractFields = {
@@ -43,6 +48,7 @@ export const EMPTY_JOB_CONTRACT_FIELDS: JobContractFields = {
   start_date: null,
   completion_date: null,
   note: '',
+  initial_lines: [],
 }
 
 function str(v: unknown): string {
@@ -68,6 +74,7 @@ export function parseJobContractFields(raw: unknown): JobContractFields {
     start_date: str(o.start_date) || null,
     completion_date: str(o.completion_date) || null,
     note: str(o.note),
+    initial_lines: Array.isArray(o.initial_lines) ? o.initial_lines.filter((x): x is string => typeof x === 'string').map((x) => x.trim()).filter(Boolean) : [],
   }
 }
 
@@ -241,6 +248,10 @@ export type JobContractRenderInput = {
    */
   coSignerName?: string | null
   coSignature?: JobContractRenderInput['signature']
+  /** The kind of agreement (2026-11-02): a warranty prints *Price*, its lines to initial, and the initials once signed. Omitted: a contract. */
+  kind?: 'contract' | 'warranty'
+  /** The initials the customer typed on each line, once signed; null or omitted prints an empty box on each line. */
+  initials?: ReadonlyArray<{ line: string; initials: string }> | null
 }
 
 /**
@@ -278,6 +289,18 @@ export function buildJobContractDocumentHtml(input: JobContractRenderInput): str
     .join(' · ')
   const sig = input.signature ?? null
   const coName = (input.coSignerName ?? '').trim()
+  const warranty = input.kind === 'warranty'
+  const amountName = warranty ? 'Price' : 'Contract amount'
+  const initialLines = warranty ? f.initial_lines.map((l) => l.trim()).filter(Boolean) : []
+  const initialsOf = (line: string, i: number) => (input.initials ?? []).find((e, j) => e.line === line || j === i)?.initials ?? ''
+  const initialsHtml = initialLines.length
+    ? `<h2>Initial here</h2><div class="inits">${initialLines
+        .map((l, i) => {
+          const got = initialsOf(l, i)
+          return `<div class="init"><span class="box${got ? ' got' : ''}">${escapeHtml(got)}</span><span>${escapeHtml(l)}</span></div>`
+        })
+        .join('')}</div>`
+    : ''
   return `<!doctype html><html><head><meta charset="utf-8"><title>${escapeHtml(input.heading)}</title>
 <style>
   body{margin:0;background:#fff;color:#111827;font:14px/1.5 -apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif}
@@ -300,6 +323,8 @@ export function buildJobContractDocumentHtml(input: JobContractRenderInput): str
   .pen{display:flex;gap:30px;margin-top:34px}.pen .rule{flex:1;border-top:1px solid #111827;padding-top:3px;font-size:10px;color:#6b7280}.pen .date{flex:0 0 150px}
   .who{text-align:right}.who b{display:block;font-size:13px}.who span{font-size:11px;color:#6b7280}
   .audit{font-size:11px;color:#6b7280;margin-top:12px}
+  .inits{display:grid;gap:8px;margin-top:4px}.init{display:flex;gap:12px;align-items:flex-start;font-size:13px}
+  .init .box{flex:0 0 58px;height:26px;border:1.5px solid #111827;border-radius:4px;display:inline-flex;align-items:center;justify-content:center;font:700 13px/1 -apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:.06em}.init .box.got{border-color:#c2410c;color:#c2410c}
   .foot{margin-top:28px;font-size:11px;color:#6b7280;text-align:center;white-space:pre-line}
   @media print{.page{padding:0}}
 </style></head><body><div class="page">
@@ -315,10 +340,11 @@ ${scope.length > 0 ? `<ul>${scope.map((l) => `<li>${escapeHtml(l)}</li>`).join('
 ${f.exclusions.trim() ? `<p class="kv" style="margin-top:6px">Not included: ${escapeHtml(f.exclusions.trim())}</p>` : ''}
 ${dates ? `<p class="kv">${dates}</p>` : ''}
 <h2>Price &amp; payment</h2>
-<div class="tot"><span>Contract amount</span><span>${escapeHtml(amountLine)}</span></div>
+<div class="tot"><span>${amountName}</span><span>${escapeHtml(amountLine)}</span></div>
 <p class="kv" style="margin:6px 0 0">${escapeHtml(paymentTermsSentence(f))}</p>
 <h2>Terms${input.templateName ? ` · ${escapeHtml(input.templateName)}` : ''}</h2>
 <div class="terms">${input.termsHtml}</div>
+${initialsHtml}
 <div class="sig"><h2 style="margin-top:0">Customer signature</h2>
 ${signatureBlockHtml(sig, coName ? input.recipientName.trim() || null : null)}
 ${coName ? `<h2>Second signature</h2>\n${signatureBlockHtml(input.coSignature ?? null, coName)}\n` : ''}</div>

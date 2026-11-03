@@ -154,3 +154,90 @@ describe('JobContractSign — failures read by their class (v2.5965)', () => {
     expect(await screen.findByText(/This link has expired. Reply to our email or call the office/)).toBeTruthy()
   })
 })
+
+describe('JobContractSign — the warranty in place of a contract (2026-11-02)', () => {
+  const warranty = (over: Record<string, unknown> = {}) =>
+    contract({
+      heading: 'Warranty for 1 Test Street',
+      kind: 'warranty',
+      co_signer_name: null,
+      template_name: 'Built-in warranty terms',
+      fields: {
+        scope_lines: ['Water heater'],
+        amount_cents: 220000,
+        payment_terms_key: 'on_completion',
+        payment_terms_text: '',
+        exclusions: '',
+        start_date: null,
+        completion_date: null,
+        note: '',
+        initial_lines: ['The work listed above is the work I asked for.', 'The price is the price we agreed on.'],
+      },
+      ...over,
+    })
+
+  it('shows Price, a box per line, refuses the signature until every line is initialled, then posts the initials', async () => {
+    const calls: { body: Record<string, unknown> }[] = []
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async (url: string, init?: RequestInit) => {
+        if (String(url).includes('sign-job-contract')) {
+          calls.push({ body: JSON.parse(String(init?.body)) })
+          return new Response(JSON.stringify({ ok: true, signed_at: '2026-11-02T22:00:00Z', mode: 'type', complete: true, signer: 'primary', waiting_on: null }), { status: 200 })
+        }
+        return new Response(JSON.stringify(warranty()), { status: 200 })
+      }),
+    )
+    mount()
+    const inits = await screen.findByTestId('contract-initials')
+    expect(screen.getByText('Price')).toBeTruthy()
+    expect(screen.queryByText('Contract amount')).toBeNull()
+    expect(within(inits).getByTestId('contract-initial-0')).toBeTruthy()
+    expect(within(inits).getByTestId('contract-initial-1')).toBeTruthy()
+    expect(screen.getByRole('button', { name: /Sign the warranty/ })).toBeTruthy()
+
+    // Name typed, agreed, one line still blank: the page says which, and nothing is posted.
+    fireEvent.change(screen.getByPlaceholderText(/full legal name/i), { target: { value: 'Sam Sample' } })
+    for (const box of screen.getAllByRole('checkbox')) fireEvent.click(box)
+    fireEvent.change(within(inits).getByTestId('contract-initial-0'), { target: { value: 'ss' } })
+    fireEvent.click(screen.getByRole('button', { name: /Sign the warranty/ }))
+    await screen.findByText('Initial every line to continue. Line 2 is still blank.')
+    expect(calls).toHaveLength(0)
+
+    fireEvent.change(within(inits).getByTestId('contract-initial-1'), { target: { value: 'S.S.' } })
+    fireEvent.click(screen.getByRole('button', { name: /Sign the warranty/ }))
+    await waitFor(() => expect(calls).toHaveLength(1))
+    expect(calls[0]!.body.initials).toEqual(['ss', 'S.S.'])
+    expect(calls[0]!.body.signer).toBeUndefined()
+    await screen.findByText(/Signed by Sam Sample/)
+  })
+
+  it('a signed warranty shows the initials the customer typed beside each line', async () => {
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(async () =>
+        new Response(
+          JSON.stringify(
+            warranty({
+              status: 'signed',
+              signed_at: '2026-11-02T22:00:00Z',
+              signer_printed_name: 'Sam Sample',
+              signer_mode: 'type',
+              signer_consented_at: '2026-11-02T22:00:00Z',
+              initials: [
+                { line: 'The work listed above is the work I asked for.', initials: 'SS' },
+                { line: 'The price is the price we agreed on.', initials: 'SS' },
+              ],
+            }),
+          ),
+          { status: 200 },
+        ),
+      ),
+    )
+    mount()
+    const inits = await screen.findByTestId('contract-initials')
+    expect(within(inits).getByTestId('contract-initial-kept-0').textContent).toBe('SS')
+    expect(within(inits).getByTestId('contract-initial-kept-1').textContent).toBe('SS')
+    expect(within(inits).queryByTestId('contract-initial-0')).toBeNull()
+  })
+})

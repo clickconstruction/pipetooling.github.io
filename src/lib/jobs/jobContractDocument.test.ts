@@ -207,3 +207,29 @@ describe('signed document links (v2.2744)', () => {
   })
 })
 
+describe('the warranty in place of a contract (2026-11-02)', () => {
+  const fields = { ...parseJobContractFields({ scope_lines: ['Replace the water heater'], amount_cents: 185000, payment_terms_key: 'on_completion' }), initial_lines: ['The work listed above is the work I asked for.', 'The price is the price we agreed on.'] }
+  const base = { heading: 'Warranty for 138 W Pat Blanco', jobNumber: '1312', jobAddress: '138 W Pat Blanco', customerName: 'Michael Palmer', recipientName: 'Michael Palmer', dateLabel: 'Nov 2, 2026', revision: 1, fields, termsHtml: '<p>1. The work.</p>', templateName: 'Built-in warranty terms', issuer: null }
+
+  it('parses the lines to initial, trimmed, blanks dropped, and none on an older row', () => {
+    expect(parseJobContractFields({ initial_lines: [' The work. ', '', 4, 'The price.'] }).initial_lines).toEqual(['The work.', 'The price.'])
+    expect(parseJobContractFields({ scope_lines: ['x'] }).initial_lines).toEqual([])
+  })
+
+  it('a warranty prints Price and an Initial here box per line, empty until signed, the initials once kept', () => {
+    const open = buildJobContractDocumentHtml({ ...base, kind: 'warranty' })
+    expect(open).toContain('<span>Price</span>')
+    expect(open).not.toContain('Contract amount')
+    expect(open).toContain('<h2>Initial here</h2>')
+    expect(open.match(/class="box"/g)).toHaveLength(2)
+    expect(open).toContain('The price is the price we agreed on.')
+    const signed = buildJobContractDocumentHtml({ ...base, kind: 'warranty', initials: [{ line: 'The work listed above is the work I asked for.', initials: 'MP' }, { line: 'The price is the price we agreed on.', initials: 'MP' }] })
+    expect(signed.match(/class="box got">MP</g)).toHaveLength(2)
+  })
+
+  it('a contract prints Contract amount and no lines to initial, even when the fields carry some', () => {
+    const html = buildJobContractDocumentHtml({ ...base, heading: 'Service agreement for 138 W Pat Blanco' })
+    expect(html).toContain('<span>Contract amount</span>')
+    expect(html).not.toContain('Initial here')
+  })
+})

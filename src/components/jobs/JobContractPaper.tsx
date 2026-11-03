@@ -10,7 +10,8 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from 'react'
 import type { JobWithDetails } from '../../types/jobWithDetails'
 import { ContractBodyDisplay } from '../contracts/ContractBodyDisplay'
-import { formatContractMoney, jobContractHeading, PAYMENT_TERMS_PRESETS, paymentTermsSentence, type JobContractFields, type JobContractIssuer, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
+import { formatContractMoney, PAYMENT_TERMS_PRESETS, paymentTermsSentence, type JobContractFields, type JobContractIssuer, type PaymentTermsKey } from '../../lib/jobs/jobContractDocument'
+import { jobAgreementHeading } from '../../lib/jobs/jobAgreementKind'
 import { contractAmountDoorLabel, contractAmountSourceLabel, type ContractAmountSource } from '../../lib/jobs/contractAmountSource'
 
 export type JobContractPaperProps = {
@@ -58,6 +59,13 @@ export type JobContractPaperProps = {
   setCoSigner?: (v: { name: string; email: string }) => void
   /** v2.4186: the second frame's signature, once they signed. */
   coSignature?: { printedName: string; auditLine: string; imageUrl?: string | null } | null
+  /** The kind of agreement (2026-11-02): a warranty prints *Price* and its lines to initial. Omitted: a contract. */
+  kind?: 'contract' | 'warranty'
+  /**
+   * A warranty's lines to initial: the editor's text (one line each) and how it applies, and the initials the customer
+   * typed once signed (null while unsigned: each line prints an empty box).
+   */
+  initialLines?: { text: string; apply: (v: string) => void; entries: ReadonlyArray<{ line: string; initials: string }> | null }
 }
 
 const INK = 'var(--text-strong)'
@@ -157,6 +165,9 @@ function SignedMark({ sig, second = false }: { sig: { printedName: string; audit
 
 export default function JobContractPaper(p: JobContractPaperProps) {
   const [scopeEditing, setScopeEditing] = useState(false)
+  const [initialsEditing, setInitialsEditing] = useState(false)
+  const initialsRef = useAutoFocus<HTMLTextAreaElement>(initialsEditing)
+  const initialLines = (p.initialLines?.text ?? '').split('\n').map((l) => l.trim()).filter(Boolean)
   const [payEditing, setPayEditing] = useState(false)
   const [datesEditing, setDatesEditing] = useState(false)
   const [nameEditing, setNameEditing] = useState(false)
@@ -180,7 +191,7 @@ export default function JobContractPaper(p: JobContractPaperProps) {
         {p.brandImageUrl ? <img src={p.brandImageUrl} alt="" style={{ maxWidth: 140, maxHeight: 56 }} /> : null}
       </div>
 
-      <h1 style={{ font: '700 19px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif', margin: '14px 0 3px', color: INK }}>{jobContractHeading(p.job)}</h1>
+      <h1 style={{ font: '700 19px/1.2 -apple-system, "Segoe UI", Roboto, sans-serif', margin: '14px 0 3px', color: INK }}>{jobAgreementHeading(p.kind ?? 'contract', p.job)}</h1>
       <div style={{ ...kv, display: 'flex', flexWrap: 'wrap', gap: '0 4px', alignItems: 'baseline' }}>
         <span>
           Job <b style={{ color: INK }}>#{p.jobNumber}</b> · for{' '}
@@ -261,7 +272,7 @@ export default function JobContractPaper(p: JobContractPaperProps) {
 
       <h2 style={h2}>Price &amp; payment</h2>
       <div style={{ display: 'flex', justifyContent: 'space-between', gap: 12, alignItems: 'baseline', fontWeight: 700, fontSize: 15, borderTop: `1px solid ${RULE}`, paddingTop: 7, marginTop: 6, flexWrap: 'wrap' }} data-testid="contract-amount">
-        <span>Contract amount</span>
+        <span>{p.kind === 'warranty' ? 'Price' : 'Contract amount'}</span>
         <span style={{ display: 'flex', gap: 8, alignItems: 'baseline', flexWrap: 'wrap', justifyContent: 'flex-end' }}>
           <span style={{ fontVariantNumeric: 'tabular-nums', ...(amountCents == null ? { color: INK_3, fontWeight: 600, fontSize: 13 } : {}) }} data-testid="contract-amount-value">
             {amountCents != null ? formatContractMoney(amountCents) : p.editable ? 'No amount' : 'Billed at completion (time and materials)'}
@@ -344,6 +355,43 @@ export default function JobContractPaper(p: JobContractPaperProps) {
       </div>
         </>
       )}
+
+      {p.kind === 'warranty' && p.initialLines ? (
+        <div data-testid="paper-initials">
+          <h2 style={h2}>Initial here</h2>
+          <Editable
+            editable={p.editable}
+            editing={initialsEditing}
+            onOpen={() => setInitialsEditing(true)}
+            title="Edit — one line per thing they initial, in the customer's own voice"
+            testId="paper-initial-lines"
+            editor={
+              <div style={{ display: 'grid', gap: 4 }}>
+                <textarea ref={initialsRef} style={{ ...editorInput, minHeight: 96, resize: 'vertical', lineHeight: 1.45 }} value={p.initialLines.text} aria-label="Lines to initial — one per line" onChange={(e) => p.initialLines!.apply(e.target.value)} onBlur={() => setInitialsEditing(false)} data-testid="paper-initial-lines-textarea" />
+                <span style={{ fontSize: 11, color: INK_3 }}>One line per thing they initial. They type two to four letters beside each. Click away to keep it.</span>
+              </div>
+            }
+          >
+            {initialLines.length > 0 ? (
+              <div style={{ display: 'grid', gap: 6 }}>
+                {initialLines.map((l, i) => {
+                  const got = p.initialLines?.entries?.find((e) => e.line === l)?.initials ?? p.initialLines?.entries?.[i]?.initials ?? ''
+                  return (
+                    <div key={i} style={{ display: 'flex', gap: 10, alignItems: 'flex-start' }} data-testid={`paper-initial-${i}`}>
+                      <span style={{ flex: '0 0 46px', height: 22, border: `1.5px solid ${got ? BRAND : INK}`, borderRadius: 4, display: 'inline-flex', alignItems: 'center', justifyContent: 'center', font: '700 11px/1 -apple-system, "Segoe UI", Roboto, sans-serif', letterSpacing: '0.06em', color: BRAND }}>
+                        {got}
+                      </span>
+                      <span style={{ paddingTop: 2 }}>{l}</span>
+                    </div>
+                  )
+                })}
+              </div>
+            ) : (
+              <span style={p.editable ? ghost : { ...kv }}>{p.editable ? '+ the lines they initial, one per line' : 'This paper has no lines to initial.'}</span>
+            )}
+          </Editable>
+        </div>
+      ) : null}
 
       <div style={{ marginTop: 22, borderTop: `1px solid ${RULE}`, paddingTop: 12 }} data-testid="paper-signature">
         {/* v2.4186: one frame per signer — the recipient's, and a second when the office named one. */}
