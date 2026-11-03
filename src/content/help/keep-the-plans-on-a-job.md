@@ -2,7 +2,7 @@
 title: keep the plans on a job
 category: Jobs & Scheduling
 roles: dev, master_technician, assistant, controller, estimator
-keywords: plans, plan set, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history, job from bid, priced on
+keywords: plans, plan set, papers, spec, building from, updated set, addendum, permit set, as-built, as built, our as-builts, documents tab, job plans, open plans, part of the site, development, other plans, pipeline, plans icon, picker, history, job from bid, priced on
 where: /jobs
 order: 60
 ---
@@ -32,15 +32,20 @@ The bid keeps its own sets. See [keep more than one set of plans on a bid](/help
 2. Type the set's **Name**, such as *Addendum 2*. The app starts the name for you.
 3. Pick the **Kind** and who it is **From**.
 4. Pick the **Dated** day. Use the date printed on the sheets.
-5. Type a **Memo**. Say what changed in a line.
-6. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
-7. Press {{button:blue|Add the set and build from it}}.
+5. Under **What changed**, say what moved from the old set. Name the sheets or areas that moved. Say what it means for our work.
+6. Type a **Memo**. Say who sent the set and where the file is.
+7. Paste the set's Drive link under **Link**. You can leave it empty and add it later.
+8. Press {{button:blue|Add the set and build from it}}.
 
 The job now builds from the new set. The old one moves under **Older sets**. Press {{button:outline|Add it, keep Issued set current}} instead to add the set without switching.
 
-On a development, the switch writes one line in the site's **History** for every job on the part. The line reads *Plans · the Bunker now builds from Addendum 1, dated Oct 2, 2026 · replaces Issued set*. Nobody types it.
+On a development, the switch writes one line in the site's **History** for every job on the part. The line reads *Plans · the Bunker now builds from Addendum 1, dated Oct 2, 2026 · replaces Issued set · what changed: the riser moved to the north wall*. Nobody types it.
 
 To switch later, press {{button:outline|Build from this set}} on any older set.
+
+## Say what changed on an older set
+
+Each set shows its change line under its memo. The line names the set before it. An older set with no line shows {{button:outline|Write what changed}} to the office. Press it, write what moved from the set before, and press {{button:blue|Save what changed}}. The site's **Plans** look shows the same line between its sets.
 
 ## Save the crew's as-built
 
@@ -67,6 +72,10 @@ Press {{button:outline|Open the Documents tab}} at the bottom of the window to a
 A job inside a development builds from one part of the site, such as the Bunker or the Lodge. The first set on the job asks which part. Pick one the site already has, or make a new part named after the job.
 
 When another part of the site has its own set, an amber note says so. A set on another part may touch this job. Press {{button:outline|Open the site’s plans ›}} to see every set on the site.
+
+## Keep the papers that come with a set
+
+A spec book, a schedule or the owner's task list comes with a set. Keep each one beside the set it goes with. The **Papers with the plans** block sits under the sets. See [keep the papers with the plans](/help/keep-the-papers-with-the-plans).
 
 ## Take a set off
 

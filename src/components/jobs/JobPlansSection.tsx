@@ -22,7 +22,9 @@ import {
   newSetDraftProblem,
   otherPlansNotice,
   partNameForJob,
+  partTimeline,
   setLineWords,
+  timelineEntryFor,
   todayYmd,
   type NewSetDraft,
   type PlanSetKind,
@@ -30,7 +32,9 @@ import {
 } from '../../lib/plans/planSets'
 import { supabaseJobPlansIo, type JobPlansIo, type JobPlansRead } from '../../lib/plans/planSetsIo'
 import { EmptyState } from '../EmptyState'
+import { JobPapersSection } from '../papers/JobPapersSection'
 import { PlanSetForm } from '../plans/PlanSetForm'
+import { PlanSetChangesLine } from '../plans/PlanSetChangesLine'
 import { documentsHeading, documentsQuietButton } from './jobDocumentsStyles'
 
 const OFFICE: ReadonlySet<string> = new Set(['dev', 'master_technician', 'assistant', 'controller', 'estimator'])
@@ -87,6 +91,7 @@ export function JobPlansSection({
   }, [io, job.id, tick])
 
   const view = useMemo(() => buildJobPlansView(read?.part ?? null, read?.sets ?? []), [read])
+  const timeline = useMemo(() => partTimeline([...(view.current ? [view.current] : []), ...view.older]), [view])
   const noticeWords = read?.job.development_id ? otherPlansNotice({ developmentName: read.job.development_name, myPartId: read.part?.id ?? null, parts: read.developmentParts }) : null
   const nameOf = (id: string | null) => (id ? (read?.names[id] ?? null) : null)
   const reload = () => setTick((t) => t + 1)
@@ -169,6 +174,16 @@ export function JobPlansSection({
       setPendingRemove(null)
     }, 'The set did not come off.')
 
+  /** The change line written on a set already on the part; true when it took, so the editor closes. */
+  const saveChanges = async (setId: string, changes: string): Promise<boolean> => {
+    let ok = false
+    await run(async () => {
+      await io.updateChanges(setId, changes)
+      ok = true
+    }, 'What changed did not save.')
+    return ok
+  }
+
   const goToSite = () => {
     if (!read?.job.development_id) return
     onLeave?.()
@@ -184,6 +199,7 @@ export function JobPlansSection({
       </span>
       <span style={{ ...muted }}>{setLineWords(s)}</span>
       {s.memo ? <span style={{ ...muted, flexBasis: '100%' }}>{s.memo}</span> : null}
+      <PlanSetChangesLine entry={timelineEntryFor(timeline, s)} canWrite={canWrite} busy={busy} onSave={saveChanges} style={{ flexBasis: '100%' }} />
       <span style={{ display: 'flex', gap: '0.6rem', flexWrap: 'wrap' }}>
         {s.link ? (
           <button type="button" style={smallLinkBtn} onClick={() => openInExternalBrowser(s.link)}>
@@ -325,6 +341,7 @@ export function JobPlansSection({
                 )}
               </p>
               {view.current.memo ? <p style={muted}>{view.current.memo}</p> : null}
+              <PlanSetChangesLine entry={timelineEntryFor(timeline, view.current)} canWrite={canWrite} busy={busy} onSave={saveChanges} style={{ display: 'flex' }} />
               {buildingFromLine(view, nameOf(view.part?.current_set_by ?? null)) ? <p style={muted}>{buildingFromLine(view, nameOf(view.part?.current_set_by ?? null))}</p> : null}
             </div>
           ) : view.part && view.older.length > 0 ? (
@@ -382,6 +399,21 @@ export function JobPlansSection({
             </div>
           ) : null}
           {form?.kind === 'set' || form?.kind === 'as_built' ? setForm_(form) : form?.kind === 'part' ? partForm(form) : null}
+          {view.part ? (
+            <JobPapersSection
+              io={io}
+              partId={view.part.id}
+              partName={view.part.name}
+              sets={read.sets}
+              currentSetId={view.part.current_set_id}
+              jobId={job.id}
+              jobLabel={jobShortLabel(job)}
+              developmentId={read.job.development_id}
+              siteName={read.job.development_name?.trim() || jobShortLabel(job)}
+              userId={user?.id ?? null}
+              canWrite
+            />
+          ) : null}
           {problem && !form ? <p style={{ ...muted, color: 'var(--text-amber-800)' }}>{problem}</p> : null}
         </>
       )}

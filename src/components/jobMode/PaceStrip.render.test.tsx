@@ -83,6 +83,31 @@ describe('PaceStrip', () => {
     expect(parseFloat(at().replace('calc(', ''))).toBeCloseTo(13, 0)
   })
 
+  it('leaves a touch screen\'s taps to the days: no hover offered, and a stage\'s bar lets the tap through', () => {
+    const was = window.matchMedia
+    window.matchMedia = ((q: string) => ({ matches: false, media: q })) as unknown as typeof window.matchMedia
+    try {
+      const onHover = vi.fn()
+      render(<PaceStrip line={line} hoursBudget={200} days={days} stages={stages} onDayHover={onHover} />)
+      expect(screen.getByText(/3 stages$/)).toBeTruthy()
+      expect(screen.queryByText(/hover one/)).toBeNull()
+      const bar = screen.getAllByTestId('pace-stage-end')[0]! as HTMLElement
+      expect(bar.style.pointerEvents).toBe('none')
+      fireEvent.mouseEnter(bar)
+      expect(screen.queryByTestId('stage-end-card')).toBeNull()
+      fireEvent.mouseEnter(screen.getAllByTestId('pace-day')[0]!)
+      expect(onHover).not.toHaveBeenCalled()
+    } finally {
+      window.matchMedia = was
+    }
+  })
+
+  it('says no days at the crew day when no hour is in', () => {
+    const none = superintendentLine({ pctDone: null, hoursUsed: 0, hoursBudget: 200, budgetSource: 'assumed', money: null, plannedFinishYmd: null, checklist: { answered: 0, asked: 0 }, certifiedPct: null })
+    render(<PaceStrip line={none} hoursBudget={200} />)
+    expect(screen.getByText(/hours 0%/).textContent).not.toMatch(/ d at /)
+  })
+
   it('falls back to one fill with no days and reads the days used at the crew day', () => {
     const plain = superintendentLine({ pctDone: 50, hoursUsed: 100, hoursBudget: 200, budgetSource: 'assumed', money: null, plannedFinishYmd: null, checklist: { answered: 0, asked: 0 }, certifiedPct: null })
     render(<PaceStrip line={plain} hoursBudget={200} />)

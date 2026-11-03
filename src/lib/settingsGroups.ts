@@ -1,6 +1,6 @@
 import type { UserRole } from '../hooks/useAuth'
 import { isAssistantLike, isSubcontractorLikeRole } from './subcontractorLikeRole'
-import { canEditClause, canEditFlows } from './gc/access'
+import { canEditClause, canEditFlows, canOpenGcProjects } from './gc/access'
 import { canSeePhoneAndTexts } from './messages/assignRule'
 
 /**
@@ -43,6 +43,11 @@ export const SETTINGS_ZONE_LABELS: Readonly<Record<SettingsZone, string>> = {
 /** Settings → What customers see (v2.3507): dev, master and the assistant-like roles. Training-mode users see it too — sample only, nothing there writes. */
 export function canSeeWhatCustomersSee(r: UserRole | null): boolean {
   return r === 'dev' || r === 'master_technician' || isAssistantLike(r)
+}
+
+/** Settings → How fast a change ships (v2.6399): the office roles, the five of `GC_OFFICE_TEAM`. */
+export function canSeeShipPace(r: UserRole | null): boolean {
+  return canOpenGcProjects(r)
 }
 
 export const SETTINGS_ZONE_ORDER: readonly SettingsZone[] = ['you', 'company', 'system', 'help']
@@ -119,5 +124,9 @@ export function getZonedSettingsGroups(myRole: UserRole | null): SettingsGroupDe
   // Help
   groups.push({ id: 'settings-guides', label: 'Guides', zone: 'help' })
   groups.push({ id: 'settings-release-notes', label: 'Release notes', zone: 'help' })
+  // How fast a change ships (v2.6399): the office's answer to "can I have X", beside the notes of what shipped.
+  if (canSeeShipPace(r)) {
+    groups.push({ id: 'settings-ship-pace', label: 'How fast a change ships', zone: 'help', pagesHint: 'How long a change takes from its pull request opening to the app, from the last three days.' })
+  }
   return groups
 }
