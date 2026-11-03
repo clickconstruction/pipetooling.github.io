@@ -10748,6 +10748,7 @@ export type Database = {
           modified_at: string | null
           name: string
           pages: number | null
+          pages_read: number | null
           path: string
           search: unknown
           text: string | null
@@ -10767,6 +10768,7 @@ export type Database = {
           modified_at?: string | null
           name: string
           pages?: number | null
+          pages_read?: number | null
           path?: string
           search?: unknown
           text?: string | null
@@ -10786,6 +10788,7 @@ export type Database = {
           modified_at?: string | null
           name?: string
           pages?: number | null
+          pages_read?: number | null
           path?: string
           search?: unknown
           text?: string | null
@@ -36785,6 +36788,7 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean; p_link?: Json }
         Returns: Json
       }
+      dev_file_index_status: { Args: never; Returns: Json }
       dev_health_connections: { Args: never; Returns: Json }
       dev_health_locks: { Args: never; Returns: Json }
       dev_health_sampler_gaps: { Args: { p_hours?: number }; Returns: Json }
