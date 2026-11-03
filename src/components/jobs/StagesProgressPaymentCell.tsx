@@ -58,6 +58,8 @@ type StagesProgressPaymentCellProps = {
   billMark?: MoneyBarBillMark | null
   /** A checklist per stage (punch list #164, PR 4): each stage's standing by fixture id, for the not-ready mark under the bar. */
   checklist?: ReadonlyMap<string, StageChecklistState> | null
+  /** The checklist door (punch list #246): the mark under the bar as a press to the row's checklists sheet. */
+  onChecklistPress?: () => void
 }
 
 function swatch(color?: string) {
@@ -83,7 +85,7 @@ function swatch(color?: string) {
  * total on top, a paid/unbilled bar of the total bill, and a labeled legend.
  * Pure presentation — all math comes in via the model (see stagesMoneyBar.ts).
  */
-export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onStageClick, billMark = null, checklist = null }: StagesProgressPaymentCellProps) {
+export default function StagesProgressPaymentCell({ model, pctComplete, pctSaving, onPctCommit, footnote, onNoBidValueClick, compact = false, view = null, billSentAlert = null, onStageClick, billMark = null, checklist = null, onChecklistPress }: StagesProgressPaymentCellProps) {
   // The legend's amber and empty rows belong to the classic money reading; on a
   // job drawn as stages the bar already says which stage the money is on.
   const stageBar = view?.mode === 'stages'
@@ -269,7 +271,7 @@ export default function StagesProgressPaymentCell({ model, pctComplete, pctSavin
             </div>
           </div>
         ) : (
-          <StagesStageBar view={view} pctComplete={pctComplete} compact={compact} onStageClick={onStageClick} billMark={billMark} checklist={checklist} />
+          <StagesStageBar view={view} pctComplete={pctComplete} compact={compact} onStageClick={onStageClick} billMark={billMark} checklist={checklist} onChecklistPress={onChecklistPress} />
         )
       ) : (
       <div

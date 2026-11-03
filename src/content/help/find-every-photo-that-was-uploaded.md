@@ -16,6 +16,8 @@ Open **Documents** from the gear menu. Press the **Photos** tab. The newest phot
 
 Each row shows a small picture, its caption, the job and the customer. Under them you see where the photo came from and who took it. A chip names the source. It reads **Report**, **Tally box**, **Checklist**, **Text** or **Email**.
 
+The time is the moment the camera fired. A photo kept on a phone with no signal and sent the next morning keeps its own time.
+
 On the right the row says where the photo is.
 
 - **In Drive** means the photo is in the job's Drive folder. Press {{button:outline-blue|Open ↗}} to see it there.

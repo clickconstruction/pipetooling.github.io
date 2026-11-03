@@ -12,6 +12,7 @@ import { useSitePhotos } from '../../hooks/useSitePhotos'
 import type { SitePhotosIo, SitePhotosRead } from '../../lib/photos/sitePhotosIo'
 import type { SitePhotosQuery } from '../../lib/photos/sitePhotos'
 import type { UploadedPhotoRow } from '../../lib/photos/uploadedPhotos'
+import { todayYmdInAppTz } from '../../utils/dateUtils'
 import { DevelopmentPhotosLook } from './DevelopmentPhotosLook'
 
 vi.mock('../../lib/supabase', async () => {
@@ -63,8 +64,11 @@ function row(over: Partial<UploadedPhotoRow> & { id: string; taken_at: string })
   }
 }
 
-/** Two days of rows: three today on JP629 by Malachi, two the day before on JP631 by Deon, in Chicago. */
-const TODAY = new Date()
+/**
+ * Two days of rows: three today on JP629 by Malachi, two the day before on JP631 by Deon, in Chicago. Today is
+ * Chicago's date, not the UTC one, which runs a day ahead every evening from 18:00 Central.
+ */
+const TODAY = new Date(`${todayYmdInAppTz()}T12:00:00Z`)
 const iso = (daysAgo: number, hour: number) => {
   const d = new Date(TODAY)
   d.setUTCDate(d.getUTCDate() - daysAgo)
