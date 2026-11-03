@@ -104,6 +104,8 @@ function jobOf(r: Record<string, unknown>): MemberJob {
     last_bill_date: null,
     job_plans_link: str(r.job_plans_link),
     plan_part_id: str(r.plan_part_id),
+    billing_only: typeof r.billing_only === 'boolean' ? r.billing_only : null,
+    kind: str(r.kind),
     created_at: str(r.created_at),
     updated_at: str(r.updated_at),
     service_type_id: str(r.service_type_id),

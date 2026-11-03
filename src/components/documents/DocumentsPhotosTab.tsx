@@ -149,7 +149,7 @@ export function DocumentsPhotosTab({ io: givenIo, loadReport = loadReportForView
         const to = boxOnSiteLink(row.job_id, row.container_id)
         return () => navigate(to)
       }
-      if (row.source === 'checklist' && row.job_id) return () => openJob(row)
+      if ((row.source === 'checklist' || row.source === 'job') && row.job_id) return () => openJob(row)
       if (row.source === 'message') {
         const to = threadPath(row)
         return to ? () => navigate(to) : null
