@@ -41,7 +41,7 @@ the ZZ Test job on clicktooling.com at every door:
 | #6943 | v2.6451 | A phone card's ⋯ Photos line opened nothing; only the short phone rows drew the window | A paid ZZ card's ⋯ Photos opens the window on a phone |
 
 What the build changed from the plan: the report form's photo hook stayed as it was, and the window got its own
-`useShotTiles`, so the report form's tests stayed untouched; folding `useReportPhotos` onto it is a follow-up. Only
+`useShotTiles`, so the report form's tests stayed untouched; v2.6453 then folded `useReportPhotos` onto its engine with those tests unchanged. Only
 `photo-save` changed among the edge functions, and the drift check read every function current after its deploy.
 
 The walk's four photos and their two thread lines were deleted afterwards. The four files the sweep filed stay in the
