@@ -14,7 +14,7 @@ name: SQL beds
 # (2026-10-09, the owner's call after a red bed could have merged).
 #
 # The beds share runners, since the org runs 20 jobs at once and one job per bed took 76 slots a run
-# (2026-11-02). `changes` deals the list into legs of at most 16, each leg is one runner, and on it
+# (2026-11-02). `changes` deals the list into legs of at most 40, each leg is one runner, and on it
 # scripts/sql-beds-run.sh pulls the images once and runs eight beds at a time. A change to that script runs
 # the beds like a change to a bed script.
 #
@@ -47,9 +47,10 @@ jobs:
         id: filter
         shell: bash
         run: |
-          # Legs of at most 16 beds, dealt in turn: another bed in the list never lengthens a leg past timeout-minutes.
+          # Legs of at most 40 beds, dealt in turn: each leg pulls the image and makes its own migrated copy, so 80 beds
+          # took 8.7 job-minutes in two legs against 15.5 in five (2026-11-03, v2.6455). A longer list adds a leg.
           MATRIX=$(grep -v '^\s*#' scripts/sql-beds.txt | grep -v '^\s*$' | jq -R . | jq -cs '
-            . as $beds | ((length + 15) / 16 | floor) as $legs
+            . as $beds | ((length + 39) / 40 | floor) as $legs
             | [range(0; $legs) as $leg | {n: ($leg + 1), beds: ([range($leg; $beds | length; $legs) as $i | $beds[$i]] | join(" "))}]')
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
@@ -73,7 +74,8 @@ jobs:
     # A draft runs no beds: they run once the PR is marked ready (ready_for_review above) and in the queue.
     if: needs.changes.outputs.beds == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
-    # A leg took 150 to 260 s (2026-11-02, v2.6415). The wrapper stops any one bed at 20 minutes, so the worst leg is two rounds of those and the pull.
+    # A leg of 40 beds took 200 to 320 s (2026-11-03, v2.6455). The wrapper stops any one bed at 20 minutes, so only many beds
+    # hanging at once can outlast this, and a leg cancelled here fails the gate like a failed bed.
     timeout-minutes: 45
     strategy:
       fail-fast: false
