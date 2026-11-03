@@ -19,7 +19,7 @@ type MtSelect = {
   mercury_category?: unknown
 }
 
-/** Same shape as JobSummaryMercuryAllocationRow in Jobs.tsx (for card breakdown + UI). */
+/** Job Summary's `JobSummaryMercuryAllocationRow` (its cache and the cost breakdown print) is this row narrowed by `jobSummaryMercuryRowsFromAllocations`. */
 export type MercuryJobAllocationWithAttributionRow = {
   id: string
   amount: number
