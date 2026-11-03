@@ -36905,6 +36905,10 @@ export type Database = {
         }
         Returns: Json
       }
+      dev_hours_statement_write: {
+        Args: { p: Json; p_dry_run?: boolean; p_file?: Json }
+        Returns: Json
+      }
       dev_hr_entry_write: {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json

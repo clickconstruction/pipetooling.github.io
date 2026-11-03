@@ -827,6 +827,7 @@ export const CATALOG_RPCS: Record<string, CatalogRpc[]> = {
   "dev_health_sampler_gaps": [{"args":{"p_hours?":"number"},"returns":"Json"}],
   "dev_history_entry_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dev_history_read": [{"args":{"p_bid_id?":"string","p_development_id":"string","p_job_id?":"string","p_limit?":"number","p_since?":"string"},"returns":"Json"}],
+  "dev_hours_statement_write": [{"args":{"p":"Json","p_dry_run?":"boolean","p_file?":"Json"},"returns":"Json"}],
   "dev_hr_entry_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
   "dev_legal_document_write": [{"args":{"p":"Json","p_dry_run?":"boolean","p_file?":"Json"},"returns":"Json"}],
   "dev_legal_gap_answer_write": [{"args":{"p":"Json","p_dry_run?":"boolean"},"returns":"Json"}],
