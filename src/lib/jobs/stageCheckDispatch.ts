@@ -9,7 +9,7 @@
  * open reads *Already with Dispatch*. *Can't do it* marks the request high, since a stopped crew is what *Customer waiting*
  * was built for. Pure; the io is `stageCheckDispatchIo.ts`.
  */
-import type { RequestPriority } from '../requestPriority'
+import { describeWait, type RequestPriority } from '../requestPriority'
 import { PICK_WORDS, type StageChecklistAnswer, type StageChecklistQuestion } from './stageChecklist'
 
 /** The `pending_action` of a check sent from the sheet. */
@@ -232,6 +232,19 @@ export function withDispatchWords(request: Pick<OpenStageCheck, 'title' | 'creat
   return ['With Dispatch', withDispatchAgeWords(request.createdAt, nowMs), tail].filter(Boolean).join(' · ')
 }
 
+/**
+ * The red line over a stage check that leads the Dispatch inbox (v2.6462): the request's own reason and its wait,
+ * *Can't do it · waiting 4 min*, red-700 once the wait passes the Customer waiting threshold. A waiting stage check
+ * draws as its own row with this line, never as the portal's Customer waiting card, whose name, number and Call are
+ * a customer's. The reason is read off the payload, so a check Dispatch raised reads *Need a part · waiting 1 h*.
+ */
+export function stageCheckWaiting(reason: unknown, createdAtIso: string | null | undefined, nowMs: number): { words: string; red: boolean } {
+  const wait = describeWait(createdAtIso, nowMs)
+  const waitWords = wait ? wait.label : 'waiting'
+  const label = isStageCheckReason(reason) ? stageCheckReason(reason).label : ''
+  return { words: label ? `${label} · ${waitWords}` : `${waitWords.charAt(0).toUpperCase()}${waitWords.slice(1)}`, red: wait?.red ?? false }
+}
+
 // ── The sheet's words ────────────────────────────────────────────────────────
 
 export const STAGE_CHECK_WORDS = {
@@ -252,6 +265,8 @@ export const STAGE_CHECK_WORDS = {
   tag: 'Stage check',
   openJob: 'Open the job',
   openCheck: 'Open the check',
+  /** Beside Raise priority in the thread, on a stage check that leads the inbox (v2.6462). */
+  lower: 'Lower priority',
 } as const
 
 /** The toast after a send. */

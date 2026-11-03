@@ -15,6 +15,7 @@ import { useAuth } from '../hooks/useAuth'
 import { useJobFormModal } from '../contexts/JobFormModalContext'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { STAGE_CHECK_ACTION, STAGE_CHECK_WORDS, stageCheckPayloadFrom } from '../lib/jobs/stageCheckDispatch'
+import { StageCheckWaitingLine } from './stageChecklists/StageCheckWaitingLine'
 import { OPEN_JOB_FROM_BID_ACTION } from '../lib/bids/wonDispatchHandoff'
 import { canCreateJobFromBid } from '../lib/bids/wonMomentActions'
 import { jobDraftFromPayload, jobDraftWords } from '../lib/bids/jobDraft'
@@ -697,7 +698,9 @@ export function DispatchInboxSection({
                               }
                         }
                       >
-                        {waiting ? (
+                        {/* The Customer waiting card reads a portal customer's name, number and Call; a stage check that
+                            leads the inbox keeps its own row under a red reason-and-wait line instead (v2.6462). */}
+                        {waiting && !stageCheck ? (
                           <CustomerWaitingRequestCard
                             row={req}
                             narrow={narrow}
@@ -709,6 +712,7 @@ export function DispatchInboxSection({
                           />
                         ) : (
                           <div style={{ fontWeight: 500 }}>
+                            {waiting && stageCheck ? <StageCheckWaitingLine requestId={req.id} reason={stageCheck.reason} createdAt={req.created_at} /> : null}
                             {stageCheck ? (
                               <span
                                 data-dispatch-stage-check-tag={req.id}
@@ -838,6 +842,17 @@ export function DispatchInboxSection({
                               style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--border-red)', background: 'var(--surface)', color: 'var(--text-red-700)', cursor: 'pointer' }}
                             >
                               Raise priority
+                            </button>
+                          ) : null}
+                          {!isClosed && waiting && stageCheck && onSetPriority ? (
+                            <button
+                              type="button"
+                              data-dispatch-stage-check-lower={req.id}
+                              onClick={() => setPrioritySheet({ requestId: req.id, direction: 'lower', label: req.title.slice(0, 80) })}
+                              title="Take it off the top of the list without closing it. Asks why."
+                              style={{ padding: '0.2rem 0.6rem', fontSize: '0.75rem', fontWeight: 600, borderRadius: 999, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-strong)', cursor: 'pointer' }}
+                            >
+                              {STAGE_CHECK_WORDS.lower}
                             </button>
                           ) : null}
                         </div>

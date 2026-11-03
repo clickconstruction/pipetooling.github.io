@@ -56,4 +56,4 @@ One check goes to Dispatch once. If someone already sent it, the row wears the c
 
 ## What Dispatch does
 
-Dispatch reads the check in their inbox with a *Stage check* tag. Dispatch presses **Open the job** to see the job. Dispatch presses **Open the check** to open the same sheet with your row open. There Dispatch answers it, adds a note, skips it on this job or takes it off. The guide [fill a stage checklist on the phone](/help/fill-a-stage-checklist-on-the-phone) has the sheet's steps.
+Dispatch reads the check in their inbox with a *Stage check* tag. A **Can't do it** check sits at the top. A red line over it says how long it has waited. Dispatch presses **Open the job** to see the job. Dispatch presses **Open the check** to open the same sheet with your row open. There Dispatch answers it, adds a note, skips it on this job or takes it off. The guide [fill a stage checklist on the phone](/help/fill-a-stage-checklist-on-the-phone) has the sheet's steps.

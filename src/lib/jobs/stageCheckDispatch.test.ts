@@ -18,10 +18,12 @@ import {
   stageCheckRow,
   stageCheckSentWords,
   stageCheckTitle,
+  stageCheckWaiting,
   withDispatchAgeWords,
   withDispatchWords,
   type OpenStageCheck,
 } from './stageCheckDispatch'
+import { CUSTOMER_WAITING_RED_MINUTES } from '../requestPriority'
 
 const JOB = { id: 'job-1', hcpNumber: '1088', name: 'ZZ TEST Riders Walk', address: '12925 FM 20, Kingsbury' }
 
@@ -146,5 +148,29 @@ describe('the words', () => {
     expect(contextMetaWords({ asksPhoto: true, fixtureId: null }, null, '')).toBe("asks for a photo · the company's question · not answered yet")
     expect(contextMetaWords({ asksPhoto: false, fixtureId: 'f3', addedBy: 'Pat Sample' }, { pick: 'yes' }, 'Luis Ortega · Nov 2 · 9:14 am')).toBe('added by Pat Sample · Yes, Luis Ortega · Nov 2 · 9:14 am')
     expect(contextMetaWords({ asksPhoto: false, fixtureId: 'f3' }, { pick: null }, '')).toBe('added for this job · not answered yet')
+  })
+})
+
+describe('stageCheckWaiting: the red line over a stage check that leads the inbox (v2.6462)', () => {
+  const now = Date.parse('2026-11-03T14:00:00Z')
+  const ago = (min: number) => new Date(now - min * 60_000).toISOString()
+
+  it('names the reason and the wait', () => {
+    expect(stageCheckWaiting('cant_do', ago(4), now)).toEqual({ words: "Can't do it · waiting 4 min", red: false })
+  })
+
+  it("reads the request's own reason, so a check Dispatch raised says why it was sent", () => {
+    expect(stageCheckWaiting('need_part', ago(65), now).words).toBe('Need a part · waiting 1 h 5 min')
+  })
+
+  it('turns red once the wait passes the Customer waiting threshold', () => {
+    expect(stageCheckWaiting('cant_do', ago(CUSTOMER_WAITING_RED_MINUTES - 1), now).red).toBe(false)
+    expect(stageCheckWaiting('cant_do', ago(CUSTOMER_WAITING_RED_MINUTES), now).red).toBe(true)
+  })
+
+  it('still reads without a known reason or a time', () => {
+    expect(stageCheckWaiting(undefined, ago(4), now).words).toBe('Waiting 4 min')
+    expect(stageCheckWaiting('not_a_reason', ago(4), now).words).toBe('Waiting 4 min')
+    expect(stageCheckWaiting('cant_do', null, now)).toEqual({ words: "Can't do it · waiting", red: false })
   })
 })
