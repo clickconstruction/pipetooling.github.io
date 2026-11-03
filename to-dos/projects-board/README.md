@@ -2,7 +2,7 @@
 name: "Projects board: every working project as one picture, the expected hours as a slider inside the labor budget, the days and the stages on the strip, and the same line on the superintendent's phone"
 number: 242
 group: close
-status: built 2026-11-02 as the card's train of five, each cut from main: v2.6320 the kernels and the strip, v2.6321 the job_expected_hours ledger and hook, v2.6330 the board at /projects-board beside Forecast, the superintendent's phone card (#6776, in the merge queue), v2.6337 the shares on #234's per-line budgets and the Costs tab's door; the spike's code stays on origin/spike/projects-board-242, never to merge · left: the owner's first morning read against live projects
+status: built 2026-11-02 as the card's train of five, each cut from main: v2.6320 the kernels and the strip, v2.6321 the job_expected_hours ledger and hook, v2.6330 the board at /projects-board beside Forecast, the superintendent's phone card (#6776, in the merge queue), v2.6337 the shares on #234's per-line budgets and the Costs tab's door, and the owner's add of 2026-11-02, the leader's Projects line under Money in on the Dashboard with one server read every role stands on (#6812, open); the spike's code stays on origin/spike/projects-board-242, never to merge · left: the owner's first morning read against live projects
 summary: >
   Punch list #234 gives every project a labor budget and the superintendent a line that says
   ahead or behind. This is the office's side of that line and its lever: one page off the

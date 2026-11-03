@@ -14,6 +14,7 @@ import { filesUnder as indexFilesUnder, heldRowsFor, indexContext, indexFiles, f
 import { EXCERPT_READ_MS, INDEX_JOB_MAX_FILES, walkUp, type DriveFileMeta, type FileHome } from '../_shared/fileIndexKernel.ts'
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
+import { indexCheck } from '../_shared/fileIndexCheck.ts'
 import {
   DRIVE_FOLDER_MIME,
   STREAM_CAP_BYTES,
@@ -69,6 +70,10 @@ import {
  *                                                        call → { indexed, held, remaining, total }; the Documents tab's Index
  *                                                        this job's files presses it until remaining is 0; `retry` takes the
  *                                                        held rows again
+ *   POST { action: 'index_check', max?, sample? }    → every file in the Shared Drive against every file_index row (v2.6364):
+ *                                                        counts of files with no row, files changed since their row, rows the
+ *                                                        listing did not show, rows with and without text by reason, and the
+ *                                                        first `sample` files with no row → IndexCheck; a read, a dev's door
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -349,6 +354,15 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
 
   // The index (punch list #240, PR 1): one file by its id, or a job's folder tree, into file_index through the one
   // pass every indexer runs (`_shared/fileIndex.ts`). Writes our table, never Drive; a training account was refused above.
+  // The index check (punch list #240, v2.6364): every file in the Shared Drive against every row, counts and the first
+  // files with no row; a read of Drive and of our table, a dev's door (the training-account line above stays as it is).
+  if (ask.action === 'index_check') {
+    if (String(who.role) !== 'dev') return json({ error: 'The index check is a dev’s door.' }, 403)
+    const ctx = await indexContext(admin, google)
+    if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
+    return json(await indexCheck(ctx, { max: ask.max, sample: ask.sample }))
+  }
+
   if (ask.action === 'index') {
     const ctx = await indexContext(admin, google)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)

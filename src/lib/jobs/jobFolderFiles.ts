@@ -135,6 +135,7 @@ const SOURCE_WORDS: Record<string, string> = {
   report: 'a report photo',
   checklist: 'a checklist photo',
   box: 'a Tally photo',
+  job: 'a job photo',
   message: 'a photo from a text or an email',
 }
 
