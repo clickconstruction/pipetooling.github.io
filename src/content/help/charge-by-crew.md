@@ -101,7 +101,7 @@ Set From and To.
 
 Leave **Office copy** on to read cost, margin and the premium. Turn it off for the customer copy.
 
-Press {{button:blue|Save the statement}}. The paper gets a number like SC-629-0001.
+Press {{button:blue|Save the statement}}. The paper gets a number like SC-1042-0001.
 
 Press {{button:outline|Print}} to print it. Print saves it as printed.
 

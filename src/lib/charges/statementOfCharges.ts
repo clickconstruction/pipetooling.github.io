@@ -32,7 +32,7 @@ export type ChargeStatementSnapshot = {
   nameImportedDays: boolean
 }
 
-/** `SC-629-0003`: the record id, counted per job from 0001. */
+/** `SC-1042-0003`: the record id, counted per job from 0001. */
 export function chargeStatementRecordId(jobNumber: string, n: number): string {
   return `SC-${(jobNumber || '').trim() || 'job'}-${String(n).padStart(4, '0')}`
 }

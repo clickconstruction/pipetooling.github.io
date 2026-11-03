@@ -43,14 +43,14 @@ vi.mock('./StatementOfChargesWindow', () => ({
   ),
 }))
 
-const job = { id: 'j1', hcp_number: '629', click_number: null, job_name: 'ROUGH IN', job_address: '1 Field Rd', customer_name: 'A customer' }
+const job = { id: 'j1', hcp_number: '1042', click_number: null, job_name: 'ROUGH IN', job_address: '1 Field Rd', customer_name: 'A customer' }
 const row = (over: Partial<ChargeStatementRow>): ChargeStatementRow => ({
   id: 'r1',
-  record_id: 'SC-629-0001',
+  record_id: 'SC-1042-0001',
   job_ledger_id: 'j1',
   period_start: '2026-04-01',
   period_end: '2026-04-30',
-  snapshot: { input: { sessions: [], lines: [], card: { rates: {}, extraPerson: null, materialsMarkupPct: null }, rule: { kind: 'crew' }, markupPct: null, adjustments: [], revenue: 0 }, period: { start: '2026-04-01', end: '2026-04-30' }, job: { number: '629', name: 'ROUGH IN', customer: 'A customer', site: '1 Field Rd' }, preparedBy: 'Dana Office', preparedOn: 'November 3, 2026', asOf: 'Nov 3', nameImportedDays: true },
+  snapshot: { input: { sessions: [], lines: [], card: { rates: {}, extraPerson: null, materialsMarkupPct: null }, rule: { kind: 'crew' }, markupPct: null, adjustments: [], revenue: 0 }, period: { start: '2026-04-01', end: '2026-04-30' }, job: { number: '1042', name: 'ROUGH IN', customer: 'A customer', site: '1 Field Rd' }, preparedBy: 'Dana Office', preparedOn: 'November 3, 2026', asOf: 'Nov 3', nameImportedDays: true },
   labor_usd: 4970,
   materials_usd: 1778.85,
   charges_usd: 6748.85,
@@ -73,26 +73,26 @@ describe('StatementsOfChargesSection', () => {
   })
 
   it('lists the rows with their figures, prints a row again from its snapshot, and Open hands the window the row', async () => {
-    rows = [row({}), row({ id: 'r2', record_id: 'SC-629-0002', state: 'draft', charges_usd: null, labor_usd: null, materials_usd: null })]
+    rows = [row({}), row({ id: 'r2', record_id: 'SC-1042-0002', state: 'draft', charges_usd: null, labor_usd: null, materials_usd: null })]
     renderWithProviders(<StatementsOfChargesSection job={job} />)
     await waitFor(() => expect(screen.getAllByTestId('soc-row')).toHaveLength(2))
     expect(screen.getByTestId('soc-press').textContent).toBe('Statement of charges… · 2 people, 3 material lines')
     const first = screen.getAllByTestId('soc-row')[0]!
-    expect(first.textContent).toContain('SC-629-0001')
+    expect(first.textContent).toContain('SC-1042-0001')
     expect(first.textContent).toContain('Printed')
     expect(first.textContent).toContain('April 1 – April 30, 2026')
     expect(first.textContent).toContain('by Dana Office')
     expect(first.querySelector('[aria-label="$6,748.85"]')).toBeTruthy()
     expect(screen.getAllByTestId('soc-row')[1]!.textContent).toContain('Draft')
-    fireEvent.click(screen.getByLabelText('Print SC-629-0001'))
+    fireEvent.click(screen.getByLabelText('Print SC-1042-0001'))
     await waitFor(() => expect(printSpy).toHaveBeenCalledTimes(1))
-    expect(buildSpy).toHaveBeenCalledWith(expect.objectContaining({ recordId: 'SC-629-0001', copy: 'office' }))
-    fireEvent.click(screen.getByLabelText('Open SC-629-0002'))
-    expect(screen.getByTestId('window-stub').textContent).toContain('window for 629 on SC-629-0002')
+    expect(buildSpy).toHaveBeenCalledWith(expect.objectContaining({ recordId: 'SC-1042-0001', copy: 'office' }))
+    fireEvent.click(screen.getByLabelText('Open SC-1042-0002'))
+    expect(screen.getByTestId('window-stub').textContent).toContain('window for 1042 on SC-1042-0002')
     fireEvent.click(screen.getByText('close window'))
     expect(screen.queryByTestId('window-stub')).toBeNull()
     fireEvent.click(screen.getByTestId('soc-press'))
-    expect(screen.getByTestId('window-stub').textContent).toContain('window for 629 on a new one')
+    expect(screen.getByTestId('window-stub').textContent).toContain('window for 1042 on a new one')
   })
 
   it('an empty section names the press, and with nothing to make one from the press is dead', async () => {
