@@ -322,7 +322,7 @@ export function scoreboardWorkWords(work: ScoreboardModel['work']): string | nul
 
 // ---- the rows under an open job (v2.6457, punch list #250 PR 2) ---------------------------------
 
-export type ScoreboardMemberKind = 'lead' | 'crew' | 'sub' | 'supplier' | 'card' | 'tally' | 'other' | 'overhead' | 'office'
+export type ScoreboardMemberKind = 'lead' | 'crew' | 'sub' | 'supplier' | 'card' | 'bank' | 'tally' | 'other' | 'overhead' | 'office'
 
 /** The role tag in the margin, the game's SL and FTL in the app's words. */
 export const SCOREBOARD_MEMBER_ROLE: Record<ScoreboardMemberKind, string> = {
@@ -331,6 +331,7 @@ export const SCOREBOARD_MEMBER_ROLE: Record<ScoreboardMemberKind, string> = {
   sub: 'Sub',
   supplier: 'Supplier',
   card: 'Card',
+  bank: 'Bank',
   tally: 'Tally',
   other: 'Other',
   overhead: 'Overhead',
@@ -387,7 +388,8 @@ const sameName = (a: string | null | undefined, b: string | null | undefined) =>
 /**
  * Everyone and everything that put something into one job, each filling Cost with what it put in so
  * the rows add up to the job: the people from the clock (a *Lead* led the crew on at least one of the
- * days), the subs by the names on their sheets, the supply houses, the card holders, the tally, the
+ * days), the subs by the names on their sheets, the supply houses, the card holders and the bank's
+ * payments with no card on them, the tally, the
  * other charges and the overhead day share, then the office line (who sent the bills and booked the
  * payments, words only). A supply or card split that falls short of its total (an allocation read cut
  * at its limit, the card rule's clamp, a card read that failed) gets one reconciling row, so the sum
@@ -440,22 +442,26 @@ export function scoreboardMembers(i: ScoreboardMembersInput): ScoreboardMembers 
     }
     const supplyGap = round2(row.parts.supplyInvoices - houses)
     if (Math.abs(supplyGap) >= 0.01) out.push(money('supplier', 'gap', 'Other supply invoices', null, { parts: supplyGap }, supplyGap))
-    // The card charges by holder once that read is in; until then, or if it will not read, one row for the card.
+    // The card charges by holder once that read is in, the bank's payments with no card on them as one Bank row;
+    // until then, or if it will not read, one row for the card.
     const holders = i.cardHolders?.state === 'read' ? i.cardHolders.byTxId : null
-    const byHolder = new Map<string, { usd: number; n: number; userId: string | null }>()
+    const byHolder = new Map<string, { name: string; bank: boolean; usd: number; n: number; userId: string | null }>()
     for (const l of b.cardLines) {
       const h = holders && l.txId ? holders.get(l.txId) : undefined
       const name = h?.name ?? 'Card'
-      const cur = byHolder.get(name) ?? { usd: 0, n: 0, userId: h?.userId ?? null }
+      const bank = h?.bank === true
+      const key = `${bank ? 'bank' : 'card'}:${name}`
+      const cur = byHolder.get(key) ?? { name, bank, usd: 0, n: 0, userId: h?.userId ?? null }
       cur.usd += l.usd
       cur.n += 1
       if (!cur.userId && h?.userId) cur.userId = h.userId
-      byHolder.set(name, cur)
+      byHolder.set(key, cur)
     }
     let cards = 0
-    for (const [name, c] of [...byHolder.entries()].sort((x, y) => y[1].usd - x[1].usd)) {
+    for (const c of [...byHolder.values()].sort((x, y) => y.usd - x.usd)) {
       cards += c.usd
-      out.push(money('card', name, name, plural(c.n, 'charge', 'charges'), { parts: round2(c.usd) }, c.usd, i.viewer.userId != null && c.userId === i.viewer.userId))
+      const kit = c.bank ? plural(c.n, 'payment', 'payments') : plural(c.n, 'charge', 'charges')
+      out.push(money(c.bank ? 'bank' : 'card', c.name, c.name, kit, { parts: round2(c.usd) }, c.usd, i.viewer.userId != null && c.userId === i.viewer.userId))
     }
     const cardGap = round2(row.parts.cardCharges - cards)
     if (Math.abs(cardGap) >= 0.01) out.push(money('card', 'gap', 'Card charges not split', null, { parts: cardGap }, cardGap))

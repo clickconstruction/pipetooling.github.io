@@ -24,6 +24,13 @@ describe('cardHolderOf', () => {
     expect(cardHolderOf('9d2f1a3b-4c5d-4e6f-a071-8293a4b5c6d7', look).name).toBe('Card 9d2...6d7')
     expect(cardHolderOf(null, look)).toEqual({ cardId: null, name: 'Card', userId: null })
   })
+  it('a payment out of the bank with no card on it is the bank’s; a card charge with no card named stays Card; a card id wins', () => {
+    expect(cardHolderOf(null, look, 'outgoingPayment')).toEqual({ cardId: null, name: 'Bank payments', userId: null, bank: true })
+    expect(cardHolderOf(null, look, 'wire').name).toBe('Bank payments')
+    expect(cardHolderOf(null, look, 'creditCardTransaction')).toEqual({ cardId: null, name: 'Card', userId: null })
+    expect(cardHolderOf(null, look, ' ')).toEqual({ cardId: null, name: 'Card', userId: null })
+    expect(cardHolderOf(A, look, 'outgoingPayment')).toEqual({ cardId: A, name: 'Luis', userId: 'u-luis' })
+  })
   it('a link to a person with no name falls back to the nickname', () => {
     const blank = { ...look, userIdByCard: new Map([[A, 'u-blank']]) }
     expect(cardHolderOf(A, blank)).toEqual({ cardId: A, name: 'Luis truck card', userId: 'u-blank' })

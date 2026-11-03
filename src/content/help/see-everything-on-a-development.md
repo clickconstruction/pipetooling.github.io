@@ -138,7 +138,7 @@ Earned follows the percent done. A finished job earns its whole price. A working
 
 Jobs with nothing on them yet fold under one line. Press {{button:outline|Show them}} to see them.
 
-Open a job to see who put something into it. Each person shows hours, days and labor. A Lead row led the crew on some of the days. Each sub, supply house and card holder shows what it cost. The tally, the other charges and the overhead day share have rows too.
+Open a job to see who put something into it. Each person shows hours, days and labor. A Lead row led the crew on some of the days. Each sub, supply house and card holder shows what it cost. The bank payments, the tally, the other charges and the overhead day share have rows too.
 
 Each row fills Cost, and a thin bar shows its share. The rows add up to the job. The Office row says who sent the bills and booked the payments. Your own rows are gold and say You.
 

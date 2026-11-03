@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { MemberJob } from './overview'
+import type { CardHolder } from './cardHolders'
 import type { SiteCostsRead } from './siteCosts'
 import type { SiteLaborRead } from './siteLabor'
 import {
@@ -284,6 +285,24 @@ describe('the rows under an open job (v2.6457)', () => {
       ['Card charges not split', 100],
     ])
     expect(members.some((m) => m.name === 'Other supply invoices')).toBe(false)
+  })
+
+  it('payments out of the bank with no card on them are one Bank row, counted as payments, still adding up', () => {
+    const j1Row = costsRead.state === 'read' ? costsRead.byJobId.get('j1')! : null
+    const withBank: SiteCostsRead = {
+      state: 'read',
+      byJobId: new Map([['j1', { ...j1Row!, parts: { ...j1Row!.parts, cardCharges: 1400 }, breakdown: { ...j1Row!.breakdown, cardLines: [...j1Row!.breakdown.cardLines, { txId: 'tx4', usd: 250 }, { txId: 'tx5', usd: 250 }] } }]]),
+    }
+    const bank: CardHolder = { cardId: null, name: 'Bank payments', userId: null, bank: true }
+    const cardHolders = { state: 'read' as const, byTxId: new Map<string, CardHolder>([...holders.byTxId, ['tx4', bank], ['tx5', bank]]) }
+    const { members } = scoreboardMembers({ ...base, jobCost: jobCost + 500, costs: withBank, cardHolders })
+    expect(members.filter((m) => m.kind === 'card' || m.kind === 'bank').map((m) => [m.kind, m.name, m.kit, m.cost])).toEqual([
+      ['card', 'Luis', '2 charges', 600],
+      ['bank', 'Bank payments', '2 payments', 500],
+      ['card', 'Shop card', '1 charge', 300],
+    ])
+    expect(members.reduce((t, m) => t + (m.cost ?? 0), 0)).toBeCloseTo(jobCost + 500, 2)
+    expect(members.some((m) => m.name === 'Card charges not split')).toBe(false)
   })
 
   it('a read still out says so in one line; a refusal names that the Job window has the rows', () => {
