@@ -6,7 +6,7 @@
 
 ## Quick orientation
 
-**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~590 tables, all with RLS; ~170 Edge Functions.
+**PipeTooling** — workflow management for master plumbers. React + TypeScript + Supabase, deployed to GitHub Pages. 9 user roles; four major systems (Projects/Workflows, Bids, Materials, Checklist) plus Jobs, Estimates, Banking, People/Payroll, Prospects, Schedule Dispatch, Documents, Map. ~590 tables, all with RLS; ~175 Edge Functions.
 
 ---
 
