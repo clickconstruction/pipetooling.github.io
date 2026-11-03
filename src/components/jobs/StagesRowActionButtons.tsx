@@ -5,8 +5,9 @@
  * still decides when it shows and what its click does, exactly as before.
  */
 import { Children, type ReactNode } from 'react'
-import { Camera, FileCheck2, FileSpreadsheet, Folder, PencilRuler } from 'lucide-react'
+import { Camera, FileCheck2, FileSpreadsheet, Folder, ListChecks, PencilRuler } from 'lucide-react'
 import type { JobPlansPress } from '../../lib/plans/jobPlanSetsIcon'
+import type { PipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import { stagesRowIconsPerRow } from '../../lib/jobs/stagesRowIconGrid'
 import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 
@@ -233,6 +234,37 @@ export function StagesPlansButton({ press, onPick }: { press: JobPlansPress; onP
       {press.kind === 'pick' ? (
         <span aria-hidden style={{ position: 'absolute', top: -2, right: -4, fontSize: '0.6rem', fontWeight: 700, lineHeight: 1, padding: '0 0.25rem', borderRadius: 999, background: '#2563eb', color: 'white' }}>
           {press.count}
+        </span>
+      ) : null}
+    </button>
+  )
+}
+
+/** The door's ink by tone: amber while a question is left, green once every list is filled, grey with no question yet. */
+const DOOR_INK: Record<PipelineChecklistDoor['tone'], string> = { amber: 'var(--text-amber-700)', green: 'var(--text-green-700)', muted: 'var(--text-muted)' }
+
+/**
+ * The job's stage checklists (punch list #246, PR 1): one icon with the job's standing across its stages, amber with
+ * what is left to answer beside it while any stage has a question left, green once every stage with a list is filled,
+ * grey while the stages take a checklist but have no question yet. Opens the sheet beside the row. The caller leaves
+ * it out on a job with no stage that takes a checklist (`door.kind === 'none'`), as it does the plans; drawn anyway it
+ * is nothing, so the cell grid never holds an empty square. `door` comes from `pipelineChecklistDoor`.
+ */
+export function StagesChecklistDoorButton({ door, onClick }: { door: PipelineChecklistDoor; onClick: () => void }) {
+  if (door.kind === 'none') return null
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      title={door.title}
+      aria-label={door.aria}
+      data-stages-checklist-door={door.kind}
+      style={{ ...iconButtonStyle, color: DOOR_INK[door.tone], position: 'relative' }}
+    >
+      <ListChecks size={16} aria-hidden />
+      {door.count ? (
+        <span aria-hidden data-stages-checklist-count style={{ position: 'absolute', top: -3, right: -7, fontSize: '0.55rem', fontWeight: 700, lineHeight: 1, padding: '0.12rem 0.25rem', borderRadius: 999, background: '#b45309', color: 'white', whiteSpace: 'nowrap' }}>
+          {door.count}
         </span>
       ) : null}
     </button>

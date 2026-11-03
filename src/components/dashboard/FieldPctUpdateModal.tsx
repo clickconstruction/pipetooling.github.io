@@ -9,7 +9,7 @@ import { fieldPctDeltaLabel, fieldPctStartValue } from '../../lib/jobs/fieldPctU
 import { propagateReportPctToJob } from '../../lib/propagateReportPctToJob'
 import { submitStatusReportFromStepper } from '../../lib/reports/submitStatusReportFromStepper'
 import { REPORT_FIELD_LABEL_STAGE_PROGRESS } from '../../lib/reports/stageProgressReport'
-import { LINES_QUESTION, MARK_EACH_LINE_LINK, lineProgressFieldValue } from '../../lib/reports/lineProgressReport'
+import { LINES_QUESTION, MARK_EACH_LINE_LINK, jobPercentFromLines, lineProgressFieldValue } from '../../lib/reports/lineProgressReport'
 import { STAGE_PCT_WORDS, STAGE_QUICK_PICK_MIN_HEIGHT, saveWords } from '../../lib/reports/stagePct'
 import { stampMovedLines, useJobLineProgress } from '../../hooks/useJobLineProgress'
 import { ReportLinesProgressField } from '../ReportLinesProgressField'
@@ -132,9 +132,10 @@ export default function FieldPctUpdateModal({
     if (!r?.ok) throw new Error(r?.error || 'Could not save the update')
   }
 
-  // The number a save writes: by line, what the lines say once something moved (else the base, as a
-  // note-only save keeps today's number); by chips, the stepped value.
-  const linesNext = linesActive ? (lineProgress.moved.length > 0 ? lineProgress.derivedPct : base) : null
+  // The number a save writes: by line, what the lines say once something moved, the lines nobody has
+  // reported seeded from the base the list reads (v2.6391), else the base, as a note-only save keeps
+  // today's number; by chips, the stepped value.
+  const linesNext = linesActive && lineProgress.lines ? (lineProgress.moved.length > 0 ? jobPercentFromLines(lineProgress.lines, lineProgress.picks, base) : base) : null
   const saveValue = linesActive ? linesNext : next
 
   const save = async () => {

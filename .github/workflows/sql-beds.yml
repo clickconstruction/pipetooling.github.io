@@ -5,14 +5,21 @@ name: SQL beds
 # so any migration can break any bed: when a ready (not draft) PR touches a migration, a bed's test
 # folder, a bed script or this workflow (in its own commits, diffed from where it left main, so a
 # migration main gained after the branch point does not count), every bed in scripts/sql-beds.txt runs;
-# a draft's pushes run none until it is marked ready, and the merge queue's build always runs them. The one job
+# a draft's pushes run none until it is marked ready. A merge-queue entry takes the same test on its own
+# diff, from the group ahead of it, so one with no bed's file behind a migration runs none and leans on
+# that entry's beds: the queue's "Only merge non-failing pull requests" stays on. The one job
 # branch protection requires is `sql-beds`, the gate at the bottom: it reports on every pull request
-# and every merge-queue build (a required check that never reports would block the merge), passes
+# and every merge-queue build (a required check that never reports would block the merge), is skipped
 # when the beds passed or were not needed, and fails when any bed failed or was cancelled
 # (2026-10-09, the owner's call after a red bed could have merged).
 #
-# To add a bed: its script scripts/pgtest-<name>.sh, its folder supabase/tests/<name>/, and one
-# line in scripts/sql-beds.txt. This file does not change.
+# The beds share runners, since the org runs 20 jobs at once and one job per bed took 76 slots a run
+# (2026-11-02). `changes` deals the list into legs of at most 16, each leg is one runner, and on it
+# scripts/sql-beds-run.sh pulls the images once and runs eight beds at a time. A change to that script runs
+# the beds like a change to a bed script.
+#
+# To add a bed: its script scripts/pgtest-<name>.sh with a container NAME of its own, its folder
+# supabase/tests/<name>/, and one line in scripts/sql-beds.txt. This file does not change.
 on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
@@ -20,7 +27,7 @@ on:
   workflow_dispatch:
 
 # A newer push to the same PR (or the same queue group) cancels the run it supersedes, so a superseded
-# matrix never holds twenty runners (2026-10-12: the merge queue timed out four times behind them).
+# matrix never holds its runners (2026-10-12: the merge queue timed out four times behind them).
 concurrency:
   group: sql-beds-${{ github.event.pull_request.number || github.event.merge_group.head_ref || github.ref }}
   cancel-in-progress: true
@@ -40,19 +47,24 @@ jobs:
         id: filter
         shell: bash
         run: |
-          MATRIX=$(grep -v '^\s*#' scripts/sql-beds.txt | grep -v '^\s*$' | jq -R . | jq -cs .)
+          # Legs of at most 16 beds, dealt in turn: another bed in the list never lengthens a leg past timeout-minutes.
+          MATRIX=$(grep -v '^\s*#' scripts/sql-beds.txt | grep -v '^\s*$' | jq -R . | jq -cs '
+            . as $beds | ((length + 15) / 16 | floor) as $legs
+            | [range(0; $legs) as $leg | {n: ($leg + 1), beds: ([range($leg; $beds | length; $legs) as $i | $beds[$i]] | join(" "))}]')
           echo "matrix=$MATRIX" >> "$GITHUB_OUTPUT"
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "beds=true" >> "$GITHUB_OUTPUT"; echo "beds=true (dispatch) $MATRIX"; exit 0
           fi
           BASE="${{ github.event.pull_request.base.sha || github.event.merge_group.base_sha }}"
           HEAD="${{ github.event.pull_request.head.sha || github.event.merge_group.head_sha }}"
+          # Read first: a diff that fails inside the loop's redirect would say no bed's file changed.
+          CHANGED=$(git diff --name-only "$(git merge-base "$BASE" "$HEAD")" "$HEAD")
           BEDS=false
           while IFS= read -r f; do
             case "$f" in
-              supabase/migrations/*|supabase/tests/*|scripts/pgtest-*|scripts/sql-beds.txt|.github/workflows/sql-beds.yml) BEDS=true ;;
+              supabase/migrations/*|supabase/tests/*|scripts/pgtest-*|scripts/sql-beds.txt|scripts/sql-beds-run.sh|.github/workflows/sql-beds.yml) BEDS=true ;;
             esac
-          done < <(git diff --name-only "$(git merge-base "$BASE" "$HEAD")" "$HEAD")
+          done <<< "$CHANGED"
           echo "beds=$BEDS" >> "$GITHUB_OUTPUT"
           echo "beds=$BEDS ($BASE...$HEAD) $MATRIX"
 
@@ -61,32 +73,33 @@ jobs:
     # A draft runs no beds: they run once the PR is marked ready (ready_for_review above) and in the queue.
     if: needs.changes.outputs.beds == 'true' && (github.event_name != 'pull_request' || github.event.pull_request.draft == false)
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # A leg took 12 to 16 minutes (2026-11-02). The wrapper stops any one bed at 20, so the worst leg is two rounds of those and the pull.
+    timeout-minutes: 45
     strategy:
       fail-fast: false
       matrix:
-        bed: ${{ fromJSON(needs.changes.outputs.matrix) }}
-    name: ${{ matrix.bed }}
+        leg: ${{ fromJSON(needs.changes.outputs.matrix) }}
+    name: leg ${{ matrix.leg.n }}
     steps:
       - name: Checkout
         uses: actions/checkout@v4
-      - name: ${{ matrix.bed }} against every migration
-        run: bash scripts/pgtest-${{ matrix.bed }}.sh
+      - name: Its beds against every migration, eight at a time
+        run: bash scripts/sql-beds-run.sh ${{ matrix.leg.beds }}
 
-  # The one check branch protection requires.
+  # The one check branch protection requires. It runs only to fail: a skipped job takes no runner and
+  # counts as passing, so a clean build never waits behind the backlog for a job of seconds (2026-11-02).
   sql-beds:
     needs: [changes, bed]
-    if: always()
+    # always() is what holds a red bed out: without a status function GitHub adds success(), a failed
+    # bed then skips this job, and a skip passes. !cancelled() would pass a cancelled run the same way.
+    if: >-
+      always() && !(needs.changes.result == 'success' &&
+      (needs.bed.result == 'success' ||
+      (needs.bed.result == 'skipped' && (needs.changes.outputs.beds == 'false' || github.event.pull_request.draft == true))))
     runs-on: ubuntu-latest
     steps:
-      - name: Every bed passed or was not needed
+      - name: A bed or the changes job did not pass
         shell: bash
         run: |
-          echo 'bed: ${{ needs.bed.result }} · changes: ${{ needs.changes.result }}'
-          case '${{ needs.bed.result }}' in
-            failure|cancelled) echo "a bed failed or was cancelled"; exit 1 ;;
-          esac
-          case '${{ needs.changes.result }}' in
-            failure|cancelled) echo "the changes job failed"; exit 1 ;;
-          esac
-          echo ok
+          echo 'bed: ${{ needs.bed.result }} · changes: ${{ needs.changes.result }} · beds wanted: ${{ needs.changes.outputs.beds }}'
+          exit 1

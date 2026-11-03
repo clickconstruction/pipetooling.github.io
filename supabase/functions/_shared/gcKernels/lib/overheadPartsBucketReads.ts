@@ -57,6 +57,7 @@ export async function readAccountingBucketByTxId(
         .order('mercury_transaction_id')
         .range(from, to),
     'load overhead accounting assignments',
+    { parallel: 4 },
   )) as Array<{ mercury_transaction_id: string; label_id: string }>
   if (assignments.length === 0) return new Map()
   const labelIds = [...new Set(assignments.map((a) => a.label_id))]

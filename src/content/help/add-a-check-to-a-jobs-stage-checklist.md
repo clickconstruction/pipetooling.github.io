@@ -12,6 +12,10 @@ A stage checklist is a short list of questions the crew answers on the phone for
 
 The office adds a check on any job. A superintendent adds one on their own jobs. An estimator adds one on the jobs they priced. The crew answers and leaves notes. The crew does not add.
 
+## Add a check from the Pipeline
+
+The Pipeline row has a checklist icon under **Edit**. Press it and the job's checklists open beside the row. Each stage shows its rows with the same presses as the sheet. The guide [see every checklist on the Pipeline](/help/see-every-checklist-on-the-pipeline) walks through it.
+
 ## Add a check from the sheet
 
 A superintendent or an estimator adds from the sheet. The office can too, once the stage has a question.

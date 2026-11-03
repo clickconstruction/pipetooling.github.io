@@ -1,0 +1,107 @@
+import { describe, expect, it } from 'vitest'
+import {
+  evidenceCountWords,
+  evidenceDraftProblem,
+  evidenceDrivePathWords,
+  evidenceDriveState,
+  evidenceDriveWords,
+  evidenceFolderName,
+  evidenceKindWords,
+  evidenceMime,
+  evidenceStoragePath,
+  evidenceTitleFromName,
+  sortEvidenceNewestFirst,
+  type PersonEvidenceFile,
+} from './personEvidence'
+
+const TODAY = '2026-11-02'
+const draft = { datedOn: '2026-10-29', title: 'Left a mess at the site', memo: 'Two photos from the GC the morning after.' }
+const file = (over: Partial<PersonEvidenceFile> = {}): PersonEvidenceFile => ({
+  id: 'f1',
+  evidence_id: 'r1',
+  entry_id: null,
+  filename: 'IMG_0412.jpg',
+  mime_type: 'image/jpeg',
+  size_bytes: 300_000,
+  storage_path: 'p/evidence/r1/f1-IMG_0412.jpg',
+  drive_file_id: null,
+  drive_url: null,
+  filed_at: null,
+  fail_why: null,
+  created_at: '2026-10-29T15:00:00Z',
+  ...over,
+})
+
+describe('evidenceDraftProblem · every piece is required', () => {
+  const one = [{ name: 'IMG_0412.jpg', size: 300_000 }]
+  it('passes a whole draft', () => {
+    expect(evidenceDraftProblem(draft, one, TODAY)).toBeNull()
+  })
+  it('names the missing piece, in order: the day, the title, the memo, a file', () => {
+    expect(evidenceDraftProblem({ ...draft, datedOn: '' }, one, TODAY)).toBe('Pick the day it is about.')
+    expect(evidenceDraftProblem({ ...draft, datedOn: '2026-11-03' }, one, TODAY)).toBe('The day it is about cannot be ahead of today.')
+    expect(evidenceDraftProblem({ ...draft, title: '  ' }, one, TODAY)).toBe('Give it a title.')
+    expect(evidenceDraftProblem({ ...draft, memo: '' }, one, TODAY)).toBe('Write a memo: what it shows and why it matters.')
+    expect(evidenceDraftProblem(draft, [], TODAY)).toBe('Add at least one file: a photo, a PDF, an email, a screenshot.')
+  })
+  it('holds an empty file and one over the cap, naming it', () => {
+    expect(evidenceDraftProblem(draft, [{ name: 'a.pdf', size: 0 }], TODAY)).toBe('a.pdf is empty.')
+    expect(evidenceDraftProblem(draft, [{ name: 'big.mov', size: 11 * 1024 * 1024 }], TODAY)).toMatch(/^big\.mov is over 10 MB\./)
+  })
+})
+
+describe('the Drive folder and the bucket path', () => {
+  it('names the folder by the day and the title, slashes gone, cut at 120', () => {
+    expect(evidenceFolderName({ dated_on: '2026-10-29', title: 'Left a mess / at the site' })).toBe('2026-10-29 · Left a mess at the site')
+    expect(evidenceFolderName({ dated_on: '2026-10-29', title: 'x'.repeat(200) }).length).toBe(120)
+  })
+  it('says where it will sit', () => {
+    expect(evidenceDrivePathWords('Pat Doe', { dated_on: '2026-10-29', title: 'Left a mess at the site' })).toBe('People › Pat Doe › 2026-10-29 · Left a mess at the site')
+    expect(evidenceDrivePathWords('', { dated_on: '2026-10-29', title: 'T' })).toBe('People › this person › 2026-10-29 · T')
+  })
+  it('stages under the person, the record and the file id, with a safe name', () => {
+    expect(evidenceStoragePath('p1', 'r1', 'f1', 'IMG 0412 (final).jpg')).toBe('p1/evidence/r1/f1-IMG 0412 _final_.jpg')
+  })
+})
+
+describe('kinds and titles', () => {
+  it('reads the mime from the browser, else the name, else a plain file', () => {
+    expect(evidenceMime({ type: 'image/heic', name: 'x' })).toBe('image/heic')
+    expect(evidenceMime({ type: '', name: 'thread.eml' })).toBe('message/rfc822')
+    expect(evidenceMime({ type: '', name: 'memo' })).toBe('application/octet-stream')
+  })
+  it('words a kind', () => {
+    expect(evidenceKindWords('application/pdf')).toBe('PDF')
+    expect(evidenceKindWords('image/png')).toBe('Photo')
+    expect(evidenceKindWords('message/rfc822')).toBe('Email')
+    expect(evidenceKindWords('application/vnd.openxmlformats-officedocument.wordprocessingml.document')).toBe('Word')
+    expect(evidenceKindWords('audio/mp4')).toBe('Audio')
+    expect(evidenceKindWords(null)).toBe('File')
+  })
+  it('starts the title from the first file', () => {
+    expect(evidenceTitleFromName('2026-03-01_Sunbelt_Statement.pdf')).toBe('2026-03-01 Sunbelt Statement')
+  })
+})
+
+describe('where a record stands with Drive', () => {
+  it('filed when every file carries a Drive id; partly, waiting or held otherwise', () => {
+    const filed = { fail_why: null, filed_at: '2026-10-29T16:00:00Z', files: [file({ drive_file_id: 'd1' }), file({ id: 'f2', drive_file_id: 'd2' })] }
+    expect(evidenceDriveState(filed)).toBe('filed')
+    expect(evidenceDriveWords(filed)).toBe('In Drive')
+    const partly = { fail_why: null, filed_at: null, files: [file({ drive_file_id: 'd1' }), file({ id: 'f2' })] }
+    expect(evidenceDriveWords(partly)).toBe('1 of 2 files in Drive')
+    expect(evidenceDriveWords({ fail_why: null, filed_at: null, files: [file()] })).toBe('On its way to Drive')
+    expect(evidenceDriveWords({ fail_why: 'The People folder is not set yet.', filed_at: null, files: [file()] })).toBe('Not in Drive: The People folder is not set yet.')
+  })
+  it('sorts newest day first, then newest written, and counts the view', () => {
+    const rows = [
+      { id: 'a', dated_on: '2026-10-01', created_at: '2026-10-01T10:00:00Z', fail_why: null, filed_at: null, files: [file({ drive_file_id: 'd' })] },
+      { id: 'b', dated_on: '2026-10-29', created_at: '2026-10-29T10:00:00Z', fail_why: null, filed_at: null, files: [file(), file({ id: 'f2' })] },
+      { id: 'c', dated_on: '2026-10-29', created_at: '2026-10-29T12:00:00Z', fail_why: null, filed_at: null, files: [file({ drive_file_id: 'd' })] },
+    ]
+    expect(sortEvidenceNewestFirst(rows).map((r) => r.id)).toEqual(['c', 'b', 'a'])
+    expect(evidenceCountWords(rows)).toBe('3 pieces of evidence, 4 files. 1 not in Drive yet.')
+    expect(evidenceCountWords([rows[0]!])).toBe('1 piece of evidence, 1 file.')
+    expect(evidenceCountWords([])).toBe('')
+  })
+})
