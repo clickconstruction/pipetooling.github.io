@@ -18211,6 +18211,70 @@ export type Database = {
           },
         ]
       }
+      job_charge_adjustments: {
+        Row: {
+          amount: number | null
+          created_at: string
+          id: string
+          job_id: string
+          kind: string
+          made_by: string | null
+          reason: string
+          reverted_at: string | null
+          reverted_by: string | null
+          shape: string | null
+          target: string
+        }
+        Insert: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          job_id: string
+          kind: string
+          made_by?: string | null
+          reason?: string
+          reverted_at?: string | null
+          reverted_by?: string | null
+          shape?: string | null
+          target: string
+        }
+        Update: {
+          amount?: number | null
+          created_at?: string
+          id?: string
+          job_id?: string
+          kind?: string
+          made_by?: string | null
+          reason?: string
+          reverted_at?: string | null
+          reverted_by?: string | null
+          shape?: string | null
+          target?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "job_charge_adjustments_job_id_fkey"
+            columns: ["job_id"]
+            isOneToOne: false
+            referencedRelation: "jobs_ledger"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_charge_adjustments_made_by_fkey"
+            columns: ["made_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "job_charge_adjustments_reverted_by_fkey"
+            columns: ["reverted_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       job_collect_payment_flows: {
         Row: {
           certified_at: string | null
