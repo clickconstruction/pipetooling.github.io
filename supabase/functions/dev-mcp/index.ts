@@ -4,8 +4,9 @@ import { CATALOG_RPCS, CATALOG_TABLES, EDGE_FUNCTIONS } from './catalog.ts'
 import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRowsQuery, buildRpcQuery, isSafeIdent, redactSecrets, replyText, searchNames } from '../_shared/devMcpDoor.ts'
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
 import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
-import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
+import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../_shared/appTimeZone.ts'
 import { getPersonFile } from '../_shared/devMcpPersonFile.ts'
+import { PERSON_REPORT_SELECT, personReportAppliedWords, personReportDryRun, personReportRpc, type PersonReportPayload, type PersonReportRow } from '../_shared/devMcpPersonReport.ts'
 import { EVIDENCE_MAX_FILES, WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, stateGuarded, writeRpcBody } from '../_shared/devMcpWrites.ts'
 import { EVIDENCE_FILE_MAX_BYTES, evidenceMime, evidenceStoragePath } from '../_shared/personEvidence.ts'
 import { getHoursStatement, hoursStatementClockLabel, prepareHoursStatementWrite, sendHoursStatementAsDev, type HoursStatementPrepared } from '../_shared/devMcpHoursStatement.ts'
@@ -38,12 +39,13 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // matter's Timeline v2.6244 / 0.13.0; a set of drawings or a paper on a plan part v2.6317 / 0.14.0; Materials on site's
 // presses v2.6367 / 0.16.0, behind the file index's 0.15.0, punch list #209; a piece of evidence on a person's HR file
 // v2.6426 / 0.18.0, behind get_person_file's 0.17.0; clock sessions — the start and the end, the description, the job, the
-// approval — v2.6437 / 0.19.0; a signed hours statement made, sent and filed on a matter v2.6414 / 0.20.0, punch list #212)
-// are a SECOND path, not a loosening of the first: thirty-nine verbs
+// approval — v2.6437 / 0.19.0; a signed hours statement made, sent and filed on a matter v2.6414 / 0.20.0, punch list #212; a waiting field report filed or dismissed v2.6430 / 0.21.0)
+// are a SECOND path, not a loosening of the first: forty-one verbs
 // (_shared/devMcpWrites.ts) — thirty-five POST one of fourteen hard-coded, dev-gated RPCs as the dev (dev_on_site_write the
 // one SECURITY INVOKER wrapper, so the rows land under the dev's own RLS); the four plan-part verbs (v2.6317) write the rows
 // the job window's Plans section writes (plan_sets, plan_parts, a lane's request) as the dev under the same RLS, since no
-// RPC exists for them —
+// RPC exists for them; and the two report verbs (v2.6430) POST the HR queue's own file_person_report /
+// dismiss_person_report after the server's own read of the report —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table the agent names, never through view_as. One more
 // (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
@@ -59,11 +61,14 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // A piece of evidence on that file (v2.6426 / 0.18.0): plan_person_evidence → apply_person_evidence, the record and its
 // files (content_base64, each a name, mime, size and sha256 before the dry run) through dev_person_evidence_write; apply
 // stages the files in the hr-files bucket as the dev before the rows and asks hr-evidence-drive after them, fail-soft.
+// A waiting field report (v2.6430 / 0.21.0): plan_person_report → apply_person_report file it onto the person's file as
+// the entry it becomes, or dismiss it with a reason, through the HR queue's own file_person_report / dismiss_person_report
+// — no wrapper: the dry run is this server's read of the report, hashed with the ask (_shared/devMcpPersonReport.ts).
 //
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.20.0'
+const SERVER_VERSION = '0.21.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -213,6 +218,16 @@ const TOOLS: McpTool[] = [
     name: 'apply_person_evidence',
     description: 'Keep the evidence you planned: the same evidence plus the plan_hash from plan_person_evidence. Runs the dry run again first and writes only when it still matches. Stages each file in the private hr-files bucket as you, writes the record and its file rows as you (append-only: a correction is a new record), then asks hr-evidence-drive to file the record into the People Shared Drive — fail-soft: a refusal leaves the record standing as not in Drive, and the sweep tries again every ten minutes while a file waits. One apply per plan.',
     inputSchema: { type: 'object', properties: { evidence: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['evidence', 'plan_hash'] },
+  },
+  {
+    name: 'plan_person_report',
+    description: "Dry-run filing or dismissing a waiting field report (the queue at the top of People → HR and the waiting line on a person's Timeline; docs/HR_FILES.md → Pending reports). Replies with the report as it stands (its day, who wrote it, their words, the person), the HR entry as file_person_report would write it — dated the day it happened, source report unless you say otherwise, the reporter as author, the RPC's own preamble around their words unless you pass tightened content — or the dismissal with its reason, and a plan_hash. Nothing is written. A report already filed or dismissed is refused in words. The queue: read_rows on person_reports with status eq pending, oldest first; a person's waiting reports: get_person_file.",
+    inputSchema: { type: 'object', properties: { report: { type: 'object', description: "{ report_id (a person_reports.id), action: 'file' | 'dismiss'; file: content? (the entry's words when you tighten them — keep the author's facts), source? (report when left out); dismiss: reason (required, kept on the report) }" } }, required: ['report'] },
+  },
+  {
+    name: 'apply_person_report',
+    description: "File or dismiss the report you planned: the same report plus the plan_hash from plan_person_report. Reads the report again first and writes only when it still stands as planned — a report filed, dismissed or edited since refuses; plan again. Filing appends the append-only HR entry and marks the report filed with the entry's id through file_person_report; dismissing keeps the report with its reason, off the queue, through dismiss_person_report. Written as you; the author sees the status on their Dashboard card. Fold a filed entry into the summary afterwards with plan_hr_entry.",
+    inputSchema: { type: 'object', properties: { report: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['report', 'plan_hash'] },
   },
   {
     name: 'plan_matter_narrative',
@@ -441,7 +456,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are thirty-nine verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64 — staged in hr-files and filed into the People Shared Drive), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil and plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels; get_person_file reads a person's HR file whole — the Timeline's lines in their lanes by month, the fact chips, the evidence records and the summary and narrative — as People → HR draws it (the HR sources are dev-only). view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are forty-one verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_person_evidence → apply_person_evidence (a piece of evidence on a person's HR file — the day it is about, a title, a memo and its files as content_base64 — staged in hr-files and filed into the People Shared Drive), plan_person_report → apply_person_report (a waiting field report filed onto a person's HR file as the entry it becomes, or dismissed with a reason, through the queue's own RPCs), plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil and plan_hours_statement → apply_hours_statement (a signed hours statement — one worker's recorded hours on one job for a period, the paper they sign for a case over an unpaid bill — made as the Hours statement window makes it from the same reads and kernel get_hours_statement answers with, you named as the preparer; send: { how: email | link } then draws the form and mints the signing link, which is handed back to you and never written to the call log; action file_on_matter copies a signed one's PDF onto a legal matter's Evidence tab as the Legal desk's Add to evidence does) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. plan_clock_sessions → apply_clock_sessions (v2.6437) adjusts clock sessions as the office does: the start and the end, the description, the job, and the approval, op by op in one call, each op reported applied, held or refused with its reason; the typed-hours second look and the approval guard hold as in the app, so your own session and the hours you typed wait for someone else. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -1053,6 +1068,41 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         const message = e instanceof Error ? e.message : String(e)
         return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
       }
+    }
+    case 'plan_person_report':
+    case 'apply_person_report': {
+      // v2.6430: file or dismiss a waiting field report through the HR queue's own RPCs (file_person_report /
+      // dismiss_person_report, is_dev() OR hr_agent), in the seat's grammar. No wrapper RPC: the dry run is this server's
+      // read of the report as the dev (devMcpPersonReport.ts), hashed with the ask; apply reads it again and POSTs the RPC
+      // the kernel names only when the hash still matches — a report filed, dismissed or edited since refuses. Never as
+      // anyone else.
+      if (who.role !== 'dev') return refused(`${name} writes, and only a dev's own key may write.`)
+      const built = writeRpcBody(name, args)
+      if (!built.ok) return refused(built.error)
+      const session = await jwt()
+      const p = built.body.p as PersonReportPayload
+      const fail = (status: number, body: unknown): Outcome => {
+        const message = restError(status, body)
+        return { log: { status: 'error', target: built.target, error: message }, text: message, isError: true }
+      }
+      const res = await restGet(session, 'person_reports', `select=${PERSON_REPORT_SELECT}&id=eq.${p.report_id}&limit=1`)
+      if (!res.ok) return fail(res.status, res.body)
+      const report = (Array.isArray(res.body) ? res.body[0] : undefined) as PersonReportRow | undefined
+      if (!report) return refused(`No report ${p.report_id} — not a person_reports.id, or RLS hides it from you. read_rows on person_reports with status eq pending lists the queue.`, { target: built.target })
+      const personRes = await restGet(session, 'people', `select=id,name&id=eq.${report.subject_person_id}&limit=1`)
+      const person = personRes.ok && Array.isArray(personRes.body) ? ((personRes.body[0] as { id: string; name: string } | undefined) ?? null) : null
+      const dry = personReportDryRun(p, report, person, calendarYmdInAppTzFromIso)
+      if (!dry.ok) return refused(dry.refused, { target: built.target })
+      const fresh = await planHash(name, p, dry.reply)
+      if (built.step === 'plan') return ok(planReply(name, dry.reply, fresh), { target: built.target })
+      if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
+      const prior = await hooks.priorApply(name, fresh)
+      if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
+      const call = personReportRpc(p)
+      const out = await restPost(session, `rpc/${call.rpc}`, call.body)
+      if (!out.ok) return fail(out.status, out.body)
+      const reply = (redactSecrets(out.body) ?? {}) as Record<string, unknown>
+      return ok({ ...reply, action: p.action, report_id: p.report_id, person: person ?? { id: report.subject_person_id, name: '' }, next: personReportAppliedWords(p, reply, person?.name ?? '') }, { target: built.target })
     }
     case 'read_file_index_status': {
       // v2.6332 (punch list #240, PR 2): one GET of the dev-gated RPC as you; the reading line opens the reply.
