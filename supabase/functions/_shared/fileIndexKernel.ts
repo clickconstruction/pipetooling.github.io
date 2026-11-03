@@ -89,8 +89,8 @@ export type FileHome =
 /** A home keyed by one of its folders; `via` names the folder when it is not the home's own (Plans, Customer Pictures). */
 export type HomeAt = { home: FileHome; via: string | null }
 
-/** How many folders up a walk climbs before giving up on a home. */
-export const WALK_MAX = 8
+/** How many folders up a walk climbs before giving up on a home. A plan export sat nine down, past the old eight (v2.6403). */
+export const WALK_MAX = 16
 
 /**
  * Climbs a file's folders until one is a home or the jobs root, naming the folders between (top down). `metaOf` reads

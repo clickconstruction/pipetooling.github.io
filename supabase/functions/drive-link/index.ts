@@ -15,6 +15,7 @@ import { EXCERPT_READ_MS, INDEX_JOB_MAX_FILES, walkUp, type DriveFileMeta, type 
 import { publicViewDecision } from '../_shared/publicViewCounting.ts'
 import { sha256Hex } from '../_shared/gcTradeLink.ts'
 import { indexCheck } from '../_shared/fileIndexCheck.ts'
+import { rehomeFiles } from '../_shared/fileIndexRehome.ts'
 import {
   DRIVE_FOLDER_MIME,
   STREAM_CAP_BYTES,
@@ -74,6 +75,8 @@ import {
  *                                                        counts of files with no row, files changed since their row, rows the
  *                                                        listing did not show, rows with and without text by reason, and the
  *                                                        first `sample` files with no row → IndexCheck; a read, a dev's door
+ *   POST { action: 'index_home', driveFileIds }      → these files' rows walked up to their job or bid again, up to 40 a call, nothing
+ *                                                        read out of the files (v2.6403) → { homed, none, unanswered, failed }; a dev's door
  *   POST { action: 'link', job, driveFileId, messageId } → our link to a file inside the job's folder → { linkId, url }
  *   POST { action: 'save', attachmentId, half }          → a file that came in, from our bucket into the job's folder →
  *                                                        { driveFileId, url }; the row keeps drive_file_id. A photo goes
@@ -361,6 +364,15 @@ async function officeDoor(req: Request, admin: SupabaseClient): Promise<Response
     const ctx = await indexContext(admin, google)
     if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
     return json(await indexCheck(ctx, { max: ask.max, sample: ask.sample }))
+  }
+
+  // A row's home again (punch list #240, v2.6403): walked up from the folders as they stand, written on the row, nothing
+  // read out of the file and nothing written to Drive; a dev's door.
+  if (ask.action === 'index_home') {
+    if (String(who.role) !== 'dev') return json({ error: 'Setting a row’s home again is a dev’s door.' }, 403)
+    const ctx = await indexContext(admin, google)
+    if ('noRoot' in ctx) return json({ error: NO_ROOT_WORDS }, 409)
+    return json(await rehomeFiles(ctx, ask.driveFileIds))
   }
 
   if (ask.action === 'index') {
