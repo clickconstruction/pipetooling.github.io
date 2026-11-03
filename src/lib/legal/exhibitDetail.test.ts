@@ -28,6 +28,16 @@ const source = (over: Partial<ExhibitSource> = {}): ExhibitSource => ({
 })
 
 describe('exhibitDetails', () => {
+  it('signed hours statements (v2.6413): under D with the field evidence, on the Evidence tab, one line per signed statement', () => {
+    const d = exhibitDetails(source({
+      exhibits: [{ letter: 'A', title: 'Invoices and payments', count: 3 }, { letter: 'B', title: 'Field reports and clock sessions', count: 7 }, { letter: 'C', title: 'Signed hours statements', count: 1 }],
+      evidence: [{ jobLabel: '717', reports: 3, sessions: 4, hours: 12.4, statements: [{ recordId: 'HS-717-0001', workerName: 'Marcus Reyes', hours: 118.5, periodLabel: 'April 1 – April 30, 2026', signed: true, matterDocumentId: 'ld-1' }, { recordId: 'HS-717-0002', workerName: 'Lena Ortiz', hours: 40, periodLabel: 'May', signed: false, matterDocumentId: null }] }],
+    }))
+    const x = d.find((e) => e.title === 'Signed hours statements')!
+    expect([x.section, x.tab, x.letter]).toEqual(['D · Field evidence', 'evidence', 'C'])
+    expect(x.lines).toEqual(['717 · HS-717-0001 · Marcus Reyes · 118.5 h · April 1 – April 30, 2026 · on the matter'])
+  })
+
   it('letters each exhibit the way the firm’s packet does, names its tab, and lists what is inside', () => {
     const d = exhibitDetails(source())
     expect(d.map((x) => [x.section, x.tab])).toEqual([

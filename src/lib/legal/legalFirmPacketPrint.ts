@@ -85,6 +85,8 @@ export function buildFirmPacketPrintHtml(packet: LegalPacket, opts: FirmPacketPr
   // C. Record of contact — D. Evidence — E. Fees and steps
   const saidRows = shared.map((e) => row([`<span class="date">${esc(e.ymd)}</span>`, esc(firmSaidKindWords(e.kind)), esc(e.jobLabel ?? 'account'), esc(e.text), esc(firmSaidRecordedBy(e))]))
   const evidenceRows = packet.evidence.map((e) => row([`<b>${esc(e.jobLabel)}</b>`, `${e.reports} (${e.reportsWithGps} with GPS)`, esc(legalSessionWords(e)), `${e.hours}h`, e.firstWorkYmd ? `${esc(e.firstWorkYmd)} to ${esc(e.lastWorkYmd)}` : '—', String(e.threadNotes)], [false, false, false, true, false, true]))
+  // v2.6413 (punch list #212 PR 4): the signed hours statements, one row each; the copy on the matter is listed with the documents below.
+  const statementRows = packet.evidence.flatMap((e) => (e.statements ?? []).filter((x) => x.signed).map((x) => row([`<b>${esc(e.jobLabel)}</b>`, esc(x.recordId), esc(x.workerName), esc(x.periodLabel), `${x.hours}h`, x.statedDays ? `${x.statedDays} stated by the worker` : '', x.matterDocumentId ? 'with the documents below' : 'not on the matter yet'], [false, false, false, false, true, false, false])))
   const feeRows = fees.map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(firmFeeKindWords(e.kind)), esc(e.body), formatLegalMoney(Number(e.amount ?? 0))], [false, false, false, true]))
   const feeFoot = `<tr><td colspan="3"><b>Fees and costs to date</b></td><td class="num"><b>${formatLegalMoney(feesTotal)}</b></td></tr>`
   const matterRows = opts.matter.entries.filter((e) => !(e.kind === 'fee' || e.kind === 'cost') && e.kind !== 'plan' && e.kind !== 'statement' && !e.voided_at).map((e) => row([`<span class="date">${esc(e.occurred_on)}</span>`, esc(firmEntryKindWords(e)), esc(e.body), e.amount != null && e.kind !== 'question' && e.kind !== 'answer' ? formatLegalMoney(Number(e.amount)) : '', e.via_portal ? esc(opts.firm.name) : esc(opts.companyName)], [false, false, false, true, false]))
@@ -192,6 +194,7 @@ ${opts.matter.heldCount ? `<p class="muted">${opts.matter.heldCount} entr${opts.
 ${table(['Date', 'Kind', 'Job', 'What was said', 'Recorded by'], saidRows, 'No contact on record.')}
 <h2><span class="sec">D</span> Field evidence</h2>
 ${table(['Job', 'Field reports', 'Clock sessions', 'Hours', 'Worked', 'Job notes'], evidenceRows, 'No jobs.')}
+${statementRows.length ? `<h3>Signed hours statements</h3>\n${table(['Job', 'Record', 'Worker', 'Period', 'Hours', 'Stated days', 'Copy'], statementRows, 'None.')}` : ''}
 ${docs.length || heldDocs ? `<h3>Documents from the office${docs.length ? ` (Exhibit ${docLetter})` : ''}</h3>\n${table(['Document', 'What it shows', 'Added'], documentRows, 'None shown.')}${heldDocs ? `<p class="muted">The office held back ${heldDocs} document${heldDocs === 1 ? '' : 's'}.</p>` : ''}` : ''}
 <h2><span class="sec">E</span> Fees, costs and steps</h2>
 <h3>${esc(opts.firm.name)}'s fees and costs</h3>
@@ -216,6 +219,6 @@ export function exhibitHome(title: string): string {
   if (t.startsWith('final demand')) return 'B · Final demand letters'
   if (t.startsWith('lien notices')) return 'B · Notices, affidavits and releases'
   if (t.startsWith('what was said')) return 'C · Record of contact'
-  if (t.startsWith('field reports')) return 'D · Field evidence'
+  if (t.startsWith('field reports') || t.startsWith('signed hours')) return 'D · Field evidence'
   return ''
 }

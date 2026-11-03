@@ -35,7 +35,33 @@ function linkedStatementsOf(entries: ReadonlyArray<EntryLike>): Record<string, s
   }
   return out
 }
-import { openLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { addLegalMatterDocument, openLegalMatterDocument, retireLegalMatterDocument, type LegalMatterDocumentRow } from '../../../lib/legal/legalMatterDocumentsIo'
+import { useAuth } from '../../../hooks/useAuth'
+import { usePeopleAccess } from '../../../hooks/usePeopleAccess'
+import { useToastContext } from '../../../contexts/ToastContext'
+import { formatErrorMessage } from '../../../utils/errorHandling'
+import { canMakeHoursStatement } from '../../../lib/people/hoursStatementAccess'
+import { setHoursStatementMatterDocument } from '../../../lib/people/hoursStatementsIo'
+import { supabaseHoursStatementSigningIo } from '../../../lib/people/hoursStatementSigningIo'
+import { addHoursStatementToEvidence, hoursStatementOnMatterWords, type HoursStatementEvidenceIo } from '../../../lib/legal/hoursStatementEvidence'
+import { HoursStatementModal } from '../HoursStatementModal'
+import { LegalEvidenceStatementsBand, type LegalEvidenceStatementsActs } from './LegalEvidenceStatementsBand'
+
+/** The Hours statement window over the desk (v2.6413): the desk's layer (760) plus the window step its own windows take. */
+const STATEMENT_WINDOW_Z = 772
+
+/** Add to evidence's calls (v2.6413): the signed PDF through its gate, the desk's own add, the statement tied to the copy. */
+const EVIDENCE_IO: HoursStatementEvidenceIo = {
+  signedPdfUrl: (id) => supabaseHoursStatementSigningIo.openSignedPdf(id),
+  fetchBytes: async (url) => {
+    const res = await fetch(url)
+    if (!res.ok) throw new Error(`The signed PDF could not be read (${res.status}).`)
+    return await res.blob()
+  },
+  addDocument: (matterId, draft, file) => addLegalMatterDocument(supabase, matterId, { title: draft.title, shows: draft.shows, datedOn: draft.datedOn ?? undefined, state: draft.state }, file),
+  linkStatement: (id, docId) => setHoursStatementMatterDocument(id, docId),
+  retireDocument: (docId) => retireLegalMatterDocument(supabase, docId),
+}
 import { supabase } from '../../../lib/supabase'
 import { EVIDENCE_LANDING_GONE_WORDS } from '../../../lib/legal/evidenceLanding'
 
@@ -86,13 +112,45 @@ export type DocumentsPanel = { matterId: string; list: ReadonlyArray<LegalMatter
 /** The Timeline tab (v2.5800): the matter's holds (a planned step held back reads held) and the office's acts, null when read only. */
 export type PlanActs = { holds: Record<string, boolean>; holdReasons: Record<string, string>; acts: TimelinePlanActs | null }
 
-export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void }) {
+export function PacketTab({ tab, onTab, packet, selected, props, openEditCustomer, curation: _curation, entries, officeActs, documents = null, narrative = null, busy = false, planActs = null, onShowOnEvidence, evidenceDoc = null, onEvidenceLanded, onStatementsChanged }: { tab: Tab; onTab?: (t: Tab) => void; packet: LegalPacket; selected: LegalAccountSummary; props: LegalDeskProps; openEditCustomer: () => void; curation: Curation; entries: EntryLike[]; officeActs: OfficeActs; documents?: DocumentsPanel; /** v2.4812. */ narrative?: NarrativeDesk | null; busy?: boolean; /** v2.5800. */ planActs?: PlanActs | null; /** v2.6166: the Evidence tab opened on a document's row, lit. */ onShowOnEvidence?: (documentId: string) => void; /** v2.6166: the row the Evidence tab lands on, from the address. */ evidenceDoc?: string | null; /** v2.6166: the landed row was pressed. */ onEvidenceLanded?: () => void; /** v2.6413 (punch list #212 PR 4): the packet read again after a statement is asked for or put on the matter. */ onStatementsChanged?: () => void }) {
   const a = packet.account
   const jobOf = (id: string) => selected.jobs.find((j) => j.id === id) ?? null
   const first = selected.jobs[0] ?? null
   // A stop as evidence (v2.4800): the timeline stop whose window is open on the Paper tab, per job; the copy button's label while the record is on the clipboard.
   const [stop, setStop] = useState<{ jobId: string; index: number } | null>(null)
   const [copied, setCopied] = useState(false)
+  // Signed hours statements on the Evidence tab (v2.6413, punch list #212 PR 4): Ask… opens the window on the job with
+  // the worker picked; Add to evidence copies the signed PDF onto the matter.
+  const { user, role } = useAuth()
+  const { showToast } = useToastContext()
+  const access = usePeopleAccess(user?.id)
+  const maker = { role, canAccessPay: access.canAccessPay }
+  const canAskStatement = canMakeHoursStatement(maker)
+  const [askFor, setAskFor] = useState<{ jobId: string; userId: string | null } | null>(null)
+  const [evidenceBusy, setEvidenceBusy] = useState<string | null>(null)
+  const statementActs: LegalEvidenceStatementsActs | null = canAskStatement
+    ? {
+        busy: evidenceBusy,
+        ask: (jobId, userId) => setAskFor({ jobId, userId }),
+        showOnEvidence: (docId) => onShowOnEvidence?.(docId),
+        addToEvidence: (jobId, statementId) => {
+          const e = packet.evidence.find((x) => x.jobId === jobId)
+          const st = e?.statements.find((x) => x.id === statementId)
+          if (!e || !st || !documents?.matterId || evidenceBusy) return
+          setEvidenceBusy(statementId)
+          void addHoursStatementToEvidence(EVIDENCE_IO, { matterId: documents.matterId, statement: st, job: { label: e.jobLabel, site: e.jobSite } })
+            .then(() => {
+              showToast(hoursStatementOnMatterWords(st.recordId), 'success')
+              documents.reload()
+              onStatementsChanged?.()
+            })
+            .catch((err: unknown) => showToast(formatErrorMessage(err, 'The statement was not added to the matter.'), 'error'))
+            .finally(() => setEvidenceBusy(null))
+        },
+      }
+    : null
+  const askJob = askFor ? jobOf(askFor.jobId) : null
+  const askScope = askJob ? { kind: 'job' as const, job: { id: askJob.id, number: (askJob.hcp_number ?? '').trim() || (askJob.click_number ?? '').trim() || askJob.id.slice(0, 8), name: (askJob.job_name ?? '').trim() || 'Unnamed job', customer: askJob.customer_name ?? null, site: (askJob.job_address ?? '').trim() } } : null
   // Supply houses on the account's jobs (punch list #175, v2.5835): the Lien window's read, fetched only while Paper is open.
   const supplierJobIds = useMemo(() => a.jobs.map((j) => j.jobId), [a.jobs])
   const suppliers = useLienJobSuppliers(supplierJobIds, tab === 'paper')
@@ -259,8 +317,12 @@ export function PacketTab({ tab, onTab, packet, selected, props, openEditCustome
               {e.driveLink ? <a href={e.driveLink} target="_blank" rel="noreferrer" style={{ fontSize: '0.78rem' }}>Drive ↗</a> : null}
               {!e.picturesLink && !e.driveLink ? <span style={MUTED}>—</span> : null}
             </span>,
-          ])} empty="No jobs." />
-        <p style={{ ...MUTED, fontSize: '0.78rem', marginTop: 10 }}>Only approved clock sessions count: hours, days worked, the sworn-account check and the lien dates read them. Rejected and revoked sessions are left out; the rest show as awaiting approval. A sworn account needs at least one report or session carrying GPS on the property.</p>
+          ])} empty="No jobs."
+          subRows={packet.evidence.map((e) => (
+            <LegalEvidenceStatementsBand key={e.jobId} job={e} firstRecordedDay={packet.firstRecordedDay} matter={{ id: documents?.matterId ?? null, canEdit: Boolean(documents?.canEdit) }} canAsk={canAskStatement} acts={statementActs} />
+          ))} />
+        <p style={{ ...MUTED, fontSize: '0.78rem', marginTop: 10 }}>Only approved clock sessions count: hours, days worked, the sworn-account check and the lien dates read them. Rejected and revoked sessions are left out; the rest show as awaiting approval. A sworn account needs at least one report or session carrying GPS on the property. A signed hours statement under a job is the worker's own paper on those hours; Add to evidence puts its signed copy with the documents the firm reads.</p>
+        {askScope ? <HoursStatementModal open scope={askScope} maker={maker} initialUserId={askFor?.userId ?? null} zIndex={STATEMENT_WINDOW_Z} onClose={() => { setAskFor(null); onStatementsChanged?.() }} /> : null}
       </div>
     )
   }

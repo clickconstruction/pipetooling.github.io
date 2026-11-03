@@ -18,6 +18,8 @@ import {
   sortAccountsByNet,
   type LegalAccountSummary,
   type LegalPacketInput,
+  legalGapJobWords,
+  legalStatementsWords,
 } from './legalPacket'
 import { buildLegalPacketPrintHtml } from './legalPacketPrint'
 
@@ -194,6 +196,43 @@ describe('buildLegalPacket', () => {
       ['C', 'What was said — contacts, promises, calls'],
       ['D', 'Field reports and clock sessions'],
     ])
+  })
+
+  it('signed hours statements (v2.6413): the workers who clocked, the statements under the job, a lettered exhibit for the signed ones, and a gap job', () => {
+    const sessions = [
+      { ...gpsSession('job-a', '2026-04-02'), userId: 'u-marcus', userName: 'Marcus Reyes' },
+      { ...gpsSession('job-a', '2026-04-03'), userId: 'u-marcus', userName: 'Marcus Reyes' },
+      { ...gpsSession('job-a', '2026-04-03'), userId: 'u-lena', userName: 'Lena Ortiz' },
+      { ...gpsSession('job-a', '2026-04-04'), userId: 'u-lena', userName: 'Lena Ortiz', approved: false },
+    ]
+    const statements = [
+      { id: 'hs-1', jobId: 'job-a', userId: 'u-marcus', workerName: 'Marcus Reyes', recordId: 'HS-717-0001', state: 'signed', periodStart: '2026-04-01', periodEnd: '2026-04-30', withPay: true, hours: 118.5, statedDays: 0, signedOn: '2026-05-02', contractDocumentId: 'doc-1', matterDocumentId: null },
+      { id: 'hs-2', jobId: 'job-a', userId: 'u-lena', workerName: 'Lena Ortiz', recordId: 'HS-717-0002', state: 'sent', periodStart: '2025-09-15', periodEnd: '2026-04-30', withPay: false, hours: 40, statedDays: 2, signedOn: null, contractDocumentId: 'doc-2', matterDocumentId: null },
+    ]
+    const p = buildLegalPacket(baseInput(account, { ...withEvidence, clockSessions: sessions, hoursStatements: statements, firstRecordedDay: '2026-03-12' }))
+    const a = p.evidence.find((e) => e.jobId === 'job-a')!
+    expect(a.workers).toEqual([{ userId: 'u-marcus', name: 'Marcus Reyes', sessions: 2 }, { userId: 'u-lena', name: 'Lena Ortiz', sessions: 1 }])
+    expect(a.statements.map((x) => [x.recordId, x.signed, x.periodLabel])).toEqual([
+      ['HS-717-0002', false, 'September 15, 2025 – April 30, 2026'],
+      ['HS-717-0001', true, 'April 1 – April 30, 2026'],
+    ])
+    expect(a.beforeTheApp).toBe(false)
+    expect(legalStatementsWords(a.statements)).toBe('1 signed · 1 waiting for a signature')
+    expect(legalStatementsWords([])).toBe('Nothing signed here yet.')
+    const titles = p.exhibits.map((e) => e.title)
+    expect(titles.indexOf('Signed hours statements')).toBe(titles.indexOf('Field reports and clock sessions') + 1)
+    expect(p.exhibits.find((e) => e.title === 'Signed hours statements')?.count).toBe(1)
+    // A gap job: nothing clocked and the work before the app's first day.
+    const old = makeJob({ id: 'job-old', hcp_number: '600', customer_id: 'cust-1', customer_name: 'Owner', last_work_date: '2025-08-20', created_at: '2025-08-01T00:00:00Z' })
+    const gapAccount = { ...account, jobs: [...account.jobs, old] }
+    const q = buildLegalPacket(baseInput(gapAccount, { ...withEvidence, clockSessions: sessions, hoursStatements: [], firstRecordedDay: '2026-03-12' }))
+    expect(q.evidence.find((e) => e.jobId === 'job-old')?.beforeTheApp).toBe(true)
+    expect(q.evidence.find((e) => e.jobId === 'job-a')?.beforeTheApp).toBe(false)
+    expect(legalGapJobWords('2026-03-12')).toBe('Nothing clocked here. The app recorded nothing before March 12, 2026, so a statement for this job would be the worker’s own, not the company’s record.')
+    // Without the first day, no job reads as one.
+    const r = buildLegalPacket(baseInput(gapAccount, { ...withEvidence, clockSessions: sessions }))
+    expect(r.evidence.every((e) => !e.beforeTheApp)).toBe(true)
+    expect(r.exhibits.map((e) => e.title)).not.toContain('Signed hours statements')
   })
 
   it('worth: balance after the cut and cost, flags from the notes, and a "no money" note is never worth it', () => {
