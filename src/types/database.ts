@@ -17466,6 +17466,9 @@ export type Database = {
       }
       hours_statements: {
         Row: {
+          basis: string
+          charge_rate: number | null
+          charge_words: string | null
           contract_document_id: string | null
           created_at: string
           gap_from: string | null
@@ -17489,6 +17492,9 @@ export type Database = {
           with_pay: boolean
         }
         Insert: {
+          basis?: string
+          charge_rate?: number | null
+          charge_words?: string | null
           contract_document_id?: string | null
           created_at?: string
           gap_from?: string | null
@@ -17512,6 +17518,9 @@ export type Database = {
           with_pay?: boolean
         }
         Update: {
+          basis?: string
+          charge_rate?: number | null
+          charge_words?: string | null
           contract_document_id?: string | null
           created_at?: string
           gap_from?: string | null
