@@ -60,8 +60,8 @@ describe('who sees what', () => {
     expect(canSeeMessagePhotos('assistant')).toBe(true)
     expect(canSeeMessagePhotos('estimator')).toBe(true)
     expect(canSeeMessagePhotos('primary')).toBe(false)
-    expect(sourceChips('primary').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist'])
-    expect(sourceChips('dev').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'message'])
+    expect(sourceChips('primary').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job'])
+    expect(sourceChips('dev').map((c) => c.key)).toEqual(['all', 'report', 'box', 'checklist', 'job', 'message'])
   })
 
   it('counts the waiting chip', () => {

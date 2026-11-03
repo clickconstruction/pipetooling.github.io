@@ -58,7 +58,7 @@ function tickStyle(leftPct: number, hollow: boolean): CSSProperties {
   }
 }
 
-export function StagesStageBar({ view, pctComplete, compact = false, onStageClick, billMark = null, checklist = null }: {
+export function StagesStageBar({ view, pctComplete, compact = false, onStageClick, billMark = null, checklist = null, onChecklistPress }: {
   view: ProgressPaymentView
   pctComplete: number | null
   compact?: boolean
@@ -67,6 +67,8 @@ export function StagesStageBar({ view, pctComplete, compact = false, onStageClic
   billMark?: MoneyBarBillMark | null
   /** A checklist per stage (punch list #164, PR 4): each stage's standing by fixture id; a stage left reads *not ready* under the bar. */
   checklist?: ReadonlyMap<string, StageChecklistState> | null
+  /** The checklist door (punch list #246): given, a stage name wearing the mark is a press that opens the row's checklists sheet. */
+  onChecklistPress?: () => void
 }) {
   const [barRef, barWidth] = useMeasuredWidth<HTMLDivElement>()
   const bar = buildJobMoneyBar(view, { pctComplete })
@@ -136,8 +138,24 @@ export function StagesStageBar({ view, pctComplete, compact = false, onStageClic
                 color: notReady ? 'var(--text-amber-700)' : bold ? 'var(--text-strong)' : 'var(--text-muted)',
               }}
             >
-              {notReady ? <span aria-label="checklist not ready">{NOT_READY_GLYPH} </span> : null}
-              {stageNameLabel(n, blockPx(n.widthPct))}
+              {notReady && onChecklistPress ? (
+                // The mark as a press (punch list #246): the same words, underlined dotted, opening the row's checklists sheet.
+                <button
+                  type="button"
+                  data-stage-checklist-press
+                  aria-label={`Checklists on ${n.name} · ${markWords} · press to open`}
+                  onClick={onChecklistPress}
+                  style={{ all: 'unset', cursor: 'pointer', textDecoration: 'underline dotted', textUnderlineOffset: 2 }}
+                >
+                  <span aria-hidden>{NOT_READY_GLYPH} </span>
+                  {stageNameLabel(n, blockPx(n.widthPct))}
+                </button>
+              ) : (
+                <>
+                  {notReady ? <span aria-label="checklist not ready">{NOT_READY_GLYPH} </span> : null}
+                  {stageNameLabel(n, blockPx(n.widthPct))}
+                </>
+              )}
             </span>
             )
           })}

@@ -16,7 +16,11 @@ The expected hours (punch list #242, PR 2). The owner, 2026-11-01: a page where 
 
 ## Checked before the push
 
-Idempotent (`IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP POLICY IF EXISTS`). The functions are a role check, one `UPDATE` and one `INSERT`; the first live write is PR 3's, on a ZZ Test job, and its fragment will say what it found.
+Idempotent (`IF NOT EXISTS`, `CREATE OR REPLACE`, `DROP POLICY IF EXISTS`). The functions are a role check, one `UPDATE` and one `INSERT`.
+
+## Walked on prod (2026-11-02)
+
+Through the app's own client as the dev, on a ZZ Test job: a first target, a second that closed the first in the same instant (`cleared_at` equal to its `set_at`), Undo back to the first, back to the budget, Undo of that; a two-letter reason and negative hours refused with 22023. Every row deleted after, none left. Rolled back on the sample accounts: assistant, controller and master write; estimator, helpers, primary, subcontractor and superintendent are refused with 42501.
 
 ## After the push
 

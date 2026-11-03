@@ -206,7 +206,7 @@ export function useGcOnNoticeData(
         const jobsById: Record<string, LienDeskJob> = {}
         for (const j of jobs) jobsById[j.id] = j
         const gcsById: Record<string, LienDeskGc> = gc ? { [gc.id]: gc } : {}
-        const queue = buildLienDeskQueue(moneyRows, items, gc ? { [gc.id]: policy } : {}, todayYmd)
+        const queue = buildLienDeskQueue(moneyRows, items, gc ? { [gc.id]: policy } : {}, todayYmd, jobsById)
         // The claim set by hand per job (v2.3684): the run claims the corrected figure, as the desk does.
         const claimCorrectionsByJob: Record<string, LienClaimCorrection> = {}
         for (const raw of (correctionRows ?? []) as unknown[]) {

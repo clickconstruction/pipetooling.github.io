@@ -17,7 +17,7 @@ It may be a second Job # for the same address. Or it may be a job re-entered und
 4. Check the status line under the Summary. The source's progress may differ from the target's. Say the source was marked {{chip:green|Ready to bill}} at 100% while the target is still {{chip:blue|Working}}. Then an amber warning spells it out **before** you confirm.
 5. Press {{button:red|Confirm migrate and delete source}}.
 
-Everything real moves to the target: costs, labor, schedule, reports, notes, and the job total. The source card is then deleted.
+Everything real moves to the target: costs, labor, schedule, reports, stage checklists, notes, and the job total. A stage's checklist keeps every answer, added check and skip. The source card is then deleted.
 
 The source's HCP number and C# are not lost. They stay on the target as prior numbers. The job window and the Pipeline row read them as *also JP550*. Search the Pipeline by an old number and the combined job comes up.
 

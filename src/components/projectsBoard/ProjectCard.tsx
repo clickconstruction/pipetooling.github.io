@@ -27,10 +27,8 @@ export type ProjectCardProps = {
   target: ExpectedHoursTarget | null
   events: readonly JobChargeEvent[]
   valueEvents: readonly JobValueEvent[]
-  /** The job's cost events are still loading. */
-  loading: boolean
-  /** The job's cost read failed; the card says so in the strip's place. */
-  failed: boolean
+  /** This viewer's own read of the day carries dollars; otherwise the day reads hours only. */
+  dollars: boolean
   canEdit: boolean
   onSetTarget: (hours: number, from: number, why: string) => Promise<boolean>
   onClearTarget: () => Promise<boolean>
@@ -38,7 +36,7 @@ export type ProjectCardProps = {
   initiallyOpen?: boolean
 }
 
-export function ProjectCardBody({ row, pace, target, events, valueEvents, loading, failed, canEdit, onSetTarget, onClearTarget, big = false, onExpand }: Omit<ProjectCardProps, 'initiallyOpen'> & { big?: boolean; onExpand?: () => void }) {
+export function ProjectCardBody({ row, pace, target, events, valueEvents, dollars, canEdit, onSetTarget, onClearTarget, big = false, onExpand }: Omit<ProjectCardProps, 'initiallyOpen'> & { big?: boolean; onExpand?: () => void }) {
   const current = Math.round(target?.hours ?? pace.baseHours)
   const [draft, setDraft] = useState<number | null>(null)
   const [why, setWhy] = useState('')
@@ -81,17 +79,18 @@ export function ProjectCardBody({ row, pace, target, events, valueEvents, loadin
       <div style={{ display: 'flex', alignItems: 'baseline', gap: 8 }}>
         {opens ? (
           <button type="button" onClick={onExpand} aria-label={`Open ${jobLabel} large`} style={{ fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', textAlign: 'left', background: 'none', border: 'none', padding: 0, color: 'inherit', font: 'inherit', cursor: 'pointer' }}>{jobLabel}</button>
+        ) : big ? (
+          // The window's title already names the job: the large card's first line is where it is.
+          <span style={{ ...muted, flex: 1, minWidth: 0 }}>{row.job_address}</span>
         ) : (
-          <span style={{ fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: big ? '1.1rem' : undefined }}>{jobLabel}</span>
+          <span style={{ fontWeight: 700, flex: 1, minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{jobLabel}</span>
         )}
-        {big && row.job_address ? <span style={muted}>{row.job_address}</span> : null}
-        <Link to={`/jobs?edit=${encodeURIComponent(row.id)}`} style={{ ...link, textDecoration: 'none', whiteSpace: 'nowrap' }} title="Open the job window">Job ›</Link>
+        {/* The job window reads the job under the viewer's own RLS, which holds a superintendent to his jobs: the door is the office's. */}
+        {canEdit ? <Link to={`/jobs?edit=${encodeURIComponent(row.id)}`} style={{ ...link, textDecoration: 'none', whiteSpace: 'nowrap' }} title="Open the job window">Job ›</Link> : null}
       </div>
-      {loading ? <div style={{ ...muted, height: 22 }}>reading the days…</div> : failed ? <div style={{ ...muted, height: 22 }}>The job's days could not be read.</div> : (
-        <PaceStrip line={line} hoursBudget={Math.max(pace.budgetEdge, used)} targetHours={hours} days={pace.input.laborDays ?? []} stages={pace.stages} stageWords={big} onDay={setDay} onDayHover={(ymd, px, py) => setHover(ymd ? { ymd, x: px, y: py } : null)} height={big ? 40 : 22} />
-      )}
-      {hover ? <DayHoverCard jobLabel={jobLabel} ymd={hover.ymd} x={hover.x} y={hover.y} events={events} valueEvents={valueEvents} /> : null}
-      {day ? <DayDetailsModal jobLabel={jobLabel} ymd={day} events={events} valueEvents={valueEvents} onClose={() => setDay(null)} /> : null}
+      <PaceStrip line={line} hoursBudget={Math.max(pace.budgetEdge, used)} targetHours={hours} days={pace.input.laborDays ?? []} stages={pace.stages} stageWords={big} onDay={setDay} onDayHover={(ymd, px, py) => setHover(ymd ? { ymd, x: px, y: py } : null)} height={big ? 40 : 22} />
+      {hover ? <DayHoverCard jobLabel={jobLabel} ymd={hover.ymd} x={hover.x} y={hover.y} events={events} valueEvents={valueEvents} hoursOnly={!dollars} /> : null}
+      {day ? <DayDetailsModal jobLabel={jobLabel} ymd={day} events={events} valueEvents={valueEvents} hoursOnly={!dollars} onClose={() => setDay(null)} /> : null}
       <div style={{ display: 'grid', gap: big ? 8 : 4 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: big ? '0.9rem' : '0.78rem' }}>
           <span style={{ flex: '0 0 auto', color: 'var(--text-muted)' }}>expected</span>
@@ -107,7 +106,7 @@ export function ProjectCardBody({ row, pace, target, events, valueEvents, loadin
             title={range.pinned ? `${range.pinnedWords} ${EXPECTED_HOURS_LEVER_WORDS}` : `${range.min} h in · the labor budget ends at ${range.max} h`}
             aria-label={`Expected hours for ${jobLabel}`}
             onChange={(e) => setDraft(Number(e.target.value))}
-            style={{ flex: 1, margin: 0, accentColor: moved ? '#2563eb' : 'var(--text-muted)', height: big ? 36 : 24 }}
+            style={{ flex: 1, minWidth: 0, margin: 0, accentColor: moved ? '#2563eb' : 'var(--text-muted)', height: big ? 36 : 24 }}
           />
           {big && canEdit ? <button type="button" style={{ ...link, fontSize: '1rem', fontWeight: 700 }} onClick={() => nudge(range.step)} aria-label="One crew day more" disabled={range.pinned}>+</button> : null}
           {big && canEdit ? (
