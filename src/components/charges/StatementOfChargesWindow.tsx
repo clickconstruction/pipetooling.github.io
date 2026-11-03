@@ -10,6 +10,7 @@ import { buildChargeStatementHtml, chargeStatementWords, cutJobChargesToPeriod, 
 import { saveChargeStatement, type ChargeStatementRow } from '../../lib/charges/chargeStatementsIo'
 import { jobChargeRuleWords } from '../../lib/charges/crewDays'
 import { Money } from './Money'
+import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 
 /**
  * The Statement of charges window (punch list #254, PR 2): the period, Labor by crew-day with the job's rule shown,
@@ -34,6 +35,8 @@ const label: CSSProperties = { display: 'grid', gap: '0.2rem', fontSize: '0.8125
 const toggle: CSSProperties = { display: 'flex', alignItems: 'flex-start', gap: '0.45rem', fontSize: '0.875rem', color: 'var(--text-base)', cursor: 'pointer' }
 const quiet: CSSProperties = { margin: 0, fontSize: '0.8125rem', color: 'var(--text-muted)' }
 const btn: CSSProperties = { font: 'inherit', fontSize: '0.875rem', padding: '0.45rem 0.9rem', borderRadius: 6, border: '1px solid var(--border-strong)', background: 'var(--surface)', color: 'var(--text-base)', cursor: 'pointer', fontWeight: 600 }
+/** A dead press reads the dead pair, blue or grey alike. */
+const dead: CSSProperties = { background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, borderColor: 'transparent', cursor: 'not-allowed' }
 
 function longDate(ymd: string): string {
   const [y, m, d] = ymd.split('-').map(Number)
@@ -228,10 +231,10 @@ export default function StatementOfChargesWindow({ job, existing, preparedBy, on
               </p>
             ) : null}
             <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap', marginTop: '0.3rem' }}>
-              <button type="button" style={btn} disabled={!snapshot || busy != null} onClick={() => void onPrint()} data-testid="soc-print">
+              <button type="button" style={{ ...btn, ...(!snapshot || busy != null ? dead : {}) }} disabled={!snapshot || busy != null} onClick={() => void onPrint()} data-testid="soc-print">
                 {busy === 'print' ? 'Printing…' : 'Print'}
               </button>
-              <button type="button" style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#ffffff' }} disabled={!snapshot || busy != null || frozen} onClick={() => void onSave()} data-testid="soc-save">
+              <button type="button" style={{ ...btn, background: '#2563eb', borderColor: '#2563eb', color: '#ffffff', ...(!snapshot || busy != null || frozen ? dead : {}) }} disabled={!snapshot || busy != null || frozen} onClick={() => void onSave()} data-testid="soc-save">
                 {busy === 'save' ? 'Saving…' : row ? 'Save the statement again' : 'Save the statement'}
               </button>
             </div>
