@@ -65,7 +65,7 @@ SELECT sfl.same('a step may pick them', public.flow_facts_ok(ARRAY['sub_asked', 
 SELECT sfl.same('and still the residential ones', public.flow_facts_ok(ARRAY['booked', 'review_asked'])::text, 'true');
 
 -- 3 · The residential flow is as its own migration left it.
-SELECT sfl.same('the residential flow keeps its eleven steps', sfl.steps('residential'), '11');
+SELECT sfl.same('the residential flow keeps its eleven steps, and the Warranty step aside since *_job_warranty', sfl.steps('residential'), '12');
 
 -- 4 · An office's edit stays the office's: the migration once more changes nothing.
 UPDATE public.flow_steps s SET usual = 4 FROM public.flows f WHERE f.id = s.flow_id AND f.kind = 'sub' AND s.step_key = 'asked';

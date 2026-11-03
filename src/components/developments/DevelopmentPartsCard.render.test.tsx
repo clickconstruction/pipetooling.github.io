@@ -125,7 +125,7 @@ describe('DevelopmentPartsCard', () => {
     expect(screen.queryByRole('button', { name: 'Write what changed' })).toBeNull()
   })
 
-  it('reads each older set date first, draws a dashed rule between sets, and groups the presses at the right', () => {
+  it('reads each older set date first, draws a dashed rule between sets, and on the desk groups the presses at the right as one nowrap unit', () => {
     renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={writes()} />)
     fireEvent.click(screen.getByTestId('site-older-p2'))
     const rows = within(screen.getByTestId('site-older-list-p2')).getAllByTestId('site-older-set')
@@ -140,9 +140,34 @@ describe('DevelopmentPartsCard', () => {
     expect(within(presses).getByRole('button', { name: 'Open ↗' })).toBeTruthy()
     expect(within(presses).getByRole('button', { name: 'Build from this set' })).toBeTruthy()
     expect(within(presses).getByRole('button', { name: 'Remove Bunker issued set' })).toBeTruthy()
+    // The desk's shape: the group stays beside the words and never breaks inside itself (the phone's is the next case).
     expect(presses.style.marginLeft).toBe('auto')
     expect(presses.style.whiteSpace).toBe('nowrap')
+    expect(presses.parentElement).not.toBe(rows[0])
     expect(within(rows[1]!).getByText('link still to come')).toBeTruthy()
+  })
+
+  it('on a phone gives each older set’s presses a line of their own across the row, at the right, free to wrap inside the card', () => {
+    // A 356 px card leaves the words column 214 px, and *link still to come · Build from this set · ×* is 239: as a nowrap
+    // unit beside the words the group ran 16 px past the card (2026-11-03).
+    screenState.phone = true
+    renderWithProviders(<DevelopmentPartsCard view={view} names={{}} canWrite openCarrier={() => {}} askAbout={() => {}} writes={writes()} />)
+    fireEvent.click(screen.getByTestId('site-older-p2'))
+    const rows = within(screen.getByTestId('site-older-list-p2')).getAllByTestId('site-older-set')
+    expect(rows[0]!.textContent!.startsWith('Aug 11, 2026')).toBe(true)
+    for (const row of rows) {
+      const presses = within(row).getByTestId('site-older-presses')
+      expect(presses.parentElement).toBe(row)
+      expect(presses.style.gridColumn).toBe('1 / -1')
+      expect(presses.style.justifySelf).toBe('end')
+      expect(presses.style.flexWrap).toBe('wrap')
+      expect(presses.style.maxWidth).toBe('100%')
+      expect(presses.style.whiteSpace).toBe('')
+      expect(within(presses).getByRole('button', { name: 'Build from this set' })).toBeTruthy()
+    }
+    expect(within(within(rows[0]!).getByTestId('site-older-presses')).getByRole('button', { name: 'Open ↗' })).toBeTruthy()
+    expect(within(within(rows[0]!).getByTestId('site-older-presses')).getByRole('button', { name: 'Remove Bunker issued set' })).toBeTruthy()
+    expect(within(within(rows[1]!).getByTestId('site-older-presses')).getByText('link still to come')).toBeTruthy()
   })
 
   it('adds a set on a part through the form, replacing the current one, and names a new part', async () => {

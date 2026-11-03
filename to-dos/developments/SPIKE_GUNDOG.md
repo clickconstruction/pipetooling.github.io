@@ -121,7 +121,7 @@ Tests: `historyFolds.test.ts`, `gcContact.test.ts`, `lookFigure.test.ts`, `Devel
 ## Shipped (2026-11-02, the owner: *Ship all nine*)
 
 Four stacked PRs cut from fresh `main`, each with its release note, fragment, guide words and glossary
-clause; PR 1 armed, each next one retargets to `main` when the one under it merges and is armed then.
+clause; each one retargeted to `main` when the one under it merged and was armed then. #6846, #6847, #6848 and #6896 merged on 2026-11-03.
 
 | PR | Version | Carries |
 | --- | --- | --- |
