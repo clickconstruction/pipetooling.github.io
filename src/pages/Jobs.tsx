@@ -65,6 +65,7 @@ import { readStagesSectionOpenPrefs, scopesForOpenStagesSections } from '../lib/
 import { parseStagesMoneyMoveKey } from '../lib/jobs/stagesMoneyMoveLink'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
 import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
+import { fetchAllRows } from '../lib/supabasePaging'
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
 import { showJobCostBreakdownTeamLabor } from '../lib/jobDetailModalRole'
 import { buildPipelineBurnAlert, projectJobSummaryBurn } from '../lib/jobs/jobSummaryBurn'
@@ -663,18 +664,28 @@ export default function Jobs() {
       mRows = jobSummaryMercuryAllocationsByJobId.get(jobId) ?? []
     } else {
       try {
-        const data = await withSupabaseRetry(
-          async () =>
-            await supabase
-              .from('mercury_transaction_job_allocations')
-              .select(
-                'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, raw)',
-              )
-              .eq('job_id', jobId)
-              .order('created_at', { ascending: true }),
-          'job summary print mercury allocations',
+        // Paged (v2.6465): an unpaged read stops at PostgREST's 1,000 rows with no error.
+        const label = 'job summary print mercury allocations'
+        const data = await fetchAllRows(
+          async (from, to) => ({
+            data: await withSupabaseRetry(
+              async () =>
+                await supabase
+                  .from('mercury_transaction_job_allocations')
+                  .select(
+                    'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, raw)',
+                  )
+                  .eq('job_id', jobId)
+                  .order('created_at', { ascending: true })
+                  .order('id')
+                  .range(from, to),
+              label,
+            ),
+            error: null,
+          }),
+          label,
         )
-        const rawRows = (data ?? []) as Array<
+        const rawRows = data as Array<
           Omit<JobSummaryMercuryAllocationRow, 'attributionDisplayName'> & { mercury_transaction_id: string }
         >
         const attrByTxId = new Map<string, { person_id: string | null; user_id: string | null }>()
