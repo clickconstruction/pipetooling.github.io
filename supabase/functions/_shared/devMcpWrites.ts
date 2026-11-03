@@ -57,6 +57,12 @@ export const WRITE_VERBS = {
   // v2.6317 / 0.14.0 (punch list #239): a set of drawings, or a paper, on a plan part — the rows the job window's
   // Plans section writes (src/lib/plans/planSetsIo.ts addSet / keepPaper / markPaperCame), as the dev under RLS.
   // The dry run is the server's own read of the part (devMcpPlanSets.ts); no RPC, so rpc is null.
+  // v2.6437 / 0.16.0: clock sessions as the office edits them — the start and the end, the description, the job and
+  // the approval — through dev_clock_session_write, op by op with a dry run; the typed-hours second look and the
+  // approval guard hold inside the definer as they do in the app, so the dev's own session and the hours the dev
+  // typed are held for someone else.
+  plan_clock_sessions: { rpc: 'dev_clock_session_write', step: 'plan' },
+  apply_clock_sessions: { rpc: 'dev_clock_session_write', step: 'apply' },
   plan_plan_set: { rpc: null, step: 'plan' },
   apply_plan_set: { rpc: null, step: 'apply' },
   plan_paper: { rpc: null, step: 'plan' },
@@ -72,7 +78,7 @@ export function isWriteVerb(name: string): name is WriteVerb {
 
 /** The plan verb whose reply an apply verb must quote. */
 export function planVerbFor(verb: WriteVerb): WriteVerb | null {
-  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_statement' ? 'plan_matter_statement' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : verb === 'apply_history_entry' ? 'plan_history_entry' : verb === 'apply_bid' ? 'plan_bid' : verb === 'apply_file_plans' ? 'plan_file_plans' : verb === 'apply_plan_set' ? 'plan_plan_set' : verb === 'apply_paper' ? 'plan_paper' : null
+  return verb === 'apply_cost_batch' ? 'plan_cost_batch' : verb === 'apply_hr_entry' ? 'plan_hr_entry' : verb === 'apply_matter_narrative' ? 'plan_matter_narrative' : verb === 'apply_matter_plan_item' ? 'plan_matter_plan_item' : verb === 'apply_matter_statement' ? 'plan_matter_statement' : verb === 'apply_matter_document' ? 'plan_matter_document' : verb === 'apply_gap_answer' ? 'plan_gap_answer' : verb === 'apply_history_entry' ? 'plan_history_entry' : verb === 'apply_bid' ? 'plan_bid' : verb === 'apply_file_plans' ? 'plan_file_plans' : verb === 'apply_plan_set' ? 'plan_plan_set' : verb === 'apply_paper' ? 'plan_paper' : verb === 'apply_clock_sessions' ? 'plan_clock_sessions' : null
 }
 
 const PLAN_ITEM_ACTIONS = ['add', 'update', 'mark_done'] as const
@@ -83,6 +89,8 @@ const DOCUMENT_STATES = ['draft', 'final', 'sent', 'received'] as const
 const DOCUMENT_SENT_HOWS = ['email', 'certified_mail', 'mail', 'hand', 'other'] as const
 const HISTORY_SOURCES = ['email', 'call', 'text', 'on_site', 'letter', 'note'] as const
 const GAP_ACTIONS = ['answer', 'clear'] as const
+const CLOCK_OPS = ['times', 'note', 'move', 'approve'] as const
+const CLOCK_SESSION_MAX_MS = 24 * 3600 * 1000
 const YMD_RE = /^\d{4}-\d{2}-\d{2}$/
 
 type Json = Record<string, unknown>
@@ -297,6 +305,44 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
     }
     return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: matterId, planHash }
   }
+  if (verb === 'plan_clock_sessions' || verb === 'apply_clock_sessions') {
+    // v2.6437: the ops the office's own doors take — the start and the end (the edit modal), the description (its
+    // note box), the job (the assign popover), the approval (approve_clock_sessions_v2) — each checked here for shape
+    // and in the database for the rest (a revoked or rejected session, a job that is not there, a hold).
+    const sessions = obj(input.sessions)
+    const shape = `${verb} needs sessions — { reason (words: why, kept in the call log and read by the next person), ops: [ { op: 'times', session_id, start, end (ISO timestamps with their offset; end after start, at most 24 hours) } | { op: 'note', session_id, note (the description as the session shows it; '' clears it) } | { op: 'move', session_id, job_id (a jobs_ledger.id: find_job) } | { op: 'approve', session_id } ] } — at most 50 ops; session_id is a clock_sessions.id (read_rows on clock_sessions by user_id and work_date, or get_job's hours).`
+    if (!sessions) return { ok: false, error: shape }
+    const reason = typeof sessions.reason === 'string' ? sessions.reason.trim() : ''
+    if (!reason || reason.length > 500) return { ok: false, error: shape }
+    if (!Array.isArray(sessions.ops) || sessions.ops.length === 0 || sessions.ops.length > 50) return { ok: false, error: shape }
+    const ops: Json[] = []
+    for (const raw of sessions.ops) {
+      const o = obj(raw)
+      const op = o && typeof o.op === 'string' ? o.op.trim().toLowerCase() : ''
+      const sessionId = o && typeof o.session_id === 'string' ? o.session_id.trim() : ''
+      if (!o || !(CLOCK_OPS as readonly string[]).includes(op) || !UUID_RE.test(sessionId)) return { ok: false, error: shape }
+      const built: Json = { op, session_id: sessionId }
+      if (op === 'times') {
+        const start = typeof o.start === 'string' ? o.start.trim() : ''
+        const end = typeof o.end === 'string' ? o.end.trim() : ''
+        const startMs = Date.parse(start)
+        const endMs = Date.parse(end)
+        if (!start || !end || Number.isNaN(startMs) || Number.isNaN(endMs) || endMs <= startMs || endMs - startMs > CLOCK_SESSION_MAX_MS) return { ok: false, error: shape }
+        built.start = start
+        built.end = end
+      } else if (op === 'note') {
+        if (typeof o.note !== 'string' || o.note.length > 2000) return { ok: false, error: shape }
+        built.note = o.note
+      } else if (op === 'move') {
+        const jobId = typeof o.job_id === 'string' ? o.job_id.trim() : ''
+        if (!UUID_RE.test(jobId)) return { ok: false, error: shape }
+        built.job_id = jobId
+      }
+      ops.push(built)
+    }
+    const p: Json = { reason, ops }
+    return { ok: true, rpc, step, body: { p, p_dry_run: step === 'plan' }, dryRunBody: { p, p_dry_run: true }, target: `${ops.length} clock session op${ops.length === 1 ? '' : 's'}`, planHash }
+  }
   if (verb === 'plan_history_entry' || verb === 'apply_history_entry') {
     const line = obj(input.line)
     const shape = `${verb} needs line — { development_id (a developments.id: read_rows on developments by name), happened_at (when it happened, an ISO timestamp with its offset: the email's time, not now), source (email | call | text | on_site | letter | note), body (what happened, whole, under 20,000 characters), agent_label (the robot's name as the line shows it, e.g. the inbox robot, under 80), job_id? | bid_id? | customer_id? (at most one: the piece it is about; none means the site), link_url? }.`
@@ -444,7 +490,7 @@ export async function planHash(verb: WriteVerb, payload: unknown, reply: unknown
 /** The plan reply as the agent sees it: the hash first, then what the RPC said. */
 export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
   const r = obj(reply) ?? { result: reply }
-  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_statement' ? 'apply_matter_statement' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : verb === 'plan_history_entry' ? 'apply_history_entry' : verb === 'plan_bid' ? 'apply_bid' : verb === 'plan_file_plans' ? 'apply_file_plans' : verb === 'plan_plan_set' ? 'apply_plan_set' : verb === 'plan_paper' ? 'apply_paper' : 'apply_hr_entry'
+  const applyVerb = verb === 'plan_cost_batch' ? 'apply_cost_batch' : verb === 'plan_matter_narrative' ? 'apply_matter_narrative' : verb === 'plan_matter_plan_item' ? 'apply_matter_plan_item' : verb === 'plan_matter_statement' ? 'apply_matter_statement' : verb === 'plan_matter_document' ? 'apply_matter_document' : verb === 'plan_gap_answer' ? 'apply_gap_answer' : verb === 'plan_history_entry' ? 'apply_history_entry' : verb === 'plan_bid' ? 'apply_bid' : verb === 'plan_file_plans' ? 'apply_file_plans' : verb === 'plan_plan_set' ? 'apply_plan_set' : verb === 'plan_paper' ? 'apply_paper' : verb === 'plan_clock_sessions' ? 'apply_clock_sessions' : 'apply_hr_entry'
   return {
     plan_hash: hash,
     next: `Read this plan. If it is what you meant, call ${applyVerb} with the same input and plan_hash: "${hash.slice(0, 12)}…" (the whole value). apply runs this dry run again first: if anything changed, the hash no longer matches and nothing is written. One apply per plan: a plan that was already applied is refused until its batch is reverted.`,
@@ -470,8 +516,9 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const filePlans = verb === 'apply_file_plans'
   const planSet = verb === 'apply_plan_set'
   const paper = verb === 'apply_paper'
-  const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : `on this person${when}`
-  const again = cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
+  const clock = verb === 'apply_clock_sessions'
+  const what = clock ? `on those sessions${when}` : cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : `on this person${when}`
+  const again = clock ? 'The sessions already read that way; read_rows on clock_sessions shows them. Plan again with what you mean now.' : cost ? 'Revert that batch first if it was wrong, or plan a different batch.' : narrative ? 'The narrative already reads that way; plan again with the text you mean.' : planItem ? 'The step is on the timeline; read_rows on legal_matter_entries shows it. To change it, plan an update with its entry_id.' : statement ? 'The draft is on the Timeline\'s Said lane; read_rows on legal_matter_entries (kind eq statement) shows it. To change its words, plan an update with its entry_id; the office prints, signs and files it.' : document ? 'The document is on the Evidence tab; read_rows on legal_matter_documents shows it. A second copy needs a new plan with a different title or file.' : gapAnswer ? 'The answer is under its gap; read_rows on legal_matter_gap_answers shows it. To change its words, plan again with the new line (the row is replaced); to take it back, plan action clear.' : history ? 'The line is in the site\'s History; get_history shows it. A kept line never changes: to correct it, plan a second line that says so.' : bid ? 'The bid exists; find_bid shows it. A second bid of the same name needs a new plan with allow_duplicate_name.' : filePlans ? 'The set is on the bid; get_bid shows its plans link and the Bid Board opens it. To point the robot at a different file, plan again with replace: true.' : planSet ? 'The set is on the part; read_rows on plan_sets by part_id shows it, and the job\'s Plans section lists it. A second set of the same name needs a new plan with a different name, date or link.' : paper ? 'The paper is on the part; read_rows on plan_sets by part_id shows it. A new copy is a new paper (replaces_paper_id); an owed one that landed is plan_paper { action: came }.' : 'A second identical entry is a duplicate; if you mean a new one, change its date or content and plan again.'
   return `Nothing written: this plan was already applied ${what}. ${again}`
 }
 

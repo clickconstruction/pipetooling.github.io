@@ -1,0 +1,13 @@
+# 20261103050000_dev_clock_session_write.sql (2026-11-03, v2.6437)
+
+The dev seat's clock session door ([v2.6437](../recent-features/v2.6437.md), dev-mcp 0.16.0): `plan_clock_sessions` / `apply_clock_sessions` adjust a session's start and end, its description, its job and its approval, op by op with a dry run.
+
+1. **`approve_clock_sessions(p_session_ids uuid[])`** and **`recompute_people_hours_after_session_edit(p_session_id, p_old_work_date)`**: pasted whole from `20261010022000` with one line added each, `OR public.is_dev()`. Their check read `has_payroll_access() OR is_assistant()`, and `has_payroll_access()` is the controller or a pay-approved master, never a dev, so the seat's approval answered *Access denied* and a moved start on an approved day never reached `people_hours`. Everyone else's door is unchanged.
+2. **`dev_clock_session_image(p_session_id uuid)`**: the session as the plan and the apply report it before and after — `work_date`, the start and the end, the hours, the job (id, number, name), `bid_id`, `notes`, `origin`, `approved_at`. Invoker's rights, so a person reads it under their own RLS and the definer below reads as itself.
+3. **`dev_clock_session_write(p jsonb, p_dry_run boolean DEFAULT true)`**: the dry-run wrapper the two verbs POST. Devs only (`is_dev()`), `SECURITY DEFINER`. `p = { reason, ops: [{ op: times | note | move | approve, session_id, … }] }`, at most 50 ops, a reason required. Each op is its own savepoint: a refused op (a revoked or rejected session, a job that is not there, an end before its start, a day over 24 hours, an unknown op) is reported with its reason and the rest go on; an approval the guard holds — the dev's own session, hours the dev typed — reads *held* with the reason. With `p_dry_run = true` (the default) every write is performed and unwound and the reply says what would change. The table's own triggers run inside the definer: the typed-hours snapshot stamps a start or end the dev moved on a punched session as hours the dev typed, the approval guard holds, the crew sync follows a moved session, the billing-only refusal refuses a move onto a billing-only job, and the read-only (training) blocks fire.
+
+No table, no fences. `SET lock_timeout = '3s'` first; `CREATE OR REPLACE`, idempotent. The bed `supabase/tests/dev_clock_session_write` (`scripts/pgtest-dev-clock-session-write.sh`) proves each op, the dry run, the hours following into `people_hours`, the hold on the dev's own day, and the refusals.
+
+## Order
+
+Merge, `supabase db push`, regenerate types (the types chore regenerates the dev-mcp catalog too, so `find_rpc` knows the door), then **`supabase functions deploy dev-mcp`**.
