@@ -2,7 +2,7 @@
 name: "Signed hours statement: a worker's recorded hours on one job, as a paper they sign, for court"
 number: 212
 group: ready
-status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3 built 2026-11-02, v2.6411, the signing: the statement as its own Contract Form, Send for signature… with the four channels, Sign here now, File a signed scan…, the signed PDF on the job and the desk · PR 4 built 2026-11-03, v2.6413, the matter: Signed statements under each job on the Evidence tab, Ask… per worker, Add to evidence, the exhibit, the gap jobs · PR 5 built 2026-11-03, v2.6414, the MCP: get_hours_statement, plan_hours_statement → apply_hours_statement (make, send, file_on_matter) over dev_hours_statement_write, server 0.19.0 · access narrowed 2026-11-03, v2.6450: a dev and the controller alone (Diane's call of 2026-11-02, payroll data), the section tagged Controllers and devs only
+status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3 built 2026-11-02, v2.6411, the signing: the statement as its own Contract Form, Send for signature… with the four channels, Sign here now, File a signed scan…, the signed PDF on the job and the desk · PR 4 built 2026-11-03, v2.6413, the matter: Signed statements under each job on the Evidence tab, Ask… per worker, Add to evidence, the exhibit, the gap jobs · PR 5 built 2026-11-03, v2.6414, the MCP: get_hours_statement, plan_hours_statement → apply_hours_statement (make, send, file_on_matter) over dev_hours_statement_write, server 0.20.0 · access narrowed 2026-11-03, v2.6450: a dev and the controller alone (Diane's call of 2026-11-02, payroll data), the section tagged Controllers and devs only
 mockup: to-dos/signed-hours-statement/mockup.html
 summary: >
   A paper, made from the clock and the pay reports as they stand, that says what one worker did on one
@@ -407,7 +407,7 @@ reader (`_shared/devMcpHoursStatement.ts`, the window's reads handed to the shar
 statements made last), `plan_hours_statement` → `apply_hours_statement` over `dev_hours_statement_write` (migration
 `20261103003000`: `make` the row the window saves from the snapshot the server read, the record id minted in SQL, the
 dev as preparer; `send` the window's two calls as the dev with the link in the reply and never in the log; `file_on_matter`
-the signed PDF onto a matter through the document wrapper), the server at 0.19.0, the catalog rebuilt. The train is
+the signed PDF onto a matter through the document wrapper), the server at 0.20.0, the catalog rebuilt. The train is
 built. What is left: the owner's look at the five PRs live; counsel's word on the stated block's weight; Drive's *Sent
 by us* when `drive-link`'s `put` has a caller; a sub's sheet lines through the window (the kernel's `sheet` kind has no
 reader yet, so a sub's paper is still made by hand).
