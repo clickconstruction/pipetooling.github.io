@@ -11,7 +11,7 @@ covers:
   - src/components/jobs/JobsStagesUnifiedTable.tsx
 mapped_at: 58caa94ee
 audience: Developers, AI Agents
-last_updated: 2026-11-01
+last_updated: 2026-11-02
 ---
 
 > **Line numbers are as of `58caa94ee`** (v2.4706, from the `npm run map` fact sheets). This is the hottest surface in the repo (253 commits in 90 days on the tab, 82 on `jobsStagesRowShared`) — search the symbol, and trust a range only while the symbol still sits at it.
@@ -33,6 +33,10 @@ last_updated: 2026-11-01
 > **v2.6226 (after `mapped_at`) — a combined job's prior numbers on the number chip:** the row's number chip in `jobsStagesRowShared.tsx` carries `priorNumbersBare(job.prior_numbers)` (`lib/jobs/priorNumbers.ts`) in its title, the HCP and C# numbers a source job answered to before a combine; `search_jobs_ledger` matches them too, so every picker on that RPC finds a job by an old number (`docs/recent-features/v2.6226.md`).
 
 > **v2.6301 (after `mapped_at`) — the Job folder icon on a row:** `StagesJobFolderButton` in [`StagesRowActionButtons.tsx`](../src/components/jobs/StagesRowActionButtons.tsx) sits right after Share in both desktop clusters (`JobsStagesTable.tsx` for Waiting and Working, `StagesUnifiedJobRow.tsx` for the billing stages), and the phone cards' ⋯ sheets (`JobsStagesCardList.tsx`) carry a *Job folder* line after Share job with a *not made yet* badge while the folder is missing. A click opens the job window on its Documents tab — `openEdit`'s options on the Pipeline (`Jobs.tsx`, `JobsStagesTab.tsx`, both tables) take `initialTab: 'documents'`, and `OpenEditJobOptions` / `JobWindowEditOpenOptions` widen to it — and a ⌘-click (Ctrl on Windows) opens the job's own folder in Drive through `openInExternalBrowser`; `#d97706` when `jobs_ledger.google_drive_link` is set, `var(--text-muted)` when it is not, the grey icon still opening the tab, since a folder may not exist yet and the tab says so. Tests: `StagesRowActionButtons.render.test.tsx`, `JobsStagesTable.render.test.tsx`, `JobsStagesCardList.render.test.tsx`.
+
+> **v2.6329 (after `mapped_at`) — the job's kind on a row:** `JobKindChip` ([`JobKindChip.tsx`](../src/components/jobs/JobKindChip.tsx); blue Project, green Service call, amber Kind not set, the kernel's reason as the hover) sits after the number in both desktop tables (`renderStagesJobHcpSubline`), under the name on the Mobile cards (`JobsStagesCardList`) and leads a phone row's second line (`StagesPhoneRow`); the ⋯ tools menu's kind select (All kinds · Projects · Service calls · Kind not set, each with its count from `jobKindCounts`), the command bar's tap-to-clear chip and `?kind=` filter the board lists through `filterJobsByKind` after the contract filter, an empty group reading as filtered (`docs/recent-features/v2.6329.md`, punch list #238).
+
+> **v2.6344 (after `mapped_at`) — the plans icon on a row:** `StagesPlansButton` in `StagesRowActionButtons.tsx` sits after the Job folder icon in every Stages row's cluster, wired in `JobsStagesTable.tsx` over `usePlanSetsByJob` (one chunked read of `plan_parts` and `plan_sets` for the rows that name a part, fail-soft) and the kernel `lib/plans/jobPlanSetsIcon.ts`: nothing, open the one set, or `JobPlanSetsModal` (the current set first with *building from*, the older sets, *Our as-builts*, **Open the Documents tab**); a job with no part falls back to `job_plans_link`. The phone cards' ⋯ sheets keep *Job folder* alone (`docs/recent-features/v2.6344.md`, punch list #239 PR 6).
 
 The Pipeline board (tab label "Pipeline"; the `stages` key, URL slug and `JobsStages*` filenames are unchanged): Waiting → Working → Ready to Bill → Billed Awaiting Payment → Collections → Paid in Full, rendered by [`JobsStagesTab`](../src/components/jobs/JobsStagesTab.tsx).
 

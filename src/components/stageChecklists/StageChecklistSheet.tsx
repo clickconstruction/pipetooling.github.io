@@ -20,6 +20,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useToastContext } from '../../contexts/ToastContext'
 import type { UserRole } from '../../hooks/useAuth'
 import { bytesWords, shrinkPhoto } from '../../lib/materials/photoShrink'
+import { readTakenAt } from '../../lib/photos/photoTakenAt'
 import {
   PICK_WORDS,
   STAGE_CHECKLIST_PICKS,
@@ -676,9 +677,10 @@ function PhotoRow({ stage, question, answer, jobId, who, io, onAnswer }: { stage
     const f = e.target.files?.[0]
     e.target.value = ''
     if (!f) return
-    const takenAt = new Date().toISOString()
     setBusy('Shrinking…')
     try {
+      // The photo's time is the file's own when the camera wrote one (punch list #247, PR 3), else now.
+      const takenAt = await readTakenAt(f)
       const shot = await shrinkPhoto(f)
       const fileName = checklistPhotoName({ takenAt, stageName: stage.name, question: question.words })
       setBusy('Sending…')
