@@ -2,7 +2,7 @@
  * The Hours statement window (punch list #212, PR 2, v2.6097; the signing PR 3, v2.6411): one worker's recorded hours
  * on one job for a period, as the paper they sign, read live from the clock and the pay reports. Opened from the job
  * window's Documents tab (who: the people who clocked here) or from the person's desk (the job instead). Two switches:
- * *Show the rate, the amount and what was paid* (the payroll roles' own; fixed off for an assistant, the owner's call 6)
+ * *Show the rate, the amount and what was paid* (on for whoever sees the window: a dev and the controller, Diane's call of 2026-11-02)
  * and *Add days the app did not record* (the stated block, call 5). A line says what the app has in the span and a held
  * line names a session still waiting for approval, which the paper says under its day instead of counting. The preview
  * is the paper itself.
@@ -27,7 +27,7 @@ import { DEAD_PRESS_FILL, DEAD_PRESS_TEXT } from '../../lib/deadPress'
 import { hoursStatementGap, hoursStatementLongDate } from '../../lib/people/hoursStatement'
 import { listHoursStatementJobs, listHoursStatementPeople, loadHoursStatementInputs, type HoursStatementJob, type HoursStatementPerson, type HoursStatementRead } from '../../lib/people/hoursStatementRead'
 import { hoursStatementPayAllowed, type HoursStatementMaker } from '../../lib/people/hoursStatementAccess'
-import { HOURS_STATEMENT_PAY_FIXED_OFF, hoursStatementSavedWords, hoursStatementSpanWords } from '../../lib/people/hoursStatementWindow'
+import { hoursStatementSavedWords, hoursStatementSpanWords } from '../../lib/people/hoursStatementWindow'
 import { hoursStatementIsOpen, hoursStatementStateAfterPrint, type HoursStatementState } from '../../lib/people/hoursStatementRecord'
 import { saveHoursStatement, type HoursStatementRecordRow, type HoursStatementSnapshot } from '../../lib/people/hoursStatementsIo'
 import { buildHoursStatementPaper, printHoursStatementPaper } from '../../lib/people/hoursStatementPrint'
@@ -502,7 +502,6 @@ export function HoursStatementModal({ open, onClose, scope, maker, existing = nu
               <input type="checkbox" checked={withPay && payAllowed} disabled={!payAllowed || !rowOpen} onChange={(e) => setWithPay(e.target.checked)} style={{ marginTop: 3 }} />
               <span>
                 Show the rate, the amount and what was paid
-                {!payAllowed ? <span style={{ display: 'block', fontSize: '0.75rem', color: 'var(--text-muted)' }}>{HOURS_STATEMENT_PAY_FIXED_OFF}</span> : null}
               </span>
             </label>
             <label style={toggle}>

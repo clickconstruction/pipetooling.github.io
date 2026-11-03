@@ -2,7 +2,7 @@
 name: "Signed hours statement: a worker's recorded hours on one job, as a paper they sign, for court"
 number: 212
 group: ready
-status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3 built 2026-11-02, v2.6411, the signing: the statement as its own Contract Form, Send for signature… with the four channels, Sign here now, File a signed scan…, the signed PDF on the job and the desk · PR 4, the matter, not started
+status: PR 1 built 2026-10-29, v2.6069, the kernel, the Letter print and the reads · PR 2 built 2026-10-29, v2.6097, the window, the hours_statements table and the Hours statements section on the job's Documents tab and the person's desk, the dev press retired · the print restyled as one full-width paper 2026-11-02, v2.6412 · PR 3 built 2026-11-02, v2.6411, the signing: the statement as its own Contract Form, Send for signature… with the four channels, Sign here now, File a signed scan…, the signed PDF on the job and the desk · PR 4, the matter, not started · access narrowed 2026-11-03, v2.6450: a dev and the controller alone (Diane's call of 2026-11-02, payroll data), the section tagged Controllers and devs only
 mockup: to-dos/signed-hours-statement/mockup.html
 summary: >
   A paper, made from the clock and the pay reports as they stand, that says what one worker did on one
@@ -15,7 +15,7 @@ summary: >
 next: PR 4, the matter: Signed statements on the Legal desk's Evidence tab proof table with Ask… per worker, Add to evidence copying the signed PDF into legal_matter_documents (matter_document_id filled), the exhibit candidate and its lettering, the gap jobs read as gap jobs; counsel's word on what a worker's stated days for 2025 are worth is still owed (the stated block shipped in PR 3 marked as the worker's own statement).
 size: M as a train of five (S · M · M · S · S)
 blocker: counsel's word on the stated block's weight, still owed after PR 3 shipped it as the worker's own statement (Diane's call of 2026-11-02 to build now).
-ver: v2.6069 · v2.6097 · v2.6412 · v2.6411
+ver: v2.6069 · v2.6097 · v2.6412 · v2.6411 · v2.6450
 opinion: build — the owner took all seven calls as recommended on 2026-10-29; the paper is honest about what the app does not have
 ---
 
@@ -129,8 +129,8 @@ declaration and nothing else.
   `signer_signature_storage_path` (the ink, bucket `contract-signer-signatures`), `signer_ip`,
   `signer_user_agent`, `signer_consented_at` (`esign_consents`), `form_values`, `form_pdf_storage_path`
   (`contract-form-pdfs/<id>/signed.pdf`), `form_source` portal or paper, `form_scan_storage_path`.
-  Opening the PDF goes through `open-contract-form-pdf` (dev, controller, a pay-approved master) and is
-  logged.
+  Opening the PDF goes through `open-contract-form-pdf` (dev, controller, a pay-approved master; a statement's
+  copy for a dev and the controller alone since v2.6450) and is logged.
 - **The capture**: `SignatureTypeOrDrawInput` (type a name or draw on a `signature_pad` canvas),
   `SignerNameInput`, `EsignConsentLine`; in person, the same page opens on the device in hand
   (`&inperson=1`, the contract modal's *Open the signing page on this device*, Job Mode's *Hand the
@@ -206,7 +206,7 @@ never dress up as the company's record.
    person. The office job is a job, so it has no door of its own. The Legal desk's Evidence tab offers
    the statements per job on *Proof the work happened* (PR 4).
 2. **The window.** Who (a person, or a sub's company), from and to, two switches: *Show the rate, the
-   amount and what was paid* (on by default for the payroll roles; off, and fixed off, for an assistant)
+   amount and what was paid* (on by default for whoever sees the window: a dev and the controller, since v2.6450)
    and *Add days the app did not record* (the stated block). A line says what the app has in the span
    (approved sessions, typed days, quick adds left off), and a held line names a session still waiting
    for approval, which the paper says under that day instead of counting. The preview is the paper.
@@ -244,9 +244,13 @@ never dress up as the company's record.
    *Signed hours statements*, in the firm's packet (D · Field evidence). Never into the lien run's
    copies, by counsel's memo. Drive's *Team only / Sent by us* later, when `drive-link`'s `put` has a
    caller.
-7. **Who may make one.** The payroll roles (dev, controller, a pay-approved master) for the paper with
-   money; an assistant the hours-only paper. Opening a signed PDF is `open-contract-form-pdf`'s gate
-   today (no assistants); the hours-only kind should open for the roles that could make it.
+7. **Who may make one.** A dev and the controller, and no one else — Diane's call of 2026-11-02 (built
+   v2.6450): the paper is payroll data. It revises the owner's call 6 of 2026-10-29, which had the payroll
+   roles (dev, controller, a pay-approved master) make the paper with money and an assistant the hours-only
+   paper; both go. The table holds the line (`can_touch_hours_statement` is a dev or the controller), the
+   section shows to the two roles with *Controllers and devs only* beside its heading and to no one else,
+   and a signed PDF opens through `open-contract-form-pdf` for the same two (a pay-approved master, who
+   opens every other signed form, is refused on a statement's row).
 8. **Through the MCP** (the owner's ask of 2026-10-29). Two verbs on the dev MCP (`docs/dev-mcp/README.md`),
    as the dev whose key it is, with RLS and the role lines above. **`get_hours_statement(job, person, from,
    to, with_pay?)`** is a read composite: the same reads the window makes, handed to the same kernel, so
@@ -273,7 +277,7 @@ not.
 | **3 · Is a payment line required?** | No: an unpaid week prints *not yet paid* and the attestation drops *paid as shown* | Yes: the paper refuses until every week is paid | **A.** A signature soon after the work is worth more than waiting for the pay; the paper never claims a payment it does not have. |
 | **4 · The office job's paper** | The same paper: the office as the site, no customer, the quick adds as ordinary rows | A separate overhead paper | **A.** One builder, one window; the office job is a job. |
 | **5 · A period with no rows** | A *days the company's records do not show* block the worker fills in, marked stated, the span said plainly | Only what the app recorded; a gap paper reads *no record* and stops | **A**, with counsel's word on its weight first: nothing in the app precedes 2026-03-12, so for 2025 the paper is the worker's declaration and nothing else. A paper that only says *no record* is honest and useless. The office may pre-fill the block from outside records (texts, bank sends) with the source named on each row. |
-| **6 · Who may make one** | The payroll roles for the paper with money; assistants the hours-only paper | Devs and the owner only | **A.** Matches the Hours and Payroll tabs' lines today. |
+| **6 · Who may make one** | The payroll roles for the paper with money; assistants the hours-only paper | Devs and the owner only | **A** on 2026-10-29, matching the Hours and Payroll tabs' lines; **revised by Diane on 2026-11-02 to a dev and the controller alone** (built v2.6450), since the paper is payroll data — nearer B than A, with the controller in. |
 | **7 · Where the signed copy goes** | The job's Documents tab and the person's Paperwork at once; the matter's Evidence tab by one press; Drive later | Drive only | **A.** The matter is where court starts, and the desk already has the per-job proof table. |
 
 ## Where it plugs in
@@ -299,7 +303,7 @@ not.
   `period_start`, `period_end`, `with_pay`, `kind` clock · sheet · schedule, `stated_days` jsonb,
   `gap_from`, `gap_to`, `snapshot` jsonb of the rows as read, `prepared_by`, `prepared_at`,
   `contract_document_id` → `person_contract_documents`, `matter_document_id` →
-  `legal_matter_documents`), with the three block calls and RLS for the payroll roles and assistants;
+  `legal_matter_documents`), with the three block calls and RLS for a dev and the controller alone (v2.6450; the payroll roles and assistants until then);
   a `record_type` value `hours_statement` on `esign_consents`; a statement PDF drawn with pdf-lib
   (`_shared/hoursStatementPdf.ts`) and its form schema; a `link` and in-person mode on
   `send-contract-for-signature` (the job-contract side has them, the person side only email);
@@ -387,8 +391,8 @@ printed name, the signature, the date), `_shared/hoursStatementForm.ts` names th
 days read back; `hours-statement-signing` (`prepare`, `file_scan`) writes one `contract_form_templates` row and one
 `person_contract_documents` copy per statement (`doc_type` `hours_statement`, migration `20261102230000`) and ties the
 row to it; `send-contract-for-signature` gained `mode: 'link'`; `accept-contract` marks the statement signed with the
-typed days and keeps the consent as `hours_statement`; `open-contract-form-pdf` lets an assistant open an hours-only
-one. The window's **Send for signature…** opens the channel sheet (Email the link · Text the link · Copy the link ·
+typed days and keeps the consent as `hours_statement`; `open-contract-form-pdf` let an assistant open an hours-only
+one until v2.6450 took the assistant and the pay-approved master off the paper altogether (Diane's call of 2026-11-02: payroll data). The window's **Send for signature…** opens the channel sheet (Email the link · Text the link · Copy the link ·
 Hand the phone to <name>), **Sign here now** is the last in one press, **File a signed scan…** the paper path, and a
 signed row carries **Open the signed PDF** on the list and the window. Counsel's word on the stated block is still owed;
 the block shipped marked as the worker's own statement. PR 4 claims its version with `npm run claim` and starts from
