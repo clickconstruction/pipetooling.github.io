@@ -19,6 +19,7 @@ import { EmptyState } from '../EmptyState'
 import { setRowDayWords, setRowLineWords } from '../../lib/plans/planSets'
 import { PlanSetForm } from '../plans/PlanSetForm'
 import { Chip, LinkButton, shortDay, SmallButton } from './developmentPageBits'
+import { buildPapersView, kindLabel, paperChipWords, paperLineWords, type Paper } from '../../lib/papers/papers'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { DEVELOPMENT_PHONE_QUERY } from './DevelopmentJumpStrip'
 
@@ -44,9 +45,12 @@ export function DevelopmentPartsCard({
   askOnRecord,
   openQuestions,
   writes,
+  papers,
 }: {
   /** Null while the parts read. */
   view: SitePlansView | null
+  /** The papers on the site's parts, with their asks resolved; undefined hides the column. */
+  papers?: ReadonlyArray<Paper>
   names: Record<string, string>
   canWrite: boolean
   openCarrier: (c: SiteCarrier) => void
@@ -62,6 +66,9 @@ export function DevelopmentPartsCard({
   const [busy, setBusy] = useState(false)
   const [problem, setProblem] = useState<string | null>(null)
   const [pendingRemove, setPendingRemove] = useState<string | null>(null)
+  const [openPapers, setOpenPapers] = useState<Record<string, boolean>>({})
+  // The papers on the site's parts (the papers train): the column draws only when the page hands them in.
+  const hasPapers = papers !== undefined
   const phone = useMatchMedia(DEVELOPMENT_PHONE_QUERY)
 
   if (!view) return <p style={{ ...muted, margin: 0 }}>Reading the plans…</p>
@@ -232,11 +239,53 @@ export function DevelopmentPartsCard({
                 </ul>
               </>
             ) : null
+            // The papers' two pieces (the papers train): the count that folds, with its chips, and the list it opens.
+            const paperView = hasPapers ? buildPapersView(papers ?? [], row.part.id) : null
+            const paperWords = paperView ? paperChipWords(paperView) : null
+            const papersCell = paperWords ? (
+              <span style={{ display: 'inline-flex', gap: 6, flexWrap: 'wrap', alignItems: 'baseline' }}>
+                {paperWords.papers ? (
+                  <button type="button" className={`developmentChipPress${openPapers[row.part.id] ? ' isOn' : ''}`} aria-expanded={!!openPapers[row.part.id]} onClick={() => setOpenPapers((o) => ({ ...o, [row.part.id]: !o[row.part.id] }))} data-testid={`site-papers-${row.part.id}`}>
+                    {paperWords.papers} <span aria-hidden>{openPapers[row.part.id] ? '▾' : '▸'}</span>
+                  </button>
+                ) : (
+                  <span style={muted}>—</span>
+                )}
+                {paperWords.asks ? <Chip label={paperWords.asks} color="#b45309" soft /> : null}
+                {paperWords.owed ? <Chip label={paperWords.owed} color="#b45309" soft /> : null}
+              </span>
+            ) : null
+            const papersList =
+              paperView && openPapers[row.part.id] ? (
+                <div style={{ minWidth: 0, overflowWrap: 'anywhere' }} data-testid={`site-papers-list-${row.part.id}`}>
+                  {paperView.bySet.map((g) => (
+                    <div key={g.setId || 'part'} style={{ marginBottom: 6 }}>
+                      <div style={{ ...muted, fontWeight: 600 }}>{g.setId ? `With ${[...row.older, ...(row.current ? [row.current] : [])].find((s) => s.id === g.setId)?.name ?? 'a set'}` : `On ${row.part.name}`}</div>
+                      {g.papers.map((p) => (
+                        <div key={p.id} style={{ fontSize: '0.82rem' }}>
+                          <Chip label={kindLabel(p.kind)} color="#64748b" soft /> {p.name} <span style={muted}>· {paperLineWords(p)}</span>
+                          {p.ask && !p.ask.answeredAt ? <Chip label="asks" color="#b45309" soft /> : null}
+                          {p.link ? (
+                            <LinkButton onClick={() => openInExternalBrowser(p.link)} nowrap>
+                              Open ↗
+                            </LinkButton>
+                          ) : null}
+                        </div>
+                      ))}
+                    </div>
+                  ))}
+                  {paperView.owed.map((p) => (
+                    <div key={p.id} style={{ fontSize: '0.82rem', color: 'var(--text-amber-800)' }}>
+                      <Chip label="owed" color="#b45309" soft /> {p.name} <span style={muted}>· {paperLineWords(p)}</span> {p.ask ? <span style={muted}>· {p.ask.words}</span> : null}
+                    </div>
+                  ))}
+                </div>
+              ) : null
             const setFormNode =
               form && form.partId === row.part.id ? (
                 <PlanSetForm mode="set" draft={form.draft} onChange={(d) => setForm({ partId: row.part.id, draft: d })} existing={[...row.older, ...(row.current ? [row.current] : []), ...row.asBuilts]} current={row.current} busy={busy} problem={problem} onAdd={(mk) => addSet(row, form.draft, mk)} onCancel={() => setForm(null)} />
               ) : null
-            return { row, building, dated, came, memo, jobsCell, olderPress, olderList, asBuilts, setForm: setFormNode, hasMemo: !!row.current?.memo }
+            return { row, building, dated, came, memo, jobsCell, olderPress, olderList, papersCell, papersList, asBuilts, setForm: setFormNode, hasMemo: !!row.current?.memo }
           })
           if (phone) {
             // The phone's shape: one card per part, the dates on one line, the memo as a paragraph, the older sets and + New set at the foot.
@@ -257,6 +306,12 @@ export function DevelopmentPartsCard({
                     </div>
                     <div>{b.olderPress}</div>
                     {b.olderList}
+                    {b.papersCell ? (
+                      <div>
+                        <span style={{ ...muted, fontWeight: 600 }}>Papers</span> {b.papersCell}
+                      </div>
+                    ) : null}
+                    {b.papersList}
                     {b.asBuilts ? <div>{b.asBuilts}</div> : null}
                     {b.setForm}
                   </div>
@@ -264,6 +319,7 @@ export function DevelopmentPartsCard({
               </div>
             )
           }
+          const restSpan = hasPapers ? 7 : 6
           return (
             <table style={{ width: '100%', borderCollapse: 'collapse' }} data-testid="site-plans-table">
               <thead>
@@ -275,6 +331,7 @@ export function DevelopmentPartsCard({
                   <th style={th}>Memo</th>
                   <th style={th}>Jobs</th>
                   <th style={th}>Older sets</th>
+                  {hasPapers ? <th style={th}>Papers</th> : null}
                 </tr>
               </thead>
               <tbody>
@@ -288,11 +345,20 @@ export function DevelopmentPartsCard({
                       <td style={{ ...td, minWidth: 160 }}>{b.memo}</td>
                       <td style={td}>{b.jobsCell}</td>
                       <td style={td}>{b.olderPress}</td>
+                      {hasPapers ? <td style={td}>{b.papersCell}</td> : null}
                     </tr>
+                    {b.papersList ? (
+                      <tr>
+                        <td style={{ ...td, borderBottom: 'none' }} />
+                        <td style={td} colSpan={restSpan}>
+                          {b.papersList}
+                        </td>
+                      </tr>
+                    ) : null}
                     {b.olderList ? (
                       <tr>
                         <td style={{ ...td, borderBottom: 'none' }} />
-                        <td style={td} colSpan={6}>
+                        <td style={td} colSpan={restSpan}>
                           {b.olderList}
                         </td>
                       </tr>
@@ -300,7 +366,7 @@ export function DevelopmentPartsCard({
                     {b.asBuilts ? (
                       <tr>
                         <td style={{ ...td, borderBottom: 'none' }} />
-                        <td style={td} colSpan={6}>
+                        <td style={td} colSpan={restSpan}>
                           {b.asBuilts}
                         </td>
                       </tr>
@@ -308,7 +374,7 @@ export function DevelopmentPartsCard({
                     {b.setForm ? (
                       <tr>
                         <td style={{ ...td, borderBottom: 'none' }} />
-                        <td style={td} colSpan={6}>
+                        <td style={td} colSpan={restSpan}>
                           {b.setForm}
                         </td>
                       </tr>

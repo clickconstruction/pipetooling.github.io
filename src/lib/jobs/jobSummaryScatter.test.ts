@@ -31,6 +31,7 @@ const pt = (id: string, revenueUsd: number, trueMarginPct: number | null, trade:
     writeDownUsd: 0,
     discountUsd: 0,
     inCollections: false,
+    billedInFull: false,
     lastWorkedYmd: null,
     flags: [],
     burn: null,

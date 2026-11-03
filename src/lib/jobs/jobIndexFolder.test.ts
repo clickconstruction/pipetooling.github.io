@@ -17,7 +17,7 @@ describe('jobIndexFolder', () => {
     t = addRound(t, { indexed: 5, held: [{ id: 'a', name: 'A.pdf', why: 'slow' }, { id: 'b', name: 'B.jpg', why: 'scan' }], remaining: 0, total: 45 })
     expect(t).toEqual({ indexed: 45, held: [{ id: 'a', name: 'A.pdf', why: 'slow' }, { id: 'b', name: 'B.jpg', why: 'scan' }], remaining: 0, total: 45, rounds: 2 })
     expect(wantsAnotherRound(t)).toBe(false)
-    expect(indexedWords(t)).toBe('Indexed 45 files, 2 held.')
+    expect(indexedWords(t)).toBe('Indexed 45 files, 43 with their words, 2 held.')
     expect(hasRetryableHeld(t.held)).toBe(true)
     expect(hasRetryableHeld([{ id: 'b', name: 'B.jpg', why: 'scan' }])).toBe(false)
     expect(wantsAnotherRound({ ...t, remaining: 1, rounds: INDEX_JOB_MAX_ROUNDS })).toBe(false)
