@@ -57,15 +57,14 @@ import { useSubLaborLedger } from '../hooks/useSubLaborLedger'
 import { JobsTeamTab } from '../components/jobs/JobsTeamTab'
 import { loadTeamLaborData as fetchTeamLaborRows, type TeamLaborRow } from '../utils/teamLabor'
 import type { Database } from '../types/database'
-import type { JobSummaryInvoiceAllocationLine, JobSummaryMercuryAllocationRow } from '../types/jobSummary'
+import type { JobSummaryInvoiceAllocationLine } from '../types/jobSummary'
 import type { JobWithDetails } from '../types/jobWithDetails'
 import { useJobFormModal, type OpenEditJobOptions } from '../contexts/JobFormModalContext'
 import { useJobsListCache } from '../contexts/JobsListCacheContext'
 import { readStagesSectionOpenPrefs, scopesForOpenStagesSections } from '../lib/jobs/stagesSectionPrefs'
 import { parseStagesMoneyMoveKey } from '../lib/jobs/stagesMoneyMoveLink'
 import { useJobDetailModal } from '../contexts/JobDetailModalContext'
-import { fetchAttributionsByMercuryTxIds } from '../lib/fetchMercuryRelationsByTxIds'
-import { fetchAllRows } from '../lib/supabasePaging'
+import { loadJobSummaryPrintMercuryRows } from '../lib/jobs/jobSummaryMercuryRows'
 import { useJobSummaryData } from '../hooks/useJobSummaryData'
 import { showJobCostBreakdownTeamLabor } from '../lib/jobDetailModalRole'
 import { buildPipelineBurnAlert, projectJobSummaryBurn } from '../lib/jobs/jobSummaryBurn'
@@ -658,100 +657,8 @@ export default function Jobs() {
       }
     }
 
-    let mRows: JobSummaryMercuryAllocationRow[] = []
-    let cardDetailUnavailable = false
-    if (jobSummaryMercuryAllocationsByJobId.has(jobId)) {
-      mRows = jobSummaryMercuryAllocationsByJobId.get(jobId) ?? []
-    } else {
-      try {
-        // Paged (v2.6465): an unpaged read stops at PostgREST's 1,000 rows with no error.
-        const label = 'job summary print mercury allocations'
-        const data = await fetchAllRows(
-          async (from, to) => ({
-            data: await withSupabaseRetry(
-              async () =>
-                await supabase
-                  .from('mercury_transaction_job_allocations')
-                  .select(
-                    'id, amount, note, mercury_transaction_id, mercury_transactions(posted_at, counterparty_name, amount, note, external_memo, raw)',
-                  )
-                  .eq('job_id', jobId)
-                  .order('created_at', { ascending: true })
-                  .order('id')
-                  .range(from, to),
-              label,
-            ),
-            error: null,
-          }),
-          label,
-        )
-        const rawRows = data as Array<
-          Omit<JobSummaryMercuryAllocationRow, 'attributionDisplayName'> & { mercury_transaction_id: string }
-        >
-        const attrByTxId = new Map<string, { person_id: string | null; user_id: string | null }>()
-        const personNameById = new Map<string, string>()
-        const userNameById = new Map<string, string>()
-        try {
-          const txIds = [...new Set(rawRows.map((r) => r.mercury_transaction_id))]
-          if (txIds.length > 0) {
-            const attrRows = await fetchAttributionsByMercuryTxIds(txIds, 'job summary print mercury')
-            for (const a of attrRows) {
-              attrByTxId.set(a.mercury_transaction_id, {
-                person_id: a.person_id,
-                user_id: a.user_id,
-              })
-            }
-            const personIds = new Set<string>()
-            const userIds = new Set<string>()
-            for (const a of attrRows) {
-              if (a.person_id) personIds.add(a.person_id)
-              if (a.user_id) userIds.add(a.user_id)
-            }
-            if (personIds.size > 0) {
-              const peopleData = await withSupabaseRetry(
-                async () => supabase.from('people').select('id, name').in('id', [...personIds]),
-                'job summary print mercury attribution people',
-              )
-              for (const p of peopleData ?? []) {
-                const row = p as { id: string; name: string }
-                personNameById.set(row.id, row.name)
-              }
-            }
-            if (userIds.size > 0) {
-              const usersData = await withSupabaseRetry(
-                async () => supabase.from('users').select('id, name').in('id', [...userIds]),
-                'job summary print mercury attribution users',
-              )
-              for (const u of usersData ?? []) {
-                const row = u as { id: string; name: string }
-                userNameById.set(row.id, row.name)
-              }
-            }
-          }
-        } catch {
-          /* attribution optional */
-        }
-        mRows = rawRows.map((r) => {
-          const attr = attrByTxId.get(r.mercury_transaction_id)
-          let attributionDisplayName: string | null = null
-          if (attr) {
-            if (attr.person_id) attributionDisplayName = personNameById.get(attr.person_id) ?? null
-            else if (attr.user_id) attributionDisplayName = userNameById.get(attr.user_id) ?? null
-          }
-          return {
-            id: r.id,
-            mercury_transaction_id: r.mercury_transaction_id,
-            amount: r.amount,
-            note: r.note,
-            mercury_transactions: r.mercury_transactions,
-            attributionDisplayName,
-          }
-        })
-      } catch {
-        cardDetailUnavailable = true
-        mRows = []
-      }
-    }
+    // Card lines: the row's cache, else the row's own loader, so they agree with the card total (step 11, v2.6470).
+    const { rows: mRows, cardDetailUnavailable } = await loadJobSummaryPrintMercuryRows(jobId, jobSummaryMercuryAllocationsByJobId)
 
     const html = buildJobSummaryCostBreakdownHtml({
       ...opts,
