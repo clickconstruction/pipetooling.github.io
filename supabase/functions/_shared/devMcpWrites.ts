@@ -65,7 +65,7 @@ export const WRITE_VERBS = {
   apply_paper: { rpc: null, step: 'apply' },
   // v2.6367 (punch list #209): Materials on site — what the phone's On site tab and the office's Materials tab write, as
   // one RPC with an action each (dev_on_site_write, SECURITY INVOKER: the gate, the CHECKs, training mode and the twin
-  // fence apply as on the screen). A cage or box (add, move, retire), a delivery into Unsorted or a box, one press on a
+  // fence apply as on the screen). A cage or box (add, move, retire an empty one, bring one back), a delivery into Unsorted or a box, one press on a
   // line (moved, used, returned, taken, cannot_find, damaged) and a count of a box. Every row reads "<robot> · MCP as <dev>".
   plan_container: { rpc: 'dev_on_site_write', step: 'plan' },
   apply_container: { rpc: 'dev_on_site_write', step: 'apply' },
@@ -106,7 +106,7 @@ const DOCUMENT_STATES = ['draft', 'final', 'sent', 'received'] as const
 const DOCUMENT_SENT_HOWS = ['email', 'certified_mail', 'mail', 'hand', 'other'] as const
 const HISTORY_SOURCES = ['email', 'call', 'text', 'on_site', 'letter', 'note'] as const
 const GAP_ACTIONS = ['answer', 'clear'] as const
-const CONTAINER_ACTIONS = ['add', 'move', 'retire'] as const
+const CONTAINER_ACTIONS = ['add', 'move', 'retire', 'bring_back'] as const
 const CONTAINER_KINDS = ['cage', 'box', 'loose'] as const
 const MOVEMENT_REASONS = ['moved', 'used', 'returned', 'taken', 'cannot_find', 'damaged'] as const
 const ON_SITE_LINES_MAX = 200
@@ -423,7 +423,7 @@ export function writeRpcBody(verb: WriteVerb, input: Json): WriteBody {
   }
   if (verb === 'plan_container' || verb === 'apply_container') {
     const container = obj(input.container)
-    const shape = `${verb} needs container — { job_id (a jobs_ledger.id — find_job), action: add | move | retire (add when left out), agent_label (the robot's name as the row shows it, under 80); add: label (the stencil on the box, A1 or B7, under 24), kind (cage | box | loose), where? (where exactly, in the crew's words, under 120), place? (the place on site, under 80 — made when the job has none of that name); move: container (a label or an id), place (made when missing); retire: container; at? (an ISO timestamp with its offset for a move or a retire that happened earlier) }.`
+    const shape = `${verb} needs container — { job_id (a jobs_ledger.id — find_job), action: add | move | retire | bring_back (add when left out), agent_label (the robot's name as the row shows it, under 80); add: label (the stencil on the box, A1 or B7, under 24), kind (cage | box | loose), where? (where exactly, in the crew's words, under 120), place? (the place on site, under 80 — made when the job has none of that name); move: container (a label or an id), place (made when missing); retire: container (an empty one — a box with parts in it is refused, as on the phone); bring_back: container (a retired box's label or id, as read_on_site lists it under retired); at? (an ISO timestamp with its offset for a move or a retire that happened earlier) }.`
     if (!container) return { ok: false, error: shape }
     const str = (k: string) => (typeof container[k] === 'string' ? (container[k] as string).trim() : '')
     const action = str('action') || 'add'
@@ -629,6 +629,17 @@ export function planReply(verb: WriteVerb, reply: unknown, hash: string): Json {
 }
 
 /**
+ * The apply verbs the one-apply rule below leaves alone (v2.6367): Materials on site's plans commit to the
+ * state their write changes, so the wrapper refuses a replay itself — the stencil is live, the box is
+ * already at that place, already retired or already back, or the box's row count moved and the hash no
+ * longer matches. The log's rule would only refuse a real second act whose plan reads like an old one:
+ * G4 added, retired, and added again on the same job.
+ */
+export function stateGuarded(verb: string): boolean {
+  return verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count'
+}
+
+/**
  * One apply per plan (v2.3730). A plan whose payload has no before-state — a thread note, an
  * HR entry — hashes the same after it is applied, so the re-run would let the same plan land
  * twice. The server keeps the log; this is the sentence it answers with.
@@ -644,12 +655,6 @@ export function alreadyApplied(verb: WriteVerb, prior: { target: string | null; 
   const history = verb === 'apply_history_entry'
   const bid = verb === 'apply_bid'
   const filePlans = verb === 'apply_file_plans'
-  const onSite = verb === 'apply_container' || verb === 'apply_delivery' || verb === 'apply_movement' || verb === 'apply_count'
-  if (onSite) {
-    const box = prior.target ? ` (${prior.target.replace(/^[0-9a-f-]{36}\s*/i, '') || 'the job'})` : ''
-    const again = verb === 'apply_container' ? 'read_on_site shows the box. To add another, plan one with a different stencil.' : verb === 'apply_delivery' ? 'read_on_site shows the lines in Unsorted (or the box named). A second delivery of the same lines is a new plan — give it its own source.' : verb === 'apply_movement' ? 'read_on_site shows the line\'s new number. A wrong press gets a correcting row: plan the opposite movement, or a count.' : 'read_on_site shows the count. To correct it, plan another count with the right number.'
-    return `Nothing written: this plan was already applied on this job's materials${box}${when}. ${again}`
-  }
   const planSet = verb === 'apply_plan_set'
   const paper = verb === 'apply_paper'
   const what = cost ? `as batch ${prior.target ?? '(unknown)'}${when}` : narrative || planItem || statement || document || gapAnswer ? `on this matter${when}` : history ? `on this development${when}` : bid ? `as bid ${prior.target ?? '(unknown)'}${when}` : filePlans ? `on bid ${prior.target ?? '(unknown)'}${when}` : planSet || paper ? `on this plan part${when}` : `on this person${when}`

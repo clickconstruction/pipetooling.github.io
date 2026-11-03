@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { ROBOT_PLANS_SHARED_DRIVE, robotPlansDivisionFolderName, robotPlansPathWords } from '../../../supabase/functions/_shared/bidPlansFolders'
-import { WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
+import { WRITE_VERBS, alreadyApplied, canonicalJson, driveFilingRefusal, isWriteVerb, planCommitment, planHash, planMismatch, planReply, planVerbFor, stateGuarded, writeRpcBody } from '../../../supabase/functions/_shared/devMcpWrites'
 
 const COST_MIGRATION = readFileSync('supabase/migrations/20260909161532_cost_batches.sql', 'utf8')
 const HR_MIGRATION = readFileSync('supabase/migrations/20260922102017_dev_hr_entry_write.sql', 'utf8')
@@ -442,7 +442,7 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
   const JOB = 'aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa'
   const PART = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb'
   const ON_SITE_VERBS = ['plan_container', 'apply_container', 'plan_delivery', 'apply_delivery', 'plan_movement', 'apply_movement', 'plan_count', 'apply_count'] as const
-  it('are eight verbs on the allowlist over one SECURITY INVOKER RPC that refuses a training account and a twin in words, with the six actions', () => {
+  it('are eight verbs on the allowlist over one SECURITY INVOKER RPC that refuses a training account and a twin in words, with the seven actions', () => {
     for (const verb of ON_SITE_VERBS) {
       expect(isWriteVerb(verb)).toBe(true)
       expect(WRITE_VERBS[verb].rpc).toBe('dev_on_site_write')
@@ -465,17 +465,28 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     const wrapper = ON_SITE_MIGRATION.slice(ON_SITE_MIGRATION.indexOf('FUNCTION public.dev_on_site_write('), ON_SITE_MIGRATION.indexOf('REVOKE ALL ON FUNCTION public.dev_on_site_write'))
     expect(wrapper).toContain('SECURITY INVOKER')
     expect(wrapper).not.toContain('SECURITY DEFINER')
-    for (const action of ['add_container', 'move_container', 'retire_container', 'delivery', 'movement', 'count']) expect(wrapper).toContain(`v_action = '${action}'`)
+    for (const action of ['add_container', 'move_container', 'retire_container', 'bring_back_container', 'delivery', 'movement', 'count']) expect(wrapper).toContain(`v_action = '${action}'`)
+    // The phone's rules, in its own words: a box with parts in it is not retired (v2.6041); a retired box comes back
+    // unless a live box on the job carries its stencil now, compared without case or spaces (v2.6406's unretireVerdict).
+    expect(wrapper).toContain('still has parts in it. Move them or mark them used first, then retire it.')
+    expect(wrapper).toContain('already carries %. Retire it first, or give it another stencil.')
+    expect(wrapper).toContain('% is already on the job.')
+    expect(wrapper).toContain("format('%s is back on the job. Its label works again.', v_container.label)")
+    expect(wrapper).toContain("lower(regexp_replace(c.label, '\\s+', '', 'g')) = lower(regexp_replace(v_container.label, '\\s+', '', 'g'))")
+    expect(wrapper).toContain('UPDATE public.job_containers SET retired_at = NULL WHERE id = v_container.id;')
     // The ledger's arithmetic in SQL beside the kernel's: a count resets, the rest sum.
     expect(ON_SITE_MIGRATION).toContain('CREATE OR REPLACE FUNCTION public.on_site_line_on_hand(p_container_id uuid, p_part_id uuid, p_part_name text)')
     expect(ON_SITE_MIGRATION).toContain('MCP as')
   })
-  it('a container plan: add with its stencil, kind, where and place; move and retire name the box; refusals in words', () => {
+  it('a container plan: add with its stencil, kind, where and place; move, retire and bring back name the box; refusals in words', () => {
     const add = writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'the receiving robot', label: ' a2 ', kind: 'Cage', where: 'by the north stair', place: 'Level 2' } })
     const p = { action: 'add_container', job_id: JOB, agent_label: 'the receiving robot', label: 'a2', kind: 'cage', where: 'by the north stair', place: 'Level 2' }
     expect(add).toEqual({ ok: true, rpc: 'dev_on_site_write', step: 'plan', body: { p, p_dry_run: true }, dryRunBody: { p, p_dry_run: true }, target: `${JOB} A2`, planHash: null })
     expect(pOf(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'move', container: 'A2', place: 'Laydown yard', at: '2026-11-01T09:00:00-05:00' } }))).toEqual({ action: 'move_container', job_id: JOB, agent_label: 'r', container: 'A2', place: 'Laydown yard', at: '2026-11-01T09:00:00-05:00' })
     expect(pOf(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'retire', container: 'A2' } }))).toEqual({ action: 'retire_container', job_id: JOB, agent_label: 'r', container: 'A2' })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'bring_back', container: 'G4' } })).toMatchObject({ ok: true, target: `${JOB} G4`, body: { p: { action: 'bring_back_container', job_id: JOB, agent_label: 'r', container: 'G4' } } })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'bring_back' } })).toMatchObject({ ok: false, error: expect.stringContaining('bring_back: container') })
+    expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', action: 'unretire', container: 'G4' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_container', {})).toMatchObject({ ok: false, error: expect.stringContaining('needs container') })
     expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', label: 'A2', kind: 'unsorted' } })).toMatchObject({ ok: false })
     expect(writeRpcBody('plan_container', { container: { job_id: JOB, agent_label: 'r', label: 'A2', kind: 'box', where: 'x'.repeat(121) } })).toMatchObject({ ok: false })
@@ -523,14 +534,17 @@ describe('the Materials on site verbs (v2.6367, punch list #209)', () => {
     expect(h1).not.toBe(await planHash('plan_count', pOf(built), { ...reply, container_rows: 5 }))
     expect(planCommitment('plan_count', reply)).not.toHaveProperty('dry_run')
   })
-  it('the plan replies point at their apply verbs, a repeat apply says the rows are on the job, and the server declares the nine verbs and reports 0.16.0', () => {
+  it('the plan replies point at their apply verbs, a replay is refused by the box\'s own state rather than the log, and the server declares the nine verbs and reports 0.16.0', () => {
     expect(String(planReply('plan_container', { after: { container: 'A2' } }, 'e'.repeat(64)).next)).toContain('apply_container')
     expect(String(planReply('plan_delivery', {}, 'e'.repeat(64)).next)).toContain('apply_delivery')
     expect(String(planReply('plan_movement', {}, 'e'.repeat(64)).next)).toContain('apply_movement')
     expect(String(planReply('plan_count', {}, 'e'.repeat(64)).next)).toContain('apply_count')
-    expect(alreadyApplied('apply_delivery', { target: `${JOB} Unsorted`, at: '2026-11-02T16:00:00Z' })).toContain("on this job's materials (Unsorted) at 2026-11-02T16:00:00Z")
-    expect(alreadyApplied('apply_count', { target: `${JOB} A2`, at: null })).toContain('read_on_site')
-    expect(alreadyApplied('apply_movement', { target: null, at: null })).toContain('opposite movement')
+    // The log's one-apply rule leaves the four alone: their plans commit to the state the write changes, so a replay
+    // is refused by the wrapper (a live stencil, already there, already retired or back) or by a moved row count —
+    // and G4 added, retired and added again is a second act, not a replay.
+    for (const verb of ['apply_container', 'apply_delivery', 'apply_movement', 'apply_count']) expect(stateGuarded(verb)).toBe(true)
+    for (const verb of ['plan_container', 'apply_cost_batch', 'apply_hr_entry', 'apply_history_entry', 'apply_bid', 'apply_plan_set', 'apply_paper']) expect(stateGuarded(verb)).toBe(false)
+    expect(SERVER).toContain('const prior = stateGuarded(name) ? null : await hooks.priorApply(name, fresh)')
     for (const verb of [...ON_SITE_VERBS, 'read_on_site']) expect(SERVER).toContain(`name: '${verb}'`)
     for (const verb of ON_SITE_VERBS) expect(SERVER).toContain(`case '${verb}':`)
     expect(SERVER).toContain("case 'read_on_site':")

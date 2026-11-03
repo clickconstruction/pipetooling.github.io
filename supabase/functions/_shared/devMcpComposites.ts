@@ -14,6 +14,7 @@ import { buildJobProfitSummary } from './jobProfitSummary.ts'
 import { DRIVE_SETTING_KEYS, jobSubLaborInputsFromRows, type SubLaborItemRow, type SubLaborSheetRow } from './jobSubLaborInputs.ts'
 import { formatBidLedgerNumberLabel, formatJobLedgerNumberLabel } from './ledgerDisplayPrefixes.ts'
 import { STALE_COUNT_DAYS, containerLines, countDiffs, countIsDue, groupByPlace, lastCountedAt, linesOf, placeName, type Container, type Movement, type MovementReason, type Place } from './gcKernels/lib/materials/onSite.ts'
+import { retiredContainers, unretireVerdict } from './gcKernels/lib/materials/unretire.ts'
 
 export type RowsQuery = { select?: string; filters?: RowFilter[]; order?: RowOrder[]; limit?: number }
 export type Row = Record<string, unknown>
@@ -380,6 +381,11 @@ export async function getOnSite(reader: Reader, ref: string, now: Date) {
     .sort((a, b) => (a.at < b.at ? 1 : a.at > b.at ? -1 : 0))
     .slice(0, ON_SITE_RECENT)
     .map((m) => ({ at: m.at, reason: m.reason, part: partWords(m.partName, m.manufacturer), quantity: m.quantity, from: labelOf(m.fromContainerId), to: labelOf(m.toContainerId), by: m.byName, note: m.note || undefined, source: m.source || undefined }))
+  // The office's Retired fold (v2.6406): each retired box with the screens' own verdict on bringing it back.
+  const retired = retiredContainers(containers).map((c) => {
+    const verdict = unretireVerdict(containers, c.id)
+    return { container: c.label, kind: c.kind, id: c.id, retired_at: c.retiredAt, bring_back: verdict.ok ? 'plan_container { action: bring_back }' : verdict.words }
+  })
   const dueLabels = boxes.filter((b) => b.count_due).map((b) => b.container)
   const unsorted = boxes.find((b) => b.kind === 'unsorted')
   return {
@@ -396,9 +402,10 @@ export async function getOnSite(reader: Reader, ref: string, now: Date) {
       ledger_capped: capped ? `the first ${ON_SITE_MOVEMENTS_MAX} rows only — a job this size wants the summary RPC the card names` : undefined,
     },
     boxes,
+    retired,
     missing: { counts_short: missing, cannot_find: cannotFind },
     recent,
     photos: 'read_rows on job_box_photos by job_id — the files live in the job\'s Drive folder, never here.',
-    writes: 'plan_container → apply_container (a cage or box: add, move, retire) · plan_delivery → apply_delivery (lines into Unsorted or a box) · plan_movement → apply_movement (moved, used, returned, taken, cannot_find, damaged, one line) · plan_count → apply_count (a box walked). Name a box by its stencil as listed here.',
+    writes: 'plan_container → apply_container (a cage or box: add, move, retire an empty one, bring a retired one back) · plan_delivery → apply_delivery (lines into Unsorted or a box) · plan_movement → apply_movement (moved, used, returned, taken, cannot_find, damaged, one line) · plan_count → apply_count (a box walked). Name a box by its stencil as listed here.',
   }
 }

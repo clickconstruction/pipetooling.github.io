@@ -15,7 +15,8 @@ SET lock_timeout = '3s';
 --   p = { action, job_id, agent_label, at?, … }:
 --     add_container    { label, kind (cage | box | loose), where?, place? (a name; made when missing) }
 --     move_container   { container (a label or an id), place }
---     retire_container { container }
+--     retire_container { container } — an empty box only, as the phone refuses one with parts in it
+--     bring_back_container { container (a retired box's label or id) } — v2.6406's Bring back
 --     delivery         { lines: [{ part_id? | part_name, manufacturer?, quantity, unit? }], source?, to? (Unsorted when left out) }
 --     movement         { container, part_id? | part_name, quantity, reason (moved | used | returned | taken | cannot_find | damaged), to? (moved), note? }
 --     count            { container, lines: [{ part_id? | part_name, manufacturer?, counted }] }
@@ -189,8 +190,8 @@ BEGIN
   END IF;
   SELECT COALESCE(NULLIF(btrim(u.name), ''), u.email, 'the dev') INTO v_dev_name FROM public.users u WHERE u.id = auth.uid();
 
-  IF v_action NOT IN ('add_container', 'move_container', 'retire_container', 'delivery', 'movement', 'count') THEN
-    RAISE EXCEPTION 'dev_on_site_write: action must be add_container, move_container, retire_container, delivery, movement or count';
+  IF v_action NOT IN ('add_container', 'move_container', 'retire_container', 'bring_back_container', 'delivery', 'movement', 'count') THEN
+    RAISE EXCEPTION 'dev_on_site_write: action must be add_container, move_container, retire_container, bring_back_container, delivery, movement or count';
   END IF;
   IF v_agent = '' THEN RAISE EXCEPTION 'dev_on_site_write: agent_label is required — the robot''s name as the row will show it (the receiving robot)'; END IF;
   IF length(v_agent) > 80 THEN RAISE EXCEPTION 'dev_on_site_write: keep agent_label under 80 characters'; END IF;
@@ -277,7 +278,7 @@ BEGIN
   ELSIF v_action = 'retire_container' THEN
     v_container := public.dev_on_site_container(v_job_id, p->>'container');
     IF v_container.kind = 'unsorted' THEN RAISE EXCEPTION 'dev_on_site_write: Unsorted is the app''s own row and is never retired'; END IF;
-    -- What is still in it, so the plan says what the retire leaves behind (the phone asks the same).
+    -- What is still in it: the phone refuses a retire while any line has parts on hand.
     FOR v_part_id, v_part_name, v_manufacturer IN
       SELECT DISTINCT ON (COALESCE(m.part_id::text, lower(regexp_replace(btrim(m.part_name), '\s+', ' ', 'g')))) m.part_id, m.part_name, m.manufacturer
       FROM public.job_material_movements m
@@ -289,13 +290,59 @@ BEGIN
         v_lines := v_lines || jsonb_build_object('part', v_part_name || CASE WHEN COALESCE(v_manufacturer, '') <> '' THEN ' · ' || v_manufacturer ELSE '' END, 'on_hand', v_on_hand);
       END IF;
     END LOOP;
+    -- The phone's rule since v2.6041: a box with parts in it is not retired. Move them or mark them used first.
+    IF jsonb_array_length(v_lines) > 0 THEN
+      SELECT string_agg((l->>'part') || ' ' || (l->>'on_hand'), ', ') INTO v_note FROM jsonb_array_elements(v_lines) l;
+      RAISE EXCEPTION 'dev_on_site_write: % still has parts in it. Move them or mark them used first, then retire it. In it: %', v_container.label, v_note;
+    END IF;
     SELECT count(*) INTO v_container_rows FROM public.job_material_movements WHERE from_container_id = v_container.id OR to_container_id = v_container.id;
-    v_after := jsonb_build_object('container', v_container.label, 'kind', v_container.kind, 'still_in_it', v_lines,
-      'note', CASE WHEN jsonb_array_length(v_lines) > 0 THEN 'These lines stay on the retired box''s ledger and leave the job''s on-site count. Move or count them first if they went somewhere.' ELSE 'Nothing is left in it.' END);
+    v_after := jsonb_build_object('container', v_container.label, 'kind', v_container.kind,
+      'note', format('The %s leaves this job. The next job gets its own %s. plan_container with action bring_back brings it back while no live box on the job carries the stencil.', CASE WHEN v_container.kind = 'cage' THEN 'cage' ELSE 'box' END, v_container.label));
     IF NOT p_dry_run THEN
       UPDATE public.job_containers SET retired_at = COALESCE(v_at, now()) WHERE id = v_container.id;
       v_ids := jsonb_build_array(v_container.id);
       v_after := v_after || jsonb_build_object('container_id', v_container.id);
+    END IF;
+
+  -- ── bring_back_container ─────────────────────────────────────────────────────────────────────
+  -- v2.6406's Bring back, the way back from a retire: refused when the box is not on the job, is already
+  -- live, or a live container on the job carries its stencil now — stencils compared without case or
+  -- spaces, as src/lib/materials/unretire.ts (unretireVerdict) compares them. The ledger is untouched.
+  ELSIF v_action = 'bring_back_container' THEN
+    v_container_ref := btrim(COALESCE(p->>'container', ''));
+    IF v_container_ref = '' THEN RAISE EXCEPTION 'dev_on_site_write: container is required — the retired box''s stencil (G4) or its id'; END IF;
+    IF v_container_ref ~ '^[0-9a-fA-F-]{36}$' THEN
+      SELECT * INTO v_container FROM public.job_containers WHERE id = v_container_ref::uuid AND job_id = v_job_id;
+    ELSE
+      SELECT * INTO v_container FROM public.job_containers
+      WHERE job_id = v_job_id AND kind <> 'unsorted' AND retired_at IS NOT NULL
+        AND lower(regexp_replace(label, '\s+', '', 'g')) = lower(regexp_replace(v_container_ref, '\s+', '', 'g'))
+      ORDER BY retired_at DESC LIMIT 1;
+      IF v_container.id IS NULL THEN
+        SELECT * INTO v_container FROM public.job_containers
+        WHERE job_id = v_job_id AND retired_at IS NULL
+          AND lower(regexp_replace(label, '\s+', '', 'g')) = lower(regexp_replace(v_container_ref, '\s+', '', 'g'))
+        ORDER BY created_at LIMIT 1;
+      END IF;
+    END IF;
+    IF v_container.id IS NULL THEN RAISE EXCEPTION 'dev_on_site_write: That box is not on this job (%). read_on_site lists the retired ones.', v_container_ref; END IF;
+    IF v_container.kind = 'unsorted' THEN RAISE EXCEPTION 'dev_on_site_write: Unsorted is the app''s own row and is never retired'; END IF;
+    IF v_container.retired_at IS NULL THEN RAISE EXCEPTION 'dev_on_site_write: % is already on the job.', v_container.label; END IF;
+    SELECT * INTO v_to FROM public.job_containers c
+    WHERE c.job_id = v_job_id AND c.id <> v_container.id AND c.retired_at IS NULL
+      AND lower(regexp_replace(c.label, '\s+', '', 'g')) = lower(regexp_replace(v_container.label, '\s+', '', 'g'))
+    ORDER BY c.created_at LIMIT 1;
+    IF v_to.id IS NOT NULL THEN
+      RAISE EXCEPTION 'dev_on_site_write: A live % on this job already carries %. Retire it first, or give it another stencil.', CASE WHEN v_to.kind = 'cage' THEN 'cage' ELSE 'box' END, v_container.label;
+    END IF;
+    SELECT name INTO v_from_place FROM public.job_places WHERE id = v_container.place_id;
+    SELECT count(*) INTO v_container_rows FROM public.job_containers WHERE job_id = v_job_id AND retired_at IS NULL;
+    v_after := jsonb_build_object('container', v_container.label, 'kind', v_container.kind, 'place', v_from_place, 'retired_at', v_container.retired_at,
+      'note', format('%s is back on the job. Its label works again.', v_container.label));
+    IF NOT p_dry_run THEN
+      UPDATE public.job_containers SET retired_at = NULL WHERE id = v_container.id;
+      v_ids := jsonb_build_array(v_container.id);
+      v_after := v_after || jsonb_build_object('container_id', v_container.id, 'code', v_container.code);
     END IF;
 
   -- ── delivery ─────────────────────────────────────────────────────────────────────────────────
@@ -447,5 +494,5 @@ REVOKE ALL ON FUNCTION public.dev_on_site_write(jsonb, boolean) FROM anon;
 REVOKE ALL ON FUNCTION public.dev_on_site_write(jsonb, boolean) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.dev_on_site_write(jsonb, boolean) TO authenticated;
 
-COMMENT ON FUNCTION public.dev_on_site_write(jsonb, boolean) IS 'Materials on site (#209): the dev seat''s write — plan (dry run) then apply, devs only, never a training account or a twin. Adds a container, moves or retires one, lands a delivery, presses a line (moved, used, returned, taken, cannot_find, damaged) or counts a box, as the screens do, under the caller''s own RLS. Rows are stamped "<agent_label> · MCP as <dev>".';
+COMMENT ON FUNCTION public.dev_on_site_write(jsonb, boolean) IS 'Materials on site (#209): the dev seat''s write — plan (dry run) then apply, devs only, never a training account or a twin. Adds a container, moves, retires (an empty one) or brings one back, lands a delivery, presses a line (moved, used, returned, taken, cannot_find, damaged) or counts a box, as the screens do, under the caller''s own RLS. Rows are stamped "<agent_label> · MCP as <dev>".';
 

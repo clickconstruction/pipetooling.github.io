@@ -205,6 +205,18 @@ describe('read_on_site (v2.6367, punch list #209)', () => {
     expect(kernel.find((l) => l.containerId === A2)?.onHand).toBe(12)
     expect(onSiteBoxCode(A2)).toBe(boxCode(A2))
   })
+  it('lists the retired boxes newest first with the screens\' own Bring back verdict: free, or the live box that carries the stencil now (v2.6406)', async () => {
+    const oldA2 = { id: 'a0a0a0a0-0000-4000-8000-0000000000a0', job_id: JOB, label: 'a 2', kind: 'box', where_note: '', place_id: null, lat: null, lng: null, retired_at: '2026-10-20T00:00:00Z', created_at: '2026-10-01T00:00:00Z' }
+    const out = (await getOnSite(catalogReader({ rows: { ...rows, job_containers: [...rows.job_containers, oldA2] } }), JOB, new Date('2026-11-02T17:00:00Z'))) as Loose
+    expect(noErrors(out)).toEqual([])
+    expect(out.summary.retired).toBe(2)
+    expect(out.retired).toEqual([
+      { container: 'B1', kind: 'box', id: 'b1b1b1b1-0000-4000-8000-0000000000b1', retired_at: '2026-10-30T00:00:00Z', bring_back: 'plan_container { action: bring_back }' },
+      { container: 'a 2', kind: 'box', id: oldA2.id, retired_at: '2026-10-20T00:00:00Z', bring_back: 'A live cage on this job already carries a 2. Retire it first, or give it another stencil.' },
+    ])
+    expect(out.boxes.map((b: Loose) => b.container)).toEqual(['Unsorted', 'A2'])
+    expect(out.writes).toContain('bring a retired one back')
+  })
   it('a box 15 days past its count is due; a job with no boxes reads empty, not an error', async () => {
     const out = (await getOnSite(catalogReader({ rows: { ...rows, job_material_movements: movements.slice(0, 3) } }), JOB, new Date('2026-11-12T17:00:00Z'))) as Loose
     expect(out.summary.due_a_count).toEqual(['A2'])

@@ -117,6 +117,8 @@ export const ENTRIES = {
   'lib/photos/photoRows.ts': { values: ['PHOTO_ROWS_SELECT', 'PHOTO_SWITCHES_SELECT', 'photoRowOf', 'photoNameInputOf', 'onSwitches'], types: ['PhotoAttachmentRow', 'PhotoLineRow'] },
   // Materials on site (punch list #209): the ledger's arithmetic, read by dev-mcp's read_on_site so an agent's numbers are the screens'.
   'lib/materials/onSite.ts': { values: ['containerLines', 'countDiffs', 'lastCountedAt', 'countIsDue', 'linesOf', 'partKey', 'groupByPlace', 'placeName', 'STALE_COUNT_DAYS', 'UNSORTED_LABEL'], types: ['Container', 'ContainerLine', 'CountDiff', 'Movement', 'MovementReason', 'Place'] },
+  // v2.6406's way back from a retire: read_on_site lists a job's retired boxes with the screens' own Bring back verdict.
+  'lib/materials/unretire.ts': { values: ['retiredContainers', 'unretireVerdict'], types: ['UnretireVerdict'] },
   // Messages, cut 5 (v2.5261 to v2.5268 and this): the Quo link's webhook and send. The thread is here for its types,
   // so every import of the Quo kernels resolves inside the copy.
   'lib/messages/thread.ts': { values: ['callLength'], types: ['MessageChannel', 'MessageDirection', 'ThreadMessage'] },
