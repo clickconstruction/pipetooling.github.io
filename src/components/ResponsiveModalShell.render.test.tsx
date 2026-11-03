@@ -30,6 +30,18 @@ beforeEach(() => {
 })
 
 describe('ResponsiveModalShell', () => {
+  it('starts its own lines when drawn inside a row that does not wrap (v2.6464)', () => {
+    // The job window's Customer Contract row keeps its value on one line, and the Contract window is drawn inside it.
+    render(
+      <span style={{ whiteSpace: 'nowrap' }}>
+        <ResponsiveModalShell title="Warranty · J1088" onRequestClose={() => undefined}>
+          <p>The labor is warranted for one year from the day the work is finished.</p>
+        </ResponsiveModalShell>
+      </span>,
+    )
+    expect(screen.getByRole('dialog').style.whiteSpace).toBe('normal')
+  })
+
   it('closes on a click that began on the backdrop, and ignores one that began inside the panel', () => {
     const onClose = vi.fn()
     render(

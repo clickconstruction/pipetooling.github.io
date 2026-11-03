@@ -209,6 +209,8 @@ export default function AddJobContractSheet(p: AddJobContractSheetProps) {
         alignItems: 'center',
         justifyContent: 'center',
         zIndex: p.overlayZIndex ?? 1300,
+        // The job window's Customer Contract row does not wrap; the sheet drawn inside it starts its own lines (v2.6464).
+        whiteSpace: 'normal',
       }}
       onClick={(e) => {
         if (e.target === e.currentTarget && !busy) p.onClose()

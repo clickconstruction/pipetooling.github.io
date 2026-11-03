@@ -58,6 +58,16 @@ describe('AddJobContractSheet', () => {
     expect(fileSpy.mock.calls[0]![0]).toMatchObject({ jobIds: ['j251', 'j825'], link: 'https://docs.google.com/document/d/abc', signerName: 'Michael Palmer', coSignerName: '' })
   })
 
+  it('starts its own lines when drawn inside the job window’s Customer Contract row, which does not wrap (v2.6464)', async () => {
+    renderWithProviders(
+      <span style={{ whiteSpace: 'nowrap' }}>
+        <AddJobContractSheet open mode="add" onClose={() => undefined} onDone={() => undefined} anchorJob={{ id: 'j251', num: '251', where: '180 Go Away Rd' }} partyIds={['p']} signerName="Michael Palmer" subtitle="Job 251 · Michael Palmer is the GC on this job" />
+      </span>,
+    )
+    const sheet = await screen.findByTestId('add-job-contract-sheet')
+    expect((sheet.parentElement as HTMLElement).style.whiteSpace).toBe('normal')
+  })
+
   it("v2.4657 · a paper signed by two: the Second signer box starts with the one the anchor job's draft names, and both names are filed", async () => {
     fileSpy.mockClear()
     contractRows.current = [{ id: 'd1', job_id: 'j251', status: 'draft', voided_at: null, co_signer_name: 'Grace Palmer', co_signed_at: null, co_signer_printed_name: null }]

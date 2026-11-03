@@ -26,6 +26,9 @@ export type ResponsiveModalShellState = { fullScreen: boolean }
  *   (`src/lib/modalFullScreen.ts`). Phones are already full screen, so the
  *   button is not shown there. Children may be a function of
  *   `{ fullScreen }` to lay themselves out for the room they have.
+ * - The overlay starts its own lines (v2.6464): a window drawn inside a row
+ *   that does not wrap, as the job window's fact rows do not, would take that
+ *   on and run every sentence off its edge. `whiteSpace: 'normal'` stops it.
  */
 export default function ResponsiveModalShell({
   title,
@@ -72,7 +75,7 @@ export default function ResponsiveModalShell({
   return (
     <div
       className="respModalOverlay"
-      style={{ zIndex }}
+      style={{ zIndex, whiteSpace: 'normal' }}
       role="dialog"
       aria-modal="true"
       aria-labelledby={titleId}
