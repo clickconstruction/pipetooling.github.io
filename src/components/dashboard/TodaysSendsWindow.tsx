@@ -10,7 +10,7 @@ import ResponsiveModalShell from '../ResponsiveModalShell'
 import { useToastContext } from '../../contexts/ToastContext'
 import { formatErrorMessage } from '../../utils/errorHandling'
 import { todayYmdInAppTz } from '../../utils/dateUtils'
-import { readyRows, todaysSends, TODAYS_SENDS_WORDS, type TodaysSend } from '../../lib/offers/offers'
+import { offerRefusalWords, readyRows, todaysSends, TODAYS_SENDS_WORDS, type TodaysSend } from '../../lib/offers/offers'
 import { supabaseOffersIo, type OffersIo } from '../../lib/offers/offersIo'
 
 export interface TodaysSendsWindowProps {
@@ -112,7 +112,7 @@ export function TodaysSendsWindow({ onClose, onChanged, io: ioProp }: TodaysSend
       }
       reload()
     } catch (e) {
-      showToast(formatErrorMessage(e, 'That did not take.'), 'error')
+      showToast(offerRefusalWords(formatErrorMessage(e, 'That did not take.'), r), 'error')
     } finally {
       setBusy(null)
     }
