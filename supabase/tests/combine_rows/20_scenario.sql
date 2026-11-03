@@ -308,13 +308,13 @@ SELECT cr.same('the target has two watchers', (SELECT count(*)::text FROM public
 SELECT cr.same('an open account on the source opens the target''s', (SELECT status || ' ' || account_ref FROM public.job_supply_house_accounts WHERE id = '00000000-0000-0000-0000-000000252ed3'), 'open A-1');
 SELECT cr.same('the source''s row for that house went', (SELECT count(*)::text FROM public.job_supply_house_accounts WHERE id = '00000000-0000-0000-0000-000000252ed1'), '0');
 SELECT cr.same('an account for a house the target lacked moved', (SELECT job_id::text FROM public.job_supply_house_accounts WHERE id = '00000000-0000-0000-0000-000000252ed2'), '00000000-0000-0000-0000-000000252b01');
-SELECT cr.same('the later word from a house stands', (SELECT their_balance::text FROM public.job_supply_house_words WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND supply_house_id = '00000000-0000-0000-0000-000000252d01'), '500');
+SELECT cr.same('the later word from a house stands', (SELECT their_balance::text FROM public.job_supply_house_words WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND supply_house_id = '00000000-0000-0000-0000-000000252d01'), '500.00');
 SELECT cr.same('and keeps who noted it and when', (SELECT noted_by_name || ' ' || noted_at::text FROM public.job_supply_house_words WHERE id = '00000000-0000-0000-0000-000000252ee1'), 'Rosa Office 2026-10-20 10:00:00+00');
 SELECT cr.same('the target''s older word went', (SELECT count(*)::text FROM public.job_supply_house_words WHERE id = '00000000-0000-0000-0000-000000252ee3'), '0');
 SELECT cr.same('a word from a house the target lacked moved', (SELECT job_id::text FROM public.job_supply_house_words WHERE id = '00000000-0000-0000-0000-000000252ee2'), '00000000-0000-0000-0000-000000252b01');
 SELECT cr.same('a Looks right mark the target already has stands once', (SELECT count(*)::text FROM public.team_board_acks WHERE id = '00000000-0000-0000-0000-000000252ef1'), '0');
 SELECT cr.same('a Looks right mark the target lacked moved with its key', (SELECT job_ledger_id::text || ' ' || target_key FROM public.team_board_acks WHERE id = '00000000-0000-0000-0000-000000252ef2'), '00000000-0000-0000-0000-000000252b01 job:00000000-0000-0000-0000-000000252b01');
-SELECT cr.same('the target''s hours target stands', (SELECT hours::text FROM public.job_expected_hours WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND cleared_at IS NULL), '80');
+SELECT cr.same('the target''s hours target stands', (SELECT hours::text FROM public.job_expected_hours WHERE job_id = '00000000-0000-0000-0000-000000252b01' AND cleared_at IS NULL), '80.0');
 SELECT cr.same('the source''s open target came over closed', (SELECT job_id::text || ' ' || (cleared_at IS NOT NULL)::text || ' ' || cleared_by_name FROM public.job_expected_hours WHERE id = '00000000-0000-0000-0000-000000252f31'), '00000000-0000-0000-0000-000000252b01 true Dee Dev');
 SELECT cr.same('the source''s older target came over', (SELECT job_id::text FROM public.job_expected_hours WHERE id = '00000000-0000-0000-0000-000000252f32'), '00000000-0000-0000-0000-000000252b01');
 
