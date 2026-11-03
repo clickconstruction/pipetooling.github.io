@@ -58,8 +58,9 @@ export type FixtureRow = {
   line_description: string
   /**
    * jobs_ledger_invoices.id billing this line item (job-stages billing,
-   * v2.1069). Carried through the save engine's delete+reinsert so the link
-   * survives id churn; null = unbilled segment. Linked rows lock in ①.
+   * v2.1069). The save writes it with the row (until v2.6420 the save
+   * re-inserted every line, so the link had to ride the churn); null =
+   * unbilled segment. Linked rows lock in ①.
    */
   invoice_id: string | null
   /**
@@ -93,8 +94,8 @@ export type FixtureRow = {
    * company expects to spend — labor %, materials % — with where it came from
    * (`workbench` | `assumed` | `tuned`), when the owner last moved it and the
    * cost rate the hours were read at. All null / undefined = nothing stored, the
-   * line reads the company's split for its kind. Rides the save engine's
-   * delete+reinsert like `stage_kind`; never on a discount row.
+   * line reads the company's split for its kind. Rides the save like
+   * `stage_kind`; never on a discount row.
    */
   budget_labor_pct?: number | null
   budget_materials_pct?: number | null

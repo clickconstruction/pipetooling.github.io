@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Runs supabase/tests/stage_checklist_items against a throwaway copy of the WHOLE schema (punch list #237 PR 1 and PR 1b:
-# who may add, read, take off, order and promote a stage checklist item on a job, and skip a company question on one; and
-# v2.6350: a stage's checklist follows its line through a split or a combine).
+# who may add, read, take off, order and promote a stage checklist item on a job, and skip a company question on one;
+# v2.6350: a stage's checklist follows its line through a split or a combine; and v2.6420: the job form's billing save
+# keeps the job's line ids, so a save takes nothing off a stage).
 #
 #   npm run test:pg:stage-checklist-items
 #
@@ -12,8 +13,10 @@
 # of a stage's own checks, the skip and its put back, and the promote. It raises on its first failed assertion and ends
 # with "stage_checklist_items PASSED". Then rows an earlier split stranded are seeded (30_stranded_rows.sql), the follow
 # migration runs a second time and repairs them, and 40_follow_the_line.sql answers a stage, adds items and skips, splits
-# and combines, and raises at the end with everything lost; it ends with "follow_the_line PASSED". PGTEST_KEEP=1 leaves the
-# container up. Needs docker;
+# and combines, and raises at the end with everything lost; it ends with "follow_the_line PASSED". Last,
+# 50_billing_save_keeps_lines.sql seeds two jobs alike, replays the billing save before v2.6420 on one and the save since on
+# the other, as the office under RLS, and raises at the end with what the save lost; it ends with
+# "billing_save_keeps_lines PASSED". PGTEST_KEEP=1 leaves the container up. Needs docker;
 # the SQL beds workflow runs it from scripts/sql-beds.txt on a ready PR that touches a migration. Never touches prod.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -54,4 +57,7 @@ psql_as postgres -f - < "$FOLLOW" >/dev/null 2>"$ERR" || { echo "FAILED re-apply
 follow="$(psql_as postgres -f - < supabase/tests/stage_checklist_items/40_follow_the_line.sql 2>&1 || true)"
 if ! grep -q "follow_the_line PASSED" <<<"$follow"; then echo "$follow" | tail -60; exit 1; fi
 grep -o "ok: .*" <<<"$follow"
+keeps="$(psql_as postgres -f - < supabase/tests/stage_checklist_items/50_billing_save_keeps_lines.sql 2>&1 || true)"
+if ! grep -q "billing_save_keeps_lines PASSED" <<<"$keeps"; then echo "$keeps" | tail -60; exit 1; fi
+grep -o "ok: .*" <<<"$keeps"
 echo "stage-checklist-items bed ok"

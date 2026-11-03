@@ -169,13 +169,17 @@ export function paymentInsertRows(jobId: string, payments: PaymentRow[]) {
  * order. A discount row (v2.3252+) writes its SIGNED amount — the derived,
  * capped dollars as a negative price with count 1 — plus its kind, live
  * percent, basis positions and reason; it is never a stage and never shared.
- * Work rows keep the positive-only price (a typed 0 is "unpriced").
+ * Work rows keep the positive-only price (a typed 0 is "unpriced"). The row's
+ * own id rides along (v2.6420): a hydrated row keeps the id the database gave
+ * it and a new row the one the form minted, so the billing save updates a line
+ * in place (`diffFixtureRows`) and a line keeps its checklist and its progress.
  */
 export function fixtureInsertRows(jobId: string, fixtures: FixtureRow[]) {
   return fixtures
     .filter((f) => normalizeFixtureDisplayName(f.name ?? '').length > 0)
     .map((f, i) => {
       const base = {
+        id: f.id,
         job_id: jobId,
         name: normalizeFixtureDisplayName(f.name ?? ''),
         sequence_order: i,
@@ -209,11 +213,12 @@ export function fixtureInsertRows(jobId: string, fixtures: FixtureRow[]) {
         // column default (any time); null is a deliberate plain line item.
         stage_kind: f.stage_kind === undefined ? 'any' : f.stage_kind,
         shared_with_gc: f.shared_with_gc ?? false,
-        // Who pays this line (v2.3349): the split-job tag rides the reinsert.
+        // Who pays this line (v2.3349): the split-job tag rides the save.
         bill_to_party: f.bill_to_party ?? null,
-        // Line budgets (v2.6300): the stored split rides the reinsert too. The
-        // keys go only when something is stored, so a row with nothing stored
-        // writes no budget column at all.
+        // Line budgets (v2.6300): the stored split rides the save too. The
+        // keys go only when something is stored, so a new job's row with
+        // nothing stored writes no budget column at all (the billing save's
+        // upsert fills them as null, `diffFixtureRows`).
         ...(f.budget_source != null
           ? {
               budget_labor_pct: f.budget_labor_pct ?? null,
