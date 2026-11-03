@@ -2,7 +2,7 @@
 name: "Materials on site: cages, boxes and counts"
 number: 209
 group: close
-status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · left: the end-to-end photo test on test job 972, then a week of use
+status: built 2026-10-29 on the owner's go (build all of it and take it to live testing) · PR 1 v2.6039 the ground (migration 20261029010000 pushed, types #6414) · PR 2 v2.6041 the phone · PR 3 v2.6043 the office · PR 4 v2.6045 the photo sweep (migration 20261029020000 pushed) · the live test's fixes v2.6049, v2.6050, v2.6054 (the app makes a job's Drive folders) and v2.6055 · v2.6366 the manifest print (2026-11-02) · v2.6367 the dev-mcp verbs (migration 20261102100000; docs/MATERIALS_ON_SITE_ARCHITECTURE.md) · v2.6406 bring back a retired box (2026-11-03) · v2.6432 the prints at full size (2026-11-03) · left: the end-to-end photo test on test job 972, then a week of use
 mockup: to-dos/materials-on-site/mockup.html
 summary: >
   Big jobs leave fittings, pipe and fixtures on site in stencilled cages and boxes (A1, A2, B1 …).
@@ -17,7 +17,7 @@ summary: >
 next: Finish the end-to-end photo test on test job 972 (clear the hand-made pictures link or share it with the app's account, press Make the job's Drive folders on the Documents tab, and the waiting box photo files on the sweep's next run), then use it for a week; the leftovers under Where it stands are one small PR each, the parts-book price first.
 size: L, shipped as four PRs and four fixes; each leftover is S
 blocker: none. The owner's live test on test job 972.
-ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055 · 6366 · 6406 · 6432
+ver: v2.6039 · 6041 · 6043 · 6045 · 6049 · 6050 · 6054 · 6055 · 6366 · 6367 · 6406 · 6432
 opinion: your call — the code is done; the live test and the week of use are yours, and the parts-book price is the one leftover worth building before them
 ---
 
@@ -364,8 +364,9 @@ job's Drive folders, and the waiting box photo files on the sweep's next run. Th
 
 - prices from the parts book for the missing money, with its checked date (call 5), instead of the
   ones remembered off an invoice on the device;
-- the dev-mcp verbs `read_on_site`, `plan_delivery` → `apply_delivery`, `plan_count` →
-  `apply_count` (the Deliveries panel names them as coming, not as there);
+- ~~the dev-mcp verbs~~ built 2026-11-02 as v2.6367: `read_on_site`, `plan_container` → `apply_container`,
+  `plan_delivery` → `apply_delivery`, `plan_movement` → `apply_movement`, `plan_count` → `apply_count` over
+  `dev_on_site_write` (`docs/MATERIALS_ON_SITE_ARCHITECTURE.md` → The agent's door);
 - the Needs you line for stale containers and missing money, and the Procure step's door;
 - the Short press as a tally request; reading an invoice from the Drive folder with the model;
 - a summary RPC for a job past 5,000 ledger rows; the Drive thumbnail on the office panel once the

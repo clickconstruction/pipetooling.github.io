@@ -691,9 +691,9 @@ function JobView({ jobId, job, byUserId, byName, onBack, onOpenJobDetail, onFold
             <ol style={{ margin: 0, paddingLeft: '1.2rem', display: 'grid', gap: '0.45rem', fontSize: '0.9rem' }}>
               <li>Connect the agent to the dev MCP server: Settings → Your account → Dev MCP keys → Issue a key.</li>
               <li>Tell it in words: <i>“Land invoice 48812 on job 972 from the PDF in my downloads.”</i></li>
-              <li>Coming next: it reads the file, calls <code>plan_delivery</code> and shows you the lines. You say yes. It calls <code>apply_delivery</code> with the plan’s hash, and the lines land in Unsorted with the invoice as their source, the same as the button here.</li>
+              <li>It reads the file, calls <code>plan_delivery</code> and shows you the lines. You say yes. It calls <code>apply_delivery</code> with the plan’s hash, and the lines land in Unsorted with the invoice as their source, the same as the button here, each row signed with the agent’s name.</li>
             </ol>
-            <p style={{ ...muted, margin: 0 }}>The verbs, when they land: <code>read_on_site(job)</code> for the containers, the lines and what is missing; <code>plan_delivery</code> → <code>apply_delivery</code> for an invoice or a PO; <code>plan_count</code> → <code>apply_count</code> for an office correction. They land with the tables in the first build PR. Until then the spike keeps its rows on this device, where an agent cannot reach them.</p>
+            <p style={{ ...muted, margin: 0 }}>The verbs: <code>read_on_site(job)</code> for the containers, the lines and what is missing; <code>plan_delivery</code> → <code>apply_delivery</code> for an invoice or a PO; <code>plan_count</code> → <code>apply_count</code> for a count or an office correction; <code>plan_movement</code> → <code>apply_movement</code> for a press on a line; <code>plan_container</code> → <code>apply_container</code> for a cage or box. Each plan is a dry run you read first; apply writes only while the box is as the plan saw it.</p>
             <button type="button" style={{ ...btn, justifySelf: 'end' }} onClick={() => setAgentOpen(false)}>Close</button>
           </div>
         </div>
