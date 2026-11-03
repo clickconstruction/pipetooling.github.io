@@ -5,7 +5,13 @@
  * Jobs.tsx in v2.830.
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen, within } from '@testing-library/react'
+import { fireEvent, screen, waitFor, within } from '@testing-library/react'
+
+// The Job photos window a card's Photos line opens reads who is signed in (punch list #244, v2.6451).
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock({ role: 'assistant' })
+})
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -483,6 +489,17 @@ describe('one door for each thing on the row (v2.4324)', () => {
     renderWithProviders(<JobsStagesUnifiedTable {...makeProps({ rows: paid.rows, billedLienRunway: () => null })} />)
     await settle()
     expect(crewLineLabels()).toContain('Paid')
+  })
+})
+
+describe('the ⋯ sheet’s Photos line on a billing card (punch list #244, v2.6451)', () => {
+  it('opens the Job photos window on that card’s job; the cards drew no window before', async () => {
+    const job = makeJob({ job_name: 'Billing Photos', status: 'ready_to_bill' })
+    renderWithProviders(<JobsStagesUnifiedCardList {...makeProps({ rows: [{ kind: 'job', job }] })} />)
+    await settle()
+    fireEvent.click(screen.getByTitle('More actions'))
+    fireEvent.click(screen.getByText('Photos'))
+    await waitFor(() => expect(document.querySelector('[data-job-photos-window]')?.getAttribute('data-job-photos-window')).toBe(job.id))
   })
 })
 

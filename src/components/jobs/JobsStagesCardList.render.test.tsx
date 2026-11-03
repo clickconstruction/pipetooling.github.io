@@ -8,7 +8,13 @@
  * their profile, as on the desktop rows (v2.5441).
  */
 import { describe, expect, it, vi } from 'vitest'
-import { fireEvent, screen } from '@testing-library/react'
+import { fireEvent, screen, waitFor } from '@testing-library/react'
+
+// The Job photos window a card's Photos line opens reads who is signed in (punch list #244, v2.6451).
+vi.mock('../../hooks/useAuth', async () => {
+  const { useAuthModuleMock } = await import('../../test/renderSmokeMocks')
+  return useAuthModuleMock({ role: 'assistant' })
+})
 
 vi.mock('../../lib/supabase', async () => {
   const { makeSupabaseStub } = await import('../../test/renderSmokeMocks')
@@ -53,6 +59,15 @@ describe('JobsStagesCardList more-actions sheet', () => {
     fireEvent.click(screen.getByText('View job'))
     expect(openStagesDetailJobModal).toHaveBeenCalledTimes(1)
     expect(screen.queryByText('View job')).toBeNull()
+  })
+
+  it('the sheet’s Photos line opens the Job photos window on that card’s job (v2.6451; the cards drew no window before)', async () => {
+    const job = makeJob({ job_name: 'Card Photos' })
+    renderWithProviders(<JobsStagesCardList {...makeProps({ jobList: [job] })} />)
+    await settle()
+    fireEvent.click(screen.getByTitle('More actions'))
+    fireEvent.click(screen.getByText('Photos'))
+    await waitFor(() => expect(document.querySelector('[data-job-photos-window]')?.getAttribute('data-job-photos-window')).toBe(job.id))
   })
 
   it('the sheet’s Job folder opens the Documents tab and says when the folder is not made yet (v2.6301)', async () => {
