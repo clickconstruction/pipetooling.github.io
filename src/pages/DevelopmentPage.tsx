@@ -19,6 +19,9 @@ import { DevelopmentJumpStrip, DEVELOPMENT_JUMP_ANCHOR, DEVELOPMENT_PHONE_QUERY,
 import { DevelopmentPieces } from '../components/developments/DevelopmentPieces'
 import type { PairingProps } from '../components/developments/DevelopmentPairCells'
 import { DevelopmentBackfillSheet, type BackfillSheetValues } from '../components/developments/DevelopmentBackfillSheet'
+import { DevelopmentGcContactSheet } from '../components/developments/DevelopmentGcContactSheet'
+import { gcContactDoneWords, gcContactTargets, type GcContactValues } from '../lib/developments/gcContact'
+import { putGcContactOnBids, restoreGcContacts } from '../lib/developments/gcContactWrites'
 import { makeBidFromJob, undoBackfill } from '../lib/developments/backfillWrites'
 import { hideFromBoardAgain, putAllInDevelopment, putBackOnBoard, putInDevelopment, takeOutOfDevelopment } from '../lib/developments/chipWrites'
 import { putInConfirmRows, putInLabel, putInOutcomeWords, putInPreviewLines } from '../lib/developments/putIn'
@@ -41,7 +44,7 @@ import { DevelopmentScoreboard } from '../components/developments/DevelopmentSco
 import { buildScoreboard, nextScoreboardSort, scoreboardColumnsFor, SCOREBOARD_DEFAULT_SORT, type ScoreboardSort } from '../lib/developments/scoreboard'
 import { useSiteLabor } from '../hooks/useSiteLabor'
 import { useSiteOverhead } from '../hooks/useSiteOverhead'
-import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, type MoneySortMode } from '../lib/developments/siteMoney'
+import { buildSiteMoney, moneyLookWords, MONEY_SORT_LABELS, unbilledTileWords, type MoneySortMode } from '../lib/developments/siteMoney'
 import { countKeysFor, developmentDoorFor, jobDoorClosedWords, OFFICE_READS_MONEY, OFFICE_READS_MONEY_CHIP } from '../lib/developments/readDoor'
 import { isFolded, readFolds, readMoneySort, readMoneyView, toggleFold, writeFolds, writeMoneySort, writeMoneyView, type MoneyView } from '../lib/developments/devicePrefs'
 import { calendarYmdInAppTzFromIso, todayYmdInAppTz } from '../utils/dateUtils'
@@ -154,6 +157,8 @@ export default function DevelopmentPage() {
   const [busy, setBusy] = useState(false)
   const [notThese, setNotThese] = useState<Set<string>>(() => readNotThese(developmentId))
   const [backfillJob, setBackfillJob] = useState<MemberJob | null>(null)
+  // The GC contact sheet (the Gun Dog spike, 2026-11-02): the head's contact edited here, onto the site's bids.
+  const [gcSheet, setGcSheet] = useState(false)
   const [chipConfirm, setChipConfirm] = useState<{ title: string; rows: ChipConfirmRow[]; preview: React.ReactNode; previewCaption: string; confirmLabel: string; onConfirm: () => void } | null>(null)
   const [nowMs] = useState(() => Date.now())
 
@@ -531,6 +536,26 @@ export default function DevelopmentPage() {
           }),
       })
     })
+  const doPutGcContact = (v: GcContactValues) => {
+    if (!shown || !people) return
+    const before = gcContactTargets(shown.bids, people.gcContact)
+    if (before.length === 0) return
+    setGcSheet(false)
+    void run(async () => {
+      const n = await putGcContactOnBids(
+        before.map((b) => b.id),
+        v,
+      )
+      showActionToast(gcContactDoneWords(v.name, n), {
+        label: 'Put it back',
+        onClick: () =>
+          void run(async () => {
+            await restoreGcContacts(before)
+            showToast(`The GC contact is as it was on ${before.length} ${before.length === 1 ? 'bid' : 'bids'}.`, 'success')
+          }),
+      })
+    })
+  }
   const doMakeJob = (bid: MemberBid) => {
     if (!jobForm) return
     jobForm.openNewJob({ prefillBidId: bid.id, onSaved: () => void load() })
@@ -791,12 +816,12 @@ export default function DevelopmentPage() {
   // The Money look: the site's band and the live jobs in stage sections, from the same rows.
   const siteMoney = buildSiteMoney({ members: counted, invoices: data.invoices, names: data.names, teamMembers: data.teamMembers, jobLabel, paySpeed: data.paySpeed, todayYmd: todayYmdInAppTz() })
   const moneyWords = moneyLookWords(siteMoney, money)
-  // The scoreboard (v2.6407): the same jobs, the nine measures, the site's totals as the column heads.
-  const scoreboard = buildScoreboard({ jobs: shown.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort })
+  // The scoreboard (v2.6407): the same members the Money look reads, the nine measures, the site's totals as the column heads.
+  const scoreboard = buildScoreboard({ jobs: counted.jobs, invoices: data.invoices, jobLabel, labor: laborRead, costs: costsByJobId, overhead: overheadRead, sort: scoreSort })
   // The head's bid count leaves a robot's shadow bid out, as the tiles do (v2.6378).
   const scoreboardHead = {
     name: dev.name,
-    line: `${data.customer?.name ? `${data.customer.name} · ` : ''}${shown.jobs.length} ${shown.jobs.length === 1 ? 'job' : 'jobs'}, ${scoreboard.rows.length} with money on ${scoreboard.rows.length === 1 ? 'it' : 'them'} · ${(counted ?? shown).bids.length} ${(counted ?? shown).bids.length === 1 ? 'bid' : 'bids'}`,
+    line: `${data.customer?.name ? `${data.customer.name} · ` : ''}${counted.jobs.length} ${counted.jobs.length === 1 ? 'job' : 'jobs'}, ${scoreboard.rows.length} with money on ${scoreboard.rows.length === 1 ? 'it' : 'them'} · ${counted.bids.length} ${counted.bids.length === 1 ? 'bid' : 'bids'}`,
     small:
       [
         siteMoney.band.left > 0 ? `${money(siteMoney.band.left)} left to collect` : null,
@@ -806,6 +831,8 @@ export default function DevelopmentPage() {
         .filter(Boolean)
         .join(' · ') || null,
   }
+  // The fifth tile earns its place (the Gun Dog spike, 2026-11-02): with no bill open it says what is not yet billed.
+  const unbilled = moneyShown ? unbilledTileWords(siteMoney, counts.openOnBillsUsd, money) : null
 
   // The strip's six looks: the plain count with its noun, and in amber what in it needs the leader.
   const activePieces = pieces.filter((r) => !r.done && !r.archived).length
@@ -842,7 +869,9 @@ export default function DevelopmentPage() {
       { key: 'bids', cap: 'Bids', value: counts.bids.total, sub: `${counts.bids.sent} sent · ${counts.bids.undecided} undecided${counts.bids.archived ? ` · ${counts.bids.archived} archived` : ''}` },
       { key: 'jobs', cap: 'Jobs', value: counts.jobs.total, sub: `${counts.jobs.open} open · ${counts.jobs.working} working` },
       { key: 'bidUndecided', cap: 'Bid, undecided', value: money(counts.bidUndecidedUsd), sub: counts.bids.undecided ? `${counts.bids.undecided} ${pluralNoun('bid', counts.bids.undecided)}` : counts.bids.archived ? 'none in play' : 'every bid is decided' },
-      { key: 'openOnBills', cap: 'Open on bills', tone: counts.openOnBillsUsd ? 'green' : undefined, value: money(counts.openOnBillsUsd), sub: counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing unpaid' },
+      unbilled
+        ? { key: 'openOnBills', cap: unbilled.cap, tone: 'amber', value: unbilled.value, sub: unbilled.sub }
+        : { key: 'openOnBills', cap: 'Open on bills', tone: counts.openOnBillsUsd ? 'green' : undefined, value: money(counts.openOnBillsUsd), sub: counts.openOnBillsUsd ? 'billed, not yet paid' : 'nothing unpaid' },
     ] as CountTileSpec[]
   ).filter((t) => tileKeys.includes(t.key))
   // Each look folds to one line that says what its strip chip says.
@@ -992,7 +1021,21 @@ export default function DevelopmentPage() {
                   </a>
                 </>
               ) : null}
+              {moneyShown && shown.bids.length > 0 ? (
+                <>
+                  {' '}
+                  <LinkButton onClick={() => setGcSheet(true)} title="Change the GC contact here: it goes onto every bid of the site that carries this one or none" nowrap>
+                    Change ›
+                  </LinkButton>
+                </>
+              ) : null}
             </>
+          ) : moneyShown && shown.bids.length > 0 ? (
+            <span data-testid="gc-contact-add">
+              <LinkButton onClick={() => setGcSheet(true)} title="Add the GC contact here: the name, the phone and the email go onto every bid of the site that has none">
+                none yet · add one
+              </LinkButton>
+            </span>
           ) : (
             <LinkButton onClick={() => (newestBid ? openBid(newestBid.id) : navigate('/settings?tab=settings-jobs'))} title={newestBid ? 'The GC contact lives on a bid: this opens the newest one, its Edit tab has the contact' : 'No bid yet: the development\'s default GC is set under Settings → Jobs & dispatch → Manage developments'}>
               none yet · add one
@@ -1257,6 +1300,17 @@ export default function DevelopmentPage() {
       </div>
       {chipConfirm ? (
         <DevelopmentChipConfirm title={chipConfirm.title} rows={chipConfirm.rows} preview={chipConfirm.preview} previewCaption={chipConfirm.previewCaption} confirmLabel={chipConfirm.confirmLabel} busy={busy} onConfirm={chipConfirm.onConfirm} onCancel={() => setChipConfirm(null)} />
+      ) : null}
+      {gcSheet ? (
+        <DevelopmentGcContactSheet
+          siteName={dev.name}
+          current={people.gcContact}
+          targetCount={gcContactTargets(shown.bids, people.gcContact).length}
+          keptCount={shown.bids.length - gcContactTargets(shown.bids, people.gcContact).length}
+          busy={busy}
+          onSave={doPutGcContact}
+          onClose={() => setGcSheet(false)}
+        />
       ) : null}
       {backfillJob ? (
         <DevelopmentBackfillSheet

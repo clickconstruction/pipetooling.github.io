@@ -48,8 +48,11 @@ describe('RemindersSettingsCard (v2.5720)', () => {
     renderWithProviders(<RemindersSettingsCard role="master_technician" io={fakeIo()} loadFlows={flows()} />)
     expect(await screen.findByRole('heading', { name: 'Residential customer' })).toBeTruthy()
     expect(screen.getByRole('heading', { name: 'Trade partner' })).toBeTruthy()
-    expect([...document.querySelectorAll('[data-reminder-step]')].map((el) => el.getAttribute('data-reminder-step'))).toEqual(['trade:portal', 'residential:approved', 'residential:paid', 'residential:review'])
+    expect([...document.querySelectorAll('[data-reminder-step]')].map((el) => el.getAttribute('data-reminder-step'))).toEqual(['trade:portal', 'residential:approved', 'residential:paid', 'residential:review', 'residential:warranty_paper'])
     expect(checked('Residential customer, Approved: The app and this reminder')).toEqual(['Offers'])
+    // The warranty in place of a contract (2026-11-02): its step's reminder is off until the owner turns it on, with the app's own line.
+    expect(checked('Residential customer, Warranty: The app and this reminder')).toEqual(['Off'])
+    expect(within(document.querySelector<HTMLElement>('[data-reminder-step="residential:warranty_paper"]')!).getByText('“Dana, the warranty we sent is waiting for your initials and signature. Tap the link we sent to sign it.”')).toBeTruthy()
     expect(checked('Residential customer, Paid: The app and this reminder')).toEqual(['Off'])
     expect(checked('Trade partner, Portal opened: The app and this reminder')).toEqual(['Off'])
     const approved = within(document.querySelector<HTMLElement>('[data-reminder-step="residential:approved"]')!)

@@ -28,6 +28,7 @@ const offer = (over: Partial<OfferRow> = {}): OfferRow => ({
   preparedAt: '2026-10-17T14:00:00Z',
   preparedBy: 'app',
   sendOn: null,
+  aboutOn: null,
   heldWhy: null,
   ...over,
 })

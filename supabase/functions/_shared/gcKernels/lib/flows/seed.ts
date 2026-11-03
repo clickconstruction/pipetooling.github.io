@@ -13,7 +13,7 @@
  * as before.
  *
  * The residential flow (R4, `RESIDENTIAL_BUILD_PLAN.md`) is the customer prototype's screen 4: a service job from the
- * booking to the review ask, one Per job lane of eleven steps. Its reminders are the app's and start off, since the
+ * booking to the review ask, one Per job lane of eleven steps and, aside, the warranty sent in place of a contract. Its reminders are the app's and start off, since the
  * owner turns each step on: the estimate's on Approved and the bill's on Paid, each the customer's move. Estimate sent
  * and Billed carry none, since `nudgeDue` never fires on our move. The review ask (v2.5943, punch list #185) is the one
  * reminder on our own move: the app's text the morning after Paid turned true, held while the customer waits on us.
@@ -247,6 +247,17 @@ export const SEED_FLOWS: Readonly<Record<FlowKind, FlowDef>> = {
             id: 'review', name: 'Review asked', nameEs: 'Reseña pedida', phase: 'building', who: 'us', seat: 'Rosa', callScript: scriptOf('review'),
             later: { en: 'After you pay.', es: 'Después de pagar.' },
             facts: ['review_asked'], nudge: { days: 1, how: 'text', send: 'app', dayFact: null }, owedWords: 'a review link', usual: 1,
+          }),
+          // The warranty in place of a contract (the owner's call of 2026-11-02): an aside, as the GC customer's change orders
+          // are. Drawn apart from the lane, on now only while one is out to sign, done once every one sent is signed, later
+          // when none went, so a homeowner with no warranty never stands on it. One round per warranty sent. Last in the
+          // lane, as the change orders are, so the step prod already has keeps its positions. Its id is not `warranty`,
+          // since the GC customer flow's year-after-closeout step is, and a quick reply keeps only the id.
+          step({
+            id: 'warranty_paper', name: 'Warranty', nameEs: 'Garantía', phase: 'pricing', who: 'them', aside: true,
+            later: { en: 'If we send you a warranty to sign.', es: 'Si le enviamos una garantía para firmar.' },
+            loop: 'each warranty', loopEnds: 'rounds', facts: ['warranty_signed'], papers: ['warranty'],
+            nudge: { days: 2, how: 'text', send: 'app', dayFact: null }, usual: 2,
           }),
         ],
       },

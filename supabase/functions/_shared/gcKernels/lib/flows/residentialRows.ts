@@ -14,6 +14,7 @@ import type {
   ClockSessionRow,
   EstimateRow,
   FieldReportRow,
+  JobAgreementRow,
   JobStatusEventRow,
   PipelineContactJobRow,
   PipelineInvoiceRow,
@@ -36,6 +37,8 @@ export const PIPELINE_SELECTS = {
   invoices: 'id, job_id, status, amount, sequence_order, billed_at, sent_to_customer_at, estimated_bill_date, created_at, sent_by_user_id, bill_to_party, bill_to_email',
   payments: 'job_id, invoice_id, amount, paid_on, sequence_order',
   texts: 'contact_id, jobs_ledger_id, channel, direction, at, body, who_user_id, who_text',
+  /** `job_contracts`: the warranties sent in place of a contract (the Warranty step's rounds); every kind is read, the loader keeps the warranties. */
+  agreements: 'id, job_id, kind, status, sent_at, signed_at, voided_at',
 } as const
 
 /** `jobs_ledger`, with the job's name for the card and `{job}`. */
@@ -57,12 +60,14 @@ export type PipelineRows = {
   invoices: readonly PipelineInvoiceRow[]
   payments: readonly PipelinePaymentRow[]
   texts: readonly (PipelineMessageRow & { contact_id: string })[]
+  /** Left out by a reader from before the warranty: no round, as before. */
+  agreements?: readonly JobAgreementRow[]
   paySpeeds: unknown
   promisedPay: unknown
 }
 
 /** An empty read, for a run with no residential customer. */
-export const NO_PIPELINE_ROWS: PipelineRows = { jobs: [], contactJobs: [], blocks: [], clockSessions: [], reports: [], estimates: [], statusEvents: [], invoices: [], payments: [], texts: [], paySpeeds: null, promisedPay: null }
+export const NO_PIPELINE_ROWS: PipelineRows = { jobs: [], contactJobs: [], blocks: [], clockSessions: [], reports: [], estimates: [], statusEvents: [], invoices: [], payments: [], texts: [], agreements: [], paySpeeds: null, promisedPay: null }
 
 /** Whose rows to cut out: the contact, what our texts call them, their customer record, and what `flow_rows` gave. */
 export type ResidentialWho = {
@@ -101,6 +106,7 @@ export function residentialRowsOf(rows: PipelineRows, who: ResidentialWho): Resi
     invoices: rows.invoices.filter((i) => on(i.job_id)),
     payments: rows.payments.filter((p) => on(p.job_id)),
     messages: rows.texts.filter((m) => m.contact_id === who.contact.id),
+    agreements: (rows.agreements ?? []).filter((a) => on(a.job_id)),
     skips: (who.skips ?? []).map((k) => ({ step_key: k.step_key, jobs_ledger_id: k.jobs_ledger_id ?? null, why: k.why, by_name: k.by_name, created_at: k.created_at, undone_at: k.undone_at })),
     paySpeeds: parsePaySpeedsRpc(rows.paySpeeds),
     promisedPay: parsePromisedPayDatesRpc(rows.promisedPay) ?? undefined,

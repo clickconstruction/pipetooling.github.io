@@ -65,7 +65,7 @@ const run = (person: PersonFlow, appSends: AppSends) =>
   planNudgeRun({ people: [person], now: MORNING, appSends, sent: [], numbers: { dana: { number: '(210) 555-0190', optedOut: false } } })
 
 describe('flows/seed: the residential flow', () => {
-  it('is one Per job lane of eleven steps, in the screen 4 order', () => {
+  it('is one Per job lane of eleven steps in the screen 4 order, and the warranty aside', () => {
     expect(RESIDENTIAL.kind).toBe('residential')
     expect(RESIDENTIAL.lanes.map((l) => l.lane)).toEqual(['per_job'])
     expect(flat(RESIDENTIAL).map((s) => s.name)).toEqual([
@@ -80,13 +80,16 @@ describe('flows/seed: the residential flow', () => {
       'Billed',
       'Paid',
       'Review asked',
+      'Warranty',
     ])
-    expect(flat(RESIDENTIAL).map((s) => s.id)).toEqual(['booked', 'onway', 'arrived', 'found', 'estimate', 'approved', 'working', 'done', 'billed', 'paid', 'review'])
+    expect(flat(RESIDENTIAL).map((s) => s.id)).toEqual(['booked', 'onway', 'arrived', 'found', 'estimate', 'approved', 'working', 'done', 'billed', 'paid', 'review', 'warranty_paper'])
+    // The warranty in place of a contract stands aside, as the GC customer's change orders do: nobody is held on it.
+    expect(flat(RESIDENTIAL).filter((s) => s.aside).map((s) => s.id)).toEqual(['warranty_paper'])
   })
 
-  it('is the customer’s move on Approved and Paid, and ours on every other step', () => {
+  it('is the customer’s move on Approved, Paid and the warranty, and ours on every other step', () => {
     const theirs = flat(RESIDENTIAL).filter((s) => s.who === 'them').map((s) => s.id)
-    expect(theirs).toEqual(['approved', 'paid'])
+    expect(theirs).toEqual(['approved', 'paid', 'warranty_paper'])
     expect(flat(RESIDENTIAL).filter((s) => s.who === 'both')).toEqual([])
   })
 
@@ -103,6 +106,7 @@ describe('flows/seed: the residential flow', () => {
       'billed',
       'paid',
       'review_asked',
+      'warranty_signed',
     ])
     for (const s of flat(RESIDENTIAL)) {
       for (const f of s.facts) expect(factById(f)?.scope).toBe(s.loop ? 'round' : 'job')
@@ -110,11 +114,12 @@ describe('flows/seed: the residential flow', () => {
     }
   })
 
-  it('runs Billed and Paid once per bill', () => {
+  it('runs Billed and Paid once per bill, and the warranty once per warranty sent', () => {
     const loops = flat(RESIDENTIAL).filter((s) => s.loop)
     expect(loops.map((s) => [s.id, s.loop, s.loopEnds])).toEqual([
       ['billed', 'each bill', 'rounds'],
       ['paid', 'each bill', 'rounds'],
+      ['warranty_paper', 'each warranty', 'rounds'],
     ])
   })
 
@@ -132,6 +137,8 @@ describe('flows/seed: the residential flow', () => {
       ['paid', { days: 0, how: 'text', send: 'app', dayFact: 'pay_by' }],
       // Customer reviews (v2.5943, punch list #185): the morning after Paid turned true.
       ['review', { days: 1, how: 'text', send: 'app', dayFact: null }],
+      // The warranty out to sign: a text after two quiet days, off until the owner turns it on.
+      ['warranty_paper', { days: 2, how: 'text', send: 'app', dayFact: null }],
     ])
   })
 
