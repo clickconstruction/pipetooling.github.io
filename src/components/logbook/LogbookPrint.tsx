@@ -53,7 +53,7 @@ function longDate(ymd: string | null): string {
 export default function LogbookPrint(p: Props) {
   const facing = p.face === 'summary' ? 'Summary sheet' : 'Full log'
   return createPortal(
-    <div className="logbook-print" data-theme="light" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', justifyContent: 'center', overflow: 'auto', padding: '24px 12px' }}>
+    <div className="logbook-print" data-theme="light" style={{ position: 'fixed', inset: 0, zIndex: 1000, background: 'rgba(0,0,0,0.45)', display: 'flex', justifyContent: 'center', overflow: 'auto', padding: 'calc(24px + var(--app-top-chrome, 0px)) 12px 24px' }}>
       <style>{`${printRootCss('logbook-print')} @media print { .logbook-print-chrome { display: none !important; } .logbook-print-sheet { box-shadow: none !important; width: auto !important; padding: 0 !important; margin: 0 !important; } .logbook-week { break-inside: avoid; page-break-inside: avoid; } .logbook-sign { break-inside: avoid; page-break-inside: avoid; } }`}</style>
       <div role="dialog" aria-modal="true" style={{ display: 'grid', gap: 10, alignContent: 'start' }}>
         <div className="logbook-print-chrome" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8, background: 'var(--surface)', borderRadius: 10, padding: '8px 12px', width: 816, maxWidth: '100%' }}>
