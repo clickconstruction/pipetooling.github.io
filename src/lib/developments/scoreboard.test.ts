@@ -9,6 +9,7 @@ import {
   scoreboardCellWords,
   scoreboardCompactWords,
   scoreboardColumnsFor,
+  scoreboardColumnWidths,
   scoreboardFoldWords,
   scoreboardFoldedKeys,
   scoreboardPct,
@@ -299,19 +300,44 @@ describe('the rows under an open job (v2.6457)', () => {
 
 describe('scoreboardCompactWords (v2.6457)', () => {
   it('money reads short as the phone strip reads it; hours and days stay whole; a loss keeps its sign', () => {
-    expect(scoreboardCompactWords('earned', 2_099_313)).toBe('$2.1M')
+    expect(scoreboardCompactWords('earned', 2_437_520)).toBe('$2.4M')
     expect(scoreboardCompactWords('earned', 2_000_000)).toBe('$2M')
     expect(scoreboardCompactWords('earned', 12_400_000)).toBe('$12M')
-    expect(scoreboardCompactWords('parts', 684_445)).toBe('$684k')
-    expect(scoreboardCompactWords('overhead', 13_395)).toBe('$13k')
-    expect(scoreboardCompactWords('labor', 9_446)).toBe('$9.4k')
-    expect(scoreboardCompactWords('profit', -7_972)).toBe('−$8k')
-    expect(scoreboardCompactWords('cost', 1_812)).toBe('$1.8k')
+    expect(scoreboardCompactWords('parts', 712_380)).toBe('$712k')
+    expect(scoreboardCompactWords('overhead', 14_720)).toBe('$15k')
+    expect(scoreboardCompactWords('labor', 9_380)).toBe('$9.4k')
+    expect(scoreboardCompactWords('profit', -7_960)).toBe('−$8k')
+    expect(scoreboardCompactWords('cost', 1_790)).toBe('$1.8k')
     expect(scoreboardCompactWords('cost', 999)).toBe('$999')
-    expect(scoreboardCompactWords('profit', -27_160)).toBe('−$27k')
-    expect(scoreboardCompactWords('profit', -186)).toBe('−$186')
+    expect(scoreboardCompactWords('profit', -26_840)).toBe('−$27k')
+    expect(scoreboardCompactWords('profit', -214)).toBe('−$214')
     expect(scoreboardCompactWords('hours', 12_345)).toBe('12,345 h')
     expect(scoreboardCompactWords('days', 57)).toBe('57 d')
+  })
+})
+
+describe('scoreboardColumnWidths (v2.6457)', () => {
+  const pct = (w: string | undefined) => Number(String(w).replace('%', ''))
+  it('the full board at whole dollars weights its columns: Profit the widest, Hours and Days the narrowest, all of it a hundred', () => {
+    const cols = scoreboardColumnsFor(true)
+    const { job, columns } = scoreboardColumnWidths(cols, false)
+    const by = Object.fromEntries(cols.map((c, i) => [c.key, pct(columns[i])]))
+    expect(job).toBe('25%')
+    expect(by.profit).toBe(12)
+    expect(by.hours).toBe(6.5)
+    expect(by.days).toBe(6.5)
+    expect(by.earned).toBeCloseTo(50 / 6, 2)
+    expect(pct(job) + Object.values(by).reduce((a, b) => a + b, 0)).toBeCloseTo(100, 1)
+  })
+  it('without the days the money takes their room', () => {
+    const cols = scoreboardColumnsFor(true, false)
+    const { columns } = scoreboardColumnWidths(cols, false)
+    expect(columns).toHaveLength(8)
+    expect(25 + columns.reduce((a, w) => a + pct(w), 0)).toBeCloseTo(100, 1)
+  })
+  it('short money words share alike; the leader’s board gives the Job column nearly half', () => {
+    expect(scoreboardColumnWidths(scoreboardColumnsFor(true), true)).toEqual({ job: '26%', columns: Array(9).fill(undefined) })
+    expect(scoreboardColumnWidths(scoreboardColumnsFor(false), false)).toEqual({ job: '46%', columns: [undefined, undefined, undefined] })
   })
 })
 

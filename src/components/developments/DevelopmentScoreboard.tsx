@@ -7,7 +7,7 @@
  * On a phone the rows are cards and an open card shows the nine as a labelled grid. Draws what
  * `lib/developments/scoreboard.ts` built; reads nothing.
  */
-import { Fragment, useState, type CSSProperties, type ReactNode } from 'react'
+import { Fragment, useLayoutEffect, useState, type CSSProperties, type ReactNode } from 'react'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { EmptyState } from '../EmptyState'
 import { jobsLedgerStatusDotColor, labelJobsLedgerStatus } from '../../lib/jobsLedgerStatusPipeline'
@@ -20,6 +20,8 @@ import {
   scoreboardCellWords,
   scoreboardCompactWords,
   SCOREBOARD_COMPACT_QUERY,
+  SCOREBOARD_NARROW_BELOW_PX,
+  scoreboardColumnWidths,
   scoreboardFoldWords,
   scoreboardFoldedKeys,
   scoreboardPctOf,
@@ -55,6 +57,8 @@ type Fmt = (key: ScoreboardColumnKey, value: number) => string
 
 const num: CSSProperties = { fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap', textAlign: 'right' }
 const cellPad: CSSProperties = { padding: '0 6px', height: 30, borderBottom: '1px solid var(--border)', verticalAlign: 'middle' }
+/** The percent beside a Profit figure, a job's and the site's. */
+const pc: CSSProperties = { fontSize: '0.64rem', color: 'var(--text-muted)', fontWeight: 500, marginLeft: 3 }
 
 function Tile({ col, value, small, sorted, desc, onSort, narrow = false }: { col: ScoreboardColumn; value: string; small: ReactNode; sorted: boolean; desc: boolean; onSort: () => void; narrow?: boolean }) {
   return (
@@ -96,7 +100,6 @@ function Cell({ col, row, reads, open, fmt, narrow }: { col: ScoreboardColumn; r
   const words = fmt(col.key, v)
   const exact = scoreboardCellWords(col.key, v)
   const whole = words !== exact ? exact : undefined
-  const pc: CSSProperties = { fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 500, marginLeft: 4 }
   if (col.key === 'profit') {
     if (row.flags.includes('assumed-50'))
       return (
@@ -311,9 +314,22 @@ function MemberLines({ list, seesCosts }: { list: ScoreboardMembers; seesCosts: 
 
 export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, head, membersOf }: DevelopmentScoreboardProps) {
   const seesCosts = columns.some((c) => c.key === 'cost')
-  // The middle widths read short on the full board only: the leader's board has room for whole dollars.
-  const narrow = useMatchMedia(SCOREBOARD_COMPACT_QUERY) && !phone && seesCosts
+  // The middle widths read short on the full board only: the leader's board has room for whole dollars. The board's
+  // own width decides once it is measured; the window's query guesses for the first paint (and in a test, which has no layout).
+  const [box, setBox] = useState<HTMLDivElement | null>(null)
+  const [boxWidth, setBoxWidth] = useState(0)
+  useLayoutEffect(() => {
+    if (!box) return
+    setBoxWidth(box.clientWidth)
+    if (typeof ResizeObserver === 'undefined') return
+    const watch = new ResizeObserver(() => setBoxWidth(box.clientWidth))
+    watch.observe(box)
+    return () => watch.disconnect()
+  }, [box])
+  const narrowWindow = useMatchMedia(SCOREBOARD_COMPACT_QUERY)
+  const narrow = !phone && seesCosts && (boxWidth > 0 ? boxWidth < SCOREBOARD_NARROW_BELOW_PX : narrowWindow)
   const fmt: Fmt = narrow ? scoreboardCompactWords : scoreboardCellWords
+  const widths = scoreboardColumnWidths(columns, narrow)
   const [openIds, setOpenIds] = useState<ReadonlySet<string>>(() => new Set())
   const [showEmpties, setShowEmpties] = useState(false)
   const toggle = (id: string) =>
@@ -464,12 +480,12 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
   }
   return (
     <div>
-      <div style={{ overflowX: 'auto' }}>
+      <div ref={setBox} style={{ overflowX: 'auto' }}>
       <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '0.8rem', tableLayout: 'fixed' }} data-testid="scoreboard-table">
         <colgroup>
-          <col style={{ width: columns.length > 3 ? (narrow ? '26%' : '31%') : '46%' }} />
-          {columns.map((c) => (
-            <col key={c.key} />
+          <col style={{ width: widths.job }} />
+          {columns.map((c, i) => (
+            <col key={c.key} style={widths.columns[i] ? { width: widths.columns[i] } : undefined} />
           ))}
         </colgroup>
         <thead>
@@ -506,7 +522,7 @@ export function DevelopmentScoreboard({ model, columns, phone, onSort, openJob, 
             {columns.map((c) => (
               <td key={c.key} style={{ ...cellPad, ...num, fontWeight: 800, color: 'var(--text-strong)', borderTop: '2px solid var(--border-strong)', background: 'var(--bg-subtle)', height: 32, borderLeft: c.key === 'earned' ? '1px solid var(--border)' : undefined }}>
                 {tileValue(c)}
-                {c.key === 'profit' && !narrow && scoreboardCellStands('profit', model.reads) === 'stands' ? <span style={{ fontSize: '0.68rem', color: 'var(--text-muted)', fontWeight: 500, marginLeft: 4 }}>{scoreboardPctOf(model.site.profit, model.site.earned)}</span> : null}
+                {c.key === 'profit' && !narrow && scoreboardCellStands('profit', model.reads) === 'stands' ? <span style={pc}>{scoreboardPctOf(model.site.profit, model.site.earned)}</span> : null}
               </td>
             ))}
           </tr>

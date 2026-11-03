@@ -259,8 +259,8 @@ export function scoreboardCellWords(key: ScoreboardColumnKey, value: number): st
 
 /**
  * A dollar figure short enough for a narrow column (v2.6457, the walk at tablet widths): the Gun Dog phone
- * strip's rule (`lookFigure.ts`), from a million *$2.1M*, from ten thousand *$684k*, and since a 57 px column
- * cannot hold *−$7,972* in bold, from a thousand one decimal (*$9.4k*, *−$8k*); under a thousand the whole
+ * strip's rule (`lookFigure.ts`), from a million *$2.4M*, from ten thousand *$712k*, and since a 57 px column
+ * cannot hold *−$6,840* in bold, from a thousand one decimal (*$9.4k*, *−$8k*); under a thousand the whole
  * dollars, a minus sign before a loss. Hours and days stay whole. The exact figure rides the cell's title.
  */
 export function scoreboardCompactWords(key: ScoreboardColumnKey, value: number): string {
@@ -273,8 +273,34 @@ export function scoreboardCompactWords(key: ScoreboardColumnKey, value: number):
   return scoreboardUsd(value)
 }
 
-/** Below this width the board's columns are too narrow for whole dollars: the cells and tiles read short. */
+/** Below this width the board's columns are too narrow for whole dollars: the cells and tiles read short. The window's query is the first paint's guess. */
 export const SCOREBOARD_COMPACT_QUERY = '(max-width: 1180px)'
+
+/**
+ * The board's own width under which it reads short (v2.6457): at 1,200 px the columns `scoreboardColumnWidths`
+ * gives are 144 px for Profit and 100 px for the other money, the room an eight-figure total in bold needs.
+ * Measured on the board itself, so a side panel or a zoom decides as the window cannot.
+ */
+export const SCOREBOARD_NARROW_BELOW_PX = 1200
+
+/** The full board's share of its width for each column that does not share alike: the effort columns hold a few digits and a letter, Profit a figure and its percent. */
+const SCOREBOARD_SET_WIDTHS: Partial<Record<ScoreboardColumnKey, number>> = { hours: 6.5, days: 6.5, profit: 12 }
+
+/**
+ * How wide the Job column and each figure's column are, in percent of the board (v2.6457). The full board at
+ * whole dollars weights them: Hours and Days give their room to the money and Profit takes the most, since nine
+ * equal columns left the site's bold total and its percent 14 px short at 1280 wide. With short money words every
+ * figure's column shares alike, and the leader's board gives the Job column nearly half.
+ */
+export function scoreboardColumnWidths(columns: ReadonlyArray<ScoreboardColumn>, narrow: boolean): { job: string; columns: ReadonlyArray<string | undefined> } {
+  if (!columns.some((c) => c.key === 'cost')) return { job: '46%', columns: columns.map(() => undefined) }
+  if (narrow) return { job: '26%', columns: columns.map(() => undefined) }
+  const job = 25
+  const set = columns.reduce((sum, c) => sum + (SCOREBOARD_SET_WIDTHS[c.key] ?? 0), 0)
+  const rest = columns.filter((c) => SCOREBOARD_SET_WIDTHS[c.key] == null).length
+  const share = rest ? (100 - job - set) / rest : 0
+  return { job: `${job}%`, columns: columns.map((c) => `${Number((SCOREBOARD_SET_WIDTHS[c.key] ?? share).toFixed(3))}%`) }
+}
 
 /** The line a flag shows beside a job, and what it means on hover. */
 export const SCOREBOARD_FLAG_WORDS: Record<ScoreboardFlag, { label: string; title: string }> = {
