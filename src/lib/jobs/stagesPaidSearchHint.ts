@@ -30,6 +30,8 @@ export function stagesPaidSearchHint(input: {
   serverSearchBusy: boolean
   /** matches the board's filters hold back: they have a line of their own, and "nowhere" would be false */
   heldBackCount: number
+  /** the lookup failed, or the rows it found did not load (`stagesSearchLookupFailed.ts`): the same */
+  serverSearchFailed: boolean
 }): StagesPaidSearchHint | null {
   if (!input.searchActive) return null
   const paid = Math.max(0, Math.floor(input.paidMatchCount))
@@ -42,13 +44,17 @@ export function stagesPaidSearchHint(input: {
   }
   if (input.openMatchCount > 0) return null
   if (input.serverSearchBusy) return { kind: 'checking', label: 'Checking Paid in Full…' }
-  if (input.heldBackCount > 0) return null
+  if (input.serverSearchFailed || input.heldBackCount > 0) return null
   return { kind: 'none_anywhere', label: 'No match anywhere — Paid in Full included' }
 }
 
-/** The Paid in Full header count while a search is active: matches, never "Expand to load". */
-export function stagesPaidHeaderSearchCount(paidMatchCount: number, serverSearchBusy: boolean): string {
+/**
+ * The Paid in Full header count while a search is active: matches, never "Expand to load". With the lookup
+ * failed and the paid rows never loaded, none of them was searched, so it never says "0 matches".
+ */
+export function stagesPaidHeaderSearchCount(paidMatchCount: number, serverSearchBusy: boolean, paidNotSearched = false): string {
   const n = Math.max(0, Math.floor(paidMatchCount))
   if (n === 0 && serverSearchBusy) return 'checking…'
+  if (n === 0 && paidNotSearched) return 'not searched'
   return `${n} match${n === 1 ? '' : 'es'}`
 }

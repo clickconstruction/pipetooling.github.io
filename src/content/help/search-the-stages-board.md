@@ -2,7 +2,7 @@
 title: search jobs on the Pipeline board
 category: Office
 roles: dev, master_technician, assistant
-keywords: stages, search, find a job, development, paid in full, hidden matches, no match anywhere, filters, schedule notes, clock notes, session notes, schedule and time in search, tools menu
+keywords: stages, search, find a job, development, paid in full, hidden matches, no match anywhere, filters, no signal, retry, not searched, schedule notes, clock notes, session notes, schedule and time in search, tools menu
 order: 74
 ---
 The search box on Jobs → Pipeline filters every section of the board at once. Counts, totals and prints all follow what you type.
@@ -33,6 +33,16 @@ When a filter hides a match, a line above the board says so. The line reads like
 Your filters stay as you set them. *No match anywhere* means nothing matched, even behind your filters.
 
 A dev's ZZ test jobs have a line of their own. Press {{button:outline|Open Hide groups}} on that line to reach their switch.
+
+## When the search cannot reach every job
+
+The search looks in two places. The first is the jobs already on the board. The second is the server, which holds every other job, Paid in Full included.
+
+If the server does not answer, a line above the board says so. The line reads *Only the jobs already on the board were searched.*
+
+Until the server answers, the **Paid in Full** header reads *not searched*. With no signal, press {{button:outline|Retry}}, or wait. The search runs again by itself when the signal is back. Any other reason shows in its own words, with no Retry.
+
+The **#** chip says the same in a short message. The chip keeps the number you typed, so you can press Enter again.
 
 ## Optional: also search schedule and clock notes
 
