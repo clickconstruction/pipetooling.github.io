@@ -21,6 +21,7 @@ import { JobDocumentsLienPaper } from './JobDocumentsLienPaper'
 import { JobDocumentsSent } from './JobDocumentsSent'
 import { JobDocumentsTestReports } from './JobDocumentsTestReports'
 import { HoursStatementsSection } from './HoursStatementsSection'
+import { StatementsOfChargesSection } from '../charges/StatementsOfChargesSection'
 import { JobDocumentsChecklists } from './JobDocumentsChecklists'
 import { JobDocumentsPhotos } from './JobDocumentsPhotos'
 import { JobDocumentsFolderFiles } from './JobDocumentsFolderFiles'
@@ -346,6 +347,7 @@ export function JobWindowDocumentsTab({
       <JobDocumentsLienPaper job={job} onOverlayOpenChange={onOverlayOpenChange} />
 
       <HoursStatementsSection scope={{ kind: 'job', job }} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
+      <StatementsOfChargesSection job={job} onOverlayOpenChange={onOverlayOpenChange} zIndex={AIA_FROM_JOB_WINDOW_Z_INDEX} />
 
       {/* Stage checklists as documents (punch list #237, PR 1): each stage's standing and every answer with its stamp; the office adds a check for this job inline. */}
       <JobDocumentsChecklists job={job} onRequestTab={onRequestTab} />
