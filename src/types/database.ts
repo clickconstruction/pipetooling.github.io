@@ -36966,6 +36966,10 @@ export type Database = {
         Args: { p: Json; p_dry_run?: boolean }
         Returns: Json
       }
+      dev_person_evidence_write: {
+        Args: { p: Json; p_dry_run?: boolean; p_files?: Json }
+        Returns: Json
+      }
       dismiss_mercury_duplicate_pair: {
         Args: { p_id_a: string; p_id_b: string }
         Returns: undefined
