@@ -49,6 +49,12 @@ Each box prints on its own Letter page in large plain type. The page carries the
 
 Laminate the page and hang it on the box in a document holder. The manifest is a plain print and files no copy. When someone writes a line on it, press the same thing in the app so the count stays true.
 
+## Bring back a retired box
+
+A job's container list ends with a fold named Retired. Open it to see every cage or box retired on the job, with the day it left. Press **Bring back G4** and the box is live again. Its QR label works as before, and nothing in its history changes.
+
+The press is withheld when a live box on the job already carries that stencil. The fold says which one, so no job carries two G4s. Retire the live one first, or give it another stencil.
+
 ## Find a box from anywhere
 
 Open the search box at the top of the app and type a stencil, a part or a place. **Boxes on site** lists the box with its job. Press it to open the job's materials page, or press **Open on the phone screen** for the box itself.
