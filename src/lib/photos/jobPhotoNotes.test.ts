@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { addPress, addWrites, addedWords, canEditJobPhotoWords, descriptionTrimmed, gridBySource, gridChips, gridFootWords, gridItems, gridSearch, gridTileWords, jobPhotoCaption, jobPhotoNotePath, newPhotosLine, offersWordsForTheRest, tileWords, wordsForTheRest, type JobPhotoTile } from './jobPhotoNotes'
+import { addPress, addWrites, addedWords, canEditJobPhotoWords, threadLineWords, descriptionTrimmed, gridBySource, gridChips, gridFootWords, gridItems, gridSearch, gridTileWords, jobModePhotosLineWords, jobPhotoCaption, jobPhotoNotePath, newPhotosLine, offersWordsForTheRest, tileWords, wordsForTheRest, type JobPhotoTile } from './jobPhotoNotes'
 import type { UploadedPhotoRow } from './uploadedPhotos'
 
 function tile(over: Partial<JobPhotoTile> & { id: string }): JobPhotoTile {
@@ -138,5 +138,19 @@ describe('jobPhotoNotes', () => {
     expect(canEditJobPhotoWords({ role: 'assistant', byUserId: 'u1', authUserId: 'u2' })).toBe(true)
     expect(canEditJobPhotoWords({ role: 'estimator', byUserId: null, authUserId: 'u2' })).toBe(true)
     expect(canEditJobPhotoWords({ role: 'primary', byUserId: null, authUserId: 'u2' })).toBe(false)
+  })
+
+  it('the thread line counts the photos and names the ones with words', () => {
+    expect(threadLineWords([])).toBe('')
+    expect(threadLineWords([{ caption: 'Cracked flange under the second lav', description: 'Cracked flange under the second lav, unit 204', stageName: 'Rough In' }])).toBe('Added 1 photo: Cracked flange under the second lav')
+    expect(threadLineWords([{ caption: 'Job photo', description: '', stageName: null }, { caption: 'Meter location', description: 'Meter location', stageName: null }])).toBe('Added 2 photos: Meter location')
+    expect(threadLineWords([{ caption: 'Rough In', description: '', stageName: 'Rough In' }])).toBe('Added 1 photo: Rough In')
+    expect(threadLineWords([{ caption: 'Job photo', description: '', stageName: null }, { caption: 'Job photo', description: ' ', stageName: '' }])).toBe('Added 2 photos')
+  })
+
+  it('the Job Mode line counts, or names the first', () => {
+    expect(jobModePhotosLineWords(null)).toBe('Photos')
+    expect(jobModePhotosLineWords(0)).toBe('Photos · add the first')
+    expect(jobModePhotosLineWords(14)).toBe('Photos · 14')
   })
 })

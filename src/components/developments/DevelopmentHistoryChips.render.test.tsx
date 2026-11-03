@@ -20,7 +20,7 @@ describe('DevelopmentHistoryChips', () => {
     expect(strip.style.overflowX).toBe('auto')
     expect(strip.style.flexWrap).toBe('')
     const chips = HISTORY_CHIPS.map((c) => screen.getByTestId(`history-chip-${c.key}`))
-    expect(chips).toHaveLength(7)
+    expect(chips).toHaveLength(8)
     for (const chip of chips) {
       expect(strip.contains(chip)).toBe(true)
       expect(chip.style.flexShrink).toBe('0')

@@ -3,9 +3,9 @@ import { createClient, type SupabaseClient } from 'https://esm.sh/@supabase/supa
 import { CATALOG_RPCS, CATALOG_TABLES, EDGE_FUNCTIONS } from './catalog.ts'
 import { DENIED_TABLES, FILTER_OPS, ROWS_DEFAULT_LIMIT, ROWS_MAX_LIMIT, buildRowsQuery, buildRpcQuery, isSafeIdent, redactSecrets, replyText, searchNames } from '../_shared/devMcpDoor.ts'
 import { mcpHandler, mcpText, type McpTool, type McpToolResult } from '../_shared/mcpJsonRpc.ts'
-import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
+import { findBid, findCustomer, findJob, findPerson, getBid, getCustomer, getJob, getOnSite, type Reader, type Row, type RowsQuery } from '../_shared/devMcpComposites.ts'
 import { todayYmdInAppTz } from '../_shared/appTimeZone.ts'
-import { WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, writeRpcBody } from '../_shared/devMcpWrites.ts'
+import { WRITE_VERBS, alreadyApplied, driveFilingRefusal, isWriteVerb, planHash, planMismatch, planReply, stateGuarded, writeRpcBody } from '../_shared/devMcpWrites.ts'
 import { filedPlansSetRow, filedPlansTargets, filedPlansWords, planLinkKey, planPartApply, planPartDryRun, readPlanPartWorld, type FiledPlansJob, type FiledPlansPart, type PartReads, type PartWrites, type PlanPartPayload } from '../_shared/devMcpPlanSets.ts'
 import { EDGE_BOOT_BATCH, HEALTH_RPCS, edgeBootBatch, edgeBootReport, healthReading, healthRpcArgs, isBootError, isHealthVerb, type EdgeBootProbe } from '../_shared/devMcpHealth.ts'
 import { LEGAL_DOCUMENT_MAX_BYTES, LEGAL_MATTER_DOCUMENTS_BUCKET, legalDocumentMime, legalDocumentStoragePath } from '../_shared/legalMatterDocuments.ts'
@@ -31,10 +31,12 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // Writes (PR 6, v2.3722 / 0.4.0; the narrative v2.4814 / 0.5.0; a matter's planned steps v2.5800 / 0.6.0; a document
 // on a matter's Evidence tab v2.6004 / 0.7.0; an answer on a packet gap v2.6005 / 0.8.0; a History line on a development v2.6044 / 0.9.0;
 // a new bid v2.6183 / 0.10.0; its plan set into Drive and onto the bid v2.6185 / 0.11.0; a sworn statement drafted onto a
-// matter's Timeline v2.6244 / 0.13.0; a set of drawings or a paper on a plan part v2.6317 / 0.14.0) are a SECOND path, not a
-// loosening of the first: twenty-five verbs (_shared/devMcpWrites.ts) — twenty-one POST one of ten hard-coded, dev-gated
-// definer RPCs as the dev; the four plan-part verbs (v2.6317) write the rows the job window's Plans section writes
-// (plan_sets, plan_parts, a lane's request) as the dev under the same RLS, since no RPC exists for them —
+// matter's Timeline v2.6244 / 0.13.0; a set of drawings or a paper on a plan part v2.6317 / 0.14.0; Materials on site's
+// presses v2.6367 / 0.16.0, behind the file index's 0.15.0, punch list #209) are a SECOND path, not a loosening of the first: thirty-three verbs
+// (_shared/devMcpWrites.ts) — twenty-nine POST one of eleven hard-coded, dev-gated RPCs as the dev (dev_on_site_write the
+// one SECURITY INVOKER wrapper, so the rows land under the dev's own RLS); the four plan-part verbs (v2.6317) write the rows
+// the job window's Plans section writes (plan_sets, plan_parts, a lane's request) as the dev under the same RLS, since no
+// RPC exists for them —
 // plan_ is a dry run, apply_ re-runs the dry run and writes only when the agent quotes the
 // plan's hash. Never a generic POST, never a table the agent names, never through view_as. One more
 // (v2.6187 / 0.12.0): mint_twin_setup_code asks twin-setup for a ten-minute setup code as the
@@ -48,7 +50,7 @@ import { backfillAfterFilter, backfillApplyReply, backfillBatch, backfillCommitm
 // catalog.ts is GENERATED from src/types/database.ts by scripts/build-dev-mcp-catalog.mjs
 // — regenerate after gen-types, then redeploy.
 
-const SERVER_VERSION = '0.15.0'
+const SERVER_VERSION = '0.16.0'
 const UUID_SHAPE = /^[0-9a-fA-F-]{36}$/
 
 const TOOLS: McpTool[] = [
@@ -295,6 +297,51 @@ const TOOLS: McpTool[] = [
     inputSchema: { type: 'object', properties: { paper: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['paper', 'plan_hash'] },
   },
   {
+    name: 'read_on_site',
+    description: "Materials on site (v2.6367, punch list #209): what is in a job's stencilled cages and boxes as the phone's On site tab and the office's Jobs → Materials read it — every live box with its stencil, kind, place, QR code and lines (part, on hand, last touched, the last count's difference), Unsorted (what a delivery landed that nobody put away), the retired boxes with the screens' Bring back verdict, the boxes due a count (14 days), the last 30 days' shortfalls and Can't find presses, and the newest 15 ledger rows. The numbers come from the screens' own kernel over the whole ledger (a count resets a line; on hand is the sum). `job` is an id, or text that matches exactly one job. Read it before any plan_ verb here: a box is named by its stencil as listed.",
+    inputSchema: { type: 'object', properties: { job: { type: 'string', description: "Job id, or a number like 'J1032'" } }, required: ['job'] },
+  },
+  {
+    name: 'plan_container',
+    description: "Dry-run a cage or box on a job (v2.6367): add one (its stencil, kind cage | box | loose, where it stands, its place — made when the job has none of that name), move one to another place, retire an empty one (a box with parts in it is refused, as on the phone: move them or mark them used first), or bring a retired one back (v2.6406's Bring back: refused while a live box on the job carries its stencil). The dry run replies with the box as it will read, the job, and a live row count under a plan_hash; nothing is written. Unsorted is the app's own row: never added, moved or retired here.",
+    inputSchema: { type: 'object', properties: { container: { type: 'object', description: "{ job_id (find_job), action: 'add' | 'move' | 'retire' | 'bring_back' (add when left out), agent_label (the robot's name as the row shows it); add: label, kind, where?, place?; move: container (a stencil or id), place; retire: container; bring_back: container (a retired box's stencil or id — read_on_site lists them under retired); at? (an ISO timestamp with its offset for a move or retire that happened earlier) }" } }, required: ['container'] },
+  },
+  {
+    name: 'apply_container',
+    description: 'Make the container change you planned: the same container plus the plan_hash from plan_container. Runs the dry run again first and writes only when it still matches — a box added, moved, retired or brought back on the job since, plan again. Written as you through dev_on_site_write under your own RLS, the row stamped "<agent_label> · MCP as <you>"; the crew and the office see it at once. Replies with the box id and its label code.',
+    inputSchema: { type: 'object', properties: { container: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['container', 'plan_hash'] },
+  },
+  {
+    name: 'plan_delivery',
+    description: "Dry-run a delivery onto a job's site (v2.6367): the lines of an invoice or a PO (a parts-book part by id, or a name typed as on site; a whole quantity; a unit) land in the job's Unsorted row — made on first use, the way the office's Deliveries panel lands them — or straight into a named box, with the invoice or PO as their source. The dry run replies with every line's on hand before and after, the box, the source and the box's live row count under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { delivery: { type: 'object', description: "{ job_id (find_job), agent_label, lines: [{ part_id | part_name, manufacturer?, quantity, unit? }] (1–200), source? (INV-10422, PO-2211), to? (a stencil or id; Unsorted when left out), at? (an ISO timestamp with its offset when it came earlier) }" } }, required: ['delivery'] },
+  },
+  {
+    name: 'apply_delivery',
+    description: 'Land the delivery you planned: the same delivery plus the plan_hash from plan_delivery. Runs the dry run again first and writes only when it still matches — a press on that box since, plan again. One delivered row per line, as you, stamped "<agent_label> · MCP as <you>", with the source on each; the crew sees them in Unsorted with Put in…, the office under Deliveries so far.',
+    inputSchema: { type: 'object', properties: { delivery: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['delivery', 'plan_hash'] },
+  },
+  {
+    name: 'plan_movement',
+    description: "Dry-run one press on a line of a box (v2.6367), the phone's own presses: moved (to another box — Put in… from Unsorted is this), used, returned (to the supply house, a credit due), taken (where it went, in note), cannot_find (the office reads the line amber) or damaged. The quantity is capped at what the box has, as the phone caps it; a box with none of the part refuses. The dry run replies with the press as the phone would label it (Mark 4 used, Move 10 to A1), on hand before and after on both boxes, and the box's live row count under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { movement: { type: 'object', description: "{ job_id (find_job), agent_label, container (a stencil or id, or Unsorted), part_id | part_name (a line of the box, as read_on_site lists it), quantity, reason: 'moved' | 'used' | 'returned' | 'taken' | 'cannot_find' | 'damaged', to? (moved only), note? (taken needs one), at? (an ISO timestamp with its offset when it happened earlier) }" } }, required: ['movement'] },
+  },
+  {
+    name: 'apply_movement',
+    description: 'Write the press you planned: the same movement plus the plan_hash from plan_movement. Runs the dry run again first and writes only when it still matches — a press on that box since, plan again. One ledger row, as you, stamped "<agent_label> · MCP as <you>". The ledger is append-only: a wrong press is undone by the opposite press or a count, never an edit.',
+    inputSchema: { type: 'object', properties: { movement: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['movement', 'plan_hash'] },
+  },
+  {
+    name: 'plan_count',
+    description: "Dry-run a count of a box (v2.6367), the phone's Count this box walk or the office's Correct…: for each line named, what is there now. A count row resets the line to the number counted and keeps the difference — a shortfall reads missing on the office's page and in read_on_site, a surplus reads found; a part not yet in the box may be counted into it. A line left out is not reset. The dry run replies with every line's expected, counted and difference in words, and the box's live row count under a plan_hash; nothing is written.",
+    inputSchema: { type: 'object', properties: { count: { type: 'object', description: "{ job_id (find_job), agent_label, container (a stencil or id), lines: [{ part_id | part_name, manufacturer?, counted }] (1–200), at? (an ISO timestamp with its offset when the count was walked earlier) }" } }, required: ['count'] },
+  },
+  {
+    name: 'apply_count',
+    description: 'Save the count you planned: the same count plus the plan_hash from plan_count. Runs the dry run again first and writes only when it still matches — a press on that box since, plan again. One counted row per line, as you, stamped "<agent_label> · MCP as <you>"; the box reads counted today by that name.',
+    inputSchema: { type: 'object', properties: { count: { type: 'object' }, plan_hash: { type: 'string' } }, required: ['count', 'plan_hash'] },
+  },
+  {
     name: 'read_file_index_status',
     description: 'Where our own file index stands (v2.6332, punch list #240): rows, rows with text, counts by source (export, pdf_layer, plain, ocr), by why (scan, kind, big, slow, error, reading) and by folder, the jobs and bids with rows, the PDFs read only in part, the live and paid jobs with a Drive folder and how many have no row yet, the newest indexed stamp, the oldest recheck and the sweep’s last look. One call of dev_file_index_status as you. Read it before a backfill and after.',
     inputSchema: { type: 'object', properties: {} },
@@ -322,7 +369,7 @@ const TOOLS: McpTool[] = [
       properties: {
         role: { type: 'string', description: "A role with a sample account, e.g. 'helpers'" },
         user: { type: 'string', description: 'A user id (find_person)' },
-        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid, get_history (the check_* verbs are dev-gated in the database: as anyone else they are refused; the plan_/apply_/revert_ verbs are never run as anyone else)' },
+        verb: { type: 'string', description: 'whoami, read_rows, call_read, find_*, get_job, get_customer, get_bid, get_history, read_on_site (the check_* verbs are dev-gated in the database: as anyone else they are refused; the plan_/apply_/revert_ verbs are never run as anyone else)' },
         args: { type: 'object', description: "The inner verb's arguments" },
       },
       required: ['verb'],
@@ -331,7 +378,7 @@ const TOOLS: McpTool[] = [
 ]
 
 const INSTRUCTIONS =
-  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are twenty-five verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed) — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
+  "PipeTooling dev seat — read-only, and you read AS THE DEV whose key this is: RLS and every role check apply as in the app. Call whoami first. Find names with find_rpc / find_table / get_table (a generated catalog — never guess), then call_read (any RPC, over GET: the database itself refuses writes) or read_rows (any table or view, at most 200 rows). For the common questions use the named verbs — find_job / find_bid / find_customer / find_person, then get_job / get_customer / get_bid, whose money comes from the screens' own kernels. view_as runs any of these as a role's sample account or a named person. When the app looks down, check_sampler / check_connections / check_locks say which kind of freeze it is (docs/DB_FREEZE_RUNBOOK.md — before anyone restarts), check_migration_ledger lists what is applied, check_edge_boot finds a function that cannot start. Secret columns (tokens, hashes, passwords) come back redacted. Writes are thirty-three verbs and nothing else: plan_cost_batch → apply_cost_batch (→ revert_cost_batch), plan_hr_entry → apply_hr_entry, plan_matter_narrative → apply_matter_narrative, plan_matter_plan_item → apply_matter_plan_item, plan_matter_statement → apply_matter_statement (a sworn statement or an unsworn declaration drafted onto a matter's Timeline for the office to print, sign and file), plan_matter_document → apply_matter_document (a PDF, image, .eml or text file onto a matter's Evidence tab, sent as content_base64), plan_gap_answer → apply_gap_answer (one line the attorney reads instead of a packet gap on the Legal desk), plan_history_entry → apply_history_entry (a History line on a development, kept at the time it happened, as a named robot; get_history reads a site's history whole), plan_bid → apply_bid (a new bid as the New Bid form makes it, numbered by the database), plan_file_plans → apply_file_plans (a plan set into the PipeTooling Jobs Shared Drive and onto the bid as the set the robot reads, from a one-shot upload URL the plan hands back; Drive is where it stays, and the set lands on the plan part of the bid's job too when the job has one), plan_plan_set → apply_plan_set (a set of drawings on the plan part a job builds from, as the job window's Plans section adds it, as you under the same RLS) and plan_paper → apply_paper (a paper — a spec, a submittal, a schedule, a task list — beside the set it goes with, with the question it asks of us and its owed state; action came marks an owed one landed), and Materials on site's four — plan_container → apply_container (a cage or box on a job: add, move, retire an empty one, bring one back), plan_delivery → apply_delivery (an invoice's or a PO's lines into Unsorted or a box), plan_movement → apply_movement (one press on a line: moved, used, returned, taken, cannot_find, damaged) and plan_count → apply_count (a box walked) — each as the phone and the office write it, every row stamped as your agent's; read_on_site first, since a box is named by its stencil — plan first, read the plan, then apply quoting its plan_hash; apply re-runs the dry run and writes only when it still matches. One more verb writes outside that grammar: mint_twin_setup_code, which asks twin-setup for a ten-minute, single-use setup code for a twin as you (the code Set up on this Mac makes), so the Mac your agent runs on can redeem it into a twin key with scripts/twin/redeem_setup_code.py — the key never comes back through this door. The file index (punch list #240) has its own three: read_file_index_status, then plan_index_backfill → apply_index_backfill, which runs the index pass over one job's next files per call into our own file_index table (never into Drive) and may run as often as files remain. No other verb writes, and view_as never does. This is PRODUCTION data about real customers and employees: read what the task needs, quote it sparingly, and write only what the person asked for."
 
 type Admin = SupabaseClient
 type ResolvedDev = { credentialId: string; userId: string; email: string; name: string | null }
@@ -718,6 +765,9 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       return composite(await getCustomer(readerAs(await jwt()), String(args.customer ?? ''), todayYmdInAppTz()), 'customers')
     case 'get_bid':
       return composite(await getBid(readerAs(await jwt()), String(args.bid ?? '')), 'bids')
+    case 'read_on_site':
+      // v2.6367 (punch list #209): the job's boxes and lines through the screens' own kernel, as the reader (RLS applies).
+      return composite(await getOnSite(readerAs(await jwt()), String(args.job ?? ''), new Date()), 'job_containers')
 
     case 'get_history': {
       // v2.6044: a site's history as people wrote it, whole, through dev_history_read as the reader (RLS applies).
@@ -1105,7 +1155,15 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
     case 'plan_bid':
     case 'apply_bid':
     case 'plan_matter_document':
-    case 'apply_matter_document': {
+    case 'apply_matter_document':
+    case 'plan_container':
+    case 'apply_container':
+    case 'plan_delivery':
+    case 'apply_delivery':
+    case 'plan_movement':
+    case 'apply_movement':
+    case 'plan_count':
+    case 'apply_count': {
       // The second path: a POST to one hard-coded RPC, as the dev. Never as anyone else — view_as
       // refuses these before it gets here; this check is the belt to that suspender.
       // Every write verb's label sits HERE, above this block (v2.6244): v2.6187's mint_twin_setup_code block was
@@ -1138,7 +1196,8 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
         const fresh = await planHash(name, built.body.p, dry.body)
         if (fresh !== built.planHash) return refused(planMismatch(name, built.planHash ?? '', fresh), { target: built.target })
         // One apply per plan (v2.3730): a payload with no before-state hashes the same after it lands.
-        const prior = await hooks.priorApply(name, fresh)
+        // Materials on site's plans commit to the state their write changes, so the wrapper refuses a replay itself (v2.6367).
+        const prior = stateGuarded(name) ? null : await hooks.priorApply(name, fresh)
         if (prior) return refused(alreadyApplied(name, prior), { target: built.target })
         if (file && !('error' in file)) {
           // The file first, as the dev, under the matter's folder; the RPC refuses the row unless it is there.

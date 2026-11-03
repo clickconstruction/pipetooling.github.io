@@ -46,7 +46,6 @@ import {
   EMPTY_JOB_CONTRACT_FIELDS,
   isGoogleDocsUrl,
   jobContractDatesUnfinished,
-  jobContractHeading,
   jobContractUnfinishedDateBlocks,
   parseJobContractFields,
   type JobContractFields,
@@ -77,11 +76,15 @@ import JobContractSigningRail from './JobContractSigningRail'
 import JobContractPaper from './JobContractPaper'
 import { useMatchMedia } from '../../hooks/useMatchMedia'
 import { filedOnPaper, frameAsSignerRow, framesLabel, framesProgress, signerFrames, signerNamesLine } from '../../lib/jobs/jobContractSigners'
+import { DEFAULT_JOB_WARRANTY_TERMS_PLAIN, DEFAULT_WARRANTY_INITIAL_LINES, JOB_AGREEMENT_KINDS, JOB_AGREEMENT_WORDS, jobAgreementHeading, jobAgreementKindOf, parseInitials, type JobAgreementKind } from '../../lib/jobs/jobAgreementKind'
 
 type TemplateRow = Pick<
   Database['public']['Tables']['contract_template_documents']['Row'],
-  'id' | 'document_name' | 'book_body_html' | 'book_body_format' | 'book_version_date'
+  'id' | 'document_name' | 'book_body_html' | 'book_body_format' | 'book_version_date' | 'tags'
 >
+
+/** A Contract Book document tagged `warranty` is the warranty's terms; every other customer document is a contract's. */
+const templateKind = (t: Pick<TemplateRow, 'tags'>): JobAgreementKind => ((t.tags ?? []).includes('warranty') ? 'warranty' : 'contract')
 
 const BUILTIN_TEMPLATE_ID = '__builtin__'
 
@@ -164,6 +167,10 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const [termsEditOpen, setTermsEditOpen] = useState(false)
   const [templateId, setTemplateId] = useState<string>(BUILTIN_TEMPLATE_ID)
   const [scopeText, setScopeText] = useState('')
+  /** The kind of agreement (2026-11-02): our contract, or the warranty sent in place of one; a new draft starts as a contract. */
+  const [kind, setKind] = useState<JobAgreementKind>('contract')
+  /** A warranty's lines to initial as typed, one per line (`fields.initial_lines` is the kept list). */
+  const [initialsText, setInitialsText] = useState('')
   /** v2.3707: the estimate the customer accepted, read once per open, so the amount can say where it comes from. */
   const [acceptedEst, setAcceptedEst] = useState<{ totalCents: number | null; acceptedOn: string | null } | null>(null)
   const [autosaveState, setAutosaveState] = useState<'idle' | 'saving' | 'saved' | 'error' | 'held'>('idle')
@@ -263,18 +270,21 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     setCcText('')
     setRemindersEnabled(true)
     setTemplateId(BUILTIN_TEMPLATE_ID)
+    setKind('contract')
+    setInitialsText('')
     void loadRows()
     void (async () => {
       try {
         const { data } = await supabase
           .from('contract_template_documents')
-          .select('id, document_name, book_body_html, book_body_format, book_version_date')
+          .select('id, document_name, book_body_html, book_body_format, book_version_date, tags')
           .eq('audience', 'customer')
           .is('flow_kind', null)
           .order('document_name')
         const list = (data ?? []) as TemplateRow[]
         setTemplates(list)
-        if (list[0] && !hydratedRef.current) setTemplateId(list[0].id)
+        const first = list.find((t) => templateKind(t) === 'contract')
+        if (first && !hydratedRef.current) setTemplateId(first.id)
       } catch {
         setTemplates([])
       }
@@ -290,6 +300,8 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     const f = parseJobContractFields(liveRow.fields)
     setFields(f)
     setScopeText(f.scope_lines.join('\n'))
+    setKind(jobAgreementKindOf(liveRow.kind))
+    setInitialsText(f.initial_lines.join('\n'))
     setRecipientName(liveRow.recipient_name ?? '')
     setRecipientEmail(liveRow.recipient_email ?? '')
     setRecipientPhone(liveRow.recipient_phone ?? '')
@@ -367,10 +379,15 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
   const paperEditable = editable && rowsLoaded && !signedView
   /** A record filed from an outside document: the paper prints a note, not a body it never held. */
   const filedDoc = shownRow && filedOnPaper(shownRow) && shownRow.signed_document_url ? { what: isGoogleDocsUrl(shownRow.signed_document_url) ? 'Google Doc' : 'document' } : null
-  const selectedTemplate = templates.find((t) => t.id === templateId) ?? null
-  const bodyHtml = selectedTemplate ? selectedTemplate.book_body_html ?? '' : DEFAULT_JOB_CONTRACT_TERMS_PLAIN
+  /** The Book's documents for this kind: a contract's, or the ones tagged `warranty`. A pick from the other kind reads as the built-in terms. */
+  const templatesForKind = templates.filter((t) => templateKind(t) === kind)
+  const selectedTemplate = templatesForKind.find((t) => t.id === templateId) ?? null
+  const bodyHtml = selectedTemplate ? selectedTemplate.book_body_html ?? '' : kind === 'warranty' ? DEFAULT_JOB_WARRANTY_TERMS_PLAIN : DEFAULT_JOB_CONTRACT_TERMS_PLAIN
   const bodyFormat = selectedTemplate ? selectedTemplate.book_body_format : 'plain'
-  const templateName = selectedTemplate ? selectedTemplate.document_name : 'Built-in service agreement terms'
+  const templateName = selectedTemplate ? selectedTemplate.document_name : kind === 'warranty' ? 'Built-in warranty terms' : 'Built-in service agreement terms'
+  /** The kind the paper on screen is: the signed row shown, else the draft's pick. */
+  const paperKind: JobAgreementKind = shownRow ? jobAgreementKindOf(shownRow.kind) : paperRow ? jobAgreementKindOf(paperRow.kind) : kind
+  const paperWords = JOB_AGREEMENT_WORDS[paperKind]
 
   const touch = () => {
     userTouchedRef.current = true
@@ -394,6 +411,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     if (!job) return null
     return {
       job_id: job.id,
+      kind,
       fields: { ...fields } as unknown as Database['public']['Tables']['job_contracts']['Insert']['fields'],
       body_html: bodyHtml,
       body_format: bodyFormat,
@@ -408,7 +426,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       cc_emails: ccList,
       reminders_enabled: remindersEnabled,
     }
-  }, [job, fields, bodyHtml, bodyFormat, selectedTemplate, templateName, recipientName, recipientEmail, recipientPhone, coSigner, ccList, remindersEnabled])
+  }, [job, kind, fields, bodyHtml, bodyFormat, selectedTemplate, templateName, recipientName, recipientEmail, recipientPhone, coSigner, ccList, remindersEnabled])
 
   /** Writes the draft now (insert or update) and returns the row — the send gate uses it too. */
   const flushDraft = useCallback(async (): Promise<JobContractRow | null> => {
@@ -472,6 +490,30 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
       'scope_lines',
       text.split('\n').map((l) => l.trim()).filter(Boolean),
     )
+  }
+  /** A warranty's lines to initial, one per line, kept as the draft's `initial_lines`. */
+  const applyInitialsText = (text: string) => {
+    setInitialsText(text)
+    setField(
+      'initial_lines',
+      text.split('\n').map((l) => l.trim()).filter(Boolean),
+    )
+  }
+  /**
+   * The Paper pick (2026-11-02): a warranty in place of a contract. Picking it on a draft with no lines to initial yet
+   * prefills the built-in four and takes the Book's warranty document when there is one; back to a contract keeps the
+   * lines typed (they print on a warranty alone) and takes the Book's first contract document.
+   */
+  const pickKind = (next: JobAgreementKind) => {
+    if (next === kind) return
+    touch()
+    setKind(next)
+    if (next === 'warranty' && fields.initial_lines.length === 0) {
+      setInitialsText(DEFAULT_WARRANTY_INITIAL_LINES.join('\n'))
+      // The lines say the price is due when the work is done, so the payment line says the same unless the office picked one.
+      setFields((prev) => ({ ...prev, initial_lines: [...DEFAULT_WARRANTY_INITIAL_LINES], payment_terms_key: prev.payment_terms_key === 'half_down' ? 'on_completion' : prev.payment_terms_key }))
+    }
+    setTemplateId(templates.find((t) => templateKind(t) === next)?.id ?? BUILTIN_TEMPLATE_ID)
   }
 
   /**
@@ -586,7 +628,9 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           : { id: '', signed_at: null, signer_printed_name: null, signer_mode: null, signer_consented_at: null, recipient_name: recipientName, co_signer_name: coSigner.name },
       )
       const html = buildJobContractDocumentHtml({
-        heading: jobContractHeading(job),
+        heading: jobAgreementHeading(kind, job),
+        kind,
+        initials: liveRow ? parseInitials(liveRow.initials) : null,
         jobNumber,
         jobAddress: job.job_address ?? '',
         customerName: job.customer_name ?? '',
@@ -609,7 +653,9 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
     if (!job) return
     const issuer = getPhysicalInvoiceIssuerForDocument()
     const html = buildJobContractDocumentHtml({
-      heading: jobContractHeading(job),
+      heading: jobAgreementHeading(jobAgreementKindOf(row.kind), job),
+      kind: jobAgreementKindOf(row.kind),
+      initials: parseInitials(row.initials),
       jobNumber,
       jobAddress: job.job_address ?? '',
       customerName: job.customer_name ?? '',
@@ -841,6 +887,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
           revision: liveRow?.revision ?? 1,
           // v2.4590: the second signer's own Sign and Date rules — a homestead page needs both spouses.
           co_signer_name: payload.co_signer_name ?? null,
+          kind: liveRow && !editable ? jobAgreementKindOf(liveRow.kind) : kind,
         },
       })
       saveBytesAsFile(bytes, filename)
@@ -1027,7 +1074,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
 
   return (
     <ResponsiveModalShell
-      title={`Contract · J${jobNumber}`}
+      title={`${paperWords.Noun} · J${jobNumber}`}
       onRequestClose={onClose}
       maxWidthDesktop={1000}
       fullScreenKey="job-contract"
@@ -1041,7 +1088,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
         <div style={{ minWidth: 0, display: 'grid', gap: '0.6rem' }}>
           {signedOnFile ? (
             <div style={{ padding: '0.5rem 0.75rem', borderRadius: 8, background: 'var(--bg-green-tint)', color: 'var(--text-green-700)', fontSize: '0.8rem' }}>
-              ✍ A signed contract is already on file for this job (see history below). Starting a new one supersedes it only if the customer signs again.
+              ✍ A signed agreement is already on file for this job (see history below). Starting a new one supersedes it only if the customer signs again.
             </div>
           ) : null}
 
@@ -1051,10 +1098,27 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
               <CustomerAcceptanceRecordBody open={open} estimateId={signedView.coverage.estimateId} onLoaded={setEstimateRow} previewBanner="Record of what the customer accepted — this acceptance is the job's agreement." />
             </div>
           ) : (
+            <>
+            {paperEditable ? (
+              <div role="radiogroup" aria-label="Which paper" data-testid="contract-kind-pick" style={{ display: 'flex', gap: '0.35rem 0.6rem', alignItems: 'center', flexWrap: 'wrap', fontSize: '0.8rem' }}>
+                <span style={{ color: 'var(--text-muted)' }}>Paper</span>
+                {JOB_AGREEMENT_KINDS.map((k) => {
+                  const on = kind === k
+                  return (
+                    <button key={k} type="button" role="radio" aria-checked={on} onClick={() => pickKind(k)} data-testid={`contract-kind-${k}`} style={{ padding: '0.25rem 0.7rem', borderRadius: 999, border: `1.5px solid ${on ? 'var(--text-orange-700)' : 'var(--border-strong)'}`, background: on ? 'var(--bg-orange-tint)' : 'var(--surface)', color: 'inherit', font: 'inherit', fontSize: '0.8rem', fontWeight: 600, cursor: 'pointer' }}>
+                      {JOB_AGREEMENT_WORDS[k].Noun}
+                    </button>
+                  )
+                })}
+                <span style={{ color: 'var(--text-muted)' }}>{kind === 'warranty' ? 'In place of a contract: they initial each line and certify the work, and we warrant it.' : 'Our service agreement: the work, the price, the terms and a signature.'}</span>
+              </div>
+            ) : null}
             <JobContractPaper
               job={job}
               jobNumber={jobNumber}
               issuer={paperIssuer}
+              kind={paperKind}
+              initialLines={{ text: shownRow || (paperRow && !paperEditable) ? parseJobContractFields((shownRow ?? paperRow)!.fields).initial_lines.join('\n') : initialsText, apply: applyInitialsText, entries: shownRow ? parseInitials(shownRow.initials) : paperRow ? parseInitials(paperRow.initials) : null }}
               dateLabel={
                 paperRow
                   ? formatContractStamp(paperRow.signed_at ?? paperRow.last_sent_at ?? paperRow.created_at)?.split(',').slice(0, 2).join(',') ?? ''
@@ -1082,7 +1146,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
                 },
               }}
               terms={{
-                name: paperRow ? paperRow.template_name ?? 'Contract' : templateName,
+                name: paperRow ? paperRow.template_name ?? paperWords.Noun : templateName,
                 clauseCount,
                 versionLabel,
                 bodyHtml: paperBodyHtml,
@@ -1121,12 +1185,13 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
                   : null
               }
             />
+            </>
           )}
-          {templates.length > 1 && paperEditable ? (
+          {templatesForKind.length > 1 && paperEditable ? (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center', fontSize: '0.78rem', color: 'var(--text-muted)' }}>
               <span>Terms document</span>
               <select style={{ ...inputStyle, maxWidth: 360 }} value={templateId} onChange={(e) => { touch(); setTemplateId(e.target.value) }} aria-label="Standard terms document">
-                {templates.map((t) => (
+                {templatesForKind.map((t) => (
                   <option key={t.id} value={t.id}>
                     {t.document_name}
                     {t.book_version_date ? ` · ${t.book_version_date}` : ''}
@@ -1161,7 +1226,7 @@ export default function JobContractModal({ open, onClose, job, onChanged, onJobC
                 {historyRows.map((r) => (
                   <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', padding: '0.4rem 0.6rem', borderBottom: '1px solid var(--border)', fontSize: '0.78rem' }}>
                     <span style={{ flex: 1, minWidth: 0 }}>
-                      rev {r.revision} · {r.template_name ?? 'Contract'}
+                      rev {r.revision} · {r.template_name ?? JOB_AGREEMENT_WORDS[jobAgreementKindOf(r.kind)].Noun}
                       {r.signed_at ? ` · ${jobContractSignersAuditLine(r) ?? ''}` : r.last_sent_at ? ` · sent ${formatContractStamp(r.last_sent_at) ?? ''}` : ` · ${formatContractStamp(r.created_at) ?? ''}`}
                     </span>
                     {jobContractChips(r).map((chip) => (

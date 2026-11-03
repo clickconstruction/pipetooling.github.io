@@ -7,7 +7,7 @@
  */
 import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
-import { clientIp, contractHeading, corsHeaders, JOB_CONTRACT_BUCKET, jobNumberLabel, json } from '../_shared/jobContract.ts'
+import { agreementHeading, agreementKindOf, clientIp, corsHeaders, JOB_CONTRACT_BUCKET, jobNumberLabel, json } from '../_shared/jobContract.ts'
 import { sampleStateFromToken } from '../_shared/customerSample.ts'
 import { sampleJobContractResponse } from '../_shared/customerSampleFixtures.ts'
 import { PORTAL_COMPANY } from '../_shared/portalCompany.ts'
@@ -76,7 +76,7 @@ serve(async (req) => {
     const { data: row } = await admin
       .from('job_contracts')
       .select(
-        'id, job_id, status, revision, public_token_expires_at, recipient_name, recipient_email, fields, body_html, body_format, template_name, template_version_date, signed_at, signer_printed_name, signer_mode, signer_consented_at, signer_signature_storage_path, signed_pdf_path, voided_at, view_count, first_viewed_at, last_sent_at, co_signer_name, co_signed_at, co_signer_printed_name, co_signer_mode, co_signer_consented_at, co_signer_signature_storage_path',
+        'id, job_id, status, revision, public_token_expires_at, recipient_name, recipient_email, fields, body_html, body_format, template_name, template_version_date, signed_at, signer_printed_name, signer_mode, signer_consented_at, signer_signature_storage_path, signed_pdf_path, voided_at, view_count, first_viewed_at, last_sent_at, co_signer_name, co_signed_at, co_signer_printed_name, co_signer_mode, co_signer_consented_at, co_signer_signature_storage_path, kind, initials',
       )
       .eq('public_token', token)
       .maybeSingle()
@@ -110,6 +110,8 @@ serve(async (req) => {
       view_count: number
       first_viewed_at: string | null
       last_sent_at: string | null
+      kind: string | null
+      initials: unknown
     }
     if (c.voided_at || c.status === 'voided') return json({ error: 'This agreement was withdrawn.', code: 'voided' }, 410)
     if (c.status === 'sent' && c.public_token_expires_at && new Date(c.public_token_expires_at).getTime() < Date.now()) {
@@ -170,8 +172,11 @@ serve(async (req) => {
         id: c.id,
         status: c.status,
         revision: c.revision,
-        heading: contractHeading(j),
+        heading: agreementHeading(agreementKindOf(c.kind), j),
         job_number: jobNumberLabel(j),
+        // The warranty in place of a contract (2026-11-02): its kind, and the lines as the customer initialled them once signed.
+        kind: agreementKindOf(c.kind),
+        initials: Array.isArray(c.initials) ? c.initials : null,
         job_address: j.job_address,
         customer_name: j.customer_name,
         recipient_name: c.recipient_name,

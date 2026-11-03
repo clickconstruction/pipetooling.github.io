@@ -1,7 +1,8 @@
-import type { CSSProperties } from 'react'
+import { useLayoutEffect, useRef, useState, type CSSProperties } from 'react'
 import type { DialReading } from '../../lib/bridge/dial'
 import { STAGE_META } from '../../lib/bridge/stageFlow'
 import { DIAL_WORDS } from '../../lib/bridge/dial'
+import { layMarkRows, markAnchor, markRowCount } from '../../lib/bridge/dialMarks'
 
 /**
  * The dial (link PR 5): a slider for the pressed stage's pace with marks on
@@ -28,18 +29,37 @@ export function BridgeDial({ reading, moved, onChange, onReset }: { reading: Dia
   const pct = (usd: number) => Math.max(0, Math.min(100, ((usd - spec.minUsd) / span) * 100))
   const words = DIAL_WORDS[spec.stage]
   const name = STAGE_META[spec.stage].name
-  // Marks: a label within 16 points of the one before it drops to a second row.
-  let prev = -100
-  let prevRow = 1
+  // Marks: each label hangs from its point; the rows come from the measured track and label widths (`dialMarks`),
+  // so none overlaps another at any width. Until measured, every label sits on the first row for one layout pass.
   const marks = [...reading.marks]
     .sort((a, b) => a.usd - b.usd)
     .map((m) => {
       const p = pct(m.usd)
-      const row = p - prev < 16 ? 1 - prevRow : 0
-      prev = p
-      prevRow = row
-      return { ...m, p, row, shift: p < 8 ? 'none' : p > 92 ? 'translateX(-100%)' : 'translateX(-50%)' }
+      const anchor = markAnchor(p)
+      return { ...m, p, shift: anchor === 'start' ? 'none' : anchor === 'end' ? 'translateX(-100%)' : 'translateX(-50%)' }
     })
+  const marksKey = marks.map((m) => `${m.label}@${m.p.toFixed(1)}`).join('|')
+  const trackRef = useRef<HTMLDivElement>(null)
+  const labelRefs = useRef<(HTMLSpanElement | null)[]>([])
+  const [laid, setLaid] = useState<{ key: string; track: number; widths: number[] } | null>(null)
+  useLayoutEffect(() => {
+    const el = trackRef.current
+    if (!el) return
+    const n = marksKey ? marksKey.split('|').length : 0
+    const read = () => {
+      const track = el.getBoundingClientRect().width
+      const widths = Array.from({ length: n }, (_, i) => labelRefs.current[i]?.getBoundingClientRect().width ?? 0)
+      setLaid((prev) => (prev && prev.key === marksKey && prev.track === track && prev.widths.join() === widths.join() ? prev : { key: marksKey, track, widths }))
+    }
+    read()
+    if (typeof ResizeObserver === 'undefined') return
+    const ro = new ResizeObserver(read)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [marksKey])
+  const rows = laid && laid.key === marksKey ? layMarkRows(marks.map((m, i) => ({ p: m.p, widthPx: laid.widths[i] ?? 0 })), laid.track) : marks.map(() => 0)
+  // Two rows' height at least, so a desk that needs one or two draws as it always has.
+  const marksHeight = Math.max(54, 28 + 13 * markRowCount(rows))
   const yMax = Math.max(1, ...reading.spark.newSeries, ...reading.spark.oldSeries)
   const px = (t: number) => 6 + (t / 12) * 200
   const py = (v: number) => 58 - (v / yMax) * 50
@@ -64,12 +84,19 @@ export function BridgeDial({ reading, moved, onChange, onReset }: { reading: Dia
           at 375 and ran the spark past the screen. */}
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.5rem 1.6rem', alignItems: 'flex-start' }}>
         <div style={{ flex: '1 1 220px', minWidth: 0 }}>
-          <div style={{ position: 'relative', height: 54 }}>
+          <div ref={trackRef} style={{ position: 'relative', height: marksHeight }}>
             <div aria-hidden style={{ position: 'absolute', left: 0, right: 0, top: 12, height: 8, borderRadius: 4, background: `linear-gradient(90deg, var(--bg-blue-tint, var(--border)) 0 ${Math.round(reading.zone.exploitShare * 100)}%, var(--bg-amber-tint, var(--border)) ${Math.round(reading.zone.exploitShare * 100)}% 100%)` }} />
-            {marks.map((m) => (
+            {marks.map((m, i) => (
               <span key={m.label} style={{ display: 'contents' }}>
                 <span aria-hidden style={{ position: 'absolute', top: 9, left: `${m.p}%`, width: 2, height: 14, marginLeft: -1, background: 'var(--text-muted)', pointerEvents: 'none' }} />
-                <span style={{ position: 'absolute', top: 26 + m.row * 13, left: `${m.p}%`, transform: m.shift, fontSize: '0.62rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', lineHeight: 1.2, pointerEvents: 'none' }} data-testid="bridge-dial-mark">
+                <span
+                  ref={(el) => {
+                    labelRefs.current[i] = el
+                  }}
+                  style={{ position: 'absolute', top: 26 + (rows[i] ?? 0) * 13, left: `${m.p}%`, transform: m.shift, fontSize: '0.62rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', lineHeight: 1.2, pointerEvents: 'none' }}
+                  data-testid="bridge-dial-mark"
+                  data-row={rows[i] ?? 0}
+                >
                   {m.label}
                 </span>
               </span>

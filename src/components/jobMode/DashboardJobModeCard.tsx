@@ -1310,6 +1310,8 @@ export default function DashboardJobModeCard({ userId, onLeaveReport, onTurnaway
               key={detailsTarget.id}
               jobId={detailsTarget.id}
               jobAddress={detailsTarget.jobAddress === '—' ? '' : detailsTarget.jobAddress}
+              hcpNumber={'hcpNumber' in detailsTarget ? detailsTarget.hcpNumber : undefined}
+              jobName={'jobName' in detailsTarget ? detailsTarget.jobName : undefined}
               updatesRev={jobUpdatesRev}
             />
           </>

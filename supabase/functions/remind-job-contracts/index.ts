@@ -10,16 +10,7 @@ import { serve } from 'https://deno.land/std@0.168.0/http/server.ts'
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 import { sendEmailViaResend } from '../_shared/resendSendEmail.ts'
 import { buildJobContractReminderEmail } from '../_shared/jobContractEmail.ts'
-import {
-  amountCentsFromFields,
-  appOrigin,
-  contractHeading,
-  formatMoney,
-  isValidEmail,
-  JOB_CONTRACT_REMINDER_DAYS,
-  jobNumberLabel,
-  signingUrl,
-} from '../_shared/jobContract.ts'
+import { agreementHeading, agreementKindOf, amountCentsFromFields, appOrigin, formatMoney, isValidEmail, JOB_CONTRACT_REMINDER_DAYS, jobNumberLabel, signingUrl } from '../_shared/jobContract.ts'
 
 const MAX_REMINDERS = 3
 const KILL_SWITCH_KEY = 'job_contract_reminders_disabled_v1'
@@ -43,6 +34,7 @@ type DueRow = {
   cc_emails: string[] | null
   fields: unknown
   reminder_count: number
+  kind?: string | null
   created_by: string | null
 }
 
@@ -69,7 +61,7 @@ serve(async (req) => {
     const nowIso = new Date().toISOString()
     const { data: dueRaw, error: dueErr } = await admin
       .from('job_contracts')
-      .select('id, job_id, revision, public_token, public_token_expires_at, recipient_name, recipient_email, cc_emails, fields, reminder_count, created_by')
+      .select('id, job_id, revision, public_token, public_token_expires_at, recipient_name, recipient_email, cc_emails, fields, reminder_count, created_by, kind')
       .eq('status', 'sent')
       .eq('reminders_enabled', true)
       .is('voided_at', null)
@@ -100,7 +92,9 @@ serve(async (req) => {
         .eq('id', c.job_id)
         .maybeSingle()
       const j = (job ?? {}) as { hcp_number?: string | null; click_number?: string | null; job_name?: string | null; job_address?: string | null }
-      const heading = contractHeading({ job_address: j.job_address ?? null, job_name: j.job_name ?? null })
+      // The warranty in place of a contract (2026-11-02): the same reminder, worded by kind.
+      const kind = agreementKindOf(c.kind)
+      const heading = agreementHeading(kind, { job_address: j.job_address ?? null, job_name: j.job_name ?? null })
       const jobNo = jobNumberLabel({ hcp_number: j.hcp_number ?? null, click_number: j.click_number ?? null })
       const amount = amountCentsFromFields(c.fields)
       const url = signingUrl(origin, c.public_token)
@@ -122,6 +116,7 @@ serve(async (req) => {
         amountLabel: amount != null ? formatMoney(amount) : null,
         url,
         last,
+        kind,
       })
 
       let emailed = false
