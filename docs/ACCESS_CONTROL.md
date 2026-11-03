@@ -1205,7 +1205,7 @@ Converted so far: Jobs Crew P&L / Team Labor / off-strip tabs (primary, superint
 | Vehicles tab (fleet board, ledger, odometer, hand-offs, service log, problem reports — v2.1644–48) | ✅ | ✅ If Pay Approved | ✅ (v2.1650 — split off the pay gate) | ❌ | ❌ | ❌ | ❌ |
 | Housing tab (units CRUD, weekly rent/utilities/insurance, possessions) | ✅ | ✅ If Pay Approved | ❌ (tab hidden — see note below) | ❌ | ❌ | ❌ | ❌ |
 | Offsets tab (backcharges, damages, apply to pay stub) | ✅ | ✅ If Pay Approved | ❌ (v2.660 — UI **and** DB: `person_offsets` is `has_payroll_access()` only) | ❌ | ❌ | ❌ | ❌ |
-| Licenses tab (license type, note, date of expiry per person) | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
+| Licenses tab (license type, note, date of expiry per person; since v2.6424 the expired ones first with the days since, then the thirty-day strip) | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
 | Licenses tab — **Hours log** (per-person approved hours by job + board CSV, v2.767): `SECURITY DEFINER` RPC **`list_user_license_hours_log`** gates dev / assistant-like / Pay-Approved master and raises otherwise (never silently partial); hours only, no wages | ✅ | ✅ If Pay Approved | ✅ | ❌ | ❌ | ❌ | ❌ |
 | **Hours statements** (the job window's Documents tab and the person's desk Hours, v2.6097, punch list #212): the window, Save a draft and Print; the paper with the money for the payroll roles, hours only for an assistant (`can_touch_hours_statement`) | ✅ | ✅ If Pay Approved | ✅ hours only | ❌ | ❌ | ❌ | ❌ |
 | Contracts tab (templates, assignments, document status per person) | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | ❌ |
