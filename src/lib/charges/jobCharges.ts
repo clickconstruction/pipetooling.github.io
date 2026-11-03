@@ -63,7 +63,8 @@ export function buildJobCharges(input: JobChargesInput): JobCharges {
   const rule = input.rule ?? DEFAULT_JOB_CHARGE_RULE
   const markup = input.markupPct ?? input.card.materialsMarkupPct
   const applied = indexAdjustments(input.adjustments ?? [])
-  const days = buildCrewDays(input.sessions, input.card, rule, { dayShape: applied.dayShape, dayOff: applied.dayOff })
+  const dayShape = new Map(Array.from(applied.dayShape.entries()).map(([day, o]) => [day, o.shape] as const))
+  const days = buildCrewDays(input.sessions, input.card, rule, { dayShape, dayOff: applied.dayOff })
   const materials = chargeMaterials(adjustMaterialLines(input.lines, applied), markup)
   const totals = totalsOf(days, materials)
   const recordDays = buildCrewDays(input.sessions, input.card, rule)

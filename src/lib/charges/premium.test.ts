@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { premiumOf } from './premium'
 import { adjustMaterialLines, chargeAdjustmentFromRow, chargeAdjustmentWords, indexAdjustments, saveAdjustmentsLabel } from './adjustments'
+import type { MaterialLineInput } from './materialsCharged'
 
 describe('premium and shortfall (punch list #254)', () => {
   it('reads the price against the charges: above is a premium, below a shortfall, the same even', () => {
@@ -35,7 +36,8 @@ describe('adjustments on a job’s charges', () => {
   it('applies the line adjustments to material lines and words every kind for the log', () => {
     const read = rows.map(chargeAdjustmentFromRow).filter((a): a is NonNullable<typeof a> => a != null)
     const applied = indexAdjustments(read)
-    const lines = adjustMaterialLines([{ id: 'inv-1', kind: 'supply_invoice' as const, label: 'Sunbelt', dateKey: null, cost: 10 }, { id: 'inv-2', kind: 'supply_invoice' as const, label: 'NAPA', dateKey: null, cost: 5 }, { id: 'inv-3', kind: 'supply_invoice' as const, label: 'Reece', dateKey: null, cost: 7 }], applied)
+    const inputs: MaterialLineInput[] = [{ id: 'inv-1', kind: 'supply_invoice', label: 'Sunbelt', dateKey: null, cost: 10 }, { id: 'inv-2', kind: 'supply_invoice', label: 'NAPA', dateKey: null, cost: 5 }, { id: 'inv-3', kind: 'supply_invoice', label: 'Reece', dateKey: null, cost: 7 }]
+    const lines = adjustMaterialLines(inputs, applied)
     expect(lines.map((l) => [l.id, Boolean(l.passThrough), Boolean(l.leftOff)])).toEqual([['inv-1', true, false], ['inv-2', false, true], ['inv-3', false, false]])
     const day = (d: string) => `Sat ${d.slice(5)}`
     const label = (id: string) => ({ 'inv-1': 'Sunbelt · 180856872-0001', 'inv-2': 'NAPA' })[id] ?? id
