@@ -29,9 +29,9 @@ Combining never changes the target's status or % done. If a tech had marked the 
 
 ## When the target already has one
 
-Some things a job has once. The target keeps its own, and the source's copy goes. That is the labor baseline, the budget and the property owner.
+Some things a job has once. The target keeps its own, and the source's copy goes. Those once-only things are the labor baseline, the budget and the property owner.
 
-A place with the same name on both jobs becomes one place. The source's Unsorted pile folds into the target's Unsorted pile. A cage or box with the same label keeps its own row and its printed code. It gets a number after its name, like *Cage A (2)*.
+A place with the same name on both jobs becomes one place. The source's Unsorted pile folds into the target's Unsorted pile. A cage or box with the same label keeps its own row and its printed code. The cage or box gets a number after its name, like *Cage A (2)*.
 
 A watcher the target lacks is added with their picks. A contact link, an open skip, an open hold or an open call the target already has stands once. A hold keeps the later of the two days. A supply-house account the source opened opens the target's. The later word from a supply house stands. The target's hours target stands. The source's open hours target comes over closed.
 
@@ -43,11 +43,11 @@ Say both cards hold a live work order for Rivera Mechanical. The combine holds a
 
 ## What stays behind
 
-A few things do not move yet. Until they do, they stay with the source card.
+A few things do not move yet. Until then, those rows stay with the source card.
 
 The **Combine** tab refuses a source that has bills or payments. Clear or move them first. The Delete flow's {{button:outline|Reassign to another job…}} lets a source's bills and payments go with it on purpose.
 
-Payment promises, promised pay dates and chase calls stay with the source. So do lien notices, lien releases, Lien desk items and claim corrections. So do a legal matter's link to the source, its agreements, its pay applications and its demand letters. A dev can restore a removed job's rows for 90 days.
+Payment promises, promised pay dates and chase calls stay with the source. So do lien notices, lien releases, Lien desk items and claim corrections. A legal matter's link to the source, its agreements, its pay applications and its demand letters stay behind too. A dev can restore a removed job's rows for 90 days.
 
 Three things go on purpose, because the target rebuilds them. The note count, the drive time between two jobs, and the paid-job email queue.
 
