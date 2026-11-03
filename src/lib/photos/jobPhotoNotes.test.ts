@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { addPress, addWrites, addedWords, descriptionTrimmed, jobPhotoCaption, jobPhotoNotePath, newPhotosLine, offersWordsForTheRest, tileWords, wordsForTheRest, type JobPhotoTile } from './jobPhotoNotes'
+import { addPress, addWrites, addedWords, canEditJobPhotoWords, descriptionTrimmed, gridBySource, gridChips, gridFootWords, gridItems, gridSearch, gridTileWords, jobPhotoCaption, jobPhotoNotePath, newPhotosLine, offersWordsForTheRest, tileWords, wordsForTheRest, type JobPhotoTile } from './jobPhotoNotes'
+import type { UploadedPhotoRow } from './uploadedPhotos'
 
 function tile(over: Partial<JobPhotoTile> & { id: string }): JobPhotoTile {
   return {
@@ -83,5 +84,59 @@ describe('jobPhotoNotes', () => {
     expect(addedWords({ added: 2, failed: [] })).toEqual({ text: '2 photos added to the job', tone: 'success' })
     expect(addedWords({ added: 1, failed: ['The gate refused it.'] })).toEqual({ text: '1 photo added to the job, but one did not: The gate refused it.', tone: 'warning' })
     expect(addedWords({ added: 0, failed: ['No signal.'] })).toEqual({ text: 'The photo did not add: No signal.', tone: 'warning' })
+  })
+
+  const base: UploadedPhotoRow = {
+    source: 'job', id: 'n1', job_id: 'job-1', bid_id: null, project_id: null, report_id: null, container_id: null, question_id: null, message_id: null, contact_id: null,
+    caption: 'Cracked flange under the second lav', stage_name: 'Rough In', by_user_id: 'u1', by_name: 'Carla Nguyen', direction: null, channel: null,
+    taken_at: '2026-11-02T20:41:00.000Z', bytes: 310_000, original_bytes: 4_200_000, bucket: 'job-photo-notes', storage_path: null, drive_file_id: 'd-1', filed_at: '2026-11-02T20:46:00.000Z', fail_why: null, status: null,
+    job_hcp_number: '1077', job_click_number: null, job_name: 'Cedar Ridge', customer_name: 'Ridgeway Builders', bid_number: null,
+  }
+  const report: UploadedPhotoRow = { ...base, source: 'report', id: 'r1', caption: 'Rough In', by_name: 'Mateo Ruiz', taken_at: '2026-11-02T17:05:00.000Z', drive_file_id: 'd-2', report_id: 'rep-1' }
+  const waiting: UploadedPhotoRow = { ...base, id: 'n2', caption: '', stage_name: '', taken_at: '2026-11-02T20:40:00.000Z', storage_path: 'job-1/n2.jpg', drive_file_id: null, filed_at: null }
+
+  it('the grid is our rows plus the folder’s hand-added files, newest first, never a row doubled', () => {
+    const drive = [
+      { id: 'd-1', name: '2026-11-02 Carla Nguyen · Cracked flange.jpg', mime: 'image/jpeg', bytes: 310_000, modified: '2026-11-02T20:46:00.000Z', from: 'pictures' as const },
+      { id: 'd-9', name: 'IMG_4471.jpg', mime: 'image/jpeg', bytes: 2_000_000, modified: '2026-11-01T13:48:00.000Z', from: 'pictures' as const },
+    ]
+    const items = gridItems({ rows: [report, base, waiting], drive, job: { id: 'job-1', hcp_number: '1077', job_name: 'Cedar Ridge' } })
+    expect(items.map((i) => i.row.id)).toEqual(['n1', 'n2', 'r1', 'drive:d-9'])
+    expect(items[3]).toMatchObject({ hand: true, row: { caption: 'IMG_4471.jpg', by_name: 'Added in Drive', drive_file_id: 'd-9', job_id: 'job-1', job_hcp_number: '1077' } })
+    expect(gridTileWords(items[3]!)).toEqual({ text: 'IMG_4471.jpg', none: true, who: 'Added in Drive' })
+    expect(gridTileWords(items[0]!)).toEqual({ text: 'Cracked flange under the second lav', none: false, who: 'Carla Nguyen' })
+    expect(gridTileWords(items[1]!)).toEqual({ text: 'No description', none: true, who: 'Carla Nguyen' })
+    expect(gridTileWords(items[2]!)).toEqual({ text: 'Rough In', none: false, who: 'Mateo Ruiz · Report' })
+    expect(gridItems({ rows: [], drive: null, job: { id: 'job-1' } })).toEqual([])
+  })
+
+  it('the search reads the words, the person, the stage and the source; the chips show only with two sources and carry counts', () => {
+    const items = gridItems({ rows: [report, base, waiting], drive: null, job: { id: 'job-1' } })
+    expect(gridSearch(items, 'flange').map((i) => i.row.id)).toEqual(['n1'])
+    expect(gridSearch(items, 'mateo').map((i) => i.row.id)).toEqual(['r1'])
+    expect(gridSearch(items, 'rough').map((i) => i.row.id)).toEqual(['n1', 'r1'])
+    expect(gridSearch(items, 'report').map((i) => i.row.id)).toEqual(['r1'])
+    expect(gridSearch(items, 'f')).toHaveLength(3)
+    expect(gridBySource(items, 'report').map((i) => i.row.id)).toEqual(['r1'])
+    expect(gridChips(items, 'primary')).toEqual([
+      { key: 'all', label: 'All · 3' },
+      { key: 'report', label: 'Reports · 1' },
+      { key: 'job', label: 'Job photos · 2' },
+    ])
+    expect(gridChips(items.filter((i) => i.row.source === 'job'), 'dev')).toEqual([])
+  })
+
+  it('the foot counts, names the folder and the hand-added files', () => {
+    expect(gridFootWords({ count: 14, hand: 1, folderKind: 'pictures' })).toBe('14 photos · In Drive: Customer Pictures · 1 was put in the folder by hand and read by file name')
+    expect(gridFootWords({ count: 1, hand: 0, folderKind: null })).toBe('1 photo')
+    expect(gridFootWords({ count: 3, hand: 2, folderKind: 'photos' })).toBe('3 photos · In Drive: Team only › Photos · 2 were put in the folder by hand and read by file name')
+  })
+
+  it('the taker and the office may change the words; a helper may not change another’s', () => {
+    expect(canEditJobPhotoWords({ role: 'helpers', byUserId: 'u1', authUserId: 'u1' })).toBe(true)
+    expect(canEditJobPhotoWords({ role: 'helpers', byUserId: 'u1', authUserId: 'u2' })).toBe(false)
+    expect(canEditJobPhotoWords({ role: 'assistant', byUserId: 'u1', authUserId: 'u2' })).toBe(true)
+    expect(canEditJobPhotoWords({ role: 'estimator', byUserId: null, authUserId: 'u2' })).toBe(true)
+    expect(canEditJobPhotoWords({ role: 'primary', byUserId: null, authUserId: 'u2' })).toBe(false)
   })
 })

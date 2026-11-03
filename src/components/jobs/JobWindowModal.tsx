@@ -1,4 +1,5 @@
 import { lazy, Suspense, useMemo, useRef, useState, type CSSProperties } from 'react'
+import type { OpenStageChecklistAsk } from '../stageChecklists/JobStageChecklistStrip'
 import { useNarrowViewport640 } from '../../hooks/useNarrowViewport640'
 import { JobWindowActionBar, JobWindowStatusSheet } from './JobWindowActionBar'
 import { JOB_THREAD_COMPOSE_EVENT } from '../JobThreadNotesPanel'
@@ -84,6 +85,8 @@ type Props = {
   prefillRowLabel?: string | null
   prefillAddress?: string | null
   autoOpenSupplyHouseShare?: boolean
+  /** Open a stage's checklist sheet on a check once the Job pane loads (punch list #245). */
+  openStageChecklist?: OpenStageChecklistAsk | null
   /* ---- Edit/Bill panes (JobFormModal, edit mode) ---- */
   initialJob: JobWithDetails | null
   billingCustomerHighlightInitial: boolean
@@ -108,6 +111,7 @@ export function JobWindowModal({
   prefillRowLabel = null,
   prefillAddress = null,
   autoOpenSupplyHouseShare = false,
+  openStageChecklist = null,
   initialJob,
   billingCustomerHighlightInitial,
   fixturesSectionHighlightInitial,
@@ -354,6 +358,7 @@ export function JobWindowModal({
               prefillRowLabel={prefillRowLabel ?? undefined}
               prefillAddress={prefillAddress ?? undefined}
               autoOpenSupplyHouseShare={autoOpenSupplyHouseShare}
+              openStageChecklist={openStageChecklist}
               externalRefreshKey={detailRefreshKey}
               onEscBlockedChange={setDetailEscBlocked}
               onRequestTab={setTab}

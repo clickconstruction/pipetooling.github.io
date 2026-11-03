@@ -112,7 +112,7 @@ import DevelopmentHouseIcon from '../icons/DevelopmentHouseIcon'
 import { scheduleDispatchWeekUrl } from '../../lib/scheduleDispatchDayLink'
 import { recordViewerNavClick } from '../../lib/navClickViewer'
 import { EmptyState } from '../EmptyState'
-import { JobStageChecklistStrip } from '../stageChecklists/JobStageChecklistStrip'
+import { JobStageChecklistStrip, type OpenStageChecklistAsk } from '../stageChecklists/JobStageChecklistStrip'
 import { JobPhotosStrip } from '../photos/JobPhotosStrip'
 
 export type DetailJobScheduleContext = {
@@ -151,6 +151,8 @@ type Props = {
   onEditJobSaved?: () => void
   /** Auto-open the Share-with-supply-house modal once the job loads (v2.1610 — Dispatch inbox one-click). */
   autoOpenSupplyHouseShare?: boolean
+  /** Open a stage's checklist sheet on a check once the strip reads (punch list #245: the Dispatch inbox's Open the check). */
+  openStageChecklist?: OpenStageChecklistAsk | null
   /**
    * Job-window embedding (v2.1675): render as the window's Job tab — no own
    * overlay/card, no Escape listener, no ✕/Close (the window owns them).
@@ -715,6 +717,7 @@ export default function DetailJobModal({
   prefillAddress = null,
   onEditJobSaved,
   autoOpenSupplyHouseShare = false,
+  openStageChecklist = null,
   paneMode = false,
   onRequestTab = null,
   onJobLoaded = null,
@@ -2136,7 +2139,7 @@ export default function DetailJobModal({
             opening its sheet. Nothing is drawn until the office types the questions. */}
         {open && jobId ? (
           <div style={{ marginTop: '0.75rem' }}>
-            <JobStageChecklistStrip jobId={jobId} plansUrl={(fullJob ?? limitedJob)?.job_plans_link} />
+            <JobStageChecklistStrip jobId={jobId} plansUrl={(fullJob ?? limitedJob)?.job_plans_link} openStage={openStageChecklist} />
           </div>
         ) : null}
 

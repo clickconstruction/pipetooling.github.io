@@ -16,7 +16,8 @@ import { openInExternalBrowser } from '../../lib/openInExternalBrowser'
 import { buildClickToolingUrl } from '../../lib/jobs/jobAddressUrls'
 import { useTestReportModalOptional } from '../../contexts/TestReportModalContext'
 import { ShareJobButton } from './ShareJobButton'
-import { StagesAiaG702Button, StagesChecklistDoorButton, StagesHazmatFeeButton, StagesJobFolderButton, StagesPlansButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { StagesAiaG702Button, StagesChecklistDoorButton, StagesHazmatFeeButton, StagesJobFolderButton, StagesPhotosButton, StagesPlansButton, StagesRowIcons, StagesTestReportButton } from './StagesRowActionButtons'
+import { JobPhotosWindow } from '../photos/JobPhotosWindow'
 import { pipelineChecklistDoor } from '../../lib/jobs/pipelineChecklistDoor'
 import { JobPlanSetsModal } from './JobPlanSetsModal'
 import { usePlanSetsByJob } from '../../hooks/usePlanSetsByJob'
@@ -233,6 +234,8 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
   // the picker, and a job with no part keeps opening its old plans link.
   const planSetsByJob = usePlanSetsByJob(jobList, true)
   const [plansPickerJob, setPlansPickerJob] = useState<JobWithDetails | null>(null)
+  // The Job photos window (punch list #244): the row's camera icon opens it on that job.
+  const [photosJob, setPhotosJob] = useState<JobWithDetails | null>(null)
   const plansPressFor = (j: JobWithDetails) => jobPlansPress(planSetsByJob.get(j.id), j.job_plans_link)
   // The checklist door (punch list #246): the job's standing across its stages, from the marks the board already holds.
   const checklistDoorFor = (j: JobWithDetails) => pipelineChecklistDoor(j.fixtures ?? [], checklistMarksFor?.(j) ?? null)
@@ -541,6 +544,7 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
                               fields={{ hcpNumber: j.hcp_number, jobName: j.job_name, jobAddress: j.job_address }}
                             />
                             <StagesJobFolderButton folderUrl={j.google_drive_link} onOpenTab={() => openEdit(j, { initialTab: 'documents' })} />
+                            <StagesPhotosButton picturesUrl={j.job_pictures_link} folderUrl={j.google_drive_link} onOpen={() => setPhotosJob(j)} />
                             {plansPressFor(j).kind !== 'none' ? <StagesPlansButton press={plansPressFor(j)} onPick={() => setPlansPickerJob(j)} /> : null}
                             {openChecklistDoor && checklistDoorFor(j).kind !== 'none' ? <StagesChecklistDoorButton door={checklistDoorFor(j)} onClick={() => openChecklistDoor(j)} /> : null}
                             <StagesTestReportButton onClick={() => openTestReportFor(j)} />
@@ -558,6 +562,17 @@ export default function JobsStagesTable(props: JobsStagesTableProps) {
           )}
         </tbody>
       </table>
+      {photosJob ? (
+        <JobPhotosWindow
+          job={photosJob}
+          onClose={() => setPhotosJob(null)}
+          onOpenJob={() => {
+            const j = photosJob
+            setPhotosJob(null)
+            openEdit(j)
+          }}
+        />
+      ) : null}
       {plansPickerJob && planSetsByJob.get(plansPickerJob.id) ? (
         <JobPlanSetsModal
           job={{ id: plansPickerJob.id, label: jobShortLabel(plansPickerJob) }}

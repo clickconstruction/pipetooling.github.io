@@ -10,10 +10,17 @@ import {
   paceNowWords,
   paceTicks,
   paceYMax,
+  queueBucketsWords,
+  queueLineWords,
+  queueMoreWords,
+  queueTitleWords,
+  SHIP_PACE_QUEUE_SHOWN,
   type PaceHour,
+  type PaceQueue,
   type ShipPacePicture,
 } from '../../../supabase/functions/_shared/shipPace'
 import type { UserRole } from '../../hooks/useAuth'
+import { emptyWords } from '../../lib/emptyWords'
 import { recoveryFailureFromError, type OfflineRecoveryLastError } from '../../lib/offlineRecoveryState'
 import { type ShipPaceIo, shipPaceIo } from '../../lib/settings/shipPaceIo'
 import { SHIP_PACE_WORDS } from '../../lib/settings/shipPaceWords'
@@ -43,8 +50,10 @@ const TILE: CSSProperties = {
 
 /**
  * Settings → How fast a change ships (v2.6399): the headline the owner says out loud when the office asks for a
- * feature, the 72-hour chart of the median hours from a pull request opening to its merge, what landed today, and
- * one sentence on what the number means. The row is the `ship-pace` cron's; the client never reads GitHub.
+ * feature, the 72-hour chart of the median hours from a pull request opening to its merge, what landed today, the
+ * merge queue's line (**In line now**, v2.6401: each change on its way to the app in the order they go live, so a
+ * person can find theirs), and one sentence on what the number means. The row is the `ship-pace` cron's; the
+ * client never reads GitHub.
  */
 export default function SettingsShipPaceSection({ role = null, io = shipPaceIo, now = Date.now }: Props) {
   // undefined while the first read runs; null when there is no row yet.
@@ -121,6 +130,8 @@ export default function SettingsShipPaceSection({ role = null, io = shipPaceIo, 
             <Tile label={SHIP_PACE_WORDS.inQueue} value={picture.now.queue == null ? SHIP_PACE_WORDS.queueNotRead : picture.now.queue.toLocaleString('en-US')} />
           </div>
 
+          <QueueCard queue={picture.queue} total={picture.now.queue} nowMs={nowMs} />
+
           <p data-ship-pace-meaning style={{ marginTop: '1rem', marginBottom: 0, color: 'var(--text-muted)' }}>{SHIP_PACE_WORDS.meaning}</p>
         </>
       )}
@@ -173,6 +184,63 @@ function NowTile({ recent }: { recent: ShipPacePicture['recent'] }) {
       )}
       <div data-ship-pace-now-words style={{ fontSize: '0.9rem' }}>{paceNowWords(recent)}</div>
       {paceNowSmallWords(recent) && <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)', fontVariantNumeric: 'tabular-nums' }}>{paceNowSmallWords(recent)}</div>}
+    </div>
+  )
+}
+
+/**
+ * In line now (v2.6401): the merge queue's entries in the order they go live, the top ten with *and N more* after
+ * them, each with its title after the version and its words (*3rd in line, in the queue 25 minutes, about 12 minutes
+ * to go*), then one line for the changes armed and waiting on their checks and the ones open and not yet asked to
+ * merge. An empty queue says so; a queue the cron could not read says so and names the door.
+ */
+function QueueCard({ queue, total, nowMs }: { queue: PaceQueue | null; total: number | null; nowMs: number }) {
+  const shown = queue ? queue.entries.slice(0, SHIP_PACE_QUEUE_SHOWN) : []
+  const more = queue ? queueMoreWords(total ?? queue.entries.length, shown.length) : ''
+  return (
+    <div
+      data-ship-pace-queue
+      style={{ marginTop: '1rem', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--surface)', padding: '0.75rem 1rem 0.85rem' }}
+    >
+      <div style={{ display: 'flex', alignItems: 'baseline', gap: '0.6rem', flexWrap: 'wrap', marginBottom: '0.5rem' }}>
+        <div style={{ fontWeight: 600 }}>{SHIP_PACE_WORDS.queueTitle}</div>
+        <div style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>{SHIP_PACE_WORDS.queueOrder}</div>
+      </div>
+      {queue == null ? (
+        <p data-ship-pace-queue-unread style={{ margin: 0, fontSize: '0.9rem', color: 'var(--text-muted)' }}>
+          {SHIP_PACE_WORDS.queueUnread}
+        </p>
+      ) : (
+        <>
+          {shown.length === 0 ? (
+            <EmptyState main={emptyWords({ kind: 'waiting', who: SHIP_PACE_WORDS.queueWho }).main} compact />
+          ) : (
+            <ol data-ship-pace-queue-list style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+              {shown.map((e) => (
+                <li key={e.number} data-ship-pace-queue-entry style={{ display: 'grid', gridTemplateColumns: '2rem minmax(0, 1fr)', columnGap: '0.6rem', alignItems: 'baseline' }}>
+                  <span style={{ textAlign: 'right', fontWeight: 600, color: 'var(--text-strong)', fontVariantNumeric: 'tabular-nums' }}>{e.position}</span>
+                  <span style={{ minWidth: 0 }}>
+                    <span data-ship-pace-queue-entry-title style={{ display: 'block', color: 'var(--text-strong)', overflowWrap: 'anywhere' }}>
+                      {queueTitleWords(e.title)}
+                    </span>
+                    <span data-ship-pace-queue-entry-words style={{ display: 'block', fontSize: '0.8rem', color: 'var(--text-muted)' }}>
+                      {queueLineWords(e, nowMs)}
+                    </span>
+                  </span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {more && (
+            <div data-ship-pace-queue-more style={{ marginTop: '0.5rem', paddingLeft: '2.6rem', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+              {more}
+            </div>
+          )}
+          <p data-ship-pace-queue-buckets style={{ margin: '0.75rem 0 0', fontSize: '0.85rem', color: 'var(--text-muted)' }}>
+            {queueBucketsWords(queue)}
+          </p>
+        </>
+      )}
     </div>
   )
 }

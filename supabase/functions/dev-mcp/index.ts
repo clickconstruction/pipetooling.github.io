@@ -975,7 +975,7 @@ async function runVerb(who: Identity, jwt: () => Promise<string>, name: string, 
       const saJson = Deno.env.get('GOOGLE_SERVICE_ACCOUNT_JSON')
       if (!saJson) return refused('Drive is not set up on this project (GOOGLE_SERVICE_ACCOUNT_JSON, docs/DRIVE_INTAKE_SETUP.md).', { target })
       const google = await googleAccessToken(saJson)
-      const ctx = await indexContext(admin, google)
+      const ctx = await indexContext(admin, google, saJson)
       if ('noRoot' in ctx) return refused('The jobs root is not set yet (Documents → Where files go), so there is nothing to walk.', { target })
       let listed: Awaited<ReturnType<typeof jobFilesToIndex>>
       try {

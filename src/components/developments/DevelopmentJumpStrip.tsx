@@ -31,6 +31,13 @@ const LABEL: Record<DevelopmentJumpKey, string> = { changed: 'History', pieces: 
 export const DEVELOPMENT_PHONE_QUERY = '(max-width: 760px)'
 
 /** The one-sentence tell, on the cap's title. */
+const COUNT_WORDS = ['No', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine'] as const
+/**
+ * The strip's name, counted from its own list: *Six looks*. The phone's nav kept *Five looks* by hand after
+ * Photos joined as the sixth (v2.6371), so the cap and both navs read this one name.
+ */
+const LOOKS_NAME = `${COUNT_WORDS[ORDER.length] ?? ORDER.length} looks`
+
 export const REVIEW_TELL = 'Six looks at the site, top to bottom: the history, the jobs and bids, the money, the plans, the questions, the photos. The filled number is where you are.'
 
 /**
@@ -56,12 +63,14 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
     }
   }, [phone])
 
-  // The phone (the Gun Dog spike, 2026-11-02): one row of five equal cells, each the look's name over
+  // The phone (the Gun Dog spike, 2026-11-02): one row with a cell for each look, the look's name over
   // one figure, the look you are in underlined, no cap and no ordinals. The desk's chips wrapped into
-  // four ragged lines there (the owner: *I don't like how this looks on mobile*).
+  // four ragged lines there (the owner: *I don't like how this looks on mobile*). The row counts no
+  // columns: each cell is as wide as its words and shares what is left (v2.6371's sixth look dropped
+  // to a second row of a five-column grid).
   if (phone) {
     return (
-      <nav ref={barRef as React.RefObject<HTMLDivElement>} aria-label="Five looks at the site" className="developmentPhoneStrip" data-development-jump-strip data-testid="development-phone-strip">
+      <nav ref={barRef as React.RefObject<HTMLDivElement>} aria-label={`${LOOKS_NAME} at the site`} className="developmentPhoneStrip" data-development-jump-strip data-testid="development-phone-strip">
         {ORDER.map((key, index) => {
           const on = key === active
           const look = looks[key]
@@ -91,9 +100,9 @@ export function DevelopmentJumpStrip({ looks }: { looks: Record<DevelopmentJumpK
   return (
     <div ref={barRef} className="stagesStageBar messagesJumpStrip developmentReviewStrip" data-development-jump-strip style={{ top: 0, marginBottom: 12 }}>
       <div className="stagesStageBarEnd reviewCap" title={REVIEW_TELL} data-testid="review-cap">
-        <strong>Six looks</strong>
+        <strong>{LOOKS_NAME}</strong>
       </div>
-      <nav aria-label="Six looks at the site" className="stagesStageSegs">
+      <nav aria-label={`${LOOKS_NAME} at the site`} className="stagesStageSegs">
         {ORDER.map((key, index) => {
           const on = key === active
           const look = looks[key]
