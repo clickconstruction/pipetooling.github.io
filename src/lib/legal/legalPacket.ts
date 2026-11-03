@@ -1253,9 +1253,9 @@ export function legalPeriodLabel(from: string, to: string): string {
   return `${M[a.mo - 1]} ${a.d}, ${a.y} – ${M[b.mo - 1]} ${b.d}, ${b.y}`
 }
 
-/** The Evidence row's words on its statements (v2.6413): `2 signed · 1 waiting for a signature · 1 draft`, or none yet. */
+/** The Evidence row's words on its statements (v2.6413): `2 signed · 1 waiting for a signature · 1 not sent yet`, or nothing signed yet. */
 export function legalStatementsWords(statements: ReadonlyArray<Pick<LegalEvidenceStatement, 'state'>>): string {
-  if (statements.length === 0) return 'No signed statement yet.'
+  if (statements.length === 0) return 'Nothing signed here yet.'
   const n = (k: string) => statements.filter((s) => s.state === k).length
   const parts: string[] = []
   if (n('signed')) parts.push(`${n('signed')} signed`)

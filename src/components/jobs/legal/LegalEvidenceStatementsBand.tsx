@@ -13,6 +13,7 @@ import { hoursStatementEvidenceProblem } from '../../../lib/legal/hoursStatement
 import { legalGapJobWords, legalStatementsWords, type LegalEvidenceJob } from '../../../lib/legal/legalPacket'
 import { hoursStatementStateWords, isHoursStatementState } from '../../../lib/people/hoursStatementRecord'
 import { MUTED, btn } from './legalDeskShared'
+import { EmptyState } from '../../EmptyState'
 
 const dead: CSSProperties = { ...btn, background: DEAD_PRESS_FILL, color: DEAD_PRESS_TEXT, border: '1px solid transparent', cursor: 'not-allowed' }
 
@@ -59,7 +60,7 @@ export function LegalEvidenceStatementsBand({ job, firstRecordedDay, matter, can
       })}
       {canAsk && !job.beforeTheApp ? (
         <div style={row}>
-          {job.workers.length === 0 ? <span style={MUTED}>No approved session names a worker here yet.</span> : null}
+          {job.workers.length === 0 ? <EmptyState compact main="Nobody has an approved session here yet, so there is no one to ask." /> : null}
           {job.workers.map((w) => (
             <button key={w.userId} type="button" style={acts ? btn : dead} disabled={!acts} onClick={() => acts?.ask(job.jobId, w.userId)} title={`Opens the Hours statement window on ${job.jobLabel} with ${w.name} picked: ${w.sessions} approved session${w.sessions === 1 ? '' : 's'} here`} aria-label={`Ask ${w.name} for a signed statement`}>
               Ask {w.name}…

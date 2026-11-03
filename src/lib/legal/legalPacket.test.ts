@@ -218,7 +218,7 @@ describe('buildLegalPacket', () => {
     ])
     expect(a.beforeTheApp).toBe(false)
     expect(legalStatementsWords(a.statements)).toBe('1 signed · 1 waiting for a signature')
-    expect(legalStatementsWords([])).toBe('No signed statement yet.')
+    expect(legalStatementsWords([])).toBe('Nothing signed here yet.')
     const titles = p.exhibits.map((e) => e.title)
     expect(titles.indexOf('Signed hours statements')).toBe(titles.indexOf('Field reports and clock sessions') + 1)
     expect(p.exhibits.find((e) => e.title === 'Signed hours statements')?.count).toBe(1)
