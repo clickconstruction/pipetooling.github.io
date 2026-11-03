@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { billPapers, defaultEstimatePaper, defaultPaperFills, estimatePapers, listedPapers, PAPER_LINES, paperFills, paperLineWords, paperRowWords, papersFor, papersTitle, type PaperEstimateRow, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow } from './papers'
+import { billPapers, defaultEstimatePaper, defaultPaperFills, estimatePapers, listedPapers, PAPER_LINES, paperFills, paperLineWords, paperRowWords, papersFor, papersTitle, type PaperEstimateRow, type PaperInvoiceRow, type PaperJobRow, type PaperPaymentRow, defaultWarrantyPaper, warrantyPapers, type PaperWarrantyRow } from './papers'
 
 // Made-up jobs, bills and estimates for one customer (Dana Whitfield's, as the mock-ups say).
 const BILL_A = '0000000a-0000-4000-8000-000000001042'
@@ -185,5 +185,52 @@ describe('a paper in the / list (#127 PR 2)', () => {
     expect(paperRowWords(papers[2]!)).toMatchObject({ state: 'paid', tone: 'paid', when: 'billed Sep 30' })
     expect(paperRowWords(est)).toEqual({ number: 'Estimate 1044', what: 'Kitchen re-pipe', when: 'sent Oct 14', money: '$3,200', state: 'not approved yet', tone: 'sent' })
     expect([papersTitle('Dana', 'bill'), papersTitle(null, 'estimate')]).toEqual(["Dana's bills", 'Their estimates'])
+  })
+})
+
+describe('the warranty in place of a contract (2026-11-02)', () => {
+  const row = (p: Partial<PaperWarrantyRow> & Pick<PaperWarrantyRow, 'id'>): PaperWarrantyRow => ({
+    job_id: 'job-1312',
+    status: 'sent',
+    sent_at: '2026-11-02T15:00:00Z',
+    signed_at: null,
+    voided_at: null,
+    job: 'Water heater',
+    number: '1312',
+    url: 'https://clicktooling.com/contract/sign?t=tok',
+    ...p,
+  })
+
+  it('offers a warranty out to sign with a live link first, then the signed ones; a draft, a voided one and a lapsed link are left out', () => {
+    const papers = warrantyPapers([
+      row({ id: 'w-draft', status: 'draft', sent_at: null, url: null }),
+      row({ id: 'w-void', voided_at: '2026-11-02T16:00:00Z' }),
+      row({ id: 'w-lapsed', url: null }),
+      row({ id: 'w-signed', status: 'signed', signed_at: '2026-11-01T17:00:00Z', url: null }),
+      row({ id: 'w-out' }),
+    ])
+    expect(papers.map((w) => `${w.id} ${w.signed ? 'signed' : 'out'} ${w.number} ${w.url ?? '-'}`)).toEqual([
+      'w-out out 1312 https://clicktooling.com/contract/sign?t=tok',
+      'w-signed signed 1312 -',
+    ])
+  })
+
+  it('fills {warranty} with the link, lists a warranty under /warranty, words its row and its line', () => {
+    const [out, signed] = warrantyPapers([row({ id: 'w-out' }), row({ id: 'w-signed', status: 'signed', signed_at: '2026-11-01T17:00:00Z', url: null })])
+    expect(paperFills(out!)).toEqual({ warranty: 'https://clicktooling.com/contract/sign?t=tok', number: '1312', job: 'Water heater' })
+    expect(listedPapers([out!, signed!], 'warranty', null).map((p) => p.id)).toEqual(['w-out', 'w-signed'])
+    expect(paperRowWords(out!)).toMatchObject({ number: 'Warranty · J1312', what: 'Water heater', state: 'waiting for initials and a signature', tone: 'sent' })
+    expect(paperRowWords(signed!)).toMatchObject({ state: 'signed', tone: 'approved' })
+    expect(paperLineWords(out!)).toBe('{first}, here is our warranty for {job}. It takes a minute to initial each line and sign on your phone: {warranty}')
+    expect(paperLineWords(signed!)).toBe('{first}, here is a copy of your signed warranty for {job}: {warranty}')
+    expect(papersTitle('Dana', 'warranty')).toBe("Dana's warranties")
+  })
+
+  it('a job’s box speaks of its own warranty and no other job’s; a thread takes the tied job’s, else the newest', () => {
+    const papers = warrantyPapers([row({ id: 'w-other', job_id: 'job-1290', sent_at: '2026-11-02T18:00:00Z' }), row({ id: 'w-own' })])
+    expect(defaultWarrantyPaper(papers, 'job-1312', true)?.id).toBe('w-own')
+    expect(defaultWarrantyPaper(papers, 'job-1400', true)).toBeNull()
+    expect(defaultWarrantyPaper(papers, 'job-1312', false)?.id).toBe('w-own')
+    expect(defaultWarrantyPaper(papers, null, false)?.id).toBe('w-other')
   })
 })
