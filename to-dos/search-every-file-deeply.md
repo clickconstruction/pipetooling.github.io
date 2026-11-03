@@ -2,7 +2,7 @@
 name: "Search every file deeply: our own index, OCR and meaning, backfilled once by an agent"
 number: 240
 group: ready
-status: designed 2026-11-02 in the session that shipped Find a file (v2.6305) · PR 1 shipped v2.6319 (#6773, the index, the sweep and Find a file reading it first) · the backfill runner shipped v2.6343 and walked every job and bid the same day · the index check shipped v2.6364 and the fill it enabled gave every file the Shared Drive lists a row (4,209 rows, counts in Where it stands) · v2.6403 lets a deep file reach its home · v2.6417 makes the sweep reconcile, so a file moved in is indexed whatever date it carries · left: the rehome pass and the one retry, PR 3 and PR 4
+status: designed 2026-11-02 in the session that shipped Find a file (v2.6305) · PR 1 shipped v2.6319 (#6773, the index, the sweep and Find a file reading it first) · the backfill runner shipped v2.6343 and walked every job and bid the same day · the index check shipped v2.6364 and the fill it enabled gave every file the Shared Drive lists a row (4,209 rows, counts in Where it stands) · v2.6403 lets a deep file reach its home · left: the rehome pass and the one retry, PR 2 to PR 4, the reconcile step the owner chose for new files
 summary: >
   Find a file (Documents → Search, v2.6305) asks Drive's own full-text index and lands each hit on its job; PR #6752
   adds the line around the words. That finds a file by words Google has indexed, and nothing more. The owner wants
@@ -10,7 +10,7 @@ summary: >
   Postgres (one row per Drive file, full-text ranked), fed by the sweep as files land and filled once by a backfill,
   our own OCR for scanned paper, and embeddings so a search by meaning finds the letter that never used the word.
   The backfill is to be run one time by a Claude agent session after the features land, not by a cron.
-next: once v2.6403 is deployed, `npx vite-node scripts/file-index-check.ts --rehome`; once PR 2's budgeted read is deployed and tested on the ZZ plan sets, the runner's one pass with `--retry` over the `reading`, `slow` and `big` rows and the bids' deeper folders; then these counts again, and the owner's drag-in proof of the reconcile step (v2.6417).
+next: once v2.6403 is deployed, `npx vite-node scripts/file-index-check.ts --rehome`; once PR 2's budgeted read is deployed and tested on the ZZ plan sets, the runner's one pass with `--retry` over the `reading`, `slow` and `big` rows and the bids' deeper folders; the reconcile step in another session (the owner has the prompt); then these counts again.
 size: L
 blocker: PRs 3 and 4 wait on two owner decisions (the OCR provider, the embeddings provider and its key). The one retry waits on PR 2's deploy. New files in a bid's folder outside the Shared Drive wait on decision 4. Nothing here waits on a dev-mcp key: the seat answers again since 2026-11-02.
 opinion: build — the owner asked for it twice and chose the shape; Drive's index is kept as the floor, so every PR here adds reach without taking anything away
