@@ -4,16 +4,16 @@
  * every set on the job's part with Open ↗. A job that names no part yet falls back to its old `job_plans_link`,
  * so every row reads as it did. Pure.
  */
-import { compareSets, isAsBuilt, type PlanSetRow } from './planSets'
+import { compareSets, isAsBuilt, isDrawingSet, type PlanSetRow } from './planSets'
 
 /** What the rows' read hands each job: its part, the set it builds from and every set on the part. */
 export type JobPlanSetsEntry = { partId: string; currentSetId: string | null; sets: PlanSetRow[] }
 
 export type JobPlansPress = { kind: 'none' } | { kind: 'open'; link: string; title: string } | { kind: 'pick'; title: string; count: number }
 
-/** The sets a person can open: the ones with a link. */
+/** The sets a person can open: the drawings with a link. A paper reads under Papers with the plans, never here. */
 export function openableSets(entry: JobPlanSetsEntry | null | undefined): PlanSetRow[] {
-  return (entry?.sets ?? []).filter((s) => s.link.trim() !== '')
+  return (entry?.sets ?? []).filter((s) => isDrawingSet(s) && s.link.trim() !== '')
 }
 
 /** What the icon does: nothing to draw, open the one set, or offer the picker. */
