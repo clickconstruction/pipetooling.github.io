@@ -67,6 +67,14 @@ The crew's hours are the longest day of anyone in it. Two techs out eight hours 
 
 Under the rates, open **Markup on materials**. Type a percent over cost and press {{button:blue|Save the markup}}. The line under the field reads the number both ways. For example, 25% over cost is a 20% margin on the sale. Leave it blank and materials are charged at cost. The paper says so when they are.
 
+## Give one job its own rule
+
+Open the job window and go to **Edit**. The last row reads **Charging the customer**. Press it to open the row.
+
+**Charge this job's labor as** lists the choices. The first is the crew on each day, from the rate card. Each shape follows with its rate. The last is a flat rate for every hour. Pick the flat rate and the dollars box wakes.
+
+**Markup on materials** takes a percent for this job alone. Leave it blank and the company's markup stands. The row saves as you pick. The Charges window writes the same facts, so a change there shows here.
+
 ## See what a job is charged at
 
 Open **Jobs** and go to **Job Summary**. Two columns sit at the right of the table. **Charges** is the job's crew days at the rate card plus its materials at the markup. **Premium** is how far the contract price stands above the charges. A shortfall reads red. A chip over the table names the rate card and markup in force.

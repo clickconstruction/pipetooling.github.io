@@ -38,6 +38,9 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Field/tech job reports → `/jobs?tab=reports`
 - Crew profitability / labor rollups → `/jobs?tab=teams-summary`, `/jobs?tab=combined-labor`
 - Job cost detail (parts, subs) → `/jobs?tab=parts`, `/jobs?tab=sub_sheet_ledger`
+- See what every job is charged at beside its price, and change a day's crew or pass a line through at cost → `/jobs?tab=job-summary` (the Charges and Premium columns, v2.6445; a press on a Charges cell opens the Charges window; guide `charge-by-crew`)
+- Print a Statement of charges for a job and a period, the office copy with the margin or the customer copy with charged amounts alone → the job window's **Documents** tab from `/jobs?tab=stages`, under Hours statements (v2.6447)
+- Give one job its own rule for its labor and its own markup on materials → the job window's **Edit** tab, the last row *Charging the customer* (v2.6448)
 - One job's money story (charges vs payments timeline) → `/jobs?tab=job-summary`
 - Who owes us money → `/accounts-receivable`
 - See every working project as one card, ahead or behind at this pace, and set its expected hours in the open → `/projects-board` (the Projects board, punch list #242, v2.6330: the leader, the office and the superintendents; the **Projects** press beside Forecast on `/jobs?tab=stages`; the leader and the office set, a superintendent reads; guide `see-where-every-project-stands-and-set-its-expected-hours`)
@@ -73,6 +76,7 @@ Help guides open at `/help?g=<slug>`; they are the *how* — this file is only t
 - Calendar view → `/calendar`; map of work → `/map`
 - Price/labor/assembly books (catalog data behind pricing) → `/materials`
 - Your profile, theme, release notes → `/settings`
+- Set what a crew's hour is charged at by who was out, and the markup on materials → `/settings?tab=settings-jobs` (Rates charged by crew and Markup on materials, v2.6441; what each person counts as is set on their desk under Access as *Charged as*; guide `charge-by-crew`)
 - How long a change has been taking from its pull request opening to the app, the last three days by the hour, what opened and merged today, and where a change is in the merge queue's line on its way to the app → `/settings?tab=settings-ship-pace` (How fast a change ships: the office roles, v2.6399; In line now v2.6401; guide `see-how-fast-a-change-ships`)
 - Color the Texas counties each collections law firm covers, add the second firm, and see today's Collections cases as dots while you color → `/settings?tab=settings-jobs` (Collections law firms: a dev, v2.5756, the zooming map with the cases and the contents card v2.5758; guide `set-which-law-firm-covers-each-county`)
 - See every Collections account on the county map, with the firm that covers each county, who covers what and the cases no firm covers → `/legal-desk?view=map` (the Legal desk’s Map view, a page since v2.5894: the office, v2.5784; guide `review-a-collections-account-before-it-goes-to-your-attorney`)
