@@ -40512,7 +40512,11 @@ export type Database = {
       }
       on_site_can_touch_job: { Args: { p_job_id: string }; Returns: boolean }
       on_site_line_on_hand: {
-        Args: { p_container_id: string; p_part_id: string; p_part_name: string }
+        Args: {
+          p_container_id: string
+          p_part_id?: string
+          p_part_name?: string
+        }
         Returns: number
       }
       open_ar_rejected_check_cases: { Args: never; Returns: Json }
