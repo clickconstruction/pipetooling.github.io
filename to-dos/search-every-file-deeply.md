@@ -311,7 +311,7 @@ a file eleven folders deep in a plan export find it on its bid.
 
 ### New files from here on: the owner chose the sweep plus a reconcile step (2026-11-02)
 
-Not built as this is written; the owner has a prompt for another session. Until it lands, this is what catches what:
+**Built as v2.6417** (2026-11-02, `_shared/fileIndexReconcile.ts`, the sweep's last step; `docs/recent-features/v2.6417.md`). What catches what:
 
 - **What the sweep sees.** It lists by Drive's modified time. An upload through the app gets a fresh one (92 of 92 filed photos, within the
   hour), and each of the 4 files changed since the sweep began had its row within nine minutes. A deleted file loses its row within about a
@@ -320,8 +320,11 @@ Not built as this is written; the owner has a prompt for another session. Until 
   existed (2026-11-01). Forum reports say a file dragged in from a computer keeps its date too; nothing official says so and it is
   untested here, so the reconcile step's last proof settles it. This card used to say a file dropped in by hand is found within minutes.
   That holds only for a file with a fresh date.
-- **The reconcile step**: each run also compares the Shared Drive's listing with the rows and takes any file with no row, whatever its
-  date. About a dozen extra Drive lists a run at today's size, and `scripts/file-index-check.ts` already does the comparison by hand.
+- **The reconcile step** (v2.6417): each run, once its stamped pass left nothing behind, also lists the whole Shared Drive against every
+  row's id and takes the files with no row, newest first, forty a run, whatever their date, as the run's last step in its own catch, so
+  a heavy file there costs neither the stamp nor the rechecks, and its old dates never move the stamp. About a dozen extra Drive lists
+  a run at today's size; one log line a run, counts only, read through the management API's `function_logs`. The proof the owner
+  gives (a file dragged in from a computer under the ZZ Test job) settles whether a drag keeps its old date; the step takes it either way.
 - **Weighed and not chosen**: Drive's change feed (`changes.list` with a page token), which also shows a delete at once but is untested on
   a file moved in; and indexing when the app files something itself, which misses every file put in by hand.
 - **Neither covers a bid's folder outside the Shared Drive**: 1,861 rows sit there. They are searchable, which Drive's own search in the

@@ -1,6 +1,6 @@
 /**
  * The index check (punch list #240, v2.6364): what Drive holds against what `file_index` holds, pure, so the app's test
- * reads it as `drive-link`'s `index_check` and `scripts/file-index-check.ts` do. The owner's question after the backfill:
+ * reads it as `drive-link`'s `index_check`, `scripts/file-index-check.ts` and the sweep's reconcile step (v2.6417) do. The owner's question after the backfill:
  * how do we know which files are in the index and which are not, so we know when to index again or index more? A row is
  * the record of a file a walk reached; this is the record of the ones no walk reached. No imports, as `fileIndexKernel.ts`.
  *
@@ -68,24 +68,34 @@ export function checkSample(v: unknown): number {
   return Math.min(CHECK_SAMPLE_MAX, Math.floor(v))
 }
 
+/**
+ * The listed files with no row, newest first, a file listed twice counted once. Generic over the file, so the sweep's
+ * reconcile step keeps each file's full Drive fields for the pass and the check keeps its lighter shape: one rule for
+ * both, never a second copy. `rowIds` is the rows' ids, a Set or a Map keyed by them.
+ */
+export function filesWithNoRow<F extends Pick<CheckFile, 'id' | 'modifiedTime'>>(files: readonly F[], rowIds: Pick<ReadonlySet<string>, 'has'>): F[] {
+  const seen = new Set<string>()
+  const out: F[] = []
+  for (const f of files) {
+    if (seen.has(f.id)) continue
+    seen.add(f.id)
+    if (!rowIds.has(f.id)) out.push(f)
+  }
+  return out.sort((a, b) => (b.modifiedTime ?? '').localeCompare(a.modifiedTime ?? ''))
+}
+
 /** The reconciliation: every listed file against every row. */
 export function reconcile(files: readonly CheckFile[], rows: readonly CheckRow[], capped: boolean, sample: number = CHECK_SAMPLE_DEFAULT): IndexCheck {
   const byId = new Map<string, CheckRow>()
   for (const r of rows) byId.set(r.drive_file_id, r)
+  const noRow = filesWithNoRow(files, byId)
   const seen = new Set<string>()
-  let filesWithNoRow = 0
   let filesChangedSinceRow = 0
-  const missing: IndexCheck['missing'] = []
   for (const f of files) {
     if (seen.has(f.id)) continue
     seen.add(f.id)
     const row = byId.get(f.id)
-    if (!row) {
-      filesWithNoRow += 1
-      missing.push({ id: f.id, name: f.name, mime: f.mimeType, modified: f.modifiedTime ?? null })
-      continue
-    }
-    if (!sameInstant(f.modifiedTime, row.modified_at)) filesChangedSinceRow += 1
+    if (row && !sameInstant(f.modifiedTime, row.modified_at)) filesChangedSinceRow += 1
   }
   let rowsOutsideListing = 0
   const rowsOutsideListingOn = { job: 0, bid: 0, none: 0 }
@@ -102,8 +112,8 @@ export function reconcile(files: readonly CheckFile[], rows: readonly CheckRow[]
       rowsByWhy[why] = (rowsByWhy[why] ?? 0) + 1
     }
   }
-  missing.sort((a, b) => (b.modified ?? '').localeCompare(a.modified ?? ''))
-  return { filesInDrive: seen.size, capped, rows: rows.length, filesWithNoRow, filesChangedSinceRow, rowsOutsideListing, rowsOutsideListingOn, rowsWithText, rowsByWhy, missing: missing.slice(0, Math.max(0, sample)) }
+  const missing = noRow.slice(0, Math.max(0, sample)).map((f) => ({ id: f.id, name: f.name, mime: f.mimeType, modified: f.modifiedTime ?? null }))
+  return { filesInDrive: seen.size, capped, rows: rows.length, filesWithNoRow: noRow.length, filesChangedSinceRow, rowsOutsideListing, rowsOutsideListingOn, rowsWithText, rowsByWhy, missing }
 }
 
 const n = (v: number) => v.toLocaleString('en-US')
@@ -155,6 +165,29 @@ export function checkWords(c: IndexCheck): string {
 /** Whether the index wants another pass: a file with no row, or a file changed since its row. A row outside the listing does not: the sweep's recheck settles it. */
 export function checkWantsAPass(c: IndexCheck): boolean {
   return c.filesWithNoRow > 0 || c.filesChangedSinceRow > 0
+}
+
+/** What the sweep's reconcile step did in one run (v2.6417), counts only: its log line and the sweep's answer carry it. */
+export interface ReconcileStep {
+  /** Files the Shared Drive's listing reached, folders left out. */
+  filesInDrive: number
+  /** True when the drive holds more than the listing's cap, so the files with no row were sought among the first `filesInDrive` by modified time. */
+  capped: boolean
+  rows: number
+  /** Files in the drive with no row before the pass, whatever their date. */
+  noRow: number
+  /** Of them, the files the pass took, newest first, up to the sweep's cap. */
+  taken: number
+  /** Of the taken, rows written, with text or held with the reason. */
+  indexed: number
+  /** Of the written, rows with no text. */
+  held: number
+  ms: number
+}
+
+/** The reconcile step's one log line a run: counts only, never a file's name. */
+export function reconcileStepWords(r: ReconcileStep): string {
+  return `file-index-sweep reconcile: ${n(r.filesInDrive)} files in Drive${r.capped ? ' (capped)' : ''}, ${n(r.rows)} rows, ${n(r.noRow)} with no row, ${n(r.taken)} taken, ${n(r.indexed)} indexed, ${n(r.held)} held, ${n(r.ms)} ms.`
 }
 
 /** Whether a call that failed is worth asking again: the signal lost, the rate limit or the platform's own failure, never the function's refusal in words. */

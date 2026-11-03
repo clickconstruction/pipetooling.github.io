@@ -1,4 +1,5 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
+import { CHARGE_STANDINGS, CHARGE_STANDING_HINTS, CHARGE_STANDING_WORDS, parseChargeStanding, type ChargeStanding } from '../../../lib/charges/rateCard'
 import { FunctionsHttpError } from '@supabase/supabase-js'
 import { supabase } from '../../../lib/supabase'
 import { useToastContext } from '../../../contexts/ToastContext'
@@ -78,6 +79,25 @@ export function PersonDeskAccessSection({
   const [nameError, setNameError] = useState<string | null>(null)
   const [tradesDraft, setTradesDraft] = useState<string[] | null>(null)
   const [passwordOpen, setPasswordOpen] = useState(false)
+  // Charged as (punch list #254): what this person counts as when a crew's hour is priced. A plain profile field,
+  // read on its own so the desk's user row needs no new column until the types regenerate.
+  const [standing, setStanding] = useState<ChargeStanding | null>(null)
+  const standingUserId = user?.id ?? null
+  useEffect(() => {
+    if (!standingUserId) return
+    let on = true
+    void supabase
+      .from('users')
+      .select('*')
+      .eq('id', standingUserId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (on) setStanding(parseChargeStanding((data as unknown as { charge_standing?: unknown } | null)?.charge_standing))
+      })
+    return () => {
+      on = false
+    }
+  }, [standingUserId])
   const [emailOpen, setEmailOpen] = useState(false)
   const [mergeOpen, setMergeOpen] = useState(false)
   // PR D2: the Hiring columns shared with them, the line the Active Accounts window's Edit showed (dev reads).
@@ -117,6 +137,19 @@ export function PersonDeskAccessSection({
     } finally {
       setBusy(null)
     }
+  }
+
+  async function setChargeStanding(next: ChargeStanding) {
+    if (!editable) return
+    await run(
+      'standing',
+      async () => {
+        const { error } = await supabase.from('users').update({ charge_standing: next } as never).eq('id', u.id)
+        if (error) throw new Error(error.message)
+        setStanding(next)
+      },
+      `Charged as ${CHARGE_STANDING_WORDS[next].toLowerCase()}`,
+    )
   }
 
   async function setRole(role: string) {
@@ -280,6 +313,28 @@ export function PersonDeskAccessSection({
       >
         <span style={{ minWidth: 0, overflowWrap: 'anywhere' }}>{u.email ?? 'no email'}</span>
         {u.email ? <span style={HINT}>They sign in with this address.</span> : null}
+      </DeskRow>
+
+      <DeskRow label="Charged as" actions={!editable ? devLock : null}>
+        {editable ? (
+          <select
+            value={standing ?? 'none'}
+            disabled={busy != null || standing == null}
+            onChange={(e) => void setChargeStanding(parseChargeStanding(e.target.value))}
+            style={{ fontSize: '0.8125rem', padding: '0.1rem 0.3rem' }}
+            aria-label="Charged as"
+            data-testid="charge-standing-select"
+          >
+            {CHARGE_STANDINGS.map((s) => (
+              <option key={s} value={s}>
+                {CHARGE_STANDING_WORDS[s]}
+              </option>
+            ))}
+          </select>
+        ) : (
+          <span>{CHARGE_STANDING_WORDS[standing ?? 'none']}</span>
+        )}
+        <span style={HINT}>{CHARGE_STANDING_HINTS[standing ?? 'none']} The rate card in Settings prices the crew’s hour by who was out.</span>
       </DeskRow>
 
       <DeskRow
