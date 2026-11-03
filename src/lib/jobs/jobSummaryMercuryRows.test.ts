@@ -3,10 +3,10 @@ import type { JobWithDetails } from '../../types/jobWithDetails'
 import type { JobSummaryMercuryAllocationRow } from '../../types/jobSummary'
 
 /**
- * Job Summary's card lines (Stage A step 11): the mapping an opened row's cache and the cost
- * breakdown print share, and the print's read for a row never opened, run through the real
- * per-job loader against a mocked database. The job holds an Internal Transfer and a charge
- * also on a supply-house invoice; the print lists what its card total counts.
+ * Job Summary's card lines (Stage A step 11): the mapping an open row's cache and the cost
+ * breakdown print share, and the print's own read when the row has not loaded its lines, run
+ * through the real per-job loader against a mocked database. The job holds an Internal Transfer
+ * and a charge also on a supply-house invoice; the print lists what its card total counts.
  */
 const tables: string[] = []
 let route: (table: string) => { data: unknown; error: { message: string } | null } = () => ({ data: [], error: null })
@@ -56,6 +56,30 @@ const dbRows = [
   { id: 'a3', amount: -500, note: null, mercury_transaction_id: 'tx3', mercury_transactions: mt({ counterparty_name: 'Transfer to savings', amount: -500 }) },
 ]
 
+const print = (mercuryRows: JobSummaryMercuryAllocationRow[], cardDetailUnavailable: boolean, cardCharges: number) =>
+  buildJobSummaryCostBreakdownHtml({
+    job: { id: 'j1', hcp_number: 'HCP-7', job_name: 'Repipe', job_address: '9 Elm', materials: [] } as unknown as JobWithDetails,
+    teamLaborRow: null,
+    teamLaborCost: 0,
+    subLaborJobs: [],
+    partsFromTally: 0,
+    billedMaterialsSum: 0,
+    invoicesFromSupplyHouses: 0,
+    cardCharges,
+    totalBill: 0,
+    profit: -cardCharges,
+    tallyPartsForJob: [],
+    mileageCost: 0,
+    timePerMile: 0,
+    invoiceRows: [],
+    mercuryRows,
+    cardDetailUnavailable,
+    clockSessions: [],
+    clockSessionsLoaded: false,
+    nicknameByDebitCard: {},
+    generated: 'TEST-GENERATED',
+  })
+
 beforeEach(() => {
   tables.length = 0
   route = (table) => {
@@ -76,7 +100,7 @@ describe('jobSummaryMercuryRowsFromAllocations', () => {
 })
 
 describe('loadJobSummaryPrintMercuryRows', () => {
-  it('an opened row prints its cached lines and reads nothing, even when it has none', async () => {
+  it('a row with its lines loaded prints them and reads nothing, even when it has none', async () => {
     const cached: JobSummaryMercuryAllocationRow[] = [{ id: 'c1', amount: -5, note: null, mercury_transaction_id: 'tx9', attributionDisplayName: null, mercury_transactions: null }]
     const out = await loadJobSummaryPrintMercuryRows('j1', new Map([['j1', cached]]))
     expect(out.rows).toBe(cached)
@@ -85,7 +109,7 @@ describe('loadJobSummaryPrintMercuryRows', () => {
     expect(tables).toEqual([])
   })
 
-  it('a row never opened reads through the row’s own loader: the Internal Transfer drops out, the invoice-linked flag rides along', async () => {
+  it('a row without its lines reads through the row’s own loader: the Internal Transfer drops out, the invoice-linked flag rides along', async () => {
     const out = await loadJobSummaryPrintMercuryRows('j1', new Map([['other-job', []]]))
     expect(tables).toEqual(['mercury_transaction_job_allocations', 'people'])
     expect(out).toEqual({
@@ -102,35 +126,24 @@ describe('loadJobSummaryPrintMercuryRows', () => {
     expect(await loadJobSummaryPrintMercuryRows('j1', new Map())).toEqual({ rows: [], cardDetailUnavailable: true })
   })
 
-  it('the print from a row never opened lists the lines its card total counts, with no mismatch warning', async () => {
+  it('the print lists the lines its card total counts, with no mismatch warning', async () => {
     const { rows, cardDetailUnavailable } = await loadJobSummaryPrintMercuryRows('j1', new Map())
-    const html = buildJobSummaryCostBreakdownHtml({
-      job: { id: 'j1', hcp_number: 'HCP-7', job_name: 'Repipe', job_address: '9 Elm', materials: [] } as unknown as JobWithDetails,
-      teamLaborRow: null,
-      teamLaborCost: 0,
-      subLaborJobs: [],
-      partsFromTally: 0,
-      billedMaterialsSum: 0,
-      invoicesFromSupplyHouses: 0,
-      cardCharges: 70, // the bulk card map's total: Internal Transfers out, invoice-linked charges in
-      totalBill: 0,
-      profit: -70,
-      tallyPartsForJob: [],
-      mileageCost: 0,
-      timePerMile: 0,
-      invoiceRows: [],
-      mercuryRows: rows,
-      cardDetailUnavailable,
-      clockSessions: [],
-      clockSessionsLoaded: false,
-      nicknameByDebitCard: {},
-      generated: 'TEST-GENERATED',
-    })
+    const html = print(rows, cardDetailUnavailable, 70) // the bulk card map's total: Internal Transfers out, invoice-linked charges in
     expect(html).toContain('Card charges — $70.00')
     expect(html).toContain('Home Depot')
     expect(html).toContain('Ferguson')
     expect(html).not.toContain('Transfer to savings')
     expect(html).not.toContain('Card charge line detail unavailable.')
     expect(html).not.toContain('may not match job card total')
+  })
+
+  it('a job whose only card line is an Internal Transfer prints no card charges against anyone', async () => {
+    // Its $0 card total is why the open row never loads its lines, so the print reads them itself.
+    route = (table) => ({ data: table === 'mercury_transaction_job_allocations' ? [dbRows[2]] : [], error: null })
+    const { rows, cardDetailUnavailable } = await loadJobSummaryPrintMercuryRows('j1', new Map())
+    expect(rows).toEqual([])
+    const html = print(rows, cardDetailUnavailable, 0)
+    expect(html).toContain('No per-person team labor or card data.')
+    expect(html).not.toContain('<td>Unassigned</td>')
   })
 })

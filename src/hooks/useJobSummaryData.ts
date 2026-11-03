@@ -216,7 +216,7 @@ export function useJobSummaryData({
     if (!force && jobSummaryMercuryAllocationsLoadedRef.current.has(jobId)) return
     if (force) jobSummaryMercuryAllocationsLoadedRef.current.delete(jobId)
     try {
-      // The print maps a row never opened the same way (`loadJobSummaryPrintMercuryRows`).
+      // The print maps the lines it reads itself the same way (`loadJobSummaryPrintMercuryRows`).
       const mapped = jobSummaryMercuryRowsFromAllocations(
         await fetchMercuryJobAllocationsWithAttributionForJob(jobId, 'job summary mercury'),
       )

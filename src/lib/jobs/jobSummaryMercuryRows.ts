@@ -1,7 +1,7 @@
 // A job's card lines as Job Summary holds them: one mapping from the shared per-job loader
-// (`fetchMercuryJobAllocationsWithAttributionForJob`) for an opened row's cache and for the
-// cost breakdown print, so the print lists the same lines whether or not its row was opened
-// (Stage A step 11, docs/JOBS_TABS_ARCHITECTURE.md).
+// (`fetchMercuryJobAllocationsWithAttributionForJob`) for an open row's cache and for the
+// cost breakdown print, so the print lists the same lines whether or not the row had loaded
+// them (Stage A step 11, docs/JOBS_TABS_ARCHITECTURE.md).
 
 import {
   fetchMercuryJobAllocationsWithAttributionForJob,
@@ -35,9 +35,11 @@ export function jobSummaryMercuryRowsFromAllocations(
 }
 
 /**
- * The cost breakdown print's card lines: the opened row's cache, else one read through the
- * row's own loader (paged, Internal Transfers dropped, the invoice-linked and fuel flags set),
- * so the lines agree with the card total. A failed read prints without the lines.
+ * The cost breakdown print's card lines: the row's cache, else one read through the row's own
+ * loader (paged, Internal Transfers dropped, the invoice-linked and fuel flags set), so the
+ * lines agree with the card total. The cache is empty when the row's card total is $0 or less
+ * (the expanded-row effect loads only above $0) or its read is still running. A failed read
+ * prints without the lines.
  */
 export async function loadJobSummaryPrintMercuryRows(
   jobId: string,
